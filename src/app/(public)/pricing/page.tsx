@@ -53,7 +53,7 @@ export default async function PricingPage() {
                 <ApplianceMedia
                   photoUrl={type.photoUrl}
                   name={type.name}
-                  className="h-16 w-auto rounded-lg object-cover"
+                  className="h-40 w-full rounded-lg object-cover"
                   iconClassName="h-16 w-auto text-primary"
                 />
                 <h2 className="mt-5 font-display text-xl font-semibold text-ink">

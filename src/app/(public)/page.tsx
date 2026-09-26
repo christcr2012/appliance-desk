@@ -52,7 +52,7 @@ export default async function HomePage() {
                     key={type.id}
                     photoUrl={type.photoUrl}
                     name={type.name}
-                    className="h-40 w-auto rounded-xl object-cover"
+                    className="h-40 w-56 rounded-xl object-cover"
                     iconClassName="h-40 w-auto text-primary"
                   />
                 ))
@@ -155,7 +155,7 @@ export default async function HomePage() {
                     <ApplianceMedia
                       photoUrl={type.photoUrl}
                       name={type.name}
-                      className="h-16 w-auto rounded-lg object-cover"
+                      className="h-40 w-full rounded-lg object-cover"
                       iconClassName="h-16 w-auto text-primary"
                     />
                     <h3 className="mt-4 font-display text-xl font-semibold text-ink">
