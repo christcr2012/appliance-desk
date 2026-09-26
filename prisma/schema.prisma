@@ -1,0 +1,600 @@
+// Appliance Desk — database schema
+// See docs/DATABASE.md for the plain-English explanation of every model.
+// Money is always stored as integer cents. Timestamps are stored in UTC
+// (Postgres "timestamptz") and converted to Mountain Time only for display.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Auth & people
+// ---------------------------------------------------------------------------
+
+enum Role {
+  OWNER
+  ADMIN
+  CUSTOMER
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  emailVerified DateTime?
+  passwordHash  String?
+  name          String?
+  role          Role      @default(CUSTOMER)
+  image         String?
+
+  // Better Auth's own tables (sessions, accounts, verification tokens)
+  sessions Session[]
+  accounts Account[]
+
+  customer Customer?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  archivedAt DateTime?
+
+  auditLogEntries AuditLog[]
+
+  @@index([role])
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  expiresAt DateTime
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Account {
+  id                    String    @id @default(cuid())
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accountId             String
+  providerId            String
+  accessToken           String?
+  refreshToken          String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  idToken               String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@unique([providerId, accountId])
+}
+
+model Verification {
+  id         String   @id @default(cuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+}
+
+// ---------------------------------------------------------------------------
+// Customers & service addresses
+// ---------------------------------------------------------------------------
+
+model Customer {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id])
+
+  phone           String?
+  isBusiness      Boolean  @default(false)
+  isPropertyManager Boolean @default(false)
+  companyName     String?
+
+  serviceAddresses ServiceAddress[]
+  rentalAgreements RentalAgreement[]
+  maintenanceRequests MaintenanceRequest[]
+  invoices         Invoice[]
+  consentRecords   ConsentRecord[]
+
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  archivedAt DateTime?
+
+  @@index([isPropertyManager])
+}
+
+model ServiceAddress {
+  id         String   @id @default(cuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id])
+
+  line1   String
+  line2   String?
+  city    String
+  state   String @default("CO")
+  zip     String
+
+  jobs     Job[]
+  rentalAgreements RentalAgreement[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([customerId])
+  @@index([zip])
+}
+
+// ---------------------------------------------------------------------------
+// Leads
+// ---------------------------------------------------------------------------
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  CONVERTED
+  LOST
+}
+
+model Lead {
+  id     String     @id @default(cuid())
+  status LeadStatus @default(NEW)
+
+  // Who's asking
+  isBusiness        Boolean @default(false)
+  isPropertyManager Boolean @default(false)
+  companyName       String?
+  contactName       String
+  phone             String
+  email             String?
+  bestTimeToContact String?
+  howHeard          String?
+
+  // What they want
+  desiredTerm     String? // month-to-month | 6-month | 12-month
+  desiredStartDate DateTime?
+  quantity        Int      @default(1)
+  notes           String?
+
+  // Where
+  addressLine1 String?
+  city         String?
+  zip          String?
+  inServiceArea Boolean?
+
+  // Legal
+  consentedAt DateTime?
+
+  // Scoring (computed server-side; see docs/BUSINESS-RULES.md)
+  score   Int      @default(0)
+  scoreReasons Json @default("[]")
+  isHighValue Boolean @default(false)
+
+  applianceRequests LeadApplianceRequest[]
+
+  convertedCustomerId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([score])
+}
+
+model LeadApplianceRequest {
+  id            String       @id @default(cuid())
+  leadId        String
+  lead          Lead         @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  applianceTypeId String
+  applianceType ApplianceType @relation(fields: [applianceTypeId], references: [id])
+  quantity      Int          @default(1)
+}
+
+// ---------------------------------------------------------------------------
+// Inventory
+// ---------------------------------------------------------------------------
+
+model ApplianceType {
+  id   String @id @default(cuid())
+  name String @unique // "Refrigerator", "Washer", "Dryer", ...
+  slug String @unique
+
+  // Pricing lives here so it's data, not code. History is preserved via
+  // PricingRule, this is just the *current* published price shown on the site.
+  monthlyPriceCents Int     @default(0)
+  showOnWebsite     Boolean @default(false)
+  sortOrder         Int     @default(0)
+
+  appliances   Appliance[]
+  pricingRules PricingRule[]
+  leadRequests LeadApplianceRequest[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum ApplianceStatus {
+  AVAILABLE
+  RESERVED
+  RENTED
+  MAINTENANCE
+  RETIRED
+}
+
+model Appliance {
+  id              String          @id @default(cuid())
+  assetNumber     String          @unique
+  applianceTypeId String
+  applianceType   ApplianceType   @relation(fields: [applianceTypeId], references: [id])
+  manufacturer    String?
+  model           String?
+  serialNumber    String?
+  condition       String?
+  purchaseDate    DateTime?
+  acquisitionCostCents Int?
+  status          ApplianceStatus @default(AVAILABLE)
+  currentLocation String?
+  notes           String?
+
+  assignments ApplianceAssignment[]
+  photos      Photo[]
+  jobs        JobAppliance[]
+  maintenanceRequests MaintenanceRequest[]
+
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  archivedAt DateTime?
+
+  @@index([status])
+  @@index([applianceTypeId])
+}
+
+// ---------------------------------------------------------------------------
+// Rentals & pricing
+// ---------------------------------------------------------------------------
+
+enum RentalAgreementStatus {
+  DRAFT
+  AWAITING_SIGNATURE
+  ACTIVE
+  ENDED
+  CANCELLED
+}
+
+model RentalAgreement {
+  id         String                 @id @default(cuid())
+  customerId String
+  customer   Customer               @relation(fields: [customerId], references: [id])
+  serviceAddressId String
+  serviceAddress   ServiceAddress   @relation(fields: [serviceAddressId], references: [id])
+  status     RentalAgreementStatus  @default(DRAFT)
+
+  termMonths Int? // null = month-to-month
+  startDate  DateTime?
+  endDate    DateTime?
+
+  // Price snapshot — what THIS customer agreed to, frozen at signing.
+  // Changing PricingRule / ApplianceType later never touches these.
+  depositCents      Int @default(0)
+  damageWaiverCents Int @default(0)
+  lateFeeGraceDays  Int @default(5)
+  lateFeeCents      Int @default(0)
+  lateFeePercent    Int @default(0)
+  taxRatePermille   Int @default(0) // e.g. 725 = 7.25%
+
+  lines RentalLine[]
+
+  signature   SignatureRecord?
+  jobs        Job[]
+  invoices    Invoice[]
+  deposits    Deposit[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  fromLeadId String?
+
+  @@index([customerId])
+  @@index([status])
+}
+
+model RentalLine {
+  id         String   @id @default(cuid())
+  agreementId String
+  agreement  RentalAgreement @relation(fields: [agreementId], references: [id], onDelete: Cascade)
+  label      String   // "Washer/Dryer set @ $60/mo"
+  monthlyPriceCents Int
+
+  assignments ApplianceAssignment[]
+
+  createdAt DateTime @default(now())
+}
+
+model ApplianceAssignment {
+  id           String     @id @default(cuid())
+  rentalLineId String
+  rentalLine   RentalLine @relation(fields: [rentalLineId], references: [id])
+  applianceId  String
+  appliance    Appliance  @relation(fields: [applianceId], references: [id])
+
+  assignedAt DateTime  @default(now())
+  unassignedAt DateTime?
+  unassignReason String?
+}
+
+model PricingRule {
+  id              String        @id @default(cuid())
+  applianceTypeId String?
+  applianceType   ApplianceType? @relation(fields: [applianceTypeId], references: [id])
+  label           String        // e.g. "Washer + Dryer set", "Delivery fee"
+  monthlyPriceCents Int?
+  oneTimePriceCents Int?
+
+  changedBy   String?
+  oldValueCents Int?
+  newValueCents Int?
+
+  createdAt DateTime @default(now())
+}
+
+model SignatureRecord {
+  id          String   @id @default(cuid())
+  agreementId String   @unique
+  agreement   RentalAgreement @relation(fields: [agreementId], references: [id])
+  provider    String   // e.g. "signwell"
+  externalId  String?
+  signedPdfUrl String?
+  signedAt    DateTime?
+  signerName  String?
+  signerEmail String?
+  ipAddress   String?
+
+  createdAt DateTime @default(now())
+}
+
+model Deposit {
+  id          String   @id @default(cuid())
+  agreementId String
+  agreement   RentalAgreement @relation(fields: [agreementId], references: [id])
+  amountCents Int
+  refundable  Boolean  @default(true)
+  refundedAt  DateTime?
+  refundedAmountCents Int?
+
+  createdAt DateTime @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// Jobs (delivery / install / swap / removal / maintenance visit)
+// ---------------------------------------------------------------------------
+
+enum JobType {
+  DELIVERY
+  INSTALLATION
+  SWAP
+  MAINTENANCE_VISIT
+  REMOVAL
+}
+
+enum JobStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+model Job {
+  id         String    @id @default(cuid())
+  type       JobType
+  status     JobStatus @default(SCHEDULED)
+  scheduledAt DateTime?
+
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id])
+  serviceAddressId String?
+  serviceAddress ServiceAddress? @relation(fields: [serviceAddressId], references: [id])
+  agreementId String?
+  agreement   RentalAgreement? @relation(fields: [agreementId], references: [id])
+
+  notes       String?
+  completedAt DateTime?
+  completionNotes String?
+
+  appliances JobAppliance[]
+  photos     Photo[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([scheduledAt])
+}
+
+model JobAppliance {
+  id          String    @id @default(cuid())
+  jobId       String
+  job         Job       @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  applianceId String
+  appliance   Appliance @relation(fields: [applianceId], references: [id])
+}
+
+// ---------------------------------------------------------------------------
+// Maintenance
+// ---------------------------------------------------------------------------
+
+enum MaintenanceStatus {
+  SUBMITTED
+  REVIEWING
+  SCHEDULED
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum MaintenancePriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+model MaintenanceRequest {
+  id         String              @id @default(cuid())
+  customerId String
+  customer   Customer            @relation(fields: [customerId], references: [id])
+  applianceId String?
+  appliance  Appliance?          @relation(fields: [applianceId], references: [id])
+
+  problem    String
+  priority   MaintenancePriority @default(NORMAL)
+  status     MaintenanceStatus   @default(SUBMITTED)
+
+  photos     Photo[]
+
+  openedAt    DateTime  @default(now())
+  completedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+}
+
+// ---------------------------------------------------------------------------
+// Billing
+// ---------------------------------------------------------------------------
+
+enum InvoiceStatus {
+  DRAFT
+  OPEN
+  PAID
+  FAILED
+  VOID
+  DELINQUENT
+}
+
+model Invoice {
+  id          String        @id @default(cuid())
+  customerId  String
+  customer    Customer      @relation(fields: [customerId], references: [id])
+  agreementId String?
+  agreement   RentalAgreement? @relation(fields: [agreementId], references: [id])
+
+  status      InvoiceStatus @default(DRAFT)
+  amountDueCents Int
+  amountPaidCents Int @default(0)
+  dueDate     DateTime?
+
+  stripeInvoiceId String? @unique
+  payments    Payment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([customerId])
+}
+
+model Payment {
+  id          String   @id @default(cuid())
+  invoiceId   String
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id])
+  amountCents Int
+  method      String?  // card | ach
+  stripePaymentIntentId String?
+  status      String   // succeeded | failed | pending
+  failureReason String?
+
+  createdAt DateTime @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// Settings, site content, and everything else Chris edits himself
+// ---------------------------------------------------------------------------
+
+model BusinessSettings {
+  id    String @id @default("singleton")
+
+  publicBusinessName String @default("[Company Name]")
+  publicPhone        String @default("[Phone Number]")
+  publicEmail        String @default("[Email Address]")
+  publicAddress      String @default("[Business Address]")
+  serviceAreaCities  Json   @default("[]")
+  serviceAreaZips    Json   @default("[]")
+  hours              Json   @default("{}")
+  holidayClosures    Json   @default("[]")
+  socialLinks        Json   @default("{}")
+  logoUrl            String?
+
+  oneTimeDeliveryFeeCents Int @default(0)
+  oneTimeRemovalFeeCents  Int @default(0)
+  damageWaiverEnabled     Boolean @default(false)
+  depositEnabled          Boolean @default(false)
+  lateFeeGraceDays        Int     @default(5)
+  lateFeeFlatCents        Int     @default(0)
+  lateFeePercent          Int     @default(0)
+  taxRatePermille         Int     @default(0) // 0 until a CPA confirms the real rate
+  taxRateConfirmed        Boolean @default(false)
+
+  announcementBannerText String?
+  announcementBannerOn   Boolean @default(false)
+
+  updatedAt DateTime @updatedAt
+}
+
+model SiteContent {
+  id    String @id @default(cuid())
+  key   String @unique // "home.headline", "rentals.body", "faq.entry.1", ...
+  value String
+  updatedAt DateTime @updatedAt
+}
+
+model Photo {
+  id      String   @id @default(cuid())
+  url     String
+  altText String?
+
+  applianceId String?
+  appliance   Appliance? @relation(fields: [applianceId], references: [id])
+  jobId       String?
+  job         Job?       @relation(fields: [jobId], references: [id])
+  maintenanceRequestId String?
+  maintenanceRequest   MaintenanceRequest? @relation(fields: [maintenanceRequestId], references: [id])
+
+  createdAt DateTime @default(now())
+}
+
+model ConsentRecord {
+  id         String   @id @default(cuid())
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id])
+  kind       String   // "lead_form_privacy" | "sms_opt_in" | "data_export_request" | "data_deletion_request"
+  details    Json?
+  createdAt  DateTime @default(now())
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  action    String   // e.g. "pricing.update", "lead.convert"
+  entityType String
+  entityId   String?
+  oldValue   Json?
+  newValue   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}

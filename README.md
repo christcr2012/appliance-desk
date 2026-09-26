@@ -1,36 +1,48 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Appliance Desk
 
-## Getting Started
+The operating system for Robinson Appliance Rentals (Colorado): a public
+website that brings in leads, an admin "desk" where the business runs,
+and a customer portal. See `AGENTS.md` for the full ground rules and
+`docs/HANDOFF.md` for exactly what currently works.
 
-First, run the development server:
+## Stack
+
+Next.js 16 (App Router, TypeScript, strict mode) · Tailwind CSS ·
+Prisma + PostgreSQL (Neon) · Better Auth · Vitest (unit tests) ·
+Playwright + axe (accessibility/e2e tests) · Sentry (error monitoring) ·
+deployed on Vercel.
+
+## Running locally
 
 ```bash
+npm install                 # installs deps; postinstall runs `prisma generate`
+cp .env.example .env.local  # then fill in real values — see comments in that file
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open http://localhost:3000.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Useful commands
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run typecheck        # tsc --noEmit
+npm run lint              # eslint
+npm test                   # unit tests (vitest)
+npm run test:e2e            # Playwright + axe accessibility tests (needs a running build)
+npm run build                 # production build
+npm run db:migrate:dev          # create + apply a migration locally
+npm run db:migrate:deploy         # apply pending migrations (used by CI/production)
+npm run db:seed                    # one-time: creates the OWNER account (see prisma/seed.ts)
+```
 
-## Learn More
+## Deployment
 
-To learn more about Next.js, take a look at the following resources:
+`main` deploys to production automatically on push (Vercel). Every pull
+request gets its own preview deployment. CI (GitHub Actions) must pass
+before merging — see `.github/workflows/ci.yml`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Documentation
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Everything else — architecture, database design, business rules, design
+system/accessibility rules, dated decisions, the roadmap, and current
+project state — lives in `docs/`. Start with `AGENTS.md`.
