@@ -1,0 +1,343 @@
+import { prisma } from "@/lib/prisma";
+import type { ApplianceStatus } from "@prisma/client";
+
+// ---------------------------------------------------------------------------
+// Inventory — individual physical Appliance units (as opposed to
+// ApplianceType, which is a *category* like "Washer" with a public price).
+// See docs/BUSINESS-RULES.md ("Inventory & status rules") and
+// docs/ROADMAP.md (this was deferred from Phase 3's first slice).
+// ---------------------------------------------------------------------------
+
+const ALL_STATUSES: ApplianceStatus[] = [
+  "AVAILABLE",
+  "RESERVED",
+  "RENTED",
+  "MAINTENANCE",
+  "RETIRED",
+];
+
+/**
+ * Which status changes are allowed, enforced on the server (not just
+ * disabled buttons in the UI) — see docs/BUSINESS-RULES.md: "Appliance
+ * statuses ... live in one central enum with clear rules for which
+ * transitions are allowed." RETIRED is terminal (a disposed/decommissioned
+ * unit doesn't come back into service) — add a new unit instead if that's
+ * ever wrong in practice.
+ */
+const ALLOWED_TRANSITIONS: Record<ApplianceStatus, ApplianceStatus[]> = {
+  AVAILABLE: ["RESERVED", "RENTED", "MAINTENANCE", "RETIRED"],
+  RESERVED: ["AVAILABLE", "RENTED", "MAINTENANCE", "RETIRED"],
+  RENTED: ["AVAILABLE", "MAINTENANCE", "RETIRED"],
+  MAINTENANCE: ["AVAILABLE", "RETIRED"],
+  RETIRED: [],
+};
+
+/** Pure — no database access, so it's directly unit-testable (see
+ * tests/inventory.test.ts) despite the rest of this file needing a real
+ * database. updateApplianceStatus below enforces the same rule. */
+export function canTransitionApplianceStatus(
+  from: ApplianceStatus,
+  to: ApplianceStatus,
+): { ok: true } | { ok: false; reason: string } {
+  if (from === to) {
+    return { ok: false, reason: "That's already its current status." };
+  }
+  if (ALLOWED_TRANSITIONS[from].includes(to)) {
+    return { ok: true };
+  }
+  return {
+    ok: false,
+    reason: `Can't move an appliance directly from ${from} to ${to}.`,
+  };
+}
+
+/** Pure — turns an appliance type's name into a short asset-number prefix,
+ * e.g. "Washer" -> "WASH", "Washer + Dryer Set" -> "WDS". Exported for
+ * testing (tests/inventory.test.ts). */
+export function assetNumberPrefix(applianceTypeName: string): string {
+  const words = applianceTypeName.split(/[^a-zA-Z0-9]+/).filter(Boolean);
+  if (words.length === 0) {
+    return "APPL";
+  }
+  if (words.length === 1) {
+    return words[0].slice(0, 4).toUpperCase();
+  }
+  return words
+    .map((w) => w[0])
+    .join("")
+    .slice(0, 6)
+    .toUpperCase();
+}
+
+/** Pure — formats a prefix + sequence into an asset number, e.g.
+ * ("WASH", 3) -> "WASH-0003". Exported for testing. */
+export function buildAssetNumber(prefix: string, sequence: number): string {
+  return `${prefix}-${String(sequence).padStart(4, "0")}`;
+}
+
+export async function getApplianceCountsByStatus(): Promise<
+  Record<ApplianceStatus, number>
+> {
+  const counts = await prisma.appliance.groupBy({
+    by: ["status"],
+    _count: { _all: true },
+  });
+  const result = Object.fromEntries(
+    ALL_STATUSES.map((s) => [s, 0]),
+  ) as Record<ApplianceStatus, number>;
+  for (const row of counts) {
+    result[row.status] = row._count._all;
+  }
+  return result;
+}
+
+export async function getAppliances(filter?: { status?: ApplianceStatus }) {
+  return prisma.appliance.findMany({
+    where: filter?.status ? { status: filter.status } : undefined,
+    include: { applianceType: true },
+    orderBy: [{ createdAt: "desc" }],
+  });
+}
+
+export async function getApplianceById(id: string) {
+  return prisma.appliance.findUnique({
+    where: { id },
+    include: { applianceType: true },
+  });
+}
+
+export type NewApplianceUnitInput = {
+  applianceTypeId: string;
+  quantity: number;
+  manufacturer?: string | null;
+  model?: string | null;
+  /** Only meaningful when quantity is 1 — units added in bulk almost
+   * always have different serial numbers, so the caller should add those
+   * individually afterward rather than stamping the same one on every
+   * unit. */
+  serialNumber?: string | null;
+  color?: string | null;
+  /** Free-form descriptive tags — e.g. "front-load", "top-load",
+   * "agitator" for a washer, or whatever's relevant to a different
+   * appliance type. Deliberately not an enum/fixed column list (see
+   * migration comment in prisma/migrations) so a brand-new category or
+   * an unanticipated feature never needs a schema change. */
+  features?: string[];
+  condition?: string | null;
+  purchaseDate?: Date | null;
+  acquisitionCostCents?: number | null;
+  currentLocation?: string | null;
+  notes?: string | null;
+};
+
+/**
+ * Adds one or more new physical appliance units of an existing category,
+ * as Chris obtains them — per his request, the system needs to support
+ * adding inventory over time, starting from zero. Each unit gets its own
+ * auto-generated, human-readable asset number (e.g. "WASH-0001") and
+ * starts life as AVAILABLE. Writes one AuditLog entry per unit created.
+ */
+export async function createApplianceUnits(
+  userId: string,
+  input: NewApplianceUnitInput,
+) {
+  const applianceType = await prisma.applianceType.findUniqueOrThrow({
+    where: { id: input.applianceTypeId },
+  });
+
+  const prefix = assetNumberPrefix(applianceType.name);
+  const created = [];
+
+  for (let i = 0; i < input.quantity; i += 1) {
+    // Each unit's uniqueness check depends on the previous unit already
+    // being created, so this loop runs sequentially on purpose — quantities
+    // are small (a handful of units at a time), never a bulk-import size
+    // that would need batching.
+    let sequence = 1;
+    let assetNumber = buildAssetNumber(prefix, sequence);
+    while (await prisma.appliance.findUnique({ where: { assetNumber } })) {
+      sequence += 1;
+      assetNumber = buildAssetNumber(prefix, sequence);
+    }
+
+    const unit = await prisma.appliance.create({
+      data: {
+        assetNumber,
+        applianceTypeId: input.applianceTypeId,
+        manufacturer: input.manufacturer || null,
+        model: input.model || null,
+        serialNumber: input.quantity === 1 ? input.serialNumber || null : null,
+        color: input.color || null,
+        features: input.features && input.features.length > 0 ? input.features : [],
+        condition: input.condition || null,
+        purchaseDate: input.purchaseDate ?? null,
+        acquisitionCostCents: input.acquisitionCostCents ?? null,
+        currentLocation: input.currentLocation || null,
+        notes: input.notes || null,
+      },
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        userId,
+        action: "appliance.unit.create",
+        entityType: "Appliance",
+        entityId: unit.id,
+        newValue: { assetNumber: unit.assetNumber, applianceTypeId: input.applianceTypeId },
+      },
+    });
+
+    created.push(unit);
+  }
+
+  return created;
+}
+
+export type ApplianceDetailsUpdate = Partial<{
+  manufacturer: string | null;
+  model: string | null;
+  serialNumber: string | null;
+  color: string | null;
+  features: string[];
+  condition: string | null;
+  currentLocation: string | null;
+  notes: string | null;
+}>;
+
+/** Edits an existing unit's descriptive details — never its status (see
+ * updateApplianceStatus) or asset number (permanent once assigned). */
+export async function updateApplianceDetails(
+  userId: string,
+  applianceId: string,
+  update: ApplianceDetailsUpdate,
+) {
+  const updated = await prisma.appliance.update({
+    where: { id: applianceId },
+    data: update,
+  });
+
+  await prisma.auditLog.create({
+    data: {
+      userId,
+      action: "appliance.unit.update",
+      entityType: "Appliance",
+      entityId: applianceId,
+      newValue: update,
+    },
+  });
+
+  return updated;
+}
+
+/** Changes one appliance unit's status, enforcing the allowed-transition
+ * rules server-side (see canTransitionApplianceStatus above) — never
+ * trust a button being disabled in the UI as the real gate. */
+export async function updateApplianceStatus(
+  userId: string,
+  applianceId: string,
+  newStatus: ApplianceStatus,
+) {
+  const before = await prisma.appliance.findUniqueOrThrow({
+    where: { id: applianceId },
+  });
+
+  const check = canTransitionApplianceStatus(before.status, newStatus);
+  if (!check.ok) {
+    throw new Error(check.reason);
+  }
+
+  const updated = await prisma.appliance.update({
+    where: { id: applianceId },
+    data: { status: newStatus },
+  });
+
+  await prisma.auditLog.create({
+    data: {
+      userId,
+      action: "appliance.unit.status",
+      entityType: "Appliance",
+      entityId: applianceId,
+      oldValue: { status: before.status },
+      newValue: { status: newStatus },
+    },
+  });
+
+  return updated;
+}
+
+// ---------------------------------------------------------------------------
+// Parts catalog — a small parts knowledge base keyed by MODEL NUMBER, not by
+// an individual physical Appliance. Once Chris looks up a part for a given
+// model, it's reusable for every unit of that model he ever owns, not just
+// the one unit he was repairing when he found it. See the migration comment
+// in prisma/migrations/20260926200000_appliance_features_color_parts for the
+// full rationale.
+// ---------------------------------------------------------------------------
+
+/** Case-insensitive on purpose — model numbers get typed in by hand and
+ * capitalization is inconsistent (e.g. "wfw5620hw0" vs "WFW5620HW0"). */
+export async function getPartRecordsForModel(modelNumber: string) {
+  return prisma.partRecord.findMany({
+    where: { modelNumber: { equals: modelNumber, mode: "insensitive" } },
+    orderBy: [{ createdAt: "desc" }],
+  });
+}
+
+export async function getAllPartRecords() {
+  return prisma.partRecord.findMany({
+    include: { applianceType: true },
+    orderBy: [{ modelNumber: "asc" }, { createdAt: "desc" }],
+  });
+}
+
+export type NewPartRecordInput = {
+  modelNumber: string;
+  manufacturer?: string | null;
+  applianceTypeId?: string | null;
+  partNumber: string;
+  partName?: string | null;
+  notes?: string | null;
+};
+
+/** Logs a part number against a model number for future reuse. Not tied to
+ * any single physical Appliance — that's the whole point (see above). */
+export async function createPartRecord(userId: string, input: NewPartRecordInput) {
+  const record = await prisma.partRecord.create({
+    data: {
+      modelNumber: input.modelNumber,
+      manufacturer: input.manufacturer || null,
+      applianceTypeId: input.applianceTypeId || null,
+      partNumber: input.partNumber,
+      partName: input.partName || null,
+      notes: input.notes || null,
+    },
+  });
+
+  await prisma.auditLog.create({
+    data: {
+      userId,
+      action: "part.create",
+      entityType: "PartRecord",
+      entityId: record.id,
+      newValue: { modelNumber: record.modelNumber, partNumber: record.partNumber },
+    },
+  });
+
+  return record;
+}
+
+export async function deletePartRecord(userId: string, partRecordId: string) {
+  const record = await prisma.partRecord.delete({ where: { id: partRecordId } });
+
+  await prisma.auditLog.create({
+    data: {
+      userId,
+      action: "part.delete",
+      entityType: "PartRecord",
+      entityId: partRecordId,
+      oldValue: { modelNumber: record.modelNumber, partNumber: record.partNumber },
+    },
+  });
+
+  return record;
+}
