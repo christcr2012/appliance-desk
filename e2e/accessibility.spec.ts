@@ -67,12 +67,15 @@ test("mobile hamburger menu opens and closes with keyboard and mouse", async ({
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
 
-  const toggle = page.getByRole("button", { name: "Open menu" });
-  await expect(toggle).toBeVisible();
-  await expect(toggle).toHaveAttribute("aria-expanded", "false");
+  const openToggle = page.getByRole("button", { name: "Open menu" });
+  await expect(openToggle).toBeVisible();
+  await expect(openToggle).toHaveAttribute("aria-expanded", "false");
 
-  await toggle.click();
-  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+  await openToggle.click();
+  // The button's accessible name changes with state (see
+  // src/components/site/header.tsx), so it's now found by its new name.
+  const closeToggle = page.getByRole("button", { name: "Close menu" });
+  await expect(closeToggle).toHaveAttribute("aria-expanded", "true");
   const mobileNav = page.locator("#mobile-menu");
   await expect(mobileNav).toBeVisible();
   await expect(mobileNav.getByRole("link", { name: "Pricing" })).toBeVisible();

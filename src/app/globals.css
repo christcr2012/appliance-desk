@@ -12,12 +12,19 @@
   --color-surface: #ffffff;
   --color-ink: #241f1a;
   --color-ink-soft: #55493f;
-  --color-ink-faint: #7d7266;
+  /* #7d7266 measured only 3.93:1–4.37:1 against these backgrounds —
+     below WCAG AA's 4.5:1 for normal text (caught by
+     e2e/accessibility.spec.ts's axe checks). Darkened until every
+     ink-faint/background pairing in actual use clears 4.5:1. */
+  --color-ink-faint: #5f5449;
   --color-line: #e5d9c8;
   --color-line-strong: #d3c3ab;
 
-  --color-primary: #b85c2c;
-  --color-primary-dark: #953f18;
+  /* #b85c2c measured 4.39:1 on --color-on-primary — just under WCAG
+     AA's 4.5:1 for normal-size button text. Darkened; primary-dark
+     darkened to match so the hover state stays visually distinct. */
+  --color-primary: #a34e22;
+  --color-primary-dark: #8a3a15;
   --color-primary-soft: #f1dcc9;
   --color-on-primary: #fffaf3;
 
@@ -30,7 +37,7 @@
   --color-warning-ink: #7a4a05;
   --color-danger: #a3271f;
 
-  --color-focus-ring: #b85c2c;
+  --color-focus-ring: #a34e22;
 
   --font-display: var(--font-fraunces);
   --font-sans: var(--font-inter);

@@ -328,6 +328,23 @@ and the standard `@prisma/adapter-pg` (added this session) for anything
 else. Nothing about `DATABASE_URL`/`DIRECT_URL` changed — same two
 connection strings as always.
 
+**Fixed real bugs found by the accessibility/e2e tests themselves:**
+axe flagged real WCAG AA color-contrast failures once the real design
+tokens were tested against real rendered pages — the original
+`--color-primary` (4.39:1 on button text, need 4.5:1) and
+`--color-ink-faint` (3.93–4.37:1, used in the footer and disclaimers)
+were both darkened in `src/app/globals.css` until every pairing
+actually in use clears 4.5:1 (verified by computing WCAG relative
+luminance for each foreground/background pair in use, not by eye).
+Two of the new e2e tests also had bugs of their own, not the app: the
+mobile-menu test re-used a locator bound to the toggle button's "Open
+menu" name after clicking it (the name correctly changes to "Close
+menu," so the old locator stopped matching anything — fixed by querying
+the new name), and the lead-form test picked "the first checkbox on the
+page" to select an appliance, which is actually the unrelated "I'm a
+landlord/property manager" checkbox that comes first in the form — fixed
+to select a checkbox by appliance name specifically.
+
 **Seeding runs in CI now, safely:** `prisma/seed.ts` was split into two
 independent parts — business content (BusinessSettings singleton +
 starter appliance types), which always runs and needs no secrets, and

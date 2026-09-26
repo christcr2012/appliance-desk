@@ -12,10 +12,6 @@ concurrency:
 jobs:
   ci:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      issues: write
-      pull-requests: write
 
     services:
       postgres:
@@ -72,29 +68,7 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Accessibility & e2e tests
-        run: |
-          npm run test:e2e > /tmp/e2e-output.log 2>&1
-          echo "E2E_EXIT_CODE=$?" >> "$GITHUB_ENV"
-          cat /tmp/e2e-output.log
-          exit 0
-
-      - name: Post e2e failure log as a PR comment (temporary diagnostic)
-        if: always() && github.event.pull_request.number
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          if [ "$E2E_EXIT_CODE" != "0" ]; then
-            node -e "const fs = require('fs'); const content = fs.readFileSync('/tmp/e2e-output.log','utf8').slice(-60000); fs.writeFileSync('/tmp/comment-payload.json', JSON.stringify({ body: '(diagnostic) e2e test output:\n\n' + content }));"
-            curl -sS -X POST \
-              "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" \
-              -H "Authorization: Bearer $GH_TOKEN" \
-              -H "Accept: application/vnd.github+json" \
-              -H "Content-Type: application/json" \
-              -d @/tmp/comment-payload.json
-          fi
-
-      - name: Fail the job if e2e tests failed
-        run: exit ${E2E_EXIT_CODE:-1}
+        run: npm run test:e2e
 
       - name: Upload Playwright report
         if: always()

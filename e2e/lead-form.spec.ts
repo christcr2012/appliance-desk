@@ -13,8 +13,10 @@ test("submitting the quote form creates a lead and shows a success message", asy
   await page.getByLabel("Email").fill("jamie@example.com");
 
   // Select whichever published appliance type appears first — the
-  // catalog is seeded data (prisma/seed.ts), not hard-coded here.
-  await page.getByRole("checkbox").first().check();
+  // catalog is seeded data (prisma/seed.ts), not hard-coded here. Scoped
+  // to appliance names specifically (not the first checkbox on the page,
+  // which is "I'm a landlord/property manager...").
+  await page.getByRole("checkbox", { name: /Washer|Dryer/ }).first().check();
 
   await page
     .getByLabel(/I agree to the/)
