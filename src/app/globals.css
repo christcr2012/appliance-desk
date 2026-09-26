@@ -1,26 +1,155 @@
 @import "tailwindcss";
 
+/*
+ * Design tokens — warm, high-end, personal-small-business feel (not
+ * corporate-generic). See docs/DESIGN-SYSTEM.md for the accessibility
+ * rules these colors and focus styles must satisfy (contrast, never
+ * color-alone, visible focus ring).
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --color-canvas: #fbf6ef;
+  --color-canvas-alt: #f3ead9;
+  --color-surface: #ffffff;
+  --color-ink: #241f1a;
+  --color-ink-soft: #55493f;
+  /* #7d7266 measured only 3.93:1–4.37:1 against these backgrounds —
+     below WCAG AA's 4.5:1 for normal text (caught by
+     e2e/accessibility.spec.ts's axe checks). Darkened until every
+     ink-faint/background pairing in actual use clears 4.5:1. */
+  --color-ink-faint: #5f5449;
+  --color-line: #e5d9c8;
+  --color-line-strong: #d3c3ab;
+
+  /* #b85c2c measured 4.39:1 on --color-on-primary — just under WCAG
+     AA's 4.5:1 for normal-size button text. Darkened; primary-dark
+     darkened to match so the hover state stays visually distinct. */
+  --color-primary: #a34e22;
+  --color-primary-dark: #8a3a15;
+  --color-primary-soft: #f1dcc9;
+  --color-on-primary: #fffaf3;
+
+  --color-accent: #2f6a56;
+  --color-accent-dark: #204b3d;
+  --color-accent-soft: #dbeae3;
+
+  --color-success: #1e6b3e;
+  --color-warning-bg: #fdf1d6;
+  --color-warning-ink: #7a4a05;
+  --color-danger: #a3271f;
+
+  --color-focus-ring: #a34e22;
+
+  --font-display: var(--font-fraunces);
+  --font-sans: var(--font-inter);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-canvas: var(--color-canvas);
+  --color-canvas-alt: var(--color-canvas-alt);
+  --color-surface: var(--color-surface);
+  --color-ink: var(--color-ink);
+  --color-ink-soft: var(--color-ink-soft);
+  --color-ink-faint: var(--color-ink-faint);
+  --color-line: var(--color-line);
+  --color-line-strong: var(--color-line-strong);
+
+  --color-primary: var(--color-primary);
+  --color-primary-dark: var(--color-primary-dark);
+  --color-primary-soft: var(--color-primary-soft);
+  --color-on-primary: var(--color-on-primary);
+
+  --color-accent: var(--color-accent);
+  --color-accent-dark: var(--color-accent-dark);
+  --color-accent-soft: var(--color-accent-soft);
+
+  --color-success: var(--color-success);
+  --color-warning-bg: var(--color-warning-bg);
+  --color-warning-ink: var(--color-warning-ink);
+  --color-danger: var(--color-danger);
+
+  --font-display: var(--font-display);
+  --font-sans: var(--font-sans);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --color-canvas: #1b1712;
+    --color-canvas-alt: #241e17;
+    --color-surface: #2a2319;
+    --color-ink: #f6efe4;
+    --color-ink-soft: #d9cdba;
+    --color-ink-faint: #ad9f8c;
+    --color-line: #3d3325;
+    --color-line-strong: #4e422f;
+
+    --color-primary: #e08a54;
+    --color-primary-dark: #f2ac7d;
+    --color-primary-soft: #4a3120;
+    --color-on-primary: #241207;
+
+    --color-accent: #6fbb9e;
+    --color-accent-dark: #8fd0b6;
+    --color-accent-soft: #23392f;
+
+    --color-warning-bg: #3a2c0e;
+    --color-warning-ink: #f0c96b;
+  }
+}
+
+* {
+  border-color: var(--color-line);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-display), Georgia, serif;
+}
+
+/* Visible focus ring everywhere — never outline:none without a
+   replacement (docs/DESIGN-SYSTEM.md). */
+:focus-visible {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 100;
+  background: var(--color-ink);
+  color: var(--color-on-primary);
+  padding: 0.75rem 1.25rem;
+  border-radius: 0 0 0.5rem 0;
+}
+
+.skip-link:focus {
+  left: 0;
 }

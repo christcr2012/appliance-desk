@@ -269,3 +269,88 @@ whatever host the real request came in on, as long as it matches an
 allowed pattern (`*.vercel.app` for now), rather than requiring an exact
 match against one fixed URL. When a real custom domain is bought later,
 it needs to be added to that `allowedHosts` list.
+
+---
+
+### 2026-09-26 — Phase 2: design system, email provider, appliance catalog shape
+
+**Design system:** Fraunces (a warm, humanist serif) for headings paired
+with Inter for body/UI text — chosen to read as a real, personal small
+business rather than a generic corporate template, while keeping the
+same navigation/button/menu conventions (sticky header, hamburger menu
+below the `md` breakpoint, a persistent primary CTA) used by well-known
+consumer sites. Color tokens (warm cream canvas, terracotta primary,
+deep green accent) live in `src/app/globals.css` as CSS variables mapped
+through Tailwind's `@theme inline`, with a dark-mode variant and a
+visible focus ring everywhere (never `outline: none`) per
+`docs/DESIGN-SYSTEM.md`.
+
+**Transactional email:** Resend (already a dependency) for new-lead
+notifications. Guarded in `src/lib/email.ts` — with no `RESEND_API_KEY`
+set, it logs instead of sending, so the site, CI, and every preview
+deployment work today with no email account yet required. Turning on
+real email later is just adding the Vercel environment variable.
+
+**No product photos yet:** there are no real appliance photos to use
+honestly, so the public site uses simple generic line-art illustrations
+(`src/components/site/appliance-icon.tsx`) instead, with a visible
+disclaimer that the actual appliance may differ in brand/model/color —
+per Chris's own instruction. Tracked in `docs/ROADMAP.md` to swap in
+real photos once he supplies them.
+
+**Appliance catalog shape (washers/dryers first, more later):**
+`ApplianceType` already models "a category with a published price" —
+exactly what's needed for this. Seeded three starter rows
+(`prisma/seed.ts`): Washer ($35/mo), Dryer ($35/mo), and "Washer + Dryer
+Set" ($60/mo) as its own `ApplianceType` row, since BUSINESS-RULES.md's
+bundle price is lower than the sum of the two individual prices and
+doesn't fit either individual row. This needed no schema change and
+keeps "new appliance categories are added as data" true going forward —
+adding refrigerators, ranges, etc. later is a data change in
+`/desk/settings`. (This is separate from — and doesn't change — the
+existing rule that a rented washer/dryer set is always two separately
+tracked physical `Appliance` rows once real inventory exists in Phase 3.)
+
+**Fixed a real bug found by CI: the Neon driver adapter doesn't work
+against a plain (non-Neon) Postgres.** Once `db:seed` and the new
+lead-form e2e test became the first things to run a real Prisma query
+against CI's throwaway Postgres container (everything in Phase 1 that
+touched the database only did so through `prisma migrate deploy`, which
+uses a different connection path — see `prisma.config.ts` — never
+through the app's own `PrismaClient`), CI failed with a WebSocket error.
+Root cause: `@prisma/adapter-neon` talks to Postgres over a WebSocket
+protocol that only Neon's own infrastructure understands — it can't
+connect to a vanilla `postgres:17` container the way CI (and anyone
+running this locally) does. Fixed in `src/lib/prisma.ts` by choosing the
+adapter based on whether `DATABASE_URL` is actually a Neon host: Neon's
+adapter for real Neon connections (production, every Vercel preview),
+and the standard `@prisma/adapter-pg` (added this session) for anything
+else. Nothing about `DATABASE_URL`/`DIRECT_URL` changed — same two
+connection strings as always.
+
+**Fixed real bugs found by the accessibility/e2e tests themselves:**
+axe flagged real WCAG AA color-contrast failures once the real design
+tokens were tested against real rendered pages — the original
+`--color-primary` (4.39:1 on button text, need 4.5:1) and
+`--color-ink-faint` (3.93–4.37:1, used in the footer and disclaimers)
+were both darkened in `src/app/globals.css` until every pairing
+actually in use clears 4.5:1 (verified by computing WCAG relative
+luminance for each foreground/background pair in use, not by eye).
+Two of the new e2e tests also had bugs of their own, not the app: the
+mobile-menu test re-used a locator bound to the toggle button's "Open
+menu" name after clicking it (the name correctly changes to "Close
+menu," so the old locator stopped matching anything — fixed by querying
+the new name), and the lead-form test picked "the first checkbox on the
+page" to select an appliance, which is actually the unrelated "I'm a
+landlord/property manager" checkbox that comes first in the form — fixed
+to select a checkbox by appliance name specifically.
+
+**Seeding runs in CI now, safely:** `prisma/seed.ts` was split into two
+independent parts — business content (BusinessSettings singleton +
+starter appliance types), which always runs and needs no secrets, and
+Chris's OWNER account, which still only runs when `OWNER_EMAIL`/
+`OWNER_PASSWORD` are set. CI now runs `npm run db:seed` (content only,
+those secrets are never set in CI) after migrations so the
+accessibility/e2e tests exercise real, populated pages instead of an
+empty pricing page — not new mock data, the same real starter catalog
+described above.

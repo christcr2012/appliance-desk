@@ -7,9 +7,10 @@ on — never built unasked.
 
 ## Deferred to a later phase (already scoped, just not yet)
 
-- Settings UI, public website content, SEO, lead form — Phase 2.
-- Lead scoring UI, lead → customer conversion, inventory management,
-  owner dashboard numbers — Phase 3.
+- Lead scoring UI (browsing/filtering leads in the desk, not just the
+  score itself — that's done), lead → customer conversion, inventory
+  management, owner dashboard numbers, `/desk/activity` (browsing the
+  `AuditLog` — the log itself is already being written) — Phase 3.
 - Rental agreements, e-signature, job scheduling, condition photos —
   Phase 4.
 - Customer portal (rentals, billing, maintenance/removal requests) —
@@ -37,6 +38,17 @@ on — never built unasked.
   the desk UI grows complex enough (e.g. a real data table for
   inventory) — evaluate shadcn/ui components as each screen needs them,
   rather than importing the whole library up front.
+- **Real appliance photos**: the public site currently uses generic
+  line-art illustrations (with a disclaimer) instead of product photos,
+  since there are no real photos to use honestly yet. Once Chris
+  supplies real photos (per the launch checklist), swap them in — the
+  `Photo` model already supports this, and any photo of a specific real
+  unit should keep an "actual item may vary" disclaimer unless it's the
+  exact unit being delivered.
+- **More appliance categories**: refrigerators, ranges, dishwashers,
+  freezers, etc. Chris is launching with washers/dryers only on
+  purpose; adding a category later is a data change in `/desk/settings`
+  or a new `ApplianceType` row, never a code change.
 
 ## Explicitly out of scope for launch (by design, not an oversight)
 

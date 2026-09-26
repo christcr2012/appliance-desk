@@ -21,7 +21,9 @@ export default async function AccountLayout({
       <header className="border-b bg-white px-6 py-4">
         <span className="font-semibold">My Account</span>
       </header>
-      <main className="p-6">{children}</main>
+      <main id="main-content" className="p-6">
+        {children}
+      </main>
     </div>
   );
 }

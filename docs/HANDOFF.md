@@ -1,7 +1,9 @@
 # Handoff — current state
 
 **Read this first, every session.** Update it before ending any session.
-This is Phase 1 (Foundation), completed 2026-09-26.
+Phase 1 (Foundation) completed 2026-09-26. Phase 2 (Public website,
+settings, lead capture) built 2026-09-26 — see the "Phase 2" section
+below for what's pending before it can be marked fully verified.
 
 ## What actually works right now
 
@@ -18,25 +20,80 @@ This is Phase 1 (Foundation), completed 2026-09-26.
   5/5 passing).
 - **CI is green, end to end, confirmed on GitHub Actions** (not just
   locally): `.github/workflows/ci.yml` runs on every PR and on `main`,
-  and its most recent run on `main` passed every step — install,
-  `prisma migrate deploy` against a real throwaway Postgres, type-check,
-  lint, unit tests, production build, and Playwright + axe accessibility
-  checks against the built app. This is the real proof the app actually
-  works, not just that it looked right in one sandbox.
+  and its most recent run on `main` (before Phase 2) passed every step —
+  install, `prisma migrate deploy` against a real throwaway Postgres,
+  type-check, lint, unit tests, production build, and Playwright + axe
+  accessibility checks against the built app. Phase 2's CI run is
+  tracked in the PR — see "Phase 2" below.
 - **The Vercel project exists and is deployed.** Project `appliance-desk`
   in the "Robinson AI Systems" team, connected to this GitHub repo, with
   `DATABASE_URL`, `DIRECT_URL`, and `BETTER_AUTH_SECRET` set for
   Production/Preview/Development. The production site is live at
-  `https://appliance-desk.vercel.app` and serves the placeholder
-  homepage correctly.
+  `https://appliance-desk.vercel.app`.
 - Every doc `AGENTS.md` requires exists (this list, `PRODUCT-SPEC.md`,
   `ARCHITECTURE.md`, `DATABASE.md`, `BUSINESS-RULES.md`,
   `DESIGN-SYSTEM.md`, `DECISIONS.md`, `ROADMAP.md`, `OWNER-GUIDE.md`).
 - **Chris's OWNER account exists and works.** Created via
   `prisma/seed.ts`'s logic, run once against the live database with
-  Chris's chosen email and password. Confirmed directly in the
-  database: the account has role `OWNER` and a stored password. He can
-  log in at `https://appliance-desk.vercel.app/login`.
+  Chris's chosen email and password. He can log in at
+  `https://appliance-desk.vercel.app/login`.
+
+## Phase 2 — Public website, settings, lead capture
+
+Built this session (see `docs/PRODUCT-SPEC.md`'s Phase 2 section for the
+full acceptance criteria, and `docs/DECISIONS.md` for the design/tech
+choices). Branch `ai/claude/phase-2-public-site`, via PR (not pushed
+directly to `main` — this is the first phase following the branch/PR
+rule properly, see the Phase 1 deviation note below).
+
+- [x] Public site: home, `/pricing`, `/how-it-works`, `/service-area`,
+      `/contact` (lead form), `/privacy`, `/terms`, `/accessibility`.
+- [x] `/desk/settings` (OWNER/ADMIN) — edit business info, service area,
+      fees, tax rate, and per-appliance pricing/visibility.
+- [x] Lead capture end to end: form → scored `Lead` → email notification
+      to Chris (via Resend, guarded — see below).
+- [x] SEO: sitemap, robots.txt, per-page metadata, LocalBusiness JSON-LD.
+- [x] Starter appliance catalog seeded as data: Washer, Dryer, Washer +
+      Dryer Set (per Chris's plan to launch with washers/dryers and add
+      more categories later — see `docs/ROADMAP.md`).
+- [x] Local verification: lint (0 errors), unit tests (12/12 passing,
+      including new `tests/lead-scoring.test.ts` and
+      `tests/pricing.test.ts`), and `next typegen && tsc --noEmit` clean
+      of everything **except** the same pre-existing, documented sandbox
+      limitation from Phase 1 (`@prisma/client` can't be generated
+      locally — see `docs/DECISIONS.md`, "Local sandbox could not run
+      `prisma generate`/`migrate`"). That limitation now shows up in a
+      few more files that touch Prisma-derived types than in Phase 1,
+      for the same one reason, not new bugs.
+- [x] **Verified on the actual PR** (https://github.com/christcr2012/appliance-desk/pull/1):
+      GitHub Actions CI is fully green (migrate, seed, typecheck, lint,
+      unit tests, build, accessibility/e2e — including a real lead-form
+      submission against a real throwaway database), and the Vercel
+      preview build completed cleanly (all 17 routes generated, no
+      errors). Two real bugs were caught and fixed along the way — see
+      docs/DECISIONS.md: (1) the Neon driver adapter doesn't work
+      against a plain, non-Neon Postgres like CI's; (2) two color
+      choices fell just under WCAG AA's 4.5:1 contrast ratio.
+- [ ] **Not yet merged to `main` on purpose.** Merging is a decision for
+      Chris, not something this session does unilaterally — the PR is
+      open and ready for him to review (or just say the word) and merge
+      whenever he's ready.
+- [ ] **Production data:** the live Neon database does not yet have the
+      `BusinessSettings` singleton or the starter `ApplianceType` rows
+      that CI's throwaway database gets from `npm run db:seed`. Once the
+      PR is merged, run `db:seed` against production (or apply the
+      equivalent rows directly) so the live public site shows real
+      pricing instead of its empty-state fallback text.
+- [ ] **No real photos yet** — generic illustrations stand in, with a
+      disclaimer. Swap in real photos once Chris supplies them (tracked
+      in `docs/ROADMAP.md`).
+- [ ] **Sales tax rate** still defaults to 0%, unconfirmed — shown
+      honestly as "not yet finalized" on `/pricing`, per
+      `docs/BUSINESS-RULES.md` ("never guess a tax rate").
+- [ ] **Service area and business contact info** are still
+      `[Placeholder]` values until Chris fills them in at
+      `/desk/settings` — the public site handles this gracefully (shows
+      "being finalized" copy) rather than showing broken placeholders.
 
 ## What is NOT finished or NOT verified — marked incomplete on purpose
 
@@ -48,21 +105,23 @@ This is Phase 1 (Foundation), completed 2026-09-26.
    already hit its plan's cap on protected branches from a prior
    project. Not a security hole today, but should be revisited before
    real customer data goes in. See `docs/DECISIONS.md`.
-3. **No real content yet.** Every public-facing value (business name,
-   phone, address, etc.) is a `[Placeholder]` — this is intentional per
-   the brief (business identity isn't final), not a bug.
-4. **Everything after Phase 1** (settings, public site, leads,
-   inventory, rentals, agreements, billing, customer portal) has not
-   been started. `prisma/schema.prisma` models all of it so a future
-   phase doesn't need a schema redesign, but no application code for any
-   of it exists yet.
-5. **All Phase 1 work so far was pushed directly to `main`**, not
-   through a PR — `AGENTS.md` says AI agents should never commit
-   directly to `main`. This was practical while getting the very first
-   commit and CI pipeline working at all (nothing existed to open a PR
-   against yet), but it's a deviation from the stated rule worth being
-   aware of. Starting with Phase 2, work should go through
-   `ai/claude/<topic>` branches and PRs as the rule describes.
+3. **Real business content** (business name, phone, address, service
+   area, hours) is still `[Placeholder]`/empty until Chris fills it in
+   at `/desk/settings` — intentional, not a bug (see Phase 2 above).
+4. **Everything after Phase 2** (lead management UI, lead → customer
+   conversion, inventory, rentals, agreements, billing, customer portal)
+   has not been started. `prisma/schema.prisma` models all of it so a
+   future phase doesn't need a schema redesign, but no application code
+   for any of it exists yet beyond what Phase 1/2 built.
+5. **All Phase 1 work was pushed directly to `main`**, not through a PR
+   — `AGENTS.md` says AI agents should never commit directly to `main`.
+   This was practical while getting the very first commit and CI
+   pipeline working at all (nothing existed to open a PR against yet).
+   Phase 2 is the first phase to follow the branch/PR rule as written.
+6. **Email notifications are unverified against a real inbox** — Resend
+   is wired and guarded (logs instead of sending without a real API
+   key), but no `RESEND_API_KEY` has been created/set yet, so no actual
+   email has been sent or received. Verify once that key exists.
 
 ## Launch checklist — things only Chris can do (repeated from the brief)
 
@@ -70,16 +129,24 @@ This is Phase 1 (Foundation), completed 2026-09-26.
 - Form the business entity and get any required local licenses.
 - Confirm sales-tax treatment and rate with a CPA.
 - Have a lawyer review the rental agreement, terms, and privacy policy
-  (once they exist, Phase 4/2).
+  (drafts of terms/privacy now exist from Phase 2 — see
+  `docs/PRODUCT-SPEC.md` — but they still need real legal review before
+  launch, not just before Phase 4's rental agreement).
 - Get business liability insurance.
 - Create and verify the live Stripe account, and explicitly approve
   switching to live payments (Phase 6).
 - Set up Google Business Profile.
-- Supply real photos and business details.
+- Supply real business details (name, phone, address, service area,
+  hours) in `/desk/settings`, and real appliance/job photos.
+- Create a Resend account and add `RESEND_API_KEY` (and optionally
+  `LEAD_NOTIFICATION_EMAIL`) to Vercel so lead-notification emails
+  actually send.
 
 ## Immediate next step (whoever picks this up next)
 
-1. Create a free Sentry project and add its DSN to Vercel's environment
+1. Confirm the Phase 2 PR's CI is green and its Vercel preview looks
+   right, then merge, then seed production data (see "Phase 2" above).
+2. Create a free Sentry project and add its DSN to Vercel's environment
    variables so error monitoring goes live.
-2. Report back to Chris in plain English (see "How to report" in
-   `AGENTS.md`/the original brief) before starting Phase 2.
+3. Report back to Chris in plain English (see "How to report" in
+   `AGENTS.md`/the original brief) before starting Phase 3.
