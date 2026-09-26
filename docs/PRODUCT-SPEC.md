@@ -280,13 +280,34 @@ was already part of the Phase 1 schema.
 - [x] Move a request through submitted → reviewing → scheduled → in
       progress → resolved, or close it out from any non-terminal
       status — enforced server-side.
-- [x] A link to schedule a `Job` for the visit this implies (not
-      auto-linked to the `MaintenanceRequest` yet — see
-      `docs/ROADMAP.md`).
+- [x] A link to schedule a `Job` for the visit this implies — now
+      pre-fills the customer/address/appliance and links the resulting
+      `Job` back to the `MaintenanceRequest` (slice 3, below).
 - [x] Dashboard: added an open-maintenance-requests count.
+- [x] Chris is emailed when a customer submits a new request (slice 2,
+      below) — same pattern as new-lead notifications.
 - **Acceptance:** `tests/maintenance.test.ts` proves the status-
       transition rule (linear happy path, closable from any non-
       terminal status, no skipping steps, closed is terminal).
+
+### Slice 2 — maintenance-request email notification
+
+- [x] `createMaintenanceRequestForUser` emails
+      `MAINTENANCE_NOTIFICATION_EMAIL` (falling back to `/desk/settings`'s
+      public email) whenever a customer submits a request. HIGH/URGENT
+      requests are flagged in the subject line.
+
+### Slice 3 — link a scheduled Job back to its MaintenanceRequest
+
+- [x] "Schedule a job for this" now carries the request's id through to
+      `/desk/jobs/new`, pre-filling the customer, offering their service
+      addresses, and pre-checking the named appliance (if any).
+- [x] The request's own page lists any job(s) scheduled for it; the
+      job's own page links back to the request.
+- [x] Deliberately does not auto-change the request's status when a job
+      is scheduled — Chris still moves it through the flow by hand (see
+      `docs/BUSINESS-RULES.md`).
+- **Needs a schema migration** — see `docs/HANDOFF.md`.
 
 ## Later phases
 

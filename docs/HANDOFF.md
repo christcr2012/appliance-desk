@@ -403,17 +403,51 @@ line. A failed send never blocks the submission — same guarded
 `sendEmail()` wrapper used for leads, so it just logs instead of
 sending when `RESEND_API_KEY` isn't set (true in CI/preview today).
 
-- [ ] **Deliberately left for later** (see `docs/ROADMAP.md`): linking a
-      `Job` back to the `MaintenanceRequest` it fulfills (so "schedule a
-      job for this" pre-fills instead of starting blank), and letting a
+- [x] **Merged and confirmed live** — PR #15 merged 2026-09-26.
+- [ ] **Deliberately left for later** (see `docs/ROADMAP.md`): letting a
       customer attach a photo when they submit a request.
+
+## Phase 5 — slice 3 (link a scheduled Job back to its MaintenanceRequest)
+
+Built 2026-09-26, right after slice 2 merged. Closes the other gap
+flagged when the customer portal shipped: "Schedule a job for this" on
+a maintenance request used to open a blank `/desk/jobs/new` form.
+
+- [x] `/desk/maintenance/[id]`'s "Schedule a job for this" now links to
+      `/desk/jobs/new?maintenanceRequestId=...`, which pre-fills that
+      customer, offers their service addresses to pick from, and
+      pre-checks the specific appliance the request named (if any) —
+      Chris can still add/remove appliances or change the address
+      before saving.
+- [x] The maintenance request's own page now lists any job(s) already
+      scheduled for it; a job scheduled this way links back to the
+      request it's for.
+- [x] Deliberately does **not** auto-change the maintenance request's
+      own status when a job is scheduled — see the note added to
+      `docs/BUSINESS-RULES.md`'s maintenance status flow. The status
+      machine doesn't allow jumping straight from `submitted` to
+      `scheduled`, so auto-transitioning risked silently breaking that
+      rule; Chris still moves the request through its own flow by hand.
+- [ ] **NEEDS A SCHEMA MIGRATION — same warning as every time this
+      comes up.** `prisma/migrations/20260926210000_job_maintenance_request_link`
+      adds one nullable column (`Job.maintenanceRequestId`) plus its
+      index and foreign key — additive only, no backfill, existing rows
+      unaffected. **Chris needs to run this migration's SQL directly in
+      Neon's console before or immediately alongside merging/deploying
+      this** — see "Correction to an earlier (wrong) assumption" above:
+      Vercel's build does not run `prisma migrate deploy` automatically,
+      and skipping this step is exactly what broke PR #4's first
+      production deploy.
+- [ ] **Not yet merged on purpose** — same rule as always.
 
 ## Immediate next step (whoever picks this up next)
 
-Phase 5 slice 2 (maintenance-request email notification) is built,
-lint-clean, and ready for a PR + CI check + Chris's review — no schema
-migration needed. After that's merged, natural next steps: the
-maintenance→job linking and photo-attachment items just above, starting
-Phase 6 (Stripe billing, test mode only), or rounding out anything else
-Phase 5 didn't cover — unless Chris redirects, since he's asked to keep
-building proactively rather than checking in after every slice.
+Phase 5 slice 3 (maintenance→job linking) is built and lint-clean,
+ready for a PR + CI check + Chris's review. **This one needs the
+migration SQL run in Neon** (see just above) before or alongside
+merging — don't let it repeat the PR #4 incident. After it's merged and
+verified live, natural next steps: the photo-attachment item still
+open above, starting Phase 6 (Stripe billing, test mode only), or
+rounding out anything else Phase 5 didn't cover — unless Chris
+redirects, since he's asked to keep building proactively rather than
+checking in after every slice.

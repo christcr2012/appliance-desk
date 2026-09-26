@@ -456,6 +456,8 @@ model Job {
   serviceAddress ServiceAddress? @relation(fields: [serviceAddressId], references: [id])
   agreementId String?
   agreement   RentalAgreement? @relation(fields: [agreementId], references: [id])
+  maintenanceRequestId String?
+  maintenanceRequest   MaintenanceRequest? @relation(fields: [maintenanceRequestId], references: [id])
 
   notes       String?
   completedAt DateTime?
@@ -511,6 +513,7 @@ model MaintenanceRequest {
   status     MaintenanceStatus   @default(SUBMITTED)
 
   photos     Photo[]
+  jobs       Job[]
 
   openedAt    DateTime  @default(now())
   completedAt DateTime?

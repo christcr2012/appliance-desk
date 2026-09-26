@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { createJobAction } from "../actions";
 
 type CustomerOption = {
@@ -17,6 +18,15 @@ type AgreementContext = {
   appliances: { id: string; label: string }[];
 };
 
+type MaintenanceContext = {
+  maintenanceRequestId: string;
+  customerId: string;
+  customerName: string;
+  serviceAddresses: { id: string; label: string }[];
+  appliances: { id: string; label: string }[];
+  defaultApplianceId: string | null;
+};
+
 const JOB_TYPES: { value: string; label: string }[] = [
   { value: "DELIVERY", label: "Delivery" },
   { value: "INSTALLATION", label: "Installation" },
@@ -28,22 +38,30 @@ const JOB_TYPES: { value: string; label: string }[] = [
 export function NewJobForm({
   customers,
   agreement,
+  maintenanceContext,
 }: {
   customers: CustomerOption[];
   agreement: AgreementContext | null;
+  maintenanceContext?: MaintenanceContext | null;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [type, setType] = useState(agreement ? "DELIVERY" : "MAINTENANCE_VISIT");
-  const [customerId, setCustomerId] = useState(agreement?.customerId ?? customers[0]?.id ?? "");
+  const [customerId, setCustomerId] = useState(
+    agreement?.customerId ?? maintenanceContext?.customerId ?? customers[0]?.id ?? "",
+  );
   const selectedCustomer = customers.find((c) => c.id === customerId);
   const [serviceAddressId, setServiceAddressId] = useState(
-    agreement?.serviceAddressId ?? selectedCustomer?.serviceAddresses[0]?.id ?? "",
+    agreement?.serviceAddressId ??
+      maintenanceContext?.serviceAddresses[0]?.id ??
+      selectedCustomer?.serviceAddresses[0]?.id ??
+      "",
   );
   const [scheduledAt, setScheduledAt] = useState("");
   const [notes, setNotes] = useState("");
   const [selectedApplianceIds, setSelectedApplianceIds] = useState<string[]>(
-    agreement?.appliances.map((a) => a.id) ?? [],
+    agreement?.appliances.map((a) => a.id) ??
+      (maintenanceContext?.defaultApplianceId ? [maintenanceContext.defaultApplianceId] : []),
   );
   const [error, setError] = useState<string | null>(null);
 
@@ -69,6 +87,7 @@ export function NewJobForm({
         customerId,
         serviceAddressId,
         agreementId: agreement?.id ?? "",
+        maintenanceRequestId: maintenanceContext?.maintenanceRequestId ?? "",
         applianceIds: selectedApplianceIds,
         notes,
       });
@@ -118,7 +137,19 @@ export function NewJobForm({
         />
       </div>
 
-      {!agreement && (
+      {maintenanceContext && !agreement && (
+        <div className="rounded-md border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700">
+          For {maintenanceContext.customerName}&apos;s maintenance request.{" "}
+          <Link
+            href={`/desk/maintenance/${maintenanceContext.maintenanceRequestId}`}
+            className="text-primary hover:underline"
+          >
+            View the request
+          </Link>
+        </div>
+      )}
+
+      {!agreement && !maintenanceContext && (
         <>
           <div>
             <label htmlFor="customerId" className="block text-sm font-medium text-gray-700">
@@ -164,6 +195,26 @@ export function NewJobForm({
         </>
       )}
 
+      {maintenanceContext && maintenanceContext.serviceAddresses.length > 0 && (
+        <div>
+          <label htmlFor="serviceAddressId" className="block text-sm font-medium text-gray-700">
+            Service address
+          </label>
+          <select
+            id="serviceAddressId"
+            value={serviceAddressId}
+            onChange={(e) => setServiceAddressId(e.target.value)}
+            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+          >
+            {maintenanceContext.serviceAddresses.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
       {agreement && agreement.appliances.length > 0 && (
         <div>
           <p className="block text-sm font-medium text-gray-700">
@@ -171,6 +222,26 @@ export function NewJobForm({
           </p>
           <div className="mt-2 space-y-1 rounded-md border border-gray-200 p-2">
             {agreement.appliances.map((a) => (
+              <label key={a.id} className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={selectedApplianceIds.includes(a.id)}
+                  onChange={() => toggleAppliance(a.id)}
+                />
+                {a.label}
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {maintenanceContext && maintenanceContext.appliances.length > 0 && (
+        <div>
+          <p className="block text-sm font-medium text-gray-700">
+            This customer&apos;s appliances
+          </p>
+          <div className="mt-2 space-y-1 rounded-md border border-gray-200 p-2">
+            {maintenanceContext.appliances.map((a) => (
               <label key={a.id} className="flex items-center gap-2 text-sm">
                 <input
                   type="checkbox"

@@ -58,7 +58,7 @@ export function MaintenanceDetailPanel({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="font-medium text-gray-900">Status: {request.status}</h2>
         <Link
-          href={`/desk/jobs/new`}
+          href={`/desk/jobs/new?maintenanceRequestId=${request.id}`}
           className="text-sm text-primary hover:underline"
         >
           + Schedule a job for this

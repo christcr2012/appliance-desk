@@ -92,13 +92,18 @@ on — never built unasked.
   storage (e.g. Vercel Blob) and likely a small recurring cost. Pasting
   a URL works fine for now since Chris already has photos hosted
   somewhere (or can use a free image host), so this isn't urgent.
-- **Link a `Job` back to the `MaintenanceRequest` it fulfills.** Right
-  now `/desk/maintenance`'s "Schedule a job for this" just opens
-  `/desk/jobs/new` with nothing pre-filled — there's no
-  `Job.maintenanceRequestId` column yet, so Chris has to pick the
-  customer/appliance by hand. A small future migration + pre-fill would
-  close that gap. Not done now since it's a minor convenience, not a
-  blocker.
+- **Link a `Job` back to the `MaintenanceRequest` it fulfills** — **done
+  (2026-09-26)**. `/desk/maintenance`'s "Schedule a job for this" now
+  opens `/desk/jobs/new?maintenanceRequestId=...`, which pre-fills that
+  customer, lets Chris pick from their service addresses, and pre-checks
+  the specific appliance the request was about (if one was given). The
+  maintenance request's own detail page now lists any job(s) already
+  scheduled for it, and the job's own detail page links back to the
+  request. **Needed one small schema migration**
+  (`prisma/migrations/20260926210000_job_maintenance_request_link`,
+  adds the nullable `Job.maintenanceRequestId` column) — same as every
+  other migration in this project, Chris needs to run this SQL in
+  Neon's console before or alongside deploying/merging.
 - **Photo attachments on a maintenance request itself** (the customer
   attaching a photo of the problem when they submit it) — the schema
   already supports it (`Photo.maintenanceRequestId`), just not wired

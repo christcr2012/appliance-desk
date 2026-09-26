@@ -55,6 +55,7 @@ export async function getMaintenanceRequestById(id: string) {
     include: {
       customer: { include: { user: { select: { name: true, email: true } } } },
       appliance: { include: { applianceType: true } },
+      jobs: { orderBy: [{ scheduledAt: "desc" }] },
     },
   });
 }
