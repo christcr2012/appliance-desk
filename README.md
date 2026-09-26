@@ -25,7 +25,7 @@ Open http://localhost:3000.
 ## Useful commands
 
 ```bash
-npm run typecheck        # tsc --noEmit
+npm run typecheck        # generates Next.js route types, then tsc --noEmit
 npm run lint              # eslint
 npm test                   # unit tests (vitest)
 npm run test:e2e            # Playwright + axe accessibility tests (needs a running build)

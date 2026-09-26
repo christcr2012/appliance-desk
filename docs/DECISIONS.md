@@ -161,3 +161,30 @@ functions, with no extra configuration to keep in sync.
 changed** — same two connection strings, same meanings, just read from
 a different place now. `docs/ARCHITECTURE.md`'s environment-variable
 list is still accurate.
+
+---
+
+### 2026-09-26 — Two real bugs CI caught, once it could finally run
+
+Once the Prisma 7 config issue above was fixed, CI's "Install
+dependencies" step passed for the first time, and it caught two more
+real issues that the sandbox's blocked internet access had been hiding
+end-to-end:
+
+1. **A genuine schema mistake:** `Job.customer` had no matching field
+   on the `Customer` side (Prisma requires both sides of a relation to
+   be declared). Fixed by adding `jobs Job[]` to `Customer`. This is a
+   Prisma-level annotation only — the underlying `customerId` foreign
+   key column already existed in the applied migration — so no new
+   migration was needed.
+2. **A step-ordering mistake in `npm run typecheck`:** Next.js 16
+   generates some global TypeScript types (e.g. `LayoutProps`) into
+   `.next/types/`, but only when `next dev`, `next build`, or `next
+   typegen` has run first. CI ran type-checking *before* the build
+   step, so those types didn't exist yet and `tsc` failed on
+   `src/app/layout.tsx` with "Cannot find name 'LayoutProps'". Fixed by
+   changing the `typecheck` script to `next typegen && tsc --noEmit` so
+   it generates those types itself instead of depending on step order.
+
+Both were caught locally too, by the same commands CI runs
+(`npm run typecheck` after a clean `rm -rf .next`), before pushing.
