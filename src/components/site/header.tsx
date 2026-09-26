@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Container } from "./container";
 import { NAV_LINKS } from "./nav-links";
 
@@ -21,6 +21,7 @@ import { NAV_LINKS } from "./nav-links";
 export function Header({ businessName }: { businessName: string }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const pathname = usePathname();
+  const headerRef = useRef<HTMLElement>(null);
 
   // Close the mobile menu on route change. Adjusting state during
   // rendering (rather than in a useEffect) when a prop changes is the
@@ -41,8 +42,37 @@ export function Header({ businessName }: { businessName: string }) {
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [menuOpen]);
 
+  // Chris reported (2026-09-26) that the mobile menu stayed open when
+  // tapping outside it or scrolling the page — Escape and route-change
+  // were the only things that closed it. Fixes both: a pointerdown
+  // outside the header closes it, and so does any scroll while it's
+  // open (the panel is a dropdown, not something meant to travel with
+  // the page). Escape/route-change above are unaffected.
+  useEffect(() => {
+    if (!menuOpen) return;
+
+    function onPointerDown(e: PointerEvent) {
+      if (headerRef.current && !headerRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    }
+    function onScroll() {
+      setMenuOpen(false);
+    }
+
+    document.addEventListener("pointerdown", onPointerDown);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      window.removeEventListener("scroll", onScroll);
+    };
+  }, [menuOpen]);
+
   return (
-    <header className="sticky top-0 z-50 border-b border-line bg-canvas/90 backdrop-blur">
+    <header
+      ref={headerRef}
+      className="sticky top-0 z-50 border-b border-line bg-canvas/90 backdrop-blur"
+    >
       <Container className="flex h-18 items-center justify-between py-3">
         <Link
           href="/"
