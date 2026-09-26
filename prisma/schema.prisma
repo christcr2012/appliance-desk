@@ -110,6 +110,7 @@ model Customer {
   maintenanceRequests MaintenanceRequest[]
   invoices         Invoice[]
   consentRecords   ConsentRecord[]
+  jobs             Job[]
 
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
