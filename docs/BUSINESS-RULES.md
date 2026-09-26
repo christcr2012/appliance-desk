@@ -73,8 +73,15 @@ Default ranking, **lowest to highest** value:
 
 1. Customer submits an inquiry → becomes a `Lead`.
 2. Chris reviews it and contacts the customer.
-3. Chris converts the lead into a `Customer` + `RentalAgreement` (one
-   click carries the lead's info over).
+3. Chris converts the lead into a `Customer` (one click carries the
+   lead's info over — built in Phase 3) `+ RentalAgreement` (that part
+   is Phase 4, once e-signature exists — converting a lead today
+   creates the `Customer` and its login account, not yet an agreement).
+   Converting requires the lead to have an email address, since a
+   customer account needs one to sign in; a brand-new account gets a
+   one-time random password shown once to Chris in the desk UI (there's
+   no self-serve "set your own password" flow yet — see
+   `docs/ROADMAP.md`).
 4. Customer signs the agreement electronically.
 5. Chris manually schedules the delivery/installation `Job`.
 

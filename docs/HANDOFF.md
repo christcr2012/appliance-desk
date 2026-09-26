@@ -2,8 +2,10 @@
 
 **Read this first, every session.** Update it before ending any session.
 Phase 1 (Foundation) completed 2026-09-26. Phase 2 (Public website,
-settings, lead capture) built 2026-09-26 — see the "Phase 2" section
-below for what's pending before it can be marked fully verified.
+settings, lead capture) built 2026-09-26. Phase 2.1 (appliance-type
+management, dollar fees, split fees, real photos) built and verified
+live 2026-09-26. Phase 3 (lead management, dashboard, activity log) —
+first slice built 2026-09-26, see the "Phase 3" section below.
 
 ## What actually works right now
 
@@ -118,11 +120,12 @@ rule properly, see the Phase 1 deviation note below).
 3. **Real business content** (business name, phone, address, service
    area, hours) is still `[Placeholder]`/empty until Chris fills it in
    at `/desk/settings` — intentional, not a bug (see Phase 2 above).
-4. **Everything after Phase 2** (lead management UI, lead → customer
-   conversion, inventory, rentals, agreements, billing, customer portal)
+4. **Everything after Phase 3's first slice** (individual appliance-unit
+   inventory management, rentals/agreements, billing, customer portal)
    has not been started. `prisma/schema.prisma` models all of it so a
-   future phase doesn't need a schema redesign, but no application code
-   for any of it exists yet beyond what Phase 1/2 built.
+   future phase doesn't need a schema redesign. Lead management, lead →
+   customer conversion, and the dashboard/activity log are done — see
+   "Phase 3" below.
 5. **All Phase 1 work was pushed directly to `main`**, not through a PR
    — `AGENTS.md` says AI agents should never commit directly to `main`.
    This was practical while getting the very first commit and CI
@@ -225,12 +228,49 @@ truly automatic pipeline is wanted later, that's a real piece of work
 production on merge to `main`, with real safeguards) — not yet built,
 tracked in `docs/ROADMAP.md`.
 
+## Phase 3 — Lead management, dashboard, activity log (slice 1)
+
+Chris asked to begin Phase 3 on 2026-09-26 (right after asking about
+setting up a domain email address, which was deliberately deferred —
+see `docs/ROADMAP.md`'s suggestions section — since nothing about it
+blocks this phase). Full acceptance criteria in
+`docs/PRODUCT-SPEC.md`'s new Phase 3 section. No schema migration
+needed — `Lead`, `Customer`, `ServiceAddress`, and `AuditLog` already
+existed in `prisma/schema.prisma`, so this is pure application code.
+
+- [x] `/desk/leads` — browse/filter leads by status, see each one's
+      full detail, score reasons, and appliance requests.
+- [x] Move a lead between New/Contacted/Lost, or convert it straight
+      into a `Customer` (+ `User` account) in one action.
+- [x] `/desk/dashboard` — replaced the Phase 1 placeholder with real
+      lead/customer/appliance counts.
+- [x] `/desk/activity` — browse the last 50 `AuditLog` entries in
+      plain English.
+- [x] New tests (`tests/leads.test.ts`) for the lead-conversion guard;
+      logic manually verified against a standalone script (same
+      workaround as prior phases, since the sandbox still can't
+      execute any test file that imports `@/lib/prisma` — real CI is
+      the actual gate).
+- [ ] **Not yet merged on purpose** — same rule as always.
+- [ ] **Known limitation, real work for a future phase, not a bug**:
+      converting a lead creates a real login-capable `User` account
+      with a one-time random password shown once to Chris, but there's
+      no self-serve "set your own password" invite/reset flow yet —
+      Better Auth's `emailAndPassword` config has no
+      `sendResetPassword` wired up. Fine for now since the customer
+      portal itself doesn't exist yet (Phase 5), but this needs to be
+      built before real customers are expected to log in themselves.
+- [ ] **Deliberately out of this slice**: full inventory management
+      (adding/editing individual physical `Appliance` units — asset
+      numbers, serial numbers, condition, status transitions). The
+      dashboard shows appliance counts by status, but there's no desk
+      UI yet to create one. This is the natural next Phase 3 slice —
+      see `docs/ROADMAP.md`.
+
 ## Immediate next step (whoever picks this up next)
 
-Phase 2.1 is fully done and verified live: migration applied, photos
-backfilled, deployment confirmed `READY`, the photo-sizing bug found
-and fixed, and Sentry error monitoring is live (see above). Nothing is
-blocking here — the next step is whatever Chris wants to build next
-(Phase 3). No instruction to start Phase 3 has been given yet; report
-to him in plain English and wait for the go-ahead per `AGENTS.md`'s
-phase-gate rule.
+Phase 3's first slice is built, lint/typecheck-clean locally (modulo
+the documented Prisma sandbox limitation), and ready for a PR + CI
+check + Chris's review, same as every prior phase. After that's merged
+and verified live, the natural next step is the inventory-management
+slice noted above, unless Chris redirects.

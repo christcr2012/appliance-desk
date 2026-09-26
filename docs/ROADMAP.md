@@ -8,9 +8,15 @@ on — never built unasked.
 ## Deferred to a later phase (already scoped, just not yet)
 
 - Lead scoring UI (browsing/filtering leads in the desk, not just the
-  score itself — that's done), lead → customer conversion, inventory
-  management, owner dashboard numbers, `/desk/activity` (browsing the
-  `AuditLog` — the log itself is already being written) — Phase 3.
+  score itself — that's done) — **done, Phase 3 (2026-09-26).**
+  Lead → customer conversion — **done, Phase 3.** Owner dashboard
+  numbers — **done, Phase 3.** `/desk/activity` (browsing the
+  `AuditLog`) — **done, Phase 3.** Still open, same phase: full
+  inventory management (adding/tracking individual physical
+  `Appliance` units — asset numbers, condition, status changes) — the
+  dashboard shows appliance counts by status, but there's no desk UI
+  yet to add or edit an individual unit. Picking this up is the
+  natural next slice of Phase 3.
 - Rental agreements, e-signature, job scheduling, condition photos —
   Phase 4.
 - Customer portal (rentals, billing, maintenance/removal requests) —
@@ -21,6 +27,31 @@ on — never built unasked.
 
 ## Suggestions (not scoped into any phase — Chris should decide)
 
+- **A real business email address on the domain**
+  (`chris@robinsonappliancerentals.com` instead of a personal Gmail).
+  Discussed 2026-09-26 — Chris asked whether this needs a paid third
+  party or can be self-hosted. Short answer: running your own mail
+  server isn't recommended (deliverability/spam-filter problems,
+  ongoing upkeep), so it'll always involve some outside provider, but
+  cost varies a lot:
+  - **Free, forwarding only**: Cloudflare Email Routing — forwards
+    mail sent to the domain straight to Chris's existing Gmail. Can't
+    send *from* the domain address without extra Gmail setup.
+    Fastest to set up.
+  - **Free, real inbox (up to 5 addresses)**: Zoho Mail — genuine
+    send + receive at the domain, works like a normal email account
+    (webmail + phone app). Best free option if he wants to actually
+    send as `chris@robinsonappliancerentals.com`.
+  - **Paid (~$6–7/user/month)**: Google Workspace or Microsoft 365 —
+    most polished, easiest if he wants it to feel exactly like the
+    Gmail/Outlook he already uses.
+  **Deliberately deferred, not forgotten** — Chris asked to revisit
+  this either once everything else is done, or right before there's a
+  real need for it (e.g. right before launch/marketing push, when a
+  `chris@` address starts mattering for how the business looks to
+  customers). Nothing about this blocks any other phase — the site's
+  `publicEmail` in `/desk/settings` and the Resend lead-notification
+  address can keep using whatever inbox he already checks until then.
 - **Neon ↔ Vercel preview branching**: gives every PR preview deployment
   its own isolated database branch, so testing never touches real
   customer data. Skipped for now per the brief ("if it isn't simple,
@@ -38,16 +69,11 @@ on — never built unasked.
   the desk UI grows complex enough (e.g. a real data table for
   inventory) — evaluate shadcn/ui components as each screen needs them,
   rather than importing the whole library up front.
-- **Real appliance photos**: the public site currently uses one generic
-  line-art icon (with a disclaimer) instead of product photos, since
-  there are no real photos to use honestly yet. `ApplianceType.photoUrl`
-  (added 2026-09-26) is settable per appliance type right from
-  `/desk/settings` — once Chris supplies a real basic-model photo (a
-  direct image URL) per category, pasting it in there switches the
-  public site from the icon to the real photo automatically. Any photo
-  of a specific real unit should keep an "actual item may vary"
-  disclaimer unless it's the exact unit being delivered. A future
-  improvement could let Chris upload a file directly instead of
+- **Real appliance photos** — **done (2026-09-26).** Chris supplied
+  basic-model photos for washer/dryer/set; `ApplianceType.photoUrl` is
+  settable per appliance type from `/desk/settings`, and any type
+  without one still falls back to the generic icon + disclaimer. A
+  future improvement could let Chris upload a file directly instead of
   pasting a URL — not needed yet.
 - **More appliance categories**: refrigerators, ranges, dishwashers,
   freezers, etc. Chris is launching with washers/dryers only on
