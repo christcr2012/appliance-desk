@@ -31,6 +31,7 @@ const newJobSchema = z.object({
   customerId: z.string().trim().optional().or(z.literal("")),
   serviceAddressId: z.string().trim().optional().or(z.literal("")),
   agreementId: z.string().trim().optional().or(z.literal("")),
+  maintenanceRequestId: z.string().trim().optional().or(z.literal("")),
   applianceIds: z.array(z.string().trim().min(1)).optional(),
   notes: z.string().trim().max(2000).optional().or(z.literal("")),
 });
@@ -55,6 +56,7 @@ export async function createJobAction(
     customerId: data.customerId || null,
     serviceAddressId: data.serviceAddressId || null,
     agreementId: data.agreementId || null,
+    maintenanceRequestId: data.maintenanceRequestId || null,
     applianceIds: data.applianceIds ?? [],
     notes: data.notes || null,
   });
@@ -62,6 +64,7 @@ export async function createJobAction(
   revalidatePath("/desk/jobs");
   revalidatePath("/desk/dashboard");
   if (data.agreementId) revalidatePath(`/desk/agreements/${data.agreementId}`);
+  if (data.maintenanceRequestId) revalidatePath(`/desk/maintenance/${data.maintenanceRequestId}`);
 
   return { status: "success", jobId: job.id };
 }

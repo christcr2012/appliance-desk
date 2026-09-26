@@ -51,6 +51,7 @@ export async function getJobById(id: string) {
       customer: { include: { user: { select: { name: true, email: true } } } },
       serviceAddress: true,
       agreement: true,
+      maintenanceRequest: true,
       appliances: { include: { appliance: { include: { applianceType: true } } } },
       photos: { orderBy: [{ createdAt: "desc" }] },
     },
@@ -63,6 +64,7 @@ export type NewJobInput = {
   customerId?: string | null;
   serviceAddressId?: string | null;
   agreementId?: string | null;
+  maintenanceRequestId?: string | null;
   applianceIds?: string[];
   notes?: string | null;
 };
@@ -75,6 +77,7 @@ export async function createJob(userId: string, input: NewJobInput) {
       customerId: input.customerId || null,
       serviceAddressId: input.serviceAddressId || null,
       agreementId: input.agreementId || null,
+      maintenanceRequestId: input.maintenanceRequestId || null,
       notes: input.notes || null,
       appliances: input.applianceIds?.length
         ? { create: input.applianceIds.map((applianceId) => ({ applianceId })) }

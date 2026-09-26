@@ -147,8 +147,13 @@ models later too, not just the one he started from.
 `submitted → reviewing → scheduled → in_progress → resolved → closed`
 
 Status rules are centralized (not scattered across pages). Chris is
-notified of new requests; the customer sees status updates in the
-portal.
+notified by email of new requests; the customer sees status updates in
+the portal. When Chris schedules a job for a request ("Schedule a job
+for this"), that `Job` is linked back to the `MaintenanceRequest` it
+resolves, and the new-job form pre-fills the customer, address, and
+appliance from the request instead of starting blank — but scheduling a
+job does **not** automatically change the request's own status; Chris
+still moves it through the flow above by hand.
 
 ## Customer data isolation (security-critical)
 

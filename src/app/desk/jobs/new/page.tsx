@@ -1,5 +1,6 @@
-import { getCustomers } from "@/domains/customers";
+import { getCustomers, getCustomerById, getCustomerApplianceOptions } from "@/domains/customers";
 import { getAgreementById } from "@/domains/agreements";
+import { getMaintenanceRequestById } from "@/domains/maintenance";
 import { NewJobForm } from "./new-job-form";
 
 export const metadata = { title: "Schedule a job" };
@@ -7,13 +8,33 @@ export const metadata = { title: "Schedule a job" };
 export default async function NewJobPage({
   searchParams,
 }: {
-  searchParams: Promise<{ agreementId?: string }>;
+  searchParams: Promise<{ agreementId?: string; maintenanceRequestId?: string }>;
 }) {
-  const { agreementId } = await searchParams;
-  const [customers, agreement] = await Promise.all([
+  const { agreementId, maintenanceRequestId } = await searchParams;
+  const [customers, agreement, maintenanceRequest] = await Promise.all([
     getCustomers(),
     agreementId ? getAgreementById(agreementId) : Promise.resolve(null),
+    maintenanceRequestId ? getMaintenanceRequestById(maintenanceRequestId) : Promise.resolve(null),
   ]);
+
+  let maintenanceContext = null;
+  if (maintenanceRequest && !agreement) {
+    const [customerDetail, applianceOptions] = await Promise.all([
+      getCustomerById(maintenanceRequest.customerId),
+      getCustomerApplianceOptions(maintenanceRequest.customerId),
+    ]);
+    maintenanceContext = {
+      maintenanceRequestId: maintenanceRequest.id,
+      customerId: maintenanceRequest.customerId,
+      customerName: maintenanceRequest.customer.user.name ?? maintenanceRequest.customer.user.email,
+      serviceAddresses: (customerDetail?.serviceAddresses ?? []).map((a) => ({
+        id: a.id,
+        label: `${a.line1}, ${a.city}, ${a.state} ${a.zip}`,
+      })),
+      appliances: applianceOptions,
+      defaultApplianceId: maintenanceRequest.applianceId ?? null,
+    };
+  }
 
   return (
     <div className="max-w-2xl">
@@ -47,6 +68,7 @@ export default async function NewJobPage({
                 }
               : null
           }
+          maintenanceContext={maintenanceContext}
         />
       </div>
     </div>

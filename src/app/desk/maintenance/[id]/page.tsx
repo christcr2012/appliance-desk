@@ -38,6 +38,22 @@ export default async function MaintenanceDetailPage({
         <p className="text-sm text-gray-700">{request.problem}</p>
       </div>
 
+      {request.jobs.length > 0 && (
+        <div className="mt-4 rounded-lg border border-gray-200 bg-white p-5">
+          <h2 className="font-medium text-gray-900">Jobs scheduled for this</h2>
+          <ul className="mt-2 divide-y divide-gray-200">
+            {request.jobs.map((j) => (
+              <li key={j.id} className="py-2 text-sm">
+                <Link href={`/desk/jobs/${j.id}`} className="text-primary hover:underline">
+                  {j.type} — {j.status}
+                </Link>
+                {j.scheduledAt && ` · ${new Date(j.scheduledAt).toLocaleString()}`}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <div className="mt-6">
         <MaintenanceDetailPanel request={request} />
       </div>

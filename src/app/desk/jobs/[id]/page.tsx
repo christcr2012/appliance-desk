@@ -30,6 +30,17 @@ export default async function JobDetailPage({
           ` · ${job.serviceAddress.line1}, ${job.serviceAddress.city}, ${job.serviceAddress.state} ${job.serviceAddress.zip}`}
       </p>
 
+      {job.maintenanceRequest && (
+        <p className="mt-1 text-sm">
+          <Link
+            href={`/desk/maintenance/${job.maintenanceRequest.id}`}
+            className="text-primary hover:underline"
+          >
+            &rarr; Scheduled for a maintenance request
+          </Link>
+        </p>
+      )}
+
       <div className="mt-6">
         <JobDetailPanel job={job} />
       </div>
