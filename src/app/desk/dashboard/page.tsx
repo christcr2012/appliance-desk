@@ -69,23 +69,31 @@ export default async function DeskDashboardPage() {
           href="/desk/leads?status=CONVERTED"
         />
         <StatCard label="Total customers" value={stats.totalCustomers} />
-        <StatCard label="Total appliances" value={stats.totalAppliances} />
+        <StatCard
+          label="Total appliances"
+          value={stats.totalAppliances}
+          href="/desk/inventory"
+        />
         <StatCard
           label="Appliances available"
           value={stats.applianceStatusCounts.AVAILABLE}
+          href="/desk/inventory?status=AVAILABLE"
         />
         <StatCard
           label="Appliances rented out"
           value={stats.applianceStatusCounts.RENTED}
+          href="/desk/inventory?status=RENTED"
         />
       </div>
 
       {stats.totalAppliances === 0 && (
         <p className="mt-6 max-w-2xl text-sm text-gray-600">
-          You don&apos;t have any individual appliance units tracked yet
-          (asset numbers, serial numbers, condition). That&apos;s the next
-          piece being built — for now, pricing and public visibility by
-          appliance <em>category</em> is managed in Settings.
+          You don&apos;t have any individual appliance units tracked yet —
+          add your first one from{" "}
+          <Link href="/desk/inventory" className="underline">
+            Inventory
+          </Link>{" "}
+          as you obtain it.
         </p>
       )}
     </div>

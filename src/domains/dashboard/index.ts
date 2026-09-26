@@ -1,7 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import type { ApplianceStatus } from "@prisma/client";
-
-type ApplianceStatusCounts = Record<ApplianceStatus, number>;
+import { getApplianceCountsByStatus } from "@/domains/inventory";
 
 /**
  * The real numbers shown on /desk/dashboard — replacing the Phase-1
@@ -15,27 +13,16 @@ export async function getDashboardStats() {
     highValueNewLeadCount,
     contactedLeadCount,
     convertedLeadCount,
-    applianceCountsByStatus,
+    applianceStatusCounts,
     totalCustomers,
   ] = await Promise.all([
     prisma.lead.count({ where: { status: "NEW" } }),
     prisma.lead.count({ where: { status: "NEW", isHighValue: true } }),
     prisma.lead.count({ where: { status: "CONTACTED" } }),
     prisma.lead.count({ where: { status: "CONVERTED" } }),
-    prisma.appliance.groupBy({ by: ["status"], _count: { _all: true } }),
+    getApplianceCountsByStatus(),
     prisma.customer.count(),
   ]);
-
-  const applianceStatusCounts: ApplianceStatusCounts = {
-    AVAILABLE: 0,
-    RESERVED: 0,
-    RENTED: 0,
-    MAINTENANCE: 0,
-    RETIRED: 0,
-  };
-  for (const row of applianceCountsByStatus) {
-    applianceStatusCounts[row.status as ApplianceStatus] = row._count._all;
-  }
 
   return {
     newLeadCount,
@@ -44,7 +31,7 @@ export async function getDashboardStats() {
     convertedLeadCount,
     applianceStatusCounts,
     totalAppliances: Object.values(applianceStatusCounts).reduce(
-      (a, b) => a + b,
+      (a: number, b: number) => a + b,
       0,
     ),
     totalCustomers,

@@ -11,12 +11,17 @@ on — never built unasked.
   score itself — that's done) — **done, Phase 3 (2026-09-26).**
   Lead → customer conversion — **done, Phase 3.** Owner dashboard
   numbers — **done, Phase 3.** `/desk/activity` (browsing the
-  `AuditLog`) — **done, Phase 3.** Still open, same phase: full
-  inventory management (adding/tracking individual physical
-  `Appliance` units — asset numbers, condition, status changes) — the
-  dashboard shows appliance counts by status, but there's no desk UI
-  yet to add or edit an individual unit. Picking this up is the
-  natural next slice of Phase 3.
+  `AuditLog`) — **done, Phase 3.** Inventory management (adding/editing
+  individual physical `Appliance` units — asset numbers, condition,
+  status changes, color, free-form features, and a parts catalog keyed
+  by model number) — **done, Phase 3 (2026-09-26)**, per Chris's
+  request to be able to start adding inventory as he obtains it, and a
+  same-day follow-up request to also capture color/features/parts.
+  Needed one schema migration (`Appliance.color`, `Appliance.features`,
+  new `PartRecord` table) — **Chris needs to run this migration's SQL
+  in Neon before or right alongside deploying**, same as the PR #4
+  incident documented in `docs/HANDOFF.md`, since Vercel's build does
+  not run `prisma migrate deploy` automatically.
 - Rental agreements, e-signature, job scheduling, condition photos —
   Phase 4.
 - Customer portal (rentals, billing, maintenance/removal requests) —

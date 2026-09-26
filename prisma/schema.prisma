@@ -235,6 +235,7 @@ model ApplianceType {
   appliances   Appliance[]
   pricingRules PricingRule[]
   leadRequests LeadApplianceRequest[]
+  partRecords  PartRecord[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -256,12 +257,22 @@ model Appliance {
   manufacturer    String?
   model           String?
   serialNumber    String?
+  color           String?
   condition       String?
   purchaseDate    DateTime?
   acquisitionCostCents Int?
   status          ApplianceStatus @default(AVAILABLE)
   currentLocation String?
   notes           String?
+
+  // Free-form descriptive tags, e.g. ["front-load", "agitator"] for a
+  // washer, ["ice-maker"] for a fridge. Deliberately not an enum or a
+  // fixed per-category field list — features vary by appliance type and
+  // a new category (or a new feature nobody thought of yet) should never
+  // need a code change, per docs/BUSINESS-RULES.md ("new appliance
+  // categories are added as data"). Stored as a JSON string array, same
+  // pattern as Lead.scoreReasons.
+  features Json @default("[]")
 
   assignments ApplianceAssignment[]
   photos      Photo[]
@@ -274,6 +285,30 @@ model Appliance {
 
   @@index([status])
   @@index([applianceTypeId])
+}
+
+// A parts knowledge base keyed by MODEL NUMBER, not by an individual
+// physical Appliance — the point is that once Chris looks up (or is
+// told) the part number for, say, a door seal on model "WM3900HWA", that
+// knowledge is reusable for every unit of that same model he ever owns,
+// not just the one he was repairing when he found it. See
+// docs/BUSINESS-RULES.md ("Parts knowledge base").
+model PartRecord {
+  id String @id @default(cuid())
+
+  modelNumber     String
+  manufacturer    String?
+  applianceTypeId String?
+  applianceType   ApplianceType? @relation(fields: [applianceTypeId], references: [id])
+
+  partNumber String
+  partName   String?
+  notes      String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([modelNumber])
 }
 
 // ---------------------------------------------------------------------------

@@ -155,6 +155,44 @@ didn't exist before and is deliberately left for the next slice; see
       plain English, for every action already writing one (settings,
       pricing, appliance types, leads).
 
+## Phase 3 — Inventory management (slice 2)
+
+Started 2026-09-26, right after slice 1 merged — Chris has no
+inventory yet but needs the system ready to capture it as he obtains
+appliances. Needed one schema migration (`Appliance.color`,
+`Appliance.features`, and the new `PartRecord` table).
+
+### Inventory (`/desk/inventory`)
+
+- [x] Add one or more new physical appliance units of an existing
+      `ApplianceType`, starting from zero — each gets an auto-generated
+      human-readable asset number (e.g. `WASH-0001`).
+- [x] Capture manufacturer, model, serial number (single-unit adds
+      only — bulk adds get theirs added individually afterward), color,
+      condition, purchase date, what Chris paid, current location, and
+      notes.
+- [x] Capture free-form **features** per unit (e.g. front-load,
+      top-load, agitator for a washer) — a comma-separated tag list, not
+      a fixed per-category field, so a new category or an unanticipated
+      feature never needs a schema change.
+- [x] Browse/filter units by status, with counts per tab.
+- [x] A unit's detail page: change its status (server-enforced allowed
+      transitions — `RETIRED` is terminal) and edit all its descriptive
+      details, including color and features.
+- [x] Every add, edit, and status change writes an `AuditLog` entry.
+- **Acceptance:** `tests/inventory.test.ts` covers the status-transition
+      rule, the asset-number prefix logic, and asset-number formatting.
+
+### Parts catalog (`/desk/parts` + per-appliance "Parts for this model")
+
+- [x] Log a part number (+ optional part name/notes) against a
+      **model number** — not against one physical unit — so it's
+      reusable for every future unit of that same model.
+- [x] An appliance's own detail page shows/adds parts for its model
+      directly; `/desk/parts` lists everything logged, across all
+      models, for browsing independent of any one unit.
+- [x] Every part logged or removed writes an `AuditLog` entry.
+
 ## Later phases
 
 Feature lists for Phases 4–7 will be filled in here as each phase

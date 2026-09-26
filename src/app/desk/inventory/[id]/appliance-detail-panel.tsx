@@ -1,0 +1,268 @@
+"use client";
+
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import {
+  updateApplianceStatusAction,
+  updateApplianceDetailsAction,
+} from "../actions";
+import type { ApplianceStatus } from "@prisma/client";
+
+const ALL_STATUSES: { value: ApplianceStatus; label: string }[] = [
+  { value: "AVAILABLE", label: "Available" },
+  { value: "RESERVED", label: "Reserved" },
+  { value: "RENTED", label: "Rented" },
+  { value: "MAINTENANCE", label: "Maintenance" },
+  { value: "RETIRED", label: "Retired" },
+];
+
+// Mirrors the ALLOWED_TRANSITIONS rule in src/domains/inventory/index.ts —
+// duplicated here only to grey out invalid buttons; the real enforcement
+// happens server-side, so this is a convenience, not the actual gate.
+const ALLOWED_NEXT: Record<ApplianceStatus, ApplianceStatus[]> = {
+  AVAILABLE: ["RESERVED", "RENTED", "MAINTENANCE", "RETIRED"],
+  RESERVED: ["AVAILABLE", "RENTED", "MAINTENANCE", "RETIRED"],
+  RENTED: ["AVAILABLE", "MAINTENANCE", "RETIRED"],
+  MAINTENANCE: ["AVAILABLE", "RETIRED"],
+  RETIRED: [],
+};
+
+type ApplianceRow = {
+  id: string;
+  status: ApplianceStatus;
+  manufacturer: string | null;
+  model: string | null;
+  serialNumber: string | null;
+  color: string | null;
+  features: unknown;
+  condition: string | null;
+  currentLocation: string | null;
+  notes: string | null;
+};
+
+/** Appliance.features is stored as JSONB (a free-form string array — see
+ * src/domains/inventory) so Prisma hands it back as `unknown`; this just
+ * narrows it defensively rather than trusting the shape blindly. */
+function featuresToText(features: unknown): string {
+  if (!Array.isArray(features)) return "";
+  return features.filter((f): f is string => typeof f === "string").join(", ");
+}
+
+export function ApplianceDetailPanel({ appliance }: { appliance: ApplianceRow }) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [fields, setFields] = useState({
+    manufacturer: appliance.manufacturer ?? "",
+    model: appliance.model ?? "",
+    serialNumber: appliance.serialNumber ?? "",
+    color: appliance.color ?? "",
+    features: featuresToText(appliance.features),
+    condition: appliance.condition ?? "",
+    currentLocation: appliance.currentLocation ?? "",
+    notes: appliance.notes ?? "",
+  });
+  const [saveMessage, setSaveMessage] = useState<
+    { kind: "success" | "error"; text: string } | null
+  >(null);
+
+  const nextStatuses = ALLOWED_NEXT[appliance.status];
+
+  function update<K extends keyof typeof fields>(key: K, value: string) {
+    setFields((f) => ({ ...f, [key]: value }));
+  }
+
+  function handleStatusChange(status: ApplianceStatus) {
+    setStatusMessage(null);
+    startTransition(async () => {
+      const result = await updateApplianceStatusAction(appliance.id, status);
+      if (result.status === "error") {
+        setStatusMessage(result.message);
+      }
+      router.refresh();
+    });
+  }
+
+  function handleSaveDetails(e: React.FormEvent) {
+    e.preventDefault();
+    setSaveMessage(null);
+    startTransition(async () => {
+      const result = await updateApplianceDetailsAction(appliance.id, fields);
+      if (result.status === "error") {
+        setSaveMessage({ kind: "error", text: result.message });
+      } else {
+        setSaveMessage({ kind: "success", text: "Saved." });
+        router.refresh();
+      }
+    });
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="rounded-lg border border-gray-200 bg-white p-5">
+        <h2 className="font-medium text-gray-900">Status: {appliance.status}</h2>
+        {nextStatuses.length === 0 ? (
+          <p className="mt-2 text-sm text-gray-600">
+            Retired appliances can&apos;t change status — add a new unit
+            instead if this was retired by mistake.
+          </p>
+        ) : (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {ALL_STATUSES.filter((s) => nextStatuses.includes(s.value)).map(
+              (s) => (
+                <button
+                  key={s.value}
+                  type="button"
+                  disabled={isPending}
+                  onClick={() => handleStatusChange(s.value)}
+                  className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:border-gray-400 disabled:opacity-50"
+                >
+                  Mark {s.label}
+                </button>
+              ),
+            )}
+          </div>
+        )}
+        {statusMessage && (
+          <p role="alert" className="mt-2 text-sm text-red-700">
+            {statusMessage}
+          </p>
+        )}
+      </div>
+
+      <form
+        onSubmit={handleSaveDetails}
+        className="space-y-4 rounded-lg border border-gray-200 bg-white p-5"
+      >
+        <h2 className="font-medium text-gray-900">Details</h2>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label htmlFor="manufacturer" className="block text-sm font-medium text-gray-700">
+              Manufacturer
+            </label>
+            <input
+              id="manufacturer"
+              type="text"
+              value={fields.manufacturer}
+              onChange={(e) => update("manufacturer", e.target.value)}
+              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            />
+          </div>
+          <div>
+            <label htmlFor="model" className="block text-sm font-medium text-gray-700">
+              Model
+            </label>
+            <input
+              id="model"
+              type="text"
+              value={fields.model}
+              onChange={(e) => update("model", e.target.value)}
+              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label htmlFor="serialNumber" className="block text-sm font-medium text-gray-700">
+              Serial number
+            </label>
+            <input
+              id="serialNumber"
+              type="text"
+              value={fields.serialNumber}
+              onChange={(e) => update("serialNumber", e.target.value)}
+              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            />
+          </div>
+          <div>
+            <label htmlFor="condition" className="block text-sm font-medium text-gray-700">
+              Condition
+            </label>
+            <input
+              id="condition"
+              type="text"
+              value={fields.condition}
+              onChange={(e) => update("condition", e.target.value)}
+              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label htmlFor="color" className="block text-sm font-medium text-gray-700">
+              Color
+            </label>
+            <input
+              id="color"
+              type="text"
+              placeholder="e.g. White, Stainless"
+              value={fields.color}
+              onChange={(e) => update("color", e.target.value)}
+              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            />
+          </div>
+          <div>
+            <label htmlFor="features" className="block text-sm font-medium text-gray-700">
+              Features
+            </label>
+            <input
+              id="features"
+              type="text"
+              placeholder="e.g. front-load, agitator"
+              value={fields.features}
+              onChange={(e) => update("features", e.target.value)}
+              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            />
+            <p className="mt-1 text-xs text-gray-500">Separate multiple with commas.</p>
+          </div>
+        </div>
+
+        <div>
+          <label htmlFor="currentLocation" className="block text-sm font-medium text-gray-700">
+            Current location
+          </label>
+          <input
+            id="currentLocation"
+            type="text"
+            value={fields.currentLocation}
+            onChange={(e) => update("currentLocation", e.target.value)}
+            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+          />
+        </div>
+
+        <div>
+          <label htmlFor="notes" className="block text-sm font-medium text-gray-700">
+            Notes
+          </label>
+          <textarea
+            id="notes"
+            rows={3}
+            value={fields.notes}
+            onChange={(e) => update("notes", e.target.value)}
+            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+          />
+        </div>
+
+        <button
+          type="submit"
+          disabled={isPending}
+          className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+        >
+          {isPending ? "Saving…" : "Save details"}
+        </button>
+
+        {saveMessage?.kind === "error" && (
+          <p role="alert" className="text-sm text-red-700">
+            {saveMessage.text}
+          </p>
+        )}
+        {saveMessage?.kind === "success" && (
+          <p className="text-sm text-green-700">{saveMessage.text}</p>
+        )}
+      </form>
+    </div>
+  );
+}

@@ -260,17 +260,42 @@ existed in `prisma/schema.prisma`, so this is pure application code.
       `sendResetPassword` wired up. Fine for now since the customer
       portal itself doesn't exist yet (Phase 5), but this needs to be
       built before real customers are expected to log in themselves.
-- [ ] **Deliberately out of this slice**: full inventory management
-      (adding/editing individual physical `Appliance` units — asset
-      numbers, serial numbers, condition, status transitions). The
-      dashboard shows appliance counts by status, but there's no desk
-      UI yet to create one. This is the natural next Phase 3 slice —
-      see `docs/ROADMAP.md`.
+- [x] **Slice 2, done 2026-09-26**: full inventory management —
+      `/desk/inventory` lets Chris add/edit individual physical
+      `Appliance` units (asset numbers, serial numbers, condition,
+      status transitions), plus what he asked for the same day:
+      **color**, free-form **features** (front-load/top-load/agitator
+      for a washer, or whatever applies to any other appliance type —
+      a comma-separated tag list, not a fixed field per category), and
+      a **parts catalog keyed by model number** (`/desk/parts` + a
+      "Parts for this model" section on each unit's own page), so a
+      part number logged once is reusable for every future unit of
+      that same model. See `docs/PRODUCT-SPEC.md`'s new Phase 3 slice-2
+      section for full detail, and `docs/BUSINESS-RULES.md`'s
+      "Inventory & status rules".
+      - **Needs a schema migration** —
+        `prisma/migrations/20260926200000_appliance_features_color_parts`
+        (adds `Appliance.color`, `Appliance.features`, and the new
+        `PartRecord` table). **Chris needs to run this SQL in Neon's
+        console before or immediately alongside deploying/merging** —
+        see the "Correction to an earlier (wrong) assumption" section
+        above: Vercel's build does **not** run `prisma migrate deploy`
+        automatically, and skipping this step is exactly what broke
+        PR #4's first production deploy.
+      - New tests (`tests/inventory.test.ts`, already existed for the
+        status/asset-number logic from slice 2's base) — manually
+        verified against a standalone script, same workaround as every
+        other phase (local test execution still can't import
+        `@/lib/prisma`; real CI is the actual gate).
 
 ## Immediate next step (whoever picks this up next)
 
-Phase 3's first slice is built, lint/typecheck-clean locally (modulo
-the documented Prisma sandbox limitation), and ready for a PR + CI
-check + Chris's review, same as every prior phase. After that's merged
-and verified live, the natural next step is the inventory-management
-slice noted above, unless Chris redirects.
+Phase 3's inventory-management slice (base + color/features/parts) is
+built, lint/typecheck-clean locally (modulo the documented Prisma
+sandbox limitation), and ready for a PR + CI check + Chris's review,
+same as every prior phase. **Tell Chris up front that this PR's
+migration needs to run in Neon before or right alongside the merge/
+deploy** — don't wait for a broken build to discover it this time.
+After that's merged and verified live, Phase 3 is complete; Phase 4
+(rental agreements, e-signature, job scheduling) is the natural next
+phase unless Chris redirects.

@@ -30,6 +30,11 @@ export function describeAuditAction(action: string): string {
     "appliance.visibility": "Changed whether an appliance type shows on the website",
     "lead.status": "Changed a lead's status",
     "lead.convert": "Converted a lead to a customer",
+    "appliance.unit.create": "Added an appliance to inventory",
+    "appliance.unit.status": "Changed an appliance's status",
+    "appliance.unit.update": "Updated an appliance's details",
+    "part.create": "Logged a part number for a model",
+    "part.delete": "Removed a logged part number",
   };
   return labels[action] ?? action;
 }

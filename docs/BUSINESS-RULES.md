@@ -94,12 +94,29 @@ already supports adding it without a redesign.
 
 Appliance statuses — `AVAILABLE`, `RESERVED`, `RENTED`, `MAINTENANCE`,
 `RETIRED` — live in one central enum with clear rules for which
-transitions are allowed (enforced server-side when the desk UI for this
-is built in Phase 3; not yet implemented in Phase 1).
+transitions are allowed, enforced server-side (`canTransitionApplianceStatus`
+in `src/domains/inventory`) — `RETIRED` is terminal, and every other
+move follows a fixed allow-list. Built in Phase 3.
 
 A washer/dryer **set** is priced together but is always two separately
 tracked physical appliances (see `docs/DATABASE.md`) — swapping one
 broken machine must never lose the other machine's own history.
+
+Each physical `Appliance` unit can record: manufacturer, model, serial
+number, color, condition, current location, notes, what Chris paid for
+it, and a purchase date. **Features** (e.g. front-load/top-load/agitator
+for a washer, or whatever's relevant to any other appliance type) are a
+free-form list of tags, not a fixed set of checkboxes per category — a
+brand-new appliance category, or a feature nobody anticipated, should
+never require a code change (same philosophy as `ApplianceType` itself:
+new categories are added as data, not code).
+
+**Parts** are logged against a **model number**, not against one
+physical unit — once Chris looks up a part number for a given model, it
+stays available for every future unit of that same model, not just the
+one he was repairing when he found it. See `/desk/parts` (browse
+everything logged) and the "Parts for this model" section on an
+appliance's own detail page (add a new one).
 
 ## Maintenance status flow
 
