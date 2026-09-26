@@ -383,7 +383,13 @@ Phase 5 section.
 - [x] New tests (`tests/maintenance.test.ts`) for the status-transition
       rule — manually verified against a standalone script, same
       workaround as every other phase.
-- [ ] **Not yet merged on purpose** — same rule as always.
+- [x] Opened as PR #14, `ai/claude/phase5-customer-portal` -> `main`.
+      CI green (all checks: migrate-deploy, typecheck, lint, unit
+      tests, build, Playwright/axe) and Vercel preview built
+      successfully. Re-ran the client-bundle grep check before opening
+      the PR — clean, only the two known-safe submodule imports.
+- [ ] **Awaiting Chris's merge** — same rule as always, an AI never
+      merges its own PR.
 - [ ] **Deliberately left for later** (see `docs/ROADMAP.md`): linking a
       `Job` back to the `MaintenanceRequest` it fulfills (so "schedule a
       job for this" pre-fills instead of starting blank), letting a
@@ -392,13 +398,11 @@ Phase 5 section.
 
 ## Immediate next step (whoever picks this up next)
 
-Phase 5 slice 1 (customer portal: rentals + maintenance requests) is
-built, lint-clean locally, and ready for a PR + CI check + Chris's
-review. **No migration needed for this one either.** Before trusting
-green CI, remember the client-bundle gotcha above — double check no new
-"use client" file imports a database-touching domain module directly.
-After this is merged and verified live, natural next steps: the
-maintenance→job linking and photo-attachment items just above, starting
-Phase 6 (Stripe billing, test mode only), or rounding out anything else
-Phase 5 didn't cover yet — unless Chris redirects, since he's asked to
-keep building proactively rather than checking in after every slice.
+PR #14 (Phase 5 slice 1 — customer portal: rentals + maintenance
+requests) is open with green CI, waiting on Chris to review the
+preview and merge. **No migration needed for this one either.** Once
+merged, natural next steps: the maintenance→job linking and
+photo-attachment items just above, starting Phase 6 (Stripe billing,
+test mode only), or rounding out anything else Phase 5 didn't cover —
+unless Chris redirects, since he's asked to keep building proactively
+rather than checking in after every slice.
