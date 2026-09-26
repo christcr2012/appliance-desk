@@ -145,16 +145,6 @@ export async function addRentalLine(
     throw new Error("Choose at least one appliance for this line.");
   }
 
-  const appliances = await prisma.appliance.findMany({
-    where: { id: { in: input.applianceIds } },
-  });
-  const notAvailable = appliances.filter((a) => a.status !== "AVAILABLE");
-  if (notAvailable.length > 0) {
-    throw new Error(
-      `${notAvailable[0].assetNumber} isn't AVAILABLE right now, so it can't be assigned.`,
-    );
-  }
-
   return prisma.$transaction(async (tx) => {
     const line = await tx.rentalLine.create({
       data: {
@@ -165,12 +155,32 @@ export async function addRentalLine(
     });
 
     for (const applianceId of input.applianceIds) {
+      // Atomic check-and-reserve (Verified Finding #3 fix): the WHERE
+      // clause requires the appliance to still be AVAILABLE at the moment
+      // of this update, and `count` tells us whether a row actually
+      // matched. A plain "read status, then decide" check (what used to
+      // happen here, before the transaction even opened) lets two
+      // concurrent calls both see AVAILABLE and both "win" — only a
+      // conditional update enforced by the database itself can guarantee
+      // just one of them actually does. If we lose the race, abort the
+      // whole transaction (the line and any appliances already reserved
+      // in this same loop all roll back) rather than double-book a
+      // physical appliance onto two agreements.
+      const reserved = await tx.appliance.updateMany({
+        where: { id: applianceId, status: "AVAILABLE" },
+        data: { status: "RESERVED" },
+      });
+      if (reserved.count !== 1) {
+        const appliance = await tx.appliance.findUnique({ where: { id: applianceId } });
+        throw new Error(
+          appliance
+            ? `${appliance.assetNumber} isn't AVAILABLE right now, so it can't be assigned.`
+            : "That appliance no longer exists.",
+        );
+      }
+
       await tx.applianceAssignment.create({
         data: { rentalLineId: line.id, applianceId },
-      });
-      await tx.appliance.update({
-        where: { id: applianceId },
-        data: { status: "RESERVED" },
       });
     }
 

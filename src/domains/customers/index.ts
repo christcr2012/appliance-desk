@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { getActiveApplianceOptionsForCustomer } from "@/domains/agreements/active-appliances";
 
 /**
  * Customers — created today only via lead conversion (see
@@ -37,38 +38,13 @@ export async function getCustomerById(id: string) {
   });
 }
 
-/** The appliances currently assigned to this customer through an active
- * (non-unassigned) rental-agreement line — used to prefill the
- * appliance checkboxes when scheduling a job linked to one of their
- * maintenance requests. Staff-side mirror of
- * src/domains/portal/index.ts's getPortalApplianceOptions, keyed by
- * customerId directly rather than resolved from a signed-in userId. */
+/** The appliances currently assigned to this customer through an ACTIVE
+ * rental agreement — used to prefill the appliance checkboxes when
+ * scheduling a job linked to one of their maintenance requests. Staff-side
+ * mirror of src/domains/portal/index.ts's getPortalApplianceOptions; both
+ * go through the same shared helper in
+ * src/domains/agreements/active-appliances.ts so "what counts as this
+ * customer's current rental equipment" can never drift between the two. */
 export async function getCustomerApplianceOptions(customerId: string) {
-  const customer = await prisma.customer.findUnique({
-    where: { id: customerId },
-    include: {
-      rentalAgreements: {
-        include: {
-          lines: {
-            include: {
-              assignments: {
-                where: { unassignedAt: null },
-                include: { appliance: { include: { applianceType: true } } },
-              },
-            },
-          },
-        },
-      },
-    },
-  });
-  if (!customer) return [];
-
-  return customer.rentalAgreements.flatMap((a) =>
-    a.lines.flatMap((l) =>
-      l.assignments.map((asn) => ({
-        id: asn.appliance.id,
-        label: `${asn.appliance.applianceType.name} (${asn.appliance.assetNumber})`,
-      })),
-    ),
-  );
+  return getActiveApplianceOptionsForCustomer(customerId);
 }

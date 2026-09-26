@@ -1,0 +1,75 @@
+import { describe, it, expect, vi, beforeEach } from "vitest";
+
+// This tests the query SHAPE this module sends to Prisma, not a live
+// database — that's what CI's real Postgres integration tests are for
+// (see docs/HANDOFF.md's note on this project's testing convention). What
+// matters here, and what regressed before this fix (Verified Finding #2):
+// every call site must ask for `status: "ACTIVE"` on the agreement, never
+// leave it unfiltered.
+const findMany = vi.fn();
+
+vi.mock("@/lib/prisma", () => ({
+  prisma: { applianceAssignment: { findMany: (...args: unknown[]) => findMany(...args) } },
+}));
+
+describe("active-appliances", () => {
+  beforeEach(() => {
+    findMany.mockReset();
+    findMany.mockResolvedValue([
+      {
+        appliance: { id: "appl-1", assetNumber: "A-100", applianceType: { name: "Washer" } },
+      },
+    ]);
+  });
+
+  it("getActiveApplianceOptionsForCustomer only asks for ACTIVE agreements on this customer", async () => {
+    const { getActiveApplianceOptionsForCustomer } = await import(
+      "@/domains/agreements/active-appliances"
+    );
+
+    const result = await getActiveApplianceOptionsForCustomer("cust-1");
+
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          unassignedAt: null,
+          rentalLine: expect.objectContaining({
+            agreement: expect.objectContaining({ customerId: "cust-1", status: "ACTIVE" }),
+          }),
+        }),
+      }),
+    );
+    expect(result).toEqual([{ id: "appl-1", label: "Washer (A-100)" }]);
+  });
+
+  it("getActiveApplianceOptionsForUser resolves through the signed-in user's own id, never a client-supplied customerId", async () => {
+    const { getActiveApplianceOptionsForUser } = await import(
+      "@/domains/agreements/active-appliances"
+    );
+
+    await getActiveApplianceOptionsForUser("user-1");
+
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          unassignedAt: null,
+          rentalLine: expect.objectContaining({
+            agreement: expect.objectContaining({
+              status: "ACTIVE",
+              customer: { userId: "user-1" },
+            }),
+          }),
+        }),
+      }),
+    );
+  });
+
+  it("ACTIVE_ASSIGNMENT_WHERE (used by the portal's own-agreements query) requires status ACTIVE", async () => {
+    const { ACTIVE_ASSIGNMENT_WHERE } = await import("@/domains/agreements/active-appliances");
+
+    expect(ACTIVE_ASSIGNMENT_WHERE).toEqual({
+      unassignedAt: null,
+      rentalLine: { agreement: { status: "ACTIVE" } },
+    });
+  });
+});
