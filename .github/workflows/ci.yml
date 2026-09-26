@@ -50,7 +50,14 @@ jobs:
         run: npm run db:migrate:deploy
 
       - name: Seed business content (no owner account — no secrets set)
-        run: npm run db:seed
+        run: |
+          npm run db:seed > /tmp/seed-output.log 2>&1
+          code=$?
+          cat /tmp/seed-output.log
+          if [ $code -ne 0 ]; then
+            echo "::error::Seed failed, output above"
+          fi
+          exit $code
 
       - name: Type-check
         run: npm run typecheck
