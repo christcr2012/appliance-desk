@@ -101,6 +101,23 @@ on — never built unasked.
   storage (e.g. Vercel Blob) and likely a small recurring cost. Pasting
   a URL works fine for now since Chris already has photos hosted
   somewhere (or can use a free image host), so this isn't urgent.
+- **Link a `Job` back to the `MaintenanceRequest` it fulfills.** Right
+  now `/desk/maintenance`'s "Schedule a job for this" just opens
+  `/desk/jobs/new` with nothing pre-filled — there's no
+  `Job.maintenanceRequestId` column yet, so Chris has to pick the
+  customer/appliance by hand. A small future migration + pre-fill would
+  close that gap. Not done now since it's a minor convenience, not a
+  blocker.
+- **Photo attachments on a maintenance request itself** (the customer
+  attaching a photo of the problem when they submit it) — the schema
+  already supports it (`Photo.maintenanceRequestId`), just not wired
+  into the portal's submission form yet. Left out of this slice to keep
+  it shippable; add if Chris finds himself needing photos from
+  customers up front.
+- **Email/SMS notification to Chris on a new maintenance request** —
+  same gap leads had before Resend was wired up in Phase 2. Not done
+  yet for maintenance requests; he currently has to check
+  `/desk/maintenance` himself.
 - **More appliance categories**: refrigerators, ranges, dishwashers,
   freezers, etc. Chris is launching with washers/dryers only on
   purpose; adding a category later is a data change in `/desk/settings`
