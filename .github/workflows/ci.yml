@@ -51,10 +51,12 @@ jobs:
       - name: Show install failure details (temporary diagnostic)
         if: steps.install.outcome == 'failure'
         run: |
-          echo "::group::npm debug log"
-          tail -n 200 "$(npm config get cache)"/_logs/*-debug-0.log 2>/dev/null | tail -n 100 || true
+          LOGFILE=$(ls -t "$HOME"/.npm/_logs/*-debug-0.log | head -1)
+          echo "Reading: $LOGFILE"
+          echo "::group::npm debug log (full)"
+          cat "$LOGFILE" || true
           echo "::endgroup::"
-          LOGTAIL=$(tail -c 1500 "$(ls -t "$(npm config get cache)"/_logs/*-debug-0.log | head -1)" 2>/dev/null | tr '\n' ' ' | tr -d '\r')
+          LOGTAIL=$(tail -c 1500 "$LOGFILE" 2>/dev/null | tr '\n' ' ' | tr -d '\r')
           echo "::error title=npm ci failed::${LOGTAIL:0:900}"
           exit 1
 
