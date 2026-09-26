@@ -5,15 +5,6 @@ later phase (see `docs/HANDOFF.md` for the phase plan) or because they're
 a suggestion an AI had while working and is flagging for Chris to decide
 on — never built unasked.
 
-## Explicitly queued by Chris (do in a separate PR, not bundled)
-
-- **Mobile nav → hamburger menu**: Chris doesn't like how the public
-  site's header nav looks/behaves on mobile (2026-09-26, right after the
-  hero photo fix) and wants it turned into a proper collapsible
-  hamburger menu on small screens. Deliberately not bundled into the
-  Phase 4 (rental agreements/jobs) PR since he asked for it to be its
-  own change — do this next as its own small PR.
-
 ## Deferred to a later phase (already scoped, just not yet)
 
 - Lead scoring UI (browsing/filtering leads in the desk, not just the
@@ -114,10 +105,13 @@ on — never built unasked.
   into the portal's submission form yet. Left out of this slice to keep
   it shippable; add if Chris finds himself needing photos from
   customers up front.
-- **Email/SMS notification to Chris on a new maintenance request** —
-  same gap leads had before Resend was wired up in Phase 2. Not done
-  yet for maintenance requests; he currently has to check
-  `/desk/maintenance` himself.
+- **Email notification to Chris on a new maintenance request** — **done
+  (2026-09-26)**, mirrors the lead-notification pattern from Phase 2:
+  emails `MAINTENANCE_NOTIFICATION_EMAIL` (falling back to
+  `/desk/settings`'s public email) with the customer, appliance,
+  priority, and problem description whenever a customer submits one; a
+  HIGH or URGENT request is flagged as such in the subject line. SMS is
+  still a future option, same as it is for leads.
 - **More appliance categories**: refrigerators, ranges, dishwashers,
   freezers, etc. Chris is launching with washers/dryers only on
   purpose; adding a category later is a data change in `/desk/settings`

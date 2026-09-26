@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/prisma";
+import { sendEmail } from "@/lib/email";
+import { getBusinessSettings } from "@/domains/settings";
 
 // ---------------------------------------------------------------------------
 // Customer portal (Phase 5, slice 1 — rentals + maintenance requests;
@@ -88,21 +90,29 @@ export type NewMaintenanceRequestInput = {
 /** The customer's own submission — resolves their Customer row from
  * their session's userId (never a client-supplied customerId), and if
  * they named a specific appliance, verifies it's actually one of theirs
- * before accepting it. */
+ * before accepting it. Emails Chris a notification the same way a new
+ * lead does (docs/BUSINESS-RULES.md); a failed notification never fails
+ * the submission — the customer's request is already saved either way. */
 export async function createMaintenanceRequestForUser(
   userId: string,
   input: NewMaintenanceRequestInput,
 ) {
-  const customer = await prisma.customer.findUnique({ where: { userId } });
+  const customer = await prisma.customer.findUnique({
+    where: { userId },
+    include: { user: { select: { name: true, email: true } } },
+  });
   if (!customer) {
     throw new Error("No customer account found for this login.");
   }
 
+  let applianceLabel: string | null = null;
   if (input.applianceId) {
     const options = await getPortalApplianceOptions(userId);
-    if (!options.some((o) => o.id === input.applianceId)) {
+    const match = options.find((o) => o.id === input.applianceId);
+    if (!match) {
       throw new Error("That appliance isn't on one of your active rentals.");
     }
+    applianceLabel = match.label;
   }
 
   const request = await prisma.maintenanceRequest.create({
@@ -121,6 +131,27 @@ export async function createMaintenanceRequestForUser(
       entityType: "MaintenanceRequest",
       entityId: request.id,
     },
+  });
+
+  const settings = await getBusinessSettings();
+  const notifyTo = process.env.MAINTENANCE_NOTIFICATION_EMAIL || settings.publicEmail;
+  const isUrgent = request.priority === "URGENT" || request.priority === "HIGH";
+
+  await sendEmail({
+    to: notifyTo,
+    subject: isUrgent
+      ? `URGENT maintenance request: ${customer.user.name ?? customer.user.email}`
+      : `New maintenance request: ${customer.user.name ?? customer.user.email}`,
+    text: [
+      `A customer submitted a maintenance request${isUrgent ? " (flagged " + request.priority + ")" : ""}.`,
+      "",
+      `Customer: ${customer.user.name ?? "(no name on file)"} <${customer.user.email}>`,
+      `Appliance: ${applianceLabel ?? "(not specified / general question)"}`,
+      `Priority: ${request.priority}`,
+      `Problem: ${request.problem}`,
+      "",
+      "Review it in the Owner Desk under Maintenance.",
+    ].join("\n"),
   });
 
   return request;
