@@ -1,7 +1,8 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Container } from "@/components/site/container";
 import { ButtonLink } from "@/components/site/button-link";
-import { ApplianceIcon, ApplianceMedia } from "@/components/site/appliance-icon";
+import { ApplianceMedia } from "@/components/site/appliance-icon";
 import { getBusinessSettings, parseServiceArea } from "@/domains/settings";
 import { getPublishedApplianceTypes, formatCents } from "@/domains/pricing";
 
@@ -11,9 +12,6 @@ export default async function HomePage() {
     getPublishedApplianceTypes(),
   ]);
   const serviceArea = parseServiceArea(settings);
-  const heroTypes = applianceTypes
-    .filter((t) => t.slug === "washer" || t.slug === "dryer")
-    .slice(0, 2);
 
   return (
     <>
@@ -45,23 +43,15 @@ export default async function HomePage() {
           </div>
 
           <div className="relative flex justify-center">
-            <div className="flex w-full max-w-full items-center justify-center gap-3 rounded-3xl bg-surface p-4 shadow-xl shadow-ink/5 ring-1 ring-line sm:gap-6 sm:p-10">
-              {heroTypes.length > 0 ? (
-                heroTypes.map((type) => (
-                  <ApplianceMedia
-                    key={type.id}
-                    photoUrl={type.photoUrl}
-                    name={type.name}
-                    className="h-28 w-1/2 max-w-[14rem] rounded-xl object-cover sm:h-40 sm:w-56"
-                    iconClassName="h-28 w-auto text-primary sm:h-40"
-                  />
-                ))
-              ) : (
-                <>
-                  <ApplianceIcon className="h-28 w-auto text-primary sm:h-40" />
-                  <ApplianceIcon className="h-28 w-auto text-accent sm:h-40" />
-                </>
-              )}
+            <div className="w-full max-w-md overflow-hidden rounded-3xl bg-surface p-2 shadow-xl shadow-ink/5 ring-1 ring-line sm:p-3">
+              <Image
+                src="/appliances/hero-lineup.jpg"
+                alt="A washer, dryer, range, and refrigerator — the kinds of appliances we rent"
+                width={1408}
+                height={768}
+                className="h-auto w-full rounded-2xl object-cover"
+                priority
+              />
             </div>
           </div>
         </Container>
