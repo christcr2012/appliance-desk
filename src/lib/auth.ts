@@ -12,13 +12,25 @@ export const auth = betterAuth({
     provider: "postgresql",
   }),
   secret: process.env.BETTER_AUTH_SECRET,
-  // Vercel sets VERCEL_URL automatically on every deployment (production
-  // and preview alike) — falling back to it means this works correctly
-  // without hand-setting BETTER_AUTH_URL for every preview URL.
+  // Vercel's production domain (appliance-desk.vercel.app) and every
+  // preview deployment's own generated domain are all different
+  // hostnames, and Better Auth rejects sign-in requests whose Origin
+  // doesn't match baseURL ("Invalid origin"). A plain string baseURL
+  // can only ever match one of those hosts. Better Auth's dynamic
+  // baseURL config (allowedHosts) is built for exactly this — it
+  // accepts the actual request's host as long as it matches one of
+  // these patterns, so both production and every preview deployment
+  // work without hand-setting a URL for each one. Once a real custom
+  // domain is bought (see docs/ARCHITECTURE.md), add it here too.
   baseURL:
     process.env.BETTER_AUTH_URL ??
     process.env.NEXT_PUBLIC_APP_URL ??
-    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined),
+    {
+      allowedHosts: ["*.vercel.app"],
+      fallback: process.env.VERCEL_URL
+        ? `https://${process.env.VERCEL_URL}`
+        : "http://localhost:3000",
+    },
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: false, // flip on once email sending is verified in production

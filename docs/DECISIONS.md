@@ -246,3 +246,26 @@ confirmation before any live schema change, per this project's own
 Every other Better Auth table (`Session`, `Account`, `Verification`) was
 cross-checked line-by-line against Better Auth's own schema source at
 the same time — everything else already matched.
+
+---
+
+### 2026-09-26 — Fixed a real bug: login failed with "Invalid origin"
+
+Chris tried to log in right after the OWNER account was created and got
+"Invalid origin." Root cause: Better Auth rejects any sign-in request
+whose browser `Origin` doesn't match its configured `baseURL`, and the
+old config computed `baseURL` from Vercel's `VERCEL_URL` environment
+variable — which is the *specific deployment's own* generated hostname,
+not the stable `appliance-desk.vercel.app` address Chris actually visits
+(and it's a different, unpredictable hostname on every future deploy).
+A plain string `baseURL` can only ever match one hostname, so it could
+never match both the production domain and preview-deployment domains
+at once.
+
+**Fix:** switched to Better Auth's built-in "dynamic baseURL" option
+(`baseURL: { allowedHosts, fallback }` in `src/lib/auth.ts`), which is
+built for exactly this multi-domain-per-project situation — it accepts
+whatever host the real request came in on, as long as it matches an
+allowed pattern (`*.vercel.app` for now), rather than requiring an exact
+match against one fixed URL. When a real custom domain is bought later,
+it needs to be added to that `allowedHosts` list.
