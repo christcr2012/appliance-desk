@@ -188,3 +188,34 @@ end-to-end:
 
 Both were caught locally too, by the same commands CI runs
 (`npm run typecheck` after a clean `rm -rf .next`), before pushing.
+
+---
+
+### 2026-09-26 — Two more real bugs, caught by CI's build step
+
+With install, migrations, type-checking, lint, and unit tests all
+finally passing in CI, the build step turned up two more real issues:
+
+1. **`useSearchParams()` needs a Suspense boundary:** `/login`'s form
+   reads a `?next=` query param (where to send someone after logging
+   in) using `useSearchParams()`, which Next.js requires to be wrapped
+   in `<Suspense>` so the rest of the page isn't held up waiting for
+   it. Fixed in `src/app/login/page.tsx`.
+2. **`middleware.ts` is deprecated in this Next.js version** — renamed
+   to `proxy.ts` (same purpose: the fast, cookie-only sign-in gate for
+   `/desk` and `/account`, see `docs/ARCHITECTURE.md`). This was only a
+   build-time warning, not a failure, but left alone it would break on
+   a future Next.js version that removes the old name outright. Fixed
+   by renaming the file and its exported function (`middleware` →
+   `proxy`) per Next's own migration guide; nothing else about it
+   changed.
+
+**A local sandbox note, not a bug:** rebuilding locally in this
+project's original sandbox still fails, but for an unrelated, already-
+documented reason — `next/font/google` needs to fetch font files from
+`fonts.googleapis.com` at build time, and that host is outside this
+sandbox's network allowlist (same class of restriction as
+`binaries.prisma.sh` above). This is not a problem in GitHub Actions or
+on Vercel, both of which have normal internet access — confirmed
+because CI's build got past font loading and all the way to page
+generation before hitting the two real bugs above.

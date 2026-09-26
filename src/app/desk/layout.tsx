@@ -5,7 +5,7 @@ export const metadata = {
 };
 
 // Every /desk/** page requires OWNER or ADMIN. This check happens again
-// inside requireRole() on the server — the middleware cookie check is
+// inside requireRole() on the server — the proxy cookie check is
 // only a fast first pass, not the real gate.
 export default async function DeskLayout({
   children,

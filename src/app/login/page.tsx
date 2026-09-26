@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { LoginForm } from "./login-form";
 
 export const metadata = {
@@ -9,7 +10,12 @@ export default function LoginPage() {
   return (
     <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center px-4 py-12">
       <h1 className="mb-6 text-2xl font-semibold">Log in</h1>
-      <LoginForm />
+      {/* LoginForm reads the URL's search params (e.g. a redirect target),
+          which Next.js requires to be inside a Suspense boundary so the
+          rest of the page can still be served instantly. */}
+      <Suspense fallback={null}>
+        <LoginForm />
+      </Suspense>
     </main>
   );
 }

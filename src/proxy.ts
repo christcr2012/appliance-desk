@@ -6,9 +6,12 @@ import { getSessionCookie } from "better-auth/cookies";
 // The real authorization check — is this the RIGHT someone, with the
 // right role, for the right customer's own data — happens again on the
 // server in every /desk and /account page/action via requireRole() /
-// requireSession() in src/lib/session.ts. Never trust this middleware
-// alone for anything sensitive.
-export function middleware(request: NextRequest) {
+// requireSession() in src/lib/session.ts. Never trust this proxy alone
+// for anything sensitive.
+//
+// This file used to be middleware.ts — Next.js 16 renamed the file
+// convention to proxy.ts (same idea, same escape hatches, new name).
+export function proxy(request: NextRequest) {
   const sessionCookie = getSessionCookie(request);
 
   const isProtected =

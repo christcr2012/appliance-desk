@@ -5,7 +5,7 @@ import { prisma } from "./prisma";
 // Central auth configuration. Roles are OWNER / ADMIN / CUSTOMER — see
 // docs/BUSINESS-RULES.md for what each role can do. Every owner/admin
 // route and every customer-ownership check is enforced on the SERVER
-// (in this file, in middleware.ts, and in each server action) — never
+// (in this file, in src/proxy.ts, and in each server action) — never
 // only by hiding a button in the UI.
 export const auth = betterAuth({
   database: prismaAdapter(prisma, {

@@ -36,7 +36,7 @@ All of these are stored as **Vercel environment variables** (per environment: Pr
 
 [Better Auth](https://better-auth.com) (see `docs/DECISIONS.md` for why, over Auth.js/NextAuth and Neon Auth). Email + password for now; magic links/password reset can be added without a schema change. Three roles: `OWNER`, `ADMIN`, `CUSTOMER` — enforced **on the server**, twice:
 
-1. `middleware.ts` — fast, cookie-only check that *someone* is signed in, for `/desk/**` and `/account/**`.
+1. `src/proxy.ts` — fast, cookie-only check that *someone* is signed in, for `/desk/**` and `/account/**`.
 2. `src/lib/session.ts` (`requireSession()` / `requireRole()`) — the real check, called at the top of every protected layout/page/server action. Confirms who is signed in and whether their role is allowed.
 
 Never rely on hiding a nav link as the only protection for anything.
