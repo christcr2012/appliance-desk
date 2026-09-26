@@ -51,22 +51,29 @@ jobs:
       - name: Show install failure details (temporary diagnostic)
         if: steps.install.outcome == 'failure'
         run: |
-          LOGFILE=$(ls -t "$HOME"/.npm/_logs/*-debug-0.log | head -1)
-          echo "Reading: $LOGFILE"
-          echo "::group::npm debug log (full)"
-          cat "$LOGFILE" || true
+          echo "::group::prisma generate output (/tmp/prisma-generate-output.log)"
+          if [ -f /tmp/prisma-generate-output.log ]; then
+            cat /tmp/prisma-generate-output.log
+          else
+            echo "(file not found — failure was not in the postinstall script)"
+          fi
           echo "::endgroup::"
-          wc -l "$LOGFILE"
-          # Find where the ROOT package's own postinstall (prisma generate) is
-          # invoked, and print a window of log lines around it — the run-script
-          # summary lines alone don't include the command's actual stdout/stderr.
-          START=$(grep -n "unrs-resolver.*postinstall" "$LOGFILE" | tail -1 | cut -d: -f1)
-          START=${START:-1}
-          RELEVANT=$(sed -n "${START},$((START+80))p" "$LOGFILE" | tr '\n' ' | ' | tr -d '\r')
-          echo "::error title=npm ci failed (1/4)::${RELEVANT:0:900}"
-          echo "::error title=npm ci failed (2/4)::${RELEVANT:900:900}"
-          echo "::error title=npm ci failed (3/4)::${RELEVANT:1800:900}"
-          echo "::error title=npm ci failed (4/4)::${RELEVANT:2700:900}"
+          if [ -f /tmp/prisma-generate-output.log ]; then
+            RELEVANT=$(tr '\n' ' | ' < /tmp/prisma-generate-output.log | tr -d '\r')
+            echo "::error title=prisma generate failed (1/4)::${RELEVANT:0:900}"
+            echo "::error title=prisma generate failed (2/4)::${RELEVANT:900:900}"
+            echo "::error title=prisma generate failed (3/4)::${RELEVANT:1800:900}"
+            echo "::error title=prisma generate failed (4/4)::${RELEVANT:2700:900}"
+          else
+            LOGFILE=$(ls -t "$HOME"/.npm/_logs/*-debug-0.log 2>/dev/null | head -1)
+            if [ -n "$LOGFILE" ]; then
+              echo "::group::npm debug log (full)"
+              cat "$LOGFILE" || true
+              echo "::endgroup::"
+              RELEVANT=$(tail -n 60 "$LOGFILE" | tr '\n' ' | ' | tr -d '\r')
+              echo "::error title=npm ci failed (no prisma log)::${RELEVANT:0:900}"
+            fi
+          fi
           exit 1
 
       - name: Apply database migrations
