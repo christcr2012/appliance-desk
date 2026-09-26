@@ -108,9 +108,56 @@ feature is built, not reverse-engineered after.
       (disallowing `/desk` and `/account`), and `LocalBusiness`
       structured data (JSON-LD) sourced from `BusinessSettings`.
 
+## Phase 3 — Lead management, dashboard, activity log (slice 1)
+
+Started 2026-09-26. First slice: everything that doesn't need a
+database migration (inventory management — tracking individual
+physical `Appliance` units — needs real desk UI for something that
+didn't exist before and is deliberately left for the next slice; see
+`docs/ROADMAP.md`).
+
+### Lead management (`/desk/leads`)
+
+- [x] Browse all leads, filterable by status (New/Contacted/Converted/
+      Lost) via tabs that also show each status's count, sorted
+      highest-value first.
+- [x] A lead's detail page shows every field captured on the public
+      form, its score and the plain-English reasons behind it, and its
+      appliance requests.
+- [x] Chris can move a lead between New/Contacted/Lost.
+- [x] Chris can convert a lead directly into a `Customer` (+ `User`
+      account + `ServiceAddress`, when an address was given) in one
+      action — per `docs/BUSINESS-RULES.md` step 3. Deliberately stops
+      short of creating a `RentalAgreement` — that's Phase 4
+      (e-signature, real terms) and shouldn't be guessed here.
+      Requires the lead to have an email address (a customer account
+      needs one to sign in); the UI explains why the button is
+      disabled otherwise rather than failing silently.
+  - A brand-new account gets a one-time random temporary password,
+    shown once to Chris in the UI (never emailed automatically — there's
+    no "set your own password" invite flow yet, tracked in
+    `docs/ROADMAP.md`).
+- [x] Every status change and conversion writes an `AuditLog` entry.
+- **Acceptance:** `tests/leads.test.ts` proves the conversion guard
+  (`canConvertLead`) correctly blocks a lead with no email and a lead
+  that's already converted, and allows an otherwise-valid one.
+
+### Dashboard (`/desk/dashboard`)
+
+- [x] Replaces the Phase 1 placeholder with real counts: new leads
+      needing attention, high-value new leads, contacted leads,
+      converted leads, total customers, and appliance counts by status.
+      No revenue/billing numbers yet — that needs Stripe (Phase 6).
+
+### Activity (`/desk/activity`)
+
+- [x] Lists the 50 most recent `AuditLog` entries (who, what, when) in
+      plain English, for every action already writing one (settings,
+      pricing, appliance types, leads).
+
 ## Later phases
 
-Feature lists for Phases 3–7 will be filled in here as each phase
+Feature lists for Phases 4–7 will be filled in here as each phase
 starts, following the phase plan and scope in `AGENTS.md`/
 `docs/HANDOFF.md` — kept short until then rather than speculatively
 detailed now.
