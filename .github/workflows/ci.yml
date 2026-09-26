@@ -51,15 +51,15 @@ jobs:
 
       - name: Seed business content (no owner account — no secrets set)
         run: |
-          npm run db:seed > /tmp/seed-output.log 2>&1
-          code=$?
-          cat /tmp/seed-output.log
-          if [ $code -ne 0 ]; then
+          if npm run db:seed > /tmp/seed-output.log 2>&1; then
+            cat /tmp/seed-output.log
+          else
+            cat /tmp/seed-output.log
             while IFS= read -r line; do
               echo "::error::$line"
             done < /tmp/seed-output.log
+            exit 1
           fi
-          exit $code
 
       - name: Type-check
         run: npm run typecheck
