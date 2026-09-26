@@ -68,7 +68,16 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Accessibility & e2e tests
-        run: npm run test:e2e
+        run: |
+          if npm run test:e2e > /tmp/e2e-output.log 2>&1; then
+            cat /tmp/e2e-output.log
+          else
+            cat /tmp/e2e-output.log
+            while IFS= read -r line; do
+              echo "::error::$line"
+            done < /tmp/e2e-output.log
+            exit 1
+          fi
 
       - name: Upload Playwright report
         if: always()
