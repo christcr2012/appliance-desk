@@ -21,24 +21,31 @@ import { prisma } from "../src/lib/prisma";
 // planned later — see docs/ROADMAP.md. Adding those later is purely a
 // data change (new rows here or in /desk/settings), never a code change,
 // per docs/BUSINESS-RULES.md. Prices match the defaults documented there.
+// photoUrl points at a real photo of a basic/representative model (see
+// public/appliances/ — Chris supplied these), not a stock photo of any
+// specific branded unit, per the "actual appliance may vary" disclaimer
+// shown everywhere these appear.
 const STARTER_APPLIANCE_TYPES = [
   {
     name: "Washer + Dryer Set",
     slug: "washer-dryer-set",
     monthlyPriceCents: 6000,
     sortOrder: 0,
+    photoUrl: "/appliances/washer-dryer-set.jpg",
   },
   {
     name: "Washer",
     slug: "washer",
     monthlyPriceCents: 3500,
     sortOrder: 1,
+    photoUrl: "/appliances/washer.jpg",
   },
   {
     name: "Dryer",
     slug: "dryer",
     monthlyPriceCents: 3500,
     sortOrder: 2,
+    photoUrl: "/appliances/dryer.jpg",
   },
 ];
 

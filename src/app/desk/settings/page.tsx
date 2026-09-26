@@ -36,6 +36,8 @@ export default async function DeskSettingsPage() {
             name: t.name,
             monthlyPriceCents: t.monthlyPriceCents,
             showOnWebsite: t.showOnWebsite,
+            isActive: t.isActive,
+            photoUrl: t.photoUrl,
           }))}
         />
       </section>
@@ -53,12 +55,13 @@ export default async function DeskSettingsPage() {
             serviceAreaZips: Array.isArray(settings.serviceAreaZips)
               ? (settings.serviceAreaZips as string[]).join(", ")
               : "",
-            oneTimeDeliveryFeeCents: settings.oneTimeDeliveryFeeCents,
-            oneTimeRemovalFeeCents: settings.oneTimeRemovalFeeCents,
+            deliveryFeeDollars: settings.oneTimeDeliveryFeeCents / 100,
+            installationFeeDollars: settings.oneTimeInstallationFeeCents / 100,
+            removalFeeDollars: settings.oneTimeRemovalFeeCents / 100,
             damageWaiverEnabled: settings.damageWaiverEnabled,
             depositEnabled: settings.depositEnabled,
             lateFeeGraceDays: settings.lateFeeGraceDays,
-            lateFeeFlatCents: settings.lateFeeFlatCents,
+            lateFeeFlatDollars: settings.lateFeeFlatCents / 100,
             lateFeePercent: settings.lateFeePercent,
             taxRatePermille: settings.taxRatePermille,
             taxRateConfirmed: settings.taxRateConfirmed,

@@ -38,13 +38,17 @@ on — never built unasked.
   the desk UI grows complex enough (e.g. a real data table for
   inventory) — evaluate shadcn/ui components as each screen needs them,
   rather than importing the whole library up front.
-- **Real appliance photos**: the public site currently uses generic
-  line-art illustrations (with a disclaimer) instead of product photos,
-  since there are no real photos to use honestly yet. Once Chris
-  supplies real photos (per the launch checklist), swap them in — the
-  `Photo` model already supports this, and any photo of a specific real
-  unit should keep an "actual item may vary" disclaimer unless it's the
-  exact unit being delivered.
+- **Real appliance photos**: the public site currently uses one generic
+  line-art icon (with a disclaimer) instead of product photos, since
+  there are no real photos to use honestly yet. `ApplianceType.photoUrl`
+  (added 2026-09-26) is settable per appliance type right from
+  `/desk/settings` — once Chris supplies a real basic-model photo (a
+  direct image URL) per category, pasting it in there switches the
+  public site from the icon to the real photo automatically. Any photo
+  of a specific real unit should keep an "actual item may vary"
+  disclaimer unless it's the exact unit being delivered. A future
+  improvement could let Chris upload a file directly instead of
+  pasting a URL — not needed yet.
 - **More appliance categories**: refrigerators, ranges, dishwashers,
   freezers, etc. Chris is launching with washers/dryers only on
   purpose; adding a category later is a data change in `/desk/settings`

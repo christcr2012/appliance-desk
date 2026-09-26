@@ -18,6 +18,7 @@ const DEFAULT_SETTINGS = {
   socialLinks: {} as unknown,
   logoUrl: null as string | null,
   oneTimeDeliveryFeeCents: 0,
+  oneTimeInstallationFeeCents: 0,
   oneTimeRemovalFeeCents: 0,
   damageWaiverEnabled: false,
   depositEnabled: false,
@@ -97,6 +98,7 @@ export type BusinessSettingsUpdate = Partial<{
   serviceAreaCities: string[];
   serviceAreaZips: string[];
   oneTimeDeliveryFeeCents: number;
+  oneTimeInstallationFeeCents: number;
   oneTimeRemovalFeeCents: number;
   damageWaiverEnabled: boolean;
   depositEnabled: boolean;
@@ -189,6 +191,37 @@ export async function updateAppliancePrice(
   return updated;
 }
 
+/**
+ * Sets (or clears, with null) an appliance type's real photo URL. An
+ * empty string is treated the same as null — clears back to the
+ * generic icon fallback (<ApplianceMedia>) rather than storing an
+ * empty string that would fail to load as an image.
+ */
+export async function setAppliancePhotoUrl(
+  userId: string,
+  applianceTypeId: string,
+  photoUrl: string | null,
+) {
+  const normalized = photoUrl && photoUrl.trim() ? photoUrl.trim() : null;
+
+  const updated = await prisma.applianceType.update({
+    where: { id: applianceTypeId },
+    data: { photoUrl: normalized },
+  });
+
+  await prisma.auditLog.create({
+    data: {
+      userId,
+      action: "appliance.photo",
+      entityType: "ApplianceType",
+      entityId: applianceTypeId,
+      newValue: { photoUrl: normalized },
+    },
+  });
+
+  return updated;
+}
+
 /** Toggles whether an appliance type appears on the public pricing page. */
 export async function setApplianceVisibility(
   userId: string,
@@ -213,8 +246,121 @@ export async function setApplianceVisibility(
   return updated;
 }
 
+/** All appliance types, active and retired — used by /desk/settings, which
+ * needs to show and manage both. Public-facing code should use
+ * getPublishedApplianceTypes (src/domains/pricing) instead, which filters
+ * to isActive && showOnWebsite. */
 export async function getAllApplianceTypes() {
   return prisma.applianceType.findMany({
     orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
   });
+}
+
+/** Turns an appliance type name into a URL/database-safe slug, e.g.
+ * "Mini Fridge" → "mini-fridge". Exported for testing — see
+ * tests/appliance-types.test.ts. */
+export function slugify(name: string): string {
+  return name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+}
+
+/**
+ * Creates a new appliance category (e.g. "Refrigerator", "Range") as a
+ * data row — per docs/BUSINESS-RULES.md, new appliance categories are
+ * always data, never a code change, so Chris can add one himself from
+ * /desk/settings without waiting on a developer. Starts hidden from the
+ * public site (showOnWebsite: false) so Chris can set a real price
+ * before anyone sees it.
+ */
+export async function createApplianceType(
+  userId: string,
+  input: { name: string; monthlyPriceCents: number },
+) {
+  const name = input.name.trim();
+  if (!name) {
+    throw new Error("Name is required.");
+  }
+  const baseSlug = slugify(name);
+  if (!baseSlug) {
+    throw new Error("Name must contain at least one letter or number.");
+  }
+
+  // Slugs must be unique — if "Washer" already exists, "washer-2" etc.
+  // This only matters if a retired type is later re-added under a name
+  // that collides with its own old slug, or two similarly-named types.
+  let slug = baseSlug;
+  let suffix = 2;
+  while (await prisma.applianceType.findUnique({ where: { slug } })) {
+    slug = `${baseSlug}-${suffix}`;
+    suffix += 1;
+  }
+
+  const existingByName = await prisma.applianceType.findUnique({
+    where: { name },
+  });
+  if (existingByName) {
+    throw new Error(`An appliance type named "${name}" already exists.`);
+  }
+
+  const maxSortOrder = await prisma.applianceType.aggregate({
+    _max: { sortOrder: true },
+  });
+
+  const created = await prisma.applianceType.create({
+    data: {
+      name,
+      slug,
+      monthlyPriceCents: input.monthlyPriceCents,
+      showOnWebsite: false,
+      sortOrder: (maxSortOrder._max.sortOrder ?? 0) + 1,
+    },
+  });
+
+  await prisma.auditLog.create({
+    data: {
+      userId,
+      action: "appliance.create",
+      entityType: "ApplianceType",
+      entityId: created.id,
+      newValue: {
+        name: created.name,
+        monthlyPriceCents: created.monthlyPriceCents,
+      },
+    },
+  });
+
+  return created;
+}
+
+/**
+ * Retires (or restores) an appliance type. Retiring never deletes the
+ * row — existing Leads/PricingRules/Appliances that reference it must
+ * keep working — it just hides it from the public site and from the
+ * "active" list in /desk/settings. Retiring also force-disables
+ * showOnWebsite so a retired type can never keep showing publicly.
+ */
+export async function setApplianceTypeActive(
+  userId: string,
+  applianceTypeId: string,
+  isActive: boolean,
+) {
+  const updated = await prisma.applianceType.update({
+    where: { id: applianceTypeId },
+    data: isActive ? { isActive } : { isActive, showOnWebsite: false },
+  });
+
+  await prisma.auditLog.create({
+    data: {
+      userId,
+      action: isActive ? "appliance.restore" : "appliance.retire",
+      entityType: "ApplianceType",
+      entityId: applianceTypeId,
+      newValue: { isActive },
+    },
+  });
+
+  return updated;
 }

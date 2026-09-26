@@ -7,8 +7,16 @@ import {
   updateBusinessSettings,
   updateAppliancePrice,
   setApplianceVisibility,
+  createApplianceType,
+  setApplianceTypeActive,
+  setAppliancePhotoUrl,
 } from "@/domains/settings";
+import { dollarsToCents } from "@/domains/pricing";
 
+// Fee fields are entered on the form as real dollars (e.g. 45.00) — see
+// settings-form.tsx — and converted to integer cents right here, in the
+// one place that talks to the database, per docs/BUSINESS-RULES.md
+// ("money is stored as integer cents, never floating point").
 const businessSettingsSchema = z.object({
   publicBusinessName: z.string().trim().min(1).max(200),
   publicPhone: z.string().trim().min(1).max(30),
@@ -16,12 +24,13 @@ const businessSettingsSchema = z.object({
   publicAddress: z.string().trim().min(1).max(300),
   serviceAreaCities: z.string().trim(),
   serviceAreaZips: z.string().trim(),
-  oneTimeDeliveryFeeCents: z.coerce.number().int().min(0),
-  oneTimeRemovalFeeCents: z.coerce.number().int().min(0),
+  deliveryFeeDollars: z.coerce.number().min(0).max(100000),
+  installationFeeDollars: z.coerce.number().min(0).max(100000),
+  removalFeeDollars: z.coerce.number().min(0).max(100000),
   damageWaiverEnabled: z.coerce.boolean(),
   depositEnabled: z.coerce.boolean(),
   lateFeeGraceDays: z.coerce.number().int().min(0).max(90),
-  lateFeeFlatCents: z.coerce.number().int().min(0),
+  lateFeeFlatDollars: z.coerce.number().min(0).max(100000),
   lateFeePercent: z.coerce.number().int().min(0).max(100),
   taxRatePermille: z.coerce.number().int().min(0).max(1000),
   taxRateConfirmed: z.coerce.boolean(),
@@ -49,10 +58,22 @@ export async function updateSettingsAction(
     return { status: "error", message: "Please fix the highlighted fields." };
   }
 
-  const { serviceAreaCities, serviceAreaZips, ...rest } = parsed.data;
+  const {
+    serviceAreaCities,
+    serviceAreaZips,
+    deliveryFeeDollars,
+    installationFeeDollars,
+    removalFeeDollars,
+    lateFeeFlatDollars,
+    ...rest
+  } = parsed.data;
 
   await updateBusinessSettings(session.user.id, {
     ...rest,
+    oneTimeDeliveryFeeCents: dollarsToCents(deliveryFeeDollars),
+    oneTimeInstallationFeeCents: dollarsToCents(installationFeeDollars),
+    oneTimeRemovalFeeCents: dollarsToCents(removalFeeDollars),
+    lateFeeFlatCents: dollarsToCents(lateFeeFlatDollars),
     serviceAreaCities: splitList(serviceAreaCities),
     serviceAreaZips: splitList(serviceAreaZips),
   });
@@ -76,7 +97,7 @@ export async function updateAppliancePriceAction(
   await updateAppliancePrice(
     session.user.id,
     applianceTypeId,
-    Math.round(newPriceDollars * 100),
+    dollarsToCents(newPriceDollars),
   );
 
   revalidatePath("/", "layout");
@@ -92,6 +113,90 @@ export async function setApplianceVisibilityAction(
   const session = await requireRole("OWNER", "ADMIN");
 
   await setApplianceVisibility(session.user.id, applianceTypeId, showOnWebsite);
+
+  revalidatePath("/", "layout");
+  revalidatePath("/desk/settings");
+
+  return { status: "success" };
+}
+
+const newApplianceTypeSchema = z.object({
+  name: z.string().trim().min(1, "Enter a name.").max(100),
+  monthlyPriceDollars: z.coerce.number().min(0).max(100000),
+});
+
+export async function createApplianceTypeAction(
+  raw: unknown,
+): Promise<SettingsActionState> {
+  const session = await requireRole("OWNER", "ADMIN");
+
+  const parsed = newApplianceTypeSchema.safeParse(raw);
+  if (!parsed.success) {
+    return {
+      status: "error",
+      message: parsed.error.issues[0]?.message ?? "Please fix the highlighted fields.",
+    };
+  }
+
+  try {
+    await createApplianceType(session.user.id, {
+      name: parsed.data.name,
+      monthlyPriceCents: dollarsToCents(parsed.data.monthlyPriceDollars),
+    });
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Could not create that appliance type.",
+    };
+  }
+
+  revalidatePath("/", "layout");
+  revalidatePath("/desk/settings");
+
+  return { status: "success" };
+}
+
+const photoUrlSchema = z
+  .string()
+  .trim()
+  .max(2000)
+  .refine((v) => v === "" || /^https?:\/\//i.test(v), {
+    message: "Enter a full image URL starting with https://, or leave blank.",
+  });
+
+export async function setAppliancePhotoUrlAction(
+  applianceTypeId: string,
+  rawPhotoUrl: string,
+): Promise<SettingsActionState> {
+  const session = await requireRole("OWNER", "ADMIN");
+
+  const parsed = photoUrlSchema.safeParse(rawPhotoUrl);
+  if (!parsed.success) {
+    return {
+      status: "error",
+      message: parsed.error.issues[0]?.message ?? "Enter a valid image URL.",
+    };
+  }
+
+  await setAppliancePhotoUrl(
+    session.user.id,
+    applianceTypeId,
+    parsed.data === "" ? null : parsed.data,
+  );
+
+  revalidatePath("/", "layout");
+  revalidatePath("/desk/settings");
+
+  return { status: "success" };
+}
+
+export async function setApplianceTypeActiveAction(
+  applianceTypeId: string,
+  isActive: boolean,
+): Promise<SettingsActionState> {
+  const session = await requireRole("OWNER", "ADMIN");
+
+  await setApplianceTypeActive(session.user.id, applianceTypeId, isActive);
 
   revalidatePath("/", "layout");
   revalidatePath("/desk/settings");

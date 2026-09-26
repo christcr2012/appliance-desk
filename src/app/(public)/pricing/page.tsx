@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Container } from "@/components/site/container";
 import { ButtonLink } from "@/components/site/button-link";
-import { ApplianceIcon } from "@/components/site/appliance-icon";
+import { ApplianceMedia } from "@/components/site/appliance-icon";
 import { getBusinessSettings } from "@/domains/settings";
 import { getPublishedApplianceTypes, formatCents } from "@/domains/pricing";
 
@@ -19,19 +19,13 @@ export default async function PricingPage() {
   ]);
 
   const fees = [
-    settings.oneTimeDeliveryFeeCents > 0
-      ? {
-          label: "Delivery & installation",
-          value: formatCents(settings.oneTimeDeliveryFeeCents),
-        }
-      : { label: "Delivery & installation", value: "No charge" },
-    settings.oneTimeRemovalFeeCents > 0
-      ? {
-          label: "Pickup / removal",
-          value: formatCents(settings.oneTimeRemovalFeeCents),
-        }
-      : { label: "Pickup / removal", value: "No charge" },
-  ];
+    { label: "Delivery", cents: settings.oneTimeDeliveryFeeCents },
+    { label: "Installation", cents: settings.oneTimeInstallationFeeCents },
+    { label: "Pickup / removal", cents: settings.oneTimeRemovalFeeCents },
+  ].map((fee) => ({
+    label: fee.label,
+    value: fee.cents > 0 ? formatCents(fee.cents) : "No charge",
+  }));
 
   return (
     <>
@@ -56,15 +50,11 @@ export default async function PricingPage() {
                 key={type.id}
                 className="flex flex-col rounded-2xl bg-surface p-8 shadow-sm ring-1 ring-line"
               >
-                <ApplianceIcon
-                  kind={
-                    type.slug === "washer-dryer-set"
-                      ? "set"
-                      : type.slug === "dryer"
-                        ? "dryer"
-                        : "washer"
-                  }
-                  className="h-16 w-auto text-primary"
+                <ApplianceMedia
+                  photoUrl={type.photoUrl}
+                  name={type.name}
+                  className="h-16 w-auto rounded-lg object-cover"
+                  iconClassName="h-16 w-auto text-primary"
                 />
                 <h2 className="mt-5 font-display text-xl font-semibold text-ink">
                   {type.name}

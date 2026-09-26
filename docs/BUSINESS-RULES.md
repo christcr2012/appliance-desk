@@ -13,8 +13,14 @@ Update this file in the same PR that changes a rule.
   Phase 2):
   - Individual appliance: **$35/month**
   - Washer + dryer set: **$60/month**
-  - Delivery/installation fee, removal/pickup fee: configurable,
-    default **$0** until Chris sets them.
+  - Delivery fee, installation fee, and removal/pickup fee are three
+    separate, independently configurable one-time fees (Chris may
+    charge for any combination of them), each shown as its own line
+    item on `/pricing`. All default to **$0** until Chris sets them.
+    `/desk/settings` accepts and displays these (and the flat late fee)
+    in real dollars and cents — the database still stores integer
+    cents underneath (see "Billing rules" below); the dollar-to-cents
+    conversion happens in the settings server action, not in the form.
   - Refundable security deposit and/or non-refundable damage waiver:
     both supported, each can be turned on/off and priced per appliance
     type.
@@ -30,7 +36,19 @@ Update this file in the same PR that changes a rule.
   `PricingRule`/`AuditLog`, visible in `/desk/activity`.
 - New appliance categories (refrigerators, ranges, dishwashers,
   freezers, ...) are added as **data** (`ApplianceType` rows), never as
-  a code change.
+  a code change — and since Phase 2.1, Chris can add one himself from
+  `/desk/settings` ("Add an appliance type") without a developer. A new
+  type starts hidden from the public site (`showOnWebsite: false`)
+  until he sets a real price and turns it on.
+- An appliance type is never hard-deleted (that would orphan any
+  Lead/PricingRule/Appliance history that references it) — instead
+  it's **retired** (`isActive: false`), which also force-hides it from
+  the public site. A retired type can be restored later.
+- Each appliance type may have a real photo (`ApplianceType.photoUrl`)
+  of a basic/representative model, shown next to the standard "actual
+  appliance may vary" disclaimer. Until a real photo is supplied, the
+  public site falls back to one generic, appliance-agnostic icon —
+  never a guess at which specific appliance it is.
 
 ## Lead scoring (simple, explainable — no AI/ML scoring)
 
