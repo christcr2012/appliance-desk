@@ -175,30 +175,45 @@ Postgres, not just locally, per the Prisma sandbox limitation above).
 - [x] Real appliance photos (Chris-generated, basic/generic models) are
       wired in via a new `ApplianceType.photoUrl` field — also fixes a
       real bug where the icon shown was guessed from the type's slug.
-- [ ] **Not yet merged on purpose** — same rule as always, this is
-      Chris's call.
-- [ ] **Production data needs a one-time backfill after merge**: this
-      PR's migration adds `ApplianceType.photoUrl`/`isActive` and
-      `BusinessSettings.oneTimeInstallationFeeCents`, which
-      `migrate:deploy` will apply to the live database automatically on
-      the next deploy — but the 3 *existing* production
-      `ApplianceType` rows (Washer, Dryer, Set) won't get a `photoUrl`
-      value from that migration alone (it only adds the column; it
-      doesn't backfill existing rows, and `prisma/seed.ts`'s upsert
-      deliberately never overwrites an existing row so it can't
-      silently undo a price Chris set). Once this PR is merged and
-      deployed, run a one-time UPDATE (or ask the next session to) to
-      set `photoUrl` on the 3 existing rows to
-      `/appliances/washer.jpg`, `/appliances/dryer.jpg`,
-      `/appliances/washer-dryer-set.jpg` (same paths `prisma/seed.ts`
-      now uses for a *fresh* database) — otherwise the live site keeps
-      showing the icon fallback until that runs.
+- [x] **Merged to `main`** (commit `1bb84a6`) — CI green on `main`.
+- [x] **Production database migration + photoUrl backfill applied**
+      (2026-09-26, run by Chris directly in Neon's SQL editor — this
+      tool's own attempt to run it was blocked by a production-write
+      safety restriction, same as the DNS edit earlier in the project).
+      Confirmed: `ApplianceType.isActive`/`photoUrl` and
+      `BusinessSettings.oneTimeInstallationFeeCents` now exist in
+      production, and the 3 starter rows have their `photoUrl` set.
+- [ ] **Live site not yet showing the new version as of this writing.**
+      Both `appliance-desk.vercel.app/pricing` and
+      `robinsonappliancerentals.com/pricing` still show the *old*
+      combined "Delivery & installation" line and the old generic-icon
+      disclaimer text — i.e. the code from PR #4 (separate delivery/
+      install fees, real photos) has not gone live yet, even though it's
+      merged to `main` with green CI. This tool couldn't check Vercel's
+      deployment status directly (also blocked). **Next session/Chris:
+      check the Vercel dashboard's Deployments tab for the
+      `appliance-desk` project** — if the latest deploy is still
+      building, just wait; if it failed, the build log will say why; if
+      it succeeded but isn't aliased to production, promote it manually.
+
+## Correction to an earlier (wrong) assumption in this doc
+
+An earlier version of this doc assumed `prisma migrate deploy` runs
+automatically against production as part of Vercel's build. **It does
+not** — `package.json` has no `vercel-build` script, and `postinstall`
+only runs `prisma generate` (client codegen), never `migrate deploy`.
+Every schema migration in this project requires a manual, out-of-band
+step (so far: Chris running the SQL directly in Neon's console). If a
+truly automatic pipeline is wanted later, that's a real piece of work
+(e.g. a GitHub Actions step that runs `migrate deploy` against
+production on merge to `main`, with real safeguards) — not yet built,
+tracked in `docs/ROADMAP.md`.
 
 ## Immediate next step (whoever picks this up next)
 
-1. Confirm PR #4's CI is green (it is) and Vercel preview looks right,
-   then merge, then run the one-time production photoUrl backfill
-   above.
+1. Confirm the new Vercel deployment for commit `1bb84a6` actually went
+   live and is aliased to production (see above — unconfirmed as of
+   this writing).
 2. Create a free Sentry project and add its DSN to Vercel's environment
    variables so error monitoring goes live.
 3. Report back to Chris in plain English (see "How to report" in
