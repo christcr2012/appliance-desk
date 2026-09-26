@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requireSession } from "@/lib/session";
 
 export const metadata = {
@@ -18,8 +19,19 @@ export default async function AccountLayout({
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="border-b bg-white px-6 py-4">
+      <header className="flex items-center justify-between border-b bg-white px-6 py-4">
         <span className="font-semibold">My Account</span>
+        <nav aria-label="My account" className="flex gap-4 text-sm">
+          <Link href="/account" className="text-gray-600 hover:text-gray-900">
+            Overview
+          </Link>
+          <Link href="/account/rentals" className="text-gray-600 hover:text-gray-900">
+            My rentals
+          </Link>
+          <Link href="/account/maintenance" className="text-gray-600 hover:text-gray-900">
+            Maintenance
+          </Link>
+        </nav>
       </header>
       <main id="main-content" className="p-6">
         {children}

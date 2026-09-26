@@ -1,0 +1,46 @@
+import { notFound } from "next/navigation";
+import Link from "next/link";
+import { getMaintenanceRequestById } from "@/domains/maintenance";
+import { MaintenanceDetailPanel } from "./maintenance-detail-panel";
+
+export const metadata = { title: "Maintenance request" };
+
+export default async function MaintenanceDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const request = await getMaintenanceRequestById(id);
+
+  if (!request) {
+    notFound();
+  }
+
+  return (
+    <div className="max-w-2xl">
+      <Link href="/desk/maintenance" className="text-sm text-gray-600 hover:underline">
+        &larr; Back to maintenance requests
+      </Link>
+
+      <h1 className="mt-2 text-xl font-semibold">
+        {request.customer.user.name ?? request.customer.user.email}
+      </h1>
+      <p className="mt-1 text-sm text-gray-600">
+        {request.appliance
+          ? `${request.appliance.applianceType.name} (${request.appliance.assetNumber})`
+          : "General request"}{" "}
+        · Priority: {request.priority} · Submitted{" "}
+        {new Date(request.openedAt).toLocaleString()}
+      </p>
+
+      <div className="mt-4 rounded-lg border border-gray-200 bg-white p-5">
+        <p className="text-sm text-gray-700">{request.problem}</p>
+      </div>
+
+      <div className="mt-6">
+        <MaintenanceDetailPanel request={request} />
+      </div>
+    </div>
+  );
+}

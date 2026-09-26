@@ -91,6 +91,12 @@ export default async function DeskDashboardPage() {
           href="/desk/jobs?status=SCHEDULED"
         />
         <StatCard
+          label="Open maintenance requests"
+          value={stats.openMaintenanceRequestCount}
+          href="/desk/maintenance"
+          tone="warning"
+        />
+        <StatCard
           label="Total appliances"
           value={stats.totalAppliances}
           href="/desk/inventory"

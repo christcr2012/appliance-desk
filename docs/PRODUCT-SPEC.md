@@ -249,9 +249,48 @@ part of the original Phase 1 schema/migration.
       scheduled-jobs count alongside the existing lead/customer/
       appliance numbers.
 
+## Phase 5 — Customer portal, slice 1 (rentals + maintenance requests)
+
+Started 2026-09-26, proactively continuing right after Phase 4 merged.
+Billing/payment history isn't here yet — that needs Stripe (Phase 6) —
+so this slice is everything else the brief calls for: a customer
+signing into `/account` can see their own rentals and file a
+maintenance request. No schema migration needed — `MaintenanceRequest`
+was already part of the Phase 1 schema.
+
+### `/account` (overview, rentals, maintenance)
+
+- [x] Overview: active-rental count, upcoming-visit count, open-
+      maintenance-request count, and a summary of active rentals.
+- [x] `/account/rentals`: every rental agreement (address, term, line
+      items, monthly total, deposit) and delivery/visit history.
+- [x] `/account/maintenance`: submit a new request (which appliance,
+      problem description, urgency) and see the status of past ones.
+- **Security-critical, per `docs/BUSINESS-RULES.md`**: every portal
+      query is scoped by the signed-in user's own id, never by anything
+      the client supplies — including which appliance a maintenance
+      request can be filed against (`getPortalApplianceOptions`
+      verifies the appliance is actually assigned to this customer's
+      own active agreement before accepting a request naming it).
+
+### `/desk/maintenance` (Chris's side)
+
+- [x] Browse/filter requests by status, see the full problem
+      description, which appliance and customer, and priority.
+- [x] Move a request through submitted → reviewing → scheduled → in
+      progress → resolved, or close it out from any non-terminal
+      status — enforced server-side.
+- [x] A link to schedule a `Job` for the visit this implies (not
+      auto-linked to the `MaintenanceRequest` yet — see
+      `docs/ROADMAP.md`).
+- [x] Dashboard: added an open-maintenance-requests count.
+- **Acceptance:** `tests/maintenance.test.ts` proves the status-
+      transition rule (linear happy path, closable from any non-
+      terminal status, no skipping steps, closed is terminal).
+
 ## Later phases
 
-Feature lists for Phases 5–7 will be filled in here as each phase
+Feature lists for Phases 6–7 will be filled in here as each phase
 starts, following the phase plan and scope in `AGENTS.md`/
 `docs/HANDOFF.md` — kept short until then rather than speculatively
 detailed now.

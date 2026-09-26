@@ -45,6 +45,8 @@ export function describeAuditAction(action: string): string {
     "job.create": "Scheduled a job",
     "job.status": "Changed a job's status",
     "job.photo.add": "Added a condition photo to a job",
+    "maintenance.request.create": "A customer submitted a maintenance request",
+    "maintenance.status": "Changed a maintenance request's status",
   };
   return labels[action] ?? action;
 }

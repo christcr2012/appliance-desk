@@ -341,20 +341,64 @@ Full detail in `docs/PRODUCT-SPEC.md`'s new Phase 4 section.
       standalone script, same workaround as every other phase (local
       test execution still can't import `@/lib/prisma`; real CI is the
       actual gate).
+- [x] **Merged and confirmed live 2026-09-26** — PR #13, after fixing a
+      real production-build bug it surfaced (see below).
+- [x] **Real bug found via Chris's own build log, fixed same PR**: the
+      agreement detail panel (a client component) imported `formatCents`
+      from `@/domains/pricing`, whose module also does a top-level
+      `import { prisma } from "@/lib/prisma"` — that pulled the whole
+      Prisma/`pg` driver setup into the *browser* bundle and broke the
+      Vercel build ("Module not found: Can't resolve 'util/types'").
+      Fixed by splitting `dollarsToCents`/`formatCents` into a new
+      `@/domains/pricing/money` module with zero database import
+      (mirrors the existing `@/domains/leads/schema` split, which
+      exists for exactly this reason) — **any future client component
+      needing money formatting must import from `@/domains/pricing/money`,
+      never `@/domains/pricing`.** This class of bug (a database-
+      importing module quietly reachable from a "use client" file) is
+      worth checking for early in any future phase that adds new client
+      components: `grep -rl '"use client"' src/app src/components |
+      xargs grep -n "^import.*@/domains\|^import.*@/lib/prisma"` should
+      only ever match files importing a dedicated client-safe module.
+- [x] Separately fixed (PR #12, merged): the mobile hamburger menu
+      didn't close on an outside tap or on scroll — only Escape and
+      route changes closed it.
+
+## Phase 5 — Customer portal, slice 1 (rentals + maintenance requests)
+
+Started 2026-09-26, continuing proactively right after Phase 4 merged
+— Chris said to keep building/improving without checking in after every
+slice. No schema migration needed — `MaintenanceRequest` was already
+part of the Phase 1 schema. Full detail in `docs/PRODUCT-SPEC.md`'s new
+Phase 5 section.
+
+- [x] `/account` overview, `/account/rentals`, `/account/maintenance`
+      (submit + track requests) — every query scoped strictly by the
+      signed-in user's own id, never a client-supplied one (see
+      `src/domains/portal/index.ts`'s doc comment and
+      `docs/BUSINESS-RULES.md`'s customer-data-isolation rule).
+- [x] `/desk/maintenance` — Chris's side: browse/filter, see the full
+      request, move it through the documented status flow.
+- [x] Dashboard: added an open-maintenance-requests count.
+- [x] New tests (`tests/maintenance.test.ts`) for the status-transition
+      rule — manually verified against a standalone script, same
+      workaround as every other phase.
 - [ ] **Not yet merged on purpose** — same rule as always.
-- [ ] **Queued by Chris, separate PR, not bundled here**: turn the
-      public site's mobile nav into a hamburger menu — he doesn't like
-      how it currently looks/behaves on small screens. See
-      `docs/ROADMAP.md`.
+- [ ] **Deliberately left for later** (see `docs/ROADMAP.md`): linking a
+      `Job` back to the `MaintenanceRequest` it fulfills (so "schedule a
+      job for this" pre-fills instead of starting blank), letting a
+      customer attach a photo when they submit a request, and notifying
+      Chris by email/SMS when one comes in.
 
 ## Immediate next step (whoever picks this up next)
 
-Phase 4's core slice (agreements + e-signature + jobs) is built,
-lint/typecheck-clean locally (modulo the documented Prisma sandbox
-limitation), and ready for a PR + CI check + Chris's review. **No
-migration needed for this one** — every table it uses already existed
-in production from Phase 1. After it's merged and verified live, pick
-up the queued mobile-hamburger-menu request as its own small PR, then
-continue building out Phase 4 (invoices/billing groundwork, or start
-Phase 5's customer portal) unless Chris redirects — he's asked to keep
-building proactively rather than checking in after every slice.
+Phase 5 slice 1 (customer portal: rentals + maintenance requests) is
+built, lint-clean locally, and ready for a PR + CI check + Chris's
+review. **No migration needed for this one either.** Before trusting
+green CI, remember the client-bundle gotcha above — double check no new
+"use client" file imports a database-touching domain module directly.
+After this is merged and verified live, natural next steps: the
+maintenance→job linking and photo-attachment items just above, starting
+Phase 6 (Stripe billing, test mode only), or rounding out anything else
+Phase 5 didn't cover yet — unless Chris redirects, since he's asked to
+keep building proactively rather than checking in after every slice.
