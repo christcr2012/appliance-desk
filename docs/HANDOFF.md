@@ -118,10 +118,25 @@ rule properly, see the Phase 1 deviation note below).
    This was practical while getting the very first commit and CI
    pipeline working at all (nothing existed to open a PR against yet).
    Phase 2 is the first phase to follow the branch/PR rule as written.
-6. **Email notifications are unverified against a real inbox** — Resend
-   is wired and guarded (logs instead of sending without a real API
-   key), but no `RESEND_API_KEY` has been created/set yet, so no actual
-   email has been sent or received. Verify once that key exists.
+6. **Email notifications: wired up, but not yet confirmed arriving in
+   a real inbox.** Chris connected his Resend account. A sending-only
+   API key was created (`appliance-desk-production`) and set as a
+   production environment variable in Vercel, along with
+   `LEAD_NOTIFICATION_EMAIL=ops@robinsonaisystems.com` (a stand-in
+   address — swap for Chris's real preferred inbox in Vercel's project
+   settings whenever he wants). A fresh production deployment was
+   triggered so the site actually picked up these values, and it's
+   confirmed live: `appliance-desk.vercel.app` is aliased to deployment
+   `dpl_GTzH8bd6SM2qUcRm1hqr3VUNZKnL`, which is `READY`. **What's still
+   unverified:** no account on the Resend side has a verified sending
+   domain yet, so mail currently goes out from the shared
+   `onboarding@resend.dev` address — Resend's sandbox rules may restrict
+   that address to only delivering to the Resend account's own login
+   email until a custom domain (e.g. `robinsonaisystems.com`) is added
+   and verified in Resend. **Next step: have Chris submit a real quote
+   request on the live `/contact` page and confirm the notification
+   email actually arrives.** If it doesn't, the fix is adding/verifying
+   a domain in Resend, not more code changes.
 
 ## Launch checklist — things only Chris can do (repeated from the brief)
 
@@ -138,9 +153,11 @@ rule properly, see the Phase 1 deviation note below).
 - Set up Google Business Profile.
 - Supply real business details (name, phone, address, service area,
   hours) in `/desk/settings`, and real appliance/job photos.
-- Create a Resend account and add `RESEND_API_KEY` (and optionally
-  `LEAD_NOTIFICATION_EMAIL`) to Vercel so lead-notification emails
-  actually send.
+- ~~Create a Resend account and add `RESEND_API_KEY`~~ — done. If lead
+  emails don't show up when tested, verify a real sending domain
+  (e.g. `robinsonaisystems.com`) in the Resend dashboard — the shared
+  sandbox address Resend gives new accounts is limited in who it can
+  send to.
 
 ## Immediate next step (whoever picks this up next)
 
