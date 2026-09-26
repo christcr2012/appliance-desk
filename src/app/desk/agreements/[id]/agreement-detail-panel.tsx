@@ -10,7 +10,7 @@ import {
   endAgreementAction,
   cancelAgreementAction,
 } from "../actions";
-import { formatCents } from "@/domains/pricing";
+import { formatCents } from "@/domains/pricing/money";
 import type { RentalAgreementStatus } from "@prisma/client";
 
 type ApplianceOption = { id: string; assetNumber: string; typeName: string };
