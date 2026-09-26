@@ -1,28 +1,77 @@
 /**
- * One-time setup script: creates Chris's OWNER account.
+ * One-time-ish setup script, in two independent parts:
  *
- * This does NOT run automatically on deploy (see docs/HANDOFF.md for why —
- * short version: it needs OWNER_EMAIL/OWNER_PASSWORD secrets set once, then
- * should not run again). Run it by hand, once, after the app is deployed
- * and the database is reachable:
+ * 1. Business content (BusinessSettings singleton + starter
+ *    ApplianceType rows) — always runs, needs no secrets, and is safe to
+ *    run any number of times (every write is an idempotent upsert). This
+ *    is what gives the public site real data to render instead of an
+ *    empty pricing page, and is why CI runs `npm run db:seed` against
+ *    its throwaway database before the accessibility tests.
+ * 2. Chris's OWNER account — only runs if OWNER_EMAIL and OWNER_PASSWORD
+ *    are set. Safe to re-run: if that email already exists, it's left
+ *    untouched (and merely promoted to OWNER if it wasn't already).
  *
  *   OWNER_EMAIL=you@example.com OWNER_PASSWORD='a-strong-password' npm run db:seed
- *
- * It is safe to re-run — if the OWNER_EMAIL account already exists, it's
- * left untouched (and merely promoted to OWNER if it wasn't already).
  */
 import { auth } from "../src/lib/auth";
 import { prisma } from "../src/lib/prisma";
 
-async function main() {
+// Starting catalog: Chris is launching with washers and dryers only, with
+// more appliance categories (refrigerators, ranges, dishwashers, ...)
+// planned later — see docs/ROADMAP.md. Adding those later is purely a
+// data change (new rows here or in /desk/settings), never a code change,
+// per docs/BUSINESS-RULES.md. Prices match the defaults documented there.
+const STARTER_APPLIANCE_TYPES = [
+  {
+    name: "Washer + Dryer Set",
+    slug: "washer-dryer-set",
+    monthlyPriceCents: 6000,
+    sortOrder: 0,
+  },
+  {
+    name: "Washer",
+    slug: "washer",
+    monthlyPriceCents: 3500,
+    sortOrder: 1,
+  },
+  {
+    name: "Dryer",
+    slug: "dryer",
+    monthlyPriceCents: 3500,
+    sortOrder: 2,
+  },
+];
+
+async function seedBusinessContent() {
+  await prisma.businessSettings.upsert({
+    where: { id: "singleton" },
+    update: {},
+    create: { id: "singleton" },
+  });
+
+  for (const applianceType of STARTER_APPLIANCE_TYPES) {
+    await prisma.applianceType.upsert({
+      where: { slug: applianceType.slug },
+      update: {},
+      create: { ...applianceType, showOnWebsite: true },
+    });
+  }
+
+  console.log(
+    "Business content ready: BusinessSettings singleton + starter appliance types.",
+  );
+}
+
+async function seedOwnerAccount() {
   const email = process.env.OWNER_EMAIL;
   const password = process.env.OWNER_PASSWORD;
   const name = process.env.OWNER_NAME ?? "Chris Robinson";
 
   if (!email || !password) {
-    throw new Error(
-      "Set OWNER_EMAIL and OWNER_PASSWORD environment variables before running this script.",
+    console.log(
+      "OWNER_EMAIL/OWNER_PASSWORD not set — skipping owner account setup (business content still seeded).",
     );
+    return;
   }
 
   const existing = await prisma.user.findUnique({ where: { email } });
@@ -46,6 +95,11 @@ async function main() {
   });
 
   console.log(`Created OWNER account for ${email}.`);
+}
+
+async function main() {
+  await seedBusinessContent();
+  await seedOwnerAccount();
 }
 
 main()
