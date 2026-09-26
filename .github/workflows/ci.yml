@@ -55,7 +55,9 @@ jobs:
           code=$?
           cat /tmp/seed-output.log
           if [ $code -ne 0 ]; then
-            echo "::error::Seed failed, output above"
+            while IFS= read -r line; do
+              echo "::error::$line"
+            done < /tmp/seed-output.log
           fi
           exit $code
 
