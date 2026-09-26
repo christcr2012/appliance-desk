@@ -59,7 +59,22 @@ jobs:
         run: npm test
 
       - name: Build
-        run: npm run build
+        id: build
+        run: |
+          npm run build > /tmp/build-output.log 2>&1
+          exit $?
+        continue-on-error: true
+
+      - name: Show build failure details (temporary diagnostic)
+        if: steps.build.outcome == 'failure'
+        run: |
+          RELEVANT=$(tail -n 120 /tmp/build-output.log | tr '\n' ' | ' | tr -d '\r')
+          echo "::error title=build failed (1/5)::${RELEVANT:0:900}"
+          echo "::error title=build failed (2/5)::${RELEVANT:900:900}"
+          echo "::error title=build failed (3/5)::${RELEVANT:1800:900}"
+          echo "::error title=build failed (4/5)::${RELEVANT:2700:900}"
+          echo "::error title=build failed (5/5)::${RELEVANT:3600:900}"
+          exit 1
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
