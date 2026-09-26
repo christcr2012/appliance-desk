@@ -56,7 +56,7 @@ jobs:
           echo "::group::npm debug log (full)"
           cat "$LOGFILE" || true
           echo "::endgroup::"
-          RELEVANT=$(grep -i -E "binaries\.prisma|forbidden|403|checksum|enotfound|econnrefused|npm error" "$LOGFILE" | tail -c 1800 | tr '\n' ' ' | tr -d '\r')
+          RELEVANT=$(grep -i -E "binaries\.prisma\.sh|PRISMA_ENGINES|Failed to fetch|npm error (code|path|command|errno)" "$LOGFILE" | tail -c 1800 | tr '\n' ' ' | tr -d '\r')
           echo "::error title=npm ci failed::${RELEVANT:0:900}"
           echo "::error title=npm ci failed (part 2)::${RELEVANT:900:900}"
           exit 1
