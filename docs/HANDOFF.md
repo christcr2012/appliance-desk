@@ -296,17 +296,65 @@ existed in `prisma/schema.prisma`, so this is pure application code.
       needed (parts were already one row per model number). Also fixed
       a real mobile bug Chris reported: the homepage hero's two
       appliance photos had a fixed width that didn't shrink on narrow
-      phone screens, so they got clipped off the right edge — now
-      responsive.
+      phone screens, so they got clipped off the right edge. A first
+      attempt made the two photos responsive instead — **that didn't
+      actually fix it** — so it was replaced (PR #11, merged) with the
+      single washer/dryer/range/refrigerator photo Chris had made and
+      supplied, which has no two-photo layout to clip in the first
+      place.
+- [x] **Phase 3 is complete** — merged and confirmed live 2026-09-26
+      (PRs #9, #10, #11).
+
+## Phase 4 — Rental agreements, e-signature, job scheduling
+
+Started 2026-09-26 proactively, per Chris: "continue building... find
+ways to optimize, improve, and even build upon the original plan as you
+go." No schema migration needed — every model this uses
+(`RentalAgreement`, `RentalLine`, `ApplianceAssignment`,
+`SignatureRecord`, `Job`, `JobAppliance`, `Photo`) was already part of
+the original Phase 1 schema/migration; this is pure application code.
+Full detail in `docs/PRODUCT-SPEC.md`'s new Phase 4 section.
+
+- [x] `/desk/customers` — browse converted customers, see their
+      addresses/agreements/jobs.
+- [x] `/desk/agreements` — draft an agreement, assign specific physical
+      appliances to it (reserving them), send it for signature.
+- [x] `/sign/[id]` — a public, unguessable, no-login signing page. The
+      customer types their name, checks a box, and submits; recorded
+      with a timestamp + IP address. **Deliberately an in-house
+      typed-signature capture, not a paid e-signature provider** — see
+      `docs/DECISIONS.md`'s new entry on why that's a cost decision left
+      for Chris, not made unasked. Signing moves the agreement ACTIVE
+      and its appliances RESERVED → RENTED.
+- [x] Ending/cancelling an agreement frees its appliances back to
+      AVAILABLE.
+- [x] `/desk/jobs` — schedule delivery/install/swap/removal/maintenance
+      visits, optionally tied to an agreement (pre-filling its
+      appliances); move through scheduled → in progress → completed
+      (with notes) or cancelled; attach condition photos by pasted URL
+      (no file-upload/blob-storage decision made yet — see
+      `docs/ROADMAP.md`).
+- [x] Dashboard: added draft/awaiting-signature/active agreement counts
+      and a scheduled-jobs count.
+- [x] New tests (`tests/agreements.test.ts`, `tests/jobs.test.ts`) for
+      both status-transition rules — manually verified against a
+      standalone script, same workaround as every other phase (local
+      test execution still can't import `@/lib/prisma`; real CI is the
+      actual gate).
+- [ ] **Not yet merged on purpose** — same rule as always.
+- [ ] **Queued by Chris, separate PR, not bundled here**: turn the
+      public site's mobile nav into a hamburger menu — he doesn't like
+      how it currently looks/behaves on small screens. See
+      `docs/ROADMAP.md`.
 
 ## Immediate next step (whoever picks this up next)
 
-Phase 3's inventory-management slice (base + color/features/parts) is
-built, lint/typecheck-clean locally (modulo the documented Prisma
-sandbox limitation), and ready for a PR + CI check + Chris's review,
-same as every prior phase. **Tell Chris up front that this PR's
-migration needs to run in Neon before or right alongside the merge/
-deploy** — don't wait for a broken build to discover it this time.
-After that's merged and verified live, Phase 3 is complete; Phase 4
-(rental agreements, e-signature, job scheduling) is the natural next
-phase unless Chris redirects.
+Phase 4's core slice (agreements + e-signature + jobs) is built,
+lint/typecheck-clean locally (modulo the documented Prisma sandbox
+limitation), and ready for a PR + CI check + Chris's review. **No
+migration needed for this one** — every table it uses already existed
+in production from Phase 1. After it's merged and verified live, pick
+up the queued mobile-hamburger-menu request as its own small PR, then
+continue building out Phase 4 (invoices/billing groundwork, or start
+Phase 5's customer portal) unless Chris redirects — he's asked to keep
+building proactively rather than checking in after every slice.

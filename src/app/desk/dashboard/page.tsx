@@ -70,6 +70,27 @@ export default async function DeskDashboardPage() {
         />
         <StatCard label="Total customers" value={stats.totalCustomers} />
         <StatCard
+          label="Draft agreements"
+          value={stats.draftAgreementCount}
+          href="/desk/agreements?status=DRAFT"
+        />
+        <StatCard
+          label="Awaiting signature"
+          value={stats.awaitingSignatureCount}
+          href="/desk/agreements?status=AWAITING_SIGNATURE"
+          tone="warning"
+        />
+        <StatCard
+          label="Active agreements"
+          value={stats.activeAgreementCount}
+          href="/desk/agreements?status=ACTIVE"
+        />
+        <StatCard
+          label="Jobs scheduled"
+          value={stats.upcomingJobCount}
+          href="/desk/jobs?status=SCHEDULED"
+        />
+        <StatCard
           label="Total appliances"
           value={stats.totalAppliances}
           href="/desk/inventory"

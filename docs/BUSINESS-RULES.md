@@ -74,16 +74,36 @@ Default ranking, **lowest to highest** value:
 1. Customer submits an inquiry → becomes a `Lead`.
 2. Chris reviews it and contacts the customer.
 3. Chris converts the lead into a `Customer` (one click carries the
-   lead's info over — built in Phase 3) `+ RentalAgreement` (that part
-   is Phase 4, once e-signature exists — converting a lead today
-   creates the `Customer` and its login account, not yet an agreement).
-   Converting requires the lead to have an email address, since a
-   customer account needs one to sign in; a brand-new account gets a
-   one-time random password shown once to Chris in the desk UI (there's
-   no self-serve "set your own password" flow yet — see
-   `docs/ROADMAP.md`).
-4. Customer signs the agreement electronically.
-5. Chris manually schedules the delivery/installation `Job`.
+   lead's info over — built in Phase 3). Converting requires the lead
+   to have an email address, since a customer account needs one to
+   sign in; a brand-new account gets a one-time random password shown
+   once to Chris in the desk UI (there's no self-serve "set your own
+   password" flow yet — see `docs/ROADMAP.md`).
+4. From that customer's page, Chris starts a **draft** `RentalAgreement`
+   — picks the service address, terms (deposit, damage waiver, late
+   fee, tax rate), and assigns the specific physical `Appliance` unit(s)
+   it covers (a washer/dryer set is two units on one line). Adding a
+   unit to a draft agreement reserves it (`AVAILABLE` → `RESERVED`) so
+   two agreements can never double-book the same physical unit.
+5. When the draft is ready, Chris sends it for signature. The customer
+   gets a private link (no login needed — the customer portal doesn't
+   exist yet, Phase 5) where they review the terms and sign
+   electronically: typed full legal name + a checkbox + submit, which
+   is logged with a timestamp and the signer's IP address
+   (`SignatureRecord`, `provider: "typed_signature"`). **This is
+   deliberately not a paid e-signature service** (SignWell, DocuSign,
+   etc.) — that's a real future upgrade if Chris wants a fuller
+   signing/audit experience, but it's a cost decision for him to make,
+   not one to make unasked (see `docs/ROADMAP.md`, `docs/DECISIONS.md`).
+6. Signing moves the agreement to `ACTIVE` and its assigned appliances
+   from `RESERVED` to `RENTED`.
+7. Chris manually schedules the delivery/installation `Job` (and later,
+   swaps, removals, or maintenance visits) from the agreement, and can
+   log condition photos (pasted URLs for now — no file-upload/blob
+   storage decision has been made yet, see `docs/ROADMAP.md`) and mark
+   it in-progress/completed.
+8. Ending or cancelling an agreement frees its appliances back to
+   `AVAILABLE`.
 
 Customers **cannot** reserve inventory, pick installation slots, or
 finalize an order themselves at launch — that's an intentional later

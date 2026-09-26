@@ -35,6 +35,16 @@ export function describeAuditAction(action: string): string {
     "appliance.unit.update": "Updated an appliance's details",
     "part.create": "Logged a part number for a model",
     "part.delete": "Removed a logged part number",
+    "agreement.create": "Started a new rental agreement",
+    "agreement.line.add": "Added an appliance to a rental agreement",
+    "agreement.line.remove": "Removed an appliance from a rental agreement",
+    "agreement.send_for_signature": "Sent a rental agreement for signature",
+    "agreement.sign": "A customer signed their rental agreement",
+    "agreement.end": "Ended a rental agreement",
+    "agreement.cancel": "Cancelled a rental agreement",
+    "job.create": "Scheduled a job",
+    "job.status": "Changed a job's status",
+    "job.photo.add": "Added a condition photo to a job",
   };
   return labels[action] ?? action;
 }

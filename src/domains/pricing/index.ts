@@ -1,27 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import { cache } from "react";
 
-/**
- * Dollars (as a human types them, e.g. 45 or 45.5) → integer cents.
- * The one place this conversion happens for /desk/settings' fee and
- * appliance-price forms, which are entered in dollars for a human but
- * always stored as integer cents — see docs/BUSINESS-RULES.md ("money
- * is stored as integer cents, never floating point").
- */
-export function dollarsToCents(dollars: number): number {
-  return Math.round(dollars * 100);
-}
-
-/** Cents → "$35" / "$34.50". Money is always integer cents — see docs/BUSINESS-RULES.md. */
-export function formatCents(cents: number): string {
-  const dollars = cents / 100;
-  return dollars.toLocaleString("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: dollars % 1 === 0 ? 0 : 2,
-    maximumFractionDigits: 2,
-  });
-}
+// dollarsToCents/formatCents live in ./money (no database import) so
+// client components can import them without pulling @/lib/prisma (and
+// the `pg` driver underneath it) into the browser bundle — see that
+// file's comment. Re-exported here so every existing SERVER-side import
+// of these from "@/domains/pricing" keeps working unchanged.
+export { dollarsToCents, formatCents } from "./money";
 
 /**
  * Every published appliance type shown on the public site, ordered the

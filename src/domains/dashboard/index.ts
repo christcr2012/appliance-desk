@@ -15,6 +15,10 @@ export async function getDashboardStats() {
     convertedLeadCount,
     applianceStatusCounts,
     totalCustomers,
+    draftAgreementCount,
+    awaitingSignatureCount,
+    activeAgreementCount,
+    upcomingJobCount,
   ] = await Promise.all([
     prisma.lead.count({ where: { status: "NEW" } }),
     prisma.lead.count({ where: { status: "NEW", isHighValue: true } }),
@@ -22,6 +26,10 @@ export async function getDashboardStats() {
     prisma.lead.count({ where: { status: "CONVERTED" } }),
     getApplianceCountsByStatus(),
     prisma.customer.count(),
+    prisma.rentalAgreement.count({ where: { status: "DRAFT" } }),
+    prisma.rentalAgreement.count({ where: { status: "AWAITING_SIGNATURE" } }),
+    prisma.rentalAgreement.count({ where: { status: "ACTIVE" } }),
+    prisma.job.count({ where: { status: "SCHEDULED" } }),
   ]);
 
   return {
@@ -35,5 +43,9 @@ export async function getDashboardStats() {
       0,
     ),
     totalCustomers,
+    draftAgreementCount,
+    awaitingSignatureCount,
+    activeAgreementCount,
+    upcomingJobCount,
   };
 }
