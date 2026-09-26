@@ -180,10 +180,18 @@ const newPartRecordSchema = z.object({
   partNumber: z.string().trim().min(1, "Enter the part number.").max(200),
   partName: z.string().trim().max(200).optional().or(z.literal("")),
   notes: z.string().trim().max(2000).optional().or(z.literal("")),
+  // Comma-separated other model numbers this same part also fits, e.g. a
+  // dryer part known to work across several similar models. Each one gets
+  // its own PartRecord row (parts are looked up by model number — see
+  // getPartRecordsForModel in src/domains/inventory), so it shows up
+  // whichever of those models Chris looks at later.
+  compatibleModelNumbers: z.string().trim().max(2000).optional().or(z.literal("")),
 });
 
-/** Logs a part number against a model number, for reuse on any future unit
- * of that model — see docs/BUSINESS-RULES.md and src/domains/inventory. */
+/** Logs a part number against a model number — and, when Chris knows it
+ * also fits other models, against each of those too — for reuse on any
+ * future unit of any of those models. See docs/BUSINESS-RULES.md and
+ * src/domains/inventory. */
 export async function createPartRecordAction(
   raw: Record<string, unknown>,
 ): Promise<InventoryActionState> {
@@ -199,14 +207,28 @@ export async function createPartRecordAction(
 
   const data = parsed.data;
 
-  await createPartRecord(session.user.id, {
-    modelNumber: data.modelNumber,
-    manufacturer: data.manufacturer || null,
-    applianceTypeId: data.applianceTypeId || null,
-    partNumber: data.partNumber,
-    partName: data.partName || null,
-    notes: data.notes || null,
-  });
+  // De-dupe case-insensitively (e.g. "WFW5620HW0" typed again in the
+  // compatible-models box) while keeping the first-typed casing.
+  const seen = new Set<string>();
+  const modelNumbers: string[] = [];
+  for (const m of [data.modelNumber, ...splitList(data.compatibleModelNumbers ?? "")]) {
+    const key = m.toLowerCase();
+    if (!seen.has(key)) {
+      seen.add(key);
+      modelNumbers.push(m);
+    }
+  }
+
+  for (const modelNumber of modelNumbers) {
+    await createPartRecord(session.user.id, {
+      modelNumber,
+      manufacturer: data.manufacturer || null,
+      applianceTypeId: data.applianceTypeId || null,
+      partNumber: data.partNumber,
+      partName: data.partName || null,
+      notes: data.notes || null,
+    });
+  }
 
   revalidatePath("/desk/inventory");
   revalidatePath("/desk/parts");

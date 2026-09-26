@@ -45,21 +45,21 @@ export default async function HomePage() {
           </div>
 
           <div className="relative flex justify-center">
-            <div className="flex items-center gap-6 rounded-3xl bg-surface p-10 shadow-xl shadow-ink/5 ring-1 ring-line">
+            <div className="flex w-full max-w-full items-center justify-center gap-3 rounded-3xl bg-surface p-4 shadow-xl shadow-ink/5 ring-1 ring-line sm:gap-6 sm:p-10">
               {heroTypes.length > 0 ? (
                 heroTypes.map((type) => (
                   <ApplianceMedia
                     key={type.id}
                     photoUrl={type.photoUrl}
                     name={type.name}
-                    className="h-40 w-56 rounded-xl object-cover"
-                    iconClassName="h-40 w-auto text-primary"
+                    className="h-28 w-1/2 max-w-[14rem] rounded-xl object-cover sm:h-40 sm:w-56"
+                    iconClassName="h-28 w-auto text-primary sm:h-40"
                   />
                 ))
               ) : (
                 <>
-                  <ApplianceIcon className="h-40 w-auto text-primary" />
-                  <ApplianceIcon className="h-40 w-auto text-accent" />
+                  <ApplianceIcon className="h-28 w-auto text-primary sm:h-40" />
+                  <ApplianceIcon className="h-28 w-auto text-accent sm:h-40" />
                 </>
               )}
             </div>

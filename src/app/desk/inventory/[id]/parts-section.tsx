@@ -17,6 +17,7 @@ const EMPTY_FIELDS = {
   partNumber: "",
   partName: "",
   notes: "",
+  compatibleModelNumbers: "",
 };
 
 /**
@@ -70,6 +71,7 @@ export function PartsSection({
         partNumber: fields.partNumber,
         partName: fields.partName,
         notes: fields.notes,
+        compatibleModelNumbers: fields.compatibleModelNumbers,
       });
 
       if (result.status === "error") {
@@ -167,6 +169,28 @@ export function PartsSection({
             onChange={(e) => update("notes", e.target.value)}
             className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
           />
+        </div>
+
+        <div>
+          <label
+            htmlFor="compatibleModelNumbers"
+            className="block text-sm font-medium text-gray-700"
+          >
+            Also fits these model numbers (optional)
+          </label>
+          <input
+            id="compatibleModelNumbers"
+            type="text"
+            placeholder="e.g. WFW5620HW1, WFW5605MW0"
+            value={fields.compatibleModelNumbers}
+            onChange={(e) => update("compatibleModelNumbers", e.target.value)}
+            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+          />
+          <p className="mt-1 text-xs text-gray-500">
+            If you know this same part works on other models too, list them
+            here (comma-separated) — it&apos;ll show up when you look up
+            parts for those models later, too.
+          </p>
         </div>
 
         <button

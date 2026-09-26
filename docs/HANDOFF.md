@@ -287,6 +287,17 @@ existed in `prisma/schema.prisma`, so this is pure application code.
         verified against a standalone script, same workaround as every
         other phase (local test execution still can't import
         `@/lib/prisma`; real CI is the actual gate).
+      - **Merged and confirmed live 2026-09-26** — Chris ran the
+        migration SQL in Neon and merged; PR #9.
+- [x] **Small follow-up, same day**: when logging a part, Chris can
+      also list other model numbers the same part is known to fit
+      (comma-separated) — each becomes its own row for that part, so it
+      shows up for any of those models later too. No schema change
+      needed (parts were already one row per model number). Also fixed
+      a real mobile bug Chris reported: the homepage hero's two
+      appliance photos had a fixed width that didn't shrink on narrow
+      phone screens, so they got clipped off the right edge — now
+      responsive.
 
 ## Immediate next step (whoever picks this up next)
 

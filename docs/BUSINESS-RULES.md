@@ -116,7 +116,11 @@ physical unit — once Chris looks up a part number for a given model, it
 stays available for every future unit of that same model, not just the
 one he was repairing when he found it. See `/desk/parts` (browse
 everything logged) and the "Parts for this model" section on an
-appliance's own detail page (add a new one).
+appliance's own detail page (add a new one). When the same part is
+known to also fit other model numbers, Chris can list those at the same
+time he logs it — each additional model number gets its own row for
+that same part, so it shows up when he looks up parts for any of those
+models later too, not just the one he started from.
 
 ## Maintenance status flow
 
