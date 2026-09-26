@@ -428,26 +428,22 @@ a maintenance request used to open a blank `/desk/jobs/new` form.
       machine doesn't allow jumping straight from `submitted` to
       `scheduled`, so auto-transitioning risked silently breaking that
       rule; Chris still moves the request through its own flow by hand.
-- [ ] **NEEDS A SCHEMA MIGRATION — same warning as every time this
-      comes up.** `prisma/migrations/20260926210000_job_maintenance_request_link`
-      adds one nullable column (`Job.maintenanceRequestId`) plus its
-      index and foreign key — additive only, no backfill, existing rows
-      unaffected. **Chris needs to run this migration's SQL directly in
-      Neon's console before or immediately alongside merging/deploying
-      this** — see "Correction to an earlier (wrong) assumption" above:
-      Vercel's build does not run `prisma migrate deploy` automatically,
-      and skipping this step is exactly what broke PR #4's first
-      production deploy.
-- [ ] **Not yet merged on purpose** — same rule as always.
+- [x] Migration run by Chris in Neon; **merged and confirmed live** —
+      PR #16 merged 2026-09-26.
+
+**Phase 5 is now complete** (customer portal: rentals view, maintenance
+requests with email notification and job-linking). Only intentionally
+deferred item left: letting a customer attach a photo when they submit
+a request (see `docs/ROADMAP.md`).
 
 ## Immediate next step (whoever picks this up next)
 
-Phase 5 slice 3 (maintenance→job linking) is built and lint-clean,
-ready for a PR + CI check + Chris's review. **This one needs the
-migration SQL run in Neon** (see just above) before or alongside
-merging — don't let it repeat the PR #4 incident. After it's merged and
-verified live, natural next steps: the photo-attachment item still
-open above, starting Phase 6 (Stripe billing, test mode only), or
-rounding out anything else Phase 5 didn't cover — unless Chris
-redirects, since he's asked to keep building proactively rather than
-checking in after every slice.
+Phase 5 is done and live. Phase 6 (Stripe billing, test mode only) is
+next on the phase plan, but it's a real boundary — real financial
+infrastructure decisions (billing cadence, whether the security deposit
+runs through Stripe or stays the manual process it is today, ACH vs.
+card, invoice timing) that are Chris's to make, plus he'll need to
+create a Stripe account and hand over test-mode API keys (same
+`.env`-driven pattern as `RESEND_API_KEY`). Per `AGENTS.md`'s workflow,
+this is the point to stop and check in with Chris before building,
+rather than guessing at a billing design he hasn't approved.
