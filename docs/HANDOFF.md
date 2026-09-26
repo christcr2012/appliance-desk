@@ -65,11 +65,19 @@ rule properly, see the Phase 1 deviation note below).
       `prisma generate`/`migrate`"). That limitation now shows up in a
       few more files that touch Prisma-derived types than in Phase 1,
       for the same one reason, not new bugs.
-- [ ] **Not yet verified at the time this was written:** GitHub Actions
-      CI on the actual PR, and the Vercel preview deployment. This
-      session's next step is opening the PR and confirming both are
-      green before reporting Phase 2 as done to Chris — if you're
-      picking this up and that hasn't happened yet, do that first.
+- [x] **Verified on the actual PR** (https://github.com/christcr2012/appliance-desk/pull/1):
+      GitHub Actions CI is fully green (migrate, seed, typecheck, lint,
+      unit tests, build, accessibility/e2e — including a real lead-form
+      submission against a real throwaway database), and the Vercel
+      preview build completed cleanly (all 17 routes generated, no
+      errors). Two real bugs were caught and fixed along the way — see
+      docs/DECISIONS.md: (1) the Neon driver adapter doesn't work
+      against a plain, non-Neon Postgres like CI's; (2) two color
+      choices fell just under WCAG AA's 4.5:1 contrast ratio.
+- [ ] **Not yet merged to `main` on purpose.** Merging is a decision for
+      Chris, not something this session does unilaterally — the PR is
+      open and ready for him to review (or just say the word) and merge
+      whenever he's ready.
 - [ ] **Production data:** the live Neon database does not yet have the
       `BusinessSettings` singleton or the starter `ApplianceType` rows
       that CI's throwaway database gets from `npm run db:seed`. Once the
