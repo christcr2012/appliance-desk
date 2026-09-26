@@ -388,21 +388,32 @@ Phase 5 section.
       tests, build, Playwright/axe) and Vercel preview built
       successfully. Re-ran the client-bundle grep check before opening
       the PR — clean, only the two known-safe submodule imports.
-- [ ] **Awaiting Chris's merge** — same rule as always, an AI never
-      merges its own PR.
+- [x] **Merged and confirmed live** — PR #14 merged 2026-09-26.
+
+## Phase 5 — slice 2 (maintenance-request email notification)
+
+Built 2026-09-26, right after slice 1 merged — closes the "Chris has to
+check the page himself" gap. `createMaintenanceRequestForUser` (in
+`src/domains/portal/index.ts`) now emails
+`MAINTENANCE_NOTIFICATION_EMAIL` (falling back to `/desk/settings`'s
+public email, same pattern as new-lead emails from Phase 2) whenever a
+customer submits a request — customer name/email, appliance, priority,
+and the problem description, with HIGH/URGENT flagged in the subject
+line. A failed send never blocks the submission — same guarded
+`sendEmail()` wrapper used for leads, so it just logs instead of
+sending when `RESEND_API_KEY` isn't set (true in CI/preview today).
+
 - [ ] **Deliberately left for later** (see `docs/ROADMAP.md`): linking a
       `Job` back to the `MaintenanceRequest` it fulfills (so "schedule a
-      job for this" pre-fills instead of starting blank), letting a
-      customer attach a photo when they submit a request, and notifying
-      Chris by email/SMS when one comes in.
+      job for this" pre-fills instead of starting blank), and letting a
+      customer attach a photo when they submit a request.
 
 ## Immediate next step (whoever picks this up next)
 
-PR #14 (Phase 5 slice 1 — customer portal: rentals + maintenance
-requests) is open with green CI, waiting on Chris to review the
-preview and merge. **No migration needed for this one either.** Once
-merged, natural next steps: the maintenance→job linking and
-photo-attachment items just above, starting Phase 6 (Stripe billing,
-test mode only), or rounding out anything else Phase 5 didn't cover —
-unless Chris redirects, since he's asked to keep building proactively
-rather than checking in after every slice.
+Phase 5 slice 2 (maintenance-request email notification) is built,
+lint-clean, and ready for a PR + CI check + Chris's review — no schema
+migration needed. After that's merged, natural next steps: the
+maintenance→job linking and photo-attachment items just above, starting
+Phase 6 (Stripe billing, test mode only), or rounding out anything else
+Phase 5 didn't cover — unless Chris redirects, since he's asked to keep
+building proactively rather than checking in after every slice.
