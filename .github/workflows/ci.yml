@@ -57,10 +57,16 @@ jobs:
           cat "$LOGFILE" || true
           echo "::endgroup::"
           wc -l "$LOGFILE"
-          RELEVANT=$(tail -n 40 "$LOGFILE" | tr '\n' ' | ' | tr -d '\r')
-          echo "::error title=npm ci failed (tail 1/3)::${RELEVANT:0:900}"
-          echo "::error title=npm ci failed (tail 2/3)::${RELEVANT:900:900}"
-          echo "::error title=npm ci failed (tail 3/3)::${RELEVANT:1800:900}"
+          # Find where the ROOT package's own postinstall (prisma generate) is
+          # invoked, and print a window of log lines around it — the run-script
+          # summary lines alone don't include the command's actual stdout/stderr.
+          START=$(grep -n "run appliance-desk@.*postinstall" "$LOGFILE" | head -1 | cut -d: -f1)
+          START=${START:-1}
+          RELEVANT=$(sed -n "${START},$((START+60))p" "$LOGFILE" | tr '\n' ' | ' | tr -d '\r')
+          echo "::error title=npm ci failed (1/4)::${RELEVANT:0:900}"
+          echo "::error title=npm ci failed (2/4)::${RELEVANT:900:900}"
+          echo "::error title=npm ci failed (3/4)::${RELEVANT:1800:900}"
+          echo "::error title=npm ci failed (4/4)::${RELEVANT:2700:900}"
           exit 1
 
       - name: Apply database migrations
