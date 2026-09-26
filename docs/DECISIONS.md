@@ -311,6 +311,23 @@ adding refrigerators, ranges, etc. later is a data change in
 existing rule that a rented washer/dryer set is always two separately
 tracked physical `Appliance` rows once real inventory exists in Phase 3.)
 
+**Fixed a real bug found by CI: the Neon driver adapter doesn't work
+against a plain (non-Neon) Postgres.** Once `db:seed` and the new
+lead-form e2e test became the first things to run a real Prisma query
+against CI's throwaway Postgres container (everything in Phase 1 that
+touched the database only did so through `prisma migrate deploy`, which
+uses a different connection path — see `prisma.config.ts` — never
+through the app's own `PrismaClient`), CI failed with a WebSocket error.
+Root cause: `@prisma/adapter-neon` talks to Postgres over a WebSocket
+protocol that only Neon's own infrastructure understands — it can't
+connect to a vanilla `postgres:17` container the way CI (and anyone
+running this locally) does. Fixed in `src/lib/prisma.ts` by choosing the
+adapter based on whether `DATABASE_URL` is actually a Neon host: Neon's
+adapter for real Neon connections (production, every Vercel preview),
+and the standard `@prisma/adapter-pg` (added this session) for anything
+else. Nothing about `DATABASE_URL`/`DIRECT_URL` changed — same two
+connection strings as always.
+
 **Seeding runs in CI now, safely:** `prisma/seed.ts` was split into two
 independent parts — business content (BusinessSettings singleton +
 starter appliance types), which always runs and needs no secrets, and
