@@ -56,8 +56,9 @@ jobs:
           echo "::group::npm debug log (full)"
           cat "$LOGFILE" || true
           echo "::endgroup::"
-          RELEVANT=$(grep -i -E "error|forbidden|403|fetch|checksum|enotfound|econnrefused" "$LOGFILE" | grep -v "^[0-9]* verbose stack" | tail -c 1500 | tr '\n' ' ' | tr -d '\r')
+          RELEVANT=$(grep -i -E "binaries\.prisma|forbidden|403|checksum|enotfound|econnrefused|npm error" "$LOGFILE" | tail -c 1800 | tr '\n' ' ' | tr -d '\r')
           echo "::error title=npm ci failed::${RELEVANT:0:900}"
+          echo "::error title=npm ci failed (part 2)::${RELEVANT:900:900}"
           exit 1
 
       - name: Apply database migrations
