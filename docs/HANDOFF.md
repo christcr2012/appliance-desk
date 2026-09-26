@@ -152,17 +152,53 @@ rule properly, see the Phase 1 deviation note below).
   switching to live payments (Phase 6).
 - Set up Google Business Profile.
 - Supply real business details (name, phone, address, service area,
-  hours) in `/desk/settings`, and real appliance/job photos.
+  hours) in `/desk/settings` — done, per Chris's earlier update.
+  Real appliance photos — done (see PR #4/immediate next step below).
 - ~~Create a Resend account and add `RESEND_API_KEY`~~ — done. If lead
   emails don't show up when tested, verify a real sending domain
   (e.g. `robinsonaisystems.com`) in the Resend dashboard — the shared
   sandbox address Resend gives new accounts is limited in who it can
   send to.
 
+## Phase 2.1 — appliance-type management, dollar fees, split delivery/install fee, real photos
+
+Built after Chris tried `/desk/settings` for real and hit three gaps —
+see `docs/DECISIONS.md`'s "Appliance-type management..." entry for the
+full writeup. PR: https://github.com/christcr2012/appliance-desk/pull/4
+(CI green — migration + new tests confirmed against a real throwaway
+Postgres, not just locally, per the Prisma sandbox limitation above).
+
+- [x] Owner/admin can add and retire appliance types from
+      `/desk/settings` — no developer needed for a new category.
+- [x] Fee inputs are dollars-and-cents, not raw cents.
+- [x] Delivery and installation are separate one-time fees.
+- [x] Real appliance photos (Chris-generated, basic/generic models) are
+      wired in via a new `ApplianceType.photoUrl` field — also fixes a
+      real bug where the icon shown was guessed from the type's slug.
+- [ ] **Not yet merged on purpose** — same rule as always, this is
+      Chris's call.
+- [ ] **Production data needs a one-time backfill after merge**: this
+      PR's migration adds `ApplianceType.photoUrl`/`isActive` and
+      `BusinessSettings.oneTimeInstallationFeeCents`, which
+      `migrate:deploy` will apply to the live database automatically on
+      the next deploy — but the 3 *existing* production
+      `ApplianceType` rows (Washer, Dryer, Set) won't get a `photoUrl`
+      value from that migration alone (it only adds the column; it
+      doesn't backfill existing rows, and `prisma/seed.ts`'s upsert
+      deliberately never overwrites an existing row so it can't
+      silently undo a price Chris set). Once this PR is merged and
+      deployed, run a one-time UPDATE (or ask the next session to) to
+      set `photoUrl` on the 3 existing rows to
+      `/appliances/washer.jpg`, `/appliances/dryer.jpg`,
+      `/appliances/washer-dryer-set.jpg` (same paths `prisma/seed.ts`
+      now uses for a *fresh* database) — otherwise the live site keeps
+      showing the icon fallback until that runs.
+
 ## Immediate next step (whoever picks this up next)
 
-1. Confirm the Phase 2 PR's CI is green and its Vercel preview looks
-   right, then merge, then seed production data (see "Phase 2" above).
+1. Confirm PR #4's CI is green (it is) and Vercel preview looks right,
+   then merge, then run the one-time production photoUrl backfill
+   above.
 2. Create a free Sentry project and add its DSN to Vercel's environment
    variables so error monitoring goes live.
 3. Report back to Chris in plain English (see "How to report" in
