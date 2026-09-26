@@ -7,10 +7,12 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// Prisma 7 no longer accepts `url`/`directUrl` here — connection strings for
+// Migrate live in `prisma.config.ts` at the project root, and the running
+// app passes its own connection (via a driver adapter) to the PrismaClient
+// constructor in src/lib/prisma.ts. See docs/DECISIONS.md.
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "postgresql"
 }
 
 // ---------------------------------------------------------------------------

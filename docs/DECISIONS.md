@@ -122,3 +122,42 @@ Deferred to the phase that needs them (rental agreements/Phase 4 for
 e-signature, lead notification emails/Phase 2 for Resend vs. Postmark,
 billing/Phase 6 for Stripe specifics). Placeholder env vars are in
 `.env.example` so the shape is ready.
+
+---
+
+### 2026-09-26 — Prisma 7 removed `url`/`directUrl` from schema.prisma; added `prisma.config.ts` and a Neon driver adapter
+
+The very first real GitHub Actions CI run (the sandbox has no internet
+access to catch this locally — see the entry above) failed immediately
+with a schema validation error: Prisma 7 no longer allows a connection
+`url` (or `directUrl`) inside `prisma/schema.prisma`'s `datasource`
+block. This is a genuine breaking change in Prisma 7, not a mistake in
+how the schema was written — Prisma moved connection configuration out
+of the schema file entirely.
+
+Two separate things needed connection strings, and they're now handled
+two different ways:
+
+1. **Prisma Migrate** (creating/applying migrations, `prisma migrate
+   deploy`) now reads its connection string from a new file,
+   `prisma.config.ts`, at the project root. It points at `DIRECT_URL`
+   (the same unpooled Neon connection it always used).
+2. **The running app** (every normal database query) now hands
+   `PrismaClient` its own connection directly, via what Prisma calls a
+   "driver adapter," instead of Prisma reading a `url` from the schema.
+   `src/lib/prisma.ts` was updated to use `@prisma/adapter-neon` —
+   Neon's own serverless driver, which talks to Postgres over a
+   WebSocket — pointed at `DATABASE_URL` (the pooled connection, as
+   before). This needs the `ws` package because this app runs on
+   Vercel's Node.js runtime, not the browser or the edge runtime, and
+   only those two have a built-in WebSocket implementation.
+
+**Why Neon's own adapter instead of the generic `pg` one:** the
+database is already hosted on Neon, so its purpose-built driver gets
+the same pooling/connection benefits Neon recommends for serverless
+functions, with no extra configuration to keep in sync.
+
+**Nothing about `DATABASE_URL`/`DIRECT_URL` in `.env.example` or Vercel
+changed** — same two connection strings, same meanings, just read from
+a different place now. `docs/ARCHITECTURE.md`'s environment-variable
+list is still accurate.
