@@ -1,9 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { forwardRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { updateSettingsAction } from "./actions";
 
+// Every "...Dollars" field here is entered and displayed in real dollars
+// and cents (e.g. 45.00), matching how Chris actually thinks about
+// pricing — not the database's internal integer-cents storage. The
+// server action is what converts dollars → cents before saving; see
+// docs/BUSINESS-RULES.md ("money is stored as integer cents, never
+// floating point") — that rule is about storage, not this form.
 type FormValues = {
   publicBusinessName: string;
   publicPhone: string;
@@ -11,12 +17,13 @@ type FormValues = {
   publicAddress: string;
   serviceAreaCities: string;
   serviceAreaZips: string;
-  oneTimeDeliveryFeeCents: number;
-  oneTimeRemovalFeeCents: number;
+  deliveryFeeDollars: number;
+  installationFeeDollars: number;
+  removalFeeDollars: number;
   damageWaiverEnabled: boolean;
   depositEnabled: boolean;
   lateFeeGraceDays: number;
-  lateFeeFlatCents: number;
+  lateFeeFlatDollars: number;
   lateFeePercent: number;
   taxRatePermille: number;
   taxRateConfirmed: boolean;
@@ -85,17 +92,22 @@ export function SettingsForm({ defaultValues }: { defaultValues: FormValues }) {
         <legend className="text-base font-semibold text-gray-900">
           Fees
         </legend>
-        <LabeledInput
-          label="Delivery/installation fee (cents)"
-          type="number"
-          min={0}
-          {...register("oneTimeDeliveryFeeCents")}
+        <p className="text-sm text-gray-600">
+          Delivery and installation are separate, optional one-time fees —
+          each shows as its own line on the public pricing page. Leave
+          either at $0.00 to not charge for it.
+        </p>
+        <DollarInput
+          label="Delivery fee"
+          {...register("deliveryFeeDollars", { valueAsNumber: true })}
         />
-        <LabeledInput
-          label="Pickup/removal fee (cents)"
-          type="number"
-          min={0}
-          {...register("oneTimeRemovalFeeCents")}
+        <DollarInput
+          label="Installation fee"
+          {...register("installationFeeDollars", { valueAsNumber: true })}
+        />
+        <DollarInput
+          label="Pickup/removal fee"
+          {...register("removalFeeDollars", { valueAsNumber: true })}
         />
         <label className="flex items-center gap-2 text-sm text-gray-700">
           <input type="checkbox" {...register("depositEnabled")} className="h-4 w-4" />
@@ -115,11 +127,9 @@ export function SettingsForm({ defaultValues }: { defaultValues: FormValues }) {
           min={0}
           {...register("lateFeeGraceDays")}
         />
-        <LabeledInput
-          label="Late fee — flat (cents)"
-          type="number"
-          min={0}
-          {...register("lateFeeFlatCents")}
+        <DollarInput
+          label="Late fee — flat amount"
+          {...register("lateFeeFlatDollars", { valueAsNumber: true })}
         />
         <LabeledInput
           label="Late fee — percent"
@@ -165,6 +175,34 @@ export function SettingsForm({ defaultValues }: { defaultValues: FormValues }) {
     </form>
   );
 }
+
+const DollarInput = forwardRef<
+  HTMLInputElement,
+  Omit<React.InputHTMLAttributes<HTMLInputElement>, "type"> & { label: string }
+>(function DollarInput({ label, ...props }, ref) {
+  const id = `settings-${props.name}`;
+  return (
+    <div>
+      <label htmlFor={id} className="mb-1 block text-sm font-medium text-gray-900">
+        {label}
+      </label>
+      <div className="flex max-w-sm items-center gap-2">
+        <span aria-hidden="true" className="text-gray-500">
+          $
+        </span>
+        <input
+          id={id}
+          ref={ref}
+          type="number"
+          min={0}
+          step="0.01"
+          {...props}
+          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+        />
+      </div>
+    </div>
+  );
+});
 
 function LabeledInput({
   label,

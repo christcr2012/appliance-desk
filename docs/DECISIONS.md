@@ -354,3 +354,55 @@ those secrets are never set in CI) after migrations so the
 accessibility/e2e tests exercise real, populated pages instead of an
 empty pricing page — not new mock data, the same real starter catalog
 described above.
+
+## Appliance-type management, dollar-entered fees, and split delivery/install fee (2026-09-26)
+
+After using `/desk/settings` for the first time, Chris flagged three real
+gaps from Phase 2:
+
+1. **No way to add a new appliance type from the desk.** The pricing
+   table only ever showed the three seeded rows (Washer, Dryer, Set);
+   the page's own caption said to "ask a developer." Fixed by adding
+   `createApplianceType`/`setApplianceTypeActive` to
+   `src/domains/settings/index.ts`, a `createApplianceTypeAction`/
+   `setApplianceTypeActiveAction` pair, and a real add-appliance-type
+   form plus a retire/restore control in
+   `appliance-pricing-table.tsx`. New types are never hard-deleted —
+   `ApplianceType.isActive` (new column) marks a type retired instead,
+   since a hard delete would orphan any `Lead`/`PricingRule`/`Appliance`
+   row that already references it.
+2. **Fee inputs required cents, not dollars.** `/desk/settings`'
+   fee fields (delivery, removal, late fee flat) took raw cents
+   ("4500" for $45.00) — correct for the database, wrong for a human
+   filling out a form. The database still stores integer cents (money
+   is never floating point, per `docs/BUSINESS-RULES.md`); the
+   dollars-in/cents-out conversion now happens once, in
+   `src/app/desk/settings/actions.ts`, right before the database write
+   — the form and its `FormValues` type work in real dollars
+   (`deliveryFeeDollars`, not `oneTimeDeliveryFeeCents`) via a new
+   `DollarInput` component that mirrors the appliance-pricing table's
+   existing dollar-input pattern.
+3. **Delivery and installation were one combined fee.** Chris wants to
+   be able to charge for delivery and installation independently (e.g.
+   delivery-only when a customer installs it themselves). Added
+   `BusinessSettings.oneTimeInstallationFeeCents` as its own column
+   (migration `20260926190000_appliance_types_and_installation_fee`,
+   hand-written SQL per the sandbox limitation noted above) alongside
+   the existing delivery and removal fees; `/pricing` now shows three
+   independent one-time-fee line items instead of two.
+
+**Also fixed a real bug this surfaced:** the public site's appliance
+icon was chosen by pattern-matching the type's *slug* ("dryer" → dryer
+icon, anything else → washer icon, `"washer-dryer-set"` → both). That
+silently broke the instant a type other than the three seeded ones
+existed — a newly-added "Refrigerator" would have rendered a washer
+icon. Added `ApplianceType.photoUrl` (same migration) so a real photo
+can be set per type, and a new `<ApplianceMedia>` component
+(`src/components/site/appliance-icon.tsx`) that shows that photo when
+present and otherwise falls back to one single, appliance-agnostic
+icon — never a guess at which appliance it is. No real photos exist
+yet (this session's sandbox can only reach GitHub and package
+registries over the network, not stock-photo sites, and guessing at a
+photo's license for a live business site isn't acceptable) — Chris is
+supplying 2–4 basic-model photos separately; wiring them in from there
+is just setting `photoUrl` per type, no further code change needed.

@@ -220,6 +220,18 @@ model ApplianceType {
   showOnWebsite     Boolean @default(false)
   sortOrder         Int     @default(0)
 
+  // A real photo of a basic/representative model for this category, shown
+  // on the public site next to the generic "may vary" disclaimer. Null
+  // until Chris supplies one — the site falls back to a generic icon.
+  photoUrl String?
+
+  // Soft-delete: an appliance type is never hard-deleted once it's been
+  // referenced by a Lead/PricingRule/Appliance (that would break history).
+  // Retiring a category sets isActive=false instead, which hides it from
+  // /desk/settings' active list and forces showOnWebsite off. See
+  // docs/BUSINESS-RULES.md.
+  isActive Boolean @default(true)
+
   appliances   Appliance[]
   pricingRules PricingRule[]
   leadRequests LeadApplianceRequest[]
@@ -540,8 +552,13 @@ model BusinessSettings {
   socialLinks        Json   @default("{}")
   logoUrl            String?
 
-  oneTimeDeliveryFeeCents Int @default(0)
-  oneTimeRemovalFeeCents  Int @default(0)
+  // Delivery and installation are separate, optional one-time fees —
+  // Chris may charge for one, both, or neither (e.g. a delivery-only fee
+  // when the customer hooks up the appliance themselves). Each shows as
+  // its own line item on /pricing. See docs/BUSINESS-RULES.md.
+  oneTimeDeliveryFeeCents     Int @default(0)
+  oneTimeInstallationFeeCents Int @default(0)
+  oneTimeRemovalFeeCents      Int @default(0)
   damageWaiverEnabled     Boolean @default(false)
   depositEnabled          Boolean @default(false)
   lateFeeGraceDays        Int     @default(5)

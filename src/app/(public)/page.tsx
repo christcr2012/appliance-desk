@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Container } from "@/components/site/container";
 import { ButtonLink } from "@/components/site/button-link";
-import { ApplianceIcon } from "@/components/site/appliance-icon";
+import { ApplianceIcon, ApplianceMedia } from "@/components/site/appliance-icon";
 import { getBusinessSettings, parseServiceArea } from "@/domains/settings";
 import { getPublishedApplianceTypes, formatCents } from "@/domains/pricing";
 
@@ -11,6 +11,9 @@ export default async function HomePage() {
     getPublishedApplianceTypes(),
   ]);
   const serviceArea = parseServiceArea(settings);
+  const heroTypes = applianceTypes
+    .filter((t) => t.slug === "washer" || t.slug === "dryer")
+    .slice(0, 2);
 
   return (
     <>
@@ -43,8 +46,22 @@ export default async function HomePage() {
 
           <div className="relative flex justify-center">
             <div className="flex items-center gap-6 rounded-3xl bg-surface p-10 shadow-xl shadow-ink/5 ring-1 ring-line">
-              <ApplianceIcon kind="washer" className="h-40 w-auto text-primary" />
-              <ApplianceIcon kind="dryer" className="h-40 w-auto text-accent" />
+              {heroTypes.length > 0 ? (
+                heroTypes.map((type) => (
+                  <ApplianceMedia
+                    key={type.id}
+                    photoUrl={type.photoUrl}
+                    name={type.name}
+                    className="h-40 w-auto rounded-xl object-cover"
+                    iconClassName="h-40 w-auto text-primary"
+                  />
+                ))
+              ) : (
+                <>
+                  <ApplianceIcon className="h-40 w-auto text-primary" />
+                  <ApplianceIcon className="h-40 w-auto text-accent" />
+                </>
+              )}
             </div>
           </div>
         </Container>
@@ -135,15 +152,11 @@ export default async function HomePage() {
                     key={type.id}
                     className="rounded-2xl bg-surface p-6 shadow-sm ring-1 ring-line"
                   >
-                    <ApplianceIcon
-                      kind={
-                        type.slug === "washer-dryer-set"
-                          ? "set"
-                          : type.slug === "dryer"
-                            ? "dryer"
-                            : "washer"
-                      }
-                      className="h-16 w-auto text-primary"
+                    <ApplianceMedia
+                      photoUrl={type.photoUrl}
+                      name={type.name}
+                      className="h-16 w-auto rounded-lg object-cover"
+                      iconClassName="h-16 w-auto text-primary"
                     />
                     <h3 className="mt-4 font-display text-xl font-semibold text-ink">
                       {type.name}
