@@ -97,10 +97,20 @@ rule properly, see the Phase 1 deviation note below).
 
 ## What is NOT finished or NOT verified — marked incomplete on purpose
 
-1. **Sentry is wired but inactive.** `SENTRY_DSN` /
-   `NEXT_PUBLIC_SENTRY_DSN` are not yet set as real values anywhere —
-   someone needs to create a (free-tier) Sentry project and add those
-   as Vercel environment variables.
+1. ~~Sentry is wired but inactive.~~ **Done (2026-09-26).** Created a
+   free Sentry project (`robinson-ai-systems/appliance-desk`), set
+   `SENTRY_DSN` and `NEXT_PUBLIC_SENTRY_DSN` as real values in Vercel
+   (Production/Preview/Development), and triggered a fresh production
+   deploy so the running site actually picked them up (confirmed
+   `READY`, aliased to `robinsonappliancerentals.com` and
+   `appliance-desk.vercel.app`). Not yet linked to the GitHub repo
+   (optional — Sentry couldn't auto-detect the repo via VCS
+   integration; can be added later from Sentry's dashboard under
+   Settings → Integrations if wanted, purely a nice-to-have for
+   jumping from an error straight to the commit that caused it). No
+   real errors have occurred yet to confirm one actually shows up in
+   the Sentry dashboard — that's expected (nothing's broken), not a
+   gap.
 2. **Neon's `main` branch is not marked "protected"** — the account
    already hit its plan's cap on protected branches from a prior
    project. Not a security hole today, but should be revisited before
@@ -183,18 +193,24 @@ Postgres, not just locally, per the Prisma sandbox limitation above).
       Confirmed: `ApplianceType.isActive`/`photoUrl` and
       `BusinessSettings.oneTimeInstallationFeeCents` now exist in
       production, and the 3 starter rows have their `photoUrl` set.
-- [ ] **Live site not yet showing the new version as of this writing.**
-      Both `appliance-desk.vercel.app/pricing` and
-      `robinsonappliancerentals.com/pricing` still show the *old*
-      combined "Delivery & installation" line and the old generic-icon
-      disclaimer text — i.e. the code from PR #4 (separate delivery/
-      install fees, real photos) has not gone live yet, even though it's
-      merged to `main` with green CI. This tool couldn't check Vercel's
-      deployment status directly (also blocked). **Next session/Chris:
-      check the Vercel dashboard's Deployments tab for the
-      `appliance-desk` project** — if the latest deploy is still
-      building, just wait; if it failed, the build log will say why; if
-      it succeeded but isn't aliased to production, promote it manually.
+- [x] **Live and verified (2026-09-26).** PR #4's first production
+      deploy attempt failed (Vercel build tried to statically generate
+      `/pricing` against the live database before the migration had
+      been applied — `prisma:error ... column ... does not exist` for
+      `BusinessSettings.oneTimeInstallationFeeCents`). Fixed by Chris
+      running the migration SQL directly in Neon's console, then
+      redeploying — build succeeded and the site is confirmed showing
+      separate delivery/installation fee lines and real photos.
+- [x] **Follow-up bug found and fixed same day, PR #6
+      (`ai/claude/fix-pricing-photo-sizing2`).** The real photos are
+      wide (1408x768), but the pricing-page and homepage card grids
+      sized the `<img>` with `h-16 w-auto object-cover` — with no fixed
+      width, `object-cover` had nothing to crop into, so each photo
+      rendered as a thin, squished strip. Fixed by giving each photo a
+      real fixed-size box (see `src/components/site/appliance-icon.tsx`'s
+      `<ApplianceMedia>` — the `className`/`iconClassName` split lets
+      each page size the real photo and the generic-icon fallback
+      independently). Verified live on `robinsonappliancerentals.com`.
 
 ## Correction to an earlier (wrong) assumption in this doc
 
@@ -211,10 +227,10 @@ tracked in `docs/ROADMAP.md`.
 
 ## Immediate next step (whoever picks this up next)
 
-1. Confirm the new Vercel deployment for commit `1bb84a6` actually went
-   live and is aliased to production (see above — unconfirmed as of
-   this writing).
-2. Create a free Sentry project and add its DSN to Vercel's environment
-   variables so error monitoring goes live.
-3. Report back to Chris in plain English (see "How to report" in
-   `AGENTS.md`/the original brief) before starting Phase 3.
+Phase 2.1 is fully done and verified live: migration applied, photos
+backfilled, deployment confirmed `READY`, the photo-sizing bug found
+and fixed, and Sentry error monitoring is live (see above). Nothing is
+blocking here — the next step is whatever Chris wants to build next
+(Phase 3). No instruction to start Phase 3 has been given yet; report
+to him in plain English and wait for the go-ahead per `AGENTS.md`'s
+phase-gate rule.
