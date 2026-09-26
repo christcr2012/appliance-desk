@@ -219,3 +219,30 @@ sandbox's network allowlist (same class of restriction as
 on Vercel, both of which have normal internet access — confirmed
 because CI's build got past font loading and all the way to page
 generation before hitting the two real bugs above.
+
+---
+
+### 2026-09-26 — Fixed a real bug: `User.emailVerified` was the wrong type
+
+While creating Chris's first (OWNER) login, account creation failed with
+a genuine error — not a sandbox network issue this time. The original
+hand-written schema (written without a working `prisma validate`, see
+the earlier entry on why) gave `User.emailVerified` the type
+`DateTime?`, following the Auth.js/NextAuth convention. Better Auth
+(what this app actually uses) expects a plain `Boolean` there instead,
+defaulting to `false` — confirmed directly from Better Auth's own
+schema source (`@better-auth/core/dist/db/schema/user.mjs`).
+
+**Decision:** Changed `emailVerified` to `Boolean @default(false)` in
+`prisma/schema.prisma`, and added a migration
+(`20260926163000_user_email_verified_boolean`) that converts the
+existing column. The `User` table had zero rows at the time (nobody
+could sign up yet, precisely because of this bug), so the conversion is
+lossless — confirmed via a direct row count before applying it. Applied
+with Chris's explicit go-ahead (the tooling itself requires human
+confirmation before any live schema change, per this project's own
+"ask before anything irreversible" rule).
+
+Every other Better Auth table (`Session`, `Account`, `Verification`) was
+cross-checked line-by-line against Better Auth's own schema source at
+the same time — everything else already matched.

@@ -28,7 +28,7 @@ enum Role {
 model User {
   id            String    @id @default(cuid())
   email         String    @unique
-  emailVerified DateTime?
+  emailVerified Boolean   @default(false)
   passwordHash  String?
   name          String?
   role          Role      @default(CUSTOMER)
