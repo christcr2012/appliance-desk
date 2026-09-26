@@ -56,8 +56,8 @@ jobs:
           echo "::group::npm debug log (full)"
           cat "$LOGFILE" || true
           echo "::endgroup::"
-          LOGTAIL=$(tail -c 1500 "$LOGFILE" 2>/dev/null | tr '\n' ' ' | tr -d '\r')
-          echo "::error title=npm ci failed::${LOGTAIL:0:900}"
+          RELEVANT=$(grep -i -E "error|forbidden|403|fetch|checksum|enotfound|econnrefused" "$LOGFILE" | grep -v "^[0-9]* verbose stack" | tail -c 1500 | tr '\n' ' ' | tr -d '\r')
+          echo "::error title=npm ci failed::${RELEVANT:0:900}"
           exit 1
 
       - name: Apply database migrations
