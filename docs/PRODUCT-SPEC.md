@@ -193,9 +193,65 @@ appliances. Needed one schema migration (`Appliance.color`,
       models, for browsing independent of any one unit.
 - [x] Every part logged or removed writes an `AuditLog` entry.
 
+## Phase 4 — Rental agreements, e-signature, job scheduling
+
+Started 2026-09-26, proactively (Chris asked to keep building and
+improving without checking in on every slice). No schema migration
+needed — `RentalAgreement`, `RentalLine`, `ApplianceAssignment`,
+`SignatureRecord`, `Job`, `JobAppliance`, and `Photo` were all already
+part of the original Phase 1 schema/migration.
+
+### Customers (`/desk/customers`)
+
+- [x] Browse every converted customer, and a detail page showing their
+      service addresses, agreements, and jobs.
+
+### Rental agreements (`/desk/agreements`)
+
+- [x] Start a draft agreement for a customer: service address, term,
+      deposit, damage waiver, late fee (flat and/or percent + grace
+      days), tax rate.
+- [x] Add appliance line items to a draft — pick specific `AVAILABLE`
+      physical units (a set = two units on one line); this reserves
+      them so they can't be double-booked onto another agreement.
+- [x] Send a draft for signature — generates a private, unguessable
+      link for the customer, no login required.
+- [x] The public `/sign/[id]` page: customer reviews the terms and
+      signs by typing their full name + checking a box + submitting.
+      Recorded with a timestamp and IP address. This is a lightweight,
+      in-house signature capture, not a paid e-signature service — see
+      `docs/BUSINESS-RULES.md` and `docs/ROADMAP.md` for why that's a
+      deliberate, cost-driven choice left to Chris.
+- [x] Signing moves the agreement to `ACTIVE` and its appliances from
+      `RESERVED` to `RENTED`.
+- [x] Chris can end or cancel an agreement at any stage, freeing its
+      appliances back to `AVAILABLE`.
+- **Acceptance:** `tests/agreements.test.ts` proves the status-transition
+      rule (draft → awaiting signature → active → ended, cancellable
+      from any non-terminal state, no skipping straight to active
+      without a signature).
+
+### Jobs (`/desk/jobs`)
+
+- [x] Schedule a delivery/installation/swap/removal/maintenance visit,
+      optionally tied to a customer, address, and agreement (with its
+      assigned appliances pre-selectable).
+- [x] Move a job through scheduled → in progress → completed (with
+      completion notes) or cancelled, enforced server-side.
+- [x] Attach condition photos by URL (no file-upload/blob storage
+      decision made yet — pasted URLs, same pattern as appliance-type
+      photos in `/desk/settings`).
+- **Acceptance:** `tests/jobs.test.ts` proves the status-transition rule.
+
+### Dashboard
+
+- [x] Added draft/awaiting-signature/active agreement counts and a
+      scheduled-jobs count alongside the existing lead/customer/
+      appliance numbers.
+
 ## Later phases
 
-Feature lists for Phases 4–7 will be filled in here as each phase
+Feature lists for Phases 5–7 will be filled in here as each phase
 starts, following the phase plan and scope in `AGENTS.md`/
 `docs/HANDOFF.md` — kept short until then rather than speculatively
 detailed now.

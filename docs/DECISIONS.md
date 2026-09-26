@@ -406,3 +406,28 @@ registries over the network, not stock-photo sites, and guessing at a
 photo's license for a live business site isn't acceptable) — Chris is
 supplying 2–4 basic-model photos separately; wiring them in from there
 is just setting `photoUrl` per type, no further code change needed.
+
+---
+
+### 2026-09-26 — E-signature: in-house typed-signature capture, not a paid provider (for now)
+
+Phase 4 needed rental agreements to actually get signed. Rather than
+wait on or unilaterally pick a paid e-signature vendor (SignWell,
+DocuSign, HelloSign, etc. — a recurring cost decision that belongs to
+Chris, per `AGENTS.md`'s "ask before anything... costly"), built a
+lightweight, in-house capture: a private, unguessable link
+(`/sign/[signatureRecordId]`, no login) where the customer reviews the
+agreement's terms and signs by typing their full legal name, checking
+an "I agree" box, and submitting. That's recorded with a timestamp and
+their IP address in `SignatureRecord` (`provider: "typed_signature"`).
+
+**Why this is reasonable for now:** it produces a real, timestamped,
+attributable record of agreement — enough to run the business day to
+day — while costing nothing and needing no new integration. **Why it's
+not the final answer:** it lacks the stronger identity-verification,
+tamper-evident PDF, and audit-trail features a dedicated e-signature
+service provides, which matters more as transaction volume or dispute
+risk grows. `SignatureRecord.provider` already anticipates swapping in
+a real provider later without a schema change — that's a flagged
+`docs/ROADMAP.md` item for Chris to decide on, not something to switch
+to unasked.

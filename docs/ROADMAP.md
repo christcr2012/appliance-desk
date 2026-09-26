@@ -5,6 +5,15 @@ later phase (see `docs/HANDOFF.md` for the phase plan) or because they're
 a suggestion an AI had while working and is flagging for Chris to decide
 on — never built unasked.
 
+## Explicitly queued by Chris (do in a separate PR, not bundled)
+
+- **Mobile nav → hamburger menu**: Chris doesn't like how the public
+  site's header nav looks/behaves on mobile (2026-09-26, right after the
+  hero photo fix) and wants it turned into a proper collapsible
+  hamburger menu on small screens. Deliberately not bundled into the
+  Phase 4 (rental agreements/jobs) PR since he asked for it to be its
+  own change — do this next as its own small PR.
+
 ## Deferred to a later phase (already scoped, just not yet)
 
 - Lead scoring UI (browsing/filtering leads in the desk, not just the
@@ -80,6 +89,18 @@ on — never built unasked.
   without one still falls back to the generic icon + disclaimer. A
   future improvement could let Chris upload a file directly instead of
   pasting a URL — not needed yet.
+- **A paid e-signature provider** (SignWell, DocuSign, HelloSign, etc.)
+  instead of the in-house typed-name-and-checkbox signing built in
+  Phase 4 — stronger identity verification and a tamper-evident signed
+  PDF, at a real recurring cost. `SignatureRecord.provider` already
+  anticipates this swap without a schema change. Worth it once
+  transaction volume or dispute risk grows past what the lightweight
+  version comfortably covers — Chris's call, not automatic.
+- **Real file uploads for photos** (condition photos on jobs, appliance-
+  type photos) instead of pasting a URL — needs a decision on file/blob
+  storage (e.g. Vercel Blob) and likely a small recurring cost. Pasting
+  a URL works fine for now since Chris already has photos hosted
+  somewhere (or can use a free image host), so this isn't urgent.
 - **More appliance categories**: refrigerators, ranges, dishwashers,
   freezers, etc. Chris is launching with washers/dryers only on
   purpose; adding a category later is a data change in `/desk/settings`

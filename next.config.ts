@@ -15,8 +15,9 @@ const nextConfig: NextConfig = {
         ],
       },
       {
-        // Keep the admin desk and customer portal out of search engines.
-        source: "/(desk|account)/:path*",
+        // Keep the admin desk, customer portal, and per-customer signing
+        // links out of search engines.
+        source: "/(desk|account|sign)/:path*",
         headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }],
       },
     ];
