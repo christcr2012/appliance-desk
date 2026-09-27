@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "@/lib/auth-client";
 import { getPostLoginDestination } from "./actions";
@@ -69,6 +70,12 @@ export function LoginForm() {
           aria-describedby={error ? "login-error" : undefined}
           className="rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-600"
         />
+        <Link
+          href="/forgot-password"
+          className="self-end text-sm text-primary hover:underline"
+        >
+          Forgot password?
+        </Link>
       </div>
 
       {error && (

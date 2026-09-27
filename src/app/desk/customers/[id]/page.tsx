@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getCustomerById } from "@/domains/customers";
 import { formatCents } from "@/domains/pricing";
+import { ResendActivationButton } from "./resend-activation-button";
 
 export const metadata = { title: "Customer" };
 
@@ -31,6 +32,14 @@ export default async function CustomerDetailPage({
         {customer.phone ? ` · ${customer.phone}` : ""}
         {customer.companyName ? ` · ${customer.companyName}` : ""}
       </p>
+
+      <div className="mt-3 rounded-lg border border-gray-200 bg-white px-4 py-3">
+        <p className="text-sm text-gray-600">
+          If this customer hasn&apos;t set their password yet, or says their
+          activation email never arrived or expired, send it again:
+        </p>
+        <ResendActivationButton customerId={customer.id} />
+      </div>
 
       <div className="mt-6 grid gap-6 sm:grid-cols-2">
         <div className="rounded-lg border border-gray-200 bg-white p-5">

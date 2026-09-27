@@ -11,7 +11,8 @@ export type LeadActionState =
   | {
       status: "converted";
       customerId: string;
-      tempPassword: string | null;
+      isNewAccount: boolean;
+      activationEmailSent: boolean;
     }
   | { status: "error"; message: string };
 
@@ -59,7 +60,7 @@ export async function convertLeadAction(
   const session = await requireRole("OWNER", "ADMIN");
 
   try {
-    const { customer, tempPassword } = await convertLeadToCustomer(
+    const { customer, isNewAccount, activationEmailSent } = await convertLeadToCustomer(
       session.user.id,
       leadId,
     );
@@ -69,7 +70,12 @@ export async function convertLeadAction(
     revalidatePath("/desk/dashboard");
     revalidatePath("/desk/activity");
 
-    return { status: "converted", customerId: customer.id, tempPassword };
+    return {
+      status: "converted",
+      customerId: customer.id,
+      isNewAccount,
+      activationEmailSent,
+    };
   } catch (error) {
     return {
       status: "error",

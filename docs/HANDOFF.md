@@ -537,15 +537,82 @@ work-order's own instructions say to stop and report after this slice,
 not to keep building through the whole backlog unasked, so this session
 stopped here.
 
+PRs #18, #19, and #20 are all merged to `main` and confirmed live —
+Chris ran the migration and merged #20 on 2026-09-26.
+
+## 2026-09-26 (same session, continued) — Phase 6A item 2: customer account activation & password recovery
+
+Per the work-order's suggested order, picked up the next item after
+Chris's two explicit requests and the two quick-win fixes: replacing
+the old "Chris sees a one-time password and has to relay it to the
+customer" workflow, which was both a real risk (Chris ends up
+knowing/handling customer passwords) and a real gap (no way for a
+customer to recover their own account). No schema migration needed —
+Better Auth's own `Verification` table (used for its token machinery)
+has existed since Phase 1.
+
+- [x] **Real "Forgot your password?" flow, working end to end.** New
+      public pages `/forgot-password` and `/reset-password`, plus a
+      "Forgot password?" link added to `/login`. `src/lib/auth.ts` now
+      sends the reset email itself (via the existing Resend-backed
+      `sendEmail` helper) whenever Better Auth generates a reset link —
+      same guarded pattern as every other transactional email in this
+      project (logs instead of sending when `RESEND_API_KEY` isn't set,
+      never blocks or crashes).
+- [x] **Customer accounts are activated the same way, not with a second
+      system.** Converting a lead into a customer (`/desk/leads`) no
+      longer generates or shows Chris a password at all — a brand-new
+      account gets an unusable random password that's thrown away
+      immediately, and the customer is emailed the exact same "set your
+      password" link the forgot-password flow uses. See
+      `docs/DECISIONS.md`'s new dated entry for why reusing Better
+      Auth's built-in reset-password primitive was chosen over building
+      a separate invite-token system.
+- [x] **"Resend activation email"** button added to each customer's own
+      page in the desk (`/desk/customers/[id]`), for when the first
+      email didn't arrive or its one-hour link expired.
+- [x] Fixed the specific stale/inaccurate claim Verified Finding #7
+      flagged in `docs/OWNER-GUIDE.md` (it used to say a forgot-password
+      link existed when it didn't) — and since that guide was otherwise
+      still literally Phase-1 content despite everything since built
+      and live, rewrote it as a real, current, plain-English walkthrough
+      of how Chris actually runs the business today (leads → convert →
+      agreement → signature → jobs → maintenance → settings/pricing),
+      with an honest "what's not built yet" section (Stripe billing,
+      photo uploads). `docs/BUSINESS-RULES.md`'s customer-conversion
+      step was also corrected to match.
+- [x] 6 new tests (`tests/leads-conversion.test.ts`) proving: a new
+      account's password is random/discarded and never returned to the
+      caller; the activation email call goes through Better Auth's real
+      `requestPasswordReset` endpoint with the right arguments;
+      reusing an existing account sends no email; a failed send never
+      blocks the conversion itself; converting onto an existing
+      staff (OWNER/ADMIN) email is still refused. 53/53 unit tests
+      passing (up from 47 — the usual 7 pre-existing, documented
+      Prisma-sandbox-limitation test-file failures are unchanged).
+      Client-bundle-leak grep re-run — clean, only the two known-safe
+      submodule imports.
+- [ ] **Not yet merged on purpose** — same rule as always; ready to open
+      as its own PR next.
+- [ ] **Deliberately not done in this slice** (real, separate pieces of
+      work, not gaps in what shipped): a forgot-password-specific rate
+      limit beyond the app-wide one already in place; turning on
+      required email verification (still gated on confirming a verified
+      sending domain in Resend, same open item as every other
+      transactional email in this project); Phase 6A item 3 (real
+      customer-isolation integration tests) and item 6 (reservation-
+      expiration handling) and item 7 (public-form spam protection) —
+      still next in the suggested order, not started.
+
 ## Immediate next step (whoever picks this up next)
 
-1. Chris: run the migration SQL in `prisma/migrations/20260926230000_prepay_term_discount`
-   in Neon's console, then merge PR #20 (PRs #18 and #19 are already
-   merged). Double-check the 4 default discount dollar amounts on
-   `/desk/settings` afterward and adjust if the defaults aren't what he
-   wants going forward.
-2. After that, check in with Chris on which of the remaining Phase 6A
-   items (see above) or Phase 6B (Stripe billing — a real boundary that
-   needs his decisions on billing cadence, deposit handling, and a real
-   Stripe account) to do next, rather than guessing at scope he hasn't
-   approved.
+Open the customer-activation work above as its own PR, get CI green,
+and report to Chris before starting the next item. Per the work-order's
+suggested implementation order, what's left in Phase 6A is: production
+migration safety (item 1 — a bigger, standalone architectural piece),
+real customer-isolation integration tests (item 3 — the first
+integration-test infrastructure in this project), reservation-
+expiration handling (item 6), and public-form spam protection (item 7).
+After Phase 6A, Phase 6B (Stripe billing) is a real boundary that needs
+Chris's own decisions (billing cadence, deposit handling, a real Stripe
+account) before any of it is built.
