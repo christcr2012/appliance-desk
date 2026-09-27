@@ -722,3 +722,45 @@ additive migration — merging the PR is now the whole deploy. He's only
 asked to look at anything when `check:migrations` blocks a migration,
 and even then the ask is "confirm this is safe" plus a recorded note,
 never raw SQL.
+
+## 2026-09-27 — first real run of the automatic migration pipeline hit a one-time bookkeeping gap (not a bug in the new system)
+
+The very first time `vercel-build`'s new automatic `prisma migrate
+deploy` step actually ran against the live database (as part of
+merging the PR for the "Safe production database migrations" entry
+above), it failed with Prisma error P3018 trying to re-add
+`ApplianceType.isActive`, which already existed.
+
+**Root cause:** every migration before this pipeline existed was
+applied by Chris pasting its SQL directly into Neon's console. That
+always updated the real schema correctly, but it never touched
+Prisma's own private bookkeeping table (`_prisma_migrations`), which
+only gets written when Prisma itself runs a migration. So 5 migrations
+(`20260926190000_appliance_types_and_installation_fee` through
+`20260927010000_reservation_expiration`) were fully, correctly applied
+to the real database, but Prisma had no record of that — and the first
+time it actually tried to run them itself, it collided with columns
+that were already there.
+
+**Confirmed, not assumed:** before touching anything, every column
+each of those 5 migrations was supposed to add was checked directly
+against the live database and found already present — this was purely
+a paperwork gap, never a partially-applied or missing change.
+
+**Fix:** a one-time SQL statement (given directly to Chris to run in
+Neon's console, matching this project's existing pattern for anything
+that writes to production) marking those 5 migrations as already
+applied in `_prisma_migrations`, using the same checksum Prisma itself
+computes from each migration.sql file (verified by hashing the actual
+files and comparing to what Prisma had already recorded for the
+migrations it did track correctly).
+
+**Why this can't recur going forward:** the whole point of the
+"Safe production database migrations" change above is that migrations
+never get pasted into Neon by hand again — merging a PR is now the
+entire deploy. As long as that holds, Prisma's bookkeeping and the real
+schema can never drift apart again. **If a genuine emergency ever
+requires pasting SQL directly into Neon again** (bypassing the normal
+PR flow entirely), immediately follow it with `prisma migrate resolve
+--applied <migration name>` against production — skipping that step is
+exactly what caused this.

@@ -730,19 +730,25 @@ going forward.
       keeps 6 hours of point-in-time restore built in at no extra cost,
       which covers the "have a way back out" half of this — no new
       snapshot system was built on top of that.
-- [ ] **What Chris should watch for:** this is the first PR that changes
-      how production deploys actually work, not just what they contain.
-      It's been checked as thoroughly as this session could check it
-      (the migration-blocking script was tested against both a safe and
-      a deliberately unsafe fake migration; the schema-health script
-      reuses the app's own real database connection code), but the very
-      next real merge to `main` after this one is the first real proof
-      that the new automatic-migration step behaves correctly against
-      the live database. Worth keeping an eye on that next deploy in
-      Vercel's dashboard.
-- [ ] **Not yet merged on purpose** — ready to open as its own PR. No
-      manual database migration step needed for this one (it doesn't add
-      a schema migration, it changes how future ones get applied).
+- [x] **Already proven against the real, live database, before this
+      even merged.** The first real attempt hit exactly the kind of
+      thing this whole item exists to catch: 5 past migrations had
+      already been applied by hand (Chris pasting SQL into Neon, the
+      old process) but were never recorded in Prisma's own bookkeeping,
+      so the very first automatic run correctly stopped itself rather
+      than silently colliding with columns that already existed. Every
+      column those 5 migrations were supposed to add was confirmed
+      already present in the real database before touching anything —
+      this was a one-time paperwork gap from the old process, never a
+      data problem. Chris ran one short, one-time SQL statement to
+      close that gap (see `docs/DECISIONS.md`'s dated entry for exactly
+      what it did and why it's safe), and the database now correctly
+      shows all 8 migrations as applied. This can't recur going
+      forward, because the entire point of this change is that no one
+      pastes migration SQL into Neon by hand anymore.
+- [ ] **Not yet merged on purpose** — ready to open as its own PR (#26).
+      No further database step needed — the one-time bookkeeping fix
+      above already happened directly against production.
 
 ## Immediate next step (whoever picks this up next)
 
