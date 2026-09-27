@@ -746,19 +746,73 @@ going forward.
       shows all 8 migrations as applied. This can't recur going
       forward, because the entire point of this change is that no one
       pastes migration SQL into Neon by hand anymore.
-- [ ] **Not yet merged on purpose** — ready to open as its own PR (#26).
-      No further database step needed — the one-time bookkeeping fix
-      above already happened directly against production.
+- [x] **Merged and confirmed live 2026-09-27** — PR #26.
+
+**Phase 6A is now fully complete.**
+
+## 2026-09-27 (same session, continued) — Phase 6B, step 1: billing policy decisions + billing data model redesign
+
+Phase 6B (Stripe test-mode billing) is a real boundary — it needed
+Chris's own decisions before any of it could be designed, not an AI's
+guess. Four open questions were reviewed with him and confirmed (see
+`docs/BUSINESS-RULES.md`'s "Billing rules" section for the plain-English
+policy and `docs/DECISIONS.md`'s two new dated entries for the full
+reasoning behind each):
+
+- [x] **Anniversary billing** (each customer billed on the same day of
+      the month they signed, not one fixed date for everyone).
+- [x] **Deposits charged as real money up front**, not just
+      authorized/held (a hold expires too soon for a multi-month
+      rental).
+- [x] **Both cards and ACH bank-transfer payments offered** from day
+      one.
+- [x] **Billing in advance** (charged at the start of the month being
+      rented, not after).
+
+With those confirmed, the billing data model itself was redesigned
+before writing any actual Stripe code, per the work-order's own
+suggested order (item 11 before item 12) — see
+`docs/DECISIONS.md`'s "Phase 6B billing data model redesign" entry.
+
+- [x] **Needs a schema migration** —
+      `prisma/migrations/20260927020000_billing_data_model_redesign`.
+      Confirmed first that nothing in the app reads or writes
+      `Invoice`/`Payment`/`Deposit` yet, so every change is additive —
+      new columns, new tables, three new `InvoiceStatus` values — with
+      nothing renamed, nothing removed, and no backfill needed.
+      **Chris needs to run this migration's SQL in Neon before or
+      alongside merging**, same as always, OR — since production
+      migrations now apply themselves automatically (Phase 6A item 1)
+      — simply merging the PR is enough; no manual SQL step required
+      unless he specifically wants to pre-apply it.
+- [x] New models: `InvoiceLineItem` (immutable snapshot invoice lines),
+      `Refund` (money refunded from an already-paid invoice),
+      `CustomerCredit` (an account-level credit toward a future
+      invoice), `WebhookEvent` (Stripe webhook idempotency). Extended
+      `Invoice` (invoice numbers, billing-period dates, a real
+      subtotal/discount/tax/late-fee breakdown, cancellation/write-off
+      tracking), `Payment` (attempt tracking, ACH charge id), `Deposit`
+      (who authorized a refund and why it was partial), `Customer`
+      (Stripe customer id), and `RentalAgreement` (Stripe subscription
+      id and the date that drives anniversary billing).
+- [x] Ran `scripts/check-migrations.mjs` locally against this new
+      migration — passes clean (every change is additive, nothing
+      matches a destructive pattern).
+- [ ] **Deliberately not built yet:** any actual Stripe SDK code,
+      webhook handling, or billing UI — this is schema only, reviewable
+      and mergeable with zero Stripe account needed. That's the next,
+      separate piece of work.
 
 ## Immediate next step (whoever picks this up next)
 
-Open the migration-safety work above as its own PR, get CI green, and
-report to Chris before starting the next item — **and specifically
-flag that this changes how deploys work**, so he knows to keep an eye
-on the next real merge. With this merged, **Phase 6A is fully
-complete**. Phase 6B (Stripe test-mode billing) is next per the
-work-order, but it's a real boundary: it needs Chris's own decisions
-(billing cadence, deposit handling, ACH vs. card, invoice timing, and a
-real Stripe test-mode account) before any of it gets built — this is
-exactly the kind of thing to stop and ask him about first, not start
-unprompted.
+Open the billing data model redesign above as its own PR, get CI green,
+and report to Chris. Once merged, the real next step needs something
+only Chris can provide: **a Stripe account with test-mode API keys**
+(`STRIPE_SECRET_KEY` / a webhook signing secret, both already reserved
+in `.env.example` but commented out and unset). Once those exist (added
+as Vercel environment variables, never committed to the repo), the
+actual Stripe integration — customer/subscription creation, invoice
+generation on each `nextBillingDate`, webhook handling, and the
+delinquency/collections view — can be built and genuinely tested
+against Stripe's real test-mode sandbox, per the work-order's Phase 6B
+section.

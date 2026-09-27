@@ -105,10 +105,15 @@ model Customer {
   isPropertyManager Boolean @default(false)
   companyName     String?
 
+  // Set the first time this customer is billed through Stripe (Phase 6B)
+  // — one Stripe Customer per Appliance Desk customer, never recreated.
+  stripeCustomerId String? @unique
+
   serviceAddresses ServiceAddress[]
   rentalAgreements RentalAgreement[]
   maintenanceRequests MaintenanceRequest[]
   invoices         Invoice[]
+  credits          CustomerCredit[]
   consentRecords   ConsentRecord[]
   jobs             Job[]
 
@@ -368,6 +373,16 @@ model RentalAgreement {
   // actually created.
   reservationExpiresAt DateTime?
 
+  // Billing (Phase 6B, docs/BUSINESS-RULES.md's billing rules). One
+  // Stripe Subscription per active agreement, when recurring billing
+  // applies to it. nextBillingDate drives anniversary billing: it's set
+  // once, when the agreement first goes ACTIVE, to that same date each
+  // following month — never a single fixed date shared across every
+  // customer — and advances by one billing cycle each time an invoice
+  // is actually generated for this agreement.
+  stripeSubscriptionId String? @unique
+  nextBillingDate      DateTime?
+
   lines RentalLine[]
 
   signature   SignatureRecord?
@@ -456,6 +471,14 @@ model Deposit {
   refundable  Boolean  @default(true)
   refundedAt  DateTime?
   refundedAmountCents Int?
+  // Why the refunded amount is less than amountCents (a damage
+  // deduction, say) — required in practice whenever a partial refund is
+  // recorded, enforced by the domain layer rather than the database.
+  deductionReason String?
+  // The OWNER/ADMIN who processed the refund — a deposit is never
+  // refunded automatically.
+  refundedByUserId String?
+  stripeRefundId String?
 
   createdAt DateTime @default(now())
 }
@@ -560,32 +583,89 @@ model MaintenanceRequest {
 }
 
 // ---------------------------------------------------------------------------
-// Billing
+// Billing (Phase 6B — see docs/DECISIONS.md's "Phase 6B billing data
+// model redesign" entry for the full writeup, and docs/BUSINESS-RULES.md's
+// "Billing rules" section for the plain-English billing policy: anniversary
+// billing, deposits charged up front, cards + ACH both offered, billing in
+// advance).
+//
+// Nothing reads or writes these models yet as of this redesign — Stripe
+// wiring is the next, separate piece of work, once Chris has a real
+// Stripe test-mode account. This redesign exists so that work has a data
+// model worth building against, instead of retrofitting one under
+// pressure once real invoices exist.
 // ---------------------------------------------------------------------------
 
 enum InvoiceStatus {
   DRAFT
   OPEN
+  PARTIALLY_PAID
   PAID
   FAILED
   VOID
   DELINQUENT
+  WRITTEN_OFF
+  REFUNDED
+}
+
+// One line per invoice, snapshotted at the moment the invoice is created
+// and never edited afterward — a historical invoice must never silently
+// change because pricing or settings changed later (same immutability
+// rule as RentalAgreement's own price snapshot). Correcting a mistake or
+// crediting a customer always adds a new line (kind ADJUSTMENT or
+// CREDIT), never edits an existing one.
+enum InvoiceLineItemKind {
+  RENTAL
+  DELIVERY_FEE
+  INSTALLATION_FEE
+  REMOVAL_FEE
+  DAMAGE_WAIVER
+  DEPOSIT
+  TAX
+  LATE_FEE
+  PREPAY_DISCOUNT
+  CREDIT
+  ADJUSTMENT
 }
 
 model Invoice {
   id          String        @id @default(cuid())
+  // Sequential, human-facing invoice number (what a customer sees on a
+  // receipt) — separate from `id`, which is only ever an internal key.
+  invoiceNumber Int         @unique @default(autoincrement())
   customerId  String
   customer    Customer      @relation(fields: [customerId], references: [id])
   agreementId String?
   agreement   RentalAgreement? @relation(fields: [agreementId], references: [id])
 
   status      InvoiceStatus @default(DRAFT)
-  amountDueCents Int
+
+  // The rental period this invoice actually covers — billing is always
+  // in advance (docs/BUSINESS-RULES.md), so these dates are the month
+  // being paid FOR, not the month the invoice was sent in.
+  billingPeriodStart DateTime?
+  billingPeriodEnd   DateTime?
+
+  // Rolled-up totals, computed from this invoice's own lineItems at
+  // creation time and never recalculated later — the lineItems are the
+  // real source of truth; these are a convenient, immutable summary of
+  // them (docs/DATABASE.md).
+  subtotalCents   Int @default(0)
+  discountCents   Int @default(0)
+  taxCents        Int @default(0)
+  lateFeeCents    Int @default(0)
+  amountDueCents  Int
   amountPaidCents Int @default(0)
   dueDate     DateTime?
 
+  cancelledAt     DateTime?
+  writtenOffAt    DateTime?
+  writtenOffReason String?
+
   stripeInvoiceId String? @unique
+  lineItems   InvoiceLineItem[]
   payments    Payment[]
+  refunds     Refund[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -594,17 +674,98 @@ model Invoice {
   @@index([customerId])
 }
 
+model InvoiceLineItem {
+  id          String   @id @default(cuid())
+  invoiceId   String
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  kind        InvoiceLineItemKind
+  description String
+  // Negative for a discount, credit, or downward adjustment — every
+  // other total on the invoice is a plain sum of these.
+  amountCents Int
+  quantity    Int      @default(1)
+
+  // Optional traceability back to the specific rental line this charge
+  // came from — never used to recompute the amount, only to answer "why
+  // is this line on the invoice."
+  rentalLineId String?
+
+  createdAt DateTime @default(now())
+}
+
 model Payment {
   id          String   @id @default(cuid())
   invoiceId   String
   invoice     Invoice  @relation(fields: [invoiceId], references: [id])
   amountCents Int
   method      String?  // card | ach
+  // succeeded | failed | pending | ach_pending (ACH takes a few business
+  // days to clear — this state means Stripe accepted the attempt but it
+  // hasn't posted yet, distinct from a card charge's near-instant result)
+  status      String
+  attemptNumber Int    @default(1)
+  stripeChargeId String?
   stripePaymentIntentId String?
-  status      String   // succeeded | failed | pending
   failureReason String?
 
   createdAt DateTime @default(now())
+}
+
+enum RefundReason {
+  OVERPAYMENT
+  BILLING_ERROR
+  GOODWILL
+  DISPUTE_RESOLUTION
+  OTHER
+}
+
+// A refund of money already paid on an invoice — separate from a
+// security-deposit refund, which stays on Deposit itself
+// (Deposit.refundedAt/refundedAmountCents) since that's a different kind
+// of money with its own existing record. Every refund here always
+// happened after a real payment, so it's always tied to one Invoice.
+model Refund {
+  id          String       @id @default(cuid())
+  invoiceId   String
+  invoice     Invoice      @relation(fields: [invoiceId], references: [id])
+  amountCents Int
+  reason      RefundReason
+  notes       String?
+  authorizedByUserId String? // the OWNER/ADMIN who approved it — never automatic
+  stripeRefundId String?
+
+  createdAt DateTime @default(now())
+}
+
+// An account-level credit (e.g. goodwill, or resolving an overpayment)
+// that reduces what a customer owes on a FUTURE invoice — deliberately
+// separate from Refund (money going back to a payment method) and from
+// InvoiceLineItem's CREDIT kind (which is how a credit actually gets
+// applied to a specific invoice once it's used).
+model CustomerCredit {
+  id             String   @id @default(cuid())
+  customerId     String
+  customer       Customer @relation(fields: [customerId], references: [id])
+  amountCents    Int
+  remainingCents Int
+  reason         String
+  notes          String?
+  authorizedByUserId String?
+
+  createdAt DateTime @default(now())
+}
+
+// Every Stripe webhook event this app has ever processed, keyed by
+// Stripe's own event id — webhook delivery is at-least-once, so Stripe
+// (or a retried delivery after a timeout) can send the same event twice.
+// Checking this table before acting on an event, and inserting into it
+// as part of the same action, is what makes webhook processing
+// idempotent (docs/BUSINESS-RULES.md's billing rules).
+model WebhookEvent {
+  id          String   @id // Stripe's own event id, e.g. "evt_..."
+  type        String
+  processedAt DateTime @default(now())
 }
 
 // ---------------------------------------------------------------------------

@@ -764,3 +764,85 @@ requires pasting SQL directly into Neon again** (bypassing the normal
 PR flow entirely), immediately follow it with `prisma migrate resolve
 --applied <migration name>` against production — skipping that step is
 exactly what caused this.
+
+## 2026-09-27 — Phase 6B billing policy decisions, confirmed with Chris
+
+Before any billing/Stripe work begins, four open policy questions
+(explicitly flagged in the work-order as needing Chris's own decision,
+never an AI's guess) were reviewed with him and confirmed:
+
+1. **Anniversary billing**, not a single fixed billing date for
+   everyone — each customer's monthly charge lands on the same day of
+   the month they signed. Chosen over a fixed date because it needs no
+   partial-month proration logic for a customer who joins mid-month,
+   which is a common source of billing bugs and customer confusion.
+2. **Deposits are charged as real money up front**, not merely
+   authorized/held on a card. A bank hold typically expires after about
+   a week, which can't cover a rental that runs for months, so holding
+   instead of charging isn't a workable option here regardless of
+   preference.
+3. **Both cards and ACH bank-transfer payments are offered from day
+   one**, through Stripe's own hosted Checkout/Customer Portal — cards
+   are instant but cost ~2.9% + $0.30 per charge, ACH is much cheaper
+   per charge but takes a few business days to confirm. Offering both
+   costs nothing extra to build (Stripe's hosted flow handles the
+   difference) and saves real money once there's real volume.
+4. **Billing in advance** — a customer is charged at the start of the
+   month they're about to rent for, not after the fact for the month
+   already used. Protects cash flow: the business is paid before
+   providing the next month of service, not floating risk on every
+   customer.
+
+These four decisions govern the billing data model and Stripe
+integration built under Phase 6B — see `docs/BUSINESS-RULES.md`'s
+"Billing rules" section for the plain-English summary kept alongside
+the rest of the business rules.
+
+## 2026-09-27 — Phase 6B billing data model redesign
+
+**Problem:** the original `Invoice`/`Payment`/`Deposit` models were
+confirmed too minimal to build real billing on (Verified Finding #5 in
+the original work-order) — no line items, no invoice numbers, no
+billing-period dates, no refund/credit/write-off tracking, no Stripe
+customer/subscription linkage, no webhook idempotency. Building Stripe
+UI directly against that would mean retrofitting the data model under
+pressure once real invoices existed.
+
+**Decision:** redesigned the schema before writing any Stripe code, per
+the work-order's own suggested order. Confirmed first that nothing in
+the app reads or writes `Invoice`/`Payment`/`Deposit` yet (checked
+directly — zero matches for `prisma.invoice`/`prisma.payment` anywhere
+in `src/`), so every change was additive: new columns, new tables, and
+new enum values, with nothing renamed or removed and no backfill
+needed. Added:
+
+- `InvoiceLineItem` — immutable snapshot lines making up an invoice
+  (rent, fees, deposit, tax, discount, later credits/corrections),
+  matching the same "signed pricing never changes after the fact" rule
+  `RentalAgreement` already follows for its own fields.
+- Invoice numbering (`invoiceNumber`, sequential and human-facing,
+  separate from the internal `id`), billing-period dates (billing is
+  always in advance, per the policy decision above), and a real
+  subtotal/discount/tax/late-fee breakdown.
+- `Refund` (money refunded from an already-paid invoice) and
+  `CustomerCredit` (an account-level credit toward a future invoice) —
+  kept as two separate models rather than one, since they're genuinely
+  different kinds of money movement with different authorization needs.
+  A security deposit's own refund stays on `Deposit` itself (extended
+  with who authorized it and why it was partial) rather than becoming a
+  third overlapping model.
+- `WebhookEvent`, keyed by Stripe's own event id — the standard
+  idempotency pattern the work-order asked for, since Stripe's webhook
+  delivery is at-least-once and can redeliver the same event.
+- `Customer.stripeCustomerId` and `RentalAgreement.stripeSubscriptionId`
+  / `nextBillingDate` — one Stripe object per Appliance Desk record,
+  never recreated, and the field that actually drives anniversary
+  billing (set once when an agreement goes ACTIVE, advanced by one
+  cycle each time an invoice is generated for it).
+
+**Deliberately not built yet:** any actual Stripe SDK code, webhook
+handlers, or UI. This PR is schema only, so it could be reviewed and
+merged without needing a Stripe account or API keys at all — the next
+piece of work (Stripe test-mode billing itself) needs Chris to have a
+real, free Stripe test-mode account with test API keys before it can
+be built and actually tested.
