@@ -860,20 +860,42 @@ each other and can both exist at the same time.
       record are all present and **verified** again. Whatever Chris
       re-added after the Workspace change, it was enough to fix those
       three.
-- [ ] **Still broken: the DKIM TXT record** (`resend._domainkey`).
-      Resend's own dashboard confirms its status is `failed`. The value
-      that needs to go in the DNS record's "Value" field is 218
-      characters long, and what's showing in Vercel's DNS record editor
-      is only 202 characters — missing the last 16. This has happened
-      twice with the same exact cutoff point, which points to a
-      copy/paste that didn't grab the whole value (most likely a
-      click-and-drag text selection that stopped a little short) rather
-      than an actual limit on how long a value Vercel's field accepts.
-      **Next step:** have Chris go back into the DNS record's value
-      field, click into it, select the entire existing (wrong) value
-      with Ctrl+A (Cmd+A on a Mac) instead of dragging, delete it, then
-      paste the full value fresh (also selected with Ctrl+A/Cmd+A from
-      wherever it's copied) and save. The full, correct value is in this
-      session's chat reply to Chris.
-- [ ] No code or database change here — this is a DNS configuration
+- [x] **DKIM TXT record fixed.** Chris re-entered the full 218-character
+      value in Vercel's DNS editor (selecting the whole field with
+      Ctrl+A before pasting, instead of drag-selecting, which had been
+      cutting it short). Confirmed directly via a live DNS lookup that
+      the full, correct value is now published. Resend's own status
+      moved from `failed` to `pending` right after — Resend re-checks on
+      its own schedule, so it may take a little while longer to show
+      fully `verified`, but nothing further needs to be done here; it
+      should clear on its own.
+- [x] No code or database change here — this was a DNS configuration
       issue in Vercel's dashboard, not a bug in the app.
+
+## 2026-09-27 (same session, continued) — robinsonappliancerentals.com now has its own real email mailbox
+
+Chris connected a Google Workspace account to this session (his
+existing Workspace, also used for Robinson AI Systems). Since Robinson
+Appliance Rentals is a separate business entity, we deliberately did
+**not** alias its email into Robinson AI Systems' existing `ops@`
+mailbox — instead this business got its own real, separate mailbox
+(a new paid Workspace seat, which Chris explicitly approved knowing it
+adds a recurring cost — he'll confirm the exact amount on his own
+Workspace billing page, since this session can't see Workspace pricing).
+
+- [x] Created `ops@robinsonappliancerentals.com` as a real mailbox
+      (primary email), with `chris@robinsonappliancerentals.com` as an
+      alias into it.
+- [x] Added three more role aliases, chosen for what this specific app
+      actually needs (not copied blindly from the Robinson AI Systems
+      pattern) — see `docs/ARCHITECTURE.md`'s new "Email addresses
+      (Google Workspace)" section for the full table and exactly which
+      env var / code path each one maps to: `leads@`, `support@`,
+      `no-reply@`, plus `billing@` reserved for the future Stripe work.
+- [ ] **Not yet wired into the live app.** The addresses exist and can
+      receive mail right now, but `LEAD_NOTIFICATION_EMAIL`,
+      `MAINTENANCE_NOTIFICATION_EMAIL`, `RESEND_FROM_EMAIL`, and
+      `/desk/settings`'s `publicEmail` are all still on their old
+      values/placeholders. Deliberately left as a decision for Chris,
+      not changed unasked — see `docs/ARCHITECTURE.md` for exactly what
+      each one should become.

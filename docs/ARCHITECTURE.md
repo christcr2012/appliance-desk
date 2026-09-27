@@ -7,7 +7,7 @@ One Next.js 16 (App Router) application. No monorepo, no microservices.
 | Piece | Where | Notes |
 |---|---|---|
 | Source code | GitHub — `christcr2012/appliance-desk` (private) | `main` is production. All work happens on branches, merged via PR. |
-| Hosting | Vercel — team **Robinson AI Systems**, project **appliance-desk** | `main` → production; PRs/branches → preview deployments. No custom domain yet (using the generated `*.vercel.app` URL until Chris supplies one). |
+| Hosting | Vercel — team **Robinson AI Systems**, project **appliance-desk** | `main` → production; PRs/branches → preview deployments. Custom domain **robinsonappliancerentals.com** is live and verified (DNS hosted on Vercel's own nameservers). |
 | Database | Neon — project **Appliance Desk** (`jolly-term-08991992`), database `appliance_desk`, branch `main` | Region: **AWS US East 1 (N. Virginia)** — see `docs/DECISIONS.md` for why. |
 
 ## Environment variables
@@ -21,6 +21,43 @@ See `.env.example` for the full list with comments. The short version:
 - Everything else (Resend, Stripe, SignWell/Documenso/DocuSign) is added in later phases, only when that phase needs it.
 
 All of these are stored as **Vercel environment variables** (per environment: Production / Preview / Development). Nothing secret is ever committed. Local development uses `.env.local` (gitignored).
+
+## Email addresses (Google Workspace)
+
+**As of 2026-09-27**, `robinsonappliancerentals.com` has its own real,
+separate Google Workspace mailbox — deliberately its own paid seat, not
+an alias inside Chris's other company's (Robinson AI Systems) mailbox,
+since these are separate business entities. Any future session doing
+work that touches outgoing email, the "from"/"reply-to" address, or
+where a notification should land should use this table rather than
+guessing or inventing a new address:
+
+| Address | Real inbox or alias? | What it's for in this app |
+|---|---|---|
+| `ops@robinsonappliancerentals.com` | **Primary mailbox** (the real inbox everything below lands in) | The account of record for this business's Workspace seat. Not meant to be shown to customers directly — use one of the role addresses below instead. |
+| `chris@robinsonappliancerentals.com` | Alias → `ops@` | Chris's personal/direct address for this business, if a human needs to reach him by name specifically. |
+| `leads@robinsonappliancerentals.com` | Alias → `ops@` | Intended for `LEAD_NOTIFICATION_EMAIL` (see `.env.example` / `src/domains/leads/index.ts`) — where a new website lead's notification email should be sent. **Not yet set as the live env var — still using the `publicEmail` fallback until Chris confirms he wants this wired in.** |
+| `support@robinsonappliancerentals.com` | Alias → `ops@` | Intended for `MAINTENANCE_NOTIFICATION_EMAIL` (`src/domains/portal/index.ts`) and for `publicEmail` in `/desk/settings` — the address shown to customers on the public site (`/contact`, `/privacy`, `/terms`, `/accessibility`) and where they'd reply. **Not yet wired in — same reason as `leads@` above.** |
+| `no-reply@robinsonappliancerentals.com` | Alias → `ops@` | Intended for `RESEND_FROM_EMAIL` (`src/lib/email.ts`) — the "from" address on automated transactional email (password resets, account activation). Currently still defaults to `onboarding@resend.dev`, Resend's own placeholder sender — this should move to a real `no-reply@` address once Chris confirms. |
+| `billing@robinsonappliancerentals.com` | Alias → `ops@` | Reserved, not used by any code yet. For Phase 6B (Stripe billing) — invoices, payment-failure notices, and any billing-specific correspondence once that phase's actual Stripe integration is built. |
+
+**Why aliases instead of separate mailboxes for each role:** Google
+Workspace only bills per real mailbox (seat), not per alias, so one paid
+seat (`ops@`) with role aliases on top gets every address above for the
+cost of a single seat — the same pattern Chris already uses on
+`robinsonaisystems.com`. Mail sent to any of these addresses lands in
+the one `ops@robinsonappliancerentals.com` inbox; only the "To:" field
+tells you which role it came in on.
+
+**Receiving vs. sending are two different things.** Workspace (the
+table above) handles *receiving* — a customer emailing `support@` or
+replying to a notification actually reaches a real inbox now. The app's
+own *outgoing* transactional email (lead notifications, password
+resets, etc.) still goes through **Resend** (see `docs/DECISIONS.md`
+and `.env.example`), which is a separate, already-verified sender for
+this same domain. Wiring the env vars above to these new addresses only
+changes what Resend puts in the "from"/"to" fields — it doesn't require
+any Workspace-side sending setup.
 
 ## Database access pattern (Prisma + Neon)
 
