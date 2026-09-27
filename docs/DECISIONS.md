@@ -646,3 +646,121 @@ its PR — it's verified purely by CI. Everything reasonably checkable
 locally (the file's own syntax, types apart from Prisma's generated
 ones, and lint) was checked; the actual pass/fail proof is CI's first
 run of it.
+
+## 2026-09-27 — safe production database migrations (Phase 6A item 1)
+
+**Problem:** the only way a migration ever reached the live Neon
+database was Chris manually pasting its SQL into Neon's console,
+before or alongside each Vercel deploy. This already caused one real
+production failure early on (PR #4), and caused a second scare this
+session (a Vercel build crashed prerendering "/" because the live
+database hadn't been migrated yet — see docs/HANDOFF.md). Vercel's
+build never ran `prisma migrate deploy` on its own, and nothing
+stopped application code from running against a schema it didn't
+match.
+
+**Decision:** package.json's `vercel-build` script (a real, Vercel-
+documented override — Vercel runs it instead of `build` automatically,
+no dashboard change needed) now runs, in order: `check:migrations`
+(refuses to proceed if a migration contains an unreviewed destructive
+pattern — see below), `db:migrate:deploy` (applies pending migrations
+to the real database), `db:verify-schema-health` (one real query per
+major part of the schema, failing with a plain message if something's
+still missing/mismatched), then `build`. Each step only runs if the one
+before it succeeded, so a failed migration or a failed health check
+fails the whole Vercel build — and a failed build is never promoted,
+so the live site keeps serving its last good deployment. This closes
+the actual gap (additive migrations are now automatic and safe) without
+adding any new hosting infrastructure, exactly as the work-order asked.
+
+**Destructive-migration safeguard
+(`scripts/check-migrations.mjs` + `prisma/migrations/DESTRUCTIVE-MIGRATIONS-REVIEWED.json`):**
+scans every migration.sql for patterns that can destroy or corrupt real
+data (DROP TABLE/COLUMN/DATABASE, TRUNCATE, RENAME, or SET NOT NULL on
+an existing column) and blocks it unless its migration folder name is
+explicitly listed, with a note, in the reviewed-migrations JSON file.
+Deliberately a *separate* file rather than a marker inside the
+migration.sql itself — editing an already-applied migration's SQL
+content after the fact would change its checksum, and Prisma's own
+`migrate deploy` refuses to proceed if a migration's checksum doesn't
+match what's already recorded as applied in production. This check
+runs twice: as its own CI step on every pull request (so a human
+reviewer sees it before merge), and again inside `vercel-build` as a
+last-resort safety net. The one pre-existing migration that actually
+matches a destructive pattern
+(`20260926163000_user_email_verified_boolean`, which does `ALTER
+COLUMN ... SET NOT NULL`) was retroactively reviewed and added to the
+JSON file rather than edited — its own existing comment already
+recorded that the User table had zero rows when it ran, so nothing
+about the historical migration itself needed to change.
+
+**Schema-health check (`scripts/verify-schema-health.ts`):** a small
+script, run with `tsx` (same tool `prisma/seed.ts` already uses) so it
+can import and reuse the app's own real `src/lib/prisma.ts` client
+rather than duplicating connection logic. It runs one representative
+query against each major part of the schema (BusinessSettings, User,
+Customer, ApplianceType, RentalAgreement, AuditLog) — enough to catch
+"a migration didn't actually run," which is the exact failure mode that
+already happened once, with a message a non-developer can act on
+instead of a stack trace buried inside Next.js's own build output.
+
+**Restore point — deliberately not a new snapshot mechanism:** the live
+Neon project already keeps a rolling 6-hour point-in-time-restore
+window as part of its current plan (confirmed directly against the
+Neon project via its API, 2026-09-27) — Neon can restore to any moment
+in that window with no extra setup or cost. Building a custom
+snapshot-before-migrate step would have meant a new Neon API credential
+living in Vercel's environment and new code exercising Neon's branching
+API on every single deploy — real, ongoing infrastructure and risk for
+a safety net Neon already provides. Recommendation, not automated: for
+anything the destructive-migration check actually flags, take an
+explicit Neon branch snapshot by hand right before merging, so the
+restore point isn't limited to the rolling 6 hours.
+
+**What Chris still does by hand:** nothing at all for a routine,
+additive migration — merging the PR is now the whole deploy. He's only
+asked to look at anything when `check:migrations` blocks a migration,
+and even then the ask is "confirm this is safe" plus a recorded note,
+never raw SQL.
+
+## 2026-09-27 — first real run of the automatic migration pipeline hit a one-time bookkeeping gap (not a bug in the new system)
+
+The very first time `vercel-build`'s new automatic `prisma migrate
+deploy` step actually ran against the live database (as part of
+merging the PR for the "Safe production database migrations" entry
+above), it failed with Prisma error P3018 trying to re-add
+`ApplianceType.isActive`, which already existed.
+
+**Root cause:** every migration before this pipeline existed was
+applied by Chris pasting its SQL directly into Neon's console. That
+always updated the real schema correctly, but it never touched
+Prisma's own private bookkeeping table (`_prisma_migrations`), which
+only gets written when Prisma itself runs a migration. So 5 migrations
+(`20260926190000_appliance_types_and_installation_fee` through
+`20260927010000_reservation_expiration`) were fully, correctly applied
+to the real database, but Prisma had no record of that — and the first
+time it actually tried to run them itself, it collided with columns
+that were already there.
+
+**Confirmed, not assumed:** before touching anything, every column
+each of those 5 migrations was supposed to add was checked directly
+against the live database and found already present — this was purely
+a paperwork gap, never a partially-applied or missing change.
+
+**Fix:** a one-time SQL statement (given directly to Chris to run in
+Neon's console, matching this project's existing pattern for anything
+that writes to production) marking those 5 migrations as already
+applied in `_prisma_migrations`, using the same checksum Prisma itself
+computes from each migration.sql file (verified by hashing the actual
+files and comparing to what Prisma had already recorded for the
+migrations it did track correctly).
+
+**Why this can't recur going forward:** the whole point of the
+"Safe production database migrations" change above is that migrations
+never get pasted into Neon by hand again — merging a PR is now the
+entire deploy. As long as that holds, Prisma's bookkeeping and the real
+schema can never drift apart again. **If a genuine emergency ever
+requires pasting SQL directly into Neon again** (bypassing the normal
+PR flow entirely), immediately follow it with `prisma migrate resolve
+--applied <migration name>` against production — skipping that step is
+exactly what caused this.

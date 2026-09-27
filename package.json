@@ -13,6 +13,9 @@
     "db:migrate:dev": "prisma migrate dev",
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
+    "check:migrations": "node scripts/check-migrations.mjs",
+    "db:verify-schema-health": "tsx scripts/verify-schema-health.ts",
+    "vercel-build": "npm run check:migrations && npm run db:migrate:deploy && npm run db:verify-schema-health && npm run build",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test"

@@ -215,18 +215,19 @@ Postgres, not just locally, per the Prisma sandbox limitation above).
       each page size the real photo and the generic-icon fallback
       independently). Verified live on `robinsonappliancerentals.com`.
 
-## Correction to an earlier (wrong) assumption in this doc
+## Correction to an earlier (wrong) assumption in this doc — since superseded
 
 An earlier version of this doc assumed `prisma migrate deploy` runs
-automatically against production as part of Vercel's build. **It does
-not** — `package.json` has no `vercel-build` script, and `postinstall`
-only runs `prisma generate` (client codegen), never `migrate deploy`.
-Every schema migration in this project requires a manual, out-of-band
-step (so far: Chris running the SQL directly in Neon's console). If a
-truly automatic pipeline is wanted later, that's a real piece of work
-(e.g. a GitHub Actions step that runs `migrate deploy` against
-production on merge to `main`, with real safeguards) — not yet built,
-tracked in `docs/ROADMAP.md`.
+automatically against production as part of Vercel's build, then a
+later update corrected that to say it does **not** (no `vercel-build`
+script existed yet, so every migration needed Chris to run its SQL by
+hand in Neon's console). **As of 2026-09-27, that manual step is gone
+for ordinary migrations** — see the "Safe production database
+migrations" section below (Phase 6A item 1) and `docs/ARCHITECTURE.md`
+and `docs/DECISIONS.md` for the real, now-built pipeline. This section
+is kept for history — every entry below it that mentions running
+migration SQL by hand in Neon reflects how things worked *at the time*,
+not how a future migration needs to be handled.
 
 ## Phase 3 — Lead management, dashboard, activity log (slice 1)
 
@@ -697,20 +698,67 @@ leak one customer's data to another in production. See
       itself, and the project's style rules) was checked and passed.
       The real proof is whether it passes on GitHub's automated checks
       (CI) once opened as a PR — that's the first real run of it.
-- [ ] **Not yet merged on purpose** — ready to open as its own PR.
-      No database migration needed for this one (it only adds a test
-      file and doc updates).
+- [x] **Merged and confirmed live 2026-09-27** — PR #25 (CI green,
+      merged by Chris). No database migration needed for that one.
+
+## 2026-09-27 (same session, continued) — Phase 6A item 1: safe production database migrations
+
+This was the last item in Phase 6A, and closes the real gap this whole
+phase was named after — see `docs/DECISIONS.md`'s new dated entry for
+the full design writeup and `docs/ARCHITECTURE.md`'s "Production
+migrations run automatically now" section for how it actually works
+going forward.
+
+- [x] `package.json`'s `vercel-build` script (a real Vercel feature —
+      confirmed against Vercel's own documentation, not assumed) now
+      runs a migration check, then applies pending migrations to the
+      real database, then verifies the schema actually matches what the
+      app expects, and only then builds the app. If any of that fails,
+      the whole build fails — and Vercel never puts a failed build live,
+      so the site keeps serving its last working version instead of
+      breaking for real customers.
+- [x] New files: `scripts/check-migrations.mjs` (blocks a migration that
+      could destroy or corrupt real data — dropping something, wiping a
+      table, forcing an existing column to required — unless it's
+      explicitly recorded as reviewed) and
+      `scripts/verify-schema-health.ts` (a plain-English check that the
+      database actually matches the app's expectations, catching the
+      exact kind of failure that broke a build earlier this session).
+      Both also run in CI on every pull request, not just at deploy
+      time.
+- [x] Confirmed directly against the live Neon project: it already
+      keeps 6 hours of point-in-time restore built in at no extra cost,
+      which covers the "have a way back out" half of this — no new
+      snapshot system was built on top of that.
+- [x] **Already proven against the real, live database, before this
+      even merged.** The first real attempt hit exactly the kind of
+      thing this whole item exists to catch: 5 past migrations had
+      already been applied by hand (Chris pasting SQL into Neon, the
+      old process) but were never recorded in Prisma's own bookkeeping,
+      so the very first automatic run correctly stopped itself rather
+      than silently colliding with columns that already existed. Every
+      column those 5 migrations were supposed to add was confirmed
+      already present in the real database before touching anything —
+      this was a one-time paperwork gap from the old process, never a
+      data problem. Chris ran one short, one-time SQL statement to
+      close that gap (see `docs/DECISIONS.md`'s dated entry for exactly
+      what it did and why it's safe), and the database now correctly
+      shows all 8 migrations as applied. This can't recur going
+      forward, because the entire point of this change is that no one
+      pastes migration SQL into Neon by hand anymore.
+- [ ] **Not yet merged on purpose** — ready to open as its own PR (#26).
+      No further database step needed — the one-time bookkeeping fix
+      above already happened directly against production.
 
 ## Immediate next step (whoever picks this up next)
 
-Open the customer-isolation test above as its own PR, get CI green
-(this is the one where CI passing especially matters, since it's the
-first time this exact file will have actually run against a real
-database), and report to Chris before starting the next item. Per the
-work-order's suggested implementation order, the only item left in
-Phase 6A is production migration safety (item 1 — a bigger, standalone
-architectural piece: designing a safer migration/release process using
-the existing GitHub/Vercel/Neon stack). After Phase 6A, Phase 6B
-(Stripe billing) is a real boundary that needs Chris's own decisions
-(billing cadence, deposit handling, a real Stripe account) before any
-of it is built.
+Open the migration-safety work above as its own PR, get CI green, and
+report to Chris before starting the next item — **and specifically
+flag that this changes how deploys work**, so he knows to keep an eye
+on the next real merge. With this merged, **Phase 6A is fully
+complete**. Phase 6B (Stripe test-mode billing) is next per the
+work-order, but it's a real boundary: it needs Chris's own decisions
+(billing cadence, deposit handling, ACH vs. card, invoice timing, and a
+real Stripe test-mode account) before any of it gets built — this is
+exactly the kind of thing to stop and ask him about first, not start
+unprompted.

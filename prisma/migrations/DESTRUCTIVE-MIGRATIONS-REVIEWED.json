@@ -1,0 +1,3 @@
+{
+  "20260926163000_user_email_verified_boolean": "Retroactively reviewed 2026-09-27 (Phase 6A item 1, see docs/DECISIONS.md): this migration's own comment already documented that the User table had zero rows when it ran, before launch and before any real customer or owner account existed, so changing the column's type and adding NOT NULL affected no real data."
+}
