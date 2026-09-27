@@ -816,3 +816,64 @@ generation on each `nextBillingDate`, webhook handling, and the
 delinquency/collections view — can be built and genuinely tested
 against Stripe's real test-mode sandbox, per the work-order's Phase 6B
 section.
+
+## 2026-09-27 (same session, continued) — small fix: browser tab title never updated with the real business name
+
+Chris entered the real business name in `/desk/settings`, and the
+website's visible content updated correctly, but the browser tab
+title (and what shows up in a Google search result) kept showing the
+placeholder text `[Company Name]`. Found while checking on an
+unrelated DNS question.
+
+- [x] **Root cause:** `src/app/layout.tsx` (the one shared layout every
+      page renders through) had its title as a plain, static
+      `export const metadata` object with the placeholder hard-coded in,
+      never actually reading `BusinessSettings` — unlike the homepage's
+      own visible text, which already pulls the real name correctly.
+- [x] **Fix:** converted it to a `generateMetadata()` function that
+      reads the real business name from the database, same as every
+      other page's visible content already does. Every other page's own
+      title (e.g. "Dashboard", "Agreements") still combines with this
+      automatically through Next.js's own title template — nothing else
+      needed to change.
+- [x] No database change, no new tests needed (this is metadata
+      composition, already covered by the existing accessibility/e2e
+      suite which loads real pages). Lint and the client-bundle-leak
+      check both clean.
+- [x] Opened as PR #28 (`ai/claude/fix-page-title-metadata`). Waiting on
+      CI + Chris's review/merge as of this writing.
+
+## 2026-09-27 (same session, continued) — Google Workspace DNS change broke outgoing email (Resend)
+
+Chris connected his domain to Google Workspace, and Workspace's own
+setup wizard told him to remove all MX records and add its one MX
+record. That's normal, expected Workspace instructions — it doesn't
+know this domain also has a separate MX record (for the `send`
+subdomain, not the main domain) that Resend needs to actually send
+emails from the app. MX records only apply to the exact
+subdomain/hostname they're added on, so Google Workspace's root MX
+record and Resend's `send` subdomain MX record don't conflict with
+each other and can both exist at the same time.
+
+- [x] Checked directly with Resend (not guessing from old notes): the
+      `send` subdomain's MX record, its SPF TXT record, and its CNAME
+      record are all present and **verified** again. Whatever Chris
+      re-added after the Workspace change, it was enough to fix those
+      three.
+- [ ] **Still broken: the DKIM TXT record** (`resend._domainkey`).
+      Resend's own dashboard confirms its status is `failed`. The value
+      that needs to go in the DNS record's "Value" field is 218
+      characters long, and what's showing in Vercel's DNS record editor
+      is only 202 characters — missing the last 16. This has happened
+      twice with the same exact cutoff point, which points to a
+      copy/paste that didn't grab the whole value (most likely a
+      click-and-drag text selection that stopped a little short) rather
+      than an actual limit on how long a value Vercel's field accepts.
+      **Next step:** have Chris go back into the DNS record's value
+      field, click into it, select the entire existing (wrong) value
+      with Ctrl+A (Cmd+A on a Mac) instead of dragging, delete it, then
+      paste the full value fresh (also selected with Ctrl+A/Cmd+A from
+      wherever it's copied) and save. The full, correct value is in this
+      session's chat reply to Chris.
+- [ ] No code or database change here — this is a DNS configuration
+      issue in Vercel's dashboard, not a bug in the app.
