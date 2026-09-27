@@ -592,8 +592,8 @@ has existed since Phase 1.
       Prisma-sandbox-limitation test-file failures are unchanged).
       Client-bundle-leak grep re-run — clean, only the two known-safe
       submodule imports.
-- [ ] **Not yet merged on purpose** — same rule as always; ready to open
-      as its own PR next.
+- [x] **Merged and confirmed live 2026-09-26** — PR #21 (CI green,
+      merged by Chris). No database migration needed for this one.
 - [ ] **Deliberately not done in this slice** (real, separate pieces of
       work, not gaps in what shipped): a forgot-password-specific rate
       limit beyond the app-wide one already in place; turning on
