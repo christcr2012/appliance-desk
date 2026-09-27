@@ -34,6 +34,7 @@ const DEFAULT_SETTINGS = {
   twelveMonthPrepayDiscountSetCents: 1000,
   twelveMonthPrepayDiscountSingleCents: 500,
   twelveMonthPrepayFreeMonthEnabled: true,
+  draftReservationHoldDays: 7,
   updatedAt: new Date(0),
 };
 
@@ -119,6 +120,7 @@ export type BusinessSettingsUpdate = Partial<{
   twelveMonthPrepayDiscountSetCents: number;
   twelveMonthPrepayDiscountSingleCents: number;
   twelveMonthPrepayFreeMonthEnabled: boolean;
+  draftReservationHoldDays: number;
 }>;
 
 /**

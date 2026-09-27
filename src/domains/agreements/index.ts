@@ -137,6 +137,7 @@ export async function createDraftAgreement(userId: string, input: NewAgreementIn
       taxRatePermille: input.taxRatePermille ?? 0,
       paidInFullInAdvance,
       freeMonthGranted,
+      reservationExpiresAt: addDays(new Date(), settings.draftReservationHoldDays),
     },
   });
 
@@ -484,4 +485,63 @@ export async function endAgreement(userId: string, agreementId: string) {
 
 export async function cancelAgreement(userId: string, agreementId: string) {
   return closeAgreement(userId, agreementId, "CANCELLED");
+}
+
+// ---------------------------------------------------------------------------
+// Reservation aging (Phase 6A item 6) — see docs/DECISIONS.md for the
+// dated design decision. Assigning a physical appliance to a DRAFT
+// agreement reserves it (AVAILABLE -> RESERVED) immediately, before the
+// customer has actually signed anything. If that agreement then never
+// gets signed, the appliance stays reserved and unavailable to anyone
+// else indefinitely unless Chris notices and cancels it by hand.
+// ---------------------------------------------------------------------------
+
+function addDays(date: Date, days: number): Date {
+  const result = new Date(date);
+  result.setDate(result.getDate() + days);
+  return result;
+}
+
+// isReservationStale lives in ./reservation-status.ts (a zero-database-
+// import submodule client components can import directly) and is
+// re-exported here for server callers, so there's one implementation.
+export { isReservationStale } from "./reservation-status";
+
+/** Pushes a DRAFT/AWAITING_SIGNATURE agreement's reservation hold back
+ * out from today, for a legitimate deal that's just taking a while —
+ * never something that happens on its own, always a deliberate click
+ * from someone on the desk. Refuses on an agreement that's already
+ * ACTIVE/ENDED/CANCELLED, where "extending a hold" has no meaning (its
+ * appliances are either actually rented or already freed). */
+export async function extendReservation(userId: string, agreementId: string) {
+  const agreement = await prisma.rentalAgreement.findUniqueOrThrow({
+    where: { id: agreementId },
+  });
+
+  if (agreement.status !== "DRAFT" && agreement.status !== "AWAITING_SIGNATURE") {
+    throw new Error(
+      "Only a draft or awaiting-signature agreement has a reservation hold to extend.",
+    );
+  }
+
+  const settings = await getBusinessSettings();
+  const reservationExpiresAt = addDays(new Date(), settings.draftReservationHoldDays);
+
+  const updated = await prisma.rentalAgreement.update({
+    where: { id: agreementId },
+    data: { reservationExpiresAt },
+  });
+
+  await prisma.auditLog.create({
+    data: {
+      userId,
+      action: "agreement.extend_reservation",
+      entityType: "RentalAgreement",
+      entityId: agreementId,
+      oldValue: { reservationExpiresAt: agreement.reservationExpiresAt },
+      newValue: { reservationExpiresAt },
+    },
+  });
+
+  return updated;
 }

@@ -44,6 +44,7 @@ const DEFAULT_SETTINGS = {
   twelveMonthPrepayDiscountSetCents: 1000,
   twelveMonthPrepayDiscountSingleCents: 500,
   twelveMonthPrepayFreeMonthEnabled: true,
+  draftReservationHoldDays: 7,
 };
 
 describe("createDraftAgreement — prepaid-term discount wiring", () => {
@@ -130,6 +131,24 @@ describe("createDraftAgreement — prepaid-term discount wiring", () => {
         }),
       }),
     );
+  });
+
+  it("sets reservationExpiresAt using the owner-configured hold-days count (Phase 6A item 6)", async () => {
+    getBusinessSettings.mockResolvedValue({ ...DEFAULT_SETTINGS, draftReservationHoldDays: 3 });
+    const { createDraftAgreement } = await import("@/domains/agreements");
+
+    const before = Date.now();
+    await createDraftAgreement("user-1", {
+      customerId: "cust-1",
+      serviceAddressId: "addr-1",
+      termMonths: null,
+    });
+    const after = Date.now();
+
+    const call = rentalAgreementCreate.mock.calls[0][0];
+    const expiresAt: Date = call.data.reservationExpiresAt;
+    expect(expiresAt.getTime()).toBeGreaterThan(before + 2 * 24 * 60 * 60 * 1000);
+    expect(expiresAt.getTime()).toBeLessThan(after + 4 * 24 * 60 * 60 * 1000);
   });
 });
 

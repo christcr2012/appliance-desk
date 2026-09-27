@@ -357,6 +357,17 @@ model RentalAgreement {
   paidInFullInAdvance Boolean @default(false)
   freeMonthGranted    Boolean @default(false)
 
+  // Reservation aging (Phase 6A item 6, docs/DECISIONS.md has the dated
+  // design decision). Set when the agreement is created (now +
+  // BusinessSettings.draftReservationHoldDays) and only meaningful
+  // while the agreement is still DRAFT or AWAITING_SIGNATURE — once
+  // it's signed the appliances are actually rented, not just held, so
+  // staleness no longer applies. Chris can push this back out manually
+  // ("extend reservation") for a legitimate deal that's just taking a
+  // while, without that being confused with when the agreement was
+  // actually created.
+  reservationExpiresAt DateTime?
+
   lines RentalLine[]
 
   signature   SignatureRecord?
@@ -643,6 +654,12 @@ model BusinessSettings {
   twelveMonthPrepayDiscountSetCents    Int     @default(1000)
   twelveMonthPrepayDiscountSingleCents Int     @default(500)
   twelveMonthPrepayFreeMonthEnabled    Boolean @default(true)
+
+  // Reservation aging (Phase 6A item 6 — see docs/BUSINESS-RULES.md).
+  // How many days a DRAFT/AWAITING_SIGNATURE agreement's reserved
+  // appliances are held before the desk flags it as stale. Owner-
+  // adjustable, same pattern as every other business rule here.
+  draftReservationHoldDays Int @default(7)
 
   updatedAt DateTime @updatedAt
 }

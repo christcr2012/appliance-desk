@@ -152,6 +152,17 @@ finalize an order themselves at launch — that's an intentional later
 feature, not an oversight (see `docs/ROADMAP.md`). The data model
 already supports adding it without a redesign.
 
+**Reservation aging:** assigning an appliance to a draft agreement
+reserves it immediately, before the customer has signed anything. If
+that agreement is still DRAFT or AWAITING_SIGNATURE past the
+owner-adjustable hold period (`/desk/settings`, defaults to 7 days),
+the desk flags it as a "stale hold" on the agreements list and on the
+agreement's own page. From there Chris either cancels it (frees the
+appliance back to `AVAILABLE` for another customer) or clicks "Extend
+reservation" if it's just a slow-moving deal. Nothing is ever freed or
+cancelled automatically — a legitimate in-progress agreement is never
+silently touched.
+
 ## Inventory & status rules
 
 Appliance statuses — `AVAILABLE`, `RESERVED`, `RENTED`, `MAINTENANCE`,

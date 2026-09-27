@@ -39,6 +39,7 @@ const businessSettingsSchema = z.object({
   twelveMonthPrepaySetDollars: z.coerce.number().min(0).max(1000),
   twelveMonthPrepaySingleDollars: z.coerce.number().min(0).max(1000),
   twelveMonthPrepayFreeMonthEnabled: z.coerce.boolean(),
+  draftReservationHoldDays: z.coerce.number().int().min(1).max(90),
 });
 
 function splitList(value: string): string[] {

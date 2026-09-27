@@ -624,16 +624,57 @@ has existed since Phase 1.
       checks). 61/61 unit tests passing (up from 53 — the usual 7
       pre-existing, documented Prisma-sandbox-limitation test-file
       failures unchanged). Lint and client-bundle-leak grep clean.
+- [x] **Merged and confirmed live 2026-09-26** — PR #23 (CI green,
+      merged by Chris). No database migration needed for this one.
+
+## 2026-09-27 (same session, continued) — Phase 6A item 6: reservation aging / abandoned draft agreements
+
+Assigning a physical appliance to a DRAFT agreement reserves it
+immediately (`AVAILABLE` → `RESERVED`) — before the customer has
+actually signed anything. If that agreement is then abandoned, the
+appliance stayed reserved and unavailable to any other customer
+indefinitely, with nothing surfacing it to Chris. See
+`docs/DECISIONS.md`'s new dated entry for the full design writeup,
+including the explicit constraint this had to satisfy: never silently
+cancel a legitimate in-progress agreement.
+
+- [x] **Needs a schema migration** —
+      `prisma/migrations/20260927010000_reservation_expiration` (adds
+      `BusinessSettings.draftReservationHoldDays` — owner-adjustable,
+      defaults to 7 — and `RentalAgreement.reservationExpiresAt`, with
+      a backfill for existing draft/awaiting-signature agreements).
+      **Chris needs to run this SQL in Neon's console before or
+      alongside deploying/merging**, same as every previous migration.
+- [x] New "Reserved-appliance holds" section in `/desk/settings` —
+      Chris sets his own number of hold-days, plain business language.
+- [x] A DRAFT/AWAITING_SIGNATURE agreement past its hold shows a
+      "Stale hold" badge on `/desk/agreements`'s list, and a fuller
+      warning banner with an "Extend reservation" button on the
+      agreement's own page — alongside the existing Cancel button
+      (which already frees the appliance back to `AVAILABLE`). Nothing
+      is ever changed automatically; Chris always chooses.
+- [x] Dashboard: added a "Stale reservation holds" count.
+- [x] 18 new tests across 3 files (`tests/agreements.test.ts`'s new
+      `isReservationStale` cases, `tests/agreements-extend-reservation
+      .test.ts`, and a new case in `tests/agreements-prepay-discount
+      .test.ts` proving `createDraftAgreement` sets the hold correctly).
+      66/66 unit tests passing (up from 61 — the usual 7 pre-existing,
+      documented Prisma-sandbox-limitation test-file failures
+      unchanged). Lint and client-bundle-leak grep clean (the staleness
+      check lives in its own zero-database-import submodule,
+      `src/domains/agreements/reservation-status.ts`, for exactly the
+      reason `docs/DECISIONS.md`'s entry explains).
 - [ ] **Not yet merged on purpose** — ready to open as its own PR.
 
 ## Immediate next step (whoever picks this up next)
 
-Open the spam-protection work above as its own PR, get CI green, and
+Open the reservation-aging work above as its own PR — **run its
+migration in Neon before merging**, same as always — get CI green, and
 report to Chris before starting the next item. Per the work-order's
 suggested implementation order, what's left in Phase 6A is: production
 migration safety (item 1 — a bigger, standalone architectural piece)
 and real customer-isolation integration tests (item 3 — the first
-integration-test infrastructure in this project) and reservation-
-expiration handling (item 6). After Phase 6A, Phase 6B (Stripe billing)
-is a real boundary that needs Chris's own decisions (billing cadence,
-deposit handling, a real Stripe account) before any of it is built.
+integration-test infrastructure in this project). After Phase 6A, Phase
+6B (Stripe billing) is a real boundary that needs Chris's own decisions
+(billing cadence, deposit handling, a real Stripe account) before any
+of it is built.
