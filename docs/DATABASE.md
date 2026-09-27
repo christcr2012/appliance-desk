@@ -59,8 +59,8 @@ in UTC and only converted to Mountain Time for display.
   price so Chris can see history in `/desk/activity`.
 - **SignatureRecord** — the e-signature provider's record for one
   agreement (who signed, when, link to the signed PDF).
-- **Deposit** — a security deposit or damage-waiver charge tied to an
-  agreement, with its own refund tracking.
+- **Deposit** — a security deposit tied to an agreement; see the
+  Billing section below for its refund-tracking fields.
 
 ## Jobs (delivery / install / swap / maintenance visit / removal)
 
@@ -77,10 +77,36 @@ in UTC and only converted to Mountain Time for display.
 
 ## Billing
 
-- **Invoice** / **Payment** — what's owed and what's been paid, tied to
-  Stripe (test mode until Chris turns on live payments). The server
-  always computes what's owed; the browser is never trusted with a
-  price.
+Redesigned for Phase 6B (docs/DECISIONS.md has the dated writeup) —
+nothing reads or writes these yet; Stripe wiring is the next piece of
+work, once Chris has a real Stripe test-mode account.
+
+- **Invoice** — one bill, covering one billing period (billing is
+  always *in advance* — see docs/BUSINESS-RULES.md). Has a
+  human-facing `invoiceNumber` separate from its internal id, and its
+  own subtotal/discount/tax/late-fee breakdown, computed once at
+  creation and never recalculated.
+- **InvoiceLineItem** — one priced line on an invoice (rent, a fee, the
+  deposit, tax, a discount, a later credit or correction), snapshotted
+  at creation and never edited afterward — the same immutability rule
+  RentalAgreement's own price fields already follow. Fixing a mistake
+  or crediting a customer always adds a new line, never changes an old
+  one.
+- **Payment** — one attempt to collect an invoice (card or ACH), with
+  its own status (including `ach_pending`, since a bank transfer takes
+  a few business days to clear, unlike a card) and attempt number.
+- **Refund** — money refunded from an already-paid invoice (a security
+  deposit's own refund stays on `Deposit` below — different kind of
+  money, its own existing record). Always has a reason and who
+  authorized it; never automatic.
+- **CustomerCredit** — an account-level credit (goodwill, resolving an
+  overpayment) that reduces what a customer owes on a *future* invoice.
+- **WebhookEvent** — every Stripe webhook event this app has ever
+  processed, by Stripe's own event id, so a duplicate delivery (webhook
+  delivery is at-least-once) is never acted on twice.
+- **Deposit** — a security deposit tied to an agreement, now also
+  recording who authorized a refund and why it was less than the full
+  amount, when it's less.
 
 ## Settings, content & compliance
 

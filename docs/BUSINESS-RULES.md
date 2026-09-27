@@ -239,6 +239,24 @@ exactly this reason.
   Stripe's hosted Checkout/Customer Portal, so card details never touch
   our own servers.
 
+**Billing policy, confirmed with Chris 2026-09-27** (see
+`docs/DECISIONS.md`'s dated entry for the full reasoning):
+
+- **Anniversary billing** — each customer is billed monthly on the same
+  day of the month they signed their agreement, not a single fixed date
+  for everyone. Avoids partial-month proration entirely.
+- **Deposits are charged as real money up front**, not just
+  authorized/held — a hold expires after about a week and this is a
+  multi-month rental, so a hold alone can't cover the whole term.
+  Refunded (in full or in part) when the rental ends, per the existing
+  `Deposit` record.
+- **Both cards and ACH bank-transfer payments are offered** from the
+  start, via Stripe's own hosted Checkout/Customer Portal.
+- **Billing is in advance** — a customer is charged at the start of the
+  month they're about to rent for, not billed afterward for the month
+  they already used. Protects the business's cash flow if a customer
+  stops paying partway through a term.
+
 ## Privacy & accessibility baseline
 
 U.S. (CCPA/CPRA-style) privacy, not GDPR — this is a U.S.-only business.
