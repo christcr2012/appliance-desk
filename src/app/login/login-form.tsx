@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "@/lib/auth-client";
+import { getPostLoginDestination } from "./actions";
 
 export function LoginForm() {
   const router = useRouter();
@@ -27,7 +28,8 @@ export function LoginForm() {
       return;
     }
 
-    router.push(searchParams.get("next") ?? "/");
+    const destination = await getPostLoginDestination(searchParams.get("next"));
+    router.push(destination);
     router.refresh();
   }
 
