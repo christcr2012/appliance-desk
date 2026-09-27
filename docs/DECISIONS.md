@@ -874,3 +874,22 @@ priority order (correctness & security come before features).
   Prisma ships a patched 7.x/8.x release** (checked via
   `npm outdated` — Prisma 8.0.0-rc.17 exists but is a release
   candidate, not yet something to move production onto).
+
+## 2026-09-27 — Stripe test-mode API keys added (Phase 6B unblocked)
+
+Chris created a Stripe account (test mode) and provided the test-mode
+secret key and publishable key. Both are now set as real Vercel
+environment variables on the `appliance-desk` project (Production,
+Preview, and Development): `STRIPE_SECRET_KEY` (stored as a Vercel
+"sensitive" variable — can't be read back by anyone, including future
+AI sessions, once set) and `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` (stored
+as a plain variable, since a publishable key is designed to be exposed
+client-side). Both keys start with `_test_`, confirming test mode, not
+live payments — going live remains a separate, explicit decision per
+`AGENTS.md`.
+
+This unblocks the real next step in Phase 6B: building the actual
+Stripe SDK integration (customer/subscription creation, invoice
+generation on each `nextBillingDate`, webhook handling with the
+`WebhookEvent` table already in the schema) against Stripe's test-mode
+sandbox.
