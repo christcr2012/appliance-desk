@@ -46,8 +46,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Check for un-reviewed destructive migrations
+        run: npm run check:migrations
+
       - name: Apply database migrations
         run: npm run db:migrate:deploy
+
+      - name: Verify schema health (same check production runs before building)
+        run: npm run db:verify-schema-health
 
       - name: Seed business content (no owner account — no secrets set)
         run: npm run db:seed
