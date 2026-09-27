@@ -1,6 +1,6 @@
+import fs from "node:fs";
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
-import { loginAs } from "./utils/auth";
 
 // Same automated WCAG 2.1 AA checks as e2e/accessibility.spec.ts, but for
 // the pages that require being logged in — the owner desk and the
@@ -10,17 +10,22 @@ import { loginAs } from "./utils/auth";
 // /account/** page — including the billing pages added in Phase 6B —
 // had never actually been run through axe. See docs/DESIGN-SYSTEM.md.
 //
+// Each describe block reuses a session saved once by e2e/global-setup.ts
+// (via test.use({ storageState })), rather than every test logging in
+// for real — see that file's comment for why (an earlier per-test-login
+// version of this suite was flaky under Playwright's default
+// parallelism).
+//
 // Requires OWNER_EMAIL/OWNER_PASSWORD and TEST_CUSTOMER_EMAIL/
 // TEST_CUSTOMER_PASSWORD to be set (prisma/seed.ts creates the matching
-// accounts when they are) — CI sets both against its own throwaway
-// database. Skips itself entirely if they're not set, so a local
+// accounts, and global-setup logs in and saves their sessions, only when
+// they are) — CI sets both against its own throwaway database. Skips
+// itself entirely if the saved session file doesn't exist, so a local
 // `npm run test:e2e` without those env vars doesn't fail for an
 // unrelated reason.
 
-const OWNER_EMAIL = process.env.OWNER_EMAIL;
-const OWNER_PASSWORD = process.env.OWNER_PASSWORD;
-const CUSTOMER_EMAIL = process.env.TEST_CUSTOMER_EMAIL;
-const CUSTOMER_PASSWORD = process.env.TEST_CUSTOMER_PASSWORD;
+const OWNER_STATE_PATH = "e2e/.auth/owner.json";
+const CUSTOMER_STATE_PATH = "e2e/.auth/customer.json";
 
 const DESK_PAGES = [
   "/desk/dashboard",
@@ -39,12 +44,13 @@ const DESK_PAGES = [
 const ACCOUNT_PAGES = ["/account", "/account/rentals", "/account/maintenance", "/account/billing"];
 
 test.describe("desk pages (logged in as OWNER)", () => {
-  test.beforeEach(async ({ page }) => {
+  test.use({ storageState: fs.existsSync(OWNER_STATE_PATH) ? OWNER_STATE_PATH : undefined });
+
+  test.beforeEach(async () => {
     test.skip(
-      !OWNER_EMAIL || !OWNER_PASSWORD,
-      "OWNER_EMAIL/OWNER_PASSWORD not set — this suite only runs where prisma/seed.ts seeded a real test-only owner account (CI).",
+      !fs.existsSync(OWNER_STATE_PATH),
+      "No saved OWNER session — set OWNER_EMAIL/OWNER_PASSWORD so prisma/seed.ts and e2e/global-setup.ts can create one (CI does).",
     );
-    await loginAs(page, OWNER_EMAIL!, OWNER_PASSWORD!);
   });
 
   for (const path of DESK_PAGES) {
@@ -59,12 +65,13 @@ test.describe("desk pages (logged in as OWNER)", () => {
 });
 
 test.describe("account pages (logged in as CUSTOMER)", () => {
-  test.beforeEach(async ({ page }) => {
+  test.use({ storageState: fs.existsSync(CUSTOMER_STATE_PATH) ? CUSTOMER_STATE_PATH : undefined });
+
+  test.beforeEach(async () => {
     test.skip(
-      !CUSTOMER_EMAIL || !CUSTOMER_PASSWORD,
-      "TEST_CUSTOMER_EMAIL/TEST_CUSTOMER_PASSWORD not set — this suite only runs where prisma/seed.ts seeded a real test-only customer account (CI).",
+      !fs.existsSync(CUSTOMER_STATE_PATH),
+      "No saved CUSTOMER session — set TEST_CUSTOMER_EMAIL/TEST_CUSTOMER_PASSWORD so prisma/seed.ts and e2e/global-setup.ts can create one (CI does).",
     );
-    await loginAs(page, CUSTOMER_EMAIL!, CUSTOMER_PASSWORD!);
   });
 
   for (const path of ACCOUNT_PAGES) {
