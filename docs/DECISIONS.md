@@ -893,3 +893,53 @@ Stripe SDK integration (customer/subscription creation, invoice
 generation on each `nextBillingDate`, webhook handling with the
 `WebhookEvent` table already in the schema) against Stripe's test-mode
 sandbox.
+
+## 2026-09-27 — Phase 6B Stripe billing integration built
+
+Built the full billing engine described in `docs/ARCHITECTURE.md`'s
+new "Payments (Stripe)" section: Stripe Checkout right after an
+agreement is signed, webhook-driven `Invoice`/`Payment`/`Deposit`
+writes (never written speculatively — only once Stripe itself confirms
+the money moved), and a hosted Billing Portal for customers to manage
+their own card/ACH details. Desk-wide (`/desk/billing`) and per-customer
+(`/account/billing`) invoice views were added.
+
+A few decisions worth recording:
+
+- **Checkout + Billing Portal (hosted), not Stripe Elements** — required
+  by `docs/BUSINESS-RULES.md`'s existing billing rules ("card details
+  never touch our own servers"), so this wasn't a new choice, just the
+  one the business rules already required.
+- **Webhook idempotency is check-then-act-then-record, not record-then-act**
+  — the `WebhookEvent` row is only written *after* a handler succeeds.
+  Writing it up front would mean a handler that crashes partway through
+  gets marked "done" anyway, silently swallowing Stripe's automatic
+  retry of that same event — the one real mechanism that fixes a
+  transient failure. Accepted tradeoff: two deliveries of the exact same
+  event arriving within milliseconds of each other could both start
+  processing before either finishes; each handler's own database
+  constraints (a unique `stripeInvoiceId`, an existing-`Deposit` check)
+  still catch that rare case.
+- **`stripe` npm package installed at v22.6.2** (current major at the
+  time) — its TypeScript types reflect a real, recent Stripe API
+  restructuring: `Invoice.subscription`/`Invoice.payment_intent` moved
+  to `invoice.parent.subscription_details.subscription` and
+  `invoice.payments.data[].payment.payment_intent`, `Invoice.tax` was
+  replaced by an `Invoice.total_taxes` array, and `Charge.invoice` was
+  removed entirely (a refund is now traced back to our own `Invoice` row
+  via the `Payment.stripePaymentIntentId` we already store, not via the
+  charge itself). All of this is handled in
+  `src/domains/billing/webhooks.ts`'s `extractSubscriptionId` /
+  `extractPaymentIntentId` / `extractTaxCents` helpers — documented here
+  so a future session reading an older Stripe guide/example online isn't
+  confused by the mismatch.
+- **Automated late fees / dunning were deliberately not built** in this
+  pass — see `docs/ROADMAP.md`. `invoice.payment_failed` is recorded (a
+  DELINQUENT invoice, visible at `/desk/billing`) but nothing escalates
+  automatically yet.
+
+**One manual step only Chris can do, once this is deployed**: register
+the webhook endpoint in Stripe's dashboard and set `STRIPE_WEBHOOK_SECRET`
+in Vercel — exact steps in `docs/ARCHITECTURE.md`'s "Payments (Stripe)"
+section. Until then the webhook route returns HTTP 503 by design, rather
+than accepting unverified requests.

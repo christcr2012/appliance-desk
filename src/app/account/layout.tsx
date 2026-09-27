@@ -31,6 +31,9 @@ export default async function AccountLayout({
           <Link href="/account/maintenance" className="text-gray-600 hover:text-gray-900">
             Maintenance
           </Link>
+          <Link href="/account/billing" className="text-gray-600 hover:text-gray-900">
+            Billing
+          </Link>
         </nav>
       </header>
       <main id="main-content" className="p-6">

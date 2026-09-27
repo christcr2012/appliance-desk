@@ -26,9 +26,24 @@ on — never built unasked.
   Phase 4.
 - Customer portal (rentals, billing, maintenance/removal requests) —
   Phase 5.
-- Stripe billing (test mode) — Phase 6.
+- Stripe billing (test mode) — **done (2026-09-27), Phase 6B.** Checkout
+  right after signing, hosted Billing Portal, and webhook-driven
+  Invoice/Payment/Deposit records — see `docs/ARCHITECTURE.md`'s
+  "Payments (Stripe)" section. **Still open, tracked here on purpose:**
+  Chris needs to register the webhook endpoint in the Stripe dashboard
+  once this is deployed (see that same section for the exact steps) —
+  the webhook route intentionally refuses to work until then.
 - Full accessibility/security review, backup/restore test, launch
   checklist — Phase 7.
+
+## Deliberately deferred within Phase 6B (not an oversight)
+
+- **Automated late fees / dunning** beyond what Stripe's own automatic
+  payment retries already do. `invoice.payment_failed` is recorded
+  (shows up as a DELINQUENT invoice at `/desk/billing`), but nothing
+  automatically charges a late fee or escalates — that needs its own
+  design (how many retries, what fee, when to involve Chris) rather
+  than a bolt-on to this PR.
 
 ## Suggestions (not scoped into any phase — Chris should decide)
 

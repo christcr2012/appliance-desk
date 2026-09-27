@@ -899,3 +899,48 @@ Workspace billing page, since this session can't see Workspace pricing).
       values/placeholders. Deliberately left as a decision for Chris,
       not changed unasked — see `docs/ARCHITECTURE.md` for exactly what
       each one should become.
+
+## 2026-09-27 (same session, continued) — Phase 6B: Stripe billing built end-to-end
+
+With real Stripe test-mode keys in place (previous entry), built the
+full billing engine: Checkout, webhooks, Billing Portal, and both the
+desk-wide and customer-facing invoice views. Full detail in
+`docs/ARCHITECTURE.md`'s "Payments (Stripe)" section and
+`docs/DECISIONS.md`'s dated writeup (includes a note on a real Stripe
+API shape change this had to account for).
+
+- [x] Signing an agreement (`/sign/[id]`) now redirects to a real
+      Stripe-hosted Checkout page, which sets up the monthly rent as a
+      Stripe Subscription plus the security deposit / damage waiver as
+      one-time charges on that same first invoice.
+- [x] Webhook endpoint (`/api/webhooks/stripe`) verifies Stripe's
+      signature and is the *only* place that writes `Invoice`/`Payment`/
+      `Deposit` rows — never speculatively, only once Stripe confirms
+      money actually moved. Deduplicated by Stripe's own event id.
+- [x] `/account/billing` (customer) and `/desk/billing` (Chris) — both
+      added, with nav links in both layouts.
+- [x] "Manage billing" button opens Stripe's own hosted Billing Portal
+      so a customer can update their card/ACH details themselves.
+- [x] Real tests: `tests/billing.test.ts` (pure line-item math, no
+      database or network) and `tests/billing-webhooks.test.ts` (real
+      database-backed — same pattern as `tests/customer-isolation.test.ts`
+      — covering the checkout-completed happy path, idempotent replay,
+      an unrelated event, and a failed payment). Neither can run/verify
+      *locally* in this sandbox — same documented Prisma-generation
+      limitation as every other test in this project — only in CI's
+      real Postgres.
+- [x] Fixed a misleading inline comment on `RentalAgreement.taxRatePermille`
+      in `prisma/schema.prisma` (it's tenths of a percent — 73 means
+      7.3%, not 73% — the old comment implied ÷100, which would have
+      been a 10x tax bug for a future session that trusted it. No
+      migration needed, comment-only.)
+- [ ] **One thing only Chris can do, once this PR is deployed:**
+      register the webhook endpoint in Stripe's dashboard and copy its
+      signing secret into Vercel as `STRIPE_WEBHOOK_SECRET`. Exact steps
+      are in `docs/ARCHITECTURE.md`. Until that's done, the webhook
+      route intentionally returns an error rather than trusting an
+      unverified request — so no payment will actually get recorded as
+      paid until Chris does this one step.
+- [ ] **Deliberately not built:** automated late fees / dunning beyond
+      Stripe's own retry logic — tracked in `docs/ROADMAP.md`, needs its
+      own design.

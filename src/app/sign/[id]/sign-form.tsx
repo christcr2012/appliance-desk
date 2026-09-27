@@ -22,6 +22,11 @@ export function SignForm({ signatureRecordId }: { signatureRecordId: string }) {
       });
       if (result.status === "error") {
         setError(result.message);
+      } else if (result.status === "success" && result.checkoutUrl) {
+        // Straight to Stripe's own hosted checkout page — card/bank
+        // details are entered there, never on this site (see
+        // docs/BUSINESS-RULES.md's billing rules).
+        window.location.href = result.checkoutUrl;
       } else {
         setSigned(true);
       }
@@ -33,9 +38,9 @@ export function SignForm({ signatureRecordId }: { signatureRecordId: string }) {
       <div className="rounded-lg border border-green-200 bg-green-50 p-5 text-sm text-green-900">
         <p className="font-medium">Thanks — your agreement is signed.</p>
         <p className="mt-1">
-          We&apos;ll be in touch to schedule delivery. A copy of this
-          confirmation was recorded with your name, email, and the time you
-          signed.
+          We&apos;ll be in touch about setting up payment and scheduling
+          delivery. A copy of this confirmation was recorded with your
+          name, email, and the time you signed.
         </p>
       </div>
     );

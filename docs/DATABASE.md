@@ -77,9 +77,13 @@ in UTC and only converted to Mountain Time for display.
 
 ## Billing
 
-Redesigned for Phase 6B (docs/DECISIONS.md has the dated writeup) —
-nothing reads or writes these yet; Stripe wiring is the next piece of
-work, once Chris has a real Stripe test-mode account.
+Redesigned for Phase 6B (docs/DECISIONS.md has the dated writeup) and
+now wired up for real: signing an agreement creates a Stripe Checkout
+Session, and Stripe's webhooks (`src/domains/billing/webhooks.ts`) are
+what actually writes these rows — never our own server, since Stripe
+is the one source of truth for whether money moved. See
+`docs/ARCHITECTURE.md`'s "Payments (Stripe)" section for the moving
+parts.
 
 - **Invoice** — one bill, covering one billing period (billing is
   always *in advance* — see docs/BUSINESS-RULES.md). Has a
