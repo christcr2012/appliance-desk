@@ -664,17 +664,53 @@ cancel a legitimate in-progress agreement.
       check lives in its own zero-database-import submodule,
       `src/domains/agreements/reservation-status.ts`, for exactly the
       reason `docs/DECISIONS.md`'s entry explains).
+- [x] **Merged and confirmed live 2026-09-27** — PR #24 (CI green,
+      merged by Chris, migration run in Neon).
+
+## 2026-09-27 (same session, continued) — Phase 6A item 3: real customer-data-isolation integration test
+
+Every test in this project up to this point faked ("mocked") the
+database, which works well for pure business-logic checks but can't
+actually prove `docs/BUSINESS-RULES.md`'s "Customer data isolation
+(security-critical)" rule — a faked database only ever returns what a
+test tells it to, so it can't catch a real, unscoped query that would
+leak one customer's data to another in production. See
+`docs/DECISIONS.md`'s new dated entry for the full writeup.
+
+- [x] New file `tests/customer-isolation.test.ts` — the first test in
+      this project that runs against a **real** database instead of a
+      fake one. It creates two complete, independent test customers
+      (each with their own login, service address, active rental
+      agreement, and appliance) and proves the customer portal
+      (`src/domains/portal`) never lets one customer's login see or
+      touch the other's rentals, service addresses, appliances, or
+      maintenance requests — then deletes everything it created.
+      No new CI setup was needed: `.github/workflows/ci.yml` already
+      runs a real, disposable Postgres, applies migrations, and seeds
+      it before the automated-tests step runs.
+- [ ] **Important honesty note:** this specific file could not be run
+      or double-checked in this working session — the sandbox it was
+      written in has no way to talk to a real database at all (a known,
+      already-documented limitation — see "A real constraint you should
+      know about" in `AGENTS.md`). Everything that *could* be checked
+      locally (the file's own correctness apart from the database
+      itself, and the project's style rules) was checked and passed.
+      The real proof is whether it passes on GitHub's automated checks
+      (CI) once opened as a PR — that's the first real run of it.
 - [ ] **Not yet merged on purpose** — ready to open as its own PR.
+      No database migration needed for this one (it only adds a test
+      file and doc updates).
 
 ## Immediate next step (whoever picks this up next)
 
-Open the reservation-aging work above as its own PR — **run its
-migration in Neon before merging**, same as always — get CI green, and
-report to Chris before starting the next item. Per the work-order's
-suggested implementation order, what's left in Phase 6A is: production
-migration safety (item 1 — a bigger, standalone architectural piece)
-and real customer-isolation integration tests (item 3 — the first
-integration-test infrastructure in this project). After Phase 6A, Phase
-6B (Stripe billing) is a real boundary that needs Chris's own decisions
+Open the customer-isolation test above as its own PR, get CI green
+(this is the one where CI passing especially matters, since it's the
+first time this exact file will have actually run against a real
+database), and report to Chris before starting the next item. Per the
+work-order's suggested implementation order, the only item left in
+Phase 6A is production migration safety (item 1 — a bigger, standalone
+architectural piece: designing a safer migration/release process using
+the existing GitHub/Vercel/Neon stack). After Phase 6A, Phase 6B
+(Stripe billing) is a real boundary that needs Chris's own decisions
 (billing cadence, deposit handling, a real Stripe account) before any
 of it is built.
