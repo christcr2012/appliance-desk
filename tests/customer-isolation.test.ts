@@ -115,6 +115,11 @@ async function createCustomerFixture(label: "a" | "b"): Promise<Fixture> {
 
 async function deleteFixture(fixture: Fixture) {
   await prisma.maintenanceRequest.deleteMany({ where: { customerId: fixture.customerId } });
+  // createMaintenanceRequestForUser writes an AuditLog row keyed to this
+  // user's id (AuditLog.userId is a real foreign key to User) — that row
+  // has to go before the User itself can be deleted, or Postgres rejects
+  // the delete with a foreign-key-constraint violation.
+  await prisma.auditLog.deleteMany({ where: { userId: fixture.userId } });
   await prisma.applianceAssignment.delete({ where: { id: fixture.assignmentId } });
   await prisma.appliance.delete({ where: { id: fixture.applianceId } });
   await prisma.rentalLine.delete({ where: { id: fixture.lineId } });
