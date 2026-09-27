@@ -1,6 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import { sendEmail } from "@/lib/email";
 import { getBusinessSettings } from "@/domains/settings";
+import {
+  ACTIVE_ASSIGNMENT_WHERE,
+  getActiveApplianceOptionsForUser,
+} from "@/domains/agreements/active-appliances";
 
 // ---------------------------------------------------------------------------
 // Customer portal (Phase 5, slice 1 — rentals + maintenance requests;
@@ -23,8 +27,15 @@ export async function getPortalData(userId: string) {
           serviceAddress: true,
           lines: {
             include: {
+              // Every agreement they have shows up here (including a
+              // pending DRAFT/AWAITING_SIGNATURE one, so the customer can
+              // see it's in progress) — but the specific appliances only
+              // show up as "assigned" once the agreement is ACTIVE. Until
+              // then, this isn't yet their equipment; showing it would
+              // leak reserved-but-unsigned appliance detail (see
+              // docs/BUSINESS-RULES.md's customer-data-isolation rule).
               assignments: {
-                where: { unassignedAt: null },
+                where: ACTIVE_ASSIGNMENT_WHERE,
                 include: { appliance: { include: { applianceType: true } } },
               },
             },
@@ -47,38 +58,14 @@ export async function getPortalData(userId: string) {
 }
 
 /** The appliances this customer can file a maintenance request against —
- * only ones currently assigned to them through an active (non-unassigned)
- * line on one of their own agreements. Used both to populate the portal's
- * dropdown and to validate a submission server-side (never trust a
- * client-supplied applianceId at face value). */
+ * only ones currently assigned to them through an ACTIVE agreement (never
+ * a DRAFT/AWAITING_SIGNATURE one they haven't signed, or an ENDED/CANCELLED
+ * one that no longer applies). Used both to populate the portal's dropdown
+ * and to validate a submission server-side (never trust a client-supplied
+ * applianceId at face value). Shared definition in
+ * src/domains/agreements/active-appliances.ts — see its comment for why. */
 export async function getPortalApplianceOptions(userId: string) {
-  const customer = await prisma.customer.findUnique({
-    where: { userId },
-    include: {
-      rentalAgreements: {
-        include: {
-          lines: {
-            include: {
-              assignments: {
-                where: { unassignedAt: null },
-                include: { appliance: { include: { applianceType: true } } },
-              },
-            },
-          },
-        },
-      },
-    },
-  });
-  if (!customer) return [];
-
-  return customer.rentalAgreements.flatMap((a) =>
-    a.lines.flatMap((l) =>
-      l.assignments.map((asn) => ({
-        id: asn.appliance.id,
-        label: `${asn.appliance.applianceType.name} (${asn.appliance.assetNumber})`,
-      })),
-    ),
-  );
+  return getActiveApplianceOptionsForUser(userId);
 }
 
 export type NewMaintenanceRequestInput = {
