@@ -20,6 +20,7 @@ export async function getDashboardStats() {
     activeAgreementCount,
     upcomingJobCount,
     openMaintenanceRequestCount,
+    staleReservationCount,
   ] = await Promise.all([
     prisma.lead.count({ where: { status: "NEW" } }),
     prisma.lead.count({ where: { status: "NEW", isHighValue: true } }),
@@ -33,6 +34,16 @@ export async function getDashboardStats() {
     prisma.job.count({ where: { status: "SCHEDULED" } }),
     prisma.maintenanceRequest.count({
       where: { status: { notIn: ["RESOLVED", "CLOSED"] } },
+    }),
+    // Phase 6A item 6 — draft/awaiting-signature agreements whose
+    // reservation hold has expired (see src/domains/agreements/
+    // reservation-status.ts's isReservationStale, which this mirrors
+    // as a database-side filter for an efficient count).
+    prisma.rentalAgreement.count({
+      where: {
+        status: { in: ["DRAFT", "AWAITING_SIGNATURE"] },
+        reservationExpiresAt: { lt: new Date() },
+      },
     }),
   ]);
 
@@ -52,5 +63,6 @@ export async function getDashboardStats() {
     activeAgreementCount,
     upcomingJobCount,
     openMaintenanceRequestCount,
+    staleReservationCount,
   };
 }

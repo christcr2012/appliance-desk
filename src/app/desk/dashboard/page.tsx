@@ -86,6 +86,12 @@ export default async function DeskDashboardPage() {
           href="/desk/agreements?status=ACTIVE"
         />
         <StatCard
+          label="Stale reservation holds"
+          value={stats.staleReservationCount}
+          href="/desk/agreements"
+          tone="warning"
+        />
+        <StatCard
           label="Jobs scheduled"
           value={stats.upcomingJobCount}
           href="/desk/jobs?status=SCHEDULED"

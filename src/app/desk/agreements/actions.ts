@@ -10,6 +10,7 @@ import {
   sendForSignature,
   endAgreement,
   cancelAgreement,
+  extendReservation,
 } from "@/domains/agreements";
 import { dollarsToCents } from "@/domains/pricing";
 
@@ -181,5 +182,23 @@ export async function cancelAgreementAction(agreementId: string): Promise<Agreem
   revalidatePath(`/desk/agreements/${agreementId}`);
   revalidatePath("/desk/inventory");
   revalidatePath("/desk/dashboard");
+  return { status: "success" };
+}
+
+export async function extendReservationAction(
+  agreementId: string,
+): Promise<AgreementActionState> {
+  const session = await requireRole("OWNER", "ADMIN");
+  try {
+    await extendReservation(session.user.id, agreementId);
+  } catch (error) {
+    return {
+      status: "error",
+      message:
+        error instanceof Error ? error.message : "Couldn't extend this reservation.",
+    };
+  }
+  revalidatePath(`/desk/agreements/${agreementId}`);
+  revalidatePath("/desk/agreements");
   return { status: "success" };
 }

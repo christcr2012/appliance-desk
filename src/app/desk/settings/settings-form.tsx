@@ -32,6 +32,7 @@ type FormValues = {
   twelveMonthPrepaySetDollars: number;
   twelveMonthPrepaySingleDollars: number;
   twelveMonthPrepayFreeMonthEnabled: boolean;
+  draftReservationHoldDays: number;
 };
 
 export function SettingsForm({ defaultValues }: { defaultValues: FormValues }) {
@@ -181,6 +182,26 @@ export function SettingsForm({ defaultValues }: { defaultValues: FormValues }) {
           Also give a free month when a customer pays the full 12-month term in one
           lump sum up front (you mark this yourself when creating that agreement)
         </label>
+      </fieldset>
+
+      <fieldset className="space-y-4">
+        <legend className="text-base font-semibold text-gray-900">
+          Reserved-appliance holds
+        </legend>
+        <p className="text-sm text-gray-600">
+          When you assign a physical appliance to a draft agreement, it&apos;s
+          held for that customer and can&apos;t be rented to anyone else. If an
+          agreement sits as a draft or awaiting signature for too long without
+          getting signed, the desk flags it so you can free that appliance back
+          up — or extend the hold if it&apos;s just a slow-moving deal.
+        </p>
+        <LabeledInput
+          label="Days to hold before flagging as stale"
+          type="number"
+          min={1}
+          max={90}
+          {...register("draftReservationHoldDays", { valueAsNumber: true })}
+        />
       </fieldset>
 
       <fieldset className="space-y-4">

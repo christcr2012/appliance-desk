@@ -9,8 +9,10 @@ import {
   sendForSignatureAction,
   endAgreementAction,
   cancelAgreementAction,
+  extendReservationAction,
 } from "../actions";
 import { formatCents } from "@/domains/pricing/money";
+import { isReservationStale } from "@/domains/agreements/reservation-status";
 import type { RentalAgreementStatus } from "@prisma/client";
 
 type ApplianceOption = { id: string; assetNumber: string; typeName: string };
@@ -34,6 +36,7 @@ type AgreementRow = {
   termMonths: number | null;
   paidInFullInAdvance: boolean;
   freeMonthGranted: boolean;
+  reservationExpiresAt: Date | null;
   lines: LineRow[];
   signature: {
     id: string;
@@ -119,7 +122,16 @@ export function AgreementDetailPanel({
     });
   }
 
+  function handleExtendReservation() {
+    startTransition(async () => {
+      const result = await extendReservationAction(agreement.id);
+      if (result.status === "error") setError(result.message);
+      router.refresh();
+    });
+  }
+
   const monthlyTotal = agreement.lines.reduce((sum, l) => sum + l.monthlyPriceCents, 0);
+  const stale = isReservationStale(agreement.status, agreement.reservationExpiresAt);
   const signLink =
     typeof window !== "undefined" && agreement.signature
       ? `${window.location.origin}/sign/${agreement.signature.id}`
@@ -178,6 +190,31 @@ export function AgreementDetailPanel({
           <div className="mt-3 rounded-md bg-green-50 p-3 text-sm text-green-900">
             This customer paid the full 12-month term in advance, so their first month
             is free.
+          </div>
+        )}
+
+        {stale && (
+          <div className="mt-4 rounded-md bg-amber-50 p-3 text-sm text-amber-900">
+            <p className="font-medium">
+              This agreement&apos;s reserved appliances have been on hold since{" "}
+              {agreement.reservationExpiresAt
+                ? new Date(agreement.reservationExpiresAt).toLocaleDateString()
+                : "a while ago"}{" "}
+              — longer than the usual hold period.
+            </p>
+            <p className="mt-1">
+              If this deal has stalled, cancel it to free the appliance(s) back up
+              for another customer. If it&apos;s just taking a while, extend the
+              hold instead.
+            </p>
+            <button
+              type="button"
+              disabled={isPending}
+              onClick={handleExtendReservation}
+              className="mt-2 rounded-md border border-amber-400 bg-white px-3 py-1.5 text-sm font-medium text-amber-900 hover:border-amber-500 disabled:opacity-50"
+            >
+              Extend reservation
+            </button>
           </div>
         )}
 

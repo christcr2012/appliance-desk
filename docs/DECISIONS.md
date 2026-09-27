@@ -567,3 +567,50 @@ real abuse on this form to justify the added friction and setup. If
 spam becomes a real, observed problem, Turnstile (or a persistent
 rate-limit store) is the documented next step — not something to add
 speculatively now.
+
+---
+
+### 2026-09-27 — Reservation aging: an owner-adjustable hold + a manual "extend," never an automatic cancellation
+
+Phase 6A item 6. Assigning a physical appliance to a DRAFT agreement
+reserves it immediately (`AVAILABLE` → `RESERVED`), before the customer
+has actually signed anything. If that agreement then never gets signed,
+the appliance stays reserved and unavailable to any other customer
+indefinitely, unless Chris happens to notice and cancels it by hand —
+there was no visibility into this at all.
+
+**Decision:** added `RentalAgreement.reservationExpiresAt` (set at
+creation to now + `BusinessSettings.draftReservationHoldDays`, an
+owner-adjustable default of 7 days — same "adjustable, not hard-coded"
+pattern as every other business rule here) and a pure
+`isReservationStale(status, reservationExpiresAt)` check (only ever
+true for a still-DRAFT/AWAITING_SIGNATURE agreement past its hold). The
+desk surfaces this as a visible warning — a "Stale hold" badge on the
+agreements list, and a fuller banner with an action on the agreement's
+own page — never as anything automatic. Chris chooses what happens
+next: **cancel** (already-existing action; frees the appliance back to
+`AVAILABLE`) or **extend the reservation** (new — pushes the hold back
+out by the same configured number of days, for a deal that's just
+taking a while). This was an explicit, non-negotiable constraint from
+the work-order itself: "without ever silently cancelling a legitimate
+in-progress agreement" — so nothing here ever changes an agreement's
+status or an appliance's own status on its own; it only ever informs
+and offers the same actions Chris could already take manually.
+
+**Why a separate `reservationExpiresAt` instead of just comparing
+against `createdAt`:** extending a hold needs its own moment to record
+— recomputing "extend by N more days" from the original creation date
+would either need to keep adding N-day increments forever (awkward) or
+overwrite the created date itself (dishonest — `createdAt` should mean
+what it says). A dedicated, independently-updatable field keeps
+"when was this created" and "how long is its hold good for" as two
+separate, honest facts.
+
+**Split into its own submodule
+(`src/domains/agreements/reservation-status.ts`):** the staleness check
+needed to be usable from the agreement detail panel's client component
+without dragging `src/domains/agreements/index.ts`'s top-level
+`import { prisma } from "@/lib/prisma"` into the browser bundle — the
+exact client-bundle-Prisma-leak bug this project has already been bitten
+by once (see the Phase 4 entry above). Same split pattern already used
+for `src/domains/pricing/money.ts` and `src/domains/leads/schema.ts`.

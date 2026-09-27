@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getAgreements } from "@/domains/agreements";
+import { getAgreements, isReservationStale } from "@/domains/agreements";
 import { formatCents } from "@/domains/pricing";
 import type { RentalAgreementStatus } from "@prisma/client";
 
@@ -87,7 +87,14 @@ export default async function AgreementsPage({
                   </p>
                 </div>
                 <div className="text-sm text-gray-500 sm:text-right">
-                  <p>{a.status}</p>
+                  <p>
+                    {a.status}
+                    {isReservationStale(a.status, a.reservationExpiresAt) && (
+                      <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+                        Stale hold
+                      </span>
+                    )}
+                  </p>
                   <p>
                     {a.lines.length > 0
                       ? `${formatCents(
