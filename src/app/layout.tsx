@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, Fraunces } from "next/font/google";
+import { getBusinessSettings } from "@/domains/settings";
 import "./globals.css";
 
 // Font pairing for the "modern but warm/personal" brief: Fraunces is a
@@ -23,15 +24,29 @@ const fraunces = Fraunces({
 
 const siteUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
-export const metadata: Metadata = {
-  metadataBase: new URL(siteUrl),
-  title: {
-    default: "[Company Name] — Appliance Rentals in Colorado",
-    template: "%s — [Company Name]",
-  },
-  description:
-    "Rent a washer and dryer in Colorado with simple month-to-month pricing, fast delivery, and no long-term commitment.",
-};
+// The browser tab title/description come from here, the one shared root
+// layout every page renders through — this must read the real business
+// name live from BusinessSettings, the same way the homepage's own body
+// text already does (src/app/(public)/page.tsx), or editing the name in
+// /desk/settings silently stops working for the tab title/search-engine
+// listing even though the page's visible content updates correctly. This
+// was a real bug: the tab title stayed on the "[Company Name]" placeholder
+// after Chris entered the real business name, because this used to be a
+// static `export const metadata` object rather than a dynamic function.
+export async function generateMetadata(): Promise<Metadata> {
+  const settings = await getBusinessSettings();
+  const businessName = settings.publicBusinessName;
+
+  return {
+    metadataBase: new URL(siteUrl),
+    title: {
+      default: `${businessName} — Appliance Rentals in Colorado`,
+      template: `%s — ${businessName}`,
+    },
+    description:
+      "Rent a washer and dryer in Colorado with simple month-to-month pricing, fast delivery, and no long-term commitment.",
+  };
+}
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (

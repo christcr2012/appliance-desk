@@ -816,3 +816,27 @@ generation on each `nextBillingDate`, webhook handling, and the
 delinquency/collections view — can be built and genuinely tested
 against Stripe's real test-mode sandbox, per the work-order's Phase 6B
 section.
+
+## 2026-09-27 (same session, continued) — small fix: browser tab title never updated with the real business name
+
+Chris entered the real business name in `/desk/settings`, and the
+website's visible content updated correctly, but the browser tab
+title (and what shows up in a Google search result) kept showing the
+placeholder text `[Company Name]`. Found while checking on an
+unrelated DNS question.
+
+- [x] **Root cause:** `src/app/layout.tsx` (the one shared layout every
+      page renders through) had its title as a plain, static
+      `export const metadata` object with the placeholder hard-coded in,
+      never actually reading `BusinessSettings` — unlike the homepage's
+      own visible text, which already pulls the real name correctly.
+- [x] **Fix:** converted it to a `generateMetadata()` function that
+      reads the real business name from the database, same as every
+      other page's visible content already does. Every other page's own
+      title (e.g. "Dashboard", "Agreements") still combines with this
+      automatically through Next.js's own title template — nothing else
+      needed to change.
+- [x] No database change, no new tests needed (this is metadata
+      composition, already covered by the existing accessibility/e2e
+      suite which loads real pages). Lint and the client-bundle-leak
+      check both clean.
