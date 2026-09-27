@@ -39,6 +39,29 @@ test("login form fields have accessible labels and keyboard focus works", async 
   await expect(page.getByLabel("Password")).toBeFocused();
 });
 
+test("forgot-password page has no automatically detectable accessibility violations", async ({
+  page,
+}) => {
+  await page.goto("/forgot-password");
+  const results = await new AxeBuilder({ page })
+    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+    .analyze();
+  expect(results.violations).toEqual([]);
+});
+
+test("reset-password page (no token) has no automatically detectable accessibility violations", async ({
+  page,
+}) => {
+  // Without a real emailed link, Better Auth's own token/error handling
+  // never runs — this exercises the "missing/expired link" state, which
+  // is exactly what a customer clicking a stale link would see.
+  await page.goto("/reset-password");
+  const results = await new AxeBuilder({ page })
+    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+    .analyze();
+  expect(results.violations).toEqual([]);
+});
+
 const PUBLIC_PAGES = [
   "/pricing",
   "/how-it-works",
