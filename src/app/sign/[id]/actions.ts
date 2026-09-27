@@ -3,6 +3,7 @@
 import { headers } from "next/headers";
 import { z } from "zod";
 import { signAgreement } from "@/domains/agreements";
+import { createCheckoutSessionForAgreement } from "@/domains/billing/checkout";
 
 // Deliberately NOT behind requireRole — this is the customer's own
 // signing action, and the customer portal doesn't exist yet (Phase 5).
@@ -11,7 +12,7 @@ import { signAgreement } from "@/domains/agreements";
 
 export type SignActionState =
   | { status: "idle" }
-  | { status: "success"; agreementId: string }
+  | { status: "success"; agreementId: string; checkoutUrl: string | null }
   | { status: "error"; message: string };
 
 const signSchema = z.object({
@@ -47,7 +48,25 @@ export async function signAgreementAction(
       signerEmail: data.signerEmail,
       ipAddress,
     });
-    return { status: "success", agreementId };
+
+    // The agreement itself is legally signed at this point regardless of
+    // what happens next — a Stripe hiccup here must never make it look
+    // like signing failed. If Checkout can't be created, Chris gets a
+    // signed agreement with no payment started yet, which he can always
+    // resolve by hand (same as before this feature existed), rather than
+    // the customer seeing an error on an agreement that actually did go
+    // through.
+    let checkoutUrl: string | null = null;
+    try {
+      checkoutUrl = await createCheckoutSessionForAgreement(agreementId);
+    } catch (checkoutError) {
+      console.error(
+        `Signed agreement ${agreementId} but couldn't create its Stripe Checkout session:`,
+        checkoutError,
+      );
+    }
+
+    return { status: "success", agreementId, checkoutUrl };
   } catch (error) {
     return {
       status: "error",

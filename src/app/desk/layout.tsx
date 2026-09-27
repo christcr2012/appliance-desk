@@ -32,6 +32,9 @@ export default async function DeskLayout({
           <Link href="/desk/agreements" className="text-gray-600 hover:text-gray-900">
             Agreements
           </Link>
+          <Link href="/desk/billing" className="text-gray-600 hover:text-gray-900">
+            Billing
+          </Link>
           <Link href="/desk/jobs" className="text-gray-600 hover:text-gray-900">
             Jobs
           </Link>

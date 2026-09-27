@@ -347,7 +347,7 @@ model RentalAgreement {
   lateFeeGraceDays  Int @default(5)
   lateFeeCents      Int @default(0)
   lateFeePercent    Int @default(0)
-  taxRatePermille   Int @default(0) // e.g. 725 = 7.25%
+  taxRatePermille   Int @default(0) // tenths of a percent: 73 = 7.3% (matches BusinessSettings.taxRatePermille's own convention)
 
   // Prepaid-term discount (see docs/BUSINESS-RULES.md's Pricing section
   // and docs/DECISIONS.md's dated design decision). paidInFullInAdvance is
