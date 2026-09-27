@@ -53,11 +53,23 @@ export default async function SignPage({
             {agreement.lines.map((l) => (
               <li key={l.id}>
                 {l.label} — {formatCents(l.monthlyPriceCents)}/month
+                {l.prepayDiscountCentsPerMonth > 0 && (
+                  <span className="text-gray-600">
+                    {" "}
+                    (list price {formatCents(l.listPriceCents)}/month, less a{" "}
+                    {formatCents(l.prepayDiscountCentsPerMonth)}/month term discount)
+                  </span>
+                )}
               </li>
             ))}
           </ul>
         </div>
         <p className="font-medium">Total: {formatCents(monthlyTotal)}/month</p>
+        {agreement.freeMonthGranted && (
+          <p className="font-medium text-green-700">
+            Paid in full, in advance — your first month is free.
+          </p>
+        )}
         {agreement.depositCents > 0 && (
           <p>Deposit: {formatCents(agreement.depositCents)}</p>
         )}

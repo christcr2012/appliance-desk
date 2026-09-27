@@ -27,6 +27,11 @@ type FormValues = {
   lateFeePercent: number;
   taxRatePermille: number;
   taxRateConfirmed: boolean;
+  sixMonthPrepaySetDollars: number;
+  sixMonthPrepaySingleDollars: number;
+  twelveMonthPrepaySetDollars: number;
+  twelveMonthPrepaySingleDollars: number;
+  twelveMonthPrepayFreeMonthEnabled: boolean;
 };
 
 export function SettingsForm({ defaultValues }: { defaultValues: FormValues }) {
@@ -138,6 +143,44 @@ export function SettingsForm({ defaultValues }: { defaultValues: FormValues }) {
           max={100}
           {...register("lateFeePercent")}
         />
+      </fieldset>
+
+      <fieldset className="space-y-4">
+        <legend className="text-base font-semibold text-gray-900">
+          Prepaid-term discounts
+        </legend>
+        <p className="text-sm text-gray-600">
+          A customer who signs up for a 6- or 12-month term automatically gets a lower
+          monthly rate — a &quot;set&quot; means 2 or more appliances on the same line
+          (like a washer + dryer), a single appliance gets its own, separate rate. You
+          can change any of these four amounts any time; existing signed agreements
+          keep whatever rate they already locked in.
+        </p>
+        <DollarInput
+          label="6-month prepay discount — per month, for a set"
+          {...register("sixMonthPrepaySetDollars", { valueAsNumber: true })}
+        />
+        <DollarInput
+          label="6-month prepay discount — per month, for a single appliance"
+          {...register("sixMonthPrepaySingleDollars", { valueAsNumber: true })}
+        />
+        <DollarInput
+          label="12-month prepay discount — per month, for a set"
+          {...register("twelveMonthPrepaySetDollars", { valueAsNumber: true })}
+        />
+        <DollarInput
+          label="12-month prepay discount — per month, for a single appliance"
+          {...register("twelveMonthPrepaySingleDollars", { valueAsNumber: true })}
+        />
+        <label className="flex items-center gap-2 text-sm text-gray-700">
+          <input
+            type="checkbox"
+            {...register("twelveMonthPrepayFreeMonthEnabled")}
+            className="h-4 w-4"
+          />
+          Also give a free month when a customer pays the full 12-month term in one
+          lump sum up front (you mark this yourself when creating that agreement)
+        </label>
       </fieldset>
 
       <fieldset className="space-y-4">

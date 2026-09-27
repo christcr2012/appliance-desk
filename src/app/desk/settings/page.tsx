@@ -65,6 +65,12 @@ export default async function DeskSettingsPage() {
             lateFeePercent: settings.lateFeePercent,
             taxRatePermille: settings.taxRatePermille,
             taxRateConfirmed: settings.taxRateConfirmed,
+            sixMonthPrepaySetDollars: settings.sixMonthPrepayDiscountSetCents / 100,
+            sixMonthPrepaySingleDollars: settings.sixMonthPrepayDiscountSingleCents / 100,
+            twelveMonthPrepaySetDollars: settings.twelveMonthPrepayDiscountSetCents / 100,
+            twelveMonthPrepaySingleDollars:
+              settings.twelveMonthPrepayDiscountSingleCents / 100,
+            twelveMonthPrepayFreeMonthEnabled: settings.twelveMonthPrepayFreeMonthEnabled,
           }}
         />
       </section>

@@ -29,6 +29,11 @@ const DEFAULT_SETTINGS = {
   taxRateConfirmed: false,
   announcementBannerText: null as string | null,
   announcementBannerOn: false,
+  sixMonthPrepayDiscountSetCents: 500,
+  sixMonthPrepayDiscountSingleCents: 250,
+  twelveMonthPrepayDiscountSetCents: 1000,
+  twelveMonthPrepayDiscountSingleCents: 500,
+  twelveMonthPrepayFreeMonthEnabled: true,
   updatedAt: new Date(0),
 };
 
@@ -109,6 +114,11 @@ export type BusinessSettingsUpdate = Partial<{
   taxRateConfirmed: boolean;
   announcementBannerText: string | null;
   announcementBannerOn: boolean;
+  sixMonthPrepayDiscountSetCents: number;
+  sixMonthPrepayDiscountSingleCents: number;
+  twelveMonthPrepayDiscountSetCents: number;
+  twelveMonthPrepayDiscountSingleCents: number;
+  twelveMonthPrepayFreeMonthEnabled: boolean;
 }>;
 
 /**

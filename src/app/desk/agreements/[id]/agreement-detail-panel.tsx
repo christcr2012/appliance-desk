@@ -19,6 +19,8 @@ type LineRow = {
   id: string;
   label: string;
   monthlyPriceCents: number;
+  listPriceCents: number;
+  prepayDiscountCentsPerMonth: number;
   assignments: {
     appliance: { id: string; assetNumber: string; applianceType: { name: string } };
   }[];
@@ -30,6 +32,8 @@ type AgreementRow = {
   depositCents: number;
   damageWaiverCents: number;
   termMonths: number | null;
+  paidInFullInAdvance: boolean;
+  freeMonthGranted: boolean;
   lines: LineRow[];
   signature: {
     id: string;
@@ -52,7 +56,7 @@ export function AgreementDetailPanel({
   const [error, setError] = useState<string | null>(null);
 
   const [label, setLabel] = useState("");
-  const [monthlyPriceDollars, setMonthlyPriceDollars] = useState("");
+  const [listPriceDollars, setListPriceDollars] = useState("");
   const [selectedApplianceIds, setSelectedApplianceIds] = useState<string[]>([]);
 
   function toggleAppliance(id: string) {
@@ -67,14 +71,14 @@ export function AgreementDetailPanel({
     startTransition(async () => {
       const result = await addRentalLineAction(agreement.id, {
         label,
-        monthlyPriceDollars,
+        listPriceDollars,
         applianceIds: selectedApplianceIds,
       });
       if (result.status === "error") {
         setError(result.message);
       } else {
         setLabel("");
-        setMonthlyPriceDollars("");
+        setListPriceDollars("");
         setSelectedApplianceIds([]);
         router.refresh();
       }
@@ -167,7 +171,15 @@ export function AgreementDetailPanel({
           {agreement.depositCents > 0 && ` · Deposit ${formatCents(agreement.depositCents)}`}
           {agreement.damageWaiverCents > 0 &&
             ` · Damage waiver ${formatCents(agreement.damageWaiverCents)}/mo`}
+          {agreement.paidInFullInAdvance && " · Paid in full, in advance"}
         </p>
+
+        {agreement.freeMonthGranted && (
+          <div className="mt-3 rounded-md bg-green-50 p-3 text-sm text-green-900">
+            This customer paid the full 12-month term in advance, so their first month
+            is free.
+          </div>
+        )}
 
         {agreement.status === "AWAITING_SIGNATURE" && agreement.signature && (
           <div className="mt-4 rounded-md bg-amber-50 p-3 text-sm text-amber-900">
@@ -211,6 +223,12 @@ export function AgreementDetailPanel({
                   <p className="text-sm font-medium text-gray-900">
                     {line.label} — {formatCents(line.monthlyPriceCents)}/mo
                   </p>
+                  {line.prepayDiscountCentsPerMonth > 0 && (
+                    <p className="text-sm text-primary">
+                      {formatCents(line.listPriceCents)}/mo list price −{" "}
+                      {formatCents(line.prepayDiscountCentsPerMonth)}/mo term discount
+                    </p>
+                  )}
                   <p className="text-sm text-gray-600">
                     {line.assignments
                       .map((a) => `${a.appliance.applianceType.name} (${a.appliance.assetNumber})`)
@@ -251,27 +269,34 @@ export function AgreementDetailPanel({
               </div>
               <div>
                 <label
-                  htmlFor="monthlyPriceDollars"
+                  htmlFor="listPriceDollars"
                   className="block text-sm font-medium text-gray-700"
                 >
-                  Monthly price ($)
+                  Monthly price before any discount ($)
                 </label>
                 <input
-                  id="monthlyPriceDollars"
+                  id="listPriceDollars"
                   type="number"
                   min={0}
                   step="0.01"
                   required
-                  value={monthlyPriceDollars}
-                  onChange={(e) => setMonthlyPriceDollars(e.target.value)}
+                  value={listPriceDollars}
+                  onChange={(e) => setListPriceDollars(e.target.value)}
                   className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                 />
+                {agreement.termMonths === 6 || agreement.termMonths === 12 ? (
+                  <p className="mt-1 text-xs text-gray-500">
+                    This agreement&apos;s {agreement.termMonths}-month prepay discount is
+                    applied automatically.
+                  </p>
+                ) : null}
               </div>
             </div>
 
             <div>
               <p className="block text-sm font-medium text-gray-700">
-                Which appliance(s)? (select 2 for a set)
+                Which appliance(s)? (select 2 for a set — sets get the higher prepay
+                discount rate)
               </p>
               {availableAppliances.length === 0 ? (
                 <p className="mt-1 text-sm text-gray-600">
