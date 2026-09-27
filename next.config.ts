@@ -12,6 +12,11 @@ const nextConfig: NextConfig = {
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+          // Forces the browser to always use HTTPS for this domain (never a
+          // plain-HTTP downgrade), for a full year, including subdomains.
+          // Safe to add now that a real custom domain with SSL is live —
+          // see docs/DECISIONS.md.
+          { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
         ],
       },
       {

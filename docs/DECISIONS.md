@@ -846,3 +846,31 @@ merged without needing a Stripe account or API keys at all — the next
 piece of work (Stripe test-mode billing itself) needs Chris to have a
 real, free Stripe test-mode account with test API keys before it can
 be built and actually tested.
+
+## 2026-09-27 — added HSTS header; reviewed a dependency-audit finding
+
+While the billing work is paused waiting on Chris's Stripe test-mode
+keys, did a quick correctness/security pass per `AGENTS.md`'s stated
+priority order (correctness & security come before features).
+
+- **Added `Strict-Transport-Security`** to the baseline security
+  headers in `next.config.ts` (`max-age=31536000; includeSubDomains`).
+  This tells browsers to always use HTTPS for this domain for a full
+  year, closing off any plain-HTTP downgrade attempt. Safe to add now
+  that a real custom domain with SSL (`robinsonappliancerentals.com`)
+  is live — adding it before a real domain existed would have had
+  nothing meaningful to protect.
+- **Reviewed `npm audit`'s 4 high-severity findings** — all four trace
+  back to two transitive dependencies of Prisma's own CLI tooling
+  (`mysql2` and `deepmerge-ts`), not to anything this app's own code
+  imports. `mysql2` is part of Prisma's multi-database support (MySQL
+  introspection/migration) — this app only ever connects to Postgres
+  (Neon), so the vulnerable code path (a malicious/compromised MySQL
+  server sending a crafted auth downgrade or a decompression bomb) is
+  never reachable here. `npm audit`'s suggested fix is a downgrade to
+  an older major version of Prisma (6.19.3), which would be a real step
+  backwards for an unrelated, unreachable issue — not a safe or
+  sensible fix to apply blindly. **Decision: leave as-is, revisit when
+  Prisma ships a patched 7.x/8.x release** (checked via
+  `npm outdated` — Prisma 8.0.0-rc.17 exists but is a release
+  candidate, not yet something to move production onto).
