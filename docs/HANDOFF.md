@@ -944,3 +944,49 @@ API shape change this had to account for).
 - [ ] **Deliberately not built:** automated late fees / dunning beyond
       Stripe's own retry logic — tracked in `docs/ROADMAP.md`, needs its
       own design.
+
+## 2026-09-27 (same session, continued) — PR #32 merged and deployed
+
+Phase 6B's Stripe billing PR (#32) is merged into `main` and confirmed
+live in production (Vercel deployment `dpl_DTyYXWZbERoLAB3n5h1DuyPp88Co`,
+state READY). One conflict came up before merging — PR #31 (Stripe key
+docs) had merged into `main` after this branch was created, so
+`docs/DECISIONS.md` needed a quick merge — resolved cleanly, no code
+conflict, CI re-ran green on the merged result.
+
+**Still outstanding, tracked from the previous entry**: Chris needs to
+register the webhook endpoint in Stripe's dashboard and set
+`STRIPE_WEBHOOK_SECRET` in Vercel — see `docs/ARCHITECTURE.md`'s
+"Payments (Stripe)" section. Nothing will be recorded as paid until
+that's done.
+
+## 2026-09-27 (same session, continued) — automated accessibility checks now cover the owner desk and customer portal too
+
+Since day one, CI's accessibility checks (`e2e/accessibility.spec.ts`)
+only ever loaded the public site plus `/login`, `/forgot-password`, and
+`/reset-password` — every page behind a login (all of `/desk/**` and
+`/account/**`, including the brand-new billing pages) had never once
+been run through an automated accessibility check, because doing that
+needs a real, logged-in-able test account, and CI's seed step
+deliberately never created one (correctly, for security — no real
+credentials belong in a CI log).
+
+- [x] `prisma/seed.ts` can now also create a test-only CUSTOMER account
+      (with a real signed agreement and a paid invoice, so tables like
+      `/desk/billing` render actual rows, not just their empty state) —
+      gated behind `TEST_CUSTOMER_EMAIL`/`TEST_CUSTOMER_PASSWORD`, same
+      opt-in pattern the existing `OWNER_EMAIL`/`OWNER_PASSWORD` already
+      used. Neither does anything unless those env vars are set.
+- [x] `.github/workflows/ci.yml` sets both this and `OWNER_EMAIL`/
+      `OWNER_PASSWORD` — safe, since this only ever touches the job's
+      own throwaway Postgres container, destroyed at the end of the run.
+      Never set these against the real production database.
+- [x] `e2e/accessibility-authenticated.spec.ts` logs in as each account
+      for real (through the actual `/login` form) and runs the same axe
+      checks CI already ran on the public site against every page in
+      both the desk nav and the account nav.
+- [ ] **This is genuinely new coverage, so its first CI run may turn up
+      real, pre-existing accessibility issues on pages that were simply
+      never checked before** — not a regression from this change itself.
+      If CI fails here, that's the intended outcome (catching something
+      real), and I'll fix whatever it finds as part of finishing this PR.

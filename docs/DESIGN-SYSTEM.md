@@ -28,10 +28,18 @@ alike:
 - Usable at 200% browser zoom and on phones.
 
 **Automated checks are wired into CI**: `e2e/accessibility.spec.ts` runs
-axe against every page as it's built, tagged `wcag2a`/`wcag2aa`/
-`wcag21a`/`wcag21aa`, and fails the build on any violation. This catches
-missing labels/contrast/etc. automatically — it does **not** replace a
-manual screen-reader + keyboard pass before launch (tracked in
+axe against the public site and the login/password pages, tagged
+`wcag2a`/`wcag2aa`/`wcag21a`/`wcag21aa`, and fails the build on any
+violation. `e2e/accessibility-authenticated.spec.ts` (added 2026-09-27)
+does the same for every page behind a login — the owner desk
+(`/desk/**`) and the customer portal (`/account/**`) — by logging in for
+real as a test-only OWNER/CUSTOMER account that `prisma/seed.ts` creates
+when `OWNER_EMAIL`/`OWNER_PASSWORD`/`TEST_CUSTOMER_EMAIL`/
+`TEST_CUSTOMER_PASSWORD` are set (CI sets these against its own
+throwaway database only — see `.github/workflows/ci.yml`; never set
+them against production). Together these catch missing labels/
+contrast/etc. automatically across the entire app — they do **not**
+replace a manual screen-reader + keyboard pass before launch (tracked in
 `docs/ROADMAP.md`, Phase 7).
 
 An `/accessibility` statement page with a way to report problems is
