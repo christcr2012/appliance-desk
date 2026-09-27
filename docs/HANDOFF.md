@@ -604,15 +604,36 @@ has existed since Phase 1.
       expiration handling) and item 7 (public-form spam protection) —
       still next in the suggested order, not started.
 
+## 2026-09-26 (same session, continued) — Phase 6A item 7: public form spam/abuse protection
+
+- [x] Honeypot field on the public lead form (`/contact`) — invisible
+      to real visitors, silently drops any automated submission with no
+      Lead saved and no email sent.
+- [x] Per-IP rate limit on lead submissions (5 per 10 minutes),
+      `src/lib/rate-limit.ts` — zero new infrastructure/cost. Honestly
+      documented as "best effort" (in-memory, per serverless instance,
+      not a shared store) rather than oversold — see `docs/DECISIONS.md`
+      for why that's the right call for now, and what the real next
+      upgrade would be (Cloudflare Turnstile or a persistent store) if
+      actual abuse is ever observed.
+- [x] 8 new tests (`tests/rate-limit.test.ts`,
+      `tests/contact-spam-protection.test.ts`): the limiter's own
+      window/counting logic in isolation, plus submitLead's wiring
+      (honeypot drops silently and never touches the limiter; a blocked
+      IP never saves a Lead; a normal submission passes through both
+      checks). 61/61 unit tests passing (up from 53 — the usual 7
+      pre-existing, documented Prisma-sandbox-limitation test-file
+      failures unchanged). Lint and client-bundle-leak grep clean.
+- [ ] **Not yet merged on purpose** — ready to open as its own PR.
+
 ## Immediate next step (whoever picks this up next)
 
-Open the customer-activation work above as its own PR, get CI green,
-and report to Chris before starting the next item. Per the work-order's
+Open the spam-protection work above as its own PR, get CI green, and
+report to Chris before starting the next item. Per the work-order's
 suggested implementation order, what's left in Phase 6A is: production
-migration safety (item 1 — a bigger, standalone architectural piece),
-real customer-isolation integration tests (item 3 — the first
-integration-test infrastructure in this project), reservation-
-expiration handling (item 6), and public-form spam protection (item 7).
-After Phase 6A, Phase 6B (Stripe billing) is a real boundary that needs
-Chris's own decisions (billing cadence, deposit handling, a real Stripe
-account) before any of it is built.
+migration safety (item 1 — a bigger, standalone architectural piece)
+and real customer-isolation integration tests (item 3 — the first
+integration-test infrastructure in this project) and reservation-
+expiration handling (item 6). After Phase 6A, Phase 6B (Stripe billing)
+is a real boundary that needs Chris's own decisions (billing cadence,
+deposit handling, a real Stripe account) before any of it is built.

@@ -99,6 +99,15 @@ Default ranking, **lowest to highest** value:
   consent checkbox.
 - Chris is notified immediately by email of every new lead (SMS is a
   possible later addition). High-value leads are flagged as such.
+- **Spam/abuse protection:** the form has a honeypot field invisible to
+  real visitors (any automated submission that fills it in is silently
+  dropped — no Lead saved, no email sent) and a per-IP rate limit (at
+  most 5 submissions per 10 minutes) that shows a plain "please wait
+  and try again" message if tripped. Neither ever blocks a real
+  customer under normal use. See `src/lib/rate-limit.ts` for the
+  in-memory limiter's honest limitations and `docs/DECISIONS.md` for
+  why a heavier solution (Cloudflare Turnstile, a persistent store)
+  isn't built yet.
 
 ## How the business operates at launch — Chris approves everything
 
