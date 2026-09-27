@@ -216,6 +216,18 @@ a button in the UI is not security. Every phase that touches customer
 data must include a test proving customer A cannot read or change
 customer B's data.
 
+This is proven by a real, database-backed test
+(`tests/customer-isolation.test.ts`, added Phase 6A item 3) — it
+creates two real customers in a real database and checks that the
+customer portal (`src/domains/portal`) never returns or accepts the
+other one's rentals, service addresses, appliances, or maintenance
+requests. Unlike this project's other tests, it does not fake
+("mock") the database — a faked database can't actually prove one
+customer's data is walled off from another's, since the fake just
+returns whatever the test tells it to. It runs as part of the normal
+automated checks (CI), which use a real, temporary database for
+exactly this reason.
+
 ## Billing rules
 
 - Stripe in **test mode only** until Chris explicitly authorizes going

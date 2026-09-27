@@ -614,3 +614,35 @@ without dragging `src/domains/agreements/index.ts`'s top-level
 exact client-bundle-Prisma-leak bug this project has already been bitten
 by once (see the Phase 4 entry above). Same split pattern already used
 for `src/domains/pricing/money.ts` and `src/domains/leads/schema.ts`.
+
+## 2026-09-27 — first real, database-backed integration test (Phase 6A item 3)
+
+**Problem:** every test in this project up to this point mocked (faked)
+`@/lib/prisma` — proving business logic correct without needing a real
+database. That works well for pricing math, status transitions, and
+similar pure logic, but it cannot actually prove
+docs/BUSINESS-RULES.md's "Customer data isolation (security-critical)"
+rule, since a mocked database only ever returns what the test tells it
+to — it can't catch a real, unscoped query that would leak another
+customer's data in production.
+
+**Decision:** added `tests/customer-isolation.test.ts`, the first test
+in this project that imports the real `@/lib/prisma` and runs against
+a real Postgres database instead of a mock. No new CI plumbing was
+needed: `.github/workflows/ci.yml` already runs a real, disposable
+Postgres service container, applies migrations, and seeds it — all
+*before* the `npm test` step — so a real-database test is simply
+another file `npm test` picks up. It creates two full, independent
+customer fixtures (user, customer, service address, active rental
+agreement, appliance) and proves the customer-portal domain
+(`src/domains/portal`) never returns or accepts one customer's records
+under the other customer's login, then deletes everything it created.
+
+**A real limitation of this specific change:** the sandbox this was
+written in cannot generate a local Prisma client at all (see "A real
+constraint you should know about" in AGENTS.md), so unlike every other
+test added so far, this one could not be run locally before opening
+its PR — it's verified purely by CI. Everything reasonably checkable
+locally (the file's own syntax, types apart from Prisma's generated
+ones, and lint) was checked; the actual pass/fail proof is CI's first
+run of it.
