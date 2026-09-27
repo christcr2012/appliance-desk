@@ -32,31 +32,24 @@ on — never built unasked.
 
 ## Suggestions (not scoped into any phase — Chris should decide)
 
-- **A real business email address on the domain**
-  (`chris@robinsonappliancerentals.com` instead of a personal Gmail).
-  Discussed 2026-09-26 — Chris asked whether this needs a paid third
-  party or can be self-hosted. Short answer: running your own mail
-  server isn't recommended (deliverability/spam-filter problems,
-  ongoing upkeep), so it'll always involve some outside provider, but
-  cost varies a lot:
-  - **Free, forwarding only**: Cloudflare Email Routing — forwards
-    mail sent to the domain straight to Chris's existing Gmail. Can't
-    send *from* the domain address without extra Gmail setup.
-    Fastest to set up.
-  - **Free, real inbox (up to 5 addresses)**: Zoho Mail — genuine
-    send + receive at the domain, works like a normal email account
-    (webmail + phone app). Best free option if he wants to actually
-    send as `chris@robinsonappliancerentals.com`.
-  - **Paid (~$6–7/user/month)**: Google Workspace or Microsoft 365 —
-    most polished, easiest if he wants it to feel exactly like the
-    Gmail/Outlook he already uses.
-  **Deliberately deferred, not forgotten** — Chris asked to revisit
-  this either once everything else is done, or right before there's a
-  real need for it (e.g. right before launch/marketing push, when a
-  `chris@` address starts mattering for how the business looks to
-  customers). Nothing about this blocks any other phase — the site's
-  `publicEmail` in `/desk/settings` and the Resend lead-notification
-  address can keep using whatever inbox he already checks until then.
+- **A real business email address on the domain** — **done (2026-09-27)**.
+  Originally discussed 2026-09-26 as a deferred decision (options were
+  Cloudflare Email Routing, Zoho Mail, or Google Workspace/Microsoft
+  365). Chris ended up connecting a Google Workspace account for this
+  project and had a real, separate mailbox set up:
+  `ops@robinsonappliancerentals.com`, with role aliases `chris@`,
+  `leads@`, `support@`, `no-reply@`, and `billing@`. Full detail and
+  which address maps to which env var/code path is in
+  `docs/ARCHITECTURE.md`'s "Email addresses (Google Workspace)" section.
+  - **Still open, tracked here on purpose:** wiring the app itself to
+    actually use these new addresses — `LEAD_NOTIFICATION_EMAIL`,
+    `MAINTENANCE_NOTIFICATION_EMAIL`, and `RESEND_FROM_EMAIL` (Vercel
+    environment variables) plus `publicEmail` (edited in
+    `/desk/settings`) are all still on their old placeholder/fallback
+    values. This is a quick change (a few Vercel env vars + one
+    settings-form edit) but touches what customers see and where leads
+    land, so it's deliberately left for Chris to say "go" on rather than
+    switched over silently.
 - **Neon ↔ Vercel preview branching**: gives every PR preview deployment
   its own isolated database branch, so testing never touches real
   customer data. Skipped for now per the brief ("if it isn't simple,
