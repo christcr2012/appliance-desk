@@ -528,3 +528,42 @@ verification before first login (`requireEmailVerification` stays
 gating note as the rest of transactional email in this project); real
 customer-isolation integration tests (Phase 6A item 3, its own
 unstarted piece of work).
+
+---
+
+### 2026-09-26 — Public form spam protection: honeypot + in-memory rate limit, not Turnstile (yet)
+
+Phase 6A item 7. The public lead form (`/contact`) had zero abuse
+protection — Verified Finding #4 confirmed no rate limiting, honeypot,
+or CAPTCHA anywhere in the codebase.
+
+**Built now, at zero cost and no new infrastructure:**
+- A honeypot field (`leadFormSchema`'s `website`) hidden off-screen in
+  `contact-form.tsx` — never visible or reachable by a real visitor
+  (positioned off-screen, not `display: none`, and wrapped in
+  `aria-hidden` so it's never announced to assistive tech either). Any
+  value in it means an automated submission; `submitLead` reports
+  success but never saves a Lead or emails Chris, so the bot gets no
+  signal to adapt its behavior.
+- A per-IP sliding-window rate limit (`src/lib/rate-limit.ts`, 5
+  submissions / 10 minutes), applied in `submitLead` before touching
+  the database.
+
+**Why in-memory instead of a persistent/shared store:** this project
+has no Redis/KV service today, and adding one is exactly the kind of
+new paid infrastructure `AGENTS.md` says to ask before adding. An
+in-memory, per-serverless-instance limiter is honestly "best effort" —
+Vercel can run more than one instance of the same route, each with its
+own memory, so a determined attacker spreading requests across
+instances or IPs won't be fully stopped. It's still real protection
+against the common case (a script hammering the endpoint from one
+IP), for zero infrastructure and zero cost, and is documented as such
+in the code rather than oversold.
+
+**Why not Cloudflare Turnstile now:** the work-order listed it as "an
+option if needed," not a default — it needs a Cloudflare account/site
+key (a small setup decision, not code), and there's no evidence yet of
+real abuse on this form to justify the added friction and setup. If
+spam becomes a real, observed problem, Turnstile (or a persistent
+rate-limit store) is the documented next step — not something to add
+speculatively now.

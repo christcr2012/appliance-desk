@@ -49,6 +49,14 @@ export const leadFormSchema = z.object({
   consent: z.boolean().refine((v) => v === true, {
     message: "You must agree to the privacy policy and terms to continue",
   }),
+
+  // Honeypot (Phase 6A item 7 — spam protection): a field real visitors
+  // never see or fill in (hidden off-screen in contact-form.tsx). Any
+  // value here means an automated submission, not a real one — see
+  // submitLead in src/app/(public)/contact/actions.ts, which checks this
+  // and silently drops the submission without ever saving a Lead.
+  // Deliberately never persisted onto the Lead record itself.
+  website: z.string().max(200).optional().or(z.literal("")),
 });
 
 export type LeadFormInput = z.infer<typeof leadFormSchema>;

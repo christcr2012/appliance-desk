@@ -79,6 +79,32 @@ export function ContactForm({
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-10">
+      {/* Honeypot (Phase 6A item 7 — spam protection): invisible to a
+          real visitor and never announced to assistive tech, but a
+          simple bot that fills in every field will fill this one too —
+          see leadFormSchema's "website" field and submitLead's check.
+          Not `display: none`, which some bots skip, but positioned
+          off-screen so it's genuinely never seen or focused. */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: "absolute",
+          left: "-9999px",
+          width: 1,
+          height: 1,
+          overflow: "hidden",
+        }}
+      >
+        <label htmlFor={`${formId}-website`}>Leave this field blank</label>
+        <input
+          id={`${formId}-website`}
+          type="text"
+          tabIndex={-1}
+          autoComplete="off"
+          {...register("website")}
+        />
+      </div>
+
       {serverMessage && (
         <p
           role="alert"
