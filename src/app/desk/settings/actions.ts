@@ -34,6 +34,11 @@ const businessSettingsSchema = z.object({
   lateFeePercent: z.coerce.number().int().min(0).max(100),
   taxRatePermille: z.coerce.number().int().min(0).max(1000),
   taxRateConfirmed: z.coerce.boolean(),
+  sixMonthPrepaySetDollars: z.coerce.number().min(0).max(1000),
+  sixMonthPrepaySingleDollars: z.coerce.number().min(0).max(1000),
+  twelveMonthPrepaySetDollars: z.coerce.number().min(0).max(1000),
+  twelveMonthPrepaySingleDollars: z.coerce.number().min(0).max(1000),
+  twelveMonthPrepayFreeMonthEnabled: z.coerce.boolean(),
 });
 
 function splitList(value: string): string[] {
@@ -65,6 +70,10 @@ export async function updateSettingsAction(
     installationFeeDollars,
     removalFeeDollars,
     lateFeeFlatDollars,
+    sixMonthPrepaySetDollars,
+    sixMonthPrepaySingleDollars,
+    twelveMonthPrepaySetDollars,
+    twelveMonthPrepaySingleDollars,
     ...rest
   } = parsed.data;
 
@@ -74,6 +83,10 @@ export async function updateSettingsAction(
     oneTimeInstallationFeeCents: dollarsToCents(installationFeeDollars),
     oneTimeRemovalFeeCents: dollarsToCents(removalFeeDollars),
     lateFeeFlatCents: dollarsToCents(lateFeeFlatDollars),
+    sixMonthPrepayDiscountSetCents: dollarsToCents(sixMonthPrepaySetDollars),
+    sixMonthPrepayDiscountSingleCents: dollarsToCents(sixMonthPrepaySingleDollars),
+    twelveMonthPrepayDiscountSetCents: dollarsToCents(twelveMonthPrepaySetDollars),
+    twelveMonthPrepayDiscountSingleCents: dollarsToCents(twelveMonthPrepaySingleDollars),
     serviceAreaCities: splitList(serviceAreaCities),
     serviceAreaZips: splitList(serviceAreaZips),
   });

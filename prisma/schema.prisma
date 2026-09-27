@@ -344,6 +344,19 @@ model RentalAgreement {
   lateFeePercent    Int @default(0)
   taxRatePermille   Int @default(0) // e.g. 725 = 7.25%
 
+  // Prepaid-term discount (see docs/BUSINESS-RULES.md's Pricing section
+  // and docs/DECISIONS.md's dated design decision). paidInFullInAdvance is
+  // set by Chris himself at agreement creation — there's no automated
+  // billing yet (Phase 6B) to detect an actual lump-sum payment, so this
+  // is his own record of it, the same way depositCents above already is.
+  // Only meaningful for a 12-month term. freeMonthGranted snapshots
+  // whether the bonus actually applied (term + payment fact + the
+  // BusinessSettings toggle, all as of THIS agreement's creation) so
+  // later flipping that toggle off can never retroactively take the
+  // bonus away from an agreement that already earned it.
+  paidInFullInAdvance Boolean @default(false)
+  freeMonthGranted    Boolean @default(false)
+
   lines RentalLine[]
 
   signature   SignatureRecord?
@@ -364,7 +377,18 @@ model RentalLine {
   agreementId String
   agreement  RentalAgreement @relation(fields: [agreementId], references: [id], onDelete: Cascade)
   label      String   // "Washer/Dryer set @ $60/mo"
+  // The amount actually charged per month, after any prepaid-term
+  // discount — every other page in the app (agreement totals, the
+  // customer portal, the dashboard) sums THIS field, unchanged from
+  // before the discount feature existed. listPriceCents is what Chris
+  // typed in as the line's normal rate before any discount, and
+  // prepayDiscountCentsPerMonth is what got subtracted to reach
+  // monthlyPriceCents — both kept so the discount is visible/transparent
+  // rather than a mysteriously lower number (docs/BUSINESS-RULES.md).
+  // monthlyPriceCents = max(0, listPriceCents - prepayDiscountCentsPerMonth).
   monthlyPriceCents Int
+  listPriceCents Int @default(0)
+  prepayDiscountCentsPerMonth Int @default(0)
 
   assignments ApplianceAssignment[]
 
@@ -607,6 +631,18 @@ model BusinessSettings {
 
   announcementBannerText String?
   announcementBannerOn   Boolean @default(false)
+
+  // Prepaid-term discounts (Chris's explicit request, docs/DECISIONS.md
+  // has the dated design decision, docs/BUSINESS-RULES.md's Pricing
+  // section has the full rule). Four independent, owner-adjustable dollar
+  // amounts — never derived from one another — plus a separate toggle for
+  // the "first month free" bonus on a 12-month term paid fully in
+  // advance. Defaults match the figures Chris gave as a starting point.
+  sixMonthPrepayDiscountSetCents       Int     @default(500)
+  sixMonthPrepayDiscountSingleCents    Int     @default(250)
+  twelveMonthPrepayDiscountSetCents    Int     @default(1000)
+  twelveMonthPrepayDiscountSingleCents Int     @default(500)
+  twelveMonthPrepayFreeMonthEnabled    Boolean @default(true)
 
   updatedAt DateTime @updatedAt
 }

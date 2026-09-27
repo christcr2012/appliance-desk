@@ -5,6 +5,55 @@ here, add a new entry rather than editing the old one away.
 
 ---
 
+### 2026-09-26 — Prepaid-term discount: tied to contract term, not a lump-sum payment event; "set" = 2+ appliances per line; separate owner-toggleable free-month bonus for a fully-prepaid 12-month term
+
+**Decision:** Chris asked directly for a prepaid-term pricing discount
+("i need 6 months paid in advance to get a $5/month discount and 1 year
+paid in advance to receive $10 per month discount for sets, and half the
+discount for single units, and these discounts also need to be adjustable
+by the owner"). Two design questions had to be confirmed with him before
+building rather than assumed:
+
+1. **Is the discount earned by the agreement's contractual term
+   (`RentalAgreement.termMonths` = 6 or 12), or only once the customer
+   actually pays that many months in a single lump sum up front?**
+   Confirmed: tied to the **contract term**. Signing a 6- or 12-month
+   agreement earns the discount immediately — no separate payment-tracking
+   mechanism needed, which matters because Stripe billing (Phase 6B)
+   doesn't exist yet to detect a real lump-sum payment.
+2. **What counts as a "set"?** Confirmed: 2 or more physical appliances on
+   the *same rental line* (e.g. a washer+dryer pair) — a single appliance
+   on its own always gets the single-unit rate, even if that customer has
+   other lines too.
+
+While confirming this, Chris added a related but distinct rule: **paying
+the full 12-month term in one lump sum up front also earns a free month**
+— separate from the recurring per-month discount above, and independently
+owner-toggleable (`BusinessSettings.twelveMonthPrepayFreeMonthEnabled`).
+Since there's no billing system yet to detect an actual lump-sum payment,
+Chris records this himself at agreement creation
+(`RentalAgreement.paidInFullInAdvance`) — the same way he already records
+`depositCents` and other money facts manually today, ahead of Phase 6B's
+real billing. The decision of whether the bonus applies is frozen
+(`RentalAgreement.freeMonthGranted`) at that same moment, so later
+flipping the settings toggle can never retroactively add or remove the
+bonus from an already-created agreement.
+
+**Why the four dollar amounts are stored independently:** Chris was
+explicit that the $5/$10 (set) and $2.50/$5 (single) figures he gave are
+illustrative of the rule's *shape*, not a ratio to hard-code — "it doesnt
+need to be preset to those amounts, the detailed amount is to show you my
+intent." The code never derives the single-unit rate from the set rate (or
+vice versa); all four live as independent `BusinessSettings` columns,
+editable in `/desk/settings`, following the same pattern already
+established for delivery/installation/removal fees.
+
+See `docs/BUSINESS-RULES.md`'s Pricing section for the resulting rule and
+`prisma/migrations/20260926230000_prepay_term_discount` for the schema
+change.
+
+---
+
 ### 2026-09-26 — Auth: Better Auth over Auth.js (NextAuth) v5 and Neon Auth
 
 **Decision:** Use [Better Auth](https://better-auth.com) with its Prisma

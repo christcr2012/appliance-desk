@@ -18,6 +18,7 @@ const EMPTY_FIELDS = {
   lateFeeDollars: "",
   lateFeePercent: "",
   taxRatePercent: "",
+  paidInFullInAdvance: false,
 };
 
 export function NewAgreementForm({
@@ -39,7 +40,10 @@ export function NewAgreementForm({
   const [fields, setFields] = useState(EMPTY_FIELDS);
   const [error, setError] = useState<string | null>(null);
 
-  function update<K extends keyof typeof EMPTY_FIELDS>(key: K, value: string) {
+  function update<K extends keyof typeof EMPTY_FIELDS>(
+    key: K,
+    value: (typeof EMPTY_FIELDS)[K],
+  ) {
     setFields((f) => ({ ...f, [key]: value }));
   }
 
@@ -126,9 +130,19 @@ export function NewAgreementForm({
             min={1}
             placeholder="Leave blank for month-to-month"
             value={fields.termMonths}
-            onChange={(e) => update("termMonths", e.target.value)}
+            onChange={(e) => {
+              const value = e.target.value;
+              update("termMonths", value);
+              if (value !== "12") update("paidInFullInAdvance", false);
+            }}
             className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
           />
+          {(fields.termMonths === "6" || fields.termMonths === "12") && (
+            <p className="mt-1 text-xs text-gray-500">
+              A {fields.termMonths}-month term automatically gets the {fields.termMonths}
+              -month prepay discount (set from /desk/settings).
+            </p>
+          )}
         </div>
         <div>
           <label htmlFor="depositDollars" className="block text-sm font-medium text-gray-700">
@@ -145,6 +159,19 @@ export function NewAgreementForm({
           />
         </div>
       </div>
+
+      {fields.termMonths === "12" && (
+        <label className="flex items-center gap-2 rounded-md bg-blue-50 p-3 text-sm text-blue-900">
+          <input
+            type="checkbox"
+            checked={fields.paidInFullInAdvance}
+            onChange={(e) => update("paidInFullInAdvance", e.target.checked)}
+            className="h-4 w-4"
+          />
+          Customer is paying the full 12 months in advance (earns the free-month bonus,
+          if that&apos;s turned on in Settings)
+        </label>
+      )}
 
       <div className="grid grid-cols-2 gap-4">
         <div>

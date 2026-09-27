@@ -37,7 +37,15 @@ export default async function AccountRentalsPage() {
                 <ul className="mt-3 space-y-1 text-sm text-gray-700">
                   {a.lines.map((l) => (
                     <li key={l.id}>
-                      {l.label} — {formatCents(l.monthlyPriceCents)}/month (
+                      {l.label} — {formatCents(l.monthlyPriceCents)}/month
+                      {l.prepayDiscountCentsPerMonth > 0 && (
+                        <span className="text-gray-500">
+                          {" "}
+                          (list price {formatCents(l.listPriceCents)}, includes a{" "}
+                          {formatCents(l.prepayDiscountCentsPerMonth)}/month term discount)
+                        </span>
+                      )}{" "}
+                      (
                       {l.assignments
                         .map((asn) => `${asn.appliance.applianceType.name} ${asn.appliance.assetNumber}`)
                         .join(", ")}
@@ -49,6 +57,11 @@ export default async function AccountRentalsPage() {
                 <p className="mt-3 text-sm font-medium text-gray-900">
                   Total: {formatCents(total)}/month
                 </p>
+                {a.freeMonthGranted && (
+                  <p className="text-sm font-medium text-green-700">
+                    Paid in full, in advance — your first month was free.
+                  </p>
+                )}
                 {a.depositCents > 0 && (
                   <p className="text-sm text-gray-600">
                     Deposit paid: {formatCents(a.depositCents)}

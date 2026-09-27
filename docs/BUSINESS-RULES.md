@@ -29,6 +29,37 @@ Update this file in the same PR that changes a rule.
   - Sales tax: configurable rate, applied at invoice time. **Defaults to
     0% with a visible warning** until Chris confirms the real rate with
     a CPA. Never guess a tax rate.
+- **Prepaid-term discount** (Chris's explicit request — see
+  `docs/DECISIONS.md` for the dated design decision this section
+  summarizes): signing a 6- or 12-month term automatically lowers a rental
+  line's monthly rate. A "set" means 2+ appliances on the same rental line
+  (e.g. a washer+dryer pair); a single appliance on its own always gets its
+  own, separate rate. Four independent, owner-adjustable dollar amounts in
+  `/desk/settings` ("6-month prepay discount — per month, for a
+  set"/"...for a single appliance", and the same for 12 months) — **never
+  derived from one another** (never "single = set ÷ 2" in code), even
+  though Chris's own starting figures happen to follow that ratio
+  ($5/$2.50 for 6 months, $10/$5 for 12). The discount is tied to the
+  agreement's **contractual term**, not to a separate lump-sum payment
+  event (Stripe billing doesn't exist yet to detect one).
+  - **Separate "first month free" bonus**: only for a 12-month term the
+    customer pays in full, in advance, in one lump sum — Chris records
+    this himself (`RentalAgreement.paidInFullInAdvance`) at agreement
+    creation, since there's no billing system yet to detect a real
+    lump-sum payment. Independently owner-toggleable
+    (`BusinessSettings.twelveMonthPrepayFreeMonthEnabled`) from the
+    recurring discount above.
+  - Both the discount and the free-month decision are snapshotted
+    immutably: `RentalLine.listPriceCents` /
+    `RentalLine.prepayDiscountCentsPerMonth` freeze the moment a line is
+    added (a line can only be added/removed while the agreement is
+    DRAFT), and `RentalAgreement.freeMonthGranted` freezes at agreement
+    creation. Changing any of the four discount amounts, or the free-month
+    toggle, in `/desk/settings` later **never** changes what an existing
+    signed agreement charges.
+  - Visible to both Chris (agreement detail page) and the customer
+    (the public `/sign/[id]` review-and-sign page and the `/account`
+    portal) as its own line — never folded silently into a lower number.
 - **Price history is sacred**: a signed `RentalAgreement` snapshots the
   prices/fees/deposit at signing (see `docs/DATABASE.md`). Changing a
   price later in settings must never change what an existing customer

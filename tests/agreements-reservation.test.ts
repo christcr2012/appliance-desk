@@ -18,6 +18,7 @@ const applianceUpdateMany = vi.fn();
 const applianceFindUnique = vi.fn();
 const applianceAssignmentCreate = vi.fn();
 const auditLogCreate = vi.fn();
+const getBusinessSettings = vi.fn();
 
 function makeTx() {
   return {
@@ -35,14 +36,31 @@ vi.mock("@/lib/prisma", () => ({
   },
 }));
 
+// addRentalLine also computes the prepaid-term discount (see
+// tests/agreements-prepay-discount.test.ts for that behavior in detail) —
+// mocked here to return no discount so this file's assertions stay purely
+// about the reservation race-condition guard.
+vi.mock("@/domains/settings", () => ({
+  getBusinessSettings: (...args: unknown[]) => getBusinessSettings(...args),
+}));
+
 describe("addRentalLine — atomic reservation", () => {
   beforeEach(() => {
-    findUniqueOrThrow.mockReset().mockResolvedValue({ id: "agr-1", status: "DRAFT" });
+    findUniqueOrThrow
+      .mockReset()
+      .mockResolvedValue({ id: "agr-1", status: "DRAFT", termMonths: null });
     rentalLineCreate.mockReset().mockResolvedValue({ id: "line-1" });
     applianceUpdateMany.mockReset();
     applianceFindUnique.mockReset();
     applianceAssignmentCreate.mockReset().mockResolvedValue({});
     auditLogCreate.mockReset().mockResolvedValue({});
+    getBusinessSettings.mockReset().mockResolvedValue({
+      sixMonthPrepayDiscountSetCents: 0,
+      sixMonthPrepayDiscountSingleCents: 0,
+      twelveMonthPrepayDiscountSetCents: 0,
+      twelveMonthPrepayDiscountSingleCents: 0,
+      twelveMonthPrepayFreeMonthEnabled: false,
+    });
   });
 
   it("reserves via a conditional updateMany requiring status AVAILABLE, not a plain update", async () => {
@@ -51,7 +69,7 @@ describe("addRentalLine — atomic reservation", () => {
 
     await addRentalLine("user-1", "agr-1", {
       label: "Washer",
-      monthlyPriceCents: 3500,
+      listPriceCents: 3500,
       applianceIds: ["appl-1"],
     });
 
@@ -72,7 +90,7 @@ describe("addRentalLine — atomic reservation", () => {
     await expect(
       addRentalLine("user-1", "agr-1", {
         label: "Washer",
-        monthlyPriceCents: 3500,
+        listPriceCents: 3500,
         applianceIds: ["appl-1"],
       }),
     ).rejects.toThrow(/isn't AVAILABLE right now/);
@@ -90,7 +108,7 @@ describe("addRentalLine — atomic reservation", () => {
     await expect(
       addRentalLine("user-1", "agr-1", {
         label: "Washer + dryer set",
-        monthlyPriceCents: 6000,
+        listPriceCents: 6000,
         applianceIds: ["appl-1", "appl-2"],
       }),
     ).rejects.toThrow(/isn't AVAILABLE right now/);
@@ -104,13 +122,13 @@ describe("addRentalLine — atomic reservation", () => {
   });
 
   it("refuses to add a line to an agreement that isn't still DRAFT", async () => {
-    findUniqueOrThrow.mockResolvedValue({ id: "agr-1", status: "ACTIVE" });
+    findUniqueOrThrow.mockResolvedValue({ id: "agr-1", status: "ACTIVE", termMonths: null });
     const { addRentalLine } = await import("@/domains/agreements");
 
     await expect(
       addRentalLine("user-1", "agr-1", {
         label: "Washer",
-        monthlyPriceCents: 3500,
+        listPriceCents: 3500,
         applianceIds: ["appl-1"],
       }),
     ).rejects.toThrow(/only add appliances to a draft agreement/i);

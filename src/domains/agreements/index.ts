@@ -1,5 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import type { RentalAgreementStatus } from "@prisma/client";
+import { getBusinessSettings } from "@/domains/settings";
+import {
+  calculatePrepayDiscountCentsPerMonth,
+  isFreeMonthEarned,
+} from "@/domains/pricing/prepay-discount";
 
 // ---------------------------------------------------------------------------
 // Rental agreements — Phase 4. See docs/BUSINESS-RULES.md ("How the
@@ -87,22 +92,51 @@ export type NewAgreementInput = {
   lateFeeCents?: number;
   lateFeePercent?: number;
   taxRatePermille?: number;
+  /** Chris's own attestation that the customer paid the full term in one
+   * lump sum up front — only meaningful for a 12-month term (see
+   * src/domains/pricing/prepay-discount.ts's comment on why this can't be
+   * detected automatically yet). */
+  paidInFullInAdvance?: boolean;
 };
 
 /** Creates a DRAFT agreement shell — rental lines (and the specific
- * appliances they cover) are added afterward with addRentalLine. */
+ * appliances they cover) are added afterward with addRentalLine. Also
+ * decides the "first month free" bonus right here (docs/BUSINESS-RULES.md,
+ * docs/DECISIONS.md): whether it's earned depends on the term, whether
+ * Chris says the customer paid in advance, and the current owner-editable
+ * toggle — and that decision is frozen into freeMonthGranted immediately,
+ * so a later change to the toggle can never retroactively add or remove
+ * the bonus from an agreement that's already been created. */
 export async function createDraftAgreement(userId: string, input: NewAgreementInput) {
+  const termMonths = input.termMonths ?? null;
+  const paidInFullInAdvance = input.paidInFullInAdvance ?? false;
+
+  if (paidInFullInAdvance && termMonths !== 12) {
+    throw new Error(
+      "Paying in advance for the free-month bonus only applies to a 12-month term.",
+    );
+  }
+
+  const settings = await getBusinessSettings();
+  const freeMonthGranted = isFreeMonthEarned(
+    termMonths,
+    paidInFullInAdvance,
+    settings.twelveMonthPrepayFreeMonthEnabled,
+  );
+
   const agreement = await prisma.rentalAgreement.create({
     data: {
       customerId: input.customerId,
       serviceAddressId: input.serviceAddressId,
-      termMonths: input.termMonths ?? null,
+      termMonths,
       depositCents: input.depositCents ?? 0,
       damageWaiverCents: input.damageWaiverCents ?? 0,
       lateFeeGraceDays: input.lateFeeGraceDays ?? 5,
       lateFeeCents: input.lateFeeCents ?? 0,
       lateFeePercent: input.lateFeePercent ?? 0,
       taxRatePermille: input.taxRatePermille ?? 0,
+      paidInFullInAdvance,
+      freeMonthGranted,
     },
   });
 
@@ -112,7 +146,7 @@ export async function createDraftAgreement(userId: string, input: NewAgreementIn
       action: "agreement.create",
       entityType: "RentalAgreement",
       entityId: agreement.id,
-      newValue: { customerId: input.customerId },
+      newValue: { customerId: input.customerId, termMonths, paidInFullInAdvance, freeMonthGranted },
     },
   });
 
@@ -121,7 +155,11 @@ export async function createDraftAgreement(userId: string, input: NewAgreementIn
 
 export type NewRentalLineInput = {
   label: string;
-  monthlyPriceCents: number;
+  /** What this line normally costs, before any prepaid-term discount —
+   * what Chris types in on the "new line" form. The actual amount charged
+   * (monthlyPriceCents) is computed server-side from this, never trusted
+   * from the client. */
+  listPriceCents: number;
   applianceIds: string[];
 };
 
@@ -129,7 +167,16 @@ export type NewRentalLineInput = {
  * physical appliance(s) it covers (AVAILABLE -> RESERVED) — a set (e.g.
  * washer + dryer) is two appliances on one line. Only allowed while the
  * agreement is still DRAFT, since once it's sent for signature the
- * customer is agreeing to a specific, frozen set of terms. */
+ * customer is agreeing to a specific, frozen set of terms.
+ *
+ * Also computes and snapshots the prepaid-term discount right here (see
+ * docs/BUSINESS-RULES.md's Pricing section and
+ * src/domains/pricing/prepay-discount.ts) — based on the agreement's own
+ * termMonths (already fixed by createDraftAgreement) and whether this
+ * particular line is a "set" (2+ appliances). Since a line can only be
+ * added/removed while the agreement is DRAFT, this discount is frozen the
+ * same way monthlyPriceCents itself already was before this feature
+ * existed — no separate "snapshot at signing" step needed. */
 export async function addRentalLine(
   userId: string,
   agreementId: string,
@@ -145,12 +192,22 @@ export async function addRentalLine(
     throw new Error("Choose at least one appliance for this line.");
   }
 
+  const settings = await getBusinessSettings();
+  const prepayDiscountCentsPerMonth = calculatePrepayDiscountCentsPerMonth(
+    agreement.termMonths,
+    input.applianceIds.length,
+    settings,
+  );
+  const monthlyPriceCents = Math.max(0, input.listPriceCents - prepayDiscountCentsPerMonth);
+
   return prisma.$transaction(async (tx) => {
     const line = await tx.rentalLine.create({
       data: {
         agreementId,
         label: input.label,
-        monthlyPriceCents: input.monthlyPriceCents,
+        listPriceCents: input.listPriceCents,
+        prepayDiscountCentsPerMonth,
+        monthlyPriceCents,
       },
     });
 
@@ -190,7 +247,13 @@ export async function addRentalLine(
         action: "agreement.line.add",
         entityType: "RentalAgreement",
         entityId: agreementId,
-        newValue: { label: input.label, applianceIds: input.applianceIds },
+        newValue: {
+          label: input.label,
+          applianceIds: input.applianceIds,
+          listPriceCents: input.listPriceCents,
+          prepayDiscountCentsPerMonth,
+          monthlyPriceCents,
+        },
       },
     });
 

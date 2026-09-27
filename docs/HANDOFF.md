@@ -436,14 +436,116 @@ requests with email notification and job-linking). Only intentionally
 deferred item left: letting a customer attach a photo when they submit
 a request (see `docs/ROADMAP.md`).
 
+## 2026-09-26 (new session) — Chris's two explicit requests + two quick-win reliability fixes
+
+Chris handed over a full work-order document taking over active
+engineering responsibility, plus two things he asked for directly ahead
+of everything else in it: (A) the post-login redirect was sending every
+successful login to the public homepage instead of the right page for
+that account type, and (B) prepaid-term rental discounts (his own words:
+6 months paid in advance → $5/month off on a "set", 1 year paid in
+advance → $10/month off on a set, half that for a single unit, and the
+owner needs to be able to change those dollar amounts himself — the
+numbers he gave aren't meant to be hard-coded). He also confirmed two
+design questions when asked: the discount ties to the agreement's
+**contract term** (not to how it's actually paid), and a "set" means
+**2 or more appliances on the same rental line**; and he added a new
+request in that same answer — a **free first month** as a separate,
+also-owner-toggleable bonus when a 12-month term is paid in full,
+in advance.
+
+Alongside those two, this session also shipped two small, isolated
+reliability fixes the work-order flagged as safe, high-value quick wins:
+a data-leak in the customer portal, and a real double-booking race
+condition in inventory reservations.
+
+Shipped as three separate pull requests (kept small and independently
+reviewable, per `AGENTS.md`), in dependency order:
+
+- [x] **PR #18 — Fix post-login redirect** (`ai/claude/login-redirect`).
+      **Merged to `main` 2026-09-26.** Owner/admin accounts now land on
+      `/desk/dashboard`, customer accounts land on `/account`, and a
+      safe `?next=` redirect (e.g. after being sent to log in from a
+      specific page) is honored — but only if it points somewhere on
+      this same site; anything else is ignored, so this can never be
+      used to redirect someone to an outside/malicious site. 9 new
+      automated tests.
+- [x] **PR #19 — Two reliability fixes** (`ai/claude/phase6a-reliability-fixes`).
+      **Merged to `main` 2026-09-26.**
+      1. *Portal data leak*: a customer's "My Rentals" page and the
+         appliance picker on maintenance requests were not filtering
+         strictly to their **currently active** rental — appliances from
+         an old, already-ended agreement could still show up. Fixed with
+         one shared rule for "this customer's current rental equipment"
+         used everywhere that matters, so the desk side and the customer
+         side can never drift apart on this again.
+      2. *Double-booking race condition*: when reserving a physical
+         appliance for a new rental line, the code used to check "is
+         this available?" and then separately mark it reserved — if two
+         reservation requests happened at nearly the same instant, both
+         could see it as available and both could "win," double-booking
+         one physical washer/dryer to two different customers. Fixed so
+         the reservation itself is the check — the database only lets
+         one request win, and the other is safely rejected with a clear
+         error instead of silently overbooking. New automated tests
+         prove the guard logic; realistic concurrent-load testing needs
+         a real database under load, which is future test
+         infrastructure, not a gap in this fix (tracked in "not yet
+         finished" below).
+- [x] **PR #20 — Prepaid-term discount + free first month**
+      (`ai/claude/prepay-term-discount`, branched on top of PR #19 since
+      both touch the same file). **Open, CI green, ready for Chris to
+      merge** — https://github.com/christcr2012/appliance-desk/pull/20.
+      - New "Prepaid-term discounts" section on `/desk/settings` where
+        Chris sets his own dollar amounts (not hard-coded): the 6-month
+        discount for a set, the 6-month discount for a single unit, the
+        12-month discount for a set, the 12-month discount for a single
+        unit, and a checkbox for whether the 12-month free-first-month
+        bonus is turned on. Every amount defaults to Chris's own
+        stated numbers but can be changed any time.
+      - The discount is decided once, when an appliance is added to a
+        draft agreement (based on that agreement's contract length), and
+        is then locked in for that agreement — exactly like every other
+        price on a signed agreement, it never silently changes later if
+        Chris later adjusts the discount settings.
+      - The signing page and the customer's "My Rentals" page both show
+        the math plainly: the regular price, the discount, and the
+        final price — plus a clear "your first month is free" banner
+        when that bonus applies.
+      - 15 new tests for the discount math itself, plus tests confirming
+        it's wired correctly into agreement/line creation.
+      - **Needs a database migration before/alongside deploying** —
+        `prisma/migrations/20260926230000_prepay_term_discount` (adds
+        the 5 new settings fields and a few new fields on agreements/
+        rental lines). **Chris needs to run this SQL in Neon's console**,
+        same as every previous migration in this project (Vercel's build
+        does not run migrations automatically — see the "Correction to
+        an earlier assumption" section above). **Merge PR #20 only after
+        (or together with) running that migration** — the code expects
+        those columns to exist.
+
+### Not yet finished / explicitly deferred (per the work-order's own "stop and report" rule)
+
+Everything else in the work-order Chris handed over — the rest of
+Phase 6A (a safe, automatic migration pipeline; letting a customer set
+their own password via an email invite instead of a one-time password
+shown to Chris; real concurrent-load test infrastructure; automatically
+expiring an appliance reservation if an agreement is never signed; spam
+protection on public forms), all of Phase 6B (real Stripe billing), and
+Phase 7 (launch hardening) — is intentionally **not started**. The
+work-order's own instructions say to stop and report after this slice,
+not to keep building through the whole backlog unasked, so this session
+stopped here.
+
 ## Immediate next step (whoever picks this up next)
 
-Phase 5 is done and live. Phase 6 (Stripe billing, test mode only) is
-next on the phase plan, but it's a real boundary — real financial
-infrastructure decisions (billing cadence, whether the security deposit
-runs through Stripe or stays the manual process it is today, ACH vs.
-card, invoice timing) that are Chris's to make, plus he'll need to
-create a Stripe account and hand over test-mode API keys (same
-`.env`-driven pattern as `RESEND_API_KEY`). Per `AGENTS.md`'s workflow,
-this is the point to stop and check in with Chris before building,
-rather than guessing at a billing design he hasn't approved.
+1. Chris: run the migration SQL in `prisma/migrations/20260926230000_prepay_term_discount`
+   in Neon's console, then merge PR #20 (PRs #18 and #19 are already
+   merged). Double-check the 4 default discount dollar amounts on
+   `/desk/settings` afterward and adjust if the defaults aren't what he
+   wants going forward.
+2. After that, check in with Chris on which of the remaining Phase 6A
+   items (see above) or Phase 6B (Stripe billing — a real boundary that
+   needs his decisions on billing cadence, deposit handling, and a real
+   Stripe account) to do next, rather than guessing at scope he hasn't
+   approved.

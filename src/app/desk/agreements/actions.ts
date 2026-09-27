@@ -29,6 +29,7 @@ const newAgreementSchema = z.object({
   lateFeeDollars: z.coerce.number().min(0).max(1000).optional(),
   lateFeePercent: z.coerce.number().min(0).max(100).optional(),
   taxRatePercent: z.coerce.number().min(0).max(20).optional(),
+  paidInFullInAdvance: z.coerce.boolean().optional(),
 });
 
 export async function createDraftAgreementAction(
@@ -45,19 +46,28 @@ export async function createDraftAgreementAction(
   }
   const data = parsed.data;
 
-  const agreement = await createDraftAgreement(session.user.id, {
-    customerId: data.customerId,
-    serviceAddressId: data.serviceAddressId,
-    termMonths: data.termMonths ? parseInt(data.termMonths, 10) : null,
-    depositCents: data.depositDollars ? dollarsToCents(data.depositDollars) : 0,
-    damageWaiverCents: data.damageWaiverDollars
-      ? dollarsToCents(data.damageWaiverDollars)
-      : 0,
-    lateFeeGraceDays: data.lateFeeGraceDays ?? 5,
-    lateFeeCents: data.lateFeeDollars ? dollarsToCents(data.lateFeeDollars) : 0,
-    lateFeePercent: data.lateFeePercent ?? 0,
-    taxRatePermille: data.taxRatePercent ? Math.round(data.taxRatePercent * 10) : 0,
-  });
+  let agreement;
+  try {
+    agreement = await createDraftAgreement(session.user.id, {
+      customerId: data.customerId,
+      serviceAddressId: data.serviceAddressId,
+      termMonths: data.termMonths ? parseInt(data.termMonths, 10) : null,
+      depositCents: data.depositDollars ? dollarsToCents(data.depositDollars) : 0,
+      damageWaiverCents: data.damageWaiverDollars
+        ? dollarsToCents(data.damageWaiverDollars)
+        : 0,
+      lateFeeGraceDays: data.lateFeeGraceDays ?? 5,
+      lateFeeCents: data.lateFeeDollars ? dollarsToCents(data.lateFeeDollars) : 0,
+      lateFeePercent: data.lateFeePercent ?? 0,
+      taxRatePermille: data.taxRatePercent ? Math.round(data.taxRatePercent * 10) : 0,
+      paidInFullInAdvance: data.paidInFullInAdvance ?? false,
+    });
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Couldn't create this agreement.",
+    };
+  }
 
   revalidatePath("/desk/agreements");
 
@@ -66,7 +76,7 @@ export async function createDraftAgreementAction(
 
 const newLineSchema = z.object({
   label: z.string().trim().min(1, "Enter a label for this line.").max(200),
-  monthlyPriceDollars: z.coerce.number().min(0).max(10000),
+  listPriceDollars: z.coerce.number().min(0).max(10000),
   applianceIds: z.array(z.string().trim().min(1)).min(1, "Choose at least one appliance."),
 });
 
@@ -88,7 +98,7 @@ export async function addRentalLineAction(
   try {
     await addRentalLine(session.user.id, agreementId, {
       label: data.label,
-      monthlyPriceCents: dollarsToCents(data.monthlyPriceDollars),
+      listPriceCents: dollarsToCents(data.listPriceDollars),
       applianceIds: data.applianceIds,
     });
   } catch (error) {
