@@ -480,3 +480,51 @@ risk grows. `SignatureRecord.provider` already anticipates swapping in
 a real provider later without a schema change — that's a flagged
 `docs/ROADMAP.md` item for Chris to decide on, not something to switch
 to unasked.
+
+---
+
+### 2026-09-26 — Customer account activation reuses Better Auth's own password-reset flow, not a new invite-token system
+
+Phase 6A item 2 required replacing the old workflow where converting a
+lead created a one-time random password that Chris had to see and relay
+to the new customer himself — a real risk (Chris ends up knowing/typing
+customer passwords) and a real gap (no way for a customer to recover
+their own account later).
+
+**Decision:** rather than build a separate invitation-token table and
+email flow, `src/lib/auth.ts` now wires up Better Auth's built-in
+`emailAndPassword.sendResetPassword` (it already generates, stores, and
+verifies its own expiring, single-use token via the `Verification`
+table that's existed since Phase 1 — no schema change needed). A
+brand-new customer account is created with a random password that's
+discarded immediately and never shown to anyone, then
+`sendCustomerActivationEmail` (`src/domains/leads/index.ts`) triggers
+that exact same reset-password email as the account's activation link.
+"Set your first password" and "reset a forgotten password" are
+deliberately the same code path, not two systems to keep in sync.
+Chris can trigger it again any time from "Resend activation email" on
+a customer's own page (`src/app/desk/customers/actions.ts`).
+
+New public pages: `/forgot-password` (request the email) and
+`/reset-password` (consume the emailed link's token, set a new
+password) — both plain forms using Better Auth's client methods
+directly, no new server-side password logic of our own to maintain.
+
+**Why not a custom invite-token model:** Better Auth's reset-password
+primitive already does everything an invitation needs — a random
+opaque token, an expiry (1 hour), single-use consumption, and a
+callback to deliver it by email — so building a second, parallel system
+would just be more surface area to keep secure and in sync for no real
+benefit. This is exactly the guidance the work-order itself gave
+("Use Better Auth's built-in primitives rather than inventing your own
+where it already covers this").
+
+**Left for later, on purpose:** rate limiting specific to the
+forgot-password endpoint (the app-wide Better Auth rate limiter in
+`src/lib/auth.ts` already covers it at 10 requests/60s per client, which
+is a reasonable starting point, not nothing); requiring email
+verification before first login (`requireEmailVerification` stays
+`false` until a verified sending domain is confirmed in Resend, same
+gating note as the rest of transactional email in this project); real
+customer-isolation integration tests (Phase 6A item 3, its own
+unstarted piece of work).

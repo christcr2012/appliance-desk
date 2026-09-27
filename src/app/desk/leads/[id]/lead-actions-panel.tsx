@@ -28,7 +28,12 @@ export function LeadActionsPanel({
   const [isPending, startTransition] = useTransition();
   const [message, setMessage] = useState<
     | { kind: "error"; text: string }
-    | { kind: "converted"; customerId: string; tempPassword: string | null }
+    | {
+        kind: "converted";
+        customerId: string;
+        isNewAccount: boolean;
+        activationEmailSent: boolean;
+      }
     | null
   >(null);
 
@@ -39,7 +44,8 @@ export function LeadActionsPanel({
       setMessage({
         kind: "converted",
         customerId: result.customerId,
-        tempPassword: result.tempPassword,
+        isNewAccount: result.isNewAccount,
+        activationEmailSent: result.activationEmailSent,
       });
     } else {
       setMessage(null);
@@ -111,25 +117,25 @@ export function LeadActionsPanel({
       {message?.kind === "converted" && (
         <div className="rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-900">
           <p className="font-medium">Converted to a customer.</p>
-          {message.tempPassword ? (
-            <>
+          {message.isNewAccount ? (
+            message.activationEmailSent ? (
               <p className="mt-2">
-                A new account was created with a one-time temporary
-                password — copy it now, it won&apos;t be shown again:
+                A new account was created, and an email was sent so the
+                customer can set their own password and log in. Nothing for
+                you to relay — if they say it didn&apos;t arrive, use
+                &ldquo;Resend activation email&rdquo; on their customer page.
               </p>
-              <code className="mt-1 block break-all rounded bg-white px-2 py-1 font-mono text-green-950">
-                {message.tempPassword}
-              </code>
-              <p className="mt-2 text-green-800">
-                There&apos;s no self-serve &ldquo;reset your password&rdquo;
-                flow yet, so you&apos;ll need to relay this to the customer
-                directly if you want them signed in before that&apos;s built.
+            ) : (
+              <p className="mt-2 text-amber-800">
+                A new account was created, but the activation email
+                couldn&apos;t be sent just now. Use &ldquo;Resend activation
+                email&rdquo; on their customer page to try again.
               </p>
-            </>
+            )
           ) : (
             <p className="mt-1">
-              An existing account with this email was reused — no new
-              password to relay.
+              An existing account with this email was reused — nothing new
+              to send them.
             </p>
           )}
         </div>

@@ -107,9 +107,11 @@ Default ranking, **lowest to highest** value:
 3. Chris converts the lead into a `Customer` (one click carries the
    lead's info over — built in Phase 3). Converting requires the lead
    to have an email address, since a customer account needs one to
-   sign in; a brand-new account gets a one-time random password shown
-   once to Chris in the desk UI (there's no self-serve "set your own
-   password" flow yet — see `docs/ROADMAP.md`).
+   sign in; a brand-new account is emailed a "set your password" link
+   automatically (Phase 6A) — Chris never sees or relays a password
+   himself. If that email doesn't arrive or its link expires, "Resend
+   activation email" on the customer's own page in the desk sends it
+   again.
 4. From that customer's page, Chris starts a **draft** `RentalAgreement`
    — picks the service address, terms (deposit, damage waiver, late
    fee, tax rate), and assigns the specific physical `Appliance` unit(s)

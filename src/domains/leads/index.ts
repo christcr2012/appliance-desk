@@ -218,15 +218,35 @@ export function canConvertLead(
   return { ok: true };
 }
 
-/** A one-time password only ever shown once, right after conversion, so
- * Chris can hand it to a new customer if he wants them signed in
- * immediately. Not emailed automatically — there's no "set your own
- * password" invite flow yet (see docs/ROADMAP.md); that's real work for
- * the customer-portal phase, not something to fake here. Random, not
- * memorable on purpose: this is a one-time credential Chris relays once,
- * not a password anyone is expected to remember. */
-function generateTempPassword(): string {
-  return randomBytes(12).toString("base64url");
+/** Better Auth's signUpEmail requires *some* password to create the
+ * account with, but nobody ever needs to know or use this one — the
+ * customer sets their own real password via the activation email (see
+ * sendCustomerActivationEmail below), the same way a forgotten password
+ * is reset. Random and immediately discarded on purpose. */
+function generateUnusedAccountPassword(): string {
+  return randomBytes(24).toString("base64url");
+}
+
+/** Sends a new or existing customer the same "set your password" email
+ * Better Auth's forgot-password flow uses (see src/lib/auth.ts's
+ * sendResetPassword) — reused deliberately as the account-activation
+ * mechanism instead of inventing a separate invite-token system (Phase
+ * 6A item 2). Best-effort: a failed send is logged (see sendEmail) but
+ * never throws, since the account itself is already created either way
+ * and Chris can use "Resend activation email" from the customer's page
+ * to try again. Returns whether the send was attempted without error —
+ * not a delivery guarantee, same meaning as sendEmail's own result
+ * elsewhere in this codebase. */
+export async function sendCustomerActivationEmail(email: string): Promise<boolean> {
+  try {
+    await auth.api.requestPasswordReset({
+      body: { email, redirectTo: "/reset-password" },
+    });
+    return true;
+  } catch (error) {
+    console.error("[leads] Failed to send customer activation email", error);
+    return false;
+  }
 }
 
 /**
@@ -241,6 +261,13 @@ function generateTempPassword(): string {
  * has an account, or this lead's contact converted before under the
  * same email), reuses it instead of erroring — conversion should never
  * fail just because the lookup happened twice.
+ *
+ * Chris never learns or relays a customer's password (Phase 6A item 2):
+ * a brand-new account gets an unusable random password that's discarded
+ * immediately, and the customer is emailed a "set your password" link
+ * (sendCustomerActivationEmail) so they activate their own account. See
+ * "Resend activation email" on /desk/customers/[id] for re-sending it
+ * later if the first email didn't arrive or the link expired.
  */
 export async function convertLeadToCustomer(userId: string, leadId: string) {
   const lead = await prisma.lead.findUniqueOrThrow({ where: { id: leadId } });
@@ -252,7 +279,8 @@ export async function convertLeadToCustomer(userId: string, leadId: string) {
   const email = lead.email as string; // canConvertLead guarantees this
 
   let account = await prisma.user.findUnique({ where: { email } });
-  let tempPassword: string | null = null;
+  let activationEmailSent = false;
+  const isNewAccount = !account;
 
   if (account && (account.role === "OWNER" || account.role === "ADMIN")) {
     throw new Error(
@@ -261,14 +289,14 @@ export async function convertLeadToCustomer(userId: string, leadId: string) {
   }
 
   if (!account) {
-    tempPassword = generateTempPassword();
     const signUp = await auth.api.signUpEmail({
-      body: { email, password: tempPassword, name: lead.contactName },
+      body: { email, password: generateUnusedAccountPassword(), name: lead.contactName },
     });
     account = await prisma.user.update({
       where: { id: signUp.user.id },
       data: { role: "CUSTOMER" },
     });
+    activationEmailSent = await sendCustomerActivationEmail(email);
   }
 
   const customer = await prisma.$transaction(async (tx) => {
@@ -318,5 +346,5 @@ export async function convertLeadToCustomer(userId: string, leadId: string) {
     return customerRow;
   });
 
-  return { customer, tempPassword };
+  return { customer, isNewAccount, activationEmailSent };
 }

@@ -1,6 +1,7 @@
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { prisma } from "./prisma";
+import { sendEmail } from "./email";
 
 // Central auth configuration. Roles are OWNER / ADMIN / CUSTOMER — see
 // docs/BUSINESS-RULES.md for what each role can do. Every owner/admin
@@ -39,6 +40,23 @@ export const auth = betterAuth({
     enabled: true,
     requireEmailVerification: false, // flip on once email sending is verified in production
     minPasswordLength: 10,
+    // Real "forgot password" flow (Phase 6A item 2 — customer account
+    // invitation & password recovery). Better Auth generates and verifies
+    // the one-time, expiring token itself (see the Verification table) —
+    // this callback only has to deliver the link. Reused as the customer
+    // *activation* mechanism too (see convertLeadToCustomer in
+    // src/domains/leads/index.ts): rather than inventing a separate
+    // invite-token system, a brand-new customer account is activated by
+    // triggering this same reset-password email right after signup, so
+    // "set your first password" and "reset a forgotten password" are one
+    // code path, not two to keep in sync.
+    sendResetPassword: async ({ user, url }) => {
+      await sendEmail({
+        to: user.email,
+        subject: "Set your Appliance Desk password",
+        text: `Hi${user.name ? ` ${user.name}` : ""},\n\nUse the link below to set your password for Appliance Desk. This link expires in 1 hour and can only be used once.\n\n${url}\n\nIf you didn't request this, you can safely ignore this email — your password won't change.`,
+      });
+    },
   },
   rateLimit: {
     enabled: true,
