@@ -1683,3 +1683,39 @@ new address for the agreement without a second lookup. Purely additive
 — every existing caller of `createCustomerDirectly`/`createCustomerAction`
 ignores the new field, so nothing about the existing "add a customer"
 page changed.
+
+## 2026-09-28 — Cross-cutting desk tools
+
+Seventh piece of "get everything built out now" — see
+`docs/BUSINESS-RULES.md`'s new "Cross-cutting desk tools" section for
+what this covers (global search, pagination, CSV export, bulk status
+actions) and what was deliberately left out (CSV import, a separate
+saved-views feature).
+
+Implementation notes:
+- Pagination math lives in one pure file (`src/domains/pagination.ts`,
+  `parsePage`/`paginationMeta`) shared by every paginated list, paired
+  with one shared `<Pagination>` component
+  (`src/components/pagination.tsx`) — same split as the rest of the
+  app's pure-logic/UI separation.
+- Each paginated domain (customers, inventory, jobs, activity) got a
+  *new* `getXCount`/`getXPage` pair sitting alongside its existing
+  unpaginated lookup, rather than changing that lookup's signature —
+  several callers (the rental wizard's pickers, the job form) still
+  need the full unfiltered list and shouldn't have to pass a page
+  number they don't care about.
+- CSV writing is a small hand-rolled RFC-4180-ish writer
+  (`src/lib/csv.ts`) rather than a dependency — quoting only a field
+  that actually needs it (comma/quote/newline), doubled inner quotes,
+  CRLF line endings. Export routes always return the *complete*
+  matching list, never just the current on-screen page.
+- Bulk status change (`bulkUpdateApplianceStatus`) deliberately loops
+  and reuses the existing single-appliance `updateApplianceStatus` per
+  item instead of one all-or-nothing transaction, so a selection that
+  mixes valid and invalid transitions still applies everywhere it can
+  and reports back exactly what didn't, instead of failing the whole
+  batch over one bad row.
+- Global search (`src/domains/search`) runs its three lookups
+  (customers/appliances/leads) in parallel via `Promise.all`, capped
+  at 8 results each, and short-circuits on a blank query rather than
+  running three pointless queries.

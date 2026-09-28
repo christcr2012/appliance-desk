@@ -1,6 +1,8 @@
 import Link from "next/link";
-import { getJobs } from "@/domains/jobs";
+import { getJobsPage, getJobsCount } from "@/domains/jobs";
 import type { JobStatus } from "@prisma/client";
+import { parsePage, paginationMeta } from "@/domains/pagination";
+import { Pagination } from "@/components/pagination";
 
 export const metadata = { title: "Jobs" };
 
@@ -24,12 +26,23 @@ function isJobStatus(value: string | undefined): value is JobStatus {
 export default async function JobsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string; page?: string }>;
 }) {
-  const { status: rawStatus } = await searchParams;
+  const { status: rawStatus, page: rawPage } = await searchParams;
   const status = isJobStatus(rawStatus) ? rawStatus : undefined;
+  const filter = status ? { status } : undefined;
 
-  const jobs = await getJobs(status ? { status } : undefined);
+  const totalCount = await getJobsCount(filter);
+  const meta = paginationMeta(totalCount, parsePage(rawPage));
+  const jobs = await getJobsPage(filter, meta.skip, meta.pageSize);
+
+  function jobsHref(page: number, forStatus: JobStatus | "ALL" = status ?? "ALL") {
+    const params = new URLSearchParams();
+    if (forStatus !== "ALL") params.set("status", forStatus);
+    if (page > 1) params.set("page", String(page));
+    const qs = params.toString();
+    return qs ? `/desk/jobs?${qs}` : "/desk/jobs";
+  }
 
   return (
     <div>
@@ -49,7 +62,7 @@ export default async function JobsPage({
           return (
             <Link
               key={tab.value}
-              href={tab.value === "ALL" ? "/desk/jobs" : `/desk/jobs?status=${tab.value}`}
+              href={jobsHref(1, tab.value)}
               aria-current={active ? "page" : undefined}
               className={`rounded-full border px-3 py-1 text-sm ${
                 active
@@ -98,6 +111,13 @@ export default async function JobsPage({
           ))}
         </ul>
       )}
+
+      <Pagination
+        page={meta.page}
+        totalPages={meta.totalPages}
+        totalCount={meta.totalCount}
+        buildHref={(p) => jobsHref(p)}
+      />
     </div>
   );
 }

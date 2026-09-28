@@ -74,6 +74,33 @@ export async function getAppliances(filter?: { status?: ApplianceStatus }) {
   });
 }
 
+/** How many appliances match a status filter — used to clamp the page
+ * number for /desk/inventory's own paginated list before fetching that
+ * page's rows (src/domains/pagination.ts). */
+export async function getAppliancesCount(filter?: { status?: ApplianceStatus }): Promise<number> {
+  return prisma.appliance.count({
+    where: filter?.status ? { status: filter.status } : undefined,
+  });
+}
+
+/** Paginated variant of getAppliances for /desk/inventory's own list, as
+ * the fleet grows past a page. getAppliances() above stays unpaginated
+ * for the callers that need every matching unit at once (the rental
+ * builder wizard's/agreement page's "available appliances" picker). */
+export async function getAppliancesPage(
+  filter: { status?: ApplianceStatus } | undefined,
+  skip: number,
+  pageSize: number,
+) {
+  return prisma.appliance.findMany({
+    where: filter?.status ? { status: filter.status } : undefined,
+    include: { applianceType: true },
+    orderBy: [{ createdAt: "desc" }],
+    skip,
+    take: pageSize,
+  });
+}
+
 export async function getApplianceById(id: string) {
   return prisma.appliance.findUnique({
     where: { id },
@@ -238,6 +265,40 @@ export async function updateApplianceStatus(
   });
 
   return updated;
+}
+
+export type BulkStatusResult = {
+  updated: string[];
+  skipped: { applianceId: string; reason: string }[];
+};
+
+/** Bulk "set status" from the inventory list's multi-select (Task #44's
+ * bulk actions) — e.g. marking several units Retired at once instead of
+ * opening each one individually. Deliberately NOT one all-or-nothing
+ * transaction: each appliance is checked and updated on its own through
+ * the exact same updateApplianceStatus used everywhere else, so a
+ * selection that mixes valid and invalid transitions (e.g. one already-
+ * retired unit accidentally included) still applies to everything that
+ * *can* move, and reports back exactly what didn't and why, rather than
+ * failing the whole batch over one bad row. */
+export async function bulkUpdateApplianceStatus(
+  userId: string,
+  applianceIds: string[],
+  newStatus: ApplianceStatus,
+): Promise<BulkStatusResult> {
+  const result: BulkStatusResult = { updated: [], skipped: [] };
+  for (const applianceId of applianceIds) {
+    try {
+      await updateApplianceStatus(userId, applianceId, newStatus);
+      result.updated.push(applianceId);
+    } catch (error) {
+      result.skipped.push({
+        applianceId,
+        reason: error instanceof Error ? error.message : "Couldn't update this appliance.",
+      });
+    }
+  }
+  return result;
 }
 
 // ---------------------------------------------------------------------------

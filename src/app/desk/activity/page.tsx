@@ -1,16 +1,25 @@
-import { getRecentActivity, describeAuditAction } from "@/domains/activity";
+import { getActivityPage, getActivityCount, describeAuditAction } from "@/domains/activity";
+import { parsePage, paginationMeta, DEFAULT_PAGE_SIZE } from "@/domains/pagination";
+import { Pagination } from "@/components/pagination";
 
 export const metadata = { title: "Activity" };
 
-export default async function ActivityPage() {
-  const entries = await getRecentActivity(50);
+export default async function ActivityPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
+  const { page: rawPage } = await searchParams;
+  const totalCount = await getActivityCount();
+  const meta = paginationMeta(totalCount, parsePage(rawPage));
+  const entries = await getActivityPage(meta.skip, meta.pageSize);
 
   return (
     <div>
       <h1 className="text-xl font-semibold">Activity</h1>
       <p className="mt-1 text-sm text-gray-600">
         A record of who changed what, and when — pricing changes, settings
-        updates, and lead status changes. The most recent 50 changes.
+        updates, and lead status changes. {DEFAULT_PAGE_SIZE} per page.
       </p>
 
       {entries.length === 0 ? (
@@ -38,6 +47,13 @@ export default async function ActivityPage() {
           ))}
         </ul>
       )}
+
+      <Pagination
+        page={meta.page}
+        totalPages={meta.totalPages}
+        totalCount={meta.totalCount}
+        buildHref={(p) => (p === 1 ? "/desk/activity" : `/desk/activity?page=${p}`)}
+      />
     </div>
   );
 }

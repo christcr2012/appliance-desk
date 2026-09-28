@@ -9,6 +9,7 @@ import {
   updateApplianceDetails,
   createPartRecord,
   deletePartRecord,
+  bulkUpdateApplianceStatus,
 } from "@/domains/inventory";
 import {
   startRepairForAppliance,
@@ -431,4 +432,43 @@ export async function recordInspectionAction(
   revalidatePath("/desk/activity");
 
   return { status: "success" };
+}
+
+export type BulkStatusActionState =
+  | { status: "success"; updatedCount: number; skippedCount: number; skipMessage: string | null }
+  | { status: "error"; message: string };
+
+/** The inventory list's multi-select "set status" bar (Task #44's bulk
+ * actions) — see bulkUpdateApplianceStatus in src/domains/inventory for
+ * why a mixed-validity selection partially applies instead of failing
+ * outright. */
+export async function bulkUpdateApplianceStatusAction(
+  applianceIds: string[],
+  status: string,
+): Promise<BulkStatusActionState> {
+  const session = await requireRole("OWNER", "ADMIN");
+
+  if (applianceIds.length === 0) {
+    return { status: "error", message: "Select at least one appliance first." };
+  }
+  if (!ALL_STATUSES.includes(status as ApplianceStatus)) {
+    return { status: "error", message: "That's not a valid status." };
+  }
+
+  const result = await bulkUpdateApplianceStatus(
+    session.user.id,
+    applianceIds,
+    status as ApplianceStatus,
+  );
+
+  revalidatePath("/desk/inventory");
+  revalidatePath("/desk/dashboard");
+  revalidatePath("/desk/activity");
+
+  return {
+    status: "success",
+    updatedCount: result.updated.length,
+    skippedCount: result.skipped.length,
+    skipMessage: result.skipped.length > 0 ? result.skipped[0].reason : null,
+  };
 }

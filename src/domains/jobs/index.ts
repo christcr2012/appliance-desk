@@ -47,6 +47,31 @@ export async function getJobs(filter?: { status?: JobStatus }) {
   });
 }
 
+/** Total Job count matching the same optional status filter as getJobs —
+ * used to clamp the page number for /desk/jobs's paginated view. */
+export async function getJobsCount(filter?: { status?: JobStatus }): Promise<number> {
+  return prisma.job.count({ where: filter?.status ? { status: filter.status } : undefined });
+}
+
+/** Paginated variant of getJobs. */
+export async function getJobsPage(
+  filter: { status?: JobStatus } | undefined,
+  skip: number,
+  pageSize: number,
+) {
+  return prisma.job.findMany({
+    where: filter?.status ? { status: filter.status } : undefined,
+    include: {
+      customer: { include: { user: { select: { name: true, email: true } } } },
+      serviceAddress: true,
+      appliances: { include: { appliance: { include: { applianceType: true } } } },
+    },
+    orderBy: [{ scheduledAt: "asc" }],
+    skip,
+    take: pageSize,
+  });
+}
+
 export async function getJobById(id: string) {
   return prisma.job.findUnique({
     where: { id },

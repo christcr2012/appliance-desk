@@ -1,21 +1,34 @@
 import Link from "next/link";
-import { getCustomers } from "@/domains/customers";
+import { getCustomersPage, getCustomersCount } from "@/domains/customers";
+import { parsePage, paginationMeta } from "@/domains/pagination";
+import { Pagination } from "@/components/pagination";
+import { ExportCsvLink } from "@/components/export-csv-link";
 
 export const metadata = { title: "Customers" };
 
-export default async function CustomersPage() {
-  const customers = await getCustomers();
+export default async function CustomersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
+  const { page: rawPage } = await searchParams;
+  const totalCount = await getCustomersCount();
+  const meta = paginationMeta(totalCount, parsePage(rawPage));
+  const customers = await getCustomersPage(meta.skip, meta.pageSize);
 
   return (
     <div>
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-xl font-semibold">Customers</h1>
-        <Link
-          href="/desk/customers/new"
-          className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
-        >
-          + Add customer
-        </Link>
+        <div className="flex gap-2">
+          <ExportCsvLink href="/desk/customers/export" label="Export CSV" />
+          <Link
+            href="/desk/customers/new"
+            className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
+          >
+            + Add customer
+          </Link>
+        </div>
       </div>
       <p className="mt-1 text-sm text-gray-600">
         Everyone renting from you. A website inquiry comes in as a lead first
@@ -60,6 +73,13 @@ export default async function CustomersPage() {
           ))}
         </ul>
       )}
+
+      <Pagination
+        page={meta.page}
+        totalPages={meta.totalPages}
+        totalCount={meta.totalCount}
+        buildHref={(p) => (p === 1 ? "/desk/customers" : `/desk/customers?page=${p}`)}
+      />
     </div>
   );
 }
