@@ -171,9 +171,14 @@ export async function createCustomerDirectly(
         name: input.name,
       },
     });
+    // emailVerified is set true immediately (Task #70) — the activation
+    // email below already proves the customer controls this inbox (they
+    // can't set a password without clicking its link), so a separate
+    // "verify your email" step would be redundant, not more secure. See
+    // the matching comment in src/domains/leads/index.ts.
     account = await prisma.user.update({
       where: { id: signUp.user.id },
-      data: { role: "CUSTOMER" },
+      data: { role: "CUSTOMER", emailVerified: true },
     });
     activationEmailSent = await sendCustomerActivationEmail(input.email);
   }

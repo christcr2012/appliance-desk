@@ -5,6 +5,87 @@ here, add a new entry rather than editing the old one away.
 
 ---
 
+### 2026-09-28 — Required email verification, without a second signup step (Task #70)
+
+`requireEmailVerification` had been `false` since Phase 1, deliberately
+gated on a verified sending domain (see the 2026-09-26 "Password reset
+and activation email" entry below). That condition is now met (Task #69,
+above), so this flag was flipped to `true` in `src/lib/auth.ts`.
+
+**The real design question wasn't the flag — it was what to do about
+existing accounts and new ones**, because Better Auth's own behavior
+here is blunt: `requireEmailVerification: true` blocks *sign-in*
+entirely for any user whose `emailVerified` is still `false`, not just
+new signups. Two things followed from that:
+
+1. **This app has no self-serve signup.** Every account — customer or
+   staff — is created server-side (Chris converting a lead, Chris
+   adding a customer directly, or Chris/an admin adding a staff login)
+   and is unusable until the person clicks a "set your password"
+   activation link Better Auth emails them (see the 2026-09-26 entry
+   below — this reuses the forgot-password flow on purpose). Clicking
+   that link is already proof they control the inbox. A second,
+   separate "verify your email" step on top of that would confirm the
+   same fact twice, not add real protection — there's no untrusted
+   public signup path here for it to actually guard against. So instead
+   of turning on Better Auth's own verification-email flow, each of the
+   three account-creation call sites now sets `emailVerified: true`
+   itself, in the same `prisma.user.update` that already sets the
+   user's role, right after `signUpEmail` creates the account. A real
+   `sendVerificationEmail` callback is still configured (with
+   `sendOnSignUp: false`, so it never fires in the normal flow) purely
+   as a safety net for Better Auth's own error messaging and for a
+   future signup path that might forget this step.
+2. **Every existing account had `emailVerified = false`** — including
+   Chris's own OWNER account, since nothing ever set this field before
+   today. Deploying the flag flip alone, without fixing that, would have
+   locked Chris out of his own login the next time his session expired.
+   Migration `20260928160000_require_email_verification` backfills
+   every existing `User` row to `emailVerified = true` — safe
+   unconditionally, for the same reason as point 1: every account that
+   exists today was created through, and activated via, that same
+   proven-inbox-control flow. This migration runs automatically as part
+   of `vercel-build`'s `prisma migrate deploy` step in the same deploy
+   as the code change, so the backfill and the flag flip always land
+   together, never one without the other.
+
+**Not run directly against the live database from this session** — this
+environment's own safety controls blocked an attempt to run the backfill
+as an ad hoc query, which was the correct outcome: the sanctioned path
+for every migration in this project is `prisma migrate deploy` inside
+the deploy pipeline (CI and `vercel-build`), not a one-off query from an
+AI session with direct database access.
+
+---
+
+### 2026-09-28 — Real business email: domain verified, transactional email wired to it (Task #69)
+
+`robinsonappliancerentals.com` was already added and verified as a
+sending domain in Resend (from the earlier Google Workspace setup
+session), but nothing in the app actually used it yet — outgoing email
+still went out as Resend's own `onboarding@resend.dev` placeholder, and
+lead/maintenance notification emails fell back to whatever `publicEmail`
+was set to in `/desk/settings`. Confirmed the domain's live status via
+the Resend MCP connector (`status: verified`, sending enabled), then set
+three Vercel environment variables to the real Workspace alias addresses
+already reserved for this in `docs/ARCHITECTURE.md`'s email table:
+
+- `RESEND_FROM_EMAIL` → `Appliance Desk <no-reply@robinsonappliancerentals.com>`
+- `LEAD_NOTIFICATION_EMAIL` → `leads@robinsonappliancerentals.com`
+- `MAINTENANCE_NOTIFICATION_EMAIL` → `support@robinsonappliancerentals.com`
+
+No code changes were needed — `src/lib/email.ts`, `src/domains/leads/index.ts`,
+and `src/domains/portal/index.ts` were already written to read these env
+vars with a sensible fallback; they just weren't set yet. Mail sent to
+any of the three addresses above lands in the one real
+`ops@robinsonappliancerentals.com` inbox Chris already has. Left
+`BusinessSettings.publicEmail` (the address shown to customers on the
+public site) alone — Chris has it set to his own personal address today,
+and that's a content choice for him to make in `/desk/settings`, not
+something to change on his behalf.
+
+---
+
 ### 2026-09-28 — SMS notifications: built and wired up, dormant until Chris can buy a number
 
 Chris approved the ongoing per-text cost and set up a real Twilio
