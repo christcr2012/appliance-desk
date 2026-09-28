@@ -64,12 +64,33 @@ describe("active-appliances", () => {
     );
   });
 
-  it("ACTIVE_ASSIGNMENT_WHERE (used by the portal's own-agreements query) requires status ACTIVE", async () => {
+  it("ACTIVE_ASSIGNMENT_WHERE (used by the portal's own-agreements query) requires status ACTIVE and the appliance actually delivered", async () => {
     const { ACTIVE_ASSIGNMENT_WHERE } = await import("@/domains/agreements/active-appliances");
 
+    // Rental lifecycle (2026-09-28): signing alone no longer means
+    // delivered, so "currently belongs to this customer" also requires
+    // the appliance's own status show it's actually with them (RENTED)
+    // or on its way back (AWAITING_PICKUP) — not merely RESERVED.
     expect(ACTIVE_ASSIGNMENT_WHERE).toEqual({
       unassignedAt: null,
       rentalLine: { agreement: { status: "ACTIVE" } },
+      appliance: { status: { in: ["RENTED", "AWAITING_PICKUP"] } },
     });
+  });
+
+  it("getActiveApplianceOptionsForCustomer/ForUser also require the appliance be actually delivered (RENTED or AWAITING_PICKUP)", async () => {
+    const { getActiveApplianceOptionsForCustomer } = await import(
+      "@/domains/agreements/active-appliances"
+    );
+
+    await getActiveApplianceOptionsForCustomer("cust-1");
+
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          appliance: { status: { in: ["RENTED", "AWAITING_PICKUP"] } },
+        }),
+      }),
+    );
   });
 });

@@ -215,11 +215,55 @@ silently touched.
 
 ## Inventory & status rules
 
-Appliance statuses — `AVAILABLE`, `RESERVED`, `RENTED`, `MAINTENANCE`,
-`RETIRED` — live in one central enum with clear rules for which
-transitions are allowed, enforced server-side (`canTransitionApplianceStatus`
-in `src/domains/inventory`) — `RETIRED` is terminal, and every other
-move follows a fixed allow-list. Built in Phase 3.
+Appliance statuses — `AVAILABLE`, `RESERVED`, `RENTED`,
+`AWAITING_PICKUP`, `AWAITING_INSPECTION`, `MAINTENANCE`, `RETIRED` —
+live in one central enum with clear rules for which transitions are
+allowed, enforced server-side (`canTransitionApplianceStatus` in
+`src/domains/inventory/lifecycle.ts`) — `RETIRED` is terminal, and
+every other move follows a fixed allow-list. Built in Phase 3.
+
+## Rental lifecycle (2026-09-28)
+
+A machine's status now separately tracks **paperwork signed**,
+**actually delivered**, **agreement ended**, and **back and checked
+over** — these used to be collapsed into fewer steps, which meant "a
+customer signed" and "a customer has the machine" looked the same in
+the system even though they aren't (see `docs/DECISIONS.md`'s
+2026-09-27 review entry for why this changed). The full path:
+
+`AVAILABLE` → (assigned to a draft agreement) `RESERVED` →
+(delivery/installation job marked **Completed**) `RENTED` →
+(agreement ends) `AWAITING_PICKUP` → (removal job marked
+**Completed**) `AWAITING_INSPECTION` → (Chris inspects it) back to
+`AVAILABLE`, or to `MAINTENANCE` if it failed inspection.
+
+Concretely:
+
+- **Signing an agreement does not move a machine to `RENTED` anymore.**
+  It stays `RESERVED` — reserved for that customer, but still
+  physically at Chris's shop — until it's actually delivered.
+- **Completing a delivery or installation job** is what moves it to
+  `RENTED`. This is also what starts real billing — see Billing rules
+  below.
+- **Ending an agreement** moves a still-`RENTED` machine to
+  `AWAITING_PICKUP` (it's still physically at the customer's home
+  until Chris goes and gets it) rather than straight back to
+  `AVAILABLE`. A machine that was only ever `RESERVED` (agreement
+  ended before delivery) simply returns to `AVAILABLE`.
+- **Completing a removal (pickup) job** moves it to
+  `AWAITING_INSPECTION` — back at the shop, but not yet checked over.
+- **Chris records an inspection** (checklist, `ApplianceInspection`)
+  to move it the rest of the way: passed → `AVAILABLE`, failed →
+  `MAINTENANCE`. `BusinessSettings.inspectionChecklist` holds the
+  reusable checklist items Chris can customize.
+- Maintenance visits and swaps are still Chris's own call — the job
+  page suggests a next status but never moves an appliance
+  automatically for those job types.
+- Which appliances a completed job affects: whichever ones are listed
+  directly on that job; if none were listed but the job belongs to an
+  agreement, that agreement's own currently-assigned appliances — so
+  forgetting to tick the box when scheduling a delivery doesn't
+  silently skip the whole lifecycle.
 
 A washer/dryer **set** is priced together but is always two separately
 tracked physical appliances (see `docs/DATABASE.md`) — swapping one
@@ -345,6 +389,40 @@ exactly this reason.
   month they're about to rent for, not billed afterward for the month
   they already used. Protects the business's cash flow if a customer
   stops paying partway through a term.
+
+**Billing starts at delivery, not at signing** (confirmed with Chris
+2026-09-28 — see `docs/DECISIONS.md`'s dated entry): signing an
+agreement no longer starts the recurring monthly charge. What signing
+does collect, right then, is a one-time charge for the security
+deposit and/or damage waiver (if either applies) and — always — a
+saved payment method for later. The real recurring monthly billing
+only begins once Chris marks the delivery/installation job
+**Completed**, i.e. once the machine has actually reached the
+customer.
+
+- If there's nothing to charge at signing (no deposit, no damage
+  waiver), the signing checkout just saves a payment method and
+  charges nothing.
+- Either way, the payment method saved at signing
+  (`Customer.stripeDefaultPaymentMethodId`) is what the real monthly
+  Subscription is created with once delivery happens.
+- If, for any reason, billing can't actually start when delivery
+  completes (no saved payment method yet, a declined card, a Stripe
+  problem) it's never silently dropped and never blocks the delivery
+  itself from being marked complete — the reason is recorded on
+  `RentalAgreement.billingBlockedReason` so it surfaces to Chris (the
+  exception inbox) instead of the customer just quietly never getting
+  billed.
+- An ACH (bank transfer) signing charge can take a few days to clear —
+  Stripe reports it as pending first, then either
+  `checkout.session.async_payment_succeeded` (it cleared — recorded
+  the same as an instant card charge) or `checkout.session.async_payment_failed`
+  (it didn't — nothing was ever recorded as paid, just a note in the
+  audit trail so it isn't invisible). **Chris needs to add these two
+  event types to his Stripe dashboard's webhook configuration** — see
+  `docs/ARCHITECTURE.md`'s Payments section; card payments work fine
+  in the meantime either way, this only affects ACH deposit
+  confirmation until he updates it.
 
 ## Privacy & accessibility baseline
 

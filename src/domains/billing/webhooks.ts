@@ -243,37 +243,206 @@ async function recordPaidInvoice(
   });
 }
 
+/**
+ * Records what a signing Checkout Session actually collected (the
+ * one-time deposit/damage-waiver, if any) as a PAID Invoice, and — since
+ * every signing Checkout Session (mode "payment" or "setup") saves a
+ * payment method via setup_future_usage — captures that payment method
+ * onto Customer.stripeDefaultPaymentMethodId for the real recurring
+ * Subscription to use later, at delivery (see
+ * startRecurringBillingForAgreement in src/domains/billing/checkout.ts).
+ * Amounts come from our own agreement record, not from re-parsing what
+ * Stripe echoes back — depositCents/damageWaiverCents are already this
+ * agreement's own frozen source of truth (docs/BUSINESS-RULES.md's
+ * "price history is sacred").
+ */
+async function recordSigningPaymentMethod(
+  customerId: string,
+  paymentMethodId: string | null,
+): Promise<void> {
+  if (!paymentMethodId) return;
+  await prisma.customer.update({
+    where: { id: customerId },
+    data: { stripeDefaultPaymentMethodId: paymentMethodId },
+  });
+}
+
+async function recordOneTimeSigningCharge(
+  agreementId: string,
+  customerId: string,
+  paymentIntentId: string,
+): Promise<void> {
+  const agreement = await prisma.rentalAgreement.findUniqueOrThrow({
+    where: { id: agreementId },
+    select: { depositCents: true, damageWaiverCents: true },
+  });
+
+  const lineItemsData: { kind: InvoiceLineItemKind; description: string; amountCents: number; rentalLineId: null }[] =
+    [];
+  if (agreement.depositCents > 0) {
+    lineItemsData.push({
+      kind: "DEPOSIT",
+      description: "Security deposit",
+      amountCents: agreement.depositCents,
+      rentalLineId: null,
+    });
+  }
+  if (agreement.damageWaiverCents > 0) {
+    lineItemsData.push({
+      kind: "DAMAGE_WAIVER",
+      description: "Damage waiver",
+      amountCents: agreement.damageWaiverCents,
+      rentalLineId: null,
+    });
+  }
+  if (lineItemsData.length === 0) return; // nothing was charged (a "setup"-mode session)
+
+  const amountCents = lineItemsData.reduce((sum, item) => sum + item.amountCents, 0);
+  const method = await resolvePaymentMethod(paymentIntentId);
+
+  await prisma.$transaction(async (tx) => {
+    const invoice = await tx.invoice.create({
+      data: {
+        customerId,
+        agreementId,
+        status: "PAID",
+        subtotalCents: amountCents,
+        amountDueCents: amountCents,
+        amountPaidCents: amountCents,
+        lineItems: { createMany: { data: lineItemsData } },
+      },
+    });
+
+    await tx.payment.create({
+      data: {
+        invoiceId: invoice.id,
+        amountCents,
+        method,
+        status: "succeeded",
+        stripePaymentIntentId: paymentIntentId,
+      },
+    });
+
+    const depositLine = lineItemsData.find((item) => item.kind === "DEPOSIT");
+    if (depositLine) {
+      const existingDeposit = await tx.deposit.findFirst({ where: { agreementId } });
+      if (!existingDeposit) {
+        await tx.deposit.create({
+          data: { agreementId, amountCents: depositLine.amountCents, refundable: true },
+        });
+      }
+    }
+  });
+}
+
 async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session): Promise<void> {
   const agreementId = session.metadata?.agreementId;
   if (!agreementId) return; // not one of our agreement checkouts
-  if (session.mode !== "subscription" || !session.invoice) return;
 
-  const stripe = getStripeClient();
-  const invoiceId =
-    typeof session.invoice === "string" ? session.invoice : session.invoice.id;
-  const stripeInvoice = await stripe.invoices.retrieve(invoiceId, {
-    expand: ["payments"],
-  });
-
-  // Real-money bug fixed 2026-09-27: this event fires as soon as the
-  // customer finishes Stripe's Checkout flow, which for a delayed-
-  // settlement payment method (ACH bank transfer, one of the two methods
-  // docs/BUSINESS-RULES.md offers) is BEFORE the money has actually moved
-  // — the underlying invoice can still be "open" for days while the bank
-  // debit clears, and can still fail. Recording it as PAID here
-  // regardless would show a pending (or later-failed) bank payment as
-  // paid immediately. Only record it here once Stripe itself already
-  // considers the invoice paid; otherwise wait for the invoice.paid (or
-  // invoice.payment_failed) webhook to say what actually happened — see
-  // docs/DECISIONS.md.
-  if (stripeInvoice.status !== "paid") return;
+  // Legacy path: a Checkout Session created before billing-starts-at-
+  // delivery (2026-09-28) shipped in "subscription" mode. Kept so an
+  // in-flight session from right before that change still completes
+  // correctly instead of being silently ignored.
+  if (session.mode === "subscription") {
+    if (!session.invoice) return;
+    const stripe = getStripeClient();
+    const invoiceId = typeof session.invoice === "string" ? session.invoice : session.invoice.id;
+    const stripeInvoice = await stripe.invoices.retrieve(invoiceId, { expand: ["payments"] });
+    if (stripeInvoice.status !== "paid") return;
+    const agreement = await prisma.rentalAgreement.findUniqueOrThrow({
+      where: { id: agreementId },
+      select: { customerId: true },
+    });
+    await recordPaidInvoice(stripeInvoice, agreementId, agreement.customerId);
+    return;
+  }
 
   const agreement = await prisma.rentalAgreement.findUniqueOrThrow({
     where: { id: agreementId },
     select: { customerId: true },
   });
 
-  await recordPaidInvoice(stripeInvoice, agreementId, agreement.customerId);
+  if (session.mode === "setup") {
+    // Nothing charged — just collecting a payment method for later. A
+    // "setup"-mode Checkout Session is only ever marked complete once
+    // the underlying SetupIntent has actually succeeded (no delayed/
+    // async variant the way a payment can have), so the payment method
+    // is safe to capture immediately.
+    const stripe = getStripeClient();
+    const setupIntentId =
+      typeof session.setup_intent === "string" ? session.setup_intent : session.setup_intent?.id;
+    if (!setupIntentId) return;
+    const intent = await stripe.setupIntents.retrieve(setupIntentId);
+    const methodId =
+      typeof intent.payment_method === "string" ? intent.payment_method : intent.payment_method?.id ?? null;
+    await recordSigningPaymentMethod(agreement.customerId, methodId);
+    return;
+  }
+
+  if (session.mode === "payment") {
+    const paymentIntentId =
+      typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id;
+    if (!paymentIntentId) return;
+
+    const stripe = getStripeClient();
+    const intent = await stripe.paymentIntents.retrieve(paymentIntentId, {
+      expand: ["payment_method"],
+    });
+    const methodId =
+      typeof intent.payment_method === "string" ? intent.payment_method : intent.payment_method?.id ?? null;
+    await recordSigningPaymentMethod(agreement.customerId, methodId);
+
+    // Real-money bug fixed 2026-09-27, same principle applied here: for
+    // a delayed-settlement method (ACH), this event can fire before the
+    // money has actually moved — session.payment_status stays "unpaid"
+    // until it clears. Only record the charge once Stripe itself already
+    // considers it paid; otherwise wait for
+    // checkout.session.async_payment_succeeded (or _failed) to say what
+    // actually happened.
+    if (session.payment_status !== "paid") return;
+
+    await recordOneTimeSigningCharge(agreementId, agreement.customerId, paymentIntentId);
+  }
+}
+
+/** The delayed-settlement counterpart to handleCheckoutSessionCompleted's
+ * "payment" branch — fires once an ACH (or other async) debit for the
+ * signing charge actually clears. */
+async function handleCheckoutSessionAsyncPaymentSucceeded(
+  session: Stripe.Checkout.Session,
+): Promise<void> {
+  const agreementId = session.metadata?.agreementId;
+  if (!agreementId) return;
+  const paymentIntentId =
+    typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id;
+  if (!paymentIntentId) return;
+
+  const agreement = await prisma.rentalAgreement.findUniqueOrThrow({
+    where: { id: agreementId },
+    select: { customerId: true },
+  });
+  await recordOneTimeSigningCharge(agreementId, agreement.customerId, paymentIntentId);
+}
+
+/** The signing charge's bank debit failed after checkout.session.completed
+ * already fired with it still pending — nothing was ever recorded as
+ * paid (handleCheckoutSessionCompleted correctly held off), so there's
+ * nothing to reverse; just an audit trail entry so it isn't invisible. */
+async function handleCheckoutSessionAsyncPaymentFailed(
+  session: Stripe.Checkout.Session,
+): Promise<void> {
+  const agreementId = session.metadata?.agreementId;
+  if (!agreementId) return;
+
+  await prisma.auditLog.create({
+    data: {
+      userId: null,
+      action: "billing.signing_payment_failed",
+      entityType: "RentalAgreement",
+      entityId: agreementId,
+      newValue: { reason: "The customer's bank payment for signing (deposit/damage waiver) failed to clear." },
+    },
+  });
 }
 
 async function handleInvoicePaid(webhookInvoice: Stripe.Invoice): Promise<void> {
@@ -449,6 +618,12 @@ export async function processStripeWebhookEvent(event: Stripe.Event): Promise<vo
   switch (event.type) {
     case "checkout.session.completed":
       await handleCheckoutSessionCompleted(event.data.object as Stripe.Checkout.Session);
+      break;
+    case "checkout.session.async_payment_succeeded":
+      await handleCheckoutSessionAsyncPaymentSucceeded(event.data.object as Stripe.Checkout.Session);
+      break;
+    case "checkout.session.async_payment_failed":
+      await handleCheckoutSessionAsyncPaymentFailed(event.data.object as Stripe.Checkout.Session);
       break;
     case "invoice.paid":
       await handleInvoicePaid(event.data.object as Stripe.Invoice);

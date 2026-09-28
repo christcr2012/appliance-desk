@@ -67,23 +67,53 @@ Built in Phase 6B (docs/DECISIONS.md). Card/bank details never touch
 our own servers — everything goes through Stripe's own hosted pages,
 per docs/BUSINESS-RULES.md's billing rules.
 
-- **Checkout** (`src/domains/billing/checkout.ts`) — right after a
-  customer signs their rental agreement (`src/app/sign/[id]/actions.ts`),
-  they're redirected to a Stripe-hosted Checkout page that sets up a
-  real Stripe Subscription for the monthly rent, plus one-time charges
-  for the security deposit / damage waiver on that same first invoice.
-  Stripe itself handles anniversary billing from there (it bills the
-  same day-of-month every month automatically — no extra configuration
-  needed).
+- **Billing starts at delivery, not at signing** (Chris's explicit
+  decision, 2026-09-28 — see docs/BUSINESS-RULES.md's Billing rules).
+  Signing only collects the one-time deposit/damage waiver (if either
+  applies) and saves a payment method for later; the real recurring
+  Subscription is created once a delivery/installation job for the
+  agreement is actually marked completed.
+  - **Checkout** (`src/domains/billing/checkout.ts`,
+    `createCheckoutSessionForAgreement`) — right after signing
+    (`src/app/sign/[id]/actions.ts`), the customer is redirected to a
+    Stripe-hosted Checkout page in **"payment" mode** (if there's a
+    deposit/damage waiver to collect) or **"setup" mode** (if not) —
+    never "subscription" mode anymore. Either way it saves a payment
+    method on the Stripe Customer (`setup_future_usage`) for later
+    off-session billing.
+  - **Starting the subscription** (`startRecurringBillingForAgreement`)
+    — called when a delivery/installation `Job` for the agreement is
+    marked `COMPLETED` (`src/domains/jobs/index.ts`). Creates the real
+    Stripe Subscription using the saved payment method; Stripe then
+    handles anniversary billing from there (same day-of-month every
+    month, no extra configuration). If there's no saved payment method
+    yet, nothing is charged and `RentalAgreement.billingBlockedReason`
+    is set instead of failing the delivery — surfaced to Chris (the
+    exception inbox) rather than silently never getting billed.
 - **Webhooks** (`src/domains/billing/webhooks.ts`, exposed at
   `src/app/api/webhooks/stripe/route.ts`) — the *only* place that marks
   anything paid in our own database. Nothing in `checkout.ts` writes an
   `Invoice`/`Payment` row; that only happens once Stripe itself confirms
-  the money moved, via `checkout.session.completed`, `invoice.paid`,
+  the money moved, via `checkout.session.completed`,
+  `checkout.session.async_payment_succeeded`,
+  `checkout.session.async_payment_failed`, `invoice.paid`,
   `invoice.payment_failed`, `charge.refunded`, and
   `customer.subscription.deleted`. Every event is deduplicated by
   Stripe's own event id (the `WebhookEvent` table) so a retried
   delivery is never double-counted.
+  - **Action needed from Chris, next time he's in the Stripe
+    dashboard**: two new event types were added to this list on
+    2026-09-28 (`checkout.session.async_payment_succeeded` and
+    `checkout.session.async_payment_failed` — they cover an ACH bank
+    payment made at signing that takes a few days to clear or fails).
+    The webhook endpoint registered in the dashboard needs those two
+    events added to what it sends, the same way the original five were
+    added when the endpoint was first set up (see "Done (2026-09-27)"
+    below). Until that's done, everything still works correctly for
+    card payments (which settle immediately); an ACH deposit/damage-
+    waiver payment made at signing just won't be recorded as paid until
+    this is updated — nothing is lost or double-charged in the
+    meantime, it's simply not confirmed yet.
 - **Billing Portal** (`src/domains/billing/index.ts`'s
   `createBillingPortalSession`) — lets a signed-in customer
   (`/account/billing`) manage their own card/ACH details and see past

@@ -6,11 +6,23 @@ import { computeMrrTrend } from "@/domains/billing/revenue";
 // (src/domains/billing/index.ts) for the /desk/revenue trend chart.
 
 describe("computeMrrTrend", () => {
+  // Billing starts at delivery, not at signing (2026-09-28) — an
+  // agreement that's signed but has no billingStartedAt yet (not
+  // delivered) contributes nothing, in any month.
+  it("counts nothing for an agreement that's signed but hasn't started billing yet", () => {
+    const points = computeMrrTrend(
+      [{ billingStartedAt: null, endDate: null, lines: [{ monthlyPriceCents: 5000 }] }],
+      3,
+      new Date("2026-06-15"),
+    );
+    expect(points.every((p) => p.mrrCents === 0)).toBe(true);
+  });
+
   it("shows $0 for months before any agreement started", () => {
     const points = computeMrrTrend(
       [
         {
-          startDate: new Date("2026-06-01"),
+          billingStartedAt: new Date("2026-06-01"),
           endDate: null,
           lines: [{ monthlyPriceCents: 5000 }],
         },
@@ -29,7 +41,7 @@ describe("computeMrrTrend", () => {
     const points = computeMrrTrend(
       [
         {
-          startDate: new Date("2026-01-01"),
+          billingStartedAt: new Date("2026-01-01"),
           endDate: new Date("2026-02-15"),
           lines: [{ monthlyPriceCents: 6000 }],
         },
@@ -47,12 +59,12 @@ describe("computeMrrTrend", () => {
     const points = computeMrrTrend(
       [
         {
-          startDate: new Date("2026-01-01"),
+          billingStartedAt: new Date("2026-01-01"),
           endDate: null,
           lines: [{ monthlyPriceCents: 3000 }],
         },
         {
-          startDate: new Date("2026-01-01"),
+          billingStartedAt: new Date("2026-01-01"),
           endDate: null,
           lines: [{ monthlyPriceCents: 4000 }, { monthlyPriceCents: 2000 }],
         },

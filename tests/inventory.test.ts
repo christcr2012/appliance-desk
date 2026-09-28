@@ -18,10 +18,8 @@ describe("canTransitionApplianceStatus", () => {
     });
   });
 
-  it("allows moving a rented appliance back to available", () => {
-    expect(canTransitionApplianceStatus("RENTED", "AVAILABLE")).toEqual({
-      ok: true,
-    });
+  it("does NOT let a rented appliance jump straight back to available — it has to be picked up and inspected first (see tests/lifecycle.test.ts)", () => {
+    expect(canTransitionApplianceStatus("RENTED", "AVAILABLE").ok).toBe(false);
   });
 
   it("allows retiring from any non-retired status", () => {
@@ -39,7 +37,7 @@ describe("canTransitionApplianceStatus", () => {
     const result = canTransitionApplianceStatus("RETIRED", "AVAILABLE");
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.reason).toMatch(/RETIRED/);
+      expect(result.reason).toMatch(/Retired/);
     }
   });
 });

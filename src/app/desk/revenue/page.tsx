@@ -39,7 +39,9 @@ export default async function RevenuePage() {
         How much recurring revenue you&apos;re generating and how much
         you&apos;ve actually collected. Collected amounts and past-due totals
         come straight from Stripe; monthly recurring revenue (MRR) is
-        calculated from your active agreements&apos; agreed pricing.
+        calculated from agreements that are actually being billed — a
+        rental that&apos;s signed but not delivered yet doesn&apos;t count
+        toward it until billing actually starts.
       </p>
 
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -47,8 +49,8 @@ export default async function RevenuePage() {
         <Stat label="Annualized recurring revenue (ARR)" value={formatCents(stats.arrCents)} tone="good" />
         <Stat label="Collected this month" value={formatCents(stats.collectedThisMonthCents)} />
         <Stat label="Collected all-time" value={formatCents(stats.collectedAllTimeCents)} />
-        <Stat label="Active rentals" value={String(stats.activeRentalCount)} />
-        <Stat label="Active customers" value={String(stats.activeCustomerCount)} />
+        <Stat label="Rentals currently billing" value={String(stats.activeRentalCount)} />
+        <Stat label="Customers currently billing" value={String(stats.activeCustomerCount)} />
         <Stat label="New rentals this month" value={String(stats.newRentalsThisMonth)} />
         <Stat
           label="Ended/cancelled this month"

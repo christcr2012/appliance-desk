@@ -6,6 +6,7 @@ import { requireRole } from "@/lib/session";
 import { createJob, updateJobStatus, addJobPhoto, setJobRepairCosts } from "@/domains/jobs";
 import { updateApplianceStatus } from "@/domains/inventory";
 import type { JobStatus, JobType, ApplianceStatus } from "@prisma/client";
+import { ALL_APPLIANCE_STATUSES } from "@/domains/inventory/lifecycle";
 
 export type JobActionState =
   | { status: "idle" }
@@ -167,14 +168,6 @@ export async function setJobRepairCostsAction(
   revalidatePath("/desk/dashboard");
   return { status: "success" };
 }
-
-const ALL_APPLIANCE_STATUSES: ApplianceStatus[] = [
-  "AVAILABLE",
-  "RESERVED",
-  "RENTED",
-  "MAINTENANCE",
-  "RETIRED",
-];
 
 /** The one-click "update this appliance's status" suggestion shown on a
  * completed job's own page (workflow-continuity fix, 2026-09-27 — Chris

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import type { RentalAgreementStatus } from "@prisma/client";
 import { getBusinessSettings } from "@/domains/settings";
 import { getStripeClient } from "@/lib/stripe";
+import { applianceStatusOnAgreementClose } from "@/domains/inventory/lifecycle";
 import {
   calculatePrepayDiscountCentsPerMonth,
   isFreeMonthEarned,
@@ -282,10 +283,21 @@ export async function removeRentalLine(userId: string, lineId: string) {
           where: { id: assignment.id },
           data: { unassignedAt: new Date(), unassignReason: "Line removed" },
         });
-        await tx.appliance.update({
+        // Rental lifecycle (2026-09-28): a machine that was actually
+        // delivered is still at the customer's property — it waits for
+        // pickup (AWAITING_PICKUP) instead of instantly becoming
+        // rentable to someone else. One only ever reserved is freed.
+        const appliance = await tx.appliance.findUniqueOrThrow({
           where: { id: assignment.applianceId },
-          data: { status: "AVAILABLE" },
+          select: { status: true },
         });
+        const next = applianceStatusOnAgreementClose(appliance.status);
+        if (next) {
+          await tx.appliance.update({
+            where: { id: assignment.applianceId },
+            data: { status: next },
+          });
+        }
       }
     }
     await tx.rentalLine.delete({ where: { id: lineId } });
@@ -369,10 +381,9 @@ export type SignAgreementInput = {
   ipAddress: string | null;
 };
 
-/** The customer's actual signing action — no login required (the
- * customer portal doesn't exist yet, Phase 5), gated entirely by having
- * the unguessable signature-record link. Moves the agreement ACTIVE and
- * every appliance it covers from RESERVED to RENTED. */
+/** The customer's actual signing action — no login required, gated
+ * entirely by having the unguessable signature-record link. Moves the
+ * agreement ACTIVE; its appliances stay RESERVED until delivered. */
 export async function signAgreement(signatureRecordId: string, input: SignAgreementInput) {
   const signature = await getSignatureRecordForSigning(signatureRecordId);
   if (!signature) {
@@ -405,18 +416,12 @@ export async function signAgreement(signatureRecordId: string, input: SignAgreem
       data: { status: "ACTIVE", startDate: new Date() },
     });
 
-    const lines = await tx.rentalLine.findMany({
-      where: { agreementId: signature.agreementId },
-      include: { assignments: { where: { unassignedAt: null } } },
-    });
-    for (const line of lines) {
-      for (const assignment of line.assignments) {
-        await tx.appliance.update({
-          where: { id: assignment.applianceId },
-          data: { status: "RENTED" },
-        });
-      }
-    }
+    // Rental lifecycle (2026-09-28): signing no longer marks the
+    // appliances RENTED — they stay RESERVED (held for this customer)
+    // until a delivery or installation job for them is actually marked
+    // completed (see updateJobStatus in src/domains/jobs). Signed and
+    // physically delivered are two different facts; a code review
+    // correctly pointed out they used to be treated as one.
 
     // System-triggered by the customer, not a logged-in desk user — see
     // docs/DATABASE.md, AuditLog.userId is nullable for exactly this.
@@ -434,9 +439,10 @@ export async function signAgreement(signatureRecordId: string, input: SignAgreem
   });
 }
 
-/** Ends or cancels an agreement, freeing every appliance it still has
- * assigned back to AVAILABLE. Shared by endAgreement/cancelAgreement
- * since the appliance-freeing logic is identical either way.
+/** Ends or cancels an agreement. Delivered appliances move to
+ * AWAITING_PICKUP (still at the customer's); never-delivered reserved ones
+ * go straight back to AVAILABLE — see applianceStatusOnAgreementClose.
+ * Shared by endAgreement/cancelAgreement.
  *
  * Also stops the agreement's real Stripe subscription, if it has one
  * (real-money bug fixed 2026-09-27 — a review found this path updated
@@ -510,10 +516,21 @@ async function closeAgreement(
           where: { id: assignment.id },
           data: { unassignedAt: new Date(), unassignReason: `Agreement ${newStatus.toLowerCase()}` },
         });
-        await tx.appliance.update({
+        // Rental lifecycle (2026-09-28): a machine that was actually
+        // delivered is still at the customer's property — it waits for
+        // pickup (AWAITING_PICKUP) instead of instantly becoming
+        // rentable to someone else. One only ever reserved is freed.
+        const appliance = await tx.appliance.findUniqueOrThrow({
           where: { id: assignment.applianceId },
-          data: { status: "AVAILABLE" },
+          select: { status: true },
         });
+        const next = applianceStatusOnAgreementClose(appliance.status);
+        if (next) {
+          await tx.appliance.update({
+            where: { id: assignment.applianceId },
+            data: { status: next },
+          });
+        }
       }
     }
 

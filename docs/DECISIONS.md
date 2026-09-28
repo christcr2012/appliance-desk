@@ -1480,3 +1480,72 @@ correctly). These three are squarely bugs in existing, intended billing
 behavior, not new features or a live-payments change — Stripe remains in
 test mode throughout. Fixed in `ai/claude/astra-workspace-review`
 alongside the docs assessment for this session's reviews.
+
+## 2026-09-28 — Rental lifecycle split + billing starts at delivery
+
+Chris said "get everything built out now" (covering everything
+documented in `docs/ROADMAP.md`), and specifically confirmed two things
+mid-build: **billing should start upon delivery**, and it's fine to use
+Vercel's own file storage over Neon for any future file uploads (Neon is
+for database records, not files).
+
+This directly fixes the two "already documented, intentional
+simplification" items from the same-day code review above (items 4 and
+5): signing an agreement no longer marks its appliances `RENTED` or
+starts the Stripe Subscription — both now wait for an actual
+delivery/installation `Job` to be marked `COMPLETED`. See
+`docs/BUSINESS-RULES.md`'s new "Rental lifecycle" section and its
+updated "Billing rules" for the full policy; the short version:
+
+- Appliances gained two new statuses, `AWAITING_PICKUP` and
+  `AWAITING_INSPECTION`, so "agreement ended" and "machine actually back
+  and checked over" are no longer the same moment either — closing the
+  item-4 gap from the same review at the same time, since both came from
+  the same root cause (too few states between "signed" and "returned").
+- Signing a Checkout Session now only charges the one-time deposit/
+  damage waiver (if any) and always saves a payment method
+  (`Customer.stripeDefaultPaymentMethodId`) for later. The real
+  recurring Subscription is created by `startRecurringBillingForAgreement`
+  once delivery completes, using that saved payment method. If it can't
+  actually start (no payment method yet, a declined card, any Stripe
+  problem), that's recorded on `RentalAgreement.billingBlockedReason`
+  rather than thrown — the delivery itself must never fail or roll back
+  over a billing problem, same principle as the existing "signed but
+  Checkout Session failed" handling.
+- New `RentalAgreement.billingStartedAt`, set the moment recurring
+  billing actually begins. Added specifically because the MRR/ARR
+  revenue dashboard (`src/domains/billing/revenue.ts`,
+  `getRevenueDashboard`) used to reconstruct "when did this agreement's
+  revenue start" from `startDate` (the signing date) — which, now that
+  billing can start weeks after signing, would have overstated MRR/ARR
+  and the "active rentals"/"active customers" counts for every rental
+  sitting signed-but-undelivered. Caught before merge by an independent
+  audit pass (a second agent, given no other context, asked to find
+  stale assumptions left over from the lifecycle split) rather than by
+  a user report.
+- That same audit caught a second real gap: `ACTIVE_ASSIGNMENT_WHERE`
+  (`src/domains/agreements/active-appliances.ts`) — the one shared
+  definition of "this appliance currently belongs to this customer,"
+  used by both the customer portal and the owner Desk — only checked
+  that the agreement was `ACTIVE`, not that the appliance itself had
+  actually been delivered. Left as-is, a customer could have seen an
+  undelivered appliance listed as their own rental on `/account`, and
+  worse, could have picked it from the dropdown when filing a
+  maintenance request against equipment still sitting in Chris's shop.
+  Fixed by requiring the appliance's own status be `RENTED` or
+  `AWAITING_PICKUP` (i.e. actually, physically with the customer) in
+  addition to the agreement being `ACTIVE`.
+- Chris also asked that anything like the ACH-payment-failure edge case
+  (found in the same-day code review, above) be tracked so it's revisited
+  "at the appropriate times" rather than forgotten — that's what the
+  exception inbox (next on the build list, `docs/ROADMAP.md`) is for:
+  `billingBlockedReason` and similar stuck states are meant to surface
+  there with a fix action, not just sit logged in a doc.
+
+**Local sandbox note:** as with every earlier phase touching Prisma
+models, `tsc`/`vitest` against the real Prisma client can't run in this
+sandbox (see `AGENTS.md`'s "A real constraint" section) — every new/
+changed file here was checked against a `git stash` baseline to confirm
+no *new* errors were introduced beyond that known, pre-existing noise.
+CI (real Postgres) is the actual verification gate for the DB-backed
+tests (`tests/billing-webhooks.test.ts`, `tests/inventory.test.ts`).

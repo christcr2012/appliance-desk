@@ -7,25 +7,20 @@ import {
   updateApplianceDetailsAction,
 } from "../actions";
 import type { ApplianceStatus } from "@prisma/client";
+import {
+  ALL_APPLIANCE_STATUSES,
+  ALLOWED_APPLIANCE_TRANSITIONS,
+  APPLIANCE_STATUS_LABELS,
+} from "@/domains/inventory/lifecycle";
 
-const ALL_STATUSES: { value: ApplianceStatus; label: string }[] = [
-  { value: "AVAILABLE", label: "Available" },
-  { value: "RESERVED", label: "Reserved" },
-  { value: "RENTED", label: "Rented" },
-  { value: "MAINTENANCE", label: "Maintenance" },
-  { value: "RETIRED", label: "Retired" },
-];
+const ALL_STATUSES: { value: ApplianceStatus; label: string }[] = ALL_APPLIANCE_STATUSES.map(
+  (value) => ({ value, label: APPLIANCE_STATUS_LABELS[value] }),
+);
 
-// Mirrors the ALLOWED_TRANSITIONS rule in src/domains/inventory/index.ts —
-// duplicated here only to grey out invalid buttons; the real enforcement
-// happens server-side, so this is a convenience, not the actual gate.
-const ALLOWED_NEXT: Record<ApplianceStatus, ApplianceStatus[]> = {
-  AVAILABLE: ["RESERVED", "RENTED", "MAINTENANCE", "RETIRED"],
-  RESERVED: ["AVAILABLE", "RENTED", "MAINTENANCE", "RETIRED"],
-  RENTED: ["AVAILABLE", "MAINTENANCE", "RETIRED"],
-  MAINTENANCE: ["AVAILABLE", "RETIRED"],
-  RETIRED: [],
-};
+// The same shared rules the server enforces (src/domains/inventory/
+// lifecycle.ts, no database import) — used here only to decide which
+// buttons to show; the server is still the real gate.
+const ALLOWED_NEXT = ALLOWED_APPLIANCE_TRANSITIONS;
 
 type ApplianceRow = {
   id: string;
@@ -100,7 +95,9 @@ export function ApplianceDetailPanel({ appliance }: { appliance: ApplianceRow })
   return (
     <div className="space-y-6">
       <div className="rounded-lg border border-gray-200 bg-white p-5">
-        <h2 className="font-medium text-gray-900">Status: {appliance.status}</h2>
+        <h2 className="font-medium text-gray-900">
+          Status: {APPLIANCE_STATUS_LABELS[appliance.status]}
+        </h2>
         {nextStatuses.length === 0 ? (
           <p className="mt-2 text-sm text-gray-600">
             Retired appliances can&apos;t change status — add a new unit

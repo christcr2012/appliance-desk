@@ -11,7 +11,16 @@ export type MrrTrendPoint = { monthLabel: string; mrrCents: number };
 /**
  * Pure: reconstructs Monthly Recurring Revenue for each of the trailing
  * `monthsBack` months (oldest first) from agreements' own
- * startDate/endDate and their rental lines' agreed monthly price.
+ * billingStartedAt/endDate and their rental lines' agreed monthly price.
+ *
+ * Billing starts at delivery, not at signing (2026-09-28,
+ * docs/BUSINESS-RULES.md's billing rules): billingStartedAt is the date
+ * recurring billing actually began for this agreement (set once its
+ * delivery/installation job completes and a real Stripe Subscription is
+ * created — see startRecurringBillingForAgreement in
+ * src/domains/billing/checkout.ts), not the date it was signed. An
+ * agreement that's ACTIVE but signed-and-not-yet-delivered has no
+ * billingStartedAt yet and correctly contributes $0 to every month here.
  *
  * This is an approximation, not a ledger: RentalLine.monthlyPriceCents is
  * frozen at signing and never edited afterward (docs/BUSINESS-RULES.md),
@@ -26,7 +35,7 @@ export type MrrTrendPoint = { monthLabel: string; mrrCents: number };
  */
 export function computeMrrTrend(
   agreements: {
-    startDate: Date | null;
+    billingStartedAt: Date | null;
     endDate: Date | null;
     lines: { monthlyPriceCents: number }[];
   }[],
@@ -38,7 +47,7 @@ export function computeMrrTrend(
   for (let i = monthsBack - 1; i >= 0; i -= 1) {
     // UTC on purpose, not `new Date(year, month, 1)` (which constructs in
     // whatever timezone the server process happens to be running in):
-    // agreement.startDate/endDate come out of Postgres as real UTC
+    // agreement.billingStartedAt/endDate come out of Postgres as real UTC
     // instants, so comparing against a boundary built in a different
     // timezone can be off by several hours — enough to misclassify which
     // month a start/end date falls into right at a month boundary. Using
@@ -50,8 +59,8 @@ export function computeMrrTrend(
     );
 
     const mrrCents = agreements.reduce((sum, agreement) => {
-      if (!agreement.startDate || agreement.startDate >= nextMonthStart) {
-        return sum; // hadn't started yet as of this month
+      if (!agreement.billingStartedAt || agreement.billingStartedAt >= nextMonthStart) {
+        return sum; // billing hadn't started yet as of this month
       }
       if (agreement.endDate && agreement.endDate < monthStart) {
         return sum; // already ended before this month began

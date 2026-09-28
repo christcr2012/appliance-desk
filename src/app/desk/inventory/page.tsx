@@ -3,26 +3,17 @@ import { getAppliances, getApplianceCountsByStatus } from "@/domains/inventory";
 import { getAllApplianceTypes } from "@/domains/settings";
 import { NewApplianceForm } from "./new-appliance-form";
 import type { ApplianceStatus } from "@prisma/client";
+import { ALL_APPLIANCE_STATUSES, APPLIANCE_STATUS_LABELS } from "@/domains/inventory/lifecycle";
 
 export const metadata = { title: "Inventory" };
 
 const STATUS_TABS: { value: ApplianceStatus | "ALL"; label: string }[] = [
   { value: "ALL", label: "All" },
-  { value: "AVAILABLE", label: "Available" },
-  { value: "RESERVED", label: "Reserved" },
-  { value: "RENTED", label: "Rented" },
-  { value: "MAINTENANCE", label: "Maintenance" },
-  { value: "RETIRED", label: "Retired" },
+  ...ALL_APPLIANCE_STATUSES.map((value) => ({ value, label: APPLIANCE_STATUS_LABELS[value] })),
 ];
 
 function isApplianceStatus(value: string | undefined): value is ApplianceStatus {
-  return (
-    value === "AVAILABLE" ||
-    value === "RESERVED" ||
-    value === "RENTED" ||
-    value === "MAINTENANCE" ||
-    value === "RETIRED"
-  );
+  return ALL_APPLIANCE_STATUSES.includes(value as ApplianceStatus);
 }
 
 export default async function InventoryPage({
@@ -121,8 +112,10 @@ function StatusBadge({ status }: { status: ApplianceStatus }) {
     AVAILABLE: "text-green-700",
     RESERVED: "text-blue-700",
     RENTED: "text-amber-700",
+    AWAITING_PICKUP: "text-amber-700",
+    AWAITING_INSPECTION: "text-blue-700",
     MAINTENANCE: "text-red-700",
     RETIRED: "text-gray-500",
   };
-  return <span className={styles[status]}>{status}</span>;
+  return <span className={styles[status]}>{APPLIANCE_STATUS_LABELS[status]}</span>;
 }

@@ -143,8 +143,16 @@ beforeAll(async () => {
       retrieve: async (id: string) => fakeInvoicesById[id] as unknown as Stripe.Invoice,
     },
     paymentIntents: {
-      retrieve: async () =>
-        ({ payment_method: { type: "card" } }) as unknown as Stripe.PaymentIntent,
+      retrieve: async (id: string) =>
+        ({
+          payment_method: { id: `pm_from_${id}`, type: "card" },
+        }) as unknown as Stripe.PaymentIntent,
+    },
+    setupIntents: {
+      retrieve: async (id: string) =>
+        ({
+          payment_method: `pm_from_${id}`,
+        }) as unknown as Stripe.SetupIntent,
     },
   } as unknown as Stripe);
 });
@@ -165,10 +173,16 @@ afterAll(async () => {
           "evt_failed_1_recovered",
           "evt_ach_checkout",
           "evt_ach_paid",
+          "evt_setup_1",
+          "evt_payment_pending",
+          "evt_payment_paid",
+          "evt_async_succeeded",
+          "evt_async_failed",
         ],
       },
     },
   });
+  await prisma.auditLog.deleteMany({ where: { entityId: agreementId } });
   await prisma.auditLog.deleteMany({ where: { userId } });
   await prisma.rentalLine.delete({ where: { id: lineId } });
   await prisma.rentalAgreement.delete({ where: { id: agreementId } });
@@ -358,5 +372,120 @@ describe("processStripeWebhookEvent — checkout.session.completed with a pendin
     });
     expect(invoice?.status).toBe("PAID");
     expect(invoice?.amountPaidCents).toBe(4292);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Billing starts at delivery (2026-09-28): the signing Checkout Session no
+// longer creates a Subscription. These cover the two new modes it can use
+// (webhooks.ts handleCheckoutSessionCompleted's "setup"/"payment" branches)
+// and the two new async event types for delayed-settlement (ACH) signing
+// charges.
+// ---------------------------------------------------------------------------
+
+describe("processStripeWebhookEvent — checkout.session.completed (setup mode)", () => {
+  it("saves the payment method for later billing, without creating any Invoice", async () => {
+    const event = fakeEvent("evt_setup_1", "checkout.session.completed", {
+      mode: "setup",
+      setup_intent: "seti_fake_1",
+      metadata: { agreementId },
+    });
+
+    await processStripeWebhookEvent(event);
+
+    const customer = await prisma.customer.findUniqueOrThrow({ where: { id: customerId } });
+    expect(customer.stripeDefaultPaymentMethodId).toBe("pm_from_seti_fake_1");
+
+    const invoicesForThisEvent = await prisma.invoice.findMany({
+      where: { agreementId, amountPaidCents: 0 },
+    });
+    expect(invoicesForThisEvent).toHaveLength(0);
+  });
+});
+
+describe("processStripeWebhookEvent — checkout.session.completed (payment mode)", () => {
+  it("captures the payment method but records no charge while payment_status is still 'unpaid' (e.g. ACH not yet cleared)", async () => {
+    const event = fakeEvent("evt_payment_pending", "checkout.session.completed", {
+      mode: "payment",
+      payment_intent: "pi_fake_pending",
+      payment_status: "unpaid",
+      metadata: { agreementId },
+    });
+
+    await processStripeWebhookEvent(event);
+
+    const customer = await prisma.customer.findUniqueOrThrow({ where: { id: customerId } });
+    // The payment method is still captured up front — only the charge itself waits.
+    expect(customer.stripeDefaultPaymentMethodId).toBe("pm_from_pi_fake_pending");
+
+    const invoice = await prisma.invoice.findFirst({
+      where: { agreementId, payments: { some: { stripePaymentIntentId: "pi_fake_pending" } } },
+    });
+    // Nothing recorded yet from this event — only async_payment_succeeded
+    // (or a later checkout.session.completed with payment_status "paid")
+    // records the actual charge.
+    expect(invoice).toBeNull();
+  });
+
+  it("records the deposit as a PAID one-time Invoice once payment_status is 'paid'", async () => {
+    const event = fakeEvent("evt_payment_paid", "checkout.session.completed", {
+      mode: "payment",
+      payment_intent: "pi_fake_paid_signing",
+      payment_status: "paid",
+      metadata: { agreementId },
+    });
+
+    await processStripeWebhookEvent(event);
+
+    const customer = await prisma.customer.findUniqueOrThrow({ where: { id: customerId } });
+    expect(customer.stripeDefaultPaymentMethodId).toBe("pm_from_pi_fake_paid_signing");
+
+    const invoice = await prisma.invoice.findFirst({
+      where: { agreementId, payments: { some: { stripePaymentIntentId: "pi_fake_paid_signing" } } },
+      include: { lineItems: true, payments: true },
+    });
+    expect(invoice).not.toBeNull();
+    expect(invoice!.status).toBe("PAID");
+    expect(invoice!.amountPaidCents).toBe(15000); // this agreement's depositCents — never the rental line
+    expect(invoice!.lineItems).toHaveLength(1);
+    expect(invoice!.lineItems[0].kind).toBe("DEPOSIT");
+    expect(invoice!.payments[0].status).toBe("succeeded");
+  });
+});
+
+describe("processStripeWebhookEvent — checkout.session.async_payment_succeeded / _failed", () => {
+  it("async_payment_succeeded records the signing charge as PAID once a delayed (ACH) debit clears", async () => {
+    const event = fakeEvent("evt_async_succeeded", "checkout.session.async_payment_succeeded", {
+      payment_intent: "pi_fake_ach_signing",
+      metadata: { agreementId },
+    });
+
+    await processStripeWebhookEvent(event);
+
+    const invoice = await prisma.invoice.findFirst({
+      where: { agreementId, payments: { some: { stripePaymentIntentId: "pi_fake_ach_signing" } } },
+      include: { lineItems: true },
+    });
+    expect(invoice?.status).toBe("PAID");
+    expect(invoice?.lineItems[0]?.kind).toBe("DEPOSIT");
+  });
+
+  it("async_payment_failed records nothing as paid, just an audit trail entry", async () => {
+    const event = fakeEvent("evt_async_failed", "checkout.session.async_payment_failed", {
+      payment_intent: "pi_fake_ach_signing_failed",
+      metadata: { agreementId },
+    });
+
+    await processStripeWebhookEvent(event);
+
+    const invoice = await prisma.invoice.findFirst({
+      where: { agreementId, payments: { some: { stripePaymentIntentId: "pi_fake_ach_signing_failed" } } },
+    });
+    expect(invoice).toBeNull();
+
+    const log = await prisma.auditLog.findFirst({
+      where: { entityId: agreementId, action: "billing.signing_payment_failed" },
+    });
+    expect(log).not.toBeNull();
   });
 });
