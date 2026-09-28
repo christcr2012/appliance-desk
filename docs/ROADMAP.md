@@ -85,11 +85,14 @@ on — never built unasked.
     properties per customer (`Customer.serviceAddresses`) and already
     ranked property managers as the highest-value lead type. First
     slice built (2026-09-27): `/desk/customers/new`, adding a customer
-    directly with as many properties as needed at once. See
-    `docs/BUSINESS-RULES.md`'s "Property managers / portfolio
-    accounts" section for exactly what's built vs. still open (a
-    portfolio rollup view, the customer portal's "All properties"
-    selector, adding properties to an existing customer from the UI).
+    directly with as many properties as needed at once. Second slice
+    built (2026-09-28): the customer detail page's "Properties" panel
+    — a per-property rollup of agreements/jobs/$ plus a way to add a
+    property to a customer who already exists, both previously
+    missing. See `docs/BUSINESS-RULES.md`'s "Property managers /
+    portfolio accounts" section for exactly what's built vs. still
+    open (the customer portal's own "All properties" selector,
+    consolidated multi-property invoicing).
   - Not started: the 6/12-month-lease framing already exists as the
     prepaid-term discount (see "Pricing" in `docs/BUSINESS-RULES.md`)
     — the brief's owner-desk dashboard/nav rebuild and customer-portal

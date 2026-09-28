@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireRole } from "@/lib/session";
 import { sendCustomerActivationEmail } from "@/domains/leads";
-import { getCustomerById, createCustomerDirectly } from "@/domains/customers";
+import { getCustomerById, createCustomerDirectly, addServiceAddress } from "@/domains/customers";
 import {
   addCustomerNote,
   addCustomerContact,
@@ -140,6 +140,48 @@ export async function createCustomerAction(
     return {
       status: "error",
       message: error instanceof Error ? error.message : "Couldn't add that customer.",
+    };
+  }
+}
+
+export type NewServiceAddressInput = z.infer<typeof addressSchema>;
+
+export type AddServiceAddressState =
+  | { status: "idle" }
+  | { status: "success" }
+  | { status: "error"; message: string };
+
+/** Adding a property to a customer who already exists — see
+ * src/domains/customers' addServiceAddress for why this exists
+ * separately from createCustomerDirectly's addresses-at-signup path. */
+export async function addServiceAddressAction(
+  customerId: string,
+  input: NewServiceAddressInput,
+): Promise<AddServiceAddressState> {
+  const session = await requireRole("OWNER", "ADMIN");
+
+  const parsed = addressSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      status: "error",
+      message: parsed.error.issues[0]?.message ?? "Check the form and try again.",
+    };
+  }
+
+  try {
+    await addServiceAddress(customerId, session.user.id, {
+      line1: parsed.data.line1,
+      line2: parsed.data.line2 || undefined,
+      city: parsed.data.city,
+      state: parsed.data.state || undefined,
+      zip: parsed.data.zip,
+    });
+    revalidatePath(`/desk/customers/${customerId}`);
+    return { status: "success" };
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Couldn't add that property.",
     };
   }
 }

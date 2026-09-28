@@ -33,6 +33,7 @@ export type TimelineEntry = {
 function summarizeAuditAction(action: string): string {
   const KNOWN: Record<string, string> = {
     "customer.create": "Customer account created",
+    "customer.address.add": "Property added",
     "agreement.create": "Rental agreement created",
     "agreement.sign": "Rental agreement signed",
     "agreement.end": "Rental agreement ended",

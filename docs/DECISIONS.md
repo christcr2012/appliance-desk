@@ -2271,3 +2271,54 @@ as ordinary `Photo` rows (`Photo.applianceId`, already existed in the
 schema, just unused) via a new `addAppliancePhoto` function in
 `src/domains/inventory/index.ts`. Covered by
 `tests/inventory-appliance-photos.test.ts`.
+
+## 2026-09-28 — Property-manager portfolio: rollup view + add-a-property, not invoicing
+
+Chris's earlier backlog had two property-manager items still open:
+Task #72 (formal, consolidated B2B invoicing across a property
+manager's several properties) and the two gaps `docs/BUSINESS-RULES.md`
+already documented as unbuilt under "Property managers / portfolio
+accounts" — a portfolio rollup view, and a way to add a property to a
+customer who already exists (today needed a direct database edit).
+
+Built the two documented gaps, not the invoicing task. Reasoning:
+consolidated invoicing means restructuring how billing itself works —
+today each `RentalAgreement` bills independently through its own
+Stripe subscription, and combining several into one statement/charge
+touches real payment correctness, not just a new view on existing
+data. `docs/ROADMAP.md` already marks it "not picked yet," Chris has
+no real property-manager customers yet, and stated no urgency in an
+earlier session. Building it now would mean guessing at a billing
+design (how proration, partial payments, and failed charges work
+across several agreements bundled into one invoice) with nothing real
+to validate it against — exactly the kind of premature abstraction
+`AGENTS.md` says to avoid ("don't add abstractions in case").
+
+The rollup view and add-a-property form, by contrast, don't touch
+billing at all — they're read/write on `ServiceAddress`, a model that
+already existed and already had every address a property manager's
+agreements point to. Built:
+
+- `addServiceAddress` (`src/domains/customers/index.ts`) — adds one
+  more `ServiceAddress` to an existing `Customer`, mirroring the
+  address-creation code inside `createCustomerDirectly` exactly
+  (same field defaults, same kind of audit log entry:
+  `customer.address.add`) so there's still only one shape of
+  "creating a service address" in the codebase, just two entry points
+  (at signup, and later).
+- The customer detail page's "Properties" panel
+  (`src/app/desk/customers/[id]/service-addresses-panel.tsx`) replaces
+  the old flat, unlabeled address list with one card per property,
+  each showing the agreements and jobs at that address and the active
+  monthly total — computed client-side from data the page already
+  loads (`rentalAgreements`, `jobs`, both already include
+  `serviceAddressId`), not a new query. For a one-address household
+  customer this is barely different from the old list; it only starts
+  to matter once a customer has more than one property, which is
+  exactly the property-manager case.
+
+Left open, and called out explicitly in `docs/BUSINESS-RULES.md`: the
+customer portal's own "All properties" selector (this rollup is
+desk-side only) and the consolidated-invoicing question itself, for
+Chris to pick when he actually has a property-manager customer to
+build it against.
