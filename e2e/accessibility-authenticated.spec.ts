@@ -35,6 +35,7 @@ const DESK_PAGES = [
   "/desk/agreements",
   "/desk/billing",
   "/desk/jobs",
+  "/desk/dispatch",
   "/desk/maintenance",
   "/desk/inventory",
   "/desk/parts",

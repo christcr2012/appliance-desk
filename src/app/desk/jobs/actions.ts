@@ -3,7 +3,13 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireRole } from "@/lib/session";
-import { createJob, updateJobStatus, addJobPhoto, setJobRepairCosts } from "@/domains/jobs";
+import {
+  createJob,
+  updateJobStatus,
+  addJobPhoto,
+  setJobRepairCosts,
+  updateJobChecklist,
+} from "@/domains/jobs";
 import { updateApplianceStatus } from "@/domains/inventory";
 import type { JobStatus, JobType, ApplianceStatus } from "@prisma/client";
 import { ALL_APPLIANCE_STATUSES } from "@/domains/inventory/lifecycle";
@@ -199,5 +205,32 @@ export async function updateApplianceStatusFromJobAction(
   revalidatePath(`/desk/inventory/${applianceId}`);
   revalidatePath("/desk/dashboard");
   revalidatePath("/desk/fleet");
+  return { status: "success" };
+}
+
+const checklistItemSchema = z.object({
+  item: z.string().trim().min(1).max(300),
+  checked: z.boolean(),
+});
+
+/** Saves Chris's progress on a job's completion checklist — see
+ * src/domains/jobs/checklist.ts. Purely a field-work aid, so this is
+ * deliberately lightweight: no status check, just "this is what's
+ * checked now." */
+export async function updateJobChecklistAction(
+  jobId: string,
+  checklist: unknown,
+): Promise<JobActionState> {
+  await requireRole("OWNER", "ADMIN");
+
+  const parsed = z.array(checklistItemSchema).safeParse(checklist);
+  if (!parsed.success) {
+    return { status: "error", message: "That checklist wasn't in a format we could save." };
+  }
+
+  await updateJobChecklist(jobId, parsed.data);
+
+  revalidatePath(`/desk/jobs/${jobId}`);
+  revalidatePath("/desk/dispatch");
   return { status: "success" };
 }
