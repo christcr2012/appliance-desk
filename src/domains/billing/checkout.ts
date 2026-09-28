@@ -184,18 +184,34 @@ export async function createCheckoutSessionForAgreement(agreementId: string): Pr
     },
   }));
 
-  const session = await stripe.checkout.sessions.create({
-    mode: "subscription",
-    customer: stripeCustomerId,
-    payment_method_types: ["card", "us_bank_account"],
-    line_items: lineItems,
-    success_url: `${appUrl}${SUCCESS_URL_PATH}`,
-    cancel_url: `${appUrl}${CANCEL_URL_PATH}`,
-    subscription_data: {
+  const session = await stripe.checkout.sessions.create(
+    {
+      mode: "subscription",
+      customer: stripeCustomerId,
+      payment_method_types: ["card", "us_bank_account"],
+      line_items: lineItems,
+      success_url: `${appUrl}${SUCCESS_URL_PATH}`,
+      cancel_url: `${appUrl}${CANCEL_URL_PATH}`,
+      subscription_data: {
+        metadata: { agreementId: agreement.id },
+      },
       metadata: { agreementId: agreement.id },
     },
-    metadata: { agreementId: agreement.id },
-  });
+    // Real gap fixed 2026-09-27 (found by a code review, see
+    // docs/DECISIONS.md): without this, two overlapping requests to sign
+    // the same agreement (a double-click, or a retried request after a
+    // slow response) could each create their own separate Checkout
+    // Session — not a lost-money bug, but the customer could end up with
+    // two different payment links for the same rental. Stripe treats two
+    // requests with the same idempotency key as one operation: the second
+    // one simply gets back the first one's session instead of creating a
+    // new one. Stripe only remembers a key for 24 hours, so this never
+    // blocks a genuinely later, separate checkout for the same agreement
+    // (e.g. Chris manually re-triggering billing well after the original
+    // session expired unused) — by then the key has aged out and a fresh
+    // request just proceeds normally.
+    { idempotencyKey: `checkout-agreement-${agreement.id}` },
+  );
 
   if (!session.url) {
     throw new Error("Stripe didn't return a Checkout URL for this session.");
