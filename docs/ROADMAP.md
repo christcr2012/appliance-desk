@@ -130,6 +130,19 @@ on — never built unasked.
   protected before real customer data goes in — see `docs/DECISIONS.md`.
 - **SMS lead notifications**, in addition to email — the brief mentions
   this as optional/later.
+- **A friend's "complete rebuild" proposal, 2026-09-27** — saved
+  verbatim at `docs/reviews/2026-09-27-friend-full-rebuild-proposal.md`,
+  assessed in `docs/DECISIONS.md`. Most of what it describes already
+  exists and works today (online rent flow, e-signature, Stripe
+  billing, customer portal, appliance inventory, service/repair
+  tracking, lead management, property managers) — not recommended as a
+  full rebuild. Five genuinely new ideas worth considering on their own:
+  QR codes on appliances (delivery/pickup verification, customer
+  self-service requests), appliance-level profitability/ROI (revenue vs.
+  purchase/repair cost, payback date), an MRR/ARR financial dashboard
+  with trends and churn, fleet-wide utilization analytics, and formal
+  B2B invoicing for property managers. Chris asked which (if any) he
+  wants built next — none started yet.
 - **Google Search Console / Google Business Profile** connection —
   needs a real public business name and domain first (Phase 2/7).
 - **A design system / component library beyond Tailwind utilities** if

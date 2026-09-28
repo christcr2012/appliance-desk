@@ -1120,3 +1120,58 @@ PREVIEW-ONLY branch into a real one (removed the "do not merge"
 framing from its comments, no functional change) — see
 `docs/DESIGN-SYSTEM.md`'s "Brand palette: navy/teal" section for what
 this does and doesn't cover yet (no logo, no IA/portal rebuild).
+
+## 2026-09-27 — A friend's "complete rebuild" proposal, assessed and mostly declined
+
+Chris shared a write-up from a friend proposing to rebuild Robinson
+Appliance Rentals as "a complete operating platform" — saved verbatim
+at `docs/reviews/2026-09-27-friend-full-rebuild-proposal.md`.
+
+**Checked against what's actually built** (not what the proposal
+assumes) before responding to Chris, the same way the Astra brief was
+handled. Most of it already exists and works today:
+
+- Online rent flow, rental agreement + typed e-signature, Stripe
+  monthly recurring billing, delivery scheduling — Phases 4/5/6B.
+- The customer portal already has every item on the proposal's list
+  (current rental, next payment, payment history/receipts, agreement
+  download, service/replacement/pickup requests, upcoming
+  appointments) — Phase 5.
+- Appliance inventory already tracks unit number, brand/model/serial,
+  purchase date/cost, condition, status, current customer/location,
+  and full rental/service history — Phase 3, extended 2026-09-26.
+- Service/repair requests, lead tracking with source and conversion
+  status, and property-manager accounts with multiple properties — all
+  built (property managers as of earlier today, see the "Property
+  managers / portfolio accounts" entry above).
+- **One clear mismatch, worth flagging**: the proposal specifies Clerk
+  for staff login. This app uses Better Auth, not Clerk, and always
+  has — a sign this write-up was a generic pitch, not an assessment of
+  the actual running code.
+
+**Genuinely new, not built anywhere yet** — the real value in this
+proposal:
+1. QR codes on physical appliances (scan for delivery/pickup
+   verification, and for a customer to self-serve a service request
+   without knowing their model/serial).
+2. Appliance-level profitability/ROI (revenue vs. purchase cost vs.
+   repair cost, payback date, utilization) — the raw numbers
+   (`acquisitionCostCents`, rental history, no repair-cost field yet)
+   are partly there, the rollup/calculation isn't.
+3. An MRR/ARR financial dashboard with trends, churn, and past-due
+   totals — today's `/desk/dashboard` shows current counts, not
+   recurring-revenue math over time.
+4. Fleet-wide utilization analytics (% of fleet earning vs. idle vs.
+   in repair, most/least utilized, highest-repair-cost units).
+5. Formal B2B invoicing for property managers (today's property-
+   manager support is account/address structure, not consolidated
+   multi-property billing).
+
+**Not recommended: a full rebuild.** Redoing what's already built and
+tested (real Stripe billing, e-signature, a working customer portal)
+to get four or five new features is a large, risky, mostly-duplicative
+undertaking — the honest, lower-risk path is building the new pieces
+into what exists, the same incremental way every other addition this
+project has gotten has worked. Told Chris this plainly and asked which
+of the five new pieces (if any) he wants built next, rather than
+starting on all of it unasked.
