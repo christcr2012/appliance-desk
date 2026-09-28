@@ -289,6 +289,52 @@ time he logs it — each additional model number gets its own row for
 that same part, so it shows up when he looks up parts for any of those
 models later too, not just the one he started from.
 
+## Appliance guided actions and history (2026-09-28)
+
+An appliance's own page (`/desk/inventory/[id]`) has, alongside the raw
+status-change buttons, four "guided actions" that each replace a
+multi-step (or, for a swap, previously outright impossible without a
+manual database edit) process with one click:
+
+- **Start a repair** — moves the unit to `MAINTENANCE` and creates a
+  maintenance-visit job for it, together, so a status change and its
+  job can never end up out of sync (one without the other). If the
+  unit is currently on an active rental, the job is automatically
+  linked to that customer/address; otherwise it's just logged against
+  the appliance itself (e.g. a shop-floor unit).
+- **Retire this appliance** — the same terminal move the raw status
+  buttons already allow, but now requires a reason, since retiring is
+  permanent and an unexplained retirement in the history later is a
+  lot less useful than "compressor failed, not economical to repair."
+  The reason is saved both on the appliance's own notes and in its
+  history.
+- **Swap for a working unit** — only offered for a unit currently
+  `RENTED`. Unassigns the broken unit from its rental line, assigns a
+  same-appliance-type `AVAILABLE` replacement in its place, moves the
+  broken one to `MAINTENANCE` and the replacement to `RESERVED` (same
+  convention as a brand-new agreement — Chris marks it `RENTED`
+  himself once the swap job is actually completed), and creates one
+  `SWAP` job carrying both appliances. There was previously no way to
+  actually reassign an appliance mid-rental at all.
+- **Record inspection** — the guided version of moving a unit out of
+  `AWAITING_INSPECTION`. Saves the checklist as answered plus Chris's
+  notes and condition assessment as an `ApplianceInspection` record,
+  and moves the status the same way a manual inspection always has
+  (pass → `AVAILABLE`, fail → `MAINTENANCE` — see Rental lifecycle
+  above). Uses Chris's customized checklist from `/desk/settings` if
+  he's set one, otherwise the built-in default.
+
+Each guided action is atomic (the status change, any job, and the
+audit-log entry all happen together or not at all) and uses the same
+race-safe "changed by someone else, refresh and try again" check as
+every other status change in the app.
+
+**Appliance history** — every appliance's own page shows one merged,
+newest-first timeline of everything that's happened to it: status
+changes (from the audit log), every job it's been on, and every
+recorded inspection. This is read-only — there's nothing to edit here,
+it's just the record.
+
 ## Fleet analytics, appliance profitability, and QR codes (2026-09-27)
 
 **Appliance profitability/ROI** (`/desk/inventory/[id]`'s summary panel,

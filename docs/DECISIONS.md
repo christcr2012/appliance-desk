@@ -1604,3 +1604,36 @@ does this. An action string it doesn't specifically recognize falls back
 to showing the raw string rather than dropping the entry, so a new audit
 action added elsewhere never silently disappears from a customer's
 timeline.
+
+## 2026-09-28 — Appliance record: guided actions and history
+
+Fourth piece of "get everything built out now." Adds
+`src/domains/inventory/guided-actions.ts` — see `docs/BUSINESS-RULES.md`'s
+new "Appliance guided actions and history" section for what each one
+does and why.
+
+The notable one is **swap**: before this, there was genuinely no way to
+reassign an appliance from one active rental line to a different
+physical unit short of editing the database by hand — `ApplianceAssignment`
+had no reassignment path at all, only assign-at-agreement-creation and
+unassign-at-agreement-end. This is the first code in the app that
+actually does a mid-rental reassignment, and it does the whole thing
+(unassign old, assign new, move both statuses, create the job) in one
+`$transaction` so it can't be left half-done.
+
+Every guided action reuses the exact same pure rules from
+`src/domains/inventory/lifecycle.ts` that the raw status buttons already
+enforce (`canTransitionApplianceStatus`, `applianceStatusAfterInspection`)
+rather than re-deciding allowed transitions itself, so a guided action
+can never move an appliance somewhere the raw buttons would have
+refused.
+
+**Real bug found and fixed while building this**: `getBusinessSettings`'s
+`DEFAULT_SETTINGS` fallback (used only if the singleton `BusinessSettings`
+row is somehow missing) had never been updated with the
+`inspectionChecklist` field added to the schema earlier in this session's
+work — so reading `settings.inspectionChecklist` would have broken, in
+that fallback case, for every caller, not just this one. The local
+sandbox's Prisma-client issue meant this didn't show up until CI's real
+type-check caught it (`src/domains/settings/index.ts`); fixed by adding
+the missing field to `DEFAULT_SETTINGS`.

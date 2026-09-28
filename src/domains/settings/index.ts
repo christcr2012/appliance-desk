@@ -35,6 +35,7 @@ const DEFAULT_SETTINGS = {
   twelveMonthPrepayDiscountSingleCents: 500,
   twelveMonthPrepayFreeMonthEnabled: true,
   draftReservationHoldDays: 7,
+  inspectionChecklist: [] as unknown,
   updatedAt: new Date(0),
 };
 

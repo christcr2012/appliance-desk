@@ -10,6 +10,13 @@ import {
   createPartRecord,
   deletePartRecord,
 } from "@/domains/inventory";
+import {
+  startRepairForAppliance,
+  retireAppliance,
+  getSwapCandidates,
+  startSwapForAppliance,
+  recordApplianceInspection,
+} from "@/domains/inventory/guided-actions";
 import { dollarsToCents } from "@/domains/pricing";
 import type { ApplianceStatus } from "@prisma/client";
 import { ALL_APPLIANCE_STATUSES } from "@/domains/inventory/lifecycle";
@@ -241,6 +248,186 @@ export async function deletePartRecordAction(
 
   revalidatePath("/desk/inventory");
   revalidatePath("/desk/parts");
+  revalidatePath("/desk/activity");
+
+  return { status: "success" };
+}
+
+// ---------------------------------------------------------------------------
+// Guided actions — repair, retire, swap, inspection. See
+// src/domains/inventory/guided-actions.ts for the underlying rules; each of
+// these actions is just role-check + validation + a plain-language error
+// message, following the same shape as the actions above.
+// ---------------------------------------------------------------------------
+
+const startRepairSchema = z.object({
+  notes: z.string().trim().max(2000).optional().or(z.literal("")),
+});
+
+/** "Start a repair" on an appliance's own page — moves it to Maintenance
+ * and creates the maintenance-visit job in one step, instead of Chris
+ * having to change the status and separately remember to schedule a job. */
+export async function startRepairAction(
+  applianceId: string,
+  raw: Record<string, unknown>,
+): Promise<InventoryActionState> {
+  const session = await requireRole("OWNER", "ADMIN");
+
+  const parsed = startRepairSchema.safeParse(raw);
+  if (!parsed.success) {
+    return {
+      status: "error",
+      message: parsed.error.issues[0]?.message ?? "Please fix the highlighted fields.",
+    };
+  }
+
+  try {
+    await startRepairForAppliance(session.user.id, applianceId, parsed.data.notes || undefined);
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Couldn't start a repair for that appliance.",
+    };
+  }
+
+  revalidatePath("/desk/inventory");
+  revalidatePath(`/desk/inventory/${applianceId}`);
+  revalidatePath("/desk/dashboard");
+  revalidatePath("/desk/activity");
+  revalidatePath("/desk/jobs");
+
+  return { status: "success" };
+}
+
+const retireSchema = z.object({
+  reason: z.string().trim().min(1, "A reason is required to retire an appliance."),
+});
+
+export async function retireApplianceAction(
+  applianceId: string,
+  raw: Record<string, unknown>,
+): Promise<InventoryActionState> {
+  const session = await requireRole("OWNER", "ADMIN");
+
+  const parsed = retireSchema.safeParse(raw);
+  if (!parsed.success) {
+    return {
+      status: "error",
+      message: parsed.error.issues[0]?.message ?? "A reason is required to retire an appliance.",
+    };
+  }
+
+  try {
+    await retireAppliance(session.user.id, applianceId, parsed.data.reason);
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Couldn't retire that appliance.",
+    };
+  }
+
+  revalidatePath("/desk/inventory");
+  revalidatePath(`/desk/inventory/${applianceId}`);
+  revalidatePath("/desk/dashboard");
+  revalidatePath("/desk/activity");
+
+  return { status: "success" };
+}
+
+export type SwapCandidate = {
+  id: string;
+  assetNumber: string;
+  manufacturer: string | null;
+  model: string | null;
+  applianceTypeName: string;
+};
+
+/** The list of other available units of the same appliance type, for the
+ * "Swap for a working unit" picker on the appliance page. */
+export async function getSwapCandidatesAction(applianceId: string): Promise<SwapCandidate[]> {
+  await requireRole("OWNER", "ADMIN");
+
+  const candidates = await getSwapCandidates(applianceId);
+
+  return candidates.map((c) => ({
+    id: c.id,
+    assetNumber: c.assetNumber,
+    manufacturer: c.manufacturer,
+    model: c.model,
+    applianceTypeName: c.applianceType.name,
+  }));
+}
+
+export async function startSwapAction(
+  applianceId: string,
+  replacementApplianceId: string,
+): Promise<InventoryActionState> {
+  const session = await requireRole("OWNER", "ADMIN");
+
+  if (!replacementApplianceId) {
+    return { status: "error", message: "Choose a replacement unit." };
+  }
+
+  try {
+    await startSwapForAppliance(session.user.id, applianceId, replacementApplianceId);
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Couldn't swap that appliance.",
+    };
+  }
+
+  revalidatePath("/desk/inventory");
+  revalidatePath(`/desk/inventory/${applianceId}`);
+  revalidatePath(`/desk/inventory/${replacementApplianceId}`);
+  revalidatePath("/desk/dashboard");
+  revalidatePath("/desk/activity");
+  revalidatePath("/desk/jobs");
+
+  return { status: "success" };
+}
+
+const inspectionSchema = z.object({
+  passed: z.boolean(),
+  checklist: z.array(z.object({ item: z.string(), checked: z.boolean() })),
+  notes: z.string().trim().max(2000).optional().or(z.literal("")),
+  condition: z.string().trim().max(200).optional().or(z.literal("")),
+});
+
+/** Recording a returned appliance's inspection — passing moves it back to
+ * Available, failing moves it to Maintenance. See
+ * src/domains/inventory/guided-actions.ts's recordApplianceInspection. */
+export async function recordInspectionAction(
+  applianceId: string,
+  raw: Record<string, unknown>,
+): Promise<InventoryActionState> {
+  const session = await requireRole("OWNER", "ADMIN");
+
+  const parsed = inspectionSchema.safeParse(raw);
+  if (!parsed.success) {
+    return {
+      status: "error",
+      message: parsed.error.issues[0]?.message ?? "Please fix the highlighted fields.",
+    };
+  }
+
+  try {
+    await recordApplianceInspection(session.user.id, applianceId, {
+      passed: parsed.data.passed,
+      checklist: parsed.data.checklist,
+      notes: parsed.data.notes || undefined,
+      condition: parsed.data.condition || undefined,
+    });
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Couldn't record that inspection.",
+    };
+  }
+
+  revalidatePath("/desk/inventory");
+  revalidatePath(`/desk/inventory/${applianceId}`);
+  revalidatePath("/desk/dashboard");
   revalidatePath("/desk/activity");
 
   return { status: "success" };
