@@ -1,5 +1,5 @@
 /**
- * One-time-ish setup script, in two independent parts:
+ * One-time-ish setup script, in three independent parts:
  *
  * 1. Business content (BusinessSettings singleton + starter
  *    ApplianceType rows) — always runs, needs no secrets, and is safe to
@@ -12,6 +12,15 @@
  *    untouched (and merely promoted to OWNER if it wasn't already).
  *
  *   OWNER_EMAIL=you@example.com OWNER_PASSWORD='a-strong-password' npm run db:seed
+ *
+ * 3. A test-only CUSTOMER account with one signed agreement and a paid
+ *    invoice — only runs if TEST_CUSTOMER_EMAIL and TEST_CUSTOMER_PASSWORD
+ *    are set. This exists purely so the accessibility test suite
+ *    (e2e/accessibility-authenticated.spec.ts) has a real, logged-in-able
+ *    account with actual data in its tables to check /desk/** and
+ *    /account/** pages against — CI sets this (and OWNER_EMAIL/
+ *    OWNER_PASSWORD) against its own throwaway database; never set either
+ *    of these against the real production database.
  */
 import { auth } from "../src/lib/auth";
 import { prisma } from "../src/lib/prisma";
@@ -104,9 +113,108 @@ async function seedOwnerAccount() {
   console.log(`Created OWNER account for ${email}.`);
 }
 
+async function seedTestCustomerFixture() {
+  const email = process.env.TEST_CUSTOMER_EMAIL;
+  const password = process.env.TEST_CUSTOMER_PASSWORD;
+  const name = process.env.TEST_CUSTOMER_NAME ?? "Test Customer";
+
+  if (!email || !password) {
+    console.log(
+      "TEST_CUSTOMER_EMAIL/TEST_CUSTOMER_PASSWORD not set — skipping the accessibility-test customer fixture (only used by e2e tests, never in production).",
+    );
+    return;
+  }
+
+  const existing = await prisma.user.findUnique({ where: { email } });
+  if (existing) {
+    console.log(`"${email}" already existed — leaving its data as-is.`);
+    return;
+  }
+
+  await auth.api.signUpEmail({ body: { email, password, name } });
+  const user = await prisma.user.update({
+    where: { email },
+    data: { role: "CUSTOMER" },
+  });
+
+  const customer = await prisma.customer.create({
+    data: { userId: user.id },
+  });
+
+  const serviceAddress = await prisma.serviceAddress.create({
+    data: {
+      customerId: customer.id,
+      line1: "123 Test St",
+      city: "Denver",
+      zip: "80201",
+    },
+  });
+
+  const agreement = await prisma.rentalAgreement.create({
+    data: {
+      customerId: customer.id,
+      serviceAddressId: serviceAddress.id,
+      status: "ACTIVE",
+      startDate: new Date(),
+      depositCents: 15000,
+      taxRatePermille: 73, // 7.3%
+    },
+  });
+
+  await prisma.rentalLine.create({
+    data: {
+      agreementId: agreement.id,
+      label: "Washer + Dryer Set",
+      monthlyPriceCents: 6000,
+      listPriceCents: 6000,
+    },
+  });
+
+  // One paid invoice so the billing tables (/desk/billing,
+  // /account/billing) render real rows, not just their empty state —
+  // both matter for accessibility (a table's semantics are only really
+  // exercised once it has data in it).
+  const invoice = await prisma.invoice.create({
+    data: {
+      customerId: customer.id,
+      agreementId: agreement.id,
+      status: "PAID",
+      billingPeriodStart: new Date(),
+      billingPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      subtotalCents: 6000,
+      taxCents: 438,
+      amountDueCents: 21438,
+      amountPaidCents: 21438,
+      lineItems: {
+        createMany: {
+          data: [
+            { kind: "RENTAL", description: "Washer + Dryer Set", amountCents: 6000 },
+            { kind: "DEPOSIT", description: "Security deposit", amountCents: 15000 },
+            { kind: "TAX", description: "Sales tax", amountCents: 438 },
+          ],
+        },
+      },
+    },
+  });
+
+  await prisma.payment.create({
+    data: {
+      invoiceId: invoice.id,
+      amountCents: 21438,
+      method: "card",
+      status: "succeeded",
+    },
+  });
+
+  console.log(
+    `Created e2e-test CUSTOMER account for ${email}, with one signed agreement and a paid invoice.`,
+  );
+}
+
 async function main() {
   await seedBusinessContent();
   await seedOwnerAccount();
+  await seedTestCustomerFixture();
 }
 
 main()

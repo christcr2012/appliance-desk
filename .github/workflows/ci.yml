@@ -34,6 +34,15 @@ jobs:
       BETTER_AUTH_SECRET: ci-test-secret-not-for-production-use-only
       BETTER_AUTH_URL: http://localhost:3000
       NEXT_PUBLIC_APP_URL: http://localhost:3000
+      # Test-only login accounts, seeded ONLY into this job's throwaway
+      # Postgres container (destroyed at the end of the run) — never set
+      # against the real production database. This is what lets
+      # e2e/accessibility-authenticated.spec.ts log in for real and check
+      # /desk/** and /account/** pages, not just the public site.
+      OWNER_EMAIL: ci-owner@example.test
+      OWNER_PASSWORD: Ci-Test-Owner-Password-Not-Real-1!
+      TEST_CUSTOMER_EMAIL: ci-customer@example.test
+      TEST_CUSTOMER_PASSWORD: Ci-Test-Customer-Password-Not-Real-1!
 
     steps:
       - uses: actions/checkout@v4
@@ -55,7 +64,7 @@ jobs:
       - name: Verify schema health (same check production runs before building)
         run: npm run db:verify-schema-health
 
-      - name: Seed business content (no owner account — no secrets set)
+      - name: Seed business content + test-only OWNER/CUSTOMER accounts
         run: npm run db:seed
 
       - name: Type-check

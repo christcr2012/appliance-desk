@@ -34,7 +34,16 @@ on — never built unasked.
   once this is deployed (see that same section for the exact steps) —
   the webhook route intentionally refuses to work until then.
 - Full accessibility/security review, backup/restore test, launch
-  checklist — Phase 7.
+  checklist — Phase 7. **Automated accessibility coverage for every
+  logged-in page — started (2026-09-27).** Previously only the public
+  site + login/password pages were checked by axe in CI; every
+  `/desk/**` and `/account/**` page (owner desk, customer portal) had
+  never actually been run through an automated accessibility check.
+  `e2e/accessibility-authenticated.spec.ts` now covers all of them, via
+  a real login as test-only OWNER/CUSTOMER accounts CI seeds for this
+  purpose. **Still not done, and not automatable:** a manual
+  screen-reader + keyboard pass before launch — see
+  `docs/DESIGN-SYSTEM.md`.
 
 ## Deliberately deferred within Phase 6B (not an oversight)
 
