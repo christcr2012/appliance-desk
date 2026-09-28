@@ -38,7 +38,20 @@ export const auth = betterAuth({
     },
   emailAndPassword: {
     enabled: true,
-    requireEmailVerification: false, // flip on once email sending is verified in production
+    // Flipped on 2026-09-28 (Task #70) now that email sending is
+    // verified in production (see docs/ARCHITECTURE.md's "Real business
+    // email" work, Task #69). Every account this app creates (customer
+    // or staff) sets emailVerified: true itself the moment it's created
+    // — see the comments in src/domains/leads/index.ts,
+    // src/domains/customers/index.ts, and src/domains/staff/index.ts —
+    // because the "set your password" activation email those flows
+    // already send is itself proof the person controls that inbox
+    // (there's no self-serve signup in this app for a second, separate
+    // verification step to actually protect against). This flag mainly
+    // exists so that invariant is enforced by Better Auth itself, not
+    // just by convention, and so a future signup path that forgets to
+    // set emailVerified doesn't silently skip verification.
+    requireEmailVerification: true,
     minPasswordLength: 10,
     // Real "forgot password" flow (Phase 6A item 2 — customer account
     // invitation & password recovery). Better Auth generates and verifies
@@ -55,6 +68,26 @@ export const auth = betterAuth({
         to: user.email,
         subject: "Set your Appliance Desk password",
         text: `Hi${user.name ? ` ${user.name}` : ""},\n\nUse the link below to set your password for Appliance Desk. This link expires in 1 hour and can only be used once.\n\n${url}\n\nIf you didn't request this, you can safely ignore this email — your password won't change.`,
+      });
+    },
+  },
+  emailVerification: {
+    // sendOnSignUp is deliberately false: every account this app creates
+    // sets emailVerified: true itself right after signUpEmail (see the
+    // requireEmailVerification comment above), so a customer or staff
+    // member should never actually see this email in normal use — it
+    // would only double up on the "set your password" activation email
+    // they already get. This callback exists as a safety net (Better
+    // Auth needs it configured for a clean "please verify" error instead
+    // of a generic one) and for "resend verification email" if Chris
+    // ever needs it from a support situation.
+    sendOnSignUp: false,
+    autoSignInAfterVerification: true,
+    sendVerificationEmail: async ({ user, url }) => {
+      await sendEmail({
+        to: user.email,
+        subject: "Verify your Appliance Desk email address",
+        text: `Hi${user.name ? ` ${user.name}` : ""},\n\nUse the link below to verify your email address for Appliance Desk. This link expires in 1 hour and can only be used once.\n\n${url}\n\nIf you didn't request this, you can safely ignore this email.`,
       });
     },
   },

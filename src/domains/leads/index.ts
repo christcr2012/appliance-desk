@@ -300,9 +300,16 @@ export async function convertLeadToCustomer(userId: string, leadId: string) {
     const signUp = await auth.api.signUpEmail({
       body: { email, password: generateUnusedAccountPassword(), name: lead.contactName },
     });
+    // emailVerified is set true immediately (Task #70, docs/DECISIONS.md
+    // 2026-09-28) — the activation email below already proves the
+    // customer controls this inbox (they can't set a password without
+    // clicking its link), so Better Auth's own "verify your email" step
+    // would be a redundant second confirmation of the same fact, not a
+    // real additional safeguard here (there's no self-serve signup path
+    // in this app for requireEmailVerification to actually guard).
     account = await prisma.user.update({
       where: { id: signUp.user.id },
-      data: { role: "CUSTOMER" },
+      data: { role: "CUSTOMER", emailVerified: true },
     });
     activationEmailSent = await sendCustomerActivationEmail(email);
   }

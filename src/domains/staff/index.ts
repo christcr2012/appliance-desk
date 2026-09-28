@@ -43,9 +43,14 @@ export async function createStaffAccount(
   const signUp = await auth.api.signUpEmail({
     body: { email: input.email, password: generateUnusedAccountPassword(), name: input.name },
   });
+  // emailVerified is set true immediately (Task #70) rather than making a
+  // staff member click a separate "verify your email" link on top of the
+  // activation link below — the activation email IS the proof they
+  // control this inbox (they can't set a password without clicking it),
+  // so a second verification step would be redundant, not more secure.
   const account = await prisma.user.update({
     where: { id: signUp.user.id },
-    data: { role: "STAFF" },
+    data: { role: "STAFF", emailVerified: true },
   });
 
   let activationEmailSent = false;

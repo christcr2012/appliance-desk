@@ -1,0 +1,16 @@
+-- Task #70: requireEmailVerification is being flipped on in src/lib/auth.ts.
+-- Every existing User row (Chris's own OWNER account, and any
+-- customer/staff account created before this migration) has
+-- emailVerified = false, since nothing ever set it before now. Without
+-- this backfill, the very next sign-in from EVERY existing account --
+-- Chris's own included -- would be blocked, since Better Auth refuses to
+-- sign in an unverified user once requireEmailVerification is true.
+--
+-- This is safe to backfill unconditionally: every account in this app is
+-- created server-side (by Chris, by a staff member, or by lead
+-- conversion), never by public self-service signup, and every one of
+-- them already proved control of their inbox by clicking the "set your
+-- password" activation link that was emailed to them before they could
+-- ever log in the first time. See docs/DECISIONS.md's 2026-09-28
+-- "Email verification" entry.
+UPDATE "User" SET "emailVerified" = true WHERE "emailVerified" = false;
