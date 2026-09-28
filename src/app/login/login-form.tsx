@@ -61,7 +61,7 @@ export function LoginForm() {
           onChange={(e) => setEmail(e.target.value)}
           aria-invalid={error ? true : undefined}
           aria-describedby={error ? "login-error" : undefined}
-          className="rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-600"
+          className="rounded border border-gray-300 px-3 py-2"
         />
       </div>
 
@@ -79,7 +79,7 @@ export function LoginForm() {
           onChange={(e) => setPassword(e.target.value)}
           aria-invalid={error ? true : undefined}
           aria-describedby={error ? "login-error" : undefined}
-          className="rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-600"
+          className="rounded border border-gray-300 px-3 py-2"
         />
         <Link
           href="/forgot-password"
@@ -98,7 +98,7 @@ export function LoginForm() {
       <button
         type="submit"
         disabled={submitting}
-        className="mt-2 rounded bg-blue-700 px-4 py-2 font-medium text-white hover:bg-blue-800 disabled:opacity-60"
+        className="mt-2 rounded bg-primary px-4 py-2 font-medium text-on-primary hover:bg-primary-dark disabled:opacity-60"
       >
         {submitting ? "Logging in…" : "Log in"}
       </button>

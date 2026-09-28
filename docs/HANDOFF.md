@@ -1164,3 +1164,64 @@ done earlier this session found no leftover TODOs/stubs anywhere in
 the codebase. Next steps are Chris's: live-test the system, and when
 he's satisfied, say so explicitly so the next session can clear test
 data per the note above.
+
+## 2026-09-27 (same session, continued) — Design review, and acting on it
+
+Chris asked for a full design/UX review of the public site and the
+owner desk / customer portal "web app," from an elite web-design
+consultant's perspective. Findings were written up as a living doc
+(not this file) so Chris has a shareable, readable version. Summary of
+what it found: the public site's brand direction (warm palette,
+Fraunces/Inter font pairing, accessibility discipline) is genuinely
+strong, but the owner desk and customer portal were built with plain,
+unbranded Tailwind colors — so the product looked like two different
+things depending on whether you were logged in. The homepage's hero
+photo (a generic stock render) also undercuts the "real local
+business" copy.
+
+Chris said: no truck, no personal photos ready yet — but asked to act
+on everything else in the report now. Also gave direct, separate
+feedback on the owner desk specifically: "it's just word links sitting
+on the pages." Both fed into this pass:
+
+- [x] **Brand consistency, desk/portal/sign-in pages.** Retinted the
+      plain gray/blue Tailwind classes across all three areas to the
+      public site's warm palette — same override technique as dark
+      mode. Full detail (including the one deliberate exception, for
+      contrast reasons) in `docs/DESIGN-SYSTEM.md`.
+- [x] **Owner desk navigation, rebuilt as a sidebar.** The desk's
+      11-link desktop nav was a plain text row with no active-page
+      indicator — directly what Chris was describing. Now a real
+      sidebar (`src/components/desk-sidebar.tsx`) with the current
+      page highlighted in the brand color. The customer portal's
+      4-link nav keeps its simpler top-row layout (never flagged as a
+      problem), now also with an active-page indicator.
+- [x] **Plain-English statuses in the customer portal.** Customers
+      were seeing raw internal codes like "AWAITING_SIGNATURE" — added
+      `src/lib/status-labels.ts` and wired it into every customer-
+      facing spot that showed one (rentals, maintenance, billing).
+      The owner desk is untouched — staff can read the codes fine, and
+      changing 50+ files' status displays for no real benefit wasn't
+      worth the risk.
+- [x] **Social link-preview (Open Graph/Twitter) metadata**, so a
+      shared link shows a real preview card instead of a blank one —
+      reuses the existing homepage hero photo rather than waiting on a
+      dedicated share image.
+- [x] **Simple loading states** for the desk and portal (Next.js's
+      `loading.tsx` convention), so a slower page load shows a
+      skeleton instead of a blank screen — screen-reader announced via
+      a `role="status"` text, the pulsing skeleton itself hidden from
+      assistive tech.
+- [x] **Removed 5 unused leftover files** from the original Next.js
+      starter template (`public/*.svg`) — dead weight, zero visitor
+      impact, just tidiness.
+
+**Still open, waiting on Chris, by his own choice — not forgotten:**
+- Replace the homepage hero photo with a real one (him, his vehicle, an
+  actual delivered appliance) — he said he doesn't have one ready yet.
+- Testimonials/reviews section — needs real customers first, which is
+  what his upcoming live-testing (and then real launch) will produce.
+
+Everything else the report flagged (icons throughout the app, a more
+tailored social-share image) was lower-priority polish, not acted on
+in this pass — see `docs/ROADMAP.md` if it should be picked up later.

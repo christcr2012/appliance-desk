@@ -1,5 +1,6 @@
 import { requireRole } from "@/lib/session";
 import { AuthedHeader, type AuthedNavLink } from "@/components/authed-header";
+import { DeskSidebar } from "@/components/desk-sidebar";
 import { IdleLogout } from "@/components/idle-logout";
 
 export const metadata = {
@@ -31,9 +32,18 @@ export default async function DeskLayout({
   await requireRole("OWNER", "ADMIN");
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <AuthedHeader title="Appliance Desk" areaLabel="Owner desk" links={DESK_LINKS} />
-      <main id="main-content" className="p-6">
+    <div className="min-h-screen bg-gray-50 md:flex">
+      {/* Mobile only (hamburger + slide-down menu) in this variant — see
+          desk-sidebar.tsx's comment for why the desk gets a real sidebar
+          on desktop instead of a plain nav row. */}
+      <AuthedHeader
+        title="Appliance Desk"
+        areaLabel="Owner desk"
+        links={DESK_LINKS}
+        variant="sidebar"
+      />
+      <DeskSidebar title="Appliance Desk" links={DESK_LINKS} />
+      <main id="main-content" className="flex-1 p-6">
         {children}
       </main>
       {/* Owner/admin accounts see every customer's data, so an idle

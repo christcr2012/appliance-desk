@@ -1,5 +1,6 @@
 import { getServerSession } from "@/lib/session";
 import { getPortalData, getPortalApplianceOptions } from "@/domains/portal";
+import { maintenanceStatusLabel } from "@/lib/status-labels";
 import { NewRequestForm } from "./new-request-form";
 
 export const metadata = { title: "Maintenance" };
@@ -40,7 +41,7 @@ export default async function AccountMaintenancePage() {
                   {r.appliance
                     ? `${r.appliance.applianceType.name} (${r.appliance.assetNumber})`
                     : "General"}{" "}
-                  — {r.status}
+                  — {maintenanceStatusLabel(r.status)}
                 </p>
                 <p className="text-gray-600">{r.problem}</p>
                 <p className="mt-1 text-xs text-gray-500">

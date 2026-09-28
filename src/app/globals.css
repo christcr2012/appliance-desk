@@ -195,6 +195,27 @@
   border-color: #6b7280;
 }
 
+/* Buttons are the one exception to the brand-primary retint further
+   below (bg-gray-900 -> var(--color-primary)): in dark mode, the
+   brand's primary color is a light, saturated orange meant to be used
+   as TEXT on a dark background, not as a button fill under white
+   text -- doing that measured well under 3:1 contrast, nowhere near
+   WCAG's 4.5:1. Restoring the original near-black here keeps every
+   button exactly as readable in dark mode as it already was (this is
+   the same color dark mode already used for these buttons before the
+   retint existed at all -- see the "button colors... deliberately
+   left alone" note above). Light mode is unaffected; it gets the
+   brand color from the unconditional rule below. */
+.dark .bg-gray-900 {
+  background-color: #111827;
+}
+.dark .border-gray-900 {
+  border-color: #111827;
+}
+.dark .hover\:bg-gray-800:hover {
+  background-color: #1f2937;
+}
+
 /* Status colors — success (green), error (red), warning (amber), info
    (blue). One dark background/text/border pair per color, reused
    across every shade number that color is used at (a "-50" success
@@ -247,6 +268,74 @@
 }
 .dark .text-blue-900 {
   color: #93c5fd;
+}
+
+/* Brand consistency for the owner desk, customer portal, and
+   sign/login pages (design review, 2026-09-27). These areas were
+   built with plain, unbranded Tailwind gray/blue classes while the
+   public site used the warm brand palette above -- so the moment
+   anyone logged in, the product switched from "a real local business"
+   to "a generic admin template." Same technique as the dark-mode
+   block above: rather than touching every one of the ~50 files that
+   use these classes, retint the classes themselves, once, here.
+
+   This deliberately leaves the semantic status colors alone (the
+   green/red/amber "success/error/warning" boxes, and the one blue
+   "info" checkbox note in the agreement form) -- those carry meaning,
+   not brand identity, and changing them would make status harder to
+   read at a glance, not easier. What's retinted here is specifically
+   the neutral UI chrome (page backgrounds, body text, borders) and
+   the "primary action" button color (every Save/Submit/Mark-as button
+   in the app already reused the same bg-gray-900 ... text-white
+   pattern, confirmed by a full grep before this change), which was
+   never a status color to begin with -- just an unbranded default. */
+.bg-white {
+  background-color: var(--color-surface);
+}
+.bg-gray-50,
+.disabled\:bg-gray-50:disabled {
+  background-color: var(--color-canvas);
+}
+.hover\:bg-gray-50:hover,
+.hover\:bg-gray-100:hover {
+  background-color: var(--color-canvas-alt);
+}
+.text-gray-900,
+.hover\:text-gray-900:hover {
+  color: var(--color-ink);
+}
+.text-gray-700 {
+  color: var(--color-ink-soft);
+}
+.text-gray-600 {
+  color: var(--color-ink-soft);
+}
+.text-gray-500 {
+  color: var(--color-ink-faint);
+}
+.border-gray-100,
+.border-gray-200 {
+  border-color: var(--color-line);
+}
+.border-gray-300,
+.hover\:border-gray-400:hover {
+  border-color: var(--color-line-strong);
+}
+
+/* Every primary-action button in the desk and portal (Save, Submit,
+   Sign, Mark as returned, the selected state of a filter chip, "Stay
+   signed in") uses this same bg-gray-900 ... text-white pattern --
+   confirmed by grepping every use before making this change, so this
+   is genuinely "the button color," not a coincidence. Becomes the
+   brand's primary color instead of a flat near-black. */
+.bg-gray-900 {
+  background-color: var(--color-primary);
+}
+.border-gray-900 {
+  border-color: var(--color-primary);
+}
+.hover\:bg-gray-800:hover {
+  background-color: var(--color-primary-dark);
 }
 
 * {
