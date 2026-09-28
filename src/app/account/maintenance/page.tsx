@@ -5,7 +5,12 @@ import { NewRequestForm } from "./new-request-form";
 
 export const metadata = { title: "Maintenance" };
 
-export default async function AccountMaintenancePage() {
+export default async function AccountMaintenancePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ applianceId?: string }>;
+}) {
+  const { applianceId } = await searchParams;
   const session = await getServerSession();
   const [customer, applianceOptions] = session
     ? await Promise.all([
@@ -18,6 +23,13 @@ export default async function AccountMaintenancePage() {
     return <p className="text-gray-600">No rental account found.</p>;
   }
 
+  // Prefilled by scanning an appliance's QR code (/scan/[assetNumber]) —
+  // only honored if it's actually one of this customer's own appliances,
+  // never a client-supplied id trusted blindly.
+  const initialApplianceId = applianceOptions.some((a) => a.id === applianceId)
+    ? applianceId
+    : "";
+
   return (
     <div className="max-w-2xl">
       <h1 className="text-xl font-semibold">Maintenance</h1>
@@ -26,7 +38,7 @@ export default async function AccountMaintenancePage() {
       </p>
 
       <div className="mt-6">
-        <NewRequestForm appliances={applianceOptions} />
+        <NewRequestForm appliances={applianceOptions} initialApplianceId={initialApplianceId} />
       </div>
 
       <div className="mt-8">

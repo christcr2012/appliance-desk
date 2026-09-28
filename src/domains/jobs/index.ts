@@ -161,3 +161,40 @@ export async function addJobPhoto(
 
   return photo;
 }
+
+/**
+ * Records what a repair job actually cost — parts and labor, entered by
+ * Chris (usually right when he marks a MAINTENANCE_VISIT job COMPLETED,
+ * but editable any time). This is the raw data appliance profitability/
+ * ROI (src/domains/inventory/analytics.ts) rolls up per appliance; a job
+ * with nothing entered simply contributes $0, never a guessed number.
+ * Deliberately not restricted to MAINTENANCE_VISIT jobs at the database
+ * level — the desk UI only shows the fields for that type, but nothing
+ * here assumes it, in case Chris ever wants to log an incidental cost on
+ * another job type.
+ */
+export async function setJobRepairCosts(
+  userId: string,
+  jobId: string,
+  costs: { partsCostCents: number | null; laborCostCents: number | null },
+) {
+  const updated = await prisma.job.update({
+    where: { id: jobId },
+    data: {
+      partsCostCents: costs.partsCostCents,
+      laborCostCents: costs.laborCostCents,
+    },
+  });
+
+  await prisma.auditLog.create({
+    data: {
+      userId,
+      action: "job.repairCosts",
+      entityType: "Job",
+      entityId: jobId,
+      newValue: costs,
+    },
+  });
+
+  return updated;
+}

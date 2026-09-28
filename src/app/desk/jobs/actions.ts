@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireRole } from "@/lib/session";
-import { createJob, updateJobStatus, addJobPhoto } from "@/domains/jobs";
+import { createJob, updateJobStatus, addJobPhoto, setJobRepairCosts } from "@/domains/jobs";
 import type { JobStatus, JobType } from "@prisma/client";
 
 export type JobActionState =
@@ -122,5 +122,47 @@ export async function addJobPhotoAction(
   });
 
   revalidatePath(`/desk/jobs/${jobId}`);
+  return { status: "success" };
+}
+
+const repairCostSchema = z.object({
+  partsCostDollars: z.string().trim().optional().or(z.literal("")),
+  laborCostDollars: z.string().trim().optional().or(z.literal("")),
+});
+
+/** Dollars in from the form, cents out to the database — same pattern as
+ * every other money field in this app (docs/DESIGN-SYSTEM.md's
+ * dollars-in/cents-out convention). An empty field means "not entered,"
+ * not "$0" — left null rather than defaulted, so a repair with an unknown
+ * cost doesn't silently show as free in the profitability numbers. */
+function dollarsToCentsOrNull(raw: string | undefined): number | null {
+  if (!raw || raw.trim() === "") return null;
+  const dollars = Number(raw);
+  if (!Number.isFinite(dollars)) return null;
+  return Math.round(dollars * 100);
+}
+
+export async function setJobRepairCostsAction(
+  jobId: string,
+  raw: Record<string, unknown>,
+): Promise<JobActionState> {
+  const session = await requireRole("OWNER", "ADMIN");
+
+  const parsed = repairCostSchema.safeParse(raw);
+  if (!parsed.success) {
+    return {
+      status: "error",
+      message: parsed.error.issues[0]?.message ?? "Please fix the highlighted fields.",
+    };
+  }
+
+  await setJobRepairCosts(session.user.id, jobId, {
+    partsCostCents: dollarsToCentsOrNull(parsed.data.partsCostDollars),
+    laborCostCents: dollarsToCentsOrNull(parsed.data.laborCostDollars),
+  });
+
+  revalidatePath(`/desk/jobs/${jobId}`);
+  revalidatePath("/desk/fleet");
+  revalidatePath("/desk/dashboard");
   return { status: "success" };
 }

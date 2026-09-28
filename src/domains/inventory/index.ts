@@ -1,5 +1,13 @@
 import { prisma } from "@/lib/prisma";
 import type { ApplianceStatus } from "@prisma/client";
+import {
+  computeApplianceRevenueCents,
+  computeProfitability,
+  computeRepairCostCents,
+  computeUtilizationFraction,
+  type AssignmentPeriod,
+  type ProfitabilitySummary,
+} from "./analytics";
 
 // ---------------------------------------------------------------------------
 // Inventory — individual physical Appliance units (as opposed to
@@ -340,4 +348,170 @@ export async function deletePartRecord(userId: string, partRecordId: string) {
   });
 
   return record;
+}
+
+// ---------------------------------------------------------------------------
+// Fleet utilization + appliance profitability/ROI (2026-09-27) — see
+// src/domains/inventory/analytics.ts for the pure math, and
+// docs/DECISIONS.md for how revenue/utilization are estimated from real
+// assignment dates and agreed pricing (not exact invoiced amounts).
+// ---------------------------------------------------------------------------
+
+export type ApplianceProfitability = ProfitabilitySummary & {
+  applianceId: string;
+  assetNumber: string;
+  applianceTypeName: string;
+  status: ApplianceStatus;
+  utilizationFraction: number;
+};
+
+/** Builds every non-retired appliance's revenue/repair-cost/profitability
+ * and utilization in a small, fixed number of bulk queries (never one
+ * query per appliance) — this app's whole fleet is small enough that this
+ * comfortably runs on every dashboard/fleet-page load. */
+export async function getFleetAnalytics(): Promise<{
+  appliances: ApplianceProfitability[];
+  totals: {
+    applianceCount: number;
+    totalInvestedCents: number;
+    totalRevenueCents: number;
+    totalRepairCostCents: number;
+    totalNetContributionCents: number;
+    paidForItselfCount: number;
+    averageUtilizationFraction: number;
+  };
+}> {
+  const asOf = new Date();
+
+  const [appliances, assignments, repairJobAppliances] = await Promise.all([
+    prisma.appliance.findMany({
+      where: { archivedAt: null },
+      include: { applianceType: { select: { name: true } } },
+      orderBy: [{ assetNumber: "asc" }],
+    }),
+    prisma.applianceAssignment.findMany({
+      select: {
+        applianceId: true,
+        rentalLineId: true,
+        assignedAt: true,
+        unassignedAt: true,
+        rentalLine: { select: { monthlyPriceCents: true } },
+      },
+    }),
+    prisma.jobAppliance.findMany({
+      where: {
+        job: { status: "COMPLETED", type: "MAINTENANCE_VISIT" },
+      },
+      select: {
+        applianceId: true,
+        job: { select: { partsCostCents: true, laborCostCents: true } },
+      },
+    }),
+  ]);
+
+  // How many distinct appliances have ever shared each rental line — used
+  // to split that line's monthly price evenly across them (see
+  // AssignmentPeriod.applianceCountOnLine in analytics.ts).
+  const lineApplianceIds = new Map<string, Set<string>>();
+  for (const a of assignments) {
+    const set = lineApplianceIds.get(a.rentalLineId) ?? new Set<string>();
+    set.add(a.applianceId);
+    lineApplianceIds.set(a.rentalLineId, set);
+  }
+
+  const assignmentsByAppliance = new Map<string, typeof assignments>();
+  for (const a of assignments) {
+    const list = assignmentsByAppliance.get(a.applianceId) ?? [];
+    list.push(a);
+    assignmentsByAppliance.set(a.applianceId, list);
+  }
+
+  const repairCostByAppliance = new Map<
+    string,
+    { partsCostCents: number | null; laborCostCents: number | null }[]
+  >();
+  for (const ja of repairJobAppliances) {
+    const list = repairCostByAppliance.get(ja.applianceId) ?? [];
+    list.push(ja.job);
+    repairCostByAppliance.set(ja.applianceId, list);
+  }
+
+  const results: ApplianceProfitability[] = appliances.map((appliance) => {
+    const applianceAssignments = assignmentsByAppliance.get(appliance.id) ?? [];
+
+    const periods: AssignmentPeriod[] = applianceAssignments.map((a) => ({
+      assignedAt: a.assignedAt,
+      unassignedAt: a.unassignedAt,
+      monthlyPriceCents: a.rentalLine.monthlyPriceCents,
+      applianceCountOnLine: lineApplianceIds.get(a.rentalLineId)?.size ?? 1,
+    }));
+
+    const revenueCents = computeApplianceRevenueCents(periods, asOf);
+    const repairCostCents = computeRepairCostCents(
+      repairCostByAppliance.get(appliance.id) ?? [],
+    );
+    const utilizationFraction = computeUtilizationFraction(
+      applianceAssignments,
+      appliance.createdAt,
+      asOf,
+    );
+    const profitability = computeProfitability({
+      revenueCents,
+      repairCostCents,
+      acquisitionCostCents: appliance.acquisitionCostCents,
+    });
+
+    return {
+      ...profitability,
+      applianceId: appliance.id,
+      assetNumber: appliance.assetNumber,
+      applianceTypeName: appliance.applianceType.name,
+      status: appliance.status,
+      utilizationFraction,
+    };
+  });
+
+  const totals = results.reduce(
+    (acc, r) => {
+      acc.totalInvestedCents += r.acquisitionCostCents;
+      acc.totalRevenueCents += r.revenueCents;
+      acc.totalRepairCostCents += r.repairCostCents;
+      acc.totalNetContributionCents += r.netContributionCents;
+      if (r.paidForItself) acc.paidForItselfCount += 1;
+      acc.utilizationSum += r.utilizationFraction;
+      return acc;
+    },
+    {
+      totalInvestedCents: 0,
+      totalRevenueCents: 0,
+      totalRepairCostCents: 0,
+      totalNetContributionCents: 0,
+      paidForItselfCount: 0,
+      utilizationSum: 0,
+    },
+  );
+
+  return {
+    appliances: results,
+    totals: {
+      applianceCount: results.length,
+      totalInvestedCents: totals.totalInvestedCents,
+      totalRevenueCents: totals.totalRevenueCents,
+      totalRepairCostCents: totals.totalRepairCostCents,
+      totalNetContributionCents: totals.totalNetContributionCents,
+      paidForItselfCount: totals.paidForItselfCount,
+      averageUtilizationFraction:
+        results.length > 0 ? totals.utilizationSum / results.length : 0,
+    },
+  };
+}
+
+/** One appliance's own profitability/ROI — same math as getFleetAnalytics,
+ * scoped to a single unit, for the "Profitability" panel on its detail
+ * page (/desk/inventory/[id]). */
+export async function getApplianceProfitability(
+  applianceId: string,
+): Promise<ApplianceProfitability | null> {
+  const { appliances } = await getFleetAnalytics();
+  return appliances.find((a) => a.applianceId === applianceId) ?? null;
 }

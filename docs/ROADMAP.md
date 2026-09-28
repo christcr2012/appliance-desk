@@ -136,13 +136,33 @@ on — never built unasked.
   exists and works today (online rent flow, e-signature, Stripe
   billing, customer portal, appliance inventory, service/repair
   tracking, lead management, property managers) — not recommended as a
-  full rebuild. Five genuinely new ideas worth considering on their own:
-  QR codes on appliances (delivery/pickup verification, customer
-  self-service requests), appliance-level profitability/ROI (revenue vs.
-  purchase/repair cost, payback date), an MRR/ARR financial dashboard
-  with trends and churn, fleet-wide utilization analytics, and formal
-  B2B invoicing for property managers. Chris asked which (if any) he
-  wants built next — none started yet.
+  full rebuild. Of its five genuinely-new ideas, Chris picked four and
+  they're **done (2026-09-27)**: QR codes on appliances
+  (`/desk/inventory/[id]/qr` + `/scan/[assetNumber]`), appliance-level
+  profitability/ROI (`/desk/inventory/[id]`'s profitability panel,
+  `/desk/fleet`), an MRR/ARR financial dashboard (`/desk/revenue`), and
+  fleet-wide utilization analytics (`/desk/fleet`). **Still open**:
+  formal B2B invoicing for property managers (today's property-manager
+  support is account/address structure, not consolidated multi-property
+  billing) — not picked yet.
+- **A second, more architectural review (ChatGPT "Astra"), 2026-09-27**
+  — saved verbatim at
+  `docs/reviews/2026-09-27-astra-operations-review.md`, assessed in
+  `docs/DECISIONS.md`. Mostly validates the existing architecture (real
+  relational schema, enforced status transitions, audit logging, an
+  already-rigorous billing subsystem) rather than finding it thin. A
+  few genuinely new ideas from it are folded into the business-growth
+  ideas doc below rather than repeated here.
+- **Business-growth ideas, 2026-09-27** — a brainstorm at
+  `docs/reviews/2026-09-27-business-growth-ideas.md`, prompted by
+  Chris's "help build out the business part, it's so basic" request.
+  Covers a driver/technician mobile job view, route grouping,
+  inventory-shortage and pricing-opportunity flags built from the new
+  fleet analytics, a churn-risk view, review/referral requests, a lead
+  win-back nudge, annual price-review reminders, a formal referral
+  program, local-search landing pages, SMS notifications, a separate
+  Contacts concept, and an accounting export. Nothing in it is built —
+  it's a menu for Chris to pick from, not a plan.
 - **Google Search Console / Google Business Profile** connection —
   needs a real public business name and domain first (Phase 2/7).
 - **A design system / component library beyond Tailwind utilities** if
