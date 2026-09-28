@@ -1108,3 +1108,15 @@ Two things worth flagging for whoever picks this up:
   live on the site and just reinforced in PR #39 — this is a real
   business decision (new logo, new look everywhere), not a bug fix, and
   needs Chris to actually choose it before any code changes.
+
+## 2026-09-27 — Rebrand approved: navy/teal palette from the Astra brief
+
+Chris looked at the real preview deployment (PR #41,
+`ai/claude/astra-brand-preview`) side by side with the warm palette on
+production and said he likes it — "I like the re-design. Continue."
+This makes the navy/teal palette from `docs/reviews/2026-09-28-astra-
+redesign-brief.md` the real brand going forward. Landed by turning the
+PREVIEW-ONLY branch into a real one (removed the "do not merge"
+framing from its comments, no functional change) — see
+`docs/DESIGN-SYSTEM.md`'s "Brand palette: navy/teal" section for what
+this does and doesn't cover yet (no logo, no IA/portal rebuild).

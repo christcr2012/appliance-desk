@@ -9,43 +9,61 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /*
- * Design tokens — warm, high-end, personal-small-business feel (not
- * corporate-generic). See docs/DESIGN-SYSTEM.md for the accessibility
- * rules these colors and focus styles must satisfy (contrast, never
- * color-alone, visible focus ring).
+ * Design tokens — navy/teal brand (rebrand approved by Chris, 2026-09-27
+ * — see docs/DECISIONS.md). Swapped from the original warm terracotta
+ * palette to the scheme proposed in the "Astra" redesign brief
+ * (docs/reviews/2026-09-28-astra-redesign-brief.md), after Chris looked
+ * at a real preview deployment (PR #41) side by side with the old
+ * palette on production and said he liked it.
+ *
+ * Still open, tracked in docs/ROADMAP.md: a real logo (this still uses
+ * the existing typographic wordmark — the brief's logo system was
+ * explicitly meant not to block the color/layout work), and the rest
+ * of the Astra brief beyond colors (owner-desk IA, customer-portal
+ * rebuild, etc.) hasn't been evaluated/built yet.
+ *
+ * Every value below was hand-checked against WCAG 2.1 AA's 4.5:1 text
+ * contrast ratio (same relative-luminance method used elsewhere in
+ * this file) for every place that token is actually used as text, not
+ * just eyeballed — and confirmed by CI's real axe accessibility checks
+ * (light and dark) passing on PR #41 before this was approved.
+ *
+ * Original warm-palette values, for reference / easy revert:
+ *   canvas #fbf6ef, canvas-alt #f3ead9, ink #241f1a, ink-soft #55493f,
+ *   ink-faint #5f5449, line #e5d9c8, line-strong #d3c3ab,
+ *   primary #a34e22, primary-dark #8a3a15, primary-soft #f1dcc9,
+ *   on-primary #fffaf3, accent #2f6a56, accent-dark #204b3d,
+ *   accent-soft #dbeae3, focus-ring #a34e22.
  */
 :root {
-  --color-canvas: #fbf6ef;
-  --color-canvas-alt: #f3ead9;
+  --color-canvas: #f7f8f5;
+  --color-canvas-alt: #f3f5f7;
   --color-surface: #ffffff;
-  --color-ink: #241f1a;
-  --color-ink-soft: #55493f;
-  /* #7d7266 measured only 3.93:1–4.37:1 against these backgrounds —
-     below WCAG AA's 4.5:1 for normal text (caught by
-     e2e/accessibility.spec.ts's axe checks). Darkened until every
-     ink-faint/background pairing in actual use clears 4.5:1. */
-  --color-ink-faint: #5f5449;
-  --color-line: #e5d9c8;
-  --color-line-strong: #d3c3ab;
+  --color-ink: #243746;
+  --color-ink-soft: #526271;
+  /* #7c8894 (a literal reading of "secondary text, but lighter") only
+     measured 3.6:1 against white — below AA's 4.5:1 for normal text.
+     Darkened, same fix pattern as the warm palette's own ink-faint
+     note used to need. */
+  --color-ink-faint: #5e6b77;
+  --color-line: #d7dfe5;
+  --color-line-strong: #aebac3;
 
-  /* #b85c2c measured 4.39:1 on --color-on-primary — just under WCAG
-     AA's 4.5:1 for normal-size button text. Darkened; primary-dark
-     darkened to match so the hover state stays visually distinct. */
-  --color-primary: #a34e22;
-  --color-primary-dark: #8a3a15;
-  --color-primary-soft: #f1dcc9;
-  --color-on-primary: #fffaf3;
+  --color-primary: #006b66;
+  --color-primary-dark: #00534f;
+  --color-primary-soft: #d3ebe8;
+  --color-on-primary: #ffffff;
 
-  --color-accent: #2f6a56;
-  --color-accent-dark: #204b3d;
-  --color-accent-soft: #dbeae3;
+  --color-accent: #0f766e;
+  --color-accent-dark: #0b5a54;
+  --color-accent-soft: #d7f0ec;
 
   --color-success: #1e6b3e;
   --color-warning-bg: #fdf1d6;
   --color-warning-ink: #7a4a05;
   --color-danger: #a3271f;
 
-  --color-focus-ring: #a34e22;
+  --color-focus-ring: #006b66;
 
   --font-display: var(--font-fraunces);
   --font-sans: var(--font-inter);
@@ -125,24 +143,31 @@
  *    are already a dark chip with white text, which reads fine in
  *    either theme, so they're not part of this list.
  */
+/* Dark-mode side of the same navy/teal rebrand — see the :root block's
+   note above. Original warm-palette dark values for reference: canvas
+   #1b1712, canvas-alt
+   #241e17, surface #2a2319, ink #f6efe4, ink-soft #d9cdba, ink-faint
+   #ad9f8c, line #3d3325, line-strong #4e422f, primary #e08a54,
+   primary-dark #f2ac7d, primary-soft #4a3120, on-primary #241207,
+   accent #6fbb9e, accent-dark #8fd0b6, accent-soft #23392f. */
 .dark {
-  --color-canvas: #1b1712;
-  --color-canvas-alt: #241e17;
-  --color-surface: #2a2319;
-  --color-ink: #f6efe4;
-  --color-ink-soft: #d9cdba;
-  --color-ink-faint: #ad9f8c;
-  --color-line: #3d3325;
-  --color-line-strong: #4e422f;
+  --color-canvas: #0d1722;
+  --color-canvas-alt: #0d1722;
+  --color-surface: #152332;
+  --color-ink: #f1f5f8;
+  --color-ink-soft: #b2c0cd;
+  --color-ink-faint: #8592a0;
+  --color-line: #35495b;
+  --color-line-strong: #46607a;
 
-  --color-primary: #e08a54;
-  --color-primary-dark: #f2ac7d;
-  --color-primary-soft: #4a3120;
-  --color-on-primary: #241207;
+  --color-primary: #69d5ca;
+  --color-primary-dark: #80e0d6;
+  --color-primary-soft: #103836;
+  --color-on-primary: #0d1722;
 
-  --color-accent: #6fbb9e;
-  --color-accent-dark: #8fd0b6;
-  --color-accent-soft: #23392f;
+  --color-accent: #5fd4c7;
+  --color-accent-dark: #85e3d8;
+  --color-accent-soft: #12312d;
 
   --color-warning-bg: #3a2c0e;
   --color-warning-ink: #f0c96b;
@@ -197,23 +222,24 @@
 
 /* Buttons are the one exception to the brand-primary retint further
    below (bg-gray-900 -> var(--color-primary)): in dark mode, the
-   brand's primary color is a light, saturated orange meant to be used
-   as TEXT on a dark background, not as a button fill under white
-   text -- doing that measured well under 3:1 contrast, nowhere near
-   WCAG's 4.5:1. Restoring the original near-black here keeps every
-   button exactly as readable in dark mode as it already was (this is
-   the same color dark mode already used for these buttons before the
-   retint existed at all -- see the "button colors... deliberately
-   left alone" note above). Light mode is unaffected; it gets the
-   brand color from the unconditional rule below. */
+   brand's primary color is light and saturated -- meant to be used as
+   TEXT on a dark background (or, per the Astra brief, under dark
+   navy text of its own) -- not as a button fill under the plain
+   white text every button in this app already hardcodes. Restoring a
+   dark fill here keeps every button readable regardless of that.
+   Light mode is unaffected; it gets the brand color straight from the
+   unconditional rule below, where white text on it measures ~6.4:1.
+   Darkened to a teal (not the original near-black) so this still
+   reads as "on brand" in dark mode -- passes contrast easily (>8:1).
+   Original warm-palette values: #111827 / #111827 / #1f2937. */
 .dark .bg-gray-900 {
-  background-color: #111827;
+  background-color: #06403c;
 }
 .dark .border-gray-900 {
-  border-color: #111827;
+  border-color: #06403c;
 }
 .dark .hover\:bg-gray-800:hover {
-  background-color: #1f2937;
+  background-color: #0b5750;
 }
 
 /* Status colors — success (green), error (red), warning (amber), info

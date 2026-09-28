@@ -56,13 +56,35 @@ required before launch (Phase 2/7).
 - `/desk/**` and `/account/**` are marked `noindex, nofollow` (see
   `next.config.ts`) — they should never appear in search results.
 
+## Brand palette: navy/teal (rebrand, 2026-09-27)
+
+The brand colors themselves changed from the original warm terracotta
+palette to a navy/teal one — see `docs/DECISIONS.md` for the full
+story. Short version: Chris commissioned a second, independent design
+review (OpenAI's "Astra" — `docs/reviews/2026-09-28-astra-redesign-
+brief.md`) that proposed a navy/teal palette; he asked to see it for
+real before deciding, so it was built as a real preview deployment
+(PR #41, kept CI-clean the whole time) rather than a mockup; he looked
+at it side by side with the old palette on production and approved it.
+The actual color values live only in `src/app/globals.css`'s `:root`
+and `.dark` blocks as CSS variables (`--color-primary`, `--color-ink`,
+etc.) — nothing else in the app hard-codes a specific hex value, so a
+future palette change (if Chris ever wants one) is the same kind of
+token swap, not a rewrite.
+
+Still open from that same brief, not built: a real logo (this still
+uses the existing typographic wordmark on purpose — see the brief),
+and everything in it beyond colors (owner-desk information
+architecture, customer-portal rebuild, new business-line UI) — see
+`docs/ROADMAP.md`.
+
 ## Brand consistency, desk/portal/sign-in pages (added 2026-09-27)
 
 Following a design review, the owner desk, customer portal, and
 sign/login/reset-password pages' plain, unbranded Tailwind classes
 (`bg-white`, `text-gray-900`, `bg-gray-900` buttons, `bg-blue-700`) are
-now retinted to the same warm brand palette the public site always
-used — same technique as the dark-mode override block just below it in
+retinted to the same brand palette the public site uses — same
+technique as the dark-mode override block just below it in
 `globals.css` (retint the class, once, globally, rather than touching
 every one of the ~50 files that use it). Semantic status colors
 (green/red/amber "success/error/warning", the one blue "info" box)
@@ -70,14 +92,18 @@ are deliberately untouched — they carry meaning, not brand identity.
 
 **One exception, and why:** `bg-gray-900` (every primary-action button
 in the app) retints to the brand's primary color in light mode, but is
-explicitly restored to its original near-black in `.dark` — the
-brand's primary color in dark mode is a light, saturated orange meant
-to be used as *text* on a dark background, and using it as a button
-fill under white text measured well under WCAG's 4.5:1 (about 2.6:1).
-If you add a new `.dark` rule near this one, check actual contrast
-before assuming a "brand color everywhere" instinct is safe — light-
-mode and dark-mode variants of the same token are not interchangeable
-the way they look in the CSS variable list.
+explicitly given its own fixed dark color in `.dark` rather than the
+brand primary variable — in dark mode the brand's primary color is
+light and saturated (meant to be used as *text* on a dark background,
+or in the navy/teal palette specifically, under dark text of its own),
+and using it as a button fill under the plain white text every button
+in this app hardcodes measured well under WCAG's 4.5:1 when this was
+first caught (an orange, ~2.6:1 at the time; the same risk applies to
+any future light/saturated primary color, teal included). If you add a
+new `.dark` rule near this one, check actual contrast before assuming
+a "brand color everywhere" instinct is safe — light-mode and dark-mode
+variants of the same token are not interchangeable the way they look
+in the CSS variable list.
 
 The owner desk's desktop navigation also changed from a row of plain
 text links (11 of them — Chris's own description: "it's just word
