@@ -183,7 +183,12 @@ export type UtilizationFlagRow = {
   applianceTypeName: string;
   unitCount: number;
   averageUtilizationFraction: number;
-  flag: UtilizationFlag;
+  // Always SHORTAGE or UNDERUTILIZED here, never null — a row is only
+  // ever constructed once flagUtilization() has already returned a
+  // truthy flag (see the .filter(...) below), unlike the broader
+  // UtilizationFlag type (which flagUtilization itself returns and
+  // allows null for "nothing worth flagging").
+  flag: NonNullable<UtilizationFlag>;
 };
 
 /** Appliance types running near-fully-rented (a shortage signal — idea
