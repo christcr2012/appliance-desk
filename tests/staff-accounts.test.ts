@@ -66,7 +66,7 @@ describe("createStaffAccount", () => {
 
     expect(userUpdate).toHaveBeenCalledWith({
       where: { id: "staff-1" },
-      data: { role: "STAFF" },
+      data: { role: "STAFF", emailVerified: true },
     });
     expect(result.activationEmailSent).toBe(true);
   });

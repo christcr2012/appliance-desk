@@ -96,14 +96,15 @@ on — never built unasked.
     rebuild haven't been evaluated against what the in-house review's
     PR #39 already changed yet.
 - **Require customers to verify their email before logging in** —
-  currently off (`requireEmailVerification: false` in
-  `src/lib/auth.ts`), with a note to flip it on once email sending is
-  confirmed working in production. That condition is now met (Resend
-  confirms `robinsonappliancerentals.com` as fully verified,
-  2026-09-27) — flipping it is a one-line change whenever Chris wants
-  it. Left off for now since it changes real signup behavior (a new
-  customer would have to click a link in an email before their first
-  login), which is Chris's call, not an automatic one.
+  **done (2026-09-28, Task #70)**. `requireEmailVerification: true` in
+  `src/lib/auth.ts`. Because every account here is created server-side
+  and activated via an emailed "set your password" link (proof of inbox
+  control on its own), each account-creation code path marks
+  `emailVerified: true` itself rather than adding a second, separate
+  verification email — see `docs/DECISIONS.md`'s 2026-09-28 "Required
+  email verification" entry for the full reasoning, including the
+  migration that backfills existing accounts so nobody (Chris's own
+  OWNER account included) gets locked out.
 - **A real business email address on the domain** — **done (2026-09-27)**.
   Originally discussed 2026-09-26 as a deferred decision (options were
   Cloudflare Email Routing, Zoho Mail, or Google Workspace/Microsoft
@@ -113,15 +114,15 @@ on — never built unasked.
   `leads@`, `support@`, `no-reply@`, and `billing@`. Full detail and
   which address maps to which env var/code path is in
   `docs/ARCHITECTURE.md`'s "Email addresses (Google Workspace)" section.
-  - **Still open, tracked here on purpose:** wiring the app itself to
-    actually use these new addresses — `LEAD_NOTIFICATION_EMAIL`,
-    `MAINTENANCE_NOTIFICATION_EMAIL`, and `RESEND_FROM_EMAIL` (Vercel
-    environment variables) plus `publicEmail` (edited in
-    `/desk/settings`) are all still on their old placeholder/fallback
-    values. This is a quick change (a few Vercel env vars + one
-    settings-form edit) but touches what customers see and where leads
-    land, so it's deliberately left for Chris to say "go" on rather than
-    switched over silently.
+  - **Wiring the app to use these addresses is done (2026-09-28, Task
+    #69)** — `LEAD_NOTIFICATION_EMAIL`, `MAINTENANCE_NOTIFICATION_EMAIL`,
+    and `RESEND_FROM_EMAIL` are set as real Vercel environment variables
+    pointing at `leads@`, `support@`, and `no-reply@`
+    `robinsonappliancerentals.com`. See `docs/DECISIONS.md`'s 2026-09-28
+    "Real business email" entry. `publicEmail` (the address shown to
+    customers on the public site, edited in `/desk/settings`) was
+    deliberately left alone — Chris has it set to his own address today,
+    and that's his call to change, not an automatic one.
 - **Neon ↔ Vercel preview branching**: gives every PR preview deployment
   its own isolated database branch, so testing never touches real
   customer data. Skipped for now per the brief ("if it isn't simple,
@@ -181,7 +182,8 @@ on — never built unasked.
   job reminder text) is wired up and ready. **Still open**: a separate
   Contacts concept, and an accounting export — Chris has picked both
   (Task #73, plus real business email as Task #69) and they're queued
-  up next.
+  up next. **Real business email is done (2026-09-28, Task #69)** — see
+  above.
 - **A third Astra review ("upgrade to a connected workspace"),
   2026-09-27** — saved verbatim at
   `docs/reviews/2026-09-27-astra-workspace-review.md`, fact-checked in
