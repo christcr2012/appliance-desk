@@ -4,7 +4,11 @@ import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { addServiceAddressAction } from "../actions";
-import { formatCents } from "@/domains/pricing";
+// Imported from ./money directly, not "@/domains/pricing" — that
+// index also pulls in @/lib/prisma (the `pg` driver), which breaks the
+// client bundle for this "use client" component. See that index's own
+// comment for why the split exists.
+import { formatCents } from "@/domains/pricing/money";
 
 type Address = {
   id: string;
