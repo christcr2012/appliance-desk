@@ -1366,3 +1366,117 @@ roles/approval limits, multi-employee dispatch assignment) is explicitly
 aimed at a team he doesn't have yet. Rather than build any of it unasked,
 I'm bringing this to Chris to pick where to start, per `AGENTS.md`'s
 guidance to ask before large/costly/ambiguous work.
+
+## 2026-09-27 — A fourth Astra message was an actual code review, and found three real billing bugs — fixed
+
+Unlike the first three Astra messages this session (screen-based pitches),
+this fourth one says it read the real repository at commit `872b980`
+(`main` after PR #45) and reports specific, line-and-behavior-level
+findings rather than a general redesign pitch. Saved verbatim at
+`docs/reviews/2026-09-27-astra-code-review.md`. Because this one claims
+to be about the actual code and touches real money, I verified every
+"Urgent"/"High" claim against the code myself (reading the exact
+functions, not taking the report's word) before deciding what to do.
+
+**Three "Urgent" findings were real bugs — confirmed, then fixed:**
+
+1. **A successful retry after a failed payment could stay marked unpaid
+   forever.** `handleInvoicePaid` (in `src/domains/billing/webhooks.ts`)
+   skipped recording anything whenever an `Invoice` row already existed
+   for that Stripe invoice id — including one created by
+   `handleInvoicePaymentFailed` and still sitting at `DELINQUENT`. Stripe
+   reuses the same invoice id across a failed attempt and a later
+   successful retry, so a customer who paid successfully after an initial
+   card decline (or a retried ACH debit) would never have that shown —
+   Chris would keep seeing them as delinquent even though Stripe had the
+   money. **Fixed**: `handleInvoicePaid` now checks the existing invoice's
+   *status*, not just whether a row exists — a genuinely-already-`PAID`
+   invoice (the real duplicate-delivery case webhook retries are supposed
+   to short-circuit) is still skipped, but a `DELINQUENT` one is updated
+   in place to `PAID`, given its real line items, and gets a new
+   `succeeded` Payment row alongside the earlier `failed` one — an honest
+   record of what actually happened, not a rewrite of history. Covered by
+   a new test in `tests/billing-webhooks.test.ts`.
+2. **Checkout completion was recorded as a successful payment without
+   checking whether the money had actually settled.** Stripe fires
+   `checkout.session.completed` the moment the customer finishes the
+   Checkout flow — for an instant method (card) that's also when the
+   money moves, but for the delayed-settlement method this app also
+   offers (ACH bank transfer, per `docs/BUSINESS-RULES.md`), the actual
+   debit can take days to clear and can still fail after this event
+   fires. `handleCheckoutSessionCompleted` called `recordPaidInvoice`
+   (marking the invoice `PAID` in our database) regardless, which could
+   show a pending — or later-failed — bank payment as paid immediately.
+   **Fixed**: it now checks Stripe's own `invoice.status` first and only
+   records anything if Stripe itself already considers the invoice paid;
+   otherwise it does nothing and waits for `invoice.paid` (once the ACH
+   debit actually clears) or `invoice.payment_failed` to say what really
+   happened — which is Stripe's own documented pattern for delayed
+   payment methods, and exactly what the review pointed to. Covered by
+   two new tests (a pending ACH invoice recording nothing at checkout,
+   then getting recorded once `invoice.paid` fires for real).
+3. **Ending or cancelling an agreement never told Stripe to stop
+   billing.** `closeAgreement` (shared by `endAgreement`/
+   `cancelAgreement` in `src/domains/agreements/index.ts`) updated only
+   our own database — freeing appliances, marking the agreement
+   `ENDED`/`CANCELLED` — and never called Stripe at all. A customer Chris
+   considered done with could keep being billed monthly on the still-live
+   Stripe subscription until he noticed and cancelled it by hand in the
+   Stripe dashboard. **Fixed**: `closeAgreement` now calls
+   `stripe.subscriptions.cancel(...)` first, before touching any local
+   record — if that fails for a real reason (Stripe unreachable, etc.)
+   the whole close is blocked rather than telling Chris an agreement is
+   "ended" while it might still be billing; if Stripe says the
+   subscription is already gone (`resource_missing` — e.g. the
+   `customer.subscription.deleted` webhook for it already ran), that's
+   treated as success, not an error. Covered by four new tests in
+   `tests/agreements-close-stripe-subscription.test.ts`.
+
+**Two "High" findings are real code behavior, but were already
+deliberate, documented decisions** — not bugs, though the review's
+underlying business concern is legitimate and worth Chris weighing:
+
+4. *"Closing an agreement immediately makes its appliances available."*
+   True, and it's exactly what `docs/BUSINESS-RULES.md` already
+   documents ("Ending or cancelling an agreement frees its appliances
+   back to [AVAILABLE]"). The real-world risk the review names is fair
+   though: if Chris clicks "end agreement" before he's actually picked
+   the appliance up, it could get assigned to a new customer while still
+   sitting at the old customer's house. Not fixed here — this is a
+   product decision (add a "returned, awaiting pickup/inspection" status
+   in between) that changes a documented workflow, not a silent defect.
+5. *"Signing immediately starts the agreement and marks appliances
+   rented."* Also true, and also already documented (`docs/BUSINESS-
+   RULES.md`: "Signing moves the agreement to ACTIVE and its assigned
+   appliances [to RENTED]... Chris manually schedules the delivery/
+   installation Job"). Same situation — a real simplification (signature
+   date and actual delivery date are conflated for revenue/analytics
+   purposes) that was chosen on purpose, not missed.
+
+**The "High" finding about idempotency is a real, smaller gap, not
+fixed here:** `createCheckoutSessionForAgreement` passes no idempotency
+key to `stripe.checkout.sessions.create` and doesn't reuse an existing
+open session — a double-click or retried request would create a second
+Checkout Session rather than reusing the first. Lower severity than the
+three above (it doesn't lose or misstate money, it just could hand a
+customer two payment links instead of one) — logged in `docs/ROADMAP.md`
+rather than fixed in this pass.
+
+**Everything else in the review** (separating agreement/equipment/
+billing status into explicit intermediate states, expanding customer
+accounts beyond one login, turning Jobs into real dispatch software, an
+exception queue, splitting estimated vs. actual revenue in reports,
+pagination/background jobs for scale) restates or overlaps ground the
+third Astra review already covered this session
+(`docs/reviews/2026-09-27-astra-workspace-review.md`) — not repeated
+here, tracked together in `docs/ROADMAP.md`.
+
+**Why fixed instead of just logged:** `AGENTS.md` puts correctness ahead
+of everything else, and gives standing authority to fix bugs without
+asking first (the "ask before anything irreversible or costly" list is
+about live payments, purchases, and deleted data — not about correcting
+code that mishandles money it's already supposed to be tracking
+correctly). These three are squarely bugs in existing, intended billing
+behavior, not new features or a live-payments change — Stripe remains in
+test mode throughout. Fixed in `ai/claude/astra-workspace-review`
+alongside the docs assessment for this session's reviews.

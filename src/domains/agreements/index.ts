@@ -1,6 +1,8 @@
+import Stripe from "stripe";
 import { prisma } from "@/lib/prisma";
 import type { RentalAgreementStatus } from "@prisma/client";
 import { getBusinessSettings } from "@/domains/settings";
+import { getStripeClient } from "@/lib/stripe";
 import {
   calculatePrepayDiscountCentsPerMonth,
   isFreeMonthEarned,
@@ -424,7 +426,15 @@ export async function signAgreement(signatureRecordId: string, input: SignAgreem
 
 /** Ends or cancels an agreement, freeing every appliance it still has
  * assigned back to AVAILABLE. Shared by endAgreement/cancelAgreement
- * since the appliance-freeing logic is identical either way. */
+ * since the appliance-freeing logic is identical either way.
+ *
+ * Also stops the agreement's real Stripe subscription, if it has one
+ * (real-money bug fixed 2026-09-27 — a review found this path updated
+ * only our own records, so Stripe kept billing every month after Chris
+ * considered a rental over; see docs/DECISIONS.md). This runs *before*
+ * the local database transaction below: if Stripe can't be reached or
+ * refuses the cancellation, the close fails outright rather than
+ * telling Chris an agreement is "ended" while it's still being billed. */
 async function closeAgreement(
   userId: string,
   agreementId: string,
@@ -436,6 +446,25 @@ async function closeAgreement(
   const check = canTransitionAgreementStatus(agreement.status, newStatus);
   if (!check.ok) {
     throw new Error(check.reason);
+  }
+
+  if (agreement.stripeSubscriptionId) {
+    const stripe = getStripeClient();
+    try {
+      await stripe.subscriptions.cancel(agreement.stripeSubscriptionId);
+    } catch (err) {
+      // Already gone on Stripe's side (e.g. the customer.subscription.deleted
+      // webhook for this same subscription already ran) — nothing left to
+      // stop, safe to continue closing our own records. Any other Stripe
+      // error (network issue, auth problem, etc.) should block the close,
+      // not be silently swallowed.
+      const alreadyGone =
+        err instanceof Stripe.errors.StripeInvalidRequestError &&
+        err.code === "resource_missing";
+      if (!alreadyGone) {
+        throw err;
+      }
+    }
   }
 
   return prisma.$transaction(async (tx) => {
