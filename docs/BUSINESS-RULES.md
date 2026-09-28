@@ -191,9 +191,9 @@ a new, explicit `PricingRule`, not inferred from address count.
    from `RESERVED` to `RENTED`.
 7. Chris manually schedules the delivery/installation `Job` (and later,
    swaps, removals, or maintenance visits) from the agreement, and can
-   log condition photos (pasted URLs for now — no file-upload/blob
-   storage decision has been made yet, see `docs/ROADMAP.md`) and mark
-   it in-progress/completed.
+   log condition photos (taken with the device's camera or picked from
+   its library — see `docs/ARCHITECTURE.md`'s "Photo uploads (Vercel
+   Blob)" section) and mark it in-progress/completed.
 8. Ending or cancelling an agreement frees its appliances back to
    `AVAILABLE`.
 

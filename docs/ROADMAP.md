@@ -247,11 +247,13 @@ on — never built unasked.
   anticipates this swap without a schema change. Worth it once
   transaction volume or dispute risk grows past what the lightweight
   version comfortably covers — Chris's call, not automatic.
-- **Real file uploads for photos** (condition photos on jobs, appliance-
-  type photos) instead of pasting a URL — needs a decision on file/blob
-  storage (e.g. Vercel Blob) and likely a small recurring cost. Pasting
-  a URL works fine for now since Chris already has photos hosted
-  somewhere (or can use a free image host), so this isn't urgent.
+- ~~Real file uploads for photos instead of pasting a URL~~ — **done,
+  2026-09-28** (Chris's explicit request). See docs/ARCHITECTURE.md's
+  "Photo uploads (Vercel Blob)" section and docs/DECISIONS.md. Still not
+  built: appliance-instance-level photos and customer-portal maintenance-
+  request photos — the schema already supports both (`Photo.applianceId`
+  / `Photo.maintenanceRequestId`) but nothing built a UI for either yet.
+  Worth doing with the same upload component if Chris wants it.
 - **Link a `Job` back to the `MaintenanceRequest` it fulfills** — **done
   (2026-09-26)**. `/desk/maintenance`'s "Schedule a job for this" now
   opens `/desk/jobs/new?maintenanceRequestId=...`, which pre-fills that
