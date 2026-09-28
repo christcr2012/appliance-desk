@@ -78,7 +78,9 @@ describe("createCustomerDirectly — Chris adding a customer himself", () => {
     userUpdate.mockReset().mockResolvedValue({ id: "user-1", role: "CUSTOMER" });
     customerFindUnique.mockReset().mockResolvedValue(null);
     customerCreate.mockReset().mockResolvedValue({ id: "cust-1" });
-    serviceAddressCreate.mockReset().mockResolvedValue({});
+    serviceAddressCreate.mockReset().mockImplementation((args: { data: { line1: string } }) =>
+      Promise.resolve({ id: `addr-${args.data.line1}`, ...args.data }),
+    );
     auditLogCreate.mockReset().mockResolvedValue({});
     signUpEmail.mockReset().mockResolvedValue({ user: { id: "user-1" } });
     requestPasswordReset.mockReset().mockResolvedValue({ status: true });
@@ -94,6 +96,16 @@ describe("createCustomerDirectly — Chris adding a customer himself", () => {
     expect(customerCreate.mock.calls[0][0].data.isPropertyManager).toBe(true);
     expect(serviceAddressCreate).toHaveBeenCalledTimes(3);
     expect(result.customer.id).toBe("cust-1");
+  });
+
+  it("returns the created service addresses alongside the customer — the rental builder wizard uses these to move straight to picking one", async () => {
+    userFindUnique.mockResolvedValue(null);
+    const { createCustomerDirectly } = await import("@/domains/customers");
+
+    const result = await createCustomerDirectly("owner-1", INPUT);
+
+    expect(result.serviceAddresses).toHaveLength(3);
+    expect(result.serviceAddresses[0]).toMatchObject({ line1: "1 Main St", city: "Greeley" });
   });
 
   it("creates a new account with a discarded random password and emails an activation link", async () => {

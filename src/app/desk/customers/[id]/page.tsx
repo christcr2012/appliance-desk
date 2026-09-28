@@ -1,10 +1,20 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { getCustomerById } from "@/domains/customers";
+import { getCustomerById, getCustomerTimeline, getCustomerContacts } from "@/domains/customers";
 import { formatCents } from "@/domains/pricing";
 import { ResendActivationButton } from "./resend-activation-button";
+import { AddNoteForm } from "./add-note-form";
+import { ContactsPanel } from "./contacts-panel";
 
 export const metadata = { title: "Customer" };
+
+function timeAgo(date: Date): string {
+  const days = Math.floor((Date.now() - date.getTime()) / (24 * 60 * 60 * 1000));
+  if (days <= 0) return "today";
+  if (days === 1) return "1 day ago";
+  if (days < 30) return `${days} days ago`;
+  return date.toLocaleDateString("en-US");
+}
 
 export default async function CustomerDetailPage({
   params,
@@ -12,7 +22,11 @@ export default async function CustomerDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const customer = await getCustomerById(id);
+  const [customer, timeline, contacts] = await Promise.all([
+    getCustomerById(id),
+    getCustomerTimeline(id),
+    getCustomerContacts(id),
+  ]);
 
   if (!customer) {
     notFound();
@@ -24,14 +38,35 @@ export default async function CustomerDetailPage({
         &larr; Back to customers
       </Link>
 
-      <h1 className="mt-2 text-xl font-semibold">
-        {customer.user.name ?? customer.user.email}
-      </h1>
-      <p className="mt-1 text-sm text-gray-600">
-        {customer.user.email}
-        {customer.phone ? ` · ${customer.phone}` : ""}
-        {customer.companyName ? ` · ${customer.companyName}` : ""}
-      </p>
+      <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-semibold">
+            {customer.user.name ?? customer.user.email}
+          </h1>
+          <p className="mt-1 text-sm text-gray-600">
+            {customer.user.email}
+            {customer.phone ? ` · ${customer.phone}` : ""}
+            {customer.companyName ? ` · ${customer.companyName}` : ""}
+          </p>
+        </div>
+
+        {/* Quick actions — the two most common next steps from a
+            customer's own page, without hunting through the nav. */}
+        <div className="flex gap-2">
+          <Link
+            href={`/desk/agreements/new?customerId=${customer.id}`}
+            className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
+          >
+            + New agreement
+          </Link>
+          <Link
+            href={`/desk/jobs/new?customerId=${customer.id}`}
+            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            Schedule a job
+          </Link>
+        </div>
+      </div>
 
       <div className="mt-3 rounded-lg border border-gray-200 bg-white px-4 py-3">
         <p className="text-sm text-gray-600">
@@ -102,6 +137,36 @@ export default async function CustomerDetailPage({
                       a.lines.reduce((sum, l) => sum + l.monthlyPriceCents, 0),
                     )}/mo)`}
                 </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <div className="mt-6">
+        <ContactsPanel customerId={customer.id} contacts={contacts} />
+      </div>
+
+      <div className="mt-6 rounded-lg border border-gray-200 bg-white p-5">
+        <h2 className="font-medium text-gray-900">Notes &amp; activity</h2>
+        <AddNoteForm customerId={customer.id} />
+
+        {timeline.length === 0 ? (
+          <p className="mt-4 text-sm text-gray-600">Nothing recorded yet.</p>
+        ) : (
+          <ul className="mt-4 space-y-3 border-t border-gray-100 pt-4">
+            {timeline.map((entry) => (
+              <li key={entry.id} className="text-sm">
+                <div className="flex items-baseline justify-between gap-3">
+                  <p className={entry.kind === "note" ? "font-medium text-gray-900" : "text-gray-700"}>
+                    {entry.kind === "note" ? "Note" : entry.summary}
+                  </p>
+                  <span className="shrink-0 text-xs text-gray-500">{timeAgo(entry.createdAt)}</span>
+                </div>
+                {entry.detail && <p className="text-gray-700">{entry.detail}</p>}
+                {entry.authorName && (
+                  <p className="text-xs text-gray-500">— {entry.authorName}</p>
+                )}
               </li>
             ))}
           </ul>

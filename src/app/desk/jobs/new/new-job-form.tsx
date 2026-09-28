@@ -39,16 +39,26 @@ export function NewJobForm({
   customers,
   agreement,
   maintenanceContext,
+  initialCustomerId,
 }: {
   customers: CustomerOption[];
   agreement: AgreementContext | null;
   maintenanceContext?: MaintenanceContext | null;
+  /** Preselects a customer from a plain link (e.g. the "Schedule a job"
+   * quick action on their own /desk/customers/[id] page) — distinct from
+   * agreement/maintenanceContext, which also carry a service address and
+   * (for maintenanceContext) appliance options along with the customer. */
+  initialCustomerId?: string;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [type, setType] = useState(agreement ? "DELIVERY" : "MAINTENANCE_VISIT");
   const [customerId, setCustomerId] = useState(
-    agreement?.customerId ?? maintenanceContext?.customerId ?? customers[0]?.id ?? "",
+    agreement?.customerId ??
+      maintenanceContext?.customerId ??
+      initialCustomerId ??
+      customers[0]?.id ??
+      "",
   );
   const selectedCustomer = customers.find((c) => c.id === customerId);
   const [serviceAddressId, setServiceAddressId] = useState(

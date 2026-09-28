@@ -6,6 +6,9 @@ import {
   sendCustomerActivationEmail,
 } from "@/domains/leads";
 
+export { getCustomerTimeline, getCustomerContacts } from "./timeline";
+export type { TimelineEntry } from "./timeline";
+
 /**
  * Customers — created either by converting a Lead (src/domains/leads'
  * convertLeadToCustomer) or, since the "add a customer directly"
@@ -26,6 +29,31 @@ export async function getCustomers() {
       _count: { select: { rentalAgreements: true } },
     },
     orderBy: [{ createdAt: "desc" }],
+  });
+}
+
+/** How many (non-archived) customers exist — used to clamp the page
+ * number before fetching that page's rows (src/domains/pagination.ts). */
+export async function getCustomersCount(): Promise<number> {
+  return prisma.customer.count({ where: { archivedAt: null } });
+}
+
+/** Paginated variant for /desk/customers's own list, as the customer
+ * roster grows past a page — see src/domains/pagination.ts.
+ * getCustomers() above stays unpaginated for the callers that need
+ * every customer at once (the rental builder wizard's picker, the new-
+ * job form's picker). */
+export async function getCustomersPage(skip: number, pageSize: number) {
+  return prisma.customer.findMany({
+    where: { archivedAt: null },
+    include: {
+      user: { select: { name: true, email: true } },
+      serviceAddresses: true,
+      _count: { select: { rentalAgreements: true } },
+    },
+    orderBy: [{ createdAt: "desc" }],
+    skip,
+    take: pageSize,
   });
 }
 
@@ -132,7 +160,7 @@ export async function createCustomerDirectly(
     activationEmailSent = await sendCustomerActivationEmail(input.email);
   }
 
-  const customer = await prisma.$transaction(async (tx) => {
+  const { customer, serviceAddresses } = await prisma.$transaction(async (tx) => {
     const customerRow = await tx.customer.create({
       data: {
         userId: account!.id,
@@ -143,17 +171,24 @@ export async function createCustomerDirectly(
       },
     });
 
+    // Returned to the caller (used by the rental builder wizard —
+    // src/app/desk/agreements/new — to move straight into picking this
+    // brand-new customer's just-created address for the agreement,
+    // without a second round-trip to look it up).
+    const addresses = [];
     for (const address of input.addresses) {
-      await tx.serviceAddress.create({
-        data: {
-          customerId: customerRow.id,
-          line1: address.line1,
-          line2: address.line2 || null,
-          city: address.city,
-          state: address.state || "CO",
-          zip: address.zip,
-        },
-      });
+      addresses.push(
+        await tx.serviceAddress.create({
+          data: {
+            customerId: customerRow.id,
+            line1: address.line1,
+            line2: address.line2 || null,
+            city: address.city,
+            state: address.state || "CO",
+            zip: address.zip,
+          },
+        }),
+      );
     }
 
     await tx.auditLog.create({
@@ -170,8 +205,8 @@ export async function createCustomerDirectly(
       },
     });
 
-    return customerRow;
+    return { customer: customerRow, serviceAddresses: addresses };
   });
 
-  return { customer, isNewAccount, activationEmailSent };
+  return { customer, serviceAddresses, isNewAccount, activationEmailSent };
 }

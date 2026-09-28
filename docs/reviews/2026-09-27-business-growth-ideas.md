@@ -1,4 +1,11 @@
-# Business-growth ideas — for Chris to pick from, none built yet
+# Business-growth ideas — for Chris to pick from
+
+**Update, 2026-09-28**: ideas #3, #4, #5, #7, #8, and #11 below are now
+built — see `docs/BUSINESS-RULES.md`'s "Growth signals" section and
+`docs/DECISIONS.md`'s matching dated entry (`/desk/growth` and
+`/rent/[city]`). #6 shipped in a deliberately narrower form than
+described below (a manual candidate list Chris acts on himself, not an
+automatic email on a timer). Everything else here is still just a menu.
 
 Chris asked (2026-09-27, after seeing the fleet/revenue/QR-code/
 profitability features get built): "use these [the friend's proposal] as

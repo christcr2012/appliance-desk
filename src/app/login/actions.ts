@@ -3,8 +3,12 @@
 import { getServerSession, type Role } from "@/lib/session";
 
 const ROLE_LANDING_PAGE: Record<Role, string> = {
-  OWNER: "/desk/dashboard",
-  ADMIN: "/desk/dashboard",
+  // "Today" (2026-09-28) — what's scheduled today plus anything stuck
+  // needing attention (the exception inbox), so logging in lands
+  // somewhere actionable instead of a page of stats. The stats
+  // dashboard is still there, just one click away in the nav.
+  OWNER: "/desk/today",
+  ADMIN: "/desk/today",
   CUSTOMER: "/account",
 };
 

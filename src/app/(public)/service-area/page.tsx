@@ -1,7 +1,12 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Container } from "@/components/site/container";
 import { ButtonLink } from "@/components/site/button-link";
 import { getBusinessSettings, parseServiceArea } from "@/domains/settings";
+
+function slugifyCity(city: string): string {
+  return city.trim().toLowerCase().replace(/\s+/g, "-");
+}
 
 export const metadata: Metadata = {
   title: "Service Area",
@@ -36,11 +41,13 @@ export default async function ServiceAreaPage() {
                 </h2>
                 <ul className="mt-4 flex flex-wrap gap-2">
                   {cities.map((city) => (
-                    <li
-                      key={city}
-                      className="rounded-full bg-primary-soft px-4 py-1.5 text-sm font-medium text-primary-dark"
-                    >
-                      {city}
+                    <li key={city}>
+                      <Link
+                        href={`/rent/${slugifyCity(city)}`}
+                        className="block rounded-full bg-primary-soft px-4 py-1.5 text-sm font-medium text-primary-dark hover:bg-primary/20"
+                      >
+                        {city}
+                      </Link>
                     </li>
                   ))}
                 </ul>

@@ -1549,3 +1549,231 @@ changed file here was checked against a `git stash` baseline to confirm
 no *new* errors were introduced beyond that known, pre-existing noise.
 CI (real Postgres) is the actual verification gate for the DB-backed
 tests (`tests/billing-webhooks.test.ts`, `tests/inventory.test.ts`).
+
+## 2026-09-28 — Exception inbox + "Today" landing page
+
+Second piece of "get everything built out now" (`docs/ROADMAP.md`'s
+build list, item 2 of 12). Built on top of the rental-lifecycle branch
+(PR #49), since its centerpiece — `billingBlockedReason` — only exists
+there; this PR should merge after (or together with) that one.
+
+Gathers six already-possible-but-easy-to-miss stuck states into one list
+(`src/domains/exceptions`) instead of leaving Chris to notice them by
+happening to open the right page: billing blocked, an expired
+reservation hold, a past-due invoice, an overdue job, an unreviewed
+maintenance request, and an appliance sitting uninspected too long. See
+`docs/BUSINESS-RULES.md`'s new "The exception inbox and 'Today'"
+section for the full list and thresholds.
+
+**Changed where logging in sends Chris**, from `/desk/dashboard` (a
+stats page) to the new `/desk/today` (what's scheduled today + what
+needs attention) — not something Chris asked for by name, but it's the
+direct realization of what he described wanting from this feature
+("one place to see anything that needs your attention instead of having
+to go hunting for it"), and it's a one-line, easily-reversed routing
+change, not a removal of anything — the stats dashboard is still there,
+one click away in the nav. Flagged to Chris in the session report rather
+than treated as silently obvious.
+
+**A known approximation, documented in code rather than hidden**: "how
+long has this appliance been sitting `AWAITING_INSPECTION`" is read off
+`Appliance.updatedAt`, which changes on any edit to that row, not only a
+status change — good enough to sort a secondary list by roughly how
+stale something is, not worth a dedicated timestamp column for. Same
+spirit as `computeMrrTrend`'s own documented approximation.
+
+## 2026-09-28 — Customer workspace: notes, contacts, activity timeline
+
+Third piece of "get everything built out now." Adds two new tables
+(`CustomerNote`, `CustomerContact`) and a merged activity timeline to a
+customer's own Desk page — see `docs/BUSINESS-RULES.md`'s new "Customer
+workspace" section.
+
+Notes are deliberately append-only (no edit or delete) — same reasoning
+as `AuditLog` itself: a record of what was actually said and when is
+more trustworthy than one that can be quietly rewritten later. Contacts
+*can* be deleted (people leave a company, a number changes), scoped to
+both the contact id and the customer id in the same query so a stale or
+tampered form can never delete a different customer's contact.
+
+The activity timeline reads the existing `AuditLog` table back, scoped
+to one customer's own history (itself, plus every one of their
+agreements/jobs/maintenance requests) rather than one entity at a time
+the way every other page reads it — the first place in the app that
+does this. An action string it doesn't specifically recognize falls back
+to showing the raw string rather than dropping the entry, so a new audit
+action added elsewhere never silently disappears from a customer's
+timeline.
+
+## 2026-09-28 — Appliance record: guided actions and history
+
+Fourth piece of "get everything built out now." Adds
+`src/domains/inventory/guided-actions.ts` — see `docs/BUSINESS-RULES.md`'s
+new "Appliance guided actions and history" section for what each one
+does and why.
+
+The notable one is **swap**: before this, there was genuinely no way to
+reassign an appliance from one active rental line to a different
+physical unit short of editing the database by hand — `ApplianceAssignment`
+had no reassignment path at all, only assign-at-agreement-creation and
+unassign-at-agreement-end. This is the first code in the app that
+actually does a mid-rental reassignment, and it does the whole thing
+(unassign old, assign new, move both statuses, create the job) in one
+`$transaction` so it can't be left half-done.
+
+Every guided action reuses the exact same pure rules from
+`src/domains/inventory/lifecycle.ts` that the raw status buttons already
+enforce (`canTransitionApplianceStatus`, `applianceStatusAfterInspection`)
+rather than re-deciding allowed transitions itself, so a guided action
+can never move an appliance somewhere the raw buttons would have
+refused.
+
+**Real bug found and fixed while building this**: `getBusinessSettings`'s
+`DEFAULT_SETTINGS` fallback (used only if the singleton `BusinessSettings`
+row is somehow missing) had never been updated with the
+`inspectionChecklist` field added to the schema earlier in this session's
+work — so reading `settings.inspectionChecklist` would have broken, in
+that fallback case, for every caller, not just this one. The local
+sandbox's Prisma-client issue meant this didn't show up until CI's real
+type-check caught it (`src/domains/settings/index.ts`); fixed by adding
+the missing field to `DEFAULT_SETTINGS`.
+
+## 2026-09-28 — Dispatch board: day/week/agenda, unscheduled queue, conflicts, checklists
+
+Fifth piece of "get everything built out now." Adds `/desk/dispatch` —
+see `docs/BUSINESS-RULES.md`'s new "Dispatch board" section for what it
+shows and why.
+
+**Conflict detection is deliberately approximate**, the same spirit as
+the `Appliance.updatedAt`-as-staleness approximation noted above and
+`computeMrrTrend`'s own documented one: jobs don't record how long a
+visit actually takes, so a single assumed duration
+(`ASSUMED_JOB_DURATION_MINUTES = 120` in `src/domains/jobs/dispatch.ts`)
+stands in for a real duration field. Good enough to warn Chris he's
+likely double-booked, not worth asking him to estimate a duration for
+every job just to make this one warning slightly more precise.
+
+Added `Job.checklist` (JSONB, same shape and same
+default-then-persist pattern as `ApplianceInspection.checklist` from the
+guided-actions work above) — `DEFAULT_JOB_CHECKLISTS` in
+`src/domains/jobs/checklist.ts` is a pure per-`JobType` lookup, parsed
+defensively (`parseChecklist`) the same way `featuresToText` and
+`parseServiceArea` defensively narrow their own JSONB columns elsewhere
+in the app. Saving a checklist has no status gate at all — it's
+explicitly not a completion requirement, just a memory aid, so there's
+nothing to validate beyond "is this shaped like a checklist."
+
+## 2026-09-28 — Guided rental builder wizard
+
+Sixth piece of "get everything built out now." Replaces
+`/desk/agreements/new`'s single form with a 4-step wizard — see
+`docs/BUSINESS-RULES.md`'s new "Guided rental builder wizard" section.
+
+Deliberately **not** a new agreement-creation code path: every step
+calls the same `createDraftAgreementAction` / `addRentalLineAction` /
+`sendForSignatureAction` the old two-page flow already called (both are
+already well-tested — `tests/agreements.test.ts` and friends). Only the
+UI sequencing is new, which keeps the actual risk surface of this
+change small.
+
+**`createCustomerDirectly` now also returns the `ServiceAddress` rows it
+just created** (previously only the `Customer` row), so the wizard's
+inline "new customer" step can move straight to picking that customer's
+new address for the agreement without a second lookup. Purely additive
+— every existing caller of `createCustomerDirectly`/`createCustomerAction`
+ignores the new field, so nothing about the existing "add a customer"
+page changed.
+
+## 2026-09-28 — Cross-cutting desk tools
+
+Seventh piece of "get everything built out now" — see
+`docs/BUSINESS-RULES.md`'s new "Cross-cutting desk tools" section for
+what this covers (global search, pagination, CSV export, bulk status
+actions) and what was deliberately left out (CSV import, a separate
+saved-views feature).
+
+Implementation notes:
+- Pagination math lives in one pure file (`src/domains/pagination.ts`,
+  `parsePage`/`paginationMeta`) shared by every paginated list, paired
+  with one shared `<Pagination>` component
+  (`src/components/pagination.tsx`) — same split as the rest of the
+  app's pure-logic/UI separation.
+- Each paginated domain (customers, inventory, jobs, activity) got a
+  *new* `getXCount`/`getXPage` pair sitting alongside its existing
+  unpaginated lookup, rather than changing that lookup's signature —
+  several callers (the rental wizard's pickers, the job form) still
+  need the full unfiltered list and shouldn't have to pass a page
+  number they don't care about.
+- CSV writing is a small hand-rolled RFC-4180-ish writer
+  (`src/lib/csv.ts`) rather than a dependency — quoting only a field
+  that actually needs it (comma/quote/newline), doubled inner quotes,
+  CRLF line endings. Export routes always return the *complete*
+  matching list, never just the current on-screen page.
+- Bulk status change (`bulkUpdateApplianceStatus`) deliberately loops
+  and reuses the existing single-appliance `updateApplianceStatus` per
+  item instead of one all-or-nothing transaction, so a selection that
+  mixes valid and invalid transitions still applies everywhere it can
+  and reports back exactly what didn't, instead of failing the whole
+  batch over one bad row.
+- Global search (`src/domains/search`) runs its three lookups
+  (customers/appliances/leads) in parallel via `Promise.all`, capped
+  at 8 results each, and short-circuits on a blank query rather than
+  running three pointless queries.
+
+## 2026-09-28 — Reports: actual vs. estimated earnings, missing-cost warnings
+
+Eighth piece of "get everything built out now" — see
+`docs/BUSINESS-RULES.md`'s new "Reports" section.
+
+New `/desk/reports` page and `src/domains/reports/` (pure math in
+`earnings.ts`, same split as `src/domains/inventory/analytics.ts`),
+plus a new exception-inbox category, `MISSING_REPAIR_COST`
+(`src/domains/exceptions`), for completed `MAINTENANCE_VISIT` jobs with
+no parts/labor cost logged — those already silently counted as $0
+repair cost in fleet profitability; this makes that fact visible in two
+places (the Reports page and `/desk/today`) instead of nowhere.
+
+Deliberately reused the existing MRR-trend proration convention
+(days-since-`billingStartedAt`, 30-day month) for "estimated earnings"
+rather than inventing a new one, so the Reports page's numbers are
+consistent with what the Revenue page already shows — two different
+reconstructions of the same underlying agreed-pricing data would be
+confusing to reconcile against each other.
+
+The $10 "notable gap" threshold on the Reports page is deliberately
+simple and low, same spirit as the exception inbox's own thresholds
+(`UNREVIEWED_MAINTENANCE_REQUEST_DAYS`, `UNINSPECTED_RETURN_DAYS`) —
+a number Chris could recite back, not a statistically tuned cutoff.
+
+## 2026-09-28 — Growth signals: churn risk, win-back, price review, fleet flags, local pages
+
+Ninth piece of "get everything built out now" — picks up a subset of
+`docs/reviews/2026-09-27-business-growth-ideas.md`'s brainstorm. See
+`docs/BUSINESS-RULES.md`'s new "Growth signals" section for the full
+list of what's included and, just as importantly, what was left out and
+why.
+
+New `/desk/growth` page and `src/domains/growth/` (pure scoring in
+`churn.ts` and `signals.ts`, same split as lead scoring and the
+exception inbox), plus a new public route, `/rent/[city]` — one real
+page per city actually listed in Settings' service area, never a
+fabricated one.
+
+Deliberately did **not** build the brainstorm's automatic review/
+referral-request email — an email fired automatically at a set
+milestone is a customer-facing action Chris hasn't explicitly signed
+off on sending unattended, which is exactly the spirit of `AGENTS.md`'s
+"ask before anything irreversible or costly." Built the useful half
+instead: a list of who's a good candidate to ask, refreshed from real
+billing data, that Chris acts on himself. Also deliberately left out the
+brainstorm's bigger, separate-schema, or paid ideas (a formal referral
+program, SMS notifications, a separate Contacts concept, an accounting
+export, the driver mobile job view) — each is substantial enough to be
+its own future piece, not something to fold in here.
+
+Churn-risk and fleet-utilization-flag thresholds (a $20-point at-risk
+score, 3+ units before a utilization flag means anything, a year before
+a price review is "due") are all deliberately simple, explainable
+numbers — same "no AI/ML, no hidden math" standard as lead scoring
+(`docs/BUSINESS-RULES.md`'s Lead scoring section) — not statistically
+tuned cutoffs.

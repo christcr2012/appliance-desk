@@ -8,9 +8,9 @@ export const metadata = { title: "Schedule a job" };
 export default async function NewJobPage({
   searchParams,
 }: {
-  searchParams: Promise<{ agreementId?: string; maintenanceRequestId?: string }>;
+  searchParams: Promise<{ agreementId?: string; maintenanceRequestId?: string; customerId?: string }>;
 }) {
-  const { agreementId, maintenanceRequestId } = await searchParams;
+  const { agreementId, maintenanceRequestId, customerId } = await searchParams;
   const [customers, agreement, maintenanceRequest] = await Promise.all([
     getCustomers(),
     agreementId ? getAgreementById(agreementId) : Promise.resolve(null),
@@ -69,6 +69,10 @@ export default async function NewJobPage({
               : null
           }
           maintenanceContext={maintenanceContext}
+          // Quick action from a customer's own page (/desk/customers/[id])
+          // — preselects them without needing an agreement or maintenance
+          // request already in hand.
+          initialCustomerId={!agreement && !maintenanceContext ? customerId : undefined}
         />
       </div>
     </div>

@@ -18,7 +18,7 @@ const OWNER_STATE_PATH = "e2e/.auth/owner.json";
 const CUSTOMER_STATE_PATH = "e2e/.auth/customer.json";
 
 const PUBLIC_PAGES = ["/", "/login", "/pricing", "/how-it-works", "/contact"];
-const DESK_PAGES = ["/desk/dashboard", "/desk/agreements", "/desk/billing", "/desk/inventory"];
+const DESK_PAGES = ["/desk/today", "/desk/dashboard", "/desk/agreements", "/desk/billing", "/desk/inventory"];
 const ACCOUNT_PAGES = ["/account", "/account/billing"];
 
 test.describe("public pages in dark mode", () => {

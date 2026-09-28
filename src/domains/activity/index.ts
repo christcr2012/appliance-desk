@@ -16,6 +16,23 @@ export async function getRecentActivity(limit = 50) {
   });
 }
 
+/** Total AuditLog row count — used to clamp the page number for
+ * /desk/activity's paginated view (src/domains/pagination.ts). */
+export async function getActivityCount(): Promise<number> {
+  return prisma.auditLog.count();
+}
+
+/** Paginated variant of getRecentActivity, for paging back through the
+ * full history instead of only ever seeing the most recent 50. */
+export async function getActivityPage(skip: number, pageSize: number) {
+  return prisma.auditLog.findMany({
+    orderBy: { createdAt: "desc" },
+    skip,
+    take: pageSize,
+    include: { user: { select: { name: true, email: true } } },
+  });
+}
+
 /** Plain-English label for an AuditLog action code, e.g. "lead.convert" →
  * "Converted a lead to a customer". Falls back to the raw code for any
  * action this hasn't been taught yet, rather than showing nothing. */

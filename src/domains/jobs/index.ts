@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import type { JobStatus, JobType } from "@prisma/client";
 import { applianceStatusOnJobCompleted } from "@/domains/inventory/lifecycle";
 import { startRecurringBillingForAgreement } from "@/domains/billing/checkout";
+import { parseChecklist, type ChecklistItem } from "./checklist";
 
 // ---------------------------------------------------------------------------
 // Jobs — one scheduled visit (delivery, install, swap, removal, or a
@@ -43,6 +44,31 @@ export async function getJobs(filter?: { status?: JobStatus }) {
       appliances: { include: { appliance: { include: { applianceType: true } } } },
     },
     orderBy: [{ scheduledAt: "asc" }],
+  });
+}
+
+/** Total Job count matching the same optional status filter as getJobs —
+ * used to clamp the page number for /desk/jobs's paginated view. */
+export async function getJobsCount(filter?: { status?: JobStatus }): Promise<number> {
+  return prisma.job.count({ where: filter?.status ? { status: filter.status } : undefined });
+}
+
+/** Paginated variant of getJobs. */
+export async function getJobsPage(
+  filter: { status?: JobStatus } | undefined,
+  skip: number,
+  pageSize: number,
+) {
+  return prisma.job.findMany({
+    where: filter?.status ? { status: filter.status } : undefined,
+    include: {
+      customer: { include: { user: { select: { name: true, email: true } } } },
+      serviceAddress: true,
+      appliances: { include: { appliance: { include: { applianceType: true } } } },
+    },
+    orderBy: [{ scheduledAt: "asc" }],
+    skip,
+    take: pageSize,
   });
 }
 
@@ -326,4 +352,59 @@ export async function setJobRepairCosts(
   });
 
   return updated;
+}
+
+const DISPATCH_INCLUDE = {
+  customer: { include: { user: { select: { name: true, email: true } } } },
+  serviceAddress: true,
+} as const;
+
+/**
+ * Everything the dispatch board (`/desk/dispatch`) needs for one call:
+ * every active (SCHEDULED or IN_PROGRESS) job scheduled within
+ * `[rangeStart, rangeEnd)`, plus every active job with no scheduled time
+ * at all (the "unscheduled queue" — jobs Chris created but hasn't put on
+ * the calendar yet). Completed/cancelled jobs don't belong on a
+ * forward-looking board, so they're excluded entirely rather than just
+ * filtered client-side.
+ */
+export async function getDispatchBoardJobs(rangeStart: Date, rangeEnd: Date) {
+  const [scheduled, unscheduled] = await Promise.all([
+    prisma.job.findMany({
+      where: {
+        status: { in: ["SCHEDULED", "IN_PROGRESS"] },
+        scheduledAt: { gte: rangeStart, lt: rangeEnd },
+      },
+      include: DISPATCH_INCLUDE,
+      orderBy: [{ scheduledAt: "asc" }],
+    }),
+    prisma.job.findMany({
+      where: { status: { in: ["SCHEDULED", "IN_PROGRESS"] }, scheduledAt: null },
+      include: DISPATCH_INCLUDE,
+      orderBy: [{ createdAt: "asc" }],
+    }),
+  ]);
+
+  return { scheduled, unscheduled };
+}
+
+/** This job's checklist, parsed and defaulted — see
+ * src/domains/jobs/checklist.ts. Read-only; use updateJobChecklist to
+ * save changes. */
+export async function getJobChecklist(jobId: string): Promise<ChecklistItem[]> {
+  const job = await prisma.job.findUniqueOrThrow({
+    where: { id: jobId },
+    select: { type: true, checklist: true },
+  });
+  return parseChecklist(job.checklist, job.type);
+}
+
+/** Saves Chris's progress on a job's completion checklist. Purely a
+ * field-work aid — never validated against, never blocks a status
+ * change — so this is a plain save, not a guarded transition. */
+export async function updateJobChecklist(jobId: string, checklist: ChecklistItem[]) {
+  return prisma.job.update({
+    where: { id: jobId },
+    data: { checklist },
+  });
 }

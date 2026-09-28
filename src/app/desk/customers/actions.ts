@@ -5,6 +5,12 @@ import { z } from "zod";
 import { requireRole } from "@/lib/session";
 import { sendCustomerActivationEmail } from "@/domains/leads";
 import { getCustomerById, createCustomerDirectly } from "@/domains/customers";
+import {
+  addCustomerNote,
+  addCustomerContact,
+  deleteCustomerContact,
+  type NewCustomerContactInput,
+} from "@/domains/customers/timeline";
 
 export type ResendActivationState =
   | { status: "sent" }
@@ -45,6 +51,10 @@ export type NewCustomerActionState =
       customerId: string;
       isNewAccount: boolean;
       activationEmailSent: boolean;
+      // The just-created address rows, in the same order as the
+      // addresses submitted — lets a caller (e.g. the rental builder
+      // wizard) move straight to picking one without a second lookup.
+      serviceAddresses: { id: string; line1: string; city: string; state: string; zip: string }[];
     }
   | { status: "error"; message: string };
 
@@ -93,7 +103,7 @@ export async function createCustomerAction(
   }
 
   try {
-    const { customer, isNewAccount, activationEmailSent } =
+    const { customer, serviceAddresses, isNewAccount, activationEmailSent } =
       await createCustomerDirectly(session.user.id, {
         name: parsed.data.name,
         email: parsed.data.email,
@@ -118,11 +128,111 @@ export async function createCustomerAction(
       customerId: customer.id,
       isNewAccount,
       activationEmailSent,
+      serviceAddresses: serviceAddresses.map((a) => ({
+        id: a.id,
+        line1: a.line1,
+        city: a.city,
+        state: a.state,
+        zip: a.zip,
+      })),
     };
   } catch (error) {
     return {
       status: "error",
       message: error instanceof Error ? error.message : "Couldn't add that customer.",
+    };
+  }
+}
+
+export type AddNoteState =
+  | { status: "idle" }
+  | { status: "success" }
+  | { status: "error"; message: string };
+
+/** Quick action on a customer's own page — a call, something they said,
+ * a reminder for next time. Notes are never edited or deleted once
+ * saved (see the CustomerNote model's own comment for why), so this is
+ * the only write this feature has. */
+export async function addCustomerNoteAction(
+  customerId: string,
+  body: string,
+): Promise<AddNoteState> {
+  const session = await requireRole("OWNER", "ADMIN");
+
+  try {
+    await addCustomerNote(customerId, session.user.id, body);
+    revalidatePath(`/desk/customers/${customerId}`);
+    return { status: "success" };
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Couldn't save that note.",
+    };
+  }
+}
+
+const contactSchema = z.object({
+  name: z.string().trim().min(1, "A name is required."),
+  role: z.string().trim().max(100).optional().or(z.literal("")),
+  phone: z.string().trim().max(30).optional().or(z.literal("")),
+  email: z.string().trim().max(200).optional().or(z.literal("")),
+  notes: z.string().trim().max(1000).optional().or(z.literal("")),
+});
+
+export type AddContactState =
+  | { status: "idle" }
+  | { status: "success" }
+  | { status: "error"; message: string };
+
+/** A second (or third) person Chris might need to reach for this
+ * account — a site manager, an accounts-payable contact — distinct from
+ * the customer's own login. See the CustomerContact model's own comment. */
+export async function addCustomerContactAction(
+  customerId: string,
+  input: NewCustomerContactInput,
+): Promise<AddContactState> {
+  await requireRole("OWNER", "ADMIN");
+
+  const parsed = contactSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      status: "error",
+      message: parsed.error.issues[0]?.message ?? "Check the form and try again.",
+    };
+  }
+
+  try {
+    await addCustomerContact(customerId, {
+      name: parsed.data.name,
+      role: parsed.data.role || undefined,
+      phone: parsed.data.phone || undefined,
+      email: parsed.data.email || undefined,
+      notes: parsed.data.notes || undefined,
+    });
+    revalidatePath(`/desk/customers/${customerId}`);
+    return { status: "success" };
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Couldn't add that contact.",
+    };
+  }
+}
+
+export async function deleteCustomerContactAction(
+  customerId: string,
+  contactId: string,
+): Promise<{ status: "success" } | { status: "error"; message: string }> {
+  await requireRole("OWNER", "ADMIN");
+
+  try {
+    await deleteCustomerContact(customerId, contactId);
+    revalidatePath(`/desk/customers/${customerId}`);
+    return { status: "success" };
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Couldn't remove that contact.",
     };
   }
 }

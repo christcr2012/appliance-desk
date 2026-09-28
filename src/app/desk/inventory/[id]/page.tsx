@@ -5,9 +5,12 @@ import {
   getPartRecordsForModel,
   getApplianceProfitability,
 } from "@/domains/inventory";
+import { getApplianceHistory, getInspectionChecklist } from "@/domains/inventory/guided-actions";
 import { formatCents } from "@/domains/pricing";
 import { ApplianceDetailPanel } from "./appliance-detail-panel";
 import { PartsSection } from "./parts-section";
+import { GuidedActionsPanel } from "./guided-actions-panel";
+import { HistoryTimeline } from "./history-timeline";
 
 export const metadata = { title: "Appliance" };
 
@@ -23,9 +26,11 @@ export default async function ApplianceDetailPage({
     notFound();
   }
 
-  const [partRecords, profitability] = await Promise.all([
+  const [partRecords, profitability, history, inspectionChecklist] = await Promise.all([
     appliance.model ? getPartRecordsForModel(appliance.model) : Promise.resolve([]),
     getApplianceProfitability(id),
+    getApplianceHistory(id),
+    getInspectionChecklist(),
   ]);
 
   return (
@@ -83,6 +88,11 @@ export default async function ApplianceDetailPage({
       )}
 
       <div className="mt-6 space-y-6">
+        <GuidedActionsPanel
+          applianceId={id}
+          status={appliance.status}
+          inspectionChecklist={inspectionChecklist}
+        />
         <ApplianceDetailPanel appliance={appliance} />
         <PartsSection
           modelNumber={appliance.model}
@@ -90,6 +100,7 @@ export default async function ApplianceDetailPage({
           applianceTypeId={appliance.applianceTypeId}
           partRecords={partRecords}
         />
+        <HistoryTimeline entries={history} />
       </div>
     </div>
   );

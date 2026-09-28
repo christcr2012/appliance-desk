@@ -45,6 +45,7 @@ model User {
   archivedAt DateTime?
 
   auditLogEntries AuditLog[]
+  customerNotes   CustomerNote[]
 
   @@index([role])
 }
@@ -124,6 +125,8 @@ model Customer {
   invoices         Invoice[]
   credits          CustomerCredit[]
   consentRecords   ConsentRecord[]
+  notes            CustomerNote[]
+  contacts         CustomerContact[]
   jobs             Job[]
 
   createdAt  DateTime  @default(now())
@@ -580,6 +583,19 @@ model Job {
   completedAt DateTime?
   completionNotes String?
 
+  // A per-job-type checklist Chris works through before marking the job
+  // Completed (e.g. delivery: "Delivered appliance", "Installed and
+  // tested", "Customer walkthrough done") — [{item, checked}], same
+  // shape as ApplianceInspection.checklist. Defaults come from
+  // DEFAULT_JOB_CHECKLISTS in src/domains/jobs (a pure lookup by
+  // JobType, no database import) the first time the job's own page is
+  // opened; saved back here so his progress persists between visits to
+  // the same job. Purely a field-work aid — the dispatch board shows how
+  // many items are still unchecked so he can tell at a glance which
+  // scheduled jobs still need attention, but nothing here blocks
+  // actually completing the job (see docs/BUSINESS-RULES.md).
+  checklist Json @default("[]")
+
   // What a repair actually cost, entered by Chris when he completes a
   // MAINTENANCE_VISIT job — the raw numbers appliance profitability/ROI
   // (src/domains/inventory/analytics.ts) rolls up per appliance. Nullable
@@ -929,6 +945,50 @@ model ConsentRecord {
   kind       String   // "lead_form_privacy" | "sms_opt_in" | "data_export_request" | "data_deletion_request"
   details    Json?
   createdAt  DateTime @default(now())
+}
+
+// Customer workspace (2026-09-28, docs/BUSINESS-RULES.md) — a free-text
+// note Chris (or another staff account) leaves on a customer's own
+// record: a phone call, something they said, a reminder for next time.
+// Deliberately separate from AuditLog, which records what the SYSTEM did
+// (status changes, created rows) — a note is something a person chose to
+// write down, never generated automatically, and is never edited or
+// deleted (an honest record of who said what and when, same reasoning as
+// AuditLog itself).
+model CustomerNote {
+  id         String   @id @default(cuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id])
+  authorId   String?
+  author     User?    @relation(fields: [authorId], references: [id])
+  body       String
+
+  createdAt DateTime @default(now())
+
+  @@index([customerId])
+}
+
+// A business/property-manager customer's account is one login (the
+// primary contact), but the people Chris actually needs to reach for a
+// given property aren't always that same person (a site manager for
+// scheduling access, an accounts-payable contact for billing questions).
+// Purely informational — never a login, never billed — just numbers and
+// names Chris can find on the customer's own page instead of digging
+// through old emails or notes.
+model CustomerContact {
+  id         String   @id @default(cuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id])
+
+  name  String
+  role  String? // e.g. "Site manager", "Accounts payable"
+  phone String?
+  email String?
+  notes String?
+
+  createdAt DateTime @default(now())
+
+  @@index([customerId])
 }
 
 model AuditLog {

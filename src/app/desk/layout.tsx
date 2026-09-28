@@ -2,19 +2,24 @@ import { requireRole } from "@/lib/session";
 import { AuthedHeader, type AuthedNavLink } from "@/components/authed-header";
 import { DeskSidebar } from "@/components/desk-sidebar";
 import { IdleLogout } from "@/components/idle-logout";
+import { GlobalSearchBox } from "@/components/global-search-box";
 
 export const metadata = {
   robots: { index: false, follow: false },
 };
 
 const DESK_LINKS: AuthedNavLink[] = [
+  { href: "/desk/today", label: "Today" },
   { href: "/desk/dashboard", label: "Dashboard" },
   { href: "/desk/leads", label: "Leads" },
   { href: "/desk/customers", label: "Customers" },
   { href: "/desk/agreements", label: "Agreements" },
   { href: "/desk/billing", label: "Billing" },
   { href: "/desk/revenue", label: "Revenue" },
+  { href: "/desk/reports", label: "Reports" },
+  { href: "/desk/growth", label: "Growth" },
   { href: "/desk/jobs", label: "Jobs" },
+  { href: "/desk/dispatch", label: "Dispatch" },
   { href: "/desk/maintenance", label: "Maintenance" },
   { href: "/desk/inventory", label: "Inventory" },
   { href: "/desk/fleet", label: "Fleet" },
@@ -46,6 +51,9 @@ export default async function DeskLayout({
       />
       <DeskSidebar title="Appliance Desk" links={DESK_LINKS} />
       <main id="main-content" className="flex-1 p-6">
+        <div className="mb-4 flex justify-end">
+          <GlobalSearchBox />
+        </div>
         {children}
       </main>
       {/* Owner/admin accounts see every customer's data, so an idle

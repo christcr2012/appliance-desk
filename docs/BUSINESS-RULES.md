@@ -289,6 +289,52 @@ time he logs it — each additional model number gets its own row for
 that same part, so it shows up when he looks up parts for any of those
 models later too, not just the one he started from.
 
+## Appliance guided actions and history (2026-09-28)
+
+An appliance's own page (`/desk/inventory/[id]`) has, alongside the raw
+status-change buttons, four "guided actions" that each replace a
+multi-step (or, for a swap, previously outright impossible without a
+manual database edit) process with one click:
+
+- **Start a repair** — moves the unit to `MAINTENANCE` and creates a
+  maintenance-visit job for it, together, so a status change and its
+  job can never end up out of sync (one without the other). If the
+  unit is currently on an active rental, the job is automatically
+  linked to that customer/address; otherwise it's just logged against
+  the appliance itself (e.g. a shop-floor unit).
+- **Retire this appliance** — the same terminal move the raw status
+  buttons already allow, but now requires a reason, since retiring is
+  permanent and an unexplained retirement in the history later is a
+  lot less useful than "compressor failed, not economical to repair."
+  The reason is saved both on the appliance's own notes and in its
+  history.
+- **Swap for a working unit** — only offered for a unit currently
+  `RENTED`. Unassigns the broken unit from its rental line, assigns a
+  same-appliance-type `AVAILABLE` replacement in its place, moves the
+  broken one to `MAINTENANCE` and the replacement to `RESERVED` (same
+  convention as a brand-new agreement — Chris marks it `RENTED`
+  himself once the swap job is actually completed), and creates one
+  `SWAP` job carrying both appliances. There was previously no way to
+  actually reassign an appliance mid-rental at all.
+- **Record inspection** — the guided version of moving a unit out of
+  `AWAITING_INSPECTION`. Saves the checklist as answered plus Chris's
+  notes and condition assessment as an `ApplianceInspection` record,
+  and moves the status the same way a manual inspection always has
+  (pass → `AVAILABLE`, fail → `MAINTENANCE` — see Rental lifecycle
+  above). Uses Chris's customized checklist from `/desk/settings` if
+  he's set one, otherwise the built-in default.
+
+Each guided action is atomic (the status change, any job, and the
+audit-log entry all happen together or not at all) and uses the same
+race-safe "changed by someone else, refresh and try again" check as
+every other status change in the app.
+
+**Appliance history** — every appliance's own page shows one merged,
+newest-first timeline of everything that's happened to it: status
+changes (from the audit log), every job it's been on, and every
+recorded inspection. This is read-only — there's nothing to edit here,
+it's just the record.
+
 ## Fleet analytics, appliance profitability, and QR codes (2026-09-27)
 
 **Appliance profitability/ROI** (`/desk/inventory/[id]`'s summary panel,
@@ -340,6 +386,127 @@ resolves, and the new-job form pre-fills the customer, address, and
 appliance from the request instead of starting blank — but scheduling a
 job does **not** automatically change the request's own status; Chris
 still moves it through the flow above by hand.
+
+## Customer workspace: notes and contacts (2026-09-28)
+
+A customer's own page (`/desk/customers/[id]`) now has:
+
+- **Notes** — free-text, written by Chris (a call, a reminder). Never
+  edited or deleted once saved — an honest record of who said what and
+  when, same reasoning as the audit log.
+- **Other contacts** — for a business/property-manager account, the
+  people Chris actually needs to reach for a given property aren't
+  always the one login on the account (a site manager for scheduling
+  access, an accounts-payable contact for billing). Purely
+  informational — never a login, never billed.
+- **Activity timeline** — notes plus the customer's own history (signed
+  agreements, job status changes, maintenance requests) merged into one
+  chronological feed, so Chris doesn't have to piece it together from
+  separate agreement/job pages.
+- **Quick actions** — "New agreement" and "Schedule a job," right on
+  their page.
+
+## Guided rental builder wizard (2026-09-28)
+
+`/desk/agreements/new` walks Chris through setting up a new rental
+step by step, instead of the two disconnected pages it used to be (a
+"new agreement" form, then a separate agreement page to add appliances
+and send it for signature — easy to leave half-done without noticing).
+Four steps, each gated on the previous one being complete:
+
+1. **Customer** — pick an existing customer and one of their service
+   addresses, or add a brand-new customer (name, email, phone, one
+   service address) right here without leaving the wizard.
+2. **Term & fees** — the same term/deposit/damage-waiver/late-fee/tax
+   fields the agreement has always had. Submitting this step is what
+   actually creates the `DRAFT` agreement row.
+3. **Appliances** — add one or more rental lines (label, monthly price,
+   which physical unit(s)), same as before; each one shows up in a
+   running list as it's added.
+4. **Review & send** — the total monthly price, every line, and one
+   button to send it for signature (or "finish this later" to leave it
+   as a draft and pick it up from the agreement's own page).
+
+This is a guided sequence over the exact same server actions the two
+old pages already used (`createDraftAgreementAction`,
+`addRentalLineAction`, `sendForSignatureAction`) — not a new creation
+path, so nothing about how an agreement is actually built changed, only
+how Chris is walked through building it. A new customer created inline
+gets the same activation email and account rules as adding one from
+`/desk/customers/new` (`createCustomerDirectly`).
+
+## Dispatch board (2026-09-28)
+
+`/desk/dispatch` is the scheduling view of the same jobs `/desk/jobs`
+already lists — three ways to look at what's coming up, plus what
+hasn't been put on the calendar at all:
+
+- **Day** — everything scheduled for one day, in time order.
+- **Week** — a 7-day grid (Sunday–Saturday), each day showing its jobs
+  at a glance; click a day to jump into its Day view.
+- **Agenda** — a flat, day-grouped list for the next two weeks.
+
+Only active jobs (`SCHEDULED` or `IN_PROGRESS`) appear on the board —
+completed and cancelled jobs are done, and don't belong on a
+forward-looking schedule.
+
+**Unscheduled queue** — active jobs with no time on the calendar yet
+(created but not scheduled) always show at the top of every view, so
+nothing Chris created gets forgotten just because he hasn't picked a
+time for it.
+
+**Conflict warnings** — Chris is a one-person crew, so two jobs booked
+close together means he can't actually make both. Jobs don't record how
+long a visit takes, so this uses one assumed duration (2 hours,
+`ASSUMED_JOB_DURATION_MINUTES` in `src/domains/jobs/dispatch.ts`,
+deliberately generous to include drive time) — any two jobs scheduled
+within that window of each other are flagged with a warning badge. This
+is advisory only; nothing stops Chris from actually double-booking if
+that's genuinely what he means to do (e.g. a quick drop-off right
+before a nearby delivery).
+
+**Per-job checklist** — each job's own page has a checklist Chris can
+check off in the field (defaults per job type — e.g. a delivery's is
+"delivered, installed and leveled, tested a cycle, customer
+walkthrough" — see `DEFAULT_JOB_CHECKLISTS`). The dispatch board shows
+each scheduled job's progress (e.g. "2/4") so Chris can tell at a
+glance which visits still need attention. This is purely a memory aid —
+nothing here is required to actually mark a job Completed, and a
+completed job with an unchecked item is not an error.
+
+## The exception inbox and "Today" (2026-09-28)
+
+`/desk/today` is where Chris lands after logging in — what's scheduled
+today, plus a "Needs your attention" list gathering anything stuck,
+across the whole app, into one place (`src/domains/exceptions`). None of
+these are new failure states; they're existing ones that used to require
+Chris to notice them by opening the right page at the right time. Each
+item links straight to the page where it's actually fixed — this is a
+list, not its own separate workflow.
+
+What shows up there, and why:
+
+- **Billing blocked** — an agreement's `billingBlockedReason` is set
+  (see Billing rules above). Always high severity — it's money not
+  being collected.
+- **Reservation expired** — a `DRAFT`/`AWAITING_SIGNATURE` agreement
+  past its `reservationExpiresAt` hold, still tying up equipment that
+  could go to someone else.
+- **Past due** — an invoice past its due date, still `OPEN` or
+  `DELINQUENT`. High severity.
+- **Overdue job** — a `SCHEDULED` job whose `scheduledAt` has already
+  passed without being marked in progress or completed.
+- **Needs review** — a maintenance request still `SUBMITTED` after 2
+  days (`UNREVIEWED_MAINTENANCE_REQUEST_DAYS` in
+  `src/domains/exceptions/rules.ts`).
+- **Needs inspection** — an appliance sitting `AWAITING_INSPECTION` for
+  more than 3 days (`UNINSPECTED_RETURN_DAYS`) — it can't be rented out
+  again until Chris checks it over.
+
+Sorted high-severity first, then oldest first within each severity — the
+thing that's been sitting the longest and matters the most shows up at
+the top. The stats dashboard (`/desk/dashboard`) still exists separately
+for a broader numbers view; `/desk/today` is the actionable one.
 
 ## Customer data isolation (security-critical)
 
@@ -423,6 +590,135 @@ customer.
   `docs/ARCHITECTURE.md`'s Payments section; card payments work fine
   in the meantime either way, this only affects ACH deposit
   confirmation until he updates it.
+
+## Cross-cutting desk tools (2026-09-28)
+
+Task #44 of the September 2026 build plan. Small tools shared across
+several desk pages rather than one feature of their own:
+
+- **Global search** (`/desk/search`, a search box in the desk header on
+  every page): looks across customers (name/email/company), appliances
+  (asset number/manufacturer/model/serial number), and leads
+  (name/email/company) at once, up to 8 matches per category. A plain
+  GET form, so it works without JavaScript and a search is just a
+  normal shareable URL.
+- **Pagination**: the customers, inventory, jobs, and activity lists
+  now page at 25 rows instead of loading everything at once. Page
+  number lives in the URL (`?page=2`), so a page is bookmarkable and
+  works with the browser's back button. Other places that need the
+  *complete* list at once for a picker (the rental wizard's customer/
+  appliance pickers, the job form) keep using the original unpaginated
+  lookups — pagination was only added to the pages Chris scrolls
+  through himself.
+- **CSV export**: "Export CSV" on the Customers and Inventory pages
+  downloads the *full* matching list (not just the current page, and
+  respecting an active status filter on Inventory) as a spreadsheet-
+  ready file, for anything Chris wants to do outside the app
+  (accounting, a mail merge, a one-off analysis).
+- **Bulk actions**: the Inventory page's checkboxes let Chris select
+  several appliances and set their status at once (e.g. retiring a
+  batch together). Each appliance is still checked against the normal
+  status-transition rules individually — a selection that mixes valid
+  and invalid changes applies to what *can* move and reports back
+  exactly what didn't and why, rather than failing the whole batch
+  over one appliance that was, say, already retired.
+
+**Deliberately not built in this pass** (scope decisions, not
+oversights):
+- **CSV import.** Bringing appliance or customer data in from a
+  spreadsheet needs real validation (duplicate detection, malformed
+  rows, matching existing records) that's its own careful piece of
+  work — building it quickly here risked bad data getting into the
+  system with no safety net. If Chris needs to bulk-load data before
+  this is built, it can be done as a one-off script reviewed by hand.
+- **Saved views as a separate feature.** Every list's filters (status
+  tabs, search) already live in the page's URL, so any filtered view
+  is already bookmarkable and shareable as-is — there was no need for
+  a separate "save this view" database feature on top of that.
+
+## Reports: actual vs. estimated earnings, missing-cost warnings (2026-09-28)
+
+Task #45 of the September 2026 build plan. `/desk/reports` reconciles
+what Chris's agreements say he *should* be collecting against what has
+*actually* been collected, and flags a specific way that reconciliation
+can quietly go wrong.
+
+- **Estimated earnings**: for every agreement that has started billing,
+  its agreed monthly price (summed across its rental lines) prorated for
+  how long it's actually been in its billing period — the same
+  days-since-`billingStartedAt` reconstruction already used for the
+  Revenue page's MRR trend (`src/domains/billing/revenue.ts`), just
+  summed per-agreement instead of bucketed per-month.
+- **Actual earnings**: the real amount collected, straight from
+  `Invoice.amountPaidCents` — the same Stripe-confirmed number the
+  Revenue page's "Collected" figures already come from.
+- The Reports page lists any agreement more than $10 behind its own
+  estimated figure, worst gap first, alongside the fleet-wide totals.
+  This is a reconciliation aid, not a new source of truth — the real
+  invoice/payment history on a customer's own page is always the exact
+  record; a gap here just means "worth a look," not "something is
+  definitely wrong" (an invoice that posted a day late shows up the
+  same as a genuinely stuck one until the next billing cycle catches
+  up).
+- **Repair cost warnings**: a completed `MAINTENANCE_VISIT` job with no
+  parts or labor cost entered contributes $0 to that appliance's repair
+  cost in the fleet profitability/ROI figures (`src/domains/inventory/
+  analytics.ts`'s `computeRepairCostCents`) — which is correct behavior
+  for a job that really did cost nothing, but silently wrong for one
+  Chris just forgot to log. Both `/desk/reports` and the exception inbox
+  (`/desk/today`, new `MISSING_REPAIR_COST` category) list these jobs so
+  they don't go unnoticed.
+
+## Growth signals (2026-09-28)
+
+Task #46 of the September 2026 build plan — picks up a subset of
+`docs/reviews/2026-09-27-business-growth-ideas.md`'s brainstorm (ideas
+#3, #4, #6, #7, #8, #11). `/desk/growth` groups five read-only signals,
+all pulled from data the app already has:
+
+- **Churn risk** (idea #5): an ACTIVE agreement showing one or more of —
+  a past-due invoice, a recent failed payment, its fixed term ending
+  within 30 days with no renewal recorded, or 2+ repair requests in the
+  last 90 days. Simple, explainable scoring (`src/domains/growth/
+  churn.ts`), same "no AI/ML, every point has a plain-English reason"
+  approach as lead scoring.
+- **Lead win-back** (idea #7): a `NEW`/`CONTACTED` lead that's gone
+  quiet for 14+ days, or a `LOST` lead old enough (60+ days) that
+  circumstances might genuinely have changed — re-approaching a fresh
+  "no" a week later would just be annoying.
+- **Price review reminders** (idea #8): an ACTIVE agreement whose price
+  was agreed a year or more ago. Since agreement pricing is frozen at
+  signing and never edited in place, "hasn't been revisited" is simply
+  "started a year+ ago" — never an automatic change, only a reminder.
+- **Fleet flags** (ideas #3/#4): an appliance type (with at least 3
+  units, so one washer isn't a statistic) running near-fully-rented is a
+  probable lost-rentals-to-no-availability signal; one sitting mostly
+  idle may be overpriced or overstocked. Reuses the same
+  `computeUtilizationFraction` the Fleet page already shows.
+- **Review/referral candidates** (idea #6): a customer billing cleanly
+  for 90+ days with nothing currently past due — a reasonable moment to
+  ask. **Deliberately a list, not an automatic sender**: the brainstorm
+  described an automatic email at a set milestone, but sending
+  unsolicited customer-facing email on a timer is exactly the kind of
+  thing `AGENTS.md` asks Chris to be looped in on — this surfaces who to
+  reach out to and leaves the actual asking to him.
+
+**Local-search landing pages** (idea #11): `/rent/[city]` — one real
+page per city Chris has actually listed in Settings' service area
+(`BusinessSettings.serviceAreaCities`), reusing the same real
+pricing/appliance content as `/pricing`. Never a fabricated city, and no
+invented claims (review counts, "hundreds of happy customers," etc.) —
+only what's actually true from real settings data. Linked from
+`/service-area` and included in `sitemap.ts`.
+
+**Not picked up in this pass** (the brainstorm's bigger, separate-schema
+or costly ideas — still just a menu, per that doc's own "nothing gets
+built without Chris picking it"): a formal referral-tracking program
+(idea #10, needs its own schema), SMS notifications (idea #12, a paid
+Twilio integration — `AGENTS.md`'s "ask before anything costly"), a
+separate Contacts concept (idea #13), an accounting export (idea #14),
+and the driver/technician mobile job view (ideas #1/#2, its own
+substantial piece of work).
 
 ## Privacy & accessibility baseline
 
