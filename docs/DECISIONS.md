@@ -1081,3 +1081,30 @@ cookie config. Overall the app held up well — no critical issues.
   behavior (a new customer would have to click a verification email
   before they could log in) — Chris's call on timing, not an automatic
   "now it's technically possible" decision.
+
+## 2026-09-27 — Received a second design review (from OpenAI's "Astra"), not yet acted on
+
+Chris ran his own separate evaluation of the live site using an OpenAI
+tool ("Astra") and shared its output: a 292-line rebrand + redesign
+brief, saved verbatim at
+`docs/reviews/2026-09-28-astra-redesign-brief.md`. It is thorough and
+mostly well-reasoned, but it is a proposal from another AI reviewing a
+live site from the outside — not a set of decisions Chris has made — and
+it's large enough (new brand colors/logo, new business lines, pricing
+model changes, full IA rebuild) that implementing it wholesale without
+Chris's sign-off would risk real cost and rework. Treating it the same
+way as the earlier in-house design review: read it, compare it against
+what's actually built (not just what the brief assumes), and bring
+Chris specific decisions rather than just building all of it.
+
+Two things worth flagging for whoever picks this up:
+- It reviewed **production**, which does not yet include PR #39
+  (brand-consistency retint + owner-desk sidebar nav, merged/unmerged
+  status as of whenever you're reading this) — some of its "problems to
+  resolve first" may already be addressed there. Check PR #39's status
+  before assuming a listed problem is still open.
+- Its proposed color palette (navy `#17324D` / teal `#006B66`) is a
+  **full rebrand away from** the warm terracotta/canvas palette already
+  live on the site and just reinforced in PR #39 — this is a real
+  business decision (new logo, new look everywhere), not a bug fix, and
+  needs Chris to actually choose it before any code changes.
