@@ -1777,3 +1777,43 @@ a price review is "due") are all deliberately simple, explainable
 numbers — same "no AI/ML, no hidden math" standard as lead scoring
 (`docs/BUSINESS-RULES.md`'s Lead scoring section) — not statistically
 tuned cutoffs.
+
+## 2026-09-28 — Photo uploads: camera/file picker instead of pasting a URL
+
+Chris's explicit request: "any place where the system allows adding
+photos should not be asking for a url, but instead bring up the option
+to either upload a photo from device or use the device's camera... I
+feel like the system for this process should be pretty standard these
+days." Correct — pasting a URL was a placeholder from before real file
+storage was wired up, not the intended long-term experience.
+
+Two existing "paste an image URL" fields were replaced:
+`ApplianceType.photoUrl` in `/desk/settings`, and a job's condition
+photos on `/desk/jobs/[id]`. Both now use a shared
+`<PhotoUploadField>` component (`src/components/desk/photo-upload-field.tsx`)
+— a plain `<input type="file" accept="image/*">` with **no** `capture`
+attribute, since that's what makes phones offer both "Take Photo" and
+"Choose from Library" from one native picker rather than jumping
+straight to the camera. This is the standard pattern Chris was
+describing — no custom camera UI needed.
+
+Storage is a new Vercel Blob store (`appliance-desk-photos`), which
+Chris had already pre-authorized for "any future file uploads" back in
+the rental-lifecycle decision above (2026-09-27/28: "it's fine to use
+Vercel's own file storage over Neon for any future file uploads"). The
+file uploads directly from the browser to Blob storage
+(`@vercel/blob/client`'s `upload()`), never through our own server —
+the only server-side piece is `src/app/api/uploads/photo/route.ts`,
+which mints a short-lived upload token and refuses to do so for anyone
+who isn't signed in as OWNER/ADMIN, since the store itself is
+public-read (a photo's URL works in an `<img>` tag with no auth, same
+as any other image host) and an open token-minting endpoint would let
+a stranger fill it with junk.
+
+Deliberately left out of this pass: appliance-instance-level photos and
+customer-portal maintenance-request photos. The `Photo` model already
+has `applianceId`/`maintenanceRequestId` columns for both, but no UI
+ever used them — that's a new capability, not a fix to an existing
+"paste a URL" field, so it's noted in `docs/ROADMAP.md` for Chris to
+pick up rather than assumed in scope here (see `AGENTS.md`'s "stay in
+scope").

@@ -8,6 +8,7 @@ import {
   setApplianceTypeActiveAction,
   setAppliancePhotoUrlAction,
 } from "./actions";
+import { PhotoUploadField } from "@/components/desk/photo-upload-field";
 
 type ApplianceTypeRow = {
   id: string;
@@ -41,7 +42,7 @@ export function AppliancePricingTable({ rows }: { rows: ApplianceTypeRow[] }) {
               <th className="py-2 pr-4 font-medium text-gray-900">
                 Show on website
               </th>
-              <th className="py-2 pr-4 font-medium text-gray-900">Photo URL</th>
+              <th className="py-2 pr-4 font-medium text-gray-900">Photo</th>
               <th className="py-2 font-medium text-gray-900">
                 <span className="sr-only">Retire</span>
               </th>
@@ -82,10 +83,23 @@ function ApplianceRow({ row }: { row: ApplianceTypeRow }) {
   const [visible, setVisible] = useState(row.showOnWebsite);
   const [photoUrl, setPhotoUrl] = useState(row.photoUrl ?? "");
   const [isPending, startTransition] = useTransition();
+  const [isPhotoPending, startPhotoTransition] = useTransition();
   const [savedPrice, setSavedPrice] = useState(false);
   const [photoMessage, setPhotoMessage] = useState<
     { kind: "success" | "error"; text: string } | null
   >(null);
+
+  function savePhotoUrl(url: string) {
+    startPhotoTransition(async () => {
+      const result = await setAppliancePhotoUrlAction(row.id, url);
+      if (result.status === "error") {
+        setPhotoMessage({ kind: "error", text: result.message });
+      } else {
+        setPhotoUrl(url);
+        setPhotoMessage({ kind: "success", text: url ? "Photo saved." : "Photo removed." });
+      }
+    });
+  }
 
   return (
     <tr className={`border-b border-gray-100 ${!row.isActive ? "opacity-60" : ""}`}>
@@ -147,38 +161,37 @@ function ApplianceRow({ row }: { row: ApplianceTypeRow }) {
       </td>
       <td className="py-3 pr-4">
         <div className="flex items-center gap-2">
-          <label className="sr-only" htmlFor={`photo-${row.id}`}>
-            Photo URL for {row.name}
-          </label>
-          <input
-            id={`photo-${row.id}`}
-            type="url"
-            placeholder="https://…"
-            value={photoUrl}
-            disabled={!row.isActive}
-            onChange={(e) => {
-              setPhotoUrl(e.target.value);
+          {photoUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={photoUrl}
+              alt={`${row.name} photo`}
+              className="h-10 w-10 rounded-md object-cover"
+            />
+          )}
+          <PhotoUploadField
+            pathPrefix="appliance-types"
+            label={photoUrl ? "Replace photo" : "Add photo"}
+            disabled={isPhotoPending || !row.isActive}
+            onUploaded={(url) => {
               setPhotoMessage(null);
+              savePhotoUrl(url);
             }}
-            className="w-40 rounded-lg border border-gray-300 px-2 py-1.5 text-xs disabled:bg-gray-50"
+            onError={(message) => setPhotoMessage({ kind: "error", text: message })}
           />
-          <button
-            type="button"
-            disabled={isPending || !row.isActive}
-            onClick={() => {
-              startTransition(async () => {
-                const result = await setAppliancePhotoUrlAction(row.id, photoUrl);
-                setPhotoMessage(
-                  result.status === "error"
-                    ? { kind: "error", text: result.message }
-                    : { kind: "success", text: "Saved" },
-                );
-              });
-            }}
-            className="rounded-md bg-gray-900 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
-          >
-            {isPending ? "Saving…" : "Save"}
-          </button>
+          {photoUrl && (
+            <button
+              type="button"
+              disabled={isPhotoPending || !row.isActive}
+              onClick={() => {
+                setPhotoMessage(null);
+                savePhotoUrl("");
+              }}
+              className="text-xs font-medium text-gray-600 underline hover:text-gray-900 disabled:opacity-60"
+            >
+              Remove
+            </button>
+          )}
         </div>
         {photoMessage && (
           <p
