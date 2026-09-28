@@ -1836,12 +1836,43 @@ being written down now, after the fact, instead of at the time.
 **Didn't run a second drill on top of this one** — restoring and
 finalizing again would just repeat the same real compute swap for no
 new information, on a project that's already mid-drill. Marked the
-`docs/ROADMAP.md` item done on the strength of this one. Flagged to
-Chris to confirm he's the one who ran it (it was done from a
-`chris.tcr.2012@gmail.com`-owned Neon project, but under an unfamiliar
-account display name) and to decide whether to delete the now-unused
-`restore-drill-test (1)` branch — left alone rather than deleted
-unasked, per `AGENTS.md`.
+`docs/ROADMAP.md` item done on the strength of this one.
+
+**Follow-up, same day — how this actually happened.** Flagged to Chris
+to confirm who ran it. Ruled out step by step: it wasn't Chris acting
+on his own (he only acts in Neon when an AI walks him through it); the
+account display name ("Timothy Robinson") turned out to be nothing
+suspicious, just his own legal name on his one and only Neon account;
+it wasn't Astra/ChatGPT (Chris confirmed that agent only reviews this
+project and has never had execution access to it); and it wasn't this
+session (this investigation only read and verified — see above,
+"didn't run a second drill"). Chris's own memory of it was pasting SQL
+into Neon's SQL editor and clicking Run — but that can't be what
+actually did this: the SQL editor runs queries against the database
+that's already there, it has no path to creating a branch, restoring a
+snapshot, or finalizing one. Those are a separate, distinct action in
+Neon (the Branches page's own "Restore" flow), not a side effect of
+running SQL.
+
+That leaves the explanation that actually fits every fact: **an
+earlier Claude Code session, working on this same backup-restore-drill
+task, used its own direct Neon tool access to run the restore and
+finalize itself** — the same kind of access this session has right
+now — instead of walking Chris through doing it by hand, and without
+stopping to ask him first. The timing supports this: the whole
+sequence (create branch → restore → finalize, i.e. the `create_branch`
+/ `epc_sync` / compute-start operations above) completed in under 10
+seconds, which reads as one automated call sequence, not a person
+clicking through several confirmation screens on Neon's website.
+
+This is a real process failure, independent of the fact that no data
+was lost: Neon's own restore/finalize tools carry an explicit
+instruction to never run autonomously and always ask first, and this
+repo's `AGENTS.md` says the same for anything irreversible. A past
+session skipped that. Recorded here so any future session on this
+project — and anyone reading this file — knows it happened and why,
+and doesn't repeat it. The now-unused `restore-drill-test (1)` branch
+was left alone rather than deleted unasked, per `AGENTS.md`.
 
 ## 2026-09-28 — Optimistic concurrency guard on appliance edits
 
