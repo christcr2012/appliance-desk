@@ -1,0 +1,368 @@
+"use client";
+
+import { useEffect, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import type { ApplianceStatus } from "@prisma/client";
+import {
+  startRepairAction,
+  retireApplianceAction,
+  getSwapCandidatesAction,
+  startSwapAction,
+  recordInspectionAction,
+  type SwapCandidate,
+} from "../actions";
+import { canTransitionApplianceStatus } from "@/domains/inventory/lifecycle";
+
+type Panel = "repair" | "retire" | "swap" | "inspection" | null;
+
+/**
+ * The guided, one-click versions of things that used to be a manual,
+ * multi-step (or in the swap case, literally impossible without a
+ * database edit) process. Sits alongside the raw status buttons in
+ * ApplianceDetailPanel — those still work for an edge case this doesn't
+ * cover, but these are the ones Chris should reach for day to day. See
+ * src/domains/inventory/guided-actions.ts for what each one actually does.
+ */
+export function GuidedActionsPanel({
+  applianceId,
+  status,
+  inspectionChecklist,
+}: {
+  applianceId: string;
+  status: ApplianceStatus;
+  inspectionChecklist: string[];
+}) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const [open, setOpen] = useState<Panel>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const canRepair = canTransitionApplianceStatus(status, "MAINTENANCE").ok;
+  const canRetire = canTransitionApplianceStatus(status, "RETIRED").ok;
+  const canSwap = status === "RENTED";
+  const canInspect = status === "AWAITING_INSPECTION";
+
+  if (!canRepair && !canRetire && !canSwap && !canInspect) {
+    return null;
+  }
+
+  function toggle(panel: Panel) {
+    setError(null);
+    setOpen((current) => (current === panel ? null : panel));
+  }
+
+  function handleRepair(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const data = new FormData(e.currentTarget);
+    startTransition(async () => {
+      const result = await startRepairAction(applianceId, {
+        notes: String(data.get("notes") ?? ""),
+      });
+      if (result.status === "error") {
+        setError(result.message);
+        return;
+      }
+      setOpen(null);
+      router.refresh();
+    });
+  }
+
+  function handleRetire(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const data = new FormData(e.currentTarget);
+    startTransition(async () => {
+      const result = await retireApplianceAction(applianceId, {
+        reason: String(data.get("reason") ?? ""),
+      });
+      if (result.status === "error") {
+        setError(result.message);
+        return;
+      }
+      setOpen(null);
+      router.refresh();
+    });
+  }
+
+  function handleInspection(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    // The pass/fail choice is which of the two submit buttons was
+    // clicked, so FormData needs the submitter passed explicitly —
+    // without it, a clicked submit button's own name/value isn't
+    // included in the constructed FormData.
+    const submitter = (e.nativeEvent as SubmitEvent).submitter as
+      | HTMLButtonElement
+      | null;
+    const data = new FormData(e.currentTarget, submitter ?? undefined);
+    const passed = data.get("passed") === "yes";
+    const checklist = inspectionChecklist.map((item) => ({
+      item,
+      checked: data.get(`check-${item}`) === "on",
+    }));
+    startTransition(async () => {
+      const result = await recordInspectionAction(applianceId, {
+        passed,
+        checklist,
+        notes: String(data.get("notes") ?? ""),
+        condition: String(data.get("condition") ?? ""),
+      });
+      if (result.status === "error") {
+        setError(result.message);
+        return;
+      }
+      setOpen(null);
+      router.refresh();
+    });
+  }
+
+  return (
+    <div className="rounded-lg border border-gray-200 bg-white p-5">
+      <h2 className="font-medium text-gray-900">Guided actions</h2>
+      <p className="mt-1 text-sm text-gray-600">
+        These handle the multi-step parts for you — the status change, the job, and the
+        record — together, in one click.
+      </p>
+
+      <div className="mt-3 flex flex-wrap gap-2">
+        {canRepair && (
+          <button
+            type="button"
+            onClick={() => toggle("repair")}
+            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:border-gray-400"
+          >
+            Start a repair
+          </button>
+        )}
+        {canSwap && (
+          <button
+            type="button"
+            onClick={() => toggle("swap")}
+            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:border-gray-400"
+          >
+            Swap for a working unit
+          </button>
+        )}
+        {canInspect && (
+          <button
+            type="button"
+            onClick={() => toggle("inspection")}
+            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:border-gray-400"
+          >
+            Record inspection
+          </button>
+        )}
+        {canRetire && (
+          <button
+            type="button"
+            onClick={() => toggle("retire")}
+            className="rounded-md border border-red-300 px-3 py-1.5 text-sm text-red-700 hover:border-red-400"
+          >
+            Retire this appliance
+          </button>
+        )}
+      </div>
+
+      {error && (
+        <p role="alert" className="mt-3 text-sm text-red-700">
+          {error}
+        </p>
+      )}
+
+      {open === "repair" && (
+        <form onSubmit={handleRepair} className="mt-4 space-y-2 border-t border-gray-100 pt-4">
+          <p className="text-sm text-gray-600">
+            Moves this unit to Maintenance and schedules a maintenance-visit job for right
+            now — you can reschedule it from the jobs page afterward.
+          </p>
+          <textarea
+            name="notes"
+            rows={2}
+            placeholder="What's wrong with it? (optional)"
+            className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+          />
+          <button
+            type="submit"
+            disabled={isPending}
+            className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+          >
+            {isPending ? "Starting…" : "Start repair"}
+          </button>
+        </form>
+      )}
+
+      {open === "retire" && (
+        <form onSubmit={handleRetire} className="mt-4 space-y-2 border-t border-gray-100 pt-4">
+          <p className="text-sm text-gray-600">
+            Retiring is permanent — this unit won&apos;t be rentable again. Add a new unit
+            instead if this was a mistake.
+          </p>
+          <textarea
+            name="reason"
+            required
+            rows={2}
+            placeholder="Why is it being retired?"
+            className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+          />
+          <button
+            type="submit"
+            disabled={isPending}
+            className="rounded-md bg-red-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-800 disabled:opacity-50"
+          >
+            {isPending ? "Retiring…" : "Retire appliance"}
+          </button>
+        </form>
+      )}
+
+      {open === "swap" && (
+        <SwapForm
+          applianceId={applianceId}
+          onError={setError}
+          onDone={() => {
+            setOpen(null);
+            router.refresh();
+          }}
+        />
+      )}
+
+      {open === "inspection" && (
+        <form
+          onSubmit={handleInspection}
+          className="mt-4 space-y-3 border-t border-gray-100 pt-4"
+        >
+          <p className="text-sm text-gray-600">
+            A pass sends it back to Available; a fail sends it to Maintenance — same as
+            the checklist Chris uses in the field.
+          </p>
+          <fieldset className="space-y-1">
+            {inspectionChecklist.map((item) => (
+              <label key={item} className="flex items-center gap-2 text-sm text-gray-700">
+                <input type="checkbox" name={`check-${item}`} className="rounded" />
+                {item}
+              </label>
+            ))}
+          </fieldset>
+          <div>
+            <label htmlFor="condition" className="block text-sm font-medium text-gray-700">
+              Condition after inspection
+            </label>
+            <input
+              id="condition"
+              name="condition"
+              type="text"
+              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+            />
+          </div>
+          <textarea
+            name="notes"
+            rows={2}
+            placeholder="Notes (optional)"
+            className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+          />
+          <div className="flex gap-2">
+            <button
+              type="submit"
+              name="passed"
+              value="yes"
+              disabled={isPending}
+              className="rounded-md bg-green-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-800 disabled:opacity-50"
+            >
+              {isPending ? "Saving…" : "Passed"}
+            </button>
+            <button
+              type="submit"
+              name="passed"
+              value="no"
+              disabled={isPending}
+              className="rounded-md bg-red-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-800 disabled:opacity-50"
+            >
+              {isPending ? "Saving…" : "Failed"}
+            </button>
+          </div>
+        </form>
+      )}
+    </div>
+  );
+}
+
+function SwapForm({
+  applianceId,
+  onError,
+  onDone,
+}: {
+  applianceId: string;
+  onError: (message: string | null) => void;
+  onDone: () => void;
+}) {
+  const [isPending, startTransition] = useTransition();
+  const [candidates, setCandidates] = useState<SwapCandidate[] | null>(null);
+  const [selected, setSelected] = useState("");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    getSwapCandidatesAction(applianceId).then((result) => {
+      if (!cancelled) {
+        setCandidates(result);
+        setLoading(false);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [applianceId]);
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!selected) {
+      onError("Choose a replacement unit.");
+      return;
+    }
+    startTransition(async () => {
+      const result = await startSwapAction(applianceId, selected);
+      if (result.status === "error") {
+        onError(result.message);
+        return;
+      }
+      onDone();
+    });
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="mt-4 space-y-2 border-t border-gray-100 pt-4">
+      <p className="text-sm text-gray-600">
+        Unassigns this unit from its rental, assigns the replacement in its place, and
+        schedules a swap job — this one goes to Maintenance, the replacement to Reserved
+        until the swap job is completed.
+      </p>
+      {loading && <p className="text-sm text-gray-500">Loading available units…</p>}
+      {!loading && candidates && candidates.length === 0 && (
+        <p className="text-sm text-gray-500">
+          No other available units of this appliance type — add one to inventory first.
+        </p>
+      )}
+      {!loading && candidates && candidates.length > 0 && (
+        <>
+          <select
+            value={selected}
+            onChange={(e) => setSelected(e.target.value)}
+            className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+          >
+            <option value="">Choose a replacement…</option>
+            {candidates.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.assetNumber} — {c.applianceTypeName}
+                {c.manufacturer ? ` (${c.manufacturer}${c.model ? ` ${c.model}` : ""})` : ""}
+              </option>
+            ))}
+          </select>
+          <button
+            type="submit"
+            disabled={isPending || !selected}
+            className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+          >
+            {isPending ? "Swapping…" : "Start swap"}
+          </button>
+        </>
+      )}
+    </form>
+  );
+}
