@@ -54,7 +54,7 @@ export function DeskSidebar({
   }
 
   return (
-    <aside className="hidden md:flex md:w-60 md:shrink-0 md:flex-col md:border-r md:border-gray-200 md:bg-white">
+    <aside className="hidden border-r border-gray-200 bg-white md:flex md:w-60 md:shrink-0 md:flex-col">
       <Link
         href={links[0]?.href ?? "/desk/dashboard"}
         className="px-5 py-5 font-display text-lg font-semibold text-ink"
