@@ -7,10 +7,14 @@ import {
   getWinBackLeads,
 } from "@/domains/growth";
 import { formatCents } from "@/domains/pricing";
+import { requireRole } from "@/lib/session";
 
 export const metadata = { title: "Growth" };
 
+// OWNER/ADMIN only (docs/DECISIONS.md, 2026-09-28 "Staff permissions
+// framework") — never rely on the nav link being hidden alone.
 export default async function GrowthPage() {
+  await requireRole("OWNER", "ADMIN");
   const [churnRisk, winBackLeads, priceReview, utilizationFlags, reviewCandidates] =
     await Promise.all([
       getChurnRiskCustomers(),

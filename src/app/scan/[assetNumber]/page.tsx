@@ -50,7 +50,7 @@ export default async function ScanApplianceRedirectPage({
 
   const role = (session.user as { role?: string }).role ?? "CUSTOMER";
 
-  if (role === "OWNER" || role === "ADMIN") {
+  if (role === "OWNER" || role === "ADMIN" || role === "STAFF") {
     redirect(`/desk/inventory/${appliance.id}`);
   }
 

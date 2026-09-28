@@ -1,5 +1,6 @@
 import { getRevenueDashboard } from "@/domains/billing";
 import { formatCents } from "@/domains/pricing";
+import { requireRole } from "@/lib/session";
 
 export const metadata = { title: "Revenue" };
 
@@ -28,7 +29,10 @@ function Stat({
   );
 }
 
+// OWNER/ADMIN only (docs/DECISIONS.md, 2026-09-28 "Staff permissions
+// framework") — never rely on the nav link being hidden alone.
 export default async function RevenuePage() {
+  await requireRole("OWNER", "ADMIN");
   const stats = await getRevenueDashboard();
   const maxTrendCents = Math.max(1, ...stats.mrrTrend.map((p) => p.mrrCents));
 

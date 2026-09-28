@@ -21,6 +21,7 @@ See `.env.example` for the full list with comments. The short version:
 - `STRIPE_SECRET_KEY` / `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` — Stripe test-mode API keys, live as of 2026-09-27 (see docs/DECISIONS.md). See "Payments (Stripe)" below.
 - `STRIPE_WEBHOOK_SECRET` — **set (2026-09-27)**, the test-mode webhook signing secret, registered in the Stripe dashboard and set in Vercel. See "Payments (Stripe)" below.
 - `BLOB_READ_WRITE_TOKEN` — **set (2026-09-28)**, auto-injected by Vercel when the `appliance-desk-photos` Blob store was created and linked to this project. Used only server-side, by `src/app/api/uploads/photo/route.ts`, to mint short-lived upload tokens for every photo-upload button in the app — desk (Settings, jobs, appliance units) and the customer portal (maintenance requests) alike. See "Photo uploads (Vercel Blob)" below.
+- `CRON_SECRET` — **set (2026-09-28)**, a random token set in Vercel and checked by `src/app/api/cron/billing-reminders/route.ts`. Vercel signs every Cron-triggered request with this same value as a bearer token (`Authorization: Bearer <CRON_SECRET>`), so a request without it is refused — otherwise the URL would be triggerable by anyone who found it. See "Automation rules" below.
 - Everything else (Resend, SignWell/Documenso/DocuSign) is added in later phases, only when that phase needs it.
 
 All of these are stored as **Vercel environment variables** (per environment: Production / Preview / Development). Nothing secret is ever committed. Local development uses `.env.local` (gitignored).
@@ -167,6 +168,33 @@ unsigned request claiming to be Stripe — that's now resolved.
 **Deliberately not built in this pass** (tracked in `docs/ROADMAP.md`):
 automated late fees / dunning beyond what Stripe's own retry logic
 already does — that needs its own design, not a bolt-on here.
+
+## Automation rules (scheduled jobs)
+
+**As of 2026-09-28.** Three checks that used to depend on Chris
+noticing something on his own now run automatically — see
+`docs/DECISIONS.md`'s 2026-09-28 "Automation rules" entry for the
+full reasoning.
+
+- **Billing reminders** — a Vercel Cron job (`vercel.json`, once a
+  day at 14:00 UTC) hits `src/app/api/cron/billing-reminders/route.ts`,
+  which calls `sendUpcomingBillingReminders()`
+  (`src/domains/billing/reminders.ts`). It emails any customer whose
+  next automatic charge (`RentalAgreement.nextBillingDate`, already
+  kept current by the Stripe webhook — no separate Stripe API call
+  needed) is 1–2 days out, and records
+  `RentalAgreement.billingReminderSentForDate` so the same billing
+  cycle is never reminded twice. Protected by `CRON_SECRET` (see
+  "Environment variables" above).
+- **Overdue rentals** and **appliances needing maintenance** — both
+  surfaced as new categories in the existing "Needs your attention"
+  exception inbox (`src/domains/exceptions/`, `/desk/today`) rather
+  than a separate cron job, since that page is already checked by
+  Chris and already re-queries fresh on every visit: a fixed-term
+  agreement past its term end but still marked ACTIVE
+  (`AGREEMENT_TERM_EXPIRED`), and a currently-rented appliance with
+  no logged maintenance visit in 180+ days
+  (`APPLIANCE_MAINTENANCE_DUE`).
 
 ## Database access pattern (Prisma + Neon)
 

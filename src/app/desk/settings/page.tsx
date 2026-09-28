@@ -1,19 +1,26 @@
 import { getBusinessSettings, getAllApplianceTypes } from "@/domains/settings";
+import { getStaffAccounts } from "@/domains/staff";
+import { requireRole } from "@/lib/session";
 import { SettingsForm } from "./settings-form";
 import { AppliancePricingTable } from "./appliance-pricing-table";
+import { StaffAccountsSection } from "./staff-accounts-section";
 
 export const metadata = {
   robots: { index: false, follow: false },
 };
 
-// requireRole("OWNER", "ADMIN") already runs in src/app/desk/layout.tsx for
-// every /desk/** page. The server actions this page calls (actions.ts)
-// check it again themselves, since a Server Action call is a separate
-// request from the layout's render — see docs/ARCHITECTURE.md.
+// The layout lets STAFF into /desk generally (docs/DECISIONS.md,
+// 2026-09-28 "Staff permissions framework"), so Settings needs its own
+// explicit OWNER/ADMIN gate now — never rely on the nav link being
+// hidden alone. The server actions this page calls (actions.ts) check
+// it again themselves too, since a Server Action call is a separate
+// request from the page's render — see docs/ARCHITECTURE.md.
 export default async function DeskSettingsPage() {
-  const [settings, applianceTypes] = await Promise.all([
+  await requireRole("OWNER", "ADMIN");
+  const [settings, applianceTypes, staffAccounts] = await Promise.all([
     getBusinessSettings(),
     getAllApplianceTypes(),
+    getStaffAccounts(),
   ]);
 
   return (
@@ -38,6 +45,21 @@ export default async function DeskSettingsPage() {
             showOnWebsite: t.showOnWebsite,
             isActive: t.isActive,
             photoUrl: t.photoUrl,
+          }))}
+        />
+      </section>
+
+      <section>
+        <h2 className="mb-4 text-base font-semibold text-gray-900">
+          Staff accounts
+        </h2>
+        <StaffAccountsSection
+          accounts={staffAccounts.map((a) => ({
+            id: a.id,
+            name: a.name,
+            email: a.email,
+            createdAt: a.createdAt,
+            isActive: a.archivedAt === null,
           }))}
         />
       </section>

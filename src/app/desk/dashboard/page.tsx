@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getDashboardStats } from "@/domains/dashboard";
 import { formatCents } from "@/domains/pricing";
+import { requireRole } from "@/lib/session";
 
 export const metadata = { title: "Dashboard" };
 
@@ -44,7 +45,12 @@ function StatCard({
   );
 }
 
+// The layout already lets STAFF into /desk generally, but revenue/MRR
+// figures shown here are OWNER/ADMIN only (docs/DECISIONS.md, 2026-09-28
+// "Staff permissions framework") — never rely on the nav link being
+// hidden alone.
 export default async function DeskDashboardPage() {
+  await requireRole("OWNER", "ADMIN");
   const stats = await getDashboardStats();
 
   return (

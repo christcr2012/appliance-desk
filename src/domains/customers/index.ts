@@ -125,7 +125,10 @@ export async function createCustomerDirectly(
 ) {
   let account = await prisma.user.findUnique({ where: { email: input.email } });
 
-  if (account && (account.role === "OWNER" || account.role === "ADMIN")) {
+  if (
+    account &&
+    (account.role === "OWNER" || account.role === "ADMIN" || account.role === "STAFF")
+  ) {
     throw new Error(
       `${input.email} belongs to a staff account, not a customer — use a different email for this customer.`,
     );

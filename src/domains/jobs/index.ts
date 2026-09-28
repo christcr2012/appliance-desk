@@ -72,6 +72,32 @@ export async function getJobsPage(
   });
 }
 
+/** Today's not-yet-closed-out jobs, with everything a driver needs to
+ * actually do the visit (customer name/phone, full address, which
+ * appliances) and nothing they don't (no pricing/financials) — see
+ * src/app/desk/driver, and docs/DECISIONS.md, 2026-09-28 "Driver mobile
+ * job view". Deliberately today-only, not a date picker — a driver's
+ * phone should show "what do I do right now," not a schedule browser
+ * (that's what /desk/dispatch is for on a desktop). */
+export async function getDriverJobsForToday() {
+  const now = new Date();
+  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startOfTomorrow = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000);
+
+  return prisma.job.findMany({
+    where: {
+      status: { in: ["SCHEDULED", "IN_PROGRESS"] },
+      scheduledAt: { gte: startOfDay, lt: startOfTomorrow },
+    },
+    include: {
+      customer: { include: { user: { select: { name: true } } } },
+      serviceAddress: true,
+      appliances: { include: { appliance: { include: { applianceType: true } } } },
+    },
+    orderBy: [{ scheduledAt: "asc" }],
+  });
+}
+
 export async function getJobById(id: string) {
   return prisma.job.findUnique({
     where: { id },

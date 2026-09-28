@@ -5,6 +5,85 @@ here, add a new entry rather than editing the old one away.
 
 ---
 
+### 2026-09-28 — Automation rules: billing reminders, overdue-rental and maintenance-due flags
+
+Chris picked this from a backlog review ("remind customers before
+billing, flag overdue rentals, flag appliances needing maintenance") —
+three things he'd otherwise have to remember to check for himself.
+
+**Billing reminders:** a daily Vercel Cron job
+(`src/app/api/cron/billing-reminders`, `vercel.json`) emails any
+customer whose next automatic charge is 1–2 days out. Built entirely
+off `RentalAgreement.nextBillingDate`, which the existing Stripe
+webhook already keeps accurate — no new Stripe API call needed. To
+avoid sending the same reminder twice within that 2-day window (or
+missing one) without a fragile time-based cooldown, added
+`RentalAgreement.billingReminderSentForDate`: it stores the *exact*
+`nextBillingDate` value the last reminder was sent for, compared
+against the current one on every run. That makes the check trivially
+correct either way — same value means already reminded this cycle;
+different value (because the webhook already advanced it) means a new
+cycle has started and it's fair game again. Protected by a
+`CRON_SECRET` bearer token (see `docs/ARCHITECTURE.md`) so the URL
+can't be triggered by anyone who finds it.
+
+**Overdue rentals and maintenance-due appliances:** rather than a
+second cron job, these were added as two new categories
+(`AGREEMENT_TERM_EXPIRED`, `APPLIANCE_MAINTENANCE_DUE`) in the
+existing "Needs your attention" exception inbox on `/desk/today`
+(`src/domains/exceptions/`) — that page already re-queries fresh every
+time Chris opens it, so a real-time query fits better than a
+scheduled job that could go stale between runs.
+`AGREEMENT_TERM_EXPIRED` flags a fixed-term agreement whose term end
+date has passed while it's still marked ACTIVE (nobody recorded a
+renewal, a switch to month-to-month, or a return).
+`APPLIANCE_MAINTENANCE_DUE` flags a currently-rented appliance with no
+completed maintenance visit logged in 180+ days — a simple,
+explainable "it's been a while" bar, not a manufacturer service
+schedule (none is tracked per appliance type today).
+
+Both are purely informational flags — neither one changes an
+agreement's or appliance's status on its own, matching the same
+"never silently act, always show Chris the option" pattern used
+throughout `src/domains/exceptions/`.
+
+---
+
+### 2026-09-28 — Staff permissions framework, and a driver mobile job view
+
+Chris picked both from a backlog review, and said to "just build the
+framework for now" on roles rather than pre-defining separate
+driver/office roles.
+
+**Staff permissions:** added a single `STAFF` role (alongside the
+existing `OWNER`/`ADMIN`/`CUSTOMER`) — broad enough to be useful
+immediately (jobs, the driver view, scanning QR codes, updating
+appliance status from a job) while walling off anything
+financial or settings-related from it. Defense in depth, not just
+hidden nav links: `/desk/layout.tsx` now splits its nav into
+operational links (open to STAFF) and owner-only links, **and** every
+owner-only page (`dashboard`, `billing`, `revenue`, `reports`,
+`growth`, `settings`) additionally calls
+`requireRole("OWNER", "ADMIN")` itself, so a STAFF account can't reach
+those pages even by guessing the URL.
+
+Staff accounts are created, deactivated, and reactivated the same way
+customer accounts already are (Settings page): a random, immediately-
+discarded password, then Better Auth's own password-reset flow
+repurposed as the activation email — Chris never sees or relays a
+password. Deactivating a staff account both revokes their live
+sessions immediately and sets a new `User.archivedAt` field, which
+`requireSession()` now checks on every request so a deactivated
+account is locked out even mid-session, not just on next login.
+
+**Driver mobile view (`/desk/driver`):** a stripped-down, phone-sized
+list of a staff member's own jobs for today — status updates, photo
+upload, and the same appliance-status-update prompt the main jobs
+page already offers, without any of the desk's other navigation or
+financial information in view.
+
+---
+
 ### 2026-09-27 — Workflow continuity: two dead-end actions fixed
 
 Chris pointed out a real UX gap: converting a lead to a customer left him

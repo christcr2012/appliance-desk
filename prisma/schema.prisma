@@ -22,6 +22,13 @@ datasource db {
 enum Role {
   OWNER
   ADMIN
+  // A staff login with day-to-day operational access (jobs, dispatch,
+  // customers, inventory, maintenance) but not business financials or
+  // settings — see src/domains/staff and docs/DECISIONS.md, 2026-09-28
+  // "Staff permissions framework". Chris didn't need specific named
+  // roles (e.g. "driver" vs "office") yet, just one that's safe to hand
+  // to a new hire today.
+  STAFF
   CUSTOMER
 }
 
@@ -424,6 +431,15 @@ model RentalAgreement {
   // is actually generated for this agreement.
   stripeSubscriptionId String? @unique
   nextBillingDate      DateTime?
+  // Which nextBillingDate value the last "your payment is coming up"
+  // reminder email was sent for (Task #67, docs/DECISIONS.md 2026-09-28
+  // "Automation rules") — compared against the CURRENT nextBillingDate
+  // rather than a plain "already sent" boolean or a days-ago timestamp,
+  // so a reminder fires exactly once per billing cycle even though the
+  // daily cron job's "1-2 days out" window can see the same upcoming
+  // date on two different days, and automatically re-arms itself once
+  // nextBillingDate advances to the following cycle.
+  billingReminderSentForDate DateTime?
 
   // Billing-starts-at-delivery (2026-09-28): recurring billing no longer
   // starts at signing — it starts once a delivery/installation job for

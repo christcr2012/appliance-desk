@@ -9,6 +9,7 @@ const ROLE_LANDING_PAGE: Record<Role, string> = {
   // dashboard is still there, just one click away in the nav.
   OWNER: "/desk/today",
   ADMIN: "/desk/today",
+  STAFF: "/desk/today",
   CUSTOMER: "/account",
 };
 
