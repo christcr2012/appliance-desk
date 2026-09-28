@@ -13,6 +13,7 @@ import {
 import type { JobStatus, JobType, ApplianceStatus } from "@prisma/client";
 import { APPLIANCE_STATUS_LABELS } from "@/domains/inventory/lifecycle";
 import { parseChecklist, type ChecklistItem } from "@/domains/jobs/checklist";
+import { PhotoUploadField } from "@/components/desk/photo-upload-field";
 
 // Rental lifecycle (2026-09-28): completing a delivery, installation, or
 // pickup now moves its appliances along automatically on the server (see
@@ -378,18 +379,26 @@ export function JobDetailPanel({ job }: { job: JobRow }) {
 
         <form onSubmit={handleAddPhoto} className="space-y-3 border-t border-gray-100 pt-4">
           <div>
-            <label htmlFor="photoUrl" className="block text-sm font-medium text-gray-700">
-              Photo URL
-            </label>
-            <input
-              id="photoUrl"
-              type="url"
-              required
-              placeholder="https://…"
-              value={photoUrl}
-              onChange={(e) => setPhotoUrl(e.target.value)}
-              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-            />
+            <span className="block text-sm font-medium text-gray-700">Photo</span>
+            <div className="mt-1 flex items-center gap-3">
+              {photoUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={photoUrl}
+                  alt="Selected condition photo, not yet added"
+                  className="h-16 w-16 rounded-md object-cover"
+                />
+              )}
+              <PhotoUploadField
+                pathPrefix={`jobs/${job.id}`}
+                label={photoUrl ? "Replace photo" : "Take or choose a photo"}
+                onUploaded={(url) => {
+                  setPhotoError(null);
+                  setPhotoUrl(url);
+                }}
+                onError={(message) => setPhotoError(message)}
+              />
+            </div>
           </div>
           <div>
             <label htmlFor="photoAlt" className="block text-sm font-medium text-gray-700">
@@ -406,7 +415,7 @@ export function JobDetailPanel({ job }: { job: JobRow }) {
           </div>
           <button
             type="submit"
-            disabled={isPending}
+            disabled={isPending || !photoUrl}
             className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
           >
             {isPending ? "Adding…" : "Add photo"}
