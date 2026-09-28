@@ -3,6 +3,7 @@ import {
   UNINSPECTED_RETURN_DAYS,
   UNREVIEWED_MAINTENANCE_REQUEST_DAYS,
   billingBlockedException,
+  missingRepairCostException,
   overdueJobException,
   pastDueInvoiceException,
   sortExceptions,
@@ -47,6 +48,7 @@ export async function getExceptions(): Promise<ExceptionItem[]> {
     overdueJobs,
     unreviewedRequests,
     uninspectedAppliances,
+    missingRepairCostJobs,
   ] = await Promise.all([
     prisma.rentalAgreement.findMany({
       where: { billingBlockedReason: { not: null } },
@@ -106,6 +108,22 @@ export async function getExceptions(): Promise<ExceptionItem[]> {
         updatedAt: { lt: addDays(now, -UNINSPECTED_RETURN_DAYS) },
       },
       select: { id: true, assetNumber: true, updatedAt: true, applianceType: { select: { name: true } } },
+    }),
+    prisma.job.findMany({
+      where: {
+        type: "MAINTENANCE_VISIT",
+        status: "COMPLETED",
+        partsCostCents: null,
+        laborCostCents: null,
+      },
+      select: {
+        id: true,
+        completedAt: true,
+        appliances: {
+          take: 1,
+          select: { appliance: { select: { assetNumber: true, applianceType: { select: { name: true } } } } },
+        },
+      },
     }),
   ]);
 
@@ -167,6 +185,16 @@ export async function getExceptions(): Promise<ExceptionItem[]> {
         updatedAt: a.updatedAt,
       }),
     ),
+    ...missingRepairCostJobs
+      .filter((j): j is typeof j & { completedAt: Date } => j.completedAt !== null)
+      .map((j) => {
+        const first = j.appliances[0]?.appliance;
+        return missingRepairCostException({
+          id: j.id,
+          completedAt: j.completedAt,
+          applianceLabel: first ? `${first.applianceType.name} ${first.assetNumber}` : null,
+        });
+      }),
   ];
 
   return sortExceptions(items);

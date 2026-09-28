@@ -21,7 +21,8 @@ export type ExceptionCategory =
   | "PAST_DUE_INVOICE"
   | "OVERDUE_JOB"
   | "UNREVIEWED_MAINTENANCE_REQUEST"
-  | "UNINSPECTED_RETURN";
+  | "UNINSPECTED_RETURN"
+  | "MISSING_REPAIR_COST";
 
 export type ExceptionSeverity = "high" | "medium";
 
@@ -140,6 +141,22 @@ export function uninspectedReturnException(appliance: {
     detail: "It's sitting AWAITING_INSPECTION — it can't go back out to another customer until it's checked over.",
     href: `/desk/inventory/${appliance.id}`,
     since: appliance.updatedAt,
+  };
+}
+
+export function missingRepairCostException(job: {
+  id: string;
+  completedAt: Date;
+  applianceLabel: string | null;
+}): ExceptionItem {
+  return {
+    category: "MISSING_REPAIR_COST",
+    severity: "medium",
+    title: `Repair cost not logged${job.applianceLabel ? ` (${job.applianceLabel})` : ""}`,
+    detail:
+      "This repair job is marked Completed but has no parts/labor cost entered — appliance profitability (Fleet page) is undercounting it as $0 until you add it.",
+    href: `/desk/jobs/${job.id}`,
+    since: job.completedAt,
   };
 }
 

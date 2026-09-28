@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   billingBlockedException,
+  missingRepairCostException,
   overdueJobException,
   pastDueInvoiceException,
   sortExceptions,
@@ -93,6 +94,27 @@ describe("exception builders", () => {
     });
     expect(item.title).toContain("Washer (A-100)");
     expect(item.href).toBe("/desk/inventory/appl-1");
+  });
+
+  it("missingRepairCostException names the appliance when one is linked to the job", () => {
+    const item = missingRepairCostException({
+      id: "job-3",
+      completedAt: new Date("2026-09-20"),
+      applianceLabel: "Washer A-100",
+    });
+    expect(item.category).toBe("MISSING_REPAIR_COST");
+    expect(item.severity).toBe("medium");
+    expect(item.title).toContain("Washer A-100");
+    expect(item.href).toBe("/desk/jobs/job-3");
+  });
+
+  it("missingRepairCostException still reads fine with no appliance linked", () => {
+    const item = missingRepairCostException({
+      id: "job-4",
+      completedAt: new Date("2026-09-20"),
+      applianceLabel: null,
+    });
+    expect(item.title).not.toContain("null");
   });
 });
 

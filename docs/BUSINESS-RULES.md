@@ -636,6 +636,39 @@ oversights):
   is already bookmarkable and shareable as-is — there was no need for
   a separate "save this view" database feature on top of that.
 
+## Reports: actual vs. estimated earnings, missing-cost warnings (2026-09-28)
+
+Task #45 of the September 2026 build plan. `/desk/reports` reconciles
+what Chris's agreements say he *should* be collecting against what has
+*actually* been collected, and flags a specific way that reconciliation
+can quietly go wrong.
+
+- **Estimated earnings**: for every agreement that has started billing,
+  its agreed monthly price (summed across its rental lines) prorated for
+  how long it's actually been in its billing period — the same
+  days-since-`billingStartedAt` reconstruction already used for the
+  Revenue page's MRR trend (`src/domains/billing/revenue.ts`), just
+  summed per-agreement instead of bucketed per-month.
+- **Actual earnings**: the real amount collected, straight from
+  `Invoice.amountPaidCents` — the same Stripe-confirmed number the
+  Revenue page's "Collected" figures already come from.
+- The Reports page lists any agreement more than $10 behind its own
+  estimated figure, worst gap first, alongside the fleet-wide totals.
+  This is a reconciliation aid, not a new source of truth — the real
+  invoice/payment history on a customer's own page is always the exact
+  record; a gap here just means "worth a look," not "something is
+  definitely wrong" (an invoice that posted a day late shows up the
+  same as a genuinely stuck one until the next billing cycle catches
+  up).
+- **Repair cost warnings**: a completed `MAINTENANCE_VISIT` job with no
+  parts or labor cost entered contributes $0 to that appliance's repair
+  cost in the fleet profitability/ROI figures (`src/domains/inventory/
+  analytics.ts`'s `computeRepairCostCents`) — which is correct behavior
+  for a job that really did cost nothing, but silently wrong for one
+  Chris just forgot to log. Both `/desk/reports` and the exception inbox
+  (`/desk/today`, new `MISSING_REPAIR_COST` category) list these jobs so
+  they don't go unnoticed.
+
 ## Privacy & accessibility baseline
 
 U.S. (CCPA/CPRA-style) privacy, not GDPR — this is a U.S.-only business.

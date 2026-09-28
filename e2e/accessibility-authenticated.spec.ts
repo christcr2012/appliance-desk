@@ -41,6 +41,7 @@ const DESK_PAGES = [
   "/desk/parts",
   "/desk/activity",
   "/desk/search",
+  "/desk/reports",
   "/desk/settings",
 ];
 
