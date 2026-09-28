@@ -15,18 +15,18 @@ describe("getPostLoginDestination", () => {
     getServerSession.mockReset();
   });
 
-  it("sends an OWNER to the desk dashboard", async () => {
+  it("sends an OWNER to Today", async () => {
     getServerSession.mockResolvedValue({ user: { id: "u1", role: "OWNER" } });
     const { getPostLoginDestination } = await import("@/app/login/actions");
 
-    await expect(getPostLoginDestination(null)).resolves.toBe("/desk/dashboard");
+    await expect(getPostLoginDestination(null)).resolves.toBe("/desk/today");
   });
 
-  it("sends an ADMIN to the desk dashboard", async () => {
+  it("sends an ADMIN to Today", async () => {
     getServerSession.mockResolvedValue({ user: { id: "u1", role: "ADMIN" } });
     const { getPostLoginDestination } = await import("@/app/login/actions");
 
-    await expect(getPostLoginDestination(null)).resolves.toBe("/desk/dashboard");
+    await expect(getPostLoginDestination(null)).resolves.toBe("/desk/today");
   });
 
   it("sends a CUSTOMER to the account portal", async () => {
@@ -56,7 +56,7 @@ describe("getPostLoginDestination", () => {
     getServerSession.mockResolvedValue({ user: { id: "u1", role: "OWNER" } });
     const { getPostLoginDestination } = await import("@/app/login/actions");
 
-    await expect(getPostLoginDestination("//evil.example")).resolves.toBe("/desk/dashboard");
+    await expect(getPostLoginDestination("//evil.example")).resolves.toBe("/desk/today");
   });
 
   it("ignores an unsafe ?next= value that is a full external URL", async () => {
@@ -64,7 +64,7 @@ describe("getPostLoginDestination", () => {
     const { getPostLoginDestination } = await import("@/app/login/actions");
 
     await expect(getPostLoginDestination("https://evil.example")).resolves.toBe(
-      "/desk/dashboard",
+      "/desk/today",
     );
   });
 
@@ -72,7 +72,7 @@ describe("getPostLoginDestination", () => {
     getServerSession.mockResolvedValue({ user: { id: "u1", role: "OWNER" } });
     const { getPostLoginDestination } = await import("@/app/login/actions");
 
-    await expect(getPostLoginDestination("/\\evil.example")).resolves.toBe("/desk/dashboard");
+    await expect(getPostLoginDestination("/\\evil.example")).resolves.toBe("/desk/today");
   });
 
   it("returns /login when there is no session (sign-in didn't actually succeed)", async () => {

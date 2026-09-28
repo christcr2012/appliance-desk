@@ -28,6 +28,7 @@ const OWNER_STATE_PATH = "e2e/.auth/owner.json";
 const CUSTOMER_STATE_PATH = "e2e/.auth/customer.json";
 
 const DESK_PAGES = [
+  "/desk/today",
   "/desk/dashboard",
   "/desk/leads",
   "/desk/customers",
