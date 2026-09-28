@@ -112,6 +112,24 @@ awaiting-signature/active agreements, scheduled jobs, and open
 maintenance requests — so you can see what needs your attention at a
 glance.
 
+## Resetting test data (once you're done testing)
+
+Once you've had someone put a batch of test leads, customers,
+agreements, jobs, etc. into the app to try things out end to end, you
+can clear all of that out in one step without losing your own login or
+any of your real settings — whoever's helping you just runs:
+
+```
+npm run db:reset-test-data -- --yes
+```
+
+This deletes every lead, customer, rental agreement, job, maintenance
+request, invoice, and payment. It does **not** touch your login (or any
+staff login), your pricing/settings, your appliance categories, your
+actual physical fleet, or your public site text. Running the same
+command without `-- --yes` first shows exactly what it would delete
+without changing anything, if you want to see that before it happens.
+
 ## What's not built yet
 
 - Taking a real payment (Stripe billing) — everything today is tracked,

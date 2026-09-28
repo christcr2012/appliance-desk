@@ -1293,3 +1293,25 @@ merge). Two more items off his picked list:
 **Still open from the original 9-item list**: Task #72 (property-manager
 invoicing, lower priority, no urgency from Chris) and Task #73
 (accounting export CSV, generic, no accounting software yet).
+
+## 2026-09-28 (continued) — Owner login moved to the real business email; a safe test-data reset
+
+Two more requests from Chris, mid-conversation:
+
+- [x] **Changed his OWNER login email** to `ops@robinsonappliancerentals.com`
+      (was `ops@robinsonaisystems.com`, his other company), same
+      password — a single-row update run directly against the live
+      database (password lives in a separate table keyed by user id, so
+      it's untouched).
+- [x] **Built `scripts/reset-test-data.ts`** (`npm run db:reset-test-data`)
+      so a future system-testing pass can be cleared out in one command
+      without any risk to his own login. Structurally safe — the script
+      has no code path that can delete an OWNER/ADMIN/STAFF account —
+      and defaults to a dry run; nothing happens without an explicit
+      `--yes`. Full reasoning, including why a separate "break glass"
+      login system was considered and rejected as overkill for a
+      business this size, is in `docs/DECISIONS.md`'s 2026-09-28 "Owner
+      login moved..." entry. 6/6 new unit tests passing
+      (`tests/reset-test-data.test.ts`); full suite 332/332. **Not run
+      against the real database** — Chris said this is for after a
+      testing pass, not now.
