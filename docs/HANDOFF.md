@@ -1085,14 +1085,22 @@ Investigated and fixed:
       - Swept the rest of the owner desk and customer portal for the
         same two patterns (grids that don't stack, tables that aren't
         scroll-contained) — nothing else found.
-- [ ] **"Colors and layouts are off" — not yet pinned down.** Reviewed
-      the color system and page layouts in the code and didn't find a
-      concrete bug — the color values and responsive layout rules look
-      consistent for both light and dark phone settings. This part of
-      the report needs a screenshot or a specific page name from Chris
-      to chase further; flagged in `docs/ROADMAP.md` rather than
-      guessing at a fix.
-- **Found but not built (out of scope, not asked for)**: there is
-  currently no "sign out" button anywhere in the owner desk or customer
-  portal. Flagged in `docs/ROADMAP.md` for Chris to decide on rather
-  than added unasked.
+- [x] **"Colors and layouts are off" — pinned down and fixed.** Chris
+      clarified: a text box's background was white but the text was too
+      close in color to read, and scrolling past a page's own content
+      showed a dark background instead of white. Root cause: the app's
+      color system had a second, dark-mode color set that most of the
+      app (every form, table, the desk, the portal) was never actually
+      built to use — so a phone or browser set to dark mode ended up
+      half-light, half-dark. Fixed by standardizing on the light theme
+      everywhere (see `docs/DECISIONS.md` for the full writeup) rather
+      than finishing a real dark mode, which wasn't what was asked for.
+- [x] **Sign-out link, added everywhere signed in.** Chris asked
+      directly: every `/desk/**` and `/account/**` page now has a
+      "Sign out" link in the same header used for navigation (desktop
+      row and mobile menu both).
+- [x] **Auto-logout after inactivity, added.** Chris asked directly for
+      this. Owner desk accounts sign out after 20 minutes of no
+      activity; customer portal accounts after 30 — both with a
+      one-minute warning banner first. See `docs/DECISIONS.md` for why
+      those two numbers.

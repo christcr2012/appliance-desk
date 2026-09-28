@@ -56,17 +56,15 @@ on — never built unasked.
 
 ## Suggestions (not scoped into any phase — Chris should decide)
 
-- **A "sign out" button** — found while fixing mobile navigation
-  (2026-09-27): there is currently no way to sign out from inside the
-  owner desk or the customer portal. Not built since Chris didn't ask
-  for it, but worth adding — a simple link in the (now-working)
-  hamburger menu on both `/desk/**` and `/account/**`.
-- **"Colors and layouts are off" on mobile** — part of Chris's
-  2026-09-27 mobile report that the hamburger-menu and sideways-
-  scrolling fixes (see `docs/HANDOFF.md`) didn't fully explain. A code
-  review of the color system and responsive layout rules didn't turn
-  up a specific bug. Needs a screenshot or the name of the page it
-  looks wrong on to chase further.
+- **A real dark mode** — the app used to have a half-working one (only
+  the public site's header/footer, plus a color-variable system most
+  pages never used) that turned out to be causing real bugs on phones
+  set to dark mode (unreadable text, wrong-colored overscroll — see
+  `docs/DECISIONS.md`, 2026-09-27). Removed rather than finished, since
+  building a real one — every form, table, and page in the owner desk
+  and customer portal getting an actual dark-theme pass — is a design
+  project of its own, not a quick fix. Worth doing later if Chris wants
+  a dark option; not needed for launch.
 - **Require customers to verify their email before logging in** —
   currently off (`requireEmailVerification: false` in
   `src/lib/auth.ts`), with a note to flip it on once email sending is

@@ -41,6 +41,24 @@
 
   --font-display: var(--font-fraunces);
   --font-sans: var(--font-inter);
+
+  /* This app is only ever styled for a light background — every form,
+     table, and card in the owner desk, customer portal, and the
+     sign/login pages hard-codes light Tailwind colors (bg-white,
+     text-gray-900, etc.) with no dark counterpart. Without this
+     declaration, a phone or browser set to dark mode still applied its
+     own native dark styling to form controls (checkboxes, and text
+     inputs' default background) while the page around them stayed
+     light, and used the browser's own dark canvas color for any area
+     outside the app's own content (visible when scrolling past the
+     bottom of a page, or during iOS's rubber-band overscroll bounce).
+     Reported by Chris, 2026-09-27: "the background was white and the
+     text box text couldn't really be read because the text color was
+     too similar" plus a dark background outside the page while
+     scrolling — both are this same mismatch. Fixed by telling every
+     browser this app is light-only, so it never substitutes its own
+     dark-mode colors anywhere. */
+  color-scheme: light;
 }
 
 @theme inline {
@@ -71,30 +89,14 @@
   --font-sans: var(--font-sans);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --color-canvas: #1b1712;
-    --color-canvas-alt: #241e17;
-    --color-surface: #2a2319;
-    --color-ink: #f6efe4;
-    --color-ink-soft: #d9cdba;
-    --color-ink-faint: #ad9f8c;
-    --color-line: #3d3325;
-    --color-line-strong: #4e422f;
-
-    --color-primary: #e08a54;
-    --color-primary-dark: #f2ac7d;
-    --color-primary-soft: #4a3120;
-    --color-on-primary: #241207;
-
-    --color-accent: #6fbb9e;
-    --color-accent-dark: #8fd0b6;
-    --color-accent-soft: #23392f;
-
-    --color-warning-bg: #3a2c0e;
-    --color-warning-ink: #f0c96b;
-  }
-}
+/* No @media (prefers-color-scheme: dark) override here on purpose —
+   see the color-scheme note above. This app has never actually had a
+   working dark theme (only the public site's header/footer used
+   colors that would have adapted; everything else — every form, every
+   table, the owner desk, the customer portal — is hard-coded light),
+   so a half-applied one was strictly a bug, not a feature in progress.
+   A real dark mode is a design project of its own (see
+   docs/ROADMAP.md) if Chris wants one later. */
 
 * {
   border-color: var(--color-line);
@@ -122,6 +124,21 @@ body {
   background: var(--color-canvas);
   color: var(--color-ink);
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Belt-and-suspenders alongside `color-scheme: light` above: every text
+   field in this app is meant to look like a plain white box with dark
+   text, but most of them don't set their own background/text color and
+   just inherit from whatever's around them. Setting it once here means
+   that stays true even somewhere a future page forgets to. Individual
+   inputs can still override this (e.g. a disabled field's lighter
+   background) — those rules just need to come after this one, which
+   they already do throughout the app. */
+input,
+textarea,
+select {
+  background-color: #ffffff;
+  color: #111827;
 }
 
 h1,

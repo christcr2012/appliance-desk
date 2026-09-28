@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { signOut } from "@/lib/auth-client";
 
 export type AuthedNavLink = { href: string; label: string };
 
@@ -35,8 +36,20 @@ export function AuthedHeader({
   links: AuthedNavLink[];
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
   const headerRef = useRef<HTMLElement>(null);
+
+  // Chris asked (2026-09-27): every signed-in page needs a way to sign
+  // out — there wasn't one anywhere in the desk or the customer portal.
+  // Shared here since both layouts render this one header.
+  async function handleSignOut() {
+    setSigningOut(true);
+    await signOut();
+    router.push("/login");
+    router.refresh();
+  }
 
   // Close the mobile menu on route change — adjusting state during
   // rendering when a prop changes, per
@@ -86,6 +99,14 @@ export function AuthedHeader({
               {link.label}
             </Link>
           ))}
+          <button
+            type="button"
+            onClick={handleSignOut}
+            disabled={signingOut}
+            className="text-gray-600 hover:text-gray-900 disabled:opacity-60"
+          >
+            {signingOut ? "Signing out…" : "Sign out"}
+          </button>
         </nav>
 
         {/* Mobile menu toggle */}
@@ -138,6 +159,14 @@ export function AuthedHeader({
                 {link.label}
               </Link>
             ))}
+            <button
+              type="button"
+              onClick={handleSignOut}
+              disabled={signingOut}
+              className="rounded-md px-2 py-3 text-left text-base font-medium text-gray-900 hover:bg-gray-100 disabled:opacity-60"
+            >
+              {signingOut ? "Signing out…" : "Sign out"}
+            </button>
           </div>
         </nav>
       )}
