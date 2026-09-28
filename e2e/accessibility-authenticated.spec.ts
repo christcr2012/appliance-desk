@@ -42,6 +42,7 @@ const DESK_PAGES = [
   "/desk/activity",
   "/desk/search",
   "/desk/reports",
+  "/desk/growth",
   "/desk/settings",
 ];
 

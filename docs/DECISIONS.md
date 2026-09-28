@@ -1744,3 +1744,36 @@ The $10 "notable gap" threshold on the Reports page is deliberately
 simple and low, same spirit as the exception inbox's own thresholds
 (`UNREVIEWED_MAINTENANCE_REQUEST_DAYS`, `UNINSPECTED_RETURN_DAYS`) —
 a number Chris could recite back, not a statistically tuned cutoff.
+
+## 2026-09-28 — Growth signals: churn risk, win-back, price review, fleet flags, local pages
+
+Ninth piece of "get everything built out now" — picks up a subset of
+`docs/reviews/2026-09-27-business-growth-ideas.md`'s brainstorm. See
+`docs/BUSINESS-RULES.md`'s new "Growth signals" section for the full
+list of what's included and, just as importantly, what was left out and
+why.
+
+New `/desk/growth` page and `src/domains/growth/` (pure scoring in
+`churn.ts` and `signals.ts`, same split as lead scoring and the
+exception inbox), plus a new public route, `/rent/[city]` — one real
+page per city actually listed in Settings' service area, never a
+fabricated one.
+
+Deliberately did **not** build the brainstorm's automatic review/
+referral-request email — an email fired automatically at a set
+milestone is a customer-facing action Chris hasn't explicitly signed
+off on sending unattended, which is exactly the spirit of `AGENTS.md`'s
+"ask before anything irreversible or costly." Built the useful half
+instead: a list of who's a good candidate to ask, refreshed from real
+billing data, that Chris acts on himself. Also deliberately left out the
+brainstorm's bigger, separate-schema, or paid ideas (a formal referral
+program, SMS notifications, a separate Contacts concept, an accounting
+export, the driver mobile job view) — each is substantial enough to be
+its own future piece, not something to fold in here.
+
+Churn-risk and fleet-utilization-flag thresholds (a $20-point at-risk
+score, 3+ units before a utilization flag means anything, a year before
+a price review is "due") are all deliberately simple, explainable
+numbers — same "no AI/ML, no hidden math" standard as lead scoring
+(`docs/BUSINESS-RULES.md`'s Lead scoring section) — not statistically
+tuned cutoffs.

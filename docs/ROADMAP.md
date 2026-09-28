@@ -161,8 +161,16 @@ on — never built unasked.
   fleet analytics, a churn-risk view, review/referral requests, a lead
   win-back nudge, annual price-review reminders, a formal referral
   program, local-search landing pages, SMS notifications, a separate
-  Contacts concept, and an accounting export. Nothing in it is built —
-  it's a menu for Chris to pick from, not a plan.
+  Contacts concept, and an accounting export. **Five of these are done
+  (2026-09-28, Task #46)**: inventory-shortage/pricing-opportunity
+  flags, a churn-risk view, lead win-back, annual price-review
+  reminders, and local-search landing pages — see
+  `docs/BUSINESS-RULES.md`'s "Growth signals" section for what shipped
+  and, just as importantly, what didn't (review/referral requests
+  shipped as a manual candidate list, not the brainstorm's automatic
+  emailer). **Still open**: a driver/technician mobile job view + route
+  grouping, a formal referral-tracking program, SMS notifications, a
+  separate Contacts concept, and an accounting export — not picked yet.
 - **A third Astra review ("upgrade to a connected workspace"),
   2026-09-27** — saved verbatim at
   `docs/reviews/2026-09-27-astra-workspace-review.md`, fact-checked in

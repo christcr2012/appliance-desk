@@ -669,6 +669,57 @@ can quietly go wrong.
   (`/desk/today`, new `MISSING_REPAIR_COST` category) list these jobs so
   they don't go unnoticed.
 
+## Growth signals (2026-09-28)
+
+Task #46 of the September 2026 build plan — picks up a subset of
+`docs/reviews/2026-09-27-business-growth-ideas.md`'s brainstorm (ideas
+#3, #4, #6, #7, #8, #11). `/desk/growth` groups five read-only signals,
+all pulled from data the app already has:
+
+- **Churn risk** (idea #5): an ACTIVE agreement showing one or more of —
+  a past-due invoice, a recent failed payment, its fixed term ending
+  within 30 days with no renewal recorded, or 2+ repair requests in the
+  last 90 days. Simple, explainable scoring (`src/domains/growth/
+  churn.ts`), same "no AI/ML, every point has a plain-English reason"
+  approach as lead scoring.
+- **Lead win-back** (idea #7): a `NEW`/`CONTACTED` lead that's gone
+  quiet for 14+ days, or a `LOST` lead old enough (60+ days) that
+  circumstances might genuinely have changed — re-approaching a fresh
+  "no" a week later would just be annoying.
+- **Price review reminders** (idea #8): an ACTIVE agreement whose price
+  was agreed a year or more ago. Since agreement pricing is frozen at
+  signing and never edited in place, "hasn't been revisited" is simply
+  "started a year+ ago" — never an automatic change, only a reminder.
+- **Fleet flags** (ideas #3/#4): an appliance type (with at least 3
+  units, so one washer isn't a statistic) running near-fully-rented is a
+  probable lost-rentals-to-no-availability signal; one sitting mostly
+  idle may be overpriced or overstocked. Reuses the same
+  `computeUtilizationFraction` the Fleet page already shows.
+- **Review/referral candidates** (idea #6): a customer billing cleanly
+  for 90+ days with nothing currently past due — a reasonable moment to
+  ask. **Deliberately a list, not an automatic sender**: the brainstorm
+  described an automatic email at a set milestone, but sending
+  unsolicited customer-facing email on a timer is exactly the kind of
+  thing `AGENTS.md` asks Chris to be looped in on — this surfaces who to
+  reach out to and leaves the actual asking to him.
+
+**Local-search landing pages** (idea #11): `/rent/[city]` — one real
+page per city Chris has actually listed in Settings' service area
+(`BusinessSettings.serviceAreaCities`), reusing the same real
+pricing/appliance content as `/pricing`. Never a fabricated city, and no
+invented claims (review counts, "hundreds of happy customers," etc.) —
+only what's actually true from real settings data. Linked from
+`/service-area` and included in `sitemap.ts`.
+
+**Not picked up in this pass** (the brainstorm's bigger, separate-schema
+or costly ideas — still just a menu, per that doc's own "nothing gets
+built without Chris picking it"): a formal referral-tracking program
+(idea #10, needs its own schema), SMS notifications (idea #12, a paid
+Twilio integration — `AGENTS.md`'s "ask before anything costly"), a
+separate Contacts concept (idea #13), an accounting export (idea #14),
+and the driver/technician mobile job view (ideas #1/#2, its own
+substantial piece of work).
+
 ## Privacy & accessibility baseline
 
 U.S. (CCPA/CPRA-style) privacy, not GDPR — this is a U.S.-only business.

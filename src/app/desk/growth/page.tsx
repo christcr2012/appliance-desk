@@ -1,0 +1,183 @@
+import Link from "next/link";
+import {
+  getChurnRiskCustomers,
+  getPriceReviewAgreements,
+  getReviewRequestCandidates,
+  getUtilizationFlags,
+  getWinBackLeads,
+} from "@/domains/growth";
+import { formatCents } from "@/domains/pricing";
+
+export const metadata = { title: "Growth" };
+
+export default async function GrowthPage() {
+  const [churnRisk, winBackLeads, priceReview, utilizationFlags, reviewCandidates] =
+    await Promise.all([
+      getChurnRiskCustomers(),
+      getWinBackLeads(),
+      getPriceReviewAgreements(),
+      getUtilizationFlags(),
+      getReviewRequestCandidates(),
+    ]);
+
+  return (
+    <div>
+      <h1 className="text-xl font-semibold">Growth</h1>
+      <p className="mt-1 max-w-2xl text-sm text-gray-600">
+        Signals pulled from your existing data — customers worth a
+        proactive call, leads worth a second follow-up, agreements that
+        haven&apos;t had their price revisited, and fleet numbers worth
+        acting on. Nothing here does anything automatically — every item
+        is a nudge for you to act on, not an action taken for you.
+      </p>
+
+      <section className="mt-8">
+        <h2 className="font-medium text-gray-900">
+          Customers worth a proactive call ({churnRisk.length})
+        </h2>
+        <p className="mt-1 text-sm text-gray-600">
+          Active rentals showing a churn signal — a past-due invoice, a
+          recent failed payment, a term ending soon with no renewal, or
+          repeat repair requests.
+        </p>
+        {churnRisk.length === 0 ? (
+          <p className="mt-4 text-sm text-gray-600">Nothing flagged right now.</p>
+        ) : (
+          <ul className="mt-4 divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white">
+            {churnRisk.map((row) => (
+              <li key={row.agreementId}>
+                <Link
+                  href={`/desk/customers/${row.customerId}`}
+                  className="flex flex-col gap-1 px-4 py-4 hover:bg-gray-50 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <p className="font-medium text-gray-900">{row.customerName}</p>
+                  <p className="text-sm text-amber-700 sm:text-right">
+                    {row.reasons.join(" · ")}
+                  </p>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="mt-8">
+        <h2 className="font-medium text-gray-900">
+          Leads worth a follow-up ({winBackLeads.length})
+        </h2>
+        <p className="mt-1 text-sm text-gray-600">
+          Gone quiet, or marked lost long enough ago that it&apos;s worth
+          another try.
+        </p>
+        {winBackLeads.length === 0 ? (
+          <p className="mt-4 text-sm text-gray-600">Nothing flagged right now.</p>
+        ) : (
+          <ul className="mt-4 divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white">
+            {winBackLeads.map((lead) => (
+              <li key={lead.leadId}>
+                <Link
+                  href={`/desk/leads/${lead.leadId}`}
+                  className="flex flex-col gap-1 px-4 py-3 hover:bg-gray-50 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <p className="text-sm text-gray-900">
+                    {lead.contactName}
+                    {lead.companyName ? ` — ${lead.companyName}` : ""}
+                  </p>
+                  <p className="text-sm text-gray-500">{lead.reason}</p>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="mt-8">
+        <h2 className="font-medium text-gray-900">
+          Agreements due for a price review ({priceReview.length})
+        </h2>
+        <p className="mt-1 text-sm text-gray-600">
+          Active for a year or more at the same agreed price. A reminder
+          only — nothing changes a customer&apos;s price automatically.
+        </p>
+        {priceReview.length === 0 ? (
+          <p className="mt-4 text-sm text-gray-600">Nothing flagged right now.</p>
+        ) : (
+          <ul className="mt-4 divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white">
+            {priceReview.map((row) => (
+              <li key={row.agreementId}>
+                <Link
+                  href={`/desk/agreements/${row.agreementId}`}
+                  className="flex flex-col gap-1 px-4 py-3 hover:bg-gray-50 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <p className="text-sm text-gray-900">{row.customerName}</p>
+                  <p className="text-sm text-gray-500">
+                    Signed {row.monthsAgo} months ago · {formatCents(row.monthlyTotalCents)}/mo
+                  </p>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="mt-8">
+        <h2 className="font-medium text-gray-900">
+          Fleet flags ({utilizationFlags.length})
+        </h2>
+        <p className="mt-1 text-sm text-gray-600">
+          An appliance type running near-fully-rented is probably costing
+          you rentals to no availability; one sitting mostly idle may be
+          overpriced or overstocked.
+        </p>
+        {utilizationFlags.length === 0 ? (
+          <p className="mt-4 text-sm text-gray-600">Nothing flagged right now.</p>
+        ) : (
+          <ul className="mt-4 divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white">
+            {utilizationFlags.map((row) => (
+              <li key={row.applianceTypeId} className="flex items-center justify-between px-4 py-3">
+                <p className="text-sm text-gray-900">
+                  {row.applianceTypeName} — {row.unitCount} unit{row.unitCount === 1 ? "" : "s"}
+                </p>
+                <p
+                  className={`text-sm font-medium ${
+                    row.flag === "SHORTAGE" ? "text-amber-700" : "text-gray-500"
+                  }`}
+                >
+                  {Math.round(row.averageUtilizationFraction * 100)}% utilized —{" "}
+                  {row.flag === "SHORTAGE" ? "consider buying more" : "consider reviewing price/stock"}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="mt-8">
+        <h2 className="font-medium text-gray-900">
+          Good candidates for a review or referral ask ({reviewCandidates.length})
+        </h2>
+        <p className="mt-1 text-sm text-gray-600">
+          Billing cleanly for 90+ days with nothing past due — a
+          reasonable moment to ask for a Google review or a referral.
+          Nothing is sent automatically; this is just who to reach out to.
+        </p>
+        {reviewCandidates.length === 0 ? (
+          <p className="mt-4 text-sm text-gray-600">Nothing flagged right now.</p>
+        ) : (
+          <ul className="mt-4 divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white">
+            {reviewCandidates.map((row) => (
+              <li key={row.agreementId}>
+                <Link
+                  href={`/desk/customers/${row.customerId}`}
+                  className="block px-4 py-3 text-sm text-gray-900 hover:bg-gray-50"
+                >
+                  {row.customerName}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </div>
+  );
+}
