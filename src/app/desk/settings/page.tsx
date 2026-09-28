@@ -93,6 +93,7 @@ export default async function DeskSettingsPage() {
             twelveMonthPrepaySingleDollars:
               settings.twelveMonthPrepayDiscountSingleCents / 100,
             twelveMonthPrepayFreeMonthEnabled: settings.twelveMonthPrepayFreeMonthEnabled,
+            referralRewardDollars: settings.referralRewardCents / 100,
             draftReservationHoldDays: settings.draftReservationHoldDays,
           }}
         />

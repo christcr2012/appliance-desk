@@ -1,3 +1,4 @@
 {
-  "20260926163000_user_email_verified_boolean": "Retroactively reviewed 2026-09-27 (Phase 6A item 1, see docs/DECISIONS.md): this migration's own comment already documented that the User table had zero rows when it ran, before launch and before any real customer or owner account existed, so changing the column's type and adding NOT NULL affected no real data."
+  "20260926163000_user_email_verified_boolean": "Retroactively reviewed 2026-09-27 (Phase 6A item 1, see docs/DECISIONS.md): this migration's own comment already documented that the User table had zero rows when it ran, before launch and before any real customer or owner account existed, so changing the column's type and adding NOT NULL affected no real data.",
+  "20260928140000_referral_program": "Reviewed 2026-09-28 (Task #68, docs/DECISIONS.md): the SET NOT NULL is on Customer.referralCode, and this migration backfills every existing row with a real random code in the statement immediately before it, so no row can ever hit the NOT NULL constraint with an actual NULL still in it — safe regardless of whether the Customer table is empty (it is, as of this migration) or already has real rows."
 }

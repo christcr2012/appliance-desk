@@ -5,6 +5,65 @@ here, add a new entry rather than editing the old one away.
 
 ---
 
+### 2026-09-28 — Referral program: give one, get one
+
+Chris picked this from a backlog review, and specified the reward
+shape himself: "discount for both people" — the same dollar amount for
+whoever referred and whoever was referred, not a one-sided bonus.
+
+**Design, in order of when things happen:**
+
+1. Every customer gets a short, unambiguous 6-character
+   `Customer.referralCode` (excludes 0/O/1/I/L — it gets read aloud and
+   typed by hand) the moment their account is created, whichever of
+   the two paths creates it (`convertLeadToCustomer`,
+   `createCustomerDirectly`).
+2. The public lead form has a new optional "referral code" field
+   (`Lead.referredByCode`). Never validated against real customers at
+   submission time — a typo or made-up code just means nothing links
+   later, it never blocks the lead itself.
+3. When that lead converts to a customer, if the code matches a real
+   customer's own code, a `Referral` row links them (PENDING) —
+   nothing has happened financially yet.
+4. The reward only fires when the *referred* customer's billing
+   actually starts (`RentalAgreement.billingStartedAt`, in
+   `startRecurringBillingForAgreement` right after a real Stripe
+   subscription is created) — **never on signup alone**, since
+   rewarding at signup would pay out for someone who never actually
+   rents anything.
+
+**How the reward is actually delivered:** a real Stripe
+account-balance credit — `stripe.customers.createBalanceTransaction`
+with a negative amount, which Stripe applies automatically to that
+customer's next invoice, no coupon or manual invoice edit needed. This
+only works for a side that already has a Stripe customer on file
+(i.e., has been billed at least once); either side is also given a
+local `CustomerCredit` record regardless, visible on their own
+customer page, so a side without a Stripe account yet still has a
+real, visible record Chris can honor by hand once they do. One
+owner-adjustable amount, `BusinessSettings.referralRewardCents` ($25
+default), applied to both sides — matching Chris's "discount for both
+people," not two separate configurable amounts.
+
+**Found and left alone rather than building around it:** the schema
+already had a `CustomerCredit` model (from the original Phase 6B
+billing redesign) described as "reduces what a customer owes on a
+future invoice," but nothing in the app had ever actually applied one
+— it was schema-only. Rather than build a whole separate "apply local
+credits against invoices we generate" system (a second, competing
+source of truth for what a customer owes, since Stripe — not this
+app's own Invoice table — is what actually decides the next charge),
+this reward uses Stripe's own real balance mechanism as the delivery
+path, and treats `CustomerCredit` purely as the audit-trail/visibility
+record it always described itself as.
+
+Best-effort throughout, matching every other money-adjacent background
+step in this app (billing reminders, activation emails): a failed
+Stripe call on one side, or a failed confirmation email, never blocks
+the other side's reward or the referral being marked REWARDED.
+
+---
+
 ### 2026-09-28 — Automation rules: billing reminders, overdue-rental and maintenance-due flags
 
 Chris picked this from a backlog review ("remind customers before

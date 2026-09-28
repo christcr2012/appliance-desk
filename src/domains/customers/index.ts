@@ -5,6 +5,7 @@ import {
   generateUnusedAccountPassword,
   sendCustomerActivationEmail,
 } from "@/domains/leads";
+import { generateUniqueReferralCode } from "@/domains/referrals";
 
 export { getCustomerTimeline, getCustomerContacts } from "./timeline";
 export type { TimelineEntry } from "./timeline";
@@ -70,6 +71,20 @@ export async function getCustomerById(id: string) {
       jobs: {
         include: { serviceAddress: true },
         orderBy: [{ scheduledAt: "desc" }],
+      },
+      // Referral program (Task #68) — this customer's own shareable
+      // code, who referred them in (if anyone), everyone they've
+      // referred in turn, and any credits on file (referral rewards or
+      // otherwise — CustomerCredit isn't referral-specific).
+      referredBy: {
+        include: { referrerCustomer: { include: { user: { select: { name: true, email: true } } } } },
+      },
+      referralsMade: {
+        include: { referredCustomer: { include: { user: { select: { name: true, email: true } } } } },
+        orderBy: [{ createdAt: "desc" }],
+      },
+      credits: {
+        orderBy: [{ createdAt: "desc" }],
       },
     },
   });
@@ -171,6 +186,7 @@ export async function createCustomerDirectly(
         isBusiness: input.isBusiness,
         isPropertyManager: input.isPropertyManager,
         companyName: input.companyName || null,
+        referralCode: await generateUniqueReferralCode(tx),
       },
     });
 

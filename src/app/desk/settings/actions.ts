@@ -45,6 +45,7 @@ const businessSettingsSchema = z.object({
   twelveMonthPrepaySetDollars: z.coerce.number().min(0).max(1000),
   twelveMonthPrepaySingleDollars: z.coerce.number().min(0).max(1000),
   twelveMonthPrepayFreeMonthEnabled: z.coerce.boolean(),
+  referralRewardDollars: z.coerce.number().min(0).max(1000),
   draftReservationHoldDays: z.coerce.number().int().min(1).max(90),
 });
 
@@ -81,6 +82,7 @@ export async function updateSettingsAction(
     sixMonthPrepaySingleDollars,
     twelveMonthPrepaySetDollars,
     twelveMonthPrepaySingleDollars,
+    referralRewardDollars,
     ...rest
   } = parsed.data;
 
@@ -94,6 +96,7 @@ export async function updateSettingsAction(
     sixMonthPrepayDiscountSingleCents: dollarsToCents(sixMonthPrepaySingleDollars),
     twelveMonthPrepayDiscountSetCents: dollarsToCents(twelveMonthPrepaySetDollars),
     twelveMonthPrepayDiscountSingleCents: dollarsToCents(twelveMonthPrepaySingleDollars),
+    referralRewardCents: dollarsToCents(referralRewardDollars),
     serviceAreaCities: splitList(serviceAreaCities),
     serviceAreaZips: splitList(serviceAreaZips),
   });

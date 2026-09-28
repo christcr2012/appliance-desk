@@ -19,9 +19,11 @@ const auditLogCreate = vi.fn();
 const signUpEmail = vi.fn();
 const requestPasswordReset = vi.fn();
 
+const txCustomerFindUnique = vi.fn();
+
 function makeTx() {
   return {
-    customer: { create: customerCreate },
+    customer: { create: customerCreate, findUnique: txCustomerFindUnique },
     serviceAddress: { create: serviceAddressCreate },
     auditLog: { create: auditLogCreate },
   };
@@ -77,6 +79,7 @@ describe("createCustomerDirectly — Chris adding a customer himself", () => {
     userFindUnique.mockReset();
     userUpdate.mockReset().mockResolvedValue({ id: "user-1", role: "CUSTOMER" });
     customerFindUnique.mockReset().mockResolvedValue(null);
+    txCustomerFindUnique.mockReset().mockResolvedValue(null);
     customerCreate.mockReset().mockResolvedValue({ id: "cust-1" });
     serviceAddressCreate.mockReset().mockImplementation((args: { data: { line1: string } }) =>
       Promise.resolve({ id: `addr-${args.data.line1}`, ...args.data }),

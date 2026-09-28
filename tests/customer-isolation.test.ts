@@ -58,7 +58,7 @@ async function createCustomerFixture(label: "a" | "b"): Promise<Fixture> {
   });
 
   const customer = await prisma.customer.create({
-    data: { userId: user.id },
+    data: { userId: user.id, referralCode: `ISO${label.toUpperCase()}${RUN_ID}`.slice(0, 20).toUpperCase() },
   });
 
   const serviceAddress = await prisma.serviceAddress.create({

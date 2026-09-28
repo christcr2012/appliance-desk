@@ -711,14 +711,29 @@ invented claims (review counts, "hundreds of happy customers," etc.) —
 only what's actually true from real settings data. Linked from
 `/service-area` and included in `sitemap.ts`.
 
+**Formal referral program** (idea #10) — **done (2026-09-28, Task #68)**.
+Give-one/get-one: every customer gets a shareable `Customer.referralCode`
+automatically; a new lead who enters someone's code on the public form
+gets linked to them (`Referral`, PENDING) the moment that lead converts
+to a customer; the reward — one owner-adjustable dollar amount
+(`BusinessSettings.referralRewardCents`, $25 default), same for both
+sides — fires only once the *referred* customer's billing actually
+starts (`RentalAgreement.billingStartedAt`), never on signup alone.
+Applied as a real Stripe account-balance credit (automatically reduces
+that customer's next invoice) on whichever side already has a Stripe
+customer on file, plus a `CustomerCredit` record on both sides either
+way — visible on each customer's own page — so Chris can honor it by
+hand for a side that doesn't have a Stripe account yet. See
+`src/domains/referrals`.
+
 **Not picked up in this pass** (the brainstorm's bigger, separate-schema
 or costly ideas — still just a menu, per that doc's own "nothing gets
-built without Chris picking it"): a formal referral-tracking program
-(idea #10, needs its own schema), SMS notifications (idea #12, a paid
+built without Chris picking it"): SMS notifications (idea #12, a paid
 Twilio integration — `AGENTS.md`'s "ask before anything costly"), a
-separate Contacts concept (idea #13), an accounting export (idea #14),
-and the driver/technician mobile job view (ideas #1/#2, its own
-substantial piece of work).
+separate Contacts concept (idea #13), an accounting export (idea #14).
+The driver/technician mobile job view (ideas #1/#2) is also **done
+(2026-09-28, Task #65)** — see the automation-rules entry in
+`docs/DECISIONS.md`.
 
 ## Privacy & accessibility baseline
 

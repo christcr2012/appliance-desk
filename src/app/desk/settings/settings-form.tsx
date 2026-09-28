@@ -32,6 +32,7 @@ type FormValues = {
   twelveMonthPrepaySetDollars: number;
   twelveMonthPrepaySingleDollars: number;
   twelveMonthPrepayFreeMonthEnabled: boolean;
+  referralRewardDollars: number;
   draftReservationHoldDays: number;
 };
 
@@ -182,6 +183,23 @@ export function SettingsForm({ defaultValues }: { defaultValues: FormValues }) {
           Also give a free month when a customer pays the full 12-month term in one
           lump sum up front (you mark this yourself when creating that agreement)
         </label>
+      </fieldset>
+
+      <fieldset className="space-y-4">
+        <legend className="text-base font-semibold text-gray-900">
+          Referral program
+        </legend>
+        <p className="text-sm text-gray-600">
+          Every customer gets their own referral code automatically (shown on their
+          customer page). When someone they refer signs up using it and actually
+          starts paying, you both get the same credit — a &quot;give one, get
+          one.&quot; The credit is applied automatically to reduce that customer&apos;s
+          next payment.
+        </p>
+        <DollarInput
+          label="Referral reward — same amount for both people"
+          {...register("referralRewardDollars", { valueAsNumber: true })}
+        />
       </fieldset>
 
       <fieldset className="space-y-4">

@@ -24,6 +24,7 @@
  */
 import { auth } from "../src/lib/auth";
 import { prisma } from "../src/lib/prisma";
+import { generateReferralCode } from "../src/domains/referrals/code";
 
 // Starting catalog: Chris is launching with washers and dryers only, with
 // more appliance categories (refrigerators, ranges, dishwashers, ...)
@@ -138,7 +139,7 @@ async function seedTestCustomerFixture() {
   });
 
   const customer = await prisma.customer.create({
-    data: { userId: user.id },
+    data: { userId: user.id, referralCode: generateReferralCode() },
   });
 
   const serviceAddress = await prisma.serviceAddress.create({

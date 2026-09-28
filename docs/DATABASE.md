@@ -104,13 +104,21 @@ parts.
   money, its own existing record). Always has a reason and who
   authorized it; never automatic.
 - **CustomerCredit** — an account-level credit (goodwill, resolving an
-  overpayment) that reduces what a customer owes on a *future* invoice.
+  overpayment, a referral reward — see `Referral` below) that reduces
+  what a customer owes on a *future* invoice.
 - **WebhookEvent** — every Stripe webhook event this app has ever
   processed, by Stripe's own event id, so a duplicate delivery (webhook
   delivery is at-least-once) is never acted on twice.
 - **Deposit** — a security deposit tied to an agreement, now also
   recording who authorized a refund and why it was less than the full
   amount, when it's less.
+- **Referral** (2026-09-28, Task #68) — links a customer
+  (`referrerCustomer`) to whoever they referred in
+  (`referredCustomer`, `@unique` — a customer can only be the referred
+  party once), `PENDING` until the referred customer's billing starts,
+  then `REWARDED` with a frozen snapshot of what was actually paid out
+  (`rewardCents`). See `docs/DECISIONS.md`'s 2026-09-28 "Referral
+  program" entry.
 
 ## Settings, content & compliance
 
