@@ -1627,3 +1627,13 @@ enforce (`canTransitionApplianceStatus`, `applianceStatusAfterInspection`)
 rather than re-deciding allowed transitions itself, so a guided action
 can never move an appliance somewhere the raw buttons would have
 refused.
+
+**Real bug found and fixed while building this**: `getBusinessSettings`'s
+`DEFAULT_SETTINGS` fallback (used only if the singleton `BusinessSettings`
+row is somehow missing) had never been updated with the
+`inspectionChecklist` field added to the schema earlier in this session's
+work — so reading `settings.inspectionChecklist` would have broken, in
+that fallback case, for every caller, not just this one. The local
+sandbox's Prisma-client issue meant this didn't show up until CI's real
+type-check caught it (`src/domains/settings/index.ts`); fixed by adding
+the missing field to `DEFAULT_SETTINGS`.
