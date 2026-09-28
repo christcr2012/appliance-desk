@@ -163,6 +163,42 @@ on — never built unasked.
   program, local-search landing pages, SMS notifications, a separate
   Contacts concept, and an accounting export. Nothing in it is built —
   it's a menu for Chris to pick from, not a plan.
+- **A third Astra review ("upgrade to a connected workspace"),
+  2026-09-27** — saved verbatim at
+  `docs/reviews/2026-09-27-astra-workspace-review.md`, fact-checked in
+  `docs/DECISIONS.md`. The most ambitious of the three reviews this
+  session: a unified customer workspace, a guided rental-builder
+  wizard, richer appliance records with guided actions, a real dispatch
+  board, an "exception inbox," global search/saved views/bulk
+  actions/CSV import-export, an owner configuration center, and a
+  "when this happens → do this" automation-rules engine. Several of its
+  "quality standard" claims checked out as already true (concurrency-
+  safe appliance reservations, tested customer-data isolation, working
+  dark mode); two are real, worth-fixing gaps (no optimistic-
+  concurrency guard against conflicting simultaneous edits; Neon backup
+  restore capability exists but hasn't actually been drilled). The nine
+  proposed feature areas are each substantial on their own — not picked
+  yet; Chris to choose where (if anywhere) to start.
+- **A fourth Astra message — an actual code review, 2026-09-27** —
+  saved verbatim at `docs/reviews/2026-09-27-astra-code-review.md`,
+  fact-checked in `docs/DECISIONS.md`. This one claimed to have read
+  `main` at a specific commit and found three real billing-correctness
+  bugs (a successful payment retry could stay marked unpaid forever; a
+  pending ACH payment could show as paid before it actually settled;
+  ending/cancelling an agreement never stopped its Stripe subscription)
+  — all three verified and **fixed** in this same PR, not left as
+  roadmap items, since they're correctness bugs in existing intended
+  behavior. Two more findings (closing an agreement immediately frees
+  its appliances; signing immediately marks appliances rented) turned
+  out to already be deliberate, documented decisions — real trade-offs
+  worth Chris knowing about, not bugs. One real smaller gap not yet
+  fixed:
+  - **No idempotency key on Stripe Checkout Session creation** — a
+    double-click or retried request to `createCheckoutSessionForAgreement`
+    creates a second Checkout Session instead of reusing the first
+    (doesn't lose or misstate money, could hand a customer two payment
+    links). Add an idempotency key and/or reuse an unexpired session —
+    not picked yet.
 - **Google Search Console / Google Business Profile** connection —
   needs a real public business name and domain first (Phase 2/7).
 - **A design system / component library beyond Tailwind utilities** if

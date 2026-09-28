@@ -114,11 +114,22 @@ async function resolvePaymentMethod(paymentIntentId: string | null): Promise<str
  * and every recurring monthly one (from invoice.paid) — the same mapping
  * applies either way, since Stripe models both as an Invoice object.
  * `status` is PAID here specifically; invoice.payment_failed uses its own
- * separate, simpler path below rather than reusing this. */
+ * separate, simpler path below rather than reusing this.
+ *
+ * `existingInvoiceId`: pass this when a *failed* attempt at this exact
+ * Stripe invoice was already recorded (a DELINQUENT row created by
+ * handleInvoicePaymentFailed) and it has now actually succeeded on a
+ * retry — that row is updated to PAID (and given its real line items and
+ * a new succeeded Payment) instead of being skipped or duplicated. Real-
+ * money bug fixed 2026-09-27: this case used to be silently skipped
+ * because an Invoice already existed for that stripeInvoiceId, leaving a
+ * customer who successfully paid after an earlier failure still showing
+ * as unpaid — see docs/DECISIONS.md. */
 async function recordPaidInvoice(
   stripeInvoice: Stripe.Invoice,
   agreementId: string,
   customerId: string,
+  existingInvoiceId?: string,
 ): Promise<void> {
   const agreementLines = await prisma.rentalLine.findMany({
     where: { agreementId },
@@ -154,26 +165,41 @@ async function recordPaidInvoice(
     : null;
 
   await prisma.$transaction(async (tx) => {
-    const invoice = await tx.invoice.create({
-      data: {
-        customerId,
-        agreementId,
-        status: "PAID",
-        billingPeriodStart: stripeInvoice.period_start
-          ? new Date(stripeInvoice.period_start * 1000)
-          : null,
-        billingPeriodEnd: stripeInvoice.period_end
-          ? new Date(stripeInvoice.period_end * 1000)
-          : null,
-        subtotalCents,
-        taxCents,
-        amountDueCents: stripeInvoice.amount_due,
-        amountPaidCents: stripeInvoice.amount_paid,
-        dueDate: stripeInvoice.due_date ? new Date(stripeInvoice.due_date * 1000) : null,
-        stripeInvoiceId: stripeInvoice.id,
-        lineItems: { createMany: { data: lineItemsData } },
-      },
-    });
+    const invoiceFields = {
+      status: "PAID" as const,
+      billingPeriodStart: stripeInvoice.period_start
+        ? new Date(stripeInvoice.period_start * 1000)
+        : null,
+      billingPeriodEnd: stripeInvoice.period_end
+        ? new Date(stripeInvoice.period_end * 1000)
+        : null,
+      subtotalCents,
+      taxCents,
+      amountDueCents: stripeInvoice.amount_due,
+      amountPaidCents: stripeInvoice.amount_paid,
+      dueDate: stripeInvoice.due_date ? new Date(stripeInvoice.due_date * 1000) : null,
+    };
+
+    const invoice = existingInvoiceId
+      ? await tx.invoice.update({
+          where: { id: existingInvoiceId },
+          data: {
+            ...invoiceFields,
+            // The DELINQUENT row from the failed attempt was created with
+            // no line items (invoice.payment_failed doesn't record them) —
+            // add the real ones now that we know what was actually charged.
+            lineItems: { createMany: { data: lineItemsData } },
+          },
+        })
+      : await tx.invoice.create({
+          data: {
+            customerId,
+            agreementId,
+            ...invoiceFields,
+            stripeInvoiceId: stripeInvoice.id,
+            lineItems: { createMany: { data: lineItemsData } },
+          },
+        });
 
     await tx.payment.create({
       data: {
@@ -229,6 +255,19 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session):
     expand: ["payments"],
   });
 
+  // Real-money bug fixed 2026-09-27: this event fires as soon as the
+  // customer finishes Stripe's Checkout flow, which for a delayed-
+  // settlement payment method (ACH bank transfer, one of the two methods
+  // docs/BUSINESS-RULES.md offers) is BEFORE the money has actually moved
+  // — the underlying invoice can still be "open" for days while the bank
+  // debit clears, and can still fail. Recording it as PAID here
+  // regardless would show a pending (or later-failed) bank payment as
+  // paid immediately. Only record it here once Stripe itself already
+  // considers the invoice paid; otherwise wait for the invoice.paid (or
+  // invoice.payment_failed) webhook to say what actually happened — see
+  // docs/DECISIONS.md.
+  if (stripeInvoice.status !== "paid") return;
+
   const agreement = await prisma.rentalAgreement.findUniqueOrThrow({
     where: { id: agreementId },
     select: { customerId: true },
@@ -247,17 +286,27 @@ async function handleInvoicePaid(webhookInvoice: Stripe.Invoice): Promise<void> 
   });
   if (!agreement) return; // not an agreement we know about
 
-  // The very first invoice on a subscription is already handled by
-  // checkout.session.completed above (which has the deposit/damage-waiver
-  // context that invoice.paid alone doesn't carry as cleanly) — Stripe
-  // fires invoice.paid for that same invoice too, so skip it here to
-  // avoid creating it twice. Every later month, checkout.session.completed
+  // The very first invoice on a subscription, when paid immediately with
+  // an instant method (card), is already handled by
+  // checkout.session.completed above — Stripe fires invoice.paid for that
+  // same invoice too, so a truly-already-PAID invoice is skipped here to
+  // avoid recording it twice. Every later month, checkout.session.completed
   // never fires again, so invoice.paid is the only signal.
+  //
+  // But an existing invoice that is NOT yet paid — created DELINQUENT by
+  // handleInvoicePaymentFailed after an earlier failed attempt, or never
+  // recorded as paid by checkout.session.completed because it was still
+  // pending on a delayed-settlement method (ACH) — means this invoice.paid
+  // is the first time we've learned it actually succeeded. Real-money bug
+  // fixed 2026-09-27: this case used to be skipped outright just because
+  // *an* Invoice row existed, leaving a customer who paid (possibly after
+  // an earlier failure) still showing as unpaid or delinquent forever —
+  // see docs/DECISIONS.md.
   const alreadyRecorded = await prisma.invoice.findUnique({
     where: { stripeInvoiceId: webhookInvoice.id },
-    select: { id: true },
+    select: { id: true, status: true },
   });
-  if (alreadyRecorded) return;
+  if (alreadyRecorded?.status === "PAID") return;
 
   // The webhook payload itself doesn't carry the expanded `payments` data
   // extractPaymentIntentId needs, so re-fetch the invoice fresh rather than
@@ -267,7 +316,7 @@ async function handleInvoicePaid(webhookInvoice: Stripe.Invoice): Promise<void> 
     expand: ["payments"],
   });
 
-  await recordPaidInvoice(stripeInvoice, agreement.id, agreement.customerId);
+  await recordPaidInvoice(stripeInvoice, agreement.id, agreement.customerId, alreadyRecorded?.id);
 }
 
 async function handleInvoicePaymentFailed(webhookInvoice: Stripe.Invoice): Promise<void> {

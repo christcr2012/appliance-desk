@@ -23,6 +23,12 @@ let customerId: string;
 let serviceAddressId: string;
 let agreementId: string;
 let lineId: string;
+// Declared here (not inside beforeAll) so individual tests can mutate an
+// entry in place — e.g. simulating the same Stripe invoice id going from
+// "payment failed" to "payment succeeded on retry" the way a real one
+// would, or a delayed-settlement (ACH) invoice moving from "open" to
+// "paid" once the bank transfer actually clears.
+let fakeInvoicesById: Record<string, Record<string, unknown>>;
 
 function fakeEvent(id: string, type: string, object: unknown): Stripe.Event {
   return { id, type, data: { object } } as unknown as Stripe.Event;
@@ -82,9 +88,10 @@ beforeAll(async () => {
   // see the extract* helpers in src/domains/billing/webhooks.ts. Keyed by
   // invoice id so each test's numbers stay self-consistent, the way two
   // different real Stripe invoices would.
-  const fakeInvoicesById: Record<string, unknown> = {
+  fakeInvoicesById = {
     in_fake_1: {
       id: "in_fake_1",
+      status: "paid",
       subtotal: 4000,
       total_taxes: [{ amount: 292 }], // 7.3% of 4000, rounded
       amount_due: 19292,
@@ -103,6 +110,7 @@ beforeAll(async () => {
     },
     in_fake_failed_1: {
       id: "in_fake_failed_1",
+      status: "open",
       subtotal: 4000,
       total_taxes: [{ amount: 292 }],
       amount_due: 4292,
@@ -113,6 +121,20 @@ beforeAll(async () => {
       parent: { subscription_details: { subscription: "sub_fake_1" } },
       payments: { data: [{ payment: { type: "payment_intent", payment_intent: "pi_fake_failed" } }] },
       lines: { data: [] },
+    },
+    in_fake_ach_pending: {
+      id: "in_fake_ach_pending",
+      status: "open", // Stripe hasn't confirmed the bank debit cleared yet
+      subtotal: 4000,
+      total_taxes: [{ amount: 292 }],
+      amount_due: 4292,
+      amount_paid: 0,
+      period_start: 1738368000,
+      period_end: 1741046400,
+      due_date: null,
+      parent: { subscription_details: { subscription: "sub_fake_1" } },
+      payments: { data: [{ payment: { type: "payment_intent", payment_intent: "pi_fake_ach" } }] },
+      lines: { data: [{ description: "Washer", amount: 4000 }] },
     },
   };
 
@@ -134,7 +156,18 @@ afterAll(async () => {
   await prisma.invoice.deleteMany({ where: { agreementId } });
   await prisma.deposit.deleteMany({ where: { agreementId } });
   await prisma.webhookEvent.deleteMany({
-    where: { id: { in: ["evt_checkout_1", "evt_checkout_1_retry", "evt_failed_1"] } },
+    where: {
+      id: {
+        in: [
+          "evt_checkout_1",
+          "evt_checkout_1_retry",
+          "evt_failed_1",
+          "evt_failed_1_recovered",
+          "evt_ach_checkout",
+          "evt_ach_paid",
+        ],
+      },
+    },
   });
   await prisma.auditLog.deleteMany({ where: { userId } });
   await prisma.rentalLine.delete({ where: { id: lineId } });
@@ -239,5 +272,91 @@ describe("processStripeWebhookEvent — invoice.payment_failed", () => {
 
     const deposits = await prisma.deposit.findMany({ where: { agreementId } });
     expect(deposits).toHaveLength(1); // still just the one from the earlier test — untouched
+  });
+
+  // Real-money bug fixed 2026-09-27 (found by a code review, see
+  // docs/DECISIONS.md): a customer who paid successfully on a retry after
+  // an earlier failure used to still show as unpaid forever, because
+  // invoice.paid saw an Invoice already existed for that stripeInvoiceId
+  // (the DELINQUENT one from the failure above) and skipped outright.
+  it("invoice.paid for the SAME Stripe invoice, after an earlier failure, updates the DELINQUENT invoice to PAID rather than skipping it", async () => {
+    // The customer retried and it went through — Stripe now reports this
+    // exact invoice id as paid, with real line items this time.
+    fakeInvoicesById.in_fake_failed_1 = {
+      ...fakeInvoicesById.in_fake_failed_1,
+      status: "paid",
+      amount_paid: 4292,
+      payments: {
+        data: [{ payment: { type: "payment_intent", payment_intent: "pi_fake_failed_retry" } }],
+      },
+      lines: { data: [{ description: "Washer", amount: 4000 }] },
+    };
+
+    const event = fakeEvent("evt_failed_1_recovered", "invoice.paid", {
+      id: "in_fake_failed_1",
+      parent: { subscription_details: { subscription: "sub_fake_1" } },
+    });
+
+    await processStripeWebhookEvent(event);
+
+    const invoice = await prisma.invoice.findUnique({
+      where: { stripeInvoiceId: "in_fake_failed_1" },
+      include: { payments: true, lineItems: true },
+    });
+    // Same Invoice row (never a duplicate) — just corrected in place.
+    expect(invoice?.status).toBe("PAID");
+    expect(invoice?.amountPaidCents).toBe(4292);
+    expect(invoice?.lineItems.length).toBeGreaterThan(0);
+    // Both the original failed Payment and the new succeeded one are kept
+    // — an honest history of what actually happened, not a rewrite of it.
+    expect(invoice?.payments).toHaveLength(2);
+    expect(invoice?.payments.some((p) => p.status === "failed")).toBe(true);
+    expect(invoice?.payments.some((p) => p.status === "succeeded")).toBe(true);
+
+    const invoices = await prisma.invoice.findMany({
+      where: { stripeInvoiceId: "in_fake_failed_1" },
+    });
+    expect(invoices).toHaveLength(1); // proves it was updated, not duplicated
+  });
+});
+
+describe("processStripeWebhookEvent — checkout.session.completed with a pending (not-yet-settled) invoice", () => {
+  // Real-money bug fixed 2026-09-27: this event fires as soon as the
+  // customer finishes Checkout, which for ACH is before the bank debit
+  // actually clears — the old code recorded it PAID immediately regardless.
+  it("does not record anything when Stripe itself still shows the invoice as open (e.g. ACH still clearing)", async () => {
+    const event = fakeEvent("evt_ach_checkout", "checkout.session.completed", {
+      mode: "subscription",
+      invoice: "in_fake_ach_pending",
+      metadata: { agreementId },
+    });
+
+    await processStripeWebhookEvent(event);
+
+    const invoice = await prisma.invoice.findUnique({
+      where: { stripeInvoiceId: "in_fake_ach_pending" },
+    });
+    expect(invoice).toBeNull(); // nothing recorded yet — correctly so
+  });
+
+  it("once the ACH debit clears and invoice.paid fires for that same invoice, it's recorded as PAID for the first time", async () => {
+    fakeInvoicesById.in_fake_ach_pending = {
+      ...fakeInvoicesById.in_fake_ach_pending,
+      status: "paid",
+      amount_paid: 4292,
+    };
+
+    const event = fakeEvent("evt_ach_paid", "invoice.paid", {
+      id: "in_fake_ach_pending",
+      parent: { subscription_details: { subscription: "sub_fake_1" } },
+    });
+
+    await processStripeWebhookEvent(event);
+
+    const invoice = await prisma.invoice.findUnique({
+      where: { stripeInvoiceId: "in_fake_ach_pending" },
+    });
+    expect(invoice?.status).toBe("PAID");
+    expect(invoice?.amountPaidCents).toBe(4292);
   });
 });
