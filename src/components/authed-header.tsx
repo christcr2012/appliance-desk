@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { signOut } from "@/lib/auth-client";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export type AuthedNavLink = { href: string; label: string };
 
@@ -93,9 +94,16 @@ export function AuthedHeader({
         <span className="font-semibold">{title}</span>
 
         {/* Desktop nav */}
-        <nav aria-label={areaLabel} className="hidden items-center gap-4 text-sm md:flex">
+        <nav
+          aria-label={areaLabel}
+          className="hidden items-center gap-4 text-sm md:flex"
+        >
           {links.map((link) => (
-            <Link key={link.href} href={link.href} className="text-gray-600 hover:text-gray-900">
+            <Link
+              key={link.href}
+              href={link.href}
+              className="text-gray-600 hover:text-gray-900"
+            >
               {link.label}
             </Link>
           ))}
@@ -107,48 +115,56 @@ export function AuthedHeader({
           >
             {signingOut ? "Signing out…" : "Sign out"}
           </button>
+          <ThemeToggle />
         </nav>
 
         {/* Mobile menu toggle */}
-        <button
-          type="button"
-          className="inline-flex items-center justify-center rounded-md p-2 text-gray-700 md:hidden"
-          aria-expanded={menuOpen}
-          aria-controls="authed-mobile-menu"
-          aria-label={menuOpen ? "Close menu" : "Open menu"}
-          onClick={() => setMenuOpen((v) => !v)}
-        >
-          {menuOpen ? (
-            <svg
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              aria-hidden="true"
-            >
-              <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
-            </svg>
-          ) : (
-            <svg
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              aria-hidden="true"
-            >
-              <path d="M4 7h16M4 12h16M4 17h16" strokeLinecap="round" />
-            </svg>
-          )}
-        </button>
+        <div className="flex items-center gap-1 md:hidden">
+          <ThemeToggle />
+          <button
+            type="button"
+            className="inline-flex items-center justify-center rounded-md p-2 text-gray-700"
+            aria-expanded={menuOpen}
+            aria-controls="authed-mobile-menu"
+            aria-label={menuOpen ? "Close menu" : "Open menu"}
+            onClick={() => setMenuOpen((v) => !v)}
+          >
+            {menuOpen ? (
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                aria-hidden="true"
+              >
+                <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
+              </svg>
+            ) : (
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                aria-hidden="true"
+              >
+                <path d="M4 7h16M4 12h16M4 17h16" strokeLinecap="round" />
+              </svg>
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Mobile menu panel */}
       {menuOpen && (
-        <nav id="authed-mobile-menu" aria-label={areaLabel} className="border-t bg-gray-50 md:hidden">
+        <nav
+          id="authed-mobile-menu"
+          aria-label={areaLabel}
+          className="border-t bg-gray-50 md:hidden"
+        >
           <div className="flex flex-col gap-1 px-4 py-3">
             {links.map((link) => (
               <Link

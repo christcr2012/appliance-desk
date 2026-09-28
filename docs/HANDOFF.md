@@ -1104,3 +1104,16 @@ Investigated and fixed:
       activity; customer portal accounts after 30 — both with a
       one-minute warning banner first. See `docs/DECISIONS.md` for why
       those two numbers.
+
+## 2026-09-27 (same session, continued) — Real dark mode
+
+Chris asked for the app to actually support dark mode, right after the
+light-only color fix above shipped. Built a real one: a sun/moon toggle
+in every header (public site, owner desk, customer portal), defaulting
+to the device's own setting the first time and remembering whatever's
+chosen after that. Full technical writeup — including why the owner
+desk/customer portal needed a different approach than the public site
+— in `docs/DECISIONS.md`, and the "how to keep it working" note for
+future changes in `docs/DESIGN-SYSTEM.md`. Verified with real automated
+accessibility checks in dark mode
+(`e2e/accessibility-dark-mode.spec.ts`), not just a visual look.

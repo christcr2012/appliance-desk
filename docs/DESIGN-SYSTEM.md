@@ -55,3 +55,38 @@ required before launch (Phase 2/7).
   pricing/scoring/status logic themselves.
 - `/desk/**` and `/account/**` are marked `noindex, nofollow` (see
   `next.config.ts`) — they should never appear in search results.
+
+## Dark mode (added 2026-09-27)
+
+Switched by a `.dark` class on `<html>` (not just the device's own
+setting) — `src/lib/theme.ts`, toggled by the sun/moon button in every
+header. Defaults to the device's setting the first time, then
+remembers whatever the person last chose.
+
+**If you're adding a new page or component, you don't need to do
+anything special for it to support dark mode**, as long as you stick to
+the patterns already in use:
+
+- The public site's components are built from the CSS variables in
+  `globals.css` (`bg-canvas`, `text-ink`, `bg-surface`, etc.) — those
+  already have both a light and a dark value, so anything built from
+  them adapts automatically.
+- The owner desk, customer portal, and sign/login pages use plain
+  Tailwind colors instead (`bg-white`, `text-gray-900`,
+  `border-gray-200`, and so on) — `globals.css` has a block of `.dark`
+  overrides for the exact set of these classes already in use
+  throughout the app, so reusing one of them also adapts automatically.
+  A button's own colors (e.g. `bg-gray-900 ... text-white`) are
+  deliberately NOT overridden — a dark button with white text already
+  reads fine in either theme.
+
+**If you introduce a hard-coded color class that isn't already on that
+override list** (a new shade, e.g. `bg-purple-50`), it will look right
+in light mode but won't adapt in dark mode until a matching `.dark
+.bg-purple-50 { ... }` rule is added next to the others in
+`globals.css`. `e2e/accessibility-dark-mode.spec.ts` runs the same axe
+checks as the light-mode suite with the browser set to dark, on a
+representative sample of pages (not literally every page) — it's the
+first line of defense for something like this, but isn't a substitute
+for checking a new page in dark mode yourself if it's not one of the
+ones that suite covers.

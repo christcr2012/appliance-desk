@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
+/* Tailwind v4's dark: variant, targeted at an ancestor .dark class (set
+   on <html> by src/lib/theme.ts) rather than the OS's own dark-mode
+   setting — see the theme note further down for why. Used by new
+   components (e.g. the theme toggle itself); the existing owner-desk/
+   customer-portal pages instead get their dark colors from the plain
+   CSS overrides below, not this variant — see that comment for why. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /*
  * Design tokens — warm, high-end, personal-small-business feel (not
  * corporate-generic). See docs/DESIGN-SYSTEM.md for the accessibility
@@ -42,22 +50,11 @@
   --font-display: var(--font-fraunces);
   --font-sans: var(--font-inter);
 
-  /* This app is only ever styled for a light background — every form,
-     table, and card in the owner desk, customer portal, and the
-     sign/login pages hard-codes light Tailwind colors (bg-white,
-     text-gray-900, etc.) with no dark counterpart. Without this
-     declaration, a phone or browser set to dark mode still applied its
-     own native dark styling to form controls (checkboxes, and text
-     inputs' default background) while the page around them stayed
-     light, and used the browser's own dark canvas color for any area
-     outside the app's own content (visible when scrolling past the
-     bottom of a page, or during iOS's rubber-band overscroll bounce).
-     Reported by Chris, 2026-09-27: "the background was white and the
-     text box text couldn't really be read because the text color was
-     too similar" plus a dark background outside the page while
-     scrolling — both are this same mismatch. Fixed by telling every
-     browser this app is light-only, so it never substitutes its own
-     dark-mode colors anywhere. */
+  /* Tells the browser this half of the page is light right now, so it
+     never substitutes its own native dark styling (form controls, the
+     canvas beyond the page's own content) on top of colors we already
+     control — see the theme note below for the bug this originally
+     fixed. .dark below sets this to "dark" instead. */
   color-scheme: light;
 }
 
@@ -89,14 +86,168 @@
   --font-sans: var(--font-sans);
 }
 
-/* No @media (prefers-color-scheme: dark) override here on purpose —
-   see the color-scheme note above. This app has never actually had a
-   working dark theme (only the public site's header/footer used
-   colors that would have adapted; everything else — every form, every
-   table, the owner desk, the customer portal — is hard-coded light),
-   so a half-applied one was strictly a bug, not a feature in progress.
-   A real dark mode is a design project of its own (see
-   docs/ROADMAP.md) if Chris wants one later. */
+/*
+ * Dark mode (Chris asked for this, 2026-09-27) — how it's switched on,
+ * and why this file has two different mechanisms for it.
+ *
+ * Switching: a `dark` class on <html>, set by src/lib/theme.ts (a tiny
+ * inline script in the root layout runs before the page paints, so
+ * there's no flash of the wrong theme), and toggled by the sun/moon
+ * button in the header (both the public site's and the signed-in
+ * areas'). It defaults to the device's own light/dark setting the
+ * first time, then remembers whatever the person last chose
+ * (localStorage), the same way most apps' theme toggles work.
+ *
+ * Two mechanisms, for two different parts of the app:
+ *
+ * 1. The public website's components (header, footer, home, pricing,
+ *    etc.) were already built entirely from the CSS variables below
+ *    (bg-canvas, text-ink, and so on) — never a hard-coded color. So
+ *    reinstating those variables' dark values under .dark, right here,
+ *    is the ENTIRE fix for that half of the app — no component files
+ *    needed to change.
+ *
+ * 2. The owner desk, customer portal, and the sign/login/reset-password
+ *    pages were built the opposite way — every form, table, and card
+ *    hard-codes plain Tailwind colors (bg-white, text-gray-900,
+ *    border-gray-200, and so on) directly in ~55 files, never these
+ *    variables. Retrofitting all ~55 files to use the variables instead
+ *    would be the more "textbook" fix, but it's a much bigger, riskier
+ *    change for the same visible result — every one of those files
+ *    would need touching, and it's easy to miss one (see
+ *    docs/DECISIONS.md, 2026-09-27, for how a half-applied dark mode
+ *    caused a real bug here already). Instead, the block below
+ *    overrides those specific, already-known hard-coded classes with a
+ *    dark equivalent whenever `.dark` is on an ancestor — mechanically
+ *    covering every current use of them (and any new one that reuses
+ *    the same classes) from one place. A button's own colors (e.g.
+ *    "bg-gray-900 ... text-white") are deliberately left alone: those
+ *    are already a dark chip with white text, which reads fine in
+ *    either theme, so they're not part of this list.
+ */
+.dark {
+  --color-canvas: #1b1712;
+  --color-canvas-alt: #241e17;
+  --color-surface: #2a2319;
+  --color-ink: #f6efe4;
+  --color-ink-soft: #d9cdba;
+  --color-ink-faint: #ad9f8c;
+  --color-line: #3d3325;
+  --color-line-strong: #4e422f;
+
+  --color-primary: #e08a54;
+  --color-primary-dark: #f2ac7d;
+  --color-primary-soft: #4a3120;
+  --color-on-primary: #241207;
+
+  --color-accent: #6fbb9e;
+  --color-accent-dark: #8fd0b6;
+  --color-accent-soft: #23392f;
+
+  --color-warning-bg: #3a2c0e;
+  --color-warning-ink: #f0c96b;
+
+  color-scheme: dark;
+}
+
+/* Part 2 from the note above: dark equivalents for the owner desk /
+   customer portal / sign-in pages' hard-coded classes. Grouped by what
+   they're for, not by file — every file that uses a class on the left
+   gets the color on the right whenever .dark is active. Verified with
+   a real automated contrast check, not just eyeballed — see
+   e2e/accessibility-dark-mode.spec.ts. */
+.dark .bg-gray-50 {
+  background-color: #111827; /* page background */
+}
+.dark .bg-white {
+  background-color: #1f2937; /* card / table / panel background */
+}
+.dark .bg-gray-100,
+.dark .hover\:bg-gray-100:hover,
+.dark .hover\:bg-gray-50:hover,
+.dark .disabled\:bg-gray-50:disabled {
+  background-color: #374151; /* hover states, disabled fields */
+}
+.dark .text-gray-900,
+.dark .hover\:text-gray-900:hover {
+  color: #f9fafb;
+}
+.dark .text-gray-700 {
+  color: #e5e7eb;
+}
+.dark .text-gray-600 {
+  color: #d1d5db;
+}
+.dark .text-gray-500 {
+  color: #9ca3af;
+}
+.dark .border-gray-100 {
+  border-color: #374151;
+}
+.dark .border-gray-200 {
+  border-color: #374151;
+}
+.dark .border-gray-300,
+.dark .hover\:border-gray-400:hover {
+  border-color: #4b5563;
+}
+.dark .border-gray-400 {
+  border-color: #6b7280;
+}
+
+/* Status colors — success (green), error (red), warning (amber), info
+   (blue). One dark background/text/border pair per color, reused
+   across every shade number that color is used at (a "-50" success
+   background and a "-100" one are both just "the success box," and
+   don't need to stay visually different shades of green in dark mode
+   too). */
+.dark .bg-green-50,
+.dark .bg-green-100 {
+  background-color: #052e1f;
+}
+.dark .text-green-700,
+.dark .text-green-800,
+.dark .text-green-900 {
+  color: #86efac;
+}
+.dark .border-green-200 {
+  border-color: #065f46;
+}
+
+.dark .bg-red-50,
+.dark .bg-red-100 {
+  background-color: #450a0a;
+}
+.dark .text-red-700,
+.dark .text-red-800 {
+  color: #fca5a5;
+}
+.dark .border-red-300,
+.dark .hover\:border-red-400:hover {
+  border-color: #7f1d1d;
+}
+
+.dark .bg-amber-50,
+.dark .bg-amber-100 {
+  background-color: #451a03;
+}
+.dark .text-amber-700,
+.dark .text-amber-800,
+.dark .text-amber-900 {
+  color: #fcd34d;
+}
+.dark .border-amber-200,
+.dark .border-amber-400,
+.dark .hover\:border-amber-500:hover {
+  border-color: #92400e;
+}
+
+.dark .bg-blue-50 {
+  background-color: #172554;
+}
+.dark .text-blue-900 {
+  color: #93c5fd;
+}
 
 * {
   border-color: var(--color-line);
@@ -126,19 +277,27 @@ body {
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
 }
 
-/* Belt-and-suspenders alongside `color-scheme: light` above: every text
-   field in this app is meant to look like a plain white box with dark
-   text, but most of them don't set their own background/text color and
-   just inherit from whatever's around them. Setting it once here means
-   that stays true even somewhere a future page forgets to. Individual
-   inputs can still override this (e.g. a disabled field's lighter
-   background) — those rules just need to come after this one, which
-   they already do throughout the app. */
+/* Belt-and-suspenders alongside `color-scheme` above: every text field
+   in this app is meant to look like a plain box with readable text
+   inside it, but most of them don't set their own background/text
+   color and just inherit from whatever's around them. Setting it once
+   here — using the theme variables, so it flips correctly with .dark —
+   means that stays true even somewhere a future page forgets to.
+   Individual inputs can still override this (e.g. a disabled field's
+   different background) — those rules just need to come after this
+   one, which they already do throughout the app. */
 input,
 textarea,
 select {
   background-color: #ffffff;
   color: #111827;
+}
+
+.dark input,
+.dark textarea,
+.dark select {
+  background-color: #1f2937;
+  color: #f9fafb;
 }
 
 h1,

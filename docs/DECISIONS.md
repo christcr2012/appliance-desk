@@ -5,7 +5,51 @@ here, add a new entry rather than editing the old one away.
 
 ---
 
+### 2026-09-27 — Real dark mode, superseding the "light-only" decision below
+
+**What changed:** right after the light-only fix below shipped, Chris
+said he wants the app to actually support dark mode, not just avoid
+being broken by it. Built a real one rather than redoing the previous
+fix a different way:
+
+- A `.dark` class on `<html>` (`src/lib/theme.ts`), not just the
+  device's own setting — so there's an explicit toggle (a sun/moon
+  button in every header), while still defaulting to the device's
+  setting the first time. An inline script runs before the page paints
+  so there's no flash of the wrong theme.
+- The public site needed **zero component changes** — it was already
+  built entirely from CSS variables (`bg-canvas`, `text-ink`, etc.), so
+  reinstating those variables' dark values under `.dark` (rather than
+  the old `@media (prefers-color-scheme: dark)`, which the light-only
+  fix removed) was the whole fix for that half of the app.
+- The owner desk, customer portal, and sign/login pages needed a
+  different approach, since (as the entry below found) they hard-code
+  plain Tailwind colors in ~55 files with no dark equivalent.
+  Retrofitting every file to use CSS-variable classes instead would be
+  the more conventional fix, but it's a much bigger, easier-to-get-wrong
+  change for the same result. Instead, added `.dark` CSS overrides for
+  the exact, finite set of hard-coded classes already in use across
+  those files (`globals.css`) — this mechanically covers every current
+  use of them (and any future one that reuses the same classes) from
+  one place, rather than needing every file touched and reviewed
+  individually. `docs/DESIGN-SYSTEM.md` has the how-to for anyone
+  adding a new page.
+- Verified with real automated checks, not by eye: `e2e/accessibility-
+  dark-mode.spec.ts` reruns the same axe/WCAG checks used elsewhere,
+  with the browser set to prefer dark, across a representative sample
+  of public/desk/account pages — specifically because a centralized
+  override like this is easy to get a color pairing wrong in without
+  noticing visually. Plus `tests/theme.test.ts` and
+  `tests/theme-toggle.test.tsx` for the toggle logic itself (including
+  a same-tab update bug the tests caught during development: clicking
+  the toggle updated `localStorage` and the DOM class, but nothing told
+  the button component to re-render in the same tab that clicked it).
+
 ### 2026-09-27 — Mobile color/contrast bug: standardize on light theme everywhere, not a real dark mode
+
+**(Superseded by the entry above, same day — kept for the record of
+what the actual color bug was and why "light-only" was the first fix
+tried.)**
 
 **What Chris reported:** on at least one page, a text box's background
 was white but the typed text was too close in color to read, and
