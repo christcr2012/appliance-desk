@@ -341,6 +341,40 @@ appliance from the request instead of starting blank — but scheduling a
 job does **not** automatically change the request's own status; Chris
 still moves it through the flow above by hand.
 
+## The exception inbox and "Today" (2026-09-28)
+
+`/desk/today` is where Chris lands after logging in — what's scheduled
+today, plus a "Needs your attention" list gathering anything stuck,
+across the whole app, into one place (`src/domains/exceptions`). None of
+these are new failure states; they're existing ones that used to require
+Chris to notice them by opening the right page at the right time. Each
+item links straight to the page where it's actually fixed — this is a
+list, not its own separate workflow.
+
+What shows up there, and why:
+
+- **Billing blocked** — an agreement's `billingBlockedReason` is set
+  (see Billing rules above). Always high severity — it's money not
+  being collected.
+- **Reservation expired** — a `DRAFT`/`AWAITING_SIGNATURE` agreement
+  past its `reservationExpiresAt` hold, still tying up equipment that
+  could go to someone else.
+- **Past due** — an invoice past its due date, still `OPEN` or
+  `DELINQUENT`. High severity.
+- **Overdue job** — a `SCHEDULED` job whose `scheduledAt` has already
+  passed without being marked in progress or completed.
+- **Needs review** — a maintenance request still `SUBMITTED` after 2
+  days (`UNREVIEWED_MAINTENANCE_REQUEST_DAYS` in
+  `src/domains/exceptions/rules.ts`).
+- **Needs inspection** — an appliance sitting `AWAITING_INSPECTION` for
+  more than 3 days (`UNINSPECTED_RETURN_DAYS`) — it can't be rented out
+  again until Chris checks it over.
+
+Sorted high-severity first, then oldest first within each severity — the
+thing that's been sitting the longest and matters the most shows up at
+the top. The stats dashboard (`/desk/dashboard`) still exists separately
+for a broader numbers view; `/desk/today` is the actionable one.
+
 ## Customer data isolation (security-critical)
 
 A customer must **never** be able to see another customer's records.

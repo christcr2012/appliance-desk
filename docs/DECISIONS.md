@@ -1549,3 +1549,35 @@ changed file here was checked against a `git stash` baseline to confirm
 no *new* errors were introduced beyond that known, pre-existing noise.
 CI (real Postgres) is the actual verification gate for the DB-backed
 tests (`tests/billing-webhooks.test.ts`, `tests/inventory.test.ts`).
+
+## 2026-09-28 — Exception inbox + "Today" landing page
+
+Second piece of "get everything built out now" (`docs/ROADMAP.md`'s
+build list, item 2 of 12). Built on top of the rental-lifecycle branch
+(PR #49), since its centerpiece — `billingBlockedReason` — only exists
+there; this PR should merge after (or together with) that one.
+
+Gathers six already-possible-but-easy-to-miss stuck states into one list
+(`src/domains/exceptions`) instead of leaving Chris to notice them by
+happening to open the right page: billing blocked, an expired
+reservation hold, a past-due invoice, an overdue job, an unreviewed
+maintenance request, and an appliance sitting uninspected too long. See
+`docs/BUSINESS-RULES.md`'s new "The exception inbox and 'Today'"
+section for the full list and thresholds.
+
+**Changed where logging in sends Chris**, from `/desk/dashboard` (a
+stats page) to the new `/desk/today` (what's scheduled today + what
+needs attention) — not something Chris asked for by name, but it's the
+direct realization of what he described wanting from this feature
+("one place to see anything that needs your attention instead of having
+to go hunting for it"), and it's a one-line, easily-reversed routing
+change, not a removal of anything — the stats dashboard is still there,
+one click away in the nav. Flagged to Chris in the session report rather
+than treated as silently obvious.
+
+**A known approximation, documented in code rather than hidden**: "how
+long has this appliance been sitting `AWAITING_INSPECTION`" is read off
+`Appliance.updatedAt`, which changes on any edit to that row, not only a
+status change — good enough to sort a secondary list by roughly how
+stale something is, not worth a dedicated timestamp column for. Same
+spirit as `computeMrrTrend`'s own documented approximation.

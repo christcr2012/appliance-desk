@@ -8,6 +8,7 @@ export const metadata = {
 };
 
 const DESK_LINKS: AuthedNavLink[] = [
+  { href: "/desk/today", label: "Today" },
   { href: "/desk/dashboard", label: "Dashboard" },
   { href: "/desk/leads", label: "Leads" },
   { href: "/desk/customers", label: "Customers" },
