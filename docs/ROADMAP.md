@@ -77,14 +77,21 @@ on — never built unasked.
     been evaluated against what the in-house review's PR #39 already
     changed.
   - **Property managers / portfolio accounts: in progress** — Chris
-    said yes, build it. First slice (`/desk/customers/new`, adding a
-    customer directly with multiple properties) is done — see
+    said yes, build it. Turned out to need much less than a "new
+    business line" — the data model already supported multiple
+    properties per customer (`Customer.serviceAddresses`) and already
+    ranked property managers as the highest-value lead type. First
+    slice built (2026-09-27): `/desk/customers/new`, adding a customer
+    directly with as many properties as needed at once. See
     `docs/BUSINESS-RULES.md`'s "Property managers / portfolio
-    accounts" section for what's built vs. still open (a portfolio
-    rollup view, the customer portal's "All properties" selector).
-  - Not started: the brief's owner-desk dashboard/nav rebuild and
-    customer-portal rebuild — need evaluating against what PR #39
-    already changed before deciding what's left to build.
+    accounts" section for exactly what's built vs. still open (a
+    portfolio rollup view, the customer portal's "All properties"
+    selector, adding properties to an existing customer from the UI).
+  - Not started: the 6/12-month-lease framing already exists as the
+    prepaid-term discount (see "Pricing" in `docs/BUSINESS-RULES.md`)
+    — the brief's owner-desk dashboard/nav rebuild and customer-portal
+    rebuild haven't been evaluated against what the in-house review's
+    PR #39 already changed yet.
 - **Require customers to verify their email before logging in** —
   currently off (`requireEmailVerification: false` in
   `src/lib/auth.ts`), with a note to flip it on once email sending is

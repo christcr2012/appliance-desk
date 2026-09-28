@@ -222,8 +222,11 @@ export function canConvertLead(
  * account with, but nobody ever needs to know or use this one — the
  * customer sets their own real password via the activation email (see
  * sendCustomerActivationEmail below), the same way a forgotten password
- * is reset. Random and immediately discarded on purpose. */
-function generateUnusedAccountPassword(): string {
+ * is reset. Random and immediately discarded on purpose. Exported so
+ * src/domains/customers' direct-customer-creation flow (Chris adding a
+ * customer himself, not via lead conversion) can create an account the
+ * same safe way instead of duplicating this. */
+export function generateUnusedAccountPassword(): string {
   return randomBytes(24).toString("base64url");
 }
 

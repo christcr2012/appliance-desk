@@ -109,6 +109,46 @@ Default ranking, **lowest to highest** value:
   why a heavier solution (Cloudflare Turnstile, a persistent store)
   isn't built yet.
 
+## Property managers / portfolio accounts
+
+A landlord, property manager, or apartment operator renting appliances
+for several properties on one account (the Astra design review's
+"property/portfolio rentals" ask, 2026-09-27 — see `docs/DECISIONS.md`
+and `docs/ROADMAP.md`). The data model already supported this before
+that review — `Customer.isPropertyManager` and `Customer.serviceAddresses`
+(a **list** of `ServiceAddress`, not a single one) existed from Phase 3
+onward, and `Lead.isPropertyManager` already made "landlord/property
+manager/apartment operator needing multiple units" the single
+highest-value lead category (see "Lead scoring" above). What was
+missing was a way to actually *use* that: a property manager could only
+end up with one address on file (whatever the lead form or lead
+conversion captured), and Chris had no way to add one directly with
+several properties up front.
+
+Built (2026-09-27): `/desk/customers/new` lets Chris add a customer
+directly with as many `ServiceAddress` rows as needed at once — a
+property manager's whole portfolio in one form, not one address added
+at a time afterward. The customer detail page and `/desk/agreements/new`
+already let Chris pick which of a customer's addresses a given
+`RentalAgreement` is for, so a property manager can have several active
+agreements, each at a different property, under one login.
+
+**Still open** (tracked in `docs/ROADMAP.md`, not built yet): a
+portfolio rollup view (all of a property manager's properties and
+their agreements/charges in one place, both in the desk and in the
+customer portal's own "All properties" selector), and adding more
+properties to an *existing* customer from their own page (today, more
+than the addresses given at creation still need a direct database
+edit — not exposed in the UI yet).
+
+Lease term (month-to-month / 6-month / 12-month), billing cadence, and
+prepayment are already three separate concepts, not one — see the
+prepaid-term discount rules under "Pricing" above. A property
+manager's individual agreements use the same term/pricing rules as any
+other customer's; there's no separate "portfolio pricing" concept, on
+purpose, until Chris asks for one — a bulk/portfolio discount would be
+a new, explicit `PricingRule`, not inferred from address count.
+
 ## How the business operates at launch — Chris approves everything
 
 1. Customer submits an inquiry → becomes a `Lead`.
@@ -121,6 +161,16 @@ Default ranking, **lowest to highest** value:
    himself. If that email doesn't arrive or its link expires, "Resend
    activation email" on the customer's own page in the desk sends it
    again.
+   - **Or, Chris adds a customer directly** (`/desk/customers/new`,
+     added 2026-09-27 in response to a design review flagging that
+     there was no way to add one without an inbound lead — see
+     `docs/DECISIONS.md`) — for someone he's signing up himself: a
+     call-in, a walk-in, or a property manager he's already been
+     talking to. Same account-creation rules as lead conversion (one
+     shared code path — see `src/domains/customers`'s
+     `createCustomerDirectly`), and it can put more than one
+     `ServiceAddress` on file at once — see "Property managers /
+     portfolio accounts" below.
 4. From that customer's page, Chris starts a **draft** `RentalAgreement`
    — picks the service address, terms (deposit, damage waiver, late
    fee, tax rate), and assigns the specific physical `Appliance` unit(s)
