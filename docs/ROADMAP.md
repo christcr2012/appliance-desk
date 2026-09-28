@@ -60,16 +60,31 @@ on — never built unasked.
   "Astra"), 2026-09-27** — a large rebrand + redesign brief saved at
   `docs/reviews/2026-09-28-astra-redesign-brief.md`, discussed in
   `docs/DECISIONS.md`. Covers a full rebrand (new navy/teal color
-  system and logo, replacing the current warm palette), an owner-desk
+  system and logo, replacing the original warm palette), an owner-desk
   navigation/dashboard rebuild, a customer-portal rebuild, adding a
   property-manager/portfolio line of business, longer lease terms with
   separate billing cadence, and a settings-page split. Overlaps with
   and partly duplicates ground already covered by the earlier in-house
   design review (mostly done, see the "brand-consistency" PR history
   above) — the new material is mainly the rebrand and the business-
-  model additions. Not started: needs Chris's decision on the rebrand
-  and the new business lines before any of it is built, since both are
-  real business choices, not bug fixes.
+  model additions.
+  - **Rebrand: approved (2026-09-27)** — Chris looked at a real preview
+    deployment (PR #41) side by side with the old palette and said he
+    likes it. The navy/teal color swap is done (see
+    `docs/DESIGN-SYSTEM.md`'s "Brand palette: navy/teal"). **Still
+    open**: a real logo (kept the existing typographic wordmark on
+    purpose), and the brief's non-color IA/layout ideas, which haven't
+    been evaluated against what the in-house review's PR #39 already
+    changed.
+  - **Property managers / portfolio accounts: in progress** — Chris
+    said yes, build it. First slice (`/desk/customers/new`, adding a
+    customer directly with multiple properties) is done — see
+    `docs/BUSINESS-RULES.md`'s "Property managers / portfolio
+    accounts" section for what's built vs. still open (a portfolio
+    rollup view, the customer portal's "All properties" selector).
+  - Not started: the brief's owner-desk dashboard/nav rebuild and
+    customer-portal rebuild — need evaluating against what PR #39
+    already changed before deciding what's left to build.
 - **Require customers to verify their email before logging in** —
   currently off (`requireEmailVerification: false` in
   `src/lib/auth.ts`), with a note to flip it on once email sending is

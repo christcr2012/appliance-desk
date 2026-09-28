@@ -9,26 +9,24 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /*
- * PREVIEW BRANCH ONLY — do not merge as-is.
+ * Design tokens — navy/teal brand (rebrand approved by Chris, 2026-09-27
+ * — see docs/DECISIONS.md). Swapped from the original warm terracotta
+ * palette to the scheme proposed in the "Astra" redesign brief
+ * (docs/reviews/2026-09-28-astra-redesign-brief.md), after Chris looked
+ * at a real preview deployment (PR #41) side by side with the old
+ * palette on production and said he liked it.
  *
- * This is a straight token swap to the navy/teal palette from the
- * "Astra" redesign brief Chris shared (docs/reviews/2026-09-28-astra-
- * redesign-brief.md; see docs/DECISIONS.md, 2026-09-27, for why nothing
- * was built from that brief yet). It exists so Chris can look at a
- * real, working preview deployment of the proposed colors side by side
- * with the current warm palette on production, before deciding whether
- * to actually rebrand. If he says no, throw this branch away — nothing
- * here is meant to land on main. If he says yes, this is a reasonable
- * starting point but still needs: a real logo (this keeps the existing
- * typographic wordmark), a full manual contrast pass beyond the spot
- * checks below, and the two dark-mode button-color exception rules
- * further down revisited on purpose (see their comment).
+ * Still open, tracked in docs/ROADMAP.md: a real logo (this still uses
+ * the existing typographic wordmark — the brief's logo system was
+ * explicitly meant not to block the color/layout work), and the rest
+ * of the Astra brief beyond colors (owner-desk IA, customer-portal
+ * rebuild, etc.) hasn't been evaluated/built yet.
  *
  * Every value below was hand-checked against WCAG 2.1 AA's 4.5:1 text
  * contrast ratio (same relative-luminance method used elsewhere in
  * this file) for every place that token is actually used as text, not
- * just eyeballed — but this is still a preview, not a final design;
- * CI's axe checks are the real gate before anything ships.
+ * just eyeballed — and confirmed by CI's real axe accessibility checks
+ * (light and dark) passing on PR #41 before this was approved.
  *
  * Original warm-palette values, for reference / easy revert:
  *   canvas #fbf6ef, canvas-alt #f3ead9, ink #241f1a, ink-soft #55493f,
@@ -145,9 +143,9 @@
  *    are already a dark chip with white text, which reads fine in
  *    either theme, so they're not part of this list.
  */
-/* PREVIEW BRANCH ONLY — see the :root block's note above for what this
-   is and isn't. Dark-mode side of the same navy/teal swap; original
-   warm-palette dark values for reference: canvas #1b1712, canvas-alt
+/* Dark-mode side of the same navy/teal rebrand — see the :root block's
+   note above. Original warm-palette dark values for reference: canvas
+   #1b1712, canvas-alt
    #241e17, surface #2a2319, ink #f6efe4, ink-soft #d9cdba, ink-faint
    #ad9f8c, line #3d3325, line-strong #4e422f, primary #e08a54,
    primary-dark #f2ac7d, primary-soft #4a3120, on-primary #241207,
@@ -231,11 +229,9 @@
    dark fill here keeps every button readable regardless of that.
    Light mode is unaffected; it gets the brand color straight from the
    unconditional rule below, where white text on it measures ~6.4:1.
-   PREVIEW BRANCH: darkened to a teal (not the original near-black)
-   so this still reads as "on brand" -- pick whichever finish (a
-   teal-tinted button or a neutral dark one) looks better once you're
-   actually looking at it; both pass contrast easily (>8:1). Original
-   warm-palette values: #111827 / #111827 / #1f2937. */
+   Darkened to a teal (not the original near-black) so this still
+   reads as "on brand" in dark mode -- passes contrast easily (>8:1).
+   Original warm-palette values: #111827 / #111827 / #1f2937. */
 .dark .bg-gray-900 {
   background-color: #06403c;
 }
