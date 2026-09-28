@@ -15,6 +15,14 @@ const jobFindUniqueOrThrow = vi.fn();
 const jobUpdateMany = vi.fn();
 const auditLogCreate = vi.fn();
 
+// updateJobStatus wraps its write in prisma.$transaction (added
+// 2026-09-27 for this same atomic-conditional-update fix, extended
+// 2026-09-28 to also move appliances along the rental lifecycle when a
+// job completes — see src/domains/jobs/index.ts). The fake tx just
+// reuses these same mocks so the transaction body's tx.job.updateMany /
+// tx.auditLog.create calls are observed exactly like the un-transacted
+// calls this test suite already asserts on. Neither test here completes
+// a job, so the appliance-lifecycle side of the transaction never runs.
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     job: {
@@ -22,6 +30,14 @@ vi.mock("@/lib/prisma", () => ({
       updateMany: (...args: unknown[]) => jobUpdateMany(...args),
     },
     auditLog: { create: (...args: unknown[]) => auditLogCreate(...args) },
+    $transaction: (callback: (tx: unknown) => unknown) =>
+      callback({
+        job: {
+          updateMany: (...args: unknown[]) => jobUpdateMany(...args),
+          findUniqueOrThrow: (...args: unknown[]) => jobFindUniqueOrThrow(...args),
+        },
+        auditLog: { create: (...args: unknown[]) => auditLogCreate(...args) },
+      }),
   },
 }));
 

@@ -10,27 +10,29 @@ import {
   updateApplianceStatusFromJobAction,
 } from "../actions";
 import type { JobStatus, JobType, ApplianceStatus } from "@prisma/client";
+import { APPLIANCE_STATUS_LABELS } from "@/domains/inventory/lifecycle";
 
-// Workflow-continuity fix (2026-09-27) — a completed job used to just sit
-// there with no suggested next step. This is a UI-only nudge, never an
-// automatic change: the actual status change still goes through
-// updateApplianceStatusFromJobAction, which enforces the same
-// allowed-transition rules as every other status change in this app.
+// Rental lifecycle (2026-09-28): completing a delivery, installation, or
+// pickup now moves its appliances along automatically on the server (see
+// applyJobCompletionToAppliances in src/domains/jobs). Swaps still get a
+// one-click suggestion here for the machine going in; maintenance visits
+// are left entirely to Chris.
 const SUGGESTED_STATUS_FOR_TYPE: Record<JobType, ApplianceStatus | null> = {
-  DELIVERY: "RENTED",
-  INSTALLATION: "RENTED",
+  DELIVERY: null,
+  INSTALLATION: null,
   SWAP: "RENTED",
-  REMOVAL: "AVAILABLE",
+  REMOVAL: null,
   MAINTENANCE_VISIT: null,
 };
 
-const STATUS_LABEL: Record<ApplianceStatus, string> = {
-  AVAILABLE: "Available",
-  RESERVED: "Reserved",
-  RENTED: "Rented",
-  MAINTENANCE: "In maintenance",
-  RETIRED: "Retired",
+const AUTOMATIC_ON_COMPLETE: Partial<Record<JobType, string>> = {
+  DELIVERY: "Marking this completed marks its reserved appliances as Rented.",
+  INSTALLATION: "Marking this completed marks its reserved appliances as Rented.",
+  REMOVAL:
+    "Marking this completed moves its appliances to Awaiting inspection — check them over before they can be rented again.",
 };
+
+const STATUS_LABEL = APPLIANCE_STATUS_LABELS;
 
 const ALL_STATUSES: { value: JobStatus; label: string }[] = [
   { value: "SCHEDULED", label: "Scheduled" },
@@ -176,6 +178,10 @@ export function JobDetailPanel({ job }: { job: JobRow }) {
               className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
             />
           </div>
+        )}
+
+        {nextStatuses.includes("COMPLETED") && AUTOMATIC_ON_COMPLETE[job.type] && (
+          <p className="mt-3 text-sm text-gray-600">{AUTOMATIC_ON_COMPLETE[job.type]}</p>
         )}
 
         {nextStatuses.length === 0 ? (

@@ -109,6 +109,15 @@ model Customer {
   // — one Stripe Customer per Appliance Desk customer, never recreated.
   stripeCustomerId String? @unique
 
+  // Billing-starts-at-delivery (2026-09-28, Chris's explicit decision —
+  // see docs/BUSINESS-RULES.md's Billing rules). Captured at signing (a
+  // one-time Checkout Session collects the deposit/damage waiver, if any,
+  // and always saves a payment method for later off-session use) so the
+  // real recurring Subscription can be created later, with no further
+  // customer action, once a delivery/installation job for the agreement
+  // is actually marked completed.
+  stripeDefaultPaymentMethodId String?
+
   serviceAddresses ServiceAddress[]
   rentalAgreements RentalAgreement[]
   maintenanceRequests MaintenanceRequest[]
@@ -246,10 +255,17 @@ model ApplianceType {
   updatedAt DateTime @updatedAt
 }
 
+// Rental lifecycle (2026-09-28) — see docs/BUSINESS-RULES.md "Rental
+// lifecycle" and src/domains/inventory/lifecycle.ts for the allowed moves.
+// AWAITING_PICKUP: the agreement ended but the machine is still at the
+// customer's property. AWAITING_INSPECTION: it's back in the shop and
+// must be checked before it can be rented again.
 enum ApplianceStatus {
   AVAILABLE
   RESERVED
   RENTED
+  AWAITING_PICKUP
+  AWAITING_INSPECTION
   MAINTENANCE
   RETIRED
 }
@@ -283,6 +299,7 @@ model Appliance {
   photos      Photo[]
   jobs        JobAppliance[]
   maintenanceRequests MaintenanceRequest[]
+  inspections ApplianceInspection[]
 
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
@@ -290,6 +307,26 @@ model Appliance {
 
   @@index([status])
   @@index([applianceTypeId])
+}
+
+// One return inspection of a physical appliance (2026-09-28, rental
+// lifecycle). Recorded when a machine comes back from a customer
+// (AWAITING_INSPECTION): passed → AVAILABLE, failed → MAINTENANCE.
+// checklist snapshots exactly which items were on the list and which
+// were ticked, as [{ "item": "No leaks", "checked": true }, ...], so a
+// later edit to the owner's checklist never rewrites an old inspection.
+model ApplianceInspection {
+  id          String    @id @default(cuid())
+  applianceId String
+  appliance   Appliance @relation(fields: [applianceId], references: [id])
+  passed      Boolean
+  checklist   Json      @default("[]")
+  notes       String?
+  condition   String?
+  inspectedById String?
+  createdAt   DateTime  @default(now())
+
+  @@index([applianceId])
 }
 
 // A parts knowledge base keyed by MODEL NUMBER, not by an individual
@@ -366,8 +403,10 @@ model RentalAgreement {
   // design decision). Set when the agreement is created (now +
   // BusinessSettings.draftReservationHoldDays) and only meaningful
   // while the agreement is still DRAFT or AWAITING_SIGNATURE — once
-  // it's signed the appliances are actually rented, not just held, so
-  // staleness no longer applies. Chris can push this back out manually
+  // it's signed the appliances are reserved for that customer (not
+  // available to anyone else), so staleness no longer applies even
+  // though (as of the rental-lifecycle change, 2026-09-28) they aren't
+  // physically delivered yet. Chris can push this back out manually
   // ("extend reservation") for a legitimate deal that's just taking a
   // while, without that being confused with when the agreement was
   // actually created.
@@ -382,6 +421,26 @@ model RentalAgreement {
   // is actually generated for this agreement.
   stripeSubscriptionId String? @unique
   nextBillingDate      DateTime?
+
+  // Billing-starts-at-delivery (2026-09-28): recurring billing no longer
+  // starts at signing — it starts once a delivery/installation job for
+  // this agreement completes (src/domains/billing/checkout.ts's
+  // startRecurringBillingForAgreement). billingStartedAt is set the
+  // moment that actually succeeds, and stays null before then — this is
+  // what the MRR/ARR revenue trend (src/domains/billing/revenue.ts)
+  // reconstructs history from now, instead of the signing date, so a
+  // rental that sat signed-but-undelivered for weeks doesn't get counted
+  // as revenue for weeks it never actually billed.
+  billingStartedAt DateTime?
+
+  // Billing-starts-at-delivery (2026-09-28): set only if recurring
+  // billing was actually DUE to start (a delivery/installation job for
+  // this agreement was completed) but couldn't — almost always because
+  // the customer has no saved payment method yet. Null the rest of the
+  // time, including before delivery (nothing to report yet) and once
+  // billing has actually started. Surfaced to Chris so a stuck rental
+  // never goes silently unbilled — see the exception inbox.
+  billingBlockedReason String?
 
   lines RentalLine[]
 
@@ -831,6 +890,12 @@ model BusinessSettings {
   // appliances are held before the desk flags it as stale. Owner-
   // adjustable, same pattern as every other business rule here.
   draftReservationHoldDays Int @default(7)
+
+  // Return-inspection checklist (rental lifecycle, 2026-09-28) — a JSON
+  // string array of items Chris ticks off before a returned machine can
+  // be rented again. Empty means "use the built-in default list"
+  // (DEFAULT_INSPECTION_CHECKLIST in src/domains/inventory/lifecycle.ts).
+  inspectionChecklist Json @default("[]")
 
   updatedAt DateTime @updatedAt
 }

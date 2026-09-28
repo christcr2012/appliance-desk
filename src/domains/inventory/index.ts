@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import type { ApplianceStatus } from "@prisma/client";
+import { ALL_APPLIANCE_STATUSES, canTransitionApplianceStatus } from "./lifecycle";
 import {
   computeApplianceRevenueCents,
   computeProfitability,
@@ -16,48 +17,14 @@ import {
 // docs/ROADMAP.md (this was deferred from Phase 3's first slice).
 // ---------------------------------------------------------------------------
 
-const ALL_STATUSES: ApplianceStatus[] = [
-  "AVAILABLE",
-  "RESERVED",
-  "RENTED",
-  "MAINTENANCE",
-  "RETIRED",
-];
-
-/**
- * Which status changes are allowed, enforced on the server (not just
- * disabled buttons in the UI) — see docs/BUSINESS-RULES.md: "Appliance
- * statuses ... live in one central enum with clear rules for which
- * transitions are allowed." RETIRED is terminal (a disposed/decommissioned
- * unit doesn't come back into service) — add a new unit instead if that's
- * ever wrong in practice.
- */
-const ALLOWED_TRANSITIONS: Record<ApplianceStatus, ApplianceStatus[]> = {
-  AVAILABLE: ["RESERVED", "RENTED", "MAINTENANCE", "RETIRED"],
-  RESERVED: ["AVAILABLE", "RENTED", "MAINTENANCE", "RETIRED"],
-  RENTED: ["AVAILABLE", "MAINTENANCE", "RETIRED"],
-  MAINTENANCE: ["AVAILABLE", "RETIRED"],
-  RETIRED: [],
-};
-
-/** Pure — no database access, so it's directly unit-testable (see
- * tests/inventory.test.ts) despite the rest of this file needing a real
- * database. updateApplianceStatus below enforces the same rule. */
-export function canTransitionApplianceStatus(
-  from: ApplianceStatus,
-  to: ApplianceStatus,
-): { ok: true } | { ok: false; reason: string } {
-  if (from === to) {
-    return { ok: false, reason: "That's already its current status." };
-  }
-  if (ALLOWED_TRANSITIONS[from].includes(to)) {
-    return { ok: true };
-  }
-  return {
-    ok: false,
-    reason: `Can't move an appliance directly from ${from} to ${to}.`,
-  };
-}
+// The status rules themselves live in ./lifecycle.ts (pure, no database
+// import, shared with client components) — re-exported here so existing
+// server callers and tests keep importing from "@/domains/inventory".
+export {
+  canTransitionApplianceStatus,
+  ALLOWED_APPLIANCE_TRANSITIONS,
+  APPLIANCE_STATUS_LABELS,
+} from "./lifecycle";
 
 /** Pure — turns an appliance type's name into a short asset-number prefix,
  * e.g. "Washer" -> "WASH", "Washer + Dryer Set" -> "WDS". Exported for
@@ -91,7 +58,7 @@ export async function getApplianceCountsByStatus(): Promise<
     _count: { _all: true },
   });
   const result = Object.fromEntries(
-    ALL_STATUSES.map((s) => [s, 0]),
+    ALL_APPLIANCE_STATUSES.map((s) => [s, 0]),
   ) as Record<ApplianceStatus, number>;
   for (const row of counts) {
     result[row.status] = row._count._all;

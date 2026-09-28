@@ -84,20 +84,25 @@ export async function getRevenueDashboard() {
     pastDueInvoices,
     failedPaymentsThisMonth,
   ] = await Promise.all([
+    // Billing starts at delivery, not at signing (2026-09-28): an ACTIVE
+    // agreement with no billingStartedAt yet is signed but not delivered,
+    // so it isn't generating any recurring revenue yet — MRR/ARR and the
+    // active-rental/active-customer counts below only count ones where
+    // billing has actually started.
     prisma.rentalAgreement.findMany({
-      where: { status: "ACTIVE" },
+      where: { status: "ACTIVE", billingStartedAt: { not: null } },
       select: { customerId: true, lines: { select: { monthlyPriceCents: true } } },
     }),
     prisma.rentalAgreement.findMany({
-      where: { startDate: { not: null } },
+      where: { billingStartedAt: { not: null } },
       select: {
-        startDate: true,
+        billingStartedAt: true,
         endDate: true,
         lines: { select: { monthlyPriceCents: true } },
       },
     }),
     prisma.rentalAgreement.findMany({
-      where: { status: "ACTIVE" },
+      where: { status: "ACTIVE", billingStartedAt: { not: null } },
       select: { customerId: true },
       distinct: ["customerId"],
     }),

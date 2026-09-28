@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import type { JobStatus, JobType } from "@prisma/client";
+import { applianceStatusOnJobCompleted } from "@/domains/inventory/lifecycle";
+import { startRecurringBillingForAgreement } from "@/domains/billing/checkout";
 
 // ---------------------------------------------------------------------------
 // Jobs — one scheduled visit (delivery, install, swap, removal, or a
@@ -127,34 +129,142 @@ export async function updateJobStatus(
     throw new Error(check.reason);
   }
 
-  const result = await prisma.job.updateMany({
-    where: { id: jobId, status: before.status },
-    data: {
-      status: newStatus,
-      completedAt: newStatus === "COMPLETED" ? new Date() : before.completedAt,
-      completionNotes:
-        completionNotes !== undefined ? completionNotes : before.completionNotes,
-    },
+  const updated = await prisma.$transaction(async (tx) => {
+    const result = await tx.job.updateMany({
+      where: { id: jobId, status: before.status },
+      data: {
+        status: newStatus,
+        completedAt: newStatus === "COMPLETED" ? new Date() : before.completedAt,
+        completionNotes:
+          completionNotes !== undefined ? completionNotes : before.completionNotes,
+      },
+    });
+
+    if (result.count === 0) {
+      throw new Error(
+        "This job was just changed by someone else — refresh the page and try again.",
+      );
+    }
+
+    await tx.auditLog.create({
+      data: {
+        userId,
+        action: "job.status",
+        entityType: "Job",
+        entityId: jobId,
+        oldValue: { status: before.status },
+        newValue: { status: newStatus },
+      },
+    });
+
+    if (newStatus === "COMPLETED") {
+      await applyJobCompletionToAppliances(tx, userId, before);
+    }
+
+    return tx.job.findUniqueOrThrow({ where: { id: jobId } });
   });
 
-  if (result.count === 0) {
-    throw new Error(
-      "This job was just changed by someone else — refresh the page and try again.",
-    );
+  // Billing starts at delivery (2026-09-28, Chris's explicit decision —
+  // see docs/BUSINESS-RULES.md's Billing rules), so completing a
+  // delivery/installation job for an agreement is what actually starts
+  // its real Stripe Subscription. Deliberately OUTSIDE the transaction
+  // above (a Stripe network call has no business holding a database
+  // transaction open) and never allowed to fail the job completion
+  // itself — the machine really was delivered regardless of whether
+  // Stripe cooperates; a real problem starting billing is recorded on
+  // the agreement (billingBlockedReason) rather than thrown here, same
+  // principle as the "signed but Checkout Session failed" handling in
+  // src/app/sign/[id]/actions.ts.
+  if (
+    newStatus === "COMPLETED" &&
+    (before.type === "DELIVERY" || before.type === "INSTALLATION") &&
+    before.agreementId
+  ) {
+    try {
+      await startRecurringBillingForAgreement(before.agreementId);
+    } catch (error) {
+      console.error(
+        `Job ${jobId} completed but couldn't start billing for agreement ${before.agreementId}:`,
+        error,
+      );
+    }
   }
 
-  await prisma.auditLog.create({
-    data: {
-      userId,
-      action: "job.status",
-      entityType: "Job",
-      entityId: jobId,
-      oldValue: { status: before.status },
-      newValue: { status: newStatus },
-    },
-  });
+  return updated;
+}
 
-  return prisma.job.findUniqueOrThrow({ where: { id: jobId } });
+type JobTx = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
+
+/**
+ * Rental lifecycle (2026-09-28, docs/BUSINESS-RULES.md): completing a job
+ * moves its appliances along automatically, inside the same transaction
+ * as the job's own status change —
+ *   - delivery / installation: RESERVED → RENTED (this, not signing, is
+ *     when a machine is actually out with a customer)
+ *   - removal (pickup): AWAITING_PICKUP (or RENTED) → AWAITING_INSPECTION
+ * Maintenance visits and swaps are left to Chris (the job page suggests
+ * a next status for those). Which appliances: the ones listed on the job;
+ * if none were listed but the job belongs to an agreement, that
+ * agreement's own appliances — so forgetting to tick the boxes when
+ * scheduling a delivery doesn't silently skip the whole lifecycle. Each
+ * change is conditional on the status just read (same race-safe pattern
+ * as everywhere else) and audit-logged.
+ */
+async function applyJobCompletionToAppliances(
+  tx: JobTx,
+  userId: string,
+  job: { id: string; type: JobType; agreementId: string | null },
+) {
+  const listed = await tx.jobAppliance.findMany({
+    where: { jobId: job.id },
+    select: { applianceId: true },
+  });
+  let applianceIds = listed.map((row) => row.applianceId);
+
+  if (applianceIds.length === 0 && job.agreementId) {
+    if (job.type === "DELIVERY" || job.type === "INSTALLATION") {
+      const assignments = await tx.applianceAssignment.findMany({
+        where: { unassignedAt: null, rentalLine: { agreementId: job.agreementId } },
+        select: { applianceId: true },
+      });
+      applianceIds = assignments.map((a) => a.applianceId);
+    } else if (job.type === "REMOVAL") {
+      const assignments = await tx.applianceAssignment.findMany({
+        where: {
+          rentalLine: { agreementId: job.agreementId },
+          appliance: { status: "AWAITING_PICKUP" },
+        },
+        select: { applianceId: true },
+      });
+      applianceIds = [...new Set(assignments.map((a) => a.applianceId))];
+    }
+  }
+
+  for (const applianceId of applianceIds) {
+    const appliance = await tx.appliance.findUniqueOrThrow({
+      where: { id: applianceId },
+      select: { status: true },
+    });
+    const next = applianceStatusOnJobCompleted(job.type, appliance.status);
+    if (!next) continue;
+
+    const moved = await tx.appliance.updateMany({
+      where: { id: applianceId, status: appliance.status },
+      data: { status: next },
+    });
+    if (moved.count !== 1) continue; // changed by something else meanwhile — leave it
+
+    await tx.auditLog.create({
+      data: {
+        userId,
+        action: "appliance.unit.status",
+        entityType: "Appliance",
+        entityId: applianceId,
+        oldValue: { status: appliance.status },
+        newValue: { status: next, reason: `Job ${job.type.toLowerCase()} completed`, jobId: job.id },
+      },
+    });
+  }
 }
 
 /** Adds a condition photo to a job — pasted URL for now (same pattern as

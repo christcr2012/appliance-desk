@@ -144,16 +144,26 @@ async function getOrCreateTaxRate(taxRatePermille: number): Promise<string | nul
 const SUCCESS_URL_PATH = "/account?billing=success";
 const CANCEL_URL_PATH = "/account?billing=cancelled";
 
-/** The real integration point: builds and creates the actual Stripe
- * Checkout Session for a just-signed agreement, in subscription mode so
- * the recurring rent lines become a real Stripe Subscription (billed
- * immediately for this first period, then automatically every month on
- * this same day going forward — anniversary billing, no extra config
- * needed) while the deposit/damage-waiver amounts ride along as one-time
- * charges on that same first invoice only. Returns the URL to redirect
- * the customer to; nothing in our own database is marked paid yet — that
- * only happens once Stripe actually confirms payment, via the
- * checkout.session.completed webhook (src/app/api/webhooks/stripe). */
+/**
+ * Billing starts at delivery, not at signing (Chris's explicit decision,
+ * 2026-09-28 — see docs/BUSINESS-RULES.md's Billing rules). So the
+ * Checkout Session created right after signing no longer starts a
+ * Subscription: it only collects the one-time deposit/damage-waiver (if
+ * either applies) and — always — saves a payment method on the Stripe
+ * Customer for later off-session use (`setup_future_usage`), so the real
+ * recurring Subscription can be created later with no further customer
+ * action, once a delivery/installation job for this agreement is
+ * actually marked completed (see startRecurringBillingForAgreement).
+ *
+ * If there's nothing to charge right now (no deposit, no damage waiver),
+ * this still needs to collect *a* payment method, so it uses Stripe
+ * Checkout's "setup" mode (no charge at all) instead of "payment".
+ *
+ * Returns the URL to redirect the customer to; nothing in our own
+ * database is marked paid yet — that only happens once Stripe actually
+ * confirms payment, via the checkout.session.completed webhook
+ * (src/app/api/webhooks/stripe).
+ */
 export async function createCheckoutSessionForAgreement(agreementId: string): Promise<string> {
   const agreement = await prisma.rentalAgreement.findUniqueOrThrow({
     where: { id: agreementId },
@@ -163,59 +173,173 @@ export async function createCheckoutSessionForAgreement(agreementId: string): Pr
     },
   });
 
+  // Validates the agreement actually has something worth signing for
+  // (throws "nothing to charge" if it has no rental lines at all) — the
+  // one-time items (deposit/damage waiver) are what this Checkout
+  // Session actually charges now; the recurring ones are billed later,
+  // at delivery.
   const plan = buildCheckoutLinePlan(agreement);
+  const oneTimeItems = plan.filter((item) => !item.recurring);
+
   const stripeCustomerId = await ensureStripeCustomer(agreement.customerId);
-  const taxRateId = await getOrCreateTaxRate(agreement.taxRatePermille);
 
   const stripe = getStripeClient();
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  // Real gap fixed 2026-09-27 (found by a code review, see
+  // docs/DECISIONS.md): without an idempotency key, two overlapping
+  // requests to sign the same agreement (a double-click, a retried
+  // request after a slow response) could each create their own separate
+  // Checkout Session. Stripe treats two requests with the same key as one
+  // operation — the second simply gets back the first session instead of
+  // creating a new one. Stripe only remembers a key for 24 hours, so this
+  // never blocks a genuinely later, separate checkout for the same
+  // agreement (e.g. Chris manually re-triggering it well after the
+  // original session expired unused).
+  const idempotencyOptions = { idempotencyKey: `checkout-agreement-${agreement.id}` };
 
-  const lineItems = plan.map((item) => ({
-    quantity: 1,
-    tax_rates: item.recurring && taxRateId ? [taxRateId] : undefined,
-    price_data: {
-      currency: "usd",
-      unit_amount: item.amountCents,
-      product_data: {
-        name: item.description,
-        metadata: { kind: item.kind, rentalLineId: item.rentalLineId ?? "" },
-      },
-      ...(item.recurring ? { recurring: { interval: "month" as const } } : {}),
-    },
-  }));
-
-  const session = await stripe.checkout.sessions.create(
-    {
-      mode: "subscription",
-      customer: stripeCustomerId,
-      payment_method_types: ["card", "us_bank_account"],
-      line_items: lineItems,
-      success_url: `${appUrl}${SUCCESS_URL_PATH}`,
-      cancel_url: `${appUrl}${CANCEL_URL_PATH}`,
-      subscription_data: {
-        metadata: { agreementId: agreement.id },
-      },
-      metadata: { agreementId: agreement.id },
-    },
-    // Real gap fixed 2026-09-27 (found by a code review, see
-    // docs/DECISIONS.md): without this, two overlapping requests to sign
-    // the same agreement (a double-click, or a retried request after a
-    // slow response) could each create their own separate Checkout
-    // Session — not a lost-money bug, but the customer could end up with
-    // two different payment links for the same rental. Stripe treats two
-    // requests with the same idempotency key as one operation: the second
-    // one simply gets back the first one's session instead of creating a
-    // new one. Stripe only remembers a key for 24 hours, so this never
-    // blocks a genuinely later, separate checkout for the same agreement
-    // (e.g. Chris manually re-triggering billing well after the original
-    // session expired unused) — by then the key has aged out and a fresh
-    // request just proceeds normally.
-    { idempotencyKey: `checkout-agreement-${agreement.id}` },
-  );
+  const session =
+    oneTimeItems.length > 0
+      ? await stripe.checkout.sessions.create(
+          {
+            mode: "payment",
+            customer: stripeCustomerId,
+            payment_method_types: ["card", "us_bank_account"],
+            line_items: oneTimeItems.map((item) => ({
+              quantity: 1,
+              price_data: {
+                currency: "usd",
+                unit_amount: item.amountCents,
+                product_data: {
+                  name: item.description,
+                  metadata: { kind: item.kind },
+                },
+              },
+            })),
+            success_url: `${appUrl}${SUCCESS_URL_PATH}`,
+            cancel_url: `${appUrl}${CANCEL_URL_PATH}`,
+            // Saves the card/bank account used here on the Stripe
+            // Customer for later off-session billing (the recurring
+            // subscription created at delivery) — never for our own
+            // servers to see or store.
+            payment_intent_data: { setup_future_usage: "off_session" },
+            metadata: { agreementId: agreement.id },
+          },
+          idempotencyOptions,
+        )
+      : await stripe.checkout.sessions.create(
+          {
+            mode: "setup",
+            customer: stripeCustomerId,
+            payment_method_types: ["card", "us_bank_account"],
+            success_url: `${appUrl}${SUCCESS_URL_PATH}`,
+            cancel_url: `${appUrl}${CANCEL_URL_PATH}`,
+            setup_intent_data: { metadata: { agreementId: agreement.id } },
+            metadata: { agreementId: agreement.id },
+          },
+          idempotencyOptions,
+        );
 
   if (!session.url) {
     throw new Error("Stripe didn't return a Checkout URL for this session.");
   }
 
   return session.url;
+}
+
+/**
+ * Starts the real recurring Subscription for a signed agreement — called
+ * once a delivery/installation job for it is marked COMPLETED (see
+ * applyJobCompletionToAppliances in src/domains/jobs), never at signing.
+ * Uses the payment method saved during the signing Checkout Session
+ * (Customer.stripeDefaultPaymentMethodId); if there isn't one yet (the
+ * customer never completed that Checkout Session), this doesn't throw —
+ * it records why on the agreement itself (billingBlockedReason) so it
+ * surfaces to Chris instead of silently never getting billed, and he can
+ * resolve it (send the customer a new payment link, or apply a manual
+ * charge) rather than the delivery job failing to complete over it.
+ *
+ * Idempotent: if this agreement already has a stripeSubscriptionId,
+ * nothing happens — covers a delivery job somehow being completed twice,
+ * or re-running this directly.
+ */
+export async function startRecurringBillingForAgreement(agreementId: string): Promise<void> {
+  const agreement = await prisma.rentalAgreement.findUniqueOrThrow({
+    where: { id: agreementId },
+    include: {
+      customer: { select: { stripeCustomerId: true, stripeDefaultPaymentMethodId: true } },
+      lines: true,
+    },
+  });
+
+  if (agreement.stripeSubscriptionId) return; // already billing — nothing to do
+
+  const plan = buildCheckoutLinePlan(agreement).filter((item) => item.recurring);
+  if (plan.length === 0) return; // nothing recurring on this agreement (shouldn't happen — signing requires a rental line)
+
+  if (!agreement.customer.stripeCustomerId || !agreement.customer.stripeDefaultPaymentMethodId) {
+    await prisma.rentalAgreement.update({
+      where: { id: agreementId },
+      data: {
+        billingBlockedReason:
+          "This customer hasn't completed checkout yet, so there's no saved payment method to bill — send them the checkout link again, or start billing manually once they have one on file.",
+      },
+    });
+    return;
+  }
+
+  const taxRateId = await getOrCreateTaxRate(agreement.taxRatePermille);
+  const stripe = getStripeClient();
+
+  try {
+    // Unlike Checkout Session line items, a Subscription's price_data
+    // needs a real Stripe Product id (no inline product_data) — one
+    // Product per rental line, created fresh each time billing starts
+    // (each RentalLine's label is this agreement's own custom line, not
+    // a shared catalog item, so there's nothing to reuse across
+    // agreements the way getOrCreateTaxRate reuses tax rates).
+    const items = await Promise.all(
+      plan.map(async (item) => {
+        const product = await stripe.products.create({
+          name: item.description,
+          metadata: { kind: item.kind, rentalLineId: item.rentalLineId ?? "", agreementId: agreement.id },
+        });
+        return {
+          quantity: 1,
+          tax_rates: taxRateId ? [taxRateId] : undefined,
+          price_data: {
+            currency: "usd",
+            unit_amount: item.amountCents,
+            recurring: { interval: "month" as const },
+            product: product.id,
+          },
+        };
+      }),
+    );
+
+    await stripe.subscriptions.create(
+      {
+        customer: agreement.customer.stripeCustomerId,
+        default_payment_method: agreement.customer.stripeDefaultPaymentMethodId,
+        items,
+        metadata: { agreementId: agreement.id },
+      },
+      { idempotencyKey: `subscription-agreement-${agreement.id}` },
+    );
+
+    await prisma.rentalAgreement.update({
+      where: { id: agreementId },
+      data: { billingBlockedReason: null, billingStartedAt: new Date() },
+    });
+  } catch (error) {
+    // A real Stripe failure (card declined by the time we tried to
+    // charge it off-session, account closed, etc.) — recorded, not
+    // thrown, for the same reason as above: the job that triggered this
+    // already succeeded (the machine really was delivered) and must not
+    // be reverted or fail just because billing hit a snag.
+    const message = error instanceof Error ? error.message : "Stripe declined this charge.";
+    await prisma.rentalAgreement.update({
+      where: { id: agreementId },
+      data: { billingBlockedReason: `Couldn't start billing: ${message}` },
+    });
+  }
 }

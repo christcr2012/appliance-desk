@@ -12,19 +12,14 @@ import {
 } from "@/domains/inventory";
 import { dollarsToCents } from "@/domains/pricing";
 import type { ApplianceStatus } from "@prisma/client";
+import { ALL_APPLIANCE_STATUSES } from "@/domains/inventory/lifecycle";
 
 export type InventoryActionState =
   | { status: "idle" }
   | { status: "success" }
   | { status: "error"; message: string };
 
-const ALL_STATUSES: ApplianceStatus[] = [
-  "AVAILABLE",
-  "RESERVED",
-  "RENTED",
-  "MAINTENANCE",
-  "RETIRED",
-];
+const ALL_STATUSES = ALL_APPLIANCE_STATUSES;
 
 /** Comma-separated free text -> a clean string array — same pattern as
  * splitList in src/app/desk/settings/actions.ts, used here for the
