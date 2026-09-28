@@ -406,6 +406,35 @@ A customer's own page (`/desk/customers/[id]`) now has:
 - **Quick actions** — "New agreement" and "Schedule a job," right on
   their page.
 
+## Guided rental builder wizard (2026-09-28)
+
+`/desk/agreements/new` walks Chris through setting up a new rental
+step by step, instead of the two disconnected pages it used to be (a
+"new agreement" form, then a separate agreement page to add appliances
+and send it for signature — easy to leave half-done without noticing).
+Four steps, each gated on the previous one being complete:
+
+1. **Customer** — pick an existing customer and one of their service
+   addresses, or add a brand-new customer (name, email, phone, one
+   service address) right here without leaving the wizard.
+2. **Term & fees** — the same term/deposit/damage-waiver/late-fee/tax
+   fields the agreement has always had. Submitting this step is what
+   actually creates the `DRAFT` agreement row.
+3. **Appliances** — add one or more rental lines (label, monthly price,
+   which physical unit(s)), same as before; each one shows up in a
+   running list as it's added.
+4. **Review & send** — the total monthly price, every line, and one
+   button to send it for signature (or "finish this later" to leave it
+   as a draft and pick it up from the agreement's own page).
+
+This is a guided sequence over the exact same server actions the two
+old pages already used (`createDraftAgreementAction`,
+`addRentalLineAction`, `sendForSignatureAction`) — not a new creation
+path, so nothing about how an agreement is actually built changed, only
+how Chris is walked through building it. A new customer created inline
+gets the same activation email and account rules as adding one from
+`/desk/customers/new` (`createCustomerDirectly`).
+
 ## Dispatch board (2026-09-28)
 
 `/desk/dispatch` is the scheduling view of the same jobs `/desk/jobs`

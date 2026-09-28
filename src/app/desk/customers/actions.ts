@@ -51,6 +51,10 @@ export type NewCustomerActionState =
       customerId: string;
       isNewAccount: boolean;
       activationEmailSent: boolean;
+      // The just-created address rows, in the same order as the
+      // addresses submitted — lets a caller (e.g. the rental builder
+      // wizard) move straight to picking one without a second lookup.
+      serviceAddresses: { id: string; line1: string; city: string; state: string; zip: string }[];
     }
   | { status: "error"; message: string };
 
@@ -99,7 +103,7 @@ export async function createCustomerAction(
   }
 
   try {
-    const { customer, isNewAccount, activationEmailSent } =
+    const { customer, serviceAddresses, isNewAccount, activationEmailSent } =
       await createCustomerDirectly(session.user.id, {
         name: parsed.data.name,
         email: parsed.data.email,
@@ -124,6 +128,13 @@ export async function createCustomerAction(
       customerId: customer.id,
       isNewAccount,
       activationEmailSent,
+      serviceAddresses: serviceAddresses.map((a) => ({
+        id: a.id,
+        line1: a.line1,
+        city: a.city,
+        state: a.state,
+        zip: a.zip,
+      })),
     };
   } catch (error) {
     return {

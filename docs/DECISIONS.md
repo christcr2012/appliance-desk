@@ -1662,3 +1662,24 @@ defensively (`parseChecklist`) the same way `featuresToText` and
 in the app. Saving a checklist has no status gate at all — it's
 explicitly not a completion requirement, just a memory aid, so there's
 nothing to validate beyond "is this shaped like a checklist."
+
+## 2026-09-28 — Guided rental builder wizard
+
+Sixth piece of "get everything built out now." Replaces
+`/desk/agreements/new`'s single form with a 4-step wizard — see
+`docs/BUSINESS-RULES.md`'s new "Guided rental builder wizard" section.
+
+Deliberately **not** a new agreement-creation code path: every step
+calls the same `createDraftAgreementAction` / `addRentalLineAction` /
+`sendForSignatureAction` the old two-page flow already called (both are
+already well-tested — `tests/agreements.test.ts` and friends). Only the
+UI sequencing is new, which keeps the actual risk surface of this
+change small.
+
+**`createCustomerDirectly` now also returns the `ServiceAddress` rows it
+just created** (previously only the `Customer` row), so the wizard's
+inline "new customer" step can move straight to picking that customer's
+new address for the agreement without a second lookup. Purely additive
+— every existing caller of `createCustomerDirectly`/`createCustomerAction`
+ignores the new field, so nothing about the existing "add a customer"
+page changed.
