@@ -1719,3 +1719,28 @@ Implementation notes:
   (customers/appliances/leads) in parallel via `Promise.all`, capped
   at 8 results each, and short-circuits on a blank query rather than
   running three pointless queries.
+
+## 2026-09-28 — Reports: actual vs. estimated earnings, missing-cost warnings
+
+Eighth piece of "get everything built out now" — see
+`docs/BUSINESS-RULES.md`'s new "Reports" section.
+
+New `/desk/reports` page and `src/domains/reports/` (pure math in
+`earnings.ts`, same split as `src/domains/inventory/analytics.ts`),
+plus a new exception-inbox category, `MISSING_REPAIR_COST`
+(`src/domains/exceptions`), for completed `MAINTENANCE_VISIT` jobs with
+no parts/labor cost logged — those already silently counted as $0
+repair cost in fleet profitability; this makes that fact visible in two
+places (the Reports page and `/desk/today`) instead of nowhere.
+
+Deliberately reused the existing MRR-trend proration convention
+(days-since-`billingStartedAt`, 30-day month) for "estimated earnings"
+rather than inventing a new one, so the Reports page's numbers are
+consistent with what the Revenue page already shows — two different
+reconstructions of the same underlying agreed-pricing data would be
+confusing to reconcile against each other.
+
+The $10 "notable gap" threshold on the Reports page is deliberately
+simple and low, same spirit as the exception inbox's own thresholds
+(`UNREVIEWED_MAINTENANCE_REQUEST_DAYS`, `UNINSPECTED_RETURN_DAYS`) —
+a number Chris could recite back, not a statistically tuned cutoff.
