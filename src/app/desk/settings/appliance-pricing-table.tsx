@@ -24,34 +24,36 @@ export function AppliancePricingTable({ rows }: { rows: ApplianceTypeRow[] }) {
 
   return (
     <div className="space-y-6">
-      <table className="w-full max-w-3xl border-collapse text-sm">
-        <caption className="mb-2 text-left text-gray-600">
-          Add a new category any time you&apos;re ready to offer it
-          (refrigerators, ranges, etc.) — no developer needed. It starts
-          hidden from the website until you turn on &quot;Show on
-          website&quot;.
-        </caption>
-        <thead>
-          <tr className="border-b border-gray-200 text-left">
-            <th className="py-2 pr-4 font-medium text-gray-900">Appliance</th>
-            <th className="py-2 pr-4 font-medium text-gray-900">
-              Monthly price
-            </th>
-            <th className="py-2 pr-4 font-medium text-gray-900">
-              Show on website
-            </th>
-            <th className="py-2 pr-4 font-medium text-gray-900">Photo URL</th>
-            <th className="py-2 font-medium text-gray-900">
-              <span className="sr-only">Retire</span>
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {active.map((row) => (
-            <ApplianceRow key={row.id} row={row} />
-          ))}
-        </tbody>
-      </table>
+      <div className="max-w-3xl overflow-x-auto">
+        <table className="w-full min-w-[640px] border-collapse text-sm">
+          <caption className="mb-2 text-left text-gray-600">
+            Add a new category any time you&apos;re ready to offer it
+            (refrigerators, ranges, etc.) — no developer needed. It starts
+            hidden from the website until you turn on &quot;Show on
+            website&quot;.
+          </caption>
+          <thead>
+            <tr className="border-b border-gray-200 text-left">
+              <th className="py-2 pr-4 font-medium text-gray-900">Appliance</th>
+              <th className="py-2 pr-4 font-medium text-gray-900">
+                Monthly price
+              </th>
+              <th className="py-2 pr-4 font-medium text-gray-900">
+                Show on website
+              </th>
+              <th className="py-2 pr-4 font-medium text-gray-900">Photo URL</th>
+              <th className="py-2 font-medium text-gray-900">
+                <span className="sr-only">Retire</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {active.map((row) => (
+              <ApplianceRow key={row.id} row={row} />
+            ))}
+          </tbody>
+        </table>
+      </div>
 
       <NewApplianceTypeForm />
 
@@ -60,13 +62,15 @@ export function AppliancePricingTable({ rows }: { rows: ApplianceTypeRow[] }) {
           <summary className="cursor-pointer text-sm font-medium text-gray-700">
             Retired appliance types ({retired.length})
           </summary>
-          <table className="mt-3 w-full border-collapse text-sm">
-            <tbody>
-              {retired.map((row) => (
-                <ApplianceRow key={row.id} row={row} />
-              ))}
-            </tbody>
-          </table>
+          <div className="mt-3 overflow-x-auto">
+            <table className="w-full min-w-[640px] border-collapse text-sm">
+              <tbody>
+                {retired.map((row) => (
+                  <ApplianceRow key={row.id} row={row} />
+                ))}
+              </tbody>
+            </table>
+          </div>
         </details>
       )}
     </div>

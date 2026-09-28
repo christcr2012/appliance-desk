@@ -289,7 +289,7 @@ export function AgreementDetailPanel({
 
         {agreement.status === "DRAFT" && (
           <form onSubmit={handleAddLine} className="mt-4 space-y-3 border-t border-gray-100 pt-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label htmlFor="lineLabel" className="block text-sm font-medium text-gray-700">
                   Label

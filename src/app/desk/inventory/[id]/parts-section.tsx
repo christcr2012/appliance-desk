@@ -128,7 +128,7 @@ export function PartsSection({
       )}
 
       <form onSubmit={handleAdd} className="space-y-3 border-t border-gray-100 pt-4">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label htmlFor="partNumber" className="block text-sm font-medium text-gray-700">
               Part number

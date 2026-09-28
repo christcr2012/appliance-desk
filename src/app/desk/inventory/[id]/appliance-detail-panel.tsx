@@ -136,7 +136,7 @@ export function ApplianceDetailPanel({ appliance }: { appliance: ApplianceRow })
       >
         <h2 className="font-medium text-gray-900">Details</h2>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label htmlFor="manufacturer" className="block text-sm font-medium text-gray-700">
               Manufacturer
@@ -163,7 +163,7 @@ export function ApplianceDetailPanel({ appliance }: { appliance: ApplianceRow })
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label htmlFor="serialNumber" className="block text-sm font-medium text-gray-700">
               Serial number
@@ -190,7 +190,7 @@ export function ApplianceDetailPanel({ appliance }: { appliance: ApplianceRow })
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label htmlFor="color" className="block text-sm font-medium text-gray-700">
               Color
