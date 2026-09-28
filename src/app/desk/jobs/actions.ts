@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireRole } from "@/lib/session";
 import { createJob, updateJobStatus, addJobPhoto, setJobRepairCosts } from "@/domains/jobs";
-import type { JobStatus, JobType } from "@prisma/client";
+import { updateApplianceStatus } from "@/domains/inventory";
+import type { JobStatus, JobType, ApplianceStatus } from "@prisma/client";
 
 export type JobActionState =
   | { status: "idle" }
@@ -164,5 +165,46 @@ export async function setJobRepairCostsAction(
   revalidatePath(`/desk/jobs/${jobId}`);
   revalidatePath("/desk/fleet");
   revalidatePath("/desk/dashboard");
+  return { status: "success" };
+}
+
+const ALL_APPLIANCE_STATUSES: ApplianceStatus[] = [
+  "AVAILABLE",
+  "RESERVED",
+  "RENTED",
+  "MAINTENANCE",
+  "RETIRED",
+];
+
+/** The one-click "update this appliance's status" suggestion shown on a
+ * completed job's own page (workflow-continuity fix, 2026-09-27 — Chris
+ * pointed out actions in this app tend to dead-end instead of pointing at
+ * the obvious next step). Goes through the exact same
+ * updateApplianceStatus used everywhere else, so the same allowed-
+ * transition rules and audit logging apply — this is a shortcut to an
+ * existing action, never a separate path. */
+export async function updateApplianceStatusFromJobAction(
+  applianceId: string,
+  status: string,
+): Promise<JobActionState> {
+  const session = await requireRole("OWNER", "ADMIN");
+
+  if (!ALL_APPLIANCE_STATUSES.includes(status as ApplianceStatus)) {
+    return { status: "error", message: "That's not a valid status." };
+  }
+
+  try {
+    await updateApplianceStatus(session.user.id, applianceId, status as ApplianceStatus);
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Couldn't update that appliance.",
+    };
+  }
+
+  revalidatePath("/desk/inventory");
+  revalidatePath(`/desk/inventory/${applianceId}`);
+  revalidatePath("/desk/dashboard");
+  revalidatePath("/desk/fleet");
   return { status: "success" };
 }

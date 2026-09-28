@@ -2,8 +2,35 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { updateJobStatusAction, addJobPhotoAction, setJobRepairCostsAction } from "../actions";
-import type { JobStatus, JobType } from "@prisma/client";
+import Link from "next/link";
+import {
+  updateJobStatusAction,
+  addJobPhotoAction,
+  setJobRepairCostsAction,
+  updateApplianceStatusFromJobAction,
+} from "../actions";
+import type { JobStatus, JobType, ApplianceStatus } from "@prisma/client";
+
+// Workflow-continuity fix (2026-09-27) — a completed job used to just sit
+// there with no suggested next step. This is a UI-only nudge, never an
+// automatic change: the actual status change still goes through
+// updateApplianceStatusFromJobAction, which enforces the same
+// allowed-transition rules as every other status change in this app.
+const SUGGESTED_STATUS_FOR_TYPE: Record<JobType, ApplianceStatus | null> = {
+  DELIVERY: "RENTED",
+  INSTALLATION: "RENTED",
+  SWAP: "RENTED",
+  REMOVAL: "AVAILABLE",
+  MAINTENANCE_VISIT: null,
+};
+
+const STATUS_LABEL: Record<ApplianceStatus, string> = {
+  AVAILABLE: "Available",
+  RESERVED: "Reserved",
+  RENTED: "Rented",
+  MAINTENANCE: "In maintenance",
+  RETIRED: "Retired",
+};
 
 const ALL_STATUSES: { value: JobStatus; label: string }[] = [
   { value: "SCHEDULED", label: "Scheduled" },
@@ -28,7 +55,14 @@ type JobRow = {
   completionNotes: string | null;
   partsCostCents: number | null;
   laborCostCents: number | null;
-  appliances: { appliance: { assetNumber: string; applianceType: { name: string } } }[];
+  appliances: {
+    appliance: {
+      id: string;
+      assetNumber: string;
+      status: ApplianceStatus;
+      applianceType: { name: string };
+    };
+  }[];
   photos: { id: string; url: string; altText: string | null }[];
 };
 
@@ -48,8 +82,30 @@ export function JobDetailPanel({ job }: { job: JobRow }) {
   );
   const [costError, setCostError] = useState<string | null>(null);
   const [costSaved, setCostSaved] = useState(false);
+  const [appliancesJustUpdated, setAppliancesJustUpdated] = useState<Set<string>>(
+    new Set(),
+  );
 
   const nextStatuses = ALLOWED_NEXT[job.status];
+  const suggestedStatus = SUGGESTED_STATUS_FOR_TYPE[job.type];
+  const appliancesNeedingUpdate =
+    job.status === "COMPLETED" && suggestedStatus
+      ? job.appliances
+          .map((a) => a.appliance)
+          .filter(
+            (a) => a.status !== suggestedStatus && !appliancesJustUpdated.has(a.id),
+          )
+      : [];
+
+  function handleUpdateApplianceStatus(applianceId: string, status: ApplianceStatus) {
+    startTransition(async () => {
+      const result = await updateApplianceStatusFromJobAction(applianceId, status);
+      if (result.status !== "error") {
+        setAppliancesJustUpdated((prev) => new Set(prev).add(applianceId));
+        router.refresh();
+      }
+    });
+  }
 
   function handleSaveCosts(e: React.FormEvent) {
     e.preventDefault();
@@ -145,6 +201,37 @@ export function JobDetailPanel({ job }: { job: JobRow }) {
           </p>
         )}
       </div>
+
+      {appliancesNeedingUpdate.length > 0 && suggestedStatus && (
+        <div className="rounded-lg border border-gray-200 bg-primary-soft p-5">
+          <h2 className="font-medium text-primary-dark">Update appliance status?</h2>
+          <p className="mt-1 text-sm text-primary-dark">
+            This job&apos;s done — want to mark{" "}
+            {appliancesNeedingUpdate.length === 1 ? "it" : "these"} as{" "}
+            {STATUS_LABEL[suggestedStatus]} now? This never happens
+            automatically — you decide each time.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {appliancesNeedingUpdate.map((appliance) => (
+              <button
+                key={appliance.id}
+                type="button"
+                disabled={isPending}
+                onClick={() => handleUpdateApplianceStatus(appliance.id, suggestedStatus)}
+                className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+              >
+                Mark {appliance.assetNumber} as {STATUS_LABEL[suggestedStatus]}
+              </button>
+            ))}
+            <Link
+              href={`/desk/inventory/${appliancesNeedingUpdate[0].id}`}
+              className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 hover:border-gray-400"
+            >
+              Go to the appliance instead
+            </Link>
+          </div>
+        </div>
+      )}
 
       {job.type === "MAINTENANCE_VISIT" && (
         <div className="rounded-lg border border-gray-200 bg-white p-5">
