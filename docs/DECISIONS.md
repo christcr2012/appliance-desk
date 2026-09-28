@@ -1480,3 +1480,38 @@ correctly). These three are squarely bugs in existing, intended billing
 behavior, not new features or a live-payments change — Stripe remains in
 test mode throughout. Fixed in `ai/claude/astra-workspace-review`
 alongside the docs assessment for this session's reviews.
+
+## 2026-09-28 — Backup restore drill: actually tested, not just configured
+
+The third Astra review flagged "backups can actually be restored" as an
+unverified claim — Neon's point-in-time-restore was configured (a
+rolling 6-hour window, confirmed via the Neon API: `history_retention_
+seconds: 21600` on the `main` branch of project `jolly-term-08991992`)
+but nobody had actually proven a restore produces real, correct data.
+Ran a real drill rather than just checking the setting:
+
+1. Took a snapshot of `main` pinned to a timestamp about 2 hours in the
+   past (`create_snapshot` with `timestamp: 2026-09-28T04:00:00Z`).
+2. Restored that snapshot onto a brand-new, isolated branch
+   (`restore-drill-test`) — this never touches the live `main` branch or
+   its compute; it's a completely separate copy.
+3. Queried the restored branch directly: `1` User, `0` Customers,
+   `0` RentalAgreements — exactly what production looked like at that
+   earlier point in time.
+4. Queried live `main` for comparison: `2` Users, `1` Customer, and a
+   newer `AuditLog` entry than the restored branch has — proving the
+   restore is genuinely time-accurate (it does NOT just mirror current
+   data), not merely "the restore button ran without erroring."
+
+**Result: the capability is real and works correctly.** The test branch
+and snapshot (`restore-drill-test` / `snap-dry-unit-b7y6s2e5`) are
+cleanup-only, not production data — will be removed once Chris confirms
+it's fine to delete them (Neon delete calls always ask first, per
+AGENTS.md and the tool's own policy).
+
+**What this drill does NOT cover, for honesty**: restoring back onto the
+*same* branch name/URL that the app's `DATABASE_URL` points at (a real
+disaster-recovery cutover), and whether 6 hours of rolling retention is
+enough lead time to notice and react to a real problem before it rolls
+off — worth a real conversation with Chris once there's real customer
+data at stake, not just a technical check.

@@ -174,11 +174,15 @@ on — never built unasked.
   "when this happens → do this" automation-rules engine. Several of its
   "quality standard" claims checked out as already true (concurrency-
   safe appliance reservations, tested customer-data isolation, working
-  dark mode); two are real, worth-fixing gaps (no optimistic-
-  concurrency guard against conflicting simultaneous edits; Neon backup
-  restore capability exists but hasn't actually been drilled). The nine
-  proposed feature areas are each substantial on their own — not picked
-  yet; Chris to choose where (if anywhere) to start.
+  dark mode); two were real, worth-fixing gaps — **both now done**:
+  conflicting simultaneous edits are guarded against (see
+  `ai/claude/edit-conflict-guard`), and Neon's backup restore capability
+  has been drilled for real, not just checked as configured (see the
+  2026-09-28 DECISIONS.md entry — a snapshot pinned to a past timestamp
+  was restored onto an isolated test branch and proven to hold correct,
+  time-accurate data). The nine proposed feature areas are each
+  substantial on their own — not picked yet; Chris to choose where (if
+  anywhere) to start.
 - **A fourth Astra message — an actual code review, 2026-09-27** —
   saved verbatim at `docs/reviews/2026-09-27-astra-code-review.md`,
   fact-checked in `docs/DECISIONS.md`. This one claimed to have read
