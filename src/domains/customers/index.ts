@@ -135,7 +135,7 @@ export async function createCustomerDirectly(
     activationEmailSent = await sendCustomerActivationEmail(input.email);
   }
 
-  const customer = await prisma.$transaction(async (tx) => {
+  const { customer, serviceAddresses } = await prisma.$transaction(async (tx) => {
     const customerRow = await tx.customer.create({
       data: {
         userId: account!.id,
@@ -146,17 +146,24 @@ export async function createCustomerDirectly(
       },
     });
 
+    // Returned to the caller (used by the rental builder wizard —
+    // src/app/desk/agreements/new — to move straight into picking this
+    // brand-new customer's just-created address for the agreement,
+    // without a second round-trip to look it up).
+    const addresses = [];
     for (const address of input.addresses) {
-      await tx.serviceAddress.create({
-        data: {
-          customerId: customerRow.id,
-          line1: address.line1,
-          line2: address.line2 || null,
-          city: address.city,
-          state: address.state || "CO",
-          zip: address.zip,
-        },
-      });
+      addresses.push(
+        await tx.serviceAddress.create({
+          data: {
+            customerId: customerRow.id,
+            line1: address.line1,
+            line2: address.line2 || null,
+            city: address.city,
+            state: address.state || "CO",
+            zip: address.zip,
+          },
+        }),
+      );
     }
 
     await tx.auditLog.create({
@@ -173,8 +180,8 @@ export async function createCustomerDirectly(
       },
     });
 
-    return customerRow;
+    return { customer: customerRow, serviceAddresses: addresses };
   });
 
-  return { customer, isNewAccount, activationEmailSent };
+  return { customer, serviceAddresses, isNewAccount, activationEmailSent };
 }
