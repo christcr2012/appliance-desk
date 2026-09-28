@@ -38,6 +38,26 @@ export default async function MaintenanceDetailPage({
         <p className="text-sm text-gray-700">{request.problem}</p>
       </div>
 
+      {request.photos.length > 0 && (
+        <div className="mt-4 rounded-lg border border-gray-200 bg-white p-5">
+          <h2 className="font-medium text-gray-900">
+            Photo{request.photos.length > 1 ? "s" : ""} from the customer
+          </h2>
+          <div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {request.photos.map((p) => (
+              <a key={p.id} href={p.url} target="_blank" rel="noreferrer">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={p.url}
+                  alt={p.altText ?? "Photo of the problem from the customer"}
+                  className="h-32 w-full rounded-lg object-cover"
+                />
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+
       {request.jobs.length > 0 && (
         <div className="mt-4 rounded-lg border border-gray-200 bg-white p-5">
           <h2 className="font-medium text-gray-900">Jobs scheduled for this</h2>

@@ -14,6 +14,12 @@ const newRequestSchema = z.object({
   problem: z.string().trim().min(1, "Describe the problem.").max(2000),
   applianceId: z.string().trim().optional().or(z.literal("")),
   priority: z.enum(["LOW", "NORMAL", "HIGH", "URGENT"]).optional(),
+  // Blob URLs already uploaded client-side via PhotoUploadField — see
+  // src/app/api/uploads/photo/route.ts. Not a free-text URL a customer
+  // types in, so no "must start with https://" validation is needed the
+  // way the staff-facing photo actions have — but a max length and a
+  // small cap on how many keeps one bad request from writing garbage.
+  photoUrls: z.array(z.string().trim().url()).max(6).optional(),
 });
 
 /** The customer's own submission — requireSession only (any signed-in
@@ -39,6 +45,7 @@ export async function createMaintenanceRequestAction(
       problem: data.problem,
       applianceId: data.applianceId || null,
       priority: data.priority,
+      photoUrls: data.photoUrls,
     });
   } catch (error) {
     return {

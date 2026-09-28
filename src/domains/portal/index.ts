@@ -72,6 +72,10 @@ export type NewMaintenanceRequestInput = {
   problem: string;
   applianceId?: string | null;
   priority?: "LOW" | "NORMAL" | "HIGH" | "URGENT";
+  /** Blob URLs already uploaded via PhotoUploadField (2026-09-28) — a
+   * photo of the actual problem, e.g. a leak or a broken part. Optional;
+   * most requests won't have one. */
+  photoUrls?: string[];
 };
 
 /** The customer's own submission — resolves their Customer row from
@@ -102,12 +106,15 @@ export async function createMaintenanceRequestForUser(
     applianceLabel = match.label;
   }
 
+  const photoUrls = (input.photoUrls ?? []).filter(Boolean);
+
   const request = await prisma.maintenanceRequest.create({
     data: {
       customerId: customer.id,
       problem: input.problem,
       applianceId: input.applianceId || null,
       priority: input.priority ?? "NORMAL",
+      photos: photoUrls.length > 0 ? { create: photoUrls.map((url) => ({ url })) } : undefined,
     },
   });
 

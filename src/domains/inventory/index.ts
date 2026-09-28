@@ -26,6 +26,20 @@ export {
   APPLIANCE_STATUS_LABELS,
 } from "./lifecycle";
 
+/** Thrown by updateApplianceDetails/updateApplianceStatus when the record
+ * changed since the caller last read it — see the "optimistic concurrency"
+ * comment on updateApplianceDetails below. A distinct class (rather than a
+ * plain Error) so callers can tell this apart from an ordinary validation
+ * failure if they ever need to. */
+export class ApplianceConflictError extends Error {
+  constructor() {
+    super(
+      "Someone else changed this appliance just now — reload the page to see their update before saving yours.",
+    );
+    this.name = "ApplianceConflictError";
+  }
+}
+
 /** Pure — turns an appliance type's name into a short asset-number prefix,
  * e.g. "Washer" -> "WASH", "Washer + Dryer Set" -> "WDS". Exported for
  * testing (tests/inventory.test.ts). */
@@ -104,7 +118,14 @@ export async function getAppliancesPage(
 export async function getApplianceById(id: string) {
   return prisma.appliance.findUnique({
     where: { id },
-    include: { applianceType: true },
+    include: {
+      applianceType: true,
+      // This unit's own photos (2026-09-28) — distinct from
+      // ApplianceType.photoUrl, which is one generic stock photo for the
+      // whole category. This is e.g. an actual scratch or scuff on *this*
+      // physical washer, not what a clean one looks like.
+      photos: { orderBy: [{ createdAt: "asc" }] },
+    },
   });
 }
 
@@ -207,16 +228,32 @@ export type ApplianceDetailsUpdate = Partial<{
 }>;
 
 /** Edits an existing unit's descriptive details — never its status (see
- * updateApplianceStatus) or asset number (permanent once assigned). */
+ * updateApplianceStatus) or asset number (permanent once assigned).
+ *
+ * Optimistic concurrency (2026-09-28, docs/DECISIONS.md): `expectedUpdatedAt`
+ * is the appliance's `updatedAt` from whenever the caller loaded the edit
+ * form. If someone else (Chris on another tab, or eventually a second
+ * employee) saved a change to this same appliance in between, `updatedAt`
+ * has moved on and this update touches zero rows instead of silently
+ * overwriting their edit with a form that was filled out against stale
+ * data — `ApplianceConflictError` is thrown instead so the UI can tell the
+ * person to reload and try again. */
 export async function updateApplianceDetails(
   userId: string,
   applianceId: string,
   update: ApplianceDetailsUpdate,
+  expectedUpdatedAt: Date,
 ) {
-  const updated = await prisma.appliance.update({
-    where: { id: applianceId },
+  const result = await prisma.appliance.updateMany({
+    where: { id: applianceId, updatedAt: expectedUpdatedAt },
     data: update,
   });
+
+  if (result.count === 0) {
+    throw new ApplianceConflictError();
+  }
+
+  const updated = await prisma.appliance.findUniqueOrThrow({ where: { id: applianceId } });
 
   await prisma.auditLog.create({
     data: {
@@ -233,7 +270,17 @@ export async function updateApplianceDetails(
 
 /** Changes one appliance unit's status, enforcing the allowed-transition
  * rules server-side (see canTransitionApplianceStatus above) — never
- * trust a button being disabled in the UI as the real gate. */
+ * trust a button being disabled in the UI as the real gate.
+ *
+ * Also closes a real race (2026-09-28, docs/DECISIONS.md): the status
+ * check above reads `before.status`, but without a concurrency guard two
+ * near-simultaneous status changes could both read the same starting
+ * status, both pass canTransitionApplianceStatus, and both write —
+ * silently letting the second one win over the first with neither side
+ * ever finding out about the other's change. Conditioning the write on
+ * `updatedAt` still matching what was just read closes that window: the
+ * loser gets ApplianceConflictError and has to re-check the (now current)
+ * status instead of overwriting blind. */
 export async function updateApplianceStatus(
   userId: string,
   applianceId: string,
@@ -248,10 +295,16 @@ export async function updateApplianceStatus(
     throw new Error(check.reason);
   }
 
-  const updated = await prisma.appliance.update({
-    where: { id: applianceId },
+  const result = await prisma.appliance.updateMany({
+    where: { id: applianceId, updatedAt: before.updatedAt },
     data: { status: newStatus },
   });
+
+  if (result.count === 0) {
+    throw new ApplianceConflictError();
+  }
+
+  const updated = await prisma.appliance.findUniqueOrThrow({ where: { id: applianceId } });
 
   await prisma.auditLog.create({
     data: {
@@ -265,6 +318,31 @@ export async function updateApplianceStatus(
   });
 
   return updated;
+}
+
+/** Adds a photo of this specific physical unit — e.g. an actual scratch
+ * on the real machine, not the generic stock photo on its ApplianceType.
+ * The URL comes from a real upload (see PhotoUploadField), same as a
+ * job's condition photos (src/domains/jobs/index.ts's addJobPhoto). */
+export async function addAppliancePhoto(
+  userId: string,
+  applianceId: string,
+  input: { url: string; altText?: string | null },
+) {
+  const photo = await prisma.photo.create({
+    data: { applianceId, url: input.url, altText: input.altText || null },
+  });
+
+  await prisma.auditLog.create({
+    data: {
+      userId,
+      action: "appliance.unit.photo.add",
+      entityType: "Appliance",
+      entityId: applianceId,
+    },
+  });
+
+  return photo;
 }
 
 export type BulkStatusResult = {

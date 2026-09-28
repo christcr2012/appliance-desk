@@ -114,6 +114,14 @@ async function createCustomerFixture(label: "a" | "b"): Promise<Fixture> {
 }
 
 async function deleteFixture(fixture: Fixture) {
+  // Photo rows (2026-09-28: a customer can attach photos to their own
+  // maintenance request — see createMaintenanceRequestForUser) have no
+  // cascade delete, so they have to go before the MaintenanceRequest they
+  // point at, or Postgres rejects that delete with a foreign-key
+  // violation — same reasoning as the AuditLog cleanup right below.
+  await prisma.photo.deleteMany({
+    where: { maintenanceRequest: { customerId: fixture.customerId } },
+  });
   await prisma.maintenanceRequest.deleteMany({ where: { customerId: fixture.customerId } });
   // createMaintenanceRequestForUser writes an AuditLog row keyed to this
   // user's id (AuditLog.userId is a real foreign key to User) — that row
@@ -225,5 +233,24 @@ describe("customer data isolation (Phase 6A item 3)", () => {
     const dataB = await getPortalData(customerB.userId);
     expect(dataA?.maintenanceRequests.map((r) => r.id)).toContain(request.id);
     expect(dataB?.maintenanceRequests.map((r) => r.id)).not.toContain(request.id);
+  });
+
+  it("attaches photoUrls to the request as real Photo rows (2026-09-28)", async () => {
+    const request = await createMaintenanceRequestForUser(customerA.userId, {
+      problem: "Dryer won't heat, here's what it looks like",
+      photoUrls: [
+        "https://example-blob.vercel-storage.com/photo-one.jpg",
+        "https://example-blob.vercel-storage.com/photo-two.jpg",
+      ],
+    });
+
+    const photos = await prisma.photo.findMany({ where: { maintenanceRequestId: request.id } });
+    expect(photos).toHaveLength(2);
+    expect(photos.map((p) => p.url).sort()).toEqual(
+      [
+        "https://example-blob.vercel-storage.com/photo-one.jpg",
+        "https://example-blob.vercel-storage.com/photo-two.jpg",
+      ].sort(),
+    );
   });
 });

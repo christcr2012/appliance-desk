@@ -20,7 +20,7 @@ See `.env.example` for the full list with comments. The short version:
 - `SENTRY_*` — error monitoring (see below).
 - `STRIPE_SECRET_KEY` / `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` — Stripe test-mode API keys, live as of 2026-09-27 (see docs/DECISIONS.md). See "Payments (Stripe)" below.
 - `STRIPE_WEBHOOK_SECRET` — **set (2026-09-27)**, the test-mode webhook signing secret, registered in the Stripe dashboard and set in Vercel. See "Payments (Stripe)" below.
-- `BLOB_READ_WRITE_TOKEN` — **set (2026-09-28)**, auto-injected by Vercel when the `appliance-desk-photos` Blob store was created and linked to this project. Used only server-side, by `src/app/api/uploads/photo/route.ts`, to mint short-lived upload tokens for the photo-upload buttons in Settings and on a job's condition photos. See "Photo uploads (Vercel Blob)" below.
+- `BLOB_READ_WRITE_TOKEN` — **set (2026-09-28)**, auto-injected by Vercel when the `appliance-desk-photos` Blob store was created and linked to this project. Used only server-side, by `src/app/api/uploads/photo/route.ts`, to mint short-lived upload tokens for every photo-upload button in the app — desk (Settings, jobs, appliance units) and the customer portal (maintenance requests) alike. See "Photo uploads (Vercel Blob)" below.
 - Everything else (Resend, SignWell/Documenso/DocuSign) is added in later phases, only when that phase needs it.
 
 All of these are stored as **Vercel environment variables** (per environment: Production / Preview / Development). Nothing secret is ever committed. Local development uses `.env.local` (gitignored).
@@ -72,21 +72,27 @@ public) created and linked to this project; Chris had already
 pre-authorized Vercel Blob for future file uploads (see docs/DECISIONS.md,
 2026-09-28 rental-lifecycle entry).
 
-- `src/components/desk/photo-upload-field.tsx` — the reusable
+- `src/components/photo-upload-field.tsx` — the reusable
   `<input type="file" accept="image/*">` button (deliberately no
   `capture` attribute, so phones offer both "Take Photo" and "Choose
   from Library" from one native picker). Uploads go straight from the
   browser to Blob storage using `@vercel/blob/client`'s `upload()` —
-  the file itself never passes through our own server.
+  the file itself never passes through our own server. Moved out of
+  `src/components/desk/` on 2026-09-28 once a customer-portal screen
+  started using it too — it isn't desk-only anymore.
 - `src/app/api/uploads/photo/route.ts` — the only server-side piece:
-  mints a short-lived, one-time upload token, but only for a signed-in
-  OWNER/ADMIN session. Without that check, anyone who found the upload
+  mints a short-lived, one-time upload token for any signed-in user
+  (broadened from OWNER/ADMIN-only on 2026-09-28 so customers can
+  attach photos to a maintenance request). It still refuses anyone who
+  isn't signed in at all — otherwise a stranger who found the upload
   URL could fill the Blob store with junk.
-- Used in `/desk/settings` (each appliance type's photo) and on a job's
-  page (condition photos). Both still save the resulting URL through
-  their existing server actions (`setAppliancePhotoUrlAction`,
-  `addJobPhotoAction`) — only *how* the URL is produced changed, not
-  where it's stored in the database.
+- Used in `/desk/settings` (each appliance type's stock photo), a
+  job's page (condition photos), an individual appliance unit's page
+  (`/desk/inventory/[id]`, added 2026-09-28), and the customer's "new
+  maintenance request" form (`/account/maintenance/new`, added
+  2026-09-28). All save the resulting URL through their own server
+  actions — only *how* the URL is produced changed, not where it's
+  stored in the database.
 
 ## Payments (Stripe)
 

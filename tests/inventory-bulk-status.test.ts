@@ -7,14 +7,14 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 // transitions still applies to what *can* move and reports the rest.
 
 const applianceFindUniqueOrThrow = vi.fn();
-const applianceUpdate = vi.fn();
+const applianceUpdateMany = vi.fn();
 const auditLogCreate = vi.fn();
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     appliance: {
       findUniqueOrThrow: (...args: unknown[]) => applianceFindUniqueOrThrow(...args),
-      update: (...args: unknown[]) => applianceUpdate(...args),
+      updateMany: (...args: unknown[]) => applianceUpdateMany(...args),
     },
     auditLog: { create: (...args: unknown[]) => auditLogCreate(...args) },
   },
@@ -25,22 +25,26 @@ import { bulkUpdateApplianceStatus } from "@/domains/inventory";
 describe("bulkUpdateApplianceStatus", () => {
   beforeEach(() => {
     applianceFindUniqueOrThrow.mockReset();
-    applianceUpdate.mockReset().mockImplementation(({ where, data }) =>
-      Promise.resolve({ id: where.id, status: data.status }),
-    );
+    // updateApplianceStatus does findUniqueOrThrow twice per appliance now
+    // (once to check the transition + read updatedAt, once to return the
+    // fresh row after a successful conditional updateMany) — the mock
+    // below always answers with the same status/updatedAt for a given id,
+    // which is fine for these tests since nothing here exercises an
+    // actual conflict (see tests/inventory-concurrency.test.ts for that).
+    applianceUpdateMany.mockReset().mockResolvedValue({ count: 1 });
     auditLogCreate.mockReset().mockResolvedValue({});
   });
 
   it("updates every appliance when the whole selection is a valid transition", async () => {
     applianceFindUniqueOrThrow.mockImplementation(({ where }) =>
-      Promise.resolve({ id: where.id, status: "AVAILABLE" }),
+      Promise.resolve({ id: where.id, status: "AVAILABLE", updatedAt: new Date("2026-09-01") }),
     );
 
     const result = await bulkUpdateApplianceStatus("user-1", ["app-1", "app-2"], "RENTED");
 
     expect(result.updated).toEqual(["app-1", "app-2"]);
     expect(result.skipped).toEqual([]);
-    expect(applianceUpdate).toHaveBeenCalledTimes(2);
+    expect(applianceUpdateMany).toHaveBeenCalledTimes(2);
   });
 
   it("partially applies a mixed selection instead of failing the whole batch", async () => {
@@ -49,6 +53,7 @@ describe("bulkUpdateApplianceStatus", () => {
         id: where.id,
         // app-2 is already retired — RETIRED can't transition anywhere.
         status: where.id === "app-2" ? "RETIRED" : "AVAILABLE",
+        updatedAt: new Date("2026-09-01"),
       }),
     );
 

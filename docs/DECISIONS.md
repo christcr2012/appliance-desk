@@ -1315,21 +1315,15 @@ Chris.
   components pick it up automatically without individual `dark:` classes
   — that's why grepping for `dark:` undercounted it at first). Not
   something this review's proposal would be adding; it already shipped.
-- *"Conflicting edits do not silently overwrite each other."* **Not
-  true yet, and this is a real gap.** Every model has a plain
-  `updatedAt @updatedAt` timestamp, but nothing checks it before a write
-  — there's no optimistic-concurrency guard. In practice this rarely
-  bites Chris today (he's the only person editing most records), but if
-  he adds any second user, or a customer and Chris both act on the same
-  record close together, the second save can quietly clobber the first
-  with no warning. Worth fixing before adding more staff/portal write
-  paths, not urgent today.
-- *"Backups can actually be restored."* **Partly true, not fully
-  verified.** Neon's point-in-time-restore exists and is configured
-  (rolling 6-hour window plus snapshots, per the entry above) — the
-  capability is real. Whether a full restore has actually been tested
-  end-to-end (not just that the feature exists) hasn't been done. Worth
-  a real drill before this matters for real customer data.
+- ~~"Conflicting edits do not silently overwrite each other." Not true
+  yet, and this is a real gap.~~ — **fixed for appliances, 2026-09-28**,
+  see this file's "Optimistic concurrency guard on appliance edits"
+  entry below. Other record types (jobs, agreements, etc.) still don't
+  have this guard yet — worth doing the same way if Chris adds more
+  staff/portal write paths that touch the same records.
+- ~~"Backups can actually be restored." Partly true, not fully
+  verified.~~ — **verified, 2026-09-28**, see this file's "Backup
+  restore: already drilled, verified, not re-run" entry below.
 - Global search, saved views, bulk actions, CSV import/export, an
   automation-rules engine, a formal "exception inbox" as its own concept,
   and a viewable audit-trail UI (the audit log itself is real and used
@@ -1817,3 +1811,100 @@ ever used them — that's a new capability, not a fix to an existing
 "paste a URL" field, so it's noted in `docs/ROADMAP.md` for Chris to
 pick up rather than assumed in scope here (see `AGENTS.md`'s "stay in
 scope").
+
+## 2026-09-28 — Backup restore: already drilled, verified, not re-run
+
+Picked up from `docs/ROADMAP.md`'s flagged gap ("Neon backup restore
+capability exists but hasn't actually been drilled"). Went to Neon to run
+that drill and found it had already been done: a manual snapshot named
+`restore-drill-2026-09-28` exists (taken 06:08 UTC today), it was
+restored onto a new branch, and that branch was **finalized** — meaning
+Neon actually swapped it in to replace the live `main` branch's compute,
+for real, not just a side-branch test. The original `main` branch is
+still there, renamed `restore-drill-test (1)`, with its own separate
+compute now.
+
+Checked for data loss rather than taking that at face value: both
+branches' row counts for `Customer`/`RentalAgreement`/`Lead`/`Appliance`/
+`AuditLog` match, and the live branch's newest `AuditLog` row is *newer*
+than the renamed-away branch's — exactly what you'd expect from a
+successful restore that the app kept writing to afterward, not a sign of
+lost data. This was done through the Neon console (not through any code
+change or PR), so it never showed up in this repo — which is why it's
+being written down now, after the fact, instead of at the time.
+
+**Didn't run a second drill on top of this one** — restoring and
+finalizing again would just repeat the same real compute swap for no
+new information, on a project that's already mid-drill. Marked the
+`docs/ROADMAP.md` item done on the strength of this one. Flagged to
+Chris to confirm he's the one who ran it (it was done from a
+`chris.tcr.2012@gmail.com`-owned Neon project, but under an unfamiliar
+account display name) and to decide whether to delete the now-unused
+`restore-drill-test (1)` branch — left alone rather than deleted
+unasked, per `AGENTS.md`.
+
+## 2026-09-28 — Optimistic concurrency guard on appliance edits
+
+Picked up the gap flagged earlier in this file ("Conflicting edits do
+not silently overwrite each other" — not true yet). Fixed it for
+appliance records, the one place where a customer-portal action
+(maintenance requests changing appliance status indirectly) and a
+staff edit on `/desk/inventory` could plausibly land close together.
+
+`updateApplianceDetails` and `updateApplianceStatus`
+(`src/domains/inventory/index.ts`) now condition their write on the
+record's `updatedAt` still matching what was read when the page
+loaded: `prisma.appliance.updateMany({ where: { id, updatedAt:
+expectedUpdatedAt }, data })`. If zero rows match — meaning someone
+else's edit already moved `updatedAt` on — it throws a new
+`ApplianceConflictError` instead of silently overwriting, with a
+plain-English message telling the person to reload and look at the
+other person's change before saving over it. The desk-side form
+(`appliance-detail-panel.tsx`) sends the `updatedAt` it loaded with
+every save, and shows that message inline rather than a raw error.
+
+Covered by `tests/inventory-concurrency.test.ts` (both a normal save
+and a simulated race for each of the two functions). Other record
+types (jobs, agreements, customers) don't have this guard yet — same
+gap, same fix would apply, just not needed as urgently since nothing
+else edits those from two places at once today.
+
+## 2026-09-28 — Customer-submitted photos on maintenance requests
+
+Closes one of the two gaps deliberately left out of the photo-uploads
+pass above: a customer filing a maintenance request
+(`/account/maintenance/new`) can now attach up to 6 photos (a leak, a
+broken part, whatever's wrong) using the same `<PhotoUploadField>`
+camera/file picker used everywhere else, rather than describing the
+problem in text alone.
+
+This required broadening `src/app/api/uploads/photo/route.ts`'s
+upload-token check from OWNER/ADMIN-only to any signed-in user —
+customers weren't allowed to mint an upload token before, since the
+route only ever served staff screens. It still refuses anyone who
+isn't signed in at all. The shared component itself moved from
+`src/components/desk/photo-upload-field.tsx` to
+`src/components/photo-upload-field.tsx` since it's no longer
+desk-only.
+
+Photos are stored as ordinary `Photo` rows tied to the maintenance
+request (`Photo.maintenanceRequestId`, already existed in the schema,
+just unused). Staff see them on `/desk/maintenance/[id]` as a
+thumbnail grid above the scheduled-jobs section. Covered by
+`tests/portal-maintenance-photos.test.ts` (mocked) and
+`tests/customer-isolation.test.ts` (real database, CI-only).
+
+## 2026-09-28 — Photos on individual appliance units
+
+Closes the other gap left out of the photo-uploads pass: a specific
+unit (e.g. "Whirlpool washer, asset #WD-014") can now have its own
+photos — the serial plate, an existing scratch, condition at
+intake — separate from `ApplianceType.photoUrl` (the one stock photo
+shared by every unit of that type/model).
+
+Staff add these from the appliance's own page
+(`/desk/inventory/[id]`), same upload flow as everywhere else. Stored
+as ordinary `Photo` rows (`Photo.applianceId`, already existed in the
+schema, just unused) via a new `addAppliancePhoto` function in
+`src/domains/inventory/index.ts`. Covered by
+`tests/inventory-appliance-photos.test.ts`.
