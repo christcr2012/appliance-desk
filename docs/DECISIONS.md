@@ -5,6 +5,76 @@ here, add a new entry rather than editing the old one away.
 
 ---
 
+### 2026-09-28 — Owner login moved to the real business email; resetting test data without losing it
+
+Two related requests from Chris in the same conversation.
+
+**1. Changed the OWNER account's login email** from `ops@robinsonaisystems.com`
+(his other company) to `ops@robinsonappliancerentals.com` (this
+business's real Workspace mailbox, set up as part of Task #69), same
+password. A user's password lives in the `Account` table keyed by
+`userId`, not by email, so changing `User.email` doesn't touch it — a
+single-row update, run directly against the live database (not a mass
+operation, and explicitly requested).
+
+**2. "Break glass" login, or something not database-related, for his
+own account?** Chris asked whether his OWNER login could be moved
+somewhere not tied to the database — Vercel, specifically — because
+he's planning to have future sessions seed test data for a full
+system-testing pass, then wants it reset once that's done, and was
+worried his own login would get wiped along with it.
+
+Talked through what he actually needed rather than building "move login
+off the database" literally: every other page in this app (leads,
+customers, billing, everything) also lives in that same database, so a
+separate login system wouldn't get him back into a *working* app if the
+database itself were ever really down — it would just mean two
+authentication systems to keep secure and in sync, for a threat model
+(losing access because of routine test-data cleanup) with a much
+simpler real fix. He also asked whether a break-glass login for every
+account (not just his) would be standard practice, or overkill.
+
+**Decision: break-glass, for anyone, is overkill here** — this is a
+single-owner business (plus a small STAFF role) with no history of
+account-lockout incidents; Neon's own backup/restore (already drilled,
+see the entry above) is the real safety net for an actual database
+incident. What was actually needed — and built instead — is narrower
+and safer: **`scripts/reset-test-data.ts`** (`npm run db:reset-test-data`),
+which clears out everything a system-testing pass would create (leads,
+customers, rental agreements, jobs, maintenance requests, invoices,
+payments, and everything that hangs off them) while leaving completely
+untouched: every real login (OWNER, ADMIN, STAFF — the script has no
+code path that can delete one), `BusinessSettings`, the appliance-type
+catalog, the actual physical fleet and its inspection history, the
+parts knowledge base, the real price-change history, and the public
+site's text. Structurally safe, not just careful: the User delete is
+scoped to `role: "CUSTOMER"` only (those logins only exist to sign in
+to a Customer record the script is about to delete anyway), so there is
+no way to run this and lose Chris's own access.
+
+One real subtlety it had to get right: `Photo` can belong to a real,
+kept `Appliance` **or** to a `Job`/`MaintenanceRequest` being wiped.
+Postgres's `TRUNCATE ... CASCADE` cascades at the *table* level (it
+empties an entire referencing table the moment any foreign key points
+at a truncated one, regardless of which rows actually reference it), so
+a blanket `TRUNCATE` on `Job` would have silently deleted every photo
+in the app, including real appliance condition photos. The script uses
+ordinary, explicitly ordered `deleteMany` calls (children before the
+parents they reference) instead, and filters `Photo` to only the rows
+tied to a `Job` or `MaintenanceRequest` — verified against every
+foreign key in `prisma/schema.prisma` by hand, and covered by
+`tests/reset-test-data.test.ts` (6 tests: does nothing without `--yes`,
+touches every expected table with it, the `User` filter, the `Photo`
+filter, `Verification` cleared unconditionally, and every child-before-
+parent ordering constraint the schema requires).
+
+**Not run against the real database** — Chris said this is for later,
+once a system-testing pass is actually done, not now. The script
+defaults to a dry run (prints exactly what it would delete and what it
+would leave alone) and requires an explicit `--yes` to do anything.
+
+---
+
 ### 2026-09-28 — Required email verification, without a second signup step (Task #70)
 
 `requireEmailVerification` had been `false` since Phase 1, deliberately
