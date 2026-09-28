@@ -4,11 +4,21 @@ import { headers } from "next/headers";
 import { z } from "zod";
 import { signAgreement } from "@/domains/agreements";
 import { createCheckoutSessionForAgreement } from "@/domains/billing/checkout";
+import { isRateLimited } from "@/lib/rate-limit";
 
 // Deliberately NOT behind requireRole — this is the customer's own
 // signing action, and the customer portal doesn't exist yet (Phase 5).
 // Access is gated by having the unguessable SignatureRecord link itself;
 // see the note at the top of src/domains/agreements/index.ts.
+
+// This is a public, unauthenticated POST action (same threat model as
+// the contact form's — see docs/DECISIONS.md's security review), so it
+// gets the same per-IP throttle: generous enough that a real customer
+// retrying a typo never hits it, but enough to stop a script hammering
+// the endpoint (each attempt also does real work — signAgreement's own
+// database transaction, plus a Stripe Checkout Session creation on
+// success).
+const RATE_LIMIT = { max: 10, windowMs: 10 * 60 * 1000 }; // 10 attempts / 10 min / IP
 
 export type SignActionState =
   | { status: "idle" }
@@ -41,6 +51,14 @@ export async function signAgreementAction(
     headerList.get("x-forwarded-for")?.split(",")[0]?.trim() ??
     headerList.get("x-real-ip") ??
     null;
+
+  if (isRateLimited(`sign-agreement:${ipAddress ?? "unknown"}`, RATE_LIMIT)) {
+    return {
+      status: "error",
+      message:
+        "Too many attempts from this connection recently — please wait a few minutes and try again.",
+    };
+  }
 
   try {
     const agreementId = await signAgreement(signatureRecordId, {

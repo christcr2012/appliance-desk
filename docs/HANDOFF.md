@@ -1019,3 +1019,30 @@ redirect this sandbox's network policy blocks — see
 `.github/workflows/ci.yml`'s history for context). This should make
 diagnosing any future CI failure faster for whichever AI session hits
 one next.
+
+## 2026-09-27 (same session, continued) — PR #33 merged and deployed
+
+Merged into `main` and confirmed live in production (Vercel deployment
+`dpl_6kYhg4m3XRwyWfFHC7Tosy38KYCf`, state READY). Every `/desk/**` and
+`/account/**` page is now covered by the same automated accessibility
+checks the public site already had — zero real violations found on the
+first real run.
+
+## 2026-09-27 (same session, continued) — Phase 7 security review
+
+Full review of auth/authorization, secrets, input validation, rate
+limiting, webhook hardening, error disclosure, and session/cookie
+config (full writeup in `docs/DECISIONS.md`). Good news: the app held
+up well — no critical issues found.
+
+- [x] Fixed the one real gap: `/sign/[id]`'s signing action had no rate
+      limiting (every other public POST endpoint already did). Added
+      the same per-IP throttle the contact form uses.
+- [x] Confirmed clean: authorization (every desk action role-checked,
+      every account action session-scoped, no IDOR), no hardcoded
+      secrets, input validation on every server action, webhook
+      signature verification, session/cookie config.
+- [ ] **Flagged for Chris, not changed**: email verification at signup
+      can now be safely turned on (the domain's fully verified in
+      Resend) — it's a one-line flip whenever you want it, see
+      `docs/ROADMAP.md`.

@@ -56,6 +56,15 @@ on — never built unasked.
 
 ## Suggestions (not scoped into any phase — Chris should decide)
 
+- **Require customers to verify their email before logging in** —
+  currently off (`requireEmailVerification: false` in
+  `src/lib/auth.ts`), with a note to flip it on once email sending is
+  confirmed working in production. That condition is now met (Resend
+  confirms `robinsonappliancerentals.com` as fully verified,
+  2026-09-27) — flipping it is a one-line change whenever Chris wants
+  it. Left off for now since it changes real signup behavior (a new
+  customer would have to click a link in an email before their first
+  login), which is Chris's call, not an automatic one.
 - **A real business email address on the domain** — **done (2026-09-27)**.
   Originally discussed 2026-09-26 as a deferred decision (options were
   Cloudflare Email Routing, Zoho Mail, or Google Workspace/Microsoft

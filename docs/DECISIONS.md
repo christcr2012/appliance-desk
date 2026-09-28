@@ -943,3 +943,45 @@ the webhook endpoint in Stripe's dashboard and set `STRIPE_WEBHOOK_SECRET`
 in Vercel — exact steps in `docs/ARCHITECTURE.md`'s "Payments (Stripe)"
 section. Until then the webhook route returns HTTP 503 by design, rather
 than accepting unverified requests.
+
+## 2026-09-27 — Security review (Phase 7)
+
+Full review of auth/authorization, secrets handling, input validation,
+rate limiting, webhook hardening, error-message disclosure, and session/
+cookie config. Overall the app held up well — no critical issues.
+
+- **Fixed: `/sign/[id]`'s signing action had no rate limiting.** It's a
+  public, unauthenticated POST endpoint (same threat model as the
+  contact form, which already had this), and every attempt does real
+  work (a database transaction, plus a Stripe Checkout Session creation
+  on success). Added the same per-IP throttle pattern
+  (`src/lib/rate-limit.ts`) already used on the contact form — 10
+  attempts / 10 minutes / IP, generous enough that a real customer
+  retrying a typo never hits it.
+- **Reviewed, accepted as low priority: a couple of desk (OWNER/ADMIN-
+  only) server actions let Prisma's own generic "record not found"
+  message pass through to the client** (via `findUniqueOrThrow` +
+  `error instanceof Error ? error.message : ...`) instead of a
+  hand-written friendly message. Not sensitive (no SQL/stack/paths,
+  Prisma's own wording), and only reachable by Chris himself — not worth
+  the risk of a broad refactor across every action file for a cosmetic
+  issue. Revisit if a customer-facing action ever grows the same
+  pattern.
+- **Confirmed everything else already solid**: every `/desk/**` server
+  action calls `requireRole`, every `/account/**` page/action derives
+  the customer from the signed-in session server-side rather than a
+  client-supplied id (no IDOR found), no hardcoded secrets in source,
+  every server action validates with zod before touching the database,
+  the Stripe webhook verifies its signature before doing anything else
+  and never leaks raw errors, and Better Auth's session/cookie config
+  (14-day session, rolling refresh, `role` field not client-settable,
+  10-char minimum password) is sound.
+- **Decision point for Chris, not changed here**: `requireEmailVerification`
+  is currently `false` in `src/lib/auth.ts`, with an inline comment to
+  flip it on "once email sending is verified in production" —
+  `robinsonappliancerentals.com` is now fully DKIM-verified in Resend
+  (confirmed 2026-09-27), so that condition is met. Not flipped
+  automatically here since it changes real customer-facing signup
+  behavior (a new customer would have to click a verification email
+  before they could log in) — Chris's call on timing, not an automatic
+  "now it's technically possible" decision.
