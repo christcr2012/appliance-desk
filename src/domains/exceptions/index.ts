@@ -1,7 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import {
+  APPLIANCE_MAINTENANCE_DUE_DAYS,
   UNINSPECTED_RETURN_DAYS,
   UNREVIEWED_MAINTENANCE_REQUEST_DAYS,
+  agreementTermExpiredException,
+  applianceMaintenanceDueException,
   billingBlockedException,
   missingRepairCostException,
   overdueJobException,
@@ -17,6 +20,12 @@ export type { ExceptionItem, ExceptionCategory, ExceptionSeverity } from "./rule
 
 function addDays(date: Date, days: number): Date {
   return new Date(date.getTime() + days * 24 * 60 * 60 * 1000);
+}
+
+function addMonths(date: Date, months: number): Date {
+  const result = new Date(date);
+  result.setMonth(result.getMonth() + months);
+  return result;
 }
 
 function customerDisplayName(customer: { user: { name: string | null; email: string } }): string {
@@ -49,6 +58,8 @@ export async function getExceptions(): Promise<ExceptionItem[]> {
     unreviewedRequests,
     uninspectedAppliances,
     missingRepairCostJobs,
+    activeTermAgreements,
+    rentedAppliances,
   ] = await Promise.all([
     prisma.rentalAgreement.findMany({
       where: { billingBlockedReason: { not: null } },
@@ -125,6 +136,29 @@ export async function getExceptions(): Promise<ExceptionItem[]> {
         },
       },
     }),
+    prisma.rentalAgreement.findMany({
+      where: { status: "ACTIVE", termMonths: { not: null }, startDate: { not: null } },
+      select: {
+        id: true,
+        termMonths: true,
+        startDate: true,
+        customer: { include: { user: { select: { name: true, email: true } } } },
+      },
+    }),
+    prisma.appliance.findMany({
+      where: { status: "RENTED", archivedAt: null },
+      select: {
+        id: true,
+        assetNumber: true,
+        purchaseDate: true,
+        createdAt: true,
+        applianceType: { select: { name: true } },
+        jobs: {
+          where: { job: { type: "MAINTENANCE_VISIT", status: "COMPLETED" } },
+          select: { job: { select: { completedAt: true } } },
+        },
+      },
+    }),
   ]);
 
   const items: ExceptionItem[] = [
@@ -195,6 +229,39 @@ export async function getExceptions(): Promise<ExceptionItem[]> {
           applianceLabel: first ? `${first.applianceType.name} ${first.assetNumber}` : null,
         });
       }),
+    ...activeTermAgreements
+      .filter(
+        (a): a is typeof a & { termMonths: number; startDate: Date } =>
+          a.termMonths !== null && a.startDate !== null,
+      )
+      .map((a) => ({ ...a, termEndDate: addMonths(a.startDate, a.termMonths) }))
+      .filter((a) => a.termEndDate < now)
+      .map((a) =>
+        agreementTermExpiredException({
+          id: a.id,
+          customerName: customerDisplayName(a.customer),
+          termMonths: a.termMonths,
+          termEndDate: a.termEndDate,
+        }),
+      ),
+    ...rentedAppliances
+      .map((a) => {
+        const lastMaintenance = a.jobs
+          .map((j) => j.job.completedAt)
+          .filter((d): d is Date => d !== null)
+          .sort((x, y) => y.getTime() - x.getTime())[0];
+        const sinceDate = lastMaintenance ?? a.purchaseDate ?? a.createdAt;
+        return { ...a, sinceDate };
+      })
+      .filter((a) => a.sinceDate < addDays(now, -APPLIANCE_MAINTENANCE_DUE_DAYS))
+      .map((a) =>
+        applianceMaintenanceDueException({
+          id: a.id,
+          assetNumber: a.assetNumber,
+          applianceTypeName: a.applianceType.name,
+          sinceDate: a.sinceDate,
+        }),
+      ),
   ];
 
   return sortExceptions(items);

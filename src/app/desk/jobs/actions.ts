@@ -82,7 +82,11 @@ export async function updateJobStatusAction(
   status: string,
   completionNotes?: string,
 ): Promise<JobActionState> {
-  const session = await requireRole("OWNER", "ADMIN");
+  // Staff (e.g. a driver marking their own job started/delivered) can do
+  // this too — see docs/DECISIONS.md, 2026-09-28 "Staff permissions
+  // framework". Setting a job's REPAIR COST stays OWNER/ADMIN only
+  // (below) since that's financial, not operational.
+  const session = await requireRole("OWNER", "ADMIN", "STAFF");
 
   if (!ALL_JOB_STATUSES.includes(status as JobStatus)) {
     return { status: "error", message: "That's not a valid status." };
@@ -113,7 +117,10 @@ export async function addJobPhotoAction(
   jobId: string,
   raw: Record<string, unknown>,
 ): Promise<JobActionState> {
-  const session = await requireRole("OWNER", "ADMIN");
+  // Staff too — condition photos are usually taken by whoever's actually
+  // on site (see docs/DECISIONS.md, 2026-09-28 "Staff permissions
+  // framework").
+  const session = await requireRole("OWNER", "ADMIN", "STAFF");
 
   const parsed = photoSchema.safeParse(raw);
   if (!parsed.success) {
@@ -186,7 +193,7 @@ export async function updateApplianceStatusFromJobAction(
   applianceId: string,
   status: string,
 ): Promise<JobActionState> {
-  const session = await requireRole("OWNER", "ADMIN");
+  const session = await requireRole("OWNER", "ADMIN", "STAFF");
 
   if (!ALL_APPLIANCE_STATUSES.includes(status as ApplianceStatus)) {
     return { status: "error", message: "That's not a valid status." };
@@ -221,7 +228,7 @@ export async function updateJobChecklistAction(
   jobId: string,
   checklist: unknown,
 ): Promise<JobActionState> {
-  await requireRole("OWNER", "ADMIN");
+  await requireRole("OWNER", "ADMIN", "STAFF");
 
   const parsed = z.array(checklistItemSchema).safeParse(checklist);
   if (!parsed.success) {

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getInvoices } from "@/domains/billing";
 import { formatCents } from "@/domains/pricing";
+import { requireRole } from "@/lib/session";
 
 export const metadata = { title: "Billing" };
 
@@ -16,11 +17,14 @@ const STATUS_STYLES: Record<string, string> = {
   DRAFT: "bg-gray-100 text-gray-600",
 };
 
+// OWNER/ADMIN only (docs/DECISIONS.md, 2026-09-28 "Staff permissions
+// framework") — never rely on the nav link being hidden alone.
 export default async function BillingPage({
   searchParams,
 }: {
   searchParams: Promise<{ filter?: string }>;
 }) {
+  await requireRole("OWNER", "ADMIN");
   const { filter } = await searchParams;
   const delinquentOnly = filter === "delinquent";
   const invoices = await getInvoices({ delinquentOnly });

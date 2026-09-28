@@ -11,6 +11,12 @@ import {
   setApplianceTypeActive,
   setAppliancePhotoUrl,
 } from "@/domains/settings";
+import {
+  createStaffAccount,
+  deactivateStaffAccount,
+  reactivateStaffAccount,
+  resendStaffActivationEmail,
+} from "@/domains/staff";
 import { dollarsToCents } from "@/domains/pricing";
 
 // Fee fields are entered on the form as real dollars (e.g. 45.00) — see
@@ -39,6 +45,7 @@ const businessSettingsSchema = z.object({
   twelveMonthPrepaySetDollars: z.coerce.number().min(0).max(1000),
   twelveMonthPrepaySingleDollars: z.coerce.number().min(0).max(1000),
   twelveMonthPrepayFreeMonthEnabled: z.coerce.boolean(),
+  referralRewardDollars: z.coerce.number().min(0).max(1000),
   draftReservationHoldDays: z.coerce.number().int().min(1).max(90),
 });
 
@@ -75,6 +82,7 @@ export async function updateSettingsAction(
     sixMonthPrepaySingleDollars,
     twelveMonthPrepaySetDollars,
     twelveMonthPrepaySingleDollars,
+    referralRewardDollars,
     ...rest
   } = parsed.data;
 
@@ -88,6 +96,7 @@ export async function updateSettingsAction(
     sixMonthPrepayDiscountSingleCents: dollarsToCents(sixMonthPrepaySingleDollars),
     twelveMonthPrepayDiscountSetCents: dollarsToCents(twelveMonthPrepaySetDollars),
     twelveMonthPrepayDiscountSingleCents: dollarsToCents(twelveMonthPrepaySingleDollars),
+    referralRewardCents: dollarsToCents(referralRewardDollars),
     serviceAreaCities: splitList(serviceAreaCities),
     serviceAreaZips: splitList(serviceAreaZips),
   });
@@ -214,6 +223,100 @@ export async function setApplianceTypeActiveAction(
 
   revalidatePath("/", "layout");
   revalidatePath("/desk/settings");
+
+  return { status: "success" };
+}
+
+// ---------------------------------------------------------------------------
+// Staff accounts (Task #66, docs/DECISIONS.md 2026-09-28) — OWNER/ADMIN
+// only, same as everything else in this file.
+// ---------------------------------------------------------------------------
+
+const newStaffAccountSchema = z.object({
+  name: z.string().trim().min(1, "Enter a name.").max(200),
+  email: z.string().trim().email("Enter a valid email address."),
+});
+
+export async function createStaffAccountAction(
+  raw: Record<string, unknown>,
+): Promise<SettingsActionState> {
+  const session = await requireRole("OWNER", "ADMIN");
+
+  const parsed = newStaffAccountSchema.safeParse(raw);
+  if (!parsed.success) {
+    return {
+      status: "error",
+      message: parsed.error.issues[0]?.message ?? "Please fix the highlighted fields.",
+    };
+  }
+
+  try {
+    await createStaffAccount(session.user.id, parsed.data);
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Couldn't create that account.",
+    };
+  }
+
+  revalidatePath("/desk/settings");
+  revalidatePath("/desk/activity");
+
+  return { status: "success" };
+}
+
+export async function resendStaffActivationEmailAction(
+  email: string,
+): Promise<SettingsActionState> {
+  await requireRole("OWNER", "ADMIN");
+
+  const sent = await resendStaffActivationEmail(email);
+  if (!sent) {
+    return {
+      status: "error",
+      message: "Couldn't send that email right now — try again in a minute.",
+    };
+  }
+
+  return { status: "success" };
+}
+
+export async function deactivateStaffAccountAction(
+  staffUserId: string,
+): Promise<SettingsActionState> {
+  const session = await requireRole("OWNER", "ADMIN");
+
+  try {
+    await deactivateStaffAccount(session.user.id, staffUserId);
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Couldn't remove that account's access.",
+    };
+  }
+
+  revalidatePath("/desk/settings");
+  revalidatePath("/desk/activity");
+
+  return { status: "success" };
+}
+
+export async function reactivateStaffAccountAction(
+  staffUserId: string,
+): Promise<SettingsActionState> {
+  const session = await requireRole("OWNER", "ADMIN");
+
+  try {
+    await reactivateStaffAccount(session.user.id, staffUserId);
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Couldn't restore that account.",
+    };
+  }
+
+  revalidatePath("/desk/settings");
+  revalidatePath("/desk/activity");
 
   return { status: "success" };
 }

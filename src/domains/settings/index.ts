@@ -34,6 +34,7 @@ const DEFAULT_SETTINGS = {
   twelveMonthPrepayDiscountSetCents: 1000,
   twelveMonthPrepayDiscountSingleCents: 500,
   twelveMonthPrepayFreeMonthEnabled: true,
+  referralRewardCents: 2500,
   draftReservationHoldDays: 7,
   inspectionChecklist: [] as unknown,
   updatedAt: new Date(0),
@@ -121,6 +122,7 @@ export type BusinessSettingsUpdate = Partial<{
   twelveMonthPrepayDiscountSetCents: number;
   twelveMonthPrepayDiscountSingleCents: number;
   twelveMonthPrepayFreeMonthEnabled: boolean;
+  referralRewardCents: number;
   draftReservationHoldDays: number;
 }>;
 

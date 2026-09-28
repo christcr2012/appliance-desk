@@ -12,6 +12,8 @@ const CATEGORY_LABELS: Record<ExceptionCategory, string> = {
   UNREVIEWED_MAINTENANCE_REQUEST: "Needs review",
   UNINSPECTED_RETURN: "Needs inspection",
   MISSING_REPAIR_COST: "Repair cost missing",
+  AGREEMENT_TERM_EXPIRED: "Term ended",
+  APPLIANCE_MAINTENANCE_DUE: "Maintenance due",
 };
 
 const JOB_STATUS_LABELS: Record<string, string> = {

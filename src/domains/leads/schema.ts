@@ -27,6 +27,11 @@ export const leadFormSchema = z.object({
     .or(z.literal("")),
   bestTimeToContact: z.string().trim().max(200).optional().or(z.literal("")),
   howHeard: z.string().trim().max(200).optional().or(z.literal("")),
+  // Task #68 (referral program) — an optional code a friend gave them.
+  // Validated only for a sane max length here; matching against a real
+  // customer's code happens server-side at conversion, not here, so a
+  // typo or made-up code never blocks submitting the lead itself.
+  referralCode: z.string().trim().max(20).optional().or(z.literal("")),
 
   applianceTypeIds: z
     .array(z.string())

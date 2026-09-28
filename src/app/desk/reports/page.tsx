@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getEarningsReport, getJobsMissingRepairCost } from "@/domains/reports";
 import { formatCents } from "@/domains/pricing";
+import { requireRole } from "@/lib/session";
 
 export const metadata = { title: "Reports" };
 
@@ -10,7 +11,10 @@ export const metadata = { title: "Reports" };
  * is meant to catch real shortfalls, not create noise. */
 const NOTABLE_GAP_CENTS = 1000;
 
+// OWNER/ADMIN only (docs/DECISIONS.md, 2026-09-28 "Staff permissions
+// framework") — never rely on the nav link being hidden alone.
 export default async function ReportsPage() {
+  await requireRole("OWNER", "ADMIN");
   const [earnings, missingCostJobs] = await Promise.all([
     getEarningsReport(),
     getJobsMissingRepairCost(),

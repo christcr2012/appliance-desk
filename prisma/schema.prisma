@@ -22,6 +22,13 @@ datasource db {
 enum Role {
   OWNER
   ADMIN
+  // A staff login with day-to-day operational access (jobs, dispatch,
+  // customers, inventory, maintenance) but not business financials or
+  // settings — see src/domains/staff and docs/DECISIONS.md, 2026-09-28
+  // "Staff permissions framework". Chris didn't need specific named
+  // roles (e.g. "driver" vs "office") yet, just one that's safe to hand
+  // to a new hire today.
+  STAFF
   CUSTOMER
 }
 
@@ -119,6 +126,23 @@ model Customer {
   // is actually marked completed.
   stripeDefaultPaymentMethodId String?
 
+  // Referral program (Task #68, docs/DECISIONS.md 2026-09-28) — a
+  // short, shareable code every customer gets automatically, generated
+  // once at creation (src/domains/referrals). Given out to friends;
+  // whoever enters it on the public lead form links their eventual
+  // account back to this one via the Referral row below.
+  referralCode String @unique
+
+  // SMS notifications (Task #71, docs/DECISIONS.md 2026-09-28) — TCPA
+  // requires real, recorded opt-in before texting anyone (see
+  // docs/BUSINESS-RULES.md's privacy baseline), so this is never
+  // assumed from having a phone number on file. Null = not opted in
+  // (or opted back out — same meaning, "don't text this customer"). Set
+  // = opted in at this moment; a matching ConsentRecord (kind
+  // "sms_opt_in") is written alongside every change, opt-in or
+  // opt-out, as the audit trail of consent actually given/withdrawn.
+  smsOptInAt DateTime?
+
   serviceAddresses ServiceAddress[]
   rentalAgreements RentalAgreement[]
   maintenanceRequests MaintenanceRequest[]
@@ -128,12 +152,51 @@ model Customer {
   notes            CustomerNote[]
   contacts         CustomerContact[]
   jobs             Job[]
+  referralsMade    Referral[] @relation("ReferralsMade")
+  // A customer can only ever have been referred by one person — the
+  // first (and only) code entered when they came in as a lead.
+  referredBy       Referral?  @relation("ReferralsReceived")
 
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
   archivedAt DateTime?
 
   @@index([isPropertyManager])
+}
+
+// ---------------------------------------------------------------------------
+// Referral program (Task #68, docs/DECISIONS.md 2026-09-28 — Chris's
+// pick: "discount for both people," i.e. give X/get X). A referral is
+// created the moment a referred lead converts to a customer (linking
+// referrer -> new customer) and stays PENDING until that new customer
+// actually starts paying (RentalAgreement.billingStartedAt is set) —
+// rewarding on signup alone would pay out for someone who never
+// actually rents. See src/domains/referrals for the reward logic.
+// ---------------------------------------------------------------------------
+
+enum ReferralStatus {
+  PENDING
+  REWARDED
+}
+
+model Referral {
+  id                 String         @id @default(cuid())
+  referrerCustomerId String
+  referrerCustomer   Customer       @relation("ReferralsMade", fields: [referrerCustomerId], references: [id])
+  // One-to-one: a customer can only be the *referred* party once, ever.
+  referredCustomerId String         @unique
+  referredCustomer   Customer       @relation("ReferralsReceived", fields: [referredCustomerId], references: [id])
+  status             ReferralStatus @default(PENDING)
+  // Snapshot of BusinessSettings.referralRewardCents at reward time —
+  // same "frozen at the moment it happened" rule every other price
+  // snapshot in this schema follows, so a later settings change never
+  // rewrites what a past referral actually paid out.
+  rewardCents        Int?
+  rewardedAt         DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([status])
 }
 
 model ServiceAddress {
@@ -181,6 +244,12 @@ model Lead {
   email             String?
   bestTimeToContact String?
   howHeard          String?
+  // A referral code the visitor typed in (Task #68) — matched against
+  // an existing customer's Customer.referralCode when this lead
+  // converts (src/domains/leads' convertLeadToCustomer). Stored
+  // exactly as entered; matching is case-insensitive at lookup time,
+  // never normalized here so what the visitor actually typed is kept.
+  referredByCode    String?
 
   // What they want
   desiredTerm     String? // month-to-month | 6-month | 12-month
@@ -424,6 +493,15 @@ model RentalAgreement {
   // is actually generated for this agreement.
   stripeSubscriptionId String? @unique
   nextBillingDate      DateTime?
+  // Which nextBillingDate value the last "your payment is coming up"
+  // reminder email was sent for (Task #67, docs/DECISIONS.md 2026-09-28
+  // "Automation rules") — compared against the CURRENT nextBillingDate
+  // rather than a plain "already sent" boolean or a days-ago timestamp,
+  // so a reminder fires exactly once per billing cycle even though the
+  // daily cron job's "1-2 days out" window can see the same upcoming
+  // date on two different days, and automatically re-arms itself once
+  // nextBillingDate advances to the following cycle.
+  billingReminderSentForDate DateTime?
 
   // Billing-starts-at-delivery (2026-09-28): recurring billing no longer
   // starts at signing — it starts once a delivery/installation job for
@@ -605,6 +683,12 @@ model Job {
   // a fake number.
   partsCostCents Int?
   laborCostCents Int?
+
+  // SMS notifications (Task #71) — set once a "your visit is today" text
+  // has gone out for this job, same dedup shape as RentalAgreement.
+  // billingReminderSentForDate: stops the daily cron from texting twice
+  // for a job that's still scheduled the next time it runs the same day.
+  dayOfReminderSentAt DateTime?
 
   appliances JobAppliance[]
   photos     Photo[]
@@ -900,6 +984,14 @@ model BusinessSettings {
   twelveMonthPrepayDiscountSetCents    Int     @default(1000)
   twelveMonthPrepayDiscountSingleCents Int     @default(500)
   twelveMonthPrepayFreeMonthEnabled    Boolean @default(true)
+
+  // Referral program (Task #68, docs/DECISIONS.md 2026-09-28) — one
+  // owner-adjustable dollar amount, applied to BOTH the referrer and
+  // the new customer they referred (Chris's explicit pick: "discount
+  // for both people," not a one-sided reward). Applied as a Stripe
+  // account-balance credit on each side once the referred customer's
+  // billing actually starts — see src/domains/referrals.
+  referralRewardCents Int @default(2500)
 
   // Reservation aging (Phase 6A item 6 — see docs/BUSINESS-RULES.md).
   // How many days a DRAFT/AWAITING_SIGNATURE agreement's reserved

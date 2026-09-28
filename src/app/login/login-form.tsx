@@ -35,6 +35,7 @@ export function LoginForm() {
   }
 
   const signedOutForTimeout = searchParams.get("reason") === "timeout";
+  const deactivated = searchParams.get("deactivated") === "1";
 
   return (
     <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
@@ -45,6 +46,15 @@ export function LoginForm() {
         >
           You were signed out after a while with no activity, to help keep
           your account safe. Log back in to continue.
+        </p>
+      )}
+      {deactivated && (
+        <p
+          role="alert"
+          className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-900"
+        >
+          This account no longer has access. If you think that&apos;s a
+          mistake, ask the business owner to check your account.
         </p>
       )}
       <div className="flex flex-col gap-1">

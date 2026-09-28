@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getStripeClient } from "@/lib/stripe";
+import { rewardReferralIfEligible } from "@/domains/referrals";
 
 // ---------------------------------------------------------------------------
 // Phase 6B — turning a signed rental agreement into a real Stripe
@@ -330,6 +331,17 @@ export async function startRecurringBillingForAgreement(agreementId: string): Pr
       where: { id: agreementId },
       data: { billingBlockedReason: null, billingStartedAt: new Date() },
     });
+
+    // Referral program (Task #68) — this is "the referred customer
+    // actually started paying," the one moment a referral reward is
+    // allowed to fire. A no-op for the vast majority of agreements
+    // (whoever wasn't referred). Never allowed to undo the billing
+    // start that already succeeded above.
+    try {
+      await rewardReferralIfEligible(agreement.customerId);
+    } catch (error) {
+      console.error("[referrals] Failed to reward a referral after billing started", agreement.id, error);
+    }
   } catch (error) {
     // A real Stripe failure (card declined by the time we tried to
     // charge it off-session, account closed, etc.) — recorded, not

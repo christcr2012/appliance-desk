@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { sendEmail } from "@/lib/email";
 import { getBusinessSettings, parseServiceArea } from "@/domains/settings";
+import { generateUniqueReferralCode, linkReferralIfCodeProvided } from "@/domains/referrals";
 import { scoreLead } from "./scoring";
 import type { LeadFormInput } from "./schema";
 import type { Lead, LeadStatus } from "@prisma/client";
@@ -53,6 +54,7 @@ export async function createLead(input: LeadFormInput) {
         email: input.email || null,
         bestTimeToContact: input.bestTimeToContact || null,
         howHeard: input.howHeard || null,
+        referredByCode: input.referralCode || null,
         desiredTerm: input.desiredTerm,
         desiredStartDate: input.desiredStartDate
           ? new Date(input.desiredStartDate)
@@ -285,7 +287,10 @@ export async function convertLeadToCustomer(userId: string, leadId: string) {
   let activationEmailSent = false;
   const isNewAccount = !account;
 
-  if (account && (account.role === "OWNER" || account.role === "ADMIN")) {
+  if (
+    account &&
+    (account.role === "OWNER" || account.role === "ADMIN" || account.role === "STAFF")
+  ) {
     throw new Error(
       `${email} belongs to a staff account, not a customer — use a different email for this lead first.`,
     );
@@ -315,8 +320,13 @@ export async function convertLeadToCustomer(userId: string, leadId: string) {
           isBusiness: lead.isBusiness,
           isPropertyManager: lead.isPropertyManager,
           companyName: lead.companyName,
+          referralCode: await generateUniqueReferralCode(tx),
         },
       });
+      // Only a brand-new customer can be "referred" — an existing
+      // account converting from a second lead already has whatever
+      // referral link it started with, if any.
+      await linkReferralIfCodeProvided(tx, customerRow.id, lead.referredByCode);
     }
 
     if (lead.addressLine1 && lead.city && lead.zip) {

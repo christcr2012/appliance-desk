@@ -6,6 +6,7 @@ export { createCheckoutSessionForAgreement, buildCheckoutLinePlan } from "./chec
 export { processStripeWebhookEvent } from "./webhooks";
 export { computeMrrTrend } from "./revenue";
 export type { MrrTrendPoint } from "./revenue";
+export { sendUpcomingBillingReminders } from "./reminders";
 
 /** Every invoice, newest first — the desk-wide billing view
  * (/desk/billing). Optionally filtered to just the delinquent ones, for

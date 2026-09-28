@@ -150,3 +150,51 @@ export async function createMaintenanceRequestForUser(
 
   return request;
 }
+
+// ---------------------------------------------------------------------------
+// SMS notification preference (Task #71, docs/BUSINESS-RULES.md's privacy
+// baseline: "an SMS opt-in checkbox (TCPA-compliant) is required before
+// any texting feature is added" — real, recorded consent, never assumed
+// just because a phone number is on file). Lives on /account/settings.
+// ---------------------------------------------------------------------------
+
+/** Turns SMS notifications on or off for this signed-in customer, and
+ * lets them update their phone number in the same step (opting in with
+ * no phone number on file — theirs or a new one given here — would be
+ * pointless, so this is validated together rather than as two separate
+ * forms). Always writes a ConsentRecord alongside the Customer row
+ * change, whichever direction: an audit trail of consent actually given
+ * or withdrawn, not just the current on/off state. */
+export async function updateSmsPreference(
+  userId: string,
+  input: { optedIn: boolean; phone: string | null },
+): Promise<{ phone: string | null; smsOptInAt: Date | null }> {
+  const customer = await prisma.customer.findUniqueOrThrow({ where: { userId } });
+  const phone = input.phone?.trim() || customer.phone;
+
+  if (input.optedIn && !phone) {
+    throw new Error("Add a phone number before turning on text notifications.");
+  }
+
+  const updated = await prisma.$transaction(async (tx) => {
+    const row = await tx.customer.update({
+      where: { id: customer.id },
+      data: {
+        phone,
+        smsOptInAt: input.optedIn ? new Date() : null,
+      },
+    });
+
+    await tx.consentRecord.create({
+      data: {
+        customerId: customer.id,
+        kind: "sms_opt_in",
+        details: { optedIn: input.optedIn },
+      },
+    });
+
+    return row;
+  });
+
+  return { phone: updated.phone, smsOptInAt: updated.smsOptInAt };
+}

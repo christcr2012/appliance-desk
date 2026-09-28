@@ -15,7 +15,10 @@ in UTC and only converted to Mountain Time for display.
   tables (login sessions, the hashed password record, email
   verification/reset tokens). Not hand-queried by app code.
 - **Customer** — the business-side profile attached to a `CUSTOMER`
-  user: phone, whether they're a business/property manager, etc.
+  user: phone, whether they're a business/property manager, a
+  referral code (see `Referral` below), and `smsOptInAt` (Task #71 —
+  real, recorded SMS consent, never assumed from having a phone number
+  on file).
 - **ServiceAddress** — a physical address a customer's appliances live
   at. A customer can have more than one (e.g. a landlord with several
   properties).
@@ -66,7 +69,8 @@ in UTC and only converted to Mountain Time for display.
 
 - **Job** — one scheduled visit: type, status, who/where/when, and
   before/after condition photos. Chris schedules every job by hand —
-  there's no dispatch optimization.
+  there's no dispatch optimization. `dayOfReminderSentAt` (Task #71)
+  dedupes the same-day SMS reminder.
 - **JobAppliance** — which physical appliance(s) a job involves.
 
 ## Maintenance
@@ -104,13 +108,21 @@ parts.
   money, its own existing record). Always has a reason and who
   authorized it; never automatic.
 - **CustomerCredit** — an account-level credit (goodwill, resolving an
-  overpayment) that reduces what a customer owes on a *future* invoice.
+  overpayment, a referral reward — see `Referral` below) that reduces
+  what a customer owes on a *future* invoice.
 - **WebhookEvent** — every Stripe webhook event this app has ever
   processed, by Stripe's own event id, so a duplicate delivery (webhook
   delivery is at-least-once) is never acted on twice.
 - **Deposit** — a security deposit tied to an agreement, now also
   recording who authorized a refund and why it was less than the full
   amount, when it's less.
+- **Referral** (2026-09-28, Task #68) — links a customer
+  (`referrerCustomer`) to whoever they referred in
+  (`referredCustomer`, `@unique` — a customer can only be the referred
+  party once), `PENDING` until the referred customer's billing starts,
+  then `REWARDED` with a frozen snapshot of what was actually paid out
+  (`rewardCents`). See `docs/DECISIONS.md`'s 2026-09-28 "Referral
+  program" entry.
 
 ## Settings, content & compliance
 

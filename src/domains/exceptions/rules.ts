@@ -22,7 +22,9 @@ export type ExceptionCategory =
   | "OVERDUE_JOB"
   | "UNREVIEWED_MAINTENANCE_REQUEST"
   | "UNINSPECTED_RETURN"
-  | "MISSING_REPAIR_COST";
+  | "MISSING_REPAIR_COST"
+  | "AGREEMENT_TERM_EXPIRED"
+  | "APPLIANCE_MAINTENANCE_DUE";
 
 export type ExceptionSeverity = "high" | "medium";
 
@@ -44,6 +46,12 @@ export type ExceptionItem = {
 // customer-facing policy like lateFeeGraceDays.
 export const UNREVIEWED_MAINTENANCE_REQUEST_DAYS = 2;
 export const UNINSPECTED_RETURN_DAYS = 3;
+// Automation rules (Task #67, docs/DECISIONS.md 2026-09-28, Chris's pick
+// of the three most useful checks to run automatically). 180 days (~6
+// months) is a simple, explainable "it's been a while" bar for a rented
+// appliance with no logged maintenance visit — not a manufacturer service
+// schedule, since none is tracked per appliance type today.
+export const APPLIANCE_MAINTENANCE_DUE_DAYS = 180;
 
 export function billingBlockedException(agreement: {
   id: string;
@@ -157,6 +165,45 @@ export function missingRepairCostException(job: {
       "This repair job is marked Completed but has no parts/labor cost entered — appliance profitability (Fleet page) is undercounting it as $0 until you add it.",
     href: `/desk/jobs/${job.id}`,
     since: job.completedAt,
+  };
+}
+
+/** A fixed-term agreement (e.g. 12 months) whose term end date has
+ * passed but is still marked ACTIVE — nobody recorded a renewal, a
+ * switch to month-to-month, or an end. Purely a "someone should look at
+ * this" flag; it never changes the agreement itself. */
+export function agreementTermExpiredException(agreement: {
+  id: string;
+  customerName: string;
+  termMonths: number;
+  termEndDate: Date;
+}): ExceptionItem {
+  return {
+    category: "AGREEMENT_TERM_EXPIRED",
+    severity: "medium",
+    title: `${agreement.customerName}'s ${agreement.termMonths}-month term has ended`,
+    detail: `Term ended ${agreement.termEndDate.toLocaleDateString("en-US")} but the agreement is still marked active — check whether they're renewing, going month-to-month, or returning the equipment.`,
+    href: `/desk/agreements/${agreement.id}`,
+    since: agreement.termEndDate,
+  };
+}
+
+/** A currently-rented appliance with no logged maintenance visit (or
+ * none since it went into service) in over
+ * APPLIANCE_MAINTENANCE_DUE_DAYS. */
+export function applianceMaintenanceDueException(appliance: {
+  id: string;
+  assetNumber: string;
+  applianceTypeName: string;
+  sinceDate: Date;
+}): ExceptionItem {
+  return {
+    category: "APPLIANCE_MAINTENANCE_DUE",
+    severity: "medium",
+    title: `${appliance.applianceTypeName} (${appliance.assetNumber}) may be due for a maintenance check`,
+    detail: `No completed maintenance visit logged since ${appliance.sinceDate.toLocaleDateString("en-US")} — worth scheduling a routine check-in with the customer.`,
+    href: `/desk/inventory/${appliance.id}`,
+    since: appliance.sinceDate,
   };
 }
 

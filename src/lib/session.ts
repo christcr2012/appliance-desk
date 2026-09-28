@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { cache } from "react";
 import { auth } from "./auth";
 
-export type Role = "OWNER" | "ADMIN" | "CUSTOMER";
+export type Role = "OWNER" | "ADMIN" | "STAFF" | "CUSTOMER";
 
 /**
  * Reads the current session on the server. Cached per-request so calling
@@ -14,11 +14,22 @@ export const getServerSession = cache(async () => {
   return auth.api.getSession({ headers: await headers() });
 });
 
-/** Redirects to /login if nobody is signed in. Use in every protected page/layout. */
+/** Redirects to /login if nobody is signed in, or if the account has
+ * been deactivated (User.archivedAt set — see src/domains/staff's
+ * "remove access" action). `archivedAt` rides along on the session
+ * automatically (see src/lib/auth.ts's user.additionalFields), so this
+ * needs no extra database call. A deactivated account keeps existing
+ * as a User row (audit log entries still point somewhere real) but can
+ * never sign in or use an existing session again. Use in every
+ * protected page/layout. */
 export async function requireSession() {
   const session = await getServerSession();
   if (!session) {
     redirect("/login");
+  }
+  const archivedAt = (session.user as { archivedAt?: Date | string | null }).archivedAt;
+  if (archivedAt) {
+    redirect("/login?deactivated=1");
   }
   return session;
 }

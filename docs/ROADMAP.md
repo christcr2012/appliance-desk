@@ -171,9 +171,17 @@ on — never built unasked.
   `docs/BUSINESS-RULES.md`'s "Growth signals" section for what shipped
   and, just as importantly, what didn't (review/referral requests
   shipped as a manual candidate list, not the brainstorm's automatic
-  emailer). **Still open**: a driver/technician mobile job view + route
-  grouping, a formal referral-tracking program, SMS notifications, a
-  separate Contacts concept, and an accounting export — not picked yet.
+  emailer). **A driver/technician mobile job view is done (2026-09-28,
+  Task #65)** — `/desk/driver`, route grouping not included. **A
+  formal referral-tracking program is done (2026-09-28, Task #68)** —
+  give one/get one, see `docs/DECISIONS.md`. **SMS notifications are
+  built (2026-09-28, Task #71) but dormant** — Chris's Twilio account
+  is set up, but he can't buy a phone number until his LLC's business-
+  texting registration is done; everything else (opt-in, the day-of
+  job reminder text) is wired up and ready. **Still open**: a separate
+  Contacts concept, and an accounting export — Chris has picked both
+  (Task #73, plus real business email as Task #69) and they're queued
+  up next.
 - **A third Astra review ("upgrade to a connected workspace"),
   2026-09-27** — saved verbatim at
   `docs/reviews/2026-09-27-astra-workspace-review.md`, fact-checked in
@@ -187,9 +195,18 @@ on — never built unasked.
   safe appliance reservations, tested customer-data isolation, working
   dark mode); two are real, worth-fixing gaps (no optimistic-
   concurrency guard against conflicting simultaneous edits; Neon backup
-  restore capability exists but hasn't actually been drilled). The nine
-  proposed feature areas are each substantial on their own — not picked
-  yet; Chris to choose where (if anywhere) to start.
+  restore capability exists but hasn't actually been drilled — the
+  concurrency guard is **done (2026-09-28)**, see the optimistic-
+  concurrency entry in `docs/DECISIONS.md`). Of the nine proposed
+  feature areas, Chris has since picked a first slice of the
+  "automation rules" idea — **done (2026-09-28, Task #67)**: billing
+  reminders, overdue-rental flags, and maintenance-due flags (see
+  `docs/DECISIONS.md`'s 2026-09-28 entry) — plus a first-cut "staff
+  permissions" framework (**done (2026-09-28, Task #66)**). The
+  remaining feature areas (unified customer workspace, guided
+  rental-builder wizard, richer appliance records, a real dispatch
+  board, global search/saved views/bulk actions/CSV import-export, an
+  owner configuration center) are still not picked.
 - **A fourth Astra message — an actual code review, 2026-09-27** —
   saved verbatim at `docs/reviews/2026-09-27-astra-code-review.md`,
   fact-checked in `docs/DECISIONS.md`. This one claimed to have read

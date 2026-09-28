@@ -384,6 +384,19 @@ export function ContactForm({
             className={inputClass}
           />
         </Field>
+        <Field
+          id={`${formId}-referralCode`}
+          label="Referral code (optional)"
+          error={errors.referralCode?.message}
+        >
+          <input
+            id={`${formId}-referralCode`}
+            type="text"
+            placeholder="Got a code from a friend? Enter it here"
+            {...register("referralCode")}
+            className={inputClass}
+          />
+        </Field>
       </fieldset>
 
       <div>

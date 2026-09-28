@@ -54,7 +54,9 @@ beforeAll(async () => {
   });
   userId = user.id;
 
-  const customer = await prisma.customer.create({ data: { userId: user.id } });
+  const customer = await prisma.customer.create({
+    data: { userId: user.id, referralCode: `BILL${RUN_ID}`.slice(0, 20).toUpperCase() },
+  });
   customerId = customer.id;
 
   const serviceAddress = await prisma.serviceAddress.create({

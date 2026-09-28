@@ -5,6 +5,187 @@ here, add a new entry rather than editing the old one away.
 
 ---
 
+### 2026-09-28 — SMS notifications: built and wired up, dormant until Chris can buy a number
+
+Chris approved the ongoing per-text cost and set up a real Twilio
+account, then hit a real blocker while trying to buy a phone number:
+Twilio (like every carrier-facing SMS provider) requires **A2P 10DLC
+business-texting registration** — proof of a real, registered business
+— before it'll sell a number for business texting. Chris's LLC isn't
+officially set up yet, so he can't complete that registration or buy a
+number right now.
+
+**Decision, given that: build the whole feature now, leave it dormant.**
+Everything is wired up end to end using his real Account SID/Auth
+Token (set in Vercel) except the one thing that's actually blocked —
+`TWILIO_PHONE_NUMBER` is deliberately left unset. `src/lib/sms.ts`'s
+`sendSms` no-ops safely (logs, returns `{ sent: false }`) without it,
+the same guarded pattern `src/lib/email.ts` already used before
+`RESEND_API_KEY` was first set. The moment Chris finishes his LLC
+registration and buys a number, adding that one env var turns sending
+on — no code change, no redeploy of anything but the env var itself.
+
+**What it actually sends (the growth brainstorm's own example — idea
+#12, "your delivery window is today"):** a same-day text reminder for
+a scheduled job, via a second daily Vercel Cron job
+(`/api/cron/job-reminders`). Deliberately scoped to just this one use
+case for now rather than adding SMS everywhere email already goes
+(billing reminders, etc.) — the same `sendSms` helper and consent
+model make adding a second use case straightforward later, once the
+first one is proven out.
+
+**TCPA compliance (docs/BUSINESS-RULES.md's privacy baseline: "an SMS
+opt-in checkbox is required before any texting feature is added"):** a
+new `/account/settings` page (the customer portal's first settings
+page) is a real, off-by-default opt-in — a customer must explicitly
+check a box, with the phone number they're opting in at shown right
+next to it, and message-and-data-rates/STOP-to-opt-out language in the
+checkbox copy itself. `Customer.smsOptInAt` is never set just because
+a phone number exists on the account; a `ConsentRecord` (kind
+`sms_opt_in`) is written on every change, opt-in or opt-out, as an
+actual audit trail of consent given or withdrawn, not just a current
+on/off flag.
+
+---
+
+### 2026-09-28 — Referral program: give one, get one
+
+Chris picked this from a backlog review, and specified the reward
+shape himself: "discount for both people" — the same dollar amount for
+whoever referred and whoever was referred, not a one-sided bonus.
+
+**Design, in order of when things happen:**
+
+1. Every customer gets a short, unambiguous 6-character
+   `Customer.referralCode` (excludes 0/O/1/I/L — it gets read aloud and
+   typed by hand) the moment their account is created, whichever of
+   the two paths creates it (`convertLeadToCustomer`,
+   `createCustomerDirectly`).
+2. The public lead form has a new optional "referral code" field
+   (`Lead.referredByCode`). Never validated against real customers at
+   submission time — a typo or made-up code just means nothing links
+   later, it never blocks the lead itself.
+3. When that lead converts to a customer, if the code matches a real
+   customer's own code, a `Referral` row links them (PENDING) —
+   nothing has happened financially yet.
+4. The reward only fires when the *referred* customer's billing
+   actually starts (`RentalAgreement.billingStartedAt`, in
+   `startRecurringBillingForAgreement` right after a real Stripe
+   subscription is created) — **never on signup alone**, since
+   rewarding at signup would pay out for someone who never actually
+   rents anything.
+
+**How the reward is actually delivered:** a real Stripe
+account-balance credit — `stripe.customers.createBalanceTransaction`
+with a negative amount, which Stripe applies automatically to that
+customer's next invoice, no coupon or manual invoice edit needed. This
+only works for a side that already has a Stripe customer on file
+(i.e., has been billed at least once); either side is also given a
+local `CustomerCredit` record regardless, visible on their own
+customer page, so a side without a Stripe account yet still has a
+real, visible record Chris can honor by hand once they do. One
+owner-adjustable amount, `BusinessSettings.referralRewardCents` ($25
+default), applied to both sides — matching Chris's "discount for both
+people," not two separate configurable amounts.
+
+**Found and left alone rather than building around it:** the schema
+already had a `CustomerCredit` model (from the original Phase 6B
+billing redesign) described as "reduces what a customer owes on a
+future invoice," but nothing in the app had ever actually applied one
+— it was schema-only. Rather than build a whole separate "apply local
+credits against invoices we generate" system (a second, competing
+source of truth for what a customer owes, since Stripe — not this
+app's own Invoice table — is what actually decides the next charge),
+this reward uses Stripe's own real balance mechanism as the delivery
+path, and treats `CustomerCredit` purely as the audit-trail/visibility
+record it always described itself as.
+
+Best-effort throughout, matching every other money-adjacent background
+step in this app (billing reminders, activation emails): a failed
+Stripe call on one side, or a failed confirmation email, never blocks
+the other side's reward or the referral being marked REWARDED.
+
+---
+
+### 2026-09-28 — Automation rules: billing reminders, overdue-rental and maintenance-due flags
+
+Chris picked this from a backlog review ("remind customers before
+billing, flag overdue rentals, flag appliances needing maintenance") —
+three things he'd otherwise have to remember to check for himself.
+
+**Billing reminders:** a daily Vercel Cron job
+(`src/app/api/cron/billing-reminders`, `vercel.json`) emails any
+customer whose next automatic charge is 1–2 days out. Built entirely
+off `RentalAgreement.nextBillingDate`, which the existing Stripe
+webhook already keeps accurate — no new Stripe API call needed. To
+avoid sending the same reminder twice within that 2-day window (or
+missing one) without a fragile time-based cooldown, added
+`RentalAgreement.billingReminderSentForDate`: it stores the *exact*
+`nextBillingDate` value the last reminder was sent for, compared
+against the current one on every run. That makes the check trivially
+correct either way — same value means already reminded this cycle;
+different value (because the webhook already advanced it) means a new
+cycle has started and it's fair game again. Protected by a
+`CRON_SECRET` bearer token (see `docs/ARCHITECTURE.md`) so the URL
+can't be triggered by anyone who finds it.
+
+**Overdue rentals and maintenance-due appliances:** rather than a
+second cron job, these were added as two new categories
+(`AGREEMENT_TERM_EXPIRED`, `APPLIANCE_MAINTENANCE_DUE`) in the
+existing "Needs your attention" exception inbox on `/desk/today`
+(`src/domains/exceptions/`) — that page already re-queries fresh every
+time Chris opens it, so a real-time query fits better than a
+scheduled job that could go stale between runs.
+`AGREEMENT_TERM_EXPIRED` flags a fixed-term agreement whose term end
+date has passed while it's still marked ACTIVE (nobody recorded a
+renewal, a switch to month-to-month, or a return).
+`APPLIANCE_MAINTENANCE_DUE` flags a currently-rented appliance with no
+completed maintenance visit logged in 180+ days — a simple,
+explainable "it's been a while" bar, not a manufacturer service
+schedule (none is tracked per appliance type today).
+
+Both are purely informational flags — neither one changes an
+agreement's or appliance's status on its own, matching the same
+"never silently act, always show Chris the option" pattern used
+throughout `src/domains/exceptions/`.
+
+---
+
+### 2026-09-28 — Staff permissions framework, and a driver mobile job view
+
+Chris picked both from a backlog review, and said to "just build the
+framework for now" on roles rather than pre-defining separate
+driver/office roles.
+
+**Staff permissions:** added a single `STAFF` role (alongside the
+existing `OWNER`/`ADMIN`/`CUSTOMER`) — broad enough to be useful
+immediately (jobs, the driver view, scanning QR codes, updating
+appliance status from a job) while walling off anything
+financial or settings-related from it. Defense in depth, not just
+hidden nav links: `/desk/layout.tsx` now splits its nav into
+operational links (open to STAFF) and owner-only links, **and** every
+owner-only page (`dashboard`, `billing`, `revenue`, `reports`,
+`growth`, `settings`) additionally calls
+`requireRole("OWNER", "ADMIN")` itself, so a STAFF account can't reach
+those pages even by guessing the URL.
+
+Staff accounts are created, deactivated, and reactivated the same way
+customer accounts already are (Settings page): a random, immediately-
+discarded password, then Better Auth's own password-reset flow
+repurposed as the activation email — Chris never sees or relays a
+password. Deactivating a staff account both revokes their live
+sessions immediately and sets a new `User.archivedAt` field, which
+`requireSession()` now checks on every request so a deactivated
+account is locked out even mid-session, not just on next login.
+
+**Driver mobile view (`/desk/driver`):** a stripped-down, phone-sized
+list of a staff member's own jobs for today — status updates, photo
+upload, and the same appliance-status-update prompt the main jobs
+page already offers, without any of the desk's other navigation or
+financial information in view.
+
+---
+
 ### 2026-09-27 — Workflow continuity: two dead-end actions fixed
 
 Chris pointed out a real UX gap: converting a lead to a customer left him

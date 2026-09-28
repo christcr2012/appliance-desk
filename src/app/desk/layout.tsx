@@ -8,16 +8,13 @@ export const metadata = {
   robots: { index: false, follow: false },
 };
 
-const DESK_LINKS: AuthedNavLink[] = [
+// Links every OWNER/ADMIN/STAFF login sees.
+const OPERATIONAL_LINKS: AuthedNavLink[] = [
   { href: "/desk/today", label: "Today" },
-  { href: "/desk/dashboard", label: "Dashboard" },
+  { href: "/desk/driver", label: "Driver view" },
   { href: "/desk/leads", label: "Leads" },
   { href: "/desk/customers", label: "Customers" },
   { href: "/desk/agreements", label: "Agreements" },
-  { href: "/desk/billing", label: "Billing" },
-  { href: "/desk/revenue", label: "Revenue" },
-  { href: "/desk/reports", label: "Reports" },
-  { href: "/desk/growth", label: "Growth" },
   { href: "/desk/jobs", label: "Jobs" },
   { href: "/desk/dispatch", label: "Dispatch" },
   { href: "/desk/maintenance", label: "Maintenance" },
@@ -25,18 +22,38 @@ const DESK_LINKS: AuthedNavLink[] = [
   { href: "/desk/fleet", label: "Fleet" },
   { href: "/desk/parts", label: "Parts" },
   { href: "/desk/activity", label: "Activity" },
+];
+
+// Business-performance/financial and settings links — OWNER/ADMIN only.
+// Each of these pages also calls requireRole("OWNER", "ADMIN") itself;
+// this list only controls whether the link is shown, never the real
+// gate (see src/lib/session.ts's own comment on requireRole).
+const OWNER_ONLY_LINKS: AuthedNavLink[] = [
+  { href: "/desk/dashboard", label: "Dashboard" },
+  { href: "/desk/billing", label: "Billing" },
+  { href: "/desk/revenue", label: "Revenue" },
+  { href: "/desk/reports", label: "Reports" },
+  { href: "/desk/growth", label: "Growth" },
   { href: "/desk/settings", label: "Settings" },
 ];
 
-// Every /desk/** page requires OWNER or ADMIN. This check happens again
-// inside requireRole() on the server — the proxy cookie check is
-// only a fast first pass, not the real gate.
+// Every /desk/** page requires OWNER, ADMIN, or STAFF. This check
+// happens again inside requireRole() on the server — the proxy cookie
+// check is only a fast first pass, not the real gate. A STAFF login
+// gets the same layout but a shorter nav — see OWNER_ONLY_LINKS above,
+// and each financial/settings page's own requireRole("OWNER", "ADMIN")
+// call, which is the actual enforcement.
 export default async function DeskLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  await requireRole("OWNER", "ADMIN");
+  const session = await requireRole("OWNER", "ADMIN", "STAFF");
+  const role = (session.user as { role?: string }).role;
+  const isOwnerOrAdmin = role === "OWNER" || role === "ADMIN";
+  const links = isOwnerOrAdmin
+    ? [...OPERATIONAL_LINKS, ...OWNER_ONLY_LINKS]
+    : OPERATIONAL_LINKS;
 
   return (
     <div className="min-h-screen bg-gray-50 md:flex">
@@ -46,10 +63,10 @@ export default async function DeskLayout({
       <AuthedHeader
         title="Appliance Desk"
         areaLabel="Owner desk"
-        links={DESK_LINKS}
+        links={links}
         variant="sidebar"
       />
-      <DeskSidebar title="Appliance Desk" links={DESK_LINKS} />
+      <DeskSidebar title="Appliance Desk" links={links} />
       <main id="main-content" className="flex-1 p-6">
         <div className="mb-4 flex justify-end">
           <GlobalSearchBox />

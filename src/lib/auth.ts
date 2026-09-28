@@ -70,6 +70,15 @@ export const auth = betterAuth({
         defaultValue: "CUSTOMER",
         input: false, // never settable by the client — only changed server-side
       },
+      // Rides along on the session so requireSession() (src/lib/session.ts)
+      // can reject a deactivated account without an extra database call
+      // on every protected page. Set only by the "remove access" action
+      // for a staff account (src/domains/staff) — never by the client.
+      archivedAt: {
+        type: "date",
+        required: false,
+        input: false,
+      },
     },
   },
   session: {

@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
+  agreementTermExpiredException,
+  applianceMaintenanceDueException,
   billingBlockedException,
   missingRepairCostException,
   overdueJobException,
@@ -115,6 +117,36 @@ describe("exception builders", () => {
       applianceLabel: null,
     });
     expect(item.title).not.toContain("null");
+  });
+
+  // Automation rules (Task #67, docs/DECISIONS.md 2026-09-28).
+
+  it("agreementTermExpiredException names the term length and links to the agreement", () => {
+    const item = agreementTermExpiredException({
+      id: "agr-3",
+      customerName: "Jane Doe",
+      termMonths: 12,
+      termEndDate: new Date("2026-09-01"),
+    });
+    expect(item.category).toBe("AGREEMENT_TERM_EXPIRED");
+    expect(item.severity).toBe("medium");
+    expect(item.title).toContain("Jane Doe's 12-month term has ended");
+    expect(item.href).toBe("/desk/agreements/agr-3");
+    expect(item.since).toEqual(new Date("2026-09-01"));
+  });
+
+  it("applianceMaintenanceDueException names the appliance and links to its inventory page", () => {
+    const item = applianceMaintenanceDueException({
+      id: "appl-2",
+      assetNumber: "A-200",
+      applianceTypeName: "Dryer",
+      sinceDate: new Date("2026-03-01"),
+    });
+    expect(item.category).toBe("APPLIANCE_MAINTENANCE_DUE");
+    expect(item.severity).toBe("medium");
+    expect(item.title).toContain("Dryer (A-200)");
+    expect(item.href).toBe("/desk/inventory/appl-2");
+    expect(item.since).toEqual(new Date("2026-03-01"));
   });
 });
 
