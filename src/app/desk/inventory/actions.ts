@@ -10,6 +10,7 @@ import {
   createPartRecord,
   deletePartRecord,
   bulkUpdateApplianceStatus,
+  addAppliancePhoto,
 } from "@/domains/inventory";
 import {
   startRepairForAppliance,
@@ -140,6 +141,11 @@ const detailsSchema = z.object({
   condition: z.string().trim().max(200).optional().or(z.literal("")),
   currentLocation: z.string().trim().max(300).optional().or(z.literal("")),
   notes: z.string().trim().max(2000).optional().or(z.literal("")),
+  // The appliance's updatedAt from when the edit form was loaded, sent
+  // back as a plain ISO string (same string-date convention as
+  // purchaseDate above) — see updateApplianceDetails' optimistic-
+  // concurrency comment in src/domains/inventory/index.ts.
+  expectedUpdatedAt: z.string().trim().min(1, "Reload the page and try again."),
 });
 
 export async function updateApplianceDetailsAction(
@@ -158,18 +164,61 @@ export async function updateApplianceDetailsAction(
 
   const data = parsed.data;
 
-  await updateApplianceDetails(session.user.id, applianceId, {
-    manufacturer: data.manufacturer || null,
-    model: data.model || null,
-    serialNumber: data.serialNumber || null,
-    color: data.color || null,
-    features: data.features ? splitList(data.features) : [],
-    condition: data.condition || null,
-    currentLocation: data.currentLocation || null,
-    notes: data.notes || null,
-  });
+  try {
+    await updateApplianceDetails(
+      session.user.id,
+      applianceId,
+      {
+        manufacturer: data.manufacturer || null,
+        model: data.model || null,
+        serialNumber: data.serialNumber || null,
+        color: data.color || null,
+        features: data.features ? splitList(data.features) : [],
+        condition: data.condition || null,
+        currentLocation: data.currentLocation || null,
+        notes: data.notes || null,
+      },
+      new Date(data.expectedUpdatedAt),
+    );
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Couldn't save those changes.",
+    };
+  }
 
   revalidatePath("/desk/inventory");
+  revalidatePath(`/desk/inventory/${applianceId}`);
+  revalidatePath("/desk/activity");
+
+  return { status: "success" };
+}
+
+const appliancePhotoSchema = z.object({
+  url: z.string().trim().url("Enter a valid photo URL.").max(2000),
+  altText: z.string().trim().max(300).optional().or(z.literal("")),
+});
+
+export async function addAppliancePhotoAction(
+  applianceId: string,
+  raw: Record<string, unknown>,
+): Promise<InventoryActionState> {
+  const session = await requireRole("OWNER", "ADMIN");
+
+  const parsed = appliancePhotoSchema.safeParse(raw);
+  if (!parsed.success) {
+    return {
+      status: "error",
+      message: parsed.error.issues[0]?.message ?? "Please fix the highlighted fields.",
+    };
+  }
+  const data = parsed.data;
+
+  await addAppliancePhoto(session.user.id, applianceId, {
+    url: data.url,
+    altText: data.altText || null,
+  });
+
   revalidatePath(`/desk/inventory/${applianceId}`);
   revalidatePath("/desk/activity");
 

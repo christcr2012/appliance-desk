@@ -13,7 +13,7 @@ import {
 import type { JobStatus, JobType, ApplianceStatus } from "@prisma/client";
 import { APPLIANCE_STATUS_LABELS } from "@/domains/inventory/lifecycle";
 import { parseChecklist, type ChecklistItem } from "@/domains/jobs/checklist";
-import { PhotoUploadField } from "@/components/desk/photo-upload-field";
+import { PhotoUploadField } from "@/components/photo-upload-field";
 
 // Rental lifecycle (2026-09-28): completing a delivery, installation, or
 // pickup now moves its appliances along automatically on the server (see

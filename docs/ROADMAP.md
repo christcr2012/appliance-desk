@@ -34,7 +34,10 @@ on — never built unasked.
   once this is deployed (see that same section for the exact steps) —
   the webhook route intentionally refuses to work until then.
 - Full accessibility/security review, backup/restore test, launch
-  checklist — Phase 7. **Automated accessibility coverage for every
+  checklist — Phase 7. **Backup restore: done.** Verified 2026-09-28 (see
+  `docs/DECISIONS.md`) — a real Neon snapshot restore had already been
+  run and finalized against the live database, and its data checked out
+  with no loss. **Automated accessibility coverage for every
   logged-in page — started (2026-09-27).** Previously only the public
   site + login/password pages were checked by axe in CI; every
   `/desk/**` and `/account/**` page (owner desk, customer portal) had
@@ -199,14 +202,15 @@ on — never built unasked.
   behavior. Two more findings (closing an agreement immediately frees
   its appliances; signing immediately marks appliances rented) turned
   out to already be deliberate, documented decisions — real trade-offs
-  worth Chris knowing about, not bugs. One real smaller gap not yet
-  fixed:
-  - **No idempotency key on Stripe Checkout Session creation** — a
-    double-click or retried request to `createCheckoutSessionForAgreement`
-    creates a second Checkout Session instead of reusing the first
-    (doesn't lose or misstate money, could hand a customer two payment
-    links). Add an idempotency key and/or reuse an unexpired session —
-    not picked yet.
+  worth Chris knowing about, not bugs.
+  - ~~No idempotency key on Stripe Checkout Session creation~~ — **done
+    (2026-09-27)**, this note was just stale. Both
+    `createCheckoutSessionForAgreement` and
+    `startRecurringBillingForAgreement` pass a per-agreement
+    `idempotencyKey` to Stripe, so a double-click or retried request
+    reuses the same Checkout Session / Subscription instead of creating
+    a second one. See `src/domains/billing/checkout.ts` and
+    `docs/DECISIONS.md`.
 - **Google Search Console / Google Business Profile** connection —
   needs a real public business name and domain first (Phase 2/7).
 - **A design system / component library beyond Tailwind utilities** if
@@ -249,11 +253,12 @@ on — never built unasked.
   version comfortably covers — Chris's call, not automatic.
 - ~~Real file uploads for photos instead of pasting a URL~~ — **done,
   2026-09-28** (Chris's explicit request). See docs/ARCHITECTURE.md's
-  "Photo uploads (Vercel Blob)" section and docs/DECISIONS.md. Still not
-  built: appliance-instance-level photos and customer-portal maintenance-
-  request photos — the schema already supports both (`Photo.applianceId`
-  / `Photo.maintenanceRequestId`) but nothing built a UI for either yet.
-  Worth doing with the same upload component if Chris wants it.
+  "Photo uploads (Vercel Blob)" section and docs/DECISIONS.md.
+  ~~Still not built: appliance-instance-level photos and
+  customer-portal maintenance-request photos~~ — **both done,
+  2026-09-28**, same upload component. See docs/DECISIONS.md's
+  "Customer-submitted photos on maintenance requests" and "Photos on
+  individual appliance units" entries.
 - **Link a `Job` back to the `MaintenanceRequest` it fulfills** — **done
   (2026-09-26)**. `/desk/maintenance`'s "Schedule a job for this" now
   opens `/desk/jobs/new?maintenanceRequestId=...`, which pre-fills that

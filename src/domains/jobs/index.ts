@@ -293,9 +293,10 @@ async function applyJobCompletionToAppliances(
   }
 }
 
-/** Adds a condition photo to a job — pasted URL for now (same pattern as
- * ApplianceType.photoUrl in /desk/settings), since there's no file
- * upload/blob storage decision made yet — see docs/ROADMAP.md. */
+/** Adds a condition photo to a job — the URL comes from a real upload
+ * (device camera or file picker, via PhotoUploadField and Vercel Blob),
+ * not a pasted link — see docs/DECISIONS.md (2026-09-28, "Photo
+ * uploads"). */
 export async function addJobPhoto(
   userId: string,
   jobId: string,

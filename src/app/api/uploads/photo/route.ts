@@ -1,22 +1,23 @@
 import { NextResponse } from "next/server";
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { getServerSession } from "@/lib/session";
-import type { Role } from "@/lib/session";
 
-// Mints one-time upload tokens for the "add a photo" buttons in the desk
-// (appliance-type photos in Settings, condition photos on a job). The file
-// itself goes straight from the phone/browser to Vercel Blob storage —
-// never through this server — this route only decides *whether* to hand
-// out a token, so a signed-out visitor can't use it to fill the Blob
-// store with junk. See docs/DECISIONS.md (2026-09-28, "Photo uploads:
-// camera/file picker instead of pasting a URL").
-const STAFF_ROLES: Role[] = ["OWNER", "ADMIN"];
+// Mints one-time upload tokens for every "add a photo" button in the app
+// — appliance-type photos and job condition photos in the desk
+// (OWNER/ADMIN), and, as of 2026-09-28, a customer's own photo on a
+// maintenance request they're submitting (src/app/account/maintenance).
+// The file itself goes straight from the phone/browser to Vercel Blob
+// storage — never through this server — this route only decides
+// *whether* to hand out a token at all, so a signed-out visitor can't use
+// it to fill the Blob store with junk. Any signed-in role is allowed
+// (not just staff), since a customer needs this too; see
+// docs/DECISIONS.md (2026-09-28, "Photo uploads: camera/file picker
+// instead of pasting a URL").
 const MAX_UPLOAD_BYTES = 15 * 1024 * 1024; // 15MB — comfortably covers one phone photo
 
 export async function POST(request: Request): Promise<NextResponse> {
   const session = await getServerSession();
-  const role = (session?.user as { role?: Role } | undefined)?.role;
-  if (!session || !role || !STAFF_ROLES.includes(role)) {
+  if (!session) {
     return NextResponse.json({ error: "Not signed in." }, { status: 401 });
   }
 

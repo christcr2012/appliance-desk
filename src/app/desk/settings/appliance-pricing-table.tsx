@@ -8,7 +8,7 @@ import {
   setApplianceTypeActiveAction,
   setAppliancePhotoUrlAction,
 } from "./actions";
-import { PhotoUploadField } from "@/components/desk/photo-upload-field";
+import { PhotoUploadField } from "@/components/photo-upload-field";
 
 type ApplianceTypeRow = {
   id: string;

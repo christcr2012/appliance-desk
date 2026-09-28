@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createMaintenanceRequestAction } from "./actions";
+import { PhotoUploadField } from "@/components/photo-upload-field";
 
 type ApplianceOption = { id: string; label: string };
 
@@ -27,6 +28,9 @@ export function NewRequestForm({
   const [priority, setPriority] = useState("NORMAL");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [photoUrls, setPhotoUrls] = useState<string[]>([]);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const MAX_PHOTOS = 6;
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -36,6 +40,7 @@ export function NewRequestForm({
         problem,
         applianceId,
         priority,
+        photoUrls,
       });
       if (result.status === "error") {
         setError(result.message);
@@ -43,6 +48,7 @@ export function NewRequestForm({
         setProblem("");
         setApplianceId("");
         setPriority("NORMAL");
+        setPhotoUrls([]);
         setSuccess(true);
         router.refresh();
       }
@@ -107,6 +113,53 @@ export function NewRequestForm({
             </option>
           ))}
         </select>
+      </div>
+
+      <div>
+        <span className="block text-sm font-medium text-gray-700">Photo (optional)</span>
+        <p className="mt-1 text-xs text-gray-500">
+          A picture of the problem — a leak, a broken part, anything that helps.
+        </p>
+        {photoUrls.length > 0 && (
+          <div className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-6">
+            {photoUrls.map((url) => (
+              <div key={url} className="relative">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={url}
+                  alt="Photo of the problem"
+                  className="h-16 w-16 rounded-md object-cover"
+                />
+                <button
+                  type="button"
+                  onClick={() => setPhotoUrls((urls) => urls.filter((u) => u !== url))}
+                  aria-label="Remove this photo"
+                  className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-gray-900 text-xs text-white"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        {photoUrls.length < MAX_PHOTOS && (
+          <div className="mt-2">
+            <PhotoUploadField
+              pathPrefix="maintenance-requests"
+              label="Add a photo"
+              onUploaded={(url) => {
+                setPhotoError(null);
+                setPhotoUrls((urls) => [...urls, url]);
+              }}
+              onError={(message) => setPhotoError(message)}
+            />
+          </div>
+        )}
+        {photoError && (
+          <p role="alert" className="mt-1 text-xs text-red-700">
+            {photoError}
+          </p>
+        )}
       </div>
 
       <button

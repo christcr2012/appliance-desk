@@ -56,6 +56,10 @@ export async function getMaintenanceRequestById(id: string) {
       customer: { include: { user: { select: { name: true, email: true } } } },
       appliance: { include: { applianceType: true } },
       jobs: { orderBy: [{ scheduledAt: "desc" }] },
+      // The customer's own photo(s) of the problem, if they attached any
+      // when submitting (2026-09-28) — see src/domains/portal/index.ts's
+      // createMaintenanceRequestForUser.
+      photos: { orderBy: [{ createdAt: "asc" }] },
     },
   });
 }
