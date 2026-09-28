@@ -8,15 +8,24 @@ export default async function CustomersPage() {
 
   return (
     <div>
-      <h1 className="text-xl font-semibold">Customers</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-semibold">Customers</h1>
+        <Link
+          href="/desk/customers/new"
+          className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
+        >
+          + Add customer
+        </Link>
+      </div>
       <p className="mt-1 text-sm text-gray-600">
-        Everyone who&apos;s been converted from a lead. To add a new one,
-        convert a lead from <Link href="/desk/leads" className="underline">/desk/leads</Link>.
+        Everyone renting from you. A website inquiry comes in as a lead first
+        — convert it from the Leads page to turn it into a customer here, or
+        add someone directly if you&apos;re signing them up yourself.
       </p>
 
       {customers.length === 0 ? (
         <p className="mt-6 text-sm text-gray-600">
-          No customers yet — convert your first lead to get started.
+          No customers yet — add one directly, or convert your first lead.
         </p>
       ) : (
         <ul className="mt-6 divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white">
@@ -30,12 +39,21 @@ export default async function CustomersPage() {
                   <p className="font-medium text-gray-900">
                     {c.user.name ?? c.user.email}
                     {c.companyName ? ` — ${c.companyName}` : ""}
+                    {c.isPropertyManager && (
+                      <span className="ml-2 rounded-full bg-primary-soft px-2 py-0.5 text-xs font-medium text-primary-dark">
+                        Property manager
+                      </span>
+                    )}
                   </p>
                   <p className="text-sm text-gray-600">{c.user.email}</p>
                 </div>
                 <div className="text-sm text-gray-500 sm:text-right">
                   <p>{c._count.rentalAgreements} agreement(s)</p>
-                  <p>{c.serviceAddresses.length} address(es) on file</p>
+                  <p>
+                    {c.serviceAddresses.length}{" "}
+                    {c.serviceAddresses.length === 1 ? "property" : "properties"}{" "}
+                    on file
+                  </p>
                 </div>
               </Link>
             </li>
