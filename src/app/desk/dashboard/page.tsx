@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getDashboardStats } from "@/domains/dashboard";
+import { formatCents } from "@/domains/pricing";
 
 export const metadata = { title: "Dashboard" };
 
@@ -8,16 +9,24 @@ function StatCard({
   value,
   href,
   tone = "default",
+  warn,
 }: {
   label: string;
-  value: number;
+  value: number | string;
   href?: string;
   tone?: "default" | "warning";
+  /** Explicit override for whether the "warning" tone should actually
+   * highlight — needed for a string value (e.g. a formatted dollar
+   * amount) where "greater than zero" can't be inferred from the display
+   * value alone the way it can for a plain number. Defaults to "value is
+   * a positive number" when omitted, same behavior as before. */
+  warn?: boolean;
 }) {
+  const shouldWarn = warn ?? (typeof value === "number" && value > 0);
   const body = (
     <div
       className={`rounded-lg border p-5 ${
-        tone === "warning" && value > 0
+        tone === "warning" && shouldWarn
           ? "border-amber-300 bg-amber-50"
           : "border-gray-200 bg-white"
       }`}
@@ -116,6 +125,28 @@ export default async function DeskDashboardPage() {
           label="Appliances rented out"
           value={stats.applianceStatusCounts.RENTED}
           href="/desk/inventory?status=RENTED"
+        />
+        <StatCard
+          label="Monthly recurring revenue"
+          value={formatCents(stats.mrrCents)}
+          href="/desk/revenue"
+        />
+        <StatCard
+          label="Annualized recurring revenue"
+          value={formatCents(stats.arrCents)}
+          href="/desk/revenue"
+        />
+        <StatCard
+          label="Past-due amount"
+          value={formatCents(stats.pastDueCents)}
+          href="/desk/revenue"
+          tone="warning"
+          warn={stats.pastDueCents > 0}
+        />
+        <StatCard
+          label="Fleet utilization"
+          value={`${Math.round(stats.averageUtilizationFraction * 100)}%`}
+          href="/desk/fleet"
         />
       </div>
 

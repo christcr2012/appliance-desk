@@ -2,8 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { updateJobStatusAction, addJobPhotoAction } from "../actions";
-import type { JobStatus } from "@prisma/client";
+import { updateJobStatusAction, addJobPhotoAction, setJobRepairCostsAction } from "../actions";
+import type { JobStatus, JobType } from "@prisma/client";
 
 const ALL_STATUSES: { value: JobStatus; label: string }[] = [
   { value: "SCHEDULED", label: "Scheduled" },
@@ -23,8 +23,11 @@ const ALLOWED_NEXT: Record<JobStatus, JobStatus[]> = {
 
 type JobRow = {
   id: string;
+  type: JobType;
   status: JobStatus;
   completionNotes: string | null;
+  partsCostCents: number | null;
+  laborCostCents: number | null;
   appliances: { appliance: { assetNumber: string; applianceType: { name: string } } }[];
   photos: { id: string; url: string; altText: string | null }[];
 };
@@ -37,8 +40,34 @@ export function JobDetailPanel({ job }: { job: JobRow }) {
   const [photoUrl, setPhotoUrl] = useState("");
   const [photoAlt, setPhotoAlt] = useState("");
   const [photoError, setPhotoError] = useState<string | null>(null);
+  const [partsCostDollars, setPartsCostDollars] = useState(
+    job.partsCostCents != null ? (job.partsCostCents / 100).toFixed(2) : "",
+  );
+  const [laborCostDollars, setLaborCostDollars] = useState(
+    job.laborCostCents != null ? (job.laborCostCents / 100).toFixed(2) : "",
+  );
+  const [costError, setCostError] = useState<string | null>(null);
+  const [costSaved, setCostSaved] = useState(false);
 
   const nextStatuses = ALLOWED_NEXT[job.status];
+
+  function handleSaveCosts(e: React.FormEvent) {
+    e.preventDefault();
+    setCostError(null);
+    setCostSaved(false);
+    startTransition(async () => {
+      const result = await setJobRepairCostsAction(job.id, {
+        partsCostDollars,
+        laborCostDollars,
+      });
+      if (result.status === "error") {
+        setCostError(result.message);
+      } else {
+        setCostSaved(true);
+        router.refresh();
+      }
+    });
+  }
 
   function handleStatusChange(status: JobStatus) {
     setStatusMessage(null);
@@ -116,6 +145,66 @@ export function JobDetailPanel({ job }: { job: JobRow }) {
           </p>
         )}
       </div>
+
+      {job.type === "MAINTENANCE_VISIT" && (
+        <div className="rounded-lg border border-gray-200 bg-white p-5">
+          <h2 className="font-medium text-gray-900">Repair cost</h2>
+          <p className="mt-1 text-sm text-gray-600">
+            What this repair actually cost — used to track each
+            appliance&apos;s profitability on the Fleet page. Leave blank if
+            unknown; it&apos;s counted as $0 until you enter it.
+          </p>
+          <form onSubmit={handleSaveCosts} className="mt-3 flex flex-wrap items-end gap-4">
+            <div>
+              <label htmlFor="partsCost" className="block text-sm font-medium text-gray-700">
+                Parts cost
+              </label>
+              <input
+                id="partsCost"
+                type="number"
+                step="0.01"
+                min="0"
+                inputMode="decimal"
+                placeholder="0.00"
+                value={partsCostDollars}
+                onChange={(e) => setPartsCostDollars(e.target.value)}
+                className="mt-1 w-28 rounded-md border border-gray-300 px-3 py-2 text-sm"
+              />
+            </div>
+            <div>
+              <label htmlFor="laborCost" className="block text-sm font-medium text-gray-700">
+                Labor cost
+              </label>
+              <input
+                id="laborCost"
+                type="number"
+                step="0.01"
+                min="0"
+                inputMode="decimal"
+                placeholder="0.00"
+                value={laborCostDollars}
+                onChange={(e) => setLaborCostDollars(e.target.value)}
+                className="mt-1 w-28 rounded-md border border-gray-300 px-3 py-2 text-sm"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={isPending}
+              className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:border-gray-400 disabled:opacity-50"
+            >
+              {isPending ? "Saving…" : "Save cost"}
+            </button>
+          </form>
+          {costError && (
+            <p role="alert" className="mt-2 text-sm text-red-700">
+              {costError}
+            </p>
+          )}
+          {costSaved && !costError && (
+            <p className="mt-2 text-sm text-green-700">Saved.</p>
+          )}
+        </div>
+      )}
 
       {job.appliances.length > 0 && (
         <div className="rounded-lg border border-gray-200 bg-white p-5">

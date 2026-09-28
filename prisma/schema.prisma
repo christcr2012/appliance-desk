@@ -521,6 +521,16 @@ model Job {
   completedAt DateTime?
   completionNotes String?
 
+  // What a repair actually cost, entered by Chris when he completes a
+  // MAINTENANCE_VISIT job — the raw numbers appliance profitability/ROI
+  // (src/domains/inventory/analytics.ts) rolls up per appliance. Nullable
+  // and meaningless for non-repair job types (delivery, installation,
+  // swap, removal don't have a "repair cost"); left blank on an old job
+  // simply contributes $0 to that appliance's lifetime repair cost, never
+  // a fake number.
+  partsCostCents Int?
+  laborCostCents Int?
+
   appliances JobAppliance[]
   photos     Photo[]
 

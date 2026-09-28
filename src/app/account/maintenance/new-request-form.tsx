@@ -13,11 +13,17 @@ const PRIORITIES: { value: string; label: string }[] = [
   { value: "URGENT", label: "Urgent — safety issue or completely unusable" },
 ];
 
-export function NewRequestForm({ appliances }: { appliances: ApplianceOption[] }) {
+export function NewRequestForm({
+  appliances,
+  initialApplianceId = "",
+}: {
+  appliances: ApplianceOption[];
+  initialApplianceId?: string;
+}) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [problem, setProblem] = useState("");
-  const [applianceId, setApplianceId] = useState("");
+  const [applianceId, setApplianceId] = useState(initialApplianceId);
   const [priority, setPriority] = useState("NORMAL");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);

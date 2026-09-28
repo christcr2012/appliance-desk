@@ -5,6 +5,77 @@ here, add a new entry rather than editing the old one away.
 
 ---
 
+### 2026-09-27 — Built the four features Chris picked from the friend's proposal, plus a second architecture review
+
+After the "friend's rebuild proposal" assessment (below), Chris picked all
+four genuinely-new ideas — QR codes on appliances, appliance profitability/
+ROI, an MRR/ARR revenue dashboard, and fleet utilization analytics — and
+asked to go further: "use these as inspiration to come up with ways to
+really build out my business part of this system. We are doing great, but
+it is so basic."
+
+**Built, all additive (one nullable-column migration, no destructive
+changes):**
+
+- `Job.partsCostCents`/`laborCostCents` — lets Chris record what a repair
+  actually cost, which is the raw input to profitability.
+- `src/domains/inventory/analytics.ts` — pure, unit-tested math for
+  per-appliance revenue (prorated from real `ApplianceAssignment` dates and
+  the rental line's agreed price, split evenly across appliances sharing a
+  line), utilization (% of time in the fleet actually assigned), and
+  profitability (revenue − repair cost − purchase cost, "paid for itself"
+  yes/no). Verified against the proposal's own worked example (Washer
+  W-0047: $310 cost, $1,085 revenue, $92 repairs → $683 net) in
+  `tests/inventory-analytics.test.ts`.
+- `src/domains/billing/revenue.ts` — MRR/ARR and a 6-month trend
+  reconstructed from agreements' own agreed pricing and start/end dates
+  (not a separate ledger); collected revenue, past-due, and failed-payment
+  figures come straight from real Stripe-confirmed `Payment`/`Invoice`
+  rows, never estimated. **Caught and fixed a real bug while testing this**:
+  the trend's month-boundary math originally used `new Date(year, month, 1)`,
+  which constructs in the server process's local timezone — comparing that
+  against `startDate`/`endDate` values that come out of Postgres as UTC
+  instants could misclassify a date right at a month boundary depending on
+  what timezone the code happens to run in. Fixed to use `Date.UTC(...)`
+  on both sides of every comparison, verified with a test on a machine
+  actually running in a non-UTC timezone (America/Denver) so the bug
+  reproduced and the fix could be confirmed against it.
+- `/desk/revenue` (MRR/ARR, collected/past-due/failed payments, a 6-month
+  trend bar chart) and `/desk/fleet` (utilization %, total invested/
+  revenue/repair cost/net contribution, most/least-utilized and
+  highest-repair-cost rankings) — new desk pages, linked from the sidebar
+  and from `/desk/dashboard`'s own stat cards.
+- `/scan/[assetNumber]` + a printable QR label
+  (`/desk/inventory/[id]/qr`, server-rendered SVG via the `qrcode` package,
+  no external service call) — one QR code per physical appliance, one URL,
+  three outcomes depending on who scans it: staff go straight to that
+  unit's inventory page, a customer currently renting it goes to a
+  pre-filled service request, anyone else (not signed in, or scanning a
+  unit that isn't theirs) gets a safe, generic page — never appliance
+  detail before the scanner's identity/relationship is confirmed.
+
+**Also assessed a second, more architectural review** (ChatGPT "Astra,"
+saved at `docs/reviews/2026-09-27-astra-operations-review.md`) that Chris
+shared mid-session. Unlike the friend's proposal, this one is honest about
+its own limits ("I haven't audited its backend") and mostly correct: the
+real relational schema, enforced status transitions with audit logging,
+and an already-fairly-rigorous billing subsystem (immutable invoice line
+items, webhook idempotency, anniversary billing, refunds/credits) it calls
+for already exist underneath the screens it reviewed. Full assessment and
+the handful of genuinely new ideas from it (a separate Contacts concept, an
+accounting export, auditing outgoing-request idempotency) are folded into
+`docs/reviews/2026-09-27-business-growth-ideas.md` rather than repeated
+here. Its multi-employee-permissions and purchasing/supplier-chain
+recommendations describe a business with staff — Chris runs this alone
+today, so that layer is correctly left as a future item, not built now.
+
+**Also wrote `docs/reviews/2026-09-27-business-growth-ideas.md`** — a
+brainstorm of further ideas grounded in what the app already has (not
+generic SaaS features), for Chris to pick from same as everything else
+here. Nothing in it is built; it's a menu, not a plan.
+
+---
+
 ### 2026-09-27 — Real dark mode, superseding the "light-only" decision below
 
 **What changed:** right after the light-only fix below shipped, Chris

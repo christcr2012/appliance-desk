@@ -245,6 +245,45 @@ time he logs it — each additional model number gets its own row for
 that same part, so it shows up when he looks up parts for any of those
 models later too, not just the one he started from.
 
+## Fleet analytics, appliance profitability, and QR codes (2026-09-27)
+
+**Appliance profitability/ROI** (`/desk/inventory/[id]`'s summary panel,
+`/desk/fleet`): for each appliance, revenue is estimated from how many
+days it's actually been assigned to a customer (`ApplianceAssignment`)
+times the rental line's agreed monthly price — split evenly if it shared
+a line with another appliance (e.g. a washer+dryer set). Repair cost
+comes from parts/labor cost Chris enters on a completed repair job (see
+below). Net contribution = revenue − repair cost − what the appliance
+cost to buy; "paid for itself" is a plain yes/no, not a projected date,
+since projecting a future date from a variable monthly amount would be a
+guess dressed up as a fact. **This is an estimate from agreed pricing and
+real assignment dates, not a substitute for the exact amounts actually
+invoiced** — see `docs/DECISIONS.md` for the full reasoning.
+
+**Repair cost entry**: on a `MAINTENANCE_VISIT` job's own page, Chris can
+record what the repair cost in parts and labor. Left blank, it counts as
+$0 toward that appliance's lifetime repair cost — never a guessed number.
+
+**Fleet utilization** (`/desk/fleet`): what percentage of an appliance's
+time in the fleet it's actually been assigned to a customer, 0–100%.
+Sitting `AVAILABLE` or in `MAINTENANCE` counts against it the same as any
+other non-assigned time.
+
+**Revenue dashboard** (`/desk/revenue`): Monthly/Annualized Recurring
+Revenue (MRR/ARR) is calculated from active agreements' own agreed
+pricing — collected revenue, past-due amounts, and failed payments come
+directly from what Stripe has actually processed, always the exact real
+number, never estimated.
+
+**QR codes on appliances**: every physical appliance gets a printable QR
+label (`/desk/inventory/[id]` → "Print QR label") pointing at one URL
+that does something different depending on who scans it — staff go
+straight to that unit's own inventory page; a customer currently renting
+that exact unit goes to a pre-filled service-request form, so they never
+need to know its model or serial number; anyone else (not signed in, or
+scanning a unit that isn't theirs) sees a safe, generic page and never
+any appliance detail.
+
 ## Maintenance status flow
 
 `submitted → reviewing → scheduled → in_progress → resolved → closed`

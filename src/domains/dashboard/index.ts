@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
-import { getApplianceCountsByStatus } from "@/domains/inventory";
+import { getApplianceCountsByStatus, getFleetAnalytics } from "@/domains/inventory";
+import { getRevenueDashboard } from "@/domains/billing";
 
 /**
  * The real numbers shown on /desk/dashboard — replacing the Phase-1
@@ -21,6 +22,8 @@ export async function getDashboardStats() {
     upcomingJobCount,
     openMaintenanceRequestCount,
     staleReservationCount,
+    revenue,
+    fleet,
   ] = await Promise.all([
     prisma.lead.count({ where: { status: "NEW" } }),
     prisma.lead.count({ where: { status: "NEW", isHighValue: true } }),
@@ -45,9 +48,15 @@ export async function getDashboardStats() {
         reservationExpiresAt: { lt: new Date() },
       },
     }),
+    getRevenueDashboard(),
+    getFleetAnalytics(),
   ]);
 
   return {
+    mrrCents: revenue.mrrCents,
+    arrCents: revenue.arrCents,
+    pastDueCents: revenue.pastDueCents,
+    averageUtilizationFraction: fleet.totals.averageUtilizationFraction,
     newLeadCount,
     highValueNewLeadCount,
     contactedLeadCount,
