@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getEarningsReport, getJobsMissingRepairCost } from "@/domains/reports";
 import { formatCents } from "@/domains/pricing";
 import { requireRole } from "@/lib/session";
+import { ExportCsvLink } from "@/components/export-csv-link";
 
 export const metadata = { title: "Reports" };
 
@@ -24,12 +25,22 @@ export default async function ReportsPage() {
 
   return (
     <div>
-      <h1 className="text-xl font-semibold">Reports</h1>
-      <p className="mt-1 max-w-2xl text-sm text-gray-600">
-        What your agreements&apos; agreed pricing says you should have
-        collected by now, compared with what&apos;s actually been paid —
-        and repairs that are missing their cost, which would otherwise
-        quietly make an appliance look more profitable than it really was.
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-semibold">Reports</h1>
+          <p className="mt-1 max-w-2xl text-sm text-gray-600">
+            What your agreements&apos; agreed pricing says you should have
+            collected by now, compared with what&apos;s actually been paid —
+            and repairs that are missing their cost, which would otherwise
+            quietly make an appliance look more profitable than it really was.
+          </p>
+        </div>
+        <ExportCsvLink href="/desk/reports/export" label="Export transactions (CSV)" />
+      </div>
+      <p className="mt-2 max-w-2xl text-sm text-gray-500">
+        The export is every payment, refund, and security deposit movement
+        on file, oldest first — hand it to a bookkeeper or import it into
+        whatever accounting software you end up using.
       </p>
 
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">

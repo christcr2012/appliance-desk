@@ -99,3 +99,6 @@ export async function getJobsMissingRepairCost() {
     orderBy: [{ completedAt: "asc" }],
   });
 }
+
+export { getAccountingTransactions } from "./accounting-export";
+export type { AccountingTransactionRow, AccountingTransactionType } from "./accounting-export";

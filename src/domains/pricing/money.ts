@@ -31,3 +31,12 @@ export function formatCents(cents: number): string {
     maximumFractionDigits: 2,
   });
 }
+
+/** Cents → "35.00" / "-34.50" — a plain decimal with no "$" and no
+ * thousands separator, always two decimal places. For a CSV export
+ * (Task #73's accounting export) rather than on-screen display: a
+ * spreadsheet or bookkeeping tool reads this as a real number, where
+ * formatCents' "$1,234.00" would come in as text in some importers. */
+export function formatCentsAsPlainDecimal(cents: number): string {
+  return (cents / 100).toFixed(2);
+}

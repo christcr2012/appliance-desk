@@ -739,12 +739,20 @@ below), and a same-day "your visit is today" text for scheduled jobs
 job). Sending itself no-ops safely until `TWILIO_PHONE_NUMBER` is set
 in Vercel — see `docs/DECISIONS.md`.
 
+**An accounting export** (idea #14) — **done (2026-09-28, Task #73)**.
+`/desk/reports` has an "Export transactions (CSV)" download
+(`/desk/reports/export`) — every succeeded payment, invoice refund, and
+security deposit collected/refunded, oldest first, as a generic CSV
+(date, type, customer, invoice #, a signed dollar amount, method/
+reason, notes) any bookkeeping tool can import. Deliberately not
+QuickBooks-specific, since Chris doesn't have accounting software yet.
+See `src/domains/reports/accounting-export.ts`.
+
 **Not picked up in this pass** (the brainstorm's bigger, separate-schema
-or costly ideas — still just a menu, per that doc's own "nothing gets
-built without Chris picking it"): a separate Contacts concept (idea
-#13), an accounting export (idea #14). The driver/technician mobile
-job view (ideas #1/#2) is also **done (2026-09-28, Task #65)** — see
-the automation-rules entry in
+ideas — still just a menu, per that doc's own "nothing gets built
+without Chris picking it"): a separate Contacts concept (idea #13). The
+driver/technician mobile job view (ideas #1/#2) is also **done
+(2026-09-28, Task #65)** — see the automation-rules entry in
 `docs/DECISIONS.md`.
 
 ## Privacy & accessibility baseline

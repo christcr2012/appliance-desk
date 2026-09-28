@@ -5,6 +5,33 @@ here, add a new entry rather than editing the old one away.
 
 ---
 
+### 2026-09-28 — Accounting export: a generic transactions CSV (Task #73)
+
+Chris doesn't have accounting software yet, so this is deliberately
+generic (date / type / customer / invoice # / a signed dollar amount /
+method-or-reason / notes) rather than built for one product's own
+import format — whatever he ends up using (QuickBooks, Wave, a
+bookkeeper's own spreadsheet) can work from a plain CSV.
+
+Covers every place real money actually moves that this app already
+tracks: a succeeded payment, a refund on an invoice, and a security
+deposit both collected and (when it happens) refunded. Amounts use the
+standard accounting-ledger sign convention — positive for money in,
+negative for money out — so summing the amount column in a spreadsheet
+gives the real net cash movement directly. Pulls straight from
+`Payment`/`Refund`/`Deposit`, never re-derives a number — those tables
+are already the source of truth for what actually happened.
+
+Lives at `/desk/reports/export` (an "Export transactions (CSV)" link on
+the Reports page), OWNER/ADMIN only, same pattern as the existing
+customer-roster export. `src/domains/pricing/money.ts` gained
+`formatCentsAsPlainDecimal` (`"35.00"`, no `$`, no thousands separator)
+for this — `formatCents`'s `"$35"` display format is right for a screen,
+wrong for a column a spreadsheet or accounting tool needs to read as a
+real number.
+
+---
+
 ### 2026-09-28 — Owner login moved to the real business email; resetting test data without losing it
 
 Two related requests from Chris in the same conversation.
