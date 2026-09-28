@@ -1117,3 +1117,27 @@ desk/customer portal needed a different approach than the public site
 future changes in `docs/DESIGN-SYSTEM.md`. Verified with real automated
 accessibility checks in dark mode
 (`e2e/accessibility-dark-mode.spec.ts`), not just a visual look.
+
+## 2026-09-27 (same session, continued) — Chris's live-testing plan (important for whoever picks this up next)
+
+Chris said (2026-09-27): he's going to play around with the live system
+himself now, acting as both the owner and a customer, using made-up
+test data. Stripe stays in test mode for all of this — no real charges.
+
+**When Chris says he's satisfied and ready for real use, the next
+session needs to clear the database of all that fake test data** —
+test leads, customers, service addresses, rental agreements, jobs,
+maintenance requests, invoices, payments, refunds, and any other
+transactional rows created during his testing. This is a real,
+irreversible data deletion, so per `AGENTS.md`, get his explicit
+go-ahead for the exact scope right before doing it — don't treat this
+note as that go-ahead on its own.
+
+**What should NOT be deleted** as part of this cleanup: his own OWNER
+account/login, `BusinessSettings` (business name, service area, fees,
+tax rate, contact info), and `ApplianceType` rows (the pricing catalog)
+— those are real configuration, not test data, even though they may
+have been entered/adjusted during this same testing period. If it's
+unclear whether a particular row is "test data" or "something Chris
+actually wants kept" (e.g., he used a real appliance type but a fake
+customer against it), ask rather than guess.
