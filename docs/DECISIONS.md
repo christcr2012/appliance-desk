@@ -5,6 +5,39 @@ here, add a new entry rather than editing the old one away.
 
 ---
 
+### 2026-09-27 — Workflow continuity: two dead-end actions fixed
+
+Chris pointed out a real UX gap: converting a lead to a customer left him
+on the lead page with just a success message — he had to navigate to
+Customers himself to do anything with the new account. He suspected there
+were more spots like this.
+
+**Checked the rest of the app's "create/convert" actions first, not just
+his one example**: every *new-record* form already does this right —
+creating a customer redirects to that customer's page (which itself has a
+"+ New agreement" button), creating an agreement redirects to that
+agreement's page (which has a "+ Schedule a job" button). The lead-
+conversion action was the one real exception — it's a status change on an
+existing page, not a "create a new record and go there" form, so nobody
+had added a next step. Fixed: its success message now includes "Go to
+their customer page" and "Start an agreement" buttons.
+
+**Found one more, while looking**: completing a DELIVERY/INSTALLATION/
+SWAP/REMOVAL job never prompted updating the appliance's own status (e.g.
+marking it RENTED after a delivery, or AVAILABLE after a removal) — Chris
+had to remember to do that separately on the appliance's own page. Added a
+one-click suggestion (never automatic — the same
+`updateApplianceStatus`/allowed-transition rules and audit logging every
+other status change already goes through) that appears once a job's
+marked COMPLETED, for each appliance on it that isn't already at the
+status the job type implies.
+
+Not treated as an open-ended audit of every action in the app — these two
+were the concrete, findable gaps; more can be flagged the same way as
+they're noticed.
+
+---
+
 ### 2026-09-27 — Built the four features Chris picked from the friend's proposal, plus a second architecture review
 
 After the "friend's rebuild proposal" assessment (below), Chris picked all

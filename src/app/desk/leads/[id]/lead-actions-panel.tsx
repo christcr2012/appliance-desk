@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   updateLeadStatusAction,
   convertLeadAction,
@@ -138,6 +139,20 @@ export function LeadActionsPanel({
               to send them.
             </p>
           )}
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Link
+              href={`/desk/customers/${message.customerId}`}
+              className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
+            >
+              Go to their customer page
+            </Link>
+            <Link
+              href={`/desk/agreements/new?customerId=${message.customerId}`}
+              className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 hover:border-gray-400"
+            >
+              Start an agreement
+            </Link>
+          </div>
         </div>
       )}
     </div>
