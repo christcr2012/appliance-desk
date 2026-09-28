@@ -341,6 +341,25 @@ appliance from the request instead of starting blank — but scheduling a
 job does **not** automatically change the request's own status; Chris
 still moves it through the flow above by hand.
 
+## Customer workspace: notes and contacts (2026-09-28)
+
+A customer's own page (`/desk/customers/[id]`) now has:
+
+- **Notes** — free-text, written by Chris (a call, a reminder). Never
+  edited or deleted once saved — an honest record of who said what and
+  when, same reasoning as the audit log.
+- **Other contacts** — for a business/property-manager account, the
+  people Chris actually needs to reach for a given property aren't
+  always the one login on the account (a site manager for scheduling
+  access, an accounts-payable contact for billing). Purely
+  informational — never a login, never billed.
+- **Activity timeline** — notes plus the customer's own history (signed
+  agreements, job status changes, maintenance requests) merged into one
+  chronological feed, so Chris doesn't have to piece it together from
+  separate agreement/job pages.
+- **Quick actions** — "New agreement" and "Schedule a job," right on
+  their page.
+
 ## The exception inbox and "Today" (2026-09-28)
 
 `/desk/today` is where Chris lands after logging in — what's scheduled

@@ -6,6 +6,9 @@ import {
   sendCustomerActivationEmail,
 } from "@/domains/leads";
 
+export { getCustomerTimeline, getCustomerContacts } from "./timeline";
+export type { TimelineEntry } from "./timeline";
+
 /**
  * Customers — created either by converting a Lead (src/domains/leads'
  * convertLeadToCustomer) or, since the "add a customer directly"

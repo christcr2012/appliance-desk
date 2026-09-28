@@ -1581,3 +1581,26 @@ long has this appliance been sitting `AWAITING_INSPECTION`" is read off
 status change — good enough to sort a secondary list by roughly how
 stale something is, not worth a dedicated timestamp column for. Same
 spirit as `computeMrrTrend`'s own documented approximation.
+
+## 2026-09-28 — Customer workspace: notes, contacts, activity timeline
+
+Third piece of "get everything built out now." Adds two new tables
+(`CustomerNote`, `CustomerContact`) and a merged activity timeline to a
+customer's own Desk page — see `docs/BUSINESS-RULES.md`'s new "Customer
+workspace" section.
+
+Notes are deliberately append-only (no edit or delete) — same reasoning
+as `AuditLog` itself: a record of what was actually said and when is
+more trustworthy than one that can be quietly rewritten later. Contacts
+*can* be deleted (people leave a company, a number changes), scoped to
+both the contact id and the customer id in the same query so a stale or
+tampered form can never delete a different customer's contact.
+
+The activity timeline reads the existing `AuditLog` table back, scoped
+to one customer's own history (itself, plus every one of their
+agreements/jobs/maintenance requests) rather than one entity at a time
+the way every other page reads it — the first place in the app that
+does this. An action string it doesn't specifically recognize falls back
+to showing the raw string rather than dropping the entry, so a new audit
+action added elsewhere never silently disappears from a customer's
+timeline.
