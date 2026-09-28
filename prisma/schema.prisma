@@ -133,6 +133,16 @@ model Customer {
   // account back to this one via the Referral row below.
   referralCode String @unique
 
+  // SMS notifications (Task #71, docs/DECISIONS.md 2026-09-28) — TCPA
+  // requires real, recorded opt-in before texting anyone (see
+  // docs/BUSINESS-RULES.md's privacy baseline), so this is never
+  // assumed from having a phone number on file. Null = not opted in
+  // (or opted back out — same meaning, "don't text this customer"). Set
+  // = opted in at this moment; a matching ConsentRecord (kind
+  // "sms_opt_in") is written alongside every change, opt-in or
+  // opt-out, as the audit trail of consent actually given/withdrawn.
+  smsOptInAt DateTime?
+
   serviceAddresses ServiceAddress[]
   rentalAgreements RentalAgreement[]
   maintenanceRequests MaintenanceRequest[]
@@ -673,6 +683,12 @@ model Job {
   // a fake number.
   partsCostCents Int?
   laborCostCents Int?
+
+  // SMS notifications (Task #71) — set once a "your visit is today" text
+  // has gone out for this job, same dedup shape as RentalAgreement.
+  // billingReminderSentForDate: stops the daily cron from texting twice
+  // for a job that's still scheduled the next time it runs the same day.
+  dayOfReminderSentAt DateTime?
 
   appliances JobAppliance[]
   photos     Photo[]

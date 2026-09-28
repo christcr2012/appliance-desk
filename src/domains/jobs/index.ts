@@ -4,6 +4,8 @@ import { applianceStatusOnJobCompleted } from "@/domains/inventory/lifecycle";
 import { startRecurringBillingForAgreement } from "@/domains/billing/checkout";
 import { parseChecklist, type ChecklistItem } from "./checklist";
 
+export { sendJobDayOfReminders } from "./day-of-reminders";
+
 // ---------------------------------------------------------------------------
 // Jobs — one scheduled visit (delivery, install, swap, removal, or a
 // maintenance visit). See docs/BUSINESS-RULES.md: "Chris manually

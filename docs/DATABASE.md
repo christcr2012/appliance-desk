@@ -15,7 +15,10 @@ in UTC and only converted to Mountain Time for display.
   tables (login sessions, the hashed password record, email
   verification/reset tokens). Not hand-queried by app code.
 - **Customer** — the business-side profile attached to a `CUSTOMER`
-  user: phone, whether they're a business/property manager, etc.
+  user: phone, whether they're a business/property manager, a
+  referral code (see `Referral` below), and `smsOptInAt` (Task #71 —
+  real, recorded SMS consent, never assumed from having a phone number
+  on file).
 - **ServiceAddress** — a physical address a customer's appliances live
   at. A customer can have more than one (e.g. a landlord with several
   properties).
@@ -66,7 +69,8 @@ in UTC and only converted to Mountain Time for display.
 
 - **Job** — one scheduled visit: type, status, who/where/when, and
   before/after condition photos. Chris schedules every job by hand —
-  there's no dispatch optimization.
+  there's no dispatch optimization. `dayOfReminderSentAt` (Task #71)
+  dedupes the same-day SMS reminder.
 - **JobAppliance** — which physical appliance(s) a job involves.
 
 ## Maintenance

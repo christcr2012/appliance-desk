@@ -726,13 +726,25 @@ way — visible on each customer's own page — so Chris can honor it by
 hand for a side that doesn't have a Stripe account yet. See
 `src/domains/referrals`.
 
+**SMS notifications** (idea #12) — **built (2026-09-28, Task #71),
+dormant until Chris has a phone number to send from.** Chris approved
+the ongoing per-text cost and set up a real Twilio account, but
+couldn't buy a phone number yet — Twilio requires his LLC's business-
+texting (A2P 10DLC) registration first, which isn't done. Everything
+is wired up and ready: a real, off-by-default opt-in on
+`/account/settings` (`Customer.smsOptInAt`, a `ConsentRecord` on every
+change — TCPA compliance, see "Privacy & accessibility baseline"
+below), and a same-day "your visit is today" text for scheduled jobs
+(`src/domains/jobs/day-of-reminders.ts`, a second daily Vercel Cron
+job). Sending itself no-ops safely until `TWILIO_PHONE_NUMBER` is set
+in Vercel — see `docs/DECISIONS.md`.
+
 **Not picked up in this pass** (the brainstorm's bigger, separate-schema
 or costly ideas — still just a menu, per that doc's own "nothing gets
-built without Chris picking it"): SMS notifications (idea #12, a paid
-Twilio integration — `AGENTS.md`'s "ask before anything costly"), a
-separate Contacts concept (idea #13), an accounting export (idea #14).
-The driver/technician mobile job view (ideas #1/#2) is also **done
-(2026-09-28, Task #65)** — see the automation-rules entry in
+built without Chris picking it"): a separate Contacts concept (idea
+#13), an accounting export (idea #14). The driver/technician mobile
+job view (ideas #1/#2) is also **done (2026-09-28, Task #65)** — see
+the automation-rules entry in
 `docs/DECISIONS.md`.
 
 ## Privacy & accessibility baseline
@@ -742,4 +754,6 @@ Full detail in `docs/DESIGN-SYSTEM.md` (accessibility) and the
 Phase 2 privacy/terms pages. Short version: consent is recorded (not
 assumed), customers can request export/deletion of their data from the
 portal, and an SMS opt-in checkbox (TCPA-compliant) is required before
-any texting feature is added.
+any texting feature is added — **done, 2026-09-28**:
+`/account/settings`'s off-by-default checkbox, see "Growth signals"
+above and `docs/DECISIONS.md`.

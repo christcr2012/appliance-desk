@@ -11,6 +11,7 @@ const ACCOUNT_LINKS: AuthedNavLink[] = [
   { href: "/account/rentals", label: "My rentals" },
   { href: "/account/maintenance", label: "Maintenance" },
   { href: "/account/billing", label: "Billing" },
+  { href: "/account/settings", label: "Settings" },
 ];
 
 // Any signed-in user can reach /account — a customer sees their own

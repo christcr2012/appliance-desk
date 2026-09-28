@@ -174,10 +174,14 @@ on — never built unasked.
   emailer). **A driver/technician mobile job view is done (2026-09-28,
   Task #65)** — `/desk/driver`, route grouping not included. **A
   formal referral-tracking program is done (2026-09-28, Task #68)** —
-  give one/get one, see `docs/DECISIONS.md`. **Still open**: SMS
-  notifications, a separate Contacts concept, and an accounting export
-  — Chris has picked all three (Task #71/#73, plus real business email
-  as Task #69) and they're queued up next.
+  give one/get one, see `docs/DECISIONS.md`. **SMS notifications are
+  built (2026-09-28, Task #71) but dormant** — Chris's Twilio account
+  is set up, but he can't buy a phone number until his LLC's business-
+  texting registration is done; everything else (opt-in, the day-of
+  job reminder text) is wired up and ready. **Still open**: a separate
+  Contacts concept, and an accounting export — Chris has picked both
+  (Task #73, plus real business email as Task #69) and they're queued
+  up next.
 - **A third Astra review ("upgrade to a connected workspace"),
   2026-09-27** — saved verbatim at
   `docs/reviews/2026-09-27-astra-workspace-review.md`, fact-checked in

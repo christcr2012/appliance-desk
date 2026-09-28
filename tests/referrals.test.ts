@@ -244,7 +244,7 @@ describe("rewardReferralIfEligible", () => {
     const referrerCreditCall = customerCreditCreate.mock.calls.find(
       (call) => call[0].data.customerId === "referrer-1",
     );
-    expect(referrerCreditCall[0].data.notes).toContain("Not yet applied automatically");
+    expect(referrerCreditCall?.[0].data.notes).toContain("Not yet applied automatically");
   });
 
   it("still rewards the other side when one side's Stripe call fails", async () => {

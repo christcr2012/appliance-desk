@@ -5,6 +5,49 @@ here, add a new entry rather than editing the old one away.
 
 ---
 
+### 2026-09-28 — SMS notifications: built and wired up, dormant until Chris can buy a number
+
+Chris approved the ongoing per-text cost and set up a real Twilio
+account, then hit a real blocker while trying to buy a phone number:
+Twilio (like every carrier-facing SMS provider) requires **A2P 10DLC
+business-texting registration** — proof of a real, registered business
+— before it'll sell a number for business texting. Chris's LLC isn't
+officially set up yet, so he can't complete that registration or buy a
+number right now.
+
+**Decision, given that: build the whole feature now, leave it dormant.**
+Everything is wired up end to end using his real Account SID/Auth
+Token (set in Vercel) except the one thing that's actually blocked —
+`TWILIO_PHONE_NUMBER` is deliberately left unset. `src/lib/sms.ts`'s
+`sendSms` no-ops safely (logs, returns `{ sent: false }`) without it,
+the same guarded pattern `src/lib/email.ts` already used before
+`RESEND_API_KEY` was first set. The moment Chris finishes his LLC
+registration and buys a number, adding that one env var turns sending
+on — no code change, no redeploy of anything but the env var itself.
+
+**What it actually sends (the growth brainstorm's own example — idea
+#12, "your delivery window is today"):** a same-day text reminder for
+a scheduled job, via a second daily Vercel Cron job
+(`/api/cron/job-reminders`). Deliberately scoped to just this one use
+case for now rather than adding SMS everywhere email already goes
+(billing reminders, etc.) — the same `sendSms` helper and consent
+model make adding a second use case straightforward later, once the
+first one is proven out.
+
+**TCPA compliance (docs/BUSINESS-RULES.md's privacy baseline: "an SMS
+opt-in checkbox is required before any texting feature is added"):** a
+new `/account/settings` page (the customer portal's first settings
+page) is a real, off-by-default opt-in — a customer must explicitly
+check a box, with the phone number they're opting in at shown right
+next to it, and message-and-data-rates/STOP-to-opt-out language in the
+checkbox copy itself. `Customer.smsOptInAt` is never set just because
+a phone number exists on the account; a `ConsentRecord` (kind
+`sms_opt_in`) is written on every change, opt-in or opt-out, as an
+actual audit trail of consent given or withdrawn, not just a current
+on/off flag.
+
+---
+
 ### 2026-09-28 — Referral program: give one, get one
 
 Chris picked this from a backlog review, and specified the reward
