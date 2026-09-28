@@ -16,6 +16,7 @@ const DESK_LINKS: AuthedNavLink[] = [
   { href: "/desk/billing", label: "Billing" },
   { href: "/desk/revenue", label: "Revenue" },
   { href: "/desk/jobs", label: "Jobs" },
+  { href: "/desk/dispatch", label: "Dispatch" },
   { href: "/desk/maintenance", label: "Maintenance" },
   { href: "/desk/inventory", label: "Inventory" },
   { href: "/desk/fleet", label: "Fleet" },

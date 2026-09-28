@@ -406,6 +406,45 @@ A customer's own page (`/desk/customers/[id]`) now has:
 - **Quick actions** — "New agreement" and "Schedule a job," right on
   their page.
 
+## Dispatch board (2026-09-28)
+
+`/desk/dispatch` is the scheduling view of the same jobs `/desk/jobs`
+already lists — three ways to look at what's coming up, plus what
+hasn't been put on the calendar at all:
+
+- **Day** — everything scheduled for one day, in time order.
+- **Week** — a 7-day grid (Sunday–Saturday), each day showing its jobs
+  at a glance; click a day to jump into its Day view.
+- **Agenda** — a flat, day-grouped list for the next two weeks.
+
+Only active jobs (`SCHEDULED` or `IN_PROGRESS`) appear on the board —
+completed and cancelled jobs are done, and don't belong on a
+forward-looking schedule.
+
+**Unscheduled queue** — active jobs with no time on the calendar yet
+(created but not scheduled) always show at the top of every view, so
+nothing Chris created gets forgotten just because he hasn't picked a
+time for it.
+
+**Conflict warnings** — Chris is a one-person crew, so two jobs booked
+close together means he can't actually make both. Jobs don't record how
+long a visit takes, so this uses one assumed duration (2 hours,
+`ASSUMED_JOB_DURATION_MINUTES` in `src/domains/jobs/dispatch.ts`,
+deliberately generous to include drive time) — any two jobs scheduled
+within that window of each other are flagged with a warning badge. This
+is advisory only; nothing stops Chris from actually double-booking if
+that's genuinely what he means to do (e.g. a quick drop-off right
+before a nearby delivery).
+
+**Per-job checklist** — each job's own page has a checklist Chris can
+check off in the field (defaults per job type — e.g. a delivery's is
+"delivered, installed and leveled, tested a cycle, customer
+walkthrough" — see `DEFAULT_JOB_CHECKLISTS`). The dispatch board shows
+each scheduled job's progress (e.g. "2/4") so Chris can tell at a
+glance which visits still need attention. This is purely a memory aid —
+nothing here is required to actually mark a job Completed, and a
+completed job with an unchecked item is not an error.
+
 ## The exception inbox and "Today" (2026-09-28)
 
 `/desk/today` is where Chris lands after logging in — what's scheduled

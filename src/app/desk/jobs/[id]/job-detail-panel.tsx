@@ -8,9 +8,11 @@ import {
   addJobPhotoAction,
   setJobRepairCostsAction,
   updateApplianceStatusFromJobAction,
+  updateJobChecklistAction,
 } from "../actions";
 import type { JobStatus, JobType, ApplianceStatus } from "@prisma/client";
 import { APPLIANCE_STATUS_LABELS } from "@/domains/inventory/lifecycle";
+import { parseChecklist, type ChecklistItem } from "@/domains/jobs/checklist";
 
 // Rental lifecycle (2026-09-28): completing a delivery, installation, or
 // pickup now moves its appliances along automatically on the server (see
@@ -57,6 +59,7 @@ type JobRow = {
   completionNotes: string | null;
   partsCostCents: number | null;
   laborCostCents: number | null;
+  checklist: unknown;
   appliances: {
     appliance: {
       id: string;
@@ -86,6 +89,9 @@ export function JobDetailPanel({ job }: { job: JobRow }) {
   const [costSaved, setCostSaved] = useState(false);
   const [appliancesJustUpdated, setAppliancesJustUpdated] = useState<Set<string>>(
     new Set(),
+  );
+  const [checklist, setChecklist] = useState<ChecklistItem[]>(() =>
+    parseChecklist(job.checklist, job.type),
   );
 
   const nextStatuses = ALLOWED_NEXT[job.status];
@@ -139,6 +145,16 @@ export function JobDetailPanel({ job }: { job: JobRow }) {
         setStatusMessage(result.message);
       }
       router.refresh();
+    });
+  }
+
+  function handleToggleChecklist(index: number) {
+    const next = checklist.map((item, i) =>
+      i === index ? { ...item, checked: !item.checked } : item,
+    );
+    setChecklist(next);
+    startTransition(async () => {
+      await updateJobChecklistAction(job.id, next);
     });
   }
 
@@ -207,6 +223,35 @@ export function JobDetailPanel({ job }: { job: JobRow }) {
           </p>
         )}
       </div>
+
+      {checklist.length > 0 && (
+        <div className="rounded-lg border border-gray-200 bg-white p-5">
+          <h2 className="font-medium text-gray-900">
+            Checklist ({checklist.filter((i) => i.checked).length}/{checklist.length})
+          </h2>
+          <p className="mt-1 text-sm text-gray-600">
+            A memory aid for the visit — nothing here is required to mark this job
+            completed.
+          </p>
+          <ul className="mt-3 space-y-2">
+            {checklist.map((item, i) => (
+              <li key={item.item}>
+                <label className="flex items-start gap-2 text-sm text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={item.checked}
+                    onChange={() => handleToggleChecklist(i)}
+                    className="mt-0.5 rounded"
+                  />
+                  <span className={item.checked ? "text-gray-400 line-through" : ""}>
+                    {item.item}
+                  </span>
+                </label>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {appliancesNeedingUpdate.length > 0 && suggestedStatus && (
         <div className="rounded-lg border border-gray-200 bg-primary-soft p-5">

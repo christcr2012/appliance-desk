@@ -583,6 +583,19 @@ model Job {
   completedAt DateTime?
   completionNotes String?
 
+  // A per-job-type checklist Chris works through before marking the job
+  // Completed (e.g. delivery: "Delivered appliance", "Installed and
+  // tested", "Customer walkthrough done") — [{item, checked}], same
+  // shape as ApplianceInspection.checklist. Defaults come from
+  // DEFAULT_JOB_CHECKLISTS in src/domains/jobs (a pure lookup by
+  // JobType, no database import) the first time the job's own page is
+  // opened; saved back here so his progress persists between visits to
+  // the same job. Purely a field-work aid — the dispatch board shows how
+  // many items are still unchecked so he can tell at a glance which
+  // scheduled jobs still need attention, but nothing here blocks
+  // actually completing the job (see docs/BUSINESS-RULES.md).
+  checklist Json @default("[]")
+
   // What a repair actually cost, entered by Chris when he completes a
   // MAINTENANCE_VISIT job — the raw numbers appliance profitability/ROI
   // (src/domains/inventory/analytics.ts) rolls up per appliance. Nullable

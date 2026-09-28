@@ -1637,3 +1637,28 @@ that fallback case, for every caller, not just this one. The local
 sandbox's Prisma-client issue meant this didn't show up until CI's real
 type-check caught it (`src/domains/settings/index.ts`); fixed by adding
 the missing field to `DEFAULT_SETTINGS`.
+
+## 2026-09-28 — Dispatch board: day/week/agenda, unscheduled queue, conflicts, checklists
+
+Fifth piece of "get everything built out now." Adds `/desk/dispatch` —
+see `docs/BUSINESS-RULES.md`'s new "Dispatch board" section for what it
+shows and why.
+
+**Conflict detection is deliberately approximate**, the same spirit as
+the `Appliance.updatedAt`-as-staleness approximation noted above and
+`computeMrrTrend`'s own documented one: jobs don't record how long a
+visit actually takes, so a single assumed duration
+(`ASSUMED_JOB_DURATION_MINUTES = 120` in `src/domains/jobs/dispatch.ts`)
+stands in for a real duration field. Good enough to warn Chris he's
+likely double-booked, not worth asking him to estimate a duration for
+every job just to make this one warning slightly more precise.
+
+Added `Job.checklist` (JSONB, same shape and same
+default-then-persist pattern as `ApplianceInspection.checklist` from the
+guided-actions work above) — `DEFAULT_JOB_CHECKLISTS` in
+`src/domains/jobs/checklist.ts` is a pure per-`JobType` lookup, parsed
+defensively (`parseChecklist`) the same way `featuresToText` and
+`parseServiceArea` defensively narrow their own JSONB columns elsewhere
+in the app. Saving a checklist has no status gate at all — it's
+explicitly not a completion requirement, just a memory aid, so there's
+nothing to validate beyond "is this shaped like a checklist."
