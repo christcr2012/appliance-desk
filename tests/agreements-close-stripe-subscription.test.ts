@@ -13,7 +13,8 @@ const findUniqueOrThrow = vi.fn();
 const rentalLineFindMany = vi.fn();
 const applianceAssignmentUpdate = vi.fn();
 const applianceUpdate = vi.fn();
-const rentalAgreementUpdate = vi.fn();
+const rentalAgreementUpdateMany = vi.fn();
+const rentalAgreementFindUniqueOrThrowInTx = vi.fn();
 const auditLogCreate = vi.fn();
 const subscriptionsCancel = vi.fn();
 
@@ -22,7 +23,10 @@ function makeTx() {
     rentalLine: { findMany: rentalLineFindMany },
     applianceAssignment: { update: applianceAssignmentUpdate },
     appliance: { update: applianceUpdate },
-    rentalAgreement: { update: rentalAgreementUpdate },
+    rentalAgreement: {
+      updateMany: rentalAgreementUpdateMany,
+      findUniqueOrThrow: rentalAgreementFindUniqueOrThrowInTx,
+    },
     auditLog: { create: auditLogCreate },
   };
 }
@@ -50,7 +54,10 @@ describe("closeAgreement — stops the real Stripe subscription", () => {
     rentalLineFindMany.mockReset().mockResolvedValue([]);
     applianceAssignmentUpdate.mockReset().mockResolvedValue({});
     applianceUpdate.mockReset().mockResolvedValue({});
-    rentalAgreementUpdate.mockReset().mockResolvedValue({ id: "agr-1", status: "ENDED" });
+    rentalAgreementUpdateMany.mockReset().mockResolvedValue({ count: 1 });
+    rentalAgreementFindUniqueOrThrowInTx
+      .mockReset()
+      .mockResolvedValue({ id: "agr-1", status: "ENDED" });
     auditLogCreate.mockReset().mockResolvedValue({});
     subscriptionsCancel.mockReset().mockResolvedValue({});
   });
@@ -61,7 +68,10 @@ describe("closeAgreement — stops the real Stripe subscription", () => {
     await endAgreement("user-1", "agr-1");
 
     expect(subscriptionsCancel).toHaveBeenCalledWith("sub_123");
-    expect(rentalAgreementUpdate).toHaveBeenCalled();
+    expect(rentalAgreementUpdateMany).toHaveBeenCalledWith({
+      where: { id: "agr-1", status: "ACTIVE" },
+      data: expect.objectContaining({ status: "ENDED" }),
+    });
   });
 
   it("skips the Stripe call entirely when the agreement never had a subscription (e.g. cancelled before ever being billed)", async () => {
@@ -75,7 +85,7 @@ describe("closeAgreement — stops the real Stripe subscription", () => {
     await cancelAgreement("user-1", "agr-1");
 
     expect(subscriptionsCancel).not.toHaveBeenCalled();
-    expect(rentalAgreementUpdate).toHaveBeenCalled();
+    expect(rentalAgreementUpdateMany).toHaveBeenCalled();
   });
 
   it("proceeds with the local close when Stripe says the subscription is already gone", async () => {
@@ -90,7 +100,7 @@ describe("closeAgreement — stops the real Stripe subscription", () => {
 
     await endAgreement("user-1", "agr-1");
 
-    expect(rentalAgreementUpdate).toHaveBeenCalled();
+    expect(rentalAgreementUpdateMany).toHaveBeenCalled();
   });
 
   it("blocks the whole close when Stripe fails for any other reason — never tells Chris it's ended while billing might still be running", async () => {
@@ -105,6 +115,23 @@ describe("closeAgreement — stops the real Stripe subscription", () => {
     await expect(endAgreement("user-1", "agr-1")).rejects.toThrow(
       "Stripe is temporarily unavailable",
     );
-    expect(rentalAgreementUpdate).not.toHaveBeenCalled();
+    expect(rentalAgreementUpdateMany).not.toHaveBeenCalled();
+  });
+
+  // Real gap fixed 2026-09-27 (found by a code review, see
+  // docs/DECISIONS.md): the local close used to be a plain update, so a
+  // conflicting simultaneous change to this agreement (two tabs, a
+  // retried request) would be silently overwritten with no warning.
+  it("refuses the close (without losing the already-cancelled Stripe subscription) when the agreement was changed by someone else in between", async () => {
+    rentalAgreementUpdateMany.mockResolvedValue({ count: 0 });
+    const { endAgreement } = await import("@/domains/agreements");
+
+    await expect(endAgreement("user-1", "agr-1")).rejects.toThrow(
+      /changed by someone else/,
+    );
+    // Stripe's cancellation already happened and is never undone here —
+    // it's the right outcome regardless of which local write wins.
+    expect(subscriptionsCancel).toHaveBeenCalledWith("sub_123");
+    expect(auditLogCreate).not.toHaveBeenCalled();
   });
 });

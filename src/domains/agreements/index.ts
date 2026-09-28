@@ -380,8 +380,15 @@ export async function signAgreement(signatureRecordId: string, input: SignAgreem
   }
 
   return prisma.$transaction(async (tx) => {
-    await tx.signatureRecord.update({
-      where: { id: signatureRecordId },
+    // Conditional on signedAt still being null (real gap fixed
+    // 2026-09-27, found by a code review — see docs/DECISIONS.md): two
+    // overlapping requests to sign the same link (a double-click, a
+    // retried submit) could otherwise both pass the getSignatureRecord-
+    // ForSigning check above and both proceed to sign — this is the
+    // atomic guard that lets only one actually win, the same pattern
+    // already used for appliance reservations.
+    const signResult = await tx.signatureRecord.updateMany({
+      where: { id: signatureRecordId, signedAt: null },
       data: {
         signerName: input.signerName,
         signerEmail: input.signerEmail,
@@ -389,6 +396,9 @@ export async function signAgreement(signatureRecordId: string, input: SignAgreem
         signedAt: new Date(),
       },
     });
+    if (signResult.count === 0) {
+      throw new Error("This agreement was already signed.");
+    }
 
     await tx.rentalAgreement.update({
       where: { id: signature.agreementId },
@@ -468,6 +478,28 @@ async function closeAgreement(
   }
 
   return prisma.$transaction(async (tx) => {
+    // Conditional on the status just read above (same atomic-check
+    // pattern as appliance reservations) — real gap fixed 2026-09-27,
+    // found by a code review, see docs/DECISIONS.md: a plain update here
+    // would silently win over anything else that changed this agreement
+    // in between the read and the write, with no warning. If that
+    // happens, the Stripe subscription cancellation above still stands
+    // (safe either way — it's supposed to be cancelled), but the local
+    // close is refused rather than clobbering whatever the other change
+    // was.
+    const closed = await tx.rentalAgreement.updateMany({
+      where: { id: agreementId, status: agreement.status },
+      data: {
+        status: newStatus,
+        endDate: newStatus === "ENDED" ? new Date() : agreement.endDate,
+      },
+    });
+    if (closed.count === 0) {
+      throw new Error(
+        "This agreement was just changed by someone else — refresh the page and try again.",
+      );
+    }
+
     const lines = await tx.rentalLine.findMany({
       where: { agreementId },
       include: { assignments: { where: { unassignedAt: null } } },
@@ -485,14 +517,6 @@ async function closeAgreement(
       }
     }
 
-    const updated = await tx.rentalAgreement.update({
-      where: { id: agreementId },
-      data: {
-        status: newStatus,
-        endDate: newStatus === "ENDED" ? new Date() : agreement.endDate,
-      },
-    });
-
     await tx.auditLog.create({
       data: {
         userId,
@@ -504,7 +528,7 @@ async function closeAgreement(
       },
     });
 
-    return updated;
+    return tx.rentalAgreement.findUniqueOrThrow({ where: { id: agreementId } });
   });
 }
 

@@ -100,7 +100,20 @@ export async function createJob(userId: string, input: NewJobInput) {
 
 /** Changes a job's status, enforcing the allowed-transition rules
  * server-side (see canTransitionJobStatus). Marking a job COMPLETED
- * also stamps completedAt. */
+ * also stamps completedAt.
+ *
+ * Guards against a conflicting simultaneous edit (real gap fixed
+ * 2026-09-27, found by a code review — see docs/DECISIONS.md): this used
+ * to read the job's current status, decide the transition was allowed,
+ * then write unconditionally — if two requests for the same job
+ * overlapped (two tabs, a double-click, a retried request), the second
+ * write would silently win over the first with no warning, and the audit
+ * log would show a transition that doesn't actually reflect what
+ * happened. The actual update is now conditional on the status still
+ * being what was just read (same atomic-check pattern already used for
+ * appliance reservations in src/domains/agreements/index.ts) — if
+ * something else changed the job in between, this throws a clear error
+ * instead of clobbering it. */
 export async function updateJobStatus(
   userId: string,
   jobId: string,
@@ -114,8 +127,8 @@ export async function updateJobStatus(
     throw new Error(check.reason);
   }
 
-  const updated = await prisma.job.update({
-    where: { id: jobId },
+  const result = await prisma.job.updateMany({
+    where: { id: jobId, status: before.status },
     data: {
       status: newStatus,
       completedAt: newStatus === "COMPLETED" ? new Date() : before.completedAt,
@@ -123,6 +136,12 @@ export async function updateJobStatus(
         completionNotes !== undefined ? completionNotes : before.completionNotes,
     },
   });
+
+  if (result.count === 0) {
+    throw new Error(
+      "This job was just changed by someone else — refresh the page and try again.",
+    );
+  }
 
   await prisma.auditLog.create({
     data: {
@@ -135,7 +154,7 @@ export async function updateJobStatus(
     },
   });
 
-  return updated;
+  return prisma.job.findUniqueOrThrow({ where: { id: jobId } });
 }
 
 /** Adds a condition photo to a job — pasted URL for now (same pattern as
