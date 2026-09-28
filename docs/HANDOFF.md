@@ -1046,3 +1046,53 @@ up well — no critical issues found.
       can now be safely turned on (the domain's fully verified in
       Resend) — it's a one-line flip whenever you want it, see
       `docs/ROADMAP.md`.
+
+## 2026-09-27 (same session, continued) — Mobile navigation fix
+
+Chris reported (verbatim): "for mobile version, all navigation should
+be put into a hamburger menu on every page and that hasnt been done so
+some pages require sideways scrolling and colors and layouts are off."
+Investigated and fixed:
+
+- [x] **Root cause of the sideways scrolling, confirmed**: the owner
+      desk (`/desk/**`, 11 nav links) and customer portal
+      (`/account/**`, 4 nav links) both rendered their full navigation
+      as one plain row with no wrapping and no collapse — unlike the
+      public website, which already had a working, previously
+      accessibility-tested hamburger menu. On a phone-width screen that
+      row was wider than the screen, so the whole page scrolled
+      sideways to show it.
+      Fixed by building one shared header component
+      (`src/components/authed-header.tsx`) that follows the exact same
+      proven pattern as the public site's header: a normal row of links
+      on a full-size screen, collapsing into a hamburger button on a
+      phone/tablet screen. Both `/desk/**` and `/account/**` now use it.
+      It keeps the same keyboard/screen-reader support as the public
+      version (closes with Escape, closes when you tap outside it,
+      properly announced to screen readers).
+- [x] **Other sideways-scrolling spots found and fixed while
+      investigating**, all the same class of bug — content laid out in
+      a rigid row that doesn't shrink for a narrow screen:
+      - The appliance pricing table in Settings now scrolls sideways
+        *inside its own box* instead of dragging the whole page with it
+        (same pattern already used correctly on the Billing page).
+      - Ten multi-column form sections across the "add a rental
+        agreement," "add an appliance," and appliance/agreement detail
+        pages (e.g., two side-by-side fields) now stack into a single
+        column on a phone and only spread into columns once there's
+        room — same pattern already used correctly on the main
+        dashboard.
+      - Swept the rest of the owner desk and customer portal for the
+        same two patterns (grids that don't stack, tables that aren't
+        scroll-contained) — nothing else found.
+- [ ] **"Colors and layouts are off" — not yet pinned down.** Reviewed
+      the color system and page layouts in the code and didn't find a
+      concrete bug — the color values and responsive layout rules look
+      consistent for both light and dark phone settings. This part of
+      the report needs a screenshot or a specific page name from Chris
+      to chase further; flagged in `docs/ROADMAP.md` rather than
+      guessing at a fix.
+- **Found but not built (out of scope, not asked for)**: there is
+  currently no "sign out" button anywhere in the owner desk or customer
+  portal. Flagged in `docs/ROADMAP.md` for Chris to decide on rather
+  than added unasked.

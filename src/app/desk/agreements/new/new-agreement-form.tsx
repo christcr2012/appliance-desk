@@ -119,7 +119,7 @@ export function NewAgreementForm({
         )}
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
           <label htmlFor="termMonths" className="block text-sm font-medium text-gray-700">
             Term (months, optional)
@@ -173,7 +173,7 @@ export function NewAgreementForm({
         </label>
       )}
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
           <label
             htmlFor="damageWaiverDollars"
@@ -207,7 +207,7 @@ export function NewAgreementForm({
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <div>
           <label
             htmlFor="lateFeeGraceDays"

@@ -1,9 +1,16 @@
-import Link from "next/link";
 import { requireSession } from "@/lib/session";
+import { AuthedHeader, type AuthedNavLink } from "@/components/authed-header";
 
 export const metadata = {
   robots: { index: false, follow: false },
 };
+
+const ACCOUNT_LINKS: AuthedNavLink[] = [
+  { href: "/account", label: "Overview" },
+  { href: "/account/rentals", label: "My rentals" },
+  { href: "/account/maintenance", label: "Maintenance" },
+  { href: "/account/billing", label: "Billing" },
+];
 
 // Any signed-in user can reach /account — a customer sees their own
 // rentals, an owner/admin can still have an account of their own. What
@@ -19,23 +26,7 @@ export default async function AccountLayout({
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="flex items-center justify-between border-b bg-white px-6 py-4">
-        <span className="font-semibold">My Account</span>
-        <nav aria-label="My account" className="flex gap-4 text-sm">
-          <Link href="/account" className="text-gray-600 hover:text-gray-900">
-            Overview
-          </Link>
-          <Link href="/account/rentals" className="text-gray-600 hover:text-gray-900">
-            My rentals
-          </Link>
-          <Link href="/account/maintenance" className="text-gray-600 hover:text-gray-900">
-            Maintenance
-          </Link>
-          <Link href="/account/billing" className="text-gray-600 hover:text-gray-900">
-            Billing
-          </Link>
-        </nav>
-      </header>
+      <AuthedHeader title="My Account" areaLabel="My account" links={ACCOUNT_LINKS} />
       <main id="main-content" className="p-6">
         {children}
       </main>

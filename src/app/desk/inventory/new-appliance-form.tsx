@@ -111,7 +111,7 @@ export function NewApplianceForm({
         </select>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
           <label htmlFor="quantity" className="block text-sm font-medium text-gray-700">
             How many
@@ -142,7 +142,7 @@ export function NewApplianceForm({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
           <label htmlFor="manufacturer" className="block text-sm font-medium text-gray-700">
             Manufacturer (optional)
@@ -190,7 +190,7 @@ export function NewApplianceForm({
         </p>
       )}
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
           <label htmlFor="color" className="block text-sm font-medium text-gray-700">
             Color (optional)
@@ -220,7 +220,7 @@ export function NewApplianceForm({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
           <label htmlFor="condition" className="block text-sm font-medium text-gray-700">
             Condition (optional)
