@@ -1085,14 +1085,59 @@ Investigated and fixed:
       - Swept the rest of the owner desk and customer portal for the
         same two patterns (grids that don't stack, tables that aren't
         scroll-contained) — nothing else found.
-- [ ] **"Colors and layouts are off" — not yet pinned down.** Reviewed
-      the color system and page layouts in the code and didn't find a
-      concrete bug — the color values and responsive layout rules look
-      consistent for both light and dark phone settings. This part of
-      the report needs a screenshot or a specific page name from Chris
-      to chase further; flagged in `docs/ROADMAP.md` rather than
-      guessing at a fix.
-- **Found but not built (out of scope, not asked for)**: there is
-  currently no "sign out" button anywhere in the owner desk or customer
-  portal. Flagged in `docs/ROADMAP.md` for Chris to decide on rather
-  than added unasked.
+- [x] **"Colors and layouts are off" — pinned down and fixed.** Chris
+      clarified: a text box's background was white but the text was too
+      close in color to read, and scrolling past a page's own content
+      showed a dark background instead of white. Root cause: the app's
+      color system had a second, dark-mode color set that most of the
+      app (every form, table, the desk, the portal) was never actually
+      built to use — so a phone or browser set to dark mode ended up
+      half-light, half-dark. Fixed by standardizing on the light theme
+      everywhere (see `docs/DECISIONS.md` for the full writeup) rather
+      than finishing a real dark mode, which wasn't what was asked for.
+- [x] **Sign-out link, added everywhere signed in.** Chris asked
+      directly: every `/desk/**` and `/account/**` page now has a
+      "Sign out" link in the same header used for navigation (desktop
+      row and mobile menu both).
+- [x] **Auto-logout after inactivity, added.** Chris asked directly for
+      this. Owner desk accounts sign out after 20 minutes of no
+      activity; customer portal accounts after 30 — both with a
+      one-minute warning banner first. See `docs/DECISIONS.md` for why
+      those two numbers.
+
+## 2026-09-27 (same session, continued) — Real dark mode
+
+Chris asked for the app to actually support dark mode, right after the
+light-only color fix above shipped. Built a real one: a sun/moon toggle
+in every header (public site, owner desk, customer portal), defaulting
+to the device's own setting the first time and remembering whatever's
+chosen after that. Full technical writeup — including why the owner
+desk/customer portal needed a different approach than the public site
+— in `docs/DECISIONS.md`, and the "how to keep it working" note for
+future changes in `docs/DESIGN-SYSTEM.md`. Verified with real automated
+accessibility checks in dark mode
+(`e2e/accessibility-dark-mode.spec.ts`), not just a visual look.
+
+## 2026-09-27 (same session, continued) — Chris's live-testing plan (important for whoever picks this up next)
+
+Chris said (2026-09-27): he's going to play around with the live system
+himself now, acting as both the owner and a customer, using made-up
+test data. Stripe stays in test mode for all of this — no real charges.
+
+**When Chris says he's satisfied and ready for real use, the next
+session needs to clear the database of all that fake test data** —
+test leads, customers, service addresses, rental agreements, jobs,
+maintenance requests, invoices, payments, refunds, and any other
+transactional rows created during his testing. This is a real,
+irreversible data deletion, so per `AGENTS.md`, get his explicit
+go-ahead for the exact scope right before doing it — don't treat this
+note as that go-ahead on its own.
+
+**What should NOT be deleted** as part of this cleanup: his own OWNER
+account/login, `BusinessSettings` (business name, service area, fees,
+tax rate, contact info), and `ApplianceType` rows (the pricing catalog)
+— those are real configuration, not test data, even though they may
+have been entered/adjusted during this same testing period. If it's
+unclear whether a particular row is "test data" or "something Chris
+actually wants kept" (e.g., he used a real appliance type but a fake
+customer against it), ask rather than guess.

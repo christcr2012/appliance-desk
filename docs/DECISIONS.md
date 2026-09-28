@@ -5,6 +5,102 @@ here, add a new entry rather than editing the old one away.
 
 ---
 
+### 2026-09-27 — Real dark mode, superseding the "light-only" decision below
+
+**What changed:** right after the light-only fix below shipped, Chris
+said he wants the app to actually support dark mode, not just avoid
+being broken by it. Built a real one rather than redoing the previous
+fix a different way:
+
+- A `.dark` class on `<html>` (`src/lib/theme.ts`), not just the
+  device's own setting — so there's an explicit toggle (a sun/moon
+  button in every header), while still defaulting to the device's
+  setting the first time. An inline script runs before the page paints
+  so there's no flash of the wrong theme.
+- The public site needed **zero component changes** — it was already
+  built entirely from CSS variables (`bg-canvas`, `text-ink`, etc.), so
+  reinstating those variables' dark values under `.dark` (rather than
+  the old `@media (prefers-color-scheme: dark)`, which the light-only
+  fix removed) was the whole fix for that half of the app.
+- The owner desk, customer portal, and sign/login pages needed a
+  different approach, since (as the entry below found) they hard-code
+  plain Tailwind colors in ~55 files with no dark equivalent.
+  Retrofitting every file to use CSS-variable classes instead would be
+  the more conventional fix, but it's a much bigger, easier-to-get-wrong
+  change for the same result. Instead, added `.dark` CSS overrides for
+  the exact, finite set of hard-coded classes already in use across
+  those files (`globals.css`) — this mechanically covers every current
+  use of them (and any future one that reuses the same classes) from
+  one place, rather than needing every file touched and reviewed
+  individually. `docs/DESIGN-SYSTEM.md` has the how-to for anyone
+  adding a new page.
+- Verified with real automated checks, not by eye: `e2e/accessibility-
+  dark-mode.spec.ts` reruns the same axe/WCAG checks used elsewhere,
+  with the browser set to prefer dark, across a representative sample
+  of public/desk/account pages — specifically because a centralized
+  override like this is easy to get a color pairing wrong in without
+  noticing visually. Plus `tests/theme.test.ts` and
+  `tests/theme-toggle.test.tsx` for the toggle logic itself (including
+  a same-tab update bug the tests caught during development: clicking
+  the toggle updated `localStorage` and the DOM class, but nothing told
+  the button component to re-render in the same tab that clicked it).
+
+### 2026-09-27 — Mobile color/contrast bug: standardize on light theme everywhere, not a real dark mode
+
+**(Superseded by the entry above, same day — kept for the record of
+what the actual color bug was and why "light-only" was the first fix
+tried.)**
+
+**What Chris reported:** on at least one page, a text box's background
+was white but the typed text was too close in color to read, and
+scrolling to the side or past the bottom of a page showed a dark
+background outside the normal view instead of white.
+
+**Root cause:** `src/app/globals.css` defined a full second set of
+color values under `@media (prefers-color-scheme: dark)`, so a phone
+or browser set to dark mode would flip the app's shared color
+variables (page background, main text color) to dark ones. But almost
+none of the app was actually built to use those variables — every
+form, table, and page in the owner desk, customer portal, and the
+sign/login pages hard-codes plain light Tailwind colors (`bg-white`,
+`text-gray-900`, and so on) with no dark equivalent. So in dark mode:
+text inputs with no explicit text color of their own inherited the
+page's now near-white text color, sitting on a still-white input box —
+unreadable. And the space beyond the page's own content (an
+end-of-page scroll, or the bounce past the top/bottom on an iPhone)
+showed the browser's own default canvas, using the flipped dark
+variable, while every actual page content box stayed hard-coded white
+— hence "dark outside the original view."
+
+**Decision:** rather than finish building a real second, dark-mode-safe
+theme for the whole app (a bigger design project, and not what was
+asked for), standardize on the light theme everywhere: removed the
+dark-mode color override entirely and added `color-scheme: light` so
+no browser ever substitutes its own dark colors here, plus an explicit
+white-background/dark-text default on every `<input>`/`<textarea>`/
+`<select>` as a second line of defense. A real dark mode remains a
+future option (`docs/ROADMAP.md`) if Chris wants one built properly
+later — this fix just makes sure the app can't end up half-light,
+half-dark on a phone that's set to dark mode, which is what was
+actually happening.
+
+### 2026-09-27 — Idle/auto-logout timeout: 20 minutes for the owner desk, 30 for the customer portal
+
+**Decision:** Chris asked directly for auto-logout protection — there
+was previously no idle timeout at all (just a 14-day session that
+never checked whether anyone was still there). Added a client-side
+idle timer (`src/components/idle-logout.tsx`) that watches for mouse/
+keyboard/touch/scroll activity across every open tab (synced via
+`localStorage`, so switching tabs in the same browser doesn't log
+someone out from under them), warns with a countdown for the last
+minute, and signs out + redirects to `/login?reason=timeout` if no one
+responds. Chose 20 minutes for `/desk/**` (an owner/admin account can
+see every customer's data — more sensitive) and 30 minutes for
+`/account/**` (a customer looking at just their own rentals/billing —
+lower risk). Both numbers are easy to change in one line
+(`src/app/desk/layout.tsx` / `src/app/account/layout.tsx`) if Chris
+wants a different balance between security and convenience.
+
 ### 2026-09-26 — Prepaid-term discount: tied to contract term, not a lump-sum payment event; "set" = 2+ appliances per line; separate owner-toggleable free-month bonus for a fully-prepaid 12-month term
 
 **Decision:** Chris asked directly for a prepaid-term pricing discount

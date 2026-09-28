@@ -34,8 +34,19 @@ export function LoginForm() {
     router.refresh();
   }
 
+  const signedOutForTimeout = searchParams.get("reason") === "timeout";
+
   return (
     <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
+      {signedOutForTimeout && (
+        <p
+          role="status"
+          className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900"
+        >
+          You were signed out after a while with no activity, to help keep
+          your account safe. Log back in to continue.
+        </p>
+      )}
       <div className="flex flex-col gap-1">
         <label htmlFor="email" className="text-sm font-medium">
           Email

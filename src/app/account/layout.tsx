@@ -1,5 +1,6 @@
 import { requireSession } from "@/lib/session";
 import { AuthedHeader, type AuthedNavLink } from "@/components/authed-header";
+import { IdleLogout } from "@/components/idle-logout";
 
 export const metadata = {
   robots: { index: false, follow: false },
@@ -30,6 +31,7 @@ export default async function AccountLayout({
       <main id="main-content" className="p-6">
         {children}
       </main>
+      <IdleLogout timeoutMinutes={30} />
     </div>
   );
 }

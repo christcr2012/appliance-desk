@@ -1,5 +1,6 @@
 import { requireRole } from "@/lib/session";
 import { AuthedHeader, type AuthedNavLink } from "@/components/authed-header";
+import { IdleLogout } from "@/components/idle-logout";
 
 export const metadata = {
   robots: { index: false, follow: false },
@@ -35,6 +36,10 @@ export default async function DeskLayout({
       <main id="main-content" className="p-6">
         {children}
       </main>
+      {/* Owner/admin accounts see every customer's data, so an idle
+          desk left open is a bigger risk than an idle customer portal —
+          a shorter timeout here (20 min) than /account/** (30 min). */}
+      <IdleLogout timeoutMinutes={20} />
     </div>
   );
 }
