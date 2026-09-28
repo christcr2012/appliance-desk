@@ -32,6 +32,31 @@ export async function getCustomers() {
   });
 }
 
+/** How many (non-archived) customers exist — used to clamp the page
+ * number before fetching that page's rows (src/domains/pagination.ts). */
+export async function getCustomersCount(): Promise<number> {
+  return prisma.customer.count({ where: { archivedAt: null } });
+}
+
+/** Paginated variant for /desk/customers's own list, as the customer
+ * roster grows past a page — see src/domains/pagination.ts.
+ * getCustomers() above stays unpaginated for the callers that need
+ * every customer at once (the rental builder wizard's picker, the new-
+ * job form's picker). */
+export async function getCustomersPage(skip: number, pageSize: number) {
+  return prisma.customer.findMany({
+    where: { archivedAt: null },
+    include: {
+      user: { select: { name: true, email: true } },
+      serviceAddresses: true,
+      _count: { select: { rentalAgreements: true } },
+    },
+    orderBy: [{ createdAt: "desc" }],
+    skip,
+    take: pageSize,
+  });
+}
+
 export async function getCustomerById(id: string) {
   return prisma.customer.findUnique({
     where: { id },

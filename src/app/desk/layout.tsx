@@ -2,6 +2,7 @@ import { requireRole } from "@/lib/session";
 import { AuthedHeader, type AuthedNavLink } from "@/components/authed-header";
 import { DeskSidebar } from "@/components/desk-sidebar";
 import { IdleLogout } from "@/components/idle-logout";
+import { GlobalSearchBox } from "@/components/global-search-box";
 
 export const metadata = {
   robots: { index: false, follow: false },
@@ -48,6 +49,9 @@ export default async function DeskLayout({
       />
       <DeskSidebar title="Appliance Desk" links={DESK_LINKS} />
       <main id="main-content" className="flex-1 p-6">
+        <div className="mb-4 flex justify-end">
+          <GlobalSearchBox />
+        </div>
         {children}
       </main>
       {/* Owner/admin accounts see every customer's data, so an idle

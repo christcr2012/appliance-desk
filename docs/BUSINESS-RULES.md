@@ -591,6 +591,51 @@ customer.
   in the meantime either way, this only affects ACH deposit
   confirmation until he updates it.
 
+## Cross-cutting desk tools (2026-09-28)
+
+Task #44 of the September 2026 build plan. Small tools shared across
+several desk pages rather than one feature of their own:
+
+- **Global search** (`/desk/search`, a search box in the desk header on
+  every page): looks across customers (name/email/company), appliances
+  (asset number/manufacturer/model/serial number), and leads
+  (name/email/company) at once, up to 8 matches per category. A plain
+  GET form, so it works without JavaScript and a search is just a
+  normal shareable URL.
+- **Pagination**: the customers, inventory, jobs, and activity lists
+  now page at 25 rows instead of loading everything at once. Page
+  number lives in the URL (`?page=2`), so a page is bookmarkable and
+  works with the browser's back button. Other places that need the
+  *complete* list at once for a picker (the rental wizard's customer/
+  appliance pickers, the job form) keep using the original unpaginated
+  lookups — pagination was only added to the pages Chris scrolls
+  through himself.
+- **CSV export**: "Export CSV" on the Customers and Inventory pages
+  downloads the *full* matching list (not just the current page, and
+  respecting an active status filter on Inventory) as a spreadsheet-
+  ready file, for anything Chris wants to do outside the app
+  (accounting, a mail merge, a one-off analysis).
+- **Bulk actions**: the Inventory page's checkboxes let Chris select
+  several appliances and set their status at once (e.g. retiring a
+  batch together). Each appliance is still checked against the normal
+  status-transition rules individually — a selection that mixes valid
+  and invalid changes applies to what *can* move and reports back
+  exactly what didn't and why, rather than failing the whole batch
+  over one appliance that was, say, already retired.
+
+**Deliberately not built in this pass** (scope decisions, not
+oversights):
+- **CSV import.** Bringing appliance or customer data in from a
+  spreadsheet needs real validation (duplicate detection, malformed
+  rows, matching existing records) that's its own careful piece of
+  work — building it quickly here risked bad data getting into the
+  system with no safety net. If Chris needs to bulk-load data before
+  this is built, it can be done as a one-off script reviewed by hand.
+- **Saved views as a separate feature.** Every list's filters (status
+  tabs, search) already live in the page's URL, so any filtered view
+  is already bookmarkable and shareable as-is — there was no need for
+  a separate "save this view" database feature on top of that.
+
 ## Privacy & accessibility baseline
 
 U.S. (CCPA/CPRA-style) privacy, not GDPR — this is a U.S.-only business.

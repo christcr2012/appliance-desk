@@ -1,9 +1,13 @@
 import Link from "next/link";
-import { getAppliances, getApplianceCountsByStatus } from "@/domains/inventory";
+import { getAppliancesPage, getAppliancesCount, getApplianceCountsByStatus } from "@/domains/inventory";
 import { getAllApplianceTypes } from "@/domains/settings";
 import { NewApplianceForm } from "./new-appliance-form";
+import { InventoryList } from "./inventory-list";
 import type { ApplianceStatus } from "@prisma/client";
 import { ALL_APPLIANCE_STATUSES, APPLIANCE_STATUS_LABELS } from "@/domains/inventory/lifecycle";
+import { parsePage, paginationMeta } from "@/domains/pagination";
+import { Pagination } from "@/components/pagination";
+import { ExportCsvLink } from "@/components/export-csv-link";
 
 export const metadata = { title: "Inventory" };
 
@@ -19,22 +23,42 @@ function isApplianceStatus(value: string | undefined): value is ApplianceStatus 
 export default async function InventoryPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string; page?: string }>;
 }) {
-  const { status: rawStatus } = await searchParams;
+  const { status: rawStatus, page: rawPage } = await searchParams;
   const status = isApplianceStatus(rawStatus) ? rawStatus : undefined;
+  const filter = status ? { status } : undefined;
 
-  const [appliances, counts, applianceTypes] = await Promise.all([
-    getAppliances(status ? { status } : undefined),
+  const [totalCount, counts, applianceTypes] = await Promise.all([
+    getAppliancesCount(filter),
     getApplianceCountsByStatus(),
     getAllApplianceTypes(),
   ]);
+  const meta = paginationMeta(totalCount, parsePage(rawPage));
+  const appliances = await getAppliancesPage(filter, meta.skip, meta.pageSize);
 
   const activeTypes = applianceTypes.filter((t) => t.isActive);
 
+  function tabHref(value: ApplianceStatus | "ALL"): string {
+    return value === "ALL" ? "/desk/inventory" : `/desk/inventory?status=${value}`;
+  }
+
+  function pageHref(p: number): string {
+    const params = new URLSearchParams();
+    if (status) params.set("status", status);
+    if (p > 1) params.set("page", String(p));
+    const qs = params.toString();
+    return qs ? `/desk/inventory?${qs}` : "/desk/inventory";
+  }
+
   return (
     <div>
-      <h1 className="text-xl font-semibold">Inventory</h1>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h1 className="text-xl font-semibold">Inventory</h1>
+        <ExportCsvLink
+          href={status ? `/desk/inventory/export?status=${status}` : "/desk/inventory/export"}
+        />
+      </div>
       <p className="mt-1 text-sm text-gray-600">
         Every individual appliance unit you own — separate from the
         categories and pricing managed in Settings.
@@ -53,7 +77,7 @@ export default async function InventoryPage({
           return (
             <Link
               key={tab.value}
-              href={tab.value === "ALL" ? "/desk/inventory" : `/desk/inventory?status=${tab.value}`}
+              href={tabHref(tab.value)}
               aria-current={active ? "page" : undefined}
               className={`rounded-full border px-3 py-1 text-sm ${
                 active
@@ -75,47 +99,15 @@ export default async function InventoryPage({
             : "No appliances yet — add your first one above as you obtain it."}
         </p>
       ) : (
-        <ul className="mt-6 divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white">
-          {appliances.map((appliance) => (
-            <li key={appliance.id}>
-              <Link
-                href={`/desk/inventory/${appliance.id}`}
-                className="flex flex-col gap-1 px-4 py-4 hover:bg-gray-50 sm:flex-row sm:items-center sm:justify-between"
-              >
-                <div>
-                  <p className="font-medium text-gray-900">
-                    {appliance.assetNumber} — {appliance.applianceType.name}
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    {[appliance.manufacturer, appliance.model, appliance.color]
-                      .filter(Boolean)
-                      .join(" ") || "No manufacturer/model on file"}
-                  </p>
-                </div>
-                <div className="text-sm text-gray-500 sm:text-right">
-                  <p>
-                    <StatusBadge status={appliance.status} />
-                  </p>
-                  <p>{appliance.currentLocation ?? "No location on file"}</p>
-                </div>
-              </Link>
-            </li>
-          ))}
-        </ul>
+        <InventoryList appliances={appliances} />
       )}
+
+      <Pagination
+        page={meta.page}
+        totalPages={meta.totalPages}
+        totalCount={meta.totalCount}
+        buildHref={pageHref}
+      />
     </div>
   );
-}
-
-function StatusBadge({ status }: { status: ApplianceStatus }) {
-  const styles: Record<ApplianceStatus, string> = {
-    AVAILABLE: "text-green-700",
-    RESERVED: "text-blue-700",
-    RENTED: "text-amber-700",
-    AWAITING_PICKUP: "text-amber-700",
-    AWAITING_INSPECTION: "text-blue-700",
-    MAINTENANCE: "text-red-700",
-    RETIRED: "text-gray-500",
-  };
-  return <span className={styles[status]}>{APPLIANCE_STATUS_LABELS[status]}</span>;
 }
