@@ -934,13 +934,13 @@ API shape change this had to account for).
       7.3%, not 73% — the old comment implied ÷100, which would have
       been a 10x tax bug for a future session that trusted it. No
       migration needed, comment-only.)
-- [ ] **One thing only Chris can do, once this PR is deployed:**
-      register the webhook endpoint in Stripe's dashboard and copy its
-      signing secret into Vercel as `STRIPE_WEBHOOK_SECRET`. Exact steps
-      are in `docs/ARCHITECTURE.md`. Until that's done, the webhook
-      route intentionally returns an error rather than trusting an
-      unverified request — so no payment will actually get recorded as
-      paid until Chris does this one step.
+- [x] **Done (2026-09-27):** Chris registered the webhook endpoint in
+      Stripe's dashboard (test mode) and sent Claude the signing secret;
+      it's set in Vercel as `STRIPE_WEBHOOK_SECRET` across all three
+      environments, and a fresh production deployment was triggered so
+      the live site has it. The webhook route no longer refuses
+      requests — Stripe test-mode events (checkout completions,
+      invoices, refunds) will now actually get recorded.
 - [ ] **Deliberately not built:** automated late fees / dunning beyond
       Stripe's own retry logic — tracked in `docs/ROADMAP.md`, needs its
       own design.
@@ -954,11 +954,11 @@ docs) had merged into `main` after this branch was created, so
 `docs/DECISIONS.md` needed a quick merge — resolved cleanly, no code
 conflict, CI re-ran green on the merged result.
 
-**Still outstanding, tracked from the previous entry**: Chris needs to
-register the webhook endpoint in Stripe's dashboard and set
-`STRIPE_WEBHOOK_SECRET` in Vercel — see `docs/ARCHITECTURE.md`'s
-"Payments (Stripe)" section. Nothing will be recorded as paid until
-that's done.
+**Update (2026-09-27, same day):** Chris registered the webhook
+endpoint in Stripe's dashboard and sent Claude the signing secret;
+it's now set in Vercel as `STRIPE_WEBHOOK_SECRET` (see
+`docs/ARCHITECTURE.md`'s "Payments (Stripe)" section) and a fresh
+production deploy picked it up. This thread is closed.
 
 ## 2026-09-27 (same session, continued) — automated accessibility checks now cover the owner desk and customer portal too
 
@@ -1141,3 +1141,26 @@ have been entered/adjusted during this same testing period. If it's
 unclear whether a particular row is "test data" or "something Chris
 actually wants kept" (e.g., he used a real appliance type but a fake
 customer against it), ask rather than guess.
+
+## 2026-09-27 (same session, continued) — Stripe webhook registered and live
+
+Chris registered the webhook endpoint in Stripe's dashboard (test/
+sandbox mode, "Your account" scope, the five events listed in
+`docs/ARCHITECTURE.md`) and sent Claude the signing secret Stripe gave
+back. Claude set it in Vercel as `STRIPE_WEBHOOK_SECRET` (Production /
+Preview / Development) and triggered a fresh production deployment
+(`dpl_FRfSe7wDahRohLL9BCUvETAjeUM9`) so the live site has it.
+
+This closes the one remaining manual step from Phase 6B. The webhook
+route no longer returns HTTP 503 — Stripe test-mode events (checkout
+completions, invoice paid/failed, refunds, subscription cancellations)
+will now actually get recorded as Chris does his live testing.
+
+Per Chris's own instruction earlier this session ("finish all planned
+work, then we'll do some evaluations for optimizations and
+improvements" — and separately, he hasn't yet said to start clearing
+test data), no further engineering work is queued right now. The audit
+done earlier this session found no leftover TODOs/stubs anywhere in
+the codebase. Next steps are Chris's: live-test the system, and when
+he's satisfied, say so explicitly so the next session can clear test
+data per the note above.

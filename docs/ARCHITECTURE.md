@@ -19,7 +19,7 @@ See `.env.example` for the full list with comments. The short version:
 - `BETTER_AUTH_SECRET` / `BETTER_AUTH_URL` — auth session signing + base URL.
 - `SENTRY_*` — error monitoring (see below).
 - `STRIPE_SECRET_KEY` / `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` — Stripe test-mode API keys, live as of 2026-09-27 (see docs/DECISIONS.md). See "Payments (Stripe)" below.
-- `STRIPE_WEBHOOK_SECRET` — **not yet set.** See "Payments (Stripe)" below for the one manual step Chris needs to do once this is deployed.
+- `STRIPE_WEBHOOK_SECRET` — **set (2026-09-27)**, the test-mode webhook signing secret, registered in the Stripe dashboard and set in Vercel. See "Payments (Stripe)" below.
 - Everything else (Resend, SignWell/Documenso/DocuSign) is added in later phases, only when that phase needs it.
 
 All of these are stored as **Vercel environment variables** (per environment: Production / Preview / Development). Nothing secret is ever committed. Local development uses `.env.local` (gitignored).
@@ -90,14 +90,16 @@ per docs/BUSINESS-RULES.md's billing rules.
   invoices, all on Stripe's own hosted page. Chris sees every
   customer's invoices desk-wide at `/desk/billing`.
 
-**One manual step only Chris can do, once this is deployed for real:**
-register `https://robinsonappliancerentals.com/api/webhooks/stripe` as
-a webhook endpoint in the Stripe dashboard (Developers → Webhooks →
-Add endpoint), selecting the five events named above, then copy the
-signing secret Stripe gives back into Vercel as `STRIPE_WEBHOOK_SECRET`.
-Until that's done, the webhook route deliberately returns HTTP 503
-(refuses to accept unverified requests) rather than trusting an
-unsigned request claiming to be Stripe.
+**Done (2026-09-27):** Chris registered
+`https://robinsonappliancerentals.com/api/webhooks/stripe` as a
+webhook endpoint in the Stripe dashboard (test/sandbox mode, "Your
+account" scope, the five events named above), and sent Claude the
+signing secret Stripe gave back; it's now set in Vercel as
+`STRIPE_WEBHOOK_SECRET` (all three environments), and a fresh
+production deployment was triggered so the live site picks it up.
+Before this, the webhook route deliberately returned HTTP 503
+(refusing to accept unverified requests) rather than trusting an
+unsigned request claiming to be Stripe — that's now resolved.
 
 **Deliberately not built in this pass** (tracked in `docs/ROADMAP.md`):
 automated late fees / dunning beyond what Stripe's own retry logic
