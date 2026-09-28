@@ -1,6 +1,11 @@
 import { getServerSession } from "@/lib/session";
 import { getPortalData } from "@/domains/portal";
 import { formatCents } from "@/domains/pricing/money";
+import {
+  rentalAgreementStatusLabel,
+  jobStatusLabel,
+  jobTypeLabel,
+} from "@/lib/status-labels";
 
 export const metadata = { title: "My rentals" };
 
@@ -28,7 +33,9 @@ export default async function AccountRentalsPage() {
                   <h2 className="font-medium text-gray-900">
                     {a.serviceAddress.line1}, {a.serviceAddress.city}
                   </h2>
-                  <span className="text-sm text-gray-500">{a.status}</span>
+                  <span className="text-sm text-gray-500">
+                    {rentalAgreementStatusLabel(a.status)}
+                  </span>
                 </div>
                 <p className="mt-1 text-sm text-gray-600">
                   {a.termMonths ? `${a.termMonths}-month term` : "Month-to-month"}
@@ -81,9 +88,9 @@ export default async function AccountRentalsPage() {
           <ul className="mt-2 divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white">
             {customer.jobs.map((j) => (
               <li key={j.id} className="px-4 py-3 text-sm">
-                <p className="font-medium text-gray-900">{j.type}</p>
+                <p className="font-medium text-gray-900">{jobTypeLabel(j.type)}</p>
                 <p className="text-gray-600">
-                  {j.status}
+                  {jobStatusLabel(j.status)}
                   {j.scheduledAt && ` · ${new Date(j.scheduledAt).toLocaleString()}`}
                 </p>
               </li>

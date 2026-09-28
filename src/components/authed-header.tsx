@@ -10,16 +10,28 @@ export type AuthedNavLink = { href: string; label: string };
 
 /**
  * Shared header for the owner desk (/desk/**) and customer portal
- * (/account/**): a full nav row on desktop, collapsing into a
- * hamburger-triggered menu below the `md` breakpoint — the same pattern
- * already used (and already accessibility-tested) by the public site's
- * header, src/components/site/header.tsx.
+ * (/account/**): collapses into a hamburger-triggered menu below the
+ * `md` breakpoint — the same pattern already used (and already
+ * accessibility-tested) by the public site's header,
+ * src/components/site/header.tsx.
  *
  * Fixes a real mobile bug (reported by Chris, 2026-09-27): both layouts
  * used to render their full nav — 11 links for the desk — as one plain
  * `flex` row with no wrapping and no way to collapse it. On a phone-width
  * screen that row is wider than the viewport, and since nothing
  * contained the overflow, the whole page scrolled sideways to show it.
+ *
+ * `variant` (added in the design pass following Chris's feedback,
+ * 2026-09-27 — "it's just word links sitting on the pages"):
+ * - "topnav" (default, used by /account/**, 4 links): a normal
+ *   horizontal nav row on desktop, same as before, now with a visible
+ *   current-page indicator instead of plain text links with no state.
+ * - "sidebar" (used by /desk/**, 11 links — too many for a row to read
+ *   as real navigation instead of a wall of text): this component
+ *   renders MOBILE ONLY in this mode (the hamburger + slide-down menu,
+ *   unchanged from before) and hides entirely at the `md` breakpoint —
+ *   src/components/desk-sidebar.tsx takes over navigation on desktop
+ *   instead, as a real sidebar with active-page highlighting.
  *
  * Accessibility (docs/DESIGN-SYSTEM.md), matching the public header:
  * the toggle button has aria-expanded/aria-controls and an accessible
@@ -31,10 +43,12 @@ export function AuthedHeader({
   title,
   areaLabel,
   links,
+  variant = "topnav",
 }: {
   title: string;
   areaLabel: string;
   links: AuthedNavLink[];
+  variant?: "topnav" | "sidebar";
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
@@ -88,35 +102,64 @@ export function AuthedHeader({
     };
   }, [menuOpen]);
 
+  // A link is "active" on an exact match, or on a deeper page nested
+  // under it (e.g. /desk/agreements stays highlighted on
+  // /desk/agreements/abc123) — UNLESS another link in this same nav is
+  // itself nested under this href (e.g. /account is only the
+  // "Overview" page, not a real ancestor of sibling sections like
+  // /account/rentals, even though the URL looks like a prefix).
+  function isActive(href: string) {
+    if (pathname === href) return true;
+    const hrefIsAncestorOfSibling = links.some(
+      (l) => l.href !== href && l.href.startsWith(`${href}/`),
+    );
+    if (hrefIsAncestorOfSibling) return false;
+    return pathname.startsWith(`${href}/`);
+  }
+
   return (
-    <header ref={headerRef} className="border-b bg-white">
+    <header
+      ref={headerRef}
+      className={`border-b bg-white ${variant === "sidebar" ? "md:hidden" : ""}`}
+    >
       <div className="flex items-center justify-between px-6 py-4">
         <span className="font-semibold">{title}</span>
 
-        {/* Desktop nav */}
-        <nav
-          aria-label={areaLabel}
-          className="hidden items-center gap-4 text-sm md:flex"
-        >
-          {links.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className="text-gray-600 hover:text-gray-900"
-            >
-              {link.label}
-            </Link>
-          ))}
-          <button
-            type="button"
-            onClick={handleSignOut}
-            disabled={signingOut}
-            className="text-gray-600 hover:text-gray-900 disabled:opacity-60"
+        {/* Desktop nav — only in the "topnav" variant; "sidebar" hides
+            this whole header at md: and above (see desk-sidebar.tsx). */}
+        {variant === "topnav" && (
+          <nav
+            aria-label={areaLabel}
+            className="hidden items-center gap-4 text-sm md:flex"
           >
-            {signingOut ? "Signing out…" : "Sign out"}
-          </button>
-          <ThemeToggle />
-        </nav>
+            {links.map((link) => {
+              const active = isActive(link.href);
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  aria-current={active ? "page" : undefined}
+                  className={
+                    active
+                      ? "font-semibold text-primary"
+                      : "text-gray-600 hover:text-gray-900"
+                  }
+                >
+                  {link.label}
+                </Link>
+              );
+            })}
+            <button
+              type="button"
+              onClick={handleSignOut}
+              disabled={signingOut}
+              className="text-gray-600 hover:text-gray-900 disabled:opacity-60"
+            >
+              {signingOut ? "Signing out…" : "Sign out"}
+            </button>
+            <ThemeToggle />
+          </nav>
+        )}
 
         {/* Mobile menu toggle */}
         <div className="flex items-center gap-1 md:hidden">
@@ -166,15 +209,23 @@ export function AuthedHeader({
           className="border-t bg-gray-50 md:hidden"
         >
           <div className="flex flex-col gap-1 px-4 py-3">
-            {links.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="rounded-md px-2 py-3 text-base font-medium text-gray-900 hover:bg-gray-100"
-              >
-                {link.label}
-              </Link>
-            ))}
+            {links.map((link) => {
+              const active = isActive(link.href);
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  aria-current={active ? "page" : undefined}
+                  className={`rounded-md px-2 py-3 text-base font-medium ${
+                    active
+                      ? "bg-primary-soft text-primary-dark"
+                      : "text-gray-900 hover:bg-gray-100"
+                  }`}
+                >
+                  {link.label}
+                </Link>
+              );
+            })}
             <button
               type="button"
               onClick={handleSignOut}

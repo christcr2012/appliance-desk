@@ -2,6 +2,7 @@ import { getServerSession } from "@/lib/session";
 import { getPortalData } from "@/domains/portal";
 import { getInvoicesForCustomer } from "@/domains/billing";
 import { formatCents } from "@/domains/pricing/money";
+import { invoiceStatusLabel } from "@/lib/status-labels";
 import { ManageBillingButton } from "./manage-billing-button";
 
 export const metadata = { title: "Billing" };
@@ -50,7 +51,7 @@ export default async function AccountBillingPage() {
                   {invoice.billingPeriodStart
                     ? new Date(invoice.billingPeriodStart).toLocaleDateString()
                     : "—"}{" "}
-                  · {invoice.status}
+                  · {invoiceStatusLabel(invoice.status)}
                 </p>
               </div>
               <p className="font-medium text-gray-900">{formatCents(invoice.amountPaidCents)}</p>

@@ -56,6 +56,38 @@ required before launch (Phase 2/7).
 - `/desk/**` and `/account/**` are marked `noindex, nofollow` (see
   `next.config.ts`) — they should never appear in search results.
 
+## Brand consistency, desk/portal/sign-in pages (added 2026-09-27)
+
+Following a design review, the owner desk, customer portal, and
+sign/login/reset-password pages' plain, unbranded Tailwind classes
+(`bg-white`, `text-gray-900`, `bg-gray-900` buttons, `bg-blue-700`) are
+now retinted to the same warm brand palette the public site always
+used — same technique as the dark-mode override block just below it in
+`globals.css` (retint the class, once, globally, rather than touching
+every one of the ~50 files that use it). Semantic status colors
+(green/red/amber "success/error/warning", the one blue "info" box)
+are deliberately untouched — they carry meaning, not brand identity.
+
+**One exception, and why:** `bg-gray-900` (every primary-action button
+in the app) retints to the brand's primary color in light mode, but is
+explicitly restored to its original near-black in `.dark` — the
+brand's primary color in dark mode is a light, saturated orange meant
+to be used as *text* on a dark background, and using it as a button
+fill under white text measured well under WCAG's 4.5:1 (about 2.6:1).
+If you add a new `.dark` rule near this one, check actual contrast
+before assuming a "brand color everywhere" instinct is safe — light-
+mode and dark-mode variants of the same token are not interchangeable
+the way they look in the CSS variable list.
+
+The owner desk's desktop navigation also changed from a row of plain
+text links (11 of them — Chris's own description: "it's just word
+links sitting on the pages") to a real sidebar with an active-page
+indicator (`src/components/desk-sidebar.tsx`). The customer portal
+(4 links) keeps its original top-nav row, now with the same
+active-page indicator added to `AuthedHeader` itself. See
+`AuthedHeader`'s `variant` prop for how the two share the same
+underlying mobile menu.
+
 ## Dark mode (added 2026-09-27)
 
 Switched by a `.dark` class on `<html>` (not just the device's own

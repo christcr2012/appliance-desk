@@ -100,6 +100,27 @@ on — never built unasked.
   the desk UI grows complex enough (e.g. a real data table for
   inventory) — evaluate shadcn/ui components as each screen needs them,
   rather than importing the whole library up front.
+- **A real homepage hero photo** (Chris, his vehicle, or an actual
+  delivered appliance) to replace the current generic stock-photo
+  render — flagged in a 2026-09-27 design review as the single biggest
+  mismatch between the site's "real local business" copy and what it
+  shows. Chris said he doesn't have one ready yet; send one whenever
+  it's available and it's a five-minute swap.
+- **A testimonials/reviews section** on the public site — one of the
+  highest-converting additions for a local service business, per the
+  same design review. Needs real customers first (his upcoming live
+  testing, then real launch, will produce some).
+- **Icons throughout the owner desk and customer portal** — currently
+  no icon set at all (status badges, nav items, buttons are plain text
+  or hand-drawn SVGs). Flagged as lower-priority polish in the design
+  review; not done in the 2026-09-27 brand-consistency pass since
+  picking and applying a coherent icon set across ~50 files is a real
+  design decision of its own, not a quick follow-on.
+- **A social-share image made specifically for link previews**, sized
+  and cropped for how Facebook/text-message/Nextdoor previews actually
+  render, instead of reusing the homepage hero photo as-is (done as a
+  quick win in the 2026-09-27 pass, worth revisiting once a dedicated
+  image exists).
 - **Real appliance photos** — **done (2026-09-26).** Chris supplied
   basic-model photos for washer/dryer/set; `ApplianceType.photoUrl` is
   settable per appliance type from `/desk/settings`, and any type

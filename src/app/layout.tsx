@@ -38,6 +38,8 @@ const siteUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 export async function generateMetadata(): Promise<Metadata> {
   const settings = await getBusinessSettings();
   const businessName = settings.publicBusinessName;
+  const description =
+    "Rent a washer and dryer in Colorado with simple month-to-month pricing, fast delivery, and no long-term commitment.";
 
   return {
     metadataBase: new URL(siteUrl),
@@ -45,8 +47,28 @@ export async function generateMetadata(): Promise<Metadata> {
       default: `${businessName} — Appliance Rentals in Colorado`,
       template: `%s — ${businessName}`,
     },
-    description:
-      "Rent a washer and dryer in Colorado with simple month-to-month pricing, fast delivery, and no long-term commitment.",
+    description,
+    // So a shared link (a text message, Facebook, Nextdoor) shows a
+    // real preview card instead of a blank or generic one. Reuses the
+    // homepage's existing hero photo rather than requiring a dedicated
+    // social-share image -- swap this for a purpose-made one later if
+    // Chris wants something more tailored to how it crops on each
+    // platform (design review, 2026-09-27).
+    openGraph: {
+      title: `${businessName} — Appliance Rentals in Colorado`,
+      description,
+      url: siteUrl,
+      siteName: businessName,
+      images: [{ url: "/appliances/hero-lineup.jpg", width: 1408, height: 768 }],
+      locale: "en_US",
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${businessName} — Appliance Rentals in Colorado`,
+      description,
+      images: ["/appliances/hero-lineup.jpg"],
+    },
   };
 }
 
