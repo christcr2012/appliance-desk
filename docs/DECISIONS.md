@@ -1279,3 +1279,90 @@ into what exists, the same incremental way every other addition this
 project has gotten has worked. Told Chris this plainly and asked which
 of the five new pieces (if any) he wants built next, rather than
 starting on all of it unasked.
+
+## 2026-09-27 — A third Astra review ("upgrade to a connected workspace"), fact-checked against the real code
+
+Chris shared a third message from ChatGPT/"Astra" (he'd first sent a
+`chatgpt.com/s/...` share link, which couldn't be fetched — the page is
+JavaScript-rendered and no browser tool was available in this session — so
+he pasted the text instead). Saved verbatim at
+`docs/reviews/2026-09-27-astra-workspace-review.md`. This is the most
+ambitious of the three reviews this session: it proposes turning Appliance
+Desk into "a connected workspace" built around a unified customer
+workspace, a guided rental-builder wizard, richer appliance records, a
+real dispatch board, an "exception inbox," a set of cross-cutting tools
+(global search, saved views, bulk actions, CSV import/export, activity
+history, permissions), an owner configuration center, an automation-rules
+engine, and a list of software-quality standards. It's upfront that it
+hasn't audited the backend and says to verify what already works before
+replacing anything — good instinct, so that's what I did before answering
+Chris.
+
+**What I checked against the actual code, not just the pitch:**
+
+- *"Two people cannot accidentally reserve the same appliance."* **True,
+  already solved.** `src/domains/agreements/index.ts` uses an atomic
+  `updateMany({ where: { status: "AVAILABLE" } })` check-and-reserve — the
+  database itself decides who wins a race, not a read-then-write check
+  that two simultaneous requests could both pass. The code comment even
+  references a past "Verified Finding #3 fix," meaning this exact concern
+  was already identified and hardened before this session.
+- *"Customer data remains isolated."* **True, and tested** —
+  `tests/customer-isolation.test.ts` exists and exercises this.
+- *"Light and dark modes work across every screen."* **Already true.**
+  Dark mode is real (`src/lib/theme.ts`, a `.dark` class toggled on
+  `<html>`, color values driven by CSS custom properties so most
+  components pick it up automatically without individual `dark:` classes
+  — that's why grepping for `dark:` undercounted it at first). Not
+  something this review's proposal would be adding; it already shipped.
+- *"Conflicting edits do not silently overwrite each other."* **Not
+  true yet, and this is a real gap.** Every model has a plain
+  `updatedAt @updatedAt` timestamp, but nothing checks it before a write
+  — there's no optimistic-concurrency guard. In practice this rarely
+  bites Chris today (he's the only person editing most records), but if
+  he adds any second user, or a customer and Chris both act on the same
+  record close together, the second save can quietly clobber the first
+  with no warning. Worth fixing before adding more staff/portal write
+  paths, not urgent today.
+- *"Backups can actually be restored."* **Partly true, not fully
+  verified.** Neon's point-in-time-restore exists and is configured
+  (rolling 6-hour window plus snapshots, per the entry above) — the
+  capability is real. Whether a full restore has actually been tested
+  end-to-end (not just that the feature exists) hasn't been done. Worth
+  a real drill before this matters for real customer data.
+- Global search, saved views, bulk actions, CSV import/export, an
+  automation-rules engine, a formal "exception inbox" as its own concept,
+  and a viewable audit-trail UI (the audit log itself is real and used
+  everywhere — `auditLog.create` calls exist in every domain — but there
+  is no screen that lets Chris browse it): **none of these exist today.**
+  These are the review's genuinely new, substantial proposals.
+- The "exception inbox" idea specifically overlaps with signals that
+  already exist scattered across the app (stale-reservation detection,
+  past-due invoices, failed payments — all feed today's dashboard as
+  separate stat cards) but there's no unified, actionable list — that's
+  a real and fairly cheap win: mostly wiring existing detection logic
+  into one page rather than inventing new detection.
+
+**Assessment:** this review is honest about not having audited the
+backend, and it's right to say so — several of the concerns it raises as
+open questions ("can backups be restored," "do conflicting edits
+overwrite") turned out to be exactly the kind of thing that's easy to
+assume is fine and isn't fully verified. But most of its "software
+quality standard" list turned out to already be true (concurrency-safe
+reservations, tested data isolation, working dark mode), which matters
+for a report to Chris: the honest picture is "several specific things you
+should verify or fix" plus "several big, genuinely new feature areas to
+choose from" — not "the app is thin and needs replacing," which isn't
+what the code shows.
+
+**Scope reality check:** the nine numbered areas in the review each
+describe a substantial feature on their own (a unified customer
+workspace with timeline/notes/documents; a guided multi-step rental
+wizard with draft-saving; a real drag-and-drop dispatch board; a global
+search index; an automation-rules engine with run history and an off
+switch). Building all of it is a multi-month undertaking, not a single
+PR, and Chris runs this business solo today — some of the proposal (staff
+roles/approval limits, multi-employee dispatch assignment) is explicitly
+aimed at a team he doesn't have yet. Rather than build any of it unasked,
+I'm bringing this to Chris to pick where to start, per `AGENTS.md`'s
+guidance to ask before large/costly/ambiguous work.
