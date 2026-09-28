@@ -94,9 +94,13 @@ async function seedOwnerAccount() {
   const existing = await prisma.user.findUnique({ where: { email } });
 
   if (existing) {
+    // emailVerified: true here too (Task #70) — an already-existing
+    // account re-running this script (e.g. every CI run) must stay
+    // able to log in once requireEmailVerification is on, same as a
+    // brand-new one below.
     await prisma.user.update({
       where: { email },
-      data: { role: "OWNER" },
+      data: { role: "OWNER", emailVerified: true },
     });
     console.log(`"${email}" already existed — made sure its role is OWNER.`);
     return;
@@ -106,9 +110,17 @@ async function seedOwnerAccount() {
     body: { email, password, name },
   });
 
+  // emailVerified: true (Task #70) — this account is created directly
+  // with a known password (unlike a real customer/staff account, which
+  // goes through the activation-email flow), so there's no separate
+  // "proof of inbox control" step to piggyback on. Chris himself is
+  // typing this email into a one-time seed command he runs, so treating
+  // it as verified is the same trust level as any other owner-set-up
+  // step in this app. Without this, requireEmailVerification would
+  // block his very first login.
   await prisma.user.update({
     where: { email },
-    data: { role: "OWNER" },
+    data: { role: "OWNER", emailVerified: true },
   });
 
   console.log(`Created OWNER account for ${email}.`);
@@ -133,9 +145,13 @@ async function seedTestCustomerFixture() {
   }
 
   await auth.api.signUpEmail({ body: { email, password, name } });
+  // emailVerified: true (Task #70) — this is a CI-only test fixture
+  // logged into directly by e2e/global-setup.ts; without this, every
+  // e2e run would fail at login the same way a real unverified account
+  // would. See the OWNER account comment above for the same reasoning.
   const user = await prisma.user.update({
     where: { email },
-    data: { role: "CUSTOMER" },
+    data: { role: "CUSTOMER", emailVerified: true },
   });
 
   const customer = await prisma.customer.create({
