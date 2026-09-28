@@ -56,6 +56,20 @@ on — never built unasked.
 
 ## Suggestions (not scoped into any phase — Chris should decide)
 
+- **A second, independent design review Chris commissioned (OpenAI's
+  "Astra"), 2026-09-27** — a large rebrand + redesign brief saved at
+  `docs/reviews/2026-09-28-astra-redesign-brief.md`, discussed in
+  `docs/DECISIONS.md`. Covers a full rebrand (new navy/teal color
+  system and logo, replacing the current warm palette), an owner-desk
+  navigation/dashboard rebuild, a customer-portal rebuild, adding a
+  property-manager/portfolio line of business, longer lease terms with
+  separate billing cadence, and a settings-page split. Overlaps with
+  and partly duplicates ground already covered by the earlier in-house
+  design review (mostly done, see the "brand-consistency" PR history
+  above) — the new material is mainly the rebrand and the business-
+  model additions. Not started: needs Chris's decision on the rebrand
+  and the new business lines before any of it is built, since both are
+  real business choices, not bug fixes.
 - **Require customers to verify their email before logging in** —
   currently off (`requireEmailVerification: false` in
   `src/lib/auth.ts`), with a note to flip it on once email sending is
