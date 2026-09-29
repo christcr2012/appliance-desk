@@ -19,10 +19,13 @@ function timeAgo(date: Date): string {
 
 export default async function CustomerDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ newAccount?: string; emailSent?: string }>;
 }) {
   const { id } = await params;
+  const { newAccount, emailSent } = await searchParams;
   const [customer, timeline, contacts] = await Promise.all([
     getCustomerById(id),
     getCustomerTimeline(id),
@@ -38,6 +41,38 @@ export default async function CustomerDetailPage({
       <Link href="/desk/customers" className="text-sm text-gray-600 hover:underline">
         &larr; Back to customers
       </Link>
+
+      {/* Confirms the new-account activation email actually went out —
+          carried here on the URL from the "Add customer" form
+          (new-customer-form.tsx), since that page navigates straight
+          here and a message shown there would never be seen (2026-09-29,
+          Chris reported the new-customer process didn't seem to send an
+          email; it did, he just had no way to tell). */}
+      {newAccount === "1" && (
+        <div
+          role="status"
+          className={`mt-3 rounded-lg border p-3 text-sm ${
+            emailSent === "1"
+              ? "border-green-200 bg-green-50 text-green-900"
+              : "border-amber-200 bg-amber-50 text-amber-900"
+          }`}
+        >
+          {emailSent === "1" ? (
+            <p>
+              A new account was created, and an email was sent so this
+              customer can set their own password and log in. Nothing for
+              you to relay — if they say it didn&apos;t arrive, use
+              &ldquo;Resend activation email&rdquo; below.
+            </p>
+          ) : (
+            <p>
+              A new account was created, but the activation email
+              couldn&apos;t be sent just now. Use &ldquo;Resend activation
+              email&rdquo; below to try again.
+            </p>
+          )}
+        </div>
+      )}
 
       <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
         <div>
