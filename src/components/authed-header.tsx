@@ -84,6 +84,26 @@ export function AuthedHeader({
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [menuOpen]);
 
+  // Chris reported again (2026-09-29), after the overflow-anchor fix
+  // below still didn't fully fix it: on his Android phone, in Chrome,
+  // Opera, AND DuckDuckGo, opening the menu, closing it, scrolling down
+  // a little, then reopening it closed it again instantly. Those three
+  // "different" browsers all sharing one bug is the tell — on Android,
+  // Opera and DuckDuckGo (like almost every non-Firefox Android browser)
+  // are themselves built on Chromium, so all three were really the same
+  // rendering engine, not three separate bugs to chase. That engine
+  // keeps sending real `scroll` events on `window` for a little while
+  // after a finger lifts (fling/momentum deceleration settling, and the
+  // address bar collapsing as you scroll down) — so a scroll that
+  // already happened can still generate a trailing `scroll` event right
+  // as the next tap (reopening the menu) lands, which this listener saw
+  // as "the user is scrolling, close it" even though nothing moved
+  // after the menu opened. Two guards, neither specific to any one
+  // browser: ignore scroll events for a brief moment right after
+  // opening (enough to let any already-in-flight settling finish), and
+  // only ever treat it as a real scroll if the page has actually moved
+  // a real amount since the menu opened, not a sub-pixel settling
+  // nudge. Same fix as src/components/site/header.tsx.
   useEffect(() => {
     if (!menuOpen) return;
     function onPointerDown(e: PointerEvent) {
@@ -91,12 +111,22 @@ export function AuthedHeader({
         setMenuOpen(false);
       }
     }
+
+    const openedAtScrollY = window.scrollY;
+    let armed = false;
+    const armTimer = window.setTimeout(() => {
+      armed = true;
+    }, 150);
+
     function onScroll() {
+      if (!armed) return;
+      if (Math.abs(window.scrollY - openedAtScrollY) < 10) return;
       setMenuOpen(false);
     }
     document.addEventListener("pointerdown", onPointerDown);
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => {
+      window.clearTimeout(armTimer);
       document.removeEventListener("pointerdown", onPointerDown);
       window.removeEventListener("scroll", onScroll);
     };
