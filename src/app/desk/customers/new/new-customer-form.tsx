@@ -31,9 +31,12 @@ export function NewCustomerForm() {
   const [isBusiness, setIsBusiness] = useState(false);
   const [companyName, setCompanyName] = useState("");
   const [addresses, setAddresses] = useState<AddressFields[]>([{ ...EMPTY_ADDRESS }]);
-  const [message, setMessage] = useState<
-    { kind: "error" | "success"; text: string } | null
-  >(null);
+  // Only ever holds an error now — a success navigates straight to the
+  // new customer's page (see handleSubmit below), so there's no longer
+  // a "success" message state to show here.
+  const [message, setMessage] = useState<{ kind: "error"; text: string } | null>(
+    null,
+  );
 
   function updateAddress(index: number, field: keyof AddressFields, value: string) {
     setAddresses((rows) =>
@@ -77,16 +80,23 @@ export function NewCustomerForm() {
         return;
       }
 
-      const activationNote = result.isNewAccount
-        ? result.activationEmailSent
-          ? " We've emailed them a link to set their own password."
-          : " We couldn't send their activation email just now — use \"Resend activation email\" on their page to try again."
-        : "";
-      setMessage({
-        kind: "success",
-        text: `Customer added.${activationNote}`,
-      });
-      router.push(`/desk/customers/${result.customerId}`);
+      // Carried on the URL rather than shown here — router.push below
+      // navigates to the new customer's own page right away, so a
+      // message set in this component's state would never actually be
+      // seen (2026-09-29, Chris reported: "the new customer process
+      // doesn't seem to actually send an email" — it does; he just had
+      // no way to tell, since this success banner used to flash off-
+      // screen the instant the page navigated away). The customer
+      // detail page reads these query params and shows the same
+      // confirmation there instead, where it's actually visible.
+      const params = new URLSearchParams();
+      if (result.isNewAccount) {
+        params.set("newAccount", "1");
+        params.set("emailSent", result.activationEmailSent ? "1" : "0");
+      }
+      router.push(
+        `/desk/customers/${result.customerId}${params.size > 0 ? `?${params.toString()}` : ""}`,
+      );
     });
   }
 
@@ -267,14 +277,7 @@ export function NewCustomerForm() {
       </div>
 
       {message && (
-        <p
-          role={message.kind === "error" ? "alert" : "status"}
-          className={
-            message.kind === "error"
-              ? "text-sm font-medium text-red-700"
-              : "text-sm font-medium text-green-700"
-          }
-        >
+        <p role="alert" className="text-sm font-medium text-red-700">
           {message.text}
         </p>
       )}

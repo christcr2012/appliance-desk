@@ -28,20 +28,37 @@ export async function resendActivationEmailAction(
 ): Promise<ResendActivationState> {
   await requireRole("OWNER", "ADMIN");
 
-  const customer = await getCustomerById(customerId);
-  if (!customer) {
-    return { status: "error", message: "Couldn't find that customer." };
-  }
+  // Every other action in this file wraps its body in try/catch so a
+  // database blip or anything else unexpected comes back as a message
+  // the button can show, instead of an uncaught exception the client
+  // component has no way to display (2026-09-29, Chris reported this
+  // button "wasn't sending the email either" — with no visible error at
+  // all, which matches this action being the one action in this file
+  // that could fail silently, not a friendly message it forgot to
+  // return). This alone doesn't change what happens on a genuinely
+  // successful send — sendCustomerActivationEmail already catches its
+  // own errors and returns false rather than throwing.
+  try {
+    const customer = await getCustomerById(customerId);
+    if (!customer) {
+      return { status: "error", message: "Couldn't find that customer." };
+    }
 
-  const sent = await sendCustomerActivationEmail(customer.user.email);
-  if (!sent) {
+    const sent = await sendCustomerActivationEmail(customer.user.email);
+    if (!sent) {
+      return {
+        status: "error",
+        message: "Couldn't send the activation email just now — try again shortly.",
+      };
+    }
+
+    return { status: "sent" };
+  } catch (error) {
     return {
       status: "error",
-      message: "Couldn't send the activation email just now — try again shortly.",
+      message: error instanceof Error ? error.message : "Couldn't send the activation email just now — try again shortly.",
     };
   }
-
-  return { status: "sent" };
 }
 
 export type NewCustomerActionState =
