@@ -3,18 +3,20 @@ import { requireRole } from "@/lib/session";
 import { getAllEstimates, totalMonthlyCents, totalOneTimeCents } from "@/domains/estimates";
 import { formatCents } from "@/domains/pricing";
 import { estimateStatusLabel } from "@/lib/status-labels";
+import { StatusBadge, type StatusTone } from "@/components/status-badge";
+import { PlusIcon } from "@/components/icons/status-icons";
 
 export const metadata = { title: "Estimates" };
 
-const STATUS_STYLES: Record<string, string> = {
-  DRAFT: "bg-gray-100 text-gray-600",
-  SENT: "bg-yellow-100 text-yellow-800",
-  VIEWED: "bg-yellow-100 text-yellow-800",
-  APPROVED: "bg-green-100 text-green-800",
-  CHANGES_REQUESTED: "bg-amber-100 text-amber-800",
-  DECLINED: "bg-red-100 text-red-800",
-  EXPIRED: "bg-gray-200 text-gray-700",
-  CONVERTED: "bg-blue-100 text-blue-800",
+const STATUS_TONE: Record<string, StatusTone> = {
+  DRAFT: "pending",
+  SENT: "progress",
+  VIEWED: "progress",
+  APPROVED: "success",
+  CHANGES_REQUESTED: "attention",
+  DECLINED: "stopped",
+  EXPIRED: "stopped",
+  CONVERTED: "success",
 };
 
 /** Custom-priced estimates for deals that don't fit standard self-serve
@@ -32,9 +34,10 @@ export default async function EstimatesPage() {
         <h1 className="text-xl font-semibold">Estimates</h1>
         <Link
           href="/desk/estimates/new"
-          className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
+          className="inline-flex items-center gap-1 rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
         >
-          + New estimate
+          <PlusIcon className="h-4 w-4" />
+          New estimate
         </Link>
       </div>
       <p className="mt-1 text-sm text-gray-600">
@@ -77,13 +80,11 @@ export default async function EstimatesPage() {
                     </p>
                   </div>
                   <div className="text-sm text-gray-500 sm:text-right">
-                    <span
-                      className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
-                        STATUS_STYLES[estimate.status] ?? "bg-gray-100 text-gray-700"
-                      }`}
-                    >
-                      {estimateStatusLabel(estimate.status)}
-                    </span>
+                    <StatusBadge
+                      tone={STATUS_TONE[estimate.status] ?? "pending"}
+                      label={estimateStatusLabel(estimate.status)}
+                      variant="pill"
+                    />
                     <p className="mt-1">
                       {monthly > 0 && `${formatCents(monthly)}/mo`}
                       {monthly > 0 && oneTime > 0 && " + "}

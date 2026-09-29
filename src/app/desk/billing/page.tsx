@@ -4,20 +4,10 @@ import { formatCents } from "@/domains/pricing";
 import { requireRole } from "@/lib/session";
 import { parsePage, paginationMeta } from "@/domains/pagination";
 import { Pagination } from "@/components/pagination";
+import { StatusBadge } from "@/components/status-badge";
+import { invoiceStatusTone } from "@/lib/status-labels";
 
 export const metadata = { title: "Billing" };
-
-const STATUS_STYLES: Record<string, string> = {
-  PAID: "bg-green-100 text-green-800",
-  DELINQUENT: "bg-red-100 text-red-800",
-  FAILED: "bg-red-100 text-red-800",
-  OPEN: "bg-yellow-100 text-yellow-800",
-  PARTIALLY_PAID: "bg-yellow-100 text-yellow-800",
-  WRITTEN_OFF: "bg-gray-200 text-gray-700",
-  REFUNDED: "bg-blue-100 text-blue-800",
-  VOID: "bg-gray-200 text-gray-700",
-  DRAFT: "bg-gray-100 text-gray-600",
-};
 
 // OWNER/ADMIN only (docs/DECISIONS.md, 2026-09-28 "Staff permissions
 // framework") — never rely on the nav link being hidden alone.
@@ -159,13 +149,11 @@ export default async function BillingPage({
                     </Link>
                   </td>
                   <td className="px-4 py-2">
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                        STATUS_STYLES[invoice.status] ?? "bg-gray-100 text-gray-700"
-                      }`}
-                    >
-                      {invoice.status}
-                    </span>
+                    <StatusBadge
+                      tone={invoiceStatusTone(invoice.status)}
+                      label={invoice.status}
+                      variant="pill"
+                    />
                   </td>
                   <td className="px-4 py-2 text-gray-600">
                     {invoice.billingPeriodStart

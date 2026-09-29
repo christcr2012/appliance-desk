@@ -270,17 +270,24 @@ on — never built unasked.
   highest-converting additions for a local service business, per the
   same design review. Needs real customers first (his upcoming live
   testing, then real launch, will produce some).
-- **Icons throughout the owner desk and customer portal** — **a first
-  slice done (2026-09-29)**: the brand kit's six service icons
-  (appliance, calendar, delivery, home, property, support) are now
-  real components and placed on the handful of page headers/panels
-  where one of them is an honest match — see
-  `docs/DECISIONS.md`'s 2026-09-29 "work-order document, and the brand
-  kit's service icons" entry. **Still open**: everywhere else (status
-  badges, buttons, the ~40 other pages) still has no icon — six
-  service-themed icons don't cover the rest of the app, and a fuller,
-  coherent icon set applied consistently everywhere is still a real
-  design decision of its own, not a quick follow-on.
+- ~~Icons throughout the owner desk and customer portal~~ — **done
+  (2026-09-29)**. A first slice (2026-09-29, earlier the same day) put
+  the brand kit's six service icons (appliance, calendar, delivery,
+  home, property, support) on the handful of page headers/panels where
+  one of them was an honest match — see `docs/DECISIONS.md`'s
+  2026-09-29 "work-order document, and the brand kit's service icons"
+  entry. This second pass covers what that one didn't: every status
+  badge across the desk (leads, estimates, purchase orders, invoices,
+  inventory, jobs, staff accounts) now shows a small icon alongside its
+  color, through one new shared `<StatusBadge>` component
+  (`src/components/status-badge.tsx`) instead of each page's own
+  copy-pasted color map — five simple icons (done/success, waiting,
+  needs attention, cancelled/stopped, in progress) cover every status
+  in the app, so a status always looks the same everywhere it shows up.
+  Every "+ New X" / "+ Add X" primary button across the desk also got a
+  small plus icon. See `docs/DECISIONS.md`'s matching entry for the
+  full file list and why color alone (with no icon) isn't accessible to
+  someone who can't distinguish colors well.
 - ~~A social-share image made specifically for link previews~~ — **done
   (2026-09-29)**, part of brand kit v2.0. `public/brand/social-share.png`,
   a purpose-made 1200x630 image from the kit, replaces the homepage hero

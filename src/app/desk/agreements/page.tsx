@@ -4,6 +4,9 @@ import { formatCents } from "@/domains/pricing";
 import type { RentalAgreementStatus } from "@prisma/client";
 import { parsePage, paginationMeta } from "@/domains/pagination";
 import { Pagination } from "@/components/pagination";
+import { PlusIcon } from "@/components/icons/status-icons";
+import { StatusBadge } from "@/components/status-badge";
+import { rentalAgreementStatusTone } from "@/lib/status-labels";
 
 export const metadata = { title: "Agreements" };
 
@@ -53,9 +56,10 @@ export default async function AgreementsPage({
         <h1 className="text-xl font-semibold">Rental agreements</h1>
         <Link
           href="/desk/agreements/new"
-          className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
+          className="inline-flex items-center gap-1 rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
         >
-          + New agreement
+          <PlusIcon className="h-4 w-4" />
+          New agreement
         </Link>
       </div>
 
@@ -101,7 +105,7 @@ export default async function AgreementsPage({
                 </div>
                 <div className="text-sm text-gray-500 sm:text-right">
                   <p>
-                    {a.status}
+                    <StatusBadge tone={rentalAgreementStatusTone(a.status)} label={a.status} />
                     {isReservationStale(a.status, a.reservationExpiresAt) && (
                       <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
                         Stale hold

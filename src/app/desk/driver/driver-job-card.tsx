@@ -6,6 +6,8 @@ import Image from "next/image";
 import { updateJobStatusAction, addJobPhotoAction } from "../jobs/actions";
 import { PhotoUploadField } from "@/components/photo-upload-field";
 import type { JobStatus, JobType } from "@prisma/client";
+import { StatusBadge } from "@/components/status-badge";
+import { jobStatusTone } from "@/lib/status-labels";
 
 type DriverJob = {
   id: string;
@@ -84,17 +86,12 @@ export function DriverJobCard({ job }: { job: DriverJob }) {
             <p className="mt-0.5 text-sm text-gray-700">{job.customerName}</p>
           )}
         </div>
-        <span
-          className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold ${
-            job.status === "IN_PROGRESS"
-              ? "bg-amber-100 text-amber-800"
-              : job.status === "COMPLETED"
-                ? "bg-green-100 text-green-800"
-                : "bg-gray-100 text-gray-700"
-          }`}
-        >
-          {job.status.replace(/_/g, " ")}
-        </span>
+        <StatusBadge
+          tone={jobStatusTone(job.status)}
+          label={job.status.replace(/_/g, " ")}
+          variant="pill"
+          className="shrink-0"
+        />
       </div>
 
       {job.appliances.length > 0 && (

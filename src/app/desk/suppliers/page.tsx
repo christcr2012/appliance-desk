@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireRole } from "@/lib/session";
 import { getSuppliers } from "@/domains/purchasing";
+import { PlusIcon } from "@/components/icons/status-icons";
 
 export const metadata = { title: "Suppliers" };
 
@@ -14,9 +15,10 @@ export default async function SuppliersPage() {
         <h1 className="text-xl font-semibold">Suppliers</h1>
         <Link
           href="/desk/suppliers/new"
-          className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
+          className="inline-flex items-center gap-1 rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
         >
-          + Add supplier
+          <PlusIcon className="h-4 w-4" />
+          Add supplier
         </Link>
       </div>
       <p className="mt-1 text-sm text-gray-600">

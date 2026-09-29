@@ -2,14 +2,16 @@ import Link from "next/link";
 import { requireRole } from "@/lib/session";
 import { getPurchaseOrders } from "@/domains/purchasing";
 import { formatCents } from "@/domains/pricing";
+import { StatusBadge, type StatusTone } from "@/components/status-badge";
+import { PlusIcon } from "@/components/icons/status-icons";
 
 export const metadata = { title: "Purchase orders" };
 
-const STATUS_STYLES: Record<string, string> = {
-  DRAFT: "text-gray-500",
-  ORDERED: "text-amber-700",
-  RECEIVED: "text-green-700",
-  CANCELLED: "text-gray-400 line-through",
+const STATUS_TONE: Record<string, StatusTone> = {
+  DRAFT: "pending",
+  ORDERED: "progress",
+  RECEIVED: "success",
+  CANCELLED: "stopped",
 };
 
 export default async function PurchaseOrdersPage() {
@@ -22,9 +24,10 @@ export default async function PurchaseOrdersPage() {
         <h1 className="text-xl font-semibold">Purchase orders</h1>
         <Link
           href="/desk/purchase-orders/new"
-          className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
+          className="inline-flex items-center gap-1 rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
         >
-          + New purchase order
+          <PlusIcon className="h-4 w-4" />
+          New purchase order
         </Link>
       </div>
       <p className="mt-1 text-sm text-gray-600">
@@ -57,7 +60,7 @@ export default async function PurchaseOrdersPage() {
                     </p>
                   </div>
                   <div className="text-sm sm:text-right">
-                    <p className={STATUS_STYLES[po.status] ?? "text-gray-600"}>{po.status}</p>
+                    <StatusBadge tone={STATUS_TONE[po.status] ?? "pending"} label={po.status} />
                     <p className="text-gray-500">{formatCents(totalCents)}</p>
                   </div>
                 </Link>

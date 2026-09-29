@@ -7,6 +7,7 @@ import {
   reactivateStaffAccountAction,
   resendStaffActivationEmailAction,
 } from "./actions";
+import { StatusBadge } from "@/components/status-badge";
 
 type StaffAccountRow = {
   id: string;
@@ -112,15 +113,11 @@ export function StaffAccountsSection({ accounts }: { accounts: StaffAccountRow[]
                   <td className="py-2 pr-4 text-gray-900">{a.name ?? "—"}</td>
                   <td className="py-2 pr-4 text-gray-700">{a.email}</td>
                   <td className="py-2 pr-4">
-                    <span
-                      className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${
-                        a.isActive
-                          ? "bg-green-100 text-green-800"
-                          : "bg-gray-200 text-gray-700"
-                      }`}
-                    >
-                      {a.isActive ? "Active" : "Removed"}
-                    </span>
+                    <StatusBadge
+                      tone={a.isActive ? "success" : "stopped"}
+                      label={a.isActive ? "Active" : "Removed"}
+                      variant="pill"
+                    />
                   </td>
                   <td className="py-2 pr-4">
                     <div className="flex flex-wrap gap-2">

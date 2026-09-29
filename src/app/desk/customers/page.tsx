@@ -4,6 +4,7 @@ import { parsePage, paginationMeta } from "@/domains/pagination";
 import { Pagination } from "@/components/pagination";
 import { ExportCsvLink } from "@/components/export-csv-link";
 import { HomeServiceIcon } from "@/components/icons/service-icons";
+import { PlusIcon } from "@/components/icons/status-icons";
 
 export const metadata = { title: "Customers" };
 
@@ -28,9 +29,10 @@ export default async function CustomersPage({
           <ExportCsvLink href="/desk/customers/export" label="Export CSV" />
           <Link
             href="/desk/customers/new"
-            className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
+            className="inline-flex items-center gap-1 rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
           >
-            + Add customer
+            <PlusIcon className="h-4 w-4" />
+            Add customer
           </Link>
         </div>
       </div>
