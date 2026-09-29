@@ -234,3 +234,48 @@ export async function createCustomerDirectly(
 
   return { customer, serviceAddresses, isNewAccount, activationEmailSent };
 }
+
+/** Adding a property to a customer who already exists — a property
+ * manager picking up another building, or a household customer moving
+ * and keeping the old address on file for a final job. Until this
+ * existed, addresses could only be added at customer-creation time
+ * (createCustomerDirectly above); anything after that needed a direct
+ * database edit — see docs/BUSINESS-RULES.md's "Property managers /
+ * portfolio accounts" section. Mirrors the address-creation shape
+ * inside createCustomerDirectly exactly, including the same audit log,
+ * so a property added here looks identical in the customer's timeline
+ * to one added at signup. */
+export async function addServiceAddress(
+  customerId: string,
+  actingUserId: string,
+  input: NewCustomerAddressInput,
+) {
+  const customer = await prisma.customer.findUnique({ where: { id: customerId } });
+  if (!customer) {
+    throw new Error("Couldn't find that customer.");
+  }
+
+  const [address] = await prisma.$transaction([
+    prisma.serviceAddress.create({
+      data: {
+        customerId,
+        line1: input.line1,
+        line2: input.line2 || null,
+        city: input.city,
+        state: input.state || "CO",
+        zip: input.zip,
+      },
+    }),
+    prisma.auditLog.create({
+      data: {
+        userId: actingUserId,
+        action: "customer.address.add",
+        entityType: "Customer",
+        entityId: customerId,
+        newValue: { line1: input.line1, city: input.city, state: input.state || "CO", zip: input.zip },
+      },
+    }),
+  ]);
+
+  return address;
+}

@@ -60,6 +60,22 @@ Go to `/login` and sign in with your email and password.
    from Reserved to Rented. Ending or cancelling an agreement frees its
    appliances back to Available automatically.
 
+## Landlords and property managers with several buildings
+
+A customer isn't limited to one address. If you're signing up a
+landlord or property manager who has more than one building, go to
+**Customers → Add customer** and add every property they manage right
+up front, instead of just one.
+
+Already have that customer on file and they picked up another
+building later? Open their customer page and, in the **Properties**
+section, click **+ Add property**. Each property shows its own
+agreements, jobs, and active monthly total, so you can see at a
+glance what's happening at each address instead of hunting through
+one long list. (Rental billing still runs per property, one charge
+per agreement — there's no combined, single invoice across a
+property manager's whole portfolio yet.)
+
 ## Scheduling delivery, installation, and other visits
 
 Go to **Jobs** to schedule a delivery, install, swap, removal, or

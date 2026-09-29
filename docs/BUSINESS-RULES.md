@@ -133,13 +133,24 @@ already let Chris pick which of a customer's addresses a given
 `RentalAgreement` is for, so a property manager can have several active
 agreements, each at a different property, under one login.
 
-**Still open** (tracked in `docs/ROADMAP.md`, not built yet): a
-portfolio rollup view (all of a property manager's properties and
-their agreements/charges in one place, both in the desk and in the
-customer portal's own "All properties" selector), and adding more
-properties to an *existing* customer from their own page (today, more
-than the addresses given at creation still need a direct database
-edit — not exposed in the UI yet).
+Built (2026-09-28): the customer detail page in the desk now has a
+"Properties" panel (`src/app/desk/customers/[id]/service-addresses-
+panel.tsx`) that does two things at once — a desk-side portfolio
+rollup (each of a customer's addresses, with the agreements and jobs
+at that address and the active $/mo total, grouped per property
+instead of Chris having to cross-reference three flat lists), and a
+"+ Add property" form that adds another `ServiceAddress` to a
+customer who already exists (previously a direct database edit — see
+`src/domains/customers`'s `addServiceAddress`).
+
+**Still open** (tracked in `docs/ROADMAP.md`, not built yet): the
+customer portal's own "All properties" selector (the rollup above is
+desk-side only — a property manager logged into their own portal
+still can't see or switch between their properties there), and formal
+consolidated B2B invoicing across a property manager's multiple
+agreements (today each `RentalAgreement` still bills independently
+through its own Stripe subscription, so a property manager gets one
+charge per property rather than one combined statement).
 
 Lease term (month-to-month / 6-month / 12-month), billing cadence, and
 prepayment are already three separate concepts, not one — see the

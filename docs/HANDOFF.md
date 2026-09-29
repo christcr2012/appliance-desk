@@ -1315,3 +1315,42 @@ Two more requests from Chris, mid-conversation:
       (`tests/reset-test-data.test.ts`); full suite 332/332. **Not run
       against the real database** — Chris said this is for after a
       testing pass, not now.
+
+## 2026-09-28 (continued) — Task #73 (accounting export) and property-manager portfolio work
+
+- [x] **Task #73 — a generic accounting-transactions CSV export**
+      (`/desk/reports`'s "Export transactions" link, hits
+      `/desk/reports/export`). Every succeeded payment, refund, deposit
+      collected, and deposit refunded, oldest first, signed so a plain
+      spreadsheet `SUM()` gives real net cash movement. Not tied to any
+      particular bookkeeping product — Chris doesn't have one yet (see
+      `docs/BUSINESS-RULES.md`'s growth-ideas list, idea #14). 7/7 new
+      unit tests passing (`tests/accounting-export.test.ts`). **PR #65
+      open, CI green** — awaiting Chris's merge, same as prior PRs.
+- [x] **Property-manager portfolio: second slice.** The still-open gap
+      from `docs/BUSINESS-RULES.md`'s "Property managers / portfolio
+      accounts" section — a portfolio rollup view and a way to add a
+      property to an existing customer — is built: the customer detail
+      page's new "Properties" panel groups each of a customer's
+      addresses with the agreements/jobs/active $/mo at that address,
+      and a "+ Add property" form (`addServiceAddress` in
+      `src/domains/customers`) lets Chris add another property to a
+      customer who already has one, which previously needed a direct
+      database edit. **Not Task #72** (formal consolidated B2B
+      invoicing across a property manager's several agreements) — the
+      roadmap still marks that "not picked yet" since it would touch
+      how Stripe billing itself works (each agreement bills
+      independently today) and Chris has stated no urgency and no real
+      property-manager customers yet; built the lower-risk, clearly-
+      still-open piece instead and left invoicing for Chris to
+      explicitly pick when it's actually needed. 4/4 new unit tests
+      passing (`tests/service-address-add.test.ts`). Typecheck
+      error-count comparison showed zero new error categories (the 3
+      new TS7006 lines are the same documented Prisma-client-generation
+      sandbox limitation as everywhere else in this codebase — see
+      AGENTS.md).
+
+**Still open from the original 9-item list**: none picked. Formal
+consolidated B2B invoicing for property managers remains an unpicked
+suggestion in `docs/ROADMAP.md` — flag it to Chris if he gets a real
+property-manager customer.

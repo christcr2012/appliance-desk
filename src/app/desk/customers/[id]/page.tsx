@@ -5,6 +5,7 @@ import { formatCents } from "@/domains/pricing";
 import { ResendActivationButton } from "./resend-activation-button";
 import { AddNoteForm } from "./add-note-form";
 import { ContactsPanel } from "./contacts-panel";
+import { ServiceAddressesPanel } from "./service-addresses-panel";
 
 export const metadata = { title: "Customer" };
 
@@ -76,42 +77,38 @@ export default async function CustomerDetailPage({
         <ResendActivationButton customerId={customer.id} />
       </div>
 
-      <div className="mt-6 grid gap-6 sm:grid-cols-2">
-        <div className="rounded-lg border border-gray-200 bg-white p-5">
-          <h2 className="font-medium text-gray-900">Service addresses</h2>
-          {customer.serviceAddresses.length === 0 ? (
-            <p className="mt-2 text-sm text-gray-600">None on file.</p>
-          ) : (
-            <ul className="mt-2 space-y-2 text-sm text-gray-700">
-              {customer.serviceAddresses.map((a) => (
-                <li key={a.id}>
-                  {a.line1}
-                  {a.line2 ? `, ${a.line2}` : ""}, {a.city}, {a.state} {a.zip}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+      <div className="mt-6">
+        <ServiceAddressesPanel
+          customerId={customer.id}
+          addresses={customer.serviceAddresses}
+          agreements={customer.rentalAgreements.map((a) => ({
+            id: a.id,
+            status: a.status,
+            serviceAddressId: a.serviceAddressId,
+            monthlyCents: a.lines.reduce((sum, l) => sum + l.monthlyPriceCents, 0),
+          }))}
+          jobs={customer.jobs.map((j) => ({ id: j.id, serviceAddressId: j.serviceAddressId }))}
+        />
+      </div>
 
-        <div className="rounded-lg border border-gray-200 bg-white p-5">
-          <h2 className="font-medium text-gray-900">Jobs</h2>
-          {customer.jobs.length === 0 ? (
-            <p className="mt-2 text-sm text-gray-600">No jobs scheduled yet.</p>
-          ) : (
-            <ul className="mt-2 space-y-2 text-sm text-gray-700">
-              {customer.jobs.map((j) => (
-                <li key={j.id}>
-                  <Link href={`/desk/jobs/${j.id}`} className="hover:underline">
-                    {j.type} — {j.status}
-                    {j.scheduledAt
-                      ? ` (${new Date(j.scheduledAt).toLocaleDateString()})`
-                      : ""}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+      <div className="mt-6 rounded-lg border border-gray-200 bg-white p-5">
+        <h2 className="font-medium text-gray-900">Jobs</h2>
+        {customer.jobs.length === 0 ? (
+          <p className="mt-2 text-sm text-gray-600">No jobs scheduled yet.</p>
+        ) : (
+          <ul className="mt-2 space-y-2 text-sm text-gray-700">
+            {customer.jobs.map((j) => (
+              <li key={j.id}>
+                <Link href={`/desk/jobs/${j.id}`} className="hover:underline">
+                  {j.type} — {j.status}
+                  {j.scheduledAt
+                    ? ` (${new Date(j.scheduledAt).toLocaleDateString()})`
+                    : ""}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       <div className="mt-6 rounded-lg border border-gray-200 bg-white p-5">
