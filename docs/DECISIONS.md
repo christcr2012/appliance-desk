@@ -2444,3 +2444,264 @@ failures as always, unrelated to this work). `npm run build` verified
 clean (checking specifically for the client-bundle-leak bug class
 documented in `src/domains/pricing/money.ts`, which `tsc`/`eslint`
 cannot catch).
+
+## 2026-09-29 — Fixed 4 HIGH npm audit findings without downgrading Prisma
+
+Chris asked for the whole codebase to be hardened for scaling, which
+included a follow-up on the earlier audit's finding: `npm audit` flagged
+4 HIGH-severity issues, all inside Prisma's own build/CLI tooling
+(`@prisma/config` pulling in `mysql2` and `deepmerge-ts`) — not code the
+live site runs against customers, since the app only ever talks to
+Postgres. `npm audit fix --force`'s suggested fix would have downgraded
+`prisma` from 7.10.0 to 6.19.3, a real regression for a marginal,
+build-time-only risk — rejected, same reasoning the earlier audit
+flagged.
+
+Instead, added an `"overrides"` entry to `package.json` forcing just the
+two vulnerable transitive packages to their already-patched versions
+(`mysql2` ^3.24.4, `deepmerge-ts` ^8.0.2) while keeping `prisma` itself
+at 7.10.0, the current stable release (8.x is still release-candidate
+only, not yet a real option). Verified with `npm ls mysql2
+deepmerge-ts` that both packages actually resolve to the overridden
+versions (not silently ignored), and `npm audit` now reports 0
+vulnerabilities. `npm run typecheck` shows the identical set of
+pre-existing, documented errors as before this change — nothing new.
+
+## 2026-09-29 (continued) — Added a Content-Security-Policy header
+
+Part of the same scaling/hardening pass. Added the CSP header the
+earlier audit flagged as missing. Used next.config.ts's static approach
+rather than Next's nonce-based approach — a nonce would force every
+page in the app to switch from static to per-request rendering, trading
+away Next's CDN caching for pages that don't need to be dynamic, which
+works directly against the same pass's Speed Insights performance work.
+Full reasoning for every allowed origin is in next.config.ts's own
+comment, right above the policy. Two small side-effects worth knowing
+about:
+
+- `public/theme-init.js` is a new file — the dark-mode anti-flash
+  script that used to be inlined directly into the page now lives there
+  instead, specifically so the policy's `script-src` can be `'self'`
+  with no exceptions at all (an inline script would otherwise force
+  `'unsafe-inline'`, which defeats most of the point of having a CSP).
+  `src/lib/theme.ts`'s `THEME_INIT_SCRIPT` is unchanged and still the
+  documented source of truth; a new test (`tests/theme.test.ts`) checks
+  the two never drift apart.
+- Two inline `style={{...}}` attributes that were actually static
+  values (not computed per render) were converted to plain Tailwind
+  classes — `src/app/(public)/contact/contact-form.tsx`'s spam-honeypot
+  field and part of `src/app/desk/revenue/page.tsx`'s bar chart. The one
+  remaining inline style (that same bar chart's per-data-point bar
+  height, which is genuinely computed from real numbers) is why
+  `style-src` still needs `'unsafe-inline'` — style-based injection is a
+  much smaller real risk than script injection, so this is a deliberate,
+  narrow trade-off, not an oversight.
+
+## 2026-09-29 (continued) — Independent daily backup, separate from Neon
+
+Chris asked for the system to be ready to handle scaling and to have his
+data protected beyond Neon's own recovery window (the free-tier plan
+only keeps 6 hours of point-in-time recovery — flagged by the same-date
+full-codebase audit, docs/ROADMAP.md). Added a Vercel Cron job
+(`/api/cron/backup`, once a day at 09:00 UTC) that exports every
+business-critical table to a single JSON file and uploads it to Vercel
+Blob (`src/domains/backup/index.ts`), kept for 30 days with older copies
+pruned automatically.
+
+Two decisions worth recording:
+
+- The file is uploaded with **`access: "private"`**, not `"public"` like
+  the appliance photos in the same Blob store. This file is a full copy
+  of every customer's name, contact info, address, and billing history —
+  it must never be reachable just by guessing or finding its URL the way
+  a public photo is meant to be.
+- Four tables are deliberately left out of the export: `Session`,
+  `Account`, and `Verification` (better-auth's own login-session
+  bookkeeping — ephemeral by design, regenerated automatically the next
+  time someone signs in, not a business record) and `WebhookEvent`
+  (Stripe's own delivery log, kept only for short-term debugging —
+  Stripe itself is the durable source of truth for what it sent). Every
+  table holding an actual business record is included.
+
+This is a data export, not a one-click restore — getting data back out
+means downloading the JSON and re-inserting it with a script. That's an
+intentional, proportionate first line of defense for a small business;
+a fuller disaster-recovery process (tested restore procedure, shorter
+recovery point objective, etc.) is logged in docs/ROADMAP.md as a
+possible future project rather than being built unasked.
+
+## 2026-09-29 (continued) — Mobile Speed Insights: unoptimized photos were the cause
+
+Chris shared Vercel Speed Insights screenshots showing Production Mobile
+scoring 81 ("Needs Improvement") against Preview Mobile at 98 ("Great")
+and asked why, and to fix it. Speed Insights' "Real Experience Score" is
+built from real visitor traffic, not a synthetic test — so the honest
+answer starts with the traffic itself: Preview deployments get little to
+no real mobile visits to measure (a small, non-representative sample),
+while Production gets real customers on real phones and real cellular
+connections. That gap alone will never fully close, and isn't a bug.
+
+What *is* a real, fixable bug: every appliance/job/maintenance photo in
+the app — including every appliance-type photo on the homepage, pricing
+page, and every `/rent/[city]` page, the highest-traffic pages on the
+whole site — was a plain `<img src="...">` pointed straight at the full,
+original file in Vercel Blob storage. A phone camera photo is routinely
+several megabytes; none of these were resized, compressed, converted to
+a modern format, or lazy-loaded. On a real mobile connection, that's a
+slow page by construction, independent of anything else on the site.
+
+Fixed by switching every one of these (7 spots — grep-verified, not
+guessed) to `next/image`, and adding `images.remotePatterns` to
+`next.config.ts` to allow-list this app's own Vercel Blob store domain
+(the only place a saved photo URL can ever point — every upload goes
+through `src/components/photo-upload-field.tsx`, confirmed before
+allow-listing it). `next/image` resizes each photo to what the layout
+actually needs, serves it as WebP/AVIF, and — critically for anything
+below the very top of the page — doesn't fetch it at all until it's
+about to scroll into view. One side effect: because photos are no
+longer fetched directly by the browser, the Content-Security-Policy's
+`img-src` no longer needs the Blob storage domain (or `blob:`/`data:`,
+which grepping confirmed nothing in this app ever used) — tightened to
+`img-src 'self'`.
+
+Also reviewed and confirmed already in good shape, not touched: the
+homepage's hero photo already used `next/image` with explicit
+dimensions and `priority`; fonts already use `next/font` with
+`display: "swap"`; there's no oversized client-side JavaScript bundle on
+the public pages. The photo rendering was the one concrete, unaddressed
+cause found.
+
+## 2026-09-29 (continued) — CI caught a duplicate index; verified by replaying migrations locally
+
+The first push of the query-performance-indexes migration failed CI's
+"Apply database migrations" step: `Job_maintenanceRequestId_idx`
+already existed, created back in migration
+`20260926210000_job_maintenance_request_link` when that column was
+first added — this session's audit re-flagged it as "missing" without
+checking migration history closely enough. Removed the duplicate
+`CREATE INDEX` statement (the index itself was always fine; only the
+new migration's attempt to recreate it was wrong).
+
+Verified the fix properly rather than just guessing: this sandbox can't
+run `prisma migrate` at all (binaries.prisma.sh is unreachable, per
+AGENTS.md), but it does have a local PostgreSQL 16 server and `psql`.
+Started that server, then replayed every single migration in
+`prisma/migrations/`, in order, with real `psql`, against a fresh
+database — the same thing `prisma migrate deploy` does, just without
+Prisma's own CLI. All 21 applied cleanly, and a follow-up query
+confirmed every one of the 16 new indexes (17 minus the duplicate)
+actually exists. This is now the go-to way to sanity-check a raw SQL
+migration in this sandbox before pushing, instead of only reasoning
+about it by reading the schema.
+
+## 2026-09-29 (continued) — Preview and Production share one database; a stuck migration reached real customer data
+
+Discovered while chasing a failed production deployment (commit
+`47bb0dc`, the PR #73 merge): production's build failed at `prisma
+migrate deploy` with `P3009` — "migrate found failed migrations in the
+target database, new migrations will not be applied." Root cause: this
+project's Preview and Production Vercel environments point at the exact
+same live Neon database (no separate preview branch — a documented
+cost-saving choice for a business this size). That means an earlier
+buggy preview build of the query-performance-indexes migration (the
+duplicate-index bug fixed above) hadn't just failed harmlessly in some
+disposable test database — it had partially run against the real
+database and left `_prisma_migrations` bookkeeping marking that
+migration as failed, which blocks every future migration, including
+production's, until it's resolved.
+
+Complication: Postgres does not roll back a raw-SQL migration file's
+already-successful statements just because a later statement in the
+same file errors (confirmed by reading Prisma's own behavior here, not
+assumed) — so 6 of the 16 new indexes had actually been created before
+the failure, even though the bookkeeping row said 0 steps applied.
+Simply re-running the corrected migration would have failed again
+immediately, on its own first (now-duplicate) statement.
+
+Fix needed: (1) create the 10 indexes that were genuinely still
+missing, (2) manually mark that migration's bookkeeping row as finished
+(the same effect as `prisma migrate resolve --applied`, by hand). This
+session's own database-write tools are hard-blocked by a
+"Modify Shared Resources" safety control that doesn't lift for in-chat
+approval — correctly so, for something touching the real production
+database — so Chris was given a complete, verified, copy-paste SQL
+script and ran it himself in Neon's SQL Editor. Confirmed afterward,
+read-only: all 10 indexes present, the migration row shows finished,
+and a fresh production redeploy came up healthy.
+
+Same conversation, Chris separately asked for a fake/test customer
+record he'd entered by hand to be removed. Combined into the same
+script and the same walkthrough, and verified gone (0 rows) afterward.
+
+Nothing here is a decision to revisit later — it's a documented
+incident and its fix — but the shared-database fact is a real, standing
+constraint worth remembering: **any preview deployment's migration runs
+against the real production database.** A migration that's wrong in
+any way (not just this specific bug) can partially apply against real
+data before failing. There is no "it only broke a throwaway preview
+database" safety net here.
+
+## 2026-09-29 (continued) — CSP script-src broke the login page (and every other client page)
+
+PR #75's CI stayed red after the two fixes above: the "Accessibility &
+e2e tests" step timed out waiting for the login form's Email field to
+appear, in Playwright's `globalSetup` (which logs in for real before
+any test runs). Confirmed with `main`'s own CI (passes cleanly,
+including e2e) that this was new to this branch, and reproduced
+identically on two different commits of this branch — ruling out a
+one-off flake.
+
+Root cause: this same pass's new Content-Security-Policy header set
+`script-src 'self'` with no `'unsafe-inline'` exception, believing the
+only inline script in the app (the dark-mode anti-flash snippet) had
+already been moved to a real file (`public/theme-init.js`) specifically
+to make that possible. That reasoning missed something: Next.js's App
+Router itself injects its own inline
+`<script>self.__next_f.push(...)</script>` tags on every single page
+— this is the actual mechanism that streams server-rendered data to
+the client and resolves Suspense boundaries (the login page wraps its
+form in `<Suspense>` because it reads the URL's search params). With
+`script-src` blocking all inline scripts, the browser silently refused
+to run those tags, so the real page content never appeared — it just
+sat on the `<Suspense>` fallback forever. This wasn't limited to the
+login page; it would have affected client-side interactivity fairly
+broadly, login just happened to be the first thing e2e touches.
+
+Next.js's own docs
+(`node_modules/next/dist/docs/01-app/02-guides/content-security-policy.md`,
+"Without Nonces") confirm `'unsafe-inline'` is the expected script-src
+setting for exactly this static (no-nonce) CSP approach — the
+alternative, nonce-based CSP, requires every page to switch to dynamic
+per-request rendering, which is the trade-off this pass deliberately
+avoided to protect the Speed Insights static-generation work. Fixed by
+adding `'unsafe-inline'` to `script-src` (matching what `style-src`
+already had, for the same reason: no nonce infrastructure, so the
+static per-request data these tags carry can't be hash-pinned either).
+
+This is a real, known trade-off, not a workaround: an app that wants a
+strict `script-src` with no `'unsafe-inline'` and no dynamic rendering
+would need Next's experimental Subresource-Integrity CSP support
+instead — explicitly documented as unable to cover per-request dynamic
+inline scripts, which this app has (the RSC payload itself varies by
+request), so it wouldn't actually solve this. `'unsafe-inline'` on
+script-src does weaken this specific defense-in-depth layer against a
+stored-XSS-style attack; the CSP's other directives (locked-down
+`connect-src`/`img-src`/`frame-ancestors`/`object-src`, etc.) still
+hold. Caught before merging, not after a real deploy, because PR #75's
+CI e2e step logs in for real against a built production app — exactly
+the point of that test.
+
+## 2026-09-29 (continued) — Unlabeled address fields on the new-customer form
+
+With the CSP fix above in place, PR #75's CI got past login for the
+first time and ran the full e2e/accessibility suite — which caught a
+real, pre-existing accessibility bug unrelated to this branch's own
+changes: every field in the "Street address" / "Unit / apt" / "City" /
+"State" / "ZIP" group on `/desk/customers/new`
+(`src/app/desk/customers/new/new-customer-form.tsx`) had a `<label>`
+sitting next to its `<input>` with neither wrapped inside the other nor
+connected by a matching `id`/`htmlFor` pair — so a screen reader had no
+way to know which label went with which field. Fixed by giving each
+field in the (possibly-repeated, for property managers with multiple
+addresses) address block a unique `id`/`htmlFor` pair keyed off its
+array index (`address-${index}-line1`, etc.).

@@ -21,7 +21,7 @@ See `.env.example` for the full list with comments. The short version:
 - `STRIPE_SECRET_KEY` / `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` — Stripe test-mode API keys, live as of 2026-09-27 (see docs/DECISIONS.md). See "Payments (Stripe)" below.
 - `STRIPE_WEBHOOK_SECRET` — **set (2026-09-27)**, the test-mode webhook signing secret, registered in the Stripe dashboard and set in Vercel. See "Payments (Stripe)" below.
 - `BLOB_READ_WRITE_TOKEN` — **set (2026-09-28)**, auto-injected by Vercel when the `appliance-desk-photos` Blob store was created and linked to this project. Used only server-side, by `src/app/api/uploads/photo/route.ts`, to mint short-lived upload tokens for every photo-upload button in the app — desk (Settings, jobs, appliance units) and the customer portal (maintenance requests) alike. See "Photo uploads (Vercel Blob)" below.
-- `CRON_SECRET` — **set (2026-09-28)**, a random token set in Vercel and checked by both `/api/cron/billing-reminders` and `/api/cron/job-reminders`. Vercel signs every Cron-triggered request with this same value as a bearer token (`Authorization: Bearer <CRON_SECRET>`), so a request without it is refused — otherwise the URL would be triggerable by anyone who found it. See "Automation rules" below.
+- `CRON_SECRET` — **set (2026-09-28)**, a random token set in Vercel and checked by every `/api/cron/*` route (billing reminders, job reminders, late fees, and the daily backup added 2026-09-29). Vercel signs every Cron-triggered request with this same value as a bearer token (`Authorization: Bearer <CRON_SECRET>`), so a request without it is refused — otherwise the URL would be triggerable by anyone who found it. See "Automation rules" below.
 - `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` — **set (2026-09-28)**, Chris's real Twilio account credentials, used by `src/lib/sms.ts`. `TWILIO_PHONE_NUMBER` is **deliberately not set yet** — Chris can't buy a real Twilio number until his LLC's A2P 10DLC business-texting registration is done (a carrier requirement, not a bug here). Every SMS-sending code path is fully built and wired up regardless; `sendSms` no-ops safely without a phone number configured, so sending turns on with no code change the moment that one env var is added. See "SMS notifications" below.
 - `RESEND_API_KEY` — **set**, a sending-only key created via the Resend MCP connector for the now-verified `robinsonappliancerentals.com` domain.
 - `RESEND_FROM_EMAIL` / `LEAD_NOTIFICATION_EMAIL` / `MAINTENANCE_NOTIFICATION_EMAIL` — **set (2026-09-28, Task #69)**, real `robinsonappliancerentals.com` addresses. See "Email addresses (Google Workspace)" below.
@@ -98,6 +98,16 @@ pre-authorized Vercel Blob for future file uploads (see docs/DECISIONS.md,
   2026-09-28). All save the resulting URL through their own server
   actions — only *how* the URL is produced changed, not where it's
   stored in the database.
+- **Rendering** (changed 2026-09-29, part of the mobile-performance
+  pass): every place a saved photo URL is displayed now goes through
+  `next/image`, not a plain `<img>` — see `next.config.ts`'s
+  `images.remotePatterns` (allow-lists this store's own domain,
+  `*.public.blob.vercel-storage.com`, since that's the only place a
+  photoUrl in this app can ever come from). This is what actually
+  resizes and compresses a multi-megabyte phone photo down to what the
+  page needs and serves it as WebP/AVIF, instead of shipping the
+  original file to every visitor — the direct cause of the poor mobile
+  Speed Insights score investigated that date (docs/DECISIONS.md).
 
 ## Payments (Stripe)
 
@@ -209,6 +219,31 @@ full reasoning.
   docs/BUSINESS-RULES.md's "Consolidated statements, manual payments,
   and automated late fees" for what fee is used and why this never
   attempts a new charge itself.
+- **Daily database backup** (added 2026-09-29, part of a proactive
+  scaling/hardening pass) — a Vercel Cron job (`vercel.json`, once a
+  day at 09:00 UTC) hits `src/app/api/cron/backup/route.ts`, which calls
+  `exportDatabaseBackup()` (`src/domains/backup/index.ts`). Exports
+  every business-critical table (customers, leads, agreements, billing,
+  appliances, notes, audit history — everything except the
+  authentication session tables and the Stripe webhook log, which are
+  ephemeral/regenerable, not business records) to one JSON file and
+  uploads it to the same Vercel Blob store the photos use, under a
+  `backups/` prefix, with **private** access (unlike photos, this file
+  is full customer PII/billing data and must never be publicly
+  reachable by URL). Backups older than 30 days are deleted
+  automatically on every run so storage cost doesn't grow forever. This
+  exists on top of — not instead of — Neon's own built-in point-in-time
+  recovery; Neon's free-tier plan only keeps a 6-hour recovery window,
+  so this is the second, independent copy that reaches further back and
+  isn't tied to Neon's own infrastructure. It's a data export, not a
+  one-click restore: getting data back out means downloading the JSON
+  from Vercel Blob and re-inserting it with a script, which is an
+  acceptable trade for a small business's first line of defense (see
+  docs/ROADMAP.md for a fuller disaster-recovery pass as a possible
+  future project). A healthy day sends no email; if the export itself
+  fails, Chris gets a plain-English alert explaining that today's extra
+  safety copy didn't get made but his actual data is untouched. Same
+  `CRON_SECRET` protection as the other cron routes.
 
 ## SMS notifications
 

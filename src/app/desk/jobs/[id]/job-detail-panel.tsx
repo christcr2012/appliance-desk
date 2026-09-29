@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import {
   updateJobStatusAction,
   addJobPhotoAction,
@@ -366,13 +367,15 @@ export function JobDetailPanel({ job }: { job: JobRow }) {
         ) : (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             {job.photos.map((p) => (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                key={p.id}
-                src={p.url}
-                alt={p.altText ?? "Condition photo"}
-                className="h-32 w-full rounded-lg object-cover"
-              />
+              <div key={p.id} className="relative h-32 w-full overflow-hidden rounded-lg">
+                <Image
+                  src={p.url}
+                  alt={p.altText ?? "Condition photo"}
+                  fill
+                  sizes="(min-width: 640px) 33vw, 45vw"
+                  className="object-cover"
+                />
+              </div>
             ))}
           </div>
         )}
@@ -382,10 +385,11 @@ export function JobDetailPanel({ job }: { job: JobRow }) {
             <span className="block text-sm font-medium text-gray-700">Photo</span>
             <div className="mt-1 flex items-center gap-3">
               {photoUrl && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
+                <Image
                   src={photoUrl}
                   alt="Selected condition photo, not yet added"
+                  width={64}
+                  height={64}
                   className="h-16 w-16 rounded-md object-cover"
                 />
               )}

@@ -14,10 +14,24 @@ export type { ManualPaymentInput, ManualPaymentMethod, ManualPaymentResult } fro
 export { applyLateFees, sendLateFeeDigestToChris } from "./late-fees";
 export type { LateFeeApplication } from "./late-fees";
 
-/** Every invoice, newest first — the desk-wide billing view
- * (/desk/billing). Optionally filtered to just the delinquent ones, for
- * Chris's collections view (docs/ROADMAP.md). */
-export async function getInvoices(filter?: { delinquentOnly?: boolean }) {
+/** Total Invoice count matching the same optional delinquentOnly filter
+ * as getInvoicesPage — used to clamp the page number for
+ * /desk/billing's paginated invoice list. */
+export async function getInvoicesCount(filter?: { delinquentOnly?: boolean }): Promise<number> {
+  return prisma.invoice.count({
+    where: filter?.delinquentOnly ? { status: "DELINQUENT" } : undefined,
+  });
+}
+
+/** Paginated variant of the old getInvoices — every invoice, newest
+ * first, for the desk-wide billing view (/desk/billing). Optionally
+ * filtered to just the delinquent ones, for Chris's collections view
+ * (docs/ROADMAP.md). */
+export async function getInvoicesPage(
+  filter: { delinquentOnly?: boolean } | undefined,
+  skip: number,
+  pageSize: number,
+) {
   return prisma.invoice.findMany({
     where: filter?.delinquentOnly ? { status: "DELINQUENT" } : undefined,
     include: {
@@ -27,6 +41,8 @@ export async function getInvoices(filter?: { delinquentOnly?: boolean }) {
       payments: true,
     },
     orderBy: [{ createdAt: "desc" }],
+    skip,
+    take: pageSize,
   });
 }
 

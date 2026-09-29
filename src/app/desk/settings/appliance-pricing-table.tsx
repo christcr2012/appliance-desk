@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Image from "next/image";
 import {
   updateAppliancePriceAction,
   setApplianceVisibilityAction,
@@ -162,10 +163,11 @@ function ApplianceRow({ row }: { row: ApplianceTypeRow }) {
       <td className="py-3 pr-4">
         <div className="flex items-center gap-2">
           {photoUrl && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <Image
               src={photoUrl}
               alt={`${row.name} photo`}
+              width={40}
+              height={40}
               className="h-10 w-10 rounded-md object-cover"
             />
           )}

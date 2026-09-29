@@ -131,14 +131,25 @@ export async function createLead(input: LeadFormInput) {
 
 const ALL_STATUSES: LeadStatus[] = ["NEW", "CONTACTED", "CONVERTED", "LOST"];
 
-/** All leads, optionally filtered to one status, newest/highest-score first
- * so the leads Chris most needs to act on surface at the top. Used by
- * /desk/leads. */
-export async function getLeads(filter?: { status?: LeadStatus }) {
+/** Total Lead count matching the same optional status filter as getLeads —
+ * used to clamp the page number for /desk/leads's paginated view. See
+ * src/domains/pagination.ts. */
+export async function getLeadsCount(filter?: { status?: LeadStatus }): Promise<number> {
+  return prisma.lead.count({ where: filter?.status ? { status: filter.status } : undefined });
+}
+
+/** Paginated variant of getLeads. */
+export async function getLeadsPage(
+  filter: { status?: LeadStatus } | undefined,
+  skip: number,
+  pageSize: number,
+) {
   return prisma.lead.findMany({
     where: filter?.status ? { status: filter.status } : undefined,
     include: { applianceRequests: { include: { applianceType: true } } },
     orderBy: [{ score: "desc" }, { createdAt: "desc" }],
+    skip,
+    take: pageSize,
   });
 }
 

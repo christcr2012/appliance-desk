@@ -1,6 +1,8 @@
 import Link from "next/link";
-import { getLeads, getLeadCountsByStatus } from "@/domains/leads";
+import { getLeadsPage, getLeadsCount, getLeadCountsByStatus } from "@/domains/leads";
 import type { LeadStatus } from "@prisma/client";
+import { parsePage, paginationMeta } from "@/domains/pagination";
+import { Pagination } from "@/components/pagination";
 
 export const metadata = { title: "Leads" };
 
@@ -19,15 +21,26 @@ function isLeadStatus(value: string | undefined): value is LeadStatus {
 export default async function LeadsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string; page?: string }>;
 }) {
-  const { status: rawStatus } = await searchParams;
+  const { status: rawStatus, page: rawPage } = await searchParams;
   const status = isLeadStatus(rawStatus) ? rawStatus : undefined;
+  const filter = status ? { status } : undefined;
 
-  const [leads, counts] = await Promise.all([
-    getLeads(status ? { status } : undefined),
+  const [totalCount, counts] = await Promise.all([
+    getLeadsCount(filter),
     getLeadCountsByStatus(),
   ]);
+  const meta = paginationMeta(totalCount, parsePage(rawPage));
+  const leads = await getLeadsPage(filter, meta.skip, meta.pageSize);
+
+  function leadsHref(page: number, forStatus: LeadStatus | "ALL" = status ?? "ALL") {
+    const params = new URLSearchParams();
+    if (forStatus !== "ALL") params.set("status", forStatus);
+    if (page > 1) params.set("page", String(page));
+    const qs = params.toString();
+    return qs ? `/desk/leads?${qs}` : "/desk/leads";
+  }
 
   return (
     <div>
@@ -44,7 +57,7 @@ export default async function LeadsPage({
           return (
             <Link
               key={tab.value}
-              href={tab.value === "ALL" ? "/desk/leads" : `/desk/leads?status=${tab.value}`}
+              href={leadsHref(1, tab.value)}
               aria-current={active ? "page" : undefined}
               className={`rounded-full border px-3 py-1 text-sm ${
                 active
@@ -98,6 +111,13 @@ export default async function LeadsPage({
           ))}
         </ul>
       )}
+
+      <Pagination
+        page={meta.page}
+        totalPages={meta.totalPages}
+        totalCount={meta.totalCount}
+        buildHref={(p) => leadsHref(p)}
+      />
     </div>
   );
 }

@@ -3,7 +3,6 @@ import { Inter, Fraunces } from "next/font/google";
 import Script from "next/script";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { getBusinessSettings } from "@/domains/settings";
-import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import "./globals.css";
 
 // Font pairing for the "modern but warm/personal" brief: Fraunces is a
@@ -83,10 +82,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         {/* Sets the .dark class (Chris's dark mode, 2026-09-27) before
             the page paints, so there's no flash of the wrong theme
             while the rest of the app loads. beforeInteractive runs this
-            as early as Next.js allows — see src/lib/theme.ts. */}
-        <Script id="theme-init" strategy="beforeInteractive">
-          {THEME_INIT_SCRIPT}
-        </Script>
+            as early as Next.js allows — see src/lib/theme.ts. Served
+            from a real static file (public/theme-init.js) rather than
+            inlined, so the Content-Security-Policy header (2026-09-29)
+            can lock script-src down to 'self' with no exceptions — see
+            that file's own comment for why. */}
+        <Script src="/theme-init.js" strategy="beforeInteractive" />
         <a href="#main-content" className="skip-link">
           Skip to main content
         </a>

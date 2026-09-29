@@ -1,3 +1,5 @@
+import Image from "next/image";
+
 /**
  * Simple generic line-art illustrations — not photos of any real product,
  * brand, or model. This is the fallback shown for any appliance type that
@@ -25,6 +27,17 @@ export function ApplianceIcon({ className = "" }: { className?: string }) {
  * /desk/settings), otherwise falls back to the generic icon. This is
  * what pricing/home pages should use instead of <ApplianceIcon> directly
  * — see docs/ROADMAP.md for swapping in real photos.
+ *
+ * Uses next/image (added 2026-09-29, part of the mobile-performance pass
+ * — docs/DECISIONS.md), not a plain <img>: every photoUrl here comes
+ * from src/components/photo-upload-field.tsx, which always uploads to
+ * this app's own Vercel Blob store (now allow-listed in
+ * next.config.ts's images.remotePatterns), so it's always safe to
+ * optimize. This is what actually shrinks the file that ships to a
+ * phone — a same real photo Chris uploads straight from his camera can
+ * be several megabytes; next/image resizes it to what the layout needs
+ * and serves it as WebP/AVIF automatically, and only loads it once it's
+ * about to scroll into view instead of eagerly on every page load.
  */
 export function ApplianceMedia({
   photoUrl,
@@ -39,13 +52,15 @@ export function ApplianceMedia({
 }) {
   if (photoUrl) {
     return (
-      // External, owner-supplied URL of arbitrary origin — see docs/DECISIONS.md.
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={photoUrl}
-        alt={`A basic ${name.toLowerCase()} — the unit you receive may vary in brand, model, and color`}
-        className={className}
-      />
+      <div className={`relative overflow-hidden ${className}`}>
+        <Image
+          src={photoUrl}
+          alt={`A basic ${name.toLowerCase()} — the unit you receive may vary in brand, model, and color`}
+          fill
+          sizes="(min-width: 1024px) 320px, (min-width: 640px) 45vw, 90vw"
+          className="object-cover"
+        />
+      </div>
     );
   }
   return <ApplianceIcon className={iconClassName || className} />;

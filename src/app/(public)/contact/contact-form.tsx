@@ -85,16 +85,12 @@ export function ContactForm({
           see leadFormSchema's "website" field and submitLead's check.
           Not `display: none`, which some bots skip, but positioned
           off-screen so it's genuinely never seen or focused. */}
-      <div
-        aria-hidden="true"
-        style={{
-          position: "absolute",
-          left: "-9999px",
-          width: 1,
-          height: 1,
-          overflow: "hidden",
-        }}
-      >
+      {/* Static values only (no per-render data), so this is a plain
+          Tailwind class instead of an inline `style` — added 2026-09-29
+          alongside the new Content-Security-Policy header, which
+          restricts inline styles; every avoidable one that's removed
+          keeps that policy stricter. */}
+      <div aria-hidden="true" className="absolute -left-[9999px] h-px w-px overflow-hidden">
         <label htmlFor={`${formId}-website`}>Leave this field blank</label>
         <input
           id={`${formId}-website`}

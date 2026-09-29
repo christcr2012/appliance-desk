@@ -53,7 +53,23 @@ export function canTransitionAgreementStatus(
   };
 }
 
-export async function getAgreements(filter?: { status?: RentalAgreementStatus }) {
+/** Total RentalAgreement count matching the same optional status filter
+ * as getAgreementsPage — used to clamp the page number for
+ * /desk/agreements's paginated view. */
+export async function getAgreementsCount(filter?: {
+  status?: RentalAgreementStatus;
+}): Promise<number> {
+  return prisma.rentalAgreement.count({
+    where: filter?.status ? { status: filter.status } : undefined,
+  });
+}
+
+/** Paginated variant of the old getAgreements. */
+export async function getAgreementsPage(
+  filter: { status?: RentalAgreementStatus } | undefined,
+  skip: number,
+  pageSize: number,
+) {
   return prisma.rentalAgreement.findMany({
     where: filter?.status ? { status: filter.status } : undefined,
     include: {
@@ -62,6 +78,8 @@ export async function getAgreements(filter?: { status?: RentalAgreementStatus })
       lines: true,
     },
     orderBy: [{ createdAt: "desc" }],
+    skip,
+    take: pageSize,
   });
 }
 
