@@ -156,6 +156,29 @@ describe("processStripeWebhookEvent — checkout.session.completed for an estima
 
 describe("convertEstimateToAgreements — applying an already-collected deposit", () => {
   it("creates a Deposit on the resulting agreement instead of leaving it to be charged again at signing, for a single-agreement conversion", async () => {
+    // convertEstimateToAgreements only accepts an APPROVED estimate with
+    // at least one line item — this fixture was only ever SENT (the
+    // earlier describe block above tests the deposit *payment*, not
+    // approval), so bring it to the state a real approved-and-paid
+    // estimate would actually be in before converting it, same as
+    // approveEstimate would.
+    await prisma.estimateLineItem.create({
+      data: {
+        estimateId,
+        description: "Washer/dryer set",
+        monthlyPriceCents: 6000,
+      },
+    });
+    await prisma.estimate.update({
+      where: { id: estimateId },
+      data: {
+        status: "APPROVED",
+        approvedAt: new Date(),
+        approverName: "Test Approver",
+        approverEmail: "approver@example.test",
+      },
+    });
+
     const agreementIds = await convertEstimateToAgreements(staffUserId, estimateId, {
       mode: "single",
       serviceAddressId,
