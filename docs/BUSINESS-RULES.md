@@ -143,14 +143,19 @@ instead of Chris having to cross-reference three flat lists), and a
 customer who already exists (previously a direct database edit — see
 `src/domains/customers`'s `addServiceAddress`).
 
-**Still open** (tracked in `docs/ROADMAP.md`, not built yet): the
-customer portal's own "All properties" selector (the rollup above is
-desk-side only — a property manager logged into their own portal
-still can't see or switch between their properties there), and formal
-consolidated B2B invoicing across a property manager's multiple
-agreements (today each `RentalAgreement` still bills independently
-through its own Stripe subscription, so a property manager gets one
-charge per property rather than one combined statement).
+Built (2026-09-28, Task #72): consolidated statements and manual
+payments — see "Billing: consolidated statements, manual payments, and
+automated late fees" below for the full writeup. In short: every
+property manager customer now has one combined statement
+(`/desk/billing/customer/[id]` in the desk, and `/account/billing`
+itself once a customer has more than one property) showing every
+property's invoices and a running balance, and Chris can record one
+payment (a check, cash, a bank transfer) that spreads across several
+properties' open invoices at once — the actual scenario a "combined
+invoice" request usually means in practice. **Each `RentalAgreement`
+still bills independently through its own Stripe subscription** — see
+that section for why combining the underlying Stripe charges
+themselves was deliberately not attempted.
 
 Lease term (month-to-month / 6-month / 12-month), billing cadence, and
 prepayment are already three separate concepts, not one — see the
@@ -601,6 +606,61 @@ customer.
   `docs/ARCHITECTURE.md`'s Payments section; card payments work fine
   in the meantime either way, this only affects ACH deposit
   confirmation until he updates it.
+
+### Consolidated statements, manual payments, and automated late fees (2026-09-28, Task #72)
+
+Built in response to "formal B2B invoicing for property managers" —
+see `docs/DECISIONS.md`'s dated entry for the full reasoning behind
+what was and wasn't built.
+
+- **Each `RentalAgreement` still bills independently** through its own
+  Stripe Subscription. Combining several agreements' actual Stripe
+  charges into one transaction was deliberately not attempted — it
+  would mean redesigning how proration, partial payments, and failed
+  charges work across a bundle of subscriptions, a change to core
+  payment correctness with no real property-manager customer yet to
+  validate the design against (`AGENTS.md`'s "don't add abstractions
+  in case").
+- **What's new is a consolidated view and a way to collect one payment
+  across several properties at once** — the part of "one combined
+  invoice" a property manager actually needs day to day:
+  - `/desk/billing/customer/[id]` — one customer's whole billing
+    picture, grouped by property, with a running balance
+    (`src/domains/billing/statements.ts`). `/desk/billing`'s new "By
+    customer (statements)" view lists every customer with an open
+    balance, largest first.
+  - `/account/billing` groups a customer's own invoices by property
+    the same way, once they have more than one — this is what answers
+    the "customer portal's own 'All properties' selector" gap: seeing
+    every property's balance in one place turned out to serve a
+    property manager better than a dropdown that hides all but one.
+  - **Recording a payment** (`/desk/billing/customer/[id]`'s "Record a
+    payment" form) is for money that moved outside Stripe — a check,
+    cash, or a bank transfer Chris confirmed himself. With no specific
+    invoice picked, the amount spreads across that customer's open
+    invoices oldest-due-first — the "one check covers three
+    properties" case. Any amount left over once everything's paid
+    becomes a `CustomerCredit` (the same model referral rewards
+    already use), never silently dropped. This never calls the Stripe
+    API — it's purely catching our own ledger up to money that already
+    changed hands another way (`src/domains/billing/manual-payments.ts`).
+  - **Writing off an invoice** — for a dispute Chris isn't going to
+    win or a debt he's decided to stop chasing. Sets `Invoice.status`
+    to `WRITTEN_OFF` (already in the schema, unused before this) with
+    a required reason, which is never treated as "paid."
+- **Automated late fees** (docs/ROADMAP.md's "Deliberately deferred
+  within Phase 6B," built now): a once-daily check
+  (`src/app/api/cron/late-fees`) finds any invoice past its
+  agreement's own grace period with no fee applied yet, and adds
+  whichever of that agreement's flat `lateFeeCents` or `lateFeePercent`
+  (of the outstanding balance) is larger — the exact fee already
+  disclosed to that customer at signing, never a business-wide default
+  that could have changed since. It never attempts a new charge itself
+  (Stripe already retries a failed payment on its own schedule) — it
+  only adds to what's owed, which then already shows up correctly on
+  the existing past-due exception and on the invoice's own statement.
+  Chris gets a same-day digest email if any fees were applied; nothing
+  is sent on a quiet day.
 
 ## Cross-cutting desk tools (2026-09-28)
 

@@ -72,9 +72,14 @@ building later? Open their customer page and, in the **Properties**
 section, click **+ Add property**. Each property shows its own
 agreements, jobs, and active monthly total, so you can see at a
 glance what's happening at each address instead of hunting through
-one long list. (Rental billing still runs per property, one charge
-per agreement — there's no combined, single invoice across a
-property manager's whole portfolio yet.)
+one long list.
+
+Rental billing still runs per property, one charge per agreement —
+there's no combined, single Stripe charge across a property manager's
+whole portfolio. But you can see and settle everything they owe, across
+every property, in one place: click **View statement** on their
+customer page (or **Billing → Statements**). See "Billing, statements,
+and late fees" below.
 
 ## Scheduling delivery, installation, and other visits
 
@@ -120,6 +125,44 @@ already signed.
 Also in **Settings** — add or retire an appliance type (e.g. a new
 category beyond washers/dryers) yourself, with its own photo and
 pricing, without needing a developer.
+
+## Billing, statements, and late fees
+
+Most rent still gets charged and collected automatically through
+Stripe, agreement by agreement. This section covers the tools around
+that — for a customer with several properties, for money that comes in
+outside Stripe, and for invoices that go unpaid too long.
+
+**Viewing everything a customer owes.** Go to a customer's page and
+click **View statement** (or **Billing → Statements** to see every
+customer with an open balance, worst first). The statement groups every
+invoice by property, so a property manager's whole portfolio is on one
+screen instead of scattered across separate agreements — with a
+downloadable CSV you can email them or hand to a bookkeeper.
+
+**Recording a payment that didn't come through Stripe.** A check, cash,
+or a bank transfer someone confirmed with you directly — click
+**+ Record payment** on the statement page, enter the amount and method.
+Leave "Apply to" on "All open invoices, oldest first" and it spreads the
+payment across everything owed, oldest invoice first — the "one check
+covers three properties" case. Pick a specific invoice instead if the
+payment is only for that one. If someone pays more than they currently
+owe, the extra is kept as a credit on their account rather than lost.
+
+**Writing off an invoice.** If an invoice is uncollectible — a tenant
+skipped out, a dispute you're settling some other way — open the
+statement page and click **Write off** next to that invoice, with a
+short reason. It's marked written off (not paid, not deleted) so your
+records stay honest.
+
+**Late fees.** Once a day, the system checks every open invoice against
+that agreement's own late-fee terms (set when the agreement was signed —
+a flat dollar amount, a percentage, or both, after however many grace
+days you agreed to). If a bill has genuinely gone past its grace period,
+it adds the fee automatically and emails you a same-day summary of what
+was added and to whom. It never charges anyone's card by itself — it
+only adds the fee to what they owe, the same as any other automatic
+step in this app never takes payment on its own decision.
 
 ## Reading the dashboard
 

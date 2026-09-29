@@ -878,6 +878,17 @@ model Payment {
   stripePaymentIntentId String?
   failureReason String?
 
+  // A payment Chris recorded by hand (a check, cash, or a bank transfer
+  // he confirmed himself) rather than one Stripe reported through a
+  // webhook — see src/domains/billing/manual-payments.ts. Both null on
+  // every Stripe-sourced Payment (the only kind that existed before
+  // this); recordedByUserId being set is what distinguishes a manual
+  // payment from a Stripe one, not the method string (Stripe payments
+  // use "card"/"ach"; manual ones use "check"/"cash"/"bank_transfer"/
+  // "other").
+  notes String?
+  recordedByUserId String?
+
   createdAt DateTime @default(now())
 }
 

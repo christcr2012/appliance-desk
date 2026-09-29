@@ -25,6 +25,7 @@ See `.env.example` for the full list with comments. The short version:
 - `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` — **set (2026-09-28)**, Chris's real Twilio account credentials, used by `src/lib/sms.ts`. `TWILIO_PHONE_NUMBER` is **deliberately not set yet** — Chris can't buy a real Twilio number until his LLC's A2P 10DLC business-texting registration is done (a carrier requirement, not a bug here). Every SMS-sending code path is fully built and wired up regardless; `sendSms` no-ops safely without a phone number configured, so sending turns on with no code change the moment that one env var is added. See "SMS notifications" below.
 - `RESEND_API_KEY` — **set**, a sending-only key created via the Resend MCP connector for the now-verified `robinsonappliancerentals.com` domain.
 - `RESEND_FROM_EMAIL` / `LEAD_NOTIFICATION_EMAIL` / `MAINTENANCE_NOTIFICATION_EMAIL` — **set (2026-09-28, Task #69)**, real `robinsonappliancerentals.com` addresses. See "Email addresses (Google Workspace)" below.
+- `BILLING_NOTIFICATION_EMAIL` — **set (2026-09-28, Task #72)**, `billing@robinsonappliancerentals.com` (an alias reserved since Task #69 but unused until now). Where the automated-late-fee digest email goes — see docs/BUSINESS-RULES.md's "Consolidated statements, manual payments, and automated late fees."
 - Everything else (SignWell/Documenso/DocuSign) is added in later phases, only when that phase needs it.
 
 All of these are stored as **Vercel environment variables** (per environment: Production / Preview / Development). Nothing secret is ever committed. Local development uses `.env.local` (gitignored).
@@ -198,6 +199,16 @@ full reasoning.
   (`AGREEMENT_TERM_EXPIRED`), and a currently-rented appliance with
   no logged maintenance visit in 180+ days
   (`APPLIANCE_MAINTENANCE_DUE`).
+- **Automated late fees** (added 2026-09-28, Task #72) — a Vercel Cron
+  job (`vercel.json`, once a day at 15:00 UTC, after billing reminders)
+  hits `src/app/api/cron/late-fees/route.ts`, which calls
+  `applyLateFees()` (`src/domains/billing/late-fees.ts`). Finds every
+  invoice past its agreement's own grace period with no fee applied
+  yet, adds the fee, and emails Chris a digest if anything was applied.
+  Same `CRON_SECRET` protection as the other two cron routes. See
+  docs/BUSINESS-RULES.md's "Consolidated statements, manual payments,
+  and automated late fees" for what fee is used and why this never
+  attempts a new charge itself.
 
 ## SMS notifications
 

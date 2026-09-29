@@ -50,12 +50,17 @@ on — never built unasked.
 
 ## Deliberately deferred within Phase 6B (not an oversight)
 
-- **Automated late fees / dunning** beyond what Stripe's own automatic
+- ~~**Automated late fees / dunning** beyond what Stripe's own automatic
   payment retries already do. `invoice.payment_failed` is recorded
   (shows up as a DELINQUENT invoice at `/desk/billing`), but nothing
   automatically charges a late fee or escalates — that needs its own
   design (how many retries, what fee, when to involve Chris) rather
-  than a bolt-on to this PR.
+  than a bolt-on to this PR.~~ — **done (2026-09-28, Task #72)**. A
+  daily cron adds the agreement's own disclosed late fee once its grace
+  period passes; it never attempts a new charge itself (Stripe already
+  retries on its own schedule), and Chris gets a same-day digest. See
+  docs/BUSINESS-RULES.md's "Consolidated statements, manual payments,
+  and automated late fees."
 
 ## Suggestions (not scoped into any phase — Chris should decide)
 
@@ -79,7 +84,7 @@ on — never built unasked.
     purpose), and the brief's non-color IA/layout ideas, which haven't
     been evaluated against what the in-house review's PR #39 already
     changed.
-  - **Property managers / portfolio accounts: in progress** — Chris
+  - **Property managers / portfolio accounts: done** — Chris
     said yes, build it. Turned out to need much less than a "new
     business line" — the data model already supported multiple
     properties per customer (`Customer.serviceAddresses`) and already
@@ -89,10 +94,14 @@ on — never built unasked.
     built (2026-09-28): the customer detail page's "Properties" panel
     — a per-property rollup of agreements/jobs/$ plus a way to add a
     property to a customer who already exists, both previously
-    missing. See `docs/BUSINESS-RULES.md`'s "Property managers /
-    portfolio accounts" section for exactly what's built vs. still
-    open (the customer portal's own "All properties" selector,
-    consolidated multi-property invoicing).
+    missing. Third slice built (2026-09-28, Task #72): consolidated
+    statements (desk + portal) and manual payments spanning several
+    properties — see `docs/BUSINESS-RULES.md`'s "Property managers /
+    portfolio accounts" section for exactly what's built. **Still
+    open, and deliberately not attempted**: combining several
+    agreements' actual Stripe charges into one transaction (each
+    property still bills independently) — a real design/risk question,
+    not a UI gap, left for if Chris ever needs it.
   - Not started: the 6/12-month-lease framing already exists as the
     prepaid-term discount (see "Pricing" in `docs/BUSINESS-RULES.md`)
     — the brief's owner-desk dashboard/nav rebuild and customer-portal
@@ -148,10 +157,14 @@ on — never built unasked.
   (`/desk/inventory/[id]/qr` + `/scan/[assetNumber]`), appliance-level
   profitability/ROI (`/desk/inventory/[id]`'s profitability panel,
   `/desk/fleet`), an MRR/ARR financial dashboard (`/desk/revenue`), and
-  fleet-wide utilization analytics (`/desk/fleet`). **Still open**:
-  formal B2B invoicing for property managers (today's property-manager
-  support is account/address structure, not consolidated multi-property
-  billing) — not picked yet.
+  fleet-wide utilization analytics (`/desk/fleet`). Its fifth idea,
+  formal B2B invoicing for property managers, is **done as a
+  consolidated statement + manual-payment system (2026-09-28, Task
+  #72)** — see docs/BUSINESS-RULES.md's "Consolidated statements,
+  manual payments, and automated late fees" for exactly what that
+  means (each property still bills independently through Stripe; what
+  changed is the combined view and the ability to record one payment
+  across several properties).
 - **A second, more architectural review (ChatGPT "Astra"), 2026-09-27**
   — saved verbatim at
   `docs/reviews/2026-09-27-astra-operations-review.md`, assessed in
