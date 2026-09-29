@@ -91,6 +91,13 @@ afterAll(async () => {
   await prisma.estimate.deleteMany({ where: { customerId } });
   await prisma.serviceAddress.delete({ where: { id: serviceAddressId } });
   await prisma.customer.delete({ where: { id: customerId } });
+  // convertEstimateToAgreements (via createDraftAgreement) logs an
+  // AuditLog row against staffUserId — clean those up before deleting
+  // the users themselves, same pattern as tests/billing-webhooks.test.ts
+  // and tests/customer-isolation.test.ts (AuditLog.userId has no
+  // cascade/set-null at the database level, so deleting a User with
+  // AuditLog rows still pointing at it fails a foreign key check).
+  await prisma.auditLog.deleteMany({ where: { userId: { in: [userId, staffUserId] } } });
   await prisma.user.delete({ where: { id: userId } });
   await prisma.user.delete({ where: { id: staffUserId } });
 });
