@@ -18,12 +18,25 @@ export function ResendActivationButton({ customerId }: { customerId: string }) {
         disabled={isPending}
         onClick={() =>
           startTransition(async () => {
-            const result = await resendActivationEmailAction(customerId);
-            setMessage(
-              result.status === "sent"
-                ? { kind: "sent" }
-                : { kind: "error", text: result.message },
-            );
+            // Belt-and-suspenders alongside the server action's own
+            // try/catch (2026-09-29, Chris reported this button
+            // "wasn't sending the email either" with no error showing)
+            // — if the request itself fails (a network hiccup, the
+            // server restarting mid-deploy), this still shows
+            // something instead of the button just going quiet.
+            try {
+              const result = await resendActivationEmailAction(customerId);
+              setMessage(
+                result.status === "sent"
+                  ? { kind: "sent" }
+                  : { kind: "error", text: result.message },
+              );
+            } catch {
+              setMessage({
+                kind: "error",
+                text: "Something went wrong sending that — try again in a moment.",
+              });
+            }
           })
         }
         className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:border-gray-400 disabled:opacity-50"
