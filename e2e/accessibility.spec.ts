@@ -107,3 +107,40 @@ test("mobile hamburger menu opens and closes with keyboard and mouse", async ({
   await expect(page.getByRole("button", { name: "Open menu" })).toBeVisible();
   await expect(mobileNav).toBeHidden();
 });
+
+test("mobile menu reopens normally after being scrolled past while closed", async ({
+  page,
+}) => {
+  // Regression test for Chris's 2026-09-29 report: on his phone (iOS —
+  // Chrome, Opera and DuckDuckGo there all share Safari's engine, which
+  // is why all three showed the same bug), open the menu, close it,
+  // scroll down a little, then reopen it — it closed itself again
+  // instantly. See the matching comment in src/components/site/header.tsx
+  // for the root cause (a trailing `scroll` event from momentum/address-
+  // bar settling landing right as the menu reopens).
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+
+  const openToggle = page.getByRole("button", { name: "Open menu" });
+  const mobileNav = page.locator("#mobile-menu");
+
+  // Open, then close — same as any ordinary use of the menu.
+  await openToggle.click();
+  await expect(mobileNav).toBeVisible();
+  await page.getByRole("button", { name: "Close menu" }).click();
+  await expect(mobileNav).toBeHidden();
+
+  // Scroll the page down while the menu is closed (nothing should be
+  // listening at this point), then reopen it.
+  await page.mouse.wheel(0, 300);
+  await expect
+    .poll(() => page.evaluate(() => window.scrollY))
+    .toBeGreaterThan(0);
+  await openToggle.click();
+
+  // It should stay open — not slam shut from a trailing scroll event
+  // fired around the same time as the reopening tap.
+  await expect(mobileNav).toBeVisible();
+  await page.waitForTimeout(300);
+  await expect(mobileNav).toBeVisible();
+});

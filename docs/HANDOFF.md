@@ -1406,3 +1406,45 @@ all updated.
 beyond what's listed above. Neon plan upgrade (for a protected `main`
 branch) and buying a real Twilio phone number both remain flagged to
 Chris — both cost money, per `AGENTS.md` they need his OK, not mine.
+
+## 2026-09-29 — Mobile menu: a third cause of the same "closes itself" bug
+
+Chris reported (verbatim, after the 2026-09-29 overflow-anchor fix that
+had already shipped that same morning as PR #72): "I was using phone
+browser, went to the web site's landing page, opened the menu, closed
+it, scrolled down the page a little bit, and tried to open the menu
+again, tried this in Chrome, Opera, and DuckDuckGo with same results."
+
+- [x] **Root cause**: on iOS, Apple requires every browser to use
+      Safari's underlying engine — so Chris seeing identical behavior in
+      three "different" browsers was really one engine, not three
+      separate bugs to chase. That engine keeps sending real `scroll`
+      events on `window` for a little while after a finger lifts
+      (momentum/deceleration settling, and the address bar collapsing
+      as the page scrolls) — so a scroll that already finished can still
+      fire a trailing `scroll` event right as the very next tap
+      (reopening the menu) lands. The existing "close the menu if the
+      page scrolls" listener couldn't tell that apart from a real scroll
+      and closed the menu instantly — a different mechanism than the
+      scroll-anchoring bug fixed that same morning, so that earlier fix
+      didn't touch this one.
+      Fixed in both `src/components/site/header.tsx` and
+      `src/components/authed-header.tsx`: the scroll listener now
+      ignores scroll events for a brief moment right after the menu
+      opens (long enough for any already-in-flight settling to finish),
+      and only closes the menu for a scroll that actually moves the page
+      a real amount, not a sub-pixel settling nudge.
+- [x] Added a Playwright regression test
+      (`e2e/accessibility.spec.ts`, "mobile menu reopens normally after
+      being scrolled past while closed") reproducing Chris's exact
+      steps — open, close, scroll, reopen — and asserting the menu
+      stays open. **Not run locally**: this sandbox can't reach Google
+      Fonts, so `next build` (which Playwright's `npm run start` needs)
+      fails here the same way `prisma generate` does — a sandbox network
+      limitation, not a bug (see `AGENTS.md`). CI has normal internet
+      access and is the real gate, same as every other test in this
+      project.
+      `npm run typecheck` and `npx eslint` both pass clean on the
+      changed files (the only typecheck errors present are the existing,
+      documented Prisma-client-generation sandbox limitation, unrelated
+      to this change).
