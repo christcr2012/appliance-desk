@@ -10,10 +10,21 @@ import {
 } from "../actions";
 import type { LeadStatus } from "@prisma/client";
 
-const NEXT_STATUSES: { value: "NEW" | "CONTACTED" | "LOST"; label: string }[] = [
+const NEXT_STATUSES: { value: "NEW" | "CONTACTED"; label: string }[] = [
   { value: "NEW", label: "Mark as New" },
   { value: "CONTACTED", label: "Mark as Contacted" },
-  { value: "LOST", label: "Mark as Lost" },
+];
+
+// A short pick-list of common reasons a lead goes LOST (2026-09-29,
+// Chris's CRM brainstorm — see docs/DECISIONS.md) — "Other" always lets
+// staff type something not on the list; nothing here constrains what's
+// actually stored (Lead.lostReason is free text).
+const LOST_REASONS = [
+  "Too expensive",
+  "Went with a competitor",
+  "Outside our service area",
+  "Never heard back after contacting them",
+  "Changed their mind / no longer needed",
 ];
 
 export function LeadActionsPanel({
@@ -27,6 +38,9 @@ export function LeadActionsPanel({
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [showLostForm, setShowLostForm] = useState(false);
+  const [lostReason, setLostReason] = useState("");
+  const [lostReasonOther, setLostReasonOther] = useState("");
   const [message, setMessage] = useState<
     | { kind: "error"; text: string }
     | {
@@ -82,6 +96,17 @@ export function LeadActionsPanel({
           </button>
         ))}
 
+        {status !== "LOST" && (
+          <button
+            type="button"
+            disabled={isPending}
+            onClick={() => setShowLostForm((v) => !v)}
+            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:border-gray-400 disabled:opacity-50"
+          >
+            {showLostForm ? "Cancel" : "Mark as Lost"}
+          </button>
+        )}
+
         <button
           type="button"
           disabled={isPending || !hasEmail}
@@ -101,6 +126,62 @@ export function LeadActionsPanel({
           Convert to customer
         </button>
       </div>
+
+      {showLostForm && (
+        <div className="rounded-md border border-gray-200 p-3">
+          <p className="text-sm font-medium text-gray-700">Why was this lead lost?</p>
+          <div className="mt-2 space-y-1.5">
+            {LOST_REASONS.map((reason) => (
+              <label key={reason} className="flex items-center gap-2 text-sm text-gray-700">
+                <input
+                  type="radio"
+                  name="lost-reason"
+                  checked={lostReason === reason}
+                  onChange={() => setLostReason(reason)}
+                />
+                {reason}
+              </label>
+            ))}
+            <label className="flex items-center gap-2 text-sm text-gray-700">
+              <input
+                type="radio"
+                name="lost-reason"
+                checked={lostReason === "other"}
+                onChange={() => setLostReason("other")}
+              />
+              Other
+            </label>
+            {lostReason === "other" && (
+              <input
+                type="text"
+                value={lostReasonOther}
+                onChange={(e) => setLostReasonOther(e.target.value)}
+                placeholder="What happened?"
+                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+              />
+            )}
+          </div>
+          <button
+            type="button"
+            disabled={isPending || !lostReason || (lostReason === "other" && !lostReasonOther.trim())}
+            onClick={() =>
+              startTransition(async () => {
+                const reason = lostReason === "other" ? lostReasonOther.trim() : lostReason;
+                const result = await updateLeadStatusAction(leadId, "LOST", reason);
+                handleResult(result);
+                if (result.status !== "error") {
+                  setShowLostForm(false);
+                  setLostReason("");
+                  setLostReasonOther("");
+                }
+              })
+            }
+            className="mt-3 rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+          >
+            Mark as Lost
+          </button>
+        </div>
+      )}
 
       {!hasEmail && (
         <p className="text-sm text-amber-700">

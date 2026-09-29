@@ -3,7 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireRole } from "@/lib/session";
-import { updateLeadStatus, convertLeadToCustomer, createLeadManually } from "@/domains/leads";
+import {
+  updateLeadStatus,
+  convertLeadToCustomer,
+  createLeadManually,
+  addLeadNote,
+} from "@/domains/leads";
 import type { LeadStatus } from "@prisma/client";
 
 export type LeadActionState =
@@ -26,6 +31,7 @@ const NON_CONVERTED_STATUSES: Exclude<LeadStatus, "CONVERTED">[] = [
 export async function updateLeadStatusAction(
   leadId: string,
   status: string,
+  lostReason?: string,
 ): Promise<LeadActionState> {
   const session = await requireRole("OWNER", "ADMIN");
 
@@ -40,6 +46,7 @@ export async function updateLeadStatusAction(
       session.user.id,
       leadId,
       status as Exclude<LeadStatus, "CONVERTED">,
+      lostReason,
     );
   } catch (error) {
     return {
@@ -137,4 +144,23 @@ export async function convertLeadAction(
         error instanceof Error ? error.message : "Couldn't convert that lead.",
     };
   }
+}
+
+export async function addLeadNoteAction(
+  leadId: string,
+  body: string,
+): Promise<{ status: "success" } | { status: "error"; message: string }> {
+  const session = await requireRole("OWNER", "ADMIN");
+
+  try {
+    await addLeadNote(leadId, session.user.id, body);
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Couldn't save that note.",
+    };
+  }
+
+  revalidatePath(`/desk/leads/${leadId}`);
+  return { status: "success" };
 }

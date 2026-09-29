@@ -11,6 +11,7 @@ export const metadata = {
 // Links every OWNER/ADMIN/STAFF login sees.
 const OPERATIONAL_LINKS: AuthedNavLink[] = [
   { href: "/desk/today", label: "Today" },
+  { href: "/desk/tasks", label: "Tasks" },
   { href: "/desk/driver", label: "Driver view" },
   { href: "/desk/leads", label: "Leads" },
   { href: "/desk/customers", label: "Customers" },

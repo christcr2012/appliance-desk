@@ -203,9 +203,11 @@ on — never built unasked.
   job reminder text) is wired up and ready. **Real business email is
   done (2026-09-28, Task #69)** — see above. **An accounting export is
   done (2026-09-28, Task #73)** — a generic transactions CSV at
-  `/desk/reports/export`, see `docs/DECISIONS.md`. **Still open**: a
-  separate Contacts concept (idea #13) — not picked up yet, lower
-  priority.
+  `/desk/reports/export`, see `docs/DECISIONS.md`. ~~Still open: a
+  separate Contacts concept (idea #13)~~ — **this note was stale**: it
+  was actually built the very same day, as `CustomerContact` in the
+  "Customer workspace: notes, contacts, activity timeline" entry, just
+  never crossed off here. Confirmed still working 2026-09-29.
 - **A third Astra review ("upgrade to a connected workspace"),
   2026-09-27** — saved verbatim at
   `docs/reviews/2026-09-27-astra-workspace-review.md`, fact-checked in
@@ -444,69 +446,41 @@ is already built here.
   integration — both solve a materials-markup/big-ticket-financing
   problem Chris's flat-monthly-rental pricing model doesn't have.
 
-## Managing the business more fully — brainstorm requested 2026-09-29 (not built)
+## Managing the business more fully — CRM brainstorm, 2026-09-29 — done
 
 Chris's own words, right after flagging the lead/estimate gap fixed in
 the entry above: *"I don't even know what other things I should be
 thinking of... this is supposed to be a very robust system, and I feel
 like in a lot of ways it's very basic — as far as managing my business
-from this system."* Per `AGENTS.md`'s "add it to the roadmap, don't
-build it unasked" rule, none of this is built — it's a genuine list to
-decide from, grouped by how much of the plumbing already exists versus
-what would be new work. Two big, already-identified pieces of this
-same question are tracked elsewhere and repeated here just so they're
-not missed in a "what's left" read of this file: a separate
-**Contacts concept** (a property manager's tenants, billing contacts,
-and decision-makers as distinct from the one `Customer` record — idea
-#13 in the 2026-09-27 business-growth ideas entry above, still open),
-and **purchasing/supplies** (purchase orders, receiving, supplier
-records, and reorder thresholds on top of the existing `PartRecord`
-catalog — from the Astra operations review above, still open).
-
-Genuinely new, surfaced while building the lead/estimate fix:
+from this system."* Six ideas were put in front of him; he said to
+build all six in. Three turned out to already exist (see below) —
+**everything is done as of 2026-09-29**, see `docs/DECISIONS.md`'s "CRM
+buildout" entry for the full technical writeup and
+`docs/BUSINESS-RULES.md`'s matching section for the plain-English rule.
 
 - **A real contact/communication history per lead and customer.**
-  Today a `Lead` has exactly one flat `notes` text field, and a
-  `Customer` has none at all — there's no record of "called Tuesday,
-  no answer," "emailed the estimate again," "asked for a callback
-  Friday." A CRM's core value is usually this log, not the contact
-  record itself. Would need a small new model (something like
-  `ContactLogEntry`: who, when, what, on which lead or customer) and a
-  simple form/list on the lead and customer detail pages — no schema
-  changes to anything existing.
-- **A reason when a lead goes `LOST`.** `LeadStatus` already has
-  `LOST`, but nothing captures *why* — too expensive, went with a
-  competitor, wrong service area, unresponsive after N attempts. Right
-  now that information, if it exists at all, only lives in Chris's own
-  memory or the one flat `notes` field. A small required-reason prompt
-  when marking a lead lost (plus a handful of standard reasons to pick
-  from, "other" with free text) would make win/loss patterns visible
-  over time instead of invisible.
-- **Lead-source ROI reporting.** The public contact form already asks
-  "how did you hear about us" (`Lead.howHeard`) and stores it, but
-  nothing anywhere reports on it — it just sits on each lead's own
-  detail page, one at a time. A simple breakdown (leads, and
-  conversion rate, by source) would answer "is the Google Business
-  Profile listing worth it, or is it all word of mouth" — useful input
-  for where the next marketing dollar goes, and Chris does not
-  currently have any way to answer that question from inside the
-  system at all.
-- **A simple staff task/reminder list**, separate from the automated
-  exception flags `/desk/growth` and `/desk/today` already generate
-  (churn risk, overdue billing, maintenance due). Those are all
-  system-detected; there's no way for Chris to jot down his own
-  reminder ("call the Oak Street property manager back Thursday about
-  renewing") and have it surface at the right time. Even a bare-bones
-  version — a due date, a note, optionally linked to a lead/customer/
-  job — would close a real gap between what the system already
-  automatically flags and what only Chris knows he needs to follow up
-  on.
-- **A lightweight way to see "what did I actually do today/this
-  week"** across leads contacted, estimates sent, jobs completed, and
-  payments collected — one combined activity summary, rather than
-  checking Leads, Estimates, Jobs, and Billing separately. `/desk/
-  activity` already logs everything via `AuditLog`, so this is mostly
-  a new view over data that already exists, not new tracking.
+  Already existed for customers (`CustomerNote`, 2026-09-28) — **built
+  for leads too (2026-09-29)**, `LeadNote`, same pattern.
+- **A reason when a lead goes `LOST`.** **Done (2026-09-29)** —
+  `Lead.lostReason`, required, with a short pick-list plus "Other."
+- **Lead-source ROI reporting.** **Done (2026-09-29)** — a breakdown by
+  `Lead.howHeard` on `/desk/reports`.
+- **A simple staff task/reminder list.** **Done (2026-09-29)** —
+  `/desk/tasks`, plus a "Follow-up tasks" panel on lead/customer pages.
+- **Separate contacts for property-manager accounts.** Already existed
+  — `CustomerContact`, 2026-09-28 (the same feature as "idea #13" in
+  the 2026-09-27 business-growth-ideas entry above, whose "still open"
+  note there was stale and has now been corrected). Nothing new built.
+- **A lightweight "what did I actually do today/this week" view.**
+  Already existed as `/desk/activity` (every `AuditLog` entry,
+  unfiltered) — **improved (2026-09-29)** with Today/This week/All time
+  tabs and a category-count summary for whichever range is picked.
+
+**Purchasing/supplies** (purchase orders, receiving, supplier records,
+reorder thresholds on top of the existing `PartRecord` catalog — from
+the Astra operations review above) was mentioned to Chris alongside
+these six but is a bigger, separate piece of work — still open, not
+part of this round.
 
 Two Astra-review ideas above (multi-employee **permissions beyond
 OWNER/ADMIN/STAFF** — dispatcher, technician, billing-only roles — and

@@ -3231,3 +3231,124 @@ The new migration (`prisma/migrations/20260929190000_leads_estimates_gap/`)
 still needs to be run against the live Neon database before/alongside
 deploying, same as every schema change in this sandbox — flagged to
 Chris, not applied unilaterally to production from here.
+
+## 2026-09-29 (continued) — CRM buildout
+
+Right after the lead/estimate fix above, Chris asked for a genuine
+brainstorm of what else "managing the business" was missing — quoted
+in full in `docs/ROADMAP.md`'s matching entry — and that brainstorm was
+put in front of him as six options. He came back asking to build all
+six in, and asked directly whether there were more undecided proposals
+left (answered honestly: yes, but the rest are either waiting on him —
+a real photo, testimonials — or deliberately deferred until he hires
+someone, not silently dropped; see `docs/ROADMAP.md`). Branch
+`ai/claude/crm-buildout-2026-09-29`.
+
+**Before building anything, three of the six turned out to already
+exist** — worth recording so a future session doesn't rebuild them:
+
+1. **Contact/communication history** — already fully built for
+   customers as `CustomerNote` + `getCustomerTimeline`
+   (`src/domains/customers/timeline.ts`, shipped 2026-09-28), with a
+   working add-note form and timeline UI on every customer's own page.
+   What was actually missing was the same thing for **leads** — see
+   below.
+2. **Separate contacts per customer account** — already fully built as
+   `CustomerContact` (name/role/phone/email/notes,
+   `src/domains/customers/timeline.ts`'s
+   `getCustomerContacts`/`addCustomerContact`/`deleteCustomerContact`),
+   with a working panel on the customer page
+   (`src/app/desk/customers/[id]/contacts-panel.tsx`). Nothing built
+   here.
+3. **A combined "what did I do" activity view** — `/desk/activity`
+   already existed (every `AuditLog` entry, system-wide, paginated).
+   What was missing was closer to what Chris actually asked for
+   (today/this week, not "everything ever") — see below for what was
+   added on top of it.
+
+**Genuinely new, built this session:**
+
+- **`LeadNote`** — the exact same per-entry contact-log pattern
+  `CustomerNote` already gave customers, extended to `Lead` (which only
+  had one flat `notes` field before this — what the lead themself said
+  at submission, not a place to log follow-up calls). New
+  `src/domains/leads` functions `getLeadNotes`/`addLeadNote`, a new
+  `AddLeadNoteForm` component, and a "Contact history" section on
+  `/desk/leads/[id]`. Deliberately its own model rather than widening
+  `CustomerNote` to an optional `leadId`/`customerId` pair — a lead and
+  a customer are different entities with different pages, and two small
+  models stay simpler than one with two optional foreign keys and two
+  sets of call sites to keep straight.
+- **`Lead.lostReason`** — `updateLeadStatus` now throws if `status` is
+  set to `"LOST"` without a `lostReason` (throws
+  `"Give a reason before marking this lead lost."`); any reason given
+  for a different status is simply ignored, since the UI never sends
+  one for those. The lead-actions panel replaced the old one-click
+  "Mark as Lost" button with a small inline form: a short pick-list
+  (too expensive, competitor, outside service area, no response,
+  changed their mind) plus "Other" free text — nothing in the schema
+  constrains the stored value to that list, so adding a new common
+  reason later never needs a migration, just a UI tweak.
+- **`getLeadSourceBreakdown`** (`src/domains/leads`) — groups every
+  lead by `Lead.howHeard` (captured since Phase 2, never aggregated
+  anywhere until now) with a total and conversion-rate per source, small
+  in-memory grouping (same reasoning as `getAllEstimates`'s own
+  comment — fine at this table's size for a long time). New section on
+  `/desk/reports`.
+- **`StaffTask`** (`src/domains/tasks`) — a staff member's own
+  follow-up reminder: a note, an optional due date, and optional
+  `leadId`/`customerId`/`jobId` links (all three `onDelete: SetNull` —
+  removing the linked record never deletes the task, it just becomes
+  unlinked). Deliberately separate from the system's own automatically-
+  detected exception flags (`src/domains/growth`/`src/domains/exceptions`
+  — churn risk, overdue billing, maintenance due): those come from
+  billing/job/agreement state the system can actually observe; this is
+  something a person chose to write down that the system has no way to
+  infer ("call the Oak Street property manager back Thursday"). New
+  `/desk/tasks` page (overdue / due today / everything else, grouped),
+  open to STAFF logins too since it's personal organization, not
+  financial data — the one exception among this session's new pages to
+  the OWNER/ADMIN-only pattern the estimate/report pages use. A shared
+  `LinkedTasksPanel` component (`src/components`) adds a "Follow-up
+  tasks" section, pre-linked, to both the lead and customer detail
+  pages — adding a task there passes the id along automatically rather
+  than making staff hunt for the right lead/customer in a picker on the
+  main Tasks page.
+- **`/desk/activity` gets Today/This week/All time tabs**, plus a small
+  category-count summary (leads, estimates, jobs, billing, ...) for
+  whichever range is picked (`getActivitySummary`, grouping by action
+  prefix, same in-memory-grouping reasoning as above). Built entirely on
+  the `AuditLog` rows this page already read — no new tracking, and
+  `getActivityCount`/`getActivityPage` both gained an optional `since`
+  filter to serve the same underlying list either way.
+
+**A test-data cleanup along the way**: Chris reported "my test customer
+is still showing up" — traced to a `Lead` named "Test" (his own email,
+created 2026-09-26 during early testing) marked `CONVERTED`, whose
+target `Customer` row had since been deleted some other way, leaving an
+orphaned reference with nothing pointing back the other way to clean it
+up automatically. Confirmed the live `Customer` table was genuinely
+empty (so nothing else was affected) before deleting just that one
+`Lead` row, with Chris's explicit go-ahead — the session's own
+auto-approval guardrails correctly refused to run that delete without
+it.
+
+**Verification**: `npx eslint` — clean (one
+`react-hooks/purity` catch on `/desk/tasks` calling `Date.now()`/`new
+Date()` mid-render in a filter callback, fixed by computing `now` once
+at the top of the component). `npm run typecheck` — no new errors
+beyond the same pre-existing, documented Prisma-generation sandbox
+limitation every other file in this codebase already has. `npx vitest
+run` — the same 382 tests still pass; the only failing suites are the
+same pre-existing `Cannot find module '.prisma/client/default'` sandbox
+limitation, nothing newly broken. No new pure-function unit tests added
+— every new function here (`addLeadNote`, `updateLeadStatus`'s
+`lostReason` branch, `createTask`, `getLeadSourceBreakdown`,
+`getActivitySummary`) needs a real database to exercise meaningfully,
+same reasoning most of `src/domains/leads`/`src/domains/tasks` already
+follows (only genuinely pure logic like `canConvertLead` or
+`resolveConversionAddresses` gets a direct unit test elsewhere in this
+codebase). The new migration
+(`prisma/migrations/20260929200000_crm_buildout/`) still needs to be
+run against the live Neon database before/alongside deploying, same as
+every other schema change in this sandbox.

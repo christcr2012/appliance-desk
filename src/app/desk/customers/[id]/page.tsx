@@ -1,11 +1,13 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getCustomerById, getCustomerTimeline, getCustomerContacts } from "@/domains/customers";
+import { getTasksForCustomer } from "@/domains/tasks";
 import { formatCents } from "@/domains/pricing";
 import { ResendActivationButton } from "./resend-activation-button";
 import { AddNoteForm } from "./add-note-form";
 import { ContactsPanel } from "./contacts-panel";
 import { ServiceAddressesPanel } from "./service-addresses-panel";
+import { LinkedTasksPanel } from "@/components/linked-tasks-panel";
 
 export const metadata = { title: "Customer" };
 
@@ -26,10 +28,11 @@ export default async function CustomerDetailPage({
 }) {
   const { id } = await params;
   const { newAccount, emailSent } = await searchParams;
-  const [customer, timeline, contacts] = await Promise.all([
+  const [customer, timeline, contacts, tasks] = await Promise.all([
     getCustomerById(id),
     getCustomerTimeline(id),
     getCustomerContacts(id),
+    getTasksForCustomer(id),
   ]);
 
   if (!customer) {
@@ -241,6 +244,10 @@ export default async function CustomerDetailPage({
 
       <div className="mt-6">
         <ContactsPanel customerId={customer.id} contacts={contacts} />
+      </div>
+
+      <div className="mt-6">
+        <LinkedTasksPanel linkType="customer" linkId={customer.id} tasks={tasks} />
       </div>
 
       <div className="mt-6 rounded-lg border border-gray-200 bg-white p-5">

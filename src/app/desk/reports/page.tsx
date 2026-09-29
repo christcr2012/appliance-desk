@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getEarningsReport, getJobsMissingRepairCost } from "@/domains/reports";
+import { getLeadSourceBreakdown } from "@/domains/leads";
 import { formatCents } from "@/domains/pricing";
 import { requireRole } from "@/lib/session";
 import { ExportCsvLink } from "@/components/export-csv-link";
@@ -16,9 +17,10 @@ const NOTABLE_GAP_CENTS = 1000;
 // framework") — never rely on the nav link being hidden alone.
 export default async function ReportsPage() {
   await requireRole("OWNER", "ADMIN");
-  const [earnings, missingCostJobs] = await Promise.all([
+  const [earnings, missingCostJobs, leadSources] = await Promise.all([
     getEarningsReport(),
     getJobsMissingRepairCost(),
+    getLeadSourceBreakdown(),
   ]);
 
   const notableRows = earnings.rows.filter((r) => r.gapCents > NOTABLE_GAP_CENTS);
@@ -146,6 +148,31 @@ export default async function ReportsPage() {
                 </li>
               );
             })}
+          </ul>
+        )}
+      </section>
+
+      <section className="mt-8">
+        <h2 className="font-medium text-gray-900">Where your leads come from</h2>
+        <p className="mt-1 text-sm text-gray-600">
+          Every lead, grouped by how they said they heard about you, with
+          how many of each group actually became a customer — a quick way
+          to see whether your marketing is actually working, not just word
+          of mouth (or the other way around).
+        </p>
+        {leadSources.length === 0 ? (
+          <p className="mt-4 text-sm text-gray-600">No leads yet.</p>
+        ) : (
+          <ul className="mt-4 divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white">
+            {leadSources.map((row) => (
+              <li key={row.source} className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
+                <p className="text-gray-900">{row.source}</p>
+                <p className="text-gray-500">
+                  {row.total} lead{row.total === 1 ? "" : "s"} · {row.converted} converted (
+                  {Math.round(row.conversionRate * 100)}%)
+                </p>
+              </li>
+            ))}
           </ul>
         )}
       </section>

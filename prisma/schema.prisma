@@ -53,6 +53,8 @@ model User {
 
   auditLogEntries AuditLog[]
   customerNotes   CustomerNote[]
+  leadNotes       LeadNote[]
+  createdTasks    StaffTask[] @relation("StaffTaskCreatedBy")
 
   @@index([role])
 }
@@ -151,6 +153,7 @@ model Customer {
   consentRecords   ConsentRecord[]
   notes            CustomerNote[]
   contacts         CustomerContact[]
+  tasks            StaffTask[]
   jobs             Job[]
   estimates        Estimate[]
   referralsMade    Referral[] @relation("ReferralsMade")
@@ -286,11 +289,44 @@ model Lead {
   // in scoring or conversion treats the two differently.
   createdByUserId String?
 
+  // Why a lead was marked LOST (2026-09-29, part of Chris's CRM
+  // brainstorm — docs/DECISIONS.md). Required whenever status is set to
+  // LOST (enforced in src/domains/leads' updateLeadStatus, not here —
+  // Postgres CHECK constraints can't easily express "required only for
+  // one enum value"), null otherwise. Free text; the UI offers a short
+  // pick-list plus "other" but nothing constrains the stored value to
+  // it, so a future new reason never needs a migration.
+  lostReason String?
+
+  notesLog LeadNote[]
+  tasks    StaffTask[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([status])
   @@index([score])
+}
+
+// A per-entry contact/communication log for a lead — "called Tuesday, no
+// answer," "emailed the estimate again" — separate from the single flat
+// Lead.notes field (which is what the lead themself told us, captured at
+// submission). Mirrors CustomerNote below; kept as its own model rather
+// than widening CustomerNote to an optional leadId/customerId pair
+// because a lead and a customer are different entities with different
+// pages, and this keeps both simple. See docs/DECISIONS.md's 2026-09-29
+// CRM-buildout entry.
+model LeadNote {
+  id       String @id @default(cuid())
+  leadId   String
+  lead     Lead   @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  authorId String?
+  author   User?  @relation(fields: [authorId], references: [id])
+  body     String
+
+  createdAt DateTime @default(now())
+
+  @@index([leadId])
 }
 
 model LeadApplianceRequest {
@@ -685,6 +721,7 @@ model Job {
   agreement   RentalAgreement? @relation(fields: [agreementId], references: [id])
   maintenanceRequestId String?
   maintenanceRequest   MaintenanceRequest? @relation(fields: [maintenanceRequestId], references: [id])
+  tasks StaffTask[]
 
   notes       String?
   completedAt DateTime?
@@ -1270,6 +1307,39 @@ model CustomerContact {
   createdAt DateTime @default(now())
 
   @@index([customerId])
+}
+
+// A staff member's own follow-up reminder — "call the Oak Street
+// property manager back Thursday about renewing" — distinct from the
+// system-generated exception flags in src/domains/growth /
+// src/domains/exceptions (those are automatically detected from billing/
+// job/agreement state; this is something a person chose to jot down for
+// themself). Optionally linked to whatever it's about, purely for a
+// convenient link back — deleting the linked record never deletes the
+// task. See docs/DECISIONS.md's 2026-09-29 CRM-buildout entry.
+model StaffTask {
+  id      String @id @default(cuid())
+  note    String
+  dueDate DateTime?
+
+  leadId     String?
+  lead       Lead?     @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  jobId      String?
+  job        Job?      @relation(fields: [jobId], references: [id], onDelete: SetNull)
+
+  createdByUserId String
+  createdBy       User   @relation("StaffTaskCreatedBy", fields: [createdByUserId], references: [id])
+
+  completedAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([completedAt, dueDate])
+  @@index([leadId])
+  @@index([customerId])
+  @@index([jobId])
 }
 
 model AuditLog {
