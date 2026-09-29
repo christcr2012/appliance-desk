@@ -364,39 +364,37 @@ lower-urgency items that need a deliberate decision rather than an
 obvious fix — flagged here per `AGENTS.md`'s "add it to the roadmap,
 don't build it unasked" rule:
 
-- **Pagination for four more list pages.** Leads, Agreements, Invoices
-  (`/desk/billing`), and Maintenance requests currently load every row
-  at once, unlike Customers and Inventory, which already page. Fine at
-  today's size (a few hundred rows); worth doing before any of these
-  lists reach the low thousands. The paginated pattern to copy already
-  exists in `src/domains/customers/index.ts` (`getCustomersPage`).
-- **A handful of missing database indexes** — fields used to filter or
-  join (like `Job.customerId`, `Job.agreementId`, `Invoice.agreementId`,
-  and several others) don't have an explicit index yet. Not a problem at
-  today's data volume; cheap to add as a migration next time the schema
-  is touched for something else. `Job.customerId`/`agreementId` and
-  `Invoice.agreementId` would matter first, since they're hit on every
-  customer/agreement page view.
-- **No automated accessibility testing on signed-in pages.** The
-  existing `e2e/accessibility.spec.ts` only checks the public website
-  and login pages — none of `/desk/**` or `/account/**` (i.e., none of
-  the pages Chris and his customers actually use day to day) run through
-  an automated accessibility check. Worth extending that same test file
-  to cover a representative signed-in page or two.
+- ~~**Pagination for four more list pages.**~~ — **this note was
+  stale, confirmed done 2026-09-29**: Leads, Agreements, Invoices
+  (`/desk/billing`), and Maintenance requests all already page (each
+  imports `Pagination`/`paginationMeta` and has its own `getXPage`
+  function), just never crossed off here.
+- ~~**A handful of missing database indexes.**~~ — **stale, confirmed
+  done 2026-09-29**: `Job.customerId`, `Job.agreementId`, and
+  `Invoice.agreementId` (the ones flagged as mattering first) all
+  already have `@@index` entries in `prisma/schema.prisma`.
+- **No automated accessibility testing on signed-in pages.** — **this
+  note was stale, confirmed done 2026-09-29**: see the "Automated
+  accessibility coverage for every logged-in page" entry above —
+  `e2e/accessibility-authenticated.spec.ts` covers every `/desk/**` and
+  `/account/**` page via real seeded OWNER/CUSTOMER logins.
 - **Four HIGH-severity `npm audit` findings**, all inside Prisma's own
   build/CLI tooling (not code the live site runs against customers —
   the app only talks to Postgres at runtime). The suggested automatic
   fix would downgrade Prisma to an older major version, which is a
   bigger change than it sounds — needs a deliberate look next time
   dependencies are updated, not a blind `npm audit fix --force`.
-- **No Content-Security-Policy header.** The site already sends several
-  other security headers (`docs/ARCHITECTURE.md`); CSP is the one that
-  blocks an injected malicious script from running if the site were ever
-  compromised some other way. Worth adding, not urgent.
+- ~~**No Content-Security-Policy header.**~~ — **stale, confirmed done
+  2026-09-29**: `next.config.ts`'s `headers()` sends a real CSP
+  alongside the other baseline security headers.
 - **No backup beyond Neon's own rolling 6-hour window.** Verified to
   actually work (`docs/DECISIONS.md`, 2026-09-28) but there's no separate
   scheduled export or off-Neon copy on top of it. Worth deciding whether
   that's enough for this business's risk tolerance as it grows.
+- ~~Neon's `main` branch is still not marked "protected."~~ — **done
+  (2026-09-29)**. Chris confirmed, then it was flipped on directly via
+  the Neon MCP tools and verified (`protected: true`) — see
+  `docs/DECISIONS.md`'s 2026-09-29 entry.
 
 ## Estimates for property managers / bulk & multi-unit deals — done (2026-09-29)
 
@@ -426,20 +424,16 @@ is already built here.
   Response → Approved/Changes Requested → Converted, viewed and
   approved online with no login) is the direct model for the estimates
   feature above — **built, see that entry.**
-- **A deposit collected at the moment a quote/estimate is approved**,
-  not left until the agreement is later signed — shortens the gap
-  between "customer said yes" and money actually committed. **Not
-  built with the first version of estimates** — an estimate has an
-  optional `depositCents` field reserved for this, but nothing
-  collects it yet; converting an approved estimate still goes through
-  the existing agreement-signing → Stripe Checkout flow for deposit
-  collection. Worth revisiting once real estimates have gone through
-  the system.
-- **Automatic follow-up on a sent-but-unanswered estimate** (a
-  reminder email after a few days of silence) — small, and reuses the
-  same reminder-email machinery `src/domains/billing/reminders.ts`
-  already has for billing. **Not built yet** — the estimates system
-  ships without this in its first version; a good small follow-on.
+- ~~**A deposit collected at the moment a quote/estimate is
+  approved**~~ — **done (2026-09-29)**. See
+  `docs/BUSINESS-RULES.md`'s "Deposit collected at approval, and a
+  follow-up if it goes quiet" section and `docs/DECISIONS.md`'s matching
+  entry for exactly how it works, including the one deliberate edge
+  case left alone (a "per property" conversion producing several
+  agreements from one collected deposit).
+- ~~**Automatic follow-up on a sent-but-unanswered estimate**~~ —
+  **done (2026-09-29)**. One follow-up email after 3 days of silence, a
+  new daily cron — see the same entries above.
 - **The brand kit's small service-icon set** (appliance, calendar,
   delivery, home, property, support) — **done (2026-09-29)**, see the
   "Icons throughout the owner desk and customer portal" entry above.

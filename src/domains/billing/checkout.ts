@@ -174,12 +174,25 @@ export async function createCheckoutSessionForAgreement(agreementId: string): Pr
     },
   });
 
+  // If this agreement's deposit was already collected up front — either
+  // at estimate approval (convertEstimateToAgreements, in
+  // src/domains/estimates, creates the Deposit row directly when that
+  // happened) or by some other manual entry — don't ask Stripe to charge
+  // it a second time here. agreement.depositCents itself is left alone
+  // (it's still the true, correct amount to show on the agreement), only
+  // what this one Checkout Session actually bills is adjusted.
+  const alreadyHasDeposit = (await prisma.deposit.count({ where: { agreementId } })) > 0;
+
   // Validates the agreement actually has something worth signing for
   // (throws "nothing to charge" if it has no rental lines at all) — the
   // one-time items (deposit/damage waiver) are what this Checkout
   // Session actually charges now; the recurring ones are billed later,
   // at delivery.
-  const plan = buildCheckoutLinePlan(agreement);
+  const plan = buildCheckoutLinePlan({
+    lines: agreement.lines,
+    depositCents: alreadyHasDeposit ? 0 : agreement.depositCents,
+    damageWaiverCents: agreement.damageWaiverCents,
+  });
   const oneTimeItems = plan.filter((item) => !item.recurring);
 
   const stripeCustomerId = await ensureStripeCustomer(agreement.customerId);
@@ -242,6 +255,74 @@ export async function createCheckoutSessionForAgreement(agreementId: string): Pr
 
   if (!session.url) {
     throw new Error("Stripe didn't return a Checkout URL for this session.");
+  }
+
+  return session.url;
+}
+
+/**
+ * Collects an estimate's own deposit the moment the customer approves it
+ * online (2026-09-29 — see docs/ROADMAP.md's "A deposit collected at the
+ * moment a quote/estimate is approved" entry), instead of waiting until
+ * the resulting agreement is later signed. Called right after
+ * approveEstimate (src/domains/estimates) succeeds — never before, since
+ * it needs the real Customer approveEstimate just created/linked.
+ *
+ * Returns null — meaning "nothing to collect right now" — when this
+ * estimate has no deposit (depositCents is 0) or its deposit was already
+ * paid (depositPaidAt set, e.g. the customer already completed this
+ * checkout and is re-opening/re-submitting the approval link). Otherwise
+ * returns the Stripe Checkout URL to send the customer's browser to.
+ *
+ * Same pattern as the signing Checkout Session above: card/ACH offered,
+ * the payment method used is saved for later off-session billing, and an
+ * idempotency key keyed on the estimate keeps a double-click from
+ * creating two separate sessions. Nothing in our own database is marked
+ * paid here — only the checkout.session.completed webhook
+ * (src/domains/billing/webhooks.ts) does that, once Stripe actually
+ * confirms it.
+ */
+export async function createDepositCheckoutSessionForEstimate(
+  estimateId: string,
+): Promise<string | null> {
+  const estimate = await prisma.estimate.findUniqueOrThrow({ where: { id: estimateId } });
+  if (estimate.depositCents <= 0 || estimate.depositPaidAt) return null;
+  if (!estimate.customerId) {
+    throw new Error("This estimate isn't linked to a customer yet — can't collect a deposit.");
+  }
+
+  const stripeCustomerId = await ensureStripeCustomer(estimate.customerId);
+  const stripe = getStripeClient();
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+
+  const session = await stripe.checkout.sessions.create(
+    {
+      mode: "payment",
+      customer: stripeCustomerId,
+      payment_method_types: ["card", "us_bank_account"],
+      line_items: [
+        {
+          quantity: 1,
+          price_data: {
+            currency: "usd",
+            unit_amount: estimate.depositCents,
+            product_data: {
+              name: "Deposit",
+              metadata: { kind: "DEPOSIT" },
+            },
+          },
+        },
+      ],
+      success_url: `${appUrl}/estimate/${estimate.id}?deposit=success`,
+      cancel_url: `${appUrl}/estimate/${estimate.id}?deposit=cancelled`,
+      payment_intent_data: { setup_future_usage: "off_session" },
+      metadata: { estimateId: estimate.id },
+    },
+    { idempotencyKey: `checkout-estimate-deposit-${estimate.id}` },
+  );
+
+  if (!session.url) {
+    throw new Error("Stripe didn't return a Checkout URL for this estimate's deposit.");
   }
 
   return session.url;

@@ -2074,10 +2074,13 @@ them (no cascade delete on that link at the database level — same
 fix already used in two other test files). All three were found and
 fixed by actually watching CI run, not assumed away.
 
-**Needs Chris**: review/merge PR #82 and PR #83 (in either order —
-they touch different files). Each has its own migration —
-`prisma/migrations/20260929210000_estimate_deposit_paid_at` (PR #82)
-and `prisma/migrations/20260929220000_purchasing_and_supplies` (PR
-#83) — Chris can run either in Neon's console, or just merge; both
-apply themselves automatically as part of the production build now
-(Phase 6A item 1).
+**PR #82 is merged** (its migration applies itself automatically as
+part of the production build, Phase 6A item 1 — no manual step
+needed). **PR #83 (purchasing & supplies + the icon set) is still
+open** — it had a merge conflict against `main` after #82 landed
+(both touched the same docs files), resolved by merging `main` into
+that branch; its own migration
+(`prisma/migrations/20260929220000_purchasing_and_supplies`) applies
+itself the same way once it's merged.
+
+**Needs Chris**: review/merge PR #83.

@@ -335,9 +335,115 @@ async function recordOneTimeSigningCharge(
   });
 }
 
+/**
+ * Records what an estimate's own deposit Checkout Session actually
+ * collected (createDepositCheckoutSessionForEstimate, in
+ * src/domains/billing/checkout.ts) as a PAID Invoice not tied to any
+ * agreement yet (Invoice.agreementId is nullable for exactly this case —
+ * no RentalAgreement exists until the estimate is later converted).
+ * Guarded by Estimate.depositPaidAt already being set, same idempotency
+ * spirit as the existing-Deposit checks elsewhere in this file — covers
+ * both a genuine duplicate webhook delivery and this function somehow
+ * being called twice directly.
+ */
+async function recordEstimateDepositPayment(
+  estimateId: string,
+  customerId: string,
+  paymentIntentId: string,
+): Promise<void> {
+  const estimate = await prisma.estimate.findUniqueOrThrow({
+    where: { id: estimateId },
+    select: { depositCents: true, depositPaidAt: true },
+  });
+  if (estimate.depositPaidAt || estimate.depositCents <= 0) return;
+
+  const method = await resolvePaymentMethod(paymentIntentId);
+
+  await prisma.$transaction(async (tx) => {
+    const invoice = await tx.invoice.create({
+      data: {
+        customerId,
+        agreementId: null,
+        status: "PAID",
+        subtotalCents: estimate.depositCents,
+        amountDueCents: estimate.depositCents,
+        amountPaidCents: estimate.depositCents,
+        lineItems: {
+          createMany: {
+            data: [
+              {
+                kind: "DEPOSIT",
+                description: "Deposit (collected at estimate approval)",
+                amountCents: estimate.depositCents,
+                rentalLineId: null,
+              },
+            ],
+          },
+        },
+      },
+    });
+
+    await tx.payment.create({
+      data: {
+        invoiceId: invoice.id,
+        amountCents: estimate.depositCents,
+        method,
+        status: "succeeded",
+        stripePaymentIntentId: paymentIntentId,
+      },
+    });
+
+    await tx.estimate.update({
+      where: { id: estimateId },
+      data: { depositPaidAt: new Date() },
+    });
+  });
+}
+
+/** The estimate-deposit counterpart to the "payment"-mode branch of
+ * handleCheckoutSessionCompleted below — same shape (capture the payment
+ * method, only record the charge once Stripe itself calls it "paid",
+ * otherwise wait for the async event), just routed to an Estimate
+ * instead of a RentalAgreement since no agreement exists yet at this
+ * point (see createDepositCheckoutSessionForEstimate's own comment). */
+async function handleEstimateDepositCheckoutCompleted(
+  session: Stripe.Checkout.Session,
+  estimateId: string,
+): Promise<void> {
+  const estimate = await prisma.estimate.findUniqueOrThrow({
+    where: { id: estimateId },
+    select: { customerId: true },
+  });
+  if (!estimate.customerId) return; // shouldn't happen — approveEstimate always sets this first
+
+  const paymentIntentId =
+    typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id;
+  if (!paymentIntentId) return;
+
+  const stripe = getStripeClient();
+  const intent = await stripe.paymentIntents.retrieve(paymentIntentId, {
+    expand: ["payment_method"],
+  });
+  const methodId =
+    typeof intent.payment_method === "string" ? intent.payment_method : intent.payment_method?.id ?? null;
+  await recordSigningPaymentMethod(estimate.customerId, methodId);
+
+  // Same delayed-settlement (ACH) guard as the signing-charge branch
+  // below — this event can fire before the money has actually moved.
+  if (session.payment_status !== "paid") return;
+
+  await recordEstimateDepositPayment(estimateId, estimate.customerId, paymentIntentId);
+}
+
 async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session): Promise<void> {
+  const estimateId = session.metadata?.estimateId;
+  if (estimateId) {
+    await handleEstimateDepositCheckoutCompleted(session, estimateId);
+    return;
+  }
+
   const agreementId = session.metadata?.agreementId;
-  if (!agreementId) return; // not one of our agreement checkouts
+  if (!agreementId) return; // not one of our agreement or estimate checkouts
 
   // Legacy path: a Checkout Session created before billing-starts-at-
   // delivery (2026-09-28) shipped in "subscription" mode. Kept so an
@@ -411,11 +517,23 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session):
 async function handleCheckoutSessionAsyncPaymentSucceeded(
   session: Stripe.Checkout.Session,
 ): Promise<void> {
-  const agreementId = session.metadata?.agreementId;
-  if (!agreementId) return;
   const paymentIntentId =
     typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id;
   if (!paymentIntentId) return;
+
+  const estimateId = session.metadata?.estimateId;
+  if (estimateId) {
+    const estimate = await prisma.estimate.findUniqueOrThrow({
+      where: { id: estimateId },
+      select: { customerId: true },
+    });
+    if (!estimate.customerId) return;
+    await recordEstimateDepositPayment(estimateId, estimate.customerId, paymentIntentId);
+    return;
+  }
+
+  const agreementId = session.metadata?.agreementId;
+  if (!agreementId) return;
 
   const agreement = await prisma.rentalAgreement.findUniqueOrThrow({
     where: { id: agreementId },
@@ -431,6 +549,20 @@ async function handleCheckoutSessionAsyncPaymentSucceeded(
 async function handleCheckoutSessionAsyncPaymentFailed(
   session: Stripe.Checkout.Session,
 ): Promise<void> {
+  const estimateId = session.metadata?.estimateId;
+  if (estimateId) {
+    await prisma.auditLog.create({
+      data: {
+        userId: null,
+        action: "estimate.deposit_payment_failed",
+        entityType: "Estimate",
+        entityId: estimateId,
+        newValue: { reason: "The customer's bank payment for this estimate's deposit failed to clear." },
+      },
+    });
+    return;
+  }
+
   const agreementId = session.metadata?.agreementId;
   if (!agreementId) return;
 

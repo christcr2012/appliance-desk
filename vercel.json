@@ -15,6 +15,10 @@
     {
       "path": "/api/cron/backup",
       "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/estimate-follow-ups",
+      "schedule": "0 16 * * *"
     }
   ]
 }

@@ -330,6 +330,83 @@ export async function sendEstimate(userId: string, estimateId: string) {
   });
 }
 
+const FOLLOW_UP_AFTER_DAYS = 3;
+// Same statuses sendEstimate can be called from, plus VIEWED — an
+// estimate the customer opened but never actually decided on is still
+// unanswered, same as one they never opened at all.
+const AWAITING_RESPONSE_STATUSES: EstimateStatus[] = ["SENT", "VIEWED"];
+
+/**
+ * Sends a single "still interested?" follow-up email for every estimate
+ * that's been sitting SENT/VIEWED for at least FOLLOW_UP_AFTER_DAYS with
+ * no reminder already sent for its current sentAt (2026-09-29 — see
+ * docs/ROADMAP.md's "Automatic follow-up on a sent-but-unanswered
+ * estimate" entry). Reuses the exact reminder-email machinery/cadence
+ * pattern src/domains/billing/reminders.ts already established for
+ * billing reminders — driven by a daily cron
+ * (src/app/api/cron/estimate-follow-ups, vercel.json), best-effort per
+ * estimate so one failed email never blocks the rest, dedupe by
+ * comparing followUpSentForSentAt against the estimate's own sentAt
+ * (see that field's schema comment for why a re-send resets the cycle).
+ */
+export async function sendEstimateFollowUpReminders(): Promise<{ sent: number; failed: number }> {
+  const cutoff = new Date(Date.now() - FOLLOW_UP_AFTER_DAYS * 24 * 60 * 60 * 1000);
+
+  const dueEstimates = await prisma.estimate.findMany({
+    where: {
+      status: { in: AWAITING_RESPONSE_STATUSES },
+      sentAt: { not: null, lte: cutoff },
+    },
+    include: {
+      customer: { select: { user: { select: { name: true, email: true } } } },
+      lead: { select: { contactName: true, email: true } },
+    },
+  });
+
+  let sent = 0;
+  let failed = 0;
+  const settings = await getBusinessSettings();
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://robinsonappliancerentals.com";
+
+  for (const estimate of dueEstimates) {
+    if (!estimate.sentAt) continue; // satisfies TS — the query above already guarantees this
+    const alreadySentForThisCycle =
+      estimate.followUpSentForSentAt?.getTime() === estimate.sentAt.getTime();
+    if (alreadySentForThisCycle) continue;
+
+    const recipientEmail = estimate.customer?.user.email ?? estimate.lead?.email;
+    const recipientName = estimate.customer
+      ? (estimate.customer.user.name ?? estimate.customer.user.email)
+      : estimate.lead?.contactName;
+    if (!recipientEmail) continue; // shouldn't happen — sendEstimate already required one before this could be SENT
+
+    try {
+      await sendEmail({
+        to: recipientEmail,
+        subject: `Following up on estimate #${estimate.estimateNumber}`,
+        text: [
+          `Hi${recipientName ? ` ${recipientName}` : ""},`,
+          `Just checking in — ${settings.publicBusinessName} sent you estimate #${estimate.estimateNumber}${estimate.title ? ` (${estimate.title})` : ""} a few days ago and wanted to make sure it didn't get lost.`,
+          "Still interested? You can review and respond right here — no login needed:",
+          `${appUrl}/estimate/${estimate.id}`,
+          "If your plans have changed or you have questions, just reply to this email.",
+        ].join("\n\n"),
+        actionLabel: "View & respond to estimate",
+      });
+      await prisma.estimate.update({
+        where: { id: estimate.id },
+        data: { followUpSentForSentAt: estimate.sentAt },
+      });
+      sent += 1;
+    } catch (error) {
+      console.error("[estimates] Failed to send follow-up reminder", estimate.id, error);
+      failed += 1;
+    }
+  }
+
+  return { sent, failed };
+}
+
 /** Loads what the public /estimate/[id] page needs. Viewable any time
  * after it's been sent — including after a final decision — so the
  * link always shows the estimate's current, real status rather than
@@ -529,6 +606,23 @@ export async function convertEstimateToAgreements(
 
   const createdAgreementIds: string[] = [];
 
+  // If this estimate's deposit was already collected when the customer
+  // approved it online (createDepositCheckoutSessionForEstimate, in
+  // src/domains/billing/checkout.ts — see docs/ROADMAP.md's "A deposit
+  // collected at the moment a quote/estimate is approved" entry), record
+  // it as a real Deposit on the resulting agreement right now, so signing
+  // Checkout later doesn't try to collect it a second time
+  // (createCheckoutSessionForAgreement skips a deposit line whenever a
+  // Deposit row already exists). Only applied when conversion produces
+  // exactly one agreement — a "per-property" conversion can produce
+  // several from this one estimate, and the one already-collected
+  // deposit has no honest single agreement to attach itself to, so in
+  // that case each agreement is left to collect its own deposit at
+  // signing, the ordinary way, and Chris reconciles the already-
+  // collected amount by hand (still visible on the estimate's own page).
+  const applyPrepaidDepositHere =
+    estimate.depositPaidAt !== null && serviceAddressIds.length === 1;
+
   // The line items themselves aren't copied onto the new agreement here
   // (see the function comment above) — they stay visible as reference
   // on the estimate's own page (getEstimateDetail links back to every
@@ -544,6 +638,17 @@ export async function convertEstimateToAgreements(
       where: { id: agreement.id },
       data: { sourceEstimateId: estimate.id },
     });
+
+    if (applyPrepaidDepositHere) {
+      await prisma.deposit.create({
+        data: {
+          agreementId: agreement.id,
+          amountCents: estimate.depositCents,
+          refundable: true,
+        },
+      });
+    }
+
     createdAgreementIds.push(agreement.id);
   }
 

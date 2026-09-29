@@ -86,6 +86,13 @@ export default async function EstimateDetailPage({
             Approved by {estimate.approverName} ({estimate.approverEmail})
             {estimate.respondedAt && ` on ${new Date(estimate.respondedAt).toLocaleDateString()}`}.
           </p>
+          {estimate.depositCents > 0 && (
+            <p className="mt-1">
+              {estimate.depositPaidAt
+                ? `Deposit of ${formatCents(estimate.depositCents)} collected on ${new Date(estimate.depositPaidAt).toLocaleDateString()}.`
+                : `Deposit of ${formatCents(estimate.depositCents)} not collected yet — the customer will be prompted to pay it on their own link.`}
+            </p>
+          )}
         </div>
       )}
 
@@ -171,6 +178,7 @@ export default async function EstimateDetailPage({
             distinctPropertyCount={
               new Set(estimate.lineItems.map((l) => l.serviceAddressId).filter(Boolean)).size
             }
+            depositAlreadyCollectedCents={estimate.depositPaidAt ? estimate.depositCents : null}
           />
         </div>
       )}
