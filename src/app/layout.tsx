@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Fraunces } from "next/font/google";
 import Script from "next/script";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { getBusinessSettings } from "@/domains/settings";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import "./globals.css";
@@ -90,6 +91,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           Skip to main content
         </a>
         {children}
+        {/* Real-world page-speed monitoring (2026-09-28, Chris's ask
+            from the Vercel dashboard's "Speed Insights" setup card) —
+            free on Vercel's Pro plan, no cost/account action needed.
+            Only reports anything once this is deployed and visited. */}
+        <SpeedInsights />
       </body>
     </html>
   );
