@@ -179,11 +179,12 @@ on — never built unasked.
   built (2026-09-28, Task #71) but dormant** — Chris's Twilio account
   is set up, but he can't buy a phone number until his LLC's business-
   texting registration is done; everything else (opt-in, the day-of
-  job reminder text) is wired up and ready. **Still open**: a separate
-  Contacts concept, and an accounting export — Chris has picked both
-  (Task #73, plus real business email as Task #69) and they're queued
-  up next. **Real business email is done (2026-09-28, Task #69)** — see
-  above.
+  job reminder text) is wired up and ready. **Real business email is
+  done (2026-09-28, Task #69)** — see above. **An accounting export is
+  done (2026-09-28, Task #73)** — a generic transactions CSV at
+  `/desk/reports/export`, see `docs/DECISIONS.md`. **Still open**: a
+  separate Contacts concept (idea #13) — not picked up yet, lower
+  priority.
 - **A third Astra review ("upgrade to a connected workspace"),
   2026-09-27** — saved verbatim at
   `docs/reviews/2026-09-27-astra-workspace-review.md`, fact-checked in
