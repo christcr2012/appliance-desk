@@ -68,6 +68,7 @@ export const auth = betterAuth({
         to: user.email,
         subject: "Set your Appliance Desk password",
         text: `Hi${user.name ? ` ${user.name}` : ""},\n\nUse the link below to set your password for Appliance Desk. This link expires in 1 hour and can only be used once.\n\n${url}\n\nIf you didn't request this, you can safely ignore this email — your password won't change.`,
+        actionLabel: "Set my password",
       });
     },
   },
@@ -88,6 +89,7 @@ export const auth = betterAuth({
         to: user.email,
         subject: "Verify your Appliance Desk email address",
         text: `Hi${user.name ? ` ${user.name}` : ""},\n\nUse the link below to verify your email address for Appliance Desk. This link expires in 1 hour and can only be used once.\n\n${url}\n\nIf you didn't request this, you can safely ignore this email.`,
+        actionLabel: "Verify my email",
       });
     },
   },

@@ -1644,9 +1644,60 @@ vendor, not a deploy). Chris said Workspace tooling already applied the
 kit's email branding to his Gmail separately — not verified from this
 session (different mailbox connected here).
 
-**Status**: not yet pushed/opened as a PR — next step is exactly that,
-so Chris can see a real preview before anything goes to production, per
-both AGENTS.md and the brand kit's own handoff instructions.
+**Status**: pushed and opened as PR #76
+(https://github.com/christcr2012/appliance-desk/pull/76), CI green,
+preview deployed. Chris reviewed the preview and said he likes it (not
+yet merged — his call, per AGENTS.md; he's been merging his own PRs
+throughout this project).
 
 **Still open**: the invoice/statement redesign and the icon set, above,
-as explicit next phases once Chris has seen this first slice.
+as explicit next phases once Chris has seen this first slice. Chris has
+since approved the invoice/statement redesign ("yes do the invoice
+re-design") — see the phase-2 entry below for what's shipped so far.
+
+## 2026-09-29 (continued) — Brand kit v2.0, phase 2: branded transactional emails
+
+Chris approved phase 2 in the same message: "can you brand the Resend
+emails?" Full reasoning in `docs/DECISIONS.md`'s "Branded the app's own
+transactional emails (Resend)" entry. Same branch,
+`ai/claude/brand-kit-v2-evergreen`.
+
+- [x] `src/lib/email.ts` — `sendEmail()` now builds a branded HTML
+      email (evergreen header, ivory background, lime-green accent
+      rule) alongside the existing plain-text body, automatically, for
+      all 8 places in the app that send an email — zero changes needed
+      at 6 of those 8 call sites.
+- [x] `src/lib/auth.ts` — its 2 call sites (password reset, email
+      verification) updated to pass a real button label
+      (`actionLabel`) instead of a bare link, since both end in a
+      one-line URL.
+- [x] User-submitted content (lead names, customer notes, etc.)
+      HTML-escaped before going into the generated email, so it can't
+      distort or break the email's markup.
+- [x] New `tests/email.test.ts` (this function had no dedicated test
+      before — only indirect coverage via call sites that mock the
+      whole module): no-API-key no-op, text+HTML both sent, bare-URL →
+      button rendering, HTML-escaping, and a failed-send-is-caught-not-
+      thrown case. All 5 passing.
+- [x] `npx eslint src/lib/email.ts src/lib/auth.ts tests/email.test.ts`
+      clean. `npx vitest run` — 382/382 runnable tests passing (the 10
+      suites that can't run at all are the documented, pre-existing
+      Prisma-client-generation sandbox limitation, unrelated to this
+      change — see AGENTS.md). `npm run typecheck` — no new errors
+      introduced by these two files; every existing error is that same
+      pre-existing Prisma limitation.
+
+**Status**: committed on `ai/claude/brand-kit-v2-evergreen`
+alongside phase 1's changes; not yet pushed as of this entry — pushing
+next, then reporting back to Chris with the updated preview.
+
+**Still open**: the invoice/statement redesign (Chris approved: "yes do
+the invoice re-design") — not started yet. Needs the app's actual live
+billing-statement/invoice rendering code identified first (not the
+kit's static PDF template, which is a manual-paperwork form, not the
+live page). Also still open: confirming from this session whether
+Workspace/Gmail access can actually reach the
+`ops@robinsonappliancerentals.com` mailbox now that Chris said it's a
+seat on the same Workspace account as a secondary domain — this
+session's Workspace connection hasn't been re-tested against that
+mailbox since he clarified that.

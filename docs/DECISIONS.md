@@ -2783,3 +2783,55 @@ work, tracked separately rather than rushed):
   connection is authenticated as a different mailbox
   (`ops@robinsonaisystems.com`, his separate AI-company business, not
   the appliance-rental one).
+
+## 2026-09-29 (continued) — Branded the app's own transactional emails (Resend)
+
+Chris asked, in the same message approving the PR #76 preview: "can you
+brand the Resend emails?" This is different from the Google Workspace
+email-signature branding above — it's the emails the app itself sends
+through Resend (password-reset/verification links, lead
+notifications, billing reminders, late-fee notices, backup alerts,
+portal/maintenance updates, referral notices). Before this change every
+one of those was plain, unbranded text — no logo, no color, no styling
+at all.
+
+Rather than editing all 8 places in the code that send an email, the
+shared `sendEmail()` wrapper in `src/lib/email.ts` was changed to build
+a branded HTML version automatically from the plain text every call
+site already passes in. So all 8 call sites needed zero changes and
+got a real, on-brand email for free; only the 2 that end in a bare
+link — `src/lib/auth.ts`'s password-reset and email-verification
+emails — were touched at all, to add an `actionLabel` (e.g. "Set my
+password") so that link renders as a proper button instead of plain
+text. The design (evergreen header block, ivory background, a
+lime-green accent rule above the footer) matches the brand kit's own
+`07_Web_Email/Customer-email-EDITABLE.html` reference template exactly
+— same colors, same table-based layout (tables, not flexbox/grid, are
+the only layout approach that renders reliably across real email
+clients like Outlook and Gmail).
+
+Every plain-text email Resend sends still includes a real plain-text
+body too (Resend's — and every email client's — fallback when HTML
+doesn't render), so nothing about the actual message content changed,
+only its appearance. All interpolated text (a lead's name, a
+customer's typed maintenance note, anything that's real user input and
+not copy this app wrote itself) is HTML-escaped before being placed
+into the generated HTML, since without that a lead or customer typing
+something like `<b>` or `&` into a form field could otherwise distort
+or break the email's markup.
+
+Covered by a new `tests/email.test.ts` (previously `sendEmail()` had no
+dedicated test at all, only indirect coverage through call sites like
+`tests/billing-reminders.test.ts` that mock the whole module): verifies
+the no-API-key no-op path still works, that both a text and a branded
+HTML body are sent once configured, that a trailing bare URL renders as
+a button, that user-submitted text is HTML-escaped, and that a Resend
+API failure is caught and logged rather than thrown (matching the
+existing guarantee that a failed notification email can never break the
+underlying business action, e.g. saving a lead).
+
+Not done in this slice, and not asked for: a real templating system,
+per-email-type custom layouts, or anything beyond this one shared
+wrapper — this app sends one style of transactional email today, so one
+small self-contained function was the right amount of engineering, not
+a templating library.
