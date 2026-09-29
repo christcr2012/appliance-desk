@@ -7,6 +7,7 @@ import {
   type DispatchableJob,
 } from "@/domains/jobs/dispatch";
 import { checklistProgress, parseChecklist } from "@/domains/jobs/checklist";
+import { DeliveryServiceIcon } from "@/components/icons/service-icons";
 
 export const metadata = { title: "Dispatch" };
 
@@ -130,7 +131,10 @@ export default async function DispatchPage({
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold">Dispatch</h1>
+        <h1 className="flex items-center gap-2 text-xl font-semibold">
+          <DeliveryServiceIcon className="h-5 w-5 text-gray-500" />
+          Dispatch
+        </h1>
         <Link
           href="/desk/jobs/new"
           className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"

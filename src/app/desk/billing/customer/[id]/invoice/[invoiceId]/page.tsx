@@ -3,7 +3,7 @@ import Link from "next/link";
 import { requireRole } from "@/lib/session";
 import { getInvoiceDetail } from "@/domains/billing/invoice-detail";
 import { InvoiceDocument } from "@/components/billing/invoice-document";
-import { PrintInvoiceButton } from "@/components/billing/print-invoice-button";
+import { PrintDocumentButton } from "@/components/print-document-button";
 
 export const metadata = { title: "Invoice" };
 
@@ -31,7 +31,7 @@ export default async function DeskInvoicePage({
         <Link href={`/desk/billing/customer/${id}`} className="text-sm text-gray-600 hover:underline">
           &larr; Back to statement
         </Link>
-        <PrintInvoiceButton />
+        <PrintDocumentButton />
       </div>
 
       <div className="mt-4 print:mt-0">

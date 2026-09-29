@@ -23,7 +23,15 @@ export default async function JobDetailPage({
         &larr; Back to jobs
       </Link>
 
-      <h1 className="mt-2 text-xl font-semibold">{job.type}</h1>
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+        <h1 className="text-xl font-semibold">{job.type}</h1>
+        <Link
+          href={`/desk/jobs/${job.id}/work-order`}
+          className="text-sm text-primary hover:underline"
+        >
+          View / print work order &rarr;
+        </Link>
+      </div>
       <p className="mt-1 text-sm text-gray-600">
         {job.customer && (job.customer.user.name ?? job.customer.user.email)}
         {job.serviceAddress &&

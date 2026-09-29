@@ -141,10 +141,14 @@ on — never built unasked.
   customer data. Skipped for now per the brief ("if it isn't simple,
   skip it and note it") since it adds moving parts before there's real
   data to protect; worth turning on once the team is actively merging
-  schema-changing PRs.
-- **Upgrading the Neon plan** (or freeing a protected-branch slot on
-  another project) so this project's `main` branch can be marked
-  protected before real customer data goes in — see `docs/DECISIONS.md`.
+  schema-changing PRs. **No longer blocked by the Neon plan** — Chris
+  moved to the Launch plan (2026-09-29), which includes 10 branches
+  (only 2 in use today), so this is now genuinely low-cost whenever
+  it's wanted; still not turned on, still Chris's call on timing.
+- **Protecting `main`'s database branch** before real customer data
+  goes in. Previously blocked by the free plan's protected-branch cap
+  — **no longer blocked** as of the 2026-09-29 Launch-plan upgrade (see
+  `docs/DECISIONS.md`'s Neon review entry), just not done yet.
 - **SMS lead notifications**, in addition to email — the brief mentions
   this as optional/later.
 - **A friend's "complete rebuild" proposal, 2026-09-27** — saved
@@ -264,11 +268,16 @@ on — never built unasked.
   highest-converting additions for a local service business, per the
   same design review. Needs real customers first (his upcoming live
   testing, then real launch, will produce some).
-- **Icons throughout the owner desk and customer portal** — currently
-  no icon set at all (status badges, nav items, buttons are plain text
-  or hand-drawn SVGs). Flagged as lower-priority polish in the design
-  review; not done in the 2026-09-27 brand-consistency pass since
-  picking and applying a coherent icon set across ~50 files is a real
+- **Icons throughout the owner desk and customer portal** — **a first
+  slice done (2026-09-29)**: the brand kit's six service icons
+  (appliance, calendar, delivery, home, property, support) are now
+  real components and placed on the handful of page headers/panels
+  where one of them is an honest match — see
+  `docs/DECISIONS.md`'s 2026-09-29 "work-order document, and the brand
+  kit's service icons" entry. **Still open**: everywhere else (status
+  badges, buttons, the ~40 other pages) still has no icon — six
+  service-themed icons don't cover the rest of the app, and a fuller,
+  coherent icon set applied consistently everywhere is still a real
   design decision of its own, not a quick follow-on.
 - ~~A social-share image made specifically for link previews~~ — **done
   (2026-09-29)**, part of brand kit v2.0. `public/brand/social-share.png`,
@@ -423,17 +432,13 @@ is already built here.
   already has for billing. **Not built yet** — the estimates system
   ships without this in its first version; a good small follow-on.
 - **The brand kit's small service-icon set** (appliance, calendar,
-  delivery, home, property, support) — never used anywhere in the app
-  yet; a real, separate design decision about where icons like these
-  actually belong (see the phase-1/2/3 brand-kit `docs/DECISIONS.md`
-  entries), not a quick add-on.
+  delivery, home, property, support) — **done (2026-09-29)**, see the
+  "Icons throughout the owner desk and customer portal" entry above.
 - **A job/work-order document**, matching the brand kit's
   `Work-order.pdf` template the same way the new invoice document
-  matches its `Invoice.pdf` — the app's `Job` model (delivery,
-  installation, swap, maintenance visit, removal) is the real
-  equivalent of a "work order," so this has an actual live feature to
-  attach to, unlike the kit's `Estimate.pdf` template before this
-  section existed.
+  matches its `Invoice.pdf` — **done (2026-09-29)**, see
+  `docs/DECISIONS.md`'s matching entry: `/desk/jobs/[id]/work-order`,
+  linked from every job's detail page.
 - **Not recommended to copy**: Jobber's supplier/materials
   price-catalog integration and consumer-financing (Wisetack)
   integration — both solve a materials-markup/big-ticket-financing
