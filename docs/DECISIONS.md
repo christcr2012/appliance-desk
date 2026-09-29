@@ -2690,3 +2690,18 @@ stored-XSS-style attack; the CSP's other directives (locked-down
 hold. Caught before merging, not after a real deploy, because PR #75's
 CI e2e step logs in for real against a built production app — exactly
 the point of that test.
+
+## 2026-09-29 (continued) — Unlabeled address fields on the new-customer form
+
+With the CSP fix above in place, PR #75's CI got past login for the
+first time and ran the full e2e/accessibility suite — which caught a
+real, pre-existing accessibility bug unrelated to this branch's own
+changes: every field in the "Street address" / "Unit / apt" / "City" /
+"State" / "ZIP" group on `/desk/customers/new`
+(`src/app/desk/customers/new/new-customer-form.tsx`) had a `<label>`
+sitting next to its `<input>` with neither wrapped inside the other nor
+connected by a matching `id`/`htmlFor` pair — so a screen reader had no
+way to know which label went with which field. Fixed by giving each
+field in the (possibly-repeated, for property managers with multiple
+addresses) address block a unique `id`/`htmlFor` pair keyed off its
+array index (`address-${index}-line1`, etc.).

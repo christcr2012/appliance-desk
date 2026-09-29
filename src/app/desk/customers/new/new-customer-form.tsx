@@ -222,10 +222,14 @@ export function NewCustomerForm() {
               )}
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="sm:col-span-2">
-                  <label className="block text-xs font-medium text-gray-700">
+                  <label
+                    htmlFor={`address-${index}-line1`}
+                    className="block text-xs font-medium text-gray-700"
+                  >
                     Street address
                   </label>
                   <input
+                    id={`address-${index}-line1`}
                     required
                     value={address.line1}
                     onChange={(e) => updateAddress(index, "line1", e.target.value)}
@@ -233,18 +237,28 @@ export function NewCustomerForm() {
                   />
                 </div>
                 <div className="sm:col-span-2">
-                  <label className="block text-xs font-medium text-gray-700">
+                  <label
+                    htmlFor={`address-${index}-line2`}
+                    className="block text-xs font-medium text-gray-700"
+                  >
                     Unit / apt (optional)
                   </label>
                   <input
+                    id={`address-${index}-line2`}
                     value={address.line2}
                     onChange={(e) => updateAddress(index, "line2", e.target.value)}
                     className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700">City</label>
+                  <label
+                    htmlFor={`address-${index}-city`}
+                    className="block text-xs font-medium text-gray-700"
+                  >
+                    City
+                  </label>
                   <input
+                    id={`address-${index}-city`}
                     required
                     value={address.city}
                     onChange={(e) => updateAddress(index, "city", e.target.value)}
@@ -253,16 +267,28 @@ export function NewCustomerForm() {
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-medium text-gray-700">State</label>
+                    <label
+                      htmlFor={`address-${index}-state`}
+                      className="block text-xs font-medium text-gray-700"
+                    >
+                      State
+                    </label>
                     <input
+                      id={`address-${index}-state`}
                       value={address.state}
                       onChange={(e) => updateAddress(index, "state", e.target.value)}
                       className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-700">ZIP</label>
+                    <label
+                      htmlFor={`address-${index}-zip`}
+                      className="block text-xs font-medium text-gray-700"
+                    >
+                      ZIP
+                    </label>
                     <input
+                      id={`address-${index}-zip`}
                       required
                       value={address.zip}
                       onChange={(e) => updateAddress(index, "zip", e.target.value)}
