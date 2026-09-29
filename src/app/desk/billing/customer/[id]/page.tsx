@@ -102,7 +102,12 @@ export default async function CustomerStatementPage({
                   <li key={invoice.id} className="py-2 text-sm">
                     <div className="flex items-center justify-between gap-3">
                       <div>
-                        <span className="font-mono text-xs text-gray-500">#{invoice.invoiceNumber}</span>{" "}
+                        <Link
+                          href={`/desk/billing/customer/${statement.customerId}/invoice/${invoice.id}`}
+                          className="font-mono text-xs text-gray-500 hover:underline"
+                        >
+                          #{invoice.invoiceNumber}
+                        </Link>{" "}
                         <span
                           className={`ml-1 rounded-full px-2 py-0.5 text-xs font-medium ${
                             STATUS_STYLES[invoice.status] ?? "bg-gray-100 text-gray-700"

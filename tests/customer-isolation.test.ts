@@ -5,6 +5,7 @@ import {
   getPortalApplianceOptions,
   createMaintenanceRequestForUser,
 } from "@/domains/portal";
+import { getInvoiceDetail } from "@/domains/billing/invoice-detail";
 
 // ---------------------------------------------------------------------------
 // The first real, database-backed integration test in this project (Phase
@@ -41,6 +42,7 @@ type Fixture = {
   lineId: string;
   applianceId: string;
   assignmentId: string;
+  invoiceId: string;
 };
 
 let applianceTypeId: string;
@@ -102,6 +104,17 @@ async function createCustomerFixture(label: "a" | "b"): Promise<Fixture> {
     },
   });
 
+  const invoice = await prisma.invoice.create({
+    data: {
+      customerId: customer.id,
+      agreementId: agreement.id,
+      amountDueCents: 5000,
+      lineItems: {
+        create: [{ kind: "RENTAL", description: "Washer rental", amountCents: 5000, quantity: 1 }],
+      },
+    },
+  });
+
   return {
     userId: user.id,
     customerId: customer.id,
@@ -110,6 +123,7 @@ async function createCustomerFixture(label: "a" | "b"): Promise<Fixture> {
     lineId: line.id,
     applianceId: appliance.id,
     assignmentId: assignment.id,
+    invoiceId: invoice.id,
   };
 }
 
@@ -128,6 +142,9 @@ async function deleteFixture(fixture: Fixture) {
   // has to go before the User itself can be deleted, or Postgres rejects
   // the delete with a foreign-key-constraint violation.
   await prisma.auditLog.deleteMany({ where: { userId: fixture.userId } });
+  // InvoiceLineItem cascades from Invoice (see prisma/schema.prisma), so
+  // deleting the invoice is enough to clean up its line items too.
+  await prisma.invoice.delete({ where: { id: fixture.invoiceId } });
   await prisma.applianceAssignment.delete({ where: { id: fixture.assignmentId } });
   await prisma.appliance.delete({ where: { id: fixture.applianceId } });
   await prisma.rentalLine.delete({ where: { id: fixture.lineId } });
@@ -252,5 +269,24 @@ describe("customer data isolation (Phase 6A item 3)", () => {
         "https://example-blob.vercel-storage.com/photo-two.jpg",
       ].sort(),
     );
+  });
+
+  it("getInvoiceDetail refuses to return another customer's invoice when scoped by customerId (2026-09-29)", async () => {
+    // The one thing standing between a customer viewing their own
+    // invoice document (/account/billing/invoice/[invoiceId]) and
+    // viewing someone else's, just by guessing/changing the id in the
+    // URL — see src/domains/billing/invoice-detail.ts.
+    const ownInvoice = await getInvoiceDetail(customerA.invoiceId, { customerId: customerA.customerId });
+    expect(ownInvoice?.id).toBe(customerA.invoiceId);
+    expect(ownInvoice?.lineItems.map((l) => l.description)).toContain("Washer rental");
+
+    const othersInvoice = await getInvoiceDetail(customerB.invoiceId, { customerId: customerA.customerId });
+    expect(othersInvoice).toBeNull();
+  });
+
+  it("getInvoiceDetail returns the invoice for any customerId when unscoped (the desk/staff view)", async () => {
+    const invoice = await getInvoiceDetail(customerB.invoiceId);
+    expect(invoice?.id).toBe(customerB.invoiceId);
+    expect(invoice?.customer.id).toBe(customerB.customerId);
   });
 });

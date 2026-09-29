@@ -2835,3 +2835,83 @@ per-email-type custom layouts, or anything beyond this one shared
 wrapper — this app sends one style of transactional email today, so one
 small self-contained function was the right amount of engineering, not
 a templating library.
+
+## 2026-09-29 (continued) — Invoice document, Jobber-style (brand kit v2.0, phase 3)
+
+Chris approved this in the same message as the email-branding request:
+"yes do the invoice re-design." He'd asked earlier about researching
+how a company like Jobber lays out its invoices and building something
+similar, branded with the new kit.
+
+First finding, worth recording since it changes what "invoice redesign"
+actually means here: **this app doesn't have a real Stripe-hosted
+invoice PDF of its own to redesign** — a customer's downloadable past
+invoices come from Stripe's own hosted billing page
+(`ManageBillingButton` on `/account/billing`, which is Stripe's UI, not
+this app's), and the kit's `08_Business_Forms/Invoice.pdf` is a static
+fillable template meant for manual paperwork, not something the app
+renders from live data. What the app actually had were two ROLLUP
+views — `/desk/billing/customer/[id]` (Chris's combined statement) and
+`/account/billing` (a customer's own list) — both a list of invoices
+with running totals, never a single invoice on its own. Neither looked
+like a "Jobber-style invoice" because neither was trying to be one; they
+were dashboards.
+
+So this phase adds what was actually missing: a real, single-invoice
+document view — `src/components/billing/invoice-document.tsx` — reused
+by two new pages, `/desk/billing/customer/[id]/invoice/[invoiceId]`
+(Chris/staff, any customer) and `/account/billing/invoice/[invoiceId]`
+(a customer, their own only). Laid out the way Jobber and similar
+tools do: business name/address/phone/email and a logo block top-left,
+"INVOICE" plus the invoice number and dates top-right, a "Billed to"
+block, a line-item table, and a stacked totals block ending in a bold
+"Balance owed." Below that, a payment history list when there are any
+recorded payments. A "Print / save as PDF" button
+(`src/components/billing/print-invoice-button.tsx`) just triggers the
+browser's own print dialog — every modern browser's print-to-PDF is
+already a real, reliable PDF exporter, so no PDF-generation library was
+added for this. `print:` Tailwind classes strip the page's own
+navigation/button chrome and force plain black-on-white body text for
+the printed output (a printed page ignores the app's dark-mode CSS
+entirely, and dark ink on a light page reads better as a receipt
+someone might file, and uses less printer ink) while keeping the header
+band in solid brand color, since a short color band is still
+recognizably "this business" on paper.
+
+Both invoices/statement list pages (`/desk/billing/customer/[id]` and
+`/account/billing`) now link each invoice number to its new document
+page, rather than duplicating this layout inline.
+
+**Security**: a customer's own invoice page must never show someone
+else's invoice just because they guessed or changed the id in the URL
+— the same customer-data-isolation rule as everywhere else in this app
+(docs/BUSINESS-RULES.md). `getInvoiceDetail()`
+(`src/domains/billing/invoice-detail.ts`) takes an optional
+`customerId`; the portal page always passes the signed-in customer's
+own id, and the function returns `null` — not someone else's data —
+the moment the invoice belongs to anyone else. The desk page omits
+`customerId` (OWNER/ADMIN can legitimately view any customer's
+invoice) but still checks the invoice's customer matches the `id` in
+the URL, so `/desk/billing/customer/A/invoice/<B's invoice>` 404s
+instead of quietly rendering B's invoice under A's back-link. Covered
+by a new real-database test in `tests/customer-isolation.test.ts`
+(can't run in this sandbox — see AGENTS.md's Prisma limitation; CI runs
+it against a real, disposable Postgres, same as every other test in
+that file) that creates two customers with their own invoices and
+proves neither can read the other's through this function.
+
+Colors and typography reuse the same plain Tailwind gray/white classes
+(bg-white, text-gray-900, bg-gray-900 + text-white, and so on) the rest
+of the owner desk and customer portal already use — not the CSS-variable
+token classes the public site uses — because those specific
+classes are the ones the central retinting mechanism in
+`src/app/globals.css` already covers in both light and dark mode (see
+that file's long comment on why the desk/portal and the public site use
+two different mechanisms). No new colors were introduced.
+
+**Not done in this slice**: a "download invoice as PDF" button that
+generates a PDF server-side (the browser's own print-to-PDF covers this
+today, and a server-side generator is real, separate infrastructure
+that wasn't asked for); emailing a link to a specific invoice document
+(the branded transactional emails above don't currently link to one);
+combining this with Stripe's own hosted invoice PDFs in any way.

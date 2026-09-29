@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { getServerSession } from "@/lib/session";
 import { getPortalData } from "@/domains/portal";
 import { getCustomerStatement } from "@/domains/billing";
@@ -67,7 +68,12 @@ export default async function AccountBillingPage() {
                 {property.invoices.map((invoice) => (
                   <li key={invoice.id} className="flex items-center justify-between px-4 py-3 text-sm">
                     <div>
-                      <p className="font-medium text-gray-900">Invoice #{invoice.invoiceNumber}</p>
+                      <Link
+                        href={`/account/billing/invoice/${invoice.id}`}
+                        className="font-medium text-gray-900 hover:underline"
+                      >
+                        Invoice #{invoice.invoiceNumber}
+                      </Link>
                       <p className="text-gray-600">
                         {invoice.billingPeriodStart
                           ? new Date(invoice.billingPeriodStart).toLocaleDateString()

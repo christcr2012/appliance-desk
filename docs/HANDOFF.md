@@ -1687,17 +1687,67 @@ transactional emails (Resend)" entry. Same branch,
       introduced by these two files; every existing error is that same
       pre-existing Prisma limitation.
 
-**Status**: committed on `ai/claude/brand-kit-v2-evergreen`
-alongside phase 1's changes; not yet pushed as of this entry — pushing
-next, then reporting back to Chris with the updated preview.
+**Status**: pushed on `ai/claude/brand-kit-v2-evergreen` (commit
+`ec749b1`), still PR #76, CI green.
 
 **Still open**: the invoice/statement redesign (Chris approved: "yes do
-the invoice re-design") — not started yet. Needs the app's actual live
-billing-statement/invoice rendering code identified first (not the
-kit's static PDF template, which is a manual-paperwork form, not the
-live page). Also still open: confirming from this session whether
-Workspace/Gmail access can actually reach the
-`ops@robinsonappliancerentals.com` mailbox now that Chris said it's a
-seat on the same Workspace account as a secondary domain — this
-session's Workspace connection hasn't been re-tested against that
-mailbox since he clarified that.
+the invoice re-design") — see the phase-3 entry below, now built.
+Also still open: confirming from this session whether Workspace/Gmail
+access can actually reach the `ops@robinsonappliancerentals.com`
+mailbox now that Chris said it's a seat on the same Workspace account
+as a secondary domain — this session's Workspace connection hasn't
+been re-tested against that mailbox since he clarified that.
+
+## 2026-09-29 (continued) — Brand kit v2.0, phase 3: a real invoice document
+
+Chris approved this in the same message as phase 2: "yes do the
+invoice re-design." Full reasoning, including the finding that the app
+didn't actually have an existing "invoice document" to redesign (only
+two rollup/statement list views — see below), in `docs/DECISIONS.md`'s
+"Invoice document, Jobber-style (brand kit v2.0, phase 3)" entry. Same
+branch, `ai/claude/brand-kit-v2-evergreen`.
+
+- [x] `src/domains/billing/invoice-detail.ts` — new `getInvoiceDetail()`,
+      one invoice's full detail (business info, customer, property,
+      line items, payment history), with an optional `customerId` that
+      makes it return `null` for anyone else's invoice.
+- [x] `src/components/billing/invoice-document.tsx` — the shared,
+      Jobber-style document layout: logo/business block, invoice
+      number and dates, "Billed to," a line-item table, stacked totals
+      ending in "Balance owed," and payment history.
+- [x] `src/components/billing/print-invoice-button.tsx` — "Print /
+      save as PDF," just the browser's own print dialog; print-specific
+      CSS on the document strips page chrome and forces plain
+      black-on-white for the printed output.
+- [x] Two new pages: `/desk/billing/customer/[id]/invoice/[invoiceId]`
+      (Chris/staff, any customer) and
+      `/account/billing/invoice/[invoiceId]` (a customer, their own
+      only) — both statement list pages now link each invoice number
+      to its document instead of only showing a summary row.
+- [x] **Security**: extended `tests/customer-isolation.test.ts` (the
+      project's real-database, CI-run isolation suite — can't run in
+      this sandbox, see AGENTS.md) with a new invoice per test customer
+      and two new tests proving `getInvoiceDetail` refuses to return
+      another customer's invoice when scoped by `customerId`, and that
+      the desk page's own `customerId`-in-URL check (not just relying
+      on the function) is what stops
+      `/desk/billing/customer/A/invoice/<B's invoice>` from quietly
+      showing B's invoice.
+- [x] `npx eslint` on every new/changed file — clean. `npm run
+      typecheck` — no new errors from these files (the only errors
+      touching `invoice-detail.ts` are the same pre-existing
+      Prisma-client-generation sandbox limitation every other
+      `src/domains/**` file already has, confirmed by comparing against
+      `statements.ts`'s identical pattern). `npx vitest run` — same
+      382/382 runnable tests passing, no regression (the isolation-test
+      additions can only run against CI's real Postgres).
+
+**Status**: committed and pushed on `ai/claude/brand-kit-v2-evergreen`,
+same PR #76 — waiting on this round of CI (it includes the real-Postgres
+isolation test above, which can only be verified there).
+
+**Still open**: a server-side "download as PDF" (today's browser
+print-to-PDF covers this — not asked for beyond that); linking a
+branded email to a specific invoice's document page; confirming
+Workspace/Gmail access to `ops@robinsonappliancerentals.com`, as
+above.
