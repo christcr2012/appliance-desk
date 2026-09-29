@@ -2076,11 +2076,19 @@ fixed by actually watching CI run, not assumed away.
 
 **PR #82 is merged** (its migration applies itself automatically as
 part of the production build, Phase 6A item 1 — no manual step
-needed). **PR #83 (purchasing & supplies + the icon set) is still
-open** — it had a merge conflict against `main` after #82 landed
-(both touched the same docs files), resolved by merging `main` into
-that branch; its own migration
+needed). **PR #83 (purchasing & supplies + the icon set) is open and
+fully CI-green, ready to merge** — it had a merge conflict against
+`main` after #82 landed (both touched the same docs files), resolved
+by merging `main` into that branch; its own migration
 (`prisma/migrations/20260929220000_purchasing_and_supplies`) applies
 itself the same way once it's merged.
+
+One flake along the way, not a real bug: CI's first run after the
+merge failed a dark-mode color-contrast check on the public
+`/how-it-works` page's "Get a Quote" button — a page/component this
+branch never touches (`main`'s own CI has that same check passing
+clean). Re-ran CI on the same code with no changes and it passed
+clean, confirming it was a one-off flake in the automated check
+itself, not a real accessibility regression.
 
 **Needs Chris**: review/merge PR #83.
