@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { approveEstimateAction, requestEstimateChangesAction, type EstimateResponseState } from "./actions";
 
 export function EstimateResponseForm({ estimateId }: { estimateId: string }) {
@@ -11,6 +11,22 @@ export function EstimateResponseForm({ estimateId }: { estimateId: string }) {
   const [message, setMessage] = useState("");
   const [result, setResult] = useState<EstimateResponseState>({ status: "idle" });
 
+  // Send the browser on to Stripe Checkout for the deposit — an effect,
+  // not a render-time assignment, since navigating away is a side
+  // effect, not something that can happen while rendering.
+  useEffect(() => {
+    if (result.status === "redirecting") {
+      window.location.href = result.url;
+    }
+  }, [result]);
+
+  if (result.status === "redirecting") {
+    return (
+      <div className="rounded-lg border border-gray-200 bg-white p-5 text-sm text-gray-700">
+        <p>Thanks — taking you to a secure page to pay the deposit…</p>
+      </div>
+    );
+  }
   if (result.status === "approved") {
     return (
       <div className="rounded-lg border border-green-200 bg-green-50 p-5 text-sm text-green-900">

@@ -3352,3 +3352,96 @@ codebase). The new migration
 (`prisma/migrations/20260929200000_crm_buildout/`) still needs to be
 run against the live Neon database before/alongside deploying, same as
 every other schema change in this sandbox.
+
+## 2026-09-29 (continued) — behind-the-scenes hardening, database branch protection, and a deposit-at-approval follow-on
+
+Chris asked "what else are you ready to implement" right after the CRM
+buildout shipped; four items were put in front of him (a hardening
+bundle, estimate follow-through, purchasing/supplies, a fuller icon
+set), and he said build all four in whatever order made sense.
+
+**Hardening bundle**: turned out to be mostly already done. Checked each
+item directly against the code before touching anything:
+- List pagination for Leads/Agreements/Billing/Maintenance — already
+  built (each page already imports `Pagination`/`paginationMeta` and has
+  its own `getXPage` function). `docs/ROADMAP.md`'s note calling this
+  still open was stale, corrected.
+- The flagged missing database indexes (`Job.customerId`,
+  `Job.agreementId`, `Invoice.agreementId`) — already present as
+  `@@index` entries. Stale note, corrected.
+- The Content-Security-Policy header — already added (`next.config.ts`'s
+  `headers()`). Stale note, corrected.
+- **Neon's `main` branch was genuinely still unprotected** (`protected:
+  false`, confirmed via the Neon MCP tools) — the one real item.
+  Explicitly confirmed with Chris before touching it ("turn it on"),
+  then flipped via `mcp__Neon__update_branch` and verified
+  (`protected: true`). No code change, no migration.
+
+**Estimate follow-through** (two small add-ons to the estimates feature,
+both from `docs/ROADMAP.md`'s "Ideas surfaced researching Jobber" list —
+see `docs/BUSINESS-RULES.md`'s new "Deposit collected at approval, and a
+follow-up if it goes quiet" section for the plain-English rule):
+
+1. **A deposit collected the moment a customer approves an estimate
+   online**, instead of waiting until the resulting agreement is signed.
+   `createDepositCheckoutSessionForEstimate` (src/domains/billing/checkout.ts)
+   creates a real Stripe Checkout Session for the estimate's own deposit,
+   called right after `approveEstimate` succeeds
+   (src/app/estimate/[id]/actions.ts). Nothing is marked paid until
+   Stripe's webhook confirms it (`recordEstimateDepositPayment`, new in
+   src/domains/billing/webhooks.ts) — recorded as an ordinary
+   Invoice/Payment pair with `agreementId: null` (that field has always
+   been nullable, since no agreement exists yet at this point).
+   `Estimate.depositPaidAt` is the idempotency guard, same pattern as
+   every other "paid" fact in this app.
+   - A customer who cancels out of Stripe Checkout is still left
+     APPROVED (approving and paying are deliberately separate steps) —
+     the public estimate page now shows a "Pay deposit" button
+     (`pay-deposit-button.tsx`) to pick the same checkout back up.
+   - When the estimate is later converted to a draft agreement
+     (`convertEstimateToAgreements`), if the deposit was already
+     collected **and** conversion produces exactly one agreement
+     ("single" mode), a real `Deposit` row is created immediately on
+     that agreement — and `createCheckoutSessionForAgreement` was
+     changed to skip charging a deposit line whenever a `Deposit`
+     already exists for the agreement, so signing never double-charges
+     it. A "per property" conversion (several agreements from one
+     estimate) has no single honest owner for the one already-collected
+     deposit, so that case is deliberately left alone — each new
+     agreement collects its own deposit at signing the ordinary way, and
+     `ConvertEstimatePanel` now warns Chris about this specific
+     combination so he can reconcile the already-collected amount by
+     hand.
+2. **A single automatic follow-up email** if a sent estimate sits
+   SENT/VIEWED for 3+ days with no response —
+   `sendEstimateFollowUpReminders` (src/domains/estimates), a new daily
+   Vercel Cron (`/api/cron/estimate-follow-ups`, `vercel.json`), same
+   shape and reasoning as the existing billing-reminder cron.
+   `Estimate.followUpSentForSentAt` is compared against the estimate's
+   own `sentAt` (not a boolean) so re-sending a revised estimate
+   correctly resets the cycle instead of silently going quiet forever.
+
+**Schema**: one new migration,
+`prisma/migrations/20260929210000_estimate_deposit_paid_at/`, adding
+`Estimate.depositPaidAt` and `Estimate.followUpSentForSentAt` (both
+nullable `TIMESTAMP`). **Chris needs to run this migration's SQL in
+Neon's console** before or alongside deploying, same as every other
+schema change in this project.
+
+**Verification**: `npx eslint` — clean (one `react-hooks/immutability`
+catch: the redirect-to-Stripe-Checkout logic in
+`estimate-response-form.tsx`/`pay-deposit-button.tsx` was originally a
+render-time `window.location.href` assignment, which the React compiler
+correctly flags as a side effect happening during render — moved into a
+`useEffect`). `npm run typecheck` — no new errors beyond the same
+pre-existing, documented Prisma-generation sandbox limitation. New
+tests: `tests/estimate-deposit.test.ts` (real-database, same pattern as
+`tests/billing-webhooks.test.ts` — proves the webhook records the
+deposit exactly once with no agreement attached, and that converting to
+a single agreement creates a matching `Deposit` row) and
+`tests/estimate-follow-ups.test.ts` (mocked-prisma, same pattern as
+`tests/billing-reminders.test.ts` — 5/5 passing locally; covers the
+send/skip/re-send-resets-cycle/wrong-recipient/partial-failure cases).
+
+Purchasing/supplies and the fuller icon set are still in progress as of
+this entry — see `docs/HANDOFF.md`.

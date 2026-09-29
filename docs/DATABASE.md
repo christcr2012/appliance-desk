@@ -80,6 +80,13 @@ in UTC and only converted to Mountain Time for display.
   read by pricing or billing logic, and conversion never copies
   `EstimateLineItem` rows into real `RentalLine`s automatically (see
   that function's own comment for why).
+- **`Estimate.depositPaidAt`** / **`Estimate.followUpSentForSentAt`**
+  (2026-09-29) — see `docs/BUSINESS-RULES.md`'s "Deposit collected at
+  approval, and a follow-up if it goes quiet" section. The deposit
+  payment itself is recorded as an ordinary `Invoice`/`Payment` pair
+  with `Invoice.agreementId` left null (no agreement exists yet at that
+  point — `agreementId` has always been nullable for exactly this kind
+  of one-off charge).
 
 ## Rentals & pricing
 

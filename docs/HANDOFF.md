@@ -1982,3 +1982,28 @@ email) that was still showing up under the Converted filter on
 at some point, leaving the lead's own "Converted" status pointing at
 nothing. Deleted with Chris's explicit confirmation once traced; see
 `docs/DECISIONS.md`.
+
+## 2026-09-29 (continued) — hardening check, database branch protection, estimate deposit + follow-up
+
+Chris asked what else was ready to build; four options were put in
+front of him and he said build all four. Two are done — see
+`docs/DECISIONS.md`'s matching entry for the full writeup.
+
+- [x] **Behind-the-scenes hardening** — checked each item directly:
+      list pagination, the flagged database indexes, and the
+      Content-Security-Policy header were all already done (stale
+      `docs/ROADMAP.md` notes, now corrected). The one real item —
+      Neon's `main` branch not marked "protected" — Chris confirmed and
+      it's now flipped on (`protected: true`, verified).
+- [x] **Estimate follow-through**: a deposit is now collected the
+      moment a customer approves an estimate online (not at agreement
+      signing), and a single automatic follow-up email goes out if a
+      sent estimate sits unanswered for 3 days.
+- [ ] **Purchasing & supplies** (purchase orders, suppliers, low-stock
+      flags) — in progress.
+- [ ] **Finish the icon set** across the remaining pages — not started.
+
+**Needs Chris**: a third new migration
+(`prisma/migrations/20260929210000_estimate_deposit_paid_at/migration.sql`)
+needs pasting into the Neon SQL console and running — purely additive
+(two new nullable columns on `Estimate`).

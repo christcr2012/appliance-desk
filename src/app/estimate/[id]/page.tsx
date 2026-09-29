@@ -1,6 +1,7 @@
 import { getEstimateForApproval } from "@/domains/estimates";
 import { formatCents } from "@/domains/pricing";
 import { EstimateResponseForm } from "./estimate-response-form";
+import { PayDepositButton } from "./pay-deposit-button";
 
 export const metadata = {
   title: "Your estimate",
@@ -86,7 +87,22 @@ export default async function PublicEstimatePage({
         {estimate.status === "APPROVED" && (
           <div className="rounded-lg border border-green-200 bg-green-50 p-5 text-sm text-green-900">
             <p className="font-medium">You approved this estimate.</p>
-            <p className="mt-1">We&apos;ll be in touch about next steps.</p>
+            {estimate.depositCents > 0 && estimate.depositPaidAt && (
+              <p className="mt-1">
+                Deposit of {formatCents(estimate.depositCents)} received — thank you.
+              </p>
+            )}
+            {estimate.depositCents > 0 && !estimate.depositPaidAt ? (
+              <>
+                <p className="mt-1">
+                  One more step: a deposit of {formatCents(estimate.depositCents)} is due before
+                  we can move forward.
+                </p>
+                <PayDepositButton estimateId={estimate.id} />
+              </>
+            ) : (
+              <p className="mt-1">We&apos;ll be in touch about next steps.</p>
+            )}
           </div>
         )}
         {estimate.status === "CHANGES_REQUESTED" && (
