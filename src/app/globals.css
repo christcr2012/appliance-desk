@@ -9,64 +9,70 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /*
- * Design tokens — navy/teal brand (rebrand approved by Chris, 2026-09-27
- * — see docs/DECISIONS.md). Swapped from the original warm terracotta
- * palette to the scheme proposed in the "Astra" redesign brief
- * (docs/reviews/2026-09-28-astra-redesign-brief.md), after Chris looked
- * at a real preview deployment (PR #41) side by side with the old
- * palette on production and said he liked it.
+ * Design tokens — brand kit v2.0 "Evergreen" (applied 2026-09-29, at
+ * Chris's request, from a complete production brand kit he commissioned
+ * — see docs/DECISIONS.md). Values below are taken directly from the
+ * kit's own brand-tokens.json, not eyeballed from the logo. Replaces
+ * the navy/teal rebrand approved 2026-09-27.
  *
- * Still open, tracked in docs/ROADMAP.md: a real logo (this still uses
- * the existing typographic wordmark — the brief's logo system was
- * explicitly meant not to block the color/layout work), and the rest
- * of the Astra brief beyond colors (owner-desk IA, customer-portal
- * rebuild, etc.) hasn't been evaluated/built yet.
+ * Contrast: the kit's own QA record (09_Handoff/QA-and-contrast-record.md)
+ * verified white-on-evergreen (12.28:1), ink-on-ivory (14.57:1),
+ * evergreen-on-fresh (8.53:1), muted-on-ivory (5.71:1), and
+ * ivory-on-night (15.85:1) — every pair below reuses one of those
+ * checked combinations rather than a new, unchecked one. One real fix
+ * this required: the kit's "accent" (fresh, a light lime-green) needs
+ * DARK text on top (its own onAccent token), not the white text the
+ * previous teal accent used safely — see --color-on-accent below and
+ * src/components/site/button-link.tsx's "secondary" variant.
  *
- * Every value below was hand-checked against WCAG 2.1 AA's 4.5:1 text
- * contrast ratio (same relative-luminance method used elsewhere in
- * this file) for every place that token is actually used as text, not
- * just eyeballed — and confirmed by CI's real axe accessibility checks
- * (light and dark) passing on PR #41 before this was approved.
+ * Two colors not in the kit (kept from the prior palette on purpose,
+ * per the kit's own handoff doc: "do not reuse a decorative green
+ * accent for every state"): --color-success and --color-danger. With
+ * the brand's primary AND accent both now shades of green, reusing
+ * either for the semantic "success" state would make status harder to
+ * tell apart from ordinary brand chrome at a glance, not easier.
  *
- * Original warm-palette values, for reference / easy revert:
- *   canvas #fbf6ef, canvas-alt #f3ead9, ink #241f1a, ink-soft #55493f,
- *   ink-faint #5f5449, line #e5d9c8, line-strong #d3c3ab,
- *   primary #a34e22, primary-dark #8a3a15, primary-soft #f1dcc9,
- *   on-primary #fffaf3, accent #2f6a56, accent-dark #204b3d,
- *   accent-soft #dbeae3, focus-ring #a34e22.
+ * Prior navy/teal values, for reference / easy revert: canvas #f7f8f5,
+ * canvas-alt #f3f5f7, ink #243746, ink-soft #526271, ink-faint #5e6b77,
+ * line #d7dfe5, line-strong #aebac3, primary #006b66, primary-dark
+ * #00534f, primary-soft #d3ebe8, on-primary #ffffff, accent #0f766e,
+ * accent-dark #0b5a54, accent-soft #d7f0ec, focus-ring #006b66.
  */
 :root {
-  --color-canvas: #f7f8f5;
-  --color-canvas-alt: #f3f5f7;
+  --color-canvas: #f7f5ec; /* ivory */
+  --color-canvas-alt: #dce7df; /* sage */
   --color-surface: #ffffff;
-  --color-ink: #243746;
-  --color-ink-soft: #526271;
-  /* #7c8894 (a literal reading of "secondary text, but lighter") only
-     measured 3.6:1 against white — below AA's 4.5:1 for normal text.
-     Darkened, same fix pattern as the warm palette's own ink-faint
-     note used to need. */
-  --color-ink-faint: #5e6b77;
-  --color-line: #d7dfe5;
-  --color-line-strong: #aebac3;
+  --color-ink: #17251e;
+  /* The kit ships one "muted" text color (#4e6658, 5.71:1 on ivory per
+     its own QA record) rather than two separate soft/faint shades —
+     reused for both rather than inventing an unchecked lighter one. */
+  --color-ink-soft: #4e6658;
+  --color-ink-faint: #4e6658;
+  --color-line: #dce7df; /* sage */
+  --color-line-strong: #a5b8ab; /* the kit's own "light.border" token */
 
-  --color-primary: #006b66;
-  --color-primary-dark: #00534f;
-  --color-primary-soft: #d3ebe8;
+  --color-primary: #123c2d; /* evergreen */
+  --color-primary-dark: #0c1e16; /* the kit's "night" — darker evergreen for hover */
+  --color-primary-soft: #dce7df; /* sage */
   --color-on-primary: #ffffff;
 
-  --color-accent: #0f766e;
-  --color-accent-dark: #0b5a54;
-  --color-accent-soft: #d7f0ec;
+  --color-accent: #b9e66b; /* fresh */
+  --color-accent-dark: #123c2d; /* evergreen — verified 8.53:1 on fresh */
+  --color-accent-soft: #eaf6d4; /* pale tint of fresh */
+  /* Dark text for anything placed directly ON the light, lime-green
+     accent (e.g. a solid accent-filled button) — the accent itself is
+     too light for the white text --color-on-primary supplies. */
+  --color-on-accent: #123c2d;
 
   --color-success: #1e6b3e;
   --color-warning-bg: #fdf1d6;
   --color-warning-ink: #7a4a05;
   --color-danger: #a3271f;
 
-  --color-focus-ring: #006b66;
+  --color-focus-ring: #123c2d;
 
-  --font-display: var(--font-fraunces);
-  --font-sans: var(--font-inter);
+  --font-display: var(--font-manrope);
+  --font-sans: var(--font-manrope);
 
   /* Tells the browser this half of the page is light right now, so it
      never substitutes its own native dark styling (form controls, the
@@ -94,6 +100,7 @@
   --color-accent: var(--color-accent);
   --color-accent-dark: var(--color-accent-dark);
   --color-accent-soft: var(--color-accent-soft);
+  --color-on-accent: var(--color-on-accent);
 
   --color-success: var(--color-success);
   --color-warning-bg: var(--color-warning-bg);
@@ -143,34 +150,41 @@
  *    are already a dark chip with white text, which reads fine in
  *    either theme, so they're not part of this list.
  */
-/* Dark-mode side of the same navy/teal rebrand — see the :root block's
-   note above. Original warm-palette dark values for reference: canvas
-   #1b1712, canvas-alt
-   #241e17, surface #2a2319, ink #f6efe4, ink-soft #d9cdba, ink-faint
-   #ad9f8c, line #3d3325, line-strong #4e422f, primary #e08a54,
-   primary-dark #f2ac7d, primary-soft #4a3120, on-primary #241207,
-   accent #6fbb9e, accent-dark #8fd0b6, accent-soft #23392f. */
+/* Dark-mode side of brand kit v2.0 — values straight from the kit's
+   brand-tokens.json "dark" section, same as :root above. In dark mode
+   the kit flips which green is "primary": fresh (light) becomes the
+   primary/accent color itself (meant to sit as text/fill on a dark
+   surface), with evergreen becoming its onPrimary/onAccent — the
+   opposite pairing from light mode. Prior navy/teal dark values, for
+   reference / easy revert: canvas #0d1722, canvas-alt #0d1722, surface
+   #152332, ink #f1f5f8, ink-soft #b2c0cd, ink-faint #8592a0, line
+   #35495b, line-strong #46607a, primary #69d5ca, primary-dark #80e0d6,
+   primary-soft #103836, on-primary #0d1722, accent #5fd4c7, accent-dark
+   #85e3d8, accent-soft #12312d. */
 .dark {
-  --color-canvas: #0d1722;
-  --color-canvas-alt: #0d1722;
-  --color-surface: #152332;
-  --color-ink: #f1f5f8;
-  --color-ink-soft: #b2c0cd;
-  --color-ink-faint: #8592a0;
-  --color-line: #35495b;
-  --color-line-strong: #46607a;
+  --color-canvas: #0c1e16; /* night */
+  --color-canvas-alt: #152e22; /* surface */
+  --color-surface: #152e22;
+  --color-ink: #f7f5ec; /* ivory */
+  --color-ink-soft: #b7c8bb; /* muted */
+  --color-ink-faint: #b7c8bb;
+  --color-line: #789985; /* the kit's own "dark.border" token */
+  --color-line-strong: #5b7a68; /* darkened a step further for stronger dividers */
 
-  --color-primary: #69d5ca;
-  --color-primary-dark: #80e0d6;
-  --color-primary-soft: #103836;
-  --color-on-primary: #0d1722;
+  --color-primary: #b9e66b; /* fresh */
+  --color-primary-dark: #a5d953; /* a touch deeper, for hover */
+  --color-primary-soft: #152e22; /* surface */
+  --color-on-primary: #123c2d; /* evergreen */
 
-  --color-accent: #5fd4c7;
-  --color-accent-dark: #85e3d8;
-  --color-accent-soft: #12312d;
+  --color-accent: #b9e66b;
+  --color-accent-dark: #a5d953;
+  --color-accent-soft: #152e22;
+  --color-on-accent: #123c2d;
 
   --color-warning-bg: #3a2c0e;
   --color-warning-ink: #f0c96b;
+
+  --color-focus-ring: #b9e66b;
 
   color-scheme: dark;
 }
@@ -222,24 +236,23 @@
 
 /* Buttons are the one exception to the brand-primary retint further
    below (bg-gray-900 -> var(--color-primary)): in dark mode, the
-   brand's primary color is light and saturated -- meant to be used as
-   TEXT on a dark background (or, per the Astra brief, under dark
-   navy text of its own) -- not as a button fill under the plain
-   white text every button in this app already hardcodes. Restoring a
-   dark fill here keeps every button readable regardless of that.
-   Light mode is unaffected; it gets the brand color straight from the
-   unconditional rule below, where white text on it measures ~6.4:1.
-   Darkened to a teal (not the original near-black) so this still
-   reads as "on brand" in dark mode -- passes contrast easily (>8:1).
-   Original warm-palette values: #111827 / #111827 / #1f2937. */
+   brand's primary color (fresh, a light lime-green) is meant to be
+   used as TEXT/an accent on a dark background, not as a button fill
+   under the plain white text every button in this app already
+   hardcodes. Restoring a dark fill here keeps every button readable
+   regardless of that. Light mode is unaffected; it gets the brand
+   color straight from the unconditional rule below.
+   Evergreen — the kit's own QA record verified white text on this
+   exact color at 12.28:1, so this reuses a checked pair rather than
+   an invented one. Original navy/teal dark value: #06403c. */
 .dark .bg-gray-900 {
-  background-color: #06403c;
+  background-color: #123c2d;
 }
 .dark .border-gray-900 {
-  border-color: #06403c;
+  border-color: #123c2d;
 }
 .dark .hover\:bg-gray-800:hover {
-  background-color: #0b5750;
+  background-color: #1b4f3b;
 }
 
 /* Status colors — success (green), error (red), warning (amber), info
@@ -405,21 +418,24 @@ input,
 textarea,
 select {
   background-color: #ffffff;
-  color: #111827;
+  color: #17251e;
 }
 
 .dark input,
 .dark textarea,
 .dark select {
-  background-color: #1f2937;
-  color: #f9fafb;
+  background-color: #152e22;
+  color: #f7f5ec;
 }
 
 h1,
 h2,
 h3,
 h4 {
-  font-family: var(--font-display), Georgia, serif;
+  /* Manrope everywhere now (brand kit v2.0) — Arial is the kit's own
+     documented office/email fallback, not the prior serif pairing's
+     Georgia. */
+  font-family: var(--font-display), Arial, sans-serif;
 }
 
 /* Visible focus ring everywhere — never outline:none without a

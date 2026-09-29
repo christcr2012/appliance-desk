@@ -6,8 +6,12 @@ type Variant = "primary" | "secondary" | "outline";
 const VARIANT_CLASSES: Record<Variant, string> = {
   primary:
     "bg-primary text-on-primary hover:bg-primary-dark active:bg-primary-dark",
+  // text-on-accent (dark evergreen), not text-on-primary (white): the
+  // brand kit's accent (fresh, a light lime-green) needs dark text on
+  // top — white would fail contrast on it even though it worked fine
+  // on the prior teal accent. See globals.css's design-tokens comment.
   secondary:
-    "bg-accent text-on-primary hover:bg-accent-dark active:bg-accent-dark",
+    "bg-accent text-on-accent hover:bg-accent-dark hover:text-on-primary active:bg-accent-dark active:text-on-primary",
   outline:
     "border-2 border-ink/20 text-ink hover:border-primary hover:text-primary bg-transparent",
 };

@@ -1603,3 +1603,50 @@ protected-branch plan upgrade remains flagged to Chris (costs money,
 his call, per AGENTS.md). PR #74 is already merged; PR #75 should be
 ready for Chris to merge once this
 round of CI confirms the CSP fix.
+
+## 2026-09-29 (continued) — Brand kit v2.0 ("Evergreen") applied, phase 1
+
+Chris delivered a complete production brand kit and asked for it
+applied across the site and web app. Full reasoning in
+`docs/DECISIONS.md`'s "Brand kit v2.0 (Evergreen) applied to the site"
+entry. Branch `ai/claude/brand-kit-v2-evergreen`.
+
+- [x] **Color system** — evergreen/ivory/fresh-green palette from the
+      kit's own `brand-tokens.json`, replacing the 2026-09-27 navy/teal
+      rebrand. Central CSS-variable change (`src/app/globals.css`)
+      retints the whole app (public site, owner desk, customer portal,
+      light and dark mode) — no per-page rewrite needed, same mechanism
+      the prior rebrand used.
+- [x] **Fixed a real accessibility bug this caught**: the one existing
+      accent-colored button variant hardcoded white text, which would
+      have been unreadable against the kit's light lime-green accent.
+      Added an `on-accent` token and fixed it (unused elsewhere today,
+      confirmed by grep, so no live impact until now — but would have
+      broken the first thing built with it).
+- [x] **Fonts** — Manrope everywhere, replacing Inter + Fraunces.
+- [x] **Logo** — real horizontal SVG logo (light/dark variants) in the
+      public site's header and footer, replacing the plain text
+      wordmark.
+- [x] **Favicon, apple-touch icon, PWA manifest, social-share image** —
+      all from the kit's own pre-made files.
+- [x] `npx eslint .` clean (same 2 pre-existing warnings, 0 new).
+      `npx vitest run tests/theme.test.ts` passing (9/9). `npm run
+      build`/e2e couldn't run locally (documented sandbox limitations,
+      AGENTS.md) — CI is the real gate.
+
+**Deliberately not done in this slice** (see `docs/DECISIONS.md` for
+why each is its own piece of work, not rushed into this one):
+redesigning the app's real billing-statement/invoice pages (Chris also
+asked about a "Jobber-style" invoice look — a real redesign, not a
+brand-color swap); an icon set across the desk/portal; the kit's
+print/vehicle/apparel/social templates (files for Chris to send to a
+vendor, not a deploy). Chris said Workspace tooling already applied the
+kit's email branding to his Gmail separately — not verified from this
+session (different mailbox connected here).
+
+**Status**: not yet pushed/opened as a PR — next step is exactly that,
+so Chris can see a real preview before anything goes to production, per
+both AGENTS.md and the brand kit's own handoff instructions.
+
+**Still open**: the invoice/statement redesign and the icon set, above,
+as explicit next phases once Chris has seen this first slice.

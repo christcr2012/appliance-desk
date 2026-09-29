@@ -2705,3 +2705,81 @@ way to know which label went with which field. Fixed by giving each
 field in the (possibly-repeated, for property managers with multiple
 addresses) address block a unique `id`/`htmlFor` pair keyed off its
 array index (`address-${index}-line1`, etc.).
+
+## 2026-09-29 (continued) — Brand kit v2.0 ("Evergreen") applied to the site
+
+Chris commissioned and delivered a complete, production-ready brand kit
+(a real logo system, color palette, typography, favicon/manifest,
+social-share image, business-form PDF templates, vehicle/apparel
+templates, and more) and asked for it applied across the website and
+web app. This entry covers the first, foundational slice: colors,
+fonts, logo, favicon, manifest, and social-share image. The kit's own
+handoff note (`09_Handoff/Website-and-Claude-handoff.md`) asked for
+exactly this kind of staged, reviewed rollout — "present the completed
+preview before production deployment" — so the rest (see below) is
+being treated as follow-on phases, not squeezed into one giant change.
+
+**Colors**: replaced the navy/teal palette (approved 2026-09-27) with
+the kit's own `brand-tokens.json` values — evergreen (#123C2D) as the
+primary brand color, ivory (#F7F5EC) as the page background, a light
+lime-green ("fresh," #B9E66B) as the accent. Every color pair reuses
+one of the kit's own pre-verified WCAG contrast checks
+(`09_Handoff/QA-and-contrast-record.md`) rather than a new, unchecked
+one — see the design-tokens comment at the top of `src/app/globals.css`
+for exactly which pair backs which token. This app's brand color
+already lived entirely in CSS variables (from the 2026-09-27 rebrand),
+retinting Tailwind's plain gray/white classes everywhere those
+variables are used — including the owner desk and customer portal, not
+just the public site — so this was genuinely a small, central set of
+value changes, not a per-page rewrite.
+
+One real bug this caught, not just a value swap: the kit's accent color
+is light (a lime-green meant for DARK text on top, per its own
+`onAccent` token), but this app's one existing accent-colored button
+variant (`src/components/site/button-link.tsx`'s `"secondary"`) was
+hardcoded to put white text on it — a leftover from the previous accent
+being a dark teal, where that was fine. Left as-is, that would have
+shipped a real accessibility regression: light-green background, light
+text, unreadable. Fixed by adding an `on-accent` token and using it
+there. (Not currently used anywhere else in the app, confirmed by grep,
+so this had zero live impact until now.)
+
+**Fonts**: replaced the Inter (body) + Fraunces (headings) pairing with
+Manrope everywhere, per the kit's own typography guidance (headings
+800, labels 600, body 400) — loaded via `next/font/google`, same
+self-hosting approach the prior fonts already used, rather than the
+kit's bundled static font files (simpler, and Next already handles the
+licensing/caching either way).
+
+**Logo, favicon, manifest, social-share image**: the kit's own
+horizontal SVG logo (evergreen-on-light / white-on-dark variants)
+replaces the plain text wordmark in the public site's header and
+footer — swapped by CSS (`dark:hidden`/`dark:block`), not a client-side
+theme check, so there's no flash of the wrong one. Favicon, apple-touch
+icon, and PWA manifest use the kit's own pre-made icon set and
+`site.webmanifest` (which already expected a `/brand/` path — the kit
+was clearly built with this handoff in mind). The homepage hero photo,
+previously reused as the social-share preview image, is replaced by the
+kit's purpose-made 1200x630 image.
+
+**Deliberately not done in this slice** (each is its own real piece of
+work, tracked separately rather than rushed):
+- Redesigning the app's real billing-statement/invoice pages to match
+  the kit's business-form layout and a "Jobber-style" clean invoice look
+  Chris asked about — the kit's `08_Business_Forms/Invoice.pdf` is a
+  static fillable PDF template for manual paperwork, not the live,
+  data-driven statement page the app actually renders; that's a real
+  redesign of its own.
+- An icon set across the owner desk/customer portal — already flagged
+  in `docs/ROADMAP.md` before this kit existed as "a real design
+  decision of its own, not a quick follow-on"; still true.
+- The kit's print/vehicle/apparel/social templates (business cards,
+  truck decals, Instagram templates, etc.) — these are files for Chris
+  to send to a print or sign vendor himself, not something a website
+  deploy touches.
+- Chris said Google Workspace tooling (a separate tool/session) already
+  applied the kit's email signature/branding to his real Gmail — not
+  re-verified from this session, since this session's own Workspace
+  connection is authenticated as a different mailbox
+  (`ops@robinsonaisystems.com`, his separate AI-company business, not
+  the appliance-rental one).
