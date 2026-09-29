@@ -2046,9 +2046,38 @@ whatever order you prefer." Handled in that order:
         just merge the PR.
       - 15 new tests, full suite locally clean (397/397, same
         sandbox-limitation files skipped).
-- [ ] **Not started yet**: the 4th item Chris approved, finishing the
-      icon set across the owner desk and customer portal.
+- [x] **Finish the icon set** — the 4th item, folded into PR #83 since
+      two of the files it touches were already new in that branch. One
+      shared `<StatusBadge>` component replaces every desk page's own
+      copy-pasted status color map (leads, estimates, purchase orders,
+      invoices in two places, inventory, a driver's job card, staff
+      accounts) with a consistent icon + color everywhere, and every
+      "+ New X" button gets a small plus icon. See
+      `docs/DECISIONS.md`'s 2026-09-29 "Finishing the icon set" entry.
+
+**All 4 of Chris's approved items are now built, and both PRs are
+fully green on GitHub Actions CI** (typecheck, lint, unit tests,
+production build, and the Playwright/axe accessibility suite, all
+against a real throwaway Postgres — the actual verification gate this
+sandbox can't run itself, per `AGENTS.md`).
+
+Along the way, CI's real database caught 3 real bugs in
+`tests/estimate-deposit.test.ts` that this sandbox has no way to catch
+locally (it can't reach a real Postgres at all) — each one was a
+genuine mistake in the test's own setup, not a bug in the actual
+feature code: the conversion test tried to convert an estimate that
+was never actually brought to APPROVED status or given a line item;
+one fix used a field name (`approvedAt`) that doesn't exist on
+`Estimate` (the real field is `respondedAt`); and the cleanup step
+tried to delete a test user while an `AuditLog` row still pointed at
+them (no cascade delete on that link at the database level — same
+fix already used in two other test files). All three were found and
+fixed by actually watching CI run, not assumed away.
 
 **Needs Chris**: review/merge PR #82 and PR #83 (in either order —
-they touch different files) once their CI finishes, and run each PR's
-migration in Neon (or just merge — migrations now apply themselves).
+they touch different files). Each has its own migration —
+`prisma/migrations/20260929210000_estimate_deposit_paid_at` (PR #82)
+and `prisma/migrations/20260929220000_purchasing_and_supplies` (PR
+#83) — Chris can run either in Neon's console, or just merge; both
+apply themselves automatically as part of the production build now
+(Phase 6A item 1).
