@@ -3,6 +3,7 @@ import { getCustomersPage, getCustomersCount } from "@/domains/customers";
 import { parsePage, paginationMeta } from "@/domains/pagination";
 import { Pagination } from "@/components/pagination";
 import { ExportCsvLink } from "@/components/export-csv-link";
+import { HomeServiceIcon } from "@/components/icons/service-icons";
 
 export const metadata = { title: "Customers" };
 
@@ -19,7 +20,10 @@ export default async function CustomersPage({
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-xl font-semibold">Customers</h1>
+        <h1 className="flex items-center gap-2 text-xl font-semibold">
+          <HomeServiceIcon className="h-5 w-5 text-gray-500" />
+          Customers
+        </h1>
         <div className="flex gap-2">
           <ExportCsvLink href="/desk/customers/export" label="Export CSV" />
           <Link

@@ -4,7 +4,7 @@ import { requireSession } from "@/lib/session";
 import { getPortalData } from "@/domains/portal";
 import { getInvoiceDetail } from "@/domains/billing/invoice-detail";
 import { InvoiceDocument } from "@/components/billing/invoice-document";
-import { PrintInvoiceButton } from "@/components/billing/print-invoice-button";
+import { PrintDocumentButton } from "@/components/print-document-button";
 
 export const metadata = { title: "Invoice" };
 
@@ -39,7 +39,7 @@ export default async function AccountInvoicePage({
         <Link href="/account/billing" className="text-sm text-gray-600 hover:underline">
           &larr; Back to billing
         </Link>
-        <PrintInvoiceButton />
+        <PrintDocumentButton />
       </div>
 
       <div className="mt-4 print:mt-0">

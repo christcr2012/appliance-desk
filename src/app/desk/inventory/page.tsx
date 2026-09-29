@@ -8,6 +8,7 @@ import { ALL_APPLIANCE_STATUSES, APPLIANCE_STATUS_LABELS } from "@/domains/inven
 import { parsePage, paginationMeta } from "@/domains/pagination";
 import { Pagination } from "@/components/pagination";
 import { ExportCsvLink } from "@/components/export-csv-link";
+import { ApplianceServiceIcon } from "@/components/icons/service-icons";
 
 export const metadata = { title: "Inventory" };
 
@@ -54,7 +55,10 @@ export default async function InventoryPage({
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-xl font-semibold">Inventory</h1>
+        <h1 className="flex items-center gap-2 text-xl font-semibold">
+          <ApplianceServiceIcon className="h-5 w-5 text-gray-500" />
+          Inventory
+        </h1>
         <ExportCsvLink
           href={status ? `/desk/inventory/export?status=${status}` : "/desk/inventory/export"}
         />

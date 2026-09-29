@@ -9,6 +9,7 @@ import { addServiceAddressAction } from "../actions";
 // client bundle for this "use client" component. See that index's own
 // comment for why the split exists.
 import { formatCents } from "@/domains/pricing/money";
+import { PropertyServiceIcon } from "@/components/icons/service-icons";
 
 type Address = {
   id: string;
@@ -84,7 +85,8 @@ export function ServiceAddressesPanel({
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-5">
       <div className="flex items-center justify-between">
-        <h2 className="font-medium text-gray-900">
+        <h2 className="flex items-center gap-1.5 font-medium text-gray-900">
+          <PropertyServiceIcon className="h-4 w-4 text-gray-500" />
           {addresses.length > 1 ? "Properties" : "Service address"}
         </h2>
         <button

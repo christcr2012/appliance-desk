@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getJobsPage, getJobsCount } from "@/domains/jobs";
+import { CalendarServiceIcon } from "@/components/icons/service-icons";
 import type { JobStatus } from "@prisma/client";
 import { parsePage, paginationMeta } from "@/domains/pagination";
 import { Pagination } from "@/components/pagination";
@@ -47,7 +48,10 @@ export default async function JobsPage({
   return (
     <div>
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Jobs</h1>
+        <h1 className="flex items-center gap-2 text-xl font-semibold">
+          <CalendarServiceIcon className="h-5 w-5 text-gray-500" />
+          Jobs
+        </h1>
         <Link
           href="/desk/jobs/new"
           className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"

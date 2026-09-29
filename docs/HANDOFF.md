@@ -1820,16 +1820,12 @@ after PR #76 merged).
       the runnable-test count is unaffected, and CI's real Postgres is
       the actual verification gate.
 
-**Status**: built and locally verified, **not yet committed/pushed**
-as of this entry — next step is committing this branch, opening a PR,
-and confirming CI green, following the exact same pattern as every
-other phase above.
-
-**Chris needs to do one thing before this goes live**: run this new
-migration's SQL against the real Neon database, same as every other
-schema change in this project (Vercel's build doesn't run `prisma
-migrate deploy` automatically) — see
-`prisma/migrations/20260929170000_estimates/migration.sql`.
+**Status**: shipped. Committed and pushed on
+`ai/claude/estimates-scoping-2026-09-29`, PR #77, CI green, and merged
+to `main` by Chris (2026-09-29). The migration was already applied to
+the live Neon database (confirmed by directly checking it — every
+table/column/index it adds was already there) before this was asked
+for, so nothing further was needed there.
 
 **Still open, not built in this first version**: collecting a deposit
 at the moment an estimate is approved (an `Estimate.depositCents`
@@ -1837,3 +1833,67 @@ field exists for this, but nothing charges it yet — conversion still
 relies on the existing agreement-signing → Stripe Checkout flow); an
 automatic reminder email for a sent-but-unanswered estimate. Both
 noted in `docs/ROADMAP.md` as good small follow-ons, not overlooked.
+
+## 2026-09-29 (continued) — Neon "launch plan" review, and small housekeeping
+
+Chris upgraded Neon to the Launch plan and asked whether it offers more
+than just the database, while keeping costs as close to $0/month as
+possible ($20/month named as an extreme he doesn't want to hit). Full
+findings in this session's chat, summarized here for the record: actual
+usage is negligible (database is ~34 MB, compute auto-suspends after 5
+minutes idle), realistic cost is **$1–3/month**, well under his
+ceiling. Neon's other offerings (managed auth, a data API, object
+storage, serverless functions) were evaluated and **not adopted** —
+the app already has its own working versions of each (Better Auth,
+Vercel Blob) and doubling up would mean paying twice with no real
+benefit. The one genuinely useful thing flagged: database branches
+(10 included on Launch, only 2 in use) now make protecting `main` and
+per-preview-deployment database branches realistic, previously blocked
+by the old plan's branch limit — not done yet, noted in
+`docs/ROADMAP.md` for whenever Chris wants it.
+
+Two small pieces of housekeeping while in there: a leftover database
+branch from the 2026-09-28 backup-restore drill (`restore-drill-test`)
+was deleted at Chris's request — it was serving no purpose and
+duplicating a small amount of storage. And Neon's own official
+AI-agent guidance docs were installed (`npx neon@latest skills -s neon
+-s neon-postgres -y`, PR #78, merged) — same provider-neutral spirit as
+`AGENTS.md`, so any AI tool that works on this repo later (not just
+this session) follows the same safe database practices (branch before
+schema changes, never run something destructive unasked).
+
+## 2026-09-29 (continued) — A work-order document, and the brand kit's service icons
+
+Two items flagged as unfinished in the earlier brand-kit audit, picked
+back up once the above was wrapped up. Full reasoning in
+`docs/DECISIONS.md`'s matching entry. Branch
+`ai/claude/work-order-and-icons-2026-09-29`.
+
+- [x] A real, printable **work order** for any `Job` — matches the
+      brand kit's `Work-order.pdf` the way the invoice document matches
+      `Invoice.pdf`. New `/desk/jobs/[id]/work-order` page, linked from
+      the job detail page. Shows the customer, address, appliances
+      involved, the field checklist, and notes — deliberately leaves
+      out repair-cost numbers (that's Chris's own bookkeeping, not
+      something to hand to whoever's doing the visit).
+- [x] `PrintInvoiceButton` generalized into a shared
+      `PrintDocumentButton` (just `window.print()`, no invoice-specific
+      logic) — now used by both the invoice document and the new work
+      order.
+- [x] The brand kit's six service icons (appliance, calendar, delivery,
+      home, property, support) added as real components
+      (`src/components/icons/service-icons.tsx`) and placed on the six
+      page headers/panels where one of them is an honest fit — Jobs,
+      Dispatch, Maintenance, Inventory, Customers, and a customer's
+      Properties panel. Not rolled out everywhere — see
+      `docs/DECISIONS.md` for why a partial, honest match beats forcing
+      icons onto pages these six don't actually represent.
+- [x] `npx eslint` — clean. `npm run typecheck` — no new errors beyond
+      the same pre-existing, documented Prisma-generation sandbox
+      limitation (one new instance, same shape, in
+      `work-order-detail.ts`). No new automated tests needed — pure
+      presentation over already-tested/CI-verified domain data, no
+      cross-customer isolation question (staff-only).
+
+**Still open, flagged not built**: a bigger, more deliberate icon pass
+across every desk/portal page — see `docs/ROADMAP.md`.

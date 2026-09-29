@@ -3054,3 +3054,74 @@ applying to the live Neon database before/alongside deploying, same as
 every schema change in this sandbox (see AGENTS.md's Prisma
 limitation) — flagged to Chris, not applied unilaterally to production
 from here.
+
+## 2026-09-29 (continued) — A work-order document, and the brand kit's service icons
+
+Two of the items flagged as unfinished in the 2026-09-29 brand-kit
+audit, built once the estimates work and Chris's Neon question were
+wrapped up.
+
+**A single, printable work order** (`src/domains/jobs/work-order-detail.ts`,
+`src/components/jobs/work-order-document.tsx`,
+`/desk/jobs/[id]/work-order`), matching the brand kit's own
+`Work-order.pdf` template the same way the invoice document matches
+`Invoice.pdf` — same layout language (logo/business header, a
+status pill, a line-item-style table), same plain Tailwind gray/white
+classes and `print:` treatment, same "just use the browser's print
+dialog" approach. Deliberately leaves out `Job.partsCostCents`/
+`laborCostCents` — that's Chris's own internal repair-cost bookkeeping,
+not something a work order handed to whoever's doing the visit needs to
+show. No customer-scoping question here (unlike the invoice document):
+there's no customer-facing version of a Job, so `getWorkOrderDetail` is
+staff-only, same as every other `/desk/jobs/**` page.
+
+Along the way, `PrintInvoiceButton` (invoice-only, but had no
+invoice-specific logic — just `window.print()`) was generalized into a
+shared `src/components/print-document-button.tsx` with a `label` prop,
+used by both the invoice document and this new work-order page — one
+component instead of two near-identical copies.
+
+**The brand kit's six service icons** (appliance, calendar, delivery,
+home, property, support —
+`03_Design_System/Service-icons/*.svg`, never used anywhere in the app
+before this) — added as `src/components/icons/service-icons.tsx`, one
+React component per icon, traced from the kit's own SVGs with the
+hardcoded brand-color stroke swapped for `currentColor` (same
+convention as `src/components/site/appliance-icon.tsx` and
+`theme-toggle.tsx`) so they pick up whatever text color the
+surrounding element has, including in dark mode.
+
+Deliberately not rolled out as a blanket "every nav link/badge gets an
+icon" pass — there are only six icons and roughly a dozen nav links, so
+forcing a match everywhere would mean guessing at icons that don't
+really fit. Instead, applied only where a real, unambiguous match
+exists:
+- Jobs page header → calendar
+- Dispatch page header → delivery
+- Maintenance requests page header → support
+- Inventory page header → appliance
+- Customers page header → home
+- A customer's "Properties"/"Service address" panel heading → property
+- The new work order document's own "WORK ORDER" heading → calendar
+
+Estimates, Billing, Revenue, Reports, Growth, Settings, Leads,
+Agreements, Fleet, Parts, Activity, and Today/Driver-view were left
+alone — none of the six icons is an honest fit for what those pages
+actually are, and a mismatched icon would be worse than no icon. A
+future, more deliberate icon pass (a bigger set, applied consistently
+everywhere) is still open in `docs/ROADMAP.md` if Chris wants to take
+that further later.
+
+**Verification**: `npx eslint` on every new/changed file — clean.
+`npm run typecheck` — no new errors beyond the same pre-existing,
+documented Prisma-client-generation sandbox limitation every other
+`src/domains/**`/`src/app/desk/**` file already has (one new instance
+of the exact same error shape, in `work-order-detail.ts`'s own
+appliance-mapping line — confirmed by comparing against
+`src/domains/jobs/index.ts`'s identical pattern). No new tests needed
+— this is presentation over already-tested domain data (`getJobById`'s
+own query shape), the same reasoning `invoice-document.tsx` used for
+skipping component-level tests in favor of the real, CI-run
+`tests/customer-isolation.test.ts` coverage on the domain layer below
+it — and this feature has no cross-customer data-isolation question to
+begin with, since it's staff-only.

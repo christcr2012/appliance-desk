@@ -3,6 +3,7 @@ import { getMaintenanceRequestsPage, getMaintenanceRequestsCount } from "@/domai
 import type { MaintenanceStatus } from "@prisma/client";
 import { parsePage, paginationMeta } from "@/domains/pagination";
 import { Pagination } from "@/components/pagination";
+import { SupportServiceIcon } from "@/components/icons/service-icons";
 
 export const metadata = { title: "Maintenance" };
 
@@ -50,7 +51,10 @@ export default async function MaintenancePage({
 
   return (
     <div>
-      <h1 className="text-xl font-semibold">Maintenance requests</h1>
+      <h1 className="flex items-center gap-2 text-xl font-semibold">
+        <SupportServiceIcon className="h-5 w-5 text-gray-500" />
+        Maintenance requests
+      </h1>
       <p className="mt-1 text-sm text-gray-600">
         Submitted by customers from their account portal.
       </p>
