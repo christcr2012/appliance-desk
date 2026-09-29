@@ -173,7 +173,7 @@ describe("convertEstimateToAgreements — applying an already-collected deposit"
       where: { id: estimateId },
       data: {
         status: "APPROVED",
-        approvedAt: new Date(),
+        respondedAt: new Date(),
         approverName: "Test Approver",
         approverEmail: "approver@example.test",
       },
