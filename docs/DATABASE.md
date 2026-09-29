@@ -25,11 +25,13 @@ in UTC and only converted to Mountain Time for display.
 
 ## Leads
 
-- **Lead** — an inquiry from the public site's request form, before
-  Chris has done anything with it. Holds everything the form captures
-  plus the computed `score`/`scoreReasons` (see `docs/BUSINESS-RULES.md`
-  for the scoring rules) and a `status` (new → contacted → converted /
-  lost).
+- **Lead** — an inquiry from the public site's request form, or added
+  directly by Chris for a phone call/walk-in (`createdByUserId` is set
+  when staff added it, null when it came from the public form — see
+  `docs/DECISIONS.md`'s 2026-09-29 "Adding a lead by hand..." entry).
+  Holds everything the form captures plus the computed
+  `score`/`scoreReasons` (see `docs/BUSINESS-RULES.md` for the scoring
+  rules) and a `status` (new → contacted → converted / lost).
 - **LeadApplianceRequest** — which appliance types + quantities a lead
   asked for (a lead can ask for more than one kind of appliance).
 
@@ -51,7 +53,13 @@ in UTC and only converted to Mountain Time for display.
   that doesn't fit standard self-serve pricing (a property manager
   ordering for several units, a whole building, and similar — see
   `docs/BUSINESS-RULES.md`'s "Property managers / portfolio accounts").
-  Belongs to a `Customer`, moves through `EstimateStatus` (DRAFT → SENT
+  Belongs to a `Customer` **or** a `Lead` (`customerId`/`leadId` are
+  both optional, but a `CHECK` constraint requires at least one — see
+  `docs/DECISIONS.md`'s 2026-09-29 "Adding a lead by hand..." entry):
+  an estimate started for someone who isn't a customer yet is tied to
+  their `Lead` instead, and gets `customerId` filled in once they
+  approve it online (both end up set at that point — `leadId` stays as
+  a trace-back). Moves through `EstimateStatus` (DRAFT → SENT
   → VIEWED → APPROVED/CHANGES_REQUESTED/DECLINED/EXPIRED → CONVERTED),
   and records who actually approved it (`approverName`/
   `approverEmail`/`approverIpAddress`) the same way `SignatureRecord`

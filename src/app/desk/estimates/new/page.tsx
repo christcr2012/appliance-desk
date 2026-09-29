@@ -21,24 +21,17 @@ export default async function NewEstimatePage({
         next screen.
       </p>
 
-      {customers.length === 0 ? (
-        <p className="mt-6 rounded-md border border-gray-200 bg-white p-4 text-sm text-gray-600">
-          No customers yet — convert a lead into a customer first from
-          /desk/leads.
-        </p>
-      ) : (
-        <div className="mt-6">
-          <NewEstimateForm
-            customers={customers.map((c) => ({
-              id: c.id,
-              name: c.user.name ?? c.user.email,
-              companyName: c.companyName,
-              isPropertyManager: c.isPropertyManager,
-            }))}
-            initialCustomerId={customerId}
-          />
-        </div>
-      )}
+      <div className="mt-6">
+        <NewEstimateForm
+          customers={customers.map((c) => ({
+            id: c.id,
+            name: c.user.name ?? c.user.email,
+            companyName: c.companyName,
+            isPropertyManager: c.isPropertyManager,
+          }))}
+          initialCustomerId={customerId}
+        />
+      </div>
     </div>
   );
 }

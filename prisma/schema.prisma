@@ -274,8 +274,17 @@ model Lead {
   isHighValue Boolean @default(false)
 
   applianceRequests LeadApplianceRequest[]
+  estimates         Estimate[]
 
   convertedCustomerId String?
+
+  // Null = came in through the public website contact form (the
+  // ordinary case). Set = a staff member typed this lead in directly
+  // (a phone call, a walk-in, or the "start an estimate for someone
+  // new" flow on /desk/estimates/new) — see
+  // src/domains/leads' createLeadManually. Purely provenance; nothing
+  // in scoring or conversion treats the two differently.
+  createdByUserId String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -821,8 +830,20 @@ model Estimate {
   // Sequential, human-facing number (what shows on the document) —
   // separate from `id`, same pattern as Invoice.invoiceNumber.
   estimateNumber Int            @unique @default(autoincrement())
-  customerId     String
-  customer       Customer       @relation(fields: [customerId], references: [id])
+  // Exactly one of customerId/leadId is set when this estimate is
+  // created (see src/domains/estimates — createEstimateDraft requires
+  // an existing customer; createEstimateDraftForNewLead creates a Lead
+  // first and sets leadId instead, for someone who isn't a customer
+  // yet). If it started from a lead, customerId gets filled in the
+  // moment the customer actually approves it online (approveEstimate
+  // converts the lead to a real customer right then — see that
+  // function's comment for why approval, not sending or delivery, is
+  // the trigger) — leadId stays set afterward too, purely as a
+  // trace-back ("this customer started as a lead on this estimate").
+  customerId     String?
+  customer       Customer?      @relation(fields: [customerId], references: [id])
+  leadId         String?
+  lead           Lead?          @relation(fields: [leadId], references: [id])
   status         EstimateStatus @default(DRAFT)
 
   // Internal reference only, e.g. "Sunset Apartments — 12 units" — never
@@ -866,6 +887,7 @@ model Estimate {
   updatedAt DateTime @updatedAt
 
   @@index([customerId])
+  @@index([leadId])
   @@index([status])
 }
 

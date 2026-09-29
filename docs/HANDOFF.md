@@ -1897,3 +1897,53 @@ back up once the above was wrapped up. Full reasoning in
 
 **Still open, flagged not built**: a bigger, more deliberate icon pass
 across every desk/portal page — see `docs/ROADMAP.md`.
+
+## 2026-09-29 (continued) — Adding a lead by hand, and starting an estimate for someone new
+
+Chris flagged a real gap: he could add a new customer directly, but
+not a new lead, and couldn't start an estimate at all unless the
+person already had a customer account. Full reasoning (including why
+his own "convert at payment or delivery" idea for the following
+question isn't technically possible, and what was built instead) is in
+`docs/DECISIONS.md`'s matching entry; the plain-English rule is in
+`docs/BUSINESS-RULES.md`. Branch `ai/claude/lead-estimate-gap-2026-09-29`.
+
+- [x] **"+ Add a lead"** button on `/desk/leads` → `/desk/leads/new`,
+      a short form (just name and phone required) for a phone call or
+      walk-in that didn't come through the website.
+- [x] **`/desk/estimates/new`** now has a "Who's this for?" toggle —
+      an existing customer (the original flow), or "Someone new,"
+      which creates a lead for them first and starts the estimate
+      against that instead. That lead shows up in the ordinary
+      `/desk/leads` pipeline immediately, same as any other lead.
+- [x] **The lead becomes a real customer automatically the moment they
+      approve the estimate online** — no separate "convert" click
+      needed. Nothing about when money actually gets charged changes:
+      a deposit still only happens once the resulting agreement is
+      actually signed, and recurring billing still only starts once
+      delivery is marked complete, exactly as for every other
+      customer.
+- [x] The estimate pages (list, detail, and the public approval page)
+      all show "lead, not yet a customer" instead of a customer name
+      when an estimate hasn't been approved yet, and the "convert to
+      agreement" step already handles a newly-converted customer
+      having zero properties on file gracefully (points Chris to add
+      one first, rather than failing).
+- [x] `npx eslint` — clean. `npm run typecheck` and `npx vitest run`
+      (382 tests) — no new errors or failures beyond the same
+      pre-existing, documented Prisma-generation sandbox limitation
+      every other file in this codebase already has.
+
+**Needs Chris**: the new migration
+(`prisma/migrations/20260929190000_leads_estimates_gap/migration.sql`)
+still needs to be pasted into the Neon SQL console and run against the
+live database, same as every other schema change so far — it's purely
+additive (one column made optional, one new optional column, a check
+constraint, one new column on `Lead`), nothing destructive.
+
+**Still owed, not yet delivered**: the broader "brainstorm" of further
+robustness gaps Chris also asked for in the same message ("I feel like
+in a lot of ways, it's very basic... managing my business from this
+system") — recorded as a set of new candidate entries in
+`docs/ROADMAP.md`, not built without his further say-so per
+`AGENTS.md`.

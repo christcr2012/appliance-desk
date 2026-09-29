@@ -124,6 +124,77 @@ export async function createLead(input: LeadFormInput) {
   return lead;
 }
 
+export type ManualLeadInput = {
+  contactName: string;
+  phone: string;
+  email?: string | null;
+  companyName?: string | null;
+  isBusiness?: boolean;
+  isPropertyManager?: boolean;
+  addressLine1?: string | null;
+  city?: string | null;
+  zip?: string | null;
+  notes?: string | null;
+};
+
+/**
+ * Lets staff add a lead directly — a phone call, a walk-in, or the
+ * "start an estimate for someone new" flow on /desk/estimates/new
+ * (createEstimateDraftForNewLead below calls this first). Flagged by
+ * Chris (2026-09-29) as a real gap: the only way a Lead could exist was
+ * through the public contact form, so a call-in inquiry had nowhere to
+ * go except straight to "Add a customer" — skipping the lead pipeline
+ * (scoring, status tracking, follow-up) entirely.
+ *
+ * Deliberately lighter than createLead above: no appliance-type
+ * selection, no desired term, no privacy-consent checkbox — none of
+ * that applies when Chris himself is the one typing this in, not a
+ * website visitor agreeing to a form. `desiredTerm`/`quantity` are left
+ * at scoreLead's own defaults (month-to-month, 1) so this lead can
+ * still be scored and shown in the pipeline even with minimal detail;
+ * Chris can fill in the rest later from the lead's own page. No
+ * "new lead" notification email either — he's the one creating it.
+ */
+export async function createLeadManually(userId: string, input: ManualLeadInput) {
+  const { score, reasons, isHighValue } = scoreLead({
+    desiredTerm: null,
+    quantity: 1,
+    isPropertyManager: Boolean(input.isPropertyManager),
+    isBusiness: Boolean(input.isBusiness),
+  });
+
+  const lead = await prisma.lead.create({
+    data: {
+      isBusiness: Boolean(input.isBusiness),
+      isPropertyManager: Boolean(input.isPropertyManager),
+      companyName: input.companyName || null,
+      contactName: input.contactName,
+      phone: input.phone,
+      email: input.email || null,
+      notes: input.notes || null,
+      addressLine1: input.addressLine1 || null,
+      city: input.city || null,
+      zip: input.zip || null,
+      score,
+      scoreReasons: reasons,
+      isHighValue,
+      createdByUserId: userId,
+    },
+  });
+
+  await prisma.auditLog.create({
+    data: {
+      userId,
+      action: "lead.create.manual",
+      entityType: "Lead",
+      entityId: lead.id,
+      newValue: { contactName: lead.contactName, phone: lead.phone },
+    },
+  });
+
+  return lead;
+}
+
 // ---------------------------------------------------------------------------
 // /desk/leads — browsing, status changes, and lead → customer conversion.
 // See docs/BUSINESS-RULES.md ("How the business operates at launch").
@@ -284,8 +355,15 @@ export async function sendCustomerActivationEmail(email: string): Promise<boolea
  * (sendCustomerActivationEmail) so they activate their own account. See
  * "Resend activation email" on /desk/customers/[id] for re-sending it
  * later if the first email didn't arrive or the link expired.
+ *
+ * `userId` is null when this runs as a side effect of the customer's
+ * own public approval of a lead-started estimate (approveEstimate in
+ * src/domains/estimates) rather than a staff click on /desk/leads —
+ * there's no staff user to attribute that conversion to, and
+ * AuditLog.userId is nullable for exactly this kind of system/public
+ * action.
  */
-export async function convertLeadToCustomer(userId: string, leadId: string) {
+export async function convertLeadToCustomer(userId: string | null, leadId: string) {
   const lead = await prisma.lead.findUniqueOrThrow({ where: { id: leadId } });
 
   const check = canConvertLead(lead);

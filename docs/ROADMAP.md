@@ -443,3 +443,74 @@ is already built here.
   price-catalog integration and consumer-financing (Wisetack)
   integration — both solve a materials-markup/big-ticket-financing
   problem Chris's flat-monthly-rental pricing model doesn't have.
+
+## Managing the business more fully — brainstorm requested 2026-09-29 (not built)
+
+Chris's own words, right after flagging the lead/estimate gap fixed in
+the entry above: *"I don't even know what other things I should be
+thinking of... this is supposed to be a very robust system, and I feel
+like in a lot of ways it's very basic — as far as managing my business
+from this system."* Per `AGENTS.md`'s "add it to the roadmap, don't
+build it unasked" rule, none of this is built — it's a genuine list to
+decide from, grouped by how much of the plumbing already exists versus
+what would be new work. Two big, already-identified pieces of this
+same question are tracked elsewhere and repeated here just so they're
+not missed in a "what's left" read of this file: a separate
+**Contacts concept** (a property manager's tenants, billing contacts,
+and decision-makers as distinct from the one `Customer` record — idea
+#13 in the 2026-09-27 business-growth ideas entry above, still open),
+and **purchasing/supplies** (purchase orders, receiving, supplier
+records, and reorder thresholds on top of the existing `PartRecord`
+catalog — from the Astra operations review above, still open).
+
+Genuinely new, surfaced while building the lead/estimate fix:
+
+- **A real contact/communication history per lead and customer.**
+  Today a `Lead` has exactly one flat `notes` text field, and a
+  `Customer` has none at all — there's no record of "called Tuesday,
+  no answer," "emailed the estimate again," "asked for a callback
+  Friday." A CRM's core value is usually this log, not the contact
+  record itself. Would need a small new model (something like
+  `ContactLogEntry`: who, when, what, on which lead or customer) and a
+  simple form/list on the lead and customer detail pages — no schema
+  changes to anything existing.
+- **A reason when a lead goes `LOST`.** `LeadStatus` already has
+  `LOST`, but nothing captures *why* — too expensive, went with a
+  competitor, wrong service area, unresponsive after N attempts. Right
+  now that information, if it exists at all, only lives in Chris's own
+  memory or the one flat `notes` field. A small required-reason prompt
+  when marking a lead lost (plus a handful of standard reasons to pick
+  from, "other" with free text) would make win/loss patterns visible
+  over time instead of invisible.
+- **Lead-source ROI reporting.** The public contact form already asks
+  "how did you hear about us" (`Lead.howHeard`) and stores it, but
+  nothing anywhere reports on it — it just sits on each lead's own
+  detail page, one at a time. A simple breakdown (leads, and
+  conversion rate, by source) would answer "is the Google Business
+  Profile listing worth it, or is it all word of mouth" — useful input
+  for where the next marketing dollar goes, and Chris does not
+  currently have any way to answer that question from inside the
+  system at all.
+- **A simple staff task/reminder list**, separate from the automated
+  exception flags `/desk/growth` and `/desk/today` already generate
+  (churn risk, overdue billing, maintenance due). Those are all
+  system-detected; there's no way for Chris to jot down his own
+  reminder ("call the Oak Street property manager back Thursday about
+  renewing") and have it surface at the right time. Even a bare-bones
+  version — a due date, a note, optionally linked to a lead/customer/
+  job — would close a real gap between what the system already
+  automatically flags and what only Chris knows he needs to follow up
+  on.
+- **A lightweight way to see "what did I actually do today/this
+  week"** across leads contacted, estimates sent, jobs completed, and
+  payments collected — one combined activity summary, rather than
+  checking Leads, Estimates, Jobs, and Billing separately. `/desk/
+  activity` already logs everything via `AuditLog`, so this is mostly
+  a new view over data that already exists, not new tracking.
+
+Two Astra-review ideas above (multi-employee **permissions beyond
+OWNER/ADMIN/STAFF** — dispatcher, technician, billing-only roles — and
+a **modular backend structure**) are worth a second look once Chris
+actually hires someone, but aren't worth building speculatively for a
+one-person operation today; noted here so they're not forgotten rather
+than proposed as near-term work.

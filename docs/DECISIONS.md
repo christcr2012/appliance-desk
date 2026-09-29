@@ -3125,3 +3125,109 @@ skipping component-level tests in favor of the real, CI-run
 `tests/customer-isolation.test.ts` coverage on the domain layer below
 it — and this feature has no cross-customer data-isolation question to
 begin with, since it's staff-only.
+
+## 2026-09-29 (continued) — Adding a lead by hand, and starting an estimate for someone new
+
+Chris's own report: *"I can add a new customer, but I cannot add a new
+lead. I also cannot start an estimate unless there is an existing
+customer for me to send it to."* A real gap — every "someone new"
+entry point (the public contact form, `/desk/customers/new`) assumed
+either a website visitor or someone already committed to signing up;
+there was no lightweight "just note this person down" path for a
+phone call or walk-in inquiry, and no way to start pricing a deal
+before deciding whether it should be a lead or a customer at all.
+Branch `ai/claude/lead-estimate-gap-2026-09-29`.
+
+**Adding a lead directly** (`/desk/leads/new`, "+ Add a lead" on
+`/desk/leads`) — a new `createLeadManually` in `src/domains/leads`,
+deliberately lighter than the public form: no appliance-type list, no
+quantity, no consent checkbox, since this is Chris typing in what
+someone just told him on the phone, not someone self-reporting through
+a public form that needs spam/consent safeguards. Still runs through
+the same `scoreLead` logic as any other lead (it already tolerates
+sparse input — a missing desired term defaults to month-to-month, a
+missing quantity defaults to 1). New nullable `Lead.createdByUserId`
+records that this one came from staff, not the website; no
+notification email is sent since the creator already knows about it.
+
+**Starting an estimate for someone who isn't a lead or a customer
+yet** (`/desk/estimates/new`'s new "Who's this for?" toggle) — the
+harder half. `Estimate.customerId` is now optional and a new optional
+`Estimate.leadId` was added (a `CHECK` constraint keeps at least one
+of the two always set); picking "Someone new" calls the same
+`createLeadManually` above to create the lead, then
+`createEstimateDraftForNewLead` creates the estimate against
+`leadId` instead of `customerId`. The lead shows up in the ordinary
+`/desk/leads` pipeline immediately — starting an estimate for someone
+never hides them from the rest of the lead-management flow (status,
+follow-up, scoring) the way a silent side-channel would have.
+
+**When does the lead become a real customer?** This needed real
+thought, and Chris was asked directly (`AskUserQuestion`) whether it
+should happen the instant Chris sends the estimate, or wait for him to
+manually click "convert." His own answer went a different direction:
+convert automatically at whichever comes first, an actual payment
+(deposit, first month's rent, a delivery/installation fee) or a
+completed delivery — reasoning that a completed delivery would
+probably trigger a payment anyway if one hadn't happened already — and
+explicitly asked for a technical opinion before deferring the final
+call: *"if it makes sense and you agree, it's a good idea, go ahead
+and implement it."*
+
+That literal proposal turns out to be technically impossible as
+stated: both halves of it — collecting any payment through Stripe, and
+scheduling/completing a delivery job against a `RentalAgreement` —
+already require a real `Customer` (and its own Stripe customer) to
+exist *first*. `RentalAgreement.customerId` is a required, non-null
+foreign key; there is no code path that charges or schedules delivery
+for someone who isn't a `Customer` yet. So "convert at payment or
+delivery" can't be the trigger — by the time either of those could
+happen, conversion would already have needed to happen earlier to make
+them possible at all.
+
+**Implemented instead: convert the moment the customer approves the
+estimate online** (`approveEstimate`, no login needed, same
+unguessable-link model the e-signature flow and the rest of the
+estimate-approval flow already use). This is the earliest point in the
+whole flow that's both technically possible and genuinely honest: it's
+the customer's own clear "yes," typed by them — not Chris guessing
+early, and not an arbitrary technical requirement forced earlier than
+it needs to be. Nothing about *when money actually moves* changes from
+how every other customer already works: the resulting agreement still
+isn't signed automatically, a deposit is still only charged once it's
+actually signed (the existing agreement → Stripe Checkout flow,
+untouched), and recurring billing still only starts once their
+delivery job is marked completed. Becoming a "Customer" at approval
+just means the account/plumbing that later flow depends on now
+exists — nothing has been charged or delivered yet, and nothing here
+changes Chris's own approval-everything workflow (see
+`docs/BUSINESS-RULES.md`'s "How the business operates at launch"). If
+a lead already has no email on file (a bare phone-call entry), the
+approver's own email — typed into the public approval form, which
+already collects it — is used to fill it in, since converting to a
+customer account needs one to create the sign-in.
+
+Reused the existing `convertLeadToCustomer` (widened to accept a
+`null` `userId`, since this trigger is the customer's own public
+action, not a staff click — `AuditLog.userId` is already nullable) —
+same account-creation, activation-email, and referral-linking behavior
+as every other path into becoming a customer, no new logic
+duplicated. If a lead-converted customer ends up with zero properties
+on file (a phone-call lead is unlikely to have given a full address),
+the existing estimate-conversion panel already handles that
+gracefully — it disables the "convert" button and points Chris to add
+one from the new customer's own page rather than failing silently.
+
+**Verification**: `npx eslint` — clean (one `@next/next/no-html-link-for-pages`
+catch, fixed by using `next/link`). `npm run typecheck` — no new
+errors beyond the same pre-existing, documented Prisma-generation
+sandbox limitation every other file in this codebase already has
+(confirmed by diffing the new error list against files with the
+identical, already-shipped error shape). `npx vitest run` — all 382
+existing tests still pass; the only failing suites are the same
+pre-existing `Cannot find module '.prisma/client/default'` sandbox
+limitation (no test file touched by this change was newly broken).
+The new migration (`prisma/migrations/20260929190000_leads_estimates_gap/`)
+still needs to be run against the live Neon database before/alongside
+deploying, same as every schema change in this sandbox — flagged to
+Chris, not applied unilaterally to production from here.

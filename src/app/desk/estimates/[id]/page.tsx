@@ -42,8 +42,20 @@ export default async function EstimateDetailPage({
             Estimate #{estimate.estimateNumber} — {estimate.title}
           </h1>
           <p className="text-sm text-gray-600">
-            {estimate.customer.user.name ?? estimate.customer.user.email}
-            {estimate.customer.companyName ? ` · ${estimate.customer.companyName}` : ""}
+            {estimate.customer ? (
+              <>
+                {estimate.customer.user.name ?? estimate.customer.user.email}
+                {estimate.customer.companyName ? ` · ${estimate.customer.companyName}` : ""}
+              </>
+            ) : estimate.lead ? (
+              <>
+                {estimate.lead.contactName}
+                {estimate.lead.companyName ? ` · ${estimate.lead.companyName}` : ""}
+                <Link href={`/desk/leads/${estimate.lead.id}`} className="ml-2 text-xs underline">
+                  (not yet a customer — view lead)
+                </Link>
+              </>
+            ) : null}
           </p>
         </div>
         <span className="inline-block rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-700">
@@ -119,12 +131,20 @@ export default async function EstimateDetailPage({
             ? `${l.serviceAddress.line1}, ${l.serviceAddress.city}`
             : null,
         }))}
-        serviceAddresses={estimate.customer.serviceAddresses.map((a) => ({
+        serviceAddresses={(estimate.customer?.serviceAddresses ?? []).map((a) => ({
           id: a.id,
           label: `${a.line1}, ${a.city}, ${a.state} ${a.zip}`,
         }))}
         editable={editable}
       />
+
+      {!estimate.customer && estimate.lead && (
+        <p className="mt-2 text-xs text-gray-500">
+          This estimate is for a lead, not yet a customer, so there are no
+          saved properties to pick from — line items can still be added
+          without one.
+        </p>
+      )}
 
       <div className="mt-4 flex justify-end gap-3 text-sm font-medium text-gray-900">
         {monthly > 0 && <span>{formatCents(monthly)}/month</span>}
@@ -142,7 +162,8 @@ export default async function EstimateDetailPage({
         <div className="mt-6">
           <ConvertEstimatePanel
             estimateId={estimate.id}
-            serviceAddresses={estimate.customer.serviceAddresses.map((a) => ({
+            customerId={estimate.customer?.id ?? null}
+            serviceAddresses={(estimate.customer?.serviceAddresses ?? []).map((a) => ({
               id: a.id,
               label: `${a.line1}, ${a.city}, ${a.state} ${a.zip}`,
             }))}
