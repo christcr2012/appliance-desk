@@ -335,3 +335,47 @@ on — never built unasked.
   only.
 - Multi-industry / generalized SaaS features — this is a purpose-built
   appliance-rental system.
+
+## Flagged by the 2026-09-29 full-codebase audit (suggestions, not built)
+
+An AI session went through the whole codebase at Chris's request looking
+for bugs, broken links, dead code, and improvement opportunities. The
+concrete bugs and quick fixes found were fixed the same session (see
+`docs/HANDOFF.md`'s 2026-09-29 audit entry). These are the larger,
+lower-urgency items that need a deliberate decision rather than an
+obvious fix — flagged here per `AGENTS.md`'s "add it to the roadmap,
+don't build it unasked" rule:
+
+- **Pagination for four more list pages.** Leads, Agreements, Invoices
+  (`/desk/billing`), and Maintenance requests currently load every row
+  at once, unlike Customers and Inventory, which already page. Fine at
+  today's size (a few hundred rows); worth doing before any of these
+  lists reach the low thousands. The paginated pattern to copy already
+  exists in `src/domains/customers/index.ts` (`getCustomersPage`).
+- **A handful of missing database indexes** — fields used to filter or
+  join (like `Job.customerId`, `Job.agreementId`, `Invoice.agreementId`,
+  and several others) don't have an explicit index yet. Not a problem at
+  today's data volume; cheap to add as a migration next time the schema
+  is touched for something else. `Job.customerId`/`agreementId` and
+  `Invoice.agreementId` would matter first, since they're hit on every
+  customer/agreement page view.
+- **No automated accessibility testing on signed-in pages.** The
+  existing `e2e/accessibility.spec.ts` only checks the public website
+  and login pages — none of `/desk/**` or `/account/**` (i.e., none of
+  the pages Chris and his customers actually use day to day) run through
+  an automated accessibility check. Worth extending that same test file
+  to cover a representative signed-in page or two.
+- **Four HIGH-severity `npm audit` findings**, all inside Prisma's own
+  build/CLI tooling (not code the live site runs against customers —
+  the app only talks to Postgres at runtime). The suggested automatic
+  fix would downgrade Prisma to an older major version, which is a
+  bigger change than it sounds — needs a deliberate look next time
+  dependencies are updated, not a blind `npm audit fix --force`.
+- **No Content-Security-Policy header.** The site already sends several
+  other security headers (`docs/ARCHITECTURE.md`); CSP is the one that
+  blocks an injected malicious script from running if the site were ever
+  compromised some other way. Worth adding, not urgent.
+- **No backup beyond Neon's own rolling 6-hour window.** Verified to
+  actually work (`docs/DECISIONS.md`, 2026-09-28) but there's no separate
+  scheduled export or off-Neon copy on top of it. Worth deciding whether
+  that's enough for this business's risk tolerance as it grows.

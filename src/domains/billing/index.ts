@@ -30,19 +30,6 @@ export async function getInvoices(filter?: { delinquentOnly?: boolean }) {
   });
 }
 
-/** A single customer's own invoices, flat (not grouped by property) —
- * kept as a simple building block for anything that just needs a raw
- * list. /account/billing and /desk/billing/customer/[id] both use
- * getCustomerStatement (statements.ts) instead, which groups these same
- * rows by property and adds running totals. */
-export async function getInvoicesForCustomer(customerId: string) {
-  return prisma.invoice.findMany({
-    where: { customerId },
-    include: { lineItems: true, payments: true, refunds: true },
-    orderBy: [{ createdAt: "desc" }],
-  });
-}
-
 /** A link to Stripe's own hosted Customer Portal, where a customer can
  * update their payment method, switch between card/ACH, and download past
  * invoices/receipts themselves — per docs/BUSINESS-RULES.md's billing
