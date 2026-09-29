@@ -49,3 +49,7 @@ next-env.d.ts
 /e2e/.auth/
 /blob-report/
 
+
+# Claude Code local, machine-specific settings (permissions, etc.) —
+# never shared/committed. The .claude/skills/ folder itself IS committed.
+.claude/settings.local.json
