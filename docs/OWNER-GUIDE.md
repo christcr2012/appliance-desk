@@ -87,8 +87,8 @@ Go to **Jobs** to schedule a delivery, install, swap, removal, or
 maintenance visit — optionally tied to a specific agreement, which
 pre-fills its customer and appliances for you. Move a job through
 Scheduled → In progress → Completed (with notes), or Cancelled. You can
-attach a photo by pasting its URL (uploading a photo directly from your
-phone/computer isn't built yet).
+attach a photo by taking one with your phone's camera or choosing one
+from your device — no more pasting in a URL.
 
 ## Handling a maintenance request
 
@@ -128,10 +128,16 @@ pricing, without needing a developer.
 
 ## Billing, statements, and late fees
 
-Most rent still gets charged and collected automatically through
-Stripe, agreement by agreement. This section covers the tools around
-that — for a customer with several properties, for money that comes in
-outside Stripe, and for invoices that go unpaid too long.
+Rent is charged and collected automatically through Stripe, agreement
+by agreement — but Stripe is currently running in **test mode**, which
+behaves exactly like the real thing (checkout, recurring billing,
+invoices, webhooks) except no real money moves; it only accepts Stripe's
+fake test cards. Switching it to take real payments is a single
+deliberate step (real API keys instead of test ones) that's intentionally
+left for you to decide when to flip — see `docs/ROADMAP.md`. This
+section covers the tools around billing either way — for a customer with
+several properties, for money that comes in outside Stripe, and for
+invoices that go unpaid too long.
 
 **Viewing everything a customer owes.** Go to a customer's page and
 click **View statement** (or **Billing → Statements** to see every
@@ -191,14 +197,21 @@ without changing anything, if you want to see that before it happens.
 
 ## What's not built yet
 
-- Taking a real payment (Stripe billing) — everything today is tracked,
-  but nobody pays through the app yet.
-- Uploading a photo directly (delivery/condition photos are pasted-in
-  URLs for now).
-- A dedicated dashboard for revenue/collections — that arrives with
-  billing.
+(Corrected 2026-09-29 — this section had gone stale; photo uploads and
+the revenue dashboard were both built a while back but this list never
+caught up. See `docs/ROADMAP.md` for the always-current, fuller list.)
 
-See `docs/ROADMAP.md` for the fuller list of what's planned next.
+- **Taking a real payment.** Stripe billing itself is fully built and
+  running today — just in test mode (see "Billing, statements, and late
+  fees" above). No real money moves until you decide to switch it on.
+- **Texting (SMS) notifications.** Fully built and ready, dormant until
+  your business's required texting registration with Twilio (A2P 10DLC)
+  is complete — a carrier requirement, not something in the app to fix.
+- **Combining a property manager's several properties into one Stripe
+  charge.** Each property still bills separately today; a combined
+  statement across all of them already exists (see above), but the
+  actual charge isn't consolidated yet. Not urgent until you have a real
+  property-manager customer.
 
 ## What to do if something breaks
 

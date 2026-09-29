@@ -72,15 +72,25 @@ export async function recordManualPayment(
     throw new Error("Couldn't find that customer.");
   }
 
+  // Same open-invoice statuses required whether a specific invoice was
+  // picked or the payment is spreading across everything open (2026-09-29
+  // audit fix) — without this filter here too, naming a WRITTEN_OFF (or
+  // already-PAID) invoice's id directly would silently apply money to it
+  // and flip its status back to OPEN/PARTIALLY_PAID/PAID, resurrecting an
+  // invoice Chris had deliberately written off. The desk UI's own invoice
+  // picker already excludes those, so this wasn't reachable through normal
+  // use, but this function shouldn't rely on the UI to enforce that.
   const targetInvoices = await prisma.invoice.findMany({
     where: input.invoiceId
-      ? { id: input.invoiceId, customerId }
+      ? { id: input.invoiceId, customerId, status: { in: ["OPEN", "PARTIALLY_PAID", "DELINQUENT"] } }
       : { customerId, status: { in: ["OPEN", "PARTIALLY_PAID", "DELINQUENT"] } },
     orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
   });
 
   if (input.invoiceId && targetInvoices.length === 0) {
-    throw new Error("That invoice doesn't belong to this customer.");
+    throw new Error(
+      "That invoice isn't open — it may already be paid or written off, or belongs to a different customer.",
+    );
   }
 
   let remainingCents = input.amountCents;
