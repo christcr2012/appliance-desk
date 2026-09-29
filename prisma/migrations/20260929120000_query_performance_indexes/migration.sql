@@ -18,7 +18,11 @@ CREATE INDEX "ApplianceAssignment_applianceId_idx" ON "ApplianceAssignment"("app
 CREATE INDEX "Job_customerId_idx" ON "Job"("customerId");
 CREATE INDEX "Job_serviceAddressId_idx" ON "Job"("serviceAddressId");
 CREATE INDEX "Job_agreementId_idx" ON "Job"("agreementId");
-CREATE INDEX "Job_maintenanceRequestId_idx" ON "Job"("maintenanceRequestId");
+-- Job.maintenanceRequestId is NOT included here: it already has an index
+-- (Job_maintenanceRequestId_idx), created back in migration
+-- 20260926210000_job_maintenance_request_link when the column was added.
+-- Caught by replaying every migration against a real local Postgres
+-- before trusting this file — see docs/DECISIONS.md.
 
 CREATE INDEX "JobAppliance_jobId_idx" ON "JobAppliance"("jobId");
 CREATE INDEX "JobAppliance_applianceId_idx" ON "JobAppliance"("applianceId");

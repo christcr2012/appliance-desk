@@ -2570,3 +2570,26 @@ dimensions and `priority`; fonts already use `next/font` with
 `display: "swap"`; there's no oversized client-side JavaScript bundle on
 the public pages. The photo rendering was the one concrete, unaddressed
 cause found.
+
+## 2026-09-29 (continued) — CI caught a duplicate index; verified by replaying migrations locally
+
+The first push of the query-performance-indexes migration failed CI's
+"Apply database migrations" step: `Job_maintenanceRequestId_idx`
+already existed, created back in migration
+`20260926210000_job_maintenance_request_link` when that column was
+first added — this session's audit re-flagged it as "missing" without
+checking migration history closely enough. Removed the duplicate
+`CREATE INDEX` statement (the index itself was always fine; only the
+new migration's attempt to recreate it was wrong).
+
+Verified the fix properly rather than just guessing: this sandbox can't
+run `prisma migrate` at all (binaries.prisma.sh is unreachable, per
+AGENTS.md), but it does have a local PostgreSQL 16 server and `psql`.
+Started that server, then replayed every single migration in
+`prisma/migrations/`, in order, with real `psql`, against a fresh
+database — the same thing `prisma migrate deploy` does, just without
+Prisma's own CLI. All 21 applied cleanly, and a follow-up query
+confirmed every one of the 16 new indexes (17 minus the duplicate)
+actually exists. This is now the go-to way to sanity-check a raw SQL
+migration in this sandbox before pushing, instead of only reasoning
+about it by reading the schema.
