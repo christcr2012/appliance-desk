@@ -1578,13 +1578,28 @@ errors, confirmed line-for-line unchanged by this branch's edits.
 host — both documented, expected limitations); CI is the real gate, per
 AGENTS.md.
 
-**Status**: pushed as PR #75. First CI run failed on a duplicate
-database index this branch's migration tried to recreate (caught,
-fixed, and re-verified by replaying every migration against a real
-local Postgres — see docs/DECISIONS.md); pushed again and waiting on
-that CI run before reporting to Chris.
+**Status**: pushed as PR #75
+(https://github.com/christcr2012/appliance-desk/pull/75). CI needed
+three follow-up fixes before it went green, each with its own
+`docs/DECISIONS.md` entry: a duplicate database index in the new
+migration (caught by replaying every migration against a real local
+Postgres); a stuck migration on the *real* production database, caused
+by Preview and Production sharing one live Neon database (fixed by
+Chris running a verified SQL script, since this session's
+database-write tools are correctly hard-blocked from touching shared
+production data even with chat approval); and the new
+Content-Security-Policy header blocking Next.js's own required inline
+scripts, breaking every client-rendered page including login (fixed by
+adding `'unsafe-inline'` to `script-src` — see that entry for why this
+is the right trade-off, not a shortcut). Also cleared, at Chris's
+request, a fake/test customer he'd entered into the real database.
+This branch also picked up `main`'s latest twice along the way — once
+for PR #73 (mobile menu fix), once for PR #74 (full-codebase audit),
+both already merged by Chris directly.
 
 **Still open**: nothing newly flagged this round. The original 6-item
 list from the 2026-09-29 audit is now fully built (this entry); Neon's
 protected-branch plan upgrade remains flagged to Chris (costs money,
-his call, per AGENTS.md).
+his call, per AGENTS.md). PR #74 is already merged; PR #75 should be
+ready for Chris to merge once this
+round of CI confirms the CSP fix.

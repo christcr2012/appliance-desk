@@ -18,12 +18,27 @@ import { withSentryConfig } from "@sentry/nextjs/config";
 //
 // Every origin below was confirmed as actually used by reading the
 // code, not guessed:
-//   - script-src: 'self' (every script this app serves, including the
-//     old inline dark-mode anti-flash script, which moved to a real
-//     file at public/theme-init.js on this same date specifically so
-//     script-src could be 'self' with no 'unsafe-inline' exception —
-//     see that file's own comment) + Vercel's own Speed Insights
-//     loader script (va.vercel-scripts.com).
+//   - script-src: 'self' + Vercel's own Speed Insights loader script
+//     (va.vercel-scripts.com) + 'unsafe-inline'. That last one was NOT
+//     the original plan — see docs/DECISIONS.md's 2026-09-29 "CSP
+//     script-src broke login" entry. Short version: this app moved its
+//     one deliberate inline script (the dark-mode anti-flash snippet)
+//     to a real file at public/theme-init.js specifically so
+//     script-src could drop 'unsafe-inline' — but the App Router
+//     itself injects its own inline <script>self.__next_f.push(...)
+//     </script> tags on every single page to stream server-rendered
+//     data down to the client (this is how React hydrates and how
+//     Suspense boundaries like the one in src/app/login/page.tsx
+//     resolve). Without 'unsafe-inline' (and without switching to
+//     Next's nonce-based CSP, which requires giving up static
+//     generation on every page — a real trade-off this app
+//     deliberately avoided for the Speed Insights work, see below),
+//     the browser silently blocks those tags and the page never
+//     finishes rendering. Caught by PR #75's CI e2e run timing out
+//     waiting for the login form to appear — see docs/DECISIONS.md.
+//     This is also Next's own documented recommendation for a static
+//     (no-nonce) CSP — see node_modules/next/dist/docs/01-app/02-guides/
+//     content-security-policy.md's "Without Nonces" section.
 //   - style-src needs 'unsafe-inline': two places compute a truly
 //     dynamic inline style per render (a data-driven bar-chart height
 //     in /desk/revenue, and nothing else after the same pass removed
@@ -58,7 +73,7 @@ import { withSentryConfig } from "@sentry/nextjs/config";
 const isDev = process.env.NODE_ENV === "development";
 const cspHeader = `
   default-src 'self';
-  script-src 'self' https://va.vercel-scripts.com${isDev ? " 'unsafe-eval'" : ""};
+  script-src 'self' 'unsafe-inline' https://va.vercel-scripts.com${isDev ? " 'unsafe-eval'" : ""};
   style-src 'self' 'unsafe-inline';
   img-src 'self';
   font-src 'self';

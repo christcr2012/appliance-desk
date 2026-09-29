@@ -2593,3 +2593,100 @@ confirmed every one of the 16 new indexes (17 minus the duplicate)
 actually exists. This is now the go-to way to sanity-check a raw SQL
 migration in this sandbox before pushing, instead of only reasoning
 about it by reading the schema.
+
+## 2026-09-29 (continued) — Preview and Production share one database; a stuck migration reached real customer data
+
+Discovered while chasing a failed production deployment (commit
+`47bb0dc`, the PR #73 merge): production's build failed at `prisma
+migrate deploy` with `P3009` — "migrate found failed migrations in the
+target database, new migrations will not be applied." Root cause: this
+project's Preview and Production Vercel environments point at the exact
+same live Neon database (no separate preview branch — a documented
+cost-saving choice for a business this size). That means an earlier
+buggy preview build of the query-performance-indexes migration (the
+duplicate-index bug fixed above) hadn't just failed harmlessly in some
+disposable test database — it had partially run against the real
+database and left `_prisma_migrations` bookkeeping marking that
+migration as failed, which blocks every future migration, including
+production's, until it's resolved.
+
+Complication: Postgres does not roll back a raw-SQL migration file's
+already-successful statements just because a later statement in the
+same file errors (confirmed by reading Prisma's own behavior here, not
+assumed) — so 6 of the 16 new indexes had actually been created before
+the failure, even though the bookkeeping row said 0 steps applied.
+Simply re-running the corrected migration would have failed again
+immediately, on its own first (now-duplicate) statement.
+
+Fix needed: (1) create the 10 indexes that were genuinely still
+missing, (2) manually mark that migration's bookkeeping row as finished
+(the same effect as `prisma migrate resolve --applied`, by hand). This
+session's own database-write tools are hard-blocked by a
+"Modify Shared Resources" safety control that doesn't lift for in-chat
+approval — correctly so, for something touching the real production
+database — so Chris was given a complete, verified, copy-paste SQL
+script and ran it himself in Neon's SQL Editor. Confirmed afterward,
+read-only: all 10 indexes present, the migration row shows finished,
+and a fresh production redeploy came up healthy.
+
+Same conversation, Chris separately asked for a fake/test customer
+record he'd entered by hand to be removed. Combined into the same
+script and the same walkthrough, and verified gone (0 rows) afterward.
+
+Nothing here is a decision to revisit later — it's a documented
+incident and its fix — but the shared-database fact is a real, standing
+constraint worth remembering: **any preview deployment's migration runs
+against the real production database.** A migration that's wrong in
+any way (not just this specific bug) can partially apply against real
+data before failing. There is no "it only broke a throwaway preview
+database" safety net here.
+
+## 2026-09-29 (continued) — CSP script-src broke the login page (and every other client page)
+
+PR #75's CI stayed red after the two fixes above: the "Accessibility &
+e2e tests" step timed out waiting for the login form's Email field to
+appear, in Playwright's `globalSetup` (which logs in for real before
+any test runs). Confirmed with `main`'s own CI (passes cleanly,
+including e2e) that this was new to this branch, and reproduced
+identically on two different commits of this branch — ruling out a
+one-off flake.
+
+Root cause: this same pass's new Content-Security-Policy header set
+`script-src 'self'` with no `'unsafe-inline'` exception, believing the
+only inline script in the app (the dark-mode anti-flash snippet) had
+already been moved to a real file (`public/theme-init.js`) specifically
+to make that possible. That reasoning missed something: Next.js's App
+Router itself injects its own inline
+`<script>self.__next_f.push(...)</script>` tags on every single page
+— this is the actual mechanism that streams server-rendered data to
+the client and resolves Suspense boundaries (the login page wraps its
+form in `<Suspense>` because it reads the URL's search params). With
+`script-src` blocking all inline scripts, the browser silently refused
+to run those tags, so the real page content never appeared — it just
+sat on the `<Suspense>` fallback forever. This wasn't limited to the
+login page; it would have affected client-side interactivity fairly
+broadly, login just happened to be the first thing e2e touches.
+
+Next.js's own docs
+(`node_modules/next/dist/docs/01-app/02-guides/content-security-policy.md`,
+"Without Nonces") confirm `'unsafe-inline'` is the expected script-src
+setting for exactly this static (no-nonce) CSP approach — the
+alternative, nonce-based CSP, requires every page to switch to dynamic
+per-request rendering, which is the trade-off this pass deliberately
+avoided to protect the Speed Insights static-generation work. Fixed by
+adding `'unsafe-inline'` to `script-src` (matching what `style-src`
+already had, for the same reason: no nonce infrastructure, so the
+static per-request data these tags carry can't be hash-pinned either).
+
+This is a real, known trade-off, not a workaround: an app that wants a
+strict `script-src` with no `'unsafe-inline'` and no dynamic rendering
+would need Next's experimental Subresource-Integrity CSP support
+instead — explicitly documented as unable to cover per-request dynamic
+inline scripts, which this app has (the RSC payload itself varies by
+request), so it wouldn't actually solve this. `'unsafe-inline'` on
+script-src does weaken this specific defense-in-depth layer against a
+stored-XSS-style attack; the CSP's other directives (locked-down
+`connect-src`/`img-src`/`frame-ancestors`/`object-src`, etc.) still
+hold. Caught before merging, not after a real deploy, because PR #75's
+CI e2e step logs in for real against a built production app — exactly
+the point of that test.
