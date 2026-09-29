@@ -1,3 +1,4 @@
+import type { InvoiceStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 // ---------------------------------------------------------------------------
@@ -36,7 +37,7 @@ export type ManualPaymentResult = {
   invoicesTouched: { invoiceId: string; invoiceNumber: number; appliedCents: number; newStatus: string }[];
 };
 
-function nextInvoiceStatus(amountDueCents: number, amountPaidCents: number): string {
+function nextInvoiceStatus(amountDueCents: number, amountPaidCents: number): InvoiceStatus {
   if (amountPaidCents <= 0) return "OPEN";
   if (amountPaidCents >= amountDueCents) return "PAID";
   return "PARTIALLY_PAID";
