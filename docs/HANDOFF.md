@@ -1742,9 +1742,9 @@ branch, `ai/claude/brand-kit-v2-evergreen`.
       382/382 runnable tests passing, no regression (the isolation-test
       additions can only run against CI's real Postgres).
 
-**Status**: committed and pushed on `ai/claude/brand-kit-v2-evergreen`,
-same PR #76 — waiting on this round of CI (it includes the real-Postgres
-isolation test above, which can only be verified there).
+**Status**: committed and pushed on `ai/claude/brand-kit-v2-evergreen`
+(commit `0b0f172`), same PR #76, CI green — including the new
+real-Postgres isolation test above.
 
 **Still open**: a server-side "download as PDF" (today's browser
 print-to-PDF covers this — not asked for beyond that); linking a
