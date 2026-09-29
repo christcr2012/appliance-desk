@@ -1982,3 +1982,73 @@ email) that was still showing up under the Converted filter on
 at some point, leaving the lead's own "Converted" status pointing at
 nothing. Deleted with Chris's explicit confirmation once traced; see
 `docs/DECISIONS.md`.
+
+## 2026-09-29 (continued) — "build all 4": hardening, estimate follow-through, purchasing & supplies
+
+Chris was presented 4 options and said "let's do all 4 of those in
+whatever order you prefer." Handled in that order:
+
+- [x] **Behind-the-scenes hardening.** Three of the four items turned
+      out to already be built — pagination on the long list pages,
+      the database indexes that were flagged as still needed, and the
+      site's CSP security header — corrected the stale "still open"
+      notes in `docs/ROADMAP.md` rather than re-building already-done
+      work. The fourth, turning on Neon's "protected branch" setting
+      for the live database (extra confirmation before a destructive
+      change can touch it), needed Chris's own go-ahead since it's the
+      kind of thing this project always asks about first — he said
+      "Yes, turn it on" and it's now on, confirmed.
+- [x] **Deposit collected at estimate approval, with a follow-up if it
+      goes quiet.** When a customer approves an estimate that has a
+      deposit amount set, they're now taken straight to a real Stripe
+      payment page for just that deposit (not the whole rental) before
+      the estimate is considered fully approved. If an estimate sits
+      unanswered for 3 days, an automatic reminder email goes out once
+      (a new scheduled daily check, `/api/cron/estimate-follow-ups`,
+      same pattern as the existing billing-reminder cron job). See
+      `docs/BUSINESS-RULES.md`'s new "Deposit collected at approval..."
+      section. **PR #82** (`ai/claude/hardening-and-estimate-followthrough-2026-09-29`),
+      CI running as of this writing.
+      - **Needs a schema migration** —
+        `prisma/migrations/20260929210000_estimate_deposit_paid_at`
+        (two new optional columns on `Estimate`) — Chris can run it
+        in Neon, or just merge the PR (migrations apply themselves
+        automatically now, per Phase 6A item 1).
+      - **Real regression caught and fixed before this was called
+        done**: adding the "don't charge the deposit twice" check to
+        the existing agreement-signing checkout broke two older,
+        already-passing tests (they faked the database in a way that
+        didn't expect the new check). Found by running the *entire*
+        test suite, not just the new files — fixed by updating those
+        two tests' fakes to match, confirmed the full suite passes
+        clean afterward (402/402 tests, only the usual pre-existing
+        sandbox-limitation files skipped).
+- [x] **Purchasing & supplies.** New `/desk/suppliers` and
+      `/desk/purchase-orders` — track who you buy parts from, place an
+      order, mark it as ordered/received/cancelled, and receiving an
+      order automatically adds the quantity onto that part's on-hand
+      count. Each part can optionally get a "flag me when stock gets
+      this low" number, and `/desk/parts` now shows a banner + quick
+      "used some" / "edit stock" buttons. Deliberately manual/simple —
+      no automatic per-repair stock deduction, no partial-shipment
+      receiving — a one-person operation doesn't need more process
+      than that. See `docs/BUSINESS-RULES.md`'s new "Purchasing &
+      supplies" section. **PR #83**
+      (`ai/claude/purchasing-and-supplies-2026-09-29`), its own
+      separate branch/PR (not piled onto #82, which is scoped to
+      hardening + estimate follow-through) — CI running as of this
+      writing.
+      - **Needs a schema migration** —
+        `prisma/migrations/20260929220000_purchasing_and_supplies`
+        (two new columns on the existing parts table, plus three
+        brand-new tables: suppliers, purchase orders, and purchase
+        order line items) — same as above, Chris can run it in Neon or
+        just merge the PR.
+      - 15 new tests, full suite locally clean (397/397, same
+        sandbox-limitation files skipped).
+- [ ] **Not started yet**: the 4th item Chris approved, finishing the
+      icon set across the owner desk and customer portal.
+
+**Needs Chris**: review/merge PR #82 and PR #83 (in either order —
+they touch different files) once their CI finishes, and run each PR's
+migration in Neon (or just merge — migrations now apply themselves).
