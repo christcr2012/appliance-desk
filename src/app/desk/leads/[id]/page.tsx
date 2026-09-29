@@ -1,7 +1,10 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { getLeadById } from "@/domains/leads";
+import { getLeadById, getLeadNotes } from "@/domains/leads";
+import { getTasksForLead } from "@/domains/tasks";
 import { LeadActionsPanel } from "./lead-actions-panel";
+import { AddLeadNoteForm } from "./add-lead-note-form";
+import { LinkedTasksPanel } from "@/components/linked-tasks-panel";
 
 export const metadata = { title: "Lead" };
 
@@ -14,13 +17,25 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
+function timeAgo(date: Date): string {
+  const days = Math.floor((Date.now() - date.getTime()) / (24 * 60 * 60 * 1000));
+  if (days <= 0) return "today";
+  if (days === 1) return "1 day ago";
+  if (days < 30) return `${days} days ago`;
+  return date.toLocaleDateString("en-US");
+}
+
 export default async function LeadDetailPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const lead = await getLeadById(id);
+  const [lead, notes, tasks] = await Promise.all([
+    getLeadById(id),
+    getLeadNotes(id),
+    getTasksForLead(id),
+  ]);
 
   if (!lead) {
     notFound();
@@ -102,6 +117,9 @@ export default async function LeadDetailPage({
           label="Submitted"
           value={new Date(lead.createdAt).toLocaleString()}
         />
+        {lead.status === "LOST" && (
+          <Field label="Why it was lost" value={lead.lostReason ?? "—"} />
+        )}
       </dl>
 
       <div className="mt-6 rounded-lg border border-gray-200 bg-white p-5">
@@ -130,6 +148,41 @@ export default async function LeadDetailPage({
           </p>
         </div>
       )}
+
+      <div className="mt-6">
+        <LinkedTasksPanel linkType="lead" linkId={lead.id} tasks={tasks} />
+      </div>
+
+      <div className="mt-6 rounded-lg border border-gray-200 bg-white p-5">
+        <h2 className="font-medium text-gray-900">Contact history</h2>
+        <p className="mt-1 text-xs text-gray-500">
+          Log every call, email, text, or in-person conversation here — it
+          stays with this lead even after it&apos;s converted or lost.
+        </p>
+        <AddLeadNoteForm leadId={lead.id} />
+
+        {notes.length === 0 ? (
+          <p className="mt-4 text-sm text-gray-600">Nothing logged yet.</p>
+        ) : (
+          <ul className="mt-4 space-y-3 border-t border-gray-100 pt-4">
+            {notes.map((note) => (
+              <li key={note.id} className="text-sm">
+                <div className="flex items-baseline justify-between gap-3">
+                  <p className="text-gray-700">{note.body}</p>
+                  <span className="shrink-0 text-xs text-gray-500">
+                    {timeAgo(note.createdAt)}
+                  </span>
+                </div>
+                {note.author && (
+                  <p className="text-xs text-gray-500">
+                    — {note.author.name ?? note.author.email}
+                  </p>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }

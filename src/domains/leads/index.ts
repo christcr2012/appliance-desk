@@ -252,17 +252,33 @@ export async function getLeadById(id: string) {
 /** Changes a lead's status (e.g. marking it Contacted or Lost) and logs who
  * did it. Converting to a customer is a separate, more involved operation —
  * see convertLeadToCustomer below — so "CONVERTED" is deliberately not a
- * status this function accepts on its own. */
+ * status this function accepts on its own.
+ *
+ * `lostReason` is required when (and only meaningful when) `status` is
+ * `"LOST"` (2026-09-29, Chris's CRM brainstorm — docs/DECISIONS.md): a
+ * `LOST` status with no reason tells Chris nothing he can act on later
+ * (too expensive? wrong service area? never called back?), so this
+ * throws rather than silently accepting a blank one. Any reason given
+ * for a non-LOST status is ignored rather than erroring — the UI simply
+ * never sends one for the other statuses. */
 export async function updateLeadStatus(
   userId: string,
   leadId: string,
   status: Exclude<LeadStatus, "CONVERTED">,
+  lostReason?: string | null,
 ) {
+  if (status === "LOST" && !lostReason?.trim()) {
+    throw new Error("Give a reason before marking this lead lost.");
+  }
+
   const before = await prisma.lead.findUniqueOrThrow({ where: { id: leadId } });
 
   const updated = await prisma.lead.update({
     where: { id: leadId },
-    data: { status },
+    data: {
+      status,
+      lostReason: status === "LOST" ? lostReason!.trim() : before.lostReason,
+    },
   });
 
   await prisma.auditLog.create({
@@ -272,11 +288,42 @@ export async function updateLeadStatus(
       entityType: "Lead",
       entityId: leadId,
       oldValue: { status: before.status },
-      newValue: { status },
+      newValue: status === "LOST" ? { status, lostReason: updated.lostReason } : { status },
     },
   });
 
   return updated;
+}
+
+// ---------------------------------------------------------------------------
+// A lead's own contact/communication history — "called Tuesday, no
+// answer," "emailed the estimate again" — the same LeadNote pattern
+// CustomerNote already gives customers (src/domains/customers/timeline.ts),
+// extended to leads (2026-09-29, Chris's CRM brainstorm — see
+// docs/DECISIONS.md). Deliberately its own small set of functions rather
+// than a full timeline merge like getCustomerTimeline: a lead's page
+// doesn't yet have the several related-entity types (agreements, jobs,
+// maintenance requests) that make a merged timeline worthwhile for a
+// customer — just notes plus the lead's own AuditLog history, which
+// /desk/activity already lets Chris filter to by entity.
+// ---------------------------------------------------------------------------
+
+export async function getLeadNotes(leadId: string) {
+  return prisma.leadNote.findMany({
+    where: { leadId },
+    include: { author: { select: { name: true, email: true } } },
+    orderBy: [{ createdAt: "desc" }],
+  });
+}
+
+export async function addLeadNote(leadId: string, authorId: string, body: string): Promise<void> {
+  const trimmed = body.trim();
+  if (!trimmed) {
+    throw new Error("A note can't be empty.");
+  }
+  await prisma.leadNote.create({
+    data: { leadId, authorId, body: trimmed },
+  });
 }
 
 /** Pure guard used before converting a lead — no database access, so it's
@@ -456,4 +503,51 @@ export async function convertLeadToCustomer(userId: string | null, leadId: strin
   });
 
   return { customer, isNewAccount, activationEmailSent };
+}
+
+// ---------------------------------------------------------------------------
+// Lead-source ROI reporting (2026-09-29, Chris's CRM brainstorm — see
+// docs/DECISIONS.md). Lead.howHeard has been captured on every lead
+// since Phase 2, but until this nothing ever added it up — it just sat
+// on each lead's own detail page, one at a time. Feeds a new section on
+// /desk/reports.
+// ---------------------------------------------------------------------------
+
+export type LeadSourceBreakdownRow = {
+  source: string;
+  total: number;
+  converted: number;
+  conversionRate: number; // 0–1; 0 when total is 0 to avoid a NaN in the UI
+};
+
+/** Every lead grouped by how they heard about us, with how many of each
+ * group actually converted to a customer — highest lead count first.
+ * "Not given" groups leads with no `howHeard` on file (most likely
+ * staff-entered ones — see `createLeadManually` — since the public form
+ * requires an answer). Small, in-memory grouping rather than a raw SQL
+ * GROUP BY: this table is leads, not transactions, so it'll stay small
+ * enough for this to be fine for a long time — revisit if it ever isn't
+ * (same reasoning `getAllEstimates`'s own comment gives). */
+export async function getLeadSourceBreakdown(): Promise<LeadSourceBreakdownRow[]> {
+  const leads = await prisma.lead.findMany({
+    select: { howHeard: true, status: true },
+  });
+
+  const groups = new Map<string, { total: number; converted: number }>();
+  for (const lead of leads) {
+    const source = lead.howHeard?.trim() || "Not given";
+    const group = groups.get(source) ?? { total: 0, converted: 0 };
+    group.total += 1;
+    if (lead.status === "CONVERTED") group.converted += 1;
+    groups.set(source, group);
+  }
+
+  return [...groups.entries()]
+    .map(([source, { total, converted }]) => ({
+      source,
+      total,
+      converted,
+      conversionRate: total > 0 ? converted / total : 0,
+    }))
+    .sort((a, b) => b.total - a.total);
 }

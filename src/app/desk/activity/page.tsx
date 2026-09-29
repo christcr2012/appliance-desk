@@ -1,26 +1,106 @@
-import { getActivityPage, getActivityCount, describeAuditAction } from "@/domains/activity";
+import Link from "next/link";
+import {
+  getActivityPage,
+  getActivityCount,
+  getActivitySummary,
+  describeAuditAction,
+} from "@/domains/activity";
 import { parsePage, paginationMeta, DEFAULT_PAGE_SIZE } from "@/domains/pagination";
 import { Pagination } from "@/components/pagination";
 
 export const metadata = { title: "Activity" };
 
+type Range = "today" | "week" | "all";
+
+// "Today"/"This week" quick filters + a category breakdown added
+// 2026-09-29 (Chris's CRM brainstorm — a combined "what did I actually
+// do" view, without checking Leads/Estimates/Jobs/Billing separately —
+// see docs/DECISIONS.md). Built on the AuditLog this page already read;
+// no new tracking needed.
+function rangeStart(range: Range): Date | undefined {
+  if (range === "all") return undefined;
+  const start = new Date();
+  if (range === "today") {
+    start.setHours(0, 0, 0, 0);
+  } else {
+    start.setDate(start.getDate() - 7);
+  }
+  return start;
+}
+
+const RANGE_TABS: { value: Range; label: string }[] = [
+  { value: "today", label: "Today" },
+  { value: "week", label: "This week" },
+  { value: "all", label: "All time" },
+];
+
 export default async function ActivityPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string }>;
+  searchParams: Promise<{ page?: string; range?: string }>;
 }) {
-  const { page: rawPage } = await searchParams;
-  const totalCount = await getActivityCount();
+  const { page: rawPage, range: rawRange } = await searchParams;
+  const range: Range = rawRange === "today" || rawRange === "week" ? rawRange : "all";
+  const since = rangeStart(range);
+
+  const [totalCount, summary] = await Promise.all([
+    getActivityCount(since),
+    range !== "all" ? getActivitySummary(since!) : Promise.resolve([]),
+  ]);
   const meta = paginationMeta(totalCount, parsePage(rawPage));
-  const entries = await getActivityPage(meta.skip, meta.pageSize);
+  const entries = await getActivityPage(meta.skip, meta.pageSize, since);
+
+  function href(page: number, forRange: Range = range) {
+    const params = new URLSearchParams();
+    if (forRange !== "all") params.set("range", forRange);
+    if (page > 1) params.set("page", String(page));
+    const qs = params.toString();
+    return qs ? `/desk/activity?${qs}` : "/desk/activity";
+  }
 
   return (
     <div>
       <h1 className="text-xl font-semibold">Activity</h1>
       <p className="mt-1 text-sm text-gray-600">
         A record of who changed what, and when — pricing changes, settings
-        updates, and lead status changes. {DEFAULT_PAGE_SIZE} per page.
+        updates, lead activity, estimates, jobs, and billing.{" "}
+        {DEFAULT_PAGE_SIZE} per page.
       </p>
+
+      <nav aria-label="Filter activity by time range" className="mt-4 flex flex-wrap gap-2">
+        {RANGE_TABS.map((tab) => (
+          <Link
+            key={tab.value}
+            href={href(1, tab.value)}
+            aria-current={range === tab.value ? "page" : undefined}
+            className={`rounded-full border px-3 py-1 text-sm ${
+              range === tab.value
+                ? "border-gray-900 bg-gray-900 text-white"
+                : "border-gray-300 text-gray-700 hover:border-gray-400"
+            }`}
+          >
+            {tab.label}
+          </Link>
+        ))}
+      </nav>
+
+      {range !== "all" && (
+        <div className="mt-4 rounded-lg border border-gray-200 bg-white p-4">
+          {summary.length === 0 ? (
+            <p className="text-sm text-gray-600">
+              Nothing recorded {range === "today" ? "today" : "this week"} yet.
+            </p>
+          ) : (
+            <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-gray-700">
+              {summary.map((row) => (
+                <span key={row.category}>
+                  <span className="font-medium text-gray-900">{row.count}</span> {row.category}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {entries.length === 0 ? (
         <p className="mt-8 text-sm text-gray-600">Nothing recorded yet.</p>
@@ -52,7 +132,7 @@ export default async function ActivityPage({
         page={meta.page}
         totalPages={meta.totalPages}
         totalCount={meta.totalCount}
-        buildHref={(p) => (p === 1 ? "/desk/activity" : `/desk/activity?page=${p}`)}
+        buildHref={(p) => href(p)}
       />
     </div>
   );

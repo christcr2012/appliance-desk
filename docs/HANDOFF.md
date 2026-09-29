@@ -1941,9 +1941,44 @@ live database, same as every other schema change so far — it's purely
 additive (one column made optional, one new optional column, a check
 constraint, one new column on `Lead`), nothing destructive.
 
-**Still owed, not yet delivered**: the broader "brainstorm" of further
-robustness gaps Chris also asked for in the same message ("I feel like
-in a lot of ways, it's very basic... managing my business from this
-system") — recorded as a set of new candidate entries in
-`docs/ROADMAP.md`, not built without his further say-so per
-`AGENTS.md`.
+The broader "brainstorm" of further robustness gaps Chris also asked
+for was recorded in `docs/ROADMAP.md` and presented to him as six
+options — he asked to build all six in. See the next entry.
+
+## 2026-09-29 (continued) — CRM buildout
+
+Six ideas were put in front of Chris; three already existed (contact
+history and separate contacts for customers, and a combined activity
+view — see `docs/DECISIONS.md` for exactly what was already there), so
+only the genuinely new pieces were built. Branch
+`ai/claude/crm-buildout-2026-09-29`.
+
+- [x] **Contact history for leads** — the same kind of running log
+      customers already had (`CustomerNote`), extended to leads
+      (`LeadNote`), on every lead's own page.
+- [x] **A required reason when a lead is marked Lost** — a short
+      pick-list plus "Other," shown back on the lead's own page.
+- [x] **Where your leads come from** — a new section on `/desk/reports`
+      breaking down leads and conversion rate by how they heard about
+      you.
+- [x] **`/desk/tasks`** — your own follow-up reminders, separate from
+      the system's automatic alerts. Add one from the main Tasks page,
+      or right from a lead's/customer's own page (pre-linked
+      automatically). Open to every desk login, not just owner/admin.
+- [x] **`/desk/activity`** now has Today/This week/All time tabs and a
+      quick category count for whichever range you pick.
+- [x] `npx eslint`, `npm run typecheck`, `npx vitest run` — all clean,
+      no new errors beyond the same pre-existing, documented
+      Prisma-generation sandbox limitation.
+
+**Needs Chris**: a second new migration
+(`prisma/migrations/20260929200000_crm_buildout/migration.sql`) needs
+pasting into the Neon SQL console and running, same as the previous
+one — purely additive (two new tables, one new nullable column).
+
+**Also fixed along the way**: a leftover test lead ("Test", Chris's own
+email) that was still showing up under the Converted filter on
+`/desk/leads` — its target customer record had been deleted separately
+at some point, leaving the lead's own "Converted" status pointing at
+nothing. Deleted with Chris's explicit confirmation once traced; see
+`docs/DECISIONS.md`.

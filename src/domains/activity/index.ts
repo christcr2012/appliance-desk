@@ -9,23 +9,67 @@ import { prisma } from "@/lib/prisma";
  * in /desk/activity").
  */
 /** Total AuditLog row count — used to clamp the page number for
- * /desk/activity's paginated view (src/domains/pagination.ts). */
-export async function getActivityCount(): Promise<number> {
-  return prisma.auditLog.count();
+ * /desk/activity's paginated view (src/domains/pagination.ts). `since`
+ * narrows it to the "Today"/"This week" quick filters added 2026-09-29
+ * (Chris's CRM brainstorm — a combined "what did I actually do"
+ * view — see docs/DECISIONS.md); omitted, it's the whole history, same
+ * as before. */
+export async function getActivityCount(since?: Date): Promise<number> {
+  return prisma.auditLog.count({ where: since ? { createdAt: { gte: since } } : undefined });
 }
 
 /** Paginated view of the audit log, for paging back through the full
- * history. (The unpaginated getRecentActivity() this used to sit next to
- * was removed 2026-09-29 — /desk/activity has used this paginated
- * version exclusively since pagination was added, and nothing else ever
- * called the unpaginated one.) */
-export async function getActivityPage(skip: number, pageSize: number) {
+ * history (or, with `since`, just the window a quick filter picked). */
+export async function getActivityPage(skip: number, pageSize: number, since?: Date) {
   return prisma.auditLog.findMany({
+    where: since ? { createdAt: { gte: since } } : undefined,
     orderBy: { createdAt: "desc" },
     skip,
     take: pageSize,
     include: { user: { select: { name: true, email: true } } },
   });
+}
+
+export type ActivitySummary = { category: string; count: number }[];
+
+/** A "what did I actually do" breakdown since `since`, grouped by the
+ * business area an action belongs to (leads contacted, estimates sent,
+ * jobs done, payments collected, ...) rather than the raw AuditLog
+ * action list — the point of this over just reading /desk/activity's
+ * normal list is to answer "how much did I get done today/this week" at
+ * a glance instead of counting rows by eye. Small, in-memory grouping
+ * (same reasoning as getLeadSourceBreakdown's own comment) — fine at
+ * today's data volume. */
+export async function getActivitySummary(since: Date): Promise<ActivitySummary> {
+  const entries = await prisma.auditLog.findMany({
+    where: { createdAt: { gte: since } },
+    select: { action: true },
+  });
+
+  const CATEGORY_BY_PREFIX: [string, string][] = [
+    ["lead.", "Lead activity"],
+    ["estimate.", "Estimates"],
+    ["agreement.", "Agreements"],
+    ["job.", "Jobs"],
+    ["billing.", "Billing"],
+    ["maintenance.", "Maintenance"],
+    ["customer.", "Customers"],
+    ["appliance.", "Inventory"],
+    ["part.", "Parts"],
+    ["pricing.", "Pricing"],
+    ["settings.", "Settings"],
+  ];
+
+  const counts = new Map<string, number>();
+  for (const entry of entries) {
+    const match = CATEGORY_BY_PREFIX.find(([prefix]) => entry.action.startsWith(prefix));
+    const category = match ? match[1] : "Other";
+    counts.set(category, (counts.get(category) ?? 0) + 1);
+  }
+
+  return [...counts.entries()]
+    .map(([category, count]) => ({ category, count }))
+    .sort((a, b) => b.count - a.count);
 }
 
 /** Plain-English label for an AuditLog action code, e.g. "lead.convert" →
@@ -59,6 +103,13 @@ export function describeAuditAction(action: string): string {
     "job.photo.add": "Added a condition photo to a job",
     "maintenance.request.create": "A customer submitted a maintenance request",
     "maintenance.status": "Changed a maintenance request's status",
+    "lead.create.manual": "Added a lead directly",
+    "estimate.create": "Created an estimate",
+    "estimate.send": "Sent an estimate",
+    "estimate.line.add": "Added a line to an estimate",
+    "estimate.line.remove": "Removed a line from an estimate",
+    "estimate.convert": "Converted an approved estimate to an agreement",
+    "customer.create": "Added a customer directly",
   };
   return labels[action] ?? action;
 }

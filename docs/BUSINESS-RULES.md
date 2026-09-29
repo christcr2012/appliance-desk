@@ -118,6 +118,49 @@ Default ranking, **lowest to highest** value:
   why a heavier solution (Cloudflare Turnstile, a persistent store)
   isn't built yet.
 
+## CRM: contact history, lost reasons, follow-up tasks (2026-09-29)
+
+Built the same day as the lead/estimate gap above, from Chris's own
+follow-up request to "really build out the CRM aspect of this system."
+Six ideas were put in front of him; three turned out to already exist
+(customer contact/communication history via `CustomerNote`, separate
+contacts per customer account via `CustomerContact`, and a combined
+activity view via `/desk/activity`), so only the genuinely new pieces
+were built:
+
+- **Contact history for leads, too.** A lead only ever had one flat
+  notes field (what the lead themself said when they submitted the
+  form); there was no way to log "called Tuesday, no answer" the way
+  customers already could. Every lead's own page now has the same kind
+  of running log (`LeadNote`) — timestamped, who logged it, freeform
+  text — right next to the lead's other details.
+- **A reason when a lead is marked Lost.** Picking "Mark as Lost" now
+  asks why first — a short pick-list (too expensive, went with a
+  competitor, outside the service area, never heard back, changed their
+  mind) plus "Other" for anything else — and won't save without one.
+  Shown back on the lead's own page once it's lost.
+- **Where leads actually come from.** The public form has always asked
+  "how did you hear about us," but nothing ever added the answers up.
+  `/desk/reports` now has a breakdown of leads and their conversion rate
+  by source.
+- **A personal follow-up list.** `/desk/tasks` — a simple due-date-plus-
+  note reminder list, separate from the system's own automatic alerts
+  (churn risk, overdue billing, maintenance due, all still on
+  `/desk/growth`/`/desk/today`). A task can optionally be tied to a
+  lead, customer, or job by adding it right from that record's own
+  page — open with STAFF logins too, since this is personal
+  organization, not financial data.
+- **A quick "what did I do today/this week" view.** `/desk/activity`
+  now has Today/This week/All time tabs and a small category breakdown
+  (leads, estimates, jobs, billing, ...) for whichever range is picked
+  — built entirely from the audit log that already existed, no new
+  tracking needed.
+
+See `src/domains/tasks`, `src/domains/leads`'s `LeadNote`/`lostReason`
+additions, and `docs/DECISIONS.md`'s matching entry for the technical
+detail, including which of the six original ideas turned out to already
+exist.
+
 ## Property managers / portfolio accounts
 
 A landlord, property manager, or apartment operator renting appliances

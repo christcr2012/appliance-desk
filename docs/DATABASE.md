@@ -32,6 +32,12 @@ in UTC and only converted to Mountain Time for display.
   Holds everything the form captures plus the computed
   `score`/`scoreReasons` (see `docs/BUSINESS-RULES.md` for the scoring
   rules) and a `status` (new → contacted → converted / lost).
+  `lostReason` (2026-09-29, CRM buildout) is required whenever `status`
+  is set to `LOST`, free text.
+- **LeadNote** — a per-entry contact-log line for a lead ("called
+  Tuesday, no answer") — the same pattern `CustomerNote` gives
+  customers, added for leads 2026-09-29 (CRM buildout) since a lead
+  previously only had the one flat `Lead.notes` field.
 - **LeadApplianceRequest** — which appliance types + quantities a lead
   asked for (a lead can ask for more than one kind of appliance).
 
@@ -170,6 +176,15 @@ parts.
   required for the CCPA-style privacy work in `docs/BUSINESS-RULES.md`.
 - **AuditLog** — who changed what, when, old value → new value. Powers
   `/desk/activity`.
+- **StaffTask** — a staff member's own follow-up reminder (2026-09-29,
+  CRM buildout), a note plus an optional due date, optionally linked to
+  a `Lead`, `Customer`, or `Job` for convenience (all three foreign keys
+  are `onDelete: SetNull` — deleting the linked record never deletes the
+  task). Powers `/desk/tasks` and the "Follow-up tasks" panel on a
+  lead's/customer's own page. Distinct from the automatically-detected
+  exception flags in `src/domains/growth`/`src/domains/exceptions` —
+  this is something a person chose to write down, not something the
+  system inferred.
 
 ## What's *not* modeled yet, on purpose
 
