@@ -1406,3 +1406,81 @@ all updated.
 beyond what's listed above. Neon plan upgrade (for a protected `main`
 branch) and buying a real Twilio phone number both remain flagged to
 Chris — both cost money, per `AGENTS.md` they need his OK, not mine.
+
+## 2026-09-29 — Scaling/hardening pass + mobile Speed Insights fix
+
+Chris asked for every item flagged (not built) by the same-day
+full-codebase audit to actually be built, and separately shared Vercel
+Speed Insights screenshots (Production Mobile: 81 "Needs Improvement"
+vs. Preview Mobile: 98 "Great") and asked for that investigated and
+fixed. Branch `ai/claude/scaling-hardening-2026-09-29`. Full reasoning
+for every decision below is in `docs/DECISIONS.md`'s two 2026-09-29
+entries ("Independent daily backup..." and "Mobile Speed Insights:
+unoptimized photos were the cause").
+
+- [x] **Pagination** for Leads, Agreements, Billing/Invoices, and
+      Maintenance (`/desk/leads`, `/desk/agreements`, `/desk/billing`,
+      `/desk/maintenance`) — same `<Pagination>` pattern already used by
+      Customers/Inventory, so none of these lists grow unbounded as the
+      business does.
+- [x] **17 missing database indexes** on foreign-key columns (Prisma
+      doesn't index those automatically — only `@id`/`@unique`). Hand-
+      written migration
+      (`prisma/migrations/20260929120000_query_performance_indexes/`)
+      since local `prisma migrate` can't run in this sandbox (AGENTS.md)
+      — reviewed carefully by hand instead of CLI-validated.
+- [x] **Content-Security-Policy header** (`next.config.ts`) — blocks an
+      injected script from running even if some future bug allowed one
+      in. Required externalizing the dark-mode init script to a real
+      file (`public/theme-init.js`, kept in sync with
+      `src/lib/theme.ts` by a new test) and removing two inline styles
+      that were actually static values.
+- [x] **Fixed the 4 HIGH npm audit findings** (`mysql2`, `deepmerge-ts`
+      — both transitive through Prisma's own tooling, never used
+      directly) via `package.json` `overrides`, without downgrading
+      Prisma itself.
+- [x] **Independent daily backup** (`/api/cron/backup`, 09:00 UTC) —
+      exports every business-critical table to a JSON file in Vercel
+      Blob (private access, 30-day retention), on top of Neon's own
+      6-hour point-in-time recovery window. This is a data export, not
+      a one-click restore — see `docs/DECISIONS.md` for what that means
+      and why it's the right scope for now.
+- [x] **Accessibility test coverage** — extended by one page
+      (`/desk/customers/new`). Correction: most signed-in coverage
+      (`e2e/accessibility-authenticated.spec.ts`) already existed from a
+      prior session; the original audit's claim that it was entirely
+      missing was wrong, and I want that on the record rather than
+      implying I built something that was already there.
+- [x] **Mobile Speed Insights fix** — every appliance/job/maintenance
+      photo across the app (public pages *and* the desk/account portal)
+      was a plain `<img>` pointed at the full-resolution original file
+      in Blob storage, with no resizing, compression, or lazy-loading.
+      Switched all 7 spots to `next/image` (`images.remotePatterns` now
+      allow-lists this app's own Blob store domain), which is what
+      actually shrinks what a phone downloads. Let the CSP's `img-src`
+      tighten to `'self'` as a side effect, since photos no longer load
+      directly from Blob storage in the browser. Preview's much higher
+      score is *also* partly just a small-sample artifact of real-user
+      field data (Speed Insights measures actual visitors, and Preview
+      gets very few) — that part isn't a bug and won't fully close, but
+      the photo-optimization fix is the real, verifiable improvement.
+
+Full unit suite: 376/376 relevant tests passing (5 new for the backup
+domain), same 10 pre-existing Prisma-client-generation sandbox-
+limitation failures as always (AGENTS.md) — not caused by this work.
+`npx eslint .` clean (0 errors, same 2 pre-existing warnings).
+`npx tsc --noEmit` shows only the same pre-existing sandbox-limitation
+errors, confirmed line-for-line unchanged by this branch's edits.
+`npm run build` and Playwright/axe e2e tests could not run locally
+(this sandbox can't reach `fonts.googleapis.com` or the Prisma engine
+host — both documented, expected limitations); CI is the real gate, per
+AGENTS.md.
+
+**Not yet done**: this branch hasn't been pushed or opened as a PR yet
+— next step is exactly that, then wait for CI and report to Chris in
+plain English.
+
+**Still open**: nothing newly flagged this round. The original 6-item
+list from the 2026-09-29 audit is now fully built (this entry); Neon's
+protected-branch plan upgrade remains flagged to Chris (costs money,
+his call, per AGENTS.md).
