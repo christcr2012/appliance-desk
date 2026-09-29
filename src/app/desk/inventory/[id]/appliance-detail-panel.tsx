@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import {
   updateApplianceStatusAction,
   updateApplianceDetailsAction,
@@ -301,13 +302,15 @@ export function ApplianceDetailPanel({ appliance }: { appliance: ApplianceRow })
         ) : (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             {appliance.photos.map((p) => (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                key={p.id}
-                src={p.url}
-                alt={p.altText ?? "Photo of this appliance"}
-                className="h-32 w-full rounded-lg object-cover"
-              />
+              <div key={p.id} className="relative h-32 w-full overflow-hidden rounded-lg">
+                <Image
+                  src={p.url}
+                  alt={p.altText ?? "Photo of this appliance"}
+                  fill
+                  sizes="(min-width: 640px) 33vw, 45vw"
+                  className="object-cover"
+                />
+              </div>
             ))}
           </div>
         )}
@@ -317,10 +320,11 @@ export function ApplianceDetailPanel({ appliance }: { appliance: ApplianceRow })
             <span className="block text-sm font-medium text-gray-700">Photo</span>
             <div className="mt-1 flex items-center gap-3">
               {photoUrl && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
+                <Image
                   src={photoUrl}
                   alt="Selected photo, not yet added"
+                  width={64}
+                  height={64}
                   className="h-16 w-16 rounded-md object-cover"
                 />
               )}

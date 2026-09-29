@@ -559,6 +559,8 @@ model RentalLine {
   assignments ApplianceAssignment[]
 
   createdAt DateTime @default(now())
+
+  @@index([agreementId])
 }
 
 model ApplianceAssignment {
@@ -571,6 +573,9 @@ model ApplianceAssignment {
   assignedAt DateTime  @default(now())
   unassignedAt DateTime?
   unassignReason String?
+
+  @@index([rentalLineId])
+  @@index([applianceId])
 }
 
 model PricingRule {
@@ -586,6 +591,8 @@ model PricingRule {
   newValueCents Int?
 
   createdAt DateTime @default(now())
+
+  @@index([applianceTypeId])
 }
 
 model SignatureRecord {
@@ -621,6 +628,8 @@ model Deposit {
   stripeRefundId String?
 
   createdAt DateTime @default(now())
+
+  @@index([agreementId])
 }
 
 // ---------------------------------------------------------------------------
@@ -698,6 +707,10 @@ model Job {
 
   @@index([status])
   @@index([scheduledAt])
+  @@index([customerId])
+  @@index([serviceAddressId])
+  @@index([agreementId])
+  @@index([maintenanceRequestId])
 }
 
 model JobAppliance {
@@ -706,6 +719,9 @@ model JobAppliance {
   job         Job       @relation(fields: [jobId], references: [id], onDelete: Cascade)
   applianceId String
   appliance   Appliance @relation(fields: [applianceId], references: [id])
+
+  @@index([jobId])
+  @@index([applianceId])
 }
 
 // ---------------------------------------------------------------------------
@@ -749,6 +765,7 @@ model MaintenanceRequest {
   updatedAt DateTime @updatedAt
 
   @@index([status])
+  @@index([applianceId])
 }
 
 // ---------------------------------------------------------------------------
@@ -841,6 +858,7 @@ model Invoice {
 
   @@index([status])
   @@index([customerId])
+  @@index([agreementId])
 }
 
 model InvoiceLineItem {
@@ -861,6 +879,8 @@ model InvoiceLineItem {
   rentalLineId String?
 
   createdAt DateTime @default(now())
+
+  @@index([invoiceId])
 }
 
 model Payment {
@@ -890,6 +910,8 @@ model Payment {
   recordedByUserId String?
 
   createdAt DateTime @default(now())
+
+  @@index([invoiceId])
 }
 
 enum RefundReason {
@@ -916,6 +938,8 @@ model Refund {
   stripeRefundId String?
 
   createdAt DateTime @default(now())
+
+  @@index([invoiceId])
 }
 
 // An account-level credit (e.g. goodwill, or resolving an overpayment)
@@ -934,6 +958,8 @@ model CustomerCredit {
   authorizedByUserId String?
 
   createdAt DateTime @default(now())
+
+  @@index([customerId])
 }
 
 // Every Stripe webhook event this app has ever processed, keyed by

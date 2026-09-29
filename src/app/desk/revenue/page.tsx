@@ -83,7 +83,12 @@ export default async function RevenuePage() {
           Based on when agreements started and ended — see the note below for
           what this does and doesn&apos;t capture.
         </p>
-        <div className="mt-4 flex items-end gap-3" style={{ height: 160 }}>
+        {/* h-40 = 160px — a static value, so a plain Tailwind class
+            instead of an inline `style` (2026-09-29, alongside the new
+            Content-Security-Policy header — every avoidable inline
+            style keeps that policy stricter). The bars below stay
+            inline since their height is computed per data point. */}
+        <div className="mt-4 flex h-40 items-end gap-3">
           {stats.mrrTrend.map((point) => (
             <div key={point.monthLabel} className="flex flex-1 flex-col items-center gap-1">
               <div

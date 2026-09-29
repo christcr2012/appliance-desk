@@ -1,6 +1,8 @@
 import Link from "next/link";
-import { getMaintenanceRequests } from "@/domains/maintenance";
+import { getMaintenanceRequestsPage, getMaintenanceRequestsCount } from "@/domains/maintenance";
 import type { MaintenanceStatus } from "@prisma/client";
+import { parsePage, paginationMeta } from "@/domains/pagination";
+import { Pagination } from "@/components/pagination";
 
 export const metadata = { title: "Maintenance" };
 
@@ -28,12 +30,23 @@ function isMaintenanceStatus(value: string | undefined): value is MaintenanceSta
 export default async function MaintenancePage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string; page?: string }>;
 }) {
-  const { status: rawStatus } = await searchParams;
+  const { status: rawStatus, page: rawPage } = await searchParams;
   const status = isMaintenanceStatus(rawStatus) ? rawStatus : undefined;
+  const filter = status ? { status } : undefined;
 
-  const requests = await getMaintenanceRequests(status ? { status } : undefined);
+  const totalCount = await getMaintenanceRequestsCount(filter);
+  const meta = paginationMeta(totalCount, parsePage(rawPage));
+  const requests = await getMaintenanceRequestsPage(filter, meta.skip, meta.pageSize);
+
+  function maintenanceHref(page: number, forStatus: MaintenanceStatus | "ALL" = status ?? "ALL") {
+    const params = new URLSearchParams();
+    if (forStatus !== "ALL") params.set("status", forStatus);
+    if (page > 1) params.set("page", String(page));
+    const qs = params.toString();
+    return qs ? `/desk/maintenance?${qs}` : "/desk/maintenance";
+  }
 
   return (
     <div>
@@ -48,7 +61,7 @@ export default async function MaintenancePage({
           return (
             <Link
               key={tab.value}
-              href={tab.value === "ALL" ? "/desk/maintenance" : `/desk/maintenance?status=${tab.value}`}
+              href={maintenanceHref(1, tab.value)}
               aria-current={active ? "page" : undefined}
               className={`rounded-full border px-3 py-1 text-sm ${
                 active
@@ -96,6 +109,13 @@ export default async function MaintenancePage({
           ))}
         </ul>
       )}
+
+      <Pagination
+        page={meta.page}
+        totalPages={meta.totalPages}
+        totalCount={meta.totalCount}
+        buildHref={(p) => maintenanceHref(p)}
+      />
     </div>
   );
 }

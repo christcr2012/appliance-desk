@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { createMaintenanceRequestAction } from "./actions";
 import { PhotoUploadField } from "@/components/photo-upload-field";
 
@@ -124,10 +125,11 @@ export function NewRequestForm({
           <div className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-6">
             {photoUrls.map((url) => (
               <div key={url} className="relative">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
+                <Image
                   src={url}
                   alt="Photo of the problem"
+                  width={64}
+                  height={64}
                   className="h-16 w-16 rounded-md object-cover"
                 />
                 <button

@@ -1,7 +1,9 @@
 import Link from "next/link";
-import { getInvoices, getCustomersWithOpenBalances } from "@/domains/billing";
+import { getInvoicesPage, getInvoicesCount, getCustomersWithOpenBalances } from "@/domains/billing";
 import { formatCents } from "@/domains/pricing";
 import { requireRole } from "@/lib/session";
+import { parsePage, paginationMeta } from "@/domains/pagination";
+import { Pagination } from "@/components/pagination";
 
 export const metadata = { title: "Billing" };
 
@@ -22,16 +24,28 @@ const STATUS_STYLES: Record<string, string> = {
 export default async function BillingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ filter?: string }>;
+  searchParams: Promise<{ filter?: string; page?: string }>;
 }) {
   await requireRole("OWNER", "ADMIN");
-  const { filter } = await searchParams;
+  const { filter, page: rawPage } = await searchParams;
   const delinquentOnly = filter === "delinquent";
   const showStatements = filter === "statements";
+  const invoiceFilter = { delinquentOnly };
+
+  const totalCount = showStatements ? 0 : await getInvoicesCount(invoiceFilter);
+  const meta = paginationMeta(totalCount, parsePage(rawPage));
   const [invoices, customerBalances] = await Promise.all([
-    showStatements ? Promise.resolve([]) : getInvoices({ delinquentOnly }),
+    showStatements ? Promise.resolve([]) : getInvoicesPage(invoiceFilter, meta.skip, meta.pageSize),
     showStatements ? getCustomersWithOpenBalances() : Promise.resolve([]),
   ]);
+
+  function billingHref(page: number, forFilter: string | undefined = filter) {
+    const params = new URLSearchParams();
+    if (forFilter) params.set("filter", forFilter);
+    if (page > 1) params.set("page", String(page));
+    const qs = params.toString();
+    return qs ? `/desk/billing?${qs}` : "/desk/billing";
+  }
 
   return (
     <div>
@@ -47,7 +61,7 @@ export default async function BillingPage({
 
       <nav aria-label="Filter invoices" className="mt-6 flex gap-2">
         <Link
-          href="/desk/billing"
+          href={billingHref(1, undefined)}
           className={`rounded-full px-3 py-1 text-sm ${
             !delinquentOnly && !showStatements ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
           }`}
@@ -55,7 +69,7 @@ export default async function BillingPage({
           All invoices
         </Link>
         <Link
-          href="/desk/billing?filter=delinquent"
+          href={billingHref(1, "delinquent")}
           className={`rounded-full px-3 py-1 text-sm ${
             delinquentOnly ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
           }`}
@@ -63,7 +77,7 @@ export default async function BillingPage({
           Delinquent only
         </Link>
         <Link
-          href="/desk/billing?filter=statements"
+          href={billingHref(1, "statements")}
           className={`rounded-full px-3 py-1 text-sm ${
             showStatements ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
           }`}
@@ -164,6 +178,13 @@ export default async function BillingPage({
               ))}
             </tbody>
           </table>
+
+          <Pagination
+            page={meta.page}
+            totalPages={meta.totalPages}
+            totalCount={meta.totalCount}
+            buildHref={(p) => billingHref(p)}
+          />
         </div>
       )}
     </div>

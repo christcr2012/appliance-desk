@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { getMaintenanceRequestById } from "@/domains/maintenance";
 import { MaintenanceDetailPanel } from "./maintenance-detail-panel";
 
@@ -45,12 +46,19 @@ export default async function MaintenanceDetailPage({
           </h2>
           <div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-3">
             {request.photos.map((p) => (
-              <a key={p.id} href={p.url} target="_blank" rel="noreferrer">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
+              <a
+                key={p.id}
+                href={p.url}
+                target="_blank"
+                rel="noreferrer"
+                className="relative block h-32 w-full overflow-hidden rounded-lg"
+              >
+                <Image
                   src={p.url}
                   alt={p.altText ?? "Photo of the problem from the customer"}
-                  className="h-32 w-full rounded-lg object-cover"
+                  fill
+                  sizes="(min-width: 640px) 33vw, 45vw"
+                  className="object-cover"
                 />
               </a>
             ))}

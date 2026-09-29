@@ -2444,3 +2444,129 @@ failures as always, unrelated to this work). `npm run build` verified
 clean (checking specifically for the client-bundle-leak bug class
 documented in `src/domains/pricing/money.ts`, which `tsc`/`eslint`
 cannot catch).
+
+## 2026-09-29 — Fixed 4 HIGH npm audit findings without downgrading Prisma
+
+Chris asked for the whole codebase to be hardened for scaling, which
+included a follow-up on the earlier audit's finding: `npm audit` flagged
+4 HIGH-severity issues, all inside Prisma's own build/CLI tooling
+(`@prisma/config` pulling in `mysql2` and `deepmerge-ts`) — not code the
+live site runs against customers, since the app only ever talks to
+Postgres. `npm audit fix --force`'s suggested fix would have downgraded
+`prisma` from 7.10.0 to 6.19.3, a real regression for a marginal,
+build-time-only risk — rejected, same reasoning the earlier audit
+flagged.
+
+Instead, added an `"overrides"` entry to `package.json` forcing just the
+two vulnerable transitive packages to their already-patched versions
+(`mysql2` ^3.24.4, `deepmerge-ts` ^8.0.2) while keeping `prisma` itself
+at 7.10.0, the current stable release (8.x is still release-candidate
+only, not yet a real option). Verified with `npm ls mysql2
+deepmerge-ts` that both packages actually resolve to the overridden
+versions (not silently ignored), and `npm audit` now reports 0
+vulnerabilities. `npm run typecheck` shows the identical set of
+pre-existing, documented errors as before this change — nothing new.
+
+## 2026-09-29 (continued) — Added a Content-Security-Policy header
+
+Part of the same scaling/hardening pass. Added the CSP header the
+earlier audit flagged as missing. Used next.config.ts's static approach
+rather than Next's nonce-based approach — a nonce would force every
+page in the app to switch from static to per-request rendering, trading
+away Next's CDN caching for pages that don't need to be dynamic, which
+works directly against the same pass's Speed Insights performance work.
+Full reasoning for every allowed origin is in next.config.ts's own
+comment, right above the policy. Two small side-effects worth knowing
+about:
+
+- `public/theme-init.js` is a new file — the dark-mode anti-flash
+  script that used to be inlined directly into the page now lives there
+  instead, specifically so the policy's `script-src` can be `'self'`
+  with no exceptions at all (an inline script would otherwise force
+  `'unsafe-inline'`, which defeats most of the point of having a CSP).
+  `src/lib/theme.ts`'s `THEME_INIT_SCRIPT` is unchanged and still the
+  documented source of truth; a new test (`tests/theme.test.ts`) checks
+  the two never drift apart.
+- Two inline `style={{...}}` attributes that were actually static
+  values (not computed per render) were converted to plain Tailwind
+  classes — `src/app/(public)/contact/contact-form.tsx`'s spam-honeypot
+  field and part of `src/app/desk/revenue/page.tsx`'s bar chart. The one
+  remaining inline style (that same bar chart's per-data-point bar
+  height, which is genuinely computed from real numbers) is why
+  `style-src` still needs `'unsafe-inline'` — style-based injection is a
+  much smaller real risk than script injection, so this is a deliberate,
+  narrow trade-off, not an oversight.
+
+## 2026-09-29 (continued) — Independent daily backup, separate from Neon
+
+Chris asked for the system to be ready to handle scaling and to have his
+data protected beyond Neon's own recovery window (the free-tier plan
+only keeps 6 hours of point-in-time recovery — flagged by the same-date
+full-codebase audit, docs/ROADMAP.md). Added a Vercel Cron job
+(`/api/cron/backup`, once a day at 09:00 UTC) that exports every
+business-critical table to a single JSON file and uploads it to Vercel
+Blob (`src/domains/backup/index.ts`), kept for 30 days with older copies
+pruned automatically.
+
+Two decisions worth recording:
+
+- The file is uploaded with **`access: "private"`**, not `"public"` like
+  the appliance photos in the same Blob store. This file is a full copy
+  of every customer's name, contact info, address, and billing history —
+  it must never be reachable just by guessing or finding its URL the way
+  a public photo is meant to be.
+- Four tables are deliberately left out of the export: `Session`,
+  `Account`, and `Verification` (better-auth's own login-session
+  bookkeeping — ephemeral by design, regenerated automatically the next
+  time someone signs in, not a business record) and `WebhookEvent`
+  (Stripe's own delivery log, kept only for short-term debugging —
+  Stripe itself is the durable source of truth for what it sent). Every
+  table holding an actual business record is included.
+
+This is a data export, not a one-click restore — getting data back out
+means downloading the JSON and re-inserting it with a script. That's an
+intentional, proportionate first line of defense for a small business;
+a fuller disaster-recovery process (tested restore procedure, shorter
+recovery point objective, etc.) is logged in docs/ROADMAP.md as a
+possible future project rather than being built unasked.
+
+## 2026-09-29 (continued) — Mobile Speed Insights: unoptimized photos were the cause
+
+Chris shared Vercel Speed Insights screenshots showing Production Mobile
+scoring 81 ("Needs Improvement") against Preview Mobile at 98 ("Great")
+and asked why, and to fix it. Speed Insights' "Real Experience Score" is
+built from real visitor traffic, not a synthetic test — so the honest
+answer starts with the traffic itself: Preview deployments get little to
+no real mobile visits to measure (a small, non-representative sample),
+while Production gets real customers on real phones and real cellular
+connections. That gap alone will never fully close, and isn't a bug.
+
+What *is* a real, fixable bug: every appliance/job/maintenance photo in
+the app — including every appliance-type photo on the homepage, pricing
+page, and every `/rent/[city]` page, the highest-traffic pages on the
+whole site — was a plain `<img src="...">` pointed straight at the full,
+original file in Vercel Blob storage. A phone camera photo is routinely
+several megabytes; none of these were resized, compressed, converted to
+a modern format, or lazy-loaded. On a real mobile connection, that's a
+slow page by construction, independent of anything else on the site.
+
+Fixed by switching every one of these (7 spots — grep-verified, not
+guessed) to `next/image`, and adding `images.remotePatterns` to
+`next.config.ts` to allow-list this app's own Vercel Blob store domain
+(the only place a saved photo URL can ever point — every upload goes
+through `src/components/photo-upload-field.tsx`, confirmed before
+allow-listing it). `next/image` resizes each photo to what the layout
+actually needs, serves it as WebP/AVIF, and — critically for anything
+below the very top of the page — doesn't fetch it at all until it's
+about to scroll into view. One side effect: because photos are no
+longer fetched directly by the browser, the Content-Security-Policy's
+`img-src` no longer needs the Blob storage domain (or `blob:`/`data:`,
+which grepping confirmed nothing in this app ever used) — tightened to
+`img-src 'self'`.
+
+Also reviewed and confirmed already in good shape, not touched: the
+homepage's hero photo already used `next/image` with explicit
+dimensions and `priority`; fonts already use `next/font` with
+`display: "swap"`; there's no oversized client-side JavaScript bundle on
+the public pages. The photo rendering was the one concrete, unaddressed
+cause found.

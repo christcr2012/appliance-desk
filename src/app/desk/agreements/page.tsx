@@ -1,7 +1,9 @@
 import Link from "next/link";
-import { getAgreements, isReservationStale } from "@/domains/agreements";
+import { getAgreementsPage, getAgreementsCount, isReservationStale } from "@/domains/agreements";
 import { formatCents } from "@/domains/pricing";
 import type { RentalAgreementStatus } from "@prisma/client";
+import { parsePage, paginationMeta } from "@/domains/pagination";
+import { Pagination } from "@/components/pagination";
 
 export const metadata = { title: "Agreements" };
 
@@ -27,12 +29,23 @@ function isAgreementStatus(value: string | undefined): value is RentalAgreementS
 export default async function AgreementsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string; page?: string }>;
 }) {
-  const { status: rawStatus } = await searchParams;
+  const { status: rawStatus, page: rawPage } = await searchParams;
   const status = isAgreementStatus(rawStatus) ? rawStatus : undefined;
+  const filter = status ? { status } : undefined;
 
-  const agreements = await getAgreements(status ? { status } : undefined);
+  const totalCount = await getAgreementsCount(filter);
+  const meta = paginationMeta(totalCount, parsePage(rawPage));
+  const agreements = await getAgreementsPage(filter, meta.skip, meta.pageSize);
+
+  function agreementsHref(page: number, forStatus: RentalAgreementStatus | "ALL" = status ?? "ALL") {
+    const params = new URLSearchParams();
+    if (forStatus !== "ALL") params.set("status", forStatus);
+    if (page > 1) params.set("page", String(page));
+    const qs = params.toString();
+    return qs ? `/desk/agreements?${qs}` : "/desk/agreements";
+  }
 
   return (
     <div>
@@ -52,7 +65,7 @@ export default async function AgreementsPage({
           return (
             <Link
               key={tab.value}
-              href={tab.value === "ALL" ? "/desk/agreements" : `/desk/agreements?status=${tab.value}`}
+              href={agreementsHref(1, tab.value)}
               aria-current={active ? "page" : undefined}
               className={`rounded-full border px-3 py-1 text-sm ${
                 active
@@ -108,6 +121,13 @@ export default async function AgreementsPage({
           ))}
         </ul>
       )}
+
+      <Pagination
+        page={meta.page}
+        totalPages={meta.totalPages}
+        totalCount={meta.totalCount}
+        buildHref={(p) => agreementsHref(p)}
+      />
     </div>
   );
 }

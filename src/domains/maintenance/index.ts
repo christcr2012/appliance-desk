@@ -38,7 +38,23 @@ export function canTransitionMaintenanceStatus(
   };
 }
 
-export async function getMaintenanceRequests(filter?: { status?: MaintenanceStatus }) {
+/** Total MaintenanceRequest count matching the same optional status filter
+ * as getMaintenanceRequests — used to clamp the page number for
+ * /desk/maintenance's paginated view. See src/domains/pagination.ts. */
+export async function getMaintenanceRequestsCount(
+  filter?: { status?: MaintenanceStatus },
+): Promise<number> {
+  return prisma.maintenanceRequest.count({
+    where: filter?.status ? { status: filter.status } : undefined,
+  });
+}
+
+/** Paginated variant of getMaintenanceRequests. */
+export async function getMaintenanceRequestsPage(
+  filter: { status?: MaintenanceStatus } | undefined,
+  skip: number,
+  pageSize: number,
+) {
   return prisma.maintenanceRequest.findMany({
     where: filter?.status ? { status: filter.status } : undefined,
     include: {
@@ -46,6 +62,8 @@ export async function getMaintenanceRequests(filter?: { status?: MaintenanceStat
       appliance: { include: { applianceType: true } },
     },
     orderBy: [{ openedAt: "desc" }],
+    skip,
+    take: pageSize,
   });
 }
 

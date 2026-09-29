@@ -87,4 +87,31 @@ describe("theme", () => {
     expect(THEME_INIT_SCRIPT).toContain("localStorage");
     expect(THEME_INIT_SCRIPT).toContain("matchMedia");
   });
+
+  it("public/theme-init.js (the real file the browser loads) has the exact same logic as THEME_INIT_SCRIPT", async () => {
+    // 2026-09-29: the anti-flash script moved from an inline <Script>
+    // (src/app/layout.tsx) to a real static file, so the new
+    // Content-Security-Policy header can set script-src to 'self' with
+    // no 'unsafe-inline' exception. THEME_INIT_SCRIPT stays as the
+    // documented source of truth (and what the test above checks); this
+    // guards against the two ever drifting apart, by checking the
+    // static file contains the same functional lines, not by string-
+    // diffing the whole file (which would break on comment wording
+    // alone).
+    const fs = await import("node:fs/promises");
+    const path = await import("node:path");
+    const publicScript = await fs.readFile(
+      path.join(process.cwd(), "public/theme-init.js"),
+      "utf-8",
+    );
+    const { THEME_INIT_SCRIPT } = await import("@/lib/theme");
+
+    const functionalLines = (src: string) =>
+      src
+        .split("\n")
+        .map((line) => line.trim())
+        .filter((line) => line && !line.startsWith("//") && !line.startsWith("*") && !line.startsWith("/*"));
+
+    expect(functionalLines(publicScript)).toEqual(functionalLines(THEME_INIT_SCRIPT));
+  });
 });
