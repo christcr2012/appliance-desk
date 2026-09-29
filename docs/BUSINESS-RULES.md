@@ -165,6 +165,54 @@ other customer's; there's no separate "portfolio pricing" concept, on
 purpose, until Chris asks for one — a bulk/portfolio discount would be
 a new, explicit `PricingRule`, not inferred from address count.
 
+**Built (2026-09-29): estimates, for the deals that genuinely need
+custom terms.** The rule above ("no separate portfolio pricing, on
+purpose") still holds for ordinary self-serve pricing — this is the
+deliberate exception, for when Chris himself decides a deal needs one.
+Chris's own framing: a client ordering appliances for an entire
+apartment complex isn't standard free-delivery/standard-fee self-
+checkout, nor an ordinary one-off inquiry — it needs a real, custom-
+priced proposal, but only for the deals that actually need it. So:
+
+- An Estimate is always staff-created (`/desk/estimates`, OWNER/ADMIN
+  only), from an existing Customer — never auto-generated from a
+  Lead's `isPropertyManager` flag or anything else. That flag, and a
+  lead's requested `quantity`, are signals Chris judges by eye when
+  deciding whether a deal needs one; they never trigger anything
+  automatically.
+- Its line items are free-form: any description, quantity, a
+  recurring monthly amount, a one-time fee, or both — Chris sets
+  every number by hand, same as he already does for an agreement's
+  `RentalLine.listPriceCents`. Nothing here overrides or bypasses
+  `BusinessSettings`' standard fees; it's a parallel, explicit
+  proposal that standard pricing never applies to.
+- A line item can optionally be tied to one of the customer's
+  properties (`ServiceAddress`) — useful when the deal already spans
+  several named units/buildings, optional when it doesn't (a bulk
+  mobilization fee covering the whole deal, say).
+- The customer approves or asks for changes online, no login needed
+  (`/estimate/[id]`), the same "unguessable link" security model the
+  e-signature flow already uses — approving it records a real,
+  timestamped name/email/IP, same spirit as a signature.
+- **An estimate never reserves real inventory on its own.** Converting
+  an approved one only creates DRAFT `RentalAgreement` shell(s) with
+  the agreed high-level terms (deposit, which propert(y/ies)) — Chris
+  still adds real `RentalLine`s with actual physical appliances the
+  normal way, with the same atomic reservation safeguard every other
+  agreement already has (`addRentalLine`). This is deliberate: an
+  estimate's line items are pricing intent, decided before Chris may
+  even know which physical units will fulfill it, not a reservation.
+- Converting picks, per deal, either one combined agreement (all the
+  estimate's pricing on a single property Chris chooses — e.g. the
+  complex's own address on file) or one agreement per distinct
+  property the line items reference. Chris chooses which at the
+  moment he converts, not locked in when the estimate is created,
+  since he said this "depends on the deal."
+
+See `src/domains/estimates` and `docs/DECISIONS.md`'s "Estimates for
+property managers / bulk & multi-unit deals" entry for the full
+technical writeup.
+
 ## How the business operates at launch — Chris approves everything
 
 1. Customer submits an inquiry → becomes a `Lead`.

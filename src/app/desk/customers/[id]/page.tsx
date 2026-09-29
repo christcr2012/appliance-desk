@@ -107,6 +107,12 @@ export default async function CustomerDetailPage({
           >
             View statement
           </Link>
+          <Link
+            href={`/desk/estimates/new?customerId=${customer.id}`}
+            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            New estimate
+          </Link>
         </div>
       </div>
 

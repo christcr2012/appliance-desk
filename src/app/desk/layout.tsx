@@ -30,6 +30,7 @@ const OPERATIONAL_LINKS: AuthedNavLink[] = [
 // gate (see src/lib/session.ts's own comment on requireRole).
 const OWNER_ONLY_LINKS: AuthedNavLink[] = [
   { href: "/desk/dashboard", label: "Dashboard" },
+  { href: "/desk/estimates", label: "Estimates" },
   { href: "/desk/billing", label: "Billing" },
   { href: "/desk/revenue", label: "Revenue" },
   { href: "/desk/reports", label: "Reports" },

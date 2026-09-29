@@ -152,6 +152,7 @@ model Customer {
   notes            CustomerNote[]
   contacts         CustomerContact[]
   jobs             Job[]
+  estimates        Estimate[]
   referralsMade    Referral[] @relation("ReferralsMade")
   // A customer can only ever have been referred by one person — the
   // first (and only) code entered when they came in as a lead.
@@ -212,6 +213,7 @@ model ServiceAddress {
 
   jobs     Job[]
   rentalAgreements RentalAgreement[]
+  estimateLineItems EstimateLineItem[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -444,6 +446,15 @@ model RentalAgreement {
   serviceAddressId String
   serviceAddress   ServiceAddress   @relation(fields: [serviceAddressId], references: [id])
   status     RentalAgreementStatus  @default(DRAFT)
+
+  // Set when this agreement was created by converting an approved
+  // Estimate (src/domains/estimates's convertEstimateToAgreements) —
+  // null for every agreement created the ordinary way. Purely
+  // informational (so this agreement's own page can show "created from
+  // Estimate #123" and staff can trace either direction); never read by
+  // pricing or billing logic.
+  sourceEstimateId String?
+  sourceEstimate   Estimate? @relation(fields: [sourceEstimateId], references: [id])
 
   termMonths Int? // null = month-to-month
   startDate  DateTime?
@@ -766,6 +777,125 @@ model MaintenanceRequest {
 
   @@index([status])
   @@index([applianceId])
+}
+
+// ---------------------------------------------------------------------------
+// Estimates (2026-09-29, docs/DECISIONS.md has the full writeup) — for
+// deals that don't fit standard self-serve pricing: a property manager
+// or landlord ordering for several units/an entire building, where
+// delivery/installation fees and per-unit pricing need to be worked out
+// by hand rather than applied automatically. Deliberately staff-created
+// only (Chris/ADMIN, from an existing Customer) — never auto-generated
+// from a Lead's answers, so a "property manager" checkbox alone never
+// silently changes anyone's price.
+//
+// An Estimate is a pricing PROPOSAL, not yet a commitment — it never
+// reserves real inventory. Once APPROVED, converting it
+// (src/domains/estimates's convertEstimateToAgreements) creates one or
+// more DRAFT RentalAgreement(s) using its line items as a starting
+// point; Chris still adds real RentalLine(s) with actual physical
+// appliances the same way he already does for any agreement (see
+// src/domains/agreements's addRentalLine) — this only sets up the
+// paperwork shell with the agreed pricing/terms, it never bypasses the
+// existing appliance-reservation safeguards.
+//
+// The public approval link reuses the exact same pattern as
+// SignatureRecord/the /sign/[id] page below: the record's own
+// unguessable cuid `id` IS the link (no separate token field), gated by
+// possession of that link, not a login.
+// ---------------------------------------------------------------------------
+
+enum EstimateStatus {
+  DRAFT
+  SENT
+  VIEWED
+  APPROVED
+  CHANGES_REQUESTED
+  DECLINED
+  EXPIRED
+  CONVERTED
+}
+
+model Estimate {
+  id             String         @id @default(cuid())
+  // Sequential, human-facing number (what shows on the document) —
+  // separate from `id`, same pattern as Invoice.invoiceNumber.
+  estimateNumber Int            @unique @default(autoincrement())
+  customerId     String
+  customer       Customer       @relation(fields: [customerId], references: [id])
+  status         EstimateStatus @default(DRAFT)
+
+  // Internal reference only, e.g. "Sunset Apartments — 12 units" — never
+  // shown to the customer (the document just says "Estimate #123").
+  title         String
+  // Shown to the customer, on the estimate document itself.
+  clientMessage String?
+  // Never shown to the customer.
+  internalNotes String?
+
+  depositCents Int       @default(0)
+  validUntil   DateTime?
+
+  sentAt                  DateTime?
+  viewedAt                DateTime?
+  respondedAt             DateTime?
+  // Whoever actually clicked "approve" on the public link — a real,
+  // timestamped record of who said yes, same spirit as
+  // SignatureRecord.signerName/signerEmail below, not just "someone with
+  // the link approved it."
+  approverName            String?
+  approverEmail           String?
+  approverIpAddress       String?
+  changesRequestedMessage String?
+  declineReason           String?
+  convertedAt             DateTime?
+
+  // The OWNER/ADMIN who created this — every Estimate is staff-created,
+  // never self-service.
+  createdByUserId String
+
+  lineItems         EstimateLineItem[]
+  // Agreement(s) created by converting this estimate (a converted
+  // estimate can produce more than one — see the "per property" mode
+  // in src/domains/estimates) — so a draft agreement's own page can
+  // show "created from Estimate #123" and staff can trace either
+  // direction.
+  createdAgreements RentalAgreement[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([customerId])
+  @@index([status])
+}
+
+model EstimateLineItem {
+  id         String   @id @default(cuid())
+  estimateId String
+  estimate   Estimate @relation(fields: [estimateId], references: [id], onDelete: Cascade)
+
+  // Which property this line belongs to, when the deal already has one
+  // on file (e.g. one line per unit at a named property) — null for a
+  // line that isn't property-specific (a flat "bulk mobilization fee"
+  // covering the whole deal, say). Whether converting this estimate
+  // makes ONE combined agreement or one PER distinct property named
+  // here is a choice made at conversion time (src/domains/estimates),
+  // not stored here — Chris picks per deal, per his own instruction.
+  serviceAddressId String?
+  serviceAddress   ServiceAddress? @relation(fields: [serviceAddressId], references: [id])
+
+  description String
+  quantity    Int    @default(1)
+  // Recurring monthly amount for this line (e.g. "3x washer/dryer set
+  // @ $50/mo") — 0 if this line is a one-time charge only.
+  monthlyPriceCents Int @default(0)
+  // One-time charge for this line (e.g. a custom bulk delivery fee) — 0
+  // if this line is purely recurring.
+  oneTimeFeeCents Int @default(0)
+
+  createdAt DateTime @default(now())
+
+  @@index([estimateId])
 }
 
 // ---------------------------------------------------------------------------

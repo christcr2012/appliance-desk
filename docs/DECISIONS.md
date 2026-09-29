@@ -2915,3 +2915,142 @@ today, and a server-side generator is real, separate infrastructure
 that wasn't asked for); emailing a link to a specific invoice document
 (the branded transactional emails above don't currently link to one);
 combining this with Stripe's own hosted invoice PDFs in any way.
+
+## 2026-09-29 (continued) — Estimates for property managers / bulk & multi-unit deals
+
+Chris's own framing: a client ordering appliances for a whole
+apartment complex isn't something to run through standard free-
+delivery/standard-fee self-checkout, nor is it a normal one-off
+inquiry — it needs a real, custom-priced estimate, but only for the
+deals that actually need one, "built into the system smartly," not
+bolted onto every lead. He asked for this alongside a request to mine
+the brand kit and comparable platforms (Jobber, named specifically)
+for other ideas — see `docs/ROADMAP.md`'s "Ideas surfaced researching
+Jobber + reviewing the brand kit" entry for what else came out of that
+research; this entry is just the estimates feature itself.
+
+**Scoping, before building anything**: three real design decisions
+change the data model underneath, so they were asked and answered
+before writing code, not guessed at:
+1. For a whole apartment complex, is it one agreement covering every
+   unit, or one agreement per unit? Chris: **depends on the deal, let
+   him choose each time** — not a fixed rule.
+2. Who can start an estimate — just staff, or can a property manager
+   request one from the public site? Chris: **staff-only for now**.
+3. How does a customer approve one? Chris: **a real online "approve"
+   click, no login needed** — a real, timestamped record of their yes.
+
+**Jobber's own quote workflow was the direct model** (researched
+2026-09-29): Draft → sent → the customer views and approves online, no
+login, or requests changes → an approved quote converts straight into
+scheduled work, with a deposit collectible right at approval. That
+shape — send, approve-or-request-changes online via an unguessable
+link, convert on approval — is exactly what got built, adapted to this
+app's own constraints below. Jobber's supplier-pricing-catalog and
+consumer-financing integrations were deliberately not copied — both
+solve a materials-markup/big-ticket-financing problem this app's flat
+monthly-rental pricing doesn't have.
+
+**Data model** (`prisma/schema.prisma`, migration
+`20260929170000_estimates`): a new `Estimate` (status, title, an
+optional customer-facing message, internal notes, deposit, an optional
+expiry, and — once responded to — who approved it and when, the same
+"real timestamped record" spirit as `SignatureRecord`) and
+`EstimateLineItem` (free-form description, quantity, a monthly amount,
+a one-time fee, either or both, optionally tied to one of the
+customer's `ServiceAddress` rows). A new `RentalAgreement.sourceEstimateId`
+traces a converted agreement back to the estimate that produced it,
+purely informational.
+
+**The public approval link reuses an existing pattern exactly**,
+rather than inventing a new one: the e-signature flow
+(`SignatureRecord`/`/sign/[id]`) already established "the record's own
+unguessable cuid `id` IS the link, gated by possession of it, not a
+login" — no separate token field, no new mechanism, same rate-limited
+public server action pattern as `/sign/[id]/actions.ts`.
+
+**Why converting an estimate never touches real inventory**: an
+estimate's line items are pricing intent, decided (sometimes weeks)
+before Chris necessarily knows which physical appliances will fulfill
+it — especially true for a large complex order placed well ahead of
+delivery. `addRentalLine` (the existing function every other agreement
+already goes through) atomically reserves specific physical
+`Appliance` rows the moment a line is added — that's a real inventory
+commitment, not something an estimate should trigger. So converting an
+approved estimate only creates DRAFT `RentalAgreement` shell(s) with
+the agreed terms (deposit, which propert(y/ies)); Chris still adds the
+real `RentalLine`s with actual appliances afterward, the normal way,
+with the exact same atomic-reservation safeguard as every other
+agreement. The estimate's own line items stay visible for reference —
+`getEstimateDetail` links every agreement an estimate produced, and
+vice versa via `sourceEstimateId`.
+
+**Conversion mode is a per-deal choice, not stored data** — matching
+Chris's "depends on the deal" answer above, it isn't a field on the
+Estimate row at all. At the moment of converting (`/desk/estimates/[id]`),
+Chris picks: one combined agreement, on a single property he chooses
+(works even if the estimate's line items don't name any property, or
+name several — this mode just ignores that and puts everything on the
+one address given), or one agreement per distinct property the line
+items actually reference (throws, naming the offending line, if any
+line item has no property assigned — never silently drops a line
+item's terms onto the wrong agreement or an unassigned pool). The pure
+grouping/validation logic lives in `resolveConversionAddresses`,
+extracted specifically so it's unit-testable without a database — see
+`tests/estimates.test.ts` — same reasoning as
+`canTransitionAgreementStatus` in `src/domains/agreements`.
+
+**Why staff-created only, not triggered by `Lead.isPropertyManager` or
+quantity**: Chris was explicit that a "property manager" flag alone
+should never silently change anyone's price. `Lead.isPropertyManager`
+and `Lead.quantity` already exist and already make this the
+highest-value lead category (`docs/BUSINESS-RULES.md`'s "Lead
+scoring") — they're signals Chris judges by eye when deciding whether
+a deal needs a custom estimate, not a trigger. `/desk/estimates/new`'s
+customer picker does surface property-manager customers first, as a
+convenience, but creating an estimate is always a deliberate,
+individual action.
+
+**UI**: `/desk/estimates` (list), `/desk/estimates/new`,
+`/desk/estimates/[id]` (line items, send, and — once approved — the
+convert panel) — all OWNER/ADMIN only, same access level as
+Billing/Settings, since an estimate is where custom pricing gets
+decided. A "New estimate" shortcut was added to the customer detail
+page alongside the existing "New agreement"/"Schedule a job"/"View
+statement" shortcuts. The public side is `/estimate/[id]` — view,
+approve, or request changes, styled the same plain-Tailwind-gray/white-
+classes way as every other desk/portal page (see the brand-kit
+`docs/DECISIONS.md` entries for why those specific classes, not the
+public site's CSS-variable tokens).
+
+**Sending reuses the branded-email wrapper** (`src/lib/email.ts`,
+built earlier this same session) with no new email-specific code — the
+estimate email is just plain text through the existing `sendEmail()`,
+which already renders it branded and turns a trailing bare link (the
+estimate's own URL) into a button.
+
+**Not done in this slice, tracked in `docs/ROADMAP.md`**: a public
+"request a custom quote" form for a property manager to self-identify
+(Chris chose staff-only for now); a deposit collected automatically at
+the moment of approval (Jobber does this; this app's deposit field is
+recorded but nothing charges it yet — charging still happens the
+normal way, once a converted agreement is signed and billed); an
+automatic follow-up email on a sent-but-unanswered estimate. None of
+these were asked for yet.
+
+**Verification**: `npx eslint` on every new/changed file — clean.
+`npm run typecheck` — no new errors beyond the same pre-existing
+Prisma-client-generation sandbox limitation every other `src/domains/**`
+file already has (confirmed by comparing against `invoice-detail.ts`'s
+identical pattern), plus one real bug this actually caught and fixed —
+a `startTransition` callback returning a Promise where React expects
+void, in the line-item remove button. `npx vitest run` — the existing
+382 runnable tests still pass, plus a new `tests/estimates.test.ts`
+(pure `resolveConversionAddresses`/`totalMonthlyCents`/
+`totalOneTimeCents` logic — 8 new tests). The migration itself is
+purely additive (two new tables, one new nullable column) and will be
+verified for real by CI's throwaway-Postgres run; it also needs
+applying to the live Neon database before/alongside deploying, same as
+every schema change in this sandbox (see AGENTS.md's Prisma
+limitation) — flagged to Chris, not applied unilaterally to production
+from here.

@@ -45,13 +45,36 @@ in UTC and only converted to Mountain Time for display.
   never one fake combined appliance — so swapping a broken dryer never
   loses the washer's own history.
 
+## Estimates (2026-09-29)
+
+- **Estimate** — a staff-created, custom-priced proposal for a deal
+  that doesn't fit standard self-serve pricing (a property manager
+  ordering for several units, a whole building, and similar — see
+  `docs/BUSINESS-RULES.md`'s "Property managers / portfolio accounts").
+  Belongs to a `Customer`, moves through `EstimateStatus` (DRAFT → SENT
+  → VIEWED → APPROVED/CHANGES_REQUESTED/DECLINED/EXPIRED → CONVERTED),
+  and records who actually approved it (`approverName`/
+  `approverEmail`/`approverIpAddress`) the same way `SignatureRecord`
+  records who signed.
+- **EstimateLineItem** — one free-form priced line on an estimate
+  (description, quantity, a monthly amount, a one-time fee, or both),
+  optionally tied to one of the customer's `ServiceAddress` rows.
+- **`RentalAgreement.sourceEstimateId`** — set when an agreement was
+  created by converting an approved estimate
+  (`src/domains/estimates`'s `convertEstimateToAgreements`); null for
+  every ordinarily-created agreement. Purely a trace-back link — never
+  read by pricing or billing logic, and conversion never copies
+  `EstimateLineItem` rows into real `RentalLine`s automatically (see
+  that function's own comment for why).
+
 ## Rentals & pricing
 
 - **RentalAgreement** — one signed (or in-progress) contract with a
   customer at a service address. Its money fields
   (`depositCents`, `lateFeeCents`, `taxRatePermille`, ...) are a
   **snapshot** taken at signing — changing prices later in
-  `/desk/settings` never changes what an existing customer owes.
+  `/desk/settings` never changes what an existing customer owes. Can
+  optionally trace back to the Estimate that produced it — see above.
 - **RentalLine** — one priced line on that agreement (e.g. "Washer/Dryer
   set @ $60/mo").
 - **ApplianceAssignment** — which physical `Appliance` fulfills a given

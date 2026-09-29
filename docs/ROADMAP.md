@@ -380,19 +380,19 @@ don't build it unasked" rule:
   scheduled export or off-Neon copy on top of it. Worth deciding whether
   that's enough for this business's risk tolerance as it grows.
 
-## Estimates for property managers / bulk & multi-unit deals — being scoped (2026-09-29)
+## Estimates for property managers / bulk & multi-unit deals — done (2026-09-29)
 
 Chris's own framing: a client ordering units for an entire apartment
 complex isn't something to run through standard free-delivery/standard-fee
 self-checkout, nor is it a normal one-off inquiry — it needs a real,
 custom-priced estimate, but this should only apply to the deals that
 actually need it, "built into the system smartly," not bolted onto
-every lead. Full design proposal — data model, trigger logic, workflow
-— is being written up with Chris directly rather than guessed at here,
-since it touches `docs/BUSINESS-RULES.md`-level decisions (how a
-multi-property/multi-unit deal is priced and which agreements it
-becomes). Tracked here so the intent isn't lost if the conversation
-that scopes it isn't the one that builds it.
+every lead. Built end-to-end — see `docs/HANDOFF.md`'s "Estimates for
+property managers / bulk & multi-unit deals" entry and
+`docs/BUSINESS-RULES.md`'s matching section for exactly how it works:
+staff-only creation, a real no-login online "approve" click by the
+customer, and converting an approved estimate into one combined
+agreement or one per property, Chris's choice each time.
 
 ## Ideas surfaced researching Jobber + reviewing the brand kit (2026-09-29, not built)
 
@@ -407,15 +407,21 @@ is already built here.
 - **The quote/estimate workflow pattern itself** (Draft → Awaiting
   Response → Approved/Changes Requested → Converted, viewed and
   approved online with no login) is the direct model for the estimates
-  feature above — see that entry.
+  feature above — **built, see that entry.**
 - **A deposit collected at the moment a quote/estimate is approved**,
   not left until the agreement is later signed — shortens the gap
-  between "customer said yes" and money actually committed. Worth
-  folding into the estimates design rather than building separately.
+  between "customer said yes" and money actually committed. **Not
+  built with the first version of estimates** — an estimate has an
+  optional `depositCents` field reserved for this, but nothing
+  collects it yet; converting an approved estimate still goes through
+  the existing agreement-signing → Stripe Checkout flow for deposit
+  collection. Worth revisiting once real estimates have gone through
+  the system.
 - **Automatic follow-up on a sent-but-unanswered estimate** (a
   reminder email after a few days of silence) — small, and reuses the
   same reminder-email machinery `src/domains/billing/reminders.ts`
-  already has for billing.
+  already has for billing. **Not built yet** — the estimates system
+  ships without this in its first version; a good small follow-on.
 - **The brand kit's small service-icon set** (appliance, calendar,
   delivery, home, property, support) — never used anywhere in the app
   yet; a real, separate design decision about where icons like these
