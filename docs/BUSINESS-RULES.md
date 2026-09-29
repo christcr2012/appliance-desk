@@ -99,6 +99,15 @@ Default ranking, **lowest to highest** value:
   consent checkbox.
 - Chris is notified immediately by email of every new lead (SMS is a
   possible later addition). High-value leads are flagged as such.
+- **Or, Chris adds a lead directly** (`/desk/leads/new`, "+ Add a
+  lead" on `/desk/leads`, 2026-09-29 — see `docs/DECISIONS.md`) for a
+  phone call or walk-in that didn't come through the public form.
+  Only name and phone are required — no appliance list, quantity, or
+  consent checkbox, since Chris is talking to the person directly.
+  `Lead.createdByUserId` records that it was added by staff rather
+  than the public site; no notification email is sent (the creator
+  already knows about it). Scored the same way as any other lead
+  (`scoreLead`), and shows up in the same `/desk/leads` pipeline.
 - **Spam/abuse protection:** the form has a honeypot field invisible to
   real visitors (any automated submission that fills it in is silently
   dropped — no Lead saved, no email sent) and a per-IP rate limit (at
@@ -175,11 +184,25 @@ checkout, nor an ordinary one-off inquiry — it needs a real, custom-
 priced proposal, but only for the deals that actually need it. So:
 
 - An Estimate is always staff-created (`/desk/estimates`, OWNER/ADMIN
-  only), from an existing Customer — never auto-generated from a
-  Lead's `isPropertyManager` flag or anything else. That flag, and a
-  lead's requested `quantity`, are signals Chris judges by eye when
-  deciding whether a deal needs one; they never trigger anything
-  automatically.
+  only) — never auto-generated from a Lead's `isPropertyManager` flag
+  or anything else. That flag, and a lead's requested `quantity`, are
+  signals Chris judges by eye when deciding whether a deal needs one;
+  they never trigger anything automatically.
+- It usually starts from an existing Customer, but doesn't have to
+  (2026-09-29 — Chris flagged there was no way to add a lead by hand
+  or start an estimate for anyone who wasn't already a full customer,
+  see `docs/DECISIONS.md`'s "Adding a lead by hand, and starting an
+  estimate for someone new" entry). Picking "Someone new" on
+  `/desk/estimates/new` creates a `Lead` first (same lightweight
+  entry as the standalone "+ Add a lead" button on `/desk/leads`) and
+  starts the estimate against that lead instead — it shows up in the
+  ordinary lead pipeline right away, exactly like a website inquiry.
+  **The lead becomes a real `Customer` automatically the moment they
+  approve the estimate online** — not when Chris sends it, and not
+  waiting for a deposit or delivery. See that same doc entry for why
+  approval is the point this happens (in short: collecting any money
+  or scheduling delivery both require a real customer account to
+  already exist, so approval is the earliest honest moment).
 - Its line items are free-form: any description, quantity, a
   recurring monthly amount, a one-time fee, or both — Chris sets
   every number by hand, same as he already does for an agreement's

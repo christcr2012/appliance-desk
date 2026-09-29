@@ -61,8 +61,19 @@ export default async function EstimatesPage() {
                       #{estimate.estimateNumber} — {estimate.title}
                     </p>
                     <p className="text-sm text-gray-600">
-                      {estimate.customer.user.name ?? estimate.customer.user.email}
-                      {estimate.customer.companyName ? ` · ${estimate.customer.companyName}` : ""}
+                      {estimate.customer ? (
+                        <>
+                          {estimate.customer.user.name ?? estimate.customer.user.email}
+                          {estimate.customer.companyName ? ` · ${estimate.customer.companyName}` : ""}
+                        </>
+                      ) : estimate.lead ? (
+                        <>
+                          {estimate.lead.contactName}
+                          {estimate.lead.companyName ? ` · ${estimate.lead.companyName}` : ""}
+                          {" "}
+                          <span className="text-xs text-gray-400">(lead)</span>
+                        </>
+                      ) : null}
                     </p>
                   </div>
                   <div className="text-sm text-gray-500 sm:text-right">

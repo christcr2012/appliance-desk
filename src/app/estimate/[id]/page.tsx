@@ -32,7 +32,9 @@ export default async function PublicEstimatePage({
 
   const monthly = estimate.lineItems.reduce((sum, l) => sum + l.monthlyPriceCents * l.quantity, 0);
   const oneTime = estimate.lineItems.reduce((sum, l) => sum + l.oneTimeFeeCents * l.quantity, 0);
-  const customerName = estimate.customer.user.name ?? estimate.customer.user.email;
+  const customerName = estimate.customer
+    ? (estimate.customer.user.name ?? estimate.customer.user.email)
+    : estimate.lead?.contactName;
 
   return (
     <main className="mx-auto max-w-lg px-6 py-16">

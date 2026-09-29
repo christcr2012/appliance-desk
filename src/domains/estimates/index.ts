@@ -3,6 +3,7 @@ import type { EstimateStatus } from "@prisma/client";
 import { sendEmail } from "@/lib/email";
 import { getBusinessSettings } from "@/domains/settings";
 import { createDraftAgreement } from "@/domains/agreements";
+import { createLeadManually, convertLeadToCustomer, type ManualLeadInput } from "@/domains/leads";
 
 // ---------------------------------------------------------------------------
 // Estimates (2026-09-29 — see docs/DECISIONS.md's "Estimates for
@@ -14,9 +15,18 @@ import { createDraftAgreement } from "@/domains/agreements";
 // custom-priced estimate, but only for the deals that actually need
 // one. So this is deliberately:
 //
-// - Staff-created only (OWNER/ADMIN, from an existing Customer) —
-//   never auto-generated from a Lead's answers. A "property manager"
-//   flag never silently changes anyone's price on its own.
+// - Staff-created only (OWNER/ADMIN) — never auto-generated from a
+//   Lead's answers. A "property manager" flag never silently changes
+//   anyone's price on its own. Usually starts from an existing
+//   Customer, but doesn't have to (2026-09-29, Chris's own report:
+//   "I can't start an estimate unless there's an existing customer" —
+//   a real gap) — createEstimateDraftForNewLead lets staff start one
+//   for someone who isn't a customer yet, creating a Lead for them
+//   first (via src/domains/leads' createLeadManually) so the deal is
+//   tracked in the ordinary lead pipeline (score, status, follow-up)
+//   rather than silently skipping it. See that function's own comment,
+//   and approveEstimate's, for how/when a lead-started estimate
+//   becomes a real customer.
 // - A pricing PROPOSAL, not a commitment — creating or sending an
 //   Estimate never reserves real inventory. Converting an approved one
 //   (convertEstimateToAgreements, below) only creates DRAFT
@@ -73,6 +83,52 @@ export async function createEstimateDraft(userId: string, input: NewEstimateInpu
       entityType: "Estimate",
       entityId: estimate.id,
       newValue: { customerId: input.customerId, title: input.title },
+    },
+  });
+
+  return estimate;
+}
+
+export type NewEstimateForLeadInput = Omit<NewEstimateInput, "customerId">;
+
+/**
+ * The "I don't have a customer or a lead for this yet" path
+ * (2026-09-29, Chris's report). Creates a Lead first
+ * (src/domains/leads' createLeadManually — same lightweight capture as
+ * the standalone "Add a lead" page), then an Estimate tied to that lead
+ * instead of a customer. The lead shows up in the ordinary /desk/leads
+ * pipeline right away — sending this estimate doesn't hide it there.
+ *
+ * The estimate can still be built and sent with only a Lead behind it;
+ * see approveEstimate for what happens once the customer actually says
+ * yes.
+ */
+export async function createEstimateDraftForNewLead(
+  userId: string,
+  leadInput: ManualLeadInput,
+  estimateInput: NewEstimateForLeadInput,
+) {
+  const lead = await createLeadManually(userId, leadInput);
+
+  const estimate = await prisma.estimate.create({
+    data: {
+      leadId: lead.id,
+      title: estimateInput.title,
+      clientMessage: estimateInput.clientMessage || null,
+      internalNotes: estimateInput.internalNotes || null,
+      depositCents: estimateInput.depositCents ?? 0,
+      validUntil: estimateInput.validUntil ?? null,
+      createdByUserId: userId,
+    },
+  });
+
+  await prisma.auditLog.create({
+    data: {
+      userId,
+      action: "estimate.create",
+      entityType: "Estimate",
+      entityId: estimate.id,
+      newValue: { leadId: lead.id, title: estimateInput.title },
     },
   });
 
@@ -171,6 +227,7 @@ export async function getAllEstimates() {
   return prisma.estimate.findMany({
     include: {
       customer: { select: { companyName: true, user: { select: { name: true, email: true } } } },
+      lead: { select: { contactName: true, companyName: true, status: true } },
       lineItems: true,
     },
     orderBy: [{ createdAt: "desc" }],
@@ -189,6 +246,7 @@ export async function getEstimateDetail(estimateId: string) {
           serviceAddresses: true,
         },
       },
+      lead: { select: { id: true, contactName: true, companyName: true, phone: true, status: true } },
       lineItems: { include: { serviceAddress: true }, orderBy: [{ createdAt: "asc" }] },
       createdAgreements: { select: { id: true, serviceAddressId: true, status: true } },
     },
@@ -213,6 +271,7 @@ export async function sendEstimate(userId: string, estimateId: string) {
     include: {
       lineItems: true,
       customer: { select: { user: { select: { name: true, email: true } } } },
+      lead: { select: { contactName: true, email: true } },
     },
   });
   if (!EDITABLE_STATUSES.includes(estimate.status)) {
@@ -220,6 +279,17 @@ export async function sendEstimate(userId: string, estimateId: string) {
   }
   if (estimate.lineItems.length === 0) {
     throw new Error("Add at least one line item before sending this estimate.");
+  }
+  // Estimate.customer/lead: exactly one of customerId/leadId is set —
+  // see the Estimate model's own comment.
+  const recipientEmail = estimate.customer?.user.email ?? estimate.lead?.email;
+  const recipientName = estimate.customer
+    ? (estimate.customer.user.name ?? estimate.customer.user.email)
+    : estimate.lead?.contactName;
+  if (!recipientEmail) {
+    throw new Error(
+      "This lead has no email address on file — add one before sending this estimate.",
+    );
   }
 
   await prisma.$transaction([
@@ -241,10 +311,9 @@ export async function sendEstimate(userId: string, estimateId: string) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://robinsonappliancerentals.com";
   const monthly = totalMonthlyCents(estimate.lineItems);
   const oneTime = totalOneTimeCents(estimate.lineItems);
-  const customerName = estimate.customer.user.name ?? estimate.customer.user.email;
 
   const parts = [
-    `Hi${customerName ? ` ${customerName}` : ""},`,
+    `Hi${recipientName ? ` ${recipientName}` : ""},`,
     `${settings.publicBusinessName} has prepared estimate #${estimate.estimateNumber}${estimate.title ? ` (${estimate.title})` : ""} for you.`,
   ];
   if (monthly > 0) parts.push(`Estimated recurring total: $${(monthly / 100).toFixed(2)}/month.`);
@@ -254,7 +323,7 @@ export async function sendEstimate(userId: string, estimateId: string) {
   parts.push(`${appUrl}/estimate/${estimate.id}`);
 
   await sendEmail({
-    to: estimate.customer.user.email,
+    to: recipientEmail,
     subject: `Estimate #${estimate.estimateNumber} from ${settings.publicBusinessName}`,
     text: parts.join("\n\n"),
     actionLabel: "View & respond to estimate",
@@ -272,6 +341,7 @@ export async function getEstimateForApproval(id: string) {
     where: { id },
     include: {
       customer: { select: { companyName: true, user: { select: { name: true, email: true } } } },
+      lead: { select: { contactName: true, companyName: true } },
       lineItems: { include: { serviceAddress: true }, orderBy: [{ createdAt: "asc" }] },
     },
   });
@@ -298,11 +368,54 @@ export type ApproveEstimateInput = {
  * entirely by having the unguessable estimate link (see the file
  * comment at the top). Only SENT/VIEWED can be approved: not DRAFT (not
  * sent yet), and not already APPROVED/DECLINED/CONVERTED (no re-deciding
- * through a stale tab). */
+ * through a stale tab).
+ *
+ * If this estimate started from a Lead (no customerId yet), approving
+ * it is the trigger that turns them into a real Customer — right here,
+ * not at "sent" or "delivery." Chris's own instinct (2026-09-29,
+ * discussed at length) was to wait for an actual payment or a
+ * completed delivery, but neither of those is technically possible
+ * before an account exists: signing an agreement and collecting money
+ * through Stripe both require a real Customer row (and its own Stripe
+ * customer) to exist first — there's no way to charge someone who
+ * isn't one yet. Approval is the earliest point that's both possible
+ * and honest: it's the customer's own clear "yes," typed by them, not
+ * Chris guessing. Nothing about WHEN money actually moves changes —
+ * the resulting agreement still isn't signed automatically, a deposit
+ * still isn't charged until it's actually signed (the existing
+ * Checkout flow), and recurring billing still doesn't start until
+ * their delivery job is marked completed, exactly as for every other
+ * customer. Becoming a "Customer" here just means the account/plumbing
+ * needed for that later flow now exists — not that anything has been
+ * charged or delivered yet.
+ */
 export async function approveEstimate(id: string, input: ApproveEstimateInput) {
   const estimate = await prisma.estimate.findUniqueOrThrow({ where: { id } });
   if (estimate.status !== "SENT" && estimate.status !== "VIEWED") {
     throw new Error("This estimate isn't available to approve right now.");
+  }
+
+  let customerId = estimate.customerId;
+
+  if (!customerId && estimate.leadId) {
+    const lead = await prisma.lead.findUniqueOrThrow({ where: { id: estimate.leadId } });
+    if (lead.status === "CONVERTED" && lead.convertedCustomerId) {
+      // Already converted from a different estimate/action in the
+      // meantime — reuse that customer rather than converting twice.
+      customerId = lead.convertedCustomerId;
+    } else {
+      if (!lead.email) {
+        // The lead was captured without an email (e.g. a quick
+        // phone-call entry) — the approver just gave us one right now,
+        // so use it. conversion needs an email to create the login.
+        await prisma.lead.update({
+          where: { id: lead.id },
+          data: { email: input.approverEmail },
+        });
+      }
+      const { customer } = await convertLeadToCustomer(null, lead.id);
+      customerId = customer.id;
+    }
   }
 
   await prisma.estimate.update({
@@ -313,6 +426,7 @@ export async function approveEstimate(id: string, input: ApproveEstimateInput) {
       approverName: input.approverName,
       approverEmail: input.approverEmail,
       approverIpAddress: input.ipAddress,
+      customerId,
     },
   });
 }
@@ -402,6 +516,13 @@ export async function convertEstimateToAgreements(
   }
   if (estimate.lineItems.length === 0) {
     throw new Error("This estimate has no line items to convert.");
+  }
+  // Defensive only — approveEstimate always fills customerId in before
+  // an estimate can reach APPROVED (converting the lead behind it into
+  // a real customer first if it started from one). This should never
+  // actually be null here.
+  if (!estimate.customerId) {
+    throw new Error("This estimate isn't linked to a customer yet.");
   }
 
   const serviceAddressIds = resolveConversionAddresses(estimate.lineItems, input);

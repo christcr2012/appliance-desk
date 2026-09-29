@@ -44,10 +44,18 @@ export default async function LeadsPage({
 
   return (
     <div>
-      <h1 className="text-xl font-semibold">Leads</h1>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h1 className="text-xl font-semibold">Leads</h1>
+        <Link
+          href="/desk/leads/new"
+          className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
+        >
+          + Add a lead
+        </Link>
+      </div>
       <p className="mt-1 text-sm text-gray-600">
-        Every inquiry from the website&apos;s contact form, ranked by value —
-        highest first.
+        Every inquiry — from the website&apos;s contact form, or added
+        directly for a call-in or walk-in — ranked by value, highest first.
       </p>
 
       <nav aria-label="Filter leads by status" className="mt-4 flex flex-wrap gap-2">

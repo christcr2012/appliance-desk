@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { convertEstimateAction } from "../actions";
 
 /** Converting an approved estimate into DRAFT rental agreement(s) — see
@@ -11,11 +12,13 @@ import { convertEstimateAction } from "../actions";
  * distinct property the line items reference. */
 export function ConvertEstimatePanel({
   estimateId,
+  customerId,
   serviceAddresses,
   hasUnassignedLines,
   distinctPropertyCount,
 }: {
   estimateId: string;
+  customerId: string | null;
   serviceAddresses: { id: string; label: string }[];
   hasUnassignedLines: boolean;
   distinctPropertyCount: number;
@@ -108,8 +111,15 @@ export function ConvertEstimatePanel({
 
       {serviceAddresses.length === 0 && mode === "single" && (
         <p className="mt-2 text-xs text-amber-700">
-          This customer has no property on file yet — add one from their
-          customer page first.
+          This customer has no property on file yet — add one from{" "}
+          {customerId ? (
+            <Link href={`/desk/customers/${customerId}`} className="underline">
+              their customer page
+            </Link>
+          ) : (
+            "their customer page"
+          )}{" "}
+          first.
         </p>
       )}
 
