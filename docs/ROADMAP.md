@@ -379,3 +379,62 @@ don't build it unasked" rule:
   actually work (`docs/DECISIONS.md`, 2026-09-28) but there's no separate
   scheduled export or off-Neon copy on top of it. Worth deciding whether
   that's enough for this business's risk tolerance as it grows.
+
+## Estimates for property managers / bulk & multi-unit deals — done (2026-09-29)
+
+Chris's own framing: a client ordering units for an entire apartment
+complex isn't something to run through standard free-delivery/standard-fee
+self-checkout, nor is it a normal one-off inquiry — it needs a real,
+custom-priced estimate, but this should only apply to the deals that
+actually need it, "built into the system smartly," not bolted onto
+every lead. Built end-to-end — see `docs/HANDOFF.md`'s "Estimates for
+property managers / bulk & multi-unit deals" entry and
+`docs/BUSINESS-RULES.md`'s matching section for exactly how it works:
+staff-only creation, a real no-login online "approve" click by the
+customer, and converting an approved estimate into one combined
+agreement or one per property, Chris's choice each time.
+
+## Ideas surfaced researching Jobber + reviewing the brand kit (2026-09-29, not built)
+
+Chris asked, alongside the estimates request above, for the brand kit
+and comparable platforms (Jobber named specifically) to be mined for
+other ideas — not to copy, but to see what's worth adapting. What
+follows is genuinely new suggestions only; most of what a tool like
+Jobber offers (scheduling, a customer portal, recurring billing, late
+fees, condition photos, a referral program, branded invoices/emails)
+is already built here.
+
+- **The quote/estimate workflow pattern itself** (Draft → Awaiting
+  Response → Approved/Changes Requested → Converted, viewed and
+  approved online with no login) is the direct model for the estimates
+  feature above — **built, see that entry.**
+- **A deposit collected at the moment a quote/estimate is approved**,
+  not left until the agreement is later signed — shortens the gap
+  between "customer said yes" and money actually committed. **Not
+  built with the first version of estimates** — an estimate has an
+  optional `depositCents` field reserved for this, but nothing
+  collects it yet; converting an approved estimate still goes through
+  the existing agreement-signing → Stripe Checkout flow for deposit
+  collection. Worth revisiting once real estimates have gone through
+  the system.
+- **Automatic follow-up on a sent-but-unanswered estimate** (a
+  reminder email after a few days of silence) — small, and reuses the
+  same reminder-email machinery `src/domains/billing/reminders.ts`
+  already has for billing. **Not built yet** — the estimates system
+  ships without this in its first version; a good small follow-on.
+- **The brand kit's small service-icon set** (appliance, calendar,
+  delivery, home, property, support) — never used anywhere in the app
+  yet; a real, separate design decision about where icons like these
+  actually belong (see the phase-1/2/3 brand-kit `docs/DECISIONS.md`
+  entries), not a quick add-on.
+- **A job/work-order document**, matching the brand kit's
+  `Work-order.pdf` template the same way the new invoice document
+  matches its `Invoice.pdf` — the app's `Job` model (delivery,
+  installation, swap, maintenance visit, removal) is the real
+  equivalent of a "work order," so this has an actual live feature to
+  attach to, unlike the kit's `Estimate.pdf` template before this
+  section existed.
+- **Not recommended to copy**: Jobber's supplier/materials
+  price-catalog integration and consumer-financing (Wisetack)
+  integration — both solve a materials-markup/big-ticket-financing
+  problem Chris's flat-monthly-rental pricing model doesn't have.

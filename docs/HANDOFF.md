@@ -1751,3 +1751,89 @@ print-to-PDF covers this — not asked for beyond that); linking a
 branded email to a specific invoice's document page; confirming
 Workspace/Gmail access to `ops@robinsonappliancerentals.com`, as
 above.
+
+## 2026-09-29 (continued) — Estimates for property managers / bulk & multi-unit deals
+
+Chris's request: a client ordering units for an entire apartment
+complex isn't standard self-serve pricing, but not every inquiry
+needs a custom quote either — "built into the system smartly." Full
+reasoning in `docs/DECISIONS.md`'s "Estimates for property managers /
+bulk & multi-unit deals" entry and what it means day-to-day in
+`docs/BUSINESS-RULES.md`'s matching section. Three scoping questions
+were resolved with Chris via `AskUserQuestion` before building:
+per-deal choice of one combined agreement vs. one per property,
+staff-only creation (no customer-initiated estimates yet), and a real
+online "approve" click with no login required — the same unguessable-
+link pattern the e-signature flow already uses. Branch
+`ai/claude/estimates-scoping-2026-09-29` (created fresh off `main`
+after PR #76 merged).
+
+- [x] Schema: new `Estimate` (status DRAFT → SENT → VIEWED →
+      APPROVED/CHANGES_REQUESTED/DECLINED/EXPIRED → CONVERTED,
+      optional deposit amount, who approved it and from what IP —
+      mirrors `SignatureRecord`) and `EstimateLineItem` (free-form
+      description/quantity/monthly price/one-time fee, optionally
+      tied to one of the customer's properties). `RentalAgreement`
+      gets a purely informational `sourceEstimateId` trace-back link,
+      never read by pricing or billing.
+      `prisma/migrations/20260929170000_estimates/` — hand-written
+      (sandbox can't reach Prisma's binary host, same documented
+      limitation as every other migration here), purely additive.
+- [x] `src/domains/estimates/index.ts` — the domain logic: draft an
+      estimate and add/remove line items (only while DRAFT or
+      CHANGES_REQUESTED — editing something already sent/decided is
+      blocked on purpose), send it, the customer's approve/request-
+      changes actions, and converting an approved estimate into real
+      draft `RentalAgreement`s. Conversion deliberately creates
+      agreement *shells* only — it never auto-creates `RentalLine`s,
+      because reserving a real physical appliance has to go through
+      the existing atomic reserve-and-assign logic, which an
+      estimate's line items (priced intent, not yet tied to specific
+      machines) were never meant to bypass. Chris/staff still add the
+      actual rental lines on each resulting agreement, same as any
+      other agreement.
+- [x] `/desk/estimates` (new nav link, owner/staff only) — list, a
+      creation form (property managers sorted first in the customer
+      picker), a detail page with line-item editing, a "Send" button,
+      and a "Convert" panel (single agreement or one per property,
+      Chris's choice, with a clear error if a per-property conversion
+      hits a line that isn't tied to any property yet). A "New
+      estimate" quick action was added to the customer detail page.
+- [x] `/estimate/[id]` — the public, no-login page a customer opens
+      from their emailed link. Shows the line items and totals,
+      status-specific messaging, and (unless already responded to) a
+      form to approve or request changes — both rate-limited the same
+      way the e-signature flow's public actions already are.
+- [x] Local verification: `npx eslint` on every new/changed file —
+      clean. `npm run typecheck` — one real bug caught and fixed (a
+      button's click handler returned a Promise where React's
+      `startTransition` requires void — same pattern already used
+      elsewhere in the codebase, just missed here first); no other
+      new errors beyond the same pre-existing, documented sandbox
+      Prisma-generation limitation every other domain file already
+      has. `npx vitest run` — new `tests/estimates.test.ts` covers the
+      pure, no-database logic (how line items get grouped into one
+      agreement vs. one per property, and the total-calculation
+      helpers); can't execute in this sandbox for the same reason as
+      every Prisma-touching test file (confirmed by re-running an
+      already-shipped test file and seeing the identical failure) —
+      the runnable-test count is unaffected, and CI's real Postgres is
+      the actual verification gate.
+
+**Status**: built and locally verified, **not yet committed/pushed**
+as of this entry — next step is committing this branch, opening a PR,
+and confirming CI green, following the exact same pattern as every
+other phase above.
+
+**Chris needs to do one thing before this goes live**: run this new
+migration's SQL against the real Neon database, same as every other
+schema change in this project (Vercel's build doesn't run `prisma
+migrate deploy` automatically) — see
+`prisma/migrations/20260929170000_estimates/migration.sql`.
+
+**Still open, not built in this first version**: collecting a deposit
+at the moment an estimate is approved (an `Estimate.depositCents`
+field exists for this, but nothing charges it yet — conversion still
+relies on the existing agreement-signing → Stripe Checkout flow); an
+automatic reminder email for a sent-but-unanswered estimate. Both
+noted in `docs/ROADMAP.md` as good small follow-ons, not overlooked.

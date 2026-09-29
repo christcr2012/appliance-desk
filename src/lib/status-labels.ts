@@ -56,6 +56,17 @@ const INVOICE_STATUS_LABELS: Record<string, string> = {
   REFUNDED: "Refunded",
 };
 
+const ESTIMATE_STATUS_LABELS: Record<string, string> = {
+  DRAFT: "Being prepared",
+  SENT: "Sent — awaiting your response",
+  VIEWED: "Sent — awaiting your response",
+  APPROVED: "Approved",
+  CHANGES_REQUESTED: "Changes requested",
+  DECLINED: "Declined",
+  EXPIRED: "Expired",
+  CONVERTED: "Approved and set up",
+};
+
 function lookup(labels: Record<string, string>, value: string): string {
   return labels[value] ?? value;
 }
@@ -71,3 +82,5 @@ export const maintenanceStatusLabel = (status: string) =>
   lookup(MAINTENANCE_STATUS_LABELS, status);
 
 export const invoiceStatusLabel = (status: string) => lookup(INVOICE_STATUS_LABELS, status);
+
+export const estimateStatusLabel = (status: string) => lookup(ESTIMATE_STATUS_LABELS, status);
