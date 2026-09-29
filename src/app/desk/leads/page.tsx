@@ -3,6 +3,8 @@ import { getLeadsPage, getLeadsCount, getLeadCountsByStatus } from "@/domains/le
 import type { LeadStatus } from "@prisma/client";
 import { parsePage, paginationMeta } from "@/domains/pagination";
 import { Pagination } from "@/components/pagination";
+import { StatusBadge, type StatusTone } from "@/components/status-badge";
+import { PlusIcon } from "@/components/icons/status-icons";
 
 export const metadata = { title: "Leads" };
 
@@ -48,9 +50,10 @@ export default async function LeadsPage({
         <h1 className="text-xl font-semibold">Leads</h1>
         <Link
           href="/desk/leads/new"
-          className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
+          className="inline-flex items-center gap-1 rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
         >
-          + Add a lead
+          <PlusIcon className="h-4 w-4" />
+          Add a lead
         </Link>
       </div>
       <p className="mt-1 text-sm text-gray-600">
@@ -111,7 +114,7 @@ export default async function LeadsPage({
                 <div className="text-sm text-gray-500 sm:text-right">
                   <p>{lead.phone}</p>
                   <p>
-                    <StatusBadge status={lead.status} /> · score {lead.score}
+                    <LeadStatusBadge status={lead.status} /> · score {lead.score}
                   </p>
                 </div>
               </Link>
@@ -130,12 +133,13 @@ export default async function LeadsPage({
   );
 }
 
-function StatusBadge({ status }: { status: LeadStatus }) {
-  const styles: Record<LeadStatus, string> = {
-    NEW: "text-blue-700",
-    CONTACTED: "text-amber-700",
-    CONVERTED: "text-green-700",
-    LOST: "text-gray-500",
-  };
-  return <span className={styles[status]}>{status}</span>;
+const LEAD_STATUS_TONE: Record<LeadStatus, StatusTone> = {
+  NEW: "pending",
+  CONTACTED: "progress",
+  CONVERTED: "success",
+  LOST: "stopped",
+};
+
+function LeadStatusBadge({ status }: { status: LeadStatus }) {
+  return <StatusBadge tone={LEAD_STATUS_TONE[status]} label={status} />;
 }

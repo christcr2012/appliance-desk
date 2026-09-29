@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getDispatchBoardJobs } from "@/domains/jobs";
+import { PlusIcon } from "@/components/icons/status-icons";
 import {
   findConflictingJobIds,
   dayKey,
@@ -137,9 +138,10 @@ export default async function DispatchPage({
         </h1>
         <Link
           href="/desk/jobs/new"
-          className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
+          className="inline-flex items-center gap-1 rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
         >
-          + Schedule a job
+          <PlusIcon className="h-4 w-4" />
+          Schedule a job
         </Link>
       </div>
 

@@ -52,6 +52,16 @@ in UTC and only converted to Mountain Time for display.
   together but is always **two** separately tracked `Appliance` rows —
   never one fake combined appliance — so swapping a broken dryer never
   loses the washer's own history.
+- **`PartRecord.quantityOnHand`/`reorderThreshold`** (2026-09-29,
+  purchasing & supplies) — see `docs/BUSINESS-RULES.md`'s "Purchasing &
+  supplies" section. Only moved by `receivePurchaseOrder` (up) and
+  `recordPartUsage` (down) — never touched automatically elsewhere.
+- **Supplier** — a purchasing contact: name, phone, email, notes.
+- **PurchaseOrder** / **PurchaseOrderLineItem** (2026-09-29) — an order
+  placed with a `Supplier`, DRAFT → ORDERED → RECEIVED/CANCELLED. A
+  line optionally ties to a `PartRecord` (`partRecordId`, nullable —
+  free text otherwise); receiving the order adds each tied line's
+  quantity onto that part's `quantityOnHand`.
 
 ## Estimates (2026-09-29)
 

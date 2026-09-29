@@ -1,4 +1,7 @@
+import Link from "next/link";
 import { getAllPartRecords } from "@/domains/inventory";
+import { getLowStockParts } from "@/domains/purchasing";
+import { PartStockPanel } from "./part-stock-panel";
 
 export const metadata = { title: "Parts" };
 
@@ -7,10 +10,13 @@ export const metadata = { title: "Parts" };
  * models — useful when he's fixing a DIFFERENT unit of a model he's already
  * looked up a part for, without having to find that original unit first.
  * See the per-model version on an appliance's own detail page for adding
- * new parts.
+ * new parts. Stock tracking (2026-09-29, "Purchasing & supplies" — see
+ * docs/BUSINESS-RULES.md) is shown right here too, since this is where
+ * Chris already looks a part up.
  */
 export default async function PartsPage() {
-  const partRecords = await getAllPartRecords();
+  const [partRecords, lowStockParts] = await Promise.all([getAllPartRecords(), getLowStockParts()]);
+  const lowStockIds = new Set(lowStockParts.map((p) => p.id));
 
   return (
     <div>
@@ -20,6 +26,28 @@ export default async function PartsPage() {
         to an appliance of that model and use the &ldquo;Parts for this
         model&rdquo; section on its page.
       </p>
+
+      {lowStockParts.length > 0 && (
+        <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          <p className="font-medium">
+            {lowStockParts.length} {lowStockParts.length === 1 ? "part is" : "parts are"} running low:
+          </p>
+          <ul className="mt-1 list-inside list-disc">
+            {lowStockParts.map((p) => (
+              <li key={p.id}>
+                {p.modelNumber} — {p.partNumber} ({p.quantityOnHand} on hand, flagged at {p.reorderThreshold})
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 text-xs text-amber-800">
+            Start a{" "}
+            <Link href="/desk/purchase-orders/new" className="underline">
+              purchase order
+            </Link>{" "}
+            to restock.
+          </p>
+        </div>
+      )}
 
       {partRecords.length === 0 ? (
         <p className="mt-6 text-sm text-gray-600">
@@ -40,6 +68,12 @@ export default async function PartsPage() {
                 {p.partName ? ` — ${p.partName}` : ""}
               </p>
               {p.notes && <p className="text-sm text-gray-600">{p.notes}</p>}
+              <PartStockPanel
+                partRecordId={p.id}
+                quantityOnHand={p.quantityOnHand}
+                reorderThreshold={p.reorderThreshold}
+                lowStock={lowStockIds.has(p.id)}
+              />
             </li>
           ))}
         </ul>

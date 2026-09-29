@@ -3443,5 +3443,90 @@ a single agreement creates a matching `Deposit` row) and
 `tests/billing-reminders.test.ts` — 5/5 passing locally; covers the
 send/skip/re-send-resets-cycle/wrong-recipient/partial-failure cases).
 
-Purchasing/supplies and the fuller icon set are still in progress as of
-this entry — see `docs/HANDOFF.md`.
+Purchasing/supplies and the icon set were both finished as separate
+follow-on entries the same day — see the "Purchasing & supplies" and
+"Finishing the icon set" entries below.
+
+## 2026-09-29 — Finishing the icon set: a shared `<StatusBadge>` for every status everywhere
+
+The earlier icon pass (same day, "work-order document, and the brand
+kit's service icons" entry above) placed the brand kit's six
+service-themed icons (appliance, calendar, delivery, home, property,
+support) on a handful of page headers. It deliberately didn't touch the
+~40 other pages, or any status badge — those six icons don't mean
+anything as a status indicator. This entry is the second, broader pass
+Chris approved as one of his "do all 4" items.
+
+**What was actually inconsistent before this**: every desk page that
+showed a colored status (leads, estimates, purchase orders, invoices —
+in two separate places, inventory, a driver's job card, staff accounts)
+had its own copy-pasted `Record<Status, string>` color map, no icon
+anywhere, and no two pages agreed on which shade of a color meant
+"good" vs. "in progress" vs. "stopped." The billing status map was
+copy-pasted verbatim between `/desk/billing` and a customer's own
+billing statement page — a real duplication bug waiting to happen (fix
+one, forget the other).
+
+**The fix**: every status in this app — a lead's, a job's, a
+maintenance request's, an estimate's, an invoice's, a rental
+agreement's, a purchase order's, an appliance's — reduces to one of
+five real outcomes: done/good (`success`), not yet / scheduled
+(`pending`), needs attention but isn't broken (`attention`),
+cancelled/stopped/failed (`stopped`), or actively happening right now
+(`progress`). Built five small line-art icons for exactly those five
+tones (`src/components/icons/status-icons.tsx`, same drawing
+conventions as the existing service icons — `currentColor`,
+`aria-hidden`, small `viewBox` for inline use) and one shared
+`<StatusBadge tone label variant />` component
+(`src/components/status-badge.tsx`) that renders the icon plus
+consistently-colored text or a pill. Each page keeps its own small
+`Record<ItsOwnStatusEnum, StatusTone>` map (its own status vocabulary
+doesn't change) but renders through the shared component instead of its
+own copy-pasted styles. The genuinely duplicated invoice/job/agreement
+tone maps were pulled into `src/lib/status-labels.ts` (which already
+centralized the plain-English label text for exactly this kind of
+status) as `invoiceStatusTone`/`jobStatusTone`/
+`rentalAgreementStatusTone`, so `/desk/billing` and a customer's own
+statement page can no longer drift apart.
+
+Every "+ New X" / "+ Add X" primary create button across the desk (8 of
+them — leads, estimates, jobs, dispatch, agreements, customers,
+suppliers, purchase orders) also got the same small plus icon in place
+of a literal "+" character.
+
+**A real dark-mode gap this surfaced**: the new "pending" tone uses
+blue (`bg-blue-100`/`text-blue-700`/`text-blue-800`), and
+`globals.css`'s dark-mode override block (see
+`docs/DESIGN-SYSTEM.md`'s dark-mode section) only had overrides for
+`bg-blue-50`/`text-blue-900` — a single specific existing use, not the
+general blue-100/700/800 combination a badge would use. Without an
+override, that badge would have looked fine in light mode and washed
+out/unreadable in dark mode. Added the matching overrides (same
+pattern as the existing green/amber blocks right above it), exactly
+the kind of check `docs/DESIGN-SYSTEM.md` already tells anyone adding a
+new page/component to do.
+
+**Accessibility note**: color alone was never how these badges worked
+even before this — but now they also carry a shape (a distinct icon per
+tone), which is what actually helps someone who can't distinguish
+colors well. Every icon stays `aria-hidden` since the real status word
+is always the adjacent text, never the icon alone.
+
+**Deliberately not touched in this pass**: pages that already showed a
+status as plain, uncolored text (jobs list at the row level, agreement
+detail pages, maintenance detail pages, and others) were left alone —
+that's a much larger, lower-value sweep (adding color+icon to
+everywhere a status word appears at all, not just where it already had
+color), and Chris's own framing of this item was "status badges,
+buttons," not "every occurrence of a status word." A few of the
+highest-traffic ones (the jobs list) got the treatment anyway since the
+tone lookup already existed once `jobStatusTone` was built for the
+driver's job card.
+
+**Verification**: `npx eslint` — clean, repo-wide. `npx vitest run` —
+same 397/397 passing (the usual 11 pre-existing, documented
+Prisma-generation sandbox-limitation files unchanged). `npm run
+typecheck` — no new errors beyond that same limitation (spot-checked
+every touched file's errors individually; all trace back to the one
+root `@prisma/client` resolution failure, none are new). No schema
+change, no migration — this is display-only.

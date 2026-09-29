@@ -3,24 +3,13 @@ import Link from "next/link";
 import { requireRole } from "@/lib/session";
 import { getCustomerStatement } from "@/domains/billing";
 import { formatCents } from "@/domains/pricing/money";
-import { invoiceStatusLabel } from "@/lib/status-labels";
+import { invoiceStatusLabel, invoiceStatusTone } from "@/lib/status-labels";
 import { ExportCsvLink } from "@/components/export-csv-link";
+import { StatusBadge } from "@/components/status-badge";
 import { RecordPaymentForm } from "./record-payment-form";
 import { WriteOffButton } from "./write-off-button";
 
 export const metadata = { title: "Customer statement" };
-
-const STATUS_STYLES: Record<string, string> = {
-  PAID: "bg-green-100 text-green-800",
-  DELINQUENT: "bg-red-100 text-red-800",
-  FAILED: "bg-red-100 text-red-800",
-  OPEN: "bg-yellow-100 text-yellow-800",
-  PARTIALLY_PAID: "bg-yellow-100 text-yellow-800",
-  WRITTEN_OFF: "bg-gray-200 text-gray-700",
-  REFUNDED: "bg-blue-100 text-blue-800",
-  VOID: "bg-gray-200 text-gray-700",
-  DRAFT: "bg-gray-100 text-gray-600",
-};
 
 /** The combined statement for one customer — every property, every
  * invoice, one running balance, instead of hunting through
@@ -108,13 +97,12 @@ export default async function CustomerStatementPage({
                         >
                           #{invoice.invoiceNumber}
                         </Link>{" "}
-                        <span
-                          className={`ml-1 rounded-full px-2 py-0.5 text-xs font-medium ${
-                            STATUS_STYLES[invoice.status] ?? "bg-gray-100 text-gray-700"
-                          }`}
-                        >
-                          {invoiceStatusLabel(invoice.status)}
-                        </span>
+                        <StatusBadge
+                          tone={invoiceStatusTone(invoice.status)}
+                          label={invoiceStatusLabel(invoice.status)}
+                          variant="pill"
+                          className="ml-1"
+                        />
                         {invoice.billingPeriodStart && (
                           <span className="ml-2 text-gray-600">
                             {new Date(invoice.billingPeriodStart).toLocaleDateString()}

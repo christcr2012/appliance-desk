@@ -967,6 +967,37 @@ driver/technician mobile job view (ideas #1/#2) is also **done
 (2026-09-28, Task #65)** — see the automation-rules entry in
 `docs/DECISIONS.md`.
 
+## Purchasing & supplies (2026-09-29)
+
+`/desk/suppliers` and `/desk/purchase-orders` — deliberately minimal,
+built to match a one-person operation rather than a full procurement
+system:
+
+- **A `Supplier` is just contact info** — name, contact person, phone,
+  email, notes. No vendor scoring, no contracts.
+- **A `PurchaseOrder` moves DRAFT → ORDERED → RECEIVED**, or CANCELLED
+  at any point before RECEIVED. "ORDERED" is Chris recording that he
+  actually placed the order himself (by phone, email, or the
+  supplier's own website) — nothing here talks to a supplier's system.
+  Marking one RECEIVED is all-or-nothing per order — there's no
+  partial-quantity receiving. If a shipment genuinely comes up short,
+  Chris corrects the affected part's on-hand count directly (see below)
+  rather than this needing to track "3 of 5 arrived."
+- **A line can be tied to a real part on file** (`PartRecord`) or be
+  free text (a whole appliance, a bulk supply not in the parts
+  catalog). Only lines tied to a real part affect its stock count.
+- **Stock tracking lives on `PartRecord` itself** — `quantityOnHand`
+  only moves two ways: up, when a purchase order that lines it is
+  marked received; down, when Chris logs using some on a real repair
+  (the "Used some" quick action on `/desk/parts`). There's no automatic
+  per-job consumption tracking — this is only as accurate as Chris
+  keeps it, same honesty tradeoff as every other manually-tracked field
+  in this app.
+- **The "running low" flag** (`getLowStockParts`) only ever appears for
+  a part Chris has explicitly given a reorder threshold to (the "Edit
+  stock" quick action) — a part with no threshold set (the default,
+  for anything he doesn't keep real stock of) is never flagged.
+
 ## Privacy & accessibility baseline
 
 U.S. (CCPA/CPRA-style) privacy, not GDPR — this is a U.S.-only business.

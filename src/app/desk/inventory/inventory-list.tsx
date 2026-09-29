@@ -6,6 +6,7 @@ import Link from "next/link";
 import type { ApplianceStatus } from "@prisma/client";
 import { ALL_APPLIANCE_STATUSES, APPLIANCE_STATUS_LABELS } from "@/domains/inventory/lifecycle";
 import { bulkUpdateApplianceStatusAction } from "./actions";
+import { StatusBadge, type StatusTone } from "@/components/status-badge";
 
 type ApplianceRow = {
   id: string;
@@ -18,14 +19,14 @@ type ApplianceRow = {
   applianceType: { name: string };
 };
 
-const STATUS_STYLES: Record<ApplianceStatus, string> = {
-  AVAILABLE: "text-green-700",
-  RESERVED: "text-blue-700",
-  RENTED: "text-amber-700",
-  AWAITING_PICKUP: "text-amber-700",
-  AWAITING_INSPECTION: "text-blue-700",
-  MAINTENANCE: "text-red-700",
-  RETIRED: "text-gray-500",
+const STATUS_TONE: Record<ApplianceStatus, StatusTone> = {
+  AVAILABLE: "success",
+  RESERVED: "pending",
+  RENTED: "progress",
+  AWAITING_PICKUP: "pending",
+  AWAITING_INSPECTION: "pending",
+  MAINTENANCE: "attention",
+  RETIRED: "stopped",
 };
 
 /** The inventory list's rows, with a checkbox-driven multi-select and
@@ -152,9 +153,10 @@ export function InventoryList({ appliances }: { appliances: ApplianceRow[] }) {
                   </p>
                 </div>
                 <div className="text-sm text-gray-500 sm:text-right">
-                  <p className={STATUS_STYLES[appliance.status]}>
-                    {APPLIANCE_STATUS_LABELS[appliance.status]}
-                  </p>
+                  <StatusBadge
+                    tone={STATUS_TONE[appliance.status]}
+                    label={APPLIANCE_STATUS_LABELS[appliance.status]}
+                  />
                   <p>{appliance.currentLocation ?? "No location on file"}</p>
                 </div>
               </Link>

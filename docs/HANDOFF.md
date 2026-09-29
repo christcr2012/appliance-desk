@@ -1983,27 +1983,112 @@ at some point, leaving the lead's own "Converted" status pointing at
 nothing. Deleted with Chris's explicit confirmation once traced; see
 `docs/DECISIONS.md`.
 
-## 2026-09-29 (continued) — hardening check, database branch protection, estimate deposit + follow-up
+## 2026-09-29 (continued) — "build all 4": hardening, estimate follow-through, purchasing & supplies
 
-Chris asked what else was ready to build; four options were put in
-front of him and he said build all four. Two are done — see
-`docs/DECISIONS.md`'s matching entry for the full writeup.
+Chris was presented 4 options and said "let's do all 4 of those in
+whatever order you prefer." Handled in that order:
 
-- [x] **Behind-the-scenes hardening** — checked each item directly:
-      list pagination, the flagged database indexes, and the
-      Content-Security-Policy header were all already done (stale
-      `docs/ROADMAP.md` notes, now corrected). The one real item —
-      Neon's `main` branch not marked "protected" — Chris confirmed and
-      it's now flipped on (`protected: true`, verified).
-- [x] **Estimate follow-through**: a deposit is now collected the
-      moment a customer approves an estimate online (not at agreement
-      signing), and a single automatic follow-up email goes out if a
-      sent estimate sits unanswered for 3 days.
-- [ ] **Purchasing & supplies** (purchase orders, suppliers, low-stock
-      flags) — in progress.
-- [ ] **Finish the icon set** across the remaining pages — not started.
+- [x] **Behind-the-scenes hardening.** Three of the four items turned
+      out to already be built — pagination on the long list pages,
+      the database indexes that were flagged as still needed, and the
+      site's CSP security header — corrected the stale "still open"
+      notes in `docs/ROADMAP.md` rather than re-building already-done
+      work. The fourth, turning on Neon's "protected branch" setting
+      for the live database (extra confirmation before a destructive
+      change can touch it), needed Chris's own go-ahead since it's the
+      kind of thing this project always asks about first — he said
+      "Yes, turn it on" and it's now on, confirmed.
+- [x] **Deposit collected at estimate approval, with a follow-up if it
+      goes quiet.** When a customer approves an estimate that has a
+      deposit amount set, they're now taken straight to a real Stripe
+      payment page for just that deposit (not the whole rental) before
+      the estimate is considered fully approved. If an estimate sits
+      unanswered for 3 days, an automatic reminder email goes out once
+      (a new scheduled daily check, `/api/cron/estimate-follow-ups`,
+      same pattern as the existing billing-reminder cron job). See
+      `docs/BUSINESS-RULES.md`'s new "Deposit collected at approval..."
+      section. **PR #82** (`ai/claude/hardening-and-estimate-followthrough-2026-09-29`),
+      CI running as of this writing.
+      - **Needs a schema migration** —
+        `prisma/migrations/20260929210000_estimate_deposit_paid_at`
+        (two new optional columns on `Estimate`) — Chris can run it
+        in Neon, or just merge the PR (migrations apply themselves
+        automatically now, per Phase 6A item 1).
+      - **Real regression caught and fixed before this was called
+        done**: adding the "don't charge the deposit twice" check to
+        the existing agreement-signing checkout broke two older,
+        already-passing tests (they faked the database in a way that
+        didn't expect the new check). Found by running the *entire*
+        test suite, not just the new files — fixed by updating those
+        two tests' fakes to match, confirmed the full suite passes
+        clean afterward (402/402 tests, only the usual pre-existing
+        sandbox-limitation files skipped).
+- [x] **Purchasing & supplies.** New `/desk/suppliers` and
+      `/desk/purchase-orders` — track who you buy parts from, place an
+      order, mark it as ordered/received/cancelled, and receiving an
+      order automatically adds the quantity onto that part's on-hand
+      count. Each part can optionally get a "flag me when stock gets
+      this low" number, and `/desk/parts` now shows a banner + quick
+      "used some" / "edit stock" buttons. Deliberately manual/simple —
+      no automatic per-repair stock deduction, no partial-shipment
+      receiving — a one-person operation doesn't need more process
+      than that. See `docs/BUSINESS-RULES.md`'s new "Purchasing &
+      supplies" section. **PR #83**
+      (`ai/claude/purchasing-and-supplies-2026-09-29`), its own
+      separate branch/PR (not piled onto #82, which is scoped to
+      hardening + estimate follow-through) — CI running as of this
+      writing.
+      - **Needs a schema migration** —
+        `prisma/migrations/20260929220000_purchasing_and_supplies`
+        (two new columns on the existing parts table, plus three
+        brand-new tables: suppliers, purchase orders, and purchase
+        order line items) — same as above, Chris can run it in Neon or
+        just merge the PR.
+      - 15 new tests, full suite locally clean (397/397, same
+        sandbox-limitation files skipped).
+- [x] **Finish the icon set** — the 4th item, folded into PR #83 since
+      two of the files it touches were already new in that branch. One
+      shared `<StatusBadge>` component replaces every desk page's own
+      copy-pasted status color map (leads, estimates, purchase orders,
+      invoices in two places, inventory, a driver's job card, staff
+      accounts) with a consistent icon + color everywhere, and every
+      "+ New X" button gets a small plus icon. See
+      `docs/DECISIONS.md`'s 2026-09-29 "Finishing the icon set" entry.
 
-**Needs Chris**: a third new migration
-(`prisma/migrations/20260929210000_estimate_deposit_paid_at/migration.sql`)
-needs pasting into the Neon SQL console and running — purely additive
-(two new nullable columns on `Estimate`).
+**All 4 of Chris's approved items are now built, and both PRs are
+fully green on GitHub Actions CI** (typecheck, lint, unit tests,
+production build, and the Playwright/axe accessibility suite, all
+against a real throwaway Postgres — the actual verification gate this
+sandbox can't run itself, per `AGENTS.md`).
+
+Along the way, CI's real database caught 3 real bugs in
+`tests/estimate-deposit.test.ts` that this sandbox has no way to catch
+locally (it can't reach a real Postgres at all) — each one was a
+genuine mistake in the test's own setup, not a bug in the actual
+feature code: the conversion test tried to convert an estimate that
+was never actually brought to APPROVED status or given a line item;
+one fix used a field name (`approvedAt`) that doesn't exist on
+`Estimate` (the real field is `respondedAt`); and the cleanup step
+tried to delete a test user while an `AuditLog` row still pointed at
+them (no cascade delete on that link at the database level — same
+fix already used in two other test files). All three were found and
+fixed by actually watching CI run, not assumed away.
+
+**PR #82 is merged** (its migration applies itself automatically as
+part of the production build, Phase 6A item 1 — no manual step
+needed). **PR #83 (purchasing & supplies + the icon set) is open and
+fully CI-green, ready to merge** — it had a merge conflict against
+`main` after #82 landed (both touched the same docs files), resolved
+by merging `main` into that branch; its own migration
+(`prisma/migrations/20260929220000_purchasing_and_supplies`) applies
+itself the same way once it's merged.
+
+One flake along the way, not a real bug: CI's first run after the
+merge failed a dark-mode color-contrast check on the public
+`/how-it-works` page's "Get a Quote" button — a page/component this
+branch never touches (`main`'s own CI has that same check passing
+clean). Re-ran CI on the same code with no changes and it passed
+clean, confirming it was a one-off flake in the automated check
+itself, not a real accessibility regression.
+
+**Needs Chris**: review/merge PR #83.

@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { getJobsPage, getJobsCount } from "@/domains/jobs";
 import { CalendarServiceIcon } from "@/components/icons/service-icons";
+import { PlusIcon } from "@/components/icons/status-icons";
+import { StatusBadge } from "@/components/status-badge";
+import { jobStatusTone } from "@/lib/status-labels";
 import type { JobStatus } from "@prisma/client";
 import { parsePage, paginationMeta } from "@/domains/pagination";
 import { Pagination } from "@/components/pagination";
@@ -54,9 +57,10 @@ export default async function JobsPage({
         </h1>
         <Link
           href="/desk/jobs/new"
-          className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
+          className="inline-flex items-center gap-1 rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
         >
-          + Schedule a job
+          <PlusIcon className="h-4 w-4" />
+          Schedule a job
         </Link>
       </div>
 
@@ -103,7 +107,7 @@ export default async function JobsPage({
                   </p>
                 </div>
                 <div className="text-sm text-gray-500 sm:text-right">
-                  <p>{j.status}</p>
+                  <StatusBadge tone={jobStatusTone(j.status)} label={j.status} />
                   <p>
                     {j.scheduledAt
                       ? new Date(j.scheduledAt).toLocaleString()

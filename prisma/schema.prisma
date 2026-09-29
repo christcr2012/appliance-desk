@@ -55,6 +55,7 @@ model User {
   customerNotes   CustomerNote[]
   leadNotes       LeadNote[]
   createdTasks    StaffTask[] @relation("StaffTaskCreatedBy")
+  createdPurchaseOrders PurchaseOrder[] @relation("PurchaseOrderCreatedBy")
 
   @@index([role])
 }
@@ -466,10 +467,101 @@ model PartRecord {
   partName   String?
   notes      String?
 
+  // Purchasing & supplies (2026-09-29) — see docs/BUSINESS-RULES.md's
+  // "Purchasing & supplies" section. quantityOnHand only ever moves two
+  // ways: up, when a PurchaseOrder that lines this part is marked
+  // received (receivePurchaseOrder, src/domains/purchasing), or down,
+  // when Chris logs using some on a repair (recordPartUsage) — there's
+  // no automatic per-job consumption tracking, so this is only as
+  // accurate as Chris keeps it. reorderThreshold is null by default
+  // (never flagged) until Chris sets one for a part he actually keeps
+  // stock of.
+  quantityOnHand   Int  @default(0)
+  reorderThreshold Int?
+
+  purchaseOrderLines PurchaseOrderLineItem[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([modelNumber])
+}
+
+enum PurchaseOrderStatus {
+  DRAFT
+  ORDERED
+  RECEIVED
+  CANCELLED
+}
+
+// Purchasing & supplies (2026-09-29) — see
+// docs/BUSINESS-RULES.md's "Purchasing & supplies" section and
+// src/domains/purchasing. A supplier Chris orders parts/appliances
+// from — deliberately minimal (name + how to reach them), not a full
+// vendor-management system.
+model Supplier {
+  id          String @id @default(cuid())
+  name        String
+  contactName String?
+  phone       String?
+  email       String?
+  notes       String?
+
+  purchaseOrders PurchaseOrder[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// One order placed with a supplier. DRAFT while Chris is still putting
+// it together, ORDERED once he's actually placed it, RECEIVED once the
+// goods arrive (receivePurchaseOrder adds every line's quantity onto
+// its PartRecord.quantityOnHand, when the line is tied to one),
+// CANCELLED if it never went through. Deliberately no partial-receive
+// tracking (a line is either part of a received order or it isn't) —
+// see receivePurchaseOrder's own comment for why that's an honest
+// simplification for a one-person operation, not a shortcut that loses
+// real information.
+model PurchaseOrder {
+  id         String              @id @default(cuid())
+  supplierId String
+  supplier   Supplier            @relation(fields: [supplierId], references: [id])
+  status     PurchaseOrderStatus @default(DRAFT)
+  notes      String?
+
+  orderedAt  DateTime?
+  receivedAt DateTime?
+
+  createdByUserId String
+  createdBy       User   @relation("PurchaseOrderCreatedBy", fields: [createdByUserId], references: [id])
+
+  lines PurchaseOrderLineItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([supplierId])
+  @@index([status])
+}
+
+// One line on a purchase order. partRecordId is optional — Chris can
+// order something that isn't (yet) in the parts catalog (a whole
+// appliance, a bulk supply) as free text via `description`; only lines
+// tied to a real PartRecord affect quantityOnHand when received.
+model PurchaseOrderLineItem {
+  id              String         @id @default(cuid())
+  purchaseOrderId String
+  purchaseOrder   PurchaseOrder  @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  partRecordId    String?
+  partRecord      PartRecord?    @relation(fields: [partRecordId], references: [id])
+  description     String
+  quantity        Int
+  unitCostCents   Int            @default(0)
+
+  createdAt DateTime @default(now())
+
+  @@index([purchaseOrderId])
+  @@index([partRecordId])
 }
 
 // ---------------------------------------------------------------------------
