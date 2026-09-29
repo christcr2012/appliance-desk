@@ -1414,11 +1414,16 @@ had already shipped that same morning as PR #72): "I was using phone
 browser, went to the web site's landing page, opened the menu, closed
 it, scrolled down the page a little bit, and tried to open the menu
 again, tried this in Chrome, Opera, and DuckDuckGo with same results."
+(Confirmed after the first write-up: his phone is Android, not iOS —
+doesn't change the fix, but the root-cause explanation below is
+Android/Chromium-specific, not the iOS/Safari explanation an earlier
+draft of this entry gave.)
 
-- [x] **Root cause**: on iOS, Apple requires every browser to use
-      Safari's underlying engine — so Chris seeing identical behavior in
-      three "different" browsers was really one engine, not three
-      separate bugs to chase. That engine keeps sending real `scroll`
+- [x] **Root cause**: on Android, Opera and DuckDuckGo (like almost
+      every non-Firefox Android browser) are themselves built on
+      Chromium — so Chris seeing identical behavior in three "different"
+      browsers was really one rendering engine, not three separate bugs
+      to chase. That engine keeps sending real `scroll`
       events on `window` for a little while after a finger lifts
       (momentum/deceleration settling, and the address bar collapsing
       as the page scrolls) — so a scroll that already finished can still

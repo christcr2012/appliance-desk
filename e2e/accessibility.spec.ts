@@ -111,13 +111,13 @@ test("mobile hamburger menu opens and closes with keyboard and mouse", async ({
 test("mobile menu reopens normally after being scrolled past while closed", async ({
   page,
 }) => {
-  // Regression test for Chris's 2026-09-29 report: on his phone (iOS —
-  // Chrome, Opera and DuckDuckGo there all share Safari's engine, which
-  // is why all three showed the same bug), open the menu, close it,
-  // scroll down a little, then reopen it — it closed itself again
-  // instantly. See the matching comment in src/components/site/header.tsx
-  // for the root cause (a trailing `scroll` event from momentum/address-
-  // bar settling landing right as the menu reopens).
+  // Regression test for Chris's 2026-09-29 report: on his Android phone
+  // (Chrome, Opera and DuckDuckGo there all run on Chromium, which is
+  // why all three showed the same bug), open the menu, close it, scroll
+  // down a little, then reopen it — it closed itself again instantly.
+  // See the matching comment in src/components/site/header.tsx for the
+  // root cause (a trailing `scroll` event from momentum/address-bar
+  // settling landing right as the menu reopens).
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
 
