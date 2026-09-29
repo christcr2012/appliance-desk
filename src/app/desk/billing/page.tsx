@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getInvoices } from "@/domains/billing";
+import { getInvoices, getCustomersWithOpenBalances } from "@/domains/billing";
 import { formatCents } from "@/domains/pricing";
 import { requireRole } from "@/lib/session";
 
@@ -27,7 +27,11 @@ export default async function BillingPage({
   await requireRole("OWNER", "ADMIN");
   const { filter } = await searchParams;
   const delinquentOnly = filter === "delinquent";
-  const invoices = await getInvoices({ delinquentOnly });
+  const showStatements = filter === "statements";
+  const [invoices, customerBalances] = await Promise.all([
+    showStatements ? Promise.resolve([]) : getInvoices({ delinquentOnly }),
+    showStatements ? getCustomersWithOpenBalances() : Promise.resolve([]),
+  ]);
 
   return (
     <div>
@@ -37,14 +41,15 @@ export default async function BillingPage({
       <p className="mt-1 text-sm text-gray-600">
         Every invoice Stripe has generated for a signed agreement. Card and
         bank-transfer payments are collected through Stripe&apos;s own
-        hosted checkout — nothing here is entered by hand.
+        hosted checkout automatically; a check, cash, or bank transfer is
+        recorded by hand from a customer&apos;s own statement.
       </p>
 
       <nav aria-label="Filter invoices" className="mt-6 flex gap-2">
         <Link
           href="/desk/billing"
           className={`rounded-full px-3 py-1 text-sm ${
-            !delinquentOnly ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+            !delinquentOnly && !showStatements ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
           }`}
         >
           All invoices
@@ -57,9 +62,58 @@ export default async function BillingPage({
         >
           Delinquent only
         </Link>
+        <Link
+          href="/desk/billing?filter=statements"
+          className={`rounded-full px-3 py-1 text-sm ${
+            showStatements ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+          }`}
+        >
+          By customer (statements)
+        </Link>
       </nav>
 
-      {invoices.length === 0 ? (
+      {showStatements ? (
+        customerBalances.length === 0 ? (
+          <p className="mt-6 text-sm text-gray-600">No customer currently has an open balance.</p>
+        ) : (
+          <div className="mt-6 overflow-x-auto rounded-lg border border-gray-200 bg-white">
+            <table className="min-w-full divide-y divide-gray-200 text-sm">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th scope="col" className="px-4 py-2 text-left font-medium text-gray-600">Customer</th>
+                  <th scope="col" className="px-4 py-2 text-left font-medium text-gray-600">Properties</th>
+                  <th scope="col" className="px-4 py-2 text-right font-medium text-gray-600">Open invoices</th>
+                  <th scope="col" className="px-4 py-2 text-right font-medium text-gray-600">Balance owed</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {customerBalances.map((c) => (
+                  <tr key={c.id}>
+                    <td className="px-4 py-2">
+                      <Link
+                        href={`/desk/billing/customer/${c.id}`}
+                        className="text-gray-900 underline hover:no-underline"
+                      >
+                        {c.customerName}
+                      </Link>
+                      {c.isPropertyManager && (
+                        <span className="ml-2 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">
+                          Property manager
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-2 text-gray-600">{c.propertyCount}</td>
+                    <td className="px-4 py-2 text-right text-gray-600">{c.openInvoiceCount}</td>
+                    <td className="px-4 py-2 text-right font-medium text-amber-800">
+                      {formatCents(c.balanceCents)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )
+      ) : invoices.length === 0 ? (
         <p className="mt-6 text-sm text-gray-600">
           {delinquentOnly
             ? "No delinquent invoices right now."

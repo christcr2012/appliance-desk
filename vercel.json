@@ -7,6 +7,10 @@
     {
       "path": "/api/cron/job-reminders",
       "schedule": "0 13 * * *"
+    },
+    {
+      "path": "/api/cron/late-fees",
+      "schedule": "0 15 * * *"
     }
   ]
 }

@@ -2349,3 +2349,98 @@ customer portal's own "All properties" selector (this rollup is
 desk-side only) and the consolidated-invoicing question itself, for
 Chris to pick when he actually has a property-manager customer to
 build it against.
+
+## 2026-09-28 (continued) — Task #72: a statement/reconciliation layer, not Stripe-level consolidation
+
+Chris asked directly for "a robust invoicing system that can handle a
+wide range of situations," plus working in the other still-open
+roadmap suggestions where it made sense to build the functionality in
+(for himself or for customers, as fit each one). This picks the earlier
+"Property-manager portfolio" entry's deliberately-left-open question
+back up and actually decides it.
+
+The real design question was still the one flagged in that entry:
+combine several `RentalAgreement`s' Stripe Subscriptions into one
+charge, or build on top of the existing per-agreement billing without
+touching it. Went with the latter, for the same reason as before, now
+confirmed by reading the actual webhook/subscription code end to end:
+`RentalAgreement.stripeSubscriptionId` is `@unique`, and every webhook
+handler in `src/domains/billing/webhooks.ts` that moves money — payment
+succeeded, payment failed, subscription updated/canceled — looks up its
+agreement by subscription ID, one at a time. Combining several
+agreements' subscriptions into one billed unit means redesigning how
+proration, partial payments, and failed charges are attributed across
+that bundle — a change to code where a mistake means someone is
+overcharged, undercharged, or billed for the wrong property. There's
+still no real property-manager customer to validate that redesign
+against, so per `AGENTS.md`'s "don't add abstractions in case," it
+stays undone. Nothing about how Stripe bills a single agreement changed
+in this work.
+
+What actually solves the real problem — seeing everything a
+multi-property customer owes, and being able to settle it in one
+motion — doesn't require touching that code at all, because
+`Customer.stripeCustomerId` and every `Invoice` already exist
+independent of how many agreements a customer has. Built a layer on
+top:
+
+- **Combined statements** (`src/domains/billing/statements.ts`,
+  `getCustomerStatement`) — every invoice across every property a
+  customer has, grouped by property, with per-property and grand
+  totals. Read-only; no schema change to any billing-critical table.
+  Used by both a new desk page (`/desk/billing/customer/[id]`, with a
+  CSV export) and rebuilt into the existing customer-portal billing
+  page, so a property manager logging into their own portal sees the
+  same combined view Chris sees.
+- **Manual/offline payment recording**
+  (`src/domains/billing/manual-payments.ts`, `recordManualPayment`) —
+  Chris logs a check, cash, or bank-transfer payment once, and it
+  spreads across that customer's open invoices oldest-first (or one
+  invoice if he picks it), inside a single transaction with an audit
+  log entry. This is the actual "one combined payment for several
+  properties" capability — done at the reconciliation layer, where it's
+  safe, instead of at the Stripe-charge layer, where it isn't yet.
+  Overpayment becomes a `CustomerCredit` (a model that already existed
+  and was already unused for this).
+- **Invoice write-off** (`writeOffInvoice`, same file) — marks an
+  uncollectible invoice `WRITTEN_OFF` (an enum value that existed in
+  the schema, unused until now) rather than leaving it permanently
+  "open" or deleting it, so the books stay honest.
+- **Automated late fees** (`src/domains/billing/late-fees.ts`,
+  `applyLateFees`, run daily by a new Vercel Cron job) — reuses
+  `Invoice.lateFeeCents` (existed, always 0 until now) as its own
+  idempotency guard, computes each fee from that specific agreement's
+  own disclosed flat/percent terms and grace period (never a global
+  default), and only ever adds the fee to what's owed — it does not
+  charge anyone's card. Chris gets a same-day email digest of what was
+  applied. This was also one of the still-open roadmap items
+  ("automated late fees / dunning"), so it satisfies both asks at once.
+
+Two schema fields were genuinely new: `Payment.notes` and
+`Payment.recordedByUserId` (nullable — null means the payment came from
+Stripe, not Chris's hand-entry), needed because manual payments have no
+Stripe object to hold that information. Everything else reused fields
+or enum values that were already designed into the schema but never
+wired up.
+
+**Also triaged, not built, this round** (the "other roadmap
+suggestions" part of the ask):
+
+- SMS notifications — already fully built (Twilio integration, opt-in,
+  templates) and correctly dormant; it needs Chris's own Twilio A2P
+  10DLC business registration (a real-world account step, not
+  code) before a phone number can be turned on. Nothing to build.
+- Neon protected-branch upgrade and preview database branching — both
+  cost money or require Chris's own dashboard/account action; flagged
+  to him rather than done unilaterally, per `AGENTS.md`'s "ask before
+  anything irreversible or costly."
+- More appliance categories — already self-serve today via
+  **Settings**; it's a data change, not a code task.
+
+12/12 + 8/8 + 10/10 new unit tests passing across the three new
+domain files (statements, manual payments, late fees); full suite
+370/370 relevant (same 10 pre-existing Prisma-sandbox-limitation
+failures as always, unrelated to this work). `npm run build` verified
+clean (checking specifically for the client-bundle-leak bug class
+documented in `src/domains/pricing/money.ts`, which `tsc`/`eslint`
+cannot catch).

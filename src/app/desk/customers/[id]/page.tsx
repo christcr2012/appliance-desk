@@ -66,6 +66,12 @@ export default async function CustomerDetailPage({
           >
             Schedule a job
           </Link>
+          <Link
+            href={`/desk/billing/customer/${customer.id}`}
+            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            View statement
+          </Link>
         </div>
       </div>
 

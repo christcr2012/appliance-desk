@@ -1354,3 +1354,55 @@ Two more requests from Chris, mid-conversation:
 consolidated B2B invoicing for property managers remains an unpicked
 suggestion in `docs/ROADMAP.md` — flag it to Chris if he gets a real
 property-manager customer.
+
+## 2026-09-28 (continued) — Task #72: statements, manual payments, write-offs, automated late fees
+
+Chris asked directly for "a robust invoicing system," plus working in
+other still-open roadmap suggestions where they fit. Full reasoning for
+what was and wasn't built is in `docs/DECISIONS.md`'s "Task #72: a
+statement/reconciliation layer, not Stripe-level consolidation" entry.
+
+- [x] **Combined customer statements** — every invoice across every
+      property a customer has, grouped by property, on one page
+      (`/desk/billing/customer/[id]`, plus a CSV export, plus a
+      **Billing → Statements** list of every customer with an open
+      balance). The customer portal's own billing page
+      (`/account/billing`) now shows the same combined view.
+- [x] **Recording manual/offline payments** (check, cash, bank
+      transfer) — one payment spreads across a customer's open invoices
+      oldest-first, or targets one invoice if picked. Overpayment
+      becomes an account credit.
+- [x] **Writing off an invoice** — marks it `WRITTEN_OFF` with a reason,
+      instead of leaving it open forever or deleting it.
+- [x] **Automated daily late fees** — a new Vercel Cron job
+      (`/api/cron/late-fees`, 15:00 UTC) computes each fee from that
+      specific agreement's own disclosed rate/grace period, adds it to
+      the invoice once (idempotent), and emails Chris a same-day
+      digest. Never auto-charges a card. This also satisfies the
+      roadmap's separate "automated late fees / dunning" item.
+- [x] **Not built, deliberately**: combining several agreements' Stripe
+      subscriptions into one actual charge — a payment-correctness
+      redesign with no real property-manager customer yet to validate
+      it against. Each property still bills independently through its
+      own Stripe subscription, unchanged.
+- [x] **Triaged the rest of the roadmap ask**: SMS is already fully
+      built and correctly dormant pending Chris's own Twilio
+      registration (nothing to build); Neon's protected-branch upgrade
+      and preview database branching both cost money or need Chris's
+      own dashboard action, so they're flagged to him, not done;
+      more appliance categories are already self-serve via **Settings**
+      today (a data change, not code).
+
+One new migration (`Payment.notes`, `Payment.recordedByUserId` — both
+nullable, null meaning "came from Stripe"). Three new domain files
+(`src/domains/billing/statements.ts`, `manual-payments.ts`,
+`late-fees.ts`), 30 new unit tests (12 + 8 + 10), all passing. Full
+suite 370/370 relevant (same 10 pre-existing Prisma-sandbox-limitation
+failures as always). `npm run build` verified clean. `docs/BUSINESS-RULES.md`,
+`docs/ARCHITECTURE.md`, `docs/ROADMAP.md`, and `docs/OWNER-GUIDE.md`
+all updated.
+
+**Still open from the original list**: nothing newly picked this round
+beyond what's listed above. Neon plan upgrade (for a protected `main`
+branch) and buying a real Twilio phone number both remain flagged to
+Chris — both cost money, per `AGENTS.md` they need his OK, not mine.

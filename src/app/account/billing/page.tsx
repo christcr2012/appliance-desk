@@ -1,6 +1,6 @@
 import { getServerSession } from "@/lib/session";
 import { getPortalData } from "@/domains/portal";
-import { getInvoicesForCustomer } from "@/domains/billing";
+import { getCustomerStatement } from "@/domains/billing";
 import { formatCents } from "@/domains/pricing/money";
 import { invoiceStatusLabel } from "@/lib/status-labels";
 import { ManageBillingButton } from "./manage-billing-button";
@@ -22,7 +22,8 @@ export default async function AccountBillingPage() {
     );
   }
 
-  const invoices = await getInvoicesForCustomer(customer.id);
+  const statement = await getCustomerStatement(customer.id);
+  const hasMultipleProperties = (statement?.properties.length ?? 0) > 1;
 
   return (
     <div>
@@ -35,29 +36,57 @@ export default async function AccountBillingPage() {
         <ManageBillingButton />
       </div>
 
-      <h2 className="mt-8 text-sm font-medium text-gray-700">Invoice history</h2>
-      {invoices.length === 0 ? (
-        <p className="mt-2 text-sm text-gray-600">
+      {statement && statement.totalBalanceCents > 0 && (
+        <div className="mt-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+          <p className="text-sm font-medium text-amber-900">
+            {formatCents(statement.totalBalanceCents)} currently owed
+            {hasMultipleProperties ? " across all your properties" : ""}.
+          </p>
+        </div>
+      )}
+
+      {/* Grouped by property once there's more than one — a property
+          manager's whole portfolio in one place instead of a flat list
+          with no indication which invoice belongs to which building
+          (docs/BUSINESS-RULES.md's "Property managers / portfolio
+          accounts"). A single-property customer just sees one section,
+          no different from the old flat list. */}
+      {!statement || statement.properties.length === 0 ? (
+        <p className="mt-8 text-sm text-gray-600">
           No invoices yet — one is created automatically each time you&apos;re
           billed.
         </p>
       ) : (
-        <ul className="mt-2 divide-y divide-gray-100 rounded-lg border border-gray-200 bg-white">
-          {invoices.map((invoice) => (
-            <li key={invoice.id} className="flex items-center justify-between px-4 py-3 text-sm">
-              <div>
-                <p className="font-medium text-gray-900">Invoice #{invoice.invoiceNumber}</p>
-                <p className="text-gray-600">
-                  {invoice.billingPeriodStart
-                    ? new Date(invoice.billingPeriodStart).toLocaleDateString()
-                    : "—"}{" "}
-                  · {invoiceStatusLabel(invoice.status)}
-                </p>
-              </div>
-              <p className="font-medium text-gray-900">{formatCents(invoice.amountPaidCents)}</p>
-            </li>
+        <div className="mt-8 space-y-6">
+          {statement.properties.map((property) => (
+            <div key={property.serviceAddressId ?? "no-property"}>
+              {hasMultipleProperties && (
+                <h2 className="text-sm font-medium text-gray-700">{property.addressLabel}</h2>
+              )}
+              <ul className="mt-2 divide-y divide-gray-100 rounded-lg border border-gray-200 bg-white">
+                {property.invoices.map((invoice) => (
+                  <li key={invoice.id} className="flex items-center justify-between px-4 py-3 text-sm">
+                    <div>
+                      <p className="font-medium text-gray-900">Invoice #{invoice.invoiceNumber}</p>
+                      <p className="text-gray-600">
+                        {invoice.billingPeriodStart
+                          ? new Date(invoice.billingPeriodStart).toLocaleDateString()
+                          : "—"}{" "}
+                        · {invoiceStatusLabel(invoice.status)}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-medium text-gray-900">{formatCents(invoice.amountPaidCents)}</p>
+                      {invoice.balanceCents > 0 && (
+                        <p className="text-xs text-amber-700">{formatCents(invoice.balanceCents)} owed</p>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
           ))}
-        </ul>
+        </div>
       )}
     </div>
   );

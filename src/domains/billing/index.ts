@@ -7,6 +7,12 @@ export { processStripeWebhookEvent } from "./webhooks";
 export { computeMrrTrend } from "./revenue";
 export type { MrrTrendPoint } from "./revenue";
 export { sendUpcomingBillingReminders } from "./reminders";
+export { getCustomerStatement, getCustomersWithOpenBalances } from "./statements";
+export type { CustomerStatement, StatementProperty, StatementInvoice, StatementLineItem } from "./statements";
+export { recordManualPayment, writeOffInvoice } from "./manual-payments";
+export type { ManualPaymentInput, ManualPaymentMethod, ManualPaymentResult } from "./manual-payments";
+export { applyLateFees, sendLateFeeDigestToChris } from "./late-fees";
+export type { LateFeeApplication } from "./late-fees";
 
 /** Every invoice, newest first — the desk-wide billing view
  * (/desk/billing). Optionally filtered to just the delinquent ones, for
@@ -24,9 +30,11 @@ export async function getInvoices(filter?: { delinquentOnly?: boolean }) {
   });
 }
 
-/** A single customer's own invoices — used by both /account/billing (the
- * signed-in customer looking at their own) and the desk's customer detail
- * page (Chris looking at a specific customer's). */
+/** A single customer's own invoices, flat (not grouped by property) —
+ * kept as a simple building block for anything that just needs a raw
+ * list. /account/billing and /desk/billing/customer/[id] both use
+ * getCustomerStatement (statements.ts) instead, which groups these same
+ * rows by property and adds running totals. */
 export async function getInvoicesForCustomer(customerId: string) {
   return prisma.invoice.findMany({
     where: { customerId },
