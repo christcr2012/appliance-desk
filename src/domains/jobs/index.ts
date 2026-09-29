@@ -37,25 +37,16 @@ export function canTransitionJobStatus(
   };
 }
 
-export async function getJobs(filter?: { status?: JobStatus }) {
-  return prisma.job.findMany({
-    where: filter?.status ? { status: filter.status } : undefined,
-    include: {
-      customer: { include: { user: { select: { name: true, email: true } } } },
-      serviceAddress: true,
-      appliances: { include: { appliance: { include: { applianceType: true } } } },
-    },
-    orderBy: [{ scheduledAt: "asc" }],
-  });
-}
-
-/** Total Job count matching the same optional status filter as getJobs —
- * used to clamp the page number for /desk/jobs's paginated view. */
+/** Total Job count matching the same optional status filter as
+ * getJobsPage — used to clamp the page number for /desk/jobs's paginated
+ * view. (The unpaginated getJobs() this used to sit next to was removed
+ * 2026-09-29 — /desk/jobs has used getJobsPage exclusively since
+ * pagination was added, and nothing else ever called the unpaginated
+ * version.) */
 export async function getJobsCount(filter?: { status?: JobStatus }): Promise<number> {
   return prisma.job.count({ where: filter?.status ? { status: filter.status } : undefined });
 }
 
-/** Paginated variant of getJobs. */
 export async function getJobsPage(
   filter: { status?: JobStatus } | undefined,
   skip: number,

@@ -80,24 +80,6 @@ export function parseServiceArea(settings: {
   return { cities, zips };
 }
 
-export type BusinessHours = Record<string, string>;
-
-export function parseHours(settings: { hours: unknown }): BusinessHours {
-  if (
-    settings.hours &&
-    typeof settings.hours === "object" &&
-    !Array.isArray(settings.hours)
-  ) {
-    return settings.hours as BusinessHours;
-  }
-  return {};
-}
-
-/** Formats a signed cents amount as a plain-English rate, e.g. "no charge yet". */
-export function formatPercentFromPermille(permille: number): string {
-  return `${(permille / 10).toFixed(1)}%`;
-}
-
 export type BusinessSettingsUpdate = Partial<{
   publicBusinessName: string;
   publicPhone: string;

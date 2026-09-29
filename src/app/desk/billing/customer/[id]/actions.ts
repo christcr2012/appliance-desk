@@ -56,6 +56,12 @@ export async function recordPaymentAction(
     revalidatePath(`/desk/billing/customer/${customerId}`);
     revalidatePath("/desk/billing");
     revalidatePath(`/desk/customers/${customerId}`);
+    // The dashboard's MRR/past-due figures are derived from
+    // invoices/payments (src/domains/dashboard/index.ts) — added
+    // 2026-09-29 audit fix so a recorded payment shows up there right
+    // away instead of waiting for the dashboard's own next natural
+    // revalidation.
+    revalidatePath("/desk/dashboard");
 
     return {
       status: "success",
@@ -91,6 +97,7 @@ export async function writeOffInvoiceAction(
     await writeOffInvoice(invoiceId, session.user.id, reason.trim());
     revalidatePath(`/desk/billing/customer/${customerId}`);
     revalidatePath("/desk/billing");
+    revalidatePath("/desk/dashboard"); // same reasoning as recordPaymentAction above
     return { status: "success" };
   } catch (error) {
     return {

@@ -8,22 +8,17 @@ import { prisma } from "@/lib/prisma";
  * See docs/BUSINESS-RULES.md ("Every pricing change is logged... visible
  * in /desk/activity").
  */
-export async function getRecentActivity(limit = 50) {
-  return prisma.auditLog.findMany({
-    orderBy: { createdAt: "desc" },
-    take: limit,
-    include: { user: { select: { name: true, email: true } } },
-  });
-}
-
 /** Total AuditLog row count — used to clamp the page number for
  * /desk/activity's paginated view (src/domains/pagination.ts). */
 export async function getActivityCount(): Promise<number> {
   return prisma.auditLog.count();
 }
 
-/** Paginated variant of getRecentActivity, for paging back through the
- * full history instead of only ever seeing the most recent 50. */
+/** Paginated view of the audit log, for paging back through the full
+ * history. (The unpaginated getRecentActivity() this used to sit next to
+ * was removed 2026-09-29 — /desk/activity has used this paginated
+ * version exclusively since pagination was added, and nothing else ever
+ * called the unpaginated one.) */
 export async function getActivityPage(skip: number, pageSize: number) {
   return prisma.auditLog.findMany({
     orderBy: { createdAt: "desc" },

@@ -1453,6 +1453,62 @@ draft of this entry gave.)
       changed files (the only typecheck errors present are the existing,
       documented Prisma-client-generation sandbox limitation, unrelated
       to this change).
+## 2026-09-29 (continued) — Full-codebase audit, at Chris's request
+
+Chris asked for a "fine tooth comb" pass over the whole project: broken
+links, errors, faulty logic, missed implementations, optimizations, and
+other improvements/upgrades. Five parallel review passes (dead
+code/unfinished work, links/navigation, business logic vs
+`docs/BUSINESS-RULES.md` + authorization, performance/data layer,
+dependencies/infra/accessibility) came back overall clean — this
+codebase has been through several prior review cycles already — with
+one real bug and a handful of small, safe cleanups. Fixed the same
+session:
+
+- [x] **Real bug, fixed**: `recordManualPayment`
+      (`src/domains/billing/manual-payments.ts`) — when a specific
+      invoice was targeted by id, the lookup query didn't filter by
+      status the way the "spread across open invoices" path already
+      did. Not reachable through the desk UI today (its picker already
+      excludes written-off invoices), but the function itself had no
+      defense-in-depth: naming a `WRITTEN_OFF` invoice's id directly
+      would have silently applied a payment to it and flipped it back
+      to open/paid. Added the same status filter to both paths, plus a
+      clearer error message and two new regression tests
+      (`tests/billing-manual-payments.test.ts`).
+- [x] **Two missing `revalidatePath` calls**: adding a customer, and
+      recording a manual payment/write-off, didn't refresh
+      `/desk/dashboard`, so its customer count and revenue figures
+      could show stale numbers right after either action until the
+      dashboard's own next natural revalidation. Both now revalidate it.
+- [x] **Five dead exports removed** (never called from anywhere):
+      `getJobs()` (superseded by `getJobsPage`), `getRecentActivity()`
+      (superseded by `getActivityPage`), `getInvoicesForCustomer()`
+      (superseded by `getCustomerStatement`), and `parseHours()` /
+      `formatPercentFromPermille()` in the settings domain.
+- [x] **`docs/OWNER-GUIDE.md` corrected** — it had gone stale in three
+      places: it told Chris photo uploads still needed a pasted URL
+      (the real camera/file-picker upload shipped 2026-09-28 and was
+      never reflected here), it described Stripe billing in a way that
+      read as "real payments are already happening" without mentioning
+      it's running in test mode, and its "What's not built yet" list
+      still said a revenue dashboard "arrives with billing" even though
+      `/desk/revenue` and `/desk/dashboard` have existed for a while.
+      All three corrected.
+- [x] **Six larger items flagged, not built** — pagination for four
+      more list pages, a handful of missing database indexes, no
+      accessibility testing on signed-in pages, four HIGH `npm audit`
+      findings inside Prisma's own tooling, no Content-Security-Policy
+      header, and no backup beyond Neon's default window. Logged to
+      `docs/ROADMAP.md`'s new "Flagged by the 2026-09-29 audit" section
+      per `AGENTS.md` — these need a deliberate decision, not an
+      obvious fix, so nothing was built unasked.
+- [x] `npm run typecheck` and `npx eslint` clean on every changed file
+      (only the pre-existing, documented Prisma-sandbox-limitation
+      errors remain elsewhere, unrelated to this change). Full test
+      suite: 371/371 passing (includes the 2 new regression tests added
+      above) — same 10 pre-existing sandbox-limitation suite failures as
+      always, nothing new.
 ## 2026-09-29 — Scaling/hardening pass + mobile Speed Insights fix
 
 Chris asked for every item flagged (not built) by the same-day

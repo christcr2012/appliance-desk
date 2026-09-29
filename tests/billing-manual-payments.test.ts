@@ -171,7 +171,11 @@ describe("recordManualPayment", () => {
     });
 
     expect(invoiceFindMany).toHaveBeenCalledWith({
-      where: { id: "inv-target", customerId: "cust-1" },
+      where: {
+        id: "inv-target",
+        customerId: "cust-1",
+        status: { in: ["OPEN", "PARTIALLY_PAID", "DELINQUENT"] },
+      },
       orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
     });
   });
@@ -186,7 +190,37 @@ describe("recordManualPayment", () => {
         method: "check",
         invoiceId: "someone-elses-invoice",
       }),
-    ).rejects.toThrow(/doesn't belong to this customer/i);
+    ).rejects.toThrow(/isn't open/i);
+  });
+
+  // Regression test (2026-09-29 audit): naming a WRITTEN_OFF invoice's id
+  // directly used to skip the status filter that the "spread across open
+  // invoices" path already had, silently un-writing-it-off. The status
+  // filter is now applied to the targeted-invoice lookup too, so Prisma
+  // itself never returns a written-off invoice here — this asserts the
+  // query actually excludes it, the same way "doesn't belong to this
+  // customer" above asserts a not-found id is refused.
+  it("refuses an invoiceId that's already written off, rather than reviving it", async () => {
+    invoiceFindMany.mockResolvedValue([]); // written-off invoice excluded by the status filter
+    const { recordManualPayment } = await import("@/domains/billing/manual-payments");
+
+    await expect(
+      recordManualPayment("cust-1", "owner-1", {
+        amountCents: 1000,
+        method: "check",
+        invoiceId: "inv-written-off",
+      }),
+    ).rejects.toThrow(/isn't open/i);
+
+    expect(invoiceFindMany).toHaveBeenCalledWith({
+      where: {
+        id: "inv-written-off",
+        customerId: "cust-1",
+        status: { in: ["OPEN", "PARTIALLY_PAID", "DELINQUENT"] },
+      },
+      orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
+    });
+    expect(invoiceUpdate).not.toHaveBeenCalled();
   });
 });
 

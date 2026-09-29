@@ -139,6 +139,10 @@ export async function createCustomerAction(
 
     revalidatePath("/desk/customers");
     revalidatePath("/desk/activity");
+    // The dashboard's customer count (src/domains/dashboard/index.ts) was
+    // going stale after adding a customer until its own next natural
+    // revalidation — added 2026-09-29 audit fix.
+    revalidatePath("/desk/dashboard");
 
     return {
       status: "success",
