@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Container } from "./container";
 import { NAV_LINKS } from "./nav-links";
 
@@ -19,9 +20,20 @@ export function Footer({
     <footer className="border-t border-line bg-canvas-alt">
       <Container className="grid gap-10 py-14 md:grid-cols-3">
         <div>
-          <p className="font-display text-lg font-semibold text-ink">
-            {businessName}
-          </p>
+          <Image
+            src="/brand/logo-light.svg"
+            alt={businessName}
+            width={169}
+            height={40}
+            className="h-8 w-auto dark:hidden"
+          />
+          <Image
+            src="/brand/logo-dark.svg"
+            alt={businessName}
+            width={169}
+            height={40}
+            className="hidden h-8 w-auto dark:block"
+          />
           <p className="mt-3 max-w-xs text-sm text-ink-soft">
             Straightforward appliance rentals for Colorado homes and
             properties — delivered, installed, and serviced by a real local

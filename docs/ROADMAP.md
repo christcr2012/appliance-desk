@@ -76,14 +76,15 @@ on — never built unasked.
   design review (mostly done, see the "brand-consistency" PR history
   above) — the new material is mainly the rebrand and the business-
   model additions.
-  - **Rebrand: approved (2026-09-27)** — Chris looked at a real preview
-    deployment (PR #41) side by side with the old palette and said he
-    likes it. The navy/teal color swap is done (see
-    `docs/DESIGN-SYSTEM.md`'s "Brand palette: navy/teal"). **Still
-    open**: a real logo (kept the existing typographic wordmark on
-    purpose), and the brief's non-color IA/layout ideas, which haven't
-    been evaluated against what the in-house review's PR #39 already
-    changed.
+  - **Rebrand: approved (2026-09-27)**, then **superseded (2026-09-29)**
+    by a full production brand kit ("Evergreen," v2.0) Chris commissioned
+    and delivered as a complete asset package — real logo, color system,
+    fonts, favicon/manifest, social-share image, business-form templates,
+    and more. Applied to the site's colors, fonts, logo, favicon,
+    manifest, and social-share image — see `docs/DECISIONS.md`'s
+    2026-09-29 "Brand kit v2.0 (Evergreen)" entry. **Still open**: the
+    brief's non-color IA/layout ideas (from the earlier Astra brief,
+    separate from this kit) haven't been evaluated.
   - **Property managers / portfolio accounts: done** — Chris
     said yes, build it. Turned out to need much less than a "new
     business line" — the data model already supported multiple
@@ -269,11 +270,10 @@ on — never built unasked.
   review; not done in the 2026-09-27 brand-consistency pass since
   picking and applying a coherent icon set across ~50 files is a real
   design decision of its own, not a quick follow-on.
-- **A social-share image made specifically for link previews**, sized
-  and cropped for how Facebook/text-message/Nextdoor previews actually
-  render, instead of reusing the homepage hero photo as-is (done as a
-  quick win in the 2026-09-27 pass, worth revisiting once a dedicated
-  image exists).
+- ~~A social-share image made specifically for link previews~~ — **done
+  (2026-09-29)**, part of brand kit v2.0. `public/brand/social-share.png`,
+  a purpose-made 1200x630 image from the kit, replaces the homepage hero
+  photo in `src/app/layout.tsx`'s Open Graph/Twitter metadata.
 - **Real appliance photos** — **done (2026-09-26).** Chris supplied
   basic-model photos for washer/dryer/set; `ApplianceType.photoUrl` is
   settable per appliance type from `/desk/settings`, and any type

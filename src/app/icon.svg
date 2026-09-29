@@ -1,15 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
-  <!--
-    Appliance Desk favicon (2026-09-28, Chris asked for a real one to
-    replace Vercel's default triangle). Reads as a front-loading washer/
-    dryer door even at 16px: a rounded tile in the site's real brand
-    teal (color-primary #006b66, src/app/globals.css) with a bold white
-    porthole ring and a brighter highlight arc suggesting the door's
-    glass/motion, kept simple and single-weight so it stays crisp at
-    favicon size instead of muddying into a gray blob.
-  -->
-  <rect x="2" y="2" width="60" height="60" rx="16" fill="#006b66"/>
-  <circle cx="32" cy="32" r="19" fill="none" stroke="#ffffff" stroke-width="7"/>
-  <path d="M19 22 A 19 19 0 0 1 45 22" fill="none" stroke="#ffffff" stroke-width="7" stroke-linecap="round" stroke-opacity="0.4"/>
-  <circle cx="32" cy="32" r="5" fill="#ffffff"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect x="0" y="0" width="100" height="100" rx="0" fill="#123C2D"/><g transform="translate(20 20) scale(0.6)"><path d="M0 0H57C83 0 98 13 98 33C98 51 87 62 65 65L100 100H64L9 45H55C63 45 67 41 67 35C67 29 63 25 55 25H0Z" fill="#F7F5EC"/><path d="M0 49L49 100H0Z" fill="#F7F5EC"/></g></svg>

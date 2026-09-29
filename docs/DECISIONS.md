@@ -2705,3 +2705,213 @@ way to know which label went with which field. Fixed by giving each
 field in the (possibly-repeated, for property managers with multiple
 addresses) address block a unique `id`/`htmlFor` pair keyed off its
 array index (`address-${index}-line1`, etc.).
+
+## 2026-09-29 (continued) — Brand kit v2.0 ("Evergreen") applied to the site
+
+Chris commissioned and delivered a complete, production-ready brand kit
+(a real logo system, color palette, typography, favicon/manifest,
+social-share image, business-form PDF templates, vehicle/apparel
+templates, and more) and asked for it applied across the website and
+web app. This entry covers the first, foundational slice: colors,
+fonts, logo, favicon, manifest, and social-share image. The kit's own
+handoff note (`09_Handoff/Website-and-Claude-handoff.md`) asked for
+exactly this kind of staged, reviewed rollout — "present the completed
+preview before production deployment" — so the rest (see below) is
+being treated as follow-on phases, not squeezed into one giant change.
+
+**Colors**: replaced the navy/teal palette (approved 2026-09-27) with
+the kit's own `brand-tokens.json` values — evergreen (#123C2D) as the
+primary brand color, ivory (#F7F5EC) as the page background, a light
+lime-green ("fresh," #B9E66B) as the accent. Every color pair reuses
+one of the kit's own pre-verified WCAG contrast checks
+(`09_Handoff/QA-and-contrast-record.md`) rather than a new, unchecked
+one — see the design-tokens comment at the top of `src/app/globals.css`
+for exactly which pair backs which token. This app's brand color
+already lived entirely in CSS variables (from the 2026-09-27 rebrand),
+retinting Tailwind's plain gray/white classes everywhere those
+variables are used — including the owner desk and customer portal, not
+just the public site — so this was genuinely a small, central set of
+value changes, not a per-page rewrite.
+
+One real bug this caught, not just a value swap: the kit's accent color
+is light (a lime-green meant for DARK text on top, per its own
+`onAccent` token), but this app's one existing accent-colored button
+variant (`src/components/site/button-link.tsx`'s `"secondary"`) was
+hardcoded to put white text on it — a leftover from the previous accent
+being a dark teal, where that was fine. Left as-is, that would have
+shipped a real accessibility regression: light-green background, light
+text, unreadable. Fixed by adding an `on-accent` token and using it
+there. (Not currently used anywhere else in the app, confirmed by grep,
+so this had zero live impact until now.)
+
+**Fonts**: replaced the Inter (body) + Fraunces (headings) pairing with
+Manrope everywhere, per the kit's own typography guidance (headings
+800, labels 600, body 400) — loaded via `next/font/google`, same
+self-hosting approach the prior fonts already used, rather than the
+kit's bundled static font files (simpler, and Next already handles the
+licensing/caching either way).
+
+**Logo, favicon, manifest, social-share image**: the kit's own
+horizontal SVG logo (evergreen-on-light / white-on-dark variants)
+replaces the plain text wordmark in the public site's header and
+footer — swapped by CSS (`dark:hidden`/`dark:block`), not a client-side
+theme check, so there's no flash of the wrong one. Favicon, apple-touch
+icon, and PWA manifest use the kit's own pre-made icon set and
+`site.webmanifest` (which already expected a `/brand/` path — the kit
+was clearly built with this handoff in mind). The homepage hero photo,
+previously reused as the social-share preview image, is replaced by the
+kit's purpose-made 1200x630 image.
+
+**Deliberately not done in this slice** (each is its own real piece of
+work, tracked separately rather than rushed):
+- Redesigning the app's real billing-statement/invoice pages to match
+  the kit's business-form layout and a "Jobber-style" clean invoice look
+  Chris asked about — the kit's `08_Business_Forms/Invoice.pdf` is a
+  static fillable PDF template for manual paperwork, not the live,
+  data-driven statement page the app actually renders; that's a real
+  redesign of its own.
+- An icon set across the owner desk/customer portal — already flagged
+  in `docs/ROADMAP.md` before this kit existed as "a real design
+  decision of its own, not a quick follow-on"; still true.
+- The kit's print/vehicle/apparel/social templates (business cards,
+  truck decals, Instagram templates, etc.) — these are files for Chris
+  to send to a print or sign vendor himself, not something a website
+  deploy touches.
+- Chris said Google Workspace tooling (a separate tool/session) already
+  applied the kit's email signature/branding to his real Gmail — not
+  re-verified from this session, since this session's own Workspace
+  connection is authenticated as a different mailbox
+  (`ops@robinsonaisystems.com`, his separate AI-company business, not
+  the appliance-rental one).
+
+## 2026-09-29 (continued) — Branded the app's own transactional emails (Resend)
+
+Chris asked, in the same message approving the PR #76 preview: "can you
+brand the Resend emails?" This is different from the Google Workspace
+email-signature branding above — it's the emails the app itself sends
+through Resend (password-reset/verification links, lead
+notifications, billing reminders, late-fee notices, backup alerts,
+portal/maintenance updates, referral notices). Before this change every
+one of those was plain, unbranded text — no logo, no color, no styling
+at all.
+
+Rather than editing all 8 places in the code that send an email, the
+shared `sendEmail()` wrapper in `src/lib/email.ts` was changed to build
+a branded HTML version automatically from the plain text every call
+site already passes in. So all 8 call sites needed zero changes and
+got a real, on-brand email for free; only the 2 that end in a bare
+link — `src/lib/auth.ts`'s password-reset and email-verification
+emails — were touched at all, to add an `actionLabel` (e.g. "Set my
+password") so that link renders as a proper button instead of plain
+text. The design (evergreen header block, ivory background, a
+lime-green accent rule above the footer) matches the brand kit's own
+`07_Web_Email/Customer-email-EDITABLE.html` reference template exactly
+— same colors, same table-based layout (tables, not flexbox/grid, are
+the only layout approach that renders reliably across real email
+clients like Outlook and Gmail).
+
+Every plain-text email Resend sends still includes a real plain-text
+body too (Resend's — and every email client's — fallback when HTML
+doesn't render), so nothing about the actual message content changed,
+only its appearance. All interpolated text (a lead's name, a
+customer's typed maintenance note, anything that's real user input and
+not copy this app wrote itself) is HTML-escaped before being placed
+into the generated HTML, since without that a lead or customer typing
+something like `<b>` or `&` into a form field could otherwise distort
+or break the email's markup.
+
+Covered by a new `tests/email.test.ts` (previously `sendEmail()` had no
+dedicated test at all, only indirect coverage through call sites like
+`tests/billing-reminders.test.ts` that mock the whole module): verifies
+the no-API-key no-op path still works, that both a text and a branded
+HTML body are sent once configured, that a trailing bare URL renders as
+a button, that user-submitted text is HTML-escaped, and that a Resend
+API failure is caught and logged rather than thrown (matching the
+existing guarantee that a failed notification email can never break the
+underlying business action, e.g. saving a lead).
+
+Not done in this slice, and not asked for: a real templating system,
+per-email-type custom layouts, or anything beyond this one shared
+wrapper — this app sends one style of transactional email today, so one
+small self-contained function was the right amount of engineering, not
+a templating library.
+
+## 2026-09-29 (continued) — Invoice document, Jobber-style (brand kit v2.0, phase 3)
+
+Chris approved this in the same message as the email-branding request:
+"yes do the invoice re-design." He'd asked earlier about researching
+how a company like Jobber lays out its invoices and building something
+similar, branded with the new kit.
+
+First finding, worth recording since it changes what "invoice redesign"
+actually means here: **this app doesn't have a real Stripe-hosted
+invoice PDF of its own to redesign** — a customer's downloadable past
+invoices come from Stripe's own hosted billing page
+(`ManageBillingButton` on `/account/billing`, which is Stripe's UI, not
+this app's), and the kit's `08_Business_Forms/Invoice.pdf` is a static
+fillable template meant for manual paperwork, not something the app
+renders from live data. What the app actually had were two ROLLUP
+views — `/desk/billing/customer/[id]` (Chris's combined statement) and
+`/account/billing` (a customer's own list) — both a list of invoices
+with running totals, never a single invoice on its own. Neither looked
+like a "Jobber-style invoice" because neither was trying to be one; they
+were dashboards.
+
+So this phase adds what was actually missing: a real, single-invoice
+document view — `src/components/billing/invoice-document.tsx` — reused
+by two new pages, `/desk/billing/customer/[id]/invoice/[invoiceId]`
+(Chris/staff, any customer) and `/account/billing/invoice/[invoiceId]`
+(a customer, their own only). Laid out the way Jobber and similar
+tools do: business name/address/phone/email and a logo block top-left,
+"INVOICE" plus the invoice number and dates top-right, a "Billed to"
+block, a line-item table, and a stacked totals block ending in a bold
+"Balance owed." Below that, a payment history list when there are any
+recorded payments. A "Print / save as PDF" button
+(`src/components/billing/print-invoice-button.tsx`) just triggers the
+browser's own print dialog — every modern browser's print-to-PDF is
+already a real, reliable PDF exporter, so no PDF-generation library was
+added for this. `print:` Tailwind classes strip the page's own
+navigation/button chrome and force plain black-on-white body text for
+the printed output (a printed page ignores the app's dark-mode CSS
+entirely, and dark ink on a light page reads better as a receipt
+someone might file, and uses less printer ink) while keeping the header
+band in solid brand color, since a short color band is still
+recognizably "this business" on paper.
+
+Both invoices/statement list pages (`/desk/billing/customer/[id]` and
+`/account/billing`) now link each invoice number to its new document
+page, rather than duplicating this layout inline.
+
+**Security**: a customer's own invoice page must never show someone
+else's invoice just because they guessed or changed the id in the URL
+— the same customer-data-isolation rule as everywhere else in this app
+(docs/BUSINESS-RULES.md). `getInvoiceDetail()`
+(`src/domains/billing/invoice-detail.ts`) takes an optional
+`customerId`; the portal page always passes the signed-in customer's
+own id, and the function returns `null` — not someone else's data —
+the moment the invoice belongs to anyone else. The desk page omits
+`customerId` (OWNER/ADMIN can legitimately view any customer's
+invoice) but still checks the invoice's customer matches the `id` in
+the URL, so `/desk/billing/customer/A/invoice/<B's invoice>` 404s
+instead of quietly rendering B's invoice under A's back-link. Covered
+by a new real-database test in `tests/customer-isolation.test.ts`
+(can't run in this sandbox — see AGENTS.md's Prisma limitation; CI runs
+it against a real, disposable Postgres, same as every other test in
+that file) that creates two customers with their own invoices and
+proves neither can read the other's through this function.
+
+Colors and typography reuse the same plain Tailwind gray/white classes
+(bg-white, text-gray-900, bg-gray-900 + text-white, and so on) the rest
+of the owner desk and customer portal already use — not the CSS-variable
+token classes the public site uses — because those specific
+classes are the ones the central retinting mechanism in
+`src/app/globals.css` already covers in both light and dark mode (see
+that file's long comment on why the desk/portal and the public site use
+two different mechanisms). No new colors were introduced.
+
+**Not done in this slice**: a "download invoice as PDF" button that
+generates a PDF server-side (the browser's own print-to-PDF covers this
+today, and a server-side generator is real, separate infrastructure
+that wasn't asked for); emailing a link to a specific invoice document
+(the branded transactional emails above don't currently link to one);
+combining this with Stripe's own hosted invoice PDFs in any way.

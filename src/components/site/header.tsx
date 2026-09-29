@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Container } from "./container";
@@ -115,11 +116,28 @@ export function Header({ businessName }: { businessName: string }) {
       className="sticky top-0 z-50 [overflow-anchor:none] border-b border-line bg-canvas/90 backdrop-blur"
     >
       <Container className="flex h-18 items-center justify-between py-3">
-        <Link
-          href="/"
-          className="font-display text-xl font-semibold tracking-tight text-ink"
-        >
-          {businessName}
+        {/* Real logo (brand kit v2.0, 2026-09-29) — light/dark SVG
+            masters, swapped by CSS instead of two <Image>s racing each
+            other, so there's no flash of the wrong one. Intrinsic
+            dimensions match the SVG's own 1100x260 viewBox so Next
+            never guesses a wrong aspect ratio before it loads. */}
+        <Link href="/" className="shrink-0">
+          <Image
+            src="/brand/logo-light.svg"
+            alt={businessName}
+            width={169}
+            height={40}
+            priority
+            className="h-9 w-auto dark:hidden"
+          />
+          <Image
+            src="/brand/logo-dark.svg"
+            alt={businessName}
+            width={169}
+            height={40}
+            priority
+            className="hidden h-9 w-auto dark:block"
+          />
         </Link>
 
         {/* Desktop nav */}

@@ -1,0 +1,22 @@
+{
+  "name": "Robinson Appliance Rentals",
+  "short_name": "Robinson",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F7F5EC",
+  "theme_color": "#123C2D",
+  "icons": [
+    {
+      "src": "/brand/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/brand/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

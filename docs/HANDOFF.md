@@ -1603,3 +1603,151 @@ protected-branch plan upgrade remains flagged to Chris (costs money,
 his call, per AGENTS.md). PR #74 is already merged; PR #75 should be
 ready for Chris to merge once this
 round of CI confirms the CSP fix.
+
+## 2026-09-29 (continued) — Brand kit v2.0 ("Evergreen") applied, phase 1
+
+Chris delivered a complete production brand kit and asked for it
+applied across the site and web app. Full reasoning in
+`docs/DECISIONS.md`'s "Brand kit v2.0 (Evergreen) applied to the site"
+entry. Branch `ai/claude/brand-kit-v2-evergreen`.
+
+- [x] **Color system** — evergreen/ivory/fresh-green palette from the
+      kit's own `brand-tokens.json`, replacing the 2026-09-27 navy/teal
+      rebrand. Central CSS-variable change (`src/app/globals.css`)
+      retints the whole app (public site, owner desk, customer portal,
+      light and dark mode) — no per-page rewrite needed, same mechanism
+      the prior rebrand used.
+- [x] **Fixed a real accessibility bug this caught**: the one existing
+      accent-colored button variant hardcoded white text, which would
+      have been unreadable against the kit's light lime-green accent.
+      Added an `on-accent` token and fixed it (unused elsewhere today,
+      confirmed by grep, so no live impact until now — but would have
+      broken the first thing built with it).
+- [x] **Fonts** — Manrope everywhere, replacing Inter + Fraunces.
+- [x] **Logo** — real horizontal SVG logo (light/dark variants) in the
+      public site's header and footer, replacing the plain text
+      wordmark.
+- [x] **Favicon, apple-touch icon, PWA manifest, social-share image** —
+      all from the kit's own pre-made files.
+- [x] `npx eslint .` clean (same 2 pre-existing warnings, 0 new).
+      `npx vitest run tests/theme.test.ts` passing (9/9). `npm run
+      build`/e2e couldn't run locally (documented sandbox limitations,
+      AGENTS.md) — CI is the real gate.
+
+**Deliberately not done in this slice** (see `docs/DECISIONS.md` for
+why each is its own piece of work, not rushed into this one):
+redesigning the app's real billing-statement/invoice pages (Chris also
+asked about a "Jobber-style" invoice look — a real redesign, not a
+brand-color swap); an icon set across the desk/portal; the kit's
+print/vehicle/apparel/social templates (files for Chris to send to a
+vendor, not a deploy). Chris said Workspace tooling already applied the
+kit's email branding to his Gmail separately — not verified from this
+session (different mailbox connected here).
+
+**Status**: pushed and opened as PR #76
+(https://github.com/christcr2012/appliance-desk/pull/76), CI green,
+preview deployed. Chris reviewed the preview and said he likes it (not
+yet merged — his call, per AGENTS.md; he's been merging his own PRs
+throughout this project).
+
+**Still open**: the invoice/statement redesign and the icon set, above,
+as explicit next phases once Chris has seen this first slice. Chris has
+since approved the invoice/statement redesign ("yes do the invoice
+re-design") — see the phase-2 entry below for what's shipped so far.
+
+## 2026-09-29 (continued) — Brand kit v2.0, phase 2: branded transactional emails
+
+Chris approved phase 2 in the same message: "can you brand the Resend
+emails?" Full reasoning in `docs/DECISIONS.md`'s "Branded the app's own
+transactional emails (Resend)" entry. Same branch,
+`ai/claude/brand-kit-v2-evergreen`.
+
+- [x] `src/lib/email.ts` — `sendEmail()` now builds a branded HTML
+      email (evergreen header, ivory background, lime-green accent
+      rule) alongside the existing plain-text body, automatically, for
+      all 8 places in the app that send an email — zero changes needed
+      at 6 of those 8 call sites.
+- [x] `src/lib/auth.ts` — its 2 call sites (password reset, email
+      verification) updated to pass a real button label
+      (`actionLabel`) instead of a bare link, since both end in a
+      one-line URL.
+- [x] User-submitted content (lead names, customer notes, etc.)
+      HTML-escaped before going into the generated email, so it can't
+      distort or break the email's markup.
+- [x] New `tests/email.test.ts` (this function had no dedicated test
+      before — only indirect coverage via call sites that mock the
+      whole module): no-API-key no-op, text+HTML both sent, bare-URL →
+      button rendering, HTML-escaping, and a failed-send-is-caught-not-
+      thrown case. All 5 passing.
+- [x] `npx eslint src/lib/email.ts src/lib/auth.ts tests/email.test.ts`
+      clean. `npx vitest run` — 382/382 runnable tests passing (the 10
+      suites that can't run at all are the documented, pre-existing
+      Prisma-client-generation sandbox limitation, unrelated to this
+      change — see AGENTS.md). `npm run typecheck` — no new errors
+      introduced by these two files; every existing error is that same
+      pre-existing Prisma limitation.
+
+**Status**: pushed on `ai/claude/brand-kit-v2-evergreen` (commit
+`ec749b1`), still PR #76, CI green.
+
+**Still open**: the invoice/statement redesign (Chris approved: "yes do
+the invoice re-design") — see the phase-3 entry below, now built.
+Also still open: confirming from this session whether Workspace/Gmail
+access can actually reach the `ops@robinsonappliancerentals.com`
+mailbox now that Chris said it's a seat on the same Workspace account
+as a secondary domain — this session's Workspace connection hasn't
+been re-tested against that mailbox since he clarified that.
+
+## 2026-09-29 (continued) — Brand kit v2.0, phase 3: a real invoice document
+
+Chris approved this in the same message as phase 2: "yes do the
+invoice re-design." Full reasoning, including the finding that the app
+didn't actually have an existing "invoice document" to redesign (only
+two rollup/statement list views — see below), in `docs/DECISIONS.md`'s
+"Invoice document, Jobber-style (brand kit v2.0, phase 3)" entry. Same
+branch, `ai/claude/brand-kit-v2-evergreen`.
+
+- [x] `src/domains/billing/invoice-detail.ts` — new `getInvoiceDetail()`,
+      one invoice's full detail (business info, customer, property,
+      line items, payment history), with an optional `customerId` that
+      makes it return `null` for anyone else's invoice.
+- [x] `src/components/billing/invoice-document.tsx` — the shared,
+      Jobber-style document layout: logo/business block, invoice
+      number and dates, "Billed to," a line-item table, stacked totals
+      ending in "Balance owed," and payment history.
+- [x] `src/components/billing/print-invoice-button.tsx` — "Print /
+      save as PDF," just the browser's own print dialog; print-specific
+      CSS on the document strips page chrome and forces plain
+      black-on-white for the printed output.
+- [x] Two new pages: `/desk/billing/customer/[id]/invoice/[invoiceId]`
+      (Chris/staff, any customer) and
+      `/account/billing/invoice/[invoiceId]` (a customer, their own
+      only) — both statement list pages now link each invoice number
+      to its document instead of only showing a summary row.
+- [x] **Security**: extended `tests/customer-isolation.test.ts` (the
+      project's real-database, CI-run isolation suite — can't run in
+      this sandbox, see AGENTS.md) with a new invoice per test customer
+      and two new tests proving `getInvoiceDetail` refuses to return
+      another customer's invoice when scoped by `customerId`, and that
+      the desk page's own `customerId`-in-URL check (not just relying
+      on the function) is what stops
+      `/desk/billing/customer/A/invoice/<B's invoice>` from quietly
+      showing B's invoice.
+- [x] `npx eslint` on every new/changed file — clean. `npm run
+      typecheck` — no new errors from these files (the only errors
+      touching `invoice-detail.ts` are the same pre-existing
+      Prisma-client-generation sandbox limitation every other
+      `src/domains/**` file already has, confirmed by comparing against
+      `statements.ts`'s identical pattern). `npx vitest run` — same
+      382/382 runnable tests passing, no regression (the isolation-test
+      additions can only run against CI's real Postgres).
+
+**Status**: committed and pushed on `ai/claude/brand-kit-v2-evergreen`
+(commit `0b0f172`), same PR #76, CI green — including the new
+real-Postgres isolation test above.
+
+**Still open**: a server-side "download as PDF" (today's browser
+print-to-PDF covers this — not asked for beyond that); linking a
+branded email to a specific invoice's document page; confirming
+Workspace/Gmail access to `ops@robinsonappliancerentals.com`, as
+above.
