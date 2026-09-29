@@ -72,7 +72,16 @@ export function Header({ businessName }: { businessName: string }) {
   return (
     <header
       ref={headerRef}
-      className="sticky top-0 z-50 border-b border-line bg-canvas/90 backdrop-blur"
+      // overflow-anchor:none (2026-09-29) — see the matching comment in
+      // src/components/authed-header.tsx for the full explanation:
+      // opening the menu grows this header's height, and since it's
+      // sticky (not at the top of the document), the browser's own
+      // scroll-anchoring silently nudges scrollY to compensate — a real
+      // `scroll` event that the onScroll listener above can't tell
+      // apart from an actual user scroll, so it closed the menu the
+      // instant it opened whenever the page wasn't already scrolled to
+      // the very top.
+      className="sticky top-0 z-50 [overflow-anchor:none] border-b border-line bg-canvas/90 backdrop-blur"
     >
       <Container className="flex h-18 items-center justify-between py-3">
         <Link

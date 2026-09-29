@@ -120,7 +120,21 @@ export function AuthedHeader({
   return (
     <header
       ref={headerRef}
-      className={`border-b bg-white ${variant === "sidebar" ? "md:hidden" : ""}`}
+      // overflow-anchor:none (2026-09-29, Chris reported: opening the
+      // menu while scrolled down the page closed it again almost
+      // instantly) — opening the menu inserts a tall panel right below
+      // this header, which grows the header's own height. If the page
+      // isn't scrolled to the top, browsers "scroll anchor" to keep
+      // whatever's on screen from visually jumping — they nudge scrollY
+      // to compensate for that inserted height, which is a completely
+      // real `scroll` event. The onScroll listener above (added so the
+      // menu closes if you scroll the page behind it) can't tell that
+      // apart from an actual user scroll, so it closed the menu the
+      // instant it opened. This tells the browser not to compensate for
+      // size changes inside this header at all, which is exactly the
+      // documented purpose of overflow-anchor — see
+      // https://developer.mozilla.org/en-US/docs/Web/CSS/overflow-anchor
+      className={`[overflow-anchor:none] border-b bg-white ${variant === "sidebar" ? "md:hidden" : ""}`}
     >
       <div className="flex items-center justify-between px-6 py-4">
         <span className="font-semibold">{title}</span>
