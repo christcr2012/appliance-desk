@@ -12,6 +12,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 const rentalAgreementFindUniqueOrThrow = vi.fn();
 const customerFindUniqueOrThrow = vi.fn();
 const checkoutSessionsCreate = vi.fn();
+const depositCount = vi.fn();
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
@@ -21,6 +22,15 @@ vi.mock("@/lib/prisma", () => ({
     customer: {
       findUniqueOrThrow: (...args: unknown[]) => customerFindUniqueOrThrow(...args),
       update: vi.fn(),
+    },
+    // Estimate-deposit feature (2026-09-29): createCheckoutSessionForAgreement
+    // checks whether a deposit already exists for this agreement (e.g. one
+    // collected earlier at estimate approval) before charging it again at
+    // signing. These tests are all about a fresh agreement with no prior
+    // deposit, so this always resolves to "none yet" unless a test says
+    // otherwise.
+    deposit: {
+      count: (...args: unknown[]) => depositCount(...args),
     },
   },
 }));
@@ -53,6 +63,7 @@ describe("createCheckoutSessionForAgreement — mode selection", () => {
       user: { name: "Test", email: "t@example.test" },
     });
     checkoutSessionsCreate.mockReset().mockResolvedValue({ url: "https://checkout.stripe.test/fake" });
+    depositCount.mockReset().mockResolvedValue(0);
   });
 
   it("uses 'setup' mode (no charge) when there's no deposit or damage waiver", async () => {
