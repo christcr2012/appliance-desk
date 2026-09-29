@@ -279,6 +279,33 @@ See `src/domains/estimates` and `docs/DECISIONS.md`'s "Estimates for
 property managers / bulk & multi-unit deals" entry for the full
 technical writeup.
 
+### Deposit collected at approval, and a follow-up if it goes quiet (2026-09-29)
+
+Two small additions to the estimate flow above, from
+`docs/ROADMAP.md`'s "Ideas surfaced researching Jobber" list:
+
+- **If an estimate has a deposit, the customer pays it the moment they
+  approve it online** — not left until the resulting agreement is later
+  signed. Real money, through the same Stripe Checkout every other
+  charge in this app goes through; nothing in this app's own database
+  ever marks it paid — only Stripe's webhook does, once it's actually
+  confirmed. If the customer cancels out of that checkout, the estimate
+  is still APPROVED (approving and paying are separate steps) and their
+  same link shows a "Pay deposit" button to pick it back up.
+- **If the resulting agreement is later signed for real, its own
+  checkout never asks for that deposit again** — the already-collected
+  amount just shows up on the agreement as a real `Deposit` record. This
+  only applies automatically when the estimate converts into exactly one
+  agreement ("single" mode); a "per property" conversion produces
+  several agreements from the one collected deposit, which has no
+  single honest owner to assign itself to, so Chris is flagged (on the
+  estimate's own page) to reconcile that by hand.
+- **If a sent estimate sits unanswered for 3 days**, one polite
+  follow-up email goes out automatically (a daily cron, same pattern as
+  the billing-reminder emails), pointing back to the same no-login link.
+  Re-sending a revised estimate resets this — one follow-up per version
+  actually sent, not one ever per estimate.
+
 ## How the business operates at launch — Chris approves everything
 
 1. Customer submits an inquiry → becomes a `Lead`.

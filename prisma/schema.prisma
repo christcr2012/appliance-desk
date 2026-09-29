@@ -892,6 +892,27 @@ model Estimate {
   internalNotes String?
 
   depositCents Int       @default(0)
+  // Set the moment Stripe confirms this estimate's own deposit checkout
+  // (2026-09-29 — see src/domains/billing/checkout.ts's
+  // createDepositCheckoutSessionForEstimate and docs/ROADMAP.md's "A
+  // deposit collected at the moment a quote/estimate is approved"
+  // entry). Null means either there's no deposit on this estimate
+  // (depositCents is 0) or one is required but hasn't been paid yet —
+  // the public estimate page tells those two apart itself. Recorded
+  // only by the Stripe webhook, same rule as every other "paid" fact in
+  // this app (src/domains/billing/webhooks.ts) — approving an estimate
+  // never marks this by itself.
+  depositPaidAt DateTime?
+  // Set once a "you still haven't responded" follow-up email has gone
+  // out for the estimate's *current* sentAt (2026-09-29 — see
+  // sendEstimateFollowUpReminders in src/domains/estimates and
+  // docs/ROADMAP.md's matching entry). Compared for equality against
+  // sentAt itself, same pattern as
+  // RentalAgreement.billingReminderSentForDate: if Chris revises and
+  // re-sends this estimate (a new sentAt), the old value no longer
+  // matches, so a fresh follow-up cycle can fire for the re-sent one
+  // without a manual reset.
+  followUpSentForSentAt DateTime?
   validUntil   DateTime?
 
   sentAt                  DateTime?

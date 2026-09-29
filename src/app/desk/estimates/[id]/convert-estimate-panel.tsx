@@ -16,12 +16,19 @@ export function ConvertEstimatePanel({
   serviceAddresses,
   hasUnassignedLines,
   distinctPropertyCount,
+  depositAlreadyCollectedCents,
 }: {
   estimateId: string;
   customerId: string | null;
   serviceAddresses: { id: string; label: string }[];
   hasUnassignedLines: boolean;
   distinctPropertyCount: number;
+  /** Set when this estimate's deposit was already paid at approval
+   * (Estimate.depositPaidAt) — used only to warn Chris here that
+   * choosing "per property" won't automatically apply it to any one of
+   * the resulting agreements (see convertEstimateToAgreements's own
+   * comment for why), not to change what conversion actually does. */
+  depositAlreadyCollectedCents: number | null;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -103,6 +110,13 @@ export function ConvertEstimatePanel({
               <span className="block text-xs text-gray-500">
                 Some line items aren&apos;t tied to a property yet — assign one to each, or use the
                 combined option above.
+              </span>
+            )}
+            {!perPropertyDisabled && depositAlreadyCollectedCents && mode === "per-property" && (
+              <span className="block text-xs text-amber-700">
+                Heads up: the deposit already collected on this estimate won&apos;t automatically
+                apply to any of the separate agreements this creates — you&apos;ll need to record it
+                on the right one yourself.
               </span>
             )}
           </span>

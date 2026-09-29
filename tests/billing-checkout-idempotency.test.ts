@@ -13,6 +13,7 @@ const rentalAgreementFindUniqueOrThrow = vi.fn();
 const customerFindUniqueOrThrow = vi.fn();
 const taxRatesList = vi.fn();
 const checkoutSessionsCreate = vi.fn();
+const depositCount = vi.fn();
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
@@ -22,6 +23,11 @@ vi.mock("@/lib/prisma", () => ({
     customer: {
       findUniqueOrThrow: (...args: unknown[]) => customerFindUniqueOrThrow(...args),
       update: vi.fn(),
+    },
+    // Estimate-deposit feature (2026-09-29) — see the matching comment in
+    // tests/billing-checkout-mode.test.ts.
+    deposit: {
+      count: (...args: unknown[]) => depositCount(...args),
     },
   },
 }));
@@ -51,6 +57,7 @@ describe("createCheckoutSessionForAgreement — idempotency", () => {
     });
     taxRatesList.mockReset().mockResolvedValue({ data: [] });
     checkoutSessionsCreate.mockReset().mockResolvedValue({ url: "https://checkout.stripe.test/fake" });
+    depositCount.mockReset().mockResolvedValue(0);
   });
 
   it("passes a Stripe idempotency key scoped to this agreement", async () => {
