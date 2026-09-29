@@ -201,12 +201,26 @@ export function AuthedHeader({
         </div>
       </div>
 
-      {/* Mobile menu panel */}
+      {/* Mobile menu panel. max-h + overflow-y-auto + overscroll-contain
+          (2026-09-28, Chris reported: "some of them are longer and if I
+          try to scroll the menu, it just closes it") — the desk nav has
+          11 links, which no longer fits one phone screen, and this panel
+          isn't sticky/fixed, so a finger-drag to scroll through the rest
+          of it was moving the whole page, which the onScroll listener
+          above (added to close the menu when scrolling the page behind
+          it) treated exactly like a real page scroll and closed the menu
+          before the drag finished. Capping the panel's own height and
+          letting IT scroll internally means a scroll gesture inside the
+          menu never reaches window's scroll event at all, so it no
+          longer gets closed by that listener; overscroll-contain stops
+          the scroll from "chaining" into the page once you hit the
+          bottom of the list, which would otherwise trigger the exact
+          same false close right as you reach the end. */}
       {menuOpen && (
         <nav
           id="authed-mobile-menu"
           aria-label={areaLabel}
-          className="border-t bg-gray-50 md:hidden"
+          className="max-h-[70dvh] overflow-y-auto overscroll-contain border-t bg-gray-50 md:hidden"
         >
           <div className="flex flex-col gap-1 px-4 py-3">
             {links.map((link) => {

@@ -148,12 +148,18 @@ export function Header({ businessName }: { businessName: string }) {
         </div>
       </Container>
 
-      {/* Mobile menu panel */}
+      {/* Mobile menu panel. max-h + overflow-y-auto + overscroll-contain
+          (2026-09-28) — same fix as authed-header.tsx's mobile panel:
+          without a capped, self-scrolling height, a scroll gesture
+          inside a menu taller than the screen moves the whole page
+          instead, which the onScroll listener above (there to close the
+          menu when the page behind it scrolls) can't tell apart from a
+          real page scroll — so it closed the menu mid-scroll. */}
       {menuOpen && (
         <nav
           id="mobile-menu"
           aria-label="Primary"
-          className="border-t border-line bg-surface md:hidden"
+          className="max-h-[70dvh] overflow-y-auto overscroll-contain border-t border-line bg-surface md:hidden"
         >
           <Container className="flex flex-col gap-1 py-4">
             {NAV_LINKS.filter((l) => l.href !== "/contact").map((link) => (
