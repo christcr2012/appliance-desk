@@ -17,9 +17,11 @@ const PRIORITIES: { value: string; label: string }[] = [
 
 export function NewRequestForm({
   appliances,
+  customerId,
   initialApplianceId = "",
 }: {
   appliances: ApplianceOption[];
+  customerId: string;
   initialApplianceId?: string;
 }) {
   const router = useRouter();
@@ -147,7 +149,7 @@ export function NewRequestForm({
         {photoUrls.length < MAX_PHOTOS && (
           <div className="mt-2">
             <PhotoUploadField
-              pathPrefix="maintenance-requests"
+              pathPrefix={`maintenance-requests/${customerId}`}
               label="Add a photo"
               onUploaded={(url) => {
                 setPhotoError(null);

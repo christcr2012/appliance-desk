@@ -38,7 +38,7 @@ export default async function AccountMaintenancePage({
       </p>
 
       <div className="mt-6">
-        <NewRequestForm appliances={applianceOptions} initialApplianceId={initialApplianceId} />
+        <NewRequestForm customerId={customer.id} appliances={applianceOptions} initialApplianceId={initialApplianceId} />
       </div>
 
       <div className="mt-8">

@@ -2635,3 +2635,29 @@ its five used environment fields instead of the entire augmented global type.
 No cast or weakened test bypass is used. Full local typecheck, lint and the 18
 setup/guard tests are required before this correction is pushed. Updated exact-
 head CI/database drill and preview remain pending; no deployment success claimed.
+
+
+## 2026-09-30 — Photo token authorization follow-on
+
+PR #98 corrected head 22777db6eff8d9acb68f51fff2eebb105eeee28b passed full
+CI 36750017203 and Vercel. Its populated 27-migration upgrade/retry proof is
+verified; full O02 remains incomplete pending hosted runtime-fixture and
+independent preview storage evidence. Owner merges #98 before this follow-on.
+
+The upload endpoint previously accepted arbitrary destinations for any signed-
+in account. It now rejects archived sessions, validates the SDK request body,
+authorizes namespaces before invoking Blob, and retains image-type/15MB limits,
+random suffixes and non-overwrite tokens. OWNER/ADMIN can upload site photos and
+active appliance records; OWNER/ADMIN/STAFF can upload to existing jobs; CUSTOMER
+uploads require their own active customer record. Customer maintenance forms
+now send that server-supplied customer folder. Invalid/missing/cross-customer
+record paths return the same denial; raw provider failures aren't disclosed.
+
+Added rendered maintenance upload/submit/failure cases, negative record/path/
+role/malformed-request tests and four signed-in Playwright token-denial cases.
+Local validation: 62 focused cases; all 611 tests across 78 non-Postgres suites;
+full typecheck and lint pass (two existing warnings). The four existing real-
+Postgres integration suites and new browser checks await CI. Public photo
+serving and saved photo URLs are unchanged. This is upload-token authorization,
+not private photo delivery or proof of independent preview storage. Preview
+uploads and backups still fail closed; no live storage resource was created.
