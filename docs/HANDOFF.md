@@ -2192,3 +2192,27 @@ requires the confirmed business mailing address and monitored reply inbox.
 No real subscriber emails have been sent. This phase is implemented and
 automatically tested, with deployed-page inspection/owner review and live
 activation still incomplete. Do not start the next phase before reporting.
+
+## 2026-09-30 — Browser preview inspection completed
+
+Chris approved browser fallback. Vercel's authorized temporary review link
+opened deployment dpl_6fQHGsDnNSHY1LjBrYqwour6zXdX successfully in the cloud
+browser (commit 3b97e4b2550ee0ac0a11683d436e787b92d15455). Its full CI run
+36705869186 passed all gates.
+
+Visually inspected the desktop homepage and /launch: branding, layout,
+prelaunch wording, maintenance inclusion, conditional delivery/install fees,
+no confirmed opening date, and no rental commitment are presented correctly.
+The homepage interest CTA navigated to /launch. Consent starts unchecked;
+submitting the empty form focused Name and displayed the required-field
+message. No subscriber data was submitted and no email was sent. Persistence
+and unsubscribe were already covered by the passing CI browser tests.
+This resolves the prior deployed-page inspection blocker. Mobile layout
+and signed-in owner screens were not manually inspected in this session.
+
+Existing public footer still displays the previously configured personal
+email and phone; Chris plans to replace them with business contact details.
+No contact values were changed or inferred. Production merge remains pending
+owner review, and email activation still requires confirmed postal/reply
+details. This follow-up commit changes this handoff only; no application,
+configuration, or test code changed after the fully passing CI.
