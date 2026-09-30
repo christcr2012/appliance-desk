@@ -17,6 +17,8 @@ on — never built unasked.
   by model number) — **done, Phase 3 (2026-09-26)**, per Chris's
   request to be able to start adding inventory as he obtains it, and a
   same-day follow-up request to also capture color/features/parts.
+  Historical deployment note (superseded: `package.json` now runs migration
+  deploy + schema-health checks during `vercel-build`):
   Needed one schema migration (`Appliance.color`, `Appliance.features`,
   new `PartRecord` table) — **Chris needs to run this migration's SQL
   in Neon before or right alongside deploying**, same as the PR #4
@@ -391,7 +393,10 @@ don't build it unasked" rule:
 - ~~**No Content-Security-Policy header.**~~ — **stale, confirmed done
   2026-09-29**: `next.config.ts`'s `headers()` sends a real CSP
   alongside the other baseline security headers.
-- **No backup beyond Neon's own rolling 6-hour window.** Verified to
+- **Historical backup gap (superseded).** Scheduled application exports now
+  exist in `src/domains/backup/index.ts` and `src/app/api/cron/backup/route.ts`;
+  verify current run/storage/restore evidence before claiming recoverability.
+  The original note below is historical, not missing implementation: verified to
   actually work (`docs/DECISIONS.md`, 2026-09-28) but there's no separate
   scheduled export or off-Neon copy on top of it. Worth deciding whether
   that's enough for this business's risk tolerance as it grows.

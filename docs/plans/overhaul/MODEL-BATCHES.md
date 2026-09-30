@@ -14,20 +14,20 @@ that every issue can be solved without an exceptional escalation.
 
 | Batch | Select in the model picker | Work in order | End checkpoint |
 |---|---|---|---|
-| B1 — Foundations and backend contracts | **GPT-6.1 Sol · High** | O00, O01, O02, O09, O13 | Confirm safe preview, role rules and tested task/job contracts. Stop and request Luna High. |
-| B2 — Main interface overhaul | **GPT-6 Luna · High** | O03, O04, O05, O06, O07, O08, O10, O11, O12, O14, O15, O16, O17-A, O18, O20, O21-A | Complete eligible UI slices and previews; record mandatory Sol review items. Stop and request Sol High. |
-| B3 — Review and remaining backend work | **GPT-6.1 Sol · High** | Review/fix B2 first; then O17-B if needed, O19-A, O21-B, O22, O24, O25-B, O26, O28, O29-A/O29-B if needed | Freeze tested interfaces for the last UI batch. Stop and request Luna High. |
-| B4 — Editors, automation UI and documentation draft | **GPT-6 Luna · High** | O19-B, O21-C, O23, O25-A, O27, O29-C if needed, O31-DRAFT | Complete UI integration and draft owner instructions; do not mark O31 complete. Stop and request Sol High. |
-| B5 — Final integration and release review | **GPT-6.1 Sol · High** | Review/fix B4; O30; O31-FINAL | Report evidence and remaining owner inputs; stop for release approval. No automatic deployment or next feature. |
+| B1 — Foundations and backend contracts | **GPT-6.1 Sol · Medium** | O00, O01, O02, O09, O13 | Confirm safe preview, role rules and tested task/job contracts. Stop and request Luna High. |
+| B2 — Main interface overhaul | **GPT-6 Luna · High** | O03, O04, O05, O06, O07, O08, O10, O11, O12, O14, O15, O16, O17-A, O18, O20, O21-A | Complete eligible UI slices and previews; record mandatory Sol review items. Stop and request Sol Medium. |
+| B3 — Review and remaining backend work | **GPT-6.1 Sol · Medium** | Review/fix B2 first; then O17-B if needed, O19-A, O21-B, O22, O24, O25-B, O26, O28, O29-A/O29-B if needed | Freeze tested interfaces for the last UI batch. Stop and request Luna High. |
+| B4 — Editors, automation UI and documentation draft | **GPT-6 Luna · High** | O19-B, O21-C, O23, O25-A, O27, O29-C if needed, O31-DRAFT | Complete UI integration and draft owner instructions; do not mark O31 complete. Stop and request Sol Medium. |
+| B5 — Final integration and release review | **GPT-6.1 Sol · Medium** | Review/fix B4; O30; O31-FINAL | Report evidence and remaining owner inputs; stop for release approval. No automatic deployment or next feature. |
 
 O00 moves from Luna to Sol intentionally to avoid starting with a one-task
 model switch. O09/O13 are brought forward because they depend on O01/O02,
 not on the redesigned UI. Do not pull optional future schema into B1.
 
-**Initial position: B1, NOT_STARTED. Required model: GPT-6.1 Sol, High.**
-No overhaul implementation has begun. This planning update does not authorize
-starting all five batches. The first implementation instruction must identify
-an authorized phase/batch and the appropriate selected model.
+**Current position: B1 authorized and IN_PROGRESS, Sol Medium.**
+Chris authorized B1 on 2026-09-30. O00 baseline reconciliation is complete;
+see BASELINE.md and EXECUTION-STATE.md. Later batches still require their
+model handoff and phase checkpoints.
 
 ## Explicit splits of mixed cards
 
@@ -107,7 +107,7 @@ and record the deviation before work; do not silently pretend a switch occurred.
 Switch message, in plain English:
 
 > Batch [B#] is complete: [concrete outcomes]. [Tests/preview and any remaining
-> review limitation.] Please select **[exact model] → High** before we continue.
+> review limitation.] Please select **[exact model] → [Medium for Sol / High for Luna]** before we continue.
 > The next batch is [B#], starting with [task and purpose]. Reply
 > **“Switched—continue”** once selected. I've saved the handoff; no need to
 > paste the plan again.

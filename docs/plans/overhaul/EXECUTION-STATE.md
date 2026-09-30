@@ -9,14 +9,14 @@ Updated: 2026-09-30
 | Next branch base | Latest remote head of #87; next PR targets #87 branch |
 | Claude review | Pending; no approvals recorded for the selected stack |
 | Merge gate | All selected stack PRs reviewed by Claude, then explicit merge authorization |
-| Application implementation | NOT_STARTED |
+| Application implementation | B1 IN_PROGRESS |
 | Next batch | B1 — foundations and backend contracts |
 | Required model | GPT-6.1 Sol |
-| Required reasoning | High |
-| Next task | O00 — reconcile current baseline |
-| Selection verified | Not yet requested/confirmed for implementation |
-| Batch authorization | Pending instruction to begin; latest request was to revise the plan |
-| Completed overhaul cards | None |
+| Required reasoning | Medium |
+| Next task | O01 — role-safe data audit |
+| Selection verified | Trusted model-switch signal; Medium selected per owner instruction |
+| Batch authorization | Chris: Begin batch B one (2026-09-30) |
+| Completed overhaul cards | O00 VERIFIED — documentation baseline |
 | Owner decisions | docs/OWNER-INPUTS.md |
 | Source of batch order | MODEL-BATCHES.md |
 

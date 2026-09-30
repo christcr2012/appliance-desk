@@ -13,8 +13,8 @@ A/B parts, make separate dependency-ordered PRs; do not ask Luna to deliver
 both at once. Do not execute the whole backlog from a single prompt.
 
 L = GPT-6 Luna, High reasoning, small UI/query task.
-S = GPT-6.1 Sol, default/Medium reasoning; High for concurrency, billing,
-authorization or migrations. These are recommended task assignments, not
+S = GPT-6.1 Sol, Medium reasoning (Chris’s available setting, confirmed
+2026-09-30), including backend and review tasks. These are recommended task assignments, not
 promises that a particular model will pass. A stronger review is mandatory
 for S cards; it can be a separate review session, not parallel agents.
 

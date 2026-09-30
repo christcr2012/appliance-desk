@@ -2308,3 +2308,12 @@ Conditional Drive/Calendar/Tasks/Contacts tasks include ownership and sync limit
 IN-16 is answered with execution verification pending. All GW tasks remain
 NOT_STARTED; no Google changes, messages, purchases or runtime code changes.
 Planning PR #87 remains stacked on #86, with Claude review and merge gates intact.
+
+## 2026-09-30 — B1 begins; O00 baseline verified
+
+Chris authorized B1 after selecting Sol; available reasoning is Medium. Model
+schedule now uses Sol Medium / Luna High. O00 corrected historical palette/logo,
+manual migration and backup notes, checked source paths and open PR chain, and
+recorded baseline limitations in plans/overhaul/BASELINE.md. The new O00 PR
+builds on #87. Application code unchanged; docs checks pass; no app tests
+claimed. O01 next, O02 must precede any schema work. Claude review pending.
