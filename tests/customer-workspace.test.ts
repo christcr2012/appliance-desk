@@ -16,6 +16,8 @@ const maintenanceRequestFindMany = vi.fn();
 const customerNoteFindMany = vi.fn();
 const auditLogFindMany = vi.fn();
 
+vi.mock("@/lib/session", () => ({ requireRole: vi.fn().mockResolvedValue({ user: { role: "OWNER" } }) }));
+
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     customerNote: {
@@ -173,3 +175,4 @@ describe("getCustomerTimeline", () => {
     expect(where.OR).toEqual([{ entityType: "Customer", entityId: "cust-2" }]);
   });
 });
+

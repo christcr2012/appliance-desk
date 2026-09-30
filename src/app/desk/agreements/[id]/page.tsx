@@ -1,4 +1,6 @@
+import { requireRole } from "@/lib/session";
 import { notFound } from "next/navigation";
+import { OperationalAgreement } from "./operational-agreement";
 import Link from "next/link";
 import { getAgreementById } from "@/domains/agreements";
 import { getAppliances } from "@/domains/inventory";
@@ -11,7 +13,9 @@ export default async function AgreementDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const session = await requireRole("OWNER", "ADMIN", "STAFF");
   const { id } = await params;
+  if (session.user.role === "STAFF") return <OperationalAgreement id={id} />;
   const [agreement, availableAppliances] = await Promise.all([
     getAgreementById(id),
     getAppliances({ status: "AVAILABLE" }),
@@ -51,3 +55,4 @@ export default async function AgreementDetailPage({
     </div>
   );
 }
+

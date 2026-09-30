@@ -4,12 +4,12 @@ Updated: 2026-09-30
 
 | Field | Current value |
 |---|---|
-| Baseline | main f787ed07c72ae9af5d31af26fe5ef5e67daa0c72 |
+| Baseline | main d504acab65c7029ebbfe8307a38444979da6e997 |
 | Historical stack | #86/#87/#88 merged; #89 closed unmerged; #90/#91/#92 merged |
-| Current branch | ai/codex/schema-health-coverage; independent bounded B1/O02 prerequisite |
+| Current branch | ai/codex/foundation-role-and-preview-safety |
 | Batch | B1 IN_PROGRESS; existing Sol Medium schedule; no model switch |
 | O00 | VERIFIED documentation baseline |
-| O01 | Owned by Claude; paused for usage reset per owner. Codex did not edit its files. |
+| O01 | Reassigned to Codex by owner; grouped foundation fix IN_REVIEW pending full CI/browser proof. |
 | O02 database | Separate vercel-preview-2 branch and recorded READY deployment observed; full-card proof incomplete |
 | O02A | PR #93 merged; final-head CI 36733312755 passed (525 unit/integration, 55 browser/axe); production READY |
 | O02 remaining | Environment-target/build/runtime fixture proof; verified independent preview file workflow; complete migration evidence |
@@ -83,3 +83,58 @@ PR #94 already merged as f787ed07c72ae9af5d31af26fe5ef5e67daa0c72, with
 production deployment dpl_HH4g7TuFMQrwubF9hKt7WubzXSXk READY. PR #93 is
 also merged/deployed; its older draft/hold notes above are historical.
 O01 remains Claude-owned; O02 remains incomplete and O09/O13 remain blocked.
+
+
+## 2026-09-30 — O01 takeover and grouped foundation security PR
+
+Chris explicitly reassigned O01 from Claude to Codex and requested progress
+through the full approved backlog, with larger related PRs to reduce repeated
+CI runs. The earlier instruction that Claude owns O01 is superseded. Related
+foundation/security changes may exceed the older eight-file/card-per-PR
+limit when they form one reviewable outcome; preserve behavioral tests and
+acceptance gates. No unrelated mega-PR or direct main commits.
+
+Chris offered to merge green PRs while Codex works on the next PR. Adopt
+that workflow: Codex completes local testing and exact-head review before
+handoff; owner merges only after CI and applicable previews pass. Subsequent
+PRs retain predecessor dependencies and are repaired/rebased if upstream
+fails or changes. O01/O02 remain IN_REVIEW/incomplete until their acceptance
+evidence passes. Model/phase checkpoints and approvals for live activation,
+spending and destructive customer-data changes still apply.
+
+
+Built: Today excludes finance exceptions and queries for STAFF; Activity
+counts/pages/summaries share a fail-closed operational-action allowlist and
+omit arbitrary audit payloads; customer, agreement and appliance details
+use dedicated operational selects. Staff agreement lists show status/counts
+without prices or free-text rental labels. Jobs/driver/dispatch queries are
+bounded operational selects; repair costs and full agreement/customer objects
+are excluded from staff client props. Repair-cost writes remain owner/admin
+only; operational checklist updates remain available. Fleet profitability
+and finance-bearing read helpers require OWNER/ADMIN. Restricted create/export
+controls are hidden, with existing real server action/export guards retained.
+Search now authorizes callers and selects only its public desk DTO fields.
+
+O02 safeguard: both DIRECT_URL (migration config) and DATABASE_URL (runtime,
+before cached-client reuse) must match the verified vercel-preview-2 endpoint
+on non-production Vercel deployments. Host/database/port/query-override checks
+fail before connection, without logging credentials. Neon read-only identities:
+project jolly-term-08991992, branch br-broad-union-b784qy62, endpoint
+ep-silent-hill-b7rpraoc. Production and local/CI behavior remain unchanged.
+No Vercel environment values were exposed or changed. See PREVIEW-SETUP.md.
+
+Verification: local focused tests and typecheck passed; full local suite had
+549 passing tests and only the four real-Postgres integration suites blocked
+by the absent local database (30 test cases). CI is the required database gate.
+CI-only guarded staff and second-customer fixtures plus signed-in Playwright
+negative payload/URL/export tests, checklist persistence, customer isolation,
+360/768/1440 light/dark/keyboard/axe coverage are added. Browser results are
+pending CI; no production fixture or manual visual verification is claimed.
+O01 is IN_REVIEW until the grouped PR passes gate G. Full O02 still needs its
+runtime fixture/private storage acceptance proof; O09/O13 remain blocked.
+
+PR #95 merged as d504acab65c7029ebbfe8307a38444979da6e997; CI36738495139
+passed (532 tests, 55 browser/axe checks and actual missing-column rollback
+proof). Production dpl_FnK59u7TFxTWjAecUyCfW7ZQXvFQ READY. Next work while
+owner merges: O02 migration upgrade proof in disposable CI, then reassess
+remaining foundations before dependent schema/UI work. Keep current B1 model.

@@ -9,6 +9,8 @@ const customerFindMany = vi.fn();
 const applianceFindMany = vi.fn();
 const leadFindMany = vi.fn();
 
+vi.mock("@/lib/session", () => ({ requireRole: vi.fn().mockResolvedValue({ user: { role: "OWNER" } }) }));
+
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     customer: { findMany: (...args: unknown[]) => customerFindMany(...args) },
@@ -18,8 +20,24 @@ vi.mock("@/lib/prisma", () => ({
 }));
 
 import { searchAll } from "@/domains/search";
+import { requireRole } from "@/lib/session";
 
 describe("searchAll", () => {
+  it("rejects unauthorized callers before any search query", async () => {
+    vi.mocked(requireRole).mockRejectedValueOnce(new Error("unauthorized"));
+    await expect(searchAll("customer")).rejects.toThrow("unauthorized");
+    expect(customerFindMany).not.toHaveBeenCalled();
+    expect(applianceFindMany).not.toHaveBeenCalled();
+    expect(leadFindMany).not.toHaveBeenCalled();
+  });
+  it("selects only fields in the search DTO", async () => {
+    await searchAll("customer");
+    expect(customerFindMany.mock.calls[0][0].select).toEqual({ id: true, companyName: true,
+      user: { select: { name: true, email: true } } });
+    expect(applianceFindMany.mock.calls[0][0].select).toEqual({ id: true, assetNumber: true, manufacturer: true,
+      applianceType: { select: { name: true } } });
+    expect(leadFindMany.mock.calls[0][0].select).toEqual({ id: true, contactName: true, email: true, status: true });
+  });
   beforeEach(() => {
     customerFindMany.mockReset().mockResolvedValue([]);
     applianceFindMany.mockReset().mockResolvedValue([]);

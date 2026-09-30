@@ -1,6 +1,7 @@
+import { requireRole } from "@/lib/session";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { getJobById } from "@/domains/jobs";
+import { getDeskJobById } from "@/domains/desk-access";
 import { JobDetailPanel } from "./job-detail-panel";
 
 export const metadata = { title: "Job" };
@@ -10,8 +11,10 @@ export default async function JobDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const session = await requireRole("OWNER", "ADMIN", "STAFF");
+  const canViewFinance = session.user.role === "OWNER" || session.user.role === "ADMIN";
   const { id } = await params;
-  const job = await getJobById(id);
+  const job = await getDeskJobById(id);
 
   if (!job) {
     notFound();
@@ -50,7 +53,16 @@ export default async function JobDetailPage({
       )}
 
       <div className="mt-6">
-        <JobDetailPanel job={job} />
+        <JobDetailPanel job={{
+          id: job.id, type: job.type, status: job.status,
+          completionNotes: job.completionNotes, checklist: job.checklist,
+          appliances: job.appliances.map(({ appliance }) => ({ appliance: {
+            id: appliance.id, assetNumber: appliance.assetNumber, status: appliance.status,
+            applianceType: { name: appliance.applianceType.name },
+          } })),
+          photos: job.photos.map(({ id, url, altText }) => ({ id, url, altText })),
+          ...(job.canViewFinance ? { partsCostCents: job.partsCostCents, laborCostCents: job.laborCostCents } : {}),
+        }} canViewFinance={canViewFinance} />
       </div>
     </div>
   );

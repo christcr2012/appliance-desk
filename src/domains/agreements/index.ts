@@ -1,3 +1,4 @@
+import { requireRole } from "@/lib/session";
 import Stripe from "stripe";
 import { prisma } from "@/lib/prisma";
 import type { RentalAgreementStatus } from "@prisma/client";
@@ -70,6 +71,7 @@ export async function getAgreementsPage(
   skip: number,
   pageSize: number,
 ) {
+  await requireRole("OWNER", "ADMIN");
   return prisma.rentalAgreement.findMany({
     where: filter?.status ? { status: filter.status } : undefined,
     include: {
@@ -84,6 +86,7 @@ export async function getAgreementsPage(
 }
 
 export async function getAgreementById(id: string) {
+  await requireRole("OWNER", "ADMIN");
   return prisma.rentalAgreement.findUnique({
     where: { id },
     include: {
@@ -633,3 +636,4 @@ export async function extendReservation(userId: string, agreementId: string) {
 
   return updated;
 }
+

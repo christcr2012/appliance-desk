@@ -1,3 +1,4 @@
+import { requireRole } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { getBusinessSettings } from "@/domains/settings";
 
@@ -54,6 +55,7 @@ function addressLabel(
 }
 
 export async function getWorkOrderDetail(jobId: string): Promise<WorkOrderDetail | null> {
+  await requireRole("OWNER", "ADMIN", "STAFF");
   const [job, settings] = await Promise.all([
     prisma.job.findUnique({
       where: { id: jobId },
@@ -106,3 +108,4 @@ export async function getWorkOrderDetail(jobId: string): Promise<WorkOrderDetail
     },
   };
 }
+

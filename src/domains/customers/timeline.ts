@@ -1,3 +1,4 @@
+import { requireRole } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 
 // ---------------------------------------------------------------------------
@@ -52,6 +53,7 @@ function summarizeAuditAction(action: string): string {
 }
 
 export async function getCustomerTimeline(customerId: string): Promise<TimelineEntry[]> {
+  await requireRole("OWNER", "ADMIN");
   const [agreements, jobs, maintenanceRequests, notes] = await Promise.all([
     prisma.rentalAgreement.findMany({ where: { customerId }, select: { id: true } }),
     prisma.job.findMany({ where: { customerId }, select: { id: true } }),
@@ -158,3 +160,4 @@ export async function deleteCustomerContact(customerId: string, contactId: strin
   // customer's contact.
   await prisma.customerContact.deleteMany({ where: { id: contactId, customerId } });
 }
+

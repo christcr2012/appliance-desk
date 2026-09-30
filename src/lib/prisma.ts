@@ -3,6 +3,11 @@ import { PrismaNeon } from "@prisma/adapter-neon";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@prisma/client";
 import ws from "ws";
+import { assertPreviewDatabaseUrls } from "./preview-database-safety";
+
+// Check even before reusing a cached client: runtime and migration URLs must
+// both identify the verified preview branch on non-production Vercel deploys.
+assertPreviewDatabaseUrls();
 
 // Reuse a single Prisma Client across hot reloads in dev, and across
 // serverless invocations on Vercel where the module cache persists.

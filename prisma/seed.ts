@@ -232,6 +232,48 @@ async function main() {
   await seedBusinessContent();
   await seedOwnerAccount();
   await seedTestCustomerFixture();
+  await seedStaffSecurityFixture();
+}
+
+async function seedStaffSecurityFixture() {
+  const email = process.env.TEST_STAFF_EMAIL;
+  const password = process.env.TEST_STAFF_PASSWORD;
+  if (!email || !password) return;
+  const target = new URL(process.env.DATABASE_URL ?? "");
+  if (process.env.CI !== "true" || target.hostname !== "localhost" || target.pathname !== "/appliance_desk_test") {
+    throw new Error("Staff security fixtures require CI's disposable localhost database.");
+  }
+  if (!await prisma.user.findUnique({ where: { email } })) {
+    await auth.api.signUpEmail({ body: { email, password, name: "CI Staff" } });
+  }
+  await prisma.user.update({ where: { email }, data: { role: "STAFF", emailVerified: true } });
+  const customer = await prisma.customer.findFirstOrThrow({
+    where: { user: { email: process.env.TEST_CUSTOMER_EMAIL } },
+    include: { serviceAddresses: true, rentalAgreements: { include: { lines: true } } },
+  });
+  const address = customer.serviceAddresses[0]!;
+  const agreement = customer.rentalAgreements[0]!;
+  await prisma.rentalLine.update({ where: { id: agreement.lines[0]!.id },
+    data: { label: "Restricted rental price 782341", monthlyPriceCents: 782341 } });
+  const type = await prisma.applianceType.findFirstOrThrow();
+  const appliance = await prisma.appliance.upsert({ where: { id: "ci-security-appliance" },
+    create: { id: "ci-security-appliance", assetNumber: "CI-SECURITY-UNIT", applianceTypeId: type.id, acquisitionCostCents: 8675309 },
+    update: {} });
+  await prisma.job.upsert({ where: { id: "ci-security-job" }, create: {
+    id: "ci-security-job", type: "MAINTENANCE_VISIT", status: "IN_PROGRESS",
+    customerId: customer.id, serviceAddressId: address.id, agreementId: agreement.id,
+    partsCostCents: 932187, laborCostCents: 782341,
+    checklist: [{ item: "CI operational check", checked: false }],
+    appliances: { create: { applianceId: appliance.id } },
+  }, update: {} });
+  const otherUser = await prisma.user.upsert({ where: { id: "ci-isolation-other-user" },
+    create: { id: "ci-isolation-other-user", name: "Other Customer", email: "ci-other@example.test", role: "CUSTOMER" }, update: {} });
+  await prisma.customer.upsert({ where: { id: "ci-isolation-other-customer" },
+    create: { id: "ci-isolation-other-customer", userId: otherUser.id, referralCode: "CI-OTHER" }, update: {} });
+  await prisma.invoice.upsert({ where: { id: "ci-isolation-other-invoice" },
+    create: { id: "ci-isolation-other-invoice", customerId: "ci-isolation-other-customer", status: "OPEN",
+      subtotalCents: 9876543, amountDueCents: 9876543 }, update: {} });
+  console.log("Created CI-only staff security and customer isolation fixtures.");
 }
 
 main()

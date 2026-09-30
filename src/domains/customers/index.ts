@@ -1,3 +1,4 @@
+import { requireRole } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { getActiveApplianceOptionsForCustomer } from "@/domains/agreements/active-appliances";
@@ -59,6 +60,7 @@ export async function getCustomersPage(skip: number, pageSize: number) {
 }
 
 export async function getCustomerById(id: string) {
+  await requireRole("OWNER", "ADMIN");
   return prisma.customer.findUnique({
     where: { id },
     include: {
@@ -279,3 +281,4 @@ export async function addServiceAddress(
 
   return address;
 }
+

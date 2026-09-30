@@ -59,8 +59,8 @@ type JobRow = {
   type: JobType;
   status: JobStatus;
   completionNotes: string | null;
-  partsCostCents: number | null;
-  laborCostCents: number | null;
+  partsCostCents?: number | null;
+  laborCostCents?: number | null;
   checklist: unknown;
   appliances: {
     appliance: {
@@ -73,7 +73,7 @@ type JobRow = {
   photos: { id: string; url: string; altText: string | null }[];
 };
 
-export function JobDetailPanel({ job }: { job: JobRow }) {
+export function JobDetailPanel({ job, canViewFinance = false }: { job: JobRow; canViewFinance?: boolean }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
@@ -286,7 +286,7 @@ export function JobDetailPanel({ job }: { job: JobRow }) {
         </div>
       )}
 
-      {job.type === "MAINTENANCE_VISIT" && (
+      {canViewFinance && job.type === "MAINTENANCE_VISIT" && (
         <div className="rounded-lg border border-gray-200 bg-white p-5">
           <h2 className="font-medium text-gray-900">Repair cost</h2>
           <p className="mt-1 text-sm text-gray-600">
@@ -434,3 +434,4 @@ export function JobDetailPanel({ job }: { job: JobRow }) {
     </div>
   );
 }
+

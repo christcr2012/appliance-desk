@@ -8,6 +8,10 @@
 // DIRECT_URL is Neon's unpooled connection string — Migrate needs a
 // session-level (non-pgbouncer) connection to run schema changes safely.
 import { defineConfig, env } from "prisma/config";
+import { assertPreviewDatabaseUrls } from "./src/lib/preview-database-safety";
+
+// Refuse a mismatched preview migration target before Prisma can connect.
+assertPreviewDatabaseUrls();
 
 export default defineConfig({
   schema: "prisma/schema.prisma",

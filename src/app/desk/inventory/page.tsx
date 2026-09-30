@@ -1,3 +1,4 @@
+import { requireRole } from "@/lib/session";
 import Link from "next/link";
 import { getAppliancesPage, getAppliancesCount, getApplianceCountsByStatus } from "@/domains/inventory";
 import { getAllApplianceTypes } from "@/domains/settings";
@@ -26,6 +27,8 @@ export default async function InventoryPage({
 }: {
   searchParams: Promise<{ status?: string; page?: string }>;
 }) {
+  const session = await requireRole("OWNER", "ADMIN", "STAFF");
+  const canManage = session.user.role === "OWNER" || session.user.role === "ADMIN";
   const { status: rawStatus, page: rawPage } = await searchParams;
   const status = isApplianceStatus(rawStatus) ? rawStatus : undefined;
   const filter = status ? { status } : undefined;
@@ -59,20 +62,20 @@ export default async function InventoryPage({
           <ApplianceServiceIcon className="h-5 w-5 text-gray-500" />
           Inventory
         </h1>
-        <ExportCsvLink
+        {canManage && <ExportCsvLink
           href={status ? `/desk/inventory/export?status=${status}` : "/desk/inventory/export"}
-        />
+        />}
       </div>
       <p className="mt-1 text-sm text-gray-600">
         Every individual appliance unit you own — separate from the
         categories and pricing managed in Settings.
       </p>
 
-      <div className="mt-6">
+      {canManage && <div className="mt-6">
         <NewApplianceForm
           applianceTypes={activeTypes.map((t) => ({ id: t.id, name: t.name }))}
         />
-      </div>
+      </div>}
 
       <nav aria-label="Filter inventory by status" className="mt-8 flex flex-wrap gap-2">
         {STATUS_TABS.map((tab) => {
@@ -103,7 +106,7 @@ export default async function InventoryPage({
             : "No appliances yet — add your first one above as you obtain it."}
         </p>
       ) : (
-        <InventoryList appliances={appliances} />
+        <InventoryList appliances={appliances} canManage={canManage} />
       )}
 
       <Pagination
@@ -115,3 +118,4 @@ export default async function InventoryPage({
     </div>
   );
 }
+

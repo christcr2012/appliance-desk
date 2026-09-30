@@ -1,5 +1,7 @@
+import { requireRole } from "@/lib/session";
+import { getDeskAgreementsPage } from "@/domains/desk-access";
 import Link from "next/link";
-import { getAgreementsPage, getAgreementsCount, isReservationStale } from "@/domains/agreements";
+import { getAgreementsCount, isReservationStale } from "@/domains/agreements";
 import { formatCents } from "@/domains/pricing";
 import type { RentalAgreementStatus } from "@prisma/client";
 import { parsePage, paginationMeta } from "@/domains/pagination";
@@ -34,13 +36,15 @@ export default async function AgreementsPage({
 }: {
   searchParams: Promise<{ status?: string; page?: string }>;
 }) {
+  const session = await requireRole("OWNER", "ADMIN", "STAFF");
+  const canViewFinance = session.user.role === "OWNER" || session.user.role === "ADMIN";
   const { status: rawStatus, page: rawPage } = await searchParams;
   const status = isAgreementStatus(rawStatus) ? rawStatus : undefined;
   const filter = status ? { status } : undefined;
 
   const totalCount = await getAgreementsCount(filter);
   const meta = paginationMeta(totalCount, parsePage(rawPage));
-  const agreements = await getAgreementsPage(filter, meta.skip, meta.pageSize);
+  const agreements = await getDeskAgreementsPage(filter, meta.skip, meta.pageSize);
 
   function agreementsHref(page: number, forStatus: RentalAgreementStatus | "ALL" = status ?? "ALL") {
     const params = new URLSearchParams();
@@ -54,13 +58,13 @@ export default async function AgreementsPage({
     <div>
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Rental agreements</h1>
-        <Link
+        {canViewFinance && <Link
           href="/desk/agreements/new"
           className="inline-flex items-center gap-1 rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
         >
           <PlusIcon className="h-4 w-4" />
           New agreement
-        </Link>
+        </Link>}
       </div>
 
       <nav aria-label="Filter agreements by status" className="mt-6 flex flex-wrap gap-2">
@@ -113,11 +117,11 @@ export default async function AgreementsPage({
                     )}
                   </p>
                   <p>
-                    {a.lines.length > 0
+                    {canViewFinance && a.applianceCount > 0
                       ? `${formatCents(
-                          a.lines.reduce((sum, l) => sum + l.monthlyPriceCents, 0),
+                          a.monthlyCents ?? 0,
                         )}/mo`
-                      : "No appliances yet"}
+                      : `${a.applianceCount} appliance line(s)`}
                   </p>
                 </div>
               </Link>
@@ -135,3 +139,4 @@ export default async function AgreementsPage({
     </div>
   );
 }
+

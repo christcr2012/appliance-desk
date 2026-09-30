@@ -34,7 +34,7 @@ const STATUS_TONE: Record<ApplianceStatus, StatusTone> = {
  * rendered list used to be, plus selection. Bulk status change reuses
  * bulkUpdateApplianceStatusAction, which applies to whatever in the
  * selection is actually a valid transition and reports what wasn't. */
-export function InventoryList({ appliances }: { appliances: ApplianceRow[] }) {
+export function InventoryList({ appliances, canManage = false }: { appliances: ApplianceRow[]; canManage?: boolean }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -78,7 +78,7 @@ export function InventoryList({ appliances }: { appliances: ApplianceRow[] }) {
 
   return (
     <div className="mt-6">
-      {selected.size > 0 && (
+      {canManage && selected.size > 0 && (
         <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-gray-300 bg-gray-50 p-3 text-sm">
           <span className="font-medium text-gray-900">{selected.size} selected</span>
           <label htmlFor="bulkStatus" className="sr-only">
@@ -121,23 +121,23 @@ export function InventoryList({ appliances }: { appliances: ApplianceRow[] }) {
       )}
 
       <div className="rounded-lg border border-gray-200 bg-white">
-        <label className="flex items-center gap-2 border-b border-gray-200 px-4 py-2 text-sm text-gray-600">
+        {canManage && <label className="flex items-center gap-2 border-b border-gray-200 px-4 py-2 text-sm text-gray-600">
           <input
             type="checkbox"
             checked={selected.size === appliances.length && appliances.length > 0}
             onChange={toggleAll}
           />
           Select all on this page
-        </label>
+        </label>}
         <ul className="divide-y divide-gray-200">
           {appliances.map((appliance) => (
             <li key={appliance.id} className="flex items-center gap-3 px-4 py-4 hover:bg-gray-50">
-              <input
+              {canManage && <input
                 type="checkbox"
                 aria-label={`Select ${appliance.assetNumber}`}
                 checked={selected.has(appliance.id)}
                 onChange={() => toggle(appliance.id)}
-              />
+              />}
               <Link
                 href={`/desk/inventory/${appliance.id}`}
                 className="flex flex-1 flex-col gap-1 sm:flex-row sm:items-center sm:justify-between"
@@ -167,3 +167,4 @@ export function InventoryList({ appliances }: { appliances: ApplianceRow[] }) {
     </div>
   );
 }
+

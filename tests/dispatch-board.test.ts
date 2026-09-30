@@ -131,6 +131,8 @@ const jobFindMany = vi.fn();
 const jobFindUniqueOrThrow = vi.fn();
 const jobUpdate = vi.fn();
 
+vi.mock("@/lib/session", () => ({ requireRole: vi.fn().mockResolvedValue({ user: { role: "OWNER" } }) }));
+
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     job: {
@@ -200,3 +202,4 @@ describe("getJobChecklist / updateJobChecklist", () => {
     });
   });
 });
+

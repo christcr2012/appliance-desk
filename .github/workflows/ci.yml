@@ -43,6 +43,8 @@ jobs:
       OWNER_PASSWORD: Ci-Test-Owner-Password-Not-Real-1!
       TEST_CUSTOMER_EMAIL: ci-customer@example.test
       TEST_CUSTOMER_PASSWORD: Ci-Test-Customer-Password-Not-Real-1!
+      TEST_STAFF_EMAIL: ci-staff@example.test
+      TEST_STAFF_PASSWORD: Ci-Test-Staff-Password-Not-Real-1!
 
     steps:
       - uses: actions/checkout@v4

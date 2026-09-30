@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { requireRole } from "@/lib/session";
 import {
   APPLIANCE_MAINTENANCE_DUE_DAYS,
   UNINSPECTED_RETURN_DAYS,
@@ -48,6 +49,8 @@ function customerDisplayName(customer: { user: { name: string | null; email: str
  * dedicated timestamp column for a secondary sort key.
  */
 export async function getExceptions(): Promise<ExceptionItem[]> {
+  const session = await requireRole("OWNER", "ADMIN", "STAFF");
+  const canViewFinance = ["OWNER", "ADMIN"].includes((session.user as { role?: string }).role ?? "");
   const now = new Date();
 
   const [
@@ -61,15 +64,15 @@ export async function getExceptions(): Promise<ExceptionItem[]> {
     activeTermAgreements,
     rentedAppliances,
   ] = await Promise.all([
-    prisma.rentalAgreement.findMany({
+    canViewFinance ? prisma.rentalAgreement.findMany({
       where: { billingBlockedReason: { not: null } },
       select: {
         id: true,
         billingBlockedReason: true,
         updatedAt: true,
-        customer: { include: { user: { select: { name: true, email: true } } } },
+        customer: { select: { user: { select: { name: true, email: true } } } },
       },
-    }),
+    }) : Promise.resolve([]),
     prisma.rentalAgreement.findMany({
       where: {
         status: { in: ["DRAFT", "AWAITING_SIGNATURE"] },
@@ -78,10 +81,10 @@ export async function getExceptions(): Promise<ExceptionItem[]> {
       select: {
         id: true,
         reservationExpiresAt: true,
-        customer: { include: { user: { select: { name: true, email: true } } } },
+        customer: { select: { user: { select: { name: true, email: true } } } },
       },
     }),
-    prisma.invoice.findMany({
+    canViewFinance ? prisma.invoice.findMany({
       where: { status: { in: ["DELINQUENT", "OPEN"] }, dueDate: { lt: now } },
       select: {
         id: true,
@@ -89,16 +92,16 @@ export async function getExceptions(): Promise<ExceptionItem[]> {
         dueDate: true,
         amountDueCents: true,
         amountPaidCents: true,
-        customer: { include: { user: { select: { name: true, email: true } } } },
+        customer: { select: { user: { select: { name: true, email: true } } } },
       },
-    }),
+    }) : Promise.resolve([]),
     prisma.job.findMany({
       where: { status: "SCHEDULED", scheduledAt: { lt: now } },
       select: {
         id: true,
         type: true,
         scheduledAt: true,
-        customer: { include: { user: { select: { name: true, email: true } } } },
+        customer: { select: { user: { select: { name: true, email: true } } } },
       },
     }),
     prisma.maintenanceRequest.findMany({
@@ -110,7 +113,7 @@ export async function getExceptions(): Promise<ExceptionItem[]> {
         id: true,
         openedAt: true,
         problem: true,
-        customer: { include: { user: { select: { name: true, email: true } } } },
+        customer: { select: { user: { select: { name: true, email: true } } } },
       },
     }),
     prisma.appliance.findMany({
@@ -120,7 +123,7 @@ export async function getExceptions(): Promise<ExceptionItem[]> {
       },
       select: { id: true, assetNumber: true, updatedAt: true, applianceType: { select: { name: true } } },
     }),
-    prisma.job.findMany({
+    canViewFinance ? prisma.job.findMany({
       where: {
         type: "MAINTENANCE_VISIT",
         status: "COMPLETED",
@@ -135,14 +138,14 @@ export async function getExceptions(): Promise<ExceptionItem[]> {
           select: { appliance: { select: { assetNumber: true, applianceType: { select: { name: true } } } } },
         },
       },
-    }),
+    }) : Promise.resolve([]),
     prisma.rentalAgreement.findMany({
       where: { status: "ACTIVE", termMonths: { not: null }, startDate: { not: null } },
       select: {
         id: true,
         termMonths: true,
         startDate: true,
-        customer: { include: { user: { select: { name: true, email: true } } } },
+        customer: { select: { user: { select: { name: true, email: true } } } },
       },
     }),
     prisma.appliance.findMany({
@@ -167,7 +170,7 @@ export async function getExceptions(): Promise<ExceptionItem[]> {
       .map((a) =>
         billingBlockedException({
           id: a.id,
-          billingBlockedReason: a.billingBlockedReason,
+          billingBlockedReason: a.billingBlockedReason!,
           updatedAt: a.updatedAt,
           customerName: customerDisplayName(a.customer),
         }),
@@ -188,7 +191,7 @@ export async function getExceptions(): Promise<ExceptionItem[]> {
           id: inv.id,
           customerId: inv.customerId,
           customerName: customerDisplayName(inv.customer),
-          dueDate: inv.dueDate,
+          dueDate: inv.dueDate!,
           amountDueCents: inv.amountDueCents,
           amountPaidCents: inv.amountPaidCents,
         }),
@@ -225,7 +228,7 @@ export async function getExceptions(): Promise<ExceptionItem[]> {
         const first = j.appliances[0]?.appliance;
         return missingRepairCostException({
           id: j.id,
-          completedAt: j.completedAt,
+          completedAt: j.completedAt!,
           applianceLabel: first ? `${first.applianceType.name} ${first.assetNumber}` : null,
         });
       }),
@@ -270,16 +273,19 @@ export async function getExceptions(): Promise<ExceptionItem[]> {
 /** Today's schedule — every job (of any status) due today, earliest
  * first. Used by /desk/today alongside getExceptions(). */
 export async function getTodaysJobs() {
+  await requireRole("OWNER", "ADMIN", "STAFF");
   const now = new Date();
   const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const startOfTomorrow = addDays(startOfDay, 1);
 
   return prisma.job.findMany({
     where: { scheduledAt: { gte: startOfDay, lt: startOfTomorrow } },
-    include: {
-      customer: { include: { user: { select: { name: true, email: true } } } },
-      serviceAddress: true,
+    select: {
+      id: true, type: true, status: true, scheduledAt: true,
+      customer: { select: { user: { select: { name: true, email: true } } } },
+      serviceAddress: { select: { line1: true, city: true } },
     },
     orderBy: [{ scheduledAt: "asc" }],
   });
 }
+

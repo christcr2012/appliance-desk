@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import QRCode from "qrcode";
-import { getApplianceById } from "@/domains/inventory";
+import { getOperationalApplianceById } from "@/domains/desk-access";
 import { PrintButton } from "./print-button";
 
 export const metadata = { title: "QR label" };
@@ -19,7 +19,7 @@ export default async function ApplianceQrLabelPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const appliance = await getApplianceById(id);
+  const appliance = await getOperationalApplianceById(id);
 
   if (!appliance) {
     notFound();
@@ -55,3 +55,4 @@ export default async function ApplianceQrLabelPage({
     </div>
   );
 }
+
