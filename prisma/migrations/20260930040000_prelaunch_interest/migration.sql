@@ -40,3 +40,6 @@ CREATE TABLE "LaunchDelivery" (
   CONSTRAINT "LaunchDelivery_subscriberId_fkey" FOREIGN KEY ("subscriberId") REFERENCES "LaunchSubscriber"("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 CREATE UNIQUE INDEX "LaunchDelivery_subscriberId_step_key" ON "LaunchDelivery"("subscriberId", "step");
+-- Initialize once during migration; page reads never create settings or race
+-- each other during the first parallel prerender after deployment.
+INSERT INTO "LaunchSettings" ("id", "updatedAt") VALUES ('singleton', CURRENT_TIMESTAMP);

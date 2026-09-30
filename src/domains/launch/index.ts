@@ -10,10 +10,8 @@ import {
 import { LAUNCH_STEPS, launchMessage } from "./messages";
 
 export async function getLaunchSettings() {
-  return prisma.launchSettings.upsert({
+  return prisma.launchSettings.findUniqueOrThrow({
     where: { id: "singleton" },
-    create: { id: "singleton" },
-    update: {},
   });
 }
 

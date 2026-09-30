@@ -2133,3 +2133,8 @@ Local isolated integration-test attempt could not resolve the Neon endpoint
 Postgres remains the full behavior/build/browser verification gate. The
 sandbox also refuses the tsx CLI's local IPC socket (EPERM); no workaround
 or production fixture execution was attempted.
+
+Before preview: initialize LaunchSettings inside the additive migration and
+make normal settings access read-only. This removes first-render concurrent
+upsert races; verified the initialization on the isolated branch (prelaunch
+true, email false). CI must re-run on this final migration version.
