@@ -1,3 +1,4 @@
+import { requireRole } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import type { ApplianceStatus } from "@prisma/client";
 import { ALL_APPLIANCE_STATUSES, canTransitionApplianceStatus } from "./lifecycle";
@@ -108,7 +109,8 @@ export async function getAppliancesPage(
 ) {
   return prisma.appliance.findMany({
     where: filter?.status ? { status: filter.status } : undefined,
-    include: { applianceType: true },
+    select: { id: true, assetNumber: true, status: true, manufacturer: true, model: true,
+      color: true, currentLocation: true, applianceType: { select: { name: true } } },
     orderBy: [{ createdAt: "desc" }],
     skip,
     take: pageSize,
@@ -116,6 +118,7 @@ export async function getAppliancesPage(
 }
 
 export async function getApplianceById(id: string) {
+  await requireRole("OWNER", "ADMIN");
   return prisma.appliance.findUnique({
     where: { id },
     include: {
@@ -487,6 +490,7 @@ export async function getFleetAnalytics(): Promise<{
     averageUtilizationFraction: number;
   };
 }> {
+  await requireRole("OWNER", "ADMIN");
   const asOf = new Date();
 
   const [appliances, assignments, repairJobAppliances] = await Promise.all([
@@ -621,3 +625,4 @@ export async function getApplianceProfitability(
   const { appliances } = await getFleetAnalytics();
   return appliances.find((a) => a.applianceId === applianceId) ?? null;
 }
+

@@ -1,3 +1,4 @@
+import { requireRole } from "@/lib/session";
 import { getCustomers } from "@/domains/customers";
 import { getAppliances } from "@/domains/inventory";
 import { RentalWizard } from "./rental-wizard";
@@ -9,6 +10,7 @@ export default async function NewAgreementPage({
 }: {
   searchParams: Promise<{ customerId?: string }>;
 }) {
+  await requireRole("OWNER", "ADMIN");
   const { customerId } = await searchParams;
   const [customers, availableAppliances] = await Promise.all([
     getCustomers(),
@@ -51,3 +53,4 @@ export default async function NewAgreementPage({
     </div>
   );
 }
+

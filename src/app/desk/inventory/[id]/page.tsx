@@ -1,4 +1,6 @@
+import { requireRole } from "@/lib/session";
 import { notFound } from "next/navigation";
+import { OperationalAppliance } from "./operational-appliance";
 import Link from "next/link";
 import {
   getApplianceById,
@@ -19,7 +21,9 @@ export default async function ApplianceDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const session = await requireRole("OWNER", "ADMIN", "STAFF");
   const { id } = await params;
+  if (session.user.role === "STAFF") return <OperationalAppliance id={id} />;
   const appliance = await getApplianceById(id);
 
   if (!appliance) {
@@ -105,3 +109,4 @@ export default async function ApplianceDetailPage({
     </div>
   );
 }
+

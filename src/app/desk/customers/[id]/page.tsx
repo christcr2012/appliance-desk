@@ -1,4 +1,6 @@
 import { notFound } from "next/navigation";
+import { requireRole } from "@/lib/session";
+import { OperationalCustomer } from "./operational-customer";
 import Link from "next/link";
 import { getCustomerById, getCustomerTimeline, getCustomerContacts } from "@/domains/customers";
 import { getTasksForCustomer } from "@/domains/tasks";
@@ -26,7 +28,9 @@ export default async function CustomerDetailPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ newAccount?: string; emailSent?: string }>;
 }) {
+  const session = await requireRole("OWNER", "ADMIN", "STAFF");
   const { id } = await params;
+  if ((session.user as { role?: string }).role === "STAFF") return <OperationalCustomer id={id} />;
   const { newAccount, emailSent } = await searchParams;
   const [customer, timeline, contacts, tasks] = await Promise.all([
     getCustomerById(id),
@@ -278,3 +282,4 @@ export default async function CustomerDetailPage({
     </div>
   );
 }
+

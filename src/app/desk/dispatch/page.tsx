@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { requireRole } from "@/lib/session";
 import { getDispatchBoardJobs } from "@/domains/jobs";
 import { PlusIcon } from "@/components/icons/status-icons";
 import {
@@ -25,7 +26,11 @@ function parseDateParam(value: string | undefined): Date {
   if (value) {
     const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
     if (match) {
-      const d = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+      const d = new Date(
+        Number(match[1]),
+        Number(match[2]) - 1,
+        Number(match[3]),
+      );
       if (!Number.isNaN(d.getTime())) return d;
     }
   }
@@ -45,50 +50,63 @@ function boardLink(view: View, date: Date): string {
 }
 
 function formatTime(date: Date): string {
-  return date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  return date.toLocaleTimeString(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+  });
 }
 
 function jobTypeLabel(type: string): string {
   return type.replace(/_/g, " ").toLowerCase();
 }
 
-type BoardJob = Awaited<ReturnType<typeof getDispatchBoardJobs>>["scheduled"][number];
+type BoardJob = Awaited<
+  ReturnType<typeof getDispatchBoardJobs>
+>["scheduled"][number];
 
 function customerLabel(job: BoardJob): string {
-  return job.customer ? job.customer.user.name ?? job.customer.user.email : "No customer on file";
+  return job.customer
+    ? (job.customer.user.name ?? job.customer.user.email)
+    : "No customer on file";
 }
 
 function JobRow({ job, conflicted }: { job: BoardJob; conflicted: boolean }) {
   const progress = checklistProgress(parseChecklist(job.checklist, job.type));
   return (
-    <Link
-      href={`/desk/jobs/${job.id}`}
-      className={`flex flex-col gap-1 rounded-md border px-3 py-2 text-sm hover:bg-gray-50 sm:flex-row sm:items-center sm:justify-between ${
-        conflicted ? "border-amber-300 bg-amber-50" : "border-gray-200 bg-white"
-      }`}
-    >
-      <div>
-        <p className="font-medium text-gray-900">
-          {job.scheduledAt && `${formatTime(new Date(job.scheduledAt))} — `}
-          {jobTypeLabel(job.type)} — {customerLabel(job)}
-        </p>
-        <p className="text-gray-600">
-          {job.serviceAddress
-            ? `${job.serviceAddress.line1}, ${job.serviceAddress.city}`
-            : "No address on file"}
-        </p>
-      </div>
-      <div className="text-xs text-gray-500 sm:text-right">
-        {conflicted && (
-          <p className="font-medium text-amber-700">⚠ Double-booked around this time</p>
-        )}
-        {progress.total > 0 && (
-          <p>
-            Checklist: {progress.done}/{progress.total}
+    <li>
+      <Link
+        href={`/desk/jobs/${job.id}`}
+        className={`flex flex-col gap-1 rounded-md border px-3 py-2 text-sm hover:bg-gray-50 sm:flex-row sm:items-center sm:justify-between ${
+          conflicted
+            ? "border-amber-300 bg-amber-50"
+            : "border-gray-200 bg-white"
+        }`}
+      >
+        <div>
+          <p className="font-medium text-gray-900">
+            {job.scheduledAt && `${formatTime(new Date(job.scheduledAt))} — `}
+            {jobTypeLabel(job.type)} — {customerLabel(job)}
           </p>
-        )}
-      </div>
-    </Link>
+          <p className="text-gray-600">
+            {job.serviceAddress
+              ? `${job.serviceAddress.line1}, ${job.serviceAddress.city}`
+              : "No address on file"}
+          </p>
+        </div>
+        <div className="text-xs text-gray-500 sm:text-right">
+          {conflicted && (
+            <p className="font-medium text-amber-700">
+              ⚠ Double-booked around this time
+            </p>
+          )}
+          {progress.total > 0 && (
+            <p>
+              Checklist: {progress.done}/{progress.total}
+            </p>
+          )}
+        </div>
+      </Link>
+    </li>
   );
 }
 
@@ -97,6 +115,9 @@ export default async function DispatchPage({
 }: {
   searchParams: Promise<{ view?: string; date?: string }>;
 }) {
+  const session = await requireRole("OWNER", "ADMIN", "STAFF");
+  const canScheduleJobs =
+    session.user.role === "OWNER" || session.user.role === "ADMIN";
   const { view: rawView, date: rawDate } = await searchParams;
   const view: View = isView(rawView) ? rawView : "day";
   const anchor = parseDateParam(rawDate);
@@ -115,9 +136,15 @@ export default async function DispatchPage({
     rangeEnd = addDays(anchor, 14);
   }
 
-  const { scheduled, unscheduled } = await getDispatchBoardJobs(rangeStart, rangeEnd);
+  const { scheduled, unscheduled } = await getDispatchBoardJobs(
+    rangeStart,
+    rangeEnd,
+  );
   const conflicting = findConflictingJobIds(
-    scheduled.map((j): DispatchableJob => ({ id: j.id, scheduledAt: j.scheduledAt })),
+    scheduled.map((j): DispatchableJob => ({
+      id: j.id,
+      scheduledAt: j.scheduledAt,
+    })),
   );
 
   const jobsByDay = new Map<string, typeof scheduled>();
@@ -136,13 +163,15 @@ export default async function DispatchPage({
           <DeliveryServiceIcon className="h-5 w-5 text-gray-500" />
           Dispatch
         </h1>
-        <Link
-          href="/desk/jobs/new"
-          className="inline-flex items-center gap-1 rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
-        >
-          <PlusIcon className="h-4 w-4" />
-          Schedule a job
-        </Link>
+        {canScheduleJobs && (
+          <Link
+            href="/desk/jobs/new"
+            className="inline-flex items-center gap-1 rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
+          >
+            <PlusIcon className="h-4 w-4" />
+            Schedule a job
+          </Link>
+        )}
       </div>
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
@@ -162,9 +191,18 @@ export default async function DispatchPage({
             </Link>
           ))}
         </nav>
-        <nav aria-label="Change date" className="flex items-center gap-2 text-sm">
+        <nav
+          aria-label="Change date"
+          className="flex items-center gap-2 text-sm"
+        >
           <Link
-            href={boardLink(view, addDays(anchor, view === "week" ? -7 : view === "agenda" ? -14 : -1))}
+            href={boardLink(
+              view,
+              addDays(
+                anchor,
+                view === "week" ? -7 : view === "agenda" ? -14 : -1,
+              ),
+            )}
             className="rounded-md border border-gray-300 px-2 py-1 text-gray-700 hover:border-gray-400"
           >
             &larr; Earlier
@@ -176,7 +214,10 @@ export default async function DispatchPage({
             Today
           </Link>
           <Link
-            href={boardLink(view, addDays(anchor, view === "week" ? 7 : view === "agenda" ? 14 : 1))}
+            href={boardLink(
+              view,
+              addDays(anchor, view === "week" ? 7 : view === "agenda" ? 14 : 1),
+            )}
             className="rounded-md border border-gray-300 px-2 py-1 text-gray-700 hover:border-gray-400"
           >
             Later &rarr;
@@ -190,7 +231,8 @@ export default async function DispatchPage({
             Unscheduled ({unscheduled.length})
           </h2>
           <p className="mt-1 text-sm text-gray-600">
-            These jobs don&apos;t have a time on the calendar yet — open one to set it.
+            These jobs don&apos;t have a time on the calendar yet — open one to
+            set it.
           </p>
           <ul className="mt-3 space-y-2">
             {unscheduled.map((job) => (
@@ -210,11 +252,17 @@ export default async function DispatchPage({
             })}
           </h2>
           {scheduled.length === 0 ? (
-            <p className="mt-2 text-sm text-gray-600">Nothing scheduled for this day.</p>
+            <p className="mt-2 text-sm text-gray-600">
+              Nothing scheduled for this day.
+            </p>
           ) : (
             <ul className="mt-3 space-y-2">
               {scheduled.map((job) => (
-                <JobRow key={job.id} job={job} conflicted={conflicting.has(job.id)} />
+                <JobRow
+                  key={job.id}
+                  job={job}
+                  conflicted={conflicting.has(job.id)}
+                />
               ))}
             </ul>
           )}
@@ -227,12 +275,24 @@ export default async function DispatchPage({
             const key = dayKey(day);
             const dayJobs = jobsByDay.get(key) ?? [];
             return (
-              <div key={key} className="rounded-lg border border-gray-200 bg-white p-3">
-                <Link href={boardLink("day", day)} className="font-medium text-gray-900 hover:underline">
-                  {day.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}
+              <div
+                key={key}
+                className="rounded-lg border border-gray-200 bg-white p-3"
+              >
+                <Link
+                  href={boardLink("day", day)}
+                  className="font-medium text-gray-900 hover:underline"
+                >
+                  {day.toLocaleDateString(undefined, {
+                    weekday: "short",
+                    month: "short",
+                    day: "numeric",
+                  })}
                 </Link>
                 {dayJobs.length === 0 ? (
-                  <p className="mt-1 text-xs text-gray-500">Nothing scheduled</p>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Nothing scheduled
+                  </p>
                 ) : (
                   <ul className="mt-2 space-y-1">
                     {dayJobs.map((job) => (
@@ -240,11 +300,14 @@ export default async function DispatchPage({
                         <Link
                           href={`/desk/jobs/${job.id}`}
                           className={`block rounded px-1.5 py-1 text-xs hover:bg-gray-50 ${
-                            conflicting.has(job.id) ? "bg-amber-50 text-amber-800" : "text-gray-700"
+                            conflicting.has(job.id)
+                              ? "bg-amber-50 text-amber-800"
+                              : "text-gray-700"
                           }`}
                         >
-                          {job.scheduledAt && formatTime(new Date(job.scheduledAt))} —{" "}
-                          {jobTypeLabel(job.type)}
+                          {job.scheduledAt &&
+                            formatTime(new Date(job.scheduledAt))}{" "}
+                          — {jobTypeLabel(job.type)}
                           {conflicting.has(job.id) && " ⚠"}
                         </Link>
                       </li>
@@ -260,14 +323,18 @@ export default async function DispatchPage({
       {view === "agenda" && (
         <div className="mt-6 space-y-6">
           {[...jobsByDay.keys()].length === 0 ? (
-            <p className="text-sm text-gray-600">Nothing scheduled in the next two weeks.</p>
+            <p className="text-sm text-gray-600">
+              Nothing scheduled in the next two weeks.
+            </p>
           ) : (
             [...jobsByDay.entries()]
               .sort(([a], [b]) => (a < b ? -1 : 1))
               .map(([key, dayJobs]) => (
                 <div key={key}>
                   <h2 className="font-medium text-gray-900">
-                    {new Date(dayJobs[0].scheduledAt as Date).toLocaleDateString(undefined, {
+                    {new Date(
+                      dayJobs[0].scheduledAt as Date,
+                    ).toLocaleDateString(undefined, {
                       weekday: "long",
                       month: "long",
                       day: "numeric",
@@ -275,7 +342,11 @@ export default async function DispatchPage({
                   </h2>
                   <ul className="mt-2 space-y-2">
                     {dayJobs.map((job) => (
-                      <JobRow key={job.id} job={job} conflicted={conflicting.has(job.id)} />
+                      <JobRow
+                        key={job.id}
+                        job={job}
+                        conflicted={conflicting.has(job.id)}
+                      />
                     ))}
                   </ul>
                 </div>

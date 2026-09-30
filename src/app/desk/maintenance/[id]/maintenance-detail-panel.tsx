@@ -35,8 +35,10 @@ const ALLOWED_NEXT: Record<MaintenanceStatusValue, MaintenanceStatusValue[]> = {
 
 export function MaintenanceDetailPanel({
   request,
+  canScheduleJobs = false,
 }: {
   request: { id: string; status: MaintenanceStatusValue; customerId: string };
+  canScheduleJobs?: boolean;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -57,29 +59,35 @@ export function MaintenanceDetailPanel({
     <div className="rounded-lg border border-gray-200 bg-white p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="font-medium text-gray-900">Status: {request.status}</h2>
-        <Link
-          href={`/desk/jobs/new?maintenanceRequestId=${request.id}`}
-          className="text-sm text-primary hover:underline"
-        >
-          + Schedule a job for this
-        </Link>
+        {canScheduleJobs && (
+          <Link
+            href={`/desk/jobs/new?maintenanceRequestId=${request.id}`}
+            className="text-sm text-primary hover:underline"
+          >
+            + Schedule a job for this
+          </Link>
+        )}
       </div>
 
       {nextStatuses.length === 0 ? (
-        <p className="mt-3 text-sm text-gray-600">This request is closed out.</p>
+        <p className="mt-3 text-sm text-gray-600">
+          This request is closed out.
+        </p>
       ) : (
         <div className="mt-3 flex flex-wrap gap-2">
-          {ALL_STATUSES.filter((s) => nextStatuses.includes(s.value)).map((s) => (
-            <button
-              key={s.value}
-              type="button"
-              disabled={isPending}
-              onClick={() => handleStatusChange(s.value)}
-              className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:border-gray-400 disabled:opacity-50"
-            >
-              Mark {s.label}
-            </button>
-          ))}
+          {ALL_STATUSES.filter((s) => nextStatuses.includes(s.value)).map(
+            (s) => (
+              <button
+                key={s.value}
+                type="button"
+                disabled={isPending}
+                onClick={() => handleStatusChange(s.value)}
+                className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:border-gray-400 disabled:opacity-50"
+              >
+                Mark {s.label}
+              </button>
+            ),
+          )}
         </div>
       )}
 

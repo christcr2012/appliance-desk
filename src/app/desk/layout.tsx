@@ -20,7 +20,6 @@ const OPERATIONAL_LINKS: AuthedNavLink[] = [
   { href: "/desk/dispatch", label: "Dispatch" },
   { href: "/desk/maintenance", label: "Maintenance" },
   { href: "/desk/inventory", label: "Inventory" },
-  { href: "/desk/fleet", label: "Fleet" },
   { href: "/desk/parts", label: "Parts" },
   { href: "/desk/activity", label: "Activity" },
 ];
@@ -30,6 +29,7 @@ const OPERATIONAL_LINKS: AuthedNavLink[] = [
 // this list only controls whether the link is shown, never the real
 // gate (see src/lib/session.ts's own comment on requireRole).
 const OWNER_ONLY_LINKS: AuthedNavLink[] = [
+  { href: "/desk/fleet", label: "Fleet" },
   { href: "/desk/dashboard", label: "Dashboard" },
   { href: "/desk/estimates", label: "Estimates" },
   { href: "/desk/purchase-orders", label: "Purchase orders" },
@@ -85,3 +85,4 @@ export default async function DeskLayout({
     </div>
   );
 }
+

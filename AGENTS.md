@@ -134,3 +134,21 @@ Claude-review/owner-merge hold in overhaul docs is superseded for Codex-owned
 PRs. Use PRs, never direct main commits. Preserve model/phase checkpoints and
 all separate approvals for live payments/messages, spending and destructive
 changes. Claude owns O01. See docs/plans/overhaul/PR-STACK.md's latest entry.
+
+
+## Owner execution update — 2026-09-30 (supersedes earlier O01 ownership)
+
+Chris explicitly reassigned O01 from Claude to Codex and requested progress
+through the full approved backlog, with larger related PRs to reduce repeated
+CI runs. The earlier instruction that Claude owns O01 is superseded. Related
+foundation/security changes may exceed the older eight-file/card-per-PR
+limit when they form one reviewable outcome; preserve behavioral tests and
+acceptance gates. No unrelated mega-PR or direct main commits.
+
+Chris offered to merge green PRs while Codex works on the next PR. Adopt
+that workflow: Codex completes local testing and exact-head review before
+handoff; owner merges only after CI and applicable previews pass. Subsequent
+PRs retain predecessor dependencies and are repaired/rebased if upstream
+fails or changes. O01/O02 remain IN_REVIEW/incomplete until their acceptance
+evidence passes. Model/phase checkpoints and approvals for live activation,
+spending and destructive customer-data changes still apply.

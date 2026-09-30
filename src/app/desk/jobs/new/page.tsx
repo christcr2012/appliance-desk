@@ -1,3 +1,4 @@
+import { requireRole } from "@/lib/session";
 import { getCustomers, getCustomerById, getCustomerApplianceOptions } from "@/domains/customers";
 import { getAgreementById } from "@/domains/agreements";
 import { getMaintenanceRequestById } from "@/domains/maintenance";
@@ -10,6 +11,7 @@ export default async function NewJobPage({
 }: {
   searchParams: Promise<{ agreementId?: string; maintenanceRequestId?: string; customerId?: string }>;
 }) {
+  await requireRole("OWNER", "ADMIN");
   const { agreementId, maintenanceRequestId, customerId } = await searchParams;
   const [customers, agreement, maintenanceRequest] = await Promise.all([
     getCustomers(),
@@ -78,3 +80,4 @@ export default async function NewJobPage({
     </div>
   );
 }
+

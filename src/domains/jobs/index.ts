@@ -1,3 +1,4 @@
+import { requireRole } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import type { JobStatus, JobType } from "@prisma/client";
 import { applianceStatusOnJobCompleted } from "@/domains/inventory/lifecycle";
@@ -37,6 +38,18 @@ export function canTransitionJobStatus(
   };
 }
 
+// Operational list/driver/dispatch records never need repair costs or a full
+// customer/agreement. Keep their query shape safe for every desk role.
+const JOB_OPERATIONAL_SELECT = {
+  id: true, type: true, status: true, scheduledAt: true, completedAt: true,
+  createdAt: true, notes: true, completionNotes: true, checklist: true,
+  customerId: true, serviceAddressId: true, agreementId: true,
+  customer: { select: { phone: true, user: { select: { name: true, email: true } } } },
+  serviceAddress: { select: { id: true, line1: true, line2: true, city: true, state: true, zip: true } },
+  appliances: { select: { appliance: { select: { id: true, assetNumber: true, status: true,
+    applianceType: { select: { name: true } } } } } },
+} as const;
+
 /** Total Job count matching the same optional status filter as
  * getJobsPage — used to clamp the page number for /desk/jobs's paginated
  * view. (The unpaginated getJobs() this used to sit next to was removed
@@ -44,6 +57,7 @@ export function canTransitionJobStatus(
  * pagination was added, and nothing else ever called the unpaginated
  * version.) */
 export async function getJobsCount(filter?: { status?: JobStatus }): Promise<number> {
+  await requireRole("OWNER", "ADMIN", "STAFF");
   return prisma.job.count({ where: filter?.status ? { status: filter.status } : undefined });
 }
 
@@ -52,13 +66,10 @@ export async function getJobsPage(
   skip: number,
   pageSize: number,
 ) {
+  await requireRole("OWNER", "ADMIN", "STAFF");
   return prisma.job.findMany({
     where: filter?.status ? { status: filter.status } : undefined,
-    include: {
-      customer: { include: { user: { select: { name: true, email: true } } } },
-      serviceAddress: true,
-      appliances: { include: { appliance: { include: { applianceType: true } } } },
-    },
+    select: JOB_OPERATIONAL_SELECT,
     orderBy: [{ scheduledAt: "asc" }],
     skip,
     take: pageSize,
@@ -73,6 +84,7 @@ export async function getJobsPage(
  * phone should show "what do I do right now," not a schedule browser
  * (that's what /desk/dispatch is for on a desktop). */
 export async function getDriverJobsForToday() {
+  await requireRole("OWNER", "ADMIN", "STAFF");
   const now = new Date();
   const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const startOfTomorrow = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000);
@@ -82,16 +94,13 @@ export async function getDriverJobsForToday() {
       status: { in: ["SCHEDULED", "IN_PROGRESS"] },
       scheduledAt: { gte: startOfDay, lt: startOfTomorrow },
     },
-    include: {
-      customer: { include: { user: { select: { name: true } } } },
-      serviceAddress: true,
-      appliances: { include: { appliance: { include: { applianceType: true } } } },
-    },
+    select: JOB_OPERATIONAL_SELECT,
     orderBy: [{ scheduledAt: "asc" }],
   });
 }
 
 export async function getJobById(id: string) {
+  await requireRole("OWNER", "ADMIN");
   return prisma.job.findUnique({
     where: { id },
     include: {
@@ -374,11 +383,6 @@ export async function setJobRepairCosts(
   return updated;
 }
 
-const DISPATCH_INCLUDE = {
-  customer: { include: { user: { select: { name: true, email: true } } } },
-  serviceAddress: true,
-} as const;
-
 /**
  * Everything the dispatch board (`/desk/dispatch`) needs for one call:
  * every active (SCHEDULED or IN_PROGRESS) job scheduled within
@@ -389,18 +393,19 @@ const DISPATCH_INCLUDE = {
  * filtered client-side.
  */
 export async function getDispatchBoardJobs(rangeStart: Date, rangeEnd: Date) {
+  await requireRole("OWNER", "ADMIN", "STAFF");
   const [scheduled, unscheduled] = await Promise.all([
     prisma.job.findMany({
       where: {
         status: { in: ["SCHEDULED", "IN_PROGRESS"] },
         scheduledAt: { gte: rangeStart, lt: rangeEnd },
       },
-      include: DISPATCH_INCLUDE,
+      select: JOB_OPERATIONAL_SELECT,
       orderBy: [{ scheduledAt: "asc" }],
     }),
     prisma.job.findMany({
       where: { status: { in: ["SCHEDULED", "IN_PROGRESS"] }, scheduledAt: null },
-      include: DISPATCH_INCLUDE,
+      select: JOB_OPERATIONAL_SELECT,
       orderBy: [{ createdAt: "asc" }],
     }),
   ]);
@@ -428,3 +433,4 @@ export async function updateJobChecklist(jobId: string, checklist: ChecklistItem
     data: { checklist },
   });
 }
+

@@ -1,3 +1,4 @@
+import { requireRole } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 
 // ---------------------------------------------------------------------------
@@ -23,6 +24,7 @@ export type SearchResults = {
  * jump-to lookup, not a full search results page with paging. A blank
  * or whitespace-only query returns nothing rather than every record. */
 export async function searchAll(rawQuery: string): Promise<SearchResults> {
+  await requireRole("OWNER", "ADMIN", "STAFF");
   const query = rawQuery.trim();
   if (!query) {
     return { query: "", customers: [], appliances: [], leads: [] };
@@ -38,7 +40,7 @@ export async function searchAll(rawQuery: string): Promise<SearchResults> {
           { companyName: { contains: query, mode: "insensitive" } },
         ],
       },
-      include: { user: { select: { name: true, email: true } } },
+      select: { id: true, companyName: true, user: { select: { name: true, email: true } } },
       take: RESULT_LIMIT,
     }),
     prisma.appliance.findMany({
@@ -50,7 +52,7 @@ export async function searchAll(rawQuery: string): Promise<SearchResults> {
           { serialNumber: { contains: query, mode: "insensitive" } },
         ],
       },
-      include: { applianceType: { select: { name: true } } },
+      select: { id: true, assetNumber: true, manufacturer: true, applianceType: { select: { name: true } } },
       take: RESULT_LIMIT,
     }),
     prisma.lead.findMany({
@@ -61,6 +63,7 @@ export async function searchAll(rawQuery: string): Promise<SearchResults> {
           { companyName: { contains: query, mode: "insensitive" } },
         ],
       },
+      select: { id: true, contactName: true, email: true, status: true },
       take: RESULT_LIMIT,
     }),
   ]);
@@ -87,3 +90,4 @@ export async function searchAll(rawQuery: string): Promise<SearchResults> {
     })),
   };
 }
+

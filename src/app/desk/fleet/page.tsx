@@ -1,3 +1,4 @@
+import { requireRole } from "@/lib/session";
 import Link from "next/link";
 import { getFleetAnalytics, getApplianceCountsByStatus } from "@/domains/inventory";
 import { formatCents } from "@/domains/pricing";
@@ -14,6 +15,7 @@ function Stat({ label, value }: { label: string; value: string }) {
 }
 
 export default async function FleetPage() {
+  await requireRole("OWNER", "ADMIN");
   const [{ appliances, totals }, statusCounts] = await Promise.all([
     getFleetAnalytics(),
     getApplianceCountsByStatus(),
@@ -133,3 +135,4 @@ function ApplianceRankList<
     </ul>
   );
 }
+
