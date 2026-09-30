@@ -1,6 +1,14 @@
 // Runs against CI's throwaway Postgres. Only the external email service is mocked.
 import { randomBytes } from "node:crypto";
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 import { prisma } from "@/lib/prisma";
 import {
   joinLaunchList,
@@ -26,6 +34,8 @@ const input = launchSignupSchema.parse({
   source: "instagram",
   consent: true,
 });
+
+beforeEach(() => send.mockClear());
 
 beforeAll(async () => {
   originalSettings = await prisma.launchSettings.findUnique({
@@ -113,7 +123,7 @@ describe("durable launch sequence", () => {
     send.mockResolvedValueOnce({ sent: false });
     await sendLaunchSequence();
     await sendLaunchSequence();
-    expect(send).toHaveBeenCalledTimes(2);
+    expect(send).toHaveBeenCalledTimes(1);
     const row = await prisma.launchSubscriber.findUniqueOrThrow({
       where: { email: address },
     });
@@ -129,7 +139,7 @@ describe("durable launch sequence", () => {
     expect(await unsubscribeLaunch("bad-token")).toBe(false);
     await joinLaunchList(input);
     await sendLaunchSequence();
-    expect(send).toHaveBeenCalledTimes(2);
+    expect(send).not.toHaveBeenCalled();
     expect(
       (
         await prisma.launchSubscriber.findUniqueOrThrow({

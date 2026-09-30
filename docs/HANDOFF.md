@@ -2138,3 +2138,11 @@ Before preview: initialize LaunchSettings inside the additive migration and
 make normal settings access read-only. This removes first-render concurrent
 upsert races; verified the initialization on the isolated branch (prelaunch
 true, email false). CI must re-run on this final migration version.
+
+First full CI run found two incorrect assertions in the new integration
+suite: mock send counts were expected cumulatively across separate tests,
+while calls were scoped per test by the runner. Fixed by explicitly clearing
+calls before each test and asserting that failure causes exactly one attempt
+and suppression causes none. Database-state assertions remain in place.
+All other 497 tests passed in that run. No production code workaround or
+skipped test was introduced; the full pipeline is being rerun.
