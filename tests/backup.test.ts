@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Independent daily backup (Task flagged by the 2026-09-29 audit,
@@ -13,47 +14,18 @@ vi.mock("@vercel/blob", () => ({
   del: (...args: unknown[]) => delMock(...args),
 }));
 
-// Every model the backup exports from, each returning a small fixture so
-// we can assert the export actually reads real data rather than an empty
-// shell. Kept in sync with BACKUP_TABLES in src/domains/backup/index.ts.
-const BACKUP_TABLES = [
-  "user",
-  "customer",
-  "referral",
-  "serviceAddress",
-  "lead",
-  "leadApplianceRequest",
-  "applianceType",
-  "appliance",
-  "applianceInspection",
-  "partRecord",
-  "rentalAgreement",
-  "rentalLine",
-  "applianceAssignment",
-  "pricingRule",
-  "signatureRecord",
-  "deposit",
-  "job",
-  "jobAppliance",
-  "maintenanceRequest",
-  "invoice",
-  "invoiceLineItem",
-  "payment",
-  "refund",
-  "customerCredit",
-  "businessSettings",
-  "siteContent",
-  "photo",
-  "consentRecord",
-  "customerNote",
-  "customerContact",
-  "auditLog",
-] as const;
+// Derive fixtures independently from the schema, not the export's table list.
+const SCHEMA_MODELS = [...readFileSync("prisma/schema.prisma", "utf8").matchAll(/^model (\w+) \{/gm)]
+  .map((match) => match[1]!);
+const EXCLUDED_MODELS = ["Session", "Account", "Verification", "WebhookEvent"];
+const BACKUP_TABLES = SCHEMA_MODELS.filter((model) => !EXCLUDED_MODELS.includes(model))
+  .map((model) => model[0]!.toLowerCase() + model.slice(1));
+const ALL_TABLES = SCHEMA_MODELS.map((model) => model[0]!.toLowerCase() + model.slice(1));
 
 function makePrismaMock() {
   const model: Record<string, { findMany: () => Promise<unknown[]> }> = {};
-  for (const table of BACKUP_TABLES) {
-    model[table] = { findMany: vi.fn().mockResolvedValue(table === "customer" ? [{ id: "cust-1" }] : []) };
+  for (const table of ALL_TABLES) {
+    model[table] = { findMany: vi.fn().mockResolvedValue([{ id: table === "customer" ? "cust-1" : `${table}-1` }]) };
   }
   return model;
 }
@@ -70,14 +42,25 @@ vi.mock("@/domains/settings", () => ({ getBusinessSettings: () => getBusinessSet
 
 beforeEach(() => {
   vi.clearAllMocks();
-  for (const table of BACKUP_TABLES) {
+  for (const table of ALL_TABLES) {
     prismaMock[table]!.findMany = vi
       .fn()
-      .mockResolvedValue(table === "customer" ? [{ id: "cust-1" }] : []);
+      .mockResolvedValue([{ id: table === "customer" ? "cust-1" : `${table}-1` }]);
   }
   getBusinessSettingsMock.mockResolvedValue({ publicEmail: "chris@example.com" });
   listMock.mockResolvedValue({ blobs: [] });
   putMock.mockResolvedValue({ url: "https://blob.example.com/backups/2026-09-29-123.json" });
+});
+
+describe("backup schema policy", () => {
+  it("requires an explicit export or exclusion decision for every schema model", async () => {
+    const { BACKUP_MODEL_POLICY, BACKUP_TABLES: exportedTables } = await import("@/domains/backup/manifest");
+    expect(Object.keys(BACKUP_MODEL_POLICY).sort()).toEqual([...SCHEMA_MODELS].sort());
+    expect(Object.entries(BACKUP_MODEL_POLICY).filter(([, value]) => value === null).map(([key]) => key).sort())
+      .toEqual([...EXCLUDED_MODELS].sort());
+    expect([...exportedTables].sort()).toEqual([...BACKUP_TABLES].sort());
+    expect(new Set(exportedTables).size).toBe(exportedTables.length);
+  });
 });
 
 describe("exportDatabaseBackup", () => {
@@ -99,6 +82,15 @@ describe("exportDatabaseBackup", () => {
     expect(options.access).toBe("private");
     const parsed = JSON.parse(payload);
     expect(parsed.tables.customer).toEqual([{ id: "cust-1" }]);
+    expect(Object.keys(parsed.tables).sort()).toEqual([...BACKUP_TABLES].sort());
+    for (const table of BACKUP_TABLES) {
+      expect(parsed.tables[table]).toEqual([{ id: table === "customer" ? "cust-1" : `${table}-1` }]);
+      expect(result.tableCounts?.[table]).toBe(1);
+    }
+    for (const model of EXCLUDED_MODELS) {
+      const table = model[0]!.toLowerCase() + model.slice(1);
+      expect(prismaMock[table]!.findMany).not.toHaveBeenCalled();
+    }
   });
 
   it("deletes backups older than the retention window and reports how many", async () => {
@@ -126,6 +118,15 @@ describe("exportDatabaseBackup", () => {
     expect(result.error).toBe("connection reset");
     expect(putMock).not.toHaveBeenCalled();
   });
+  it("does not upload or prune when a newly covered table cannot be read", async () => {
+    prismaMock.purchaseOrderLineItem!.findMany = vi.fn().mockRejectedValue(new Error("purchase order read failed"));
+    const { exportDatabaseBackup } = await import("@/domains/backup");
+    expect(await exportDatabaseBackup()).toEqual({ ok: false, error: "purchase order read failed" });
+    expect(putMock).not.toHaveBeenCalled();
+    expect(listMock).not.toHaveBeenCalled();
+    expect(delMock).not.toHaveBeenCalled();
+  });
+
 });
 
 describe("sendBackupFailureAlertToChris", () => {
@@ -147,3 +148,4 @@ describe("sendBackupFailureAlertToChris", () => {
     expect(sendEmailMock).not.toHaveBeenCalled();
   });
 });
+
