@@ -1,7 +1,8 @@
 # Appliance Desk: complete product and UI/UX overhaul specification
 
 Version 1.0 — 2026-09-30. **Planning deliverable, not implemented.**
-Read AGENTS.md first. Execution is in TASKS.md; use IMPLEMENTER.md as the
+Read AGENTS.md first. MODEL-BATCHES.md governs execution order/model switches;
+TASKS.md supplies task scope and acceptance. Use IMPLEMENTER.md as the
 small-model prompt. Owner decisions are in ../../OWNER-INPUTS.md.
 
 ## 1. Outcome and boundaries
@@ -349,6 +350,9 @@ Use synthetic fixtures in isolated environments only. Existing tests remain.
 Fastest useful stopping point: release B. Do not delay an easier daily desk
 until optional imports, replenishment or broader campaigns are done. Each
 release ends with working preview, evidence, HANDOFF update and owner report.
+Model batches may complete prerequisite backend cards ahead of their UI release;
+this does not mark that product release complete or waive its review. Follow
+MODEL-BATCHES.md for this dependency-safe reordered execution.
 Each card is NOT_STARTED initially, not a feature claimed complete.
 
 Success targets (acceptance targets, not measured current claims): find a

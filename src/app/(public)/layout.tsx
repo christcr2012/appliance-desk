@@ -1,6 +1,8 @@
 import { getBusinessSettings, parseServiceArea } from "@/domains/settings";
 import { Header } from "@/components/site/header";
 import { Footer } from "@/components/site/footer";
+import Link from "next/link";
+import { getLaunchSettings } from "@/domains/launch";
 
 // Shared chrome for every public marketing page (home, pricing,
 // how-it-works, service-area, contact, and the legal pages) — never
@@ -12,7 +14,10 @@ export default async function PublicLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const settings = await getBusinessSettings();
+  const [settings, launch] = await Promise.all([
+    getBusinessSettings(),
+    getLaunchSettings(),
+  ]);
   const serviceArea = parseServiceArea(settings);
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
@@ -43,7 +48,19 @@ export default async function PublicLayout({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <Header businessName={settings.publicBusinessName} />
+      <Header
+        businessName={settings.publicBusinessName}
+        prelaunch={launch.prelaunchMode}
+      />
+      {launch.prelaunchMode && (
+        <p className="bg-primary-soft px-4 py-3 text-center text-sm text-primary-dark">
+          We&apos;re preparing to launch in Greeley and the surrounding area.{" "}
+          <Link href="/launch" className="font-semibold underline">
+            Join for updates
+          </Link>
+          .
+        </p>
+      )}
       <main id="main-content" className="flex-1">
         {children}
       </main>

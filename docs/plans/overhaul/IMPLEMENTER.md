@@ -2,12 +2,14 @@
 
 ## Model recommendation — verified 2026-09-30
 
-Use **GPT-6 Luna with High reasoning** for the tightly scoped L cards.
-Use **GPT-6.1 Sol** for S cards and security/payment/migration review, starting
-at the default/Medium setting and using High for difficult concurrency work.
-If choosing only one model, choose GPT-6.1 Sol for the whole implementation:
-a failed cheap attempt can cost more than a correct stronger attempt.
-These assignments are engineering judgment, not a benchmark of this repository.
+Follow **MODEL-BATCHES.md**: Sol High -> Luna High -> Sol High -> Luna High
+-> Sol High. EXECUTION-STATE.md identifies the next batch/task. These are
+explicit user-selected model checkpoints; the assistant must stop and direct
+Chris to switch before continuing under another model. Four planned switches,
+with additional switches only for a documented blocker or user preference.
+If Chris explicitly chooses one model throughout, use GPT-6.1 Sol and record
+that schedule override. Do not silently substitute the one-model alternative.
+These assignments are engineering judgment, not a repository benchmark.
 
 Official sources checked:
 - https://learn.chatgpt.com/docs/models — Sol for complex coding/agentic work,
@@ -26,7 +28,7 @@ output speed. No fixed dollar or completion-time promise is justified yet.
 
 ## Keep it cheap without reducing the required quality
 
-1. One card/subcard at a time. Load AGENTS, HANDOFF tail, the relevant DESIGN
+1. Work through eligible cards within the authorized current model batch, one card/subcard at a time. Load AGENTS, HANDOFF tail, the relevant DESIGN
    section, that card and named files/tests. Search before loading giant docs.
 2. Reuse existing domain actions/components. Do not spend tokens rebuilding
    a CRM that already exists or rewriting intact files for cosmetic changes.
@@ -38,8 +40,9 @@ output speed. No fixed dollar or completion-time promise is justified yet.
    slice is ready. Rerun failed checks for a concrete reason; don't add tests
    that only repeat trivial markup. Never skip required CI to save tokens.
 6. After two unsuccessful fixes of the SAME failure, stop speculative edits
-   and hand the error, attempted fixes and diff to Sol. This is a model
-   escalation, not permission to abandon the task or weaken assertions.
+   and save the error, attempted fixes and diff. Stop and ask Chris to
+   select Sol High; resume only after the switch protocol in MODEL-BATCHES.
+   Do not weaken assertions or silently call another model.
 7. No parallel agents or overlapping file edits unless explicitly authorized.
 8. Update task status and HANDOFF with exact evidence once. Stop/report at
    each release boundary as AGENTS requires. Keep unblocked work moving when
@@ -48,8 +51,17 @@ output speed. No fixed dollar or completion-time promise is justified yet.
 ## Paste into a coding session
 
 ```text
-Work only in christcr2012/appliance-desk. Implement task [TASK_ID] from
- docs/plans/overhaul/TASKS.md. Use the matching section of DESIGN.md.
+Work only in christcr2012/appliance-desk. Follow docs/plans/overhaul/
+MODEL-BATCHES.md and resume the authorized batch/card recorded in
+EXECUTION-STATE.md. TASKS.md supplies acceptance criteria; DESIGN.md supplies
+screen and system specifications. Complete ready work with the current batch's
+model, one bounded PR at a time. Do not execute the entire backlog at once.
+
+MODEL GATE: Before implementation, verify the required model from trusted
+runtime information or Chris's explicit confirmation. When a different model
+is required, update EXECUTION-STATE and HANDOFF, tell Chris the exact model
+and reasoning setting to select, then STOP. Resume after he confirms the
+switch. Never silently substitute a model or spawn one to bypass this gate.
 
 Read AGENTS.md and the latest docs/HANDOFF.md first. Check current branch,
 main, open PRs and docs/OWNER-INPUTS.md. Do not overwrite another agent's
@@ -61,9 +73,14 @@ rules and working tests. Follow the installed Next.js version's bundled
 documentation before editing framework code. Reuse current components.
 
 Before changing code, state the scoped outcome and acceptance checks in
-at most8 lines. Implement only this task or its explicitly named subcard.
+at most 8 lines. Implement only this task or its explicitly named subcard.
 If another prerequisite is missing, record it rather than silently building
-a second feature. Use a branch ai/<tool>/overhaul-[TASK_ID]; never commit main.
+a second feature. Use a branch ai/<tool>/overhaul-<actual-task-id>; never commit main.
+Follow PR-STACK.md: branch from the immediately preceding PR's current head
+and target its branch. Each PR must build on the previous one. Keep a stack
+manifest with exact SHAs, checks and previews. Claude must review the entire
+selected stack, including the cumulative diff, before ANY PR is merged.
+Do not count your own review as Claude approval or auto-merge anything.
 
 A data-changing preview must be isolated from production at build AND
 runtime. Never run fixtures/reset scripts against the shared production DB.
@@ -79,12 +96,15 @@ Update HANDOFF and the task ledger with files, verified commit, CI/preview,
 what is incomplete and any owner-input IDs. Open a PR. Do not auto-merge or
 start the next release. Report in plain English: what changed, how verified,
 what Chris needs to review, and the next eligible task. If the same failure
-survives two focused fixes, hand off the evidence for Sol review.
+survives two focused fixes, follow the explicit Sol switch checkpoint before
+continuing. End each batch with the next-model instruction, not unrequested
+work on the next batch.
 ```
 
-Replace `[TASK_ID]` with one real card, such as O03. The bracketed value is a
-prompt parameter, not an application placeholder. Start with O00 when adopting
-the plan; do not skip environment/security gates just to start visible UI.
+No task number needs to be chosen by Chris: start/resume from EXECUTION-STATE.
+The agent selects the next dependency-ready card within the authorized batch.
+Do not skip environment/security gates to start visible UI. At phase review
+stops that do not change models, say “Keep the current model.”
 
 ## Reviewer prompt (Sol)
 

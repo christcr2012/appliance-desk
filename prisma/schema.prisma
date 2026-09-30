@@ -1469,3 +1469,48 @@ model AuditLog {
   @@index([entityType, entityId])
   @@index([createdAt])
 }
+
+
+// Prelaunch interest is not a quote, customer, reservation, or SMS consent.
+model LaunchSettings {
+  id            String  @id @default("singleton")
+  prelaunchMode Boolean @default(true)
+  emailEnabled  Boolean @default(false)
+  postalAddress String  @default("")
+  replyToEmail  String  @default("")
+  updatedAt     DateTime @updatedAt
+}
+
+model LaunchSubscriber {
+  id                String @id @default(cuid())
+  name              String
+  email             String @unique
+  city              String
+  interest          String
+  source            String @default("website")
+  consentVersion    String
+  consentText       String
+  consentedAt       DateTime @default(now())
+  unsubscribeToken  String @unique
+  unsubscribedAt    DateTime?
+  nextStep          Int @default(0)
+  nextSendAt        DateTime @default(now())
+  deliveryBlocked   Boolean @default(false)
+  createdAt         DateTime @default(now())
+  deliveries        LaunchDelivery[]
+
+  @@index([unsubscribedAt, deliveryBlocked, nextSendAt])
+}
+
+model LaunchDelivery {
+  id           String @id @default(cuid())
+  subscriberId String
+  subscriber   LaunchSubscriber @relation(fields: [subscriberId], references: [id], onDelete: Cascade)
+  step         Int
+  // SENDING is an uncertain outcome after a crash; never retried blindly.
+  status       String @default("SENDING")
+  startedAt    DateTime @default(now())
+  finishedAt   DateTime?
+
+  @@unique([subscriberId, step])
+}

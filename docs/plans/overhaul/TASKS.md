@@ -1,4 +1,11 @@
-# Ordered implementation cards
+# Implementation cards — execute in model-batch order
+
+**Execution order/model assignments: MODEL-BATCHES.md.** Its explicit mixed-card
+splits supersede the L/S suggestions in headings below; dependencies and
+acceptance criteria remain mandatory. EXECUTION-STATE.md records where to resume.
+PR-STACK.md requires a linear chain and Claude review of all PRs before any merge.
+At each model boundary, save progress and ask Chris to switch; do not continue
+until the switch protocol is satisfied.
 
 All cards start **NOT_STARTED**. Planning is complete; implementation is not.
 Each card is a bounded outcome, usually one PR. Where a card explicitly has

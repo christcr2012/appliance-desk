@@ -500,6 +500,18 @@ one-person operation today; noted here so they're not forgotten rather
 than proposed as near-term work.
 
 
+## Prelaunch presence follow-ons (2026-09-29)
+
+The user authorized an initial signup/welcome-email phase (see PRODUCT-SPEC
+and HANDOFF). After its PR/preview review: confirm actual launch date before
+a launch broadcast; Google Business Profile eligibility and setup; Facebook
+Page/Metricool connection; local partnership drafts; post-service review
+requests for all eligible customers without satisfaction/review gating; and
+ongoing conversion reporting. No outreach or public listing is claimed live
+from the initial website phase. Consider automated provider-event handling
+and a guided reconciliation workflow for failed/uncertain launch sends if
+volume warrants it. General preview database isolation remains separate.
+
 ## 2026-09-30 — Comprehensive overhaul plan (design complete; not implemented)
 
 Chris requested a complete UI/UX and business-system implementation plan that
