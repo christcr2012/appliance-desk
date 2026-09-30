@@ -2387,3 +2387,79 @@ disclosed the other 2: `src/app/desk/agreements/page.tsx` and
 `src/app/desk/jobs/[id]/job-detail-panel.tsx`). Rather than build on
 someone else's unfinished cross-tool branch, I'll redo this fix — all 4
 surfaces — as fresh work directly on `main`. This is next.
+
+
+## 2026-09-30 — Codex O02A while Claude's O01 is paused
+
+Owner reports Claude owns O01 and is waiting for a usage reset; asked Codex
+to work around it. Selected independent preview safeguards, not a duplicate role
+fix. Branch ai/codex/overhaul-o02-preview-safeguards starts at main
+25bedf256485c99f66a8f5fcdc35d1c1dbc4afe5; no open PR existed at branch setup.
+
+Built: server-side deployment classification; email/SMS suppressed in Vercel
+preview/development/unknown environments even with configured credentials;
+Stripe test-key enforcement before cache access; signed live webhook events
+rejected before processing; authenticated preview uploads return 503 without
+Blob tokens; backup returns failure before DB reads, Blob writes/listing/pruning.
+New suppression paths do not log recipients or message content. Production
+and local/CI without Vercel markers retain existing provider behavior.
+
+Storage is deliberately fail-closed: separate preview Blob storage has NOT
+been verified, so preview uploads/backups are unavailable. No existing files
+moved/deleted; no schema/role/activation/configuration changes. Whole O02 remains
+IN_PROGRESS, not complete: environment-target/build/runtime fixture proof,
+verified preview file workflow and complete migration evidence remain.
+O09/O13 still wait for O01/O02.
+
+Validation: locked dependencies installed, Prisma client generated, typecheck
+passed, full lint passed with the same two existing warnings. 47 focused tests
+passed, including 26 new safety cases with providers mocked and credentials
+present. Full GitHub CI/preview/Claude review pending; no real messages/charges
+or production fixtures attempted. No new UI or visual inspection claimed.
+
+Read-only checks: Neon main protected; separate vercel-preview-2
+(br-broad-union-b784qy62) exists. Claude's recorded Vercel deployment
+dpl_FBuEvSiUn8r3FCjp54N8X71oZ3vf is READY. Vercel project-detail tool failed input
+validation; no environment secret values or target mapping inspected, so those
+are not claimed verified. Infrastructure untouched.
+
+EXECUTION-STATE reconciled: old #86/#87/#88 merged, #89 closed unmerged,
+#90/#91/#92 merged. New root PR targets main because no predecessor remains open.
+Claude review and explicit merge authorization still required. Future work must
+check the current remote PR tip and preserve Claude's O01 branch/handoff.
+
+
+### O02A review checkpoint — PR #93
+
+PR https://github.com/christcr2012/appliance-desk/pull/93 is open as a draft.
+Application code head: 681b062a713c8d7cbc770434f463b84c5b480eca.
+Local typecheck, lint and 47 focused tests passed on this code. Full CI run
+https://github.com/christcr2012/appliance-desk/actions/runs/36732270552 is the
+real database/build/browser gate; inspect its latest state on the PR.
+Vercel preview dpl_D6tz2TfX4nsWYDhsbC6sQ3c6WXYy reached READY on that exact
+head: https://appliance-desk-kekv3ovmg-chris-projects-de6cd1bf.vercel.app
+A successful build is not a manual signed-in workflow inspection. No test
+fixtures/messages/files were submitted to this preview. Claude review pending;
+keep unmerged. Whole O02 and O01 dependencies remain as recorded above.
+
+
+## 2026-09-30 — Owner authorizes Codex merges
+
+Chris explicitly changed the earlier merge arrangement: Codex may handle
+merging its own PRs as it goes. For Codex-owned PRs, the earlier separate
+Claude-review/owner-merge-approval hold is superseded. Codex reviews the exact
+head, requires passing CI and applicable acceptance/preview evidence, and
+merges through a PR with an expected-head SHA. No direct main commits.
+Claude still owns O01. This authorizes no paid resources, live payment/email/
+SMS activation, destructive data changes or automatic next-phase work.
+Model-switch and product release checkpoints remain in effect.
+
+Authenticated deployment fetch returned a Vercel sign-in redirect (302).
+No manual signed-in preview inspection is claimed; CI provides the browser
+gate. Application code unchanged from 681b062a713c8d7cbc770434f463b84c5b480eca.
+
+Code CI run 36732270552 passed every gate on 681b062a713c8d7cbc770434f463b84c5b480eca:
+migration safety, disposable Postgres migrations/schema/seed, typecheck, lint,
+unit/integration tests, build and Playwright/axe. This follow-up updates only
+documentation/merge authorization. Check the latest-head CI state on PR #93
+before merging; Codex is now authorized to perform that merge after checks.

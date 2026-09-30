@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getStripeClient } from "@/lib/stripe";
 import { processStripeWebhookEvent } from "@/domains/billing/webhooks";
+import { isNonProductionDeployment } from "@/lib/deployment-safety";
 
 // Stripe webhook endpoint — see docs/ARCHITECTURE.md's "Payments (Stripe)"
 // section for how to register this URL in the Stripe dashboard (a manual,
@@ -28,13 +29,23 @@ export async function POST(request: Request): Promise<Response> {
   // would break verification.
   const rawBody = await request.text();
 
-  const stripe = getStripeClient();
+  let stripe;
+  try {
+    stripe = getStripeClient();
+  } catch {
+    return NextResponse.json({ error: "Billing not configured for this environment" }, { status: 503 });
+  }
   let event;
   try {
     event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
   } catch (error) {
     console.error("Stripe webhook signature verification failed:", error);
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
+  }
+
+  // Signature validity does not make a live event safe for a test DB.
+  if (isNonProductionDeployment() && event.livemode) {
+    return NextResponse.json({ error: "Live events are refused outside production" }, { status: 400 });
   }
 
   try {

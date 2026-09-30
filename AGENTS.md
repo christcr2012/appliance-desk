@@ -124,3 +124,13 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+
+
+## Owner authorization update — 2026-09-30
+
+Chris authorizes Codex to merge its own PRs as it goes after exact-head review,
+passing CI and applicable acceptance/preview verification. The earlier separate
+Claude-review/owner-merge hold in overhaul docs is superseded for Codex-owned
+PRs. Use PRs, never direct main commits. Preserve model/phase checkpoints and
+all separate approvals for live payments/messages, spending and destructive
+changes. Claude owns O01. See docs/plans/overhaul/PR-STACK.md's latest entry.

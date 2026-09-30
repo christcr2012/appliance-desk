@@ -128,3 +128,12 @@ blindly hopping back for one small action. Do not use escalation to broaden scop
 A Sol problem is not an automatic license to select Astra. Ask for that
 specific model change only with concrete evidence that it would help.
 No turnaround time, usage allowance or total project cost is guaranteed.
+
+
+### Current Codex merge policy (2026-09-30)
+
+The owner now authorizes Codex to merge its own verified PRs as it goes;
+the earlier separate Claude-review/owner-merge hold is superseded for those
+PRs. See PR-STACK.md's latest authorization entry. CI, exact-head review,
+applicable preview evidence, model/phase checkpoints and activation/data/spend
+approvals still apply. Claude retains O01 ownership.

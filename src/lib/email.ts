@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import { isNonProductionDeployment } from "./deployment-safety";
 
 /**
  * Thin wrapper around Resend (docs/DECISIONS.md picks Resend for
@@ -28,6 +29,10 @@ export async function sendEmail(input: {
   idempotencyKey?: string;
   marketing?: { postalAddress: string; unsubscribeUrl: string };
 }): Promise<{ sent: boolean }> {
+  // Database isolation alone cannot prevent messages to copied contacts.
+  // Do not construct a provider client or log recipients/message content.
+  if (isNonProductionDeployment()) return { sent: false };
+
   const apiKey = process.env.RESEND_API_KEY;
   const from =
     process.env.RESEND_FROM_EMAIL ?? "Appliance Desk <onboarding@resend.dev>";
