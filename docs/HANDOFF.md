@@ -2074,15 +2074,6 @@ them (no cascade delete on that link at the database level — same
 fix already used in two other test files). All three were found and
 fixed by actually watching CI run, not assumed away.
 
-**PR #82 is merged** (its migration applies itself automatically as
-part of the production build, Phase 6A item 1 — no manual step
-needed). **PR #83 (purchasing & supplies + the icon set) is open and
-fully CI-green, ready to merge** — it had a merge conflict against
-`main` after #82 landed (both touched the same docs files), resolved
-by merging `main` into that branch; its own migration
-(`prisma/migrations/20260929220000_purchasing_and_supplies`) applies
-itself the same way once it's merged.
-
 One flake along the way, not a real bug: CI's first run after the
 merge failed a dark-mode color-contrast check on the public
 `/how-it-works` page's "Get a Quote" button — a page/component this
@@ -2091,4 +2082,20 @@ clean). Re-ran CI on the same code with no changes and it passed
 clean, confirming it was a one-off flake in the automated check
 itself, not a real accessibility regression.
 
-**Needs Chris**: review/merge PR #83.
+**Both PR #82 and PR #83 are now merged into `main` and live in
+production**, confirmed 2026-09-29:
+- `main`'s CI (same full pipeline: migrations, type-check, lint,
+  tests, build, accessibility checks against a real database) is
+  green.
+- Vercel shows a successful production deployment for each merge
+  commit (`5bf59e9` for #82, `1ddae3c` for #83), both in the `READY`
+  state. A production build only reaches `READY` if the automatic
+  migration step (Phase 6A item 1) succeeded — so both new
+  migrations (`20260929210000_estimate_deposit_paid_at` and
+  `20260929220000_purchasing_and_supplies`) are confirmed applied
+  to the live database with no manual step from Chris.
+
+All 4 of Chris's approved items — behind-the-scenes hardening,
+estimate deposit collection + follow-through, purchasing & supplies,
+and finishing the icon set — are built, tested, merged, and live.
+This work thread is closed out.
