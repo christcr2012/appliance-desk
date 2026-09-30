@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { formatBusinessDate, formatBusinessTime } from "@/lib/business-date";
 import { getServerSession } from "@/lib/session";
 import { getPortalData } from "@/domains/portal";
 import { formatCents } from "@/domains/pricing/money";
@@ -22,14 +24,22 @@ export default async function AccountRentalsPage() {
       <h1 className="text-xl font-semibold">My rentals</h1>
 
       {customer.rentalAgreements.length === 0 ? (
-        <p className="mt-4 text-sm text-gray-600">You don&apos;t have any rentals yet.</p>
+        <p className="mt-4 text-sm text-gray-600">
+          You don&apos;t have any rentals yet.
+        </p>
       ) : (
         <div className="mt-6 space-y-6">
           {customer.rentalAgreements.map((a) => {
-            const total = a.lines.reduce((sum, l) => sum + l.monthlyPriceCents, 0);
+            const total = a.lines.reduce(
+              (sum, l) => sum + l.monthlyPriceCents,
+              0,
+            );
             return (
-              <div key={a.id} className="rounded-lg border border-gray-200 bg-white p-5">
-                <div className="flex items-center justify-between">
+              <div
+                key={a.id}
+                className="rounded-lg border border-gray-200 bg-white p-5"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-2">
                   <h2 className="font-medium text-gray-900">
                     {a.serviceAddress.line1}, {a.serviceAddress.city}
                   </h2>
@@ -38,7 +48,9 @@ export default async function AccountRentalsPage() {
                   </span>
                 </div>
                 <p className="mt-1 text-sm text-gray-600">
-                  {a.termMonths ? `${a.termMonths}-month term` : "Month-to-month"}
+                  {a.termMonths
+                    ? `${a.termMonths}-month term`
+                    : "Month-to-month"}
                 </p>
 
                 <ul className="mt-3 space-y-1 text-sm text-gray-700">
@@ -48,13 +60,17 @@ export default async function AccountRentalsPage() {
                       {l.prepayDiscountCentsPerMonth > 0 && (
                         <span className="text-gray-500">
                           {" "}
-                          (list price {formatCents(l.listPriceCents)}, includes a{" "}
-                          {formatCents(l.prepayDiscountCentsPerMonth)}/month term discount)
+                          (list price {formatCents(l.listPriceCents)}, includes
+                          a {formatCents(l.prepayDiscountCentsPerMonth)}/month
+                          term discount)
                         </span>
                       )}{" "}
                       (
                       {l.assignments
-                        .map((asn) => `${asn.appliance.applianceType.name} ${asn.appliance.assetNumber}`)
+                        .map(
+                          (asn) =>
+                            `${asn.appliance.applianceType.name} ${asn.appliance.assetNumber}`,
+                        )
                         .join(", ")}
                       )
                     </li>
@@ -71,7 +87,7 @@ export default async function AccountRentalsPage() {
                 )}
                 {a.depositCents > 0 && (
                   <p className="text-sm text-gray-600">
-                    Deposit paid: {formatCents(a.depositCents)}
+                    Deposit required: {formatCents(a.depositCents)}
                   </p>
                 )}
               </div>
@@ -80,18 +96,33 @@ export default async function AccountRentalsPage() {
         </div>
       )}
 
+      <Link
+        href="/account/maintenance?request=pickup"
+        className="mt-6 inline-flex min-h-11 items-center rounded-lg border border-control px-4 py-2 text-primary hover:bg-subtle"
+      >
+        Request pickup
+      </Link>
+      <p className="mt-2 text-sm text-ink-soft">
+        A pickup request is reviewed by the business; it does not cancel your
+        agreement or change billing automatically.
+      </p>
       <div className="mt-8">
-        <h2 className="font-medium text-gray-900">Delivery &amp; visit history</h2>
+        <h2 className="font-medium text-gray-900">
+          Delivery &amp; visit history
+        </h2>
         {customer.jobs.length === 0 ? (
           <p className="mt-2 text-sm text-gray-600">No visits scheduled yet.</p>
         ) : (
           <ul className="mt-2 divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white">
             {customer.jobs.map((j) => (
               <li key={j.id} className="px-4 py-3 text-sm">
-                <p className="font-medium text-gray-900">{jobTypeLabel(j.type)}</p>
+                <p className="font-medium text-gray-900">
+                  {jobTypeLabel(j.type)}
+                </p>
                 <p className="text-gray-600">
                   {jobStatusLabel(j.status)}
-                  {j.scheduledAt && ` · ${new Date(j.scheduledAt).toLocaleString()}`}
+                  {j.scheduledAt &&
+                    ` · ${`${formatBusinessDate(j.scheduledAt)} · ${formatBusinessTime(j.scheduledAt)}`}`}
                 </p>
               </li>
             ))}

@@ -1,93 +1,211 @@
 import Link from "next/link";
-import { getServerSession } from "@/lib/session";
-import { getPortalData } from "@/domains/portal";
+import { getPortalHome } from "@/domains/portal/workspace";
 import { formatCents } from "@/domains/pricing/money";
-
-export default async function AccountHomePage() {
-  const session = await getServerSession();
-  const customer = session ? await getPortalData(session.user.id) : null;
-
-  if (!customer) {
+import { formatBusinessDate, formatBusinessTime } from "@/lib/business-date";
+import { jobTypeLabel } from "@/lib/status-labels";
+import {
+  PageHeader,
+  SectionCard,
+  EmptyState,
+  FilterBar,
+  Metric,
+  primaryActionClass,
+  secondaryActionClass,
+} from "@/components/desk/workspace";
+export const metadata = { title: "My account" };
+export default async function AccountHomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ address?: string }>;
+}) {
+  const data = await getPortalHome((await searchParams).address);
+  if (!data)
     return (
       <div>
-        <h1 className="text-xl font-semibold">
-          Welcome{session?.user?.name ? `, ${session.user.name}` : ""}
-        </h1>
-        <p className="mt-2 text-gray-600">
-          There&apos;s no rental account attached to this login yet.
-        </p>
+        <PageHeader title="Welcome" />
+        <EmptyState
+          title="No rental account attached to this login"
+          description="Contact the business if you expected to see an active rental."
+        />
       </div>
     );
-  }
-
-  const activeAgreements = customer.rentalAgreements.filter((a) => a.status === "ACTIVE");
-  const upcomingJobs = customer.jobs.filter(
-    (j) => j.status === "SCHEDULED" || j.status === "IN_PROGRESS",
-  );
-  const openRequests = customer.maintenanceRequests.filter(
-    (r) => r.status !== "RESOLVED" && r.status !== "CLOSED",
-  );
-
   return (
-    <div>
-      <h1 className="text-xl font-semibold">
-        Welcome{session?.user?.name ? `, ${session.user.name}` : ""}
-      </h1>
-
-      <div className="mt-6 grid gap-4 sm:grid-cols-3">
-        <div className="rounded-lg border border-gray-200 bg-white p-5">
-          <p className="text-sm text-gray-600">Active rentals</p>
-          <p className="mt-1 text-3xl font-semibold text-gray-900">
-            {activeAgreements.length}
-          </p>
-        </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-5">
-          <p className="text-sm text-gray-600">Upcoming visits</p>
-          <p className="mt-1 text-3xl font-semibold text-gray-900">{upcomingJobs.length}</p>
-        </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-5">
-          <p className="text-sm text-gray-600">Open maintenance requests</p>
-          <p className="mt-1 text-3xl font-semibold text-gray-900">{openRequests.length}</p>
-        </div>
+    <div className="max-w-5xl space-y-6">
+      <PageHeader
+        title="Your rental account"
+        description="Your rentals, next visit, billing and help in one place."
+        primaryAction={
+          <Link className={primaryActionClass} href="/account/maintenance">
+            Report a problem
+          </Link>
+        }
+        secondaryActions={
+          <Link
+            className={secondaryActionClass}
+            href="/account/maintenance?request=pickup"
+          >
+            Request pickup
+          </Link>
+        }
+      />
+      {data.properties.length > 1 && (
+        <FilterBar
+          label="Account properties"
+          items={[
+            {
+              href: "/account",
+              label: "All properties",
+              active: !data.addressId,
+            },
+            ...data.properties.map((a) => ({
+              href: `/account?address=${encodeURIComponent(a.id)}`,
+              label: `${a.line1}${a.line2 ? `, ${a.line2}` : ""}`,
+              active: a.id === data.addressId,
+            })),
+          ]}
+        />
+      )}
+      <div className="grid gap-3 sm:grid-cols-3">
+        <Metric
+          label="Active rentals"
+          value={data.activeRentalCount}
+          href="/account/rentals"
+          basis={data.addressId ? "Selected property" : "All properties"}
+        />
+        <Metric
+          label="Active visits"
+          value={data.upcomingVisitCount}
+          href="/account/rentals"
+          basis={data.addressId ? "Selected property" : "All properties"}
+        />
+        <Metric
+          label="Open service requests"
+          value={data.openRequestCount}
+          href="/account/maintenance"
+          basis="Entire account"
+        />
       </div>
-
-      {activeAgreements.length === 0 ? (
-        <p className="mt-6 text-sm text-gray-600">
-          You don&apos;t have an active rental yet.
-        </p>
-      ) : (
-        <div className="mt-6 rounded-lg border border-gray-200 bg-white p-5">
-          <h2 className="font-medium text-gray-900">Your rentals</h2>
-          <ul className="mt-3 space-y-3">
-            {activeAgreements.map((a) => {
-              const total = a.lines.reduce((sum, l) => sum + l.monthlyPriceCents, 0);
-              return (
-                <li key={a.id} className="text-sm">
-                  <p className="font-medium text-gray-900">
-                    {a.serviceAddress.line1}, {a.serviceAddress.city}
+      <SectionCard title="Your next visit">
+        {data.nextVisit ? (
+          <>
+            <p className="font-semibold text-ink">
+              {jobTypeLabel(data.nextVisit.type)}
+            </p>
+            <p className="mt-1 text-ink">
+              {formatBusinessDate(data.nextVisit.scheduledAt!)} ·{" "}
+              {formatBusinessTime(data.nextVisit.scheduledAt!)}
+            </p>
+            {data.nextVisit.scheduledAt! < new Date() && (
+              <p className="mt-1 text-sm text-ink-soft">
+                This is the recorded visit time. Contact the business if you
+                need an updated arrival time.
+              </p>
+            )}
+            {data.nextVisit.serviceAddress && (
+              <p className="mt-1 text-sm text-ink-soft">
+                {data.nextVisit.serviceAddress.line1}
+                {data.nextVisit.serviceAddress.line2 &&
+                  `, ${data.nextVisit.serviceAddress.line2}`}
+                , {data.nextVisit.serviceAddress.city}
+              </p>
+            )}
+            <Link
+              className="mt-3 inline-flex min-h-11 items-center text-primary underline"
+              href="/account/rentals"
+            >
+              View visit and rental history
+            </Link>
+          </>
+        ) : (
+          <EmptyState
+            title="No scheduled visit"
+            description={
+              data.upcomingVisitCount
+                ? "A visit is being arranged; a date has not been set yet."
+                : "New visit details will appear once the business schedules them."
+            }
+          />
+        )}
+      </SectionCard>
+      <SectionCard
+        title="Billing"
+        description="Invoice amounts are separate from your rental rate and may include deposits, fees or tax."
+      >
+        {data.invoice ? (
+          <>
+            <Link
+              className="text-primary underline"
+              href={`/account/billing/invoice/${data.invoice.id}`}
+            >
+              Invoice #{data.invoice.invoiceNumber}:{" "}
+              {formatCents(
+                Math.max(
+                  0,
+                  data.invoice.amountDueCents - data.invoice.amountPaidCents,
+                ),
+              )}{" "}
+              remaining
+            </Link>
+            <p className="mt-1 text-sm text-ink-soft">
+              {data.invoice.status === "FAILED"
+                ? "Payment needs attention"
+                : "Open invoice"}
+              . This is one invoice; billing shows your full history.
+            </p>
+          </>
+        ) : (
+          <p className="text-sm text-ink-soft">
+            No open invoice found{data.addressId ? " for this property" : ""}.
+          </p>
+        )}
+        <Link
+          className="mt-3 inline-flex min-h-11 items-center text-primary underline"
+          href="/account/billing"
+        >
+          Open billing and payment history
+        </Link>
+      </SectionCard>
+      <SectionCard title="Your active rentals">
+        {data.rentals.length ? (
+          <>
+            <ul className="space-y-4">
+              {data.rentals.map((a) => (
+                <li key={a.id}>
+                  <p className="font-medium text-ink">
+                    {a.serviceAddress.line1}
+                    {a.serviceAddress.line2 &&
+                      `, ${a.serviceAddress.line2}`}, {a.serviceAddress.city}
                   </p>
-                  <p className="text-gray-600">
-                    {a.lines.map((l) => l.label).join(", ")} —{" "}
-                    {formatCents(total)}/month
+                  <p className="text-sm text-ink-soft">
+                    {a.lines.map((l) => l.label).join(", ")} ·{" "}
+                    {formatCents(
+                      a.lines.reduce((sum, l) => sum + l.monthlyPriceCents, 0),
+                    )}
+                    /month
                   </p>
                 </li>
-              );
-            })}
-          </ul>
-          <Link href="/account/rentals" className="mt-3 inline-block text-sm text-primary hover:underline">
-            View all rental details →
-          </Link>
-        </div>
-      )}
-
-      <div className="mt-6">
+              ))}
+            </ul>
+            {data.activeRentalCount > data.rentals.length && (
+              <p className="mt-3 text-sm text-ink-soft">
+                Showing {data.rentals.length} of {data.activeRentalCount} active
+                rentals.
+              </p>
+            )}
+          </>
+        ) : (
+          <EmptyState
+            title="No active rentals"
+            description="An agreement awaiting signature or delivery may still be in progress."
+          />
+        )}
         <Link
-          href="/account/maintenance"
-          className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
+          className="mt-3 inline-flex min-h-11 items-center text-primary underline"
+          href="/account/rentals"
         >
-          Report a problem or request maintenance
+          View all rental details
         </Link>
-      </div>
+      </SectionCard>
     </div>
   );
 }

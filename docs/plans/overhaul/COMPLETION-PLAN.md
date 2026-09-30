@@ -48,10 +48,11 @@ needed. Do not claim a whole card complete from a partial implementation.
 | O01 | Automated evidence passed | #96/#99 CI role, payload and upload-denial checks; manual acceptance remains explicit |
 | O02 | IN_PROGRESS | DB target guards, provider suppression and populated migration proof shipped; hosted fixture/file-store proof still incomplete |
 | O03–O06 | Implemented, automated checks passed | #100/#101 merged; #101 head d9e526a8165772e5cbd1fad8c2ae0d42f052033c CI 36778920651 successful; owner/manual review unclaimed |
-| O07/O08 | IN_REVIEW | CRM batch: 668 tests in 88 non-Postgres suites, typecheck/lint pass; own full CI/browser/preview pending |
+| O07/O08 | IN_REVIEW, automated evidence passed | #102 head 883a8f90a21135902450fff8c4e6663b631fdeae, CI 36784399079 successful; preview READY; 24 CI screenshots inspected; owner acceptance pending |
 | O11 | IN_REVIEW subcard | Validated property prefill and upcoming-job context; no new unit hierarchy or property-level request ownership claim |
 | O09/O10/O13/O14 | BLOCKED contract dependencies | Require full O02 gate; task-list presentation already shipped without assignment |
-| O12/O15–O21 | Remaining / dependency-ready portions next | Existing core behavior preserved; overhaul acceptance not complete |
+| O12/O18/O20/O21 | IN_REVIEW subcards | Second batch: settings sections, billing presentation, scoped portal/request paths, independent agreement progress. 694 local tests pass; CI/build/browser/preview pending. Full draft-resume and reporting work remain |
+| O15–O17/O19 | Remaining | Operations depend on O13/O14; report families follow verified money presentation |
 | O22–O28 | Remaining / schema dependencies | Require O02 and relevant prerequisite cards |
 | O29 | DEFERRED conditional | No actual import dataset supplied |
 | O30/O31 | Remaining | Whole-flow, capacity/recovery, owner/manual evidence and launch inputs |
@@ -73,3 +74,19 @@ creating duplicate properties/audits. Account invitation behavior is preserved.
 No migration, live fixture, provider activation or infrastructure mutation.
 
 Rollback: revert the CRM PR through a PR; no database rollback is needed.
+
+## Owner/portal verification boundary
+
+Settings writes whitelist the selected section and save its audit in the same
+transaction. Local action/form retry tests pass; real failed-audit rollback and
+session-derived A/B portal reads are included in CI, not claimed passed locally.
+The portal home reads customer-visible fields only, with six active rentals and
+separate full counts. Existing full rental/statement history remains unchanged.
+Pickup uses the existing manual request action and ownership checks; it does not
+create a cancellation, refund, automatic pickup job, or billing change.
+
+Agreement progress is a subcard only: signature, required deposit, current
+assignments, completed delivery and started/blocked billing are independent.
+Durable builder save/resume and unknown-outcome retry still need implementation.
+Money presentation preserves existing cents/statement source calculations; no
+new ledger or provider writes. Revert the PR for rollback; no migration.
