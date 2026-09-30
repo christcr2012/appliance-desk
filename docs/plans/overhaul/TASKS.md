@@ -360,3 +360,14 @@ Maintain a small table here when implementation starts:
 Allowed status: NOT_STARTED, IN_PROGRESS, BLOCKED, IN_REVIEW, VERIFIED,
 DEPLOYED, DEFERRED. VERIFIED requires G; DEPLOYED requires observed production
 release. A planning document, passing typecheck, or a screenshot alone is not VERIFIED.
+
+## External Google Workspace setup dependencies
+
+[Claude Workspace setup register](CLAUDE-WORKSPACE-SETUP.md) owns GW-01–GW-14.
+O00 reconciles its observed inventory; O21 email settings consume GW-04/GW-07;
+O26–O28 communication work preserves existing Resend and uses verified routing
+where relevant. O31 reports GW-08/GW-09 activation evidence or explicit blockers.
+Drive/Calendar/Tasks/Contacts integrations stay conditional and require their
+own authorized card before runtime sync is built. Every newly discovered
+Workspace dependency gets a GW entry; these are external setup tasks, not
+additional model batches or completed application cards.

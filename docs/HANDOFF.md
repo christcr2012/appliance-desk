@@ -2295,3 +2295,16 @@ is distinct from the implementing model/Sol self-review. No merge until all
 PRs in the selected stack are reviewed and merging is explicitly authorized.
 Upstream fixes propagate through descendants with checks/reviews refreshed.
 No main merge was performed. Preserve all prelaunch and planning handoff notes.
+
+## 2026-09-30 — Claude Google Workspace setup handoff
+
+Owner reports Robinson Google Workspace personal plugin is connected and Claude
+can use it. Per owner instruction, document external setup for Claude rather
+than block on ChatGPT access. Added CLAUDE-WORKSPACE-SETUP.md with GW-01–GW-14,
+including Admin identity/privilege verification, five existing alias checks and
+missing-alias creation, Gmail identity/routing, authentication/DNS handoff, app
+settings reconciliation, authorized delivery tests and separate activation gate.
+Conditional Drive/Calendar/Tasks/Contacts tasks include ownership and sync limits.
+IN-16 is answered with execution verification pending. All GW tasks remain
+NOT_STARTED; no Google changes, messages, purchases or runtime code changes.
+Planning PR #87 remains stacked on #86, with Claude review and merge gates intact.

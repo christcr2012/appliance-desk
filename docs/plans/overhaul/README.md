@@ -17,6 +17,9 @@ not a claim that the redesign or new features have been implemented.
    phone, release decisions and other inputs; known facts are not asked again.
 5. [Google Workspace connector](GOOGLE-WORKSPACE.md): identified repository,
    deployed MCP URL, connection steps and what remains unverified.
+   [Claude Workspace setup register](CLAUDE-WORKSPACE-SETUP.md): Admin alias
+   verification/creation, inbox and email setup, conditional Drive/Calendar work,
+   required owner inputs and completion evidence.
 
 Recommended approach: preserve the working application and replace the most
 painful interactions first. Finish foundation and daily-use releases A/B

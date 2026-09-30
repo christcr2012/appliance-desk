@@ -73,3 +73,12 @@ End-to-end ChatGPT authorization is still unverified.
 Connecting does not authorize arbitrary messages, user administration,
 permission expansion, deletions, or actions across other businesses. This
 plan does not request changes to the connector's code or Google permissions.
+
+## Current execution route — 2026-09-30
+
+Chris reports the personal plugin is connected and Claude can use it. ChatGPT
+access is not a prerequisite. Delegate Google Workspace/Admin operations to
+Claude using [the setup register](CLAUDE-WORKSPACE-SETUP.md). Its GW-01 through
+GW-14 tasks supersede connection troubleshooting as the next action. Earlier
+connection instructions remain historical reference, not a request to reconnect.
+No Workspace settings have been changed or independently verified by this update.

@@ -116,3 +116,13 @@ preview safety. Cite concrete file locations. Do not redesign or add scope.
 Fix verified defects within the card; otherwise report no blocking findings
 and the evidence still required. Approval does not merge or enable services.
 ```
+
+## Google Workspace work belongs in the Claude handoff
+
+Read [CLAUDE-WORKSPACE-SETUP.md](CLAUDE-WORKSPACE-SETUP.md). Chris reports Claude
+has the required connector. Keep Sol/Luna app batches intact; give Claude exact
+Workspace dependencies and receive verified non-secret settings back. Before
+marking an email or Google integration complete, document every required Admin,
+Gmail, Drive, Calendar or other Workspace setup step with a GW ID, owner inputs,
+verification and reversal. Do not assume app code or plugin connection applied
+external settings. Alias creation starts with verification of existing aliases.
