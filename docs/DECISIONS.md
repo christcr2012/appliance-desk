@@ -3641,3 +3641,32 @@ branch-specific git.deploymentEnabled entry so CI's real-Postgres gates can
 finish before any preview migration touches the shared live DB. Remove that
 one temporary entry only after CI passes, then verify the preview and report
 before merging, per AGENTS.md. Main's deployment setting is unchanged.
+
+### 2026-09-30 — Preview deployments split off the production database (O02)
+
+Vercel Preview deployments (every pull request) had been sharing the
+exact same `DATABASE_URL`/`DIRECT_URL` as Production and Development —
+confirmed live via `mcp__Vercel__filter_project_envs`. That meant any PR
+preview build could read or write real customer/rental/invoice data, a
+real safety gap under `AGENTS.md`'s "correctness & security" priority.
+
+Fixed by splitting the env vars: Production and Development keep their
+existing values unchanged. Preview now gets its own values, pointed at
+Neon branch `dev-codex-prelaunch-interest-20260930` (`br-bold-rain-b74uzbdy`,
+child of `main`, created empty on 2026-09-30 by a previous AI-tool
+session, zero data ever written to it). Chris retrieved the connection
+strings from the Neon console himself (this session's guardrails block
+materializing database credentials directly), and I set them as
+Preview-scoped environment variables in Vercel via
+`mcp__Vercel__create_project_env` with `target: ["preview"]` and
+`upsert: true` (upsert only touched the Preview target — verified the
+Production/Development entries came back unchanged in the same
+response).
+
+This branch has never had `prisma migrate deploy` run against it, so its
+schema is not yet current. Expected to self-heal on the next Preview
+build, since CI's normal deploy pipeline runs migrations before build —
+worth confirming once, not assumed silently.
+
+Connection strings were not saved anywhere outside Vercel's own env var
+store (not written to this doc, not filed to any persistent memory).
