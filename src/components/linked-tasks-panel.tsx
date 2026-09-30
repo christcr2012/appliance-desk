@@ -1,8 +1,13 @@
 "use client";
 
+import { formatTaskDate } from "@/lib/business-date";
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { createTaskAction, completeTaskAction, deleteTaskAction } from "@/app/desk/tasks/actions";
+import {
+  createTaskAction,
+  completeTaskAction,
+  deleteTaskAction,
+} from "@/app/desk/tasks/actions";
 
 type LinkedTask = {
   id: string;
@@ -38,18 +43,23 @@ export function LinkedTasksPanel({
       <h2 className="font-medium text-gray-900">Follow-up tasks</h2>
 
       {open.length === 0 && completed.length === 0 && (
-        <p className="mt-2 text-sm text-gray-600">Nothing on your list for this one.</p>
+        <p className="mt-2 text-sm text-gray-600">
+          Nothing on your list for this one.
+        </p>
       )}
 
       {open.length > 0 && (
         <ul className="mt-3 space-y-2">
           {open.map((task) => (
-            <li key={task.id} className="flex items-start justify-between gap-3 text-sm">
+            <li
+              key={task.id}
+              className="flex items-start justify-between gap-3 text-sm"
+            >
               <div>
                 <p className="text-gray-900">{task.note}</p>
                 {task.dueDate && (
                   <p className="text-xs text-gray-500">
-                    Due {task.dueDate.toLocaleDateString("en-US")}
+                    Due {formatTaskDate(task.dueDate)}
                   </p>
                 )}
               </div>
@@ -88,7 +98,8 @@ export function LinkedTasksPanel({
 
       {completed.length > 0 && (
         <p className="mt-3 text-xs text-gray-500">
-          {completed.length} completed task{completed.length === 1 ? "" : "s"} on this one.
+          {completed.length} completed task{completed.length === 1 ? "" : "s"}{" "}
+          on this one.
         </p>
       )}
 

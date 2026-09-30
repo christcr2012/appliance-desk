@@ -39,6 +39,10 @@
  * accent-dark #0b5a54, accent-soft #d7f0ec, focus-ring #006b66.
  */
 :root {
+  --color-action: #123c2d;
+  --color-on-action: #ffffff;
+  --color-subtle: #f7f5ec;
+  --color-control: #4e6658;
   --color-canvas: #f7f5ec; /* ivory */
   --color-canvas-alt: #dce7df; /* sage */
   --color-surface: #ffffff;
@@ -83,6 +87,10 @@
 }
 
 @theme inline {
+  --color-action: var(--color-action);
+  --color-on-action: var(--color-on-action);
+  --color-subtle: var(--color-subtle);
+  --color-control: var(--color-control);
   --color-canvas: var(--color-canvas);
   --color-canvas-alt: var(--color-canvas-alt);
   --color-surface: var(--color-surface);
@@ -162,6 +170,10 @@
    primary-soft #103836, on-primary #0d1722, accent #5fd4c7, accent-dark
    #85e3d8, accent-soft #12312d. */
 .dark {
+  --color-action: #b9e66b;
+  --color-on-action: #123c2d;
+  --color-subtle: #0c1e16;
+  --color-control: #789985;
   --color-canvas: #0c1e16; /* night */
   --color-canvas-alt: #152e22; /* surface */
   --color-surface: #152e22;

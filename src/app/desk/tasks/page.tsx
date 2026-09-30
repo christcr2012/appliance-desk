@@ -1,86 +1,84 @@
 import Link from "next/link";
-import { getOpenTasks } from "@/domains/tasks";
-import { requireRole } from "@/lib/session";
+import {
+  getTaskWorkspace,
+  parseTaskFilter,
+  TASK_FILTERS,
+} from "@/domains/tasks/workspace";
+import { businessDateKey } from "@/lib/business-date";
+import {
+  PageHeader,
+  SectionCard,
+  EmptyState,
+  FilterBar,
+  secondaryActionClass,
+} from "@/components/desk/workspace";
+import { Pagination } from "@/components/pagination";
 import { NewTaskForm } from "./new-task-form";
 import { TaskRow } from "./task-row";
 
 export const metadata = { title: "Tasks" };
 
-/** A staff member's own follow-up list — see the StaffTask model's own
- * comment and docs/DECISIONS.md's 2026-09-29 CRM-buildout entry.
- * OWNER/ADMIN/STAFF — this is a personal-organization tool, not
- * financial data, so it's open to every desk login (see the
- * OPERATIONAL_LINKS vs OWNER_ONLY_LINKS split in the desk layout). */
-export default async function TasksPage() {
-  await requireRole("OWNER", "ADMIN", "STAFF");
-  const tasks = await getOpenTasks();
-
+export default async function TasksPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ due?: string; page?: string }>;
+}) {
+  const params = await searchParams;
+  const filter = parseTaskFilter(params.due);
   const now = new Date();
-  const todayString = now.toDateString();
-  const overdue = tasks.filter((t) => t.dueDate && t.dueDate.getTime() < now.getTime());
-  const dueToday = tasks.filter(
-    (t) => t.dueDate && !overdue.includes(t) && t.dueDate.toDateString() === todayString,
+  const { tasks, ...pagination } = await getTaskWorkspace(
+    filter,
+    Number(params.page ?? 1),
+    now,
   );
-
   return (
-    <div className="max-w-2xl">
-      <h1 className="text-xl font-semibold">Tasks</h1>
-      <p className="mt-1 text-sm text-gray-600">
-        Your own follow-up reminders — separate from the automatic
-        alerts on{" "}
-        <Link href="/desk/growth" className="underline">
-          Growth
-        </Link>{" "}
-        and{" "}
-        <Link href="/desk/today" className="underline">
-          Today
-        </Link>
-        , which the system flags on its own.
-      </p>
-
-      <div className="mt-6">
-        <NewTaskForm />
+    <div className="max-w-4xl">
+      <PageHeader
+        title="Tasks"
+        description="Shared team follow-ups, linked to the people and jobs they concern. Due dates follow the Colorado business calendar."
+        secondaryActions={
+          <Link href="/desk/today" className={secondaryActionClass}>
+            Back to Today
+          </Link>
+        }
+      />
+      <div id="new-task" className="mb-6 scroll-mt-4">
+        <SectionCard
+          title="Add a follow-up"
+          description="Give the team a clear next step and an optional due date."
+        >
+          <NewTaskForm />
+        </SectionCard>
       </div>
-
-      {overdue.length > 0 && (
-        <div className="mt-6">
-          <h2 className="text-sm font-medium text-amber-800">Overdue</h2>
-          <ul className="mt-2 divide-y divide-gray-200 rounded-lg border border-amber-300 bg-amber-50">
-            {overdue.map((task) => (
-              <TaskRow key={task.id} task={task} />
+      <FilterBar
+        label="Filter tasks by due date"
+        items={TASK_FILTERS.map((f) => ({
+          label: f.label,
+          href: `/desk/tasks?due=${f.value}`,
+          active: filter === f.value,
+        }))}
+      />
+      <SectionCard
+        title={TASK_FILTERS.find((f) => f.value === filter)!.label}
+        description={`${pagination.totalCount} open ${pagination.totalCount === 1 ? "task" : "tasks"}`}
+      >
+        {tasks.length ? (
+          <ul className="divide-y divide-line">
+            {tasks.map((task) => (
+              <TaskRow key={task.id} task={task} today={businessDateKey(now)} />
             ))}
           </ul>
-        </div>
-      )}
-
-      {dueToday.length > 0 && (
-        <div className="mt-6">
-          <h2 className="text-sm font-medium text-gray-900">Due today</h2>
-          <ul className="mt-2 divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white">
-            {dueToday.map((task) => (
-              <TaskRow key={task.id} task={task} />
-            ))}
-          </ul>
-        </div>
-      )}
-
-      <div className="mt-6">
-        <h2 className="text-sm font-medium text-gray-900">Everything else</h2>
-        {(() => {
-          const rest = tasks.filter((t) => !overdue.includes(t) && !dueToday.includes(t));
-          return rest.length === 0 ? (
-            <p className="mt-2 text-sm text-gray-600">
-              {tasks.length === 0 ? "Nothing on your list — add one above." : "Nothing else open."}
-            </p>
-          ) : (
-            <ul className="mt-2 divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white">
-              {rest.map((task) => (
-                <TaskRow key={task.id} task={task} />
-              ))}
-            </ul>
-          );
-        })()}
-      </div>
+        ) : (
+          <EmptyState
+            title="No tasks in this view"
+            description="Add a follow-up above, or choose another due-date filter."
+          />
+        )}
+        <Pagination
+          {...pagination}
+          buildHref={(page) => `/desk/tasks?due=${filter}&page=${page}`}
+        />
+      </SectionCard>
     </div>
   );
 }

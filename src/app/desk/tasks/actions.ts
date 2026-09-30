@@ -3,11 +3,16 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireRole } from "@/lib/session";
-import { createTask, completeTask, reopenTask, deleteTask } from "@/domains/tasks";
+import {
+  createTask,
+  completeTask,
+  reopenTask,
+  deleteTask,
+} from "@/domains/tasks";
 
 const newTaskSchema = z.object({
   note: z.string().trim().min(1, "Give this task a short note.").max(500),
-  dueDate: z.string().trim().optional().or(z.literal("")),
+  dueDate: z.union([z.iso.date(), z.literal("")]).optional(),
   leadId: z.string().trim().optional().or(z.literal("")),
   customerId: z.string().trim().optional().or(z.literal("")),
   jobId: z.string().trim().optional().or(z.literal("")),
@@ -25,7 +30,8 @@ export async function createTaskAction(
   if (!parsed.success) {
     return {
       status: "error",
-      message: parsed.error.issues[0]?.message ?? "Please fix the highlighted fields.",
+      message:
+        parsed.error.issues[0]?.message ?? "Please fix the highlighted fields.",
     };
   }
   const data = parsed.data;
@@ -41,11 +47,13 @@ export async function createTaskAction(
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Couldn't save that task.",
+      message:
+        error instanceof Error ? error.message : "Couldn't save that task.",
     };
   }
 
   revalidatePath("/desk/tasks");
+  revalidatePath("/desk/today");
   if (data.leadId) revalidatePath(`/desk/leads/${data.leadId}`);
   if (data.customerId) revalidatePath(`/desk/customers/${data.customerId}`);
   return { status: "success" };
@@ -55,16 +63,19 @@ export async function completeTaskAction(taskId: string): Promise<void> {
   await requireRole("OWNER", "ADMIN", "STAFF");
   await completeTask(taskId);
   revalidatePath("/desk/tasks");
+  revalidatePath("/desk/today");
 }
 
 export async function reopenTaskAction(taskId: string): Promise<void> {
   await requireRole("OWNER", "ADMIN", "STAFF");
   await reopenTask(taskId);
   revalidatePath("/desk/tasks");
+  revalidatePath("/desk/today");
 }
 
 export async function deleteTaskAction(taskId: string): Promise<void> {
   await requireRole("OWNER", "ADMIN", "STAFF");
   await deleteTask(taskId);
   revalidatePath("/desk/tasks");
+  revalidatePath("/desk/today");
 }

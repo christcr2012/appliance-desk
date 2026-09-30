@@ -2,7 +2,11 @@
  * See src/domains/search for what it looks across. */
 export function GlobalSearchBox() {
   return (
-    <form action="/desk/search" method="get" className="w-full max-w-sm">
+    <form
+      action="/desk/search"
+      method="get"
+      className="w-full max-w-sm min-w-0"
+    >
       <label htmlFor="global-search" className="sr-only">
         Search customers, appliances, and leads
       </label>
@@ -11,7 +15,7 @@ export function GlobalSearchBox() {
         name="q"
         type="search"
         placeholder="Search customers, appliances, leads…"
-        className="w-full rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm"
+        className="min-h-11 w-full rounded-lg border border-control bg-surface px-3 py-2 text-sm text-ink"
       />
     </form>
   );

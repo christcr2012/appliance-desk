@@ -1,156 +1,294 @@
 import Link from "next/link";
-import { getExceptions, getTodaysJobs } from "@/domains/exceptions";
-import type { ExceptionCategory } from "@/domains/exceptions";
+import {
+  getExceptions,
+  getTodaysJobs,
+  type ExceptionCategory,
+} from "@/domains/exceptions";
+import { getDueTaskSummary } from "@/domains/tasks/workspace";
+import { prisma } from "@/lib/prisma";
+import { requireRole } from "@/lib/session";
+import {
+  businessDateKey,
+  formatBusinessDate,
+  formatBusinessTime,
+} from "@/lib/business-date";
+import {
+  PageHeader,
+  SectionCard,
+  EmptyState,
+  Metric,
+  primaryActionClass,
+  secondaryActionClass,
+} from "@/components/desk/workspace";
+import { TaskRow } from "../tasks/task-row";
 
 export const metadata = { title: "Today" };
-
-const CATEGORY_LABELS: Record<ExceptionCategory, string> = {
-  BILLING_BLOCKED: "Billing blocked",
-  STALE_RESERVATION: "Reservation expired",
-  PAST_DUE_INVOICE: "Past due",
-  OVERDUE_JOB: "Overdue job",
-  UNREVIEWED_MAINTENANCE_REQUEST: "Needs review",
-  UNINSPECTED_RETURN: "Needs inspection",
-  MISSING_REPAIR_COST: "Repair cost missing",
-  AGREEMENT_TERM_EXPIRED: "Term ended",
-  APPLIANCE_MAINTENANCE_DUE: "Maintenance due",
-};
-
-const JOB_STATUS_LABELS: Record<string, string> = {
-  SCHEDULED: "Scheduled",
-  IN_PROGRESS: "In progress",
-  COMPLETED: "Completed",
-  CANCELLED: "Cancelled",
-};
-
-function formatTime(date: Date | null): string {
-  if (!date) return "No time set";
-  return date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-}
-
-function daysAgo(date: Date): string {
-  const days = Math.floor((Date.now() - date.getTime()) / (24 * 60 * 60 * 1000));
-  if (days <= 0) return "today";
-  if (days === 1) return "1 day ago";
-  return `${days} days ago`;
-}
+const CATEGORIES: Record<ExceptionCategory, { label: string; action: string }> =
+  {
+    BILLING_BLOCKED: { label: "Billing blocked", action: "Review rental" },
+    STALE_RESERVATION: {
+      label: "Reservation expired",
+      action: "Review reservation",
+    },
+    PAST_DUE_INVOICE: { label: "Past due", action: "Review billing" },
+    OVERDUE_JOB: { label: "Overdue job", action: "Review job" },
+    UNREVIEWED_MAINTENANCE_REQUEST: {
+      label: "Needs review",
+      action: "Review request",
+    },
+    UNINSPECTED_RETURN: { label: "Needs inspection", action: "Inspect return" },
+    MISSING_REPAIR_COST: {
+      label: "Repair cost missing",
+      action: "Review repair",
+    },
+    AGREEMENT_TERM_EXPIRED: { label: "Term ended", action: "Review rental" },
+    APPLIANCE_MAINTENANCE_DUE: {
+      label: "Maintenance due",
+      action: "Review appliance",
+    },
+  };
 
 export default async function TodayPage() {
-  const [exceptions, todaysJobs] = await Promise.all([getExceptions(), getTodaysJobs()]);
-
-  const highSeverity = exceptions.filter((e) => e.severity === "high");
-  const mediumSeverity = exceptions.filter((e) => e.severity === "medium");
-
+  const session = await requireRole("OWNER", "ADMIN", "STAFF");
+  const canCreate = ["OWNER", "ADMIN"].includes(
+    (session.user as { role?: string }).role ?? "",
+  );
+  const now = new Date();
+  const [exceptions, jobs, followUps, openRequests] = await Promise.all([
+    getExceptions(),
+    getTodaysJobs(now),
+    getDueTaskSummary(now),
+    prisma.maintenanceRequest.count({
+      where: {
+        status: { in: ["SUBMITTED", "REVIEWING", "SCHEDULED", "IN_PROGRESS"] },
+      },
+    }),
+  ]);
+  const active = jobs.filter(
+    (j) => j.status === "SCHEDULED" || j.status === "IN_PROGRESS",
+  );
+  const completed = jobs.filter((j) => j.status === "COMPLETED");
+  const next = active.find((j) => j.status === "IN_PROGRESS") ?? active[0];
+  const today = businessDateKey(now);
   return (
     <div>
-      <h1 className="text-xl font-semibold">Today</h1>
-      <p className="mt-1 max-w-2xl text-sm text-gray-600">
-        What&apos;s on the schedule today, and anything stuck that needs
-        your attention — so nothing sits forgotten on a page you didn&apos;t
-        happen to open.
-      </p>
-
-      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <section>
-          <h2 className="font-medium text-gray-900">
-            Needs your attention
-            {exceptions.length > 0 && (
-              <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
-                {exceptions.length}
-              </span>
-            )}
-          </h2>
-
-          {exceptions.length === 0 ? (
-            <p className="mt-3 text-sm text-gray-600">
-              Nothing needs your attention right now.
-            </p>
-          ) : (
-            <ul className="mt-3 space-y-3">
-              {[...highSeverity, ...mediumSeverity].map((item, i) => (
-                <li
-                  key={`${item.category}-${i}`}
-                  className={`rounded-lg border p-4 ${
-                    item.severity === "high"
-                      ? "border-red-300 bg-red-50"
-                      : "border-amber-300 bg-amber-50"
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <span
-                        className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${
-                          item.severity === "high"
-                            ? "bg-red-200 text-red-900"
-                            : "bg-amber-200 text-amber-900"
-                        }`}
-                      >
-                        {CATEGORY_LABELS[item.category]}
-                      </span>
-                      <p className="mt-1 font-medium text-gray-900">{item.title}</p>
-                      <p className="mt-0.5 text-sm text-gray-700">{item.detail}</p>
-                      <p className="mt-1 text-xs text-gray-500">Since {daysAgo(item.since)}</p>
+      <PageHeader
+        title="Today"
+        description={`${formatBusinessDate(now)} · Colorado time`}
+        primaryAction={
+          canCreate ? (
+            <Link href="/desk/agreements/new" className={primaryActionClass}>
+              Create rental
+            </Link>
+          ) : undefined
+        }
+        secondaryActions={
+          <Link href="/desk/tasks#new-task" className={secondaryActionClass}>
+            Add task
+          </Link>
+        }
+      />
+      <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <Metric
+          label="Jobs remaining today"
+          value={active.length}
+          href="/desk/dispatch"
+          basis="Scheduled or in progress"
+        />
+        <Metric
+          label="Overdue follow-ups"
+          value={followUps.overdueCount}
+          href="/desk/tasks?due=overdue"
+          basis="Open tasks due before today"
+        />
+        <Metric
+          label="Open service requests"
+          value={openRequests}
+          href="/desk/maintenance"
+          basis="Requests still awaiting resolution"
+        />
+      </div>
+      <div className="grid items-start gap-6 xl:grid-cols-3">
+        <div className="min-w-0 space-y-6 xl:col-span-2">
+          <SectionCard
+            title="Needs your attention"
+            description={
+              exceptions.length
+                ? `${exceptions.length} items, most urgent first`
+                : undefined
+            }
+          >
+            {exceptions.length === 0 ? (
+              <EmptyState
+                title="Nothing urgent right now"
+                description="Check upcoming jobs or follow up with a lead."
+                action={
+                  <Link href="/desk/leads" className={secondaryActionClass}>
+                    View leads
+                  </Link>
+                }
+              />
+            ) : (
+              <ul className="space-y-3">
+                {exceptions.map((item) => (
+                  <li
+                    key={`${item.category}-${item.href}`}
+                    className="rounded-lg border border-line p-4"
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1 break-words">
+                        <p className="text-xs font-semibold text-ink-soft">
+                          {item.severity === "high" ? "High priority · " : ""}
+                          {CATEGORIES[item.category].label}
+                        </p>
+                        <h3 className="mt-1 font-semibold text-ink">
+                          {item.title}
+                        </h3>
+                        <p className="mt-1 text-sm text-ink-soft">
+                          {item.detail}
+                        </p>
+                        <p className="mt-2 text-xs text-ink-soft">
+                          Flagged since {formatBusinessDate(item.since)}
+                        </p>
+                      </div>
+                      <Link href={item.href} className={secondaryActionClass}>
+                        {CATEGORIES[item.category].action}
+                      </Link>
                     </div>
-                    <Link
-                      href={item.href}
-                      className="shrink-0 whitespace-nowrap rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
-                    >
-                      Fix this
-                    </Link>
-                  </div>
-                </li>
-              ))}
-            </ul>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </SectionCard>
+        </div>
+        <div className="min-w-0 space-y-6">
+          {next && (
+            <SectionCard
+              title={
+                next.status === "IN_PROGRESS"
+                  ? "Visit in progress"
+                  : "Next visit"
+              }
+            >
+              <p className="font-semibold text-ink">
+                {next.customer?.user.name ??
+                  next.customer?.user.email ??
+                  "Internal job"}
+              </p>
+              <p className="mt-1 text-sm text-ink-soft">
+                {next.scheduledAt && formatBusinessTime(next.scheduledAt)} ·{" "}
+                {next.type.replaceAll("_", " ").toLowerCase()}
+              </p>
+              {next.serviceAddress && (
+                <p className="mt-1 break-words text-sm text-ink-soft">
+                  {next.serviceAddress.line1}, {next.serviceAddress.city}
+                </p>
+              )}
+              <Link
+                href={`/desk/jobs/${next.id}`}
+                className={`${primaryActionClass} mt-4`}
+              >
+                Open next job
+              </Link>
+            </SectionCard>
           )}
-        </section>
-
-        <section>
-          <h2 className="font-medium text-gray-900">
-            Today&apos;s schedule
-            {todaysJobs.length > 0 && (
-              <span className="ml-2 rounded-full bg-gray-200 px-2 py-0.5 text-xs font-semibold text-gray-700">
-                {todaysJobs.length}
-              </span>
+          <SectionCard
+            title="Follow-ups due"
+            description={`Due today or earlier · showing ${followUps.tasks.length} of ${followUps.totalCount}`}
+            actions={
+              <Link
+                href="/desk/tasks"
+                className="text-sm font-medium text-ink underline"
+              >
+                All tasks
+              </Link>
+            }
+          >
+            {followUps.tasks.length ? (
+              <ul className="divide-y divide-line">
+                {followUps.tasks.map((task) => (
+                  <TaskRow key={task.id} task={task} today={today} />
+                ))}
+              </ul>
+            ) : (
+              <EmptyState
+                title="No follow-ups due"
+                description="Open tasks without a due date remain on the Tasks page."
+              />
             )}
-          </h2>
-
-          {todaysJobs.length === 0 ? (
-            <p className="mt-3 text-sm text-gray-600">Nothing scheduled for today.</p>
-          ) : (
-            <ul className="mt-3 space-y-3">
-              {todaysJobs.map((job) => (
-                <li key={job.id} className="rounded-lg border border-gray-200 bg-white p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="font-medium text-gray-900">
-                        {formatTime(job.scheduledAt)} — {job.type.replace(/_/g, " ").toLowerCase()}
-                      </p>
-                      {job.customer && (
-                        <p className="text-sm text-gray-700">
-                          {job.customer.user.name ?? job.customer.user.email}
-                        </p>
-                      )}
-                      {job.serviceAddress && (
-                        <p className="text-sm text-gray-600">
-                          {job.serviceAddress.line1}, {job.serviceAddress.city}
-                        </p>
-                      )}
-                      <p className="mt-1 text-xs text-gray-500">
-                        {JOB_STATUS_LABELS[job.status] ?? job.status}
-                      </p>
-                    </div>
+          </SectionCard>
+          <SectionCard
+            title="Today's schedule"
+            actions={
+              <Link
+                href="/desk/dispatch"
+                className="text-sm font-medium text-ink underline"
+              >
+                Dispatch
+              </Link>
+            }
+          >
+            {active.length ? (
+              <ul className="space-y-3">
+                {active.map((job) => (
+                  <li
+                    key={job.id}
+                    className="border-b border-line pb-3 last:border-0"
+                  >
                     <Link
                       href={`/desk/jobs/${job.id}`}
-                      className="shrink-0 whitespace-nowrap rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                      className="block min-h-11 rounded-lg text-sm text-ink hover:underline"
                     >
-                      Open
+                      <span className="block font-semibold">
+                        {job.scheduledAt && formatBusinessTime(job.scheduledAt)}{" "}
+                        · {job.type.replaceAll("_", " ").toLowerCase()}
+                      </span>
+                      <span className="mt-1 block break-words">
+                        {job.customer?.user.name ??
+                          job.customer?.user.email ??
+                          "Internal job"}
+                      </span>
+                      <span className="mt-1 block text-ink-soft">
+                        {job.status === "IN_PROGRESS"
+                          ? "In progress"
+                          : "Scheduled"}
+                      </span>
                     </Link>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <EmptyState
+                title="No remaining visits today"
+                action={
+                  <Link href="/desk/jobs" className={secondaryActionClass}>
+                    View jobs
+                  </Link>
+                }
+              />
+            )}
+            {completed.length > 0 && (
+              <details className="mt-4 text-sm text-ink">
+                <summary className="min-h-11 cursor-pointer py-3">
+                  Completed today ({completed.length})
+                </summary>
+                <ul className="space-y-2">
+                  {completed.map((job) => (
+                    <li key={job.id}>
+                      <Link
+                        className="block min-h-11 py-3 underline"
+                        href={`/desk/jobs/${job.id}`}
+                      >
+                        {job.customer?.user.name ?? "Internal job"} ·{" "}
+                        {job.type.replaceAll("_", " ").toLowerCase()}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            )}
+          </SectionCard>
+        </div>
       </div>
     </div>
   );
