@@ -309,50 +309,437 @@ was already part of the Phase 1 schema.
       `docs/BUSINESS-RULES.md`).
 - **Needs a schema migration** — see `docs/HANDOFF.md`.
 
-## Later phases
+## Phase 6A — Production hardening & safety
 
-Feature lists for Phases 6–7 will be filled in here as each phase
-starts, following the phase plan and scope in `AGENTS.md`/
-`docs/HANDOFF.md` — kept short until then rather than speculatively
-detailed now.
+Closed the real gaps left open after Phase 5: no automatic migration
+pipeline, customer passwords Chris had to relay by hand, no spam
+protection on public forms, appliances reserved forever if a draft
+agreement was abandoned, and no test that actually proved customer
+data isolation against a real database.
 
-**Status as of 2026-09-29 (found during a documentation audit):** this
-plan never got filled in. Phase 6 (Stripe billing) and a large amount
-of unnamed-phase work has since shipped — estimates & e-signature
-quotes, purchasing/suppliers/purchase orders, the CRM buildout (notes,
-lost reasons, tasks, lead sources), dispatch/driver views, growth/
-revenue/reports/activity — all real, live, and tested, but with no
-acceptance-criteria entries here. In practice, `docs/DECISIONS.md`
-(what was built and why) and `docs/ROADMAP.md` (done vs. still open)
-have been doing this file's job since Phase 5. **Open decision for
-Chris:** either (a) backfill this file's acceptance-criteria format
-for everything shipped since Phase 5, so it stays the single feature
-spec, or (b) formally retire this file's "later phases" ambition and
-let DECISIONS.md/ROADMAP.md remain the record going forward, keeping
-this file to Phases 1–5 only. Not decided yet — flagging rather than
-picking one unilaterally, since it's a documentation-process choice,
-not a code change.
+### Safe, automatic production database migrations
 
+- [x] `package.json`'s `vercel-build` script runs, in order:
+      `check:migrations` → `db:migrate:deploy` →
+      `db:verify-schema-health` → `build`. A failed step fails the
+      whole build, and Vercel never promotes a failed build, so the
+      last good deploy keeps serving.
+- [x] `scripts/check-migrations.mjs` blocks a migration containing a
+      destructive pattern (drop, table wipe, forcing an existing
+      column to required) unless explicitly marked reviewed; runs in
+      CI on every PR too, not just at deploy.
+- [x] `scripts/verify-schema-health.ts` confirms the live schema
+      actually matches what the app expects after migrations apply.
+- [x] Chris no longer pastes migration SQL into Neon by hand — merging
+      a PR is enough. Neon's own 6-hour point-in-time restore is the
+      rollback path.
+- **Acceptance:** a PR containing a schema migration deploys,
+  migrates, and verifies itself automatically on merge to `main`;
+  `scripts/check-migrations.mjs` rejects a destructive migration
+  that isn't marked reviewed.
 
-## Authorized extension: prelaunch presence (2026-09-29)
+### Customer account activation & password recovery
 
-Chris approved the proposed signup/automated-followup phase, then explicitly
-reaffirmed AGENTS.md and the project workflow. Acceptance criteria:
+- [x] Public `/forgot-password` and `/reset-password` pages;
+      `/login` links to them; reset emails sent via Better Auth's own
+      reset-link flow through the existing Resend helper.
+- [x] Converting a lead into a customer no longer generates a
+      password Chris has to relay — the account gets a random,
+      discarded password and is emailed the same "set your password"
+      link.
+- [x] "Resend activation email" button on each customer's desk page
+      for expired/missed links.
+- **Acceptance:** `tests/leads-conversion.test.ts` proves a new
+  customer's password is random/discarded and never returned to the
+  caller, and that the activation email uses Better Auth's real
+  `requestPasswordReset` call.
 
-- Homepage/header/banner correctly identify preparation to launch; no opening
-  date, reservation, inventory, or universal free-delivery promise.
-- Public `/launch` saves explicitly opted-in local interest, validates input,
-  rate limits and silently drops honeypots; repeated/concurrent normalized
-  email submissions create one subscriber and cannot undo suppression.
-- Three emails run on the documented schedule using the existing sender,
-  with postal address, monitored reply inbox, and functioning opt-out links.
-  Delivery defaults paused; previews cannot send. Unconfigured sending does
-  not prevent signup. Concurrent cron runs cannot duplicate a sequence step.
-- Provider errors are not recorded as success; failed/uncertain attempts
-  stop for review. Settings/copy/status/source counts and paginated subscribers
-  are visible only to OWNER/ADMIN, with authorization inside every action.
-- Browser tests exercise persisted signup + unsubscribe; database integration
-  tests exercise dedupe/concurrency/suppression; all CI gates and public/owner
-  accessibility checks pass. Preview and owner review precede production merge.
-- Final launch announcement, Google Business Profile/Facebook setup, review
-  requests, and broader campaign work remain separate phases.
+### Public form spam/abuse protection
+
+- [x] Honeypot field on `/contact` — silently drops bot submissions
+      (no `Lead` row, no email).
+- [x] Per-IP rate limit, `src/lib/rate-limit.ts` — in-memory sliding
+      window, explicitly documented as best-effort (per serverless
+      instance, not a shared store); 5 lead submissions / 10 minutes /
+      IP.
+- [x] Same rate-limit pattern later extended to `/sign/[id]`'s
+      signing action (10 / 10 minutes / IP) during the Phase 7
+      security review.
+- **Acceptance:** `tests/rate-limit.test.ts` and
+  `tests/contact-spam-protection.test.ts` prove the honeypot drops
+  silently without touching the limiter, a rate-limited IP never
+  creates a `Lead`, and a normal submission passes both checks.
+
+### Reservation aging / abandoned draft agreements
+
+- [x] `BusinessSettings.draftReservationHoldDays` (owner-adjustable,
+      default 7) and `RentalAgreement.reservationExpiresAt` track how
+      long a DRAFT/AWAITING_SIGNATURE agreement may hold its reserved
+      appliances.
+- [x] "Stale hold" badge on `/desk/agreements`'s list; a warning
+      banner + "Extend reservation" button on the agreement's own
+      page. Nothing expires automatically — Chris always chooses to
+      extend or cancel.
+- [x] Dashboard shows a stale-reservation-holds count.
+- **Acceptance:** `tests/agreements.test.ts`'s `isReservationStale`
+  cases and `tests/agreements-extend-reservation.test.ts` prove the
+  staleness rule and the extend action.
+
+### Real customer-data-isolation integration test
+
+- [x] `tests/customer-isolation.test.ts` runs against a real database
+      (not mocked). Creates two independent customer fixtures and
+      proves the portal (`src/domains/portal`) never leaks one
+      customer's rentals, addresses, appliances, or maintenance
+      requests to the other; cleans up everything it creates.
+- **Acceptance:** `tests/customer-isolation.test.ts` passes in CI
+  against a real, migrated, disposable Postgres instance — the
+  actual proof point, since it cannot run in the local sandbox (see
+  `AGENTS.md`).
+
+## Phase 6B — Stripe billing
+
+Real Stripe test-mode billing, card and ACH. **Current behavior**
+(revised 2026-09-28 from the phase's original design): billing starts
+at delivery, not at signing — see `docs/ARCHITECTURE.md`'s "Payments
+(Stripe)" section for the full technical picture.
+
+### Billing model
+
+- [x] Anniversary billing — each customer's subscription bills on the
+      day-of-month they were actually delivered, not one fixed date
+      for everyone.
+- [x] Deposits and damage waivers are charged as real money up front
+      at signing (never just authorized/held), via a Stripe Checkout
+      Session in "payment" mode (or "setup" mode if there's nothing to
+      charge) that also saves a payment method for later off-session
+      billing.
+- [x] The recurring Subscription is created separately, only once a
+      delivery/installation `Job` for the agreement is marked
+      `COMPLETED` (`startRecurringBillingForAgreement`) — not at
+      signing.
+- [x] If recurring billing can't start (no saved payment method, a
+      declined card, any Stripe error), the delivery still completes;
+      the reason is recorded on `RentalAgreement.billingBlockedReason`
+      rather than thrown, and surfaced to Chris via the exception
+      inbox.
+- [x] Both card and ACH bank-transfer payments are offered from
+      signing onward.
+- **Acceptance:** `tests/billing-checkout-mode.test.ts` and
+  `tests/billing-start-recurring.test.ts` prove signing never creates
+  a Subscription and delivery-completion does (using the saved
+  payment method), and that a missing/failed payment method sets
+  `billingBlockedReason` instead of failing the delivery.
+
+### Webhook-driven Invoice/Payment/Deposit records
+
+- [x] `/api/webhooks/stripe` (`src/domains/billing/webhooks.ts`) is
+      the *only* code path that writes `Invoice`/`Payment`/`Deposit`
+      rows — never speculatively, only once Stripe confirms money
+      moved. Handles `checkout.session.completed`,
+      `checkout.session.async_payment_succeeded`/`failed` (covers
+      ACH), `invoice.paid`, `invoice.payment_failed`,
+      `charge.refunded`, and `customer.subscription.deleted`.
+- [x] Every event is deduplicated by Stripe's own event id
+      (`WebhookEvent` table), so a retried delivery is never
+      double-counted.
+- [x] Signature verification happens before any other processing;
+      malformed/unsigned requests are rejected.
+- **Acceptance:** `tests/billing-webhooks.test.ts` (real database)
+  covers the checkout-completed happy path, idempotent replay of the
+  same event, an unrelated event type, and a failed payment — verified
+  in CI against real Postgres.
+
+### Late fees & billing reminders
+
+- [x] Automated late fees (`src/domains/billing/late-fees.ts`):
+      applies the larger of the agreement's own flat `lateFeeCents` or
+      `lateFeePercent`, frozen at signing (never `BusinessSettings`'
+      current defaults). `Invoice.lateFeeCents` doubles as the
+      idempotency guard — never stacked on repeated cron runs. No new
+      charge attempts (Stripe's own retries handle that); a same-day
+      digest email goes to Chris.
+- [x] Billing reminders (`src/domains/billing/reminders.ts`): a daily
+      cron emails a customer 1–2 days before their next
+      `nextBillingDate`, guarded by `billingReminderSentForDate` so
+      the same cycle never reminds twice.
+- **Acceptance:** `tests/billing-late-fees.test.ts` and
+  `tests/billing-reminders.test.ts` prove the fee-amount rule, the
+  once-per-invoice guard, and the reminder window/dedup logic.
+
+### Billing Portal & desk/portal views
+
+- [x] "Manage billing" opens Stripe's own hosted Billing Portal so a
+      customer can update card/ACH details and see past invoices
+      themselves (`createBillingPortalSession`).
+- [x] `/account/billing` (customer) and `/desk/billing` (Chris, all
+      customers, paginated) both show real Invoice/Payment/Deposit
+      data sourced only from webhook-written rows.
+- **Acceptance:** `tests/billing-manual-payments.test.ts` and
+  `tests/billing-statements.test.ts` cover manual payment recording
+  and statement generation against the same webhook-sourced ledger.
+
+## Phase 7 — Launch hardening
+
+### Security review
+
+- [x] Full review of authorization, secrets, input validation, rate
+      limiting, webhook hardening, error disclosure, and
+      session/cookie config — no critical issues found.
+- [x] Fixed gap: `/sign/[id]`'s signing action got the same per-IP
+      rate limit already used on the contact form (10 attempts/10
+      min).
+- [x] Confirmed clean: every `/desk/**` action calls `requireRole`;
+      every `/account/**` action derives the customer from the
+      server-side session (no IDOR); no hardcoded secrets; every
+      server action validates with zod; the Stripe webhook verifies
+      its signature before any processing.
+- [x] `requireEmailVerification` is `true` in `src/lib/auth.ts`.
+- **Acceptance:** no automated test file for this (it's a manual
+  review), documented in `docs/DECISIONS.md`'s 2026-09-27 "Security
+  review (Phase 7)" entry; the one code change (`/sign/[id]` rate
+  limiting) is covered by the same pattern `tests/rate-limit.test.ts`
+  and `tests/contact-spam-protection.test.ts` already prove for the
+  contact form.
+
+### Accessibility test coverage (authenticated pages)
+
+- [x] `e2e/accessibility.spec.ts` covers every public page plus
+      `/login`, `/forgot-password`, `/reset-password`.
+- [x] `e2e/accessibility-authenticated.spec.ts` extends the same
+      automated axe checks to every page in both the `/desk/**` nav
+      (OWNER) and `/account/**` nav (CUSTOMER), using real seeded
+      test accounts gated behind CI-only env vars.
+- [x] Zero real accessibility violations found across all
+      authenticated pages.
+- **Acceptance:** `e2e/accessibility-authenticated.spec.ts` (and
+  `e2e/accessibility.spec.ts`, `e2e/accessibility-dark-mode.spec.ts`)
+  run in CI on every PR and must pass with zero axe violations before
+  merge.
+
+### Independent daily backup
+
+- [x] `/api/cron/backup` (daily, 09:00 UTC) exports every
+      business-critical table (excluding auth/session bookkeeping and
+      the Stripe webhook log) to a JSON file in Vercel Blob, kept 30
+      days with older copies pruned — a second copy on a different
+      provider than Neon.
+- [x] Explicitly scoped as a data export, not a one-click restore:
+      getting data back out means re-inserting the JSON via a script.
+- [x] Sits alongside, not instead of, Neon's own 6-hour point-in-time
+      recovery, which was separately drilled and verified (restore-
+      to-branch, confirmed working) on 2026-09-28.
+- **Acceptance:** `tests/backup.test.ts`; `src/domains/backup/index.ts`'s
+  `BACKUP_TABLES` list is the source of truth for what's included.
+
+## Post-launch feature work
+
+Everything below was built ad-hoc after Phase 7 as numbered "Task #NN"
+work items and dated feature drops — never a further numbered phase
+plan, so it isn't organized as "Phase N" here. See "Keeping this file
+current" below for how new work should be added going forward.
+
+### Estimates / quotes
+
+- [x] Staff (OWNER/ADMIN only) create a draft estimate for a customer
+      (or start one for a brand-new lead not yet a customer) with
+      free-form line items — description, quantity, a monthly amount
+      and/or a one-time fee, optionally tied to one of the customer's
+      service addresses.
+- [x] Sending an estimate generates a private, unguessable link
+      (`/estimate/[id]`, same "the id is the link" pattern as
+      `/sign/[id]`) — no customer login required.
+- [x] The customer approves or requests changes online; approval is a
+      real, timestamped record (who/when).
+- [x] If the estimate carries a deposit, approving it immediately
+      opens a real Stripe Checkout session for that deposit
+      (`createDepositCheckoutSessionForEstimate`) — nothing is marked
+      paid until Stripe's webhook confirms it; a customer who backs
+      out of checkout stays APPROVED and can pick payment back up from
+      the same link ("Pay deposit" button).
+- [x] A daily cron (`src/app/api/cron/estimate-follow-ups`) sends one
+      automatic follow-up email if a sent estimate sits SENT/VIEWED
+      for 3+ days with no response; re-sending a revised estimate
+      resets the cycle.
+- [x] An approved estimate converts to one or more DRAFT rental
+      agreements (`convertEstimateToAgreements`) — Chris picks, per
+      conversion, either "single" (one agreement on one chosen
+      property) or "per property" (one agreement per distinct property
+      referenced by the line items); conversion never touches real
+      inventory or reserves appliances, only creates the agreement
+      shell(s) with the agreed terms. When the estimate's deposit was
+      already collected and conversion is "single" mode, that deposit
+      carries onto the new agreement automatically (no double charge
+      at signing); "per property" conversions flag Chris to reconcile
+      the already-collected deposit by hand.
+- **Acceptance:** `tests/estimates.test.ts`, `tests/estimate-deposit.test.ts`,
+  `tests/estimate-follow-ups.test.ts`.
+
+### CRM: contact history, lost reasons, follow-up tasks
+
+- [x] Leads get a timestamped note log (`LeadNote`) alongside
+      customers' existing `CustomerNote` history — "called Tuesday, no
+      answer," who logged it, when.
+- [x] Marking a lead Lost requires picking a reason first (too
+      expensive, went with a competitor, outside service area, never
+      heard back, changed their mind, or Other) — shown back on the
+      lead's own page afterward.
+- [x] `/desk/reports` breaks down leads and conversion rate by how
+      they heard about the business.
+- [x] `/desk/tasks` is a personal due-date-plus-note follow-up list,
+      optionally tied to a lead/customer/job from that record's own
+      page; open to STAFF logins too since it's personal organization,
+      not financial data.
+- [x] `/desk/activity` gained Today/This week/All time tabs and a
+      category breakdown (leads, estimates, jobs, billing, ...), built
+      entirely from the existing audit log.
+- **Acceptance:** `tests/leads.test.ts`, `tests/leads-conversion.test.ts`.
+
+### Staff accounts & roles
+
+- [x] A `STAFF` role (`prisma/schema.prisma`'s `Role` enum) for a
+      day-to-day operational login that isn't OWNER/ADMIN.
+- [x] STAFF can reach the desk layout and its operational pages —
+      dispatch, driver view, jobs (view/update status/complete), and
+      tasks.
+- [x] STAFF is blocked from business financials and settings:
+      billing, revenue, reports, settings, estimates,
+      purchasing/suppliers, leads, customers, and inventory all still
+      require `requireRole("OWNER", "ADMIN")` specifically.
+- [x] `/desk/settings`'s staff-accounts panel lets OWNER/ADMIN create a
+      staff login (emails them a set-your-password link, same
+      activation flow as a converted customer account), deactivate,
+      and reactivate an account.
+- **Acceptance:** `tests/staff-accounts.test.ts`.
+
+### Purchasing & supplies
+
+- [x] `Supplier` records: contact info (name, contact person, phone,
+      email, notes) plus a read-only count of its purchase orders — no
+      approval workflow, no supplier-specific pricing.
+- [x] `PurchaseOrder` moves DRAFT → ORDERED → RECEIVED, or CANCELLED
+      at any point before RECEIVED.
+- [x] Each `PurchaseOrderLineItem` optionally links to an existing
+      `PartRecord`, or is a free-text description for a one-off buy
+      not tracked as inventory.
+- [x] Receiving a purchase order (`receivePurchaseOrder`) is the one
+      action that changes stock — every line's quantity is added onto
+      its linked `PartRecord.quantityOnHand` in one shot (no partial
+      receiving); lines with no linked part don't affect stock.
+- [x] Desk pages: `/desk/suppliers` (list/detail/new) and
+      `/desk/purchase-orders` (list/detail/new); `/desk/parts` gained
+      a part-stock panel showing current quantity on hand. All
+      OWNER/ADMIN only.
+- **Acceptance:** `tests/purchasing.test.ts`.
+
+### Dispatch board & driver view
+
+- [x] `/desk/dispatch` — day/week/agenda views of scheduled jobs, an
+      unscheduled-jobs queue, and conflict detection for jobs
+      double-booked onto overlapping times.
+- [x] Per-job checklists with progress tracking.
+- [x] `/desk/driver` — a driver's own today's-stops view (name,
+      address, appliances, notes) with no pricing or financial data
+      shown; reachable by STAFF as well as OWNER/ADMIN.
+- **Acceptance:** `tests/dispatch-board.test.ts`, `tests/jobs.test.ts`.
+
+### Growth, Revenue, Reports, Today, Tasks, Activity, Fleet, Search
+
+- [x] `/desk/growth` — five read-only, explainable (no AI/ML) signals:
+      churn risk, lead win-back candidates, price-review reminders
+      (agreements priced a year+ ago), fleet flags (near-fully-rented
+      or mostly-idle appliance types), and review/referral candidates
+      (customers billing cleanly 90+ days).
+- [x] `/desk/revenue` — MRR/ARR from active agreements' agreed
+      pricing; collected/past-due/failed-payment figures come directly
+      from Stripe, never estimated.
+- [x] `/desk/reports` — estimated vs. actual earnings per agreement
+      (flags any agreement >$10 behind its estimate), missing
+      repair-cost warnings on completed maintenance jobs, lead-source
+      breakdown, and a CSV transactions export.
+- [x] `/desk/today` — the exception inbox: billing blocked, expired
+      reservations, past-due invoices, overdue jobs, stale unreviewed
+      maintenance requests, and appliances awaiting inspection too
+      long — sorted by severity then age.
+- [x] `/desk/tasks`, `/desk/activity` — see CRM section above.
+- [x] `/desk/fleet` — per-appliance utilization percentage and
+      profitability/ROI (revenue estimated from assignment days ×
+      agreed price, minus repair cost and purchase cost).
+- [x] `/desk/search` — a plain-GET, JS-free global search across
+      customers, appliances, and leads from the desk header.
+- **Acceptance:** `tests/growth.test.ts`, `tests/growth-churn.test.ts`,
+  `tests/growth-signals.test.ts`, `tests/reports.test.ts`,
+  `tests/reports-earnings.test.ts`, `tests/revenue-trend.test.ts`.
+
+### Referral program
+
+- [x] Every customer automatically gets a shareable
+      `Customer.referralCode`.
+- [x] A new lead who enters someone's code on the public form is
+      linked to that customer (`Referral`, PENDING) once the lead
+      converts to a customer.
+- [x] The reward — one owner-adjustable dollar amount
+      (`BusinessSettings.referralRewardCents`, $25 default) — fires
+      for both sides only once the *referred* customer's billing
+      actually starts, never on signup alone.
+- [x] Applied as a real Stripe account-balance credit where a Stripe
+      customer exists, plus a `CustomerCredit` record on both sides
+      either way, visible on each customer's own page.
+- **Acceptance:** `tests/referrals.test.ts`.
+
+### Shared status-badge/icon system
+
+- [x] `<StatusBadge>` (`src/components/status-badge.tsx`) maps every
+      status across the app (leads, estimates, purchase orders,
+      invoices, inventory, jobs) to one of five tones (success,
+      pending, attention, stopped, progress), each with a small icon
+      plus color — never color alone — replacing per-page
+      copy-pasted color maps. See `docs/DESIGN-SYSTEM.md`'s "Status
+      badges" section for the pattern going forward.
+
+### Prelaunch interest list & automated welcome emails
+
+Built by a different AI tool (branch `ai/codex/prelaunch-interest-list`,
+PR #86), reviewed and merged 2026-09-30. Chris approved this as a
+separate, authorized extension before work started.
+
+- [x] The homepage/header/banner correctly identify the business as
+      still preparing to launch — no opening date, reservation,
+      inventory, or universal free-delivery promise stated.
+- [x] Public `/launch` saves explicitly opted-in local interest, with
+      real validation, per-IP rate limiting, and a silently-dropped
+      honeypot; a repeated or concurrent signup from the same
+      (normalized) email creates exactly one subscriber row and can
+      never quietly undo a prior unsubscribe.
+- [x] Three emails run on a fixed daily-cron schedule through the
+      existing Resend sender, each with a postal address, a monitored
+      reply inbox, and a working one-click unsubscribe
+      (RFC 8058-compliant headers; the unsubscribe page's GET never
+      mutates state, only POST does). Sending defaults OFF
+      (`LaunchSettings`) until Chris turns it on; leaving it off never
+      blocks signup itself.
+- [x] A provider error is never recorded as a successful send — a
+      failed or uncertain attempt permanently blocks that
+      subscriber's sequence for Chris to review by hand
+      (`/desk/launch`), rather than silently retrying or skipping a
+      step. Concurrent cron runs can't double-send the same step
+      (a guarded `updateMany` claims the send).
+- [x] Settings, copy, delivery status, source counts, and the
+      paginated subscriber list are all OWNER/ADMIN only, checked
+      inside every server action, not just hidden from the nav.
+- **Acceptance:** `tests/launch.test.ts`, `tests/launch-actions.test.ts`,
+  and `tests/launch-integration.test.ts` (the last runs against a real
+  database and exercises dedupe, concurrent-signup, concurrent-cron,
+  provider-failure, and unsubscribe-then-resignup cases); `e2e/launch.spec.ts`
+  covers the signup + unsubscribe flow end to end.
+
+## Keeping this file current
+
+Backfilled 2026-09-29 (see `docs/DECISIONS.md`). Chris's call: keep
+this file as the single, current feature spec going forward, rather
+than letting `docs/DECISIONS.md`/`docs/ROADMAP.md` be the only record.
+**From here on, add a new `###` entry under the relevant `##` section
+(or a new `## Post-launch feature work` subsection) in the same PR
+that ships a feature** — the same discipline this file already asks
+for at the top ("update this file as each phase is built"), now
+actually being followed for real.
