@@ -1029,3 +1029,38 @@ portal, and an SMS opt-in checkbox (TCPA-compliant) is required before
 any texting feature is added — **done, 2026-09-28**:
 `/account/settings`'s off-by-default checkbox, see "Growth signals"
 above and `docs/DECISIONS.md`.
+
+
+## Prelaunch interest list and welcome emails (2026-09-29)
+
+Chris authorized a local online-presence/automation build while the business
+is still preparing to open. This phase adds an **interest list**, separate
+from quote requests, Leads, customer accounts, reservations, and SMS consent.
+Only name, email, city, appliance interest, and an unchecked required email
+opt-in are collected. The exact consent text/version/time and link-source
+label are retained. Email is trimmed/lowercased; repeat signups never create
+another subscriber, change their details, or reactivate an unsubscribe.
+
+`/desk/launch` (OWNER/ADMIN only) controls prelaunch mode and email activation.
+Prelaunch mode defaults on; email delivery defaults off. Turning prelaunch
+off closes signup, restores the ordinary homepage, and pauses this sequence.
+Activation requires an owner-confirmed business mailing address and monitored
+reply inbox. The production sender and canonical URL must also be configured.
+Previews never send launch emails, even if they share production settings.
+
+The finite sequence is: welcome on the next daily run; the family-business
+story at least 3 days after acceptance of the first email; and a needs/setup
+question at least 4 days after acceptance of the second. Daily runs process
+at most 25 emails, so a backlog can delay these intervals. No invented opening
+date, inventory promise, guaranteed free delivery, or automatic launch-date
+announcement. Maintenance is always included; delivery/installation fees and
+requirements depend on the situation. Copy is visible in `/desk/launch`.
+
+Unsubscribe applies immediately to future marketing attempts. A send already
+in flight may arrive. Repeated signups cannot undo suppression. The owner can
+also stop a subscriber's emails from the desk. Failures/uncertain sends stop
+that person's sequence for review instead of blindly retrying. A database
+claim plus a unique subscriber/step record prevents overlapping cron runs
+from sending duplicates. SENT means accepted by Resend, not inbox delivery.
+There is no open tracking, SMS automation, purchased list import, or automated
+outreach to people who have not opted in.

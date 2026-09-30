@@ -20,7 +20,13 @@ import { ThemeToggle } from "@/components/theme-toggle";
  * hidden via display:none tricks) so it's reachable by keyboard and
  * screen readers alike.
  */
-export function Header({ businessName }: { businessName: string }) {
+export function Header({
+  businessName,
+  prelaunch = false,
+}: {
+  businessName: string;
+  prelaunch?: boolean;
+}) {
   const [menuOpen, setMenuOpen] = useState(false);
   const pathname = usePathname();
   const headerRef = useRef<HTMLElement>(null);
@@ -158,10 +164,10 @@ export function Header({ businessName }: { businessName: string }) {
             Log in
           </Link>
           <Link
-            href="/contact"
+            href={prelaunch ? "/launch" : "/contact"}
             className="inline-flex items-center justify-center rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-on-primary shadow-sm transition-colors hover:bg-primary-dark"
           >
-            Get a Quote
+            {prelaunch ? "Join launch list" : "Get a Quote"}
           </Link>
           <ThemeToggle />
         </nav>
@@ -236,10 +242,10 @@ export function Header({ businessName }: { businessName: string }) {
               Log in
             </Link>
             <Link
-              href="/contact"
+              href={prelaunch ? "/launch" : "/contact"}
               className="mt-2 inline-flex items-center justify-center rounded-full bg-primary px-5 py-3 text-base font-semibold text-on-primary shadow-sm"
             >
-              Get a Quote
+              {prelaunch ? "Join launch list" : "Get a Quote"}
             </Link>
           </Container>
         </nav>

@@ -10,6 +10,7 @@ const PUBLIC_ROUTES = [
   "/how-it-works",
   "/service-area",
   "/contact",
+  "/launch",
   "/privacy",
   "/terms",
   "/accessibility",

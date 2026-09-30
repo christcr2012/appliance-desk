@@ -314,3 +314,31 @@ caught up. See `docs/ROADMAP.md` for the always-current, fuller list.)
 3. Otherwise, tell whichever AI is helping you exactly what you clicked
    and what happened — "it broke" is harder to fix than "I clicked
    Save on the pricing page and got a red error message."
+
+
+## Launch list (preparing to open)
+
+After this feature is merged, open **Launch list** in the owner menu.
+The public signup page is `/launch`; this is an interest list, not a booking.
+Use `/launch?utm_source=instagram` for your Instagram website link and
+`/launch?utm_source=facebook` on Facebook to see which link brings signups.
+The website accepts signups while emails are paused.
+
+Before enabling emails, enter the valid business mailing address you want
+shown in email footers and a business inbox you actually monitor for replies.
+Read the three emails shown on that page, check Enable, and save. The first
+email goes on the next daily run (10 a.m. Mountain daylight / 9 a.m. standard),
+with the next two at least 3 and 4 days later. This is a finite welcome series,
+not an automatic announcement of an opening date you have not set.
+
+Uncheck Enable to pause. Turn off Prelaunch mode when ready to replace the
+launch homepage with the normal rental homepage; that also closes signup
+and pauses this prelaunch series. Use Stop emails if someone asks you to
+unsubscribe them. They can also use any email's unsubscribe link themselves.
+
+An email marked Needs review / sending may be in progress. If still there
+after the daily run, check Resend's sending activity before resending anything;
+uncertain/failed attempts intentionally stop to avoid duplicates. Ask your
+technical helper to reconcile that attempt with the provider record; do not
+reset the sequence or import the address again. SENT is provider acceptance,
+not proof the email reached the inbox. No tracking pixels are added.

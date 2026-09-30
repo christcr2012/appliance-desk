@@ -28,6 +28,7 @@ const OWNER_STATE_PATH = "e2e/.auth/owner.json";
 const CUSTOMER_STATE_PATH = "e2e/.auth/customer.json";
 
 const DESK_PAGES = [
+  "/desk/launch",
   "/desk/today",
   "/desk/dashboard",
   "/desk/leads",
@@ -47,10 +48,19 @@ const DESK_PAGES = [
   "/desk/settings",
 ];
 
-const ACCOUNT_PAGES = ["/account", "/account/rentals", "/account/maintenance", "/account/billing"];
+const ACCOUNT_PAGES = [
+  "/account",
+  "/account/rentals",
+  "/account/maintenance",
+  "/account/billing",
+];
 
 test.describe("desk pages (logged in as OWNER)", () => {
-  test.use({ storageState: fs.existsSync(OWNER_STATE_PATH) ? OWNER_STATE_PATH : undefined });
+  test.use({
+    storageState: fs.existsSync(OWNER_STATE_PATH)
+      ? OWNER_STATE_PATH
+      : undefined,
+  });
 
   test.beforeEach(async () => {
     test.skip(
@@ -60,7 +70,9 @@ test.describe("desk pages (logged in as OWNER)", () => {
   });
 
   for (const path of DESK_PAGES) {
-    test(`${path} has no automatically detectable accessibility violations`, async ({ page }) => {
+    test(`${path} has no automatically detectable accessibility violations`, async ({
+      page,
+    }) => {
       await page.goto(path);
       const results = await new AxeBuilder({ page })
         .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
@@ -71,7 +83,11 @@ test.describe("desk pages (logged in as OWNER)", () => {
 });
 
 test.describe("account pages (logged in as CUSTOMER)", () => {
-  test.use({ storageState: fs.existsSync(CUSTOMER_STATE_PATH) ? CUSTOMER_STATE_PATH : undefined });
+  test.use({
+    storageState: fs.existsSync(CUSTOMER_STATE_PATH)
+      ? CUSTOMER_STATE_PATH
+      : undefined,
+  });
 
   test.beforeEach(async () => {
     test.skip(
@@ -81,7 +97,9 @@ test.describe("account pages (logged in as CUSTOMER)", () => {
   });
 
   for (const path of ACCOUNT_PAGES) {
-    test(`${path} has no automatically detectable accessibility violations`, async ({ page }) => {
+    test(`${path} has no automatically detectable accessibility violations`, async ({
+      page,
+    }) => {
       await page.goto(path);
       const results = await new AxeBuilder({ page })
         .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])

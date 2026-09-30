@@ -24,9 +24,13 @@ export async function sendEmail(input: {
    * password-reset/verification URL, say). Defaults to a generic
    * "Continue" when a link is present but no label was given. */
   actionLabel?: string;
+  replyTo?: string;
+  idempotencyKey?: string;
+  marketing?: { postalAddress: string; unsubscribeUrl: string };
 }): Promise<{ sent: boolean }> {
   const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.RESEND_FROM_EMAIL ?? "Appliance Desk <onboarding@resend.dev>";
+  const from =
+    process.env.RESEND_FROM_EMAIL ?? "Appliance Desk <onboarding@resend.dev>";
 
   if (!apiKey) {
     console.log(
@@ -37,13 +41,41 @@ export async function sendEmail(input: {
 
   try {
     const resend = new Resend(apiKey);
-    await resend.emails.send({
-      from,
-      to: input.to,
-      subject: input.subject,
-      text: input.text,
-      html: renderBrandedEmailHtml(input.text, input.actionLabel),
-    });
+    const marketingFooter = input.marketing
+      ? `\n\nLaunch news from Robinson Appliance Rentals. You requested these emails.\n${input.marketing.postalAddress}\n\nUnsubscribe from marketing emails:\n${input.marketing.unsubscribeUrl}`
+      : "";
+    const { data, error } = await resend.emails.send(
+      {
+        from,
+        to: input.to,
+        subject: input.subject,
+        text: input.text + marketingFooter,
+        html: renderBrandedEmailHtml(
+          input.text,
+          input.actionLabel,
+          input.marketing,
+        ),
+        ...(input.replyTo ? { replyTo: input.replyTo } : {}),
+        ...(input.marketing
+          ? {
+              headers: {
+                "List-Unsubscribe": `<${input.marketing.unsubscribeUrl}>`,
+                "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+              },
+            }
+          : {}),
+      },
+      input.idempotencyKey
+        ? { idempotencyKey: input.idempotencyKey }
+        : undefined,
+    );
+    if (error || !data?.id) {
+      console.error(
+        "[email] Provider did not accept the email",
+        error?.name ?? "missing-id",
+      );
+      return { sent: false };
+    }
     return { sent: true };
   } catch (error) {
     // A failed notification email must never break lead submission itself
@@ -89,7 +121,11 @@ const BARE_URL_LINE = /^https?:\/\/\S+$/;
  * maintenance-request notes) is real user input, not copy this app
  * wrote itself.
  */
-function renderBrandedEmailHtml(text: string, actionLabel = "Continue"): string {
+function renderBrandedEmailHtml(
+  text: string,
+  actionLabel = "Continue",
+  marketing?: { postalAddress: string; unsubscribeUrl: string },
+): string {
   const paragraphs = text.split(/\n\n+/);
   const bodyHtml = paragraphs
     .map((paragraph) => {
@@ -103,5 +139,8 @@ function renderBrandedEmailHtml(text: string, actionLabel = "Continue"): string 
     })
     .join("");
 
-  return `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0;background:${BRAND.ivory};font-family:Arial,sans-serif;color:${BRAND.ink}"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:24px 12px"><table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;background:white"><tr><td style="padding:32px;background:${BRAND.evergreen};color:white"><strong style="font-size:25px">ROBINSON</strong><br><span style="font-size:12px;letter-spacing:2px">APPLIANCE RENTALS</span></td></tr><tr><td style="padding:32px">${bodyHtml}</td></tr><tr><td style="padding:24px 32px;border-top:4px solid ${BRAND.fresh};font-size:12px;color:${BRAND.ink}"><a href="https://robinsonappliancerentals.com" style="color:${BRAND.evergreen}">robinsonappliancerentals.com</a></td></tr></table></td></tr></table></body></html>`;
+  const marketingHtml = marketing
+    ? `<p>Launch news from Robinson Appliance Rentals. You requested these emails.</p><p>${escapeHtml(marketing.postalAddress).replace(/\n/g, "<br>")}</p><p><a href="${escapeHtml(marketing.unsubscribeUrl)}" style="color:${BRAND.evergreen}">Unsubscribe from marketing emails</a></p>`
+    : "";
+  return `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0;background:${BRAND.ivory};font-family:Arial,sans-serif;color:${BRAND.ink}"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:24px 12px"><table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;background:white"><tr><td style="padding:32px;background:${BRAND.evergreen};color:white"><strong style="font-size:25px">ROBINSON</strong><br><span style="font-size:12px;letter-spacing:2px">APPLIANCE RENTALS</span></td></tr><tr><td style="padding:32px">${bodyHtml}</td></tr><tr><td style="padding:24px 32px;border-top:4px solid ${BRAND.fresh};font-size:12px;color:${BRAND.ink}"><a href="https://robinsonappliancerentals.com" style="color:${BRAND.evergreen}">robinsonappliancerentals.com</a>${marketingHtml}</td></tr></table></td></tr></table></body></html>`;
 }

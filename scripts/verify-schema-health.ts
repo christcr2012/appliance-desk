@@ -19,7 +19,9 @@
 import { prisma } from "../src/lib/prisma";
 
 async function main() {
-  console.log("[migrate] Checking the database matches what this version of the app expects...");
+  console.log(
+    "[migrate] Checking the database matches what this version of the app expects...",
+  );
 
   // One representative, real query per major area of the schema —
   // enough to catch "a migration didn't actually run" without needing
@@ -31,6 +33,9 @@ async function main() {
   await prisma.applianceType.findFirst();
   await prisma.rentalAgreement.findFirst();
   await prisma.auditLog.findFirst();
+  await prisma.launchSettings.findFirst();
+  await prisma.launchSubscriber.findFirst();
+  await prisma.launchDelivery.findFirst();
 
   console.log("[migrate] Schema health check passed.");
 }

@@ -3,6 +3,7 @@ import { Manrope } from "next/font/google";
 import Script from "next/script";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { getBusinessSettings } from "@/domains/settings";
+import { getLaunchSettings } from "@/domains/launch";
 import "./globals.css";
 
 // Brand kit v2.0 ("Evergreen," 2026-09-29 — see docs/DECISIONS.md) uses
@@ -30,10 +31,14 @@ const siteUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 // after Chris entered the real business name, because this used to be a
 // static `export const metadata` object rather than a dynamic function.
 export async function generateMetadata(): Promise<Metadata> {
-  const settings = await getBusinessSettings();
+  const [settings, launch] = await Promise.all([
+    getBusinessSettings(),
+    getLaunchSettings(),
+  ]);
   const businessName = settings.publicBusinessName;
-  const description =
-    "Rent a washer and dryer in Colorado with simple month-to-month pricing, fast delivery, and no long-term commitment.";
+  const description = launch.prelaunchMode
+    ? "Family-owned washer and dryer rentals preparing to launch in Greeley and surrounding areas. Maintenance included. Join for launch updates."
+    : "Rent a washer and dryer in Colorado with simple month-to-month pricing, fast delivery, and no long-term commitment.";
 
   return {
     metadataBase: new URL(siteUrl),
@@ -76,10 +81,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html
-      lang="en"
-      className={`${manrope.variable} h-full antialiased`}
-    >
+    <html lang="en" className={`${manrope.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col bg-canvas text-ink">
         {/* Sets the .dark class (Chris's dark mode, 2026-09-27) before
             the page paints, so there's no flash of the wrong theme
