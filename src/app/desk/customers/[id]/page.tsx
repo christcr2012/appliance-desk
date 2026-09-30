@@ -1,285 +1,398 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { requireRole } from "@/lib/session";
 import { OperationalCustomer } from "./operational-customer";
-import Link from "next/link";
-import { getCustomerById, getCustomerTimeline, getCustomerContacts } from "@/domains/customers";
-import { getTasksForCustomer } from "@/domains/tasks";
-import { formatCents } from "@/domains/pricing";
+import {
+  CUSTOMER_TABS,
+  customerTab,
+  getCustomerIdentity,
+  getCustomerOverview,
+  getCustomerProperties,
+  getCustomerRentals,
+  getCustomerService,
+} from "@/domains/customers/workspace";
+import {
+  getCustomerTimelinePage,
+  timelineFilter,
+} from "@/domains/customers/timeline-page";
+import {
+  PageHeader,
+  SectionCard,
+  EmptyState,
+  FilterBar,
+  Metric,
+  primaryActionClass,
+  secondaryActionClass,
+} from "@/components/desk/workspace";
+import { Pagination } from "@/components/pagination";
+import { parsePage } from "@/domains/pagination";
+import { formatCents } from "@/domains/pricing/money";
+import { formatBusinessDate, formatBusinessTime } from "@/lib/business-date";
 import { ResendActivationButton } from "./resend-activation-button";
 import { AddNoteForm } from "./add-note-form";
 import { ContactsPanel } from "./contacts-panel";
 import { ServiceAddressesPanel } from "./service-addresses-panel";
 import { LinkedTasksPanel } from "@/components/linked-tasks-panel";
+import { BillingContext } from "./billing-context";
 
 export const metadata = { title: "Customer" };
-
-function timeAgo(date: Date): string {
-  const days = Math.floor((Date.now() - date.getTime()) / (24 * 60 * 60 * 1000));
-  if (days <= 0) return "today";
-  if (days === 1) return "1 day ago";
-  if (days < 30) return `${days} days ago`;
-  return date.toLocaleDateString("en-US");
-}
-
+type Search = {
+  tab?: string;
+  page?: string;
+  filter?: string;
+  cursor?: string;
+  newAccount?: string;
+  emailSent?: string;
+};
 export default async function CustomerDetailPage({
   params,
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ newAccount?: string; emailSent?: string }>;
+  searchParams: Promise<Search>;
 }) {
   const session = await requireRole("OWNER", "ADMIN", "STAFF");
   const { id } = await params;
-  if ((session.user as { role?: string }).role === "STAFF") return <OperationalCustomer id={id} />;
-  const { newAccount, emailSent } = await searchParams;
-  const [customer, timeline, contacts, tasks] = await Promise.all([
-    getCustomerById(id),
-    getCustomerTimeline(id),
-    getCustomerContacts(id),
-    getTasksForCustomer(id),
-  ]);
-
-  if (!customer) {
-    notFound();
-  }
-
-  return (
-    <div className="max-w-3xl">
-      <Link href="/desk/customers" className="text-sm text-gray-600 hover:underline">
-        &larr; Back to customers
-      </Link>
-
-      {/* Confirms the new-account activation email actually went out —
-          carried here on the URL from the "Add customer" form
-          (new-customer-form.tsx), since that page navigates straight
-          here and a message shown there would never be seen (2026-09-29,
-          Chris reported the new-customer process didn't seem to send an
-          email; it did, he just had no way to tell). */}
-      {newAccount === "1" && (
-        <div
-          role="status"
-          className={`mt-3 rounded-lg border p-3 text-sm ${
-            emailSent === "1"
-              ? "border-green-200 bg-green-50 text-green-900"
-              : "border-amber-200 bg-amber-50 text-amber-900"
-          }`}
-        >
-          {emailSent === "1" ? (
-            <p>
-              A new account was created, and an email was sent so this
-              customer can set their own password and log in. Nothing for
-              you to relay — if they say it didn&apos;t arrive, use
-              &ldquo;Resend activation email&rdquo; below.
-            </p>
+  if ((session.user as { role?: string }).role === "STAFF")
+    return <OperationalCustomer id={id} />;
+  const query = await searchParams;
+  const customer = await getCustomerIdentity(id);
+  if (!customer) notFound();
+  const tab = customerTab(query.tab);
+  const base = `/desk/customers/${encodeURIComponent(id)}`;
+  const href = (name: string, page = 1) =>
+    `${base}?tab=${name}${page > 1 ? `&page=${page}` : ""}`;
+  let content: React.ReactNode;
+  if (tab === "overview") {
+    const data = await getCustomerOverview(id);
+    content = (
+      <div className="space-y-6">
+        <div className="grid gap-3 sm:grid-cols-3">
+          <Metric
+            label="Active rentals"
+            value={data.activeRentals}
+            href={href("rentals")}
+            basis="Active agreements"
+          />
+          <Metric
+            label="Open service"
+            value={data.openService}
+            href={href("service")}
+            basis="Requests awaiting resolution"
+          />
+          <Metric
+            label="Properties"
+            value={data.propertyCount}
+            href={href("properties")}
+            basis="Service addresses on file"
+          />
+        </div>
+        <SectionCard title="Next visit">
+          {data.nextJob ? (
+            <Link
+              className="text-primary underline"
+              href={`/desk/jobs/${data.nextJob.id}`}
+            >
+              {data.nextJob.type.replaceAll("_", " ")} ·{" "}
+              {formatBusinessDate(data.nextJob.scheduledAt!)} ·{" "}
+              {formatBusinessTime(data.nextJob.scheduledAt!)}
+              {data.nextJob.serviceAddress &&
+                ` · ${data.nextJob.serviceAddress.line1}, ${data.nextJob.serviceAddress.city}`}
+            </Link>
           ) : (
-            <p>
-              A new account was created, but the activation email
-              couldn&apos;t be sent just now. Use &ldquo;Resend activation
-              email&rdquo; below to try again.
-            </p>
+            <EmptyState
+              title="No scheduled visit"
+              action={
+                <Link
+                  className={secondaryActionClass}
+                  href={`/desk/jobs/new?customerId=${id}`}
+                >
+                  Schedule a job
+                </Link>
+              }
+            />
           )}
-        </div>
-      )}
-
-      <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold">
-            {customer.user.name ?? customer.user.email}
-          </h1>
-          <p className="mt-1 text-sm text-gray-600">
-            {customer.user.email}
-            {customer.phone ? ` · ${customer.phone}` : ""}
-            {customer.companyName ? ` · ${customer.companyName}` : ""}
-          </p>
-        </div>
-
-        {/* Quick actions — the two most common next steps from a
-            customer's own page, without hunting through the nav. */}
-        <div className="flex gap-2">
-          <Link
-            href={`/desk/agreements/new?customerId=${customer.id}`}
-            className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
-          >
-            + New agreement
-          </Link>
-          <Link
-            href={`/desk/jobs/new?customerId=${customer.id}`}
-            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
-          >
-            Schedule a job
-          </Link>
-          <Link
-            href={`/desk/billing/customer/${customer.id}`}
-            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
-          >
-            View statement
-          </Link>
-          <Link
-            href={`/desk/estimates/new?customerId=${customer.id}`}
-            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
-          >
-            New estimate
-          </Link>
-        </div>
+        </SectionCard>
+        <SectionCard
+          title="Customer login"
+          description="Resend a password activation link when the customer needs it."
+        >
+          <ResendActivationButton customerId={id} />
+        </SectionCard>
+        <LinkedTasksPanel linkType="customer" linkId={id} tasks={data.tasks} />
       </div>
-
-      <div className="mt-3 rounded-lg border border-gray-200 bg-white px-4 py-3">
-        <p className="text-sm text-gray-600">
-          If this customer hasn&apos;t set their password yet, or says their
-          activation email never arrived or expired, send it again:
-        </p>
-        <ResendActivationButton customerId={customer.id} />
-      </div>
-
-      <div className="mt-6">
+    );
+  } else if (tab === "properties") {
+    const data = await getCustomerProperties(id);
+    content = data && (
+      <div className="space-y-6">
         <ServiceAddressesPanel
-          customerId={customer.id}
-          addresses={customer.serviceAddresses}
-          agreements={customer.rentalAgreements.map((a) => ({
+          customerId={id}
+          addresses={data.serviceAddresses}
+          agreements={data.rentalAgreements.map((a) => ({
             id: a.id,
             status: a.status,
             serviceAddressId: a.serviceAddressId,
-            monthlyCents: a.lines.reduce((sum, l) => sum + l.monthlyPriceCents, 0),
+            monthlyCents: a.lines.reduce(
+              (sum, l) => sum + l.monthlyPriceCents,
+              0,
+            ),
           }))}
-          jobs={customer.jobs.map((j) => ({ id: j.id, serviceAddressId: j.serviceAddressId }))}
+          jobs={data.jobs}
         />
+        <ContactsPanel customerId={id} contacts={data.contacts} />
       </div>
-
-      <div className="mt-6 rounded-lg border border-gray-200 bg-white p-5">
-        <h2 className="font-medium text-gray-900">Jobs</h2>
-        {customer.jobs.length === 0 ? (
-          <p className="mt-2 text-sm text-gray-600">No jobs scheduled yet.</p>
-        ) : (
-          <ul className="mt-2 space-y-2 text-sm text-gray-700">
-            {customer.jobs.map((j) => (
-              <li key={j.id}>
-                <Link href={`/desk/jobs/${j.id}`} className="hover:underline">
-                  {j.type} — {j.status}
-                  {j.scheduledAt
-                    ? ` (${new Date(j.scheduledAt).toLocaleDateString()})`
-                    : ""}
+    );
+  } else if (tab === "rentals") {
+    const data = await getCustomerRentals(id, parsePage(query.page));
+    content = (
+      <SectionCard title="Rental agreements">
+        {data.records.length ? (
+          <ul className="divide-y divide-line">
+            {data.records.map((a) => (
+              <li key={a.id} className="py-3">
+                <Link
+                  className="text-primary underline"
+                  href={`/desk/agreements/${a.id}`}
+                >
+                  {a.status} · {a.lines.length} appliance line(s) ·{" "}
+                  {formatCents(
+                    a.lines.reduce((sum, l) => sum + l.monthlyPriceCents, 0),
+                  )}
+                  /mo
                 </Link>
+                <p className="mt-1 text-sm text-ink-soft">
+                  {a.serviceAddress.line1}, {a.serviceAddress.city}
+                </p>
               </li>
             ))}
           </ul>
-        )}
-      </div>
-
-      <div className="mt-6 rounded-lg border border-gray-200 bg-white p-5">
-        <div className="flex items-center justify-between">
-          <h2 className="font-medium text-gray-900">Rental agreements</h2>
-          <Link
-            href={`/desk/agreements/new?customerId=${customer.id}`}
-            className="text-sm text-primary hover:underline"
-          >
-            + New agreement
-          </Link>
-        </div>
-        {customer.rentalAgreements.length === 0 ? (
-          <p className="mt-2 text-sm text-gray-600">No agreements yet.</p>
         ) : (
-          <ul className="mt-3 divide-y divide-gray-100">
-            {customer.rentalAgreements.map((a) => (
-              <li key={a.id} className="py-2">
-                <Link href={`/desk/agreements/${a.id}`} className="hover:underline">
-                  {a.status} — {a.lines.length} appliance line(s)
-                  {a.lines.length > 0 &&
-                    ` (${formatCents(
-                      a.lines.reduce((sum, l) => sum + l.monthlyPriceCents, 0),
-                    )}/mo)`}
-                </Link>
-              </li>
-            ))}
-          </ul>
+          <EmptyState title="No agreements yet" />
         )}
-      </div>
-
-      <div className="mt-6 rounded-lg border border-gray-200 bg-white p-5">
-        <h2 className="font-medium text-gray-900">Referral program</h2>
-        <p className="mt-2 text-sm text-gray-600">
-          Their code: <span className="font-mono font-semibold text-gray-900">{customer.referralCode}</span>
-          {" — "}give it to friends; when someone they refer signs up and starts
-          paying, you both get a credit.
-        </p>
-
-        {customer.referredBy && (
-          <p className="mt-2 text-sm text-gray-700">
-            Referred by{" "}
-            <Link
-              href={`/desk/customers/${customer.referredBy.referrerCustomerId}`}
-              className="hover:underline"
-            >
-              {customer.referredBy.referrerCustomer.user.name ?? customer.referredBy.referrerCustomer.user.email}
-            </Link>{" "}
-            — {customer.referredBy.status === "REWARDED" ? "reward already applied" : "reward pending (waiting for billing to start)"}
-          </p>
-        )}
-
-        {customer.referralsMade.length > 0 && (
-          <div className="mt-3">
-            <p className="text-sm font-medium text-gray-900">People they&apos;ve referred</p>
-            <ul className="mt-1 space-y-1 text-sm text-gray-700">
-              {customer.referralsMade.map((r) => (
-                <li key={r.id}>
-                  <Link href={`/desk/customers/${r.referredCustomerId}`} className="hover:underline">
-                    {r.referredCustomer.user.name ?? r.referredCustomer.user.email}
-                  </Link>{" "}
-                  — {r.status === "REWARDED" ? "reward applied" : "pending"}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {customer.credits.length > 0 && (
-          <div className="mt-3">
-            <p className="text-sm font-medium text-gray-900">Account credits</p>
-            <ul className="mt-1 space-y-1 text-sm text-gray-700">
-              {customer.credits.map((c) => (
-                <li key={c.id}>
-                  {formatCents(c.remainingCents)} remaining of {formatCents(c.amountCents)} — {c.reason}
-                  {c.notes ? ` (${c.notes})` : ""}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-      </div>
-
-      <div className="mt-6">
-        <ContactsPanel customerId={customer.id} contacts={contacts} />
-      </div>
-
-      <div className="mt-6">
-        <LinkedTasksPanel linkType="customer" linkId={customer.id} tasks={tasks} />
-      </div>
-
-      <div className="mt-6 rounded-lg border border-gray-200 bg-white p-5">
-        <h2 className="font-medium text-gray-900">Notes &amp; activity</h2>
-        <AddNoteForm customerId={customer.id} />
-
-        {timeline.length === 0 ? (
-          <p className="mt-4 text-sm text-gray-600">Nothing recorded yet.</p>
-        ) : (
-          <ul className="mt-4 space-y-3 border-t border-gray-100 pt-4">
-            {timeline.map((entry) => (
-              <li key={entry.id} className="text-sm">
-                <div className="flex items-baseline justify-between gap-3">
-                  <p className={entry.kind === "note" ? "font-medium text-gray-900" : "text-gray-700"}>
-                    {entry.kind === "note" ? "Note" : entry.summary}
+        <Pagination {...data} buildHref={(page) => href("rentals", page)} />
+      </SectionCard>
+    );
+  } else if (tab === "service") {
+    const data = await getCustomerService(id, parsePage(query.page));
+    content = (
+      <div className="space-y-6">
+        <SectionCard title="Open service requests">
+          {data.requests.length ? (
+            <>
+              <ul className="space-y-3">
+                {data.requests.map((r) => (
+                  <li key={r.id}>
+                    <Link
+                      className="text-primary underline"
+                      href={`/desk/maintenance/${r.id}`}
+                    >
+                      {r.status} · {r.problem}
+                    </Link>
+                    <p className="text-sm text-ink-soft">
+                      {r.priority} · Opened {formatBusinessDate(r.openedAt)}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+              {data.openRequestCount > data.requests.length && (
+                <p className="mt-3 text-sm text-ink-soft">
+                  Showing {data.requests.length} of {data.openRequestCount} open
+                  requests.{" "}
+                  <Link href="/desk/maintenance" className="underline">
+                    Open service queue
+                  </Link>
+                </p>
+              )}
+            </>
+          ) : (
+            <EmptyState title="No open requests" />
+          )}
+        </SectionCard>
+        <SectionCard title="Jobs">
+          {data.jobs.length ? (
+            <ul className="divide-y divide-line">
+              {data.jobs.map((j) => (
+                <li className="py-3" key={j.id}>
+                  <Link
+                    className="text-primary underline"
+                    href={`/desk/jobs/${j.id}`}
+                  >
+                    {j.type.replaceAll("_", " ")} · {j.status}
+                  </Link>
+                  <p className="text-sm text-ink-soft">
+                    {j.scheduledAt
+                      ? `${formatBusinessDate(j.scheduledAt)} · ${formatBusinessTime(j.scheduledAt)}`
+                      : "Unscheduled"}
+                    {j.serviceAddress &&
+                      ` · ${j.serviceAddress.line1}, ${j.serviceAddress.city}`}
                   </p>
-                  <span className="shrink-0 text-xs text-gray-500">{timeAgo(entry.createdAt)}</span>
-                </div>
-                {entry.detail && <p className="text-gray-700">{entry.detail}</p>}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <EmptyState title="No jobs yet" />
+          )}
+          <Pagination {...data} buildHref={(page) => href("service", page)} />
+        </SectionCard>
+      </div>
+    );
+  } else if (tab === "billing") {
+    content = (
+      <SectionCard title="Billing and referrals">
+        <BillingContext id={id} />
+      </SectionCard>
+    );
+  } else {
+    const filter = timelineFilter(query.filter);
+    const data = await getCustomerTimelinePage(id, filter, query.cursor);
+    content = (
+      <SectionCard
+        title="Notes and activity"
+        description="Internal notes remain visible only to owners and administrators."
+      >
+        <AddNoteForm customerId={id} />
+        <div className="mt-4">
+          <FilterBar
+            label="Activity type"
+            items={["all", "notes", "activity"].map((f) => ({
+              href: `${href("activity")}&filter=${f}`,
+              label:
+                f === "all"
+                  ? "All history"
+                  : f === "notes"
+                    ? "Notes"
+                    : "Activity",
+              active: filter === f,
+            }))}
+          />
+        </div>
+        {data.entries.length ? (
+          <ul className="space-y-4">
+            {data.entries.map((entry) => (
+              <li key={entry.id} className="border-t border-line pt-3 text-sm">
+                <p className="font-medium text-ink">
+                  {entry.href ? (
+                    <Link className="text-primary underline" href={entry.href}>
+                      {entry.summary}
+                    </Link>
+                  ) : (
+                    entry.summary
+                  )}
+                </p>
+                <time
+                  className="text-xs text-ink-soft"
+                  dateTime={entry.createdAt.toISOString()}
+                >
+                  {formatBusinessDate(entry.createdAt)} ·{" "}
+                  {formatBusinessTime(entry.createdAt)}
+                </time>
+                {entry.detail && (
+                  <p className="mt-1 whitespace-pre-wrap break-words text-ink">
+                    {entry.detail}
+                  </p>
+                )}
                 {entry.authorName && (
-                  <p className="text-xs text-gray-500">— {entry.authorName}</p>
+                  <p className="text-xs text-ink-soft">By {entry.authorName}</p>
                 )}
               </li>
             ))}
           </ul>
+        ) : (
+          <EmptyState title="Nothing recorded on this page" />
         )}
-      </div>
+        <nav
+          aria-label="Activity pagination"
+          className="mt-4 flex flex-wrap gap-2"
+        >
+          {query.cursor && (
+            <Link
+              className={secondaryActionClass}
+              href={`${href("activity")}&filter=${filter}`}
+            >
+              Newest entries
+            </Link>
+          )}
+          {data.nextCursor && (
+            <Link
+              className={secondaryActionClass}
+              href={`${href("activity")}&filter=${filter}&cursor=${encodeURIComponent(data.nextCursor)}`}
+            >
+              Older entries
+            </Link>
+          )}
+        </nav>
+      </SectionCard>
+    );
+  }
+  return (
+    <div className="max-w-5xl">
+      <Link
+        href="/desk/customers"
+        className="mb-3 inline-flex min-h-11 items-center text-sm text-primary underline"
+      >
+        ← Back to customers
+      </Link>
+      <PageHeader
+        title={customer.user.name ?? customer.user.email}
+        description={
+          <>
+            {customer.user.email}
+            {customer.phone && ` · ${customer.phone}`}
+            {customer.companyName && ` · ${customer.companyName}`}
+            {customer.archivedAt && <p>Archived customer record</p>}
+          </>
+        }
+        primaryAction={
+          <Link
+            className={primaryActionClass}
+            href={`/desk/agreements/new?customerId=${id}`}
+          >
+            + New agreement
+          </Link>
+        }
+        secondaryActions={
+          <>
+            <Link
+              className={secondaryActionClass}
+              href={`/desk/jobs/new?customerId=${id}`}
+            >
+              Schedule a job
+            </Link>
+            <Link
+              className={secondaryActionClass}
+              href={`/desk/estimates/new?customerId=${id}`}
+            >
+              New estimate
+            </Link>
+            <Link
+              className={secondaryActionClass}
+              href={`/desk/billing/customer/${id}`}
+            >
+              View statement
+            </Link>
+          </>
+        }
+      />
+      {query.newAccount === "1" && (
+        <p
+          role="status"
+          className="mb-4 rounded-lg border border-line bg-subtle p-4 text-sm text-ink"
+        >
+          {query.emailSent === "1"
+            ? "Account created. An activation email was sent so the customer can set their password."
+            : "Account created. The activation email could not be sent; use Resend activation email on Overview to try again."}
+        </p>
+      )}
+      <FilterBar
+        label="Customer record sections"
+        items={CUSTOMER_TABS.map((name) => ({
+          href: href(name),
+          label: name[0].toUpperCase() + name.slice(1),
+          active: tab === name,
+        }))}
+      />
+      {content}
     </div>
   );
 }
-

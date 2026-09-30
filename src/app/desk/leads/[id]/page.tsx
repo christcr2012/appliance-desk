@@ -1,3 +1,15 @@
+import { requireRole } from "@/lib/session";
+import { getLeadEstimates } from "@/domains/leads/workspace";
+import {
+  PageHeader,
+  SectionCard,
+  primaryActionClass,
+} from "@/components/desk/workspace";
+import {
+  formatBusinessDate,
+  formatBusinessTime,
+  formatTaskDate,
+} from "@/lib/business-date";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getLeadById, getLeadNotes } from "@/domains/leads";
@@ -18,7 +30,9 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
 }
 
 function timeAgo(date: Date): string {
-  const days = Math.floor((Date.now() - date.getTime()) / (24 * 60 * 60 * 1000));
+  const days = Math.floor(
+    (Date.now() - date.getTime()) / (24 * 60 * 60 * 1000),
+  );
   if (days <= 0) return "today";
   if (days === 1) return "1 day ago";
   if (days < 30) return `${days} days ago`;
@@ -30,11 +44,13 @@ export default async function LeadDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  await requireRole("OWNER", "ADMIN");
   const { id } = await params;
-  const [lead, notes, tasks] = await Promise.all([
+  const [lead, notes, tasks, estimates] = await Promise.all([
     getLeadById(id),
     getLeadNotes(id),
     getTasksForLead(id),
+    getLeadEstimates(id),
   ]);
 
   if (!lead) {
@@ -49,14 +65,68 @@ export default async function LeadDetailPage({
 
   return (
     <div className="max-w-3xl">
-      <Link href="/desk/leads" className="text-sm text-gray-600 hover:underline">
+      <Link
+        href="/desk/leads"
+        className="text-sm text-gray-600 hover:underline"
+      >
         &larr; Back to leads
       </Link>
 
-      <h1 className="mt-2 text-xl font-semibold">
-        {lead.contactName}
-        {lead.companyName ? ` — ${lead.companyName}` : ""}
-      </h1>
+      <div className="mt-3">
+        <PageHeader
+          title={
+            lead.contactName +
+            (lead.companyName ? ` · ${lead.companyName}` : "")
+          }
+          description={
+            lead.status === "CONVERTED"
+              ? "Converted customer — continue in their customer record."
+              : lead.status === "LOST"
+                ? "Lost inquiry — the reason and history are retained."
+                : "Contact this lead, review their quotes and set a next follow-up."
+          }
+          primaryAction={
+            lead.convertedCustomerId ? (
+              <Link
+                className={primaryActionClass}
+                href={`/desk/customers/${lead.convertedCustomerId}`}
+              >
+                Open customer
+              </Link>
+            ) : undefined
+          }
+        />
+      </div>
+      <SectionCard
+        title="Estimates"
+        description="Statuses come from the existing estimates, independently of the lead stage."
+      >
+        {estimates.length ? (
+          <>
+            <ul className="space-y-2">
+              {estimates.slice(0, 25).map((e) => (
+                <li key={e.id}>
+                  <Link
+                    className="text-primary underline"
+                    href={`/desk/estimates/${e.id}`}
+                  >
+                    Estimate #{e.estimateNumber} · {e.status}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+            {estimates.length > 25 && (
+              <Link className="text-primary underline" href="/desk/estimates">
+                Open all estimates
+              </Link>
+            )}
+          </>
+        ) : (
+          <p className="text-sm text-ink-soft">
+            No estimates linked to this lead.
+          </p>
+        )}
+      </SectionCard>
 
       <div className="mt-6 rounded-lg border border-gray-200 bg-white p-5">
         <LeadActionsPanel
@@ -77,22 +147,24 @@ export default async function LeadDetailPage({
           label="Property manager / landlord"
           value={lead.isPropertyManager ? "Yes" : "No"}
         />
-        <Field label="Best time to contact" value={lead.bestTimeToContact ?? "—"} />
+        <Field
+          label="Best time to contact"
+          value={lead.bestTimeToContact ?? "—"}
+        />
         <Field label="How they heard about us" value={lead.howHeard ?? "—"} />
         <Field label="Desired term" value={lead.desiredTerm ?? "—"} />
         <Field
           label="Desired start date"
           value={
-            lead.desiredStartDate
-              ? new Date(lead.desiredStartDate).toLocaleDateString()
-              : "—"
+            lead.desiredStartDate ? formatTaskDate(lead.desiredStartDate) : "—"
           }
         />
         <Field
           label="Address"
           value={
-            [lead.addressLine1, lead.city, lead.zip].filter(Boolean).join(", ") ||
-            "(not given)"
+            [lead.addressLine1, lead.city, lead.zip]
+              .filter(Boolean)
+              .join(", ") || "(not given)"
           }
         />
         <Field
@@ -115,7 +187,7 @@ export default async function LeadDetailPage({
         />
         <Field
           label="Submitted"
-          value={new Date(lead.createdAt).toLocaleString()}
+          value={`${formatBusinessDate(lead.createdAt)} · ${formatBusinessTime(lead.createdAt)}`}
         />
         {lead.status === "LOST" && (
           <Field label="Why it was lost" value={lead.lostReason ?? "—"} />
@@ -149,15 +221,15 @@ export default async function LeadDetailPage({
         </div>
       )}
 
-      <div className="mt-6">
+      <div id="follow-up" className="mt-6 scroll-mt-24">
         <LinkedTasksPanel linkType="lead" linkId={lead.id} tasks={tasks} />
       </div>
 
       <div className="mt-6 rounded-lg border border-gray-200 bg-white p-5">
         <h2 className="font-medium text-gray-900">Contact history</h2>
         <p className="mt-1 text-xs text-gray-500">
-          Log every call, email, text, or in-person conversation here — it
-          stays with this lead even after it&apos;s converted or lost.
+          Log every call, email, text, or in-person conversation here — it stays
+          with this lead even after it&apos;s converted or lost.
         </p>
         <AddLeadNoteForm leadId={lead.id} />
 

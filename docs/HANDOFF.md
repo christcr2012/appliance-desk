@@ -1,3 +1,33 @@
+## 2026-09-30 — CRM workspaces and completion execution
+
+Owner requests all approved work, high quality, minimal tokens, no further
+model switching. COMPLETION-PLAN.md is the concise current sequence/ledger;
+older model/phase pauses are superseded, acceptance and activation gates are not.
+Main 7050f998 includes merged #101; its head d9e526a8165772e5cbd1fad8c2ae0d42f052033c
+passed CI 36778920651. Recovered interrupted customer helpers and reviewed them.
+
+Built O07/O08 and O11 property-prefill subcard: link-based customer tabs with
+selected-tab reads; preserved STAFF operational view/actions; stable paginated
+note/activity history with author/time/entity links; real property context and
+validated preselection for rental/job forms; lead status/search/derived quote
+and no-open-task filters; linked estimates/tasks/customer action; conditional
+transactional conversion claim prevents duplicate property/audit writes.
+
+Local evidence: 668 tests in 88 non-Postgres suites pass, including 137 equal-
+timestamp history records without omissions/duplicates and selected-tab/role
+checks. Typecheck passes; lint zero errors/two existing warnings. Four existing
+Postgres suites require CI; new browser tests cover record tabs/property
+prefill/note persistence/lead URL navigation, 360/768/1440 light/dark and axe.
+Own full CI/preview/screenshot review remain pending; no owner or manual
+screen-reader approval claimed. No schema, production fixtures, providers or
+infrastructure configuration changes. Rollback: revert PR, no DB rollback.
+
+Remaining: full O02 runtime fixture/independent file-store proof; O11's richer
+property request context; assignment/scheduling/revision/automation contracts
+and subsequent operations, money, portal, settings, growth and O30/O31 gates.
+Do not call the entire project finished. Continue the next eligible batch
+while owner merges green PRs.
+
 # Handoff — current state
 
 ## 2026-09-30 — Daily workspace implementation (Astra Medium)

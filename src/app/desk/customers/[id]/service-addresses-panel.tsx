@@ -92,7 +92,7 @@ export function ServiceAddressesPanel({
         <button
           type="button"
           onClick={() => setShowForm((v) => !v)}
-          className="text-sm text-primary hover:underline"
+          className="inline-flex min-h-11 items-center text-sm text-primary hover:underline"
         >
           {showForm ? "Cancel" : "+ Add property"}
         </button>
@@ -105,13 +105,25 @@ export function ServiceAddressesPanel({
       {addresses.length > 0 && (
         <ul className="mt-3 space-y-3">
           {addresses.map((a) => {
-            const atThisAddress = agreements.filter((ag) => ag.serviceAddressId === a.id);
-            const activeAtThisAddress = atThisAddress.filter((ag) => ag.status === "ACTIVE");
-            const monthlyTotal = activeAtThisAddress.reduce((sum, ag) => sum + ag.monthlyCents, 0);
-            const jobCount = jobs.filter((j) => j.serviceAddressId === a.id).length;
+            const atThisAddress = agreements.filter(
+              (ag) => ag.serviceAddressId === a.id,
+            );
+            const activeAtThisAddress = atThisAddress.filter(
+              (ag) => ag.status === "ACTIVE",
+            );
+            const monthlyTotal = activeAtThisAddress.reduce(
+              (sum, ag) => sum + ag.monthlyCents,
+              0,
+            );
+            const jobCount = jobs.filter(
+              (j) => j.serviceAddressId === a.id,
+            ).length;
 
             return (
-              <li key={a.id} className="rounded-md border border-gray-100 p-3 text-sm">
+              <li
+                key={a.id}
+                className="rounded-md border border-gray-100 p-3 text-sm"
+              >
                 <p className="font-medium text-gray-900">{addressLine(a)}</p>
                 <p className="mt-1 text-gray-600">
                   {atThisAddress.length === 0
@@ -121,8 +133,28 @@ export function ServiceAddressesPanel({
                           ? ` — ${formatCents(monthlyTotal)}/mo active`
                           : ""
                       }`}
-                  {jobCount > 0 && ` · ${jobCount} job(s)`}
+                  {jobCount > 0 && ` · ${jobCount} upcoming job(s)`}
                 </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Link
+                    href={`/desk/agreements/new?customerId=${encodeURIComponent(customerId)}&serviceAddressId=${encodeURIComponent(a.id)}`}
+                    className="inline-flex min-h-11 items-center rounded-lg border border-control px-3 py-2 text-primary hover:bg-subtle"
+                  >
+                    New rental here
+                  </Link>
+                  <Link
+                    href={`/desk/jobs/new?customerId=${encodeURIComponent(customerId)}&serviceAddressId=${encodeURIComponent(a.id)}`}
+                    className="inline-flex min-h-11 items-center rounded-lg border border-control px-3 py-2 text-primary hover:bg-subtle"
+                  >
+                    Schedule visit here
+                  </Link>
+                  <Link
+                    href={`/desk/customers/${encodeURIComponent(customerId)}?tab=service`}
+                    className="inline-flex min-h-11 items-center text-primary underline"
+                  >
+                    Service requests
+                  </Link>
+                </div>
                 {atThisAddress.length > 0 && (
                   <ul className="mt-1 space-y-0.5">
                     {atThisAddress.map((ag) => (
@@ -147,30 +179,35 @@ export function ServiceAddressesPanel({
         <form ref={formRef} onSubmit={handleAdd} className="mt-4 space-y-2">
           <input
             name="line1"
+            aria-label="Street address"
             required
             placeholder="Street address"
             className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm"
           />
           <input
             name="line2"
+            aria-label="Unit or suite"
             placeholder="Unit / suite (optional)"
             className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm"
           />
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <input
               name="city"
+              aria-label="City"
               required
               placeholder="City"
               className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm"
             />
             <input
               name="state"
+              aria-label="State"
               defaultValue="CO"
               placeholder="State"
               className="w-20 rounded-md border border-gray-300 px-3 py-1.5 text-sm"
             />
             <input
               name="zip"
+              aria-label="ZIP code"
               required
               placeholder="ZIP"
               className="w-28 rounded-md border border-gray-300 px-3 py-1.5 text-sm"

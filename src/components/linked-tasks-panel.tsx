@@ -127,12 +127,14 @@ export function LinkedTasksPanel({
       >
         <input
           name="note"
+          aria-label="Follow-up reminder"
           required
           placeholder="Add a follow-up reminder…"
           className="flex-1 rounded-md border border-gray-300 px-3 py-1.5 text-sm"
         />
         <input
           name="dueDate"
+          aria-label="Follow-up due date"
           type="date"
           className="rounded-md border border-gray-300 px-3 py-1.5 text-sm"
         />

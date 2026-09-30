@@ -31,7 +31,7 @@ export type TimelineEntry = {
  * new action type added elsewhere in the app never makes a customer's
  * timeline silently drop entries, just shows them a little less
  * prettily until this list is updated. */
-function summarizeAuditAction(action: string): string {
+export function summarizeAuditAction(action: string): string {
   const KNOWN: Record<string, string> = {
     "customer.create": "Customer account created",
     "customer.address.add": "Property added",
@@ -160,4 +160,5 @@ export async function deleteCustomerContact(customerId: string, contactId: strin
   // customer's contact.
   await prisma.customerContact.deleteMany({ where: { id: contactId, customerId } });
 }
+
 

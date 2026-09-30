@@ -1,5 +1,15 @@
 # Model batches and mandatory switch checkpoints
 
+## Current execution override — 2026-09-30
+
+Chris requests completion of the approved work with the current model and no
+more model switching. Larger coherent PRs and continued eligible work supersede
+the earlier switch/phase-stop/card-size schedule. Acceptance, CI/preview and
+separate activation/spending/destructive-change gates remain. The current
+sequence and evidence ledger are in [COMPLETION-PLAN.md](COMPLETION-PLAN.md).
+Earlier model and stack instructions below are historical where superseded.
+
+
 Updated 2026-09-30 at Chris's request. **This is the authoritative execution
 order and model assignment for the overhaul.** TASKS.md remains the source
 of scope/acceptance criteria; DESIGN.md defines the product. Where older

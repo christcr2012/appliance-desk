@@ -40,6 +40,7 @@ export function NewJobForm({
   agreement,
   maintenanceContext,
   initialCustomerId,
+  initialServiceAddressId,
 }: {
   customers: CustomerOption[];
   agreement: AgreementContext | null;
@@ -49,10 +50,13 @@ export function NewJobForm({
    * agreement/maintenanceContext, which also carry a service address and
    * (for maintenanceContext) appliance options along with the customer. */
   initialCustomerId?: string;
+  initialServiceAddressId?: string;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [type, setType] = useState(agreement ? "DELIVERY" : "MAINTENANCE_VISIT");
+  const [type, setType] = useState(
+    agreement ? "DELIVERY" : "MAINTENANCE_VISIT",
+  );
   const [customerId, setCustomerId] = useState(
     agreement?.customerId ??
       maintenanceContext?.customerId ??
@@ -64,6 +68,11 @@ export function NewJobForm({
   const [serviceAddressId, setServiceAddressId] = useState(
     agreement?.serviceAddressId ??
       maintenanceContext?.serviceAddresses[0]?.id ??
+      (selectedCustomer?.serviceAddresses.some(
+        (a) => a.id === initialServiceAddressId,
+      )
+        ? initialServiceAddressId
+        : undefined) ??
       selectedCustomer?.serviceAddresses[0]?.id ??
       "",
   );
@@ -71,7 +80,9 @@ export function NewJobForm({
   const [notes, setNotes] = useState("");
   const [selectedApplianceIds, setSelectedApplianceIds] = useState<string[]>(
     agreement?.appliances.map((a) => a.id) ??
-      (maintenanceContext?.defaultApplianceId ? [maintenanceContext.defaultApplianceId] : []),
+      (maintenanceContext?.defaultApplianceId
+        ? [maintenanceContext.defaultApplianceId]
+        : []),
   );
   const [error, setError] = useState<string | null>(null);
 
@@ -117,7 +128,10 @@ export function NewJobForm({
       className="space-y-4 rounded-lg border border-gray-200 bg-white p-5"
     >
       <div>
-        <label htmlFor="type" className="block text-sm font-medium text-gray-700">
+        <label
+          htmlFor="type"
+          className="block text-sm font-medium text-gray-700"
+        >
           Job type
         </label>
         <select
@@ -135,7 +149,10 @@ export function NewJobForm({
       </div>
 
       <div>
-        <label htmlFor="scheduledAt" className="block text-sm font-medium text-gray-700">
+        <label
+          htmlFor="scheduledAt"
+          className="block text-sm font-medium text-gray-700"
+        >
           When (optional)
         </label>
         <input
@@ -162,7 +179,10 @@ export function NewJobForm({
       {!agreement && !maintenanceContext && (
         <>
           <div>
-            <label htmlFor="customerId" className="block text-sm font-medium text-gray-700">
+            <label
+              htmlFor="customerId"
+              className="block text-sm font-medium text-gray-700"
+            >
               Customer (optional)
             </label>
             <select
@@ -207,7 +227,10 @@ export function NewJobForm({
 
       {maintenanceContext && maintenanceContext.serviceAddresses.length > 0 && (
         <div>
-          <label htmlFor="serviceAddressId" className="block text-sm font-medium text-gray-700">
+          <label
+            htmlFor="serviceAddressId"
+            className="block text-sm font-medium text-gray-700"
+          >
             Service address
           </label>
           <select
@@ -266,7 +289,10 @@ export function NewJobForm({
       )}
 
       <div>
-        <label htmlFor="notes" className="block text-sm font-medium text-gray-700">
+        <label
+          htmlFor="notes"
+          className="block text-sm font-medium text-gray-700"
+        >
           Notes (optional)
         </label>
         <textarea

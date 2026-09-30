@@ -1,5 +1,10 @@
+import { validInitialAddress } from "@/domains/customers/workspace";
 import { requireRole } from "@/lib/session";
-import { getCustomers, getCustomerById, getCustomerApplianceOptions } from "@/domains/customers";
+import {
+  getCustomers,
+  getCustomerById,
+  getCustomerApplianceOptions,
+} from "@/domains/customers";
 import { getAgreementById } from "@/domains/agreements";
 import { getMaintenanceRequestById } from "@/domains/maintenance";
 import { NewJobForm } from "./new-job-form";
@@ -9,14 +14,22 @@ export const metadata = { title: "Schedule a job" };
 export default async function NewJobPage({
   searchParams,
 }: {
-  searchParams: Promise<{ agreementId?: string; maintenanceRequestId?: string; customerId?: string }>;
+  searchParams: Promise<{
+    agreementId?: string;
+    maintenanceRequestId?: string;
+    customerId?: string;
+    serviceAddressId?: string;
+  }>;
 }) {
   await requireRole("OWNER", "ADMIN");
-  const { agreementId, maintenanceRequestId, customerId } = await searchParams;
+  const { agreementId, maintenanceRequestId, customerId, serviceAddressId } =
+    await searchParams;
   const [customers, agreement, maintenanceRequest] = await Promise.all([
     getCustomers(),
     agreementId ? getAgreementById(agreementId) : Promise.resolve(null),
-    maintenanceRequestId ? getMaintenanceRequestById(maintenanceRequestId) : Promise.resolve(null),
+    maintenanceRequestId
+      ? getMaintenanceRequestById(maintenanceRequestId)
+      : Promise.resolve(null),
   ]);
 
   let maintenanceContext = null;
@@ -28,7 +41,9 @@ export default async function NewJobPage({
     maintenanceContext = {
       maintenanceRequestId: maintenanceRequest.id,
       customerId: maintenanceRequest.customerId,
-      customerName: maintenanceRequest.customer.user.name ?? maintenanceRequest.customer.user.email,
+      customerName:
+        maintenanceRequest.customer.user.name ??
+        maintenanceRequest.customer.user.email,
       serviceAddresses: (customerDetail?.serviceAddresses ?? []).map((a) => ({
         id: a.id,
         label: `${a.line1}, ${a.city}, ${a.state} ${a.zip}`,
@@ -74,10 +89,20 @@ export default async function NewJobPage({
           // Quick action from a customer's own page (/desk/customers/[id])
           // — preselects them without needing an agreement or maintenance
           // request already in hand.
-          initialCustomerId={!agreement && !maintenanceContext ? customerId : undefined}
+          initialCustomerId={
+            !agreement &&
+            !maintenanceContext &&
+            customers.some((c) => c.id === customerId)
+              ? customerId
+              : undefined
+          }
+          initialServiceAddressId={
+            !agreement && !maintenanceContext
+              ? validInitialAddress(customers, customerId, serviceAddressId)
+              : undefined
+          }
         />
       </div>
     </div>
   );
 }
-
