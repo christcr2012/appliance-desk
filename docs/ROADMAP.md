@@ -511,3 +511,25 @@ ongoing conversion reporting. No outreach or public listing is claimed live
 from the initial website phase. Consider automated provider-event handling
 and a guided reconciliation workflow for failed/uncertain launch sends if
 volume warrants it. General preview database isolation remains separate.
+
+## 2026-09-30 — Comprehensive overhaul plan (design complete; not implemented)
+
+Chris requested a complete UI/UX and business-system implementation plan that
+a lower-cost model can execute. See [plan index](plans/overhaul/README.md),
+[design](plans/overhaul/DESIGN.md), and [32 task cards](plans/overhaul/TASKS.md).
+This preserves existing CRM, estimate, billing, dispatch, purchasing and
+customer-portal capabilities; it does not mark old review suggestions as
+unbuilt merely because their historical documentation is stale.
+
+The fastest useful releases are A/B: safe preview environment, role-safe
+data, semantic components, grouped navigation, Today, customer workspace,
+lead follow-up and tasks. Later releases add operational refinements, owner
+configuration, website draft/publish and controlled automation visibility.
+Optional imports and advanced integrations remain conditional.
+
+[OWNER-INPUTS.md](OWNER-INPUTS.md) now records the mailing address and reply
+email needed for welcome-email activation, public phone/email replacement,
+release decisions and other owner-only inputs. Chris need not answer all of
+them now. The custom Workspace connector was identified read-only; connection
+instructions are in the plan. No redesign code or external connection was
+activated by this planning task.

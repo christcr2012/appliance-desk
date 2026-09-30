@@ -2216,3 +2216,95 @@ No contact values were changed or inferred. Production merge remains pending
 owner review, and email activation still requires confirmed postal/reply
 details. This follow-up commit changes this handoff only; no application,
 configuration, or test code changed after the fully passing CI.
+
+## 2026-09-30 — UI/UX and full-system overhaul plan; owner inputs registered
+
+User requested planning, including small-model execution and a persistent
+list of decisions requiring his input. Separate documentation-only branch:
+`ai/codex/system-overhaul-plan`, based on main f0fa03c. No application/schema
+changes, production merge, paid resource, customer message or activation.
+
+Read current code/schema/docs and earlier review briefs before planning.
+Important: estimates, deposits, recurring test billing, customer notes and
+contacts, lead notes/lost reasons/tasks, dispatch, inspections, purchasing,
+backups and reporting already exist. Plan preserves them and targets observed
+IA/layout debt plus specifically identified capability gaps. Signed-in UI
+findings are source-based; do not claim a fresh live owner usability test.
+
+Deliverables: `docs/OWNER-INPUTS.md`; `docs/plans/overhaul/{README,DESIGN,
+TASKS,IMPLEMENTER,GOOGLE-WORKSPACE}.md`. 32 ordered cards, six releases, file
+entry points, dependencies, behavioral acceptance gates and paste-ready
+prompts. Model recommendation verified against current official OpenAI docs:
+Luna High for bounded UI, GPT-6.1 Sol for complex changes/review; Sol if one
+model is used throughout. No implementation cost/time guarantee.
+
+Added brand precedence correction to DESIGN-SYSTEM (Evergreen is current),
+and linked plan/input register from ROADMAP. Owner inputs include postal
+address and reply/public email, with documented existing Workspace aliases
+recognized; do not ask Chris to create a mailbox that already exists.
+
+At Chris's follow-up request, inspected other repositories/Vercel metadata
+read-only and found Robinson-AI-Systems/google-workspace-mcp, deployed READY,
+MCP endpoint https://google-workspace-mcp-five.vercel.app/api/mcp. It returns
+401 without authentication and source supports OAuth dynamic registration.
+Connection handoff supplied; Google identity and end-to-end authorization
+remain unverified. No other project was changed.
+
+PR #86 is still a separate unmerged feature at this checkpoint. Its code
+passed 499 unit/integration and 55 browser tests; the browser preview check
+was completed in the preceding feature branch's handoff. Emails remain OFF.
+Do not lose that branch's later handoff entries when merging the planning PR.
+
+Validation for this planning deliverable: local Markdown links, file references,
+32 unique task IDs and dependency order reviewed; no runtime change requiring
+new behavioral tests. GitHub may run normal CI for this documentation branch;
+its state must not be represented as implementation progress. Next work is
+owner review of this plan, then O00/O01/O02 and the foundation cards under
+AGENTS.md. Planning completion is not implementation authorization or a merge.
+
+## 2026-09-30 — User-directed model batching and switch gates
+
+Chris asked to group as much work as possible on one model before switching,
+and to be told to switch BEFORE work continues. Updated PR #87's planning
+documents with MODEL-BATCHES.md and EXECUTION-STATE.md. Five batches:
+Sol High -> Luna High -> Sol High -> Luna High -> Sol High (four planned
+switches). Mixed cards now have explicit backend/UI subcards; prerequisites
+move earlier without dropping tests or release reviews. Higher-risk Luna work
+waits for the following Sol review before approval/merge.
+
+At every model boundary: save branch/commit/PR and verification evidence, mark
+AWAITING_MODEL_SWITCH, tell Chris the exact model/High setting, and STOP until
+trusted runtime information or his explicit confirmation supports the switch.
+Do not spawn another model or assume a prompt changes the active model. Same-
+model phase checkpoints say to keep the current model. Exceptional escalation
+requires a recorded reason and the same switch protocol.
+
+Application implementation remains NOT_STARTED. Next implementation batch is
+B1 with GPT-6.1 Sol High, beginning O00; model selection and start authorization
+are not yet confirmed. No application/schema/deployment/credential change.
+Validated schedule coverage, prerequisites, relative links and diff formatting.
+
+## 2026-09-30 — Linear PR chain and Claude-before-merge requirement
+
+Chris additionally requested every PR build on its predecessor so Claude can
+review all PRs before merging. Added PR-STACK.md and updated model/run prompts.
+Current chain is being made #86 -> #87; future task PRs branch from and target
+the immediately preceding PR's latest branch/head. No siblings from main.
+Both per-PR and cumulative review are required, with exact SHAs. Claude review
+is distinct from the implementing model/Sol self-review. No merge until all
+PRs in the selected stack are reviewed and merging is explicitly authorized.
+Upstream fixes propagate through descendants with checks/reviews refreshed.
+No main merge was performed. Preserve all prelaunch and planning handoff notes.
+
+## 2026-09-30 — Claude Google Workspace setup handoff
+
+Owner reports Robinson Google Workspace personal plugin is connected and Claude
+can use it. Per owner instruction, document external setup for Claude rather
+than block on ChatGPT access. Added CLAUDE-WORKSPACE-SETUP.md with GW-01–GW-14,
+including Admin identity/privilege verification, five existing alias checks and
+missing-alias creation, Gmail identity/routing, authentication/DNS handoff, app
+settings reconciliation, authorized delivery tests and separate activation gate.
+Conditional Drive/Calendar/Tasks/Contacts tasks include ownership and sync limits.
+IN-16 is answered with execution verification pending. All GW tasks remain
+NOT_STARTED; no Google changes, messages, purchases or runtime code changes.
+Planning PR #87 remains stacked on #86, with Claude review and merge gates intact.
