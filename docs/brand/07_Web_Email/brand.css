@@ -1,0 +1,12 @@
+/* Robinson Appliance Rentals v2.0 */
+@font-face {font-family:Manrope;src:url('./fonts/Manrope-Variable.woff') format('woff');font-weight:200 800;font-style:normal;font-display:swap;}
+:root {color-scheme:light;--font-brand:Manrope,Arial,sans-serif;--radius-control:8px;--radius-card:16px;}
+:root, [data-theme="light"]{--background:#F7F5EC;--surface:#FFFFFF;--text:#17251E;--muted:#4E6658;--border:#A5B8AB;--primary:#123C2D;--onPrimary:#FFFFFF;--accent:#B9E66B;--onAccent:#123C2D;--focus:#123C2D;}
+[data-theme="dark"]{--background:#0C1E16;--surface:#152E22;--text:#F7F5EC;--muted:#B7C8BB;--border:#789985;--primary:#B9E66B;--onPrimary:#123C2D;--accent:#B9E66B;--onAccent:#123C2D;--focus:#B9E66B;}
+body{background:var(--background);color:var(--text);font-family:var(--font-brand);line-height:1.55;}
+h1,h2,h3{font-weight:800;line-height:1.12;letter-spacing:-.025em;}
+.brand-button{background:var(--primary);color:var(--onPrimary);border:0;border-radius:var(--radius-control);padding:12px 20px;font:600 1rem var(--font-brand);min-height:44px;cursor:pointer;}
+.brand-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-card);padding:24px;}
+:focus-visible{outline:3px solid var(--focus);outline-offset:3px;}
+a{color:inherit;text-underline-offset:3px;}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important;}}
