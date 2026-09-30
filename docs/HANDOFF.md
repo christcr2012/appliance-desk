@@ -2099,3 +2099,120 @@ All 4 of Chris's approved items — behind-the-scenes hardening,
 estimate deposit collection + follow-through, purchasing & supplies,
 and finishing the icon set — are built, tested, merged, and live.
 This work thread is closed out.
+
+
+## 2026-09-29 — Codex prelaunch signup/automation phase (IN REVIEW; NOT LIVE)
+
+User authorized this phase and explicitly reaffirmed project rules. Work is
+on ai/codex/prelaunch-interest-list, based on main f0fa03c after preserving
+Claude's newer estimate/purchasing/docs work. Not merged into main.
+
+Built: prelaunch homepage/header/banner; /launch signup; separate deduplicated
+opt-in subscriber records; owner /desk/launch controls, source counts, copy
+and status; finite three-email daily sequence; suppression/unsubscribe;
+provider returned-error handling; additive migration
+20260930040000_prelaunch_interest. Business rules, architecture, database,
+owner guide and acceptance criteria updated. Delivery defaults OFF and never
+runs from previews. Activation needs a valid mailing address + reply inbox.
+
+Verification so far: Prisma client generation, migration safety check,
+typecheck, lint (only two existing warnings), and 14 focused unit tests pass.
+Exact migration SQL applied successfully on isolated Neon test branch
+br-bold-rain-b74uzbdy and columns inspected. No local live database access or
+real subscriber email test was attempted. Full GitHub CI, browser/accessibility
+checks, and Vercel preview still pending at this checkpoint. Feature branch
+auto-deployment temporarily disabled until CI validates it, because previews
+share production DB. DO NOT mark complete or merge before those gates pass.
+
+Remaining phases (not claimed built): launch-date broadcast, Google Business
+Profile eligibility/setup, Facebook connection, customer review requests,
+and broader local campaigns. Existing Metricool social queue is separate.
+
+Local isolated integration-test attempt could not resolve the Neon endpoint
+(EAI_AGAIN); no test statements reached that database. CI's disposable
+Postgres remains the full behavior/build/browser verification gate. The
+sandbox also refuses the tsx CLI's local IPC socket (EPERM); no workaround
+or production fixture execution was attempted.
+
+Before preview: initialize LaunchSettings inside the additive migration and
+make normal settings access read-only. This removes first-render concurrent
+upsert races; verified the initialization on the isolated branch (prelaunch
+true, email false). CI must re-run on this final migration version.
+
+First full CI run found two incorrect assertions in the new integration
+suite: mock send counts were expected cumulatively across separate tests,
+while calls were scoped per test by the runner. Fixed by explicitly clearing
+calls before each test and asserting that failure causes exactly one attempt
+and suppression causes none. Database-state assertions remain in place.
+All other 497 tests passed in that run. No production code workaround or
+skipped test was introduced; the full pipeline is being rerun.
+
+## 2026-09-30 — Prelaunch CI passed; release preview hold
+
+Full GitHub Actions run 36667382569 passed on 065d046: migration safety,
+real Postgres migration/schema health/seed, typecheck, lint, all unit and
+integration tests, production build, and Playwright/axe accessibility and
+end-to-end checks. No tests skipped to achieve this result.
+
+Removed the temporary feature-branch deployment hold after this gate. The
+normal Vercel preview build may now apply the tested additive migration to
+the shared database, as documented in DECISIONS. This creates three new
+tables and initializes the launch settings with emails OFF; existing rental
+and customer records are not rewritten. Preview verification is the next
+gate, and its result will be recorded here. Main remains unchanged; stop
+for owner review before merging or starting the next phase. The isolated
+Neon validation branch remains retained pending approved cleanup.
+
+## 2026-09-30 — Review preview deployed; owner review pending
+
+PR: https://github.com/christcr2012/appliance-desk/pull/86
+Code gate: https://github.com/christcr2012/appliance-desk/actions/runs/36667382569
+499 unit/integration tests and 55 Playwright/axe tests passed. Acceptance
+criteria were checked against implementation and these behavioral tests.
+
+Vercel deployment dpl_4mr7CZo91Hn6WrJgiHqLrqzGvtAP is READY on commit
+8811e6a969dbba53ef2089aa90d35f3a0d013b20. Review preview:
+https://appliance-desk-lb0iuusbc-chris-projects-de6cd1bf.vercel.app
+Stable branch preview:
+https://appliance-desk-git-ai-codexprela-e7e668-chris-projects-de6cd1bf.vercel.app
+
+Deployment build succeeded, but direct deployed-page inspection is still
+unverified: Vercel's authenticated fetch returned a 302 sign-in redirect,
+and another fetch returned unable-to-provide-access. A temporary share URL
+was generated; retrying through the connector still redirected. Do not
+claim this as a successful visual inspection. Owner can open the preview
+with their Vercel account. Browser fallback requires user approval under
+the available browser tool instructions. No preview signup fixtures were
+written to the shared database.
+
+A fresh CI run follows removal of the deployment hold; the final status
+is visible on PR #86. This checkpoint changes documentation only. Keep the
+PR unmerged pending Chris's review. Emails remain OFF; production activation
+requires the confirmed business mailing address and monitored reply inbox.
+No real subscriber emails have been sent. This phase is implemented and
+automatically tested, with deployed-page inspection/owner review and live
+activation still incomplete. Do not start the next phase before reporting.
+
+## 2026-09-30 — Browser preview inspection completed
+
+Chris approved browser fallback. Vercel's authorized temporary review link
+opened deployment dpl_6fQHGsDnNSHY1LjBrYqwour6zXdX successfully in the cloud
+browser (commit 3b97e4b2550ee0ac0a11683d436e787b92d15455). Its full CI run
+36705869186 passed all gates.
+
+Visually inspected the desktop homepage and /launch: branding, layout,
+prelaunch wording, maintenance inclusion, conditional delivery/install fees,
+no confirmed opening date, and no rental commitment are presented correctly.
+The homepage interest CTA navigated to /launch. Consent starts unchecked;
+submitting the empty form focused Name and displayed the required-field
+message. No subscriber data was submitted and no email was sent. Persistence
+and unsubscribe were already covered by the passing CI browser tests.
+This resolves the prior deployed-page inspection blocker. Mobile layout
+and signed-in owner screens were not manually inspected in this session.
+
+Existing public footer still displays the previously configured personal
+email and phone; Chris plans to replace them with business contact details.
+No contact values were changed or inferred. Production merge remains pending
+owner review, and email activation still requires confirmed postal/reply
+details. This follow-up commit changes this handoff only; no application,
+configuration, or test code changed after the fully passing CI.

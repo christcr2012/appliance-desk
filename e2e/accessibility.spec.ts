@@ -63,6 +63,8 @@ test("reset-password page (no token) has no automatically detectable accessibili
 });
 
 const PUBLIC_PAGES = [
+  "/launch",
+  "/launch/unsubscribe",
   "/pricing",
   "/how-it-works",
   "/service-area",

@@ -38,6 +38,7 @@ const OWNER_ONLY_LINKS: AuthedNavLink[] = [
   { href: "/desk/revenue", label: "Revenue" },
   { href: "/desk/reports", label: "Reports" },
   { href: "/desk/growth", label: "Growth" },
+  { href: "/desk/launch", label: "Launch list" },
   { href: "/desk/settings", label: "Settings" },
 ];
 

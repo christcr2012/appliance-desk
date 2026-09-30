@@ -3589,3 +3589,55 @@ typecheck` — no new errors beyond that same limitation (spot-checked
 every touched file's errors individually; all trace back to the one
 root `@prisma/client` resolution failure, none are new). No schema
 change, no migration — this is display-only.
+
+
+## 2026-09-29 — Prelaunch interest capture and a finite welcome sequence
+
+Chris approved the proposed local-presence automation phase, then explicitly
+asked that work follow project documentation. Scope is an opt-in interest
+list and three-email welcome series using the existing Next.js/Neon/Resend
+stack. No new marketing subscription, payments change, or live ad campaign.
+
+The current homepage said Now renting despite Chris still preparing to open.
+A desk-controlled prelaunch mode now switches its copy/CTA to an interest
+list; no made-up opening date or free-delivery promise. Interest is stored
+separately from Leads because requiring a fake phone/quote request just to
+receive updates would corrupt the CRM. No family photos were invented.
+
+Marketing is disabled by default and cannot run in Vercel previews. The
+owner must supply the mailing address and monitored reply inbox before
+activation. The FTC's business email guidance calls for a valid postal
+address and functional opt-out; the marketing footer and RFC 8058 endpoint
+are separate from transactional account/rental messages. References:
+https://www.ftc.gov/business-guidance/resources/can-spam-act-compliance-guide-business
+https://resend.com/changelog/idempotency-keys
+
+The durable claim/unique-step design deliberately stops uncertain provider
+outcomes for review instead of guessing a send failed and resending. Resend
+idempotency lasts only 24h; it cannot replace persistent application dedupe.
+No delivery/open-rate claims are inferred from provider acceptance. Also
+fixed sendEmail's existing false-success path when Resend returned an error
+object instead of throwing. Existing transactional callers remain compatible.
+
+Read Next 16.3.6's bundled server-action/forms/route-handler guides and applied
+the React review checklist. Rebased onto main f0fa03c, preserving Claude's
+estimate/purchasing/docs changes. Migration safety check and local type/lint
+checks pass; full CI is required before declaring this done.
+
+The documentation warns previews share production DB. Created isolated Neon
+branch dev-codex-prelaunch-interest-20260930 (br-bold-rain-b74uzbdy, project
+jolly-term-08991992, 0.25 CU, 5-minute auto-suspend) and applied the exact new
+migration SQL there in a transaction; all three tables/columns were inspected.
+The local Prisma migration runner could not connect from this sandbox; it
+made no schema changes. This branch's test migration was therefore run through
+the Neon connector, not recorded as a Prisma-deployed migration. It is a
+validation branch, not a production target or a branch to reuse for deploy.
+Do not run seed/test fixtures on the live database. No main data was changed
+by this isolated validation. Temporary branch retained pending owner-approved
+cleanup; no plan upgrade or other project changes.
+
+This feature branch initially disables its own Vercel auto-deploy through a
+branch-specific git.deploymentEnabled entry so CI's real-Postgres gates can
+finish before any preview migration touches the shared live DB. Remove that
+one temporary entry only after CI passes, then verify the preview and report
+before merging, per AGENTS.md. Main's deployment setting is unchanged.

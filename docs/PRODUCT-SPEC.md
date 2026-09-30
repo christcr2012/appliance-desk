@@ -697,6 +697,42 @@ current" below for how new work should be added going forward.
       copy-pasted color maps. See `docs/DESIGN-SYSTEM.md`'s "Status
       badges" section for the pattern going forward.
 
+### Prelaunch interest list & automated welcome emails
+
+Built by a different AI tool (branch `ai/codex/prelaunch-interest-list`,
+PR #86), reviewed and merged 2026-09-30. Chris approved this as a
+separate, authorized extension before work started.
+
+- [x] The homepage/header/banner correctly identify the business as
+      still preparing to launch — no opening date, reservation,
+      inventory, or universal free-delivery promise stated.
+- [x] Public `/launch` saves explicitly opted-in local interest, with
+      real validation, per-IP rate limiting, and a silently-dropped
+      honeypot; a repeated or concurrent signup from the same
+      (normalized) email creates exactly one subscriber row and can
+      never quietly undo a prior unsubscribe.
+- [x] Three emails run on a fixed daily-cron schedule through the
+      existing Resend sender, each with a postal address, a monitored
+      reply inbox, and a working one-click unsubscribe
+      (RFC 8058-compliant headers; the unsubscribe page's GET never
+      mutates state, only POST does). Sending defaults OFF
+      (`LaunchSettings`) until Chris turns it on; leaving it off never
+      blocks signup itself.
+- [x] A provider error is never recorded as a successful send — a
+      failed or uncertain attempt permanently blocks that
+      subscriber's sequence for Chris to review by hand
+      (`/desk/launch`), rather than silently retrying or skipping a
+      step. Concurrent cron runs can't double-send the same step
+      (a guarded `updateMany` claims the send).
+- [x] Settings, copy, delivery status, source counts, and the
+      paginated subscriber list are all OWNER/ADMIN only, checked
+      inside every server action, not just hidden from the nav.
+- **Acceptance:** `tests/launch.test.ts`, `tests/launch-actions.test.ts`,
+  and `tests/launch-integration.test.ts` (the last runs against a real
+  database and exercises dedupe, concurrent-signup, concurrent-cron,
+  provider-failure, and unsubscribe-then-resignup cases); `e2e/launch.spec.ts`
+  covers the signup + unsubscribe flow end to end.
+
 ## Keeping this file current
 
 Backfilled 2026-09-29 (see `docs/DECISIONS.md`). Chris's call: keep

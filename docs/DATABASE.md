@@ -213,3 +213,20 @@ explicitly out of scope for launch (Chris approves every step by hand —
 see `docs/BUSINESS-RULES.md`), but the shapes above (separate `Lead`,
 `RentalAgreement`, `Job` records with clear statuses) were chosen so
 those can be added later without a redesign.
+
+
+## Prelaunch interest (2026-09-29)
+
+- **LaunchSettings** — singleton with prelaunch-mode and email-enable switches,
+  the owner-confirmed postal address for marketing footers, and reply inbox.
+- **LaunchSubscriber** — opt-in local interest, normalized unique email,
+  name/city/appliance interest/source, exact consent text/version/time,
+  random 256-bit unsubscribe token, suppression timestamp, and sequence cursor.
+  `deliveryBlocked` is an atomic claim before a send and stays true for an
+  ambiguous/failed outcome so it cannot be retried blindly.
+- **LaunchDelivery** — unique subscriber/step attempt, SENDING/SENT/FAILED
+  status and timestamps. Subscriber deletion cascades to its attempts.
+  The owner list selects only display fields and never serializes tokens.
+
+Migration `20260930040000_prelaunch_interest` creates only these three tables
+and their indexes. It does not rewrite or delete any existing business data.

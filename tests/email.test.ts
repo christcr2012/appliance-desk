@@ -18,8 +18,48 @@ vi.mock("resend", () => ({
 const ORIGINAL_ENV = { ...process.env };
 
 describe("sendEmail", () => {
+  it("reports a provider error returned without throwing as failed", async () => {
+    process.env.RESEND_API_KEY = "test";
+    emailsSend.mockResolvedValueOnce({
+      data: null,
+      error: { name: "validation_error" },
+    });
+    const { sendEmail } = await import("@/lib/email");
+    expect(
+      await sendEmail({ to: "a@example.test", subject: "Hi", text: "Hello" }),
+    ).toEqual({ sent: false });
+  });
+
+  it("adds an escaped postal address, opt-out links and headers, and reply inbox for marketing only", async () => {
+    process.env.RESEND_API_KEY = "test";
+    const { sendEmail } = await import("@/lib/email");
+    await sendEmail({
+      to: "a@example.test",
+      subject: "Welcome",
+      text: "Hello",
+      replyTo: "team@example.test",
+      idempotencyKey: "launch/test/0",
+      marketing: {
+        postalAddress: "123 Main & Test <Suite>",
+        unsubscribeUrl: "https://example.test/unsubscribe?token=abc",
+      },
+    });
+    const [body, options] = emailsSend.mock.calls[0];
+    expect(body.text).toContain("123 Main & Test <Suite>");
+    expect(body.html).toContain("123 Main &amp; Test &lt;Suite&gt;");
+    expect(body.html).toContain(
+      'href="https://example.test/unsubscribe?token=abc"',
+    );
+    expect(body.replyTo).toBe("team@example.test");
+    expect(body.headers["List-Unsubscribe-Post"]).toBe(
+      "List-Unsubscribe=One-Click",
+    );
+    expect(options.idempotencyKey).toBe("launch/test/0");
+  });
   beforeEach(() => {
-    emailsSend.mockReset().mockResolvedValue({ data: { id: "abc" }, error: null });
+    emailsSend
+      .mockReset()
+      .mockResolvedValue({ data: { id: "abc" }, error: null });
     process.env = { ...ORIGINAL_ENV };
   });
 
@@ -28,7 +68,11 @@ describe("sendEmail", () => {
     vi.resetModules();
     const { sendEmail } = await import("@/lib/email");
 
-    const result = await sendEmail({ to: "a@example.com", subject: "Hi", text: "Hello there." });
+    const result = await sendEmail({
+      to: "a@example.com",
+      subject: "Hi",
+      text: "Hello there.",
+    });
 
     expect(result).toEqual({ sent: false });
     expect(emailsSend).not.toHaveBeenCalled();
@@ -101,7 +145,11 @@ describe("sendEmail", () => {
     const { sendEmail } = await import("@/lib/email");
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
-    const result = await sendEmail({ to: "a@example.com", subject: "Hi", text: "Hello." });
+    const result = await sendEmail({
+      to: "a@example.com",
+      subject: "Hi",
+      text: "Hello.",
+    });
 
     expect(result).toEqual({ sent: false });
     errorSpy.mockRestore();
