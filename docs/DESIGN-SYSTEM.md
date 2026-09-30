@@ -1,5 +1,11 @@
 # Design system & accessibility rules
 
+> Current brand correction (2026-09-30): Evergreen v2.0, implemented in
+> `src/app/globals.css`, superseded the navy/teal palette and placeholder
+> wordmark described in historical sections below. Keep the real brand assets.
+> The proposed UI/UX overhaul is specified in `plans/overhaul/DESIGN.md`;
+> its implementation has not started. Existing accessibility rules still apply.
+
 Kept intentionally simple for Phase 1: Tailwind CSS utility classes,
 no separate component library beyond what's needed (shadcn/ui components
 get added as later phases need specific UI, e.g. a data table for
@@ -174,3 +180,4 @@ representative sample of pages (not literally every page) — it's the
 first line of defense for something like this, but isn't a substitute
 for checking a new page in dark mode yourself if it's not one of the
 ones that suite covers.
+

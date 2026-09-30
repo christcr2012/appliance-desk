@@ -2099,3 +2099,49 @@ All 4 of Chris's approved items — behind-the-scenes hardening,
 estimate deposit collection + follow-through, purchasing & supplies,
 and finishing the icon set — are built, tested, merged, and live.
 This work thread is closed out.
+
+
+## 2026-09-30 — UI/UX and full-system overhaul plan; owner inputs registered
+
+User requested planning, including small-model execution and a persistent
+list of decisions requiring his input. Separate documentation-only branch:
+`ai/codex/system-overhaul-plan`, based on main f0fa03c. No application/schema
+changes, production merge, paid resource, customer message or activation.
+
+Read current code/schema/docs and earlier review briefs before planning.
+Important: estimates, deposits, recurring test billing, customer notes and
+contacts, lead notes/lost reasons/tasks, dispatch, inspections, purchasing,
+backups and reporting already exist. Plan preserves them and targets observed
+IA/layout debt plus specifically identified capability gaps. Signed-in UI
+findings are source-based; do not claim a fresh live owner usability test.
+
+Deliverables: `docs/OWNER-INPUTS.md`; `docs/plans/overhaul/{README,DESIGN,
+TASKS,IMPLEMENTER,GOOGLE-WORKSPACE}.md`. 32 ordered cards, six releases, file
+entry points, dependencies, behavioral acceptance gates and paste-ready
+prompts. Model recommendation verified against current official OpenAI docs:
+Luna High for bounded UI, GPT-6.1 Sol for complex changes/review; Sol if one
+model is used throughout. No implementation cost/time guarantee.
+
+Added brand precedence correction to DESIGN-SYSTEM (Evergreen is current),
+and linked plan/input register from ROADMAP. Owner inputs include postal
+address and reply/public email, with documented existing Workspace aliases
+recognized; do not ask Chris to create a mailbox that already exists.
+
+At Chris's follow-up request, inspected other repositories/Vercel metadata
+read-only and found Robinson-AI-Systems/google-workspace-mcp, deployed READY,
+MCP endpoint https://google-workspace-mcp-five.vercel.app/api/mcp. It returns
+401 without authentication and source supports OAuth dynamic registration.
+Connection handoff supplied; Google identity and end-to-end authorization
+remain unverified. No other project was changed.
+
+PR #86 is still a separate unmerged feature at this checkpoint. Its code
+passed 499 unit/integration and 55 browser tests; the browser preview check
+was completed in the preceding feature branch's handoff. Emails remain OFF.
+Do not lose that branch's later handoff entries when merging the planning PR.
+
+Validation for this planning deliverable: local Markdown links, file references,
+32 unique task IDs and dependency order reviewed; no runtime change requiring
+new behavioral tests. GitHub may run normal CI for this documentation branch;
+its state must not be represented as implementation progress. Next work is
+owner review of this plan, then O00/O01/O02 and the foundation cards under
+AGENTS.md. Planning completion is not implementation authorization or a merge.

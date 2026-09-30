@@ -498,3 +498,26 @@ a **modular backend structure**) are worth a second look once Chris
 actually hires someone, but aren't worth building speculatively for a
 one-person operation today; noted here so they're not forgotten rather
 than proposed as near-term work.
+
+
+## 2026-09-30 — Comprehensive overhaul plan (design complete; not implemented)
+
+Chris requested a complete UI/UX and business-system implementation plan that
+a lower-cost model can execute. See [plan index](plans/overhaul/README.md),
+[design](plans/overhaul/DESIGN.md), and [32 task cards](plans/overhaul/TASKS.md).
+This preserves existing CRM, estimate, billing, dispatch, purchasing and
+customer-portal capabilities; it does not mark old review suggestions as
+unbuilt merely because their historical documentation is stale.
+
+The fastest useful releases are A/B: safe preview environment, role-safe
+data, semantic components, grouped navigation, Today, customer workspace,
+lead follow-up and tasks. Later releases add operational refinements, owner
+configuration, website draft/publish and controlled automation visibility.
+Optional imports and advanced integrations remain conditional.
+
+[OWNER-INPUTS.md](OWNER-INPUTS.md) now records the mailing address and reply
+email needed for welcome-email activation, public phone/email replacement,
+release decisions and other owner-only inputs. Chris need not answer all of
+them now. The custom Workspace connector was identified read-only; connection
+instructions are in the plan. No redesign code or external connection was
+activated by this planning task.
