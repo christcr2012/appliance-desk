@@ -56,6 +56,32 @@ required before launch (Phase 2/7).
 - `/desk/**` and `/account/**` are marked `noindex, nofollow` (see
   `next.config.ts`) — they should never appear in search results.
 
+### Status badges (added 2026-09-29)
+
+Every status shown anywhere in the app — a lead's stage, an estimate's
+state, a job's status, an invoice's status, a purchase order's status,
+active/removed for a staff account, and so on — reduces to one of
+**five tones**: `success`, `pending`, `attention`, `stopped`,
+`progress`. Use the shared `<StatusBadge tone label variant />`
+component (`src/components/status-badge.tsx`) rather than hand-rolling
+a new `Record<Status, string>` color map — that's exactly the
+copy-paste pattern this component replaced across ~8 files. Each tone
+pairs a text color with one of the five icons in
+`src/components/icons/status-icons.tsx`, so status is never carried by
+color alone (see the color-alone rule above). `variant="text"` for an
+inline status next to other text; `variant="pill"` for a standalone
+badge. `src/lib/status-labels.ts` holds the actual
+status-enum-to-tone/label mapping for each domain (`invoiceStatusTone`,
+`jobStatusTone`, `rentalAgreementStatusTone`, etc.) — add a new
+status's tone there, not inline in a page.
+
+If you add a brand-new color combination for a badge (e.g. a tone that
+needs `bg-blue-100`/`text-blue-700` and only `bg-blue-50`/
+`text-blue-900` had a `.dark` override before), add the matching
+dark-mode override too — see "Dark mode" below. This is exactly the
+kind of gap the 2026-09-29 icon-set work found and fixed for
+`bg-blue-100`/`text-blue-700`/`text-blue-800`.
+
 ## Brand palette: navy/teal (rebrand, 2026-09-27)
 
 The brand colors themselves changed from the original warm terracotta

@@ -167,6 +167,25 @@ per docs/BUSINESS-RULES.md's billing rules.
   (`/account/billing`) manage their own card/ACH details and see past
   invoices, all on Stripe's own hosted page. Chris sees every
   customer's invoices desk-wide at `/desk/billing`.
+- **Estimate deposit at approval** (added 2026-09-29, see
+  docs/BUSINESS-RULES.md) — a second, separate Checkout path from the
+  one above: when a customer approves an estimate that has a deposit,
+  `createDepositCheckoutSessionForEstimate` sends them to a Stripe
+  Checkout page ("payment" mode) from their estimate link
+  (`src/app/estimate/[id]/pay-deposit-button.tsx`). The webhook records
+  it via `recordEstimateDepositPayment` — an `Invoice`/`Payment` with
+  no `agreementId` (the agreement doesn't exist yet) and
+  `Estimate.depositPaidAt` set. If that estimate is later converted to
+  an agreement, the already-collected deposit carries over as a
+  `Deposit` record instead of being charged a second time at signing
+  (`createCheckoutSessionForAgreement` checks for one first).
+- **All Checkout is server-side redirect** — every flow above uses
+  Stripe's own hosted Checkout page (`checkout.sessions.create` →
+  redirect to `session.url`), never Stripe.js/Elements embedded in our
+  own pages. `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` is provisioned (see
+  "Environment variables" above) but currently unused in `src/` for
+  exactly that reason — nothing is broken by it being unused, it's
+  just not needed unless a future embedded-payment-form flow is built.
 
 **Done (2026-09-27):** Chris registered
 `https://robinsonappliancerentals.com/api/webhooks/stripe` as a
@@ -179,16 +198,16 @@ Before this, the webhook route deliberately returned HTTP 503
 (refusing to accept unverified requests) rather than trusting an
 unsigned request claiming to be Stripe — that's now resolved.
 
-**Deliberately not built in this pass** (tracked in `docs/ROADMAP.md`):
-automated late fees / dunning beyond what Stripe's own retry logic
-already does — that needs its own design, not a bolt-on here.
+**Since built (2026-09-28):** automated late fees are no longer
+deferred — see "Automation rules" below. Dunning beyond Stripe's own
+built-in retry logic is still not built.
 
 ## Automation rules (scheduled jobs)
 
-**As of 2026-09-28.** Three checks that used to depend on Chris
-noticing something on his own now run automatically — see
-`docs/DECISIONS.md`'s 2026-09-28 "Automation rules" entry for the
-full reasoning.
+**As of 2026-09-28**, later extended 2026-09-29. Checks that used to
+depend on Chris noticing something on his own now run automatically —
+see `docs/DECISIONS.md`'s 2026-09-28 "Automation rules" entry for the
+full reasoning behind the pattern.
 
 - **Billing reminders** — a Vercel Cron job (`vercel.json`, once a
   day at 14:00 UTC) hits `src/app/api/cron/billing-reminders/route.ts`,
@@ -244,6 +263,14 @@ full reasoning.
   fails, Chris gets a plain-English alert explaining that today's extra
   safety copy didn't get made but his actual data is untouched. Same
   `CRON_SECRET` protection as the other cron routes.
+- **Estimate follow-ups** (added 2026-09-29) — a Vercel Cron job
+  (`vercel.json`, once a day at 16:00 UTC, after the other four) hits
+  `src/app/api/cron/estimate-follow-ups/route.ts`, which calls
+  `sendEstimateFollowUpReminders()` (`src/domains/estimates`). Emails
+  a single "still interested?" nudge to any customer whose estimate
+  was sent but has gone unanswered for a few days — see
+  `docs/BUSINESS-RULES.md` for the exact quiet period. Same
+  `CRON_SECRET` protection as the other cron routes.
 
 ## SMS notifications
 
@@ -298,7 +325,9 @@ Because this is one script that stops at its first failure (`&&` between each st
 
 ## Auth
 
-[Better Auth](https://better-auth.com) (see `docs/DECISIONS.md` for why, over Auth.js/NextAuth and Neon Auth). Email + password for now; magic links/password reset can be added without a schema change. Three roles: `OWNER`, `ADMIN`, `CUSTOMER` — enforced **on the server**, twice:
+[Better Auth](https://better-auth.com) (see `docs/DECISIONS.md` for why, over Auth.js/NextAuth and Neon Auth). Email + password for now; magic links/password reset can be added without a schema change. Four roles: `OWNER`, `ADMIN`, `STAFF`, `CUSTOMER` — enforced **on the server**, twice:
+
+`STAFF` (added 2026-09-28) is a day-to-day operational login for a new hire — jobs, dispatch, customers, inventory, maintenance — with no access to revenue, billing, reports, or `/desk/settings`; those pages call `requireRole` for `OWNER`/`ADMIN` only. Chris creates and removes staff logins himself, from `/desk/settings`.
 
 1. `src/proxy.ts` — fast, cookie-only check that *someone* is signed in, for `/desk/**` and `/account/**`.
 2. `src/lib/session.ts` (`requireSession()` / `requireRole()`) — the real check, called at the top of every protected layout/page/server action. Confirms who is signed in and whether their role is allowed.
@@ -311,7 +340,7 @@ Never rely on hiding a nav link as the only protection for anything.
 
 ## CI/CD
 
-`.github/workflows/ci.yml` runs on every PR and on `main`: spins up a throwaway Postgres, applies migrations, type-checks, lints, runs unit tests, builds, then runs Playwright + axe accessibility tests against the built app. Vercel deploys previews for every PR and production on merge to `main` independently of this workflow.
+`.github/workflows/ci.yml` runs on every PR and on `main`, in order: install dependencies → check for un-reviewed destructive migrations → apply database migrations (against a throwaway Postgres) → verify schema health (the same check production runs before building) → seed business content and test-only OWNER/CUSTOMER accounts → type-check → lint → unit tests → build → install Playwright browsers → accessibility & e2e tests → upload the Playwright report. Vercel deploys previews for every PR and production on merge to `main` independently of this workflow.
 
 ## Folder layout
 

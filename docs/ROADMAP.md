@@ -26,13 +26,17 @@ on — never built unasked.
   Phase 4.
 - Customer portal (rentals, billing, maintenance/removal requests) —
   Phase 5.
-- Stripe billing (test mode) — **done (2026-09-27), Phase 6B.** Checkout
-  right after signing, hosted Billing Portal, and webhook-driven
-  Invoice/Payment/Deposit records — see `docs/ARCHITECTURE.md`'s
-  "Payments (Stripe)" section. **Still open, tracked here on purpose:**
-  Chris needs to register the webhook endpoint in the Stripe dashboard
-  once this is deployed (see that same section for the exact steps) —
-  the webhook route intentionally refuses to work until then.
+- Stripe billing (test mode) — **done (2026-09-27), Phase 6B**, since
+  revised 2026-09-28 and extended 2026-09-29 — see
+  `docs/ARCHITECTURE.md`'s "Payments (Stripe)" section for the current
+  shape: signing only charges a one-time deposit/damage waiver (or
+  just saves a payment method) — billing starts at delivery, not at
+  signing, via `startRecurringBillingForAgreement` once a job
+  completes. A second, separate Checkout path collects an estimate's
+  deposit at approval, before any agreement exists. All of it is
+  webhook-driven (`Invoice`/`Payment`/`Deposit` records), and the
+  webhook endpoint is registered in the Stripe dashboard — nothing
+  left open here.
 - Full accessibility/security review, backup/restore test, launch
   checklist — Phase 7. **Backup restore: done.** Verified 2026-09-28 (see
   `docs/DECISIONS.md`) — a real Neon snapshot restore had already been
@@ -477,11 +481,16 @@ buildout" entry for the full technical writeup and
   unfiltered) — **improved (2026-09-29)** with Today/This week/All time
   tabs and a category-count summary for whichever range is picked.
 
-**Purchasing/supplies** (purchase orders, receiving, supplier records,
-reorder thresholds on top of the existing `PartRecord` catalog — from
-the Astra operations review above) was mentioned to Chris alongside
-these six but is a bigger, separate piece of work — still open, not
-part of this round.
+**Purchasing/supplies** (purchase orders, receiving, supplier records
+on top of the existing `PartRecord` catalog — from the Astra
+operations review above) was mentioned to Chris alongside these six as
+a bigger, separate piece of work — **done (2026-09-29)**, see
+`docs/DECISIONS.md`'s "Purchasing & supplies" entry and
+`docs/BUSINESS-RULES.md`'s "Purchasing & supplies" section. One thing
+from the original idea deliberately left out: automatic reorder
+thresholds/alerts — Chris still decides when to reorder himself; worth
+revisiting if the parts list grows large enough that he'd rather be
+told.
 
 Two Astra-review ideas above (multi-employee **permissions beyond
 OWNER/ADMIN/STAFF** — dispatcher, technician, billing-only roles — and

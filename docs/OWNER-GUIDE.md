@@ -6,9 +6,9 @@ feature ships or changes — if something here doesn't match what you see
 on screen, tell whoever's helping you and check `docs/HANDOFF.md` for
 the most current state.
 
-Billing/payments (Stripe) haven't been built yet — this guide covers
-everything up through leads, customers, inventory, agreements, jobs, and
-maintenance, which are all live today.
+(Corrected 2026-09-29 — this line had gone stale: billing/payments are
+fully built and running today, in Stripe's test mode — see "Billing,
+statements, and late fees" below.)
 
 ## Logging in
 
@@ -35,6 +35,34 @@ Go to `/login` and sign in with your email and password.
    to set their own password and log in themselves.
    - If they say the email never arrived, or the link expired, go to
      their customer page and click **Resend activation email**.
+
+## Sending a quote (estimate) before an agreement
+
+When someone needs a formal price quote before they're ready to sign —
+a property manager comparing options, a bulk deal, anything you want
+to put in writing first — go to **Estimates** instead of jumping
+straight to an agreement.
+
+1. **New estimate**, either from a lead ("Start an estimate" on the
+   lead page, which pre-fills their info) or from scratch. Add the
+   line items — appliances, quantities, monthly price — and, if you
+   want one, a deposit amount.
+2. Send it. The customer gets a private link (same idea as signing an
+   agreement — no login needed) where they can approve or decline it.
+   If you set a deposit, approving prompts them to pay it right there
+   on their own link — you don't have to collect it separately.
+   - **If they don't respond for a few days**, the system automatically
+     emails them a friendly "still interested?" follow-up on its own —
+     you don't need to chase it yourself. It only ever sends the one
+     follow-up per estimate.
+3. Once approved (and the deposit paid, if there was one), click
+   **Convert to agreement(s)**. For a single property this rolls the
+   deposit straight onto the new agreement — they're never charged for
+   it twice. For a property manager with several properties on one
+   estimate, converting splits it into one agreement per property; in
+   that case the app will flag that the one deposit already collected
+   needs to be sorted out by hand across those agreements, since it
+   doesn't know which property it belongs to.
 
 ## Setting up a rental agreement
 
@@ -90,6 +118,20 @@ Scheduled → In progress → Completed (with notes), or Cancelled. You can
 attach a photo by taking one with your phone's camera or choosing one
 from your device — no more pasting in a URL.
 
+## Dispatch board and the driver view
+
+**Dispatch** shows every scheduled job on one board for the day/week,
+so you can see who's doing what and catch a double-booking or a gap
+before it happens, instead of scrolling the full Jobs list.
+
+If you've given someone a **staff** login (see "Adding a staff
+account" under Settings), they see a simplified **Driver view**
+instead of the full desk — just their own assigned jobs for the day,
+with the details they need on site (address, appliance, notes) and a
+way to mark a job in-progress/completed with a photo. Staff accounts
+can't see pricing, billing, reports, or Settings at all — only
+day-to-day work.
+
 ## Handling a maintenance request
 
 Customers submit maintenance requests themselves from their own
@@ -107,7 +149,26 @@ front-load vs. top-load), plus its current status (Available, Reserved,
 Rented, in Maintenance, or Retired). **Parts** is a separate catalog
 keyed by model number — log a part once for a model, and it'll show up
 for every unit of that same model automatically, including other model
-numbers you say the same part also fits.
+numbers you say the same part also fits. Each part also shows how many
+you currently have on hand.
+
+## Ordering parts: suppliers and purchase orders
+
+When you need to restock parts, go to **Suppliers** to keep a simple
+contact list (name, phone, email, notes) for who you buy from — no
+approval process, just contact info and a record of what you've
+ordered from each one.
+
+To place an order, go to **Purchase orders → New purchase order**,
+pick the supplier, and add line items — either linked to a part you
+already track, or just a free-text item for a one-off buy. A purchase
+order moves **Draft → Ordered → Received** (or you can cancel it any
+time before it's received). **The moment you mark it Received, the
+quantities on those lines are added to your parts' on-hand counts
+automatically** — that's the only thing that changes stock going up.
+Stock only goes down the way it already did before: when you log a
+part as used on a repair. There's no partial receiving — a purchase
+order is received all at once.
 
 ## Changing prices, fees, and the prepaid-term discount
 
@@ -176,6 +237,37 @@ The dashboard shows real counts: leads by status, customers, draft/
 awaiting-signature/active agreements, scheduled jobs, and open
 maintenance requests — so you can see what needs your attention at a
 glance.
+
+## The rest of the desk, briefly
+
+A few more pages worth knowing exist, each answering one specific
+question:
+
+- **Today** — everything that actually needs your attention right
+  now (overdue rentals, appliances due for maintenance, and today's
+  scheduled jobs) in one place, so you don't have to go check several
+  pages separately.
+- **Tasks** — your own follow-up to-dos (overdue, due today, and
+  everything else), including ones created automatically from things
+  like a lost lead or a lead you marked to call back later.
+- **Activity** — a combined "what actually happened" feed across
+  leads, estimates, jobs, and billing, with quick "today"/"this week"
+  filters — useful when you want to see everything that happened
+  without checking each section separately.
+- **Search** — one search box (in the desk header on every page) that
+  looks across customers, appliances, and leads at once.
+- **Revenue** (owner/admin only) — your monthly recurring revenue
+  (MRR) and annualized (ARR), trended over the last 6 months, plus
+  collected/past-due/failed-payment totals — all calculated from your
+  actual agreements and Stripe data, not estimates.
+- **Reports** (owner/admin only) — agreements whose price has drifted
+  from your current pricing, repairs missing a logged cost, and where
+  your leads are actually coming from.
+- **Growth** (owner/admin only) — customers worth a proactive call:
+  active rentals showing a churn signal (a past-due invoice, a
+  cancellation-risk pattern), plus leads worth a win-back attempt.
+- **Fleet** (owner/admin only) — which appliances are getting the most
+  and least use, and which have cost you the most in repairs.
 
 ## Resetting test data (once you're done testing)
 
