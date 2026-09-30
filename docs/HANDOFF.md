@@ -1,5 +1,28 @@
 # Handoff — current state
 
+## 2026-09-30 — Populated migration-upgrade proof (O02 subcard)
+
+- PR #96 repaired issue #97 and the first browser failures. Commit
+  3251be79738792b109bee47ef2db5c95d2575acb passed full CI 36746611030,
+  including 86 browser/axe checks; its Vercel status is successful. Owner
+  merges that predecessor before this follow-on PR.
+- Added scripts/test-migration-upgrade.ts to existing CI. It refuses every
+  target except matching test:test localhost:5432/appliance_desk_test URLs
+  with CI=true and no Vercel environment. It creates its own random database,
+  applies the original migration using Prisma deploy, inserts synthetic user,
+  customer/address, appliance/type, agreement/line, job/link and invoice/payment
+  records, then deploys the full current migration history.
+- Assertions compare old records, exact money, relationship links and UTC
+  schedule across the upgrade, explicitly check the historical emailVerified
+  conversion, read every current model, and retry deploy to prove no-op record
+  and history behavior. Cleanup only drops the random database it created.
+  CI's main browser fixtures, preview and production are untouched.
+- Local evidence: 17 target-guard tests plus the 13 role/list regression cases
+  pass; changed-script lint and targeted TypeScript compilation pass. The
+  real migration drill remains IN_REVIEW until its CI run passes. No actual
+  local database drill is claimed, and full O02 still requires isolated-runtime
+  fixture and independent private-storage proof. No restore drill is claimed.
+
 ## 2026-09-30 — PR #96 review and CI repairs (issue #97)
 
 - Issue #97: Jobs, Dispatch and maintenance-detail scheduling entry points

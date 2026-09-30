@@ -69,6 +69,9 @@ jobs:
       - name: Prove schema health rejects a missing column (disposable database only)
         run: npx tsx scripts/test-schema-health.ts
 
+      - name: Prove populated historical database upgrades and deployment retry
+        run: npx tsx scripts/test-migration-upgrade.ts
+
       - name: Seed business content + test-only OWNER/CUSTOMER accounts
         run: npm run db:seed
 
