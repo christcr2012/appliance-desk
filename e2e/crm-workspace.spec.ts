@@ -120,7 +120,9 @@ test("property action preselects its own address and history note survives navig
     .getByRole("navigation", { name: "Customer record sections" })
     .getByRole("link", { name: "Overview", exact: true })
     .click();
+  await expect(page).toHaveURL(/\?tab=overview$/);
   await page.goBack();
+  await expect(page).toHaveURL(/\?tab=activity$/);
   await expect(page.getByText(note, { exact: true })).toBeVisible();
 });
 test("lead search/filter URL survives browser back and links its follow-up", async ({
