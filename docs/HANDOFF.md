@@ -2162,3 +2162,33 @@ and customer records are not rewritten. Preview verification is the next
 gate, and its result will be recorded here. Main remains unchanged; stop
 for owner review before merging or starting the next phase. The isolated
 Neon validation branch remains retained pending approved cleanup.
+
+## 2026-09-30 — Review preview deployed; owner review pending
+
+PR: https://github.com/christcr2012/appliance-desk/pull/86
+Code gate: https://github.com/christcr2012/appliance-desk/actions/runs/36667382569
+499 unit/integration tests and 55 Playwright/axe tests passed. Acceptance
+criteria were checked against implementation and these behavioral tests.
+
+Vercel deployment dpl_4mr7CZo91Hn6WrJgiHqLrqzGvtAP is READY on commit
+8811e6a969dbba53ef2089aa90d35f3a0d013b20. Review preview:
+https://appliance-desk-lb0iuusbc-chris-projects-de6cd1bf.vercel.app
+Stable branch preview:
+https://appliance-desk-git-ai-codexprela-e7e668-chris-projects-de6cd1bf.vercel.app
+
+Deployment build succeeded, but direct deployed-page inspection is still
+unverified: Vercel's authenticated fetch returned a 302 sign-in redirect,
+and another fetch returned unable-to-provide-access. A temporary share URL
+was generated; retrying through the connector still redirected. Do not
+claim this as a successful visual inspection. Owner can open the preview
+with their Vercel account. Browser fallback requires user approval under
+the available browser tool instructions. No preview signup fixtures were
+written to the shared database.
+
+A fresh CI run follows removal of the deployment hold; the final status
+is visible on PR #86. This checkpoint changes documentation only. Keep the
+PR unmerged pending Chris's review. Emails remain OFF; production activation
+requires the confirmed business mailing address and monitored reply inbox.
+No real subscriber emails have been sent. This phase is implemented and
+automatically tested, with deployed-page inspection/owner review and live
+activation still incomplete. Do not start the next phase before reporting.
