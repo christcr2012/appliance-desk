@@ -3651,22 +3651,59 @@ preview build could read or write real customer/rental/invoice data, a
 real safety gap under `AGENTS.md`'s "correctness & security" priority.
 
 Fixed by splitting the env vars: Production and Development keep their
-existing values unchanged. Preview now gets its own values, pointed at
-Neon branch `dev-codex-prelaunch-interest-20260930` (`br-bold-rain-b74uzbdy`,
-child of `main`, created empty on 2026-09-30 by a previous AI-tool
-session, zero data ever written to it). Chris retrieved the connection
-strings from the Neon console himself (this session's guardrails block
-materializing database credentials directly), and I set them as
-Preview-scoped environment variables in Vercel via
+existing values unchanged. Preview gets its own values, via
 `mcp__Vercel__create_project_env` with `target: ["preview"]` and
-`upsert: true` (upsert only touched the Preview target — verified the
-Production/Development entries came back unchanged in the same
-response).
+`upsert: true` (upsert only touches the Preview target — verified in
+every response that Production/Development came back unchanged).
 
-This branch has never had `prisma migrate deploy` run against it, so its
-schema is not yet current. Expected to self-heal on the next Preview
-build, since CI's normal deploy pipeline runs migrations before build —
-worth confirming once, not assumed silently.
+**Took three attempts to land on a working database branch — recorded
+in full because the first attempt's reasoning was wrong, not just its
+outcome:**
 
-Connection strings were not saved anywhere outside Vercel's own env var
-store (not written to this doc, not filed to any persistent memory).
+1. Reused the existing Neon branch `dev-codex-prelaunch-interest-20260930`
+   (`br-bold-rain-b74uzbdy`), believing — incorrectly — that it was
+   empty, based on its `written_data_bytes: 0` stat. **This was a wrong
+   inference on my part.** Neon branches are always a full copy-on-write
+   copy of the parent's data at fork time; "zero bytes written" means
+   nothing has changed since the copy, not that the copy has no data.
+   The branch also had a table from earlier ad hoc testing that Prisma's
+   migration tracking didn't know about (see the "isolated Neon
+   validation branch" entry earlier in this log). Result: the first
+   Preview build after the switch failed (`relation "LaunchSettings"
+   already exists`).
+2. Created a fresh branch using Neon's "schema only" option (real
+   tables, no rows). This is structurally incompatible with how this
+   app tracks its own database setup: "schema only" copies the tables
+   but not Prisma's own record of which migrations are already applied,
+   so the build tried to redo work that, structurally, had already
+   happened (`type "Role" already exists`).
+3. **What actually worked**: a fresh branch (`vercel-preview-2`,
+   `br-broad-union-b784qy62`, child of `main`) created with the ordinary
+   full "data and schema" copy option, which keeps Prisma's tracking
+   table consistent with the real tables. Verified by manually
+   re-triggering a Preview build against it via
+   `mcp__Vercel__create_deployment`: succeeded clean, `READY`, no errors
+   (`dpl_FBuEvSiUn8r3FCjp54N8X71oZ3vf`).
+
+Chris retrieved each set of connection strings from the Neon console
+himself (this session's guardrails block materializing database
+credentials directly, and also blocked this session from creating a new
+Neon branch itself — "Modify Shared Resources" — and from reading the
+production branch directly, even a read-only query — "Production
+Reads"). Connection strings were not saved anywhere outside Vercel's own
+env var store — not written to this doc, not filed to any persistent
+memory.
+
+**The honest trade-off, disclosed to Chris before he approved it**:
+because a full data+schema copy was the only option that actually
+worked with this app's migration setup, the Preview database is not a
+blank slate — it started as a snapshot of whatever was in the real
+database at the moment the branch was created (pre-launch test/seed
+data, as far as either of us knows, not real customers). Isolation
+going forward is real and complete regardless: nothing written during a
+Preview build reaches the real database, and nothing in the real
+database changes because of one.
+
+Landed via PR #91 (first version) and PR #92 (this correction — #91 had
+already merged by the time attempts 2 and 3 happened, so the accurate
+final state is recorded here instead of rewriting a merged PR's diff).

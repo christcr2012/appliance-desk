@@ -32,9 +32,11 @@ first slice built 2026-09-26, see the "Phase 3" section below.
   `BETTER_AUTH_SECRET` set for Production/Preview/Development. As of
   2026-09-30, `DATABASE_URL`/`DIRECT_URL` are **split**: Production and
   Development still point at the real live database; Preview now points
-  at its own separate, isolated Neon branch (see "2026-09-30 — Preview
-  database isolation" below) — PR previews no longer touch real customer
-  data. The production site is live at `https://appliance-desk.vercel.app`.
+  at its own separate, isolated Neon branch (`vercel-preview-2` — see
+  "2026-09-30 — Preview database isolation" below for how this was
+  confirmed working) — writes on a PR preview never reach real customer
+  data, and vice versa. The production site is live at
+  `https://appliance-desk.vercel.app`.
 - Every doc `AGENTS.md` requires exists (this list, `PRODUCT-SPEC.md`,
   `ARCHITECTURE.md`, `DATABASE.md`, `BUSINESS-RULES.md`,
   `DESIGN-SYSTEM.md`, `DECISIONS.md`, `ROADMAP.md`, `OWNER-GUIDE.md`).
@@ -2338,23 +2340,44 @@ for everything shipped since Phase 5 — see its own entry below), PR #87
 (a follow-up correcting some historical details in those same docs). All
 three are documentation-only — no application code changed.
 
-**Preview database isolation, done today**: Vercel's Preview deployments
-were sharing the same live production database as real customers — any
-pull request's preview build could read or write real rental/customer/
-invoice data. Fixed by splitting `DATABASE_URL`/`DIRECT_URL`: Production
-and Development are untouched; Preview now points at its own separate
-Neon branch (`dev-codex-prelaunch-interest-20260930`, previously created
-empty and unused, no real data ever written to it). Chris supplied the
-connection strings from the Neon console; I set them as Preview-only
-environment variables in Vercel.
+**Preview database isolation, done today (O02) — took three attempts to
+get right, corrected here rather than leaving the earlier wrong claim
+standing**: Vercel's Preview deployments were sharing the same live
+production database as real customers — any pull request's preview
+build could read or write real rental/customer/invoice data. Fixed by
+splitting `DATABASE_URL`/`DIRECT_URL`: Production and Development are
+untouched; Preview now points at a separate Neon branch.
 
-**Not yet done, flagged for the next PR that touches Preview**: this new
-branch has an empty/default schema — it has not had `prisma migrate
-deploy` run against it, so it doesn't yet have the real table structure.
-The very next Preview deployment (any open PR rebuilding) will run CI's
-migration step against it automatically, which should bring it current.
-Worth a quick check that the first real Preview build after this change
-succeeds cleanly before relying on it.
+1. First attempt reused the existing `dev-codex-prelaunch-interest-20260930`
+   branch, believing it was empty. It wasn't — Neon branches always copy
+   the parent's data at fork time (that's how the platform works; "0
+   bytes written" only means nothing changed *since* the copy, not that
+   the copy is empty). That branch also had a table from earlier manual
+   testing that Prisma's own migration tracking didn't know about, so the
+   very first Preview build after the switch failed outright
+   (`relation "LaunchSettings" already exists`).
+2. Second attempt: a fresh branch made with Neon's "schema only" option
+   (real tables, no data). This turned out to be incompatible with how
+   this app tracks its own database setup — "schema only" copies the
+   tables but not Prisma's internal record of which changes are already
+   applied, so the build tried to redo setup that had, structurally,
+   already happened (`type "Role" already exists`).
+3. **What actually worked**: a fresh branch (`vercel-preview-2`) made
+   with Neon's full "data and schema" copy — this keeps Prisma's tracking
+   consistent with the real tables, so no collision. Confirmed by
+   manually re-triggering a Preview build against it: succeeded clean,
+   `READY`, no errors (deployment `dpl_FBuEvSiUn8r3FCjp54N8X71oZ3vf`).
+   Chris supplied the connection strings from the Neon console each time;
+   I set them as Preview-only environment variables in Vercel.
+
+**Trade-off, disclosed to Chris and accepted**: because a full copy was
+the only option that actually worked with this app's setup, the Preview
+database is not a blank slate — it started out as a snapshot of whatever
+was in the real database at the moment the branch was created (pre-launch
+test/seed data, not real customers, as far as either of us knows). Going
+forward, isolation is real and complete: nothing written during Preview
+testing ever reaches the real database, and nothing in the real database
+changes because of a Preview build.
 
 **Decided and disclosed, not yet done**: PR #89 (Astra's draft attempt at
 fixing STAFF-role staff seeing financial data they shouldn't) will not be
