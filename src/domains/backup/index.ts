@@ -1,3 +1,4 @@
+import { BACKUP_TABLES } from "./manifest";
 import { put, list, del } from "@vercel/blob";
 import { prisma } from "@/lib/prisma";
 import { sendEmail } from "@/lib/email";
@@ -16,50 +17,9 @@ import { isNonProductionDeployment } from "@/lib/deployment-safety";
 // business's first line of defense; a real disaster-recovery drill is a
 // separate, bigger project (see docs/ROADMAP.md).
 //
-// Deliberately excludes 4 of the 35 tables in prisma/schema.prisma:
-//   - Session, Account, Verification: better-auth's own login-session
-//     bookkeeping. Ephemeral by design (a session backup would be stale
-//     the moment it's restored) and contain nothing Chris would ever
-//     need to recover — regenerated automatically the next time someone
-//     signs in.
-//   - WebhookEvent: Stripe's own webhook delivery log, kept only for
-//     short-term debugging/idempotency, not a business record — Stripe
-//     itself is the durable source of truth for what it sent.
-// Every table that holds an actual business record — customers, leads,
-// agreements, billing, appliances, notes, audit history — is included.
-const BACKUP_TABLES = [
-  "user",
-  "customer",
-  "referral",
-  "serviceAddress",
-  "lead",
-  "leadApplianceRequest",
-  "applianceType",
-  "appliance",
-  "applianceInspection",
-  "partRecord",
-  "rentalAgreement",
-  "rentalLine",
-  "applianceAssignment",
-  "pricingRule",
-  "signatureRecord",
-  "deposit",
-  "job",
-  "jobAppliance",
-  "maintenanceRequest",
-  "invoice",
-  "invoiceLineItem",
-  "payment",
-  "refund",
-  "customerCredit",
-  "businessSettings",
-  "siteContent",
-  "photo",
-  "consentRecord",
-  "customerNote",
-  "customerContact",
-  "auditLog",
-] as const;
+// The manifest covers every schema model and documents intentional exclusions.
+// This exports business records, not credentials, file bytes, or a ready-to-restore
+// database image. Restore procedures still require a separate recovery drill.
 
 const BACKUP_PREFIX = "backups/";
 const RETENTION_DAYS = 30;
@@ -86,8 +46,7 @@ export async function exportDatabaseBackup(): Promise<BackupResult> {
     const entries = await Promise.all(
       BACKUP_TABLES.map(async (table) => {
         // Every model on the Prisma client exposes findMany() with this
-        // same shape — cast is safe because BACKUP_TABLES is a literal
-        // list of real model names checked against schema.prisma above.
+        // same shape; the manifest restricts these keys to model delegates.
         const rows = await (
           prisma[table] as { findMany: () => Promise<unknown[]> }
         ).findMany();
