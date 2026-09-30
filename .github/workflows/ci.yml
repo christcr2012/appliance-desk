@@ -64,6 +64,9 @@ jobs:
       - name: Verify schema health (same check production runs before building)
         run: npm run db:verify-schema-health
 
+      - name: Prove schema health rejects a missing column (disposable database only)
+        run: npx tsx scripts/test-schema-health.ts
+
       - name: Seed business content + test-only OWNER/CUSTOMER accounts
         run: npm run db:seed
 
