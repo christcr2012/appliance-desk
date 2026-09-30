@@ -41,7 +41,7 @@ beforeEach(() => {
   mocks.email.mockResolvedValue({ data: { id: "email-1" }, error: null });
   mocks.sms.mockResolvedValue({ sid: "sms-1" });
   mocks.event.mockReturnValue({ id: "evt_test", livemode: false });
-  mocks.session.mockResolvedValue({ user: { role: "OWNER" } });
+  mocks.session.mockResolvedValue({ user: { id: "owner-1", role: "OWNER" } });
   mocks.upload.mockResolvedValue({ clientToken: "token" });
   mocks.read.mockResolvedValue([]);
   __setStripeClientForTests(null);
@@ -138,7 +138,7 @@ describe("verified webhook event modes", () => {
 
 function uploadRequest() {
   return new Request("https://preview.example.test/api/uploads/photo", {
-    method: "POST", body: JSON.stringify({ type: "blob.generate-client-token" }),
+    method: "POST", body: JSON.stringify({ type: "blob.generate-client-token", payload: { pathname: "appliance-types/photo.jpg", multipart: false, clientPayload: null } }),
   });
 }
 describe("storage writes", () => {

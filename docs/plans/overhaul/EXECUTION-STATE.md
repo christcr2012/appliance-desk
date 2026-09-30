@@ -155,3 +155,17 @@ lint and targeted TypeScript compile pass locally. Actual DB drill awaits
 CI. Full O02's preview runtime/private storage evidence remains incomplete;
 O09/O13 await the foundation gates. Keep current B1 model; no activation,
 paid resource or production-data mutation.
+
+
+## 2026-09-30 — O02 migration evidence green; file authorization follow-on
+
+PR #96 merged as 39800b08038b8ba155bcff9186a063831bfee88f. PR #98 head
+22777db6eff8d9acb68f51fff2eebb105eeee28b passed CI 36750017203 and Vercel,
+including populated historical upgrades and deploy retry. Owner merges #98.
+The follow-on photo-token boundary work preserves existing role operations,
+requires valid record paths and customer-owned maintenance namespaces, and
+refuses archived accounts/malformed uploads. 62 focused tests and 611 tests
+in 78 non-Postgres suites pass, plus full typecheck/lint; browser/DB gate awaits
+its own CI. No actual preview storage provisioning or hosted isolation fixture
+proof is claimed. Full O02 remains incomplete; O09/O13 remain blocked. Current
+B1 model and owner merge workflow remain in effect.

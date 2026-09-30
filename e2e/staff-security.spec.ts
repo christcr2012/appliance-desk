@@ -122,6 +122,16 @@ test.describe("staff permissions", () => {
     ).toBeChecked();
   });
 
+  for (const pathname of ["appliance-types/photo.jpg", "appliances/ci-security-appliance/photo.jpg", "backups/photo.jpg"]) {
+    test(`staff cannot mint an upload token for ${pathname}`, async ({ page }) => {
+      const response = await page.request.post("/api/uploads/photo", {
+        data: { type: "blob.generate-client-token", payload: { pathname, multipart: false, clientPayload: null } },
+      });
+      expect(response.status()).toBe(403);
+      expect(await response.json()).toEqual({ error: "You cannot upload a photo to this record." });
+    });
+  }
+
   for (const width of [360, 768, 1440]) {
     for (const theme of ["light", "dark"] as const) {
       test(`operational job at ${width}px in ${theme} mode is accessible`, async ({
@@ -172,5 +182,16 @@ test.describe("customer isolation", () => {
     await expect(page.getByRole("heading", { name: "This page could not be found.", exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: /print/i })).toHaveCount(0);
     expect(await response!.text()).not.toMatch(/9876543|ci-other@example\.test|Other Customer/);
+  });
+
+  test("a customer cannot mint an upload token in another customer's maintenance folder", async ({ page }) => {
+    test.skip(!fs.existsSync(customerState), "Requires the test customer session.");
+    const response = await page.request.post("/api/uploads/photo", {
+      data: { type: "blob.generate-client-token", payload: {
+        pathname: "maintenance-requests/ci-isolation-other-customer/photo.jpg", multipart: false, clientPayload: null,
+      } },
+    });
+    expect(response.status()).toBe(403);
+    expect(await response.json()).toEqual({ error: "You cannot upload a photo to this record." });
   });
 });
