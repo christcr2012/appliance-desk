@@ -17,6 +17,7 @@ const customerFindUnique = vi.fn();
 const customerCreate = vi.fn();
 const serviceAddressCreate = vi.fn();
 const leadUpdate = vi.fn();
+const leadClaim = vi.fn();
 const auditLogCreate = vi.fn();
 const signUpEmail = vi.fn();
 const requestPasswordReset = vi.fn();
@@ -25,7 +26,7 @@ function makeTx() {
   return {
     customer: { findUnique: customerFindUnique, create: customerCreate },
     serviceAddress: { create: serviceAddressCreate },
-    lead: { update: leadUpdate },
+    lead: { update: leadUpdate, updateMany: leadClaim },
     auditLog: { create: auditLogCreate },
   };
 }
@@ -83,6 +84,7 @@ describe("convertLeadToCustomer — customer activation, no relayed passwords", 
     customerFindUnique.mockReset().mockResolvedValue(null);
     customerCreate.mockReset().mockResolvedValue({ id: "cust-1" });
     serviceAddressCreate.mockReset().mockResolvedValue({});
+    leadClaim.mockReset().mockResolvedValue({ count: 1 });
     leadUpdate.mockReset().mockResolvedValue({});
     auditLogCreate.mockReset().mockResolvedValue({});
     signUpEmail.mockReset().mockResolvedValue({ user: { id: "user-1" } });
@@ -145,6 +147,23 @@ describe("convertLeadToCustomer — customer activation, no relayed passwords", 
     );
     expect(signUpEmail).not.toHaveBeenCalled();
   });
+  it("rejects a competing conversion before customer, address and audit writes", async () => {
+    userFindUnique.mockResolvedValue({ id: "user-1", role: "CUSTOMER" });
+    leadClaim.mockResolvedValue({ count: 0 });
+    const { convertLeadToCustomer } = await import("@/domains/leads");
+    await expect(convertLeadToCustomer("owner-1", "lead-1")).rejects.toThrow(/changed while converting/);
+    expect(customerCreate).not.toHaveBeenCalled();
+    expect(serviceAddressCreate).not.toHaveBeenCalled();
+    expect(auditLogCreate).not.toHaveBeenCalled();
+  });
+  it("claims the original stage before writing the conversion", async () => {
+    userFindUnique.mockResolvedValue({ id: "user-1", role: "CUSTOMER" });
+    const { convertLeadToCustomer } = await import("@/domains/leads");
+    await convertLeadToCustomer("owner-1", "lead-1");
+    expect(leadClaim).toHaveBeenCalledWith({ where: { id: "lead-1", status: "NEW" }, data: { status: "CONVERTED" } });
+    expect(leadClaim.mock.invocationCallOrder[0]).toBeLessThan(customerFindUnique.mock.invocationCallOrder[0]);
+  });
+
 });
 
 describe("sendCustomerActivationEmail", () => {
@@ -168,4 +187,6 @@ describe("sendCustomerActivationEmail", () => {
 
     await expect(sendCustomerActivationEmail("a@example.com")).resolves.toBe(false);
   });
+
 });
+

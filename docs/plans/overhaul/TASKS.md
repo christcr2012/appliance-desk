@@ -1,5 +1,15 @@
 # Implementation cards — execute in model-batch order
 
+## Current execution override — 2026-09-30
+
+Chris requests completion of the approved work with the current model and no
+more model switching. Larger coherent PRs and continued eligible work supersede
+the earlier switch/phase-stop/card-size schedule. Acceptance, CI/preview and
+separate activation/spending/destructive-change gates remain. The current
+sequence and evidence ledger are in [COMPLETION-PLAN.md](COMPLETION-PLAN.md).
+Earlier model and stack instructions below are historical where superseded.
+
+
 **Execution order/model assignments: MODEL-BATCHES.md.** Its explicit mixed-card
 splits supersede the L/S suggestions in headings below; dependencies and
 acceptance criteria remain mandatory. EXECUTION-STATE.md records where to resume.

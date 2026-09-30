@@ -451,6 +451,17 @@ export async function convertLeadToCustomer(userId: string | null, leadId: strin
   }
 
   const customer = await prisma.$transaction(async (tx) => {
+    // Claim the unchanged stage before creating customer/address records.
+    // Postgres serializes competing updates to this row; a second click
+    // sees the converted stage and cannot create another property or audit.
+    // Any later failure rolls the claim back with the rest of the transaction.
+    const claim = await tx.lead.updateMany({
+      where: { id: lead.id, status: lead.status },
+      data: { status: "CONVERTED" },
+    });
+    if (claim.count !== 1) {
+      throw new Error("This lead changed while converting. Refresh its record before trying again.");
+    }
     let customerRow = await tx.customer.findUnique({
       where: { userId: account!.id },
     });
@@ -551,3 +562,4 @@ export async function getLeadSourceBreakdown(): Promise<LeadSourceBreakdownRow[]
     }))
     .sort((a, b) => b.total - a.total);
 }
+

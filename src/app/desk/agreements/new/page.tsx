@@ -1,3 +1,4 @@
+import { validInitialAddress } from "@/domains/customers/workspace";
 import { requireRole } from "@/lib/session";
 import { getCustomers } from "@/domains/customers";
 import { getAppliances } from "@/domains/inventory";
@@ -8,10 +9,10 @@ export const metadata = { title: "New agreement" };
 export default async function NewAgreementPage({
   searchParams,
 }: {
-  searchParams: Promise<{ customerId?: string }>;
+  searchParams: Promise<{ customerId?: string; serviceAddressId?: string }>;
 }) {
   await requireRole("OWNER", "ADMIN");
-  const { customerId } = await searchParams;
+  const { customerId, serviceAddressId } = await searchParams;
   const [customers, availableAppliances] = await Promise.all([
     getCustomers(),
     getAppliances({ status: "AVAILABLE" }),
@@ -21,14 +22,14 @@ export default async function NewAgreementPage({
     <div className="max-w-2xl">
       <h1 className="text-xl font-semibold">New rental agreement</h1>
       <p className="mt-1 text-sm text-gray-600">
-        A few quick steps — customer, term & fees, appliances, then send it
-        for signature.
+        A few quick steps — customer, term & fees, appliances, then send it for
+        signature.
       </p>
 
       {customers.length === 0 ? (
         <p className="mt-6 rounded-md border border-gray-200 bg-white p-4 text-sm text-gray-600">
-          No customers yet — the first step below lets you add one, or convert
-          a lead into a customer first from /desk/leads.
+          No customers yet — the first step below lets you add one, or convert a
+          lead into a customer first from /desk/leads.
         </p>
       ) : null}
 
@@ -47,10 +48,16 @@ export default async function NewAgreementPage({
             assetNumber: a.assetNumber,
             typeName: a.applianceType.name,
           }))}
-          initialCustomerId={customerId}
+          initialCustomerId={
+            customers.some((c) => c.id === customerId) ? customerId : undefined
+          }
+          initialServiceAddressId={validInitialAddress(
+            customers,
+            customerId,
+            serviceAddressId,
+          )}
         />
       </div>
     </div>
   );
 }
-

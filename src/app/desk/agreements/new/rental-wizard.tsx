@@ -62,10 +62,12 @@ export function RentalWizard({
   customers,
   availableAppliances: initialAvailableAppliances,
   initialCustomerId,
+  initialServiceAddressId,
 }: {
   customers: CustomerOption[];
   availableAppliances: ApplianceOption[];
   initialCustomerId?: string;
+  initialServiceAddressId?: string;
 }) {
   const [isPending, startTransition] = useTransition();
   const [step, setStep] = useState<Step>("customer");
@@ -82,7 +84,7 @@ export function RentalWizard({
   const [addresses, setAddresses] = useState(
     customers.find((c) => c.id === (initialCustomerId ?? customers[0]?.id))?.serviceAddresses ?? [],
   );
-  const [serviceAddressId, setServiceAddressId] = useState(addresses[0]?.id ?? "");
+  const [serviceAddressId, setServiceAddressId] = useState(addresses.some(a => a.id === initialServiceAddressId) ? initialServiceAddressId! : addresses[0]?.id ?? "");
   const [newCustomer, setNewCustomer] = useState(EMPTY_NEW_CUSTOMER);
 
   function updateNewCustomer<K extends keyof typeof EMPTY_NEW_CUSTOMER>(
@@ -784,3 +786,4 @@ export function RentalWizard({
     </div>
   );
 }
+
