@@ -46,6 +46,7 @@ it("preserves text and date after a rejected save, resets only after confirmed s
     "2026-09-30",
   );
   expect(m.refresh).not.toHaveBeenCalled();
+  await waitFor(() => expect(screen.getByRole("button", { name: "Add task" })).toBeEnabled());
   fireEvent.click(screen.getByRole("button", { name: "Add task" }));
   expect(await screen.findByRole("status")).toHaveTextContent("Task added.");
   expect(screen.getByLabelText("New task")).toHaveValue("");
