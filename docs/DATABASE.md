@@ -106,6 +106,9 @@ in UTC and only converted to Mountain Time for display.
   **snapshot** taken at signing — changing prices later in
   `/desk/settings` never changes what an existing customer owes. Can
   optionally trace back to the Estimate that produced it — see above.
+  `taxRatePermille` (also on `BusinessSettings`) is stored as tenths
+  of a percent — `73` means 7.3% — see `docs/BUSINESS-RULES.md`'s
+  "Sales tax" note for why.
 - **RentalLine** — one priced line on that agreement (e.g. "Washer/Dryer
   set @ $60/mo").
 - **ApplianceAssignment** — which physical `Appliance` fulfills a given

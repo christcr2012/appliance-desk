@@ -28,7 +28,12 @@ Update this file in the same PR that changes a rule.
     percentage.
   - Sales tax: configurable rate, applied at invoice time. **Defaults to
     0% with a visible warning** until Chris confirms the real rate with
-    a CPA. Never guess a tax rate.
+    a CPA. Never guess a tax rate. Stored in the database as
+    `taxRatePermille` — tenths of a percent, so **7.3% is stored as the
+    number 73**, not `7.3` or `0.073`. `/desk/settings` still shows and
+    accepts a normal percent; the ×10 conversion happens in code
+    (`getOrCreateTaxRate` in `src/domains/billing/checkout.ts`), never
+    by hand.
 - **Prepaid-term discount** (Chris's explicit request — see
   `docs/DECISIONS.md` for the dated design decision this section
   summarizes): signing a 6- or 12-month term automatically lowers a rental
@@ -87,10 +92,21 @@ Default ranking, **lowest to highest** value:
 
 `month-to-month → 6-month → 12-month → bulk (multiple units) → landlord/property manager/apartment operator needing multiple units`
 
-- Scoring uses configurable rule values (edited in `/desk/settings` in a
-  later phase) and stores the specific reasons applied to each lead
-  (e.g. `"+ 12-month term"`, `"+ property manager"`, `"+ 4 units"`),
-  shown to Chris next to the lead so it's never a black box.
+- Scoring uses rule values that are **currently hard-coded** in
+  `src/domains/leads/scoring.ts` (making them editable in
+  `/desk/settings` is a later-phase idea, not built yet — see
+  `docs/ROADMAP.md`), and stores the specific reasons applied to each
+  lead (e.g. `"+ 12-month term"`, `"+ property manager"`, `"+ 4
+  units"`), shown to Chris next to the lead so it's never a black box.
+  Current point values:
+  - Month-to-month term: **+0**. 6-month term: **+10**. 12-month
+    term: **+20**.
+  - Each additional unit beyond the first (bulk): **+5 per unit**
+    (e.g. 4 units = +15).
+  - Business account: **+10**.
+  - Property manager / landlord / apartment operator: **+25**.
+  - A lead is flagged **high-value** once its total score reaches
+    **30**.
 - The lead form captures: individual vs. business, landlord/property-
   manager status, appliances needed + quantity, desired term, service
   address (and whether it's inside the service area), desired start
@@ -801,7 +817,12 @@ what was and wasn't built.
   only adds to what's owed, which then already shows up correctly on
   the existing past-due exception and on the invoice's own statement.
   Chris gets a same-day digest email if any fees were applied; nothing
-  is sent on a quiet day.
+  is sent on a quiet day. **A given invoice can only ever get one late
+  fee** — the check only looks at invoices where `lateFeeCents` is
+  still `0`, and that same field becomes the fee amount once applied.
+  If a customer pays down part of the balance after a fee lands, the
+  invoice never gets a second, larger fee later even if it falls
+  behind again.
 
 ## Cross-cutting desk tools (2026-09-28)
 

@@ -3,6 +3,17 @@
 Dated, one entry per decision, newest first. If you reverse a decision
 here, add a new entry rather than editing the old one away.
 
+**A note on ordering** (found during a 2026-09-29 documentation audit):
+entries from 2026-09-28 and earlier follow newest-first as intended.
+Starting at the "2026-09-27 — Phase 6B Stripe billing integration
+built" entry, the file switches to oldest-first (chronological) order
+and stays that way through the most recent entry at the very bottom.
+Not worth a large reordering edit (too much risk of losing or
+misplacing real history for too little benefit) — just be aware: the
+newest entry in this file is always at the bottom of whichever of the
+two ordered sections you're reading, not necessarily the top of the
+file.
+
 ---
 
 ### 2026-09-28 — Accounting export: a generic transactions CSV (Task #73)
@@ -3424,9 +3435,9 @@ follow-up if it goes quiet" section for the plain-English rule):
 **Schema**: one new migration,
 `prisma/migrations/20260929210000_estimate_deposit_paid_at/`, adding
 `Estimate.depositPaidAt` and `Estimate.followUpSentForSentAt` (both
-nullable `TIMESTAMP`). **Chris needs to run this migration's SQL in
-Neon's console** before or alongside deploying, same as every other
-schema change in this project.
+nullable `TIMESTAMP`). Applies itself automatically as part of the
+Vercel production build (Phase 6A item 1) — no manual step needed
+from Chris.
 
 **Verification**: `npx eslint` — clean (one `react-hooks/immutability`
 catch: the redirect-to-Stripe-Checkout logic in
@@ -3446,6 +3457,54 @@ send/skip/re-send-resets-cycle/wrong-recipient/partial-failure cases).
 Purchasing/supplies and the icon set were both finished as separate
 follow-on entries the same day — see the "Purchasing & supplies" and
 "Finishing the icon set" entries below.
+
+## 2026-09-29 (continued) — Purchasing & supplies
+
+The third of the four items from "what else are you ready to
+implement" (see the hardening/estimate-follow-through entry above).
+Suppliers, purchase orders, and stock tracking for parts — deliberately
+minimal, matching how a one-person shop actually buys parts, not a
+full procurement system. Full plain-English rules in
+`docs/BUSINESS-RULES.md`'s "Purchasing & supplies" section; this entry
+covers the build itself.
+
+- **Supplier** — just contact info (name, contact person, phone,
+  email, notes) and a read-only count of its purchase orders. No
+  approval workflow, no supplier-specific pricing.
+- **PurchaseOrder** — moves `DRAFT` → `ORDERED` → `RECEIVED`, or
+  `CANCELLED` at any point before `RECEIVED`. Each line
+  (`PurchaseOrderLineItem`) optionally links to an existing
+  `PartRecord`, or is just a free-text description for a one-off buy
+  that isn't tracked as inventory.
+- **Receiving a purchase order** (`receivePurchaseOrder`,
+  `src/domains/purchasing/index.ts`) is the one place that changes
+  stock: every line's quantity is added onto its linked
+  `PartRecord.quantityOnHand` (lines with no linked part don't affect
+  stock — there's nothing to track). No per-line partial receiving; a
+  PO is received all at once. Consumption still only happens the
+  existing way, via `recordPartUsage` when Chris logs a part used on a
+  repair — purchasing and using are deliberately separate, unrelated
+  actions.
+- New desk pages: `/desk/suppliers` (list + detail + new),
+  `/desk/purchase-orders` (list + detail + new,
+  `new-purchase-order-form.tsx` for building the line items). `/desk/parts`
+  gained a "part stock" panel (`part-stock-panel.tsx`) showing current
+  quantity alongside the existing catalog.
+
+**Schema**: one new migration,
+`prisma/migrations/20260929220000_purchasing_and_supplies/`, adding
+the `Supplier`, `PurchaseOrder`, and `PurchaseOrderLineItem` models.
+Applies itself automatically as part of the Vercel production build,
+same as above.
+
+**Verification**: `tests/purchasing.test.ts` (real-database, 15
+tests) — supplier CRUD, PO status transitions including the
+CANCELLED-before-RECEIVED rule, and the receiving flow actually
+increments `PartRecord.quantityOnHand` by the received quantities and
+not before. Opened as its own PR (#83) rather than folded into the
+hardening/estimate-follow-through PR (#82), following this project's
+one-feature-per-PR convention — see `docs/HANDOFF.md` for how that PR
+was merged.
 
 ## 2026-09-29 — Finishing the icon set: a shared `<StatusBadge>` for every status everywhere
 

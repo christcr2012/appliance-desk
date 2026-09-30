@@ -315,3 +315,20 @@ Feature lists for Phases 6–7 will be filled in here as each phase
 starts, following the phase plan and scope in `AGENTS.md`/
 `docs/HANDOFF.md` — kept short until then rather than speculatively
 detailed now.
+
+**Status as of 2026-09-29 (found during a documentation audit):** this
+plan never got filled in. Phase 6 (Stripe billing) and a large amount
+of unnamed-phase work has since shipped — estimates & e-signature
+quotes, purchasing/suppliers/purchase orders, the CRM buildout (notes,
+lost reasons, tasks, lead sources), dispatch/driver views, growth/
+revenue/reports/activity — all real, live, and tested, but with no
+acceptance-criteria entries here. In practice, `docs/DECISIONS.md`
+(what was built and why) and `docs/ROADMAP.md` (done vs. still open)
+have been doing this file's job since Phase 5. **Open decision for
+Chris:** either (a) backfill this file's acceptance-criteria format
+for everything shipped since Phase 5, so it stays the single feature
+spec, or (b) formally retire this file's "later phases" ambition and
+let DECISIONS.md/ROADMAP.md remain the record going forward, keeping
+this file to Phases 1–5 only. Not decided yet — flagging rather than
+picking one unilaterally, since it's a documentation-process choice,
+not a code change.
