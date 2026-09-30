@@ -138,3 +138,20 @@ passed (532 tests, 55 browser/axe checks and actual missing-column rollback
 proof). Production dpl_FnK59u7TFxTWjAecUyCfW7ZQXvFQ READY. Next work while
 owner merges: O02 migration upgrade proof in disposable CI, then reassess
 remaining foundations before dependent schema/UI work. Keep current B1 model.
+
+
+## 2026-09-30 — Review repaired; populated migration-upgrade drill
+
+PR #96 commit 3251be79738792b109bee47ef2db5c95d2575acb passed CI
+36746611030 and Vercel; 86 browser/axe cases pass. Issue #97 scheduling
+entry points now match STAFF permission boundaries and its review thread
+is resolved. Owner merges that predecessor before the follow-on PR.
+
+O02 migration-upgrade subcard adds a strictly CI-local separate disposable
+database drill with original migration, synthetic existing records, full
+Prisma upgrade, every-model schema reads, history/record preservation and
+no-op deploy retry. Guard tests (17), focused role/list tests (13), script
+lint and targeted TypeScript compile pass locally. Actual DB drill awaits
+CI. Full O02's preview runtime/private storage evidence remains incomplete;
+O09/O13 await the foundation gates. Keep current B1 model; no activation,
+paid resource or production-data mutation.

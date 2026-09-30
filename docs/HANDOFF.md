@@ -1,5 +1,28 @@
 # Handoff — current state
 
+## 2026-09-30 — Populated migration-upgrade proof (O02 subcard)
+
+- PR #96 repaired issue #97 and the first browser failures. Commit
+  3251be79738792b109bee47ef2db5c95d2575acb passed full CI 36746611030,
+  including 86 browser/axe checks; its Vercel status is successful. Owner
+  merges that predecessor before this follow-on PR.
+- Added scripts/test-migration-upgrade.ts to existing CI. It refuses every
+  target except matching test:test localhost:5432/appliance_desk_test URLs
+  with CI=true and no Vercel environment. It creates its own random database,
+  applies the original migration using Prisma deploy, inserts synthetic user,
+  customer/address, appliance/type, agreement/line, job/link and invoice/payment
+  records, then deploys the full current migration history.
+- Assertions compare old records, exact money, relationship links and UTC
+  schedule across the upgrade, explicitly check the historical emailVerified
+  conversion, read every current model, and retry deploy to prove no-op record
+  and history behavior. Cleanup only drops the random database it created.
+  CI's main browser fixtures, preview and production are untouched.
+- Local evidence: 17 target-guard tests plus the 13 role/list regression cases
+  pass; changed-script lint and targeted TypeScript compilation pass. The
+  real migration drill remains IN_REVIEW until its CI run passes. No actual
+  local database drill is claimed, and full O02 still requires isolated-runtime
+  fixture and independent private-storage proof. No restore drill is claimed.
+
 ## 2026-09-30 — PR #96 review and CI repairs (issue #97)
 
 - Issue #97: Jobs, Dispatch and maintenance-detail scheduling entry points
@@ -2585,3 +2608,30 @@ passed (532 tests, 55 browser/axe checks and actual missing-column rollback
 proof). Production dpl_FnK59u7TFxTWjAecUyCfW7ZQXvFQ READY. Next work while
 owner merges: O02 migration upgrade proof in disposable CI, then reassess
 remaining foundations before dependent schema/UI work. Keep current B1 model.
+
+
+### PR #98 first CI setup correction
+
+CI run 36747821923 rejected the drill because migration_lock.toml is not
+tracked. Baseline preparation now copies only the real historical SQL and
+writes its own PostgreSQL lock file. A real filesystem regression verifies
+the exact SQL, single-migration directory and generated lock. All 18 migration
+setup/guard tests, script lint and targeted compilation pass locally. Actual
+upgrade evidence still awaits the replacement CI run. PR #96 is now merged
+as 39800b08038b8ba155bcff9186a063831bfee88f; #98 targets main.
+
+
+### PR #98 verification-stage and complete-typecheck repairs
+
+CI 36748324419 applied all 27 migrations and preserved the business-record
+snapshot, then exposed a wrong assertion: the later historical email verification
+migration deliberately backfills existing users to true. The drill now checks
+both stages: timestamp-to-boolean preserves unverified=false immediately after
+conversion, and the full history intentionally produces true after the backfill.
+
+The full current-source local typecheck reproduced the new test input error:
+Next's augmented ProcessEnv requires NODE_ENV. The pure guard now accepts only
+its five used environment fields instead of the entire augmented global type.
+No cast or weakened test bypass is used. Full local typecheck, lint and the 18
+setup/guard tests are required before this correction is pushed. Updated exact-
+head CI/database drill and preview remain pending; no deployment success claimed.
