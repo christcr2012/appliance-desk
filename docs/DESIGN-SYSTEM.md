@@ -88,7 +88,7 @@ dark-mode override too — see "Dark mode" below. This is exactly the
 kind of gap the 2026-09-29 icon-set work found and fixed for
 `bg-blue-100`/`text-blue-700`/`text-blue-800`.
 
-## Brand palette: navy/teal (rebrand, 2026-09-27)
+## Historical brand palette: navy/teal (superseded by Evergreen v2.0)
 
 The brand colors themselves changed from the original warm terracotta
 palette to a navy/teal one — see `docs/DECISIONS.md` for the full
@@ -104,8 +104,9 @@ etc.) — nothing else in the app hard-codes a specific hex value, so a
 future palette change (if Chris ever wants one) is the same kind of
 token swap, not a rewrite.
 
-Still open from that same brief, not built: a real logo (this still
-uses the existing typographic wordmark on purpose — see the brief),
+Historical status from that brief: the real logo was then unbuilt. This is
+now superseded by `public/brand/logo-light.svg`, `logo-dark.svg` and `mark.svg`.
+The remaining overhaul scope includes
 and everything in it beyond colors (owner-desk information
 architecture, customer-portal rebuild, new business-line UI) — see
 `docs/ROADMAP.md`.

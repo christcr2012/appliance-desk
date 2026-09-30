@@ -2,8 +2,8 @@
 
 ## Model recommendation — verified 2026-09-30
 
-Follow **MODEL-BATCHES.md**: Sol High -> Luna High -> Sol High -> Luna High
--> Sol High. EXECUTION-STATE.md identifies the next batch/task. These are
+Follow **MODEL-BATCHES.md**: Sol Medium -> Luna High -> Sol Medium -> Luna High
+-> Sol Medium. EXECUTION-STATE.md identifies the next batch/task. These are
 explicit user-selected model checkpoints; the assistant must stop and direct
 Chris to switch before continuing under another model. Four planned switches,
 with additional switches only for a documented blocker or user preference.
@@ -41,7 +41,7 @@ output speed. No fixed dollar or completion-time promise is justified yet.
    that only repeat trivial markup. Never skip required CI to save tokens.
 6. After two unsuccessful fixes of the SAME failure, stop speculative edits
    and save the error, attempted fixes and diff. Stop and ask Chris to
-   select Sol High; resume only after the switch protocol in MODEL-BATCHES.
+   select Sol Medium; resume only after the switch protocol in MODEL-BATCHES.
    Do not weaken assertions or silently call another model.
 7. No parallel agents or overlapping file edits unless explicitly authorized.
 8. Update task status and HANDOFF with exact evidence once. Stop/report at

@@ -27,11 +27,14 @@ before spending time on optional imports, advanced automation or new integration
 The plan is tailored to an owner working long shifts, often using a phone.
 It does not make Chris choose technical details a competent implementer can decide.
 
-User-requested execution: five batches, **Sol High -> Luna High -> Sol High
--> Luna High -> Sol High**. The assistant saves its handoff and tells Chris
+User-requested execution: five batches, **Sol Medium -> Luna High -> Sol Medium
+-> Luna High -> Sol Medium**. The assistant saves its handoff and tells Chris
 when to switch, then waits before continuing. If a phase review keeps the same
 model, say so. No new subscription or API spend is authorized here.
 
 PR #86 contains a separate, already-tested prelaunch signup/email feature.
 Check its current merge state before implementing anything that depends on it.
 This planning PR stacks on #86 and adds documentation only to its predecessor.
+
+B1 began 2026-09-30 with Sol Medium. [Baseline evidence](BASELINE.md) records
+O00 reconciliation; EXECUTION-STATE tracks actual completion separately.
