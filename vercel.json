@@ -1,5 +1,4 @@
 {
-  "git": { "deploymentEnabled": { "ai/codex/prelaunch-interest-list": false } },
   "crons": [
     {
       "path": "/api/cron/launch-emails",

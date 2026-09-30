@@ -2146,3 +2146,19 @@ calls before each test and asserting that failure causes exactly one attempt
 and suppression causes none. Database-state assertions remain in place.
 All other 497 tests passed in that run. No production code workaround or
 skipped test was introduced; the full pipeline is being rerun.
+
+## 2026-09-30 — Prelaunch CI passed; release preview hold
+
+Full GitHub Actions run 36667382569 passed on 065d046: migration safety,
+real Postgres migration/schema health/seed, typecheck, lint, all unit and
+integration tests, production build, and Playwright/axe accessibility and
+end-to-end checks. No tests skipped to achieve this result.
+
+Removed the temporary feature-branch deployment hold after this gate. The
+normal Vercel preview build may now apply the tested additive migration to
+the shared database, as documented in DECISIONS. This creates three new
+tables and initializes the launch settings with emails OFF; existing rental
+and customer records are not rewritten. Preview verification is the next
+gate, and its result will be recorded here. Main remains unchanged; stop
+for owner review before merging or starting the next phase. The isolated
+Neon validation branch remains retained pending approved cleanup.
