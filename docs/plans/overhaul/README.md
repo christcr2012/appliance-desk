@@ -38,3 +38,12 @@ This planning PR stacks on #86 and adds documentation only to its predecessor.
 
 B1 began 2026-09-30 with Sol Medium. [Baseline evidence](BASELINE.md) records
 O00 reconciliation; EXECUTION-STATE tracks actual completion separately.
+
+
+### Current Codex merge policy (2026-09-30)
+
+The owner now authorizes Codex to merge its own verified PRs as it goes;
+the earlier separate Claude-review/owner-merge hold is superseded for those
+PRs. See PR-STACK.md's latest authorization entry. CI, exact-head review,
+applicable preview evidence, model/phase checkpoints and activation/data/spend
+approvals still apply. Claude retains O01 ownership.

@@ -126,3 +126,12 @@ marking an email or Google integration complete, document every required Admin,
 Gmail, Drive, Calendar or other Workspace setup step with a GW ID, owner inputs,
 verification and reversal. Do not assume app code or plugin connection applied
 external settings. Alias creation starts with verification of existing aliases.
+
+
+### Current Codex merge policy (2026-09-30)
+
+The owner now authorizes Codex to merge its own verified PRs as it goes;
+the earlier separate Claude-review/owner-merge hold is superseded for those
+PRs. See PR-STACK.md's latest authorization entry. CI, exact-head review,
+applicable preview evidence, model/phase checkpoints and activation/data/spend
+approvals still apply. Claude retains O01 ownership.

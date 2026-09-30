@@ -88,3 +88,15 @@ ai/codex/overhaul-o02-preview-safeguards starts at main
 this PR changes none of its role surfaces. Future PRs check remote states and
 build on the current open tip. Exact-head Claude review and explicit merge
 authorization remain required. This reconciliation does not authorize a merge.
+
+
+## 2026-09-30 — Owner authorizes Codex merges
+
+Chris explicitly changed the earlier merge arrangement: Codex may handle
+merging its own PRs as it goes. For Codex-owned PRs, the earlier separate
+Claude-review/owner-merge-approval hold is superseded. Codex reviews the exact
+head, requires passing CI and applicable acceptance/preview evidence, and
+merges through a PR with an expected-head SHA. No direct main commits.
+Claude still owns O01. This authorizes no paid resources, live payment/email/
+SMS activation, destructive data changes or automatic next-phase work.
+Model-switch and product release checkpoints remain in effect.

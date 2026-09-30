@@ -2427,3 +2427,39 @@ EXECUTION-STATE reconciled: old #86/#87/#88 merged, #89 closed unmerged,
 #90/#91/#92 merged. New root PR targets main because no predecessor remains open.
 Claude review and explicit merge authorization still required. Future work must
 check the current remote PR tip and preserve Claude's O01 branch/handoff.
+
+
+### O02A review checkpoint — PR #93
+
+PR https://github.com/christcr2012/appliance-desk/pull/93 is open as a draft.
+Application code head: 681b062a713c8d7cbc770434f463b84c5b480eca.
+Local typecheck, lint and 47 focused tests passed on this code. Full CI run
+https://github.com/christcr2012/appliance-desk/actions/runs/36732270552 is the
+real database/build/browser gate; inspect its latest state on the PR.
+Vercel preview dpl_D6tz2TfX4nsWYDhsbC6sQ3c6WXYy reached READY on that exact
+head: https://appliance-desk-kekv3ovmg-chris-projects-de6cd1bf.vercel.app
+A successful build is not a manual signed-in workflow inspection. No test
+fixtures/messages/files were submitted to this preview. Claude review pending;
+keep unmerged. Whole O02 and O01 dependencies remain as recorded above.
+
+
+## 2026-09-30 — Owner authorizes Codex merges
+
+Chris explicitly changed the earlier merge arrangement: Codex may handle
+merging its own PRs as it goes. For Codex-owned PRs, the earlier separate
+Claude-review/owner-merge-approval hold is superseded. Codex reviews the exact
+head, requires passing CI and applicable acceptance/preview evidence, and
+merges through a PR with an expected-head SHA. No direct main commits.
+Claude still owns O01. This authorizes no paid resources, live payment/email/
+SMS activation, destructive data changes or automatic next-phase work.
+Model-switch and product release checkpoints remain in effect.
+
+Authenticated deployment fetch returned a Vercel sign-in redirect (302).
+No manual signed-in preview inspection is claimed; CI provides the browser
+gate. Application code unchanged from 681b062a713c8d7cbc770434f463b84c5b480eca.
+
+Code CI run 36732270552 passed every gate on 681b062a713c8d7cbc770434f463b84c5b480eca:
+migration safety, disposable Postgres migrations/schema/seed, typecheck, lint,
+unit/integration tests, build and Playwright/axe. This follow-up updates only
+documentation/merge authorization. Check the latest-head CI state on PR #93
+before merging; Codex is now authorized to perform that merge after checks.
