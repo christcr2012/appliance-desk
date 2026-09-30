@@ -2608,3 +2608,14 @@ passed (532 tests, 55 browser/axe checks and actual missing-column rollback
 proof). Production dpl_FnK59u7TFxTWjAecUyCfW7ZQXvFQ READY. Next work while
 owner merges: O02 migration upgrade proof in disposable CI, then reassess
 remaining foundations before dependent schema/UI work. Keep current B1 model.
+
+
+### PR #98 first CI setup correction
+
+CI run 36747821923 rejected the drill because migration_lock.toml is not
+tracked. Baseline preparation now copies only the real historical SQL and
+writes its own PostgreSQL lock file. A real filesystem regression verifies
+the exact SQL, single-migration directory and generated lock. All 18 migration
+setup/guard tests, script lint and targeted compilation pass locally. Actual
+upgrade evidence still awaits the replacement CI run. PR #96 is now merged
+as 39800b08038b8ba155bcff9186a063831bfee88f; #98 targets main.

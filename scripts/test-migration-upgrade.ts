@@ -2,7 +2,7 @@
 // already present, in a second throwaway DB; never touches CI's main fixtures.
 import assert from "node:assert/strict";
 import { randomBytes } from "node:crypto";
-import { cp, mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import pg from "pg";
@@ -10,8 +10,10 @@ import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { verifySchemaHealth } from "../src/lib/schema-health";
 import { migrationUpgradeTarget } from "./lib/migration-upgrade-safety";
-
-const BASELINE = "20260926150000_init";
+import {
+  prepareUpgradeBaseline,
+  UPGRADE_BASELINE,
+} from "./lib/migration-upgrade-baseline";
 
 async function main() {
   // Complete all target checks before creating clients, directories or databases.
@@ -58,15 +60,7 @@ async function main() {
     created = true;
     temporary = await mkdtemp(path.join(root, ".migration-upgrade-"));
     const migrations = path.join(temporary, "migrations");
-    await cp(
-      path.join(root, "prisma/migrations", BASELINE),
-      path.join(migrations, BASELINE),
-      { recursive: true },
-    );
-    await cp(
-      path.join(root, "prisma/migrations/migration_lock.toml"),
-      path.join(migrations, "migration_lock.toml"),
-    );
+    await prepareUpgradeBaseline(root, migrations);
     const baselineConfig = path.join(temporary, "prisma.config.ts");
     await writeFile(
       baselineConfig,
@@ -82,7 +76,7 @@ async function main() {
     );
     assert.deepEqual(
       initial.rows.map((r) => r.migration_name),
-      [BASELINE],
+      [UPGRADE_BASELINE],
     );
 
     // Synthetic records exercise old types, money, links and dates before later ALTERs.
