@@ -2700,3 +2700,14 @@ serving and saved photo URLs are unchanged. This is upload-token authorization,
 not private photo delivery or proof of independent preview storage. Preview
 uploads and backups still fail closed; no live storage resource was created.
 
+
+### Daily workspace CI and screenshot evidence
+
+PR #100 initial head 92e90515841b070494ef338e750091b89dd1ce27 passed full
+CI 36756565968 and Vercel. Its report records 99/99 browser checks passing,
+zero failures, flakes or skips. Inspected actual CI Today/Tasks screenshots
+on phone and desktop, light/dark. The 360px PageHeader squeezed its date
+beside actions despite passing axe/no-overflow. Follow-up stacks the title
+and actions below 640px and adds a >300px title-block regression at 360px.
+Updated-head CI/preview remains required. No manual screen-reader or owner
+walkthrough approval is claimed.
