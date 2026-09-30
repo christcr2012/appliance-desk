@@ -90,6 +90,13 @@ test.describe("owner daily work", () => {
               () => document.documentElement.scrollWidth <= innerWidth,
             ),
           ).toBe(true);
+          if (width === 360) {
+            const titleBlock = await page
+              .getByRole("heading", { level: 1 })
+              .locator("..")
+              .boundingBox();
+            expect(titleBlock!.width).toBeGreaterThan(300);
+          }
           const axe = await new AxeBuilder({ page })
             .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
             .analyze();
