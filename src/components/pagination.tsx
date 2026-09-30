@@ -21,17 +21,17 @@ export function Pagination({
   return (
     <nav
       aria-label="Pagination"
-      className="mt-6 flex items-center justify-between text-sm text-gray-600"
+      className="mt-6 flex flex-wrap items-center justify-between gap-3 text-sm text-ink-soft"
     >
       {page > 1 ? (
         <Link
           href={buildHref(page - 1)}
-          className="rounded-md border border-gray-300 px-3 py-1.5 text-gray-700 hover:border-gray-400"
+          className="inline-flex min-h-11 items-center rounded-lg border border-control px-3 py-2 text-ink hover:bg-subtle"
         >
           &larr; Previous
         </Link>
       ) : (
-        <span className="rounded-md border border-gray-200 px-3 py-1.5 text-gray-400">
+        <span className="inline-flex min-h-11 items-center rounded-lg border border-line px-3 py-2 text-ink-soft">
           &larr; Previous
         </span>
       )}
@@ -41,12 +41,12 @@ export function Pagination({
       {page < totalPages ? (
         <Link
           href={buildHref(page + 1)}
-          className="rounded-md border border-gray-300 px-3 py-1.5 text-gray-700 hover:border-gray-400"
+          className="inline-flex min-h-11 items-center rounded-lg border border-control px-3 py-2 text-ink hover:bg-subtle"
         >
           Next &rarr;
         </Link>
       ) : (
-        <span className="rounded-md border border-gray-200 px-3 py-1.5 text-gray-400">
+        <span className="inline-flex min-h-11 items-center rounded-lg border border-line px-3 py-2 text-ink-soft">
           Next &rarr;
         </span>
       )}

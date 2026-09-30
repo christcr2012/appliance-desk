@@ -3,68 +3,105 @@
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createTaskAction } from "./actions";
+import { primaryActionClass } from "@/components/desk/workspace";
 
-/** Standalone task creation on /desk/tasks itself — just a note and an
- * optional due date, no entity picker (linking a task to a specific
- * lead/customer/job happens from that record's own page instead, via
- * LinkedTaskForm, which passes the id along automatically). */
 export function NewTaskForm() {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
-
+  const errorRef = useRef<HTMLParagraphElement>(null);
+  function showError(message: string) {
+    setError(message);
+    requestAnimationFrame(() => errorRef.current?.focus());
+  }
   return (
     <form
       ref={formRef}
-      className="flex flex-col gap-2 rounded-lg border border-gray-200 bg-white p-4 sm:flex-row sm:items-start"
+      className="space-y-3"
       onSubmit={(e) => {
         e.preventDefault();
         const data = new FormData(e.currentTarget);
+        setError(null);
+        setSaved(false);
         startTransition(async () => {
-          const result = await createTaskAction({
-            note: String(data.get("note") ?? ""),
-            dueDate: String(data.get("dueDate") ?? ""),
-          });
-          if (result.status === "error") {
-            setError(result.message);
-            return;
+          try {
+            const result = await createTaskAction({
+              note: String(data.get("note") ?? ""),
+              dueDate: String(data.get("dueDate") ?? ""),
+            });
+            if (result.status === "error") {
+              showError(result.message);
+              return;
+            }
+            formRef.current?.reset();
+            setSaved(true);
+            router.refresh();
+          } catch {
+            showError(
+              "Couldn't confirm this task was saved. Your text is preserved. Check the list before trying again.",
+            );
           }
-          setError(null);
-          formRef.current?.reset();
-          router.refresh();
         });
       }}
     >
-      <div className="flex-1">
-        <label htmlFor="task-note" className="sr-only">
+      <div>
+        <label
+          htmlFor="task-note"
+          className="mb-1 block text-sm font-medium text-ink"
+        >
           New task
         </label>
         <input
           id="task-note"
           name="note"
           required
-          placeholder="e.g. Call the Oak Street property manager back about renewing"
-          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+          maxLength={500}
+          disabled={isPending}
+          placeholder="For example, call a property manager about renewing"
+          className="min-h-11 w-full rounded-lg border border-control bg-surface px-3 py-2 text-ink"
         />
-        {error && (
-          <p role="alert" className="mt-1 text-sm text-red-700">
-            {error}
-          </p>
-        )}
       </div>
-      <input
-        name="dueDate"
-        type="date"
-        className="rounded-md border border-gray-300 px-3 py-2 text-sm"
-      />
-      <button
-        type="submit"
-        disabled={isPending}
-        className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
-      >
-        {isPending ? "Adding…" : "Add task"}
-      </button>
+      <div className="flex flex-wrap items-end gap-3">
+        <div>
+          <label
+            htmlFor="task-due"
+            className="mb-1 block text-sm font-medium text-ink"
+          >
+            Due date (optional)
+          </label>
+          <input
+            id="task-due"
+            name="dueDate"
+            type="date"
+            disabled={isPending}
+            className="min-h-11 max-w-full rounded-lg border border-control bg-surface px-3 py-2 text-ink"
+          />
+        </div>
+        <button
+          type="submit"
+          disabled={isPending}
+          className={`${primaryActionClass} disabled:opacity-60`}
+        >
+          {isPending ? "Adding…" : "Add task"}
+        </button>
+      </div>
+      {error && (
+        <p
+          ref={errorRef}
+          tabIndex={-1}
+          role="alert"
+          className="text-sm text-ink"
+        >
+          {error}
+        </p>
+      )}
+      {saved && (
+        <p role="status" className="text-sm text-ink">
+          Task added.
+        </p>
+      )}
     </form>
   );
 }

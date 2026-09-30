@@ -1,3 +1,41 @@
+
+## 2026-09-30 — Daily workspace implementation (Astra Medium)
+
+Owner switched to Astra Medium and requested larger coherent batches,
+superseding the older Sol/Luna schedule. This batch combines O03 semantic
+actions/surfaces/control borders, O04 used page/list primitives, O05 grouped
+responsive navigation and O06 Today with the non-assignment task-list work.
+No schema changes or dependency on incomplete O02 storage isolation.
+
+Built: all 23 existing owner/admin destinations grouped with shared server
+role filtering (12 staff links); desktop scrollable sidebar; native modal
+phone/tablet drawer with Escape/focus restoration and internal scrolling;
+Today/Tasks/Jobs/More shortcuts; search and permission-aware Create menu.
+Today now uses America/Denver day bounds, including 23/25-hour DST days,
+shows next visit, active schedule, collapsed completed work, due tasks,
+operational metrics and specific exception-resolution actions. Cancelled jobs
+are excluded from active counts. Existing exception and finance guards remain.
+
+Tasks remain team-shared. Add URL due-date filters, stable 25-row pagination,
+six-record Today preview with independent full counts, date-only deadlines,
+validated calendar input, accessible labels, save failure preservation and
+explicit removal confirmation. No assignment/priority/schema feature is
+claimed. Linked-record deadline labels use the same calendar representation.
+
+Evidence: 647 tests in 84 non-Postgres suites pass; two additional Today
+rendering tests also pass (649 tests across 85 non-Postgres suites total). Full typecheck passes; lint
+has zero errors and two pre-existing warnings. New CI browser checks cover
+owner/staff navigation, focus/scroll/Escape, task create/complete/filter
+back-navigation and 360/768/1440 light/dark axe plus attached screenshots.
+These browser checks, database suites, preview visual inspection and owner
+walkthrough are PENDING, not claimed verified.
+
+Predecessor #99 merged as 21439bb0dd3720a97a4007ffac6c96ed042104bf; its CI
+36752290196 and Vercel status succeeded. This PR starts on that main baseline.
+Remaining foundation: O02 hosted disposable runtime fixture and independently
+verified preview file storage. O09/O13 schema work remains blocked on that
+gate. O07/O08/customer and lead redesigns are not part of this batch.
+
 # Overhaul execution checkpoint
 
 Updated: 2026-09-30
@@ -169,3 +207,4 @@ in 78 non-Postgres suites pass, plus full typecheck/lint; browser/DB gate awaits
 its own CI. No actual preview storage provisioning or hosted isolation fixture
 proof is claimed. Full O02 remains incomplete; O09/O13 remain blocked. Current
 B1 model and owner merge workflow remain in effect.
+

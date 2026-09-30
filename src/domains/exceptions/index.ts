@@ -1,3 +1,4 @@
+import { businessDayBounds } from "@/lib/business-date";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
 import {
@@ -272,11 +273,9 @@ export async function getExceptions(): Promise<ExceptionItem[]> {
 
 /** Today's schedule — every job (of any status) due today, earliest
  * first. Used by /desk/today alongside getExceptions(). */
-export async function getTodaysJobs() {
+export async function getTodaysJobs(now = new Date()) {
   await requireRole("OWNER", "ADMIN", "STAFF");
-  const now = new Date();
-  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const startOfTomorrow = addDays(startOfDay, 1);
+  const { start: startOfDay, end: startOfTomorrow } = businessDayBounds(now);
 
   return prisma.job.findMany({
     where: { scheduledAt: { gte: startOfDay, lt: startOfTomorrow } },
@@ -285,7 +284,8 @@ export async function getTodaysJobs() {
       customer: { select: { user: { select: { name: true, email: true } } } },
       serviceAddress: { select: { line1: true, city: true } },
     },
-    orderBy: [{ scheduledAt: "asc" }],
+    orderBy: [{ scheduledAt: "asc" }, { id: "asc" }],
   });
 }
+
 

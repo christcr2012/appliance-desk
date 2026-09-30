@@ -152,3 +152,15 @@ PRs retain predecessor dependencies and are repaired/rebased if upstream
 fails or changes. O01/O02 remain IN_REVIEW/incomplete until their acceptance
 evidence passes. Model/phase checkpoints and approvals for live activation,
 spending and destructive customer-data changes still apply.
+
+
+## Owner model and batch update — 2026-09-30
+
+Chris explicitly switched this project to Astra Medium and requested larger,
+related implementation batches with minimal repeated reading and validation.
+This supersedes the earlier Sol/Luna model-switch schedule. Continue the
+approved backlog under the selected model; preserve dependencies, real
+behavioral tests, CI/preview and honest completion evidence. Group related
+workspace changes into reviewable PRs. Owner continues merging green PRs.
+Live activations, paid resources and destructive customer-data actions keep
+their separate approval requirements.
