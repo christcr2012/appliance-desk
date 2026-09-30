@@ -4,9 +4,9 @@ Updated: 2026-09-30
 
 | Field | Current value |
 |---|---|
-| Baseline | main 20872074dc5f46e95d038ff0a559427095fe398c |
+| Baseline | main f787ed07c72ae9af5d31af26fe5ef5e67daa0c72 |
 | Historical stack | #86/#87/#88 merged; #89 closed unmerged; #90/#91/#92 merged |
-| Current branch | ai/codex/backup-schema-coverage; independent bounded B1 repair |
+| Current branch | ai/codex/schema-health-coverage; independent bounded B1/O02 prerequisite |
 | Batch | B1 IN_PROGRESS; existing Sol Medium schedule; no model switch |
 | O00 | VERIFIED documentation baseline |
 | O01 | Owned by Claude; paused for usage reset per owner. Codex did not edit its files. |
@@ -57,3 +57,29 @@ credential recovery, snapshot consistency, and a JSON restore drill remain
 separate work. Local focused tests: 33 passed; typecheck passed. Exact-head
 full CI and preview evidence are tracked in the associated PR before merge.
 Claude continues to own O01; full O02 and O09/O13 remain incomplete/blocked.
+
+
+## 2026-09-30 — Complete deployment schema coverage (Codex)
+
+Bounded B1/O02 prerequisite: deployment schema verification now reads every
+Prisma model, including empty tables, rather than only nine representative
+tables. Generated model names automatically cover future additions. Each
+query selects all scalar columns and returns at most one row; there are no
+writes in the deployment check. Failures name the affected model and retain
+the original cause. The existing deploy script still fails before the build
+and disconnects on either outcome.
+
+Local checks: 12 focused tests passed; typecheck and focused lint passed.
+CI also runs an explicit negative test before seed: only on CI's localhost
+appliance_desk_test database, temporarily drop StaffTask.note in a transaction,
+require the named missing-column failure, then verify the rollback restores
+successful health checks. This test is not in vercel-build. The PR records
+exact-head CI/preview/review and merge evidence. No schema migration or live
+negative test is performed. This proves schema readability, not every index,
+constraint, database identity, or the full O02 acceptance criteria.
+
+PR #94 already merged as f787ed07c72ae9af5d31af26fe5ef5e67daa0c72, with
+527 unit tests and 55 browser/axe checks passing in CI 36736227231 and
+production deployment dpl_HH4g7TuFMQrwubF9hKt7WubzXSXk READY. PR #93 is
+also merged/deployed; its older draft/hold notes above are historical.
+O01 remains Claude-owned; O02 remains incomplete and O09/O13 remain blocked.

@@ -3,7 +3,7 @@
 //
 // Runs right after `prisma migrate deploy` and right before `next build`
 // (see the "vercel-build" script in package.json). Its only job is to
-// prove — with one real query per major part of the schema — that the
+// prove — with one real query per model in the schema — that the
 // database this deploy is about to build the app against actually
 // matches what the app's code expects, and to fail with a clear,
 // plain-English message if it doesn't.
@@ -17,25 +17,17 @@
 // for a non-developer (or the next AI session) to act on than a
 // stack trace buried inside Next.js's own build output.
 import { prisma } from "../src/lib/prisma";
+import { verifySchemaHealth } from "../src/lib/schema-health";
 
 async function main() {
   console.log(
     "[migrate] Checking the database matches what this version of the app expects...",
   );
 
-  // One representative, real query per major area of the schema —
-  // enough to catch "a migration didn't actually run" without needing
-  // to touch every single table.
+  // Cover every generated model, including authentication tables and new
+  // features. A limited read still validates scalar columns in empty tables.
   await prisma.$queryRaw`SELECT 1`;
-  await prisma.businessSettings.findFirst();
-  await prisma.user.findFirst();
-  await prisma.customer.findFirst();
-  await prisma.applianceType.findFirst();
-  await prisma.rentalAgreement.findFirst();
-  await prisma.auditLog.findFirst();
-  await prisma.launchSettings.findFirst();
-  await prisma.launchSubscriber.findFirst();
-  await prisma.launchDelivery.findFirst();
+  await verifySchemaHealth(prisma);
 
   console.log("[migrate] Schema health check passed.");
 }
