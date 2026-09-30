@@ -30,6 +30,25 @@ while owner merges green PRs.
 
 # Handoff — current state
 
+## 2026-09-30 — Brand kit v2.0 checked into the repo (Claude)
+
+The complete Evergreen brand kit now lives at `docs/brand/` (174 files,
+7.5 MB), with `docs/brand/README.md` mapping each asset to its use and
+naming `03_Design_System/brand-tokens.json` as the single source for brand
+colors. The AI-generated concept board (`10_Concept_Visualization`) was
+left out on purpose. Documentation-only: no code, styles, or settings
+changed; nothing deployed or activated.
+
+Follow-ups, not done here: (1) generate the app's shared style tokens from
+`brand-tokens.json` instead of the hand-copied values in
+`src/lib/email.ts` and the Tailwind theme (overhaul card O03); (2) brand
+the Gmail mailbox `ops@robinsonappliancerentals.com` itself (display name,
+signature from `07_Web_Email/Email-signature.html`, avatar from
+`02_Icons/Avatar-evergreen.png`), which needs Chris signed in to that
+mailbox or Workspace admin action, and is tracked as GW-04 in the overhaul
+plan; (3) turn on 2-step verification for that mailbox (observed off on
+2026-09-30 via the Workspace directory).
+
 ## 2026-09-30 — Daily workspace implementation (Astra Medium)
 
 Owner switched to Astra Medium and requested larger coherent batches,
