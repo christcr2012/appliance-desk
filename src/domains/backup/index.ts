@@ -2,6 +2,7 @@ import { put, list, del } from "@vercel/blob";
 import { prisma } from "@/lib/prisma";
 import { sendEmail } from "@/lib/email";
 import { getBusinessSettings } from "@/domains/settings";
+import { isNonProductionDeployment } from "@/lib/deployment-safety";
 
 // Independent daily backup, on top of Neon's own point-in-time recovery
 // (which only reaches back 6 hours on the plan this project is on —
@@ -76,6 +77,11 @@ export type BackupResult = {
  * older than RETENTION_DAYS so storage cost doesn't grow forever. Runs
  * once a day from /api/cron/backup. */
 export async function exportDatabaseBackup(): Promise<BackupResult> {
+  // Both export and retention delete use the same Blob credential.
+  // Refuse before reading data or touching production backup files.
+  if (isNonProductionDeployment()) {
+    return { ok: false, error: "Backups are disabled outside production deployments." };
+  }
   try {
     const entries = await Promise.all(
       BACKUP_TABLES.map(async (table) => {

@@ -387,3 +387,23 @@ The standing shared-preview-database constraint above still applies. The
 new additive migration must be verified on an isolated branch/CI before the
 preview is created. Enabling general Neon/Vercel preview isolation is a
 separate infrastructure task, not silently included in this feature.
+
+
+## O02A — Non-production provider safety (2026-09-30; review branch)
+
+src/lib/deployment-safety.ts treats VERCEL_ENV=production as production, other
+VERCEL_ENV values as non-production, and VERCEL=1 without VERCEL_ENV as
+non-production. Without Vercel markers, local/CI behavior stays unchanged.
+This is a server deployment setting, never a client-supplied switch.
+
+sendEmail/sendSms suppress all deliveries in those non-production deployments
+even with provider credentials; sent:false is returned. getStripeClient requires
+sk_test_ or rk_test_ keys before cache access; webhook processing also refuses
+signed live events. Photo token minting and backup export/pruning are disabled
+there because independent Blob storage has not been verified. Production
+provider behavior is preserved and covered by mocked-provider regressions.
+
+No credentials, tables, paid services or activation added. This does not verify
+DATABASE_URL/DIRECT_URL target identities. The separate Neon preview branch is
+recorded in HANDOFF; full O02 fixture/storage/migration evidence remains pending.
+Historical shared-preview-DB statements above refer to earlier sessions.

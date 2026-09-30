@@ -77,3 +77,14 @@ that loses a prerequisite, or auto-enable of email/Stripe/SMS is permitted.
 
 Stacked PRs do not relax preview isolation: cumulative preview builds can run
 all pending migrations. Keep production data and outbound messages protected.
+
+
+## 2026-09-30 live stack reconciliation
+
+The existing table is historical: #86/#87/#88 merged; #89 closed unmerged;
+#90/#91/#92 merged. No PR was open when O02A began. New root branch
+ai/codex/overhaul-o02-preview-safeguards starts at main
+25bedf256485c99f66a8f5fcdc35d1c1dbc4afe5 and targets main. Claude owns O01;
+this PR changes none of its role surfaces. Future PRs check remote states and
+build on the current open tip. Exact-head Claude review and explicit merge
+authorization remain required. This reconciliation does not authorize a merge.

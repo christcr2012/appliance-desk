@@ -1,4 +1,5 @@
 import Stripe from "stripe";
+import { assertPreviewStripeKey } from "./deployment-safety";
 
 // Shared Stripe client — see docs/ARCHITECTURE.md's "Payments (Stripe)"
 // section. STRIPE_SECRET_KEY is a Vercel environment variable (test-mode
@@ -10,6 +11,9 @@ import Stripe from "stripe";
 let cachedClient: Stripe | null = null;
 
 export function getStripeClient(): Stripe {
+  // Check before the cache: a previously constructed client must not
+  // bypass environment validation on a later call.
+  assertPreviewStripeKey(process.env.STRIPE_SECRET_KEY);
   if (cachedClient) return cachedClient;
 
   const secretKey = process.env.STRIPE_SECRET_KEY;

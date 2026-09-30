@@ -4,28 +4,23 @@ Updated: 2026-09-30
 
 | Field | Current value |
 |---|---|
-| Planning PR / stack tip | #87 — ai/codex/system-overhaul-plan |
-| Predecessor | #86 — ai/codex/prelaunch-interest-list |
-| Next branch base | Latest remote head of #87; next PR targets #87 branch |
-| Claude review | Pending; no approvals recorded for the selected stack |
-| Merge gate | All selected stack PRs reviewed by Claude, then explicit merge authorization |
-| Application implementation | B1 IN_PROGRESS |
-| Next batch | B1 — foundations and backend contracts |
-| Required model | GPT-6.1 Sol |
-| Required reasoning | Medium |
-| Next task | O01 — role-safe data audit |
-| Selection verified | Trusted model-switch signal; Medium selected per owner instruction |
-| Batch authorization | Chris: Begin batch B one (2026-09-30) |
-| Completed overhaul cards | O00 VERIFIED — documentation baseline |
-| Owner decisions | docs/OWNER-INPUTS.md |
-| Source of batch order | MODEL-BATCHES.md |
+| Baseline | main 25bedf256485c99f66a8f5fcdc35d1c1dbc4afe5 |
+| Historical stack | #86/#87/#88 merged; #89 closed unmerged; #90/#91/#92 merged |
+| Current branch | ai/codex/overhaul-o02-preview-safeguards; new root because no open predecessor exists |
+| Batch | B1 IN_PROGRESS; existing Sol Medium schedule; no model switch |
+| O00 | VERIFIED documentation baseline |
+| O01 | Owned by Claude; paused for usage reset per owner. Codex did not edit its files. |
+| O02 database | Separate vercel-preview-2 branch and recorded READY deployment observed; full-card proof incomplete |
+| O02A | Provider/storage safety guards implemented; local checks passed; CI/preview/Claude review pending |
+| O02 remaining | Environment-target/build/runtime fixture proof; verified independent preview file workflow; complete migration evidence |
+| O09/O13 | Blocked until O01 and complete O02 gates pass |
+| Authorization | Owner asked Codex to work around Claude's O01 pause; independent O02 subcard selected |
+| Merge gate | Claude exact-head review, then explicit merge authorization; no automatic merge |
+| Owner inputs | docs/OWNER-INPUTS.md |
 
-When implementation starts, replace this checkpoint with current facts. Track
-current task/subcard, last safe commit, open/dependent PRs, completed/remaining
-cards, CI/preview evidence, required reviews, blockers and next model. Record
-AWAITING_MODEL_SWITCH at a switch boundary; never leave “IN_PROGRESS” implying
-work continues automatically after asking Chris to switch.
-
-Keep implementation status separate from plan edits and PR #86's existing
-prelaunch feature. Do not copy an old application test count as proof of a new
-card. Do not store credentials or customer records in this handoff.
+O02A suppresses Vercel non-production email/SMS, requires Stripe test keys and
+refuses live webhook events, and blocks upload token minting/backup reads,
+writes and pruning until separate preview storage is verified. No environment
+variables, credentials, customer data or paid resources changed.
+This supersedes the stale #87 pointer. Check the remote tip before any next PR;
+preserve Claude's O01 work. Do not call the whole O02 card complete.

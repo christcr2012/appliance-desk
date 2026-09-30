@@ -7,7 +7,8 @@ PR-STACK.md requires a linear chain and Claude review of all PRs before any merg
 At each model boundary, save progress and ask Chris to switch; do not continue
 until the switch protocol is satisfied.
 
-All cards start **NOT_STARTED**. Planning is complete; implementation is not.
+Initial card statuses are historical. Current completion/ownership is in
+EXECUTION-STATE.md and the latest HANDOFF.
 Each card is a bounded outcome, usually one PR. Where a card explicitly has
 A/B parts, make separate dependency-ordered PRs; do not ask Luna to deliver
 both at once. Do not execute the whole backlog from a single prompt.
@@ -371,3 +372,13 @@ Drive/Calendar/Tasks/Contacts integrations stay conditional and require their
 own authorized card before runtime sync is built. Every newly discovered
 Workspace dependency gets a GW entry; these are external setup tasks, not
 additional model batches or completed application cards.
+
+
+## 2026-09-30 status reconciliation
+
+| ID | Status | Evidence / ownership | Remaining gates |
+|---|---|---|---|
+| O00 | VERIFIED | Merged #88; documentation baseline | None for documentation scope |
+| O01 | IN_PROGRESS | Claude owns replacement for closed #89; usage reset pending | Complete role fix and G |
+| O02 | IN_PROGRESS | Claude database isolation; Codex O02A on ai/codex/overhaul-o02-preview-safeguards | Full environment/runtime/storage/migration proof; G and review |
+| O09/O13 | BLOCKED | No new code started | O01/O02 verified |

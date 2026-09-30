@@ -1,4 +1,5 @@
 import twilio from "twilio";
+import { isNonProductionDeployment } from "./deployment-safety";
 
 /**
  * Thin wrapper around Twilio (Task #71, docs/DECISIONS.md — SMS
@@ -18,6 +19,8 @@ import twilio from "twilio";
  * were set.
  */
 export async function sendSms(input: { to: string; body: string }): Promise<{ sent: boolean }> {
+  if (isNonProductionDeployment()) return { sent: false };
+
   const accountSid = process.env.TWILIO_ACCOUNT_SID;
   const authToken = process.env.TWILIO_AUTH_TOKEN;
   const from = process.env.TWILIO_PHONE_NUMBER;

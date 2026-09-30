@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { getServerSession } from "@/lib/session";
+import { isNonProductionDeployment } from "@/lib/deployment-safety";
 
 // Mints one-time upload tokens for every "add a photo" button in the app
 // — appliance-type photos and job condition photos in the desk
@@ -19,6 +20,12 @@ export async function POST(request: Request): Promise<NextResponse> {
   const session = await getServerSession();
   if (!session) {
     return NextResponse.json({ error: "Not signed in." }, { status: 401 });
+  }
+
+  // Preview currently has no verified independent Blob store. Refuse
+  // token minting even if a production Blob credential was inherited.
+  if (isNonProductionDeployment()) {
+    return NextResponse.json({ error: "Photo uploads are disabled in previews until separate storage is verified." }, { status: 503 });
   }
 
   const body = (await request.json()) as HandleUploadBody;
