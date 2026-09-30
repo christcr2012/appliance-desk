@@ -245,7 +245,7 @@ export function JobDetailPanel({ job, canViewFinance = false }: { job: JobRow; c
                     onChange={() => handleToggleChecklist(i)}
                     className="mt-0.5 rounded"
                   />
-                  <span className={item.checked ? "text-gray-400 line-through" : ""}>
+                  <span className={item.checked ? "text-gray-600 line-through" : ""}>
                     {item.item}
                   </span>
                 </label>

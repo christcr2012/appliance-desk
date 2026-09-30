@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import { requireRole } from "@/lib/session";
 import { getMaintenanceRequestById } from "@/domains/maintenance";
 import { MaintenanceDetailPanel } from "./maintenance-detail-panel";
 
@@ -11,6 +12,9 @@ export default async function MaintenanceDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const session = await requireRole("OWNER", "ADMIN", "STAFF");
+  const canScheduleJobs =
+    session.user.role === "OWNER" || session.user.role === "ADMIN";
   const { id } = await params;
   const request = await getMaintenanceRequestById(id);
 
@@ -20,7 +24,10 @@ export default async function MaintenanceDetailPage({
 
   return (
     <div className="max-w-2xl">
-      <Link href="/desk/maintenance" className="text-sm text-gray-600 hover:underline">
+      <Link
+        href="/desk/maintenance"
+        className="text-sm text-gray-600 hover:underline"
+      >
         &larr; Back to maintenance requests
       </Link>
 
@@ -72,10 +79,14 @@ export default async function MaintenanceDetailPage({
           <ul className="mt-2 divide-y divide-gray-200">
             {request.jobs.map((j) => (
               <li key={j.id} className="py-2 text-sm">
-                <Link href={`/desk/jobs/${j.id}`} className="text-primary hover:underline">
+                <Link
+                  href={`/desk/jobs/${j.id}`}
+                  className="text-primary hover:underline"
+                >
                   {j.type} — {j.status}
                 </Link>
-                {j.scheduledAt && ` · ${new Date(j.scheduledAt).toLocaleString()}`}
+                {j.scheduledAt &&
+                  ` · ${new Date(j.scheduledAt).toLocaleString()}`}
               </li>
             ))}
           </ul>
@@ -83,7 +94,10 @@ export default async function MaintenanceDetailPage({
       )}
 
       <div className="mt-6">
-        <MaintenanceDetailPanel request={request} />
+        <MaintenanceDetailPanel
+          request={request}
+          canScheduleJobs={canScheduleJobs}
+        />
       </div>
     </div>
   );

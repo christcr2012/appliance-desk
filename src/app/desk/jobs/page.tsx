@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { requireRole } from "@/lib/session";
 import { getJobsPage, getJobsCount } from "@/domains/jobs";
 import { CalendarServiceIcon } from "@/components/icons/service-icons";
 import { PlusIcon } from "@/components/icons/status-icons";
@@ -32,6 +33,9 @@ export default async function JobsPage({
 }: {
   searchParams: Promise<{ status?: string; page?: string }>;
 }) {
+  const session = await requireRole("OWNER", "ADMIN", "STAFF");
+  const canScheduleJobs =
+    session.user.role === "OWNER" || session.user.role === "ADMIN";
   const { status: rawStatus, page: rawPage } = await searchParams;
   const status = isJobStatus(rawStatus) ? rawStatus : undefined;
   const filter = status ? { status } : undefined;
@@ -40,7 +44,10 @@ export default async function JobsPage({
   const meta = paginationMeta(totalCount, parsePage(rawPage));
   const jobs = await getJobsPage(filter, meta.skip, meta.pageSize);
 
-  function jobsHref(page: number, forStatus: JobStatus | "ALL" = status ?? "ALL") {
+  function jobsHref(
+    page: number,
+    forStatus: JobStatus | "ALL" = status ?? "ALL",
+  ) {
     const params = new URLSearchParams();
     if (forStatus !== "ALL") params.set("status", forStatus);
     if (page > 1) params.set("page", String(page));
@@ -55,16 +62,21 @@ export default async function JobsPage({
           <CalendarServiceIcon className="h-5 w-5 text-gray-500" />
           Jobs
         </h1>
-        <Link
-          href="/desk/jobs/new"
-          className="inline-flex items-center gap-1 rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
-        >
-          <PlusIcon className="h-4 w-4" />
-          Schedule a job
-        </Link>
+        {canScheduleJobs && (
+          <Link
+            href="/desk/jobs/new"
+            className="inline-flex items-center gap-1 rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
+          >
+            <PlusIcon className="h-4 w-4" />
+            Schedule a job
+          </Link>
+        )}
       </div>
 
-      <nav aria-label="Filter jobs by status" className="mt-6 flex flex-wrap gap-2">
+      <nav
+        aria-label="Filter jobs by status"
+        className="mt-6 flex flex-wrap gap-2"
+      >
         {STATUS_TABS.map((tab) => {
           const active = (status ?? "ALL") === tab.value;
           return (
@@ -98,7 +110,9 @@ export default async function JobsPage({
               >
                 <div>
                   <p className="font-medium text-gray-900">
-                    {j.type} {j.customer && `— ${j.customer.user.name ?? j.customer.user.email}`}
+                    {j.type}{" "}
+                    {j.customer &&
+                      `— ${j.customer.user.name ?? j.customer.user.email}`}
                   </p>
                   <p className="text-sm text-gray-600">
                     {j.serviceAddress
@@ -107,7 +121,10 @@ export default async function JobsPage({
                   </p>
                 </div>
                 <div className="text-sm text-gray-500 sm:text-right">
-                  <StatusBadge tone={jobStatusTone(j.status)} label={j.status} />
+                  <StatusBadge
+                    tone={jobStatusTone(j.status)}
+                    label={j.status}
+                  />
                   <p>
                     {j.scheduledAt
                       ? new Date(j.scheduledAt).toLocaleString()

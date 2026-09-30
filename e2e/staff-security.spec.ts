@@ -77,6 +77,14 @@ test.describe("staff permissions", () => {
     );
   });
 
+  for (const route of ["/desk/jobs", "/desk/dispatch"]) {
+    test(`${route} keeps staff job access without offering scheduling`, async ({ page }) => {
+      await page.goto(route);
+      await expect(page.getByRole("link", { name: /schedule a job/i })).toHaveCount(0);
+      await expect(page.locator('a[href="/desk/jobs/ci-security-job"]').first()).toBeVisible();
+    });
+  }
+
   for (const route of [
     "/desk/fleet",
     "/desk/billing",
@@ -157,7 +165,12 @@ test.describe("customer isolation", () => {
     const response = await page.goto(
       "/account/billing/invoice/ci-isolation-other-invoice",
     );
-    expect(response?.status()).toBe(404);
-    expect(await response!.text()).not.toContain("9876543");
+    // Next's loading boundary can stream a 200 before notFound() runs.
+    // Verify the denial UI and payload, rather than treating status as authorization.
+    expect([200, 404]).toContain(response?.status());
+    await expect(page.getByRole("heading", { name: "404", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "This page could not be found.", exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: /print/i })).toHaveCount(0);
+    expect(await response!.text()).not.toMatch(/9876543|ci-other@example\.test|Other Customer/);
   });
 });

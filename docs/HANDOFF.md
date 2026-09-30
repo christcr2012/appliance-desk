@@ -1,5 +1,25 @@
 # Handoff — current state
 
+## 2026-09-30 — PR #96 review and CI repairs (issue #97)
+
+- Issue #97: Jobs, Dispatch and maintenance-detail scheduling entry points
+  now follow the OWNER/ADMIN job-creation permission. STAFF retain job links
+  and maintenance status controls; the server creation guard remains intact.
+- The first PR #96 CI run passed migrations, typecheck, lint, unit tests and
+  build. Its browser run had 79 passes and five failures: dispatch list markup,
+  completed-checklist contrast at three light-mode widths, and a streamed
+  not-found response incorrectly asserted to always have HTTP status 404.
+- Repaired dispatch JobRow list semantics and completed-checklist contrast.
+  The cross-customer invoice test now checks the 404 denial UI, absence of
+  invoice controls and absence of the other customer's data; Next streaming
+  may legitimately return HTTP 200. The ownership query remains unchanged.
+- Added 13 rendered role/list behavior cases and staff scheduling-link browser
+  regressions. The focused 13 tests and changed-file lint pass locally. Full
+  current-head typecheck/build/browser verification is delegated to existing
+  CI; not claimed as passed locally. O01/O02 remain IN_REVIEW/incomplete.
+- Owner merges only after the updated PR #96 CI and preview are green.
+  Assignment/scheduling follow-on work depends on this foundation PR.
+
 **Read this first, every session.** Update it before ending any session.
 Phase 1 (Foundation) completed 2026-09-26. Phase 2 (Public website,
 settings, lead capture) built 2026-09-26. Phase 2.1 (appliance-type
