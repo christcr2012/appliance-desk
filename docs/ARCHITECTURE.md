@@ -357,3 +357,33 @@ tests/            — unit tests (Vitest)
 e2e/              — Playwright + axe accessibility tests
 docs/             — this folder
 ```
+
+
+## Prelaunch capture and automation (2026-09-29)
+
+`/launch` → validated server action → `src/domains/launch` → dedicated
+subscriber records. `/desk/launch` is OWNER/ADMIN-only for reads and actions.
+`/api/cron/launch-emails` runs daily at 16:00 UTC, guarded by CRON_SECRET,
+and uses the existing branded Resend helper. No new service or paid plan.
+Both VERCEL_ENV=production and the exact canonical NEXT_PUBLIC_APP_URL
+https://robinsonappliancerentals.com are required for this marketing sender.
+RESEND_API_KEY and RESEND_FROM_EMAIL must exist. Activation/contact-footer
+settings are editable in the desk, not extra environment variables.
+
+`/launch/unsubscribe` is a standalone no-script/no-store/no-referrer route:
+GET displays a confirmation without changing anything (link scanners); POST
+suppresses, including RFC 8058 List-Unsubscribe one-click POSTs. No login or
+additional personal information is required. Links do not expire.
+
+At-most-once attempt policy: claim a subscriber atomically, create a unique
+subscriber/step attempt, recheck pause/suppression, send, then advance the
+cursor transactionally with the acceptance record. A crash or failure keeps
+the claim blocked and visible for review. This intentionally favors avoiding
+duplicate mail over automatic retries. Resend idempotency is an extra guard,
+not the durable dedupe mechanism (its retention is 24h). The shared sendEmail
+helper now checks returned provider errors/missing IDs, not only exceptions.
+
+The standing shared-preview-database constraint above still applies. The
+new additive migration must be verified on an isolated branch/CI before the
+preview is created. Enabling general Neon/Vercel preview isolation is a
+separate infrastructure task, not silently included in this feature.

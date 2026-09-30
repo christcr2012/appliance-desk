@@ -2099,3 +2099,37 @@ All 4 of Chris's approved items — behind-the-scenes hardening,
 estimate deposit collection + follow-through, purchasing & supplies,
 and finishing the icon set — are built, tested, merged, and live.
 This work thread is closed out.
+
+
+## 2026-09-29 — Codex prelaunch signup/automation phase (IN REVIEW; NOT LIVE)
+
+User authorized this phase and explicitly reaffirmed project rules. Work is
+on ai/codex/prelaunch-interest-list, based on main f0fa03c after preserving
+Claude's newer estimate/purchasing/docs work. Not merged into main.
+
+Built: prelaunch homepage/header/banner; /launch signup; separate deduplicated
+opt-in subscriber records; owner /desk/launch controls, source counts, copy
+and status; finite three-email daily sequence; suppression/unsubscribe;
+provider returned-error handling; additive migration
+20260930040000_prelaunch_interest. Business rules, architecture, database,
+owner guide and acceptance criteria updated. Delivery defaults OFF and never
+runs from previews. Activation needs a valid mailing address + reply inbox.
+
+Verification so far: Prisma client generation, migration safety check,
+typecheck, lint (only two existing warnings), and 14 focused unit tests pass.
+Exact migration SQL applied successfully on isolated Neon test branch
+br-bold-rain-b74uzbdy and columns inspected. No local live database access or
+real subscriber email test was attempted. Full GitHub CI, browser/accessibility
+checks, and Vercel preview still pending at this checkpoint. Feature branch
+auto-deployment temporarily disabled until CI validates it, because previews
+share production DB. DO NOT mark complete or merge before those gates pass.
+
+Remaining phases (not claimed built): launch-date broadcast, Google Business
+Profile eligibility/setup, Facebook connection, customer review requests,
+and broader local campaigns. Existing Metricool social queue is separate.
+
+Local isolated integration-test attempt could not resolve the Neon endpoint
+(EAI_AGAIN); no test statements reached that database. CI's disposable
+Postgres remains the full behavior/build/browser verification gate. The
+sandbox also refuses the tsx CLI's local IPC socket (EPERM); no workaround
+or production fixture execution was attempted.

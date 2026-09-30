@@ -332,3 +332,27 @@ let DECISIONS.md/ROADMAP.md remain the record going forward, keeping
 this file to Phases 1–5 only. Not decided yet — flagging rather than
 picking one unilaterally, since it's a documentation-process choice,
 not a code change.
+
+
+## Authorized extension: prelaunch presence (2026-09-29)
+
+Chris approved the proposed signup/automated-followup phase, then explicitly
+reaffirmed AGENTS.md and the project workflow. Acceptance criteria:
+
+- Homepage/header/banner correctly identify preparation to launch; no opening
+  date, reservation, inventory, or universal free-delivery promise.
+- Public `/launch` saves explicitly opted-in local interest, validates input,
+  rate limits and silently drops honeypots; repeated/concurrent normalized
+  email submissions create one subscriber and cannot undo suppression.
+- Three emails run on the documented schedule using the existing sender,
+  with postal address, monitored reply inbox, and functioning opt-out links.
+  Delivery defaults paused; previews cannot send. Unconfigured sending does
+  not prevent signup. Concurrent cron runs cannot duplicate a sequence step.
+- Provider errors are not recorded as success; failed/uncertain attempts
+  stop for review. Settings/copy/status/source counts and paginated subscribers
+  are visible only to OWNER/ADMIN, with authorization inside every action.
+- Browser tests exercise persisted signup + unsubscribe; database integration
+  tests exercise dedupe/concurrency/suppression; all CI gates and public/owner
+  accessibility checks pass. Preview and owner review precede production merge.
+- Final launch announcement, Google Business Profile/Facebook setup, review
+  requests, and broader campaign work remain separate phases.
