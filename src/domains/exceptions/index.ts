@@ -70,7 +70,7 @@ export async function getExceptions(): Promise<ExceptionItem[]> {
         id: true,
         billingBlockedReason: true,
         updatedAt: true,
-        customer: { include: { user: { select: { name: true, email: true } } } },
+        customer: { select: { user: { select: { name: true, email: true } } } },
       },
     }) : Promise.resolve([]),
     prisma.rentalAgreement.findMany({
@@ -81,7 +81,7 @@ export async function getExceptions(): Promise<ExceptionItem[]> {
       select: {
         id: true,
         reservationExpiresAt: true,
-        customer: { include: { user: { select: { name: true, email: true } } } },
+        customer: { select: { user: { select: { name: true, email: true } } } },
       },
     }),
     canViewFinance ? prisma.invoice.findMany({
@@ -92,7 +92,7 @@ export async function getExceptions(): Promise<ExceptionItem[]> {
         dueDate: true,
         amountDueCents: true,
         amountPaidCents: true,
-        customer: { include: { user: { select: { name: true, email: true } } } },
+        customer: { select: { user: { select: { name: true, email: true } } } },
       },
     }) : Promise.resolve([]),
     prisma.job.findMany({
@@ -101,7 +101,7 @@ export async function getExceptions(): Promise<ExceptionItem[]> {
         id: true,
         type: true,
         scheduledAt: true,
-        customer: { include: { user: { select: { name: true, email: true } } } },
+        customer: { select: { user: { select: { name: true, email: true } } } },
       },
     }),
     prisma.maintenanceRequest.findMany({
@@ -113,7 +113,7 @@ export async function getExceptions(): Promise<ExceptionItem[]> {
         id: true,
         openedAt: true,
         problem: true,
-        customer: { include: { user: { select: { name: true, email: true } } } },
+        customer: { select: { user: { select: { name: true, email: true } } } },
       },
     }),
     prisma.appliance.findMany({
@@ -145,7 +145,7 @@ export async function getExceptions(): Promise<ExceptionItem[]> {
         id: true,
         termMonths: true,
         startDate: true,
-        customer: { include: { user: { select: { name: true, email: true } } } },
+        customer: { select: { user: { select: { name: true, email: true } } } },
       },
     }),
     prisma.appliance.findMany({

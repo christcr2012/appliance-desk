@@ -30,7 +30,8 @@ any earlier optional guidance about independent task branches.
 | 1 | #86 | ai/codex/prelaunch-interest-list | main | Prelaunch signup and welcome-email system |
 | 2 | #87 | ai/codex/system-overhaul-plan | ai/codex/prelaunch-interest-list | Design, owner inputs, model batches and this review process |
 | 3 | #88 | ai/codex/overhaul-o00 | ai/codex/system-overhaul-plan | O00 baseline/model settings |
-| 4 onward | O01A next | ai/<tool>/overhaul-<task-id> | Immediately preceding PR branch | One task/subcard at a time |
+| 4 | #89 (draft) | ai/codex/overhaul-o01-today | ai/codex/overhaul-o00 | O01A role boundaries |
+| 5 onward | Not opened | ai/<tool>/overhaul-<task-id> | Immediately preceding PR branch | One task/subcard at a time |
 
 Before implementation, verify this table against GitHub; states may change.
 PR #87 was originally independent. It is being stacked onto #86 with an

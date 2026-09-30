@@ -2334,3 +2334,10 @@ PREVIEW-SETUP.md supplies concrete Preview-only changes and proof requirements.
 Need permitted Vercel dashboard access to proceed with O02. No schema changes,
 production settings, outbound messages or merges performed. O09/O13 remain
 blocked by O01/O02. Keep Sol Medium; no Luna switch while B1 is incomplete.
+
+O01A opened as draft PR #89, targeting #88. Initial preview f44bd11 deployed
+READY at appliance-desk-9vjcdrwcs-chris-projects-de6cd1bf.vercel.app; not a
+signed-in usability/role proof and not isolation evidence. Final refinement
+uses nested user-only selects in exception queries and preserves staff linked
+tasks in the operational customer view. Required checks must be refreshed
+against the final head. No customer/test writes to production performed.

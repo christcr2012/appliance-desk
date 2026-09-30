@@ -4,7 +4,7 @@ Updated: 2026-09-30
 
 | Field | Current value |
 |---|---|
-| Planning PR / stack tip | Planning #87; O00 #88; O01A branch ai/codex/overhaul-o01-today |
+| Planning PR / stack tip | Planning #87; O00 #88; O01A #89 (draft), ai/codex/overhaul-o01-today |
 | Predecessor | O01A builds on #88 at 2063f6f22a37d627d5978d159e555a1af6379fca |
 | Next branch base | Latest remote O01A head; next PR targets ai/codex/overhaul-o01-today |
 | Claude review | Pending; no approvals recorded for the selected stack |
