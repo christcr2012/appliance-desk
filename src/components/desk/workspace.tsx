@@ -18,8 +18,8 @@ export function PageHeader({
   secondaryActions?: ReactNode;
 }) {
   return (
-    <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
-      <div className="min-w-0 flex-1">
+    <header className="mb-6 flex flex-col items-start justify-between gap-4 sm:flex-row sm:flex-wrap">
+      <div className="min-w-0 w-full sm:w-auto sm:flex-1">
         <h1 className="break-words text-[28px] leading-9 font-semibold text-ink">
           {title}
         </h1>
