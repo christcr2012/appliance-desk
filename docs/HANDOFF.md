@@ -29,9 +29,12 @@ first slice built 2026-09-26, see the "Phase 3" section below.
   tracked in the PR — see "Phase 2" below.
 - **The Vercel project exists and is deployed.** Project `appliance-desk`
   in the "Robinson AI Systems" team, connected to this GitHub repo, with
-  `DATABASE_URL`, `DIRECT_URL`, and `BETTER_AUTH_SECRET` set for
-  Production/Preview/Development. The production site is live at
-  `https://appliance-desk.vercel.app`.
+  `BETTER_AUTH_SECRET` set for Production/Preview/Development. As of
+  2026-09-30, `DATABASE_URL`/`DIRECT_URL` are **split**: Production and
+  Development still point at the real live database; Preview now points
+  at its own separate, isolated Neon branch (see "2026-09-30 — Preview
+  database isolation" below) — PR previews no longer touch real customer
+  data. The production site is live at `https://appliance-desk.vercel.app`.
 - Every doc `AGENTS.md` requires exists (this list, `PRODUCT-SPEC.md`,
   `ARCHITECTURE.md`, `DATABASE.md`, `BUSINESS-RULES.md`,
   `DESIGN-SYSTEM.md`, `DECISIONS.md`, `ROADMAP.md`, `OWNER-GUIDE.md`).
@@ -2317,3 +2320,47 @@ manual migration and backup notes, checked source paths and open PR chain, and
 recorded baseline limitations in plans/overhaul/BASELINE.md. The new O00 PR
 builds on #87. Application code unchanged; docs checks pass; no app tests
 claimed. O01 next, O02 must precede any schema work. Claude review pending.
+
+## 2026-09-30 — Preview database isolation (O02), plus a note on taking over Astra's overhaul plan
+
+Chris asked me (Claude) to take over ownership of the 32-task overhaul
+plan that "ChatGPT Astra" (a different AI tool) had drafted and begun in
+`docs/plans/overhaul/`. Before building anything new on top of it, I
+audited every PR Astra's session had opened, verified with the Vercel and
+Neon dashboards (read-only) that it had made no changes to live
+infrastructure beyond creating one small, empty, disposable Neon database
+branch, and independently reviewed the plan itself — found it well-scoped
+and accurate against the real app, no red flags.
+
+Merged into `main` this session: PR #90 (backfilled `docs/PRODUCT-SPEC.md`
+for everything shipped since Phase 5 — see its own entry below), PR #87
+(Astra's overhaul planning docs, `docs/plans/overhaul/`), and PR #88
+(a follow-up correcting some historical details in those same docs). All
+three are documentation-only — no application code changed.
+
+**Preview database isolation, done today**: Vercel's Preview deployments
+were sharing the same live production database as real customers — any
+pull request's preview build could read or write real rental/customer/
+invoice data. Fixed by splitting `DATABASE_URL`/`DIRECT_URL`: Production
+and Development are untouched; Preview now points at its own separate
+Neon branch (`dev-codex-prelaunch-interest-20260930`, previously created
+empty and unused, no real data ever written to it). Chris supplied the
+connection strings from the Neon console; I set them as Preview-only
+environment variables in Vercel.
+
+**Not yet done, flagged for the next PR that touches Preview**: this new
+branch has an empty/default schema — it has not had `prisma migrate
+deploy` run against it, so it doesn't yet have the real table structure.
+The very next Preview deployment (any open PR rebuilding) will run CI's
+migration step against it automatically, which should bring it current.
+Worth a quick check that the first real Preview build after this change
+succeeds cleanly before relying on it.
+
+**Decided and disclosed, not yet done**: PR #89 (Astra's draft attempt at
+fixing STAFF-role staff seeing financial data they shouldn't) will not be
+adopted or finished — it's real, correct work as far as it goes, but it
+only covers 2 of the 4 places where the leak exists (it explicitly
+disclosed the other 2: `src/app/desk/agreements/page.tsx` and
+`src/app/desk/jobs/[id]/job-detail-panel.tsx`). Rather than build on
+someone else's unfinished cross-tool branch, I'll redo this fix — all 4
+surfaces — as fresh work directly on `main`. This is next.
