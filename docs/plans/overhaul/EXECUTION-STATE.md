@@ -4,16 +4,16 @@ Updated: 2026-09-30
 
 | Field | Current value |
 |---|---|
-| Planning PR / stack tip | #87 — ai/codex/system-overhaul-plan |
-| Predecessor | #86 — ai/codex/prelaunch-interest-list |
-| Next branch base | Latest remote head of #87; next PR targets #87 branch |
+| Planning PR / stack tip | Planning #87; O00 #88; O01A branch ai/codex/overhaul-o01-today |
+| Predecessor | O01A builds on #88 at 2063f6f22a37d627d5978d159e555a1af6379fca |
+| Next branch base | Latest remote O01A head; next PR targets ai/codex/overhaul-o01-today |
 | Claude review | Pending; no approvals recorded for the selected stack |
 | Merge gate | All selected stack PRs reviewed by Claude, then explicit merge authorization |
 | Application implementation | B1 IN_PROGRESS |
 | Next batch | B1 — foundations and backend contracts |
 | Required model | GPT-6.1 Sol |
 | Required reasoning | Medium |
-| Next task | O01 — role-safe data audit |
+| Next task | O01B agreement/job operational data; O02 env administration needed |
 | Selection verified | Trusted model-switch signal; Medium selected per owner instruction |
 | Batch authorization | Chris: Begin batch B one (2026-09-30) |
 | Completed overhaul cards | O00 VERIFIED — documentation baseline |
@@ -29,3 +29,8 @@ work continues automatically after asking Chris to switch.
 Keep implementation status separate from plan edits and PR #86's existing
 prelaunch feature. Do not copy an old application test count as proof of a new
 card. Do not store credentials or customer records in this handoff.
+
+O01A local: 26 focused tests, typecheck and lint pass. Full CI/preview pending.
+O01 NOT COMPLETE: ROLE-AUDIT.md records remaining agreement/job surfaces.
+O02 BLOCKED: see PREVIEW-SETUP.md. O09/O13 NOT_STARTED pending O01/O02.
+Keep Sol Medium; do not switch to Luna while B1 is incomplete.

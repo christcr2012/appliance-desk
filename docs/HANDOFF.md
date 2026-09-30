@@ -2317,3 +2317,20 @@ manual migration and backup notes, checked source paths and open PR chain, and
 recorded baseline limitations in plans/overhaul/BASELINE.md. The new O00 PR
 builds on #87. Application code unchanged; docs checks pass; no app tests
 claimed. O01 next, O02 must precede any schema work. Claude review pending.
+
+## 2026-09-30 — O01A role boundary fix; B1 still in progress
+
+O00 PR #88 is stacked on #87; its GitHub CI completed successfully. O01A now
+branches from #88 at 2063f6f22a37d627d5978d159e555a1af6379fca. Staff Today skips
+finance queries; schedule DTO excludes costs. Staff customer detail uses an
+allowlisted operational query, leaving OWNER/ADMIN workflows intact. Activity
+entries/counts/summary use a shared operational allowlist and exclude metadata.
+Local 26 focused tests, typecheck and lint pass (two existing warnings). Current
+head full CI/preview not yet claimed. ROLE-AUDIT.md records agreement/job payload
+findings still requiring O01B; O01 is not complete. O02 read-only inspection
+found the existing development Neon branch and protected main, but Vercel
+environment administration is unavailable through the current connector/CLI.
+PREVIEW-SETUP.md supplies concrete Preview-only changes and proof requirements.
+Need permitted Vercel dashboard access to proceed with O02. No schema changes,
+production settings, outbound messages or merges performed. O09/O13 remain
+blocked by O01/O02. Keep Sol Medium; no Luna switch while B1 is incomplete.

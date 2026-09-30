@@ -1,4 +1,23 @@
 import { prisma } from "@/lib/prisma";
+import { requireRole } from "@/lib/session";
+import type { Prisma } from "@prisma/client";
+
+// Unknown/new actions are not silently exposed to STAFF. Finance/settings
+// counts obey the same boundary as the page entries.
+const STAFF_ACTIVITY_ACTIONS = [
+  "lead.status", "lead.note.add", "job.create", "job.status", "job.photo.add",
+  "job.checklist", "maintenance.request.create", "maintenance.create",
+  "maintenance.status", "customer.create", "customer.address.add",
+  "customer.note.add", "appliance.unit.status", "task.create", "task.complete", "task.reopen",
+];
+
+async function activityWhere(since?: Date): Promise<Prisma.AuditLogWhereInput> {
+  const session = await requireRole("OWNER", "ADMIN", "STAFF");
+  const finance = ["OWNER", "ADMIN"].includes((session.user as { role?: string }).role ?? "");
+  return { ...(since ? { createdAt: { gte: since } } : {}),
+    ...(!finance ? { action: { in: STAFF_ACTIVITY_ACTIONS } } : {}),
+  };
+}
 
 /**
  * Reads recent AuditLog entries for /desk/activity — the one place Chris
@@ -15,18 +34,20 @@ import { prisma } from "@/lib/prisma";
  * view — see docs/DECISIONS.md); omitted, it's the whole history, same
  * as before. */
 export async function getActivityCount(since?: Date): Promise<number> {
-  return prisma.auditLog.count({ where: since ? { createdAt: { gte: since } } : undefined });
+  return prisma.auditLog.count({ where: await activityWhere(since) });
 }
 
 /** Paginated view of the audit log, for paging back through the full
  * history (or, with `since`, just the window a quick filter picked). */
 export async function getActivityPage(skip: number, pageSize: number, since?: Date) {
   return prisma.auditLog.findMany({
-    where: since ? { createdAt: { gte: since } } : undefined,
+    where: await activityWhere(since),
     orderBy: { createdAt: "desc" },
     skip,
     take: pageSize,
-    include: { user: { select: { name: true, email: true } } },
+    select: { id: true, action: true, entityType: true, entityId: true, createdAt: true,
+      user: { select: { name: true, email: true } },
+    },
   });
 }
 
@@ -42,7 +63,7 @@ export type ActivitySummary = { category: string; count: number }[];
  * today's data volume. */
 export async function getActivitySummary(since: Date): Promise<ActivitySummary> {
   const entries = await prisma.auditLog.findMany({
-    where: { createdAt: { gte: since } },
+    where: await activityWhere(since),
     select: { action: true },
   });
 
@@ -113,3 +134,4 @@ export function describeAuditAction(action: string): string {
   };
   return labels[action] ?? action;
 }
+

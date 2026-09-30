@@ -7,7 +7,8 @@ PR-STACK.md requires a linear chain and Claude review of all PRs before any merg
 At each model boundary, save progress and ask Chris to switch; do not continue
 until the switch protocol is satisfied.
 
-All cards start **NOT_STARTED**. Planning is complete; implementation is not.
+Initial cards were NOT_STARTED. B1 is now authorized; O00 is VERIFIED and
+O01 is IN_PROGRESS. EXECUTION-STATE.md and ROLE-AUDIT.md track current evidence.
 Each card is a bounded outcome, usually one PR. Where a card explicitly has
 A/B parts, make separate dependency-ordered PRs; do not ask Luna to deliver
 both at once. Do not execute the whole backlog from a single prompt.
