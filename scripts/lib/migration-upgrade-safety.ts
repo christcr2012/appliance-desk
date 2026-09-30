@@ -1,5 +1,11 @@
 /** This drill may only create/drop its own database in CI's disposable Postgres. */
-export function migrationUpgradeTarget(env: NodeJS.ProcessEnv): URL {
+export function migrationUpgradeTarget(env: {
+  CI?: string;
+  VERCEL?: string;
+  VERCEL_ENV?: string;
+  DIRECT_URL?: string;
+  DATABASE_URL?: string;
+}): URL {
   if (env.CI !== "true" || env.VERCEL || env.VERCEL_ENV) {
     throw new Error(
       "Migration upgrade drill requires disposable CI, never Vercel.",

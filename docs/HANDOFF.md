@@ -2619,3 +2619,19 @@ the exact SQL, single-migration directory and generated lock. All 18 migration
 setup/guard tests, script lint and targeted compilation pass locally. Actual
 upgrade evidence still awaits the replacement CI run. PR #96 is now merged
 as 39800b08038b8ba155bcff9186a063831bfee88f; #98 targets main.
+
+
+### PR #98 verification-stage and complete-typecheck repairs
+
+CI 36748324419 applied all 27 migrations and preserved the business-record
+snapshot, then exposed a wrong assertion: the later historical email verification
+migration deliberately backfills existing users to true. The drill now checks
+both stages: timestamp-to-boolean preserves unverified=false immediately after
+conversion, and the full history intentionally produces true after the backfill.
+
+The full current-source local typecheck reproduced the new test input error:
+Next's augmented ProcessEnv requires NODE_ENV. The pure guard now accepts only
+its five used environment fields instead of the entire augmented global type.
+No cast or weakened test bypass is used. Full local typecheck, lint and the 18
+setup/guard tests are required before this correction is pushed. Updated exact-
+head CI/database drill and preview remain pending; no deployment success claimed.

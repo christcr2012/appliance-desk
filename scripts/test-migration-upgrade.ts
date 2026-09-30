@@ -2,7 +2,7 @@
 // already present, in a second throwaway DB; never touches CI's main fixtures.
 import assert from "node:assert/strict";
 import { randomBytes } from "node:crypto";
-import { mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
+import { cp, mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import pg from "pg";
@@ -17,7 +17,13 @@ import {
 
 async function main() {
   // Complete all target checks before creating clients, directories or databases.
-  const target = migrationUpgradeTarget(process.env);
+  const target = migrationUpgradeTarget({
+    CI: process.env.CI,
+    VERCEL: process.env.VERCEL,
+    VERCEL_ENV: process.env.VERCEL_ENV,
+    DIRECT_URL: process.env.DIRECT_URL,
+    DATABASE_URL: process.env.DATABASE_URL,
+  });
   const root = process.cwd();
   const database = `appliance_desk_upgrade_test_${randomBytes(8).toString("hex")}`;
   const upgradedTarget = new URL(target);
@@ -119,6 +125,24 @@ async function main() {
       return result.rows[0];
     }
     const before = await snapshot();
+    // Prove the conversion before the later require-email-verification backfill.
+    for (const migration of [
+      "20260926151500_verification_updated_at",
+      "20260926163000_user_email_verified_boolean",
+    ]) {
+      await cp(
+        path.join(root, "prisma/migrations", migration),
+        path.join(migrations, migration),
+        { recursive: true },
+      );
+    }
+    deploy(baselineConfig);
+    assert.deepEqual(await snapshot(), { ...before, emailVerified: true });
+    const converted = await fixtureClient.query(
+      'SELECT "emailVerified" FROM "User" WHERE id=$1',
+      ["upgrade-unverified"],
+    );
+    assert.equal(converted.rows[0].emailVerified, false);
     deploy(path.join(root, "prisma.config.ts"));
     const after = await snapshot();
     // This historical migration intentionally changes timestamp verification to boolean.
@@ -127,7 +151,8 @@ async function main() {
       'SELECT "emailVerified" FROM "User" WHERE id=$1',
       ["upgrade-unverified"],
     );
-    assert.equal(unverified.rows[0].emailVerified, false);
+    // 20260928160000_require_email_verification deliberately backfills existing accounts.
+    assert.equal(unverified.rows[0].emailVerified, true);
     const history = await fixtureClient.query(
       'SELECT migration_name FROM "_prisma_migrations" WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL ORDER BY migration_name',
     );
