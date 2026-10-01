@@ -6,7 +6,13 @@
 // ---------------------------------------------------------------------------
 
 function csvField(value: unknown): string {
-  const s = value === null || value === undefined ? "" : String(value);
+  let s = value === null || value === undefined ? "" : String(value);
+  // CSV quoting alone does not stop spreadsheet formula execution. Keep
+  // numeric amounts numeric (including refunds), but force untrusted text
+  // and headers to literal text even after leading whitespace/control chars.
+  if (typeof value === "string" && (/^[\t\r\n]/.test(s) || /^[\s\uFEFF]*[=+\-@]/.test(s))) {
+    s = "'" + s;
+  }
   if (/[",\n\r]/.test(s)) {
     return `"${s.replace(/"/g, '""')}"`;
   }

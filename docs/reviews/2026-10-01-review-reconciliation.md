@@ -54,7 +54,7 @@ sequencing remain incomplete. No live activation, spending or customer-data clea
 | [#54](https://github.com/christcr2012/appliance-desk/pull/54#discussion_r4119814104) | Use the discounted monthly price in the review total | Pending |
 | [#54](https://github.com/christcr2012/appliance-desk/pull/54#discussion_r4119814111) | Add accessible labels to every address input | Pending |
 | [#54](https://github.com/christcr2012/appliance-desk/pull/54#discussion_r4119814118) | Surface failed activation emails before advancing | Implemented in email outcome repair; full CI/exact-head review/preview pending |
-| [#55](https://github.com/christcr2012/appliance-desk/pull/55#discussion_r4119945202) | Neutralize spreadsheet formulas in exported CSV cells | Pending |
+| [#55](https://github.com/christcr2012/appliance-desk/pull/55#discussion_r4119945202) | Neutralize spreadsheet formulas in exported CSV cells | Implemented in business export repair; full CI/exact-head review/preview pending |
 | [#55](https://github.com/christcr2012/appliance-desk/pull/55#discussion_r4119945208) | Add a unique tie-breaker to paginated job ordering | Pending |
 | [#55](https://github.com/christcr2012/appliance-desk/pull/55#discussion_r4119945212) | Return every skipped appliance and its reason | Pending |
 | [#56](https://github.com/christcr2012/appliance-desk/pull/56#discussion_r4120027259) | Compare recurring receipts instead of all invoice payments | Pending |
@@ -63,7 +63,7 @@ sequencing remain incomplete. No live activation, spending or customer-data clea
 | [#57](https://github.com/christcr2012/appliance-desk/pull/57#discussion_r4123169721) | Display the discounted monthly price in the review | Pending |
 | [#57](https://github.com/christcr2012/appliance-desk/pull/57#discussion_r4123169727) | Compare rent against rent in the earnings report | Pending |
 | [#57](https://github.com/christcr2012/appliance-desk/pull/57#discussion_r4123169735) | Use America/Denver for dispatch calendar calculations | Pending |
-| [#57](https://github.com/christcr2012/appliance-desk/pull/57#discussion_r4123169741) | Neutralize formulas in CSV cells | Pending |
+| [#57](https://github.com/christcr2012/appliance-desk/pull/57#discussion_r4123169741) | Neutralize formulas in CSV cells | Implemented in business export repair; full CI/exact-head review/preview pending |
 | [#57](https://github.com/christcr2012/appliance-desk/pull/57#discussion_r4123169747) | Document the new database records in DATABASE.md | Pending |
 | [#58](https://github.com/christcr2012/appliance-desk/pull/58#discussion_r4123386805) | Clean up Blob objects when references are discarded | Pending |
 | [#58](https://github.com/christcr2012/appliance-desk/pull/58#discussion_r4123386818) | Normalize HEIC uploads before storing their URL | Pending |
@@ -84,8 +84,8 @@ sequencing remain incomplete. No live activation, spending or customer-data clea
 | [#76](https://github.com/christcr2012/appliance-desk/pull/76#discussion_r4135862592) | Apply the brand kit's heading weight | Pending |
 | [#76](https://github.com/christcr2012/appliance-desk/pull/76#discussion_r4135862605) | Keep the design-system brand guidance in sync | Pending |
 | [#78](https://github.com/christcr2012/appliance-desk/pull/78#discussion_r4136765429) | Ask before installing the Neon CLI globally | Pending |
-| [#79](https://github.com/christcr2012/appliance-desk/pull/79#discussion_r4136879568) | Hide desk chrome when printing work orders | Pending |
-| [#79](https://github.com/christcr2012/appliance-desk/pull/79#discussion_r4136879577) | Apply default job checklists to work orders | Pending |
+| [#79](https://github.com/christcr2012/appliance-desk/pull/79#discussion_r4136879568) | Hide desk chrome when printing work orders | Implemented in business export repair; full CI/exact-head review/preview pending |
+| [#79](https://github.com/christcr2012/appliance-desk/pull/79#discussion_r4136879577) | Apply default job checklists to work orders | Implemented in business export repair; full CI/exact-head review/preview pending |
 | [#80](https://github.com/christcr2012/appliance-desk/pull/80#discussion_r4137359495) | Add the promised way to supply a missing email | Verified/merged #117; CI 36854516416 + Vercel; automated review waived; resolved |
 | [#80](https://github.com/christcr2012/appliance-desk/pull/80#discussion_r4137359503) | Hide the add-lead control from staff or allow the action | Pending |
 | [#80](https://github.com/christcr2012/appliance-desk/pull/80#discussion_r4137359513) | Cover the new persistence and approval flow with tests | Pending |
@@ -118,6 +118,11 @@ sequencing remain incomplete. No live activation, spending or customer-data clea
 
 #117 request on 8418428571 and #118 request on bd89a9ac10 returned Codex review usage-limit notices (5930234718 / 5930248471). Review did not run; CI/preview do not discharge this gate. Threads remain open; no merges or review-credit purchase.
 
+## Verified checks, still pending review
+
+- #117 head 8418428571: full CI run 36854516416 and Vercel passed. Exact-head automated review blocked by quota; no threads resolved.
+- #118 head bd89a9ac10: full CI run 36854626321 and Vercel passed, including race/rollback and phone purchase-order persistence/axe checks. Review blocked by quota; unmerged.
+- #119 head 55c7c7d030: automatic review returned quota notice 5930386836. Full CI/preview pending at this checkpoint; no review pass claimed.
 ## 2026-10-01 — Owner review fallback and verified resolutions
 
 Chris authorized skipping unavailable automated code review and safe agent merges.

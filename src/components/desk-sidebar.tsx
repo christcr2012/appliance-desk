@@ -116,8 +116,8 @@ export function DeskSidebar({
   );
 
   return (
-    <div className="min-h-screen bg-canvas lg:flex">
-      <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r border-line bg-surface lg:flex">
+    <div className="min-h-screen bg-canvas lg:flex print:block print:bg-white">
+      <aside className="print:hidden sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r border-line bg-surface lg:flex">
         <Link
           href="/desk/today"
           className="px-6 py-5 text-lg font-semibold text-ink"
@@ -133,7 +133,7 @@ export function DeskSidebar({
         </div>
       </aside>
       <div className="min-w-0 flex-1">
-        <header className="flex min-h-16 flex-wrap items-center justify-between gap-3 border-b border-line bg-surface px-4 py-3 sm:px-6">
+        <header className="print:hidden flex min-h-16 flex-wrap items-center justify-between gap-3 border-b border-line bg-surface px-4 py-3 sm:px-6">
           <div className="flex min-w-0 items-center gap-3">
             <button
               type="button"
@@ -192,21 +192,21 @@ export function DeskSidebar({
           </div>
         </header>
         {error && (
-          <p role="alert" className="px-6 py-3 text-danger">
+          <p role="alert" className="print:hidden px-6 py-3 text-danger">
             {error}
           </p>
         )}
         <main
           id="main-content"
           tabIndex={-1}
-          className="mx-auto min-w-0 max-w-[1440px] p-4 pb-28 sm:p-6 sm:pb-28 lg:p-8"
+          className="mx-auto min-w-0 max-w-[1440px] p-4 pb-28 sm:p-6 sm:pb-28 lg:p-8 print:max-w-none print:p-0"
         >
           {children}
         </main>
       </div>
       <nav
         aria-label="Quick access"
-        className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 border-t border-line bg-surface px-2 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] lg:hidden"
+        className="print:hidden fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 border-t border-line bg-surface px-2 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] lg:hidden"
       >
         {[
           { href: "/desk/today", label: "Today" },
@@ -240,7 +240,7 @@ export function DeskSidebar({
         onClick={(e) => {
           if (e.target === e.currentTarget) closeMenu();
         }}
-        className="fixed inset-0 m-0 h-dvh max-h-dvh w-80 max-w-[90vw] border-r border-line bg-surface p-0 text-ink backdrop:bg-black/50"
+        className="print:hidden fixed inset-0 m-0 h-dvh max-h-dvh w-80 max-w-[90vw] border-r border-line bg-surface p-0 text-ink backdrop:bg-black/50"
       >
         <div className="flex h-full flex-col">
           <div className="flex items-center justify-between gap-2 border-b border-line p-4">

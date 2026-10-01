@@ -17,6 +17,36 @@ the warning text; full reruns required. #120's phone/desktop print checks passed
 #119 real Better Auth callback/privacy tests passed in CI (802 tests total) and
 #120's tests passed (822 total); provider acceptance behavior is verified.
 No failed PR merged. O02 hosted fixture/storage and O32 sequencing remain gated.
+## 2026-10-01 — Business export review repairs and release gate status
+
+Checked preceding/latest #119 and dependency #118 reviews/threads before this
+follow-on; no new actionable submissions. #119's automatic review also returned
+a usage-limit notice (5930386836). Exact-head review remains blocked for the stack.
+#117 head 8418428571 passed full CI 36854516416 and Vercel; #118 head bd89a9ac10
+passed full CI 36854626321 and Vercel, including the corrected phone order test.
+#119 head 55c7c7d030 is published; full CI and preview pending at this checkpoint.
+No PR merged or thread resolved; main remains d7c1034 (#105/#116 confirmed merged).
+
+CSV text and headers now neutralize spreadsheet formulas, including leading
+whitespace/control characters, before RFC CSV escaping. Numeric values remain
+numeric, including negative accounting/refund amounts. Work orders use the same
+defensive default/saved checklist parser as job screens. Desk sidebar, header,
+mobile navigation, dialog and errors are hidden when printing; main print padding
+is removed and the shell uses white/block layout. No business-data mutation.
+
+Local: 779 tests pass; four existing real-Postgres suites excluded and eleven
+CI-only cases skipped. Typecheck/lint pass (two existing warnings). Twenty added
+cases cover literal CSV text/headers, numeric refunds/quoting, all five default
+checklists, saved checks, malformed JSON and role denial before reads. Disposable
+CI print-media browser checks at 360/1280px verify hidden chrome, zero padding,
+and retained checklist text with screenshot evidence. Full CI/preview and exact-head
+review remain pending. No completed-backlog claim. O02/O32 gates intact.
+
+Merge order after reviews and full gates pass: #117 to main, retarget #118 to
+main and verify, then retarget #119 to main and verify, then this follow-on.
+Never merge a stacked PR into its feature-branch base. Review/CI evidence applies
+only to its exact head; changed code/base requires the applicable checks again.
+Rollback: PR revert. No live activation, spending, or destructive data changes.
 
 ## 2026-10-01 — Email outcome review repairs
 
