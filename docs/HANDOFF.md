@@ -1,3 +1,34 @@
+## 2026-10-01 — Verified workspaces and cash-export correction
+
+Verified source heads: #103 4addf2fbf5a392981b81f162034b79626e3219d3,
+CI 36815045153 (726 tests, 122 browser checks); #108
+ed797c7ad4aae1efe395807791a6946bd0981db9, CI 36815060816 (744 tests,
+123 browser checks); #109 6a9b9235e4a55858ffc5fdce88d17e68a773eccd,
+CI 36815637476 (752 tests, 129 browser checks). Each full run includes real
+Postgres, migrations, typecheck, lint, build and axe. Matching Vercel previews
+are READY. Product and saved-builder phone/tablet/desktop screenshots inspected;
+revenue screenshots at phone/tablet/desktop inspected. Protected hosted interaction and manual
+acceptance remain unclaimed. Owner merges in order #103, #108, #109.
+
+Found and corrected related accounting export duplication: both signing and
+estimate-approval deposits already create real Invoice/Payment records
+(billing/webhooks.ts). Estimate conversion later creates a Deposit liability
+mirror without receiving more cash. Export previously added the liability as
+another positive receipt, doubling and misdating deposit collections. Export
+now includes succeeded Payment receipts and separate invoice/deposit refund
+outflows only; no positive Deposit liability rows. Deposit query reads refunded
+records only; all three cash sources use one repeatable-read snapshot. CSV columns and provider/ledger records remain unchanged.
+
+Eight focused export tests pass; typecheck passes. Added real existing webhook
+fixture assertions: signing $192.92 stays $192.92 despite a $150 deposit mirror;
+converted estimate's $200 approval payment stays $200 despite its later mirror.
+Revenue copy now explicitly includes partially paid overdue invoices and shows an honest empty rate state instead of a blank chart. Real DB/full CI pending for this correction. No schema or provider activation;
+rollback is PR revert. O02 hosted runtime/private-file proof is still incomplete;
+Neon preview storage reports enabled but has no buckets and is not app isolation
+proof. Vercel connector lacks needed environment/storage operations. Browser
+fallback requires explicit permission before opening the signed-in dashboard.
+Other report families and O30/O31 capacity/recovery/manual/launch proof remain.
+
 ## 2026-10-01 — Revenue definitions and backing records
 
 O19 revenue family now labels MRR/ARR as estimated agreed rates and invoice

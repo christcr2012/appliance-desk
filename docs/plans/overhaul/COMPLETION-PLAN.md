@@ -51,7 +51,7 @@ needed. Do not claim a whole card complete from a partial implementation.
 | O07/O08 | Merged, automated evidence passed | #102 head 883a8f90a21135902450fff8c4e6663b631fdeae, CI 36784399079 successful; preview READY; 24 CI screenshots inspected; owner acceptance pending |
 | O11 | IN_REVIEW subcard | Validated property prefill and upcoming-job context; no new unit hierarchy or property-level request ownership claim |
 | O09/O10/O13/O14 | BLOCKED contract dependencies | Require full O02 gate; task-list presentation already shipped without assignment |
-| O12/O18/O20/O21 | IN_REVIEW subcards | Second batch: settings sections, billing presentation, scoped portal/request paths, independent agreement progress. 694 local tests pass; CI/build/browser/preview pending. Draft recovery implemented in third batch; CI pending; reporting remains |
+| O12/O18/O20/O21 | Application subcards automated checks passed | #103: 726 tests/122 browser checks; #108: 744 tests/123 browser checks. READY previews; saved-builder/product screenshots inspected. Whole-card/manual/capacity acceptance remains explicit |
 | O15–O17/O19 | Remaining | Operations depend on O13/O14; report families follow verified money presentation |
 | O22–O28 | Remaining / schema dependencies | Require O02 and relevant prerequisite cards |
 | O29 | DEFERRED conditional | No actual import dataset supplied |
@@ -119,3 +119,14 @@ partially paid overdue balances, future/boundary trend fixes and owner-only
 repeatable-read count/sum/25-row invoice drill-through. 717 broad local tests plus
 one dashboard fixture test pass; real DB/browser proof awaits CI. Other report
 families (earnings, asset costs, growth/source conversion) remain unfinished.
+
+## Verified source checkpoint — 2026-10-01
+
+#103 head 4addf2f passed CI 36815045153; #108 head ed797c7 passed
+36815060816; #109 head 6a9b923 passed 36815637476 (752 tests and
+129 browser checks). Each preview READY; hosted protected interaction unclaimed.
+Cash export follow-on removes duplicate positive Deposit liability rows: invoice
+and estimate deposits are already real Payment cash. Refund outflows remain.
+Eight focused tests/typecheck pass; added real webhook fixture reconciliation,
+full CI pending. Other O19 report families remain; O02 infrastructure and
+O30/O31 whole-flow/manual/capacity evidence are not complete.

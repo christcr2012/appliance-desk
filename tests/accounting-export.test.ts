@@ -4,12 +4,14 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 // Task #73) — a flat, signed ledger of every real payment, refund, and
 // security deposit movement, for the accounting CSV export.
 
+const transaction = vi.fn();
 const paymentFindMany = vi.fn();
 const refundFindMany = vi.fn();
 const depositFindMany = vi.fn();
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
+    $transaction: (...args: unknown[]) => transaction(...args),
     payment: { findMany: (...args: unknown[]) => paymentFindMany(...args) },
     refund: { findMany: (...args: unknown[]) => refundFindMany(...args) },
     deposit: { findMany: (...args: unknown[]) => depositFindMany(...args) },
@@ -18,7 +20,13 @@ vi.mock("@/lib/prisma", () => ({
 
 import { getAccountingTransactions } from "@/domains/reports/accounting-export";
 
-function customerRef(overrides: { name?: string | null; email?: string; company?: string | null } = {}) {
+function customerRef(
+  overrides: {
+    name?: string | null;
+    email?: string;
+    company?: string | null;
+  } = {},
+) {
   return {
     companyName: overrides.company ?? null,
     user: {
@@ -32,6 +40,13 @@ function customerRef(overrides: { name?: string | null; email?: string; company?
 
 describe("getAccountingTransactions", () => {
   beforeEach(() => {
+    transaction.mockReset().mockImplementation((callback) =>
+      callback({
+        payment: { findMany: (...args: unknown[]) => paymentFindMany(...args) },
+        refund: { findMany: (...args: unknown[]) => refundFindMany(...args) },
+        deposit: { findMany: (...args: unknown[]) => depositFindMany(...args) },
+      }),
+    );
     paymentFindMany.mockReset().mockResolvedValue([]);
     refundFindMany.mockReset().mockResolvedValue([]);
     depositFindMany.mockReset().mockResolvedValue([]);
@@ -41,6 +56,9 @@ describe("getAccountingTransactions", () => {
     await getAccountingTransactions();
     const args = paymentFindMany.mock.calls[0][0];
     expect(args.where).toEqual({ status: "succeeded" });
+    expect(transaction.mock.calls[0][1]).toEqual({
+      isolationLevel: "RepeatableRead",
+    });
   });
 
   it("includes a succeeded payment as a positive amount", async () => {
@@ -54,7 +72,11 @@ describe("getAccountingTransactions", () => {
     ]);
     const rows = await getAccountingTransactions();
     expect(rows).toHaveLength(1);
-    expect(rows[0]).toMatchObject({ type: "Payment", amountCents: 6000, invoiceNumber: 101 });
+    expect(rows[0]).toMatchObject({
+      type: "Payment",
+      amountCents: 6000,
+      invoiceNumber: 101,
+    });
   });
 
   it("includes a refund as a negative amount", async () => {
@@ -76,7 +98,7 @@ describe("getAccountingTransactions", () => {
     });
   });
 
-  it("includes a collected deposit as positive, with no invoice number", async () => {
+  it("does not invent a cash receipt from a deposit liability record", async () => {
     depositFindMany.mockResolvedValue([
       {
         amountCents: 15000,
@@ -88,15 +110,10 @@ describe("getAccountingTransactions", () => {
       },
     ]);
     const rows = await getAccountingTransactions();
-    expect(rows).toHaveLength(1);
-    expect(rows[0]).toMatchObject({
-      type: "Deposit collected",
-      amountCents: 15000,
-      invoiceNumber: null,
-    });
+    expect(rows).toEqual([]);
   });
 
-  it("adds a second, negative row for a refunded deposit — collected row stays untouched", async () => {
+  it("exports only the negative cash movement for a refunded deposit", async () => {
     depositFindMany.mockResolvedValue([
       {
         amountCents: 15000,
@@ -108,11 +125,52 @@ describe("getAccountingTransactions", () => {
       },
     ]);
     const rows = await getAccountingTransactions();
-    expect(rows).toHaveLength(2);
-    const collected = rows.find((r) => r.type === "Deposit collected");
+    expect(rows).toHaveLength(1);
     const refunded = rows.find((r) => r.type === "Deposit refunded");
-    expect(collected).toMatchObject({ amountCents: 15000 });
-    expect(refunded).toMatchObject({ amountCents: -12000, notes: "Water damage to floor" });
+    expect(refunded).toMatchObject({
+      amountCents: -12000,
+      notes: "Water damage to floor",
+    });
+  });
+
+  it("reconciles deposit-inclusive payment and both refund kinds without counting the deposit twice", async () => {
+    paymentFindMany.mockResolvedValue([
+      {
+        amountCents: 6000,
+        method: "card",
+        createdAt: new Date("2026-05-01"),
+        invoice: { invoiceNumber: 1, customer: customerRef() },
+      },
+    ]);
+    refundFindMany.mockResolvedValue([
+      {
+        amountCents: 2000,
+        reason: "OTHER",
+        notes: null,
+        createdAt: new Date("2026-05-05"),
+        invoice: { invoiceNumber: 1, customer: customerRef() },
+      },
+    ]);
+    depositFindMany.mockResolvedValue([
+      {
+        amountCents: 1500,
+        createdAt: new Date("2026-05-01"),
+        refundedAt: new Date("2026-05-06"),
+        refundedAmountCents: 1000,
+        deductionReason: "Retained damage amount",
+        agreement: { customer: customerRef() },
+      },
+    ]);
+    const rows = await getAccountingTransactions();
+    expect(rows.map((row) => row.type)).toEqual([
+      "Payment",
+      "Refund",
+      "Deposit refunded",
+    ]);
+    expect(rows.reduce((sum, row) => sum + row.amountCents, 0)).toBe(3000);
+    expect(depositFindMany.mock.calls[0][0].where).toEqual({
+      refundedAt: { not: null },
+    });
   });
 
   it("sorts every transaction type together, oldest first", async () => {
@@ -121,7 +179,10 @@ describe("getAccountingTransactions", () => {
         amountCents: 6000,
         method: "card",
         createdAt: new Date("2026-06-01"),
-        invoice: { invoiceNumber: 1, customer: customerRef({ name: "Payment customer" }) },
+        invoice: {
+          invoiceNumber: 1,
+          customer: customerRef({ name: "Payment customer" }),
+        },
       },
     ]);
     refundFindMany.mockResolvedValue([
@@ -130,7 +191,10 @@ describe("getAccountingTransactions", () => {
         reason: "OVERPAYMENT",
         notes: null,
         createdAt: new Date("2026-01-01"),
-        invoice: { invoiceNumber: 2, customer: customerRef({ name: "Refund customer" }) },
+        invoice: {
+          invoiceNumber: 2,
+          customer: customerRef({ name: "Refund customer" }),
+        },
       },
     ]);
     depositFindMany.mockResolvedValue([
@@ -146,7 +210,6 @@ describe("getAccountingTransactions", () => {
     const rows = await getAccountingTransactions();
     expect(rows.map((r) => r.customerName)).toEqual([
       "Refund customer",
-      "Deposit customer",
       "Payment customer",
     ]);
   });

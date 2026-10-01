@@ -390,3 +390,11 @@ then This UTC month or All recorded dates. Totals include every matching record;
 the list shows 25 per page. Each row opens its original invoice. Dates on records
 display in Colorado time, while the report's monthly windows use UTC. No costs
 are deducted, so this report does not establish profit.
+
+### Deposit amounts in the accounting CSV
+
+The CSV counts cash from successful invoice payments once. Those payments
+already include any signing or estimate deposit. A deposit record on an
+agreement is a liability record, so it does not add another positive cash row.
+Invoice refunds and returned deposits appear as separate negative amounts.
+Keep using the agreement's deposit details to review the remaining liability.
