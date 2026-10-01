@@ -30,7 +30,10 @@ Task input is a date-only value stored as UTC midnight by the existing action;
 it is rendered as that date, never converted to the viewer's previous evening.
 A deadline remains due today until the Colorado calendar advances. There is no
 backfill or reinterpretation of job schedule writes in this batch; dispatch
-scheduling input/timezone unification remains part of the job contract work.
+scheduling input/timezone unification remains part of the gated job contract work.
+The October 1 review repair extends explicit Colorado dates to dispatch and driver
+reads/displays, includes adjacent two-hour conflict candidates, and verifies
+checklist persistence without adding O13 assignment/duration/version fields.
 
 ## Queries and permissions
 

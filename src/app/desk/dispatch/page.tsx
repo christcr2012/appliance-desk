@@ -1,11 +1,17 @@
 import Link from "next/link";
 import { requireRole } from "@/lib/session";
 import { getDispatchBoardJobs } from "@/domains/jobs";
+import {
+  addBusinessDays as addDays,
+  formatBusinessTime,
+  BUSINESS_TIME_ZONE,
+} from "@/lib/business-date";
 import { PlusIcon } from "@/components/icons/status-icons";
 import {
   findConflictingJobIds,
   dayKey,
   weekDays,
+  dispatchAnchor,
   type DispatchableJob,
 } from "@/domains/jobs/dispatch";
 import { checklistProgress, parseChecklist } from "@/domains/jobs/checklist";
@@ -19,42 +25,11 @@ function isView(value: string | undefined): value is View {
   return value === "day" || value === "week" || value === "agenda";
 }
 
-/** Parses a "YYYY-MM-DD" searchParam into a local midnight Date, falling
- * back to today for anything missing or malformed — a bad/old link
- * should never crash the board. */
-function parseDateParam(value: string | undefined): Date {
-  if (value) {
-    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
-    if (match) {
-      const d = new Date(
-        Number(match[1]),
-        Number(match[2]) - 1,
-        Number(match[3]),
-      );
-      if (!Number.isNaN(d.getTime())) return d;
-    }
-  }
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return today;
-}
-
-function addDays(date: Date, days: number): Date {
-  const d = new Date(date);
-  d.setDate(d.getDate() + days);
-  return d;
-}
-
 function boardLink(view: View, date: Date): string {
   return `/desk/dispatch?view=${view}&date=${dayKey(date)}`;
 }
 
-function formatTime(date: Date): string {
-  return date.toLocaleTimeString(undefined, {
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
+const formatTime = formatBusinessTime;
 
 function jobTypeLabel(type: string): string {
   return type.replace(/_/g, " ").toLowerCase();
@@ -120,7 +95,7 @@ export default async function DispatchPage({
     session.user.role === "OWNER" || session.user.role === "ADMIN";
   const { view: rawView, date: rawDate } = await searchParams;
   const view: View = isView(rawView) ? rawView : "day";
-  const anchor = parseDateParam(rawDate);
+  const anchor = dispatchAnchor(rawDate);
 
   let rangeStart: Date;
   let rangeEnd: Date;
@@ -136,12 +111,10 @@ export default async function DispatchPage({
     rangeEnd = addDays(anchor, 14);
   }
 
-  const { scheduled, unscheduled } = await getDispatchBoardJobs(
-    rangeStart,
-    rangeEnd,
-  );
+  const { scheduled, unscheduled, conflictCandidates } =
+    await getDispatchBoardJobs(rangeStart, rangeEnd);
   const conflicting = findConflictingJobIds(
-    scheduled.map((j): DispatchableJob => ({
+    conflictCandidates.map((j): DispatchableJob => ({
       id: j.id,
       scheduledAt: j.scheduledAt,
     })),
@@ -245,7 +218,8 @@ export default async function DispatchPage({
       {view === "day" && (
         <div className="mt-6">
           <h2 className="font-medium text-gray-900">
-            {anchor.toLocaleDateString(undefined, {
+            {anchor.toLocaleDateString("en-US", {
+              timeZone: BUSINESS_TIME_ZONE,
               weekday: "long",
               month: "long",
               day: "numeric",
@@ -283,7 +257,8 @@ export default async function DispatchPage({
                   href={boardLink("day", day)}
                   className="font-medium text-gray-900 hover:underline"
                 >
-                  {day.toLocaleDateString(undefined, {
+                  {day.toLocaleDateString("en-US", {
+                    timeZone: BUSINESS_TIME_ZONE,
                     weekday: "short",
                     month: "short",
                     day: "numeric",
@@ -334,7 +309,8 @@ export default async function DispatchPage({
                   <h2 className="font-medium text-gray-900">
                     {new Date(
                       dayJobs[0].scheduledAt as Date,
-                    ).toLocaleDateString(undefined, {
+                    ).toLocaleDateString("en-US", {
+                      timeZone: BUSINESS_TIME_ZONE,
                       weekday: "long",
                       month: "long",
                       day: "numeric",

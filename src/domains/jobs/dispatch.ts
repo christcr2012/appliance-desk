@@ -1,3 +1,5 @@
+import { businessDateKey, businessDateFromKey, businessDayBounds, addBusinessDays } from "@/lib/business-date";
+
 // ---------------------------------------------------------------------------
 // Dispatch board (2026-09-28) — pure scheduling/conflict logic, zero-
 // database-import, same spirit as lifecycle.ts and checklist.ts. Chris is
@@ -44,25 +46,18 @@ export function findConflictingJobIds(jobs: DispatchableJob[]): Set<string> {
   return conflicting;
 }
 
-/** Local (not UTC) calendar-day key, e.g. "2026-09-28" — used to group
- * jobs by day for the week view without a timezone library; Chris's
- * business operates in one timezone (Colorado), so the server's local
- * time is the right one to group by. */
+/** Group stored instants by their Colorado calendar day. */
 export function dayKey(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
+  return businessDateKey(date);
+}
+
+export function dispatchAnchor(value: string | undefined, now = new Date()): Date {
+  return (value ? businessDateFromKey(value) : null) ?? businessDayBounds(now).start;
 }
 
 /** The 7 calendar days (Sunday first) containing `date`. */
 export function weekDays(date: Date): Date[] {
-  const start = new Date(date);
-  start.setHours(0, 0, 0, 0);
-  start.setDate(start.getDate() - start.getDay());
-  return Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(start);
-    d.setDate(start.getDate() + i);
-    return d;
-  });
+  const calendar = new Date(`${dayKey(date)}T00:00:00Z`);
+  const start = addBusinessDays(date, -calendar.getUTCDay());
+  return Array.from({ length: 7 }, (_, i) => addBusinessDays(start, i));
 }

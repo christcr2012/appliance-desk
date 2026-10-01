@@ -1,5 +1,7 @@
 "use client";
 
+import { formatBusinessTime } from "@/lib/business-date";
+
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -31,7 +33,7 @@ const TYPE_LABELS: Record<JobType, string> = {
 
 function formatTime(date: Date | null): string {
   if (!date) return "No time set";
-  return date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  return formatBusinessTime(date);
 }
 
 function mapsUrl(address: DriverJob["address"]): string {

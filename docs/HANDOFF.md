@@ -1,36 +1,38 @@
 ## 2026-10-01 — Current review repair checkpoint
 
-#117–#121 merged to main b5a4319a35c8931272869e91b83f20c9c62aa743 after
-exact-head inspection, passing full CI and ready Vercel. Expected-head merges used;
-stacked PRs retargeted to main with merge trees matching tested heads. CI runs:
-#117 36854516416, #118 36854626321, #119 36858433312, #120 36858585089,
-#121 36861119917. #121 passed 830 tests and 134 browser checks, including real
-lead/privacy-consent persistence without invented appliance requests and phone
-keyboard/axe/address save/reload. Its two historical findings resolved after merge.
+#117–#122 merged to main 9bcdda47d359204d854f31f2c15ac282a139fa48 after
+exact-head inspection, full CI and ready Vercel. Expected-head merges used;
+stacked PRs retargeted to main with merge trees matching tested heads.
+#121 CI 36861119917 passed 830 tests/134 browser checks; #122 CI 36862952621
+passed 835/135, including real 60-job pagination and phone mixed bulk results,
+selection retention, axe and persisted statuses. Earlier runs are in the ledger.
 Automated review quota unavailable, explicitly waived by Chris October 1.
 AGENTS.md requires preceding/dependency/all-state review continuity and safe merges.
 
-Twenty-nine threads resolved with specific evidence: twenty-six historical plus
-three #117 findings. Sixty-five historical findings remain open; see the ledger.
-Existing ACH settlement/retry and cross-customer isolation fixes verified against
-real Postgres tests from #120 CI. Shared task visibility follows approved O09;
-assignment/Mine remains gated on O02. This is review repair, not overhaul completion.
+Thirty-one threads resolved with specific evidence: twenty-eight historical plus
+three #117 findings. Sixty-three historical findings remain open; see the ledger.
+Existing ACH settlement/retry and cross-customer isolation fixes also verified.
+Task visibility follows O09 shared-team contract; assignment/Mine remains O02-gated.
+This is review reconciliation, not overhaul completion.
 
-Current follow-on fixes tied/unscheduled job pagination with scheduledAt/id ordering
-and returns every skipped inventory unit and reason. UI names each asset, keeps
-skipped units selected and preserves selection after an unconfirmed response;
-controls cannot change while applying. Tests cover real action/UI behavior,
-manager guards, mixed reasons and failed response. Guarded disposable CI verifies
-60 tied/unscheduled jobs across pages and phone bulk update/axe/database persistence.
-Local: 790 tests pass; thirteen CI-only cases skipped and four existing database
+Current follow-on fixes Colorado dispatch date selection, grouping, day/week/agenda
+boundaries and displays, plus driver day/display. Independent midnights preserve
+23/25-hour DST days. Adjacent-range jobs participate in the existing two-hour
+conflict advisory without rendering outside the selected range. Unit/render tests
+cover evenings, invalid date rollover, year change, DST and boundary conflicts.
+Guarded disposable CI tests cover real scheduled/unscheduled/closed queries and
+phone day/week/agenda consistency, checklist server-action save/reload and axe.
+Local: 796 tests pass; fourteen CI-only cases skipped and four existing database
 suites excluded. Typecheck/lint pass (two existing warnings). Full CI/preview and
-exact-head inspection pending; these two findings remain open until verification.
+exact-head inspection pending; five historical findings remain open until verified.
 
-Prioritize remaining calendar/billing defects before new features; do not claim
-paid-in-full billing, recurring waiver or dispatch timezone fixed by these PRs.
-O02 hosted fixture/independent preview storage and O32 sequencing remain gated.
-No live activation, spending or destructive customer-data changes. Rollback: PR revert.
-Earlier dated checkpoints below are historical and superseded by this status.
+No duration/assignment/version fields added, no O13/O14 completion or schedule
+backfill. New-job input/timezone unification remains in its gated contract.
+Remaining priorities include staff job-origin appliance scope, SWAP follow-up,
+paid-in-full billing, recurring waiver and earnings comparison. O02 hosted fixture/
+independent preview storage and O32 sequencing remain gated. No live activation,
+spending or destructive customer-data changes. Rollback: PR revert. Earlier dated
+checkpoints below are historical and superseded by this current status.
 
 ## 2026-10-01 — Business export review repairs and release gate status
 
