@@ -2,11 +2,23 @@ import fs from "node:fs";
 import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 async function accessible(page: Page) {
+  const layout = await page.evaluate(() => ({
+    fits: document.documentElement.scrollWidth <= window.innerWidth,
+    width: window.innerWidth,
+    scroll: document.documentElement.scrollWidth,
+    overflowing: [...document.querySelectorAll("main *")]
+      .filter((el) => el.getBoundingClientRect().right > window.innerWidth)
+      .slice(0, 12)
+      .map((el) => ({
+        tag: el.tagName,
+        classes: el.className,
+        right: el.getBoundingClientRect().right,
+        parent: el.parentElement?.className,
+      })),
+  }));
   expect(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth <= window.innerWidth,
-    ),
-    `Horizontal overflow at ${page.url()}`,
+    layout.fits,
+    `Horizontal overflow at ${page.url()}: ${JSON.stringify(layout)}`,
   ).toBe(true);
   expect(
     (
