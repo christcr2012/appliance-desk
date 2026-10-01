@@ -17,7 +17,12 @@ test("saved non-placeholder business name composes home and child browser titles
     // The disposable seed intentionally uses a placeholder. Own this temporary
     // value and restore it conditionally; no production settings are touched.
     await page.goto("/desk/settings?section=profile");
+    // react-hook-form populates defaults when its client refs mount. Wait for
+    // those defaults before editing so hydration cannot overwrite the fill.
+    await expect(page.getByLabel("Business name", { exact: true })).toHaveValue(publicBusinessName);
+    await expect(page.getByLabel("Email", { exact: true })).toHaveValue(publicEmail);
     await page.getByLabel("Business name", { exact: true }).fill(fixtureName);
+    await expect(page.getByLabel("Business name", { exact: true })).toHaveValue(fixtureName);
     // The seed email is also a placeholder and fails native email validation.
     // Save a complete valid profile through the real form.
     await page.getByLabel("Email", { exact: true }).fill(fixtureEmail);
@@ -33,6 +38,7 @@ test("saved non-placeholder business name composes home and child browser titles
     const current = await prisma.businessSettings.findUniqueOrThrow({ where: { id: "singleton" } });
     if (current.publicBusinessName === fixtureName) {
       await page.goto("/desk/settings?section=profile");
+      await expect(page.getByLabel("Business name", { exact: true })).toHaveValue(fixtureName);
       await page.getByLabel("Business name", { exact: true }).fill(publicBusinessName);
       await page.getByRole("button", { name: "Save this section" }).click();
       await expect(page.getByRole("status")).toHaveText("Settings saved.");

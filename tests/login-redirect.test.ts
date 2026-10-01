@@ -36,11 +36,18 @@ describe("getPostLoginDestination", () => {
     await expect(getPostLoginDestination(null)).resolves.toBe("/account");
   });
 
-  it("defaults to the account portal when role is missing", async () => {
+  it("denies a missing role rather than defaulting it to a customer", async () => {
     getServerSession.mockResolvedValue({ user: { id: "u1" } });
     const { getPostLoginDestination } = await import("@/app/login/actions");
 
-    await expect(getPostLoginDestination(null)).resolves.toBe("/account");
+    await expect(getPostLoginDestination(null)).resolves.toBe("/login");
+    await expect(getPostLoginDestination("/account/maintenance")).resolves.toBe("/login");
+  });
+
+  it("denies an unknown role even with a same-site destination", async () => {
+    getServerSession.mockResolvedValue({ user: { id: "u1", role: "SUPERUSER" } });
+    const { getPostLoginDestination } = await import("@/app/login/actions");
+    await expect(getPostLoginDestination("/account")).resolves.toBe("/login");
   });
 
   it("honors a safe same-site ?next= path over the role default", async () => {

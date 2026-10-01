@@ -5,13 +5,33 @@ import { auth } from "./auth";
 
 export type Role = "OWNER" | "ADMIN" | "STAFF" | "CUSTOMER";
 
+function isRole(value: unknown): value is Role {
+  return value === "OWNER" || value === "ADMIN" || value === "STAFF" || value === "CUSTOMER";
+}
+
 /**
  * Reads the current session on the server. Cached per-request so calling
  * this from a layout AND a page in the same request only hits the auth
  * backend once.
  */
+const readValidatedSession = cache(async () => {
+  const session = await auth.api.getSession({ headers: await headers() });
+  const user = session?.user;
+  if (!user || typeof user.id !== "string" || !user.id.trim() || !isRole(user.role)) {
+    return null;
+  }
+  // Null means active. Missing state must not be interpreted as active if
+  // the auth provider's payload changes or loses this additional field.
+  if (user.archivedAt === undefined) return null;
+  return { ...session, user: { ...user, role: user.role } };
+});
+
+/** Direct session readers (including server actions and upload routes)
+ * receive only active, validated identities; they do not rely on a layout
+ * having run requireSession first. */
 export const getServerSession = cache(async () => {
-  return auth.api.getSession({ headers: await headers() });
+  const session = await readValidatedSession();
+  return session?.user.archivedAt === null ? session : null;
 });
 
 /** Redirects to /login if nobody is signed in, or if the account has
@@ -23,12 +43,11 @@ export const getServerSession = cache(async () => {
  * never sign in or use an existing session again. Use in every
  * protected page/layout. */
 export async function requireSession() {
-  const session = await getServerSession();
+  const session = await readValidatedSession();
   if (!session) {
     redirect("/login");
   }
-  const archivedAt = (session.user as { archivedAt?: Date | string | null }).archivedAt;
-  if (archivedAt) {
+  if (session.user.archivedAt !== null) {
     redirect("/login?deactivated=1");
   }
   return session;
@@ -41,7 +60,7 @@ export async function requireSession() {
  */
 export async function requireRole(...roles: Role[]) {
   const session = await requireSession();
-  const role = (session.user as { role?: Role }).role ?? "CUSTOMER";
+  const role = session.user.role;
   if (!roles.includes(role)) {
     redirect("/");
   }

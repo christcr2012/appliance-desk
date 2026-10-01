@@ -35,7 +35,7 @@ describe("requireSession / requireRole", () => {
   });
 
   it("lets a signed-in user through requireSession", async () => {
-    const session = { user: { id: "u1", role: "CUSTOMER" } };
+    const session = { user: { id: "u1", role: "CUSTOMER", archivedAt: null } };
     getSession.mockResolvedValue(session);
     const { requireSession } = await import("@/lib/session");
 
@@ -43,14 +43,14 @@ describe("requireSession / requireRole", () => {
   });
 
   it("redirects a CUSTOMER away from an OWNER/ADMIN-only page", async () => {
-    getSession.mockResolvedValue({ user: { id: "u1", role: "CUSTOMER" } });
+    getSession.mockResolvedValue({ user: { id: "u1", role: "CUSTOMER", archivedAt: null } });
     const { requireRole } = await import("@/lib/session");
 
     await expect(requireRole("OWNER", "ADMIN")).rejects.toThrow("NEXT_REDIRECT:/");
   });
 
   it("lets an OWNER through an OWNER/ADMIN-only page", async () => {
-    const session = { user: { id: "u1", role: "OWNER" } };
+    const session = { user: { id: "u1", role: "OWNER", archivedAt: null } };
     getSession.mockResolvedValue(session);
     const { requireRole } = await import("@/lib/session");
 
@@ -58,9 +58,31 @@ describe("requireSession / requireRole", () => {
   });
 
   it("redirects an ADMIN away from a page that requires OWNER only", async () => {
-    getSession.mockResolvedValue({ user: { id: "u1", role: "ADMIN" } });
+    getSession.mockResolvedValue({ user: { id: "u1", role: "ADMIN", archivedAt: null } });
     const { requireRole } = await import("@/lib/session");
 
     await expect(requireRole("OWNER")).rejects.toThrow("NEXT_REDIRECT:/");
+  });
+
+  it.each([
+    {}, { user: null }, { user: {} },
+    { user: { id: "", role: "OWNER", archivedAt: null } },
+    { user: { id: 123, role: "OWNER", archivedAt: null } },
+    { user: { id: "u1", archivedAt: null } },
+    { user: { id: "u1", role: "SUPERUSER", archivedAt: null } },
+    { user: { id: "u1", role: "CUSTOMER" } },
+  ])("denies a malformed or incomplete provider payload: %j", async (session) => {
+    getSession.mockResolvedValue(session);
+    const { getServerSession, requireSession, requireRole } = await import("@/lib/session");
+    await expect(getServerSession()).resolves.toBeNull();
+    await expect(requireSession()).rejects.toThrow("NEXT_REDIRECT:/login");
+    await expect(requireRole("CUSTOMER", "OWNER")).rejects.toThrow("NEXT_REDIRECT:/login");
+  });
+
+  it.each([new Date("2026-09-30T12:00:00Z"), "2026-09-30T12:00:00Z", "", false])("denies every non-null archive state without losing the deactivation redirect", async (archivedAt) => {
+    getSession.mockResolvedValue({ user: { id: "u1", role: "OWNER", archivedAt } });
+    const { getServerSession, requireSession } = await import("@/lib/session");
+    await expect(getServerSession()).resolves.toBeNull();
+    await expect(requireSession()).rejects.toThrow("NEXT_REDIRECT:/login?deactivated=1");
   });
 });

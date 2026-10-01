@@ -11,24 +11,21 @@ separate approvals for activation, spending and destructive changes remain.
 
 ## Current priority — 2026-10-01
 
-#105/#116 are merged into main d7c1034. All 108 PRs/36 submitted reviews were
-inventoried; 91 unresolved historical threads are tracked in
-`docs/reviews/2026-10-01-review-reconciliation.md`. Reconcile them against current
-code and repair valid defects with behavior evidence before new backlog work.
-CRM #117, purchasing #118, email #119, exports #120, onboarding #121,
-operational results #122 and Colorado calendar #123 merged after exact-head
-inspection, full CI and ready Vercel. #123 CI 36864737390: 842 tests/136 browser
-checks. Automated review quota waived by Chris October 1. Forty-four threads
-resolved (forty-one historical plus three #117 findings); fifty historical
-remain open. Staff job scope, replacement-only SWAP prompt and shared-route
-completion follow-up merged in #124 after full gates.
-Four staff findings resolved after #124 full CI 36867157292 (854 tests/137
-browser checks), exact-head inspection and ready Vercel. Prepaid rent protection and one-time waiver
-presentation #125 merged after full CI 36870323155 (860 tests/138 browser
-checks), exact-head inspection and ready Vercel; three findings resolved. Reviewed
-documentation audit #126 merged first, CI 36869113324 (854/137). Billing correctness precedes new backlog work.
-No O13/O14 completion claim; assignment/schema/scheduling-write work retains gates.
-Preserve O02 storage/isolation and O32 sequencing; no model changes.
+#105/#116 verified merged. All original 108 PRs/36 submitted reviews inventoried;
+91 historical unresolved threads tracked in the reconciliation ledger. Repair valid
+findings against current behavior before features. #117–#129 work PRs merged at
+exact heads after full CI and ready preview; current main
+da3cf4243686805195640f9dd3293e38a8621e61. #127 records B01–B36 business/renewal
+scope, CI 36880648787 (860/138); #128 repairs webhook atomicity, CI 36881617240
+(867/138) including seven real DB race/rollback/ACH/refund cases. #129 verifies
+existing portal equipment/deposit fixes, CI 36882411929 (878/138). Published blobs
+and prospective main trees checked. Automated quota waived by Chris October 1.
+Forty-six resolutions (forty-three historical + three #117); forty-eight historical
+remain. #130 price-save/metadata under full CI, three related threads still open.
+Security audit session shape/archive P1 follow-on has denied-default tests; full
+security audit, provider capacity and whole-card acceptance remain incomplete.
+Preserve full O02 storage/isolation, O13/O14 assignment/schema and O32 sequence.
+Same model/single agent; live/spending/destructive approvals remain distinct.
 
 ## Expanded owner business scope — 2026-10-01
 

@@ -115,3 +115,17 @@ These constraints must be accounted for in subsequent PRs and should be treated 
 
 This note was added on 2026-10-01 as a project safety audit for future AI agent PR work.
 
+
+## Implementation checkpoints (October 1)
+
+#126 merged this audit as documentation only after review/CI/preview. Original
+constraints remain design inputs. #128 merged atomic local webhook effects/receipt
+and transaction-scoped database serialization after CI 36881617240 (867 tests/138
+browser checks), including seven real duplicate/rollback/ACH/refund cases. Distinct
+signing events/legacy invoice overlap dedupe; historical drift, hosted throughput,
+provider latency, full reconciliation and P1 description mapping remain incomplete.
+
+Session shape/archive P1 follow-on is implemented for review: known identity/role
+and explicit archive state, direct readers denied for deactivated accounts, no
+missing-role CUSTOMER default. Unit and real sign-in/deactivation/recovery evidence
+required; full CI/preview pending. Do not claim verified until those gates pass.

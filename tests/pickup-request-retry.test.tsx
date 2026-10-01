@@ -62,6 +62,7 @@ it("preserves pickup text after failure and confirms only a successful existing 
     (screen.getByLabelText("What's going on?") as HTMLTextAreaElement).value,
   ).toBe(text);
   expect(m.refresh).not.toHaveBeenCalled();
+  await waitFor(() => expect(screen.getByRole("button", { name: "Submit request" })).toBeEnabled());
   fireEvent.click(screen.getByRole("button", { name: "Submit request" }));
   await waitFor(() =>
     expect(screen.getByRole("status").textContent).toContain("next steps"),

@@ -26,6 +26,40 @@ This note is intentionally written so a coding agent creating the next PR notice
 See `docs/AI-PR-READ-FIRST.md` for the full audit and the categorized fix-now / fix-soon / monitor list.
 
 
+## 2026-10-01 — Defensive session/access follow-on
+
+Main da3cf4243686805195640f9dd3293e38a8621e61 includes #127 planning, #128 atomic
+webhooks and #129 portal regressions, all merged with exact-head/full CI/ready
+preview gates. #129 CI 36882411929: 878 tests/138 browser checks, eight real DB
+eligibility and three deposit-required render cases. Two #14 threads replied and
+resolved after verification: 46 total resolutions (43 historical + three #117),
+48 historical remain open. #130 price-save/metadata head
+0b3f27dfece60ef61f5b13185287e90f64ddd176 under CI 36886433855; three related
+threads remain open. The previous browser run exposed two new-test setup errors
+(domain alias import and inactive settings tab), corrected on this head rather
+than rerunning or weakening the failed assertions. Earlier checkpoints are historical.
+
+P1 session follow-on validates nonempty identity, known role and explicit archive
+state from Better Auth. Direct getServerSession callers receive active accounts
+only, including server actions bypassing layouts. Protected pages keep deactivation
+messaging. Missing/unknown roles no longer default to CUSTOMER. Twelve malformed/
+archive cases and login role denial added; real customer sign-in→invalid-upload
+API→deactivation→API/page denial→restoration tests use only an owned disposable CI
+account, no file token/provider write. Existing full OWNER/STAFF/CUSTOMER browser
+suite verifies valid payload compatibility. Full CI/preview/exact-head pending.
+Local broad run found an existing pickup test timing race: alert rendered before
+transition completed; test now waits for enabled retry, keeping all assertions.
+Local broad verification: 834 passed, 31 guarded CI cases skipped, four existing
+DB suites excluded; type-check/lint pass with two existing lint warnings. Real
+provider payload compatibility/deactivation proof awaits full disposable CI.
+
+Unfinished historical reviews/approved backlog remain active across interruptions.
+B01–B36 includes renewal, early termination fee confirmation/policy and auto-renewal
+consent/notices; no lifecycle feature/fee amount claimed shipped. O02 hosted fixture/
+independent storage incomplete; O13/O14 schema/assignment and O32 sequence retained.
+No live activation, spending, real messaging or destructive real-data change.
+Same model/single agent. Security audit completion remains unclaimed.
+
 ## 2026-10-01 — Settings rejection and metadata review follow-on
 
 #127 merged 816f3e3ace5af45d46908cf3400992e7d02d5ef8 after exact-head seven-blob
