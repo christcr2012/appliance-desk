@@ -25,8 +25,8 @@ sequencing remain incomplete. No live activation, spending or customer-data clea
 | [#2](https://github.com/christcr2012/appliance-desk/pull/2#discussion_r4112288147) | Keep delivery troubleshooting open until the send result is checked | Pending |
 | [#14](https://github.com/christcr2012/appliance-desk/pull/14#discussion_r4113000933) | Add the required cross-customer isolation tests | Verified existing two-customer real-Postgres portal/maintenance/invoice isolation; #120 CI 36858585089; resolved |
 | [#14](https://github.com/christcr2012/appliance-desk/pull/14#discussion_r4113000937) | Include the waiver in the monthly total | Verified/merged #125; CI 36870323155 (860 tests/138 browser checks), exact 16 blobs/Vercel; prepaid protected, waiver reconciled to later one-time contract; resolved |
-| [#14](https://github.com/christcr2012/appliance-desk/pull/14#discussion_r4113000939) | Restrict maintenance appliances to active agreements | Pending |
-| [#14](https://github.com/christcr2012/appliance-desk/pull/14#discussion_r4113000942) | Stop reporting an agreed deposit as paid | Pending |
+| [#14](https://github.com/christcr2012/appliance-desk/pull/14#discussion_r4113000939) | Restrict maintenance appliances to active agreements | Current shared ACTIVE/delivered filter inspected; eight real-Postgres eligibility cases added, full CI/exact-head verification pending; thread remains open |
+| [#14](https://github.com/christcr2012/appliance-desk/pull/14#discussion_r4113000942) | Stop reporting an agreed deposit as paid | Current rentals page labels Deposit required; three actual-page presentation regressions pass locally; full CI/exact-head verification pending; thread remains open |
 | [#28](https://github.com/christcr2012/appliance-desk/pull/28#discussion_r4114120283) | Add an automated regression test for the generated title | Pending |
 | [#29](https://github.com/christcr2012/appliance-desk/pull/29#discussion_r4116481229) | Correct the live lead-recipient state | Pending |
 | [#29](https://github.com/christcr2012/appliance-desk/pull/29#discussion_r4116481236) | Keep the Resend domain marked as pending | Pending |
@@ -197,3 +197,12 @@ Security audit webhook concurrency/partial-failure P0 remains first code priorit
 Owner follow-up adds B34–B36: customer renewal, early termination fee workflow and
 optional auto-renewal. These are scope/acceptance additions, not shipped features
 or approved fee amounts/live collection. Existing signed/payment history preserved.
+
+Portal review follow-on: #14's equipment and deposit assertions are already corrected
+in current production code. Verify them with owned disposable-Postgres fixtures for
+DRAFT/AWAITING_SIGNATURE/ENDED/CANCELLED, ACTIVE-but-RESERVED/inspection and eligible
+RENTED/pickup cases; actual server rejection leaves no request. Actual rentals-page
+render checks deposit-required copy across draft/signature/active terms. No new
+production code or paid-state inference. Both threads stay open until full gates.
+Preceding/latest #128 review submissions/threads/comments checked: no code findings;
+quota notice 5934224054, owner waiver applies. #127 renewal audit retains 36 outcomes.

@@ -26,6 +26,25 @@ This note is intentionally written so a coding agent creating the next PR notice
 See `docs/AI-PR-READ-FIRST.md` for the full audit and the categorized fix-now / fix-soon / monitor list.
 
 
+## 2026-10-01 — Historical portal verification follow-on
+
+Unfinished work retained across interruptions: all unresolved historical reviews,
+security/billing audit and approved overhaul remain ahead of new features. Business
+scope now includes B01–B36 (original 33 plus renewal/termination/auto-renewal), PR #127
+head 56038e1b13077d1deb19fc00f50131a395be4fd1. Webhook repair #128 head
+a7f3a440b1043bb65ebd15952496f0894a884e34 has seven new real DB regressions;
+CI 36881617240/preview/exact-head verification pending. Both PRs remain unmerged
+at this submission; do not report their checks or audit outcomes as complete.
+
+#14 equipment/deposit findings are already corrected in current production code.
+Follow-on adds eight owned real-Postgres eligibility/submission cases and three
+actual rentals-page deposit-required rendering cases; no production changes. Local
+three rendering cases pass and eight guarded DB cases skip; type-check passes.
+Full CI/exact-head/preview pending. Threads remain open; counts still 44 verified
+resolutions/50 historical open. Email is isolated in the new DB suite; no real
+notifications/hosted fixtures. O02/O13/O14/O32 and live/spending/destructive gates
+preserved. Review #128 quota unavailable and waived, no blocking findings seen.
+
 ## 2026-10-01 — Webhook atomicity repair in progress
 
 Expanded business/renewal planning is PR #127, head 56038e1b13077d1deb19fc00f50131a395be4fd1.
