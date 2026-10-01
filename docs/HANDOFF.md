@@ -1,3 +1,17 @@
+## 2026-10-01 — Review and CI follow-up
+
+PR #117 head 2ebdddc passed full CI (run 36852649575) and Vercel deployment.
+Its exact-head review found one further valid defect: malformed legacy email
+could bypass the former signup validation. The shared conversion eligibility
+guard now validates the trimmed email before any transactional claim or account
+write; regression cases cover whitespace, malformed and multiple addresses.
+New-head full CI, review and preview remain required; no merge or resolution yet.
+
+PR #118 head 77a6d3 passed migration/upgrade, all unit/database tests, types,
+lint and build, and Vercel deployment. Browser CI failed (run 36852839051);
+its failure is being repaired. Purchasing completion remains unverified.
+O02 and O32 gates and activation/spending/destructive approvals remain intact.
+
 ### PR #117 exact-head review follow-up
 
 Review of 5ba88ef found two valid issues: direct transactional account creation
