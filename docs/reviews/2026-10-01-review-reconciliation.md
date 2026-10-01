@@ -30,9 +30,9 @@ sequencing remain incomplete. No live activation, spending or customer-data clea
 | [#28](https://github.com/christcr2012/appliance-desk/pull/28#discussion_r4114120283) | Add an automated regression test for the generated title | Actual generator/settings-name regression plus real home default/child composed browser titles added; full CI/exact-head pending |
 | [#29](https://github.com/christcr2012/appliance-desk/pull/29#discussion_r4116481229) | Correct the live lead-recipient state | Pending |
 | [#29](https://github.com/christcr2012/appliance-desk/pull/29#discussion_r4116481236) | Keep the Resend domain marked as pending | Pending |
-| [#30](https://github.com/christcr2012/appliance-desk/pull/30#discussion_r4116857380) | Add automated coverage for the HSTS response | Pending |
-| [#30](https://github.com/christcr2012/appliance-desk/pull/30#discussion_r4116857382) | Review the non-MySQL advisory separately | Pending |
-| [#30](https://github.com/christcr2012/appliance-desk/pull/30#discussion_r4116857387) | Record this security pass in the handoff | Pending |
+| [#30](https://github.com/christcr2012/appliance-desk/pull/30#discussion_r4116857380) | Add automated coverage for the HSTS response | Real built-server page/asset/redirect/API response regressions added; full CI/exact-head/preview pending |
+| [#30](https://github.com/christcr2012/appliance-desk/pull/30#discussion_r4116857382) | Review the non-MySQL advisory separately | PostgreSQL-only dismissal corrected; independent @prisma/config path recognized, existing patched overrides/lock and fresh zero-vulnerability npm audit verified; PR full gates pending |
+| [#30](https://github.com/christcr2012/appliance-desk/pull/30#discussion_r4116857387) | Record this security pass in the handoff | Current HSTS/dependency scope and verification limits recorded in HANDOFF/DECISIONS; full gates pending |
 | [#31](https://github.com/christcr2012/appliance-desk/pull/31#discussion_r4117061551) | Update the handoff when unblocking Stripe work | Pending |
 | [#32](https://github.com/christcr2012/appliance-desk/pull/32#discussion_r4117202521) | Wait for ACH settlement before recording payment | Verified existing pending/settled/failed ACH real-Postgres regressions; #120 CI 36858585089; resolved |
 | [#32](https://github.com/christcr2012/appliance-desk/pull/32#discussion_r4117202524) | Reconcile a failed invoice when Stripe later collects it | Verified existing failed-to-paid same-invoice real-Postgres recovery; #120 CI 36858585089; resolved |
@@ -239,3 +239,12 @@ A broad local run exposed an existing pickup retry test race (alert before pendi
 settles); it now waits for the retry button to be enabled without weakening behavior.
 No live setup/message/schema changes. Preceding/latest #130 reviews/threads/comments
 checked: no findings, quota notice 5934632895; owner waiver applies.
+
+Historical #30 follow-on: response-level production HSTS tests cover page/static/
+protected redirect/rejected API paths without changing configuration. Deepmerge-ts
+is independently reachable through Prisma configuration; PostgreSQL-only rationale
+was inadequate. Later patched overrides already replaced vulnerable resolutions;
+current lock deepmerge-ts 8.0.2/mysql2 3.24.4 and fresh successful npm audit reports
+zero known vulnerabilities. HANDOFF and DECISIONS record scope/limits. Three threads
+remain open until full CI/preview/exact-head verification. Latest/predecessor #131
+reviews/threads/comments checked, quota notice 5935092513 and no code findings.
