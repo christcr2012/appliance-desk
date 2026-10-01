@@ -65,16 +65,16 @@ describe("findConflictingJobIds", () => {
 
 describe("dayKey", () => {
   it("formats a date as YYYY-MM-DD in local time", () => {
-    expect(dayKey(new Date(2026, 8, 5))).toBe("2026-09-05");
+    expect(dayKey(new Date("2026-09-06T01:00:00Z"))).toBe("2026-09-05");
   });
 });
 
 describe("weekDays", () => {
   it("returns 7 consecutive days starting on Sunday", () => {
     // 2026-09-28 is a Monday.
-    const days = weekDays(new Date(2026, 8, 28));
+    const days = weekDays(new Date("2026-09-28T18:00:00Z"));
     expect(days).toHaveLength(7);
-    expect(days[0].getDay()).toBe(0);
+    expect(days[0].toISOString()).toBe("2026-09-27T06:00:00.000Z");
     expect(dayKey(days[0])).toBe("2026-09-27");
     expect(dayKey(days[6])).toBe("2026-10-03");
   });
@@ -158,19 +158,20 @@ beforeEach(() => {
 
 describe("getDispatchBoardJobs", () => {
   it("queries scheduled (in-range, active-status) jobs and unscheduled active jobs separately", async () => {
-    jobFindMany.mockResolvedValueOnce([{ id: "job-1" }]).mockResolvedValueOnce([{ id: "job-2" }]);
+    const visit = { id: "job-1", scheduledAt: new Date("2026-09-28T18:00:00Z") };
+    jobFindMany.mockResolvedValueOnce([visit]).mockResolvedValueOnce([{ id: "job-2" }]);
     const { getDispatchBoardJobs } = await import("@/domains/jobs");
 
     const start = new Date("2026-09-28T00:00:00");
     const end = new Date("2026-09-29T00:00:00");
     const result = await getDispatchBoardJobs(start, end);
 
-    expect(result).toEqual({ scheduled: [{ id: "job-1" }], unscheduled: [{ id: "job-2" }] });
+    expect(result).toEqual({ scheduled: [visit], unscheduled: [{ id: "job-2" }], conflictCandidates: [visit] });
 
     const [scheduledArgs] = jobFindMany.mock.calls[0];
     expect(scheduledArgs.where).toEqual({
       status: { in: ["SCHEDULED", "IN_PROGRESS"] },
-      scheduledAt: { gte: start, lt: end },
+      scheduledAt: { gte: new Date(start.getTime() - 120 * 60 * 1000), lt: new Date(end.getTime() + 120 * 60 * 1000) },
     });
 
     const [unscheduledArgs] = jobFindMany.mock.calls[1];
@@ -202,4 +203,3 @@ describe("getJobChecklist / updateJobChecklist", () => {
     });
   });
 });
-

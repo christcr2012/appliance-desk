@@ -45,6 +45,20 @@ export function businessDayBounds(now = new Date()) {
   };
 }
 
+/** Validate a calendar date, then resolve its Colorado midnight. */
+export function businessDateFromKey(key: string): Date | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return null;
+  const date = new Date(`${key}T00:00:00Z`);
+  if (!Number.isFinite(date.getTime()) || date.toISOString().slice(0, 10) !== key) return null;
+  return midnight(key);
+}
+
+export function addBusinessDays(date: Date, days: number): Date {
+  const calendar = new Date(`${businessDateKey(date)}T00:00:00Z`);
+  calendar.setUTCDate(calendar.getUTCDate() + days);
+  return midnight(calendar.toISOString().slice(0, 10));
+}
+
 export function formatBusinessDate(date: Date) {
   return new Intl.DateTimeFormat("en-US", {
     timeZone: BUSINESS_TIME_ZONE,

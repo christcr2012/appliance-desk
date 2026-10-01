@@ -53,6 +53,7 @@ beforeEach(() => {
   mocks.jobs.mockResolvedValue([job]);
   mocks.board.mockResolvedValue({
     scheduled: [job],
+    conflictCandidates: [job],
     unscheduled: [{ ...job, id: "job-2", scheduledAt: null }],
   });
   mocks.maintenance.mockResolvedValue({

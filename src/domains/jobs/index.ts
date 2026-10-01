@@ -4,6 +4,8 @@ import type { JobStatus, JobType } from "@prisma/client";
 import { applianceStatusOnJobCompleted } from "@/domains/inventory/lifecycle";
 import { startRecurringBillingForAgreement } from "@/domains/billing/checkout";
 import { parseChecklist, type ChecklistItem } from "./checklist";
+import { businessDayBounds } from "@/lib/business-date";
+import { ASSUMED_JOB_DURATION_MINUTES } from "./dispatch";
 
 export { sendJobDayOfReminders } from "./day-of-reminders";
 
@@ -85,9 +87,7 @@ export async function getJobsPage(
  * (that's what /desk/dispatch is for on a desktop). */
 export async function getDriverJobsForToday() {
   await requireRole("OWNER", "ADMIN", "STAFF");
-  const now = new Date();
-  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const startOfTomorrow = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000);
+  const { start: startOfDay, end: startOfTomorrow } = businessDayBounds();
 
   return prisma.job.findMany({
     where: {
@@ -421,14 +421,15 @@ export async function setJobRepairCosts(
  */
 export async function getDispatchBoardJobs(rangeStart: Date, rangeEnd: Date) {
   await requireRole("OWNER", "ADMIN", "STAFF");
-  const [scheduled, unscheduled] = await Promise.all([
+  const padding = ASSUMED_JOB_DURATION_MINUTES * 60 * 1000;
+  const [conflictCandidates, unscheduled] = await Promise.all([
     prisma.job.findMany({
       where: {
         status: { in: ["SCHEDULED", "IN_PROGRESS"] },
-        scheduledAt: { gte: rangeStart, lt: rangeEnd },
+        scheduledAt: { gte: new Date(rangeStart.getTime() - padding), lt: new Date(rangeEnd.getTime() + padding) },
       },
       select: JOB_OPERATIONAL_SELECT,
-      orderBy: [{ scheduledAt: "asc" }],
+      orderBy: [{ scheduledAt: "asc" }, { id: "asc" }],
     }),
     prisma.job.findMany({
       where: { status: { in: ["SCHEDULED", "IN_PROGRESS"] }, scheduledAt: null },
@@ -437,7 +438,8 @@ export async function getDispatchBoardJobs(rangeStart: Date, rangeEnd: Date) {
     }),
   ]);
 
-  return { scheduled, unscheduled };
+  const scheduled = conflictCandidates.filter(job => job.scheduledAt && job.scheduledAt >= rangeStart && job.scheduledAt < rangeEnd);
+  return { scheduled, unscheduled, conflictCandidates };
 }
 
 /** This job's checklist, parsed and defaulted — see
