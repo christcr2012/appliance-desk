@@ -111,10 +111,11 @@ test("property action preselects its own address and history note survives navig
   await expect(page.getByLabel("Service address")).toHaveValue(
     rentalTarget.searchParams.get("serviceAddressId")!,
   );
-  await page.goto(`${url}?tab=activity`);
+  await page.goto(`${url}?tab=activity&filter=activity`);
   const note = `CI customer history ${Date.now()}`;
   await page.getByLabel("Add a note").fill(note);
   await page.getByRole("button", { name: "Add note" }).click();
+  await expect(page).toHaveURL(/\?tab=activity$/);
   await expect(page.getByText(note, { exact: true })).toBeVisible();
   await page
     .getByRole("navigation", { name: "Customer record sections" })
@@ -134,6 +135,12 @@ test("lead search/filter URL survives browser back and links its follow-up", asy
   await page.getByLabel("Phone", { exact: true }).fill("9705550100");
   await page.getByRole("button", { name: "Add lead", exact: true }).click();
   await expect(page).toHaveURL(/\/desk\/leads\/[^/]+$/);
+  await expect(page.getByRole("button", { name: "Convert to customer" })).toBeDisabled();
+  await page.getByLabel("Email for customer account").fill(`ci-${Date.now()}@example.test`);
+  await page.getByRole("button", { name: "Save email", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Convert to customer" })).toBeEnabled();
+  await page.reload();
+  await expect(page.getByRole("button", { name: "Convert to customer" })).toBeEnabled();
   await page.goto(
     `/desk/leads?view=no-next-task&q=${encodeURIComponent(name)}`,
   );

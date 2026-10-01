@@ -1,5 +1,6 @@
 "use server";
 
+import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireRole } from "@/lib/session";
@@ -162,5 +163,27 @@ export async function addLeadNoteAction(
   }
 
   revalidatePath(`/desk/leads/${leadId}`);
+  return { status: "success" };
+}
+
+/** Supply the missing account email without overwriting existing identity. */
+export async function addLeadEmailAction(leadId: string, rawEmail: string): Promise<LeadActionState> {
+  const session = await requireRole("OWNER", "ADMIN");
+  const parsed = z.string().trim().email("Enter a valid email address.").max(254).safeParse(rawEmail);
+  if (!parsed.success) return { status: "error", message: "Enter a valid email address." };
+  try {
+    await prisma.$transaction(async tx => {
+      const changed = await tx.lead.updateMany({
+        where: { id: leadId, status: { not: "CONVERTED" }, OR: [{ email: null }, { email: "" }] },
+        data: { email: parsed.data.toLowerCase() },
+      });
+      if (changed.count !== 1) throw new Error("This lead changed. Refresh before adding an email.");
+      await tx.auditLog.create({ data: { userId: session.user.id, action: "lead.email", entityType: "Lead", entityId: leadId, newValue: { email: parsed.data.toLowerCase() } } });
+    });
+  } catch (error) {
+    return { status: "error", message: error instanceof Error ? error.message : "Couldn't save the email." };
+  }
+  revalidatePath(`/desk/leads/${leadId}`);
+  revalidatePath("/desk/leads");
   return { status: "success" };
 }

@@ -30,6 +30,7 @@ export function AddNoteForm({ customerId }: { customerId: string }) {
           }
           setError(null);
           formRef.current?.reset();
+          router.replace(`/desk/customers/${customerId}?tab=activity`);
           router.refresh();
         });
       }}

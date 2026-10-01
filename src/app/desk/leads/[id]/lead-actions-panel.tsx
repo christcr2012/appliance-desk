@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
+  addLeadEmailAction,
   updateLeadStatusAction,
   convertLeadAction,
   type LeadActionState,
@@ -38,6 +39,7 @@ export function LeadActionsPanel({
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [email, setEmail] = useState("");
   const [showLostForm, setShowLostForm] = useState(false);
   const [lostReason, setLostReason] = useState("");
   const [lostReasonOther, setLostReasonOther] = useState("");
@@ -126,6 +128,19 @@ export function LeadActionsPanel({
           Convert to customer
         </button>
       </div>
+
+      {!hasEmail && (
+        <form onSubmit={e => {
+          e.preventDefault();
+          startTransition(async () => handleResult(await addLeadEmailAction(leadId, email)));
+        }} className="space-y-2">
+          <label htmlFor={`lead-email-${leadId}`} className="block text-sm font-medium">Email for customer account</label>
+          <input id={`lead-email-${leadId}`} type="email" required maxLength={254}
+            value={email} onChange={e => setEmail(e.target.value)}
+            className="rounded-md border border-gray-300 px-3 py-2" />
+          <button type="submit" disabled={isPending} className="ml-2 min-h-11 rounded-md border border-gray-300 px-3 py-2 disabled:opacity-50">Save email</button>
+        </form>
+      )}
 
       {showLostForm && (
         <div className="rounded-md border border-gray-200 p-3">

@@ -7,6 +7,15 @@ switching. Continue with the currently selected model, single agent, coherent
 PRs, owner merges after passing checks. Existing acceptance criteria and
 separate approvals for activation, spending and destructive changes remain.
 
+## Current priority — 2026-10-01
+
+#105/#116 are merged into main d7c1034. All 108 PRs/36 submitted reviews were
+inventoried; 91 unresolved historical threads are tracked in
+`docs/reviews/2026-10-01-review-reconciliation.md`. Reconcile them against current
+code and repair valid defects with behavior evidence before new backlog work.
+The first CRM repair is in preparation; full gates pending, no threads resolved.
+Preserve O02 storage/isolation and O32 sequencing; no model changes.
+
 ## Execution
 
 1. CRM: O07/O08 and O11 property prefill. Reuse existing actions; bounded

@@ -53,7 +53,7 @@ export function scoreLead(input: LeadScoringInput): LeadScoringResult {
     reasons.push("+ business account");
   }
 
-  if (input.isPropertyManager) {
+  if (input.isPropertyManager && quantity > 1) {
     score += 25;
     reasons.push("+ property manager / landlord / apartment operator");
   }

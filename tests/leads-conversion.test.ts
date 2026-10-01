@@ -20,10 +20,13 @@ const leadUpdate = vi.fn();
 const leadClaim = vi.fn();
 const auditLogCreate = vi.fn();
 const signUpEmail = vi.fn();
+const userCreate = vi.fn();
+const hashPassword = vi.fn();
 const requestPasswordReset = vi.fn();
 
 function makeTx() {
   return {
+    user: { findUnique: userFindUnique, create: userCreate },
     customer: { findUnique: customerFindUnique, create: customerCreate },
     serviceAddress: { create: serviceAddressCreate },
     lead: { update: leadUpdate, updateMany: leadClaim },
@@ -46,6 +49,7 @@ vi.mock("@/lib/prisma", () => ({
 
 vi.mock("@/lib/auth", () => ({
   auth: {
+    $context: Promise.resolve({ password: { hash: (...args: unknown[]) => hashPassword(...args) } }),
     api: {
       signUpEmail: (...args: unknown[]) => signUpEmail(...args),
       requestPasswordReset: (...args: unknown[]) => requestPasswordReset(...args),
@@ -88,6 +92,8 @@ describe("convertLeadToCustomer — customer activation, no relayed passwords", 
     leadUpdate.mockReset().mockResolvedValue({});
     auditLogCreate.mockReset().mockResolvedValue({});
     signUpEmail.mockReset().mockResolvedValue({ user: { id: "user-1" } });
+    userCreate.mockReset().mockResolvedValue({ id: "user-1", role: "CUSTOMER" });
+    hashPassword.mockReset().mockResolvedValue("native-hash");
     requestPasswordReset.mockReset().mockResolvedValue({ status: true });
   });
 
@@ -97,11 +103,15 @@ describe("convertLeadToCustomer — customer activation, no relayed passwords", 
 
     const result = await convertLeadToCustomer("owner-1", "lead-1");
 
-    expect(signUpEmail).toHaveBeenCalledTimes(1);
-    const signUpArgs = signUpEmail.mock.calls[0][0];
-    expect(signUpArgs.body.email).toBe("customer@example.com");
-    expect(typeof signUpArgs.body.password).toBe("string");
-    expect(signUpArgs.body.password.length).toBeGreaterThan(20);
+    expect(signUpEmail).not.toHaveBeenCalled();
+    expect(hashPassword).toHaveBeenCalledTimes(1);
+    expect(hashPassword.mock.calls[0][0].length).toBeGreaterThan(20);
+    expect(userCreate).toHaveBeenCalledWith({ data: expect.objectContaining({
+      email: "customer@example.com", role: "CUSTOMER", emailVerified: true,
+      accounts: { create: expect.objectContaining({ providerId: "credential", password: "native-hash" }) },
+    }) });
+    expect(leadClaim.mock.invocationCallOrder[0]).toBeLessThan(userCreate.mock.invocationCallOrder[0]);
+    expect(auditLogCreate.mock.invocationCallOrder[0]).toBeLessThan(requestPasswordReset.mock.invocationCallOrder[0]);
 
     // The activation email is sent via Better Auth's own reset-password
     // request — not a bespoke token system.
@@ -112,6 +122,28 @@ describe("convertLeadToCustomer — customer activation, no relayed passwords", 
     expect(result.isNewAccount).toBe(true);
     expect(result.activationEmailSent).toBe(true);
     expect(result).not.toHaveProperty("tempPassword");
+  });
+
+  it("normalizes legacy mixed-case lead email before lookup, creation and activation", async () => {
+    leadFindUniqueOrThrow.mockResolvedValue({ ...LEAD, email: " Customer@Example.com " });
+    userFindUnique.mockResolvedValue(null);
+    const { convertLeadToCustomer } = await import("@/domains/leads");
+    await convertLeadToCustomer("owner-1", "lead-1");
+    expect(userFindUnique).toHaveBeenCalledWith({ where: { email: "customer@example.com" } });
+    expect(userCreate).toHaveBeenCalledWith({ data: expect.objectContaining({ email: "customer@example.com" }) });
+    expect(requestPasswordReset).toHaveBeenCalledWith({ body: { email: "customer@example.com", redirectTo: "/reset-password" } });
+  });
+
+  it.each(["   ", "not-an-email", "customer@", "a@example.com\nother@example.com"])("rejects malformed legacy email %j before any conversion writes", async (email) => {
+    leadFindUniqueOrThrow.mockResolvedValue({ ...LEAD, email });
+    const { convertLeadToCustomer } = await import("@/domains/leads");
+    await expect(convertLeadToCustomer("owner-1", "lead-1")).rejects.toThrow(/valid email/);
+    expect(leadClaim).not.toHaveBeenCalled();
+    expect(userCreate).not.toHaveBeenCalled();
+    expect(hashPassword).not.toHaveBeenCalled();
+    expect(customerCreate).not.toHaveBeenCalled();
+    expect(auditLogCreate).not.toHaveBeenCalled();
+    expect(requestPasswordReset).not.toHaveBeenCalled();
   });
 
   it("reuses an existing customer account and sends no activation email — nothing new to send", async () => {
@@ -148,10 +180,13 @@ describe("convertLeadToCustomer — customer activation, no relayed passwords", 
     expect(signUpEmail).not.toHaveBeenCalled();
   });
   it("rejects a competing conversion before customer, address and audit writes", async () => {
-    userFindUnique.mockResolvedValue({ id: "user-1", role: "CUSTOMER" });
+    userFindUnique.mockResolvedValue(null);
     leadClaim.mockResolvedValue({ count: 0 });
     const { convertLeadToCustomer } = await import("@/domains/leads");
     await expect(convertLeadToCustomer("owner-1", "lead-1")).rejects.toThrow(/changed while converting/);
+    expect(userCreate).not.toHaveBeenCalled();
+    expect(hashPassword).not.toHaveBeenCalled();
+    expect(requestPasswordReset).not.toHaveBeenCalled();
     expect(customerCreate).not.toHaveBeenCalled();
     expect(serviceAddressCreate).not.toHaveBeenCalled();
     expect(auditLogCreate).not.toHaveBeenCalled();
@@ -164,6 +199,15 @@ describe("convertLeadToCustomer — customer activation, no relayed passwords", 
     expect(leadClaim.mock.invocationCallOrder[0]).toBeLessThan(customerFindUnique.mock.invocationCallOrder[0]);
   });
 
+});
+
+it("does not invite an account when the conversion audit fails", async () => {
+  userFindUnique.mockResolvedValue(null);
+  auditLogCreate.mockRejectedValueOnce(new Error("audit failed"));
+  const { convertLeadToCustomer } = await import("@/domains/leads");
+  requestPasswordReset.mockClear();
+  await expect(convertLeadToCustomer("owner-1", "lead-1")).rejects.toThrow("audit failed");
+  expect(requestPasswordReset).not.toHaveBeenCalled();
 });
 
 describe("sendCustomerActivationEmail", () => {

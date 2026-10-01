@@ -104,7 +104,9 @@ Default ranking, **lowest to highest** value:
   - Each additional unit beyond the first (bulk): **+5 per unit**
     (e.g. 4 units = +15).
   - Business account: **+10**.
-  - Property manager / landlord / apartment operator: **+25**.
+  - Property manager / landlord / apartment operator needing multiple units
+    (`quantity > 1`): **+25**. One unit receives the ordinary term/business
+    points, without the multi-unit property-manager premium.
   - A lead is flagged **high-value** once its total score reaches
     **30**.
 - The lead form captures: individual vs. business, landlord/property-
@@ -159,13 +161,14 @@ were built:
   "how did you hear about us," but nothing ever added the answers up.
   `/desk/reports` now has a breakdown of leads and their conversion rate
   by source.
-- **A personal follow-up list.** `/desk/tasks` — a simple due-date-plus-
+- **A shared team follow-up list.** `/desk/tasks` — a simple due-date-plus-
   note reminder list, separate from the system's own automatic alerts
   (churn risk, overdue billing, maintenance due, all still on
   `/desk/growth`/`/desk/today`). A task can optionally be tied to a
   lead, customer, or job by adding it right from that record's own
-  page — open with STAFF logins too, since this is personal
-  organization, not financial data.
+  page — open with STAFF logins too. O09 explicitly preserves team-shared
+  visibility; tasks are not private to their creator. Assignment/Mine views
+  remain gated on O02 and the O09 data contract.
 - **A quick "what did I do today/this week" view.** `/desk/activity`
   now has Today/This week/All time tabs and a small category breakdown
   (leads, estimates, jobs, billing, ...) for whichever range is picked

@@ -26,7 +26,7 @@ export async function getCustomerIdentity(id: string) {
     },
   });
 }
-export async function getCustomerOverview(customerId: string) {
+export async function getCustomerOverview(customerId: string, now = new Date()) {
   await requireRole("OWNER", "ADMIN");
   const [activeRentals, openService, propertyCount, nextJob, tasks] =
     await Promise.all([
@@ -44,7 +44,7 @@ export async function getCustomerOverview(customerId: string) {
         where: {
           customerId,
           status: { in: ["SCHEDULED", "IN_PROGRESS"] },
-          scheduledAt: { not: null },
+          scheduledAt: { gte: now },
         },
         select: {
           id: true,

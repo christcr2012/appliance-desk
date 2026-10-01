@@ -1,4 +1,5 @@
-import { randomBytes } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
+import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { sendEmail } from "@/lib/email";
@@ -277,7 +278,7 @@ export async function updateLeadStatus(
     where: { id: leadId },
     data: {
       status,
-      lostReason: status === "LOST" ? lostReason!.trim() : before.lostReason,
+      lostReason: status === "LOST" ? lostReason!.trim() : null,
     },
   });
 
@@ -339,11 +340,11 @@ export function canConvertLead(
       reason: "This lead has already been converted to a customer.",
     };
   }
-  if (!lead.email) {
+  if (!z.string().trim().email().safeParse(lead.email).success) {
     return {
       ok: false,
       reason:
-        "Add an email address for this lead before converting — a customer account needs one to sign in.",
+        "Add a valid email address for this lead before converting — a customer account needs one to sign in.",
     };
   }
   return { ok: true };
@@ -417,38 +418,9 @@ export async function convertLeadToCustomer(userId: string | null, leadId: strin
   if (!check.ok) {
     throw new Error(check.reason);
   }
-  const email = lead.email as string; // canConvertLead guarantees this
+  const email = (lead.email as string).trim().toLowerCase(); // Match Better Auth reset/sign-in normalization.
 
-  let account = await prisma.user.findUnique({ where: { email } });
-  let activationEmailSent = false;
-  const isNewAccount = !account;
-
-  if (
-    account &&
-    (account.role === "OWNER" || account.role === "ADMIN" || account.role === "STAFF")
-  ) {
-    throw new Error(
-      `${email} belongs to a staff account, not a customer — use a different email for this lead first.`,
-    );
-  }
-
-  if (!account) {
-    const signUp = await auth.api.signUpEmail({
-      body: { email, password: generateUnusedAccountPassword(), name: lead.contactName },
-    });
-    // emailVerified is set true immediately (Task #70, docs/DECISIONS.md
-    // 2026-09-28) — the activation email below already proves the
-    // customer controls this inbox (they can't set a password without
-    // clicking its link), so Better Auth's own "verify your email" step
-    // would be a redundant second confirmation of the same fact, not a
-    // real additional safeguard here (there's no self-serve signup path
-    // in this app for requireEmailVerification to actually guard).
-    account = await prisma.user.update({
-      where: { id: signUp.user.id },
-      data: { role: "CUSTOMER", emailVerified: true },
-    });
-    activationEmailSent = await sendCustomerActivationEmail(email);
-  }
+  let isNewAccount = false;
 
   const customer = await prisma.$transaction(async (tx) => {
     // Claim the unchanged stage before creating customer/address records.
@@ -461,6 +433,25 @@ export async function convertLeadToCustomer(userId: string | null, leadId: strin
     });
     if (claim.count !== 1) {
       throw new Error("This lead changed while converting. Refresh its record before trying again.");
+    }
+    // Account and credential creation belongs to the same transaction as
+    // the lead claim/customer/address/audit. A failed or competing conversion
+    // cannot leave an orphan login or send an invitation for an uncommitted customer.
+    let account = await tx.user.findUnique({ where: { email } });
+    if (account && account.role !== "CUSTOMER") {
+      throw new Error(`${email} belongs to a staff account, not a customer — use a different email for this lead first.`);
+    }
+    if (!account) {
+      const id = randomUUID();
+      const context = await auth.$context;
+      const password = await context.password.hash(generateUnusedAccountPassword());
+      account = await tx.user.create({
+        data: {
+          id, email, name: lead.contactName, role: "CUSTOMER", emailVerified: true,
+          accounts: { create: { providerId: "credential", accountId: id, password } },
+        },
+      });
+      isNewAccount = true;
     }
     let customerRow = await tx.customer.findUnique({
       where: { userId: account!.id },
@@ -513,6 +504,7 @@ export async function convertLeadToCustomer(userId: string | null, leadId: strin
     return customerRow;
   });
 
+  const activationEmailSent = isNewAccount ? await sendCustomerActivationEmail(email) : false;
   return { customer, isNewAccount, activationEmailSent };
 }
 

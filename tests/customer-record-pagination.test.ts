@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 const db = vi.hoisted(() => ({
   customer: { findUnique: vi.fn() },
+  serviceAddress: { count: vi.fn() },
   rentalAgreement: { count: vi.fn(), findMany: vi.fn() },
   job: { count: vi.fn(), findMany: vi.fn(), findFirst: vi.fn() },
   maintenanceRequest: { count: vi.fn(), findMany: vi.fn() },
@@ -12,6 +13,7 @@ const guard = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/prisma", () => ({ prisma: db }));
 vi.mock("@/lib/session", () => ({ requireRole: guard }));
 import {
+  getCustomerOverview,
   customerTab,
   getCustomerRentals,
   getCustomerService,
@@ -191,4 +193,13 @@ describe("merged customer history", () => {
     expect(db.auditLog.findMany).not.toHaveBeenCalled();
     expect(db.job.findMany).not.toHaveBeenCalled();
   });
+});
+
+it("next visit excludes expired appointments and uses a stable future order", async () => {
+  const now = new Date("2026-10-01T18:00:00Z");
+  await getCustomerOverview("c1", now);
+  expect(db.job.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+    where: { customerId: "c1", status: { in: ["SCHEDULED", "IN_PROGRESS"] }, scheduledAt: { gte: now } },
+    orderBy: [{ scheduledAt: "asc" }, { id: "asc" }],
+  }));
 });
