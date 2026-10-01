@@ -18,11 +18,12 @@ code and repair valid defects with behavior evidence before new backlog work.
 CRM #117, purchasing #118, email #119, exports #120, onboarding #121,
 operational results #122 and Colorado calendar #123 merged after exact-head
 inspection, full CI and ready Vercel. #123 CI 36864737390: 842 tests/136 browser
-checks. Automated review quota waived by Chris October 1. Thirty-seven threads
-resolved (thirty-four historical plus three #117 findings); fifty-seven historical
+checks. Automated review quota waived by Chris October 1. Forty-one threads
+resolved (thirty-eight historical plus three #117 findings); fifty-three historical
 remain open. Staff job scope, replacement-only SWAP prompt and shared-route
 completion follow-up pass 807 local tests; full CI/preview and exact-head pending.
-Four related findings remain open. Prepaid rent protection and one-time waiver
+Four staff findings resolved after #124 full CI 36867157292 (854 tests/137
+browser checks), exact-head inspection and ready Vercel. Prepaid rent protection and one-time waiver
 presentation follow-on passes 812 local tests; three findings await full CI/preview
 and exact-head verification. Billing correctness precedes new backlog work.
 No O13/O14 completion claim; assignment/schema/scheduling-write work retains gates.
