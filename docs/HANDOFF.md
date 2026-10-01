@@ -26,6 +26,25 @@ This note is intentionally written so a coding agent creating the next PR notice
 See `docs/AI-PR-READ-FIRST.md` for the full audit and the categorized fix-now / fix-soon / monitor list.
 
 
+## 2026-10-01 — Webhook atomicity repair in progress
+
+Expanded business/renewal planning is PR #127, head 56038e1b13077d1deb19fc00f50131a395be4fd1.
+All seven docs blobs match local 46622ab; updated exact-head review records B01–B36,
+no code/live/fee-policy activation. Full CI 36880648787 and ready preview gates apply;
+not merged/complete at this checkpoint. Keep unfinished historical repairs and
+approved overhaul work in scope across owner interruptions.
+
+Webhook P0 follow-on threads one explicit transaction client through every handler,
+serializes competing events with a transaction-scoped database lock and commits the
+final event receipt together with all local effects. Different event IDs cannot
+create duplicate signing payments or legacy invoice records; cumulative refund
+updates serialize. Added seven disposable-Postgres behavior regressions, including
+an owned final-write failure trigger proving rollback/retry. No schema/provider
+charge/activation change. Local 812 tests pass; 23 guarded cases skipped, four
+existing DB suites excluded; types/lint pass with two existing warnings. Real new
+DB regressions/full CI and exact-head preview remain pending; no P0 completion claim.
+See `docs/reviews/2026-10-01-webhook-atomicity.md` for limitations and acceptance.
+
 ## 2026-10-01 — Current review repair and expanded scope checkpoint
 
 #117–#126 work PRs merged (including reviewed docs #126); main
