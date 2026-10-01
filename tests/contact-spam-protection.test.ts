@@ -8,6 +8,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const createLead = vi.fn();
 const isRateLimited = vi.fn();
+vi.mock("@/domains/pricing", () => ({ getPublishedApplianceTypes: async () => [{ id: "type-1" }] }));
 
 vi.mock("@/domains/leads", () => ({
   createLead: (...args: unknown[]) => createLead(...args),

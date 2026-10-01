@@ -15,12 +15,12 @@ separate approvals for activation, spending and destructive changes remain.
 inventoried; 91 unresolved historical threads are tracked in
 `docs/reviews/2026-10-01-review-reconciliation.md`. Reconcile them against current
 code and repair valid defects with behavior evidence before new backlog work.
-CRM #117 and purchasing #118 merged after full CI/Vercel and exact-head
-inspection; Chris waived unavailable automated review on 2026-10-01.
-Email outcome repairs #119 and business export repairs #120 are published;
-the inherited setup browser locator is corrected and full reruns are required.
-Record the owner waiver and exact-head inspection. Full CI/preview remain required.
-Thirteen verified CRM/purchasing threads resolved; remaining findings stay open.
+CRM #117, purchasing #118, email outcome #119 and business export #120 merged
+with exact-head inspection, full CI and ready Vercel. Automated review quota waived
+by Chris October 1. Twenty-four threads resolved (twenty-one historical plus three
+new #117 findings); seventy historical findings remain open. Onboarding fixes for
+empty-catalog lead capture and rental address labels are implemented with behavior
+regressions; full CI/preview and exact-head inspection pending before merge/resolution.
 Preserve O02 storage/isolation and O32 sequencing; no model changes.
 
 ## Execution

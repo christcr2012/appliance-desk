@@ -114,7 +114,9 @@ Default ranking, **lowest to highest** value:
   address (and whether it's inside the service area), desired start
   date, name, phone (required), email (encouraged), best time to
   contact, how they heard about us, notes, and a required privacy/terms
-  consent checkbox.
+  consent checkbox. When no appliance types are published, visitors can still
+  submit a general enquiry with no appliance selection; name, phone and consent
+  remain required. When options exist, select at least one published type.
 - Chris is notified immediately by email of every new lead (SMS is a
   possible later addition). High-value leads are flagged as such.
 - **Or, Chris adds a lead directly** (`/desk/leads/new`, "+ Add a

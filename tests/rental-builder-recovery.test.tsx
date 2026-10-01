@@ -165,3 +165,15 @@ it("keeps an unsent activation warning with a recovery link after saving a new c
   expect(screen.getByLabelText("Term (months, optional)")).toBeInTheDocument();
   expect(m.customer).toHaveBeenCalledTimes(1);
 });
+
+it("names every address control and persists the entered service address", async () => {
+  m.customer.mockResolvedValue({ status: "success", customerId: "new-customer", isNewAccount: false, activationEmailSent: false, serviceAddresses: [{ id: "new-address", line1: "123 Main", city: "Greeley", state: "CO", zip: "80631" }] });
+  render(<RentalWizard customers={[]} availableAppliances={[]} />);
+  const fields = ["Street address", "Apartment / unit (optional)", "City", "State", "ZIP"];
+  expect(new Set(fields.map(label => screen.getByLabelText(label).id)).size).toBe(5);
+  for (const [label, value] of [["Street address", "123 Main"], ["Apartment / unit (optional)", "B"], ["City", "Greeley"], ["State", "CO"], ["ZIP", "80631"]]) fireEvent.change(screen.getByLabelText(label), { target: { value } });
+  fireEvent.submit(screen.getByRole("button", { name: "Next: term & fees" }).closest("form")!);
+  await waitFor(() => expect(m.customer).toHaveBeenCalledTimes(1));
+  expect(m.customer).toHaveBeenCalledWith(expect.objectContaining({ addresses: [{ line1: "123 Main", line2: "B", city: "Greeley", state: "CO", zip: "80631" }] }));
+  expect(await screen.findByLabelText("Term (months, optional)")).toBeInTheDocument();
+});

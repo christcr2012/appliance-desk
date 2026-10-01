@@ -4,7 +4,7 @@ import { cloneElement, isValidElement, useId, useState } from "react";
 import type { ReactElement } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { leadFormSchema, type LeadFormInput } from "@/domains/leads/schema";
+import { leadFormSchemaForCatalog, type LeadFormInput } from "@/domains/leads/schema";
 import { submitLead } from "./actions";
 
 type ApplianceTypeOption = {
@@ -36,7 +36,7 @@ export function ContactForm({
     watch,
     formState: { errors, isSubmitting },
   } = useForm<LeadFormInput>({
-    resolver: zodResolver(leadFormSchema),
+    resolver: zodResolver(leadFormSchemaForCatalog(applianceTypes.length > 0)),
     defaultValues: {
       accountType: "individual",
       isPropertyManager: false,
@@ -236,6 +236,9 @@ export function ContactForm({
           <span className="mb-2 block text-sm font-medium text-ink">
             Appliances you&apos;re interested in
           </span>
+          {applianceTypes.length === 0 && (
+            <p className="text-sm text-ink-soft">No appliance options are listed yet. Tell us what you need in the notes below.</p>
+          )}
           <div className="grid gap-2 sm:grid-cols-2">
             {applianceTypes.map((type) => (
               <label
