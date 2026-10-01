@@ -1,6 +1,7 @@
 import { requireRole } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { getBusinessSettings } from "@/domains/settings";
+import { parseChecklist } from "./checklist";
 
 // ---------------------------------------------------------------------------
 // A single, printable work order — the field-ready version of a Job,
@@ -72,9 +73,7 @@ export async function getWorkOrderDetail(jobId: string): Promise<WorkOrderDetail
 
   if (!job) return null;
 
-  const checklist = Array.isArray(job.checklist)
-    ? (job.checklist as { item: string; checked: boolean }[])
-    : [];
+  const checklist = parseChecklist(job.checklist, job.type);
 
   return {
     id: job.id,
