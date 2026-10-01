@@ -1,32 +1,36 @@
 ## 2026-10-01 — Current review repair checkpoint
 
-#117–#120 are merged to main 4151c998f01ea099b481ec74d23ad327dbee8672.
-Each exact head was inspected, passed full CI and had a ready Vercel preview.
-Expected-head merges used; stacked PRs retargeted to main and merge trees matched
-validated heads. CI runs: #117 36854516416, #118 36854626321,
-#119 36858433312, #120 36858585089. The inherited browser alert locator was fixed
-and full reruns passed; no failed PR merged. Automated review remains unavailable
-due quota, explicitly waived by Chris October 1. AGENTS.md now requires previous
-PR/dependency/all-state review continuity and permits safe agent merges.
+#117–#121 merged to main b5a4319a35c8931272869e91b83f20c9c62aa743 after
+exact-head inspection, passing full CI and ready Vercel. Expected-head merges used;
+stacked PRs retargeted to main with merge trees matching tested heads. CI runs:
+#117 36854516416, #118 36854626321, #119 36858433312, #120 36858585089,
+#121 36861119917. #121 passed 830 tests and 134 browser checks, including real
+lead/privacy-consent persistence without invented appliance requests and phone
+keyboard/axe/address save/reload. Its two historical findings resolved after merge.
+Automated review quota unavailable, explicitly waived by Chris October 1.
+AGENTS.md requires preceding/dependency/all-state review continuity and safe merges.
 
-Twenty-four threads resolved with specific evidence: twenty-one historical findings
-and three #117 findings. Seventy historical findings remain open; see the ledger.
-Task visibility follows the approved O09 shared-team contract, with assignment/Mine
-still gated on O02. Do not mistake review repair for completed overhaul backlog.
+Twenty-nine threads resolved with specific evidence: twenty-six historical plus
+three #117 findings. Sixty-five historical findings remain open; see the ledger.
+Existing ACH settlement/retry and cross-customer isolation fixes verified against
+real Postgres tests from #120 CI. Shared task visibility follows approved O09;
+assignment/Mine remains gated on O02. This is review repair, not overhaul completion.
 
-Current follow-on repairs general lead capture when no appliance types are published
-and labels every new rental customer's address input. Appliance selection stays
-required when published options exist; stale/private type IDs are rejected.
-Consent, honeypot and rate limits stay enforced. Behavior tests exercise the real
-client resolver/action, plus a guarded disposable-CI lead/consent database test
-and phone keyboard/axe/customer-address persistence browser check. Local: 786 tests pass; twelve CI-only cases skipped and four existing database
-suites excluded locally. Typecheck/lint pass (two existing warnings). Full CI,
-exact-head inspection and preview pending; those two threads remain open.
+Current follow-on fixes tied/unscheduled job pagination with scheduledAt/id ordering
+and returns every skipped inventory unit and reason. UI names each asset, keeps
+skipped units selected and preserves selection after an unconfirmed response;
+controls cannot change while applying. Tests cover real action/UI behavior,
+manager guards, mixed reasons and failed response. Guarded disposable CI verifies
+60 tied/unscheduled jobs across pages and phone bulk update/axe/database persistence.
+Local: 790 tests pass; thirteen CI-only cases skipped and four existing database
+suites excluded. Typecheck/lint pass (two existing warnings). Full CI/preview and
+exact-head inspection pending; these two findings remain open until verification.
 
-O02 hosted isolation/independent preview storage and O32 sequencing remain gated.
-No live payment/message activation, spending or destructive customer-data changes.
-Rollback for merged repairs: revert their PRs. Earlier dated checkpoints below are
-historical and superseded by this current status.
+Prioritize remaining calendar/billing defects before new features; do not claim
+paid-in-full billing, recurring waiver or dispatch timezone fixed by these PRs.
+O02 hosted fixture/independent preview storage and O32 sequencing remain gated.
+No live activation, spending or destructive customer-data changes. Rollback: PR revert.
+Earlier dated checkpoints below are historical and superseded by this status.
 
 ## 2026-10-01 — Business export review repairs and release gate status
 

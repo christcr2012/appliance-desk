@@ -484,7 +484,7 @@ export async function recordInspectionAction(
 }
 
 export type BulkStatusActionState =
-  | { status: "success"; updatedCount: number; skippedCount: number; skipMessage: string | null }
+  | { status: "success"; updated: string[]; skipped: { applianceId: string; reason: string }[] }
   | { status: "error"; message: string };
 
 /** The inventory list's multi-select "set status" bar (Task #44's bulk
@@ -516,8 +516,7 @@ export async function bulkUpdateApplianceStatusAction(
 
   return {
     status: "success",
-    updatedCount: result.updated.length,
-    skippedCount: result.skipped.length,
-    skipMessage: result.skipped.length > 0 ? result.skipped[0].reason : null,
+    updated: result.updated,
+    skipped: result.skipped,
   };
 }

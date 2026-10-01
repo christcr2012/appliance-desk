@@ -70,7 +70,7 @@ export async function getJobsPage(
   return prisma.job.findMany({
     where: filter?.status ? { status: filter.status } : undefined,
     select: JOB_OPERATIONAL_SELECT,
-    orderBy: [{ scheduledAt: "asc" }],
+    orderBy: [{ scheduledAt: "asc" }, { id: "asc" }],
     skip,
     take: pageSize,
   });
