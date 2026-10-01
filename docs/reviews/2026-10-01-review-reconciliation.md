@@ -1,3 +1,14 @@
+## Owner sequencing update — 2026-10-01 (current)
+
+Chris explicitly requested completing and merging the existing green PRs, then
+continuing the original roadmap. Implementations from all audits, including
+historical review repairs and B01–B36, are deferred until after the roadmap.
+This supersedes earlier audit-before-feature and audit-expanded launch sequencing
+in this document and linked plans. Preserve the audit registers and unresolved
+findings for that later work; deferral is not resolution. Preserve existing
+correctness protections, O02/O13/O14/O32 dependencies, CI/preview acceptance and
+separate approvals for live activation, spending and destructive real-data changes.
+
 # Historical review reconciliation — 2026-10-01
 
 Baseline main: d7c10346214fcec548fffcc8d0d1b709e4dbecbf; #105 and #116 merged.

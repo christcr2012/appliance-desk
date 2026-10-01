@@ -1,7 +1,10 @@
 import { requireRole } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import type { ApplianceStatus } from "@prisma/client";
-import { ALL_APPLIANCE_STATUSES, canTransitionApplianceStatus } from "./lifecycle";
+import {
+  ALL_APPLIANCE_STATUSES,
+  canTransitionApplianceStatus,
+} from "./lifecycle";
 import {
   computeApplianceRevenueCents,
   computeProfitability,
@@ -92,7 +95,9 @@ export async function getAppliances(filter?: { status?: ApplianceStatus }) {
 /** How many appliances match a status filter — used to clamp the page
  * number for /desk/inventory's own paginated list before fetching that
  * page's rows (src/domains/pagination.ts). */
-export async function getAppliancesCount(filter?: { status?: ApplianceStatus }): Promise<number> {
+export async function getAppliancesCount(filter?: {
+  status?: ApplianceStatus;
+}): Promise<number> {
   return prisma.appliance.count({
     where: filter?.status ? { status: filter.status } : undefined,
   });
@@ -109,8 +114,16 @@ export async function getAppliancesPage(
 ) {
   return prisma.appliance.findMany({
     where: filter?.status ? { status: filter.status } : undefined,
-    select: { id: true, assetNumber: true, status: true, manufacturer: true, model: true,
-      color: true, currentLocation: true, applianceType: { select: { name: true } } },
+    select: {
+      id: true,
+      assetNumber: true,
+      status: true,
+      manufacturer: true,
+      model: true,
+      color: true,
+      currentLocation: true,
+      applianceType: { select: { name: true } },
+    },
     orderBy: [{ createdAt: "desc" }],
     skip,
     take: pageSize,
@@ -194,7 +207,8 @@ export async function createApplianceUnits(
         model: input.model || null,
         serialNumber: input.quantity === 1 ? input.serialNumber || null : null,
         color: input.color || null,
-        features: input.features && input.features.length > 0 ? input.features : [],
+        features:
+          input.features && input.features.length > 0 ? input.features : [],
         condition: input.condition || null,
         purchaseDate: input.purchaseDate ?? null,
         acquisitionCostCents: input.acquisitionCostCents ?? null,
@@ -209,7 +223,10 @@ export async function createApplianceUnits(
         action: "appliance.unit.create",
         entityType: "Appliance",
         entityId: unit.id,
-        newValue: { assetNumber: unit.assetNumber, applianceTypeId: input.applianceTypeId },
+        newValue: {
+          assetNumber: unit.assetNumber,
+          applianceTypeId: input.applianceTypeId,
+        },
       },
     });
 
@@ -256,7 +273,9 @@ export async function updateApplianceDetails(
     throw new ApplianceConflictError();
   }
 
-  const updated = await prisma.appliance.findUniqueOrThrow({ where: { id: applianceId } });
+  const updated = await prisma.appliance.findUniqueOrThrow({
+    where: { id: applianceId },
+  });
 
   await prisma.auditLog.create({
     data: {
@@ -307,7 +326,9 @@ export async function updateApplianceStatus(
     throw new ApplianceConflictError();
   }
 
-  const updated = await prisma.appliance.findUniqueOrThrow({ where: { id: applianceId } });
+  const updated = await prisma.appliance.findUniqueOrThrow({
+    where: { id: applianceId },
+  });
 
   await prisma.auditLog.create({
     data: {
@@ -375,7 +396,10 @@ export async function bulkUpdateApplianceStatus(
     } catch (error) {
       result.skipped.push({
         applianceId,
-        reason: error instanceof Error ? error.message : "Couldn't update this appliance.",
+        reason:
+          error instanceof Error
+            ? error.message
+            : "Couldn't update this appliance.",
       });
     }
   }
@@ -418,7 +442,10 @@ export type NewPartRecordInput = {
 
 /** Logs a part number against a model number for future reuse. Not tied to
  * any single physical Appliance — that's the whole point (see above). */
-export async function createPartRecord(userId: string, input: NewPartRecordInput) {
+export async function createPartRecord(
+  userId: string,
+  input: NewPartRecordInput,
+) {
   const record = await prisma.partRecord.create({
     data: {
       modelNumber: input.modelNumber,
@@ -436,7 +463,10 @@ export async function createPartRecord(userId: string, input: NewPartRecordInput
       action: "part.create",
       entityType: "PartRecord",
       entityId: record.id,
-      newValue: { modelNumber: record.modelNumber, partNumber: record.partNumber },
+      newValue: {
+        modelNumber: record.modelNumber,
+        partNumber: record.partNumber,
+      },
     },
   });
 
@@ -444,7 +474,9 @@ export async function createPartRecord(userId: string, input: NewPartRecordInput
 }
 
 export async function deletePartRecord(userId: string, partRecordId: string) {
-  const record = await prisma.partRecord.delete({ where: { id: partRecordId } });
+  const record = await prisma.partRecord.delete({
+    where: { id: partRecordId },
+  });
 
   await prisma.auditLog.create({
     data: {
@@ -452,7 +484,10 @@ export async function deletePartRecord(userId: string, partRecordId: string) {
       action: "part.delete",
       entityType: "PartRecord",
       entityId: partRecordId,
-      oldValue: { modelNumber: record.modelNumber, partNumber: record.partNumber },
+      oldValue: {
+        modelNumber: record.modelNumber,
+        partNumber: record.partNumber,
+      },
     },
   });
 
@@ -472,13 +507,14 @@ export type ApplianceProfitability = ProfitabilitySummary & {
   applianceTypeName: string;
   status: ApplianceStatus;
   utilizationFraction: number;
+  acquisitionCostRecorded: boolean;
+  incompleteRepairJobIds: string[];
 };
 
-/** Builds every non-retired appliance's revenue/repair-cost/profitability
- * and utilization in a small, fixed number of bulk queries (never one
- * query per appliance) — this app's whole fleet is small enough that this
- * comfortably runs on every dashboard/fleet-page load. */
-export async function getFleetAnalytics(): Promise<{
+/** Builds estimates for every non-archived appliance in three bulk queries.
+ * Pagination bounds the report UI, not the underlying fleet calculation. */
+export async function getFleetAnalytics(asOf = new Date()): Promise<{
+  asOf: Date;
   appliances: ApplianceProfitability[];
   totals: {
     applianceCount: number;
@@ -488,10 +524,10 @@ export async function getFleetAnalytics(): Promise<{
     totalNetContributionCents: number;
     paidForItselfCount: number;
     averageUtilizationFraction: number;
+    incompleteCostCount: number;
   };
 }> {
   await requireRole("OWNER", "ADMIN");
-  const asOf = new Date();
 
   const [appliances, assignments, repairJobAppliances] = await Promise.all([
     prisma.appliance.findMany({
@@ -514,7 +550,9 @@ export async function getFleetAnalytics(): Promise<{
       },
       select: {
         applianceId: true,
-        job: { select: { partsCostCents: true, laborCostCents: true } },
+        job: {
+          select: { id: true, partsCostCents: true, laborCostCents: true },
+        },
       },
     }),
   ]);
@@ -538,7 +576,11 @@ export async function getFleetAnalytics(): Promise<{
 
   const repairCostByAppliance = new Map<
     string,
-    { partsCostCents: number | null; laborCostCents: number | null }[]
+    {
+      id: string;
+      partsCostCents: number | null;
+      laborCostCents: number | null;
+    }[]
   >();
   for (const ja of repairJobAppliances) {
     const list = repairCostByAppliance.get(ja.applianceId) ?? [];
@@ -570,9 +612,24 @@ export async function getFleetAnalytics(): Promise<{
       repairCostCents,
       acquisitionCostCents: appliance.acquisitionCostCents,
     });
+    const acquisitionCostRecorded = appliance.acquisitionCostCents !== null;
+    const incompleteRepairJobIds = (
+      repairCostByAppliance.get(appliance.id) ?? []
+    )
+      .filter(
+        (job) => job.partsCostCents === null || job.laborCostCents === null,
+      )
+      .map((job) => job.id);
 
     return {
       ...profitability,
+      // A zero explicitly entered is known; a blank is not proof of cost recovery.
+      paidForItself:
+        profitability.paidForItself &&
+        acquisitionCostRecorded &&
+        incompleteRepairJobIds.length === 0,
+      acquisitionCostRecorded,
+      incompleteRepairJobIds,
       applianceId: appliance.id,
       assetNumber: appliance.assetNumber,
       applianceTypeName: appliance.applianceType.name,
@@ -602,6 +659,7 @@ export async function getFleetAnalytics(): Promise<{
   );
 
   return {
+    asOf,
     appliances: results,
     totals: {
       applianceCount: results.length,
@@ -612,6 +670,10 @@ export async function getFleetAnalytics(): Promise<{
       paidForItselfCount: totals.paidForItselfCount,
       averageUtilizationFraction:
         results.length > 0 ? totals.utilizationSum / results.length : 0,
+      incompleteCostCount: results.filter(
+        (r) =>
+          !r.acquisitionCostRecorded || r.incompleteRepairJobIds.length > 0,
+      ).length,
     },
   };
 }
@@ -625,4 +687,3 @@ export async function getApplianceProfitability(
   const { appliances } = await getFleetAnalytics();
   return appliances.find((a) => a.applianceId === applianceId) ?? null;
 }
-

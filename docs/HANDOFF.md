@@ -1,3 +1,41 @@
+## Owner sequencing update — 2026-10-01 (current)
+
+Chris explicitly requested completing and merging the existing green PRs, then
+continuing the original roadmap. Implementations from all audits, including
+historical review repairs and B01–B36, are deferred until after the roadmap.
+This supersedes earlier audit-before-feature and audit-expanded launch sequencing
+in this document and linked plans. Preserve the audit registers and unresolved
+findings for that later work; deferral is not resolution. Preserve existing
+correctness protections, O02/O13/O14/O32 dependencies, CI/preview acceptance and
+separate approvals for live activation, spending and destructive real-data changes.
+
+## Workspace recovery and current roadmap work — 2026-10-01
+
+Preserved earlier Appliance Desk workspaces and compared their uncommitted
+application edits against the current remote source. Timeline/customer, rental
+recovery, revenue/jobs and planning changes were already published or superseded;
+no unique unfinished application feature was recovered. Current work continues
+in the new checkout without changing those original workspaces.
+
+#130 merged after full CI 36892375002 (884 unit tests, 140 browser checks) and
+ready preview, exact head e60751681fe4b0a7a9379284d82472b3abb158c0.
+#131/#132 remain pending repaired CI: title/profile fixtures wait for hydration;
+bulk inventory accessibility scans wait for streamed refresh metadata. Account
+sign-up uses the real HTTP boundary rather than importing auth into Playwright.
+No unavailable automated review is claimed; owner waiver still applies.
+
+O19 fleet/asset report subcard implemented locally, acceptance pending: assignment
+value and contribution explicitly labeled estimates; null acquisition or partial
+repair costs make recovery unknown; zero remains a recorded cost. Adds linked
+appliance/repair records and 25-row pagination with an incomplete-cost filter.
+Existing rate proration and shared-job allocation are unchanged and disclosed.
+Owner/admin boundaries remain; staff does not fetch financial estimates.
+Local validation: 839 tests pass; 31 guarded tests skipped and four existing
+real-DB suites excluded locally. Type-check and lint pass (two existing warnings).
+Playwright discovers the new test. CI, browser/axe, preview and exact-head source
+review remain required before completion. Other O19
+families, hosted O02 evidence and whole-roadmap/manual acceptance remain open.
+
 ## 2026-10-01 — Security and billing reliability audit (read before starting the next PR)
 
 This note is part of the repo memory for the current AI coding agent and any future follow-on PRs.

@@ -1,3 +1,14 @@
+## Owner sequencing update — 2026-10-01 (current)
+
+Chris explicitly requested completing and merging the existing green PRs, then
+continuing the original roadmap. Implementations from all audits, including
+historical review repairs and B01–B36, are deferred until after the roadmap.
+This supersedes earlier audit-before-feature and audit-expanded launch sequencing
+in this document and linked plans. Preserve the audit registers and unresolved
+findings for that later work; deferral is not resolution. Preserve existing
+correctness protections, O02/O13/O14/O32 dependencies, CI/preview acceptance and
+separate approvals for live activation, spending and destructive real-data changes.
+
 # Completion plan — 2026-09-30
 
 This entry supersedes the earlier model switching, eight-file limit and
@@ -170,3 +181,15 @@ and estimate deposits are already real Payment cash. Refund outflows remain.
 Eight focused tests/typecheck pass; added real webhook fixture reconciliation,
 full CI pending. Other O19 report families remain; O02 infrastructure and
 O30/O31 whole-flow/manual/capacity evidence are not complete.
+
+## O19 fleet/asset report subcard — implementation pending verification
+
+Fleet and appliance detail explain assignment-based rental value, recorded costs,
+contribution, cost recovery and utilization. Explicit zero costs are known; null
+acquisition or either missing completed-repair cost keeps recovery unknown, with
+exact supporting repair links. Full-fleet totals are independent of a paginated
+25-row incomplete-cost filter. Existing 30-day rate proration and full shared-job
+cost allocation remain unchanged and disclosed; no collected-profit claim.
+Focused numerical, missing/zero-cost, authorization and pagination behavior tests
+pass. Real disposable browser/mobile/theme/axe coverage added; full CI/preview
+pending. No schema/provider change. Growth/source and whole-card acceptance remain.
