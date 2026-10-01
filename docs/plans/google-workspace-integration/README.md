@@ -65,29 +65,41 @@ Treat these IDs as **defaults** in `BusinessSettings`, editable in
   at the end). JSON key in the appliance-desk Vercel project as
   `GOOGLE_SERVICE_ACCOUNT_JSON`. Never committed.
 - Domain-wide delegation entry in the Admin console for its client ID with
-  **exactly** these four scopes:
+  **exactly** these three scopes:
   `https://www.googleapis.com/auth/calendar`,
-  `https://www.googleapis.com/auth/drive.file`,
   `https://www.googleapis.com/auth/gmail.readonly`,
   `https://www.googleapis.com/auth/gmail.send`.
-  `drive.file` requires app authorization for pre-existing folders; knowing
-  their IDs or impersonating their owner is not proof of access. Before Drive
-  filing starts, demonstrate access to every configured parent with this app's
-  OAuth client and a create/read/shortcut test using synthetic files. If that
-  cannot be established, mark Drive filing BLOCKED and bring a revised access
-  design to the owner; do not silently broaden scopes or recreate the folders.
-  Read-only plus send, not
+  Drive uses the separate owner OAuth connection below. Read-only plus send, not
   `gmail.modify`, so the app can never delete or relabel mail.
 - The app always impersonates `GOOGLE_IMPERSONATE_USER` =
   `ops@robinsonappliancerentals.com`. Refuse to start any sync if unset.
 - One module, `src/lib/google.ts`: builds the JWT client, exposes
-  `calendar()`, `drive()`, `gmail()`, retries safe reads on 429/5xx with
+  `calendar()`, `gmail()` via delegation and `drive()` via owner OAuth,
+  retries safe reads on 429/5xx with
   backoff (max 5); mutation retries follow their durable operation ledger,
   maps Google errors to plain English, and never logs credentials.
 - Preview deployments: the existing preview-safety work (O02A) suppresses
   non-production email/SMS. Extend it: in non-production, Google sync runs in
   **dry-run** (logs the payload, writes nothing) unless
   `GOOGLE_SYNC_ALLOW_PREVIEW=1` is set for a deliberate test.
+
+### Drive identity for the existing folders
+
+Drive filing uses an owner-authorized OAuth web client with `drive.file`,
+separate from the delegated Calendar/Gmail service account. In Settings, the
+owner connects the rentals mailbox and uses Google Picker with that same OAuth
+client to authorize the existing customer and document parent folders. Store
+only those verified folder IDs and an encrypted refresh token server-side;
+never expose it to client props, logs, audit payloads or previews. The Drive
+worker uses that owner's refreshed OAuth token, not the service-account JWT.
+
+Before enabling filing, verify each configured parent with `files.get`, then
+create/read a synthetic child and its shortcut using this exact connection.
+Reject an unselected or inaccessible parent and report it in Settings; folder
+IDs alone, Drive sharing alone, or delegation alone do not satisfy this gate.
+A revoked connection disables only Drive filing and preserves queued work.
+Do not broaden to full-drive scope or recreate the existing business folders.
+See [Google's scope guidance](https://developers.google.com/workspace/drive/api/guides/api-specific-auth).
 
 ## Feature 1 — Jobs ↔ Calendar (two-way, conservative)
 
@@ -172,7 +184,8 @@ first, direction badge, open-in-Gmail link, reply box. Lead record → same.
 ## PR sequence (one card each, follows AGENTS.md Definition of Done)
 
 1. `google-identity` — `src/lib/google.ts`, env vars, Settings → Google
-   status showing the impersonated mailbox. No features. Blocks everything.
+   status showing the impersonated mailbox, plus the separate Drive OAuth/Picker
+   connection and access proof. No filing/sync features. Blocks everything.
 2. `calendar-sync-out` — app → calendar, job detail link, dry-run in previews.
 3. `calendar-sync-in` — cron + watch channel, time-only inbound, conflict log.
 4. `drive-filing` — agreements and invoices, retry queue, Drive icons.
@@ -190,11 +203,16 @@ Each PR: behavioral tests (payload builders, matcher, conflict rule, naming),
    Copy its Unique ID.
 2. admin.google.com → Security → Access and data control → API controls →
    Manage Domain Wide Delegation → Add new: that Unique ID, scopes
-   `https://www.googleapis.com/auth/calendar,https://www.googleapis.com/auth/drive.file,https://www.googleapis.com/auth/gmail.readonly,https://www.googleapis.com/auth/gmail.send`.
+   `https://www.googleapis.com/auth/calendar,https://www.googleapis.com/auth/gmail.readonly,https://www.googleapis.com/auth/gmail.send`.
 3. Vercel → appliance-desk → Environment Variables:
    `GOOGLE_SERVICE_ACCOUNT_JSON` (whole file), `GOOGLE_IMPERSONATE_USER`
    `= ops@robinsonappliancerentals.com`. Production only at first.
-4. After PR 1 deploys, open `/desk/settings` → Google: it should show
+4. For Drive, create an OAuth web client restricted to the app's exact callback
+   URL, enable Google Picker, and store its client ID/secret as server-side
+   production configuration. Connect the rentals mailbox in Settings and select
+   the existing parent folders with Picker. Verify folder access with the
+   synthetic-file proof above; this is additional setup beyond delegation.
+5. After PR 1 deploys, open `/desk/settings` → Google: it should show
    "Connected as Robinson Appliance Rentals".
 
 ## Related
