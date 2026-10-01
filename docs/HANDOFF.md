@@ -3213,3 +3213,29 @@ beside actions despite passing axe/no-overflow. Follow-up stacks the title
 and actions below 640px and adds a >300px title-block regression at 360px.
 Updated-head CI/preview remains required. No manual screen-reader or owner
 walkthrough approval is claimed.
+
+
+## 2026-10-01 — Open PR CI fixture repair
+
+Latest runs for #130/#131/#132 failed only browser acceptance: #130 had
+139 passing browser checks and one failed title test; #131 had 139 passing
+and title/auth-loader failures; #132 had 141 passing and those same failures.
+All earlier migration/schema/unit/type/lint/build gates passed. These failed
+runs are not acceptance or merge evidence.
+
+Title setup now supplies a valid owned email as well as the business name:
+the seeded [Email Address] blocks native form submission. Name restoration
+still exercises the actual save/revalidation; placeholder email restoration
+is conditional on the owned value in disposable CI Postgres. Deactivation
+setup (where present) calls the running app's signup endpoint, avoiding the
+Playwright worker's Better Auth ESM loader failure; UI login and active,
+deactivated and restored page/API assertions remain unchanged. No production
+logic, schema, test skips, retry allowances or validation weakening.
+
+Open PR threads/review submissions were rechecked: no new actionable findings;
+automated review is unavailable under the owner's recorded quota waiver.
+Exact updated source inspection and full replacement CI/preview remain required.
+Historical findings remain open. B01–B36 and unfinished O02/O13/O14/O32 are
+preserved. No live activation, provider writes, messages, spending or real-data
+cleanup. Local full execution unavailable in this fresh workspace; CI is the
+real database/build/browser verification gate.

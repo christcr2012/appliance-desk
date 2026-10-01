@@ -7,14 +7,21 @@ const enabled = process.env.CI === "true" && ["localhost", "127.0.0.1"].includes
 test("real customer session denies direct API and protected pages after deactivation", async ({ page }) => {
   test.skip(!enabled, "Disposable CI database only");
   const { prisma } = await import("../src/lib/prisma");
-  const { auth } = await import("../src/lib/auth");
   const tag = randomUUID();
   const email = `session-${tag}@example.test`;
   const password = `Fixture-${tag}!`;
-  const created = await auth.api.signUpEmail({ body: { email, password, name: "Session fixture" } });
-  const userId = created.user.id;
   const customerId = `session-customer-${tag}`;
+  let userId: string | undefined;
   try {
+    // Exercise the running app; importing Better Auth into Playwright's
+    // worker hits its separate ESM loader rather than the production runtime.
+    const response = await page.request.post("/api/auth/sign-up/email", {
+      data: { email, password, name: "Session fixture" },
+      headers: { Origin: "http://localhost:3000" },
+    });
+    expect(response.ok()).toBe(true);
+    const user = await prisma.user.findUniqueOrThrow({ where: { email } });
+    userId = user.id;
     await prisma.user.update({ where: { id: userId }, data: { emailVerified: true } });
     await prisma.customer.create({ data: { id: customerId, userId, referralCode: tag } });
     await page.setViewportSize({ width: 360, height: 900 });
@@ -35,6 +42,7 @@ test("real customer session denies direct API and protected pages after deactiva
     await expect(page).toHaveURL(/\/account$/);
   } finally {
     await prisma.customer.deleteMany({ where: { id: customerId } });
-    await prisma.user.deleteMany({ where: { id: userId, email } });
+    // The UUID email is owned even if setup fails before the id is read.
+    await prisma.user.deleteMany({ where: { email, ...(userId ? { id: userId } : {}) } });
   }
 });
