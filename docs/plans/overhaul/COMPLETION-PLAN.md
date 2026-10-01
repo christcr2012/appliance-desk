@@ -22,7 +22,9 @@ checks. Automated review quota waived by Chris October 1. Thirty-seven threads
 resolved (thirty-four historical plus three #117 findings); fifty-seven historical
 remain open. Staff job scope, replacement-only SWAP prompt and shared-route
 completion follow-up pass 807 local tests; full CI/preview and exact-head pending.
-Four related findings remain open. Billing correctness precedes new backlog work.
+Four related findings remain open. Prepaid rent protection and one-time waiver
+presentation follow-on passes 812 local tests; three findings await full CI/preview
+and exact-head verification. Billing correctness precedes new backlog work.
 No O13/O14 completion claim; assignment/schema/scheduling-write work retains gates.
 Preserve O02 storage/isolation and O32 sequencing; no model changes.
 

@@ -3709,3 +3709,19 @@ database changes because of one.
 Landed via PR #91 (first version) and PR #92 (this correction — #91 had
 already merged by the time attempts 2 and 3 happened, so the accurate
 final state is recorded here instead of rewriting a merged PR's diff).
+
+## 2026-10-01 — Prepaid billing guard and waiver presentation reconciliation
+
+The paid-in-full record must prevent delivery from creating monthly rent charges,
+regardless of whether the separate free-month bonus was enabled. The delivery
+billing entry point returns before Stripe products/tax/subscription calls and
+clears a stale recurring-billing error. It does not invent payment receipts,
+billing start dates, cancel existing subscriptions or rewrite past transactions.
+Owner-recorded prepaid receipts and existing subscriptions require explicit review.
+
+The September 27 review requested monthly waiver recurrence, but Chris's later
+September 28 lifecycle decision explicitly collects the waiver once at signing.
+Checkout and invoice records already follow that contract; builder, owner agreement
+and signing labels now agree. No charge amount or live provider configuration changes.
+Real disposable-Postgres delivery and phone signing/owner presentation tests are
+included; their full CI evidence remains pending at submission.

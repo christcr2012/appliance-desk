@@ -30,9 +30,22 @@ legacy notice and follow-up navigation. Guarded real-Postgres and phone staff
 completion/status persistence/financial payload/axe checks await full CI/preview
 and exact-head inspection; four related historical findings remain open.
 
-Next review priorities include paid-in-full billing, recurring waiver and earnings
-comparison. No live activation, spending or destructive business-data changes.
-Rollback: PR revert. Older checkpoints below are historical and superseded here.
+Prepaid follow-on checked preceding/latest staff PR #124 reviews/threads/comments;
+no findings, quota 5932207577 unavailable and owner waiver retained. It now avoids
+monthly rent for recorded full-term advance payments before any Stripe call,
+with or without the free-month bonus; clears stale recurring-billing errors without
+inventing payments/billing start dates. Builder, owner agreement and signing waiver
+labels match the later approved one-time signing rule. No existing subscriptions
+cancelled or rewritten. Local 812 tests pass, sixteen guarded CI-only cases skipped,
+four existing DB suites excluded; types/lint pass (two existing warnings). Real
+Postgres delivery and phone signing/owner labels/axe checks await full CI, preview
+and exact-head inspection. Three prepaid/waiver findings remain open. #124 staff
+workflow's full CI remains pending at this checkpoint; its four findings stay open.
+
+Next review priorities include abandoned Checkout recovery and rent-only,
+refund-adjusted calendar-anniversary earnings. No live activation, spending or
+destructive business-data changes. O02/O13/O14/O32 gates preserved. Rollback: PR
+revert. Older checkpoints below are historical and superseded here.
 
 ## 2026-10-01 — Business export review repairs and release gate status
 
