@@ -9,8 +9,8 @@ test.use({ storageState: fs.existsSync(owner) ? owner : undefined });
 
 test("saved non-placeholder business name composes home and child browser titles", async ({ page }) => {
   test.skip(!enabled, "Disposable CI database only");
-  const { getBusinessSettings } = await import("../src/domains/settings");
-  const { publicBusinessName } = await getBusinessSettings();
+  const { prisma } = await import("../src/lib/prisma");
+  const { publicBusinessName } = await prisma.businessSettings.findUniqueOrThrow({ where: { id: "singleton" } });
   expect(publicBusinessName).not.toContain("[Company Name]");
   await page.goto("/");
   await expect(page).toHaveTitle(`${publicBusinessName} — Appliance Rentals in Colorado`);
@@ -26,7 +26,7 @@ test("phone price editor reports rejected saves and persists a confirmed correct
   try {
     await prisma.applianceType.create({ data: { id, name, slug: id, monthlyPriceCents: 4000 } });
     await page.setViewportSize({ width: 360, height: 900 });
-    await page.goto("/desk/settings");
+    await page.goto("/desk/settings?section=products");
     const row = page.getByRole("row").filter({ has: page.getByText(name, { exact: true }) });
     const input = row.getByRole("spinbutton", { name: `Monthly price for ${name}` });
     for (const value of ["", "-5"]) {
