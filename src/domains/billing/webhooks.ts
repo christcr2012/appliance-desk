@@ -1,5 +1,5 @@
 import type Stripe from "stripe";
-import type { InvoiceLineItemKind } from "@prisma/client";
+import type { InvoiceLineItemKind, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getStripeClient } from "@/lib/stripe";
 
@@ -12,35 +12,18 @@ import { getStripeClient } from "@/lib/stripe";
 // verification and docs/BUSINESS-RULES.md's billing rules for the
 // policy this reflects.
 //
-// Idempotency: webhook delivery is at-least-once (Stripe retries on
-// timeout, and the same event can genuinely be delivered twice). Every
-// event is recorded in WebhookEvent, keyed by Stripe's own event id,
-// before it's acted on — see recordWebhookEventOnce below, which is the
-// single choke point every handler goes through.
+// Event dedupe and every local effect commit together under a Postgres
+// transaction lock. Competing deliveries (including different event IDs
+// for one payment or cumulative refund) cannot observe partial work.
+// No handler charges Stripe; provider calls here only retrieve records.
 // ---------------------------------------------------------------------------
 
-/** True if this event id has already been fully processed. Checked
- * *before* doing any work, so a genuine duplicate delivery is a cheap
- * no-op read rather than repeating a webhook's side effects. */
-async function alreadyProcessed(eventId: string): Promise<boolean> {
-  const existing = await prisma.webhookEvent.findUnique({ where: { id: eventId } });
-  return existing !== null;
+async function alreadyProcessed(db: Prisma.TransactionClient, eventId: string): Promise<boolean> {
+  return (await db.webhookEvent.findUnique({ where: { id: eventId } })) !== null;
 }
 
-/** Marks this event as done — called only *after* its handler has
- * already succeeded (see processStripeWebhookEvent below), never before.
- * Recording it up front instead would mean a handler that crashes
- * partway through gets marked "done" anyway, and Stripe's automatic
- * retry of that same event (which is the normal way a transient failure
- * gets fixed) would then be silently skipped instead of actually
- * retried. The small tradeoff: two deliveries of the same event arriving
- * within milliseconds of each other could both start processing before
- * either finishes — accepted here since each handler's own writes (a
- * unique `stripeInvoiceId`, an existing-Deposit check, etc.) still catch
- * the common cases; Stripe's real-world duplicate deliveries are
- * overwhelmingly minutes-later retries, not simultaneous ones. */
-async function markProcessed(event: Stripe.Event): Promise<void> {
-  await prisma.webhookEvent.create({ data: { id: event.id, type: event.type } });
+async function markProcessed(db: Prisma.TransactionClient, event: Stripe.Event): Promise<void> {
+  await db.webhookEvent.create({ data: { id: event.id, type: event.type } });
 }
 
 /** Maps a Stripe invoice line's description back to which kind of charge
@@ -126,12 +109,23 @@ async function resolvePaymentMethod(paymentIntentId: string | null): Promise<str
  * customer who successfully paid after an earlier failure still showing
  * as unpaid — see docs/DECISIONS.md. */
 async function recordPaidInvoice(
+  db: Prisma.TransactionClient,
   stripeInvoice: Stripe.Invoice,
   agreementId: string,
   customerId: string,
   existingInvoiceId?: string,
 ): Promise<void> {
-  const agreementLines = await prisma.rentalLine.findMany({
+  const recorded = await db.invoice.findUnique({
+    where: { stripeInvoiceId: stripeInvoice.id },
+    select: { id: true, status: true, agreementId: true, customerId: true },
+  });
+  if (recorded && (recorded.agreementId !== agreementId || recorded.customerId !== customerId)) {
+    throw new Error("Stripe invoice is already recorded for another agreement/customer");
+  }
+  if (recorded?.status === "PAID") return;
+  const targetInvoiceId = existingInvoiceId ?? recorded?.id;
+
+  const agreementLines = await db.rentalLine.findMany({
     where: { agreementId },
     select: { id: true, label: true },
   });
@@ -164,7 +158,7 @@ async function recordPaidInvoice(
     ? new Date(stripeInvoice.period_end * 1000)
     : null;
 
-  await prisma.$transaction(async (tx) => {
+  {
     const invoiceFields = {
       status: "PAID" as const,
       billingPeriodStart: stripeInvoice.period_start
@@ -180,9 +174,9 @@ async function recordPaidInvoice(
       dueDate: stripeInvoice.due_date ? new Date(stripeInvoice.due_date * 1000) : null,
     };
 
-    const invoice = existingInvoiceId
-      ? await tx.invoice.update({
-          where: { id: existingInvoiceId },
+    const invoice = targetInvoiceId
+      ? await db.invoice.update({
+          where: { id: targetInvoiceId },
           data: {
             ...invoiceFields,
             // The DELINQUENT row from the failed attempt was created with
@@ -191,7 +185,7 @@ async function recordPaidInvoice(
             lineItems: { createMany: { data: lineItemsData } },
           },
         })
-      : await tx.invoice.create({
+      : await db.invoice.create({
           data: {
             customerId,
             agreementId,
@@ -201,7 +195,7 @@ async function recordPaidInvoice(
           },
         });
 
-    await tx.payment.create({
+    await db.payment.create({
       data: {
         invoiceId: invoice.id,
         amountCents: stripeInvoice.amount_paid,
@@ -219,9 +213,9 @@ async function recordPaidInvoice(
     // directly).
     const depositLine = lineItemsData.find((item) => item.kind === "DEPOSIT");
     if (depositLine) {
-      const existingDeposit = await tx.deposit.findFirst({ where: { agreementId } });
+      const existingDeposit = await db.deposit.findFirst({ where: { agreementId } });
       if (!existingDeposit) {
-        await tx.deposit.create({
+        await db.deposit.create({
           data: {
             agreementId,
             amountCents: depositLine.amountCents,
@@ -233,14 +227,14 @@ async function recordPaidInvoice(
 
     const subscriptionId = extractSubscriptionId(stripeInvoice);
 
-    await tx.rentalAgreement.update({
+    await db.rentalAgreement.update({
       where: { id: agreementId },
       data: {
         ...(subscriptionId ? { stripeSubscriptionId: subscriptionId } : {}),
         ...(nextBillingDate ? { nextBillingDate } : {}),
       },
     });
-  });
+  }
 }
 
 /**
@@ -257,22 +251,35 @@ async function recordPaidInvoice(
  * "price history is sacred").
  */
 async function recordSigningPaymentMethod(
+  db: Prisma.TransactionClient,
   customerId: string,
   paymentMethodId: string | null,
 ): Promise<void> {
   if (!paymentMethodId) return;
-  await prisma.customer.update({
+  await db.customer.update({
     where: { id: customerId },
     data: { stripeDefaultPaymentMethodId: paymentMethodId },
   });
 }
 
 async function recordOneTimeSigningCharge(
+  db: Prisma.TransactionClient,
   agreementId: string,
   customerId: string,
   paymentIntentId: string,
 ): Promise<void> {
-  const agreement = await prisma.rentalAgreement.findUniqueOrThrow({
+  const existingPayment = await db.payment.findFirst({
+    where: { stripePaymentIntentId: paymentIntentId, status: "succeeded" },
+    select: { invoice: { select: { agreementId: true, customerId: true } } },
+  });
+  if (existingPayment) {
+    if (existingPayment.invoice.agreementId !== agreementId || existingPayment.invoice.customerId !== customerId) {
+      throw new Error("Signing payment is already recorded for another agreement/customer");
+    }
+    return;
+  }
+
+  const agreement = await db.rentalAgreement.findUniqueOrThrow({
     where: { id: agreementId },
     select: { depositCents: true, damageWaiverCents: true },
   });
@@ -300,8 +307,8 @@ async function recordOneTimeSigningCharge(
   const amountCents = lineItemsData.reduce((sum, item) => sum + item.amountCents, 0);
   const method = await resolvePaymentMethod(paymentIntentId);
 
-  await prisma.$transaction(async (tx) => {
-    const invoice = await tx.invoice.create({
+  {
+    const invoice = await db.invoice.create({
       data: {
         customerId,
         agreementId,
@@ -313,7 +320,7 @@ async function recordOneTimeSigningCharge(
       },
     });
 
-    await tx.payment.create({
+    await db.payment.create({
       data: {
         invoiceId: invoice.id,
         amountCents,
@@ -325,14 +332,14 @@ async function recordOneTimeSigningCharge(
 
     const depositLine = lineItemsData.find((item) => item.kind === "DEPOSIT");
     if (depositLine) {
-      const existingDeposit = await tx.deposit.findFirst({ where: { agreementId } });
+      const existingDeposit = await db.deposit.findFirst({ where: { agreementId } });
       if (!existingDeposit) {
-        await tx.deposit.create({
+        await db.deposit.create({
           data: { agreementId, amountCents: depositLine.amountCents, refundable: true },
         });
       }
     }
-  });
+  }
 }
 
 /**
@@ -347,11 +354,12 @@ async function recordOneTimeSigningCharge(
  * being called twice directly.
  */
 async function recordEstimateDepositPayment(
+  db: Prisma.TransactionClient,
   estimateId: string,
   customerId: string,
   paymentIntentId: string,
 ): Promise<void> {
-  const estimate = await prisma.estimate.findUniqueOrThrow({
+  const estimate = await db.estimate.findUniqueOrThrow({
     where: { id: estimateId },
     select: { depositCents: true, depositPaidAt: true },
   });
@@ -359,8 +367,8 @@ async function recordEstimateDepositPayment(
 
   const method = await resolvePaymentMethod(paymentIntentId);
 
-  await prisma.$transaction(async (tx) => {
-    const invoice = await tx.invoice.create({
+  {
+    const invoice = await db.invoice.create({
       data: {
         customerId,
         agreementId: null,
@@ -383,7 +391,7 @@ async function recordEstimateDepositPayment(
       },
     });
 
-    await tx.payment.create({
+    await db.payment.create({
       data: {
         invoiceId: invoice.id,
         amountCents: estimate.depositCents,
@@ -393,11 +401,11 @@ async function recordEstimateDepositPayment(
       },
     });
 
-    await tx.estimate.update({
+    await db.estimate.update({
       where: { id: estimateId },
       data: { depositPaidAt: new Date() },
     });
-  });
+  }
 }
 
 /** The estimate-deposit counterpart to the "payment"-mode branch of
@@ -407,10 +415,11 @@ async function recordEstimateDepositPayment(
  * instead of a RentalAgreement since no agreement exists yet at this
  * point (see createDepositCheckoutSessionForEstimate's own comment). */
 async function handleEstimateDepositCheckoutCompleted(
+  db: Prisma.TransactionClient,
   session: Stripe.Checkout.Session,
   estimateId: string,
 ): Promise<void> {
-  const estimate = await prisma.estimate.findUniqueOrThrow({
+  const estimate = await db.estimate.findUniqueOrThrow({
     where: { id: estimateId },
     select: { customerId: true },
   });
@@ -426,19 +435,19 @@ async function handleEstimateDepositCheckoutCompleted(
   });
   const methodId =
     typeof intent.payment_method === "string" ? intent.payment_method : intent.payment_method?.id ?? null;
-  await recordSigningPaymentMethod(estimate.customerId, methodId);
+  await recordSigningPaymentMethod(db, estimate.customerId, methodId);
 
   // Same delayed-settlement (ACH) guard as the signing-charge branch
   // below — this event can fire before the money has actually moved.
   if (session.payment_status !== "paid") return;
 
-  await recordEstimateDepositPayment(estimateId, estimate.customerId, paymentIntentId);
+  await recordEstimateDepositPayment(db, estimateId, estimate.customerId, paymentIntentId);
 }
 
-async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session): Promise<void> {
+async function handleCheckoutSessionCompleted(db: Prisma.TransactionClient, session: Stripe.Checkout.Session): Promise<void> {
   const estimateId = session.metadata?.estimateId;
   if (estimateId) {
-    await handleEstimateDepositCheckoutCompleted(session, estimateId);
+    await handleEstimateDepositCheckoutCompleted(db, session, estimateId);
     return;
   }
 
@@ -455,15 +464,15 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session):
     const invoiceId = typeof session.invoice === "string" ? session.invoice : session.invoice.id;
     const stripeInvoice = await stripe.invoices.retrieve(invoiceId, { expand: ["payments"] });
     if (stripeInvoice.status !== "paid") return;
-    const agreement = await prisma.rentalAgreement.findUniqueOrThrow({
+    const agreement = await db.rentalAgreement.findUniqueOrThrow({
       where: { id: agreementId },
       select: { customerId: true },
     });
-    await recordPaidInvoice(stripeInvoice, agreementId, agreement.customerId);
+    await recordPaidInvoice(db, stripeInvoice, agreementId, agreement.customerId);
     return;
   }
 
-  const agreement = await prisma.rentalAgreement.findUniqueOrThrow({
+  const agreement = await db.rentalAgreement.findUniqueOrThrow({
     where: { id: agreementId },
     select: { customerId: true },
   });
@@ -481,7 +490,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session):
     const intent = await stripe.setupIntents.retrieve(setupIntentId);
     const methodId =
       typeof intent.payment_method === "string" ? intent.payment_method : intent.payment_method?.id ?? null;
-    await recordSigningPaymentMethod(agreement.customerId, methodId);
+    await recordSigningPaymentMethod(db, agreement.customerId, methodId);
     return;
   }
 
@@ -496,7 +505,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session):
     });
     const methodId =
       typeof intent.payment_method === "string" ? intent.payment_method : intent.payment_method?.id ?? null;
-    await recordSigningPaymentMethod(agreement.customerId, methodId);
+    await recordSigningPaymentMethod(db, agreement.customerId, methodId);
 
     // Real-money bug fixed 2026-09-27, same principle applied here: for
     // a delayed-settlement method (ACH), this event can fire before the
@@ -507,7 +516,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session):
     // actually happened.
     if (session.payment_status !== "paid") return;
 
-    await recordOneTimeSigningCharge(agreementId, agreement.customerId, paymentIntentId);
+    await recordOneTimeSigningCharge(db, agreementId, agreement.customerId, paymentIntentId);
   }
 }
 
@@ -515,6 +524,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session):
  * "payment" branch — fires once an ACH (or other async) debit for the
  * signing charge actually clears. */
 async function handleCheckoutSessionAsyncPaymentSucceeded(
+  db: Prisma.TransactionClient,
   session: Stripe.Checkout.Session,
 ): Promise<void> {
   const paymentIntentId =
@@ -523,23 +533,23 @@ async function handleCheckoutSessionAsyncPaymentSucceeded(
 
   const estimateId = session.metadata?.estimateId;
   if (estimateId) {
-    const estimate = await prisma.estimate.findUniqueOrThrow({
+    const estimate = await db.estimate.findUniqueOrThrow({
       where: { id: estimateId },
       select: { customerId: true },
     });
     if (!estimate.customerId) return;
-    await recordEstimateDepositPayment(estimateId, estimate.customerId, paymentIntentId);
+    await recordEstimateDepositPayment(db, estimateId, estimate.customerId, paymentIntentId);
     return;
   }
 
   const agreementId = session.metadata?.agreementId;
   if (!agreementId) return;
 
-  const agreement = await prisma.rentalAgreement.findUniqueOrThrow({
+  const agreement = await db.rentalAgreement.findUniqueOrThrow({
     where: { id: agreementId },
     select: { customerId: true },
   });
-  await recordOneTimeSigningCharge(agreementId, agreement.customerId, paymentIntentId);
+  await recordOneTimeSigningCharge(db, agreementId, agreement.customerId, paymentIntentId);
 }
 
 /** The signing charge's bank debit failed after checkout.session.completed
@@ -547,11 +557,12 @@ async function handleCheckoutSessionAsyncPaymentSucceeded(
  * paid (handleCheckoutSessionCompleted correctly held off), so there's
  * nothing to reverse; just an audit trail entry so it isn't invisible. */
 async function handleCheckoutSessionAsyncPaymentFailed(
+  db: Prisma.TransactionClient,
   session: Stripe.Checkout.Session,
 ): Promise<void> {
   const estimateId = session.metadata?.estimateId;
   if (estimateId) {
-    await prisma.auditLog.create({
+    await db.auditLog.create({
       data: {
         userId: null,
         action: "estimate.deposit_payment_failed",
@@ -566,7 +577,7 @@ async function handleCheckoutSessionAsyncPaymentFailed(
   const agreementId = session.metadata?.agreementId;
   if (!agreementId) return;
 
-  await prisma.auditLog.create({
+  await db.auditLog.create({
     data: {
       userId: null,
       action: "billing.signing_payment_failed",
@@ -577,11 +588,11 @@ async function handleCheckoutSessionAsyncPaymentFailed(
   });
 }
 
-async function handleInvoicePaid(webhookInvoice: Stripe.Invoice): Promise<void> {
+async function handleInvoicePaid(db: Prisma.TransactionClient, webhookInvoice: Stripe.Invoice): Promise<void> {
   const subscriptionId = extractSubscriptionId(webhookInvoice);
   if (!subscriptionId) return; // a one-off invoice, not one of our subscriptions
 
-  const agreement = await prisma.rentalAgreement.findUnique({
+  const agreement = await db.rentalAgreement.findUnique({
     where: { stripeSubscriptionId: subscriptionId },
     select: { id: true, customerId: true },
   });
@@ -603,7 +614,7 @@ async function handleInvoicePaid(webhookInvoice: Stripe.Invoice): Promise<void> 
   // *an* Invoice row existed, leaving a customer who paid (possibly after
   // an earlier failure) still showing as unpaid or delinquent forever —
   // see docs/DECISIONS.md.
-  const alreadyRecorded = await prisma.invoice.findUnique({
+  const alreadyRecorded = await db.invoice.findUnique({
     where: { stripeInvoiceId: webhookInvoice.id },
     select: { id: true, status: true },
   });
@@ -617,20 +628,20 @@ async function handleInvoicePaid(webhookInvoice: Stripe.Invoice): Promise<void> 
     expand: ["payments"],
   });
 
-  await recordPaidInvoice(stripeInvoice, agreement.id, agreement.customerId, alreadyRecorded?.id);
+  await recordPaidInvoice(db, stripeInvoice, agreement.id, agreement.customerId, alreadyRecorded?.id);
 }
 
-async function handleInvoicePaymentFailed(webhookInvoice: Stripe.Invoice): Promise<void> {
+async function handleInvoicePaymentFailed(db: Prisma.TransactionClient, webhookInvoice: Stripe.Invoice): Promise<void> {
   const subscriptionId = extractSubscriptionId(webhookInvoice);
   if (!subscriptionId) return;
 
-  const agreement = await prisma.rentalAgreement.findUnique({
+  const agreement = await db.rentalAgreement.findUnique({
     where: { stripeSubscriptionId: subscriptionId },
     select: { id: true, customerId: true },
   });
   if (!agreement) return;
 
-  const existing = await prisma.invoice.findUnique({
+  const existing = await db.invoice.findUnique({
     where: { stripeInvoiceId: webhookInvoice.id },
     select: { id: true },
   });
@@ -645,8 +656,8 @@ async function handleInvoicePaymentFailed(webhookInvoice: Stripe.Invoice): Promi
     expand: ["payments"],
   });
 
-  await prisma.$transaction(async (tx) => {
-    const invoice = await tx.invoice.create({
+  {
+    const invoice = await db.invoice.create({
       data: {
         customerId: agreement.customerId,
         agreementId: agreement.id,
@@ -668,7 +679,7 @@ async function handleInvoicePaymentFailed(webhookInvoice: Stripe.Invoice): Promi
 
     const paymentIntentId = extractPaymentIntentId(stripeInvoice);
 
-    await tx.payment.create({
+    await db.payment.create({
       data: {
         invoiceId: invoice.id,
         amountCents: stripeInvoice.amount_due,
@@ -677,10 +688,10 @@ async function handleInvoicePaymentFailed(webhookInvoice: Stripe.Invoice): Promi
         failureReason: "Stripe reported this invoice's payment failed.",
       },
     });
-  });
+  }
 }
 
-async function handleChargeRefunded(charge: Stripe.Charge): Promise<void> {
+async function handleChargeRefunded(db: Prisma.TransactionClient, charge: Stripe.Charge): Promise<void> {
   // Newer Stripe API versions dropped Charge.invoice — the reliable way
   // back to one of our own Invoice rows is via the PaymentIntent id we
   // already stored on the original Payment record.
@@ -688,7 +699,7 @@ async function handleChargeRefunded(charge: Stripe.Charge): Promise<void> {
     typeof charge.payment_intent === "string" ? charge.payment_intent : charge.payment_intent?.id;
   if (!paymentIntentId) return; // a refund unrelated to any invoice of ours
 
-  const payment = await prisma.payment.findFirst({
+  const payment = await db.payment.findFirst({
     where: { stripePaymentIntentId: paymentIntentId },
     select: { invoiceId: true },
   });
@@ -699,14 +710,14 @@ async function handleChargeRefunded(charge: Stripe.Charge): Promise<void> {
   // charge can be partially refunded more than once — only record the
   // delta beyond what we've already logged as a Refund here, so a second
   // partial refund on the same charge doesn't double-count the first.
-  const alreadyRefundedCents = await prisma.refund.aggregate({
+  const alreadyRefundedCents = await db.refund.aggregate({
     where: { invoiceId: invoice.id },
     _sum: { amountCents: true },
   });
   const newAmountCents = charge.amount_refunded - (alreadyRefundedCents._sum.amountCents ?? 0);
   if (newAmountCents <= 0) return;
 
-  await prisma.refund.create({
+  await db.refund.create({
     data: {
       invoiceId: invoice.id,
       amountCents: newAmountCents,
@@ -717,8 +728,8 @@ async function handleChargeRefunded(charge: Stripe.Charge): Promise<void> {
   });
 }
 
-async function handleSubscriptionDeleted(subscription: Stripe.Subscription): Promise<void> {
-  const agreement = await prisma.rentalAgreement.findUnique({
+async function handleSubscriptionDeleted(db: Prisma.TransactionClient, subscription: Stripe.Subscription): Promise<void> {
+  const agreement = await db.rentalAgreement.findUnique({
     where: { stripeSubscriptionId: subscription.id },
     select: { id: true },
   });
@@ -729,7 +740,7 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription): Pro
   // cancelAgreement in src/domains/agreements), not something billing
   // should decide on his behalf. This just leaves a clear record that
   // the recurring billing for this agreement has stopped.
-  await prisma.auditLog.create({
+  await db.auditLog.create({
     data: {
       userId: null,
       action: "billing.subscription_ended",
@@ -744,34 +755,49 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription): Pro
  * signature. Handles idempotency itself, then dispatches by event type —
  * an event type we don't otherwise care about is simply recorded (for the
  * dedupe table) and ignored, not an error. */
-export async function processStripeWebhookEvent(event: Stripe.Event): Promise<void> {
-  if (await alreadyProcessed(event.id)) return;
+async function processLockedEvent(db: Prisma.TransactionClient, event: Stripe.Event): Promise<void> {
+  if (await alreadyProcessed(db, event.id)) return;
 
   switch (event.type) {
     case "checkout.session.completed":
-      await handleCheckoutSessionCompleted(event.data.object as Stripe.Checkout.Session);
+      await handleCheckoutSessionCompleted(db, event.data.object as Stripe.Checkout.Session);
       break;
     case "checkout.session.async_payment_succeeded":
-      await handleCheckoutSessionAsyncPaymentSucceeded(event.data.object as Stripe.Checkout.Session);
+      await handleCheckoutSessionAsyncPaymentSucceeded(db, event.data.object as Stripe.Checkout.Session);
       break;
     case "checkout.session.async_payment_failed":
-      await handleCheckoutSessionAsyncPaymentFailed(event.data.object as Stripe.Checkout.Session);
+      await handleCheckoutSessionAsyncPaymentFailed(db, event.data.object as Stripe.Checkout.Session);
       break;
     case "invoice.paid":
-      await handleInvoicePaid(event.data.object as Stripe.Invoice);
+      await handleInvoicePaid(db, event.data.object as Stripe.Invoice);
       break;
     case "invoice.payment_failed":
-      await handleInvoicePaymentFailed(event.data.object as Stripe.Invoice);
+      await handleInvoicePaymentFailed(db, event.data.object as Stripe.Invoice);
       break;
     case "charge.refunded":
-      await handleChargeRefunded(event.data.object as Stripe.Charge);
+      await handleChargeRefunded(db, event.data.object as Stripe.Charge);
       break;
     case "customer.subscription.deleted":
-      await handleSubscriptionDeleted(event.data.object as Stripe.Subscription);
+      await handleSubscriptionDeleted(db, event.data.object as Stripe.Subscription);
       break;
     default:
       break;
   }
 
-  await markProcessed(event);
+  await markProcessed(db, event);
+}
+
+/** A single-business lock also serializes distinct cumulative refund events.
+ * A handler failure, timeout, or failed event receipt rolls back every local
+ * effect and releases the lock; route.ts returns 500 so Stripe can retry.
+ * The transaction expires after 30 seconds; provider request timeouts remain
+ * separate. No success is acknowledged before commit. This favors correctness
+ * over throughput; provider latency/capacity remain release checks.
+ */
+export async function processStripeWebhookEvent(event: Stripe.Event): Promise<void> {
+  await prisma.$transaction(async (db) => {
+    // Dedicated two-int namespace; transaction-scoped and shared across instances.
+    await db.$queryRaw`SELECT pg_advisory_xact_lock(174831, 1)::text`;
+    await processLockedEvent(db, event);
+  }, { maxWait: 10_000, timeout: 30_000 });
 }
