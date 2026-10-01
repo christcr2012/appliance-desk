@@ -119,23 +119,28 @@ export async function updateBusinessSettings(
   userId: string,
   update: BusinessSettingsUpdate,
 ) {
-  const before = await getBusinessSettings();
+  const after = await prisma.$transaction(async (tx) => {
+    const before =
+      (await tx.businessSettings.findUnique({ where: { id: "singleton" } })) ??
+      DEFAULT_SETTINGS;
+    const after = await tx.businessSettings.upsert({
+      where: { id: "singleton" },
+      create: { id: "singleton", ...update },
+      update,
+    });
 
-  const after = await prisma.businessSettings.upsert({
-    where: { id: "singleton" },
-    create: { id: "singleton", ...update },
-    update,
-  });
+    await tx.auditLog.create({
+      data: {
+        userId,
+        action: "settings.update",
+        entityType: "BusinessSettings",
+        entityId: "singleton",
+        oldValue: JSON.parse(JSON.stringify(before)),
+        newValue: JSON.parse(JSON.stringify(after)),
+      },
+    });
 
-  await prisma.auditLog.create({
-    data: {
-      userId,
-      action: "settings.update",
-      entityType: "BusinessSettings",
-      entityId: "singleton",
-      oldValue: JSON.parse(JSON.stringify(before)),
-      newValue: JSON.parse(JSON.stringify(after)),
-    },
+    return after;
   });
 
   return after;

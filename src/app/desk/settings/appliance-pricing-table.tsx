@@ -25,8 +25,8 @@ export function AppliancePricingTable({ rows }: { rows: ApplianceTypeRow[] }) {
   const retired = rows.filter((r) => !r.isActive);
 
   return (
-    <div className="space-y-6">
-      <div className="max-w-3xl overflow-x-auto">
+    <div className="min-w-0 max-w-full space-y-6">
+      <div className="relative w-full min-w-0 max-w-full overflow-x-auto">
         <table className="w-full min-w-[640px] border-collapse text-sm">
           <caption className="mb-2 text-left text-gray-600">
             Add a new category any time you&apos;re ready to offer it
@@ -64,7 +64,7 @@ export function AppliancePricingTable({ rows }: { rows: ApplianceTypeRow[] }) {
           <summary className="cursor-pointer text-sm font-medium text-gray-700">
             Retired appliance types ({retired.length})
           </summary>
-          <div className="mt-3 overflow-x-auto">
+          <div className="relative mt-3 w-full min-w-0 max-w-full overflow-x-auto">
             <table className="w-full min-w-[640px] border-collapse text-sm">
               <tbody>
                 {retired.map((row) => (
@@ -310,3 +310,4 @@ function NewApplianceTypeForm() {
     </form>
   );
 }
+

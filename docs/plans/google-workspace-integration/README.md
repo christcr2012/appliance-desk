@@ -70,12 +70,19 @@ Treat these IDs as **defaults** in `BusinessSettings`, editable in
   `https://www.googleapis.com/auth/drive.file`,
   `https://www.googleapis.com/auth/gmail.readonly`,
   `https://www.googleapis.com/auth/gmail.send`.
-  `drive.file` sees only files the app created. Read-only plus send, not
+  `drive.file` requires app authorization for pre-existing folders; knowing
+  their IDs or impersonating their owner is not proof of access. Before Drive
+  filing starts, demonstrate access to every configured parent with this app's
+  OAuth client and a create/read/shortcut test using synthetic files. If that
+  cannot be established, mark Drive filing BLOCKED and bring a revised access
+  design to the owner; do not silently broaden scopes or recreate the folders.
+  Read-only plus send, not
   `gmail.modify`, so the app can never delete or relabel mail.
 - The app always impersonates `GOOGLE_IMPERSONATE_USER` =
   `ops@robinsonappliancerentals.com`. Refuse to start any sync if unset.
 - One module, `src/lib/google.ts`: builds the JWT client, exposes
-  `calendar()`, `drive()`, `gmail()`, retries 429/5xx with backoff (max 5),
+  `calendar()`, `drive()`, `gmail()`, retries safe reads on 429/5xx with
+  backoff (max 5); mutation retries follow their durable operation ledger,
   maps Google errors to plain English, and never logs credentials.
 - Preview deployments: the existing preview-safety work (O02A) suppresses
   non-production email/SMS. Extend it: in non-production, Google sync runs in
@@ -96,7 +103,11 @@ patches the event: summary `"<JobType> · <Customer> · <City>"`, location =
 service address, description = desk URL + appliance list + notes, times from
 the job's schedule (default 2 h), `extendedProperties.private.applianceDeskJobId`.
 Cancelled → event status `cancelled`. Completed → summary prefixed "✓ ".
-Store `eventId` and `etag`.
+Store `eventId` and `etag`. Existing-event writes must use the stored ETag
+as a conditional precondition. On a version conflict, read the current event,
+record the conflicting calendar and job revisions, then deliberately apply
+the app-wins rule with the new precondition. Retry if it changes again; never
+unconditionally overwrite a phone edit before recording the conflict.
 
 **Calendar → App (time only).** Daily cron `/api/cron/calendar-sync` and a
 Google push channel (`events.watch`, renewed weekly by the same cron) read
@@ -144,7 +155,13 @@ body fetched when opened.
 **Send.** From the customer record: composer sends via
 `gmail.users.messages.send` **as `support@robinsonappliancerentals.com`**
 (the send-as identity exists) with the Evergreen signature, threading on
-`threadId` when replying. Stored as OUT and written to `AuditLog`. Rate limit
+`threadId` when replying. Before contacting Gmail, atomically record an O26 send intent, stable request
+key, RFC Message-ID, payload and reserved rate-limit slot. Repeated submissions
+return that same operation. Store confirmed sends as OUT with Gmail's ID and
+write `AuditLog`. A timeout after submission is UNKNOWN, not a failed send:
+retain the draft, reconcile sent mail by the stable Message-ID, and prohibit
+another send until the outcome is resolved. Never blindly retry ambiguous
+`messages.send` calls. Rate limit
 50/day, a `BusinessSettings` value. Resend remains the sender for all
 automated/transactional mail; Gmail is for human replies only.
 

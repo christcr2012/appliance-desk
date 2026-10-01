@@ -1,3 +1,13 @@
+## 2026-10-01 — PR #105 conflict resolution
+
+Merged current main into the Google Workspace documentation branch while
+preserving both progress entries and the O32 authorization/sequencing. The
+spec now requires existing-folder access proof, O26 durable send intent and
+unknown-outcome reconciliation, and conditional calendar writes with conflict
+logging. Current-model review follows the owner's no-switch instruction.
+Documentation only; no provider, schema, configuration or runtime activation.
+Documentation checks pass locally; updated-head CI/preview remain pending.
+
 ## 2026-09-30 — Google Workspace integration authorized and specified (Claude)
 
 Documentation only. Adds `docs/plans/google-workspace-integration/README.md`
@@ -14,6 +24,38 @@ branded (names, signature, avatar, labels/filters, chris@ default sender);
 org unit; "Deliveries & Service" calendar (Denver) and the nine-folder Drive
 tree created; DMARC `p=none` added by Chris; connector (google-workspace-mcp)
 now multi-account with Gmail-settings delegation (its PRs #1–#5).
+
+## 2026-09-30 — Owner and portal workspaces; CRM checks green
+
+PR #102 head 883a8f90a21135902450fff8c4e6663b631fdeae passed full CI
+36784399079, including migrations, real Postgres tests, build, browser/axe.
+Preview dpl_n26WQFDuVoQfEsHGpfYV4oBAY12E is READY. First run caught an
+unlabelled linked-task date field and a browser Back/navigation race; labels
+and awaited URL transitions fixed them without weakening checks. Inspected all
+24 CI screenshots; tablet title cramped beside actions, fixed in the next batch
+with a minimum title-column width. Owner merge/manual walkthrough unclaimed;
+preview protection fetch redirects.
+
+Second coherent batch implements O21 focused sections/saves with field
+whitelists, strict booleans, atomic settings+audit, guarded actions, retry
+feedback and non-secret provider configuration status. O18 invoice/statement
+presentation fixes All invoices retaining its filter, links exact documents,
+uses stable narrow invoice reads, distinguishes invoice money from rental
+revenue, and improves phone wrapping. O20 home resolves identity from the
+session with bounded customer-visible DTOs, property filters, recorded visit,
+open invoice and problem/pickup paths. Pickup reuses the reviewed manual
+request lifecycle and never automatically cancels or charges. O12 progress
+subcard separates signature/payment requirement/equipment/delivery/billing.
+Full durable builder save/resume remains incomplete.
+
+Local: 694 tests in 96 suites pass (four existing DB suites excluded; the new
+CI-only real rollback test skips locally). Typecheck pass, lint zero errors/two
+existing warnings. CI contains real rollback and customer A/B home tests plus
+360/768/1440 light/dark screenshots/axe, settings save/reload/back, exact billing
+links and pickup persistence. Second batch full CI and preview remain pending.
+No schema, live fixtures, message/payment activation or infrastructure changes.
+Rollback is PR revert. COMPLETION-PLAN.md remains the concise complete ledger;
+O02 hosted fixture/private storage gate and dependent schema cards remain open.
 
 ## 2026-09-30 — CRM workspaces and completion execution
 

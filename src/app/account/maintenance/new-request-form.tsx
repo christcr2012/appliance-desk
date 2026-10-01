@@ -19,14 +19,18 @@ export function NewRequestForm({
   appliances,
   customerId,
   initialApplianceId = "",
+  initialProblem = "",
+  requestTitle = "Report a problem",
 }: {
   appliances: ApplianceOption[];
   customerId: string;
   initialApplianceId?: string;
+  initialProblem?: string;
+  requestTitle?: string;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [problem, setProblem] = useState("");
+  const [problem, setProblem] = useState(initialProblem);
   const [applianceId, setApplianceId] = useState(initialApplianceId);
   const [priority, setPriority] = useState("NORMAL");
   const [error, setError] = useState<string | null>(null);
@@ -39,12 +43,20 @@ export function NewRequestForm({
     e.preventDefault();
     setError(null);
     startTransition(async () => {
-      const result = await createMaintenanceRequestAction({
-        problem,
-        applianceId,
-        priority,
-        photoUrls,
-      });
+      let result;
+      try {
+        result = await createMaintenanceRequestAction({
+          problem,
+          applianceId,
+          priority,
+          photoUrls,
+        });
+      } catch {
+        setError(
+          "Your request was not confirmed. Your text and photos are still here; please try again.",
+        );
+        return;
+      }
       if (result.status === "error") {
         setError(result.message);
       } else {
@@ -63,11 +75,14 @@ export function NewRequestForm({
       onSubmit={handleSubmit}
       className="space-y-4 rounded-lg border border-gray-200 bg-white p-5"
     >
-      <h2 className="font-medium text-gray-900">Report a problem</h2>
+      <h2 className="font-medium text-gray-900">{requestTitle}</h2>
 
       {appliances.length > 0 && (
         <div>
-          <label htmlFor="applianceId" className="block text-sm font-medium text-gray-700">
+          <label
+            htmlFor="applianceId"
+            className="block text-sm font-medium text-gray-700"
+          >
             Which appliance? (optional)
           </label>
           <select
@@ -87,7 +102,10 @@ export function NewRequestForm({
       )}
 
       <div>
-        <label htmlFor="problem" className="block text-sm font-medium text-gray-700">
+        <label
+          htmlFor="problem"
+          className="block text-sm font-medium text-gray-700"
+        >
           What&apos;s going on?
         </label>
         <textarea
@@ -101,7 +119,10 @@ export function NewRequestForm({
       </div>
 
       <div>
-        <label htmlFor="priority" className="block text-sm font-medium text-gray-700">
+        <label
+          htmlFor="priority"
+          className="block text-sm font-medium text-gray-700"
+        >
           How urgent is this?
         </label>
         <select
@@ -119,7 +140,9 @@ export function NewRequestForm({
       </div>
 
       <div>
-        <span className="block text-sm font-medium text-gray-700">Photo (optional)</span>
+        <span className="block text-sm font-medium text-gray-700">
+          Photo (optional)
+        </span>
         <p className="mt-1 text-xs text-gray-500">
           A picture of the problem — a leak, a broken part, anything that helps.
         </p>
@@ -136,7 +159,9 @@ export function NewRequestForm({
                 />
                 <button
                   type="button"
-                  onClick={() => setPhotoUrls((urls) => urls.filter((u) => u !== url))}
+                  onClick={() =>
+                    setPhotoUrls((urls) => urls.filter((u) => u !== url))
+                  }
                   aria-label="Remove this photo"
                   className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-gray-900 text-xs text-white"
                 >
@@ -180,7 +205,7 @@ export function NewRequestForm({
         </p>
       )}
       {success && !error && (
-        <p className="text-sm text-green-700">
+        <p role="status" className="text-sm text-green-700">
           Got it — we&apos;ll be in touch about next steps.
         </p>
       )}

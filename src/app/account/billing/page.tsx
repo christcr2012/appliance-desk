@@ -1,3 +1,4 @@
+import { formatBusinessDate } from "@/lib/business-date";
 import Link from "next/link";
 import { getServerSession } from "@/lib/session";
 import { getPortalData } from "@/domains/portal";
@@ -30,8 +31,8 @@ export default async function AccountBillingPage() {
     <div>
       <h1 className="text-xl font-semibold">Billing</h1>
       <p className="mt-1 text-sm text-gray-600">
-        Update your card or bank account, and download past invoices,
-        through Stripe&apos;s secure billing page.
+        Update your card or bank account, and download past invoices, through
+        Stripe&apos;s secure billing page.
       </p>
       <div className="mt-4">
         <ManageBillingButton />
@@ -45,6 +46,12 @@ export default async function AccountBillingPage() {
           </p>
         </div>
       )}
+
+      <p className="mt-4 text-sm text-ink-soft">
+        Invoice amounts can include deposits, fees and tax. A required deposit
+        is separate from a confirmed payment. Payment status shows the last
+        recorded update.
+      </p>
 
       {/* Grouped by property once there's more than one — a property
           manager's whole portfolio in one place instead of a flat list
@@ -62,11 +69,16 @@ export default async function AccountBillingPage() {
           {statement.properties.map((property) => (
             <div key={property.serviceAddressId ?? "no-property"}>
               {hasMultipleProperties && (
-                <h2 className="text-sm font-medium text-gray-700">{property.addressLabel}</h2>
+                <h2 className="text-sm font-medium text-gray-700">
+                  {property.addressLabel}
+                </h2>
               )}
               <ul className="mt-2 divide-y divide-gray-100 rounded-lg border border-gray-200 bg-white">
                 {property.invoices.map((invoice) => (
-                  <li key={invoice.id} className="flex items-center justify-between px-4 py-3 text-sm">
+                  <li
+                    key={invoice.id}
+                    className="flex flex-wrap items-start justify-between gap-3 px-4 py-3 text-sm"
+                  >
                     <div>
                       <Link
                         href={`/account/billing/invoice/${invoice.id}`}
@@ -76,15 +88,19 @@ export default async function AccountBillingPage() {
                       </Link>
                       <p className="text-gray-600">
                         {invoice.billingPeriodStart
-                          ? new Date(invoice.billingPeriodStart).toLocaleDateString()
+                          ? formatBusinessDate(invoice.billingPeriodStart)
                           : "—"}{" "}
                         · {invoiceStatusLabel(invoice.status)}
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="font-medium text-gray-900">{formatCents(invoice.amountPaidCents)}</p>
+                      <p className="font-medium text-gray-900">
+                        {formatCents(invoice.amountPaidCents)} paid
+                      </p>
                       {invoice.balanceCents > 0 && (
-                        <p className="text-xs text-amber-700">{formatCents(invoice.balanceCents)} owed</p>
+                        <p className="text-xs text-amber-700">
+                          {formatCents(invoice.balanceCents)} owed
+                        </p>
                       )}
                     </div>
                   </li>

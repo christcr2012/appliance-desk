@@ -373,7 +373,7 @@ google-workspace-mcp repo are done.** Full specification, existing Google
 resource IDs, and the one-time owner setup are in
 [../google-workspace-integration/README.md](../google-workspace-integration/README.md).
 
-### O32 — Google Workspace runtime integration (L, six PRs; Sol review per PR)
+### O32 — Google Workspace runtime integration (L, six PRs; current-model review per PR)
 - Depends: O01, O02, O06, O07, O08, O26 (ledger shape), connector P4-1–P4-3,
   owner one-time setup (service account, delegation entry, two env vars).
 - Scope: `src/lib/google.ts` identity module; jobs ↔ "Deliveries & Service"

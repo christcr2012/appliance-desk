@@ -1,4 +1,7 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+const session = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/session", () => ({ getServerSession: session }));
+import { getPortalHome } from "@/domains/portal/workspace";
 import { prisma } from "@/lib/prisma";
 import {
   getPortalData,
@@ -49,6 +52,24 @@ let applianceTypeId: string;
 let customerA: Fixture;
 let customerB: Fixture;
 
+it("portal home ignores foreign properties and reconciles only the signed-in customer's records", async () => {
+  for (const [own, foreign] of [
+    [customerA, customerB],
+    [customerB, customerA],
+  ]) {
+    session.mockResolvedValue({ user: { id: own.userId } });
+    const result = await getPortalHome(foreign.serviceAddressId);
+    expect(result?.customerId).toBe(own.customerId);
+    expect(result?.addressId).toBeUndefined();
+    expect(result?.properties.map((a) => a.id)).toEqual([own.serviceAddressId]);
+    expect(result?.activeRentalCount).toBe(1);
+    expect(result?.rentals.map((a) => a.id)).toEqual([own.agreementId]);
+    expect(result?.invoice?.id).toBe(own.invoiceId);
+    expect(JSON.stringify(result)).not.toContain(foreign.customerId);
+    expect(result?.invoice).not.toHaveProperty("stripeInvoiceId");
+  }
+});
+
 async function createCustomerFixture(label: "a" | "b"): Promise<Fixture> {
   const user = await prisma.user.create({
     data: {
@@ -60,7 +81,12 @@ async function createCustomerFixture(label: "a" | "b"): Promise<Fixture> {
   });
 
   const customer = await prisma.customer.create({
-    data: { userId: user.id, referralCode: `ISO${label.toUpperCase()}${RUN_ID}`.slice(0, 20).toUpperCase() },
+    data: {
+      userId: user.id,
+      referralCode: `ISO${label.toUpperCase()}${RUN_ID}`
+        .slice(0, 20)
+        .toUpperCase(),
+    },
   });
 
   const serviceAddress = await prisma.serviceAddress.create({
@@ -108,9 +134,17 @@ async function createCustomerFixture(label: "a" | "b"): Promise<Fixture> {
     data: {
       customerId: customer.id,
       agreementId: agreement.id,
+      status: "OPEN",
       amountDueCents: 5000,
       lineItems: {
-        create: [{ kind: "RENTAL", description: "Washer rental", amountCents: 5000, quantity: 1 }],
+        create: [
+          {
+            kind: "RENTAL",
+            description: "Washer rental",
+            amountCents: 5000,
+            quantity: 1,
+          },
+        ],
       },
     },
   });
@@ -136,7 +170,9 @@ async function deleteFixture(fixture: Fixture) {
   await prisma.photo.deleteMany({
     where: { maintenanceRequest: { customerId: fixture.customerId } },
   });
-  await prisma.maintenanceRequest.deleteMany({ where: { customerId: fixture.customerId } });
+  await prisma.maintenanceRequest.deleteMany({
+    where: { customerId: fixture.customerId },
+  });
   // createMaintenanceRequestForUser writes an AuditLog row keyed to this
   // user's id (AuditLog.userId is a real foreign key to User) — that row
   // has to go before the User itself can be deleted, or Postgres rejects
@@ -145,11 +181,15 @@ async function deleteFixture(fixture: Fixture) {
   // InvoiceLineItem cascades from Invoice (see prisma/schema.prisma), so
   // deleting the invoice is enough to clean up its line items too.
   await prisma.invoice.delete({ where: { id: fixture.invoiceId } });
-  await prisma.applianceAssignment.delete({ where: { id: fixture.assignmentId } });
+  await prisma.applianceAssignment.delete({
+    where: { id: fixture.assignmentId },
+  });
   await prisma.appliance.delete({ where: { id: fixture.applianceId } });
   await prisma.rentalLine.delete({ where: { id: fixture.lineId } });
   await prisma.rentalAgreement.delete({ where: { id: fixture.agreementId } });
-  await prisma.serviceAddress.delete({ where: { id: fixture.serviceAddressId } });
+  await prisma.serviceAddress.delete({
+    where: { id: fixture.serviceAddressId },
+  });
   await prisma.customer.delete({ where: { id: fixture.customerId } });
   await prisma.user.delete({ where: { id: fixture.userId } });
 }
@@ -249,7 +289,9 @@ describe("customer data isolation (Phase 6A item 3)", () => {
     const dataA = await getPortalData(customerA.userId);
     const dataB = await getPortalData(customerB.userId);
     expect(dataA?.maintenanceRequests.map((r) => r.id)).toContain(request.id);
-    expect(dataB?.maintenanceRequests.map((r) => r.id)).not.toContain(request.id);
+    expect(dataB?.maintenanceRequests.map((r) => r.id)).not.toContain(
+      request.id,
+    );
   });
 
   it("attaches photoUrls to the request as real Photo rows (2026-09-28)", async () => {
@@ -261,7 +303,9 @@ describe("customer data isolation (Phase 6A item 3)", () => {
       ],
     });
 
-    const photos = await prisma.photo.findMany({ where: { maintenanceRequestId: request.id } });
+    const photos = await prisma.photo.findMany({
+      where: { maintenanceRequestId: request.id },
+    });
     expect(photos).toHaveLength(2);
     expect(photos.map((p) => p.url).sort()).toEqual(
       [
@@ -276,11 +320,17 @@ describe("customer data isolation (Phase 6A item 3)", () => {
     // invoice document (/account/billing/invoice/[invoiceId]) and
     // viewing someone else's, just by guessing/changing the id in the
     // URL — see src/domains/billing/invoice-detail.ts.
-    const ownInvoice = await getInvoiceDetail(customerA.invoiceId, { customerId: customerA.customerId });
+    const ownInvoice = await getInvoiceDetail(customerA.invoiceId, {
+      customerId: customerA.customerId,
+    });
     expect(ownInvoice?.id).toBe(customerA.invoiceId);
-    expect(ownInvoice?.lineItems.map((l) => l.description)).toContain("Washer rental");
+    expect(ownInvoice?.lineItems.map((l) => l.description)).toContain(
+      "Washer rental",
+    );
 
-    const othersInvoice = await getInvoiceDetail(customerB.invoiceId, { customerId: customerA.customerId });
+    const othersInvoice = await getInvoiceDetail(customerB.invoiceId, {
+      customerId: customerA.customerId,
+    });
     expect(othersInvoice).toBeNull();
   });
 

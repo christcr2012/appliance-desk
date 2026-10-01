@@ -1,3 +1,4 @@
+import { AgreementProgress } from "@/components/desk/agreement-progress";
 import { requireRole } from "@/lib/session";
 import { notFound } from "next/navigation";
 import { OperationalAgreement } from "./operational-agreement";
@@ -27,13 +28,19 @@ export default async function AgreementDetailPage({
 
   return (
     <div className="max-w-3xl">
-      <Link href="/desk/agreements" className="text-sm text-gray-600 hover:underline">
+      <Link
+        href="/desk/agreements"
+        className="text-sm text-gray-600 hover:underline"
+      >
         &larr; Back to agreements
       </Link>
 
       <h1 className="mt-2 text-xl font-semibold">
         Agreement for{" "}
-        <Link href={`/desk/customers/${agreement.customer.id}`} className="hover:underline">
+        <Link
+          href={`/desk/customers/${agreement.customer.id}`}
+          className="hover:underline"
+        >
           {agreement.customer.user.name ?? agreement.customer.user.email}
         </Link>
       </h1>
@@ -42,6 +49,9 @@ export default async function AgreementDetailPage({
         {agreement.serviceAddress.state} {agreement.serviceAddress.zip}
       </p>
 
+      <div className="mt-6">
+        <AgreementProgress agreement={agreement} />
+      </div>
       <div className="mt-6">
         <AgreementDetailPanel
           agreement={agreement}
@@ -55,4 +65,3 @@ export default async function AgreementDetailPage({
     </div>
   );
 }
-
