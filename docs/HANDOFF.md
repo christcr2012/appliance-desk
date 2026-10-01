@@ -26,6 +26,25 @@ This note is intentionally written so a coding agent creating the next PR notice
 See `docs/AI-PR-READ-FIRST.md` for the full audit and the categorized fix-now / fix-soon / monitor list.
 
 
+## 2026-10-01 — Historical security response acceptance
+
+#30's missing real-response HSTS coverage is now under review: production-server
+checks cover home/pricing/static responses, protected redirect and rejected API.
+Current configured one-year/includeSubDomains policy is unchanged. HTTP CI proves
+emission only; browser HTTPS enforcement/preload/manual acceptance unclaimed.
+The earlier deepmerge-ts PostgreSQL-only dismissal is corrected in DECISIONS:
+it has an independent @prisma/config path. Existing patched overrides resolve
+deepmerge-ts 8.0.2/mysql2 3.24.4 and fresh npm audit returns zero vulnerabilities.
+No production dependency/configuration change; these are verified current facts.
+#30's three threads stay open until this PR passes exact-head/full CI/preview.
+
+Preceding/latest #131 submitted source inspection, threads and comments checked:
+no code findings; quota notice 5935092513, owner waiver applies. #130 full CI
+36886433855 and #131 CI 36887360449 still running at submission; neither claimed
+merged or complete. Preserve their dependencies and evidence. B01–B36, remaining
+historical repairs and full O02/O13/O14/O32 gates remain active. Same model, one
+agent; no live activation, spending, real notifications or real-data deletion.
+
 ## 2026-10-01 — Defensive session/access follow-on
 
 Main da3cf4243686805195640f9dd3293e38a8621e61 includes #127 planning, #128 atomic

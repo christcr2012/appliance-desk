@@ -3725,3 +3725,24 @@ Checkout and invoice records already follow that contract; builder, owner agreem
 and signing labels now agree. No charge amount or live provider configuration changes.
 Real disposable-Postgres delivery and phone signing/owner presentation tests are
 included; their full CI evidence remains pending at submission.
+
+
+## 2026-10-01 — Reconcile #30 security acceptance and dependency rationale
+
+The September 27 PostgreSQL-only rationale did not establish that deepmerge-ts
+was unreachable. It is independently used through @prisma/config; database
+choice alone is not evidence for dismissing its advisory. The later September
+29 change replaced that acceptance with patched transitive overrides. Current
+package-lock resolves deepmerge-ts 8.0.2 and mysql2 3.24.4; a fresh October 1
+`npm audit --json` completed successfully with zero known vulnerabilities.
+No downgrade or new dependency change is needed for this historical finding.
+This is current registry/lock evidence, not a guarantee against unknown issues
+or a claim that PostgreSQL eliminates tooling dependency risk.
+
+HSTS was already configured in next.config.ts. New production-server response
+checks cover public pages, a static asset, a protected redirect and an anonymous
+API rejection. They verify the actual configured one-year/includeSubDomains
+header, including the Sentry-wrapped Next configuration, rather than inspecting
+a configuration object. CI uses next build/start on HTTP loopback: this proves
+header emission, not HTTPS browser enforcement or domain preload acceptance.
+Full CI/preview/exact-head inspection remains pending at submission.
