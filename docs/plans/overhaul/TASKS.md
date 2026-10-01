@@ -353,7 +353,9 @@ split it into a smaller prerequisite card and preserve these acceptance rules.
   manual screen-reader check remains explicit until a person actually performs it.
 
 ### O31 — Owner guide, launch checks and release (L documentation; Sol release review)
-- Depends: O30 and applicable OWNER-INPUTS.
+- Depends: O30, applicable OWNER-INPUTS, and B01–B33 acceptance in
+  `docs/reviews/2026-10-01-business-logic-audit.md` (owner expanded scope October 1).
+  Any removal/deferment from that launch target needs explicit owner approval.
 - Scope: OWNER-GUIDE, HANDOFF, ROADMAP, operational runbook; no new features.
 - Build: plain-English walkthrough, disabled integrations/input register,
   backup/restore and rollback instructions, known limits and final preview.

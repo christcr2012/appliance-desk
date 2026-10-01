@@ -1,3 +1,15 @@
+## 2026-10-01 — Owner business audit expands the launch target
+
+Chris asked to work the comprehensive 33-item business audit into the scope and
+prefers everything done before launch. The evidence-backed register is
+[Business audit reconciliation](reviews/2026-10-01-business-logic-audit.md); the
+execution/launch gates live in [Completion plan](plans/overhaul/COMPLETION-PLAN.md).
+B01–B33 are current scope, including existing implementations still needing
+acceptance; older "later phase" labels below do not silently defer them. Historical
+reviews/security P0 precede features. O02 isolation/storage, O13/O14 and O32
+sequencing and live/spending/destructive approvals remain intact. Policy and data
+inputs are explicit blockers, not placeholders or shipped behavior.
+
 # Roadmap — deferred & suggested items
 
 Things intentionally **not** built yet, either because they belong to a
