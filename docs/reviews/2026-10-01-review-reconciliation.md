@@ -108,3 +108,8 @@ sequencing remain incomplete. No live activation, spending or customer-data clea
 | [#104](https://github.com/christcr2012/appliance-desk/pull/104#discussion_r4149971361) | Remove omitted concept files from the checksum inventory | Pending |
 | [#104](https://github.com/christcr2012/appliance-desk/pull/104#discussion_r4149971370) | Replace the empty light-mark PNG | Pending |
 | [#104](https://github.com/christcr2012/appliance-desk/pull/104#discussion_r4149971375) | Mark the official logo copies as still pending | Pending |
+
+## New PR #117 review submissions
+
+- 5ba88ef: email normalization and scoring contract findings implemented in 2ebdddc.
+- 2ebdddc: malformed legacy email validation finding implemented; new exact-head review/full CI/preview pending. Thread [4154663228](https://github.com/christcr2012/appliance-desk/pull/117#discussion_r4154663228) remains open.

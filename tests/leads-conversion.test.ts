@@ -134,6 +134,18 @@ describe("convertLeadToCustomer — customer activation, no relayed passwords", 
     expect(requestPasswordReset).toHaveBeenCalledWith({ body: { email: "customer@example.com", redirectTo: "/reset-password" } });
   });
 
+  it.each(["   ", "not-an-email", "customer@", "a@example.com\nother@example.com"])("rejects malformed legacy email %j before any conversion writes", async (email) => {
+    leadFindUniqueOrThrow.mockResolvedValue({ ...LEAD, email });
+    const { convertLeadToCustomer } = await import("@/domains/leads");
+    await expect(convertLeadToCustomer("owner-1", "lead-1")).rejects.toThrow(/valid email/);
+    expect(leadClaim).not.toHaveBeenCalled();
+    expect(userCreate).not.toHaveBeenCalled();
+    expect(hashPassword).not.toHaveBeenCalled();
+    expect(customerCreate).not.toHaveBeenCalled();
+    expect(auditLogCreate).not.toHaveBeenCalled();
+    expect(requestPasswordReset).not.toHaveBeenCalled();
+  });
+
   it("reuses an existing customer account and sends no activation email — nothing new to send", async () => {
     userFindUnique.mockResolvedValue({ id: "user-1", role: "CUSTOMER" });
     const { convertLeadToCustomer } = await import("@/domains/leads");

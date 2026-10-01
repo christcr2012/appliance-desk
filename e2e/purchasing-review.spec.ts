@@ -24,8 +24,8 @@ test("owner can name, keyboard edit and persist purchase-order lines on a phone"
   expect((await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze()).violations).toEqual([]);
   await info.attach("purchase-order-phone", { body: await page.screenshot({ fullPage: true }), contentType: "image/png" });
   await page.getByRole("button", { name: "Create purchase order", exact: true }).click();
-  await expect(page).toHaveURL(/\/desk\/purchase-orders\/[^/]+$/);
-  await expect(page.getByText("Door seal review fixture", { exact: true })).toBeVisible();
+  await expect(page).toHaveURL(/\/desk\/purchase-orders\/(?!new$)[^/]+$/);
+  await expect(page.getByText("2× Door seal review fixture", { exact: true })).toBeVisible();
   await page.reload();
-  await expect(page.getByText("Door seal review fixture", { exact: true })).toBeVisible();
+  await expect(page.getByText("2× Door seal review fixture", { exact: true })).toBeVisible();
 });

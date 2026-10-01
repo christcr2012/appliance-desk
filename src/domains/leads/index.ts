@@ -1,4 +1,5 @@
 import { randomBytes, randomUUID } from "node:crypto";
+import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { sendEmail } from "@/lib/email";
@@ -339,11 +340,11 @@ export function canConvertLead(
       reason: "This lead has already been converted to a customer.",
     };
   }
-  if (!lead.email) {
+  if (!z.string().trim().email().safeParse(lead.email).success) {
     return {
       ok: false,
       reason:
-        "Add an email address for this lead before converting — a customer account needs one to sign in.",
+        "Add a valid email address for this lead before converting — a customer account needs one to sign in.",
     };
   }
   return { ok: true };

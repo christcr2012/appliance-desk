@@ -1,3 +1,19 @@
+## 2026-10-01 — Review and CI follow-up
+
+PR #117 head 2ebdddc passed full CI (run 36852649575) and Vercel deployment.
+Its exact-head review found one further valid defect: malformed legacy email
+could bypass the former signup validation. The shared conversion eligibility
+guard now validates the trimmed email before any transactional claim or account
+write; regression cases cover whitespace, malformed and multiple addresses.
+New-head full CI, review and preview remain required; no merge or resolution yet.
+
+PR #118 head 77a6d3 passed migration/upgrade, all unit/database tests, types,
+lint and build, and Vercel deployment. Browser CI failed (run 36852839051);
+the only browser failure was an exact-text assertion omitting the displayed
+quantity prefix. The test now asserts the saved quantity and description after
+creation and reload, and excludes the new-order route when awaiting navigation.
+Purchasing completion remains unverified until fresh full CI/review/preview.
+O02 and O32 gates and activation/spending/destructive approvals remain intact.
 ## 2026-10-01 — Purchasing review correctness batch
 
 Follow-on to #117, without completing O17 or bypassing O02. Checked #117
