@@ -67,6 +67,10 @@ anything outside this project.
   the plan allows (Neon's free tier currently caps protected branches —
   see `docs/DECISIONS.md`).
 - AI agents never commit directly to `main`.
+- Chris authorized agents to merge PRs when safe (2026-10-01), after the gates
+  above pass. Merge with an expected-head SHA; stacked PRs must target `main`
+  after predecessors merge. Live activation, spending and destructive changes
+  still require their separate approvals.
 - Branch names: `ai/<tool>/<topic>` for AI work (e.g.
   `ai/claude/customer-portal`), plus `feature/…` and `fix/…`. No GitFlow.
 - Open a PR, make sure CI passes, get a preview deployment, update
@@ -90,7 +94,10 @@ anything outside this project.
   unresolved/blocked with the reason and next step. Never silently drop a finding
   because its PR was merged, closed, or its line became outdated.
 - Resolve threads only after verifying the fix or documented disposition. Fixes
-  require exact-head review, full CI and applicable preview/acceptance checks.
+  require inspection of the exact head, full CI and applicable preview/acceptance
+  checks. Request automated review when available. Chris authorized proceeding
+  without automated review when unavailable (2026-10-01); record the reason and
+  waiver, inspect the changes, and never claim the unavailable review passed.
   Re-read reviews before merge; new commits invalidate earlier head evidence.
 - Update docs/HANDOFF.md and the review ledger before handoff. Unverified or
   blocked findings remain open. Review automation silence is not an approval;
