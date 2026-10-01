@@ -18,16 +18,37 @@ code and repair valid defects with behavior evidence before new backlog work.
 CRM #117, purchasing #118, email #119, exports #120, onboarding #121,
 operational results #122 and Colorado calendar #123 merged after exact-head
 inspection, full CI and ready Vercel. #123 CI 36864737390: 842 tests/136 browser
-checks. Automated review quota waived by Chris October 1. Forty-one threads
-resolved (thirty-eight historical plus three #117 findings); fifty-three historical
+checks. Automated review quota waived by Chris October 1. Forty-four threads
+resolved (forty-one historical plus three #117 findings); fifty historical
 remain open. Staff job scope, replacement-only SWAP prompt and shared-route
-completion follow-up pass 807 local tests; full CI/preview and exact-head pending.
+completion follow-up merged in #124 after full gates.
 Four staff findings resolved after #124 full CI 36867157292 (854 tests/137
 browser checks), exact-head inspection and ready Vercel. Prepaid rent protection and one-time waiver
-presentation follow-on passes 812 local tests; three findings await full CI/preview
-and exact-head verification. Billing correctness precedes new backlog work.
+presentation #125 merged after full CI 36870323155 (860 tests/138 browser
+checks), exact-head inspection and ready Vercel; three findings resolved. Reviewed
+documentation audit #126 merged first, CI 36869113324 (854/137). Billing correctness precedes new backlog work.
 No O13/O14 completion claim; assignment/schema/scheduling-write work retains gates.
 Preserve O02 storage/isolation and O32 sequencing; no model changes.
+
+## Expanded owner business scope — 2026-10-01
+
+Chris supplied a comprehensive 33-item operational/business audit, then added
+customer renewal, early termination fees and optional auto-renewal (B34–B36). He prefers all
+outcomes completed before launch. [Business audit reconciliation](../../reviews/2026-10-01-business-logic-audit.md)
+tracks B01–B36, existing evidence, missing acceptance, policy inputs and dependencies.
+This is approved planning scope, not a claim that the audit's "missing" assertions
+are all current defects. Existing late-fee automation, statements, consent records,
+phone staff work and nonnegative parts require verification rather than duplication.
+
+O31 launch acceptance now includes all B01–B36, or an explicit owner-approved
+scope change/deferment. Billing essentials include staged isolation, drift
+reconciliation, stored signing/invoice artifacts, consent provenance, tax boundaries,
+refund/unused-term policies and outage recovery. Historical review repairs and the
+security audit P0 remain first. O02 must finish before schema/storage/assignment
+work; O13/O14 and O32 sequencing remains unchanged. O29 still requires actual data.
+Backdated billing without delivery, automatic reservation release, refund/retention
+policies and paid provider choices require concrete policy review. This audit does
+not authorize live collection, spending or deletion of real data.
 
 ## Execution
 
