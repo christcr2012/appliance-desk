@@ -990,7 +990,11 @@ See `src/domains/reports/accounting-export.ts`.
 ideas — still just a menu, per that doc's own "nothing gets built
 without Chris picking it"): a separate Contacts concept (idea #13). The
 driver/technician mobile job view (ideas #1/#2) is also **done
-(2026-09-28, Task #65)** — see the automation-rules entry in
+(2026-09-28, Task #65)**. The current route is shared and unassigned,
+explicitly showing the team's scheduled visits; individual assignment remains
+gated by O02/O13. Swap completion opens the job detail for incoming-unit follow-up,
+with owner confirmation required when legacy replacement intent is missing.
+See the automation-rules entry in
 `docs/DECISIONS.md`.
 
 ## Purchasing & supplies (2026-09-29)

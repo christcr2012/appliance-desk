@@ -368,10 +368,12 @@ sessions immediately and sets a new `User.archivedAt` field, which
 account is locked out even mid-session, not just on next login.
 
 **Driver mobile view (`/desk/driver`):** a stripped-down, phone-sized
-list of a staff member's own jobs for today — status updates, photo
-upload, and the same appliance-status-update prompt the main jobs
-page already offers, without any of the desk's other navigation or
-financial information in view.
+shared, unassigned list of today's team visits — status updates and photo
+upload. Completing a swap or maintenance visit opens its job detail for follow-up.
+Swap suggestions use the incoming unit recorded by the guided swap; older visits
+without recorded intent require owner/admin confirmation. Operational payloads
+exclude financial fields. This corrects the earlier personal-route claim
+(2026-10-01); staff assignment/Mine requires the O02/O13 contract gates.
 
 ---
 

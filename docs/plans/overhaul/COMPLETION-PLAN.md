@@ -15,14 +15,15 @@ separate approvals for activation, spending and destructive changes remain.
 inventoried; 91 unresolved historical threads are tracked in
 `docs/reviews/2026-10-01-review-reconciliation.md`. Reconcile them against current
 code and repair valid defects with behavior evidence before new backlog work.
-CRM #117, purchasing #118, email #119, exports #120, onboarding #121 and
-operational results #122 merged with exact-head inspection, full CI and ready
-Vercel. Automated review quota waived by Chris October 1. Thirty-one threads
-resolved (twenty-eight historical plus three #117 findings); sixty-three historical
-findings remain open. Colorado dispatch/driver calendar and adjacent-range conflict
-repairs pass local behavior tests; full CI/preview and exact-head inspection pending.
-Staff job scope/follow-up and billing correctness precede new backlog features.
-No O13/O14 completion claim; schema and scheduling-write work retains its gates.
+CRM #117, purchasing #118, email #119, exports #120, onboarding #121,
+operational results #122 and Colorado calendar #123 merged after exact-head
+inspection, full CI and ready Vercel. #123 CI 36864737390: 842 tests/136 browser
+checks. Automated review quota waived by Chris October 1. Thirty-seven threads
+resolved (thirty-four historical plus three #117 findings); fifty-seven historical
+remain open. Staff job scope, replacement-only SWAP prompt and shared-route
+completion follow-up pass 807 local tests; full CI/preview and exact-head pending.
+Four related findings remain open. Billing correctness precedes new backlog work.
+No O13/O14 completion claim; assignment/schema/scheduling-write work retains gates.
 Preserve O02 storage/isolation and O32 sequencing; no model changes.
 
 ## Execution

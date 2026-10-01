@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireRole } from "@/lib/session";
+import { prisma } from "@/lib/prisma";
 import {
   createJob,
   updateJobStatus,
@@ -95,7 +96,7 @@ export async function updateJobStatusAction(
   status: string,
   completionNotes?: string,
 ): Promise<JobActionState> {
-  // Staff (e.g. a driver marking their own job started/delivered) can do
+  // Staff (e.g. a driver marking a shared team visit started/delivered) can do
   // this too — see docs/DECISIONS.md, 2026-09-28 "Staff permissions
   // framework". Setting a job's REPAIR COST stays OWNER/ADMIN only
   // (below) since that's financial, not operational.
@@ -205,6 +206,7 @@ export async function setJobRepairCostsAction(
 export async function updateApplianceStatusFromJobAction(
   applianceId: string,
   status: string,
+  jobId?: string,
 ): Promise<JobActionState> {
   const session = await requireRole("OWNER", "ADMIN", "STAFF");
 
@@ -213,6 +215,13 @@ export async function updateApplianceStatusFromJobAction(
   }
 
   try {
+    if (session.user.role === "STAFF") {
+      if (!jobId || !await prisma.jobAppliance.findFirst({
+        where: { jobId, applianceId }, select: { id: true },
+      })) {
+        return { status: "error", message: "This appliance is not linked to the originating job." };
+      }
+    }
     await updateApplianceStatus(session.user.id, applianceId, status as ApplianceStatus);
   } catch (error) {
     return {
@@ -225,6 +234,7 @@ export async function updateApplianceStatusFromJobAction(
   revalidatePath(`/desk/inventory/${applianceId}`);
   revalidatePath("/desk/dashboard");
   revalidatePath("/desk/fleet");
+  if (jobId) revalidatePath(`/desk/jobs/${jobId}`);
   return { status: "success" };
 }
 
@@ -254,4 +264,3 @@ export async function updateJobChecklistAction(
   revalidatePath("/desk/dispatch");
   return { status: "success" };
 }
-
