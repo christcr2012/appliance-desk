@@ -559,3 +559,15 @@ credential recovery, snapshot consistency, and a JSON restore drill remain
 separate work. Local focused tests: 33 passed; typecheck passed. Exact-head
 full CI and preview evidence are tracked in the associated PR before merge.
 Claude continues to own O01; full O02 and O09/O13 remain incomplete/blocked.
+
+
+## 2026-09-30 — Google Workspace runtime integration: authorized, not started
+
+Chris authorized the Calendar / Drive / Gmail integration (the "high
+integration" he asked for) after a day of Workspace setup with Claude: branded
+mailbox and send-as identities, a Denver-time "Deliveries & Service" calendar,
+the business Drive folder tree, and a proven service-account pattern. Spec and
+all resource IDs: `docs/plans/google-workspace-integration/README.md`; card
+O32 in `docs/plans/overhaul/TASKS.md`. **Do not start before Releases A/B are
+verified and Chris's live walkthrough is done.** Deliberately left out:
+Google Tasks/Keep, Sheets-as-reporting, Contacts sync.

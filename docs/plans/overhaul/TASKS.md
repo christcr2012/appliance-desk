@@ -364,6 +364,36 @@ split it into a smaller prerequisite card and preserve these acceptance rules.
   commit on failure; leave additive DB tables in place, never destructive rollback.
 - End: report what is deployed vs pending. Do not begin deferred features automatically.
 
+## Release G — Google Workspace runtime integration (authorized 2026-09-30)
+
+Owner-authorized on 2026-09-30, satisfying the "own authorized card" rule
+below. **Sequencing: start only after Releases A and B are verified, after
+Chris's live walkthrough, and after connector cards P4-1–P4-3 in the
+google-workspace-mcp repo are done.** Full specification, existing Google
+resource IDs, and the one-time owner setup are in
+[../google-workspace-integration/README.md](../google-workspace-integration/README.md).
+
+### O32 — Google Workspace runtime integration (L, six PRs; current-model review per PR)
+- Depends: O01, O02, O06, O07, O08, O26 (ledger shape), connector P4-1–P4-3,
+  owner one-time setup (service account, delegation entry, two env vars).
+- Scope: `src/lib/google.ts` identity module; jobs ↔ "Deliveries & Service"
+  calendar (app owns existence, calendar may move times); signed agreements
+  and invoice/statement PDFs filed to the existing Drive folders; customer and
+  lead email history from Gmail with reply as support@. Resend stays the
+  transactional sender.
+- Build: PRs in this order: google-identity, calendar-sync-out,
+  calendar-sync-in, drive-filing, gmail-ingest, gmail-send. Additive schema
+  only. Non-production runs Google sync in dry-run unless explicitly enabled.
+- Accept: a rescheduled event on the phone moves the job; a cancelled job
+  cancels its event; a signed agreement appears in Drive within a minute;
+  only mail matching a known customer/lead is stored; sends go out as
+  support@ with the Evergreen signature and are audited; sync failures never
+  block a business action and are visible with Retry.
+- Proof: behavioral tests for payload builders, matcher, conflict rule and
+  naming; one end-to-end run against the real calendar/Drive/mailbox with test
+  data, documented; G; `docs/ARCHITECTURE.md` env-var table updated.
+- Not in scope: Google Tasks/Keep, Sheets reporting, Contacts sync (ROADMAP).
+
 ## Status ledger format
 
 Maintain a small table here when implementation starts:
@@ -379,7 +409,9 @@ O00 reconciles its observed inventory; O21 email settings consume GW-04/GW-07;
 O26–O28 communication work preserves existing Resend and uses verified routing
 where relevant. O31 reports GW-08/GW-09 activation evidence or explicit blockers.
 Drive/Calendar/Tasks/Contacts integrations stay conditional and require their
-own authorized card before runtime sync is built. Every newly discovered
+own authorized card before runtime sync is built; **O32 (Release G) is that
+card for Calendar, Drive filing and Gmail history, authorized 2026-09-30.**
+Tasks/Contacts remain unauthorized. Every newly discovered
 Workspace dependency gets a GW entry; these are external setup tasks, not
 additional model batches or completed application cards.
 

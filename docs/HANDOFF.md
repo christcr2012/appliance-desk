@@ -1,3 +1,30 @@
+## 2026-10-01 — PR #105 conflict resolution
+
+Merged current main into the Google Workspace documentation branch while
+preserving both progress entries and the O32 authorization/sequencing. The
+spec now requires existing-folder access proof, O26 durable send intent and
+unknown-outcome reconciliation, and conditional calendar writes with conflict
+logging. Current-model review follows the owner's no-switch instruction.
+Documentation only; no provider, schema, configuration or runtime activation.
+Documentation checks pass locally; updated-head CI/preview remain pending.
+
+## 2026-09-30 — Google Workspace integration authorized and specified (Claude)
+
+Documentation only. Adds `docs/plans/google-workspace-integration/README.md`
+(spec, existing Google resource IDs, owner one-time setup, six-PR sequence),
+card **O32 / Release G** in the overhaul TASKS.md, and a ROADMAP entry. This
+satisfies the overhaul rule that runtime Drive/Calendar sync needs its own
+authorized card. **Sequencing is explicit: after Releases A/B and the owner
+walkthrough, and after connector cards P4-1–P4-3.** Nothing was built,
+deployed or activated.
+
+Workspace-side state as of tonight, for whoever picks this up: rentals mailbox
+branded (names, signature, avatar, labels/filters, chris@ default sender);
+2-step verification enforced on both admin accounts; rentals user in its own
+org unit; "Deliveries & Service" calendar (Denver) and the nine-folder Drive
+tree created; DMARC `p=none` added by Chris; connector (google-workspace-mcp)
+now multi-account with Gmail-settings delegation (its PRs #1–#5).
+
 ## 2026-09-30 — Owner and portal workspaces; CRM checks green
 
 PR #102 head 883a8f90a21135902450fff8c4e6663b631fdeae passed full CI
