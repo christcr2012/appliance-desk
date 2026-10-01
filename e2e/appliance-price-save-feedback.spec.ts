@@ -10,13 +10,17 @@ test.use({ storageState: fs.existsSync(owner) ? owner : undefined });
 test("saved non-placeholder business name composes home and child browser titles", async ({ page }) => {
   test.skip(!enabled || !fs.existsSync(owner), "Disposable CI database only");
   const { prisma } = await import("../src/lib/prisma");
-  const { publicBusinessName } = await prisma.businessSettings.findUniqueOrThrow({ where: { id: "singleton" } });
+  const { publicBusinessName, publicEmail } = await prisma.businessSettings.findUniqueOrThrow({ where: { id: "singleton" } });
   const fixtureName = `Title fixture ${randomUUID()}`;
+  const fixtureEmail = `title-${randomUUID()}@example.test`;
   try {
     // The disposable seed intentionally uses a placeholder. Own this temporary
     // value and restore it conditionally; no production settings are touched.
     await page.goto("/desk/settings?section=profile");
     await page.getByLabel("Business name", { exact: true }).fill(fixtureName);
+    // The seed email is also a placeholder and fails native email validation.
+    // Save a complete valid profile through the real form.
+    await page.getByLabel("Email", { exact: true }).fill(fixtureEmail);
     await page.getByRole("button", { name: "Save this section" }).click();
     await expect(page.getByRole("status")).toHaveText("Settings saved.");
     expect((await prisma.businessSettings.findUniqueOrThrow({ where: { id: "singleton" } })).publicBusinessName).toBe(fixtureName);
@@ -33,6 +37,12 @@ test("saved non-placeholder business name composes home and child browser titles
       await page.getByRole("button", { name: "Save this section" }).click();
       await expect(page.getByRole("status")).toHaveText("Settings saved.");
     }
+    // A placeholder email cannot be restored through the validated form.
+    // Restore only our owned email, in this disposable database.
+    await prisma.businessSettings.updateMany({
+      where: { id: "singleton", publicEmail: fixtureEmail },
+      data: { publicEmail },
+    });
   }
 });
 
