@@ -59,10 +59,10 @@ export function computeMrrTrend(
     );
 
     const mrrCents = agreements.reduce((sum, agreement) => {
-      if (!agreement.billingStartedAt || agreement.billingStartedAt >= nextMonthStart) {
+      if (!agreement.billingStartedAt || (agreement.billingStartedAt >= nextMonthStart || agreement.billingStartedAt > asOf)) {
         return sum; // billing hadn't started yet as of this month
       }
-      if (agreement.endDate && agreement.endDate < monthStart) {
+      if (agreement.endDate && agreement.endDate <= monthStart) {
         return sum; // already ended before this month began
       }
       const lineTotal = agreement.lines.reduce(
@@ -84,3 +84,16 @@ export function computeMrrTrend(
 
   return points;
 }
+
+
+export function revenuePeriod(asOf: Date, monthOnly: boolean) {
+  return {
+    ...(monthOnly
+      ? {
+          gte: new Date(Date.UTC(asOf.getUTCFullYear(), asOf.getUTCMonth(), 1)),
+        }
+      : {}),
+    lte: asOf,
+  };
+}
+

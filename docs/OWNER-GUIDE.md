@@ -379,3 +379,14 @@ and their actual monthly prices, including any term discount. Saved customer and
 terms appear read-only; review them before adding equipment. If a save response
 is lost, refresh the current builder link to check the saved result before trying
 again. An agreement already sent for signature opens its agreement page instead.
+
+### Reading Revenue and recorded payments
+
+Estimated monthly and annual rates come from agreed rental prices; they are not
+a forecast of cash or profit. Gross invoice payments include successful provider
+payments and payments you recorded manually, and may include deposits, fees and
+tax. Refunds are shown separately. Choose Gross payments or Invoice refunds,
+then This UTC month or All recorded dates. Totals include every matching record;
+the list shows 25 per page. Each row opens its original invoice. Dates on records
+display in Colorado time, while the report's monthly windows use UTC. No costs
+are deducted, so this report does not establish profit.

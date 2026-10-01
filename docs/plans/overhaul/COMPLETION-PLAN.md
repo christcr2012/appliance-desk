@@ -109,3 +109,13 @@ Keyboard Back now activates the real saved review transition. Additional line/
 signature lost-response tests preserve input and avoid false success messages.
 Preview branch Neon reports storage enabled but no buckets; this is not app
 private-storage/runtime evidence and does not satisfy O02.
+
+## Revenue family — 2026-10-01
+
+O19 revenue definitions/backing records implemented, CI pending. Rates are
+estimates; succeeded invoice payments are gross recorded amounts, not rent or
+profit. Refunds and deposit refunds have separate sources. Consistent UTC bounds,
+partially paid overdue balances, future/boundary trend fixes and owner-only
+repeatable-read count/sum/25-row invoice drill-through. 717 broad local tests plus
+one dashboard fixture test pass; real DB/browser proof awaits CI. Other report
+families (earnings, asset costs, growth/source conversion) remain unfinished.

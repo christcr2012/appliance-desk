@@ -1,3 +1,31 @@
+## 2026-10-01 — Revenue definitions and backing records
+
+O19 revenue family now labels MRR/ARR as estimated agreed rates and invoice
+payments as gross recorded cash, not exact Stripe rent/profit. Manual payments,
+deposits, fees and tax may be included; invoice refunds are separate from deposit
+refunds and from original payment dates. No cost deduction or profit claim.
+Monthly record windows consistently use UTC and exclude future records; source
+record timestamps display in Colorado. Closed rentals use last-update dates,
+explicitly not a churn/closure-date history. Partially paid past-due balances now
+count; zero/overpaid balances do not inflate the unpaid-invoice count. Trend
+excludes future billing starts and agreements ending at the month boundary.
+
+Owner-only source views use repeatable-read count/sum/25-row snapshots, stable
+createdAt/id ordering, whitelisted URL filters and exact invoice links. Numeric
+monthly rate values accompany the decorative estimate chart. Local: 717 broad
+tests pass (two real-DB-only tests skip, four existing DB suites excluded), plus
+new dashboard reconciliation test passes; typecheck and lint pass with two
+existing warnings. Real disposable-DB proof for manual/provider payments,
+deposit-inclusive gross, refunds and pending/failed/future exclusions and six
+width/theme source/filter/Back/keyboard/axe checks are included; full CI pending.
+No schema or live provider changes; rollback is PR revert. Other O19 report
+families and O02-dependent work remain incomplete.
+
+#103/#108 retry tests now wait for React transitions to enable controls before
+retrying, preserving failure/input/success assertions. Final heads 4addf2f and
+ed797c7 are in full CI; not yet claimed green. Catalog containment includes its
+absolute accessibility labels and keeps document-overflow checks intact.
+
 ## 2026-10-01 — Saved rental checkpoints and property write validation
 
 CRM PR #102 merged. Owner/portal PR #103 remains in review. Measured phone scroll width 638px came from absolutely positioned screen-reader labels escaping the table scroll region. A relative scroll container now contains those labels; six product screenshots added; full rerun pending. Checks remain unchanged.
