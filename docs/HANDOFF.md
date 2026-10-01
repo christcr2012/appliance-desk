@@ -26,6 +26,35 @@ This note is intentionally written so a coding agent creating the next PR notice
 See `docs/AI-PR-READ-FIRST.md` for the full audit and the categorized fix-now / fix-soon / monitor list.
 
 
+## 2026-10-01 — Settings rejection and metadata review follow-on
+
+#127 merged 816f3e3ace5af45d46908cf3400992e7d02d5ef8 after exact-head seven-blob
+inspection, matching main tree, CI 36880648787 (860 tests/138 browser checks) and
+ready Vercel. All B01–B36 business/renewal outcomes remain launch scope; these are
+planning/acceptance, not shipped renewal or approved fee amounts.
+#128 merged 9b6a362a43171924e8a40095fd85996f6a429eac after four exact source blobs,
+matching main tree, CI 36881617240 (867/138) and ready Vercel. Seven new real DB
+race/rollback/ACH/refund tests passed. Atomic webhook effects/receipt repaired;
+line mapping, reconciliation, provider latency/capacity and other security/business
+audit outcomes remain unclaimed. #129 portal tests still await full CI 36882411929
+at this submission; its two review threads remain open. Counts remain 44/50.
+
+Settings follow-on fixes #1's actual false-Saved price callback. Explicit server
+success is required; returned validation, thrown request and unconfirmed results
+show truthful errors; typed amount retained and editing frozen during the save.
+Five client regressions and one successive-name metadata generator test included;
+existing metadata production code already reads saved business settings. Real phone
+invalid→valid price/write/history/reload/axe and actual home/child browser title
+composition added. Local 821 tests pass; 31 guarded CI-only cases skipped and four
+existing DB suites excluded; types/lint pass (two existing warnings). Full exact-head
+CI/preview still pending; three settings/metadata threads remain open. Fee PricingRule
+history review still unresolved; do not overload rate units into cents fields.
+
+Continue unfinished historical reviews before backlog/features. O02 hosted fixture
+and independent storage still incomplete, O13/O14 schema/assignment and O32 sequence
+preserved. Automated review quota unavailable/waived; exact-head source inspection
+required. No live activation, spending, real messaging or destructive customer data.
+
 ## 2026-10-01 — Historical portal verification follow-on
 
 Unfinished work retained across interruptions: all unresolved historical reviews,

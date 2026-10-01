@@ -17,17 +17,17 @@ sequencing remain incomplete. No live activation, spending or customer-data clea
 
 | PR/thread | Finding | Disposition |
 |---|---|---|
-| [#1](https://github.com/christcr2012/appliance-desk/pull/1#discussion_r4112148766) | Source metadata titles from business settings | Pending |
+| [#1](https://github.com/christcr2012/appliance-desk/pull/1#discussion_r4112148766) | Source metadata titles from business settings | Current dynamic settings-backed root metadata inspected; successive-name unit regression and real home/child browser title checks added; full gates pending |
 | [#1](https://github.com/christcr2012/appliance-desk/pull/1#discussion_r4112148769) | Record fee changes in PricingRule | Pending |
 | [#1](https://github.com/christcr2012/appliance-desk/pull/1#discussion_r4112148772) | Preserve lead capture when no types are published | Verified/merged #121; CI 36861119917 (830 tests/134 browser checks) + Vercel; resolved |
-| [#1](https://github.com/christcr2012/appliance-desk/pull/1#discussion_r4112148774) | Show price-save errors instead of success | Pending |
+| [#1](https://github.com/christcr2012/appliance-desk/pull/1#discussion_r4112148774) | Show price-save errors instead of success | Valid defect repaired: returned rejection/thrown/unconfirmed result never reports Saved; input retained/frozen while pending; unit and real phone/write/reload/axe verification pending full CI |
 | [#1](https://github.com/christcr2012/appliance-desk/pull/1#discussion_r4112148776) | Gate the property-manager premium on multiple units | Verified/merged #117; CI 36854516416 + Vercel; automated review waived; resolved |
 | [#2](https://github.com/christcr2012/appliance-desk/pull/2#discussion_r4112288147) | Keep delivery troubleshooting open until the send result is checked | Pending |
 | [#14](https://github.com/christcr2012/appliance-desk/pull/14#discussion_r4113000933) | Add the required cross-customer isolation tests | Verified existing two-customer real-Postgres portal/maintenance/invoice isolation; #120 CI 36858585089; resolved |
 | [#14](https://github.com/christcr2012/appliance-desk/pull/14#discussion_r4113000937) | Include the waiver in the monthly total | Verified/merged #125; CI 36870323155 (860 tests/138 browser checks), exact 16 blobs/Vercel; prepaid protected, waiver reconciled to later one-time contract; resolved |
 | [#14](https://github.com/christcr2012/appliance-desk/pull/14#discussion_r4113000939) | Restrict maintenance appliances to active agreements | Current shared ACTIVE/delivered filter inspected; eight real-Postgres eligibility cases added, full CI/exact-head verification pending; thread remains open |
 | [#14](https://github.com/christcr2012/appliance-desk/pull/14#discussion_r4113000942) | Stop reporting an agreed deposit as paid | Current rentals page labels Deposit required; three actual-page presentation regressions pass locally; full CI/exact-head verification pending; thread remains open |
-| [#28](https://github.com/christcr2012/appliance-desk/pull/28#discussion_r4114120283) | Add an automated regression test for the generated title | Pending |
+| [#28](https://github.com/christcr2012/appliance-desk/pull/28#discussion_r4114120283) | Add an automated regression test for the generated title | Actual generator/settings-name regression plus real home default/child composed browser titles added; full CI/exact-head pending |
 | [#29](https://github.com/christcr2012/appliance-desk/pull/29#discussion_r4116481229) | Correct the live lead-recipient state | Pending |
 | [#29](https://github.com/christcr2012/appliance-desk/pull/29#discussion_r4116481236) | Keep the Resend domain marked as pending | Pending |
 | [#30](https://github.com/christcr2012/appliance-desk/pull/30#discussion_r4116857380) | Add automated coverage for the HSTS response | Pending |
@@ -206,3 +206,19 @@ render checks deposit-required copy across draft/signature/active terms. No new
 production code or paid-state inference. Both threads stay open until full gates.
 Preceding/latest #128 review submissions/threads/comments checked: no code findings;
 quota notice 5934224054, owner waiver applies. #127 renewal audit retains 36 outcomes.
+
+Settings follow-on: #1 price-save defect reproduced in current callback; the action
+result was discarded and Saved displayed unconditionally. Fix checks explicit
+success, surfaces validation/unconfirmed failure and retains the amount; edits freeze
+while pending so old-save acknowledgement cannot describe a new unsaved number.
+Five client cases and a settings-backed root metadata test pass locally; real phone
+invalid/valid price write/history/reload/axe and home/child title composition await
+CI. #1/#28 metadata production fix already exists; new tests supply missing behavior
+acceptance. These three findings remain open. #1 fee PricingRule history still open:
+settings only writes AuditLog; rate units must not be stuffed into cents fields.
+#127 merged 816f3e3ace5af45d46908cf3400992e7d02d5ef8, CI 36880648787 (860/138).
+#128 merged 9b6a362a43171924e8a40095fd85996f6a429eac, CI 36881617240 (867/138),
+including seven real DB race/rollback tests; four source blobs and prospective main
+merge tree verified. Full security audit/hosted provider capacity remain incomplete.
+Preceding/latest #129 reviews/threads/comments checked: no blocking findings;
+quota notice 5934332376, owner waiver applies. #129 still awaits final CI gates.
