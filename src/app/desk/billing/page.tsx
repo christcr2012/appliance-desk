@@ -1,10 +1,16 @@
 import Link from "next/link";
-import { getInvoicesPage, getInvoicesCount, getCustomersWithOpenBalances } from "@/domains/billing";
+import {
+  getInvoicesPage,
+  getInvoicesCount,
+  getCustomersWithOpenBalances,
+} from "@/domains/billing";
 import { formatCents } from "@/domains/pricing";
 import { requireRole } from "@/lib/session";
 import { parsePage, paginationMeta } from "@/domains/pagination";
 import { Pagination } from "@/components/pagination";
 import { StatusBadge } from "@/components/status-badge";
+import { formatBusinessDate } from "@/lib/business-date";
+import { PageHeader, FilterBar } from "@/components/desk/workspace";
 import { invoiceStatusTone } from "@/lib/status-labels";
 
 export const metadata = { title: "Billing" };
@@ -25,11 +31,16 @@ export default async function BillingPage({
   const totalCount = showStatements ? 0 : await getInvoicesCount(invoiceFilter);
   const meta = paginationMeta(totalCount, parsePage(rawPage));
   const [invoices, customerBalances] = await Promise.all([
-    showStatements ? Promise.resolve([]) : getInvoicesPage(invoiceFilter, meta.skip, meta.pageSize),
+    showStatements
+      ? Promise.resolve([])
+      : getInvoicesPage(invoiceFilter, meta.skip, meta.pageSize),
     showStatements ? getCustomersWithOpenBalances() : Promise.resolve([]),
   ]);
 
-  function billingHref(page: number, forFilter: string | undefined = filter) {
+  function billingHref(
+    page: number,
+    forFilter: string | null = filter ?? null,
+  ) {
     const params = new URLSearchParams();
     if (forFilter) params.set("filter", forFilter);
     if (page > 1) params.set("page", String(page));
@@ -39,55 +50,70 @@ export default async function BillingPage({
 
   return (
     <div>
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Billing</h1>
-      </div>
-      <p className="mt-1 text-sm text-gray-600">
-        Every invoice Stripe has generated for a signed agreement. Card and
-        bank-transfer payments are collected through Stripe&apos;s own
-        hosted checkout automatically; a check, cash, or bank transfer is
-        recorded by hand from a customer&apos;s own statement.
+      <PageHeader
+        title="Billing"
+        description="Invoice snapshots and recorded payments. Rental rates, deposits and revenue are separate amounts."
+      />
+      <FilterBar
+        label="Filter invoices"
+        items={[
+          {
+            href: billingHref(1, null),
+            label: "All invoices",
+            active: !delinquentOnly && !showStatements,
+          },
+          {
+            href: billingHref(1, "delinquent"),
+            label: "Delinquent only",
+            active: delinquentOnly,
+          },
+          {
+            href: billingHref(1, "statements"),
+            label: "By customer (statements)",
+            active: showStatements,
+          },
+        ]}
+      />
+      <p className="mb-4 text-sm text-ink-soft">
+        An invoice status is the last recorded state. Pending payments may still
+        be processing. Open a customer statement to review or record a manual
+        payment.
       </p>
-
-      <nav aria-label="Filter invoices" className="mt-6 flex gap-2">
-        <Link
-          href={billingHref(1, undefined)}
-          className={`rounded-full px-3 py-1 text-sm ${
-            !delinquentOnly && !showStatements ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-          }`}
-        >
-          All invoices
-        </Link>
-        <Link
-          href={billingHref(1, "delinquent")}
-          className={`rounded-full px-3 py-1 text-sm ${
-            delinquentOnly ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-          }`}
-        >
-          Delinquent only
-        </Link>
-        <Link
-          href={billingHref(1, "statements")}
-          className={`rounded-full px-3 py-1 text-sm ${
-            showStatements ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-          }`}
-        >
-          By customer (statements)
-        </Link>
-      </nav>
 
       {showStatements ? (
         customerBalances.length === 0 ? (
-          <p className="mt-6 text-sm text-gray-600">No customer currently has an open balance.</p>
+          <p className="mt-6 text-sm text-gray-600">
+            No customer currently has an open balance.
+          </p>
         ) : (
           <div className="mt-6 overflow-x-auto rounded-lg border border-gray-200 bg-white">
             <table className="min-w-full divide-y divide-gray-200 text-sm">
               <thead className="bg-gray-50">
                 <tr>
-                  <th scope="col" className="px-4 py-2 text-left font-medium text-gray-600">Customer</th>
-                  <th scope="col" className="px-4 py-2 text-left font-medium text-gray-600">Properties</th>
-                  <th scope="col" className="px-4 py-2 text-right font-medium text-gray-600">Open invoices</th>
-                  <th scope="col" className="px-4 py-2 text-right font-medium text-gray-600">Balance owed</th>
+                  <th
+                    scope="col"
+                    className="px-4 py-2 text-left font-medium text-gray-600"
+                  >
+                    Customer
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-4 py-2 text-left font-medium text-gray-600"
+                  >
+                    Properties
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-4 py-2 text-right font-medium text-gray-600"
+                  >
+                    Open invoices
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-4 py-2 text-right font-medium text-gray-600"
+                  >
+                    Balance owed
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -106,8 +132,12 @@ export default async function BillingPage({
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-2 text-gray-600">{c.propertyCount}</td>
-                    <td className="px-4 py-2 text-right text-gray-600">{c.openInvoiceCount}</td>
+                    <td className="px-4 py-2 text-gray-600">
+                      {c.propertyCount}
+                    </td>
+                    <td className="px-4 py-2 text-right text-gray-600">
+                      {c.openInvoiceCount}
+                    </td>
                     <td className="px-4 py-2 text-right font-medium text-amber-800">
                       {formatCents(c.balanceCents)}
                     </td>
@@ -128,24 +158,62 @@ export default async function BillingPage({
           <table className="min-w-full divide-y divide-gray-200 text-sm">
             <thead className="bg-gray-50">
               <tr>
-                <th scope="col" className="px-4 py-2 text-left font-medium text-gray-600">Invoice #</th>
-                <th scope="col" className="px-4 py-2 text-left font-medium text-gray-600">Customer</th>
-                <th scope="col" className="px-4 py-2 text-left font-medium text-gray-600">Status</th>
-                <th scope="col" className="px-4 py-2 text-left font-medium text-gray-600">Period</th>
-                <th scope="col" className="px-4 py-2 text-right font-medium text-gray-600">Amount due</th>
-                <th scope="col" className="px-4 py-2 text-right font-medium text-gray-600">Amount paid</th>
+                <th
+                  scope="col"
+                  className="px-4 py-2 text-left font-medium text-gray-600"
+                >
+                  Invoice #
+                </th>
+                <th
+                  scope="col"
+                  className="px-4 py-2 text-left font-medium text-gray-600"
+                >
+                  Customer
+                </th>
+                <th
+                  scope="col"
+                  className="px-4 py-2 text-left font-medium text-gray-600"
+                >
+                  Status
+                </th>
+                <th
+                  scope="col"
+                  className="px-4 py-2 text-left font-medium text-gray-600"
+                >
+                  Period
+                </th>
+                <th
+                  scope="col"
+                  className="px-4 py-2 text-right font-medium text-gray-600"
+                >
+                  Amount due
+                </th>
+                <th
+                  scope="col"
+                  className="px-4 py-2 text-right font-medium text-gray-600"
+                >
+                  Amount paid
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {invoices.map((invoice) => (
                 <tr key={invoice.id}>
-                  <td className="px-4 py-2 font-mono text-xs text-gray-700">#{invoice.invoiceNumber}</td>
+                  <td className="px-4 py-2 font-mono text-xs text-gray-700">
+                    <Link
+                      className="text-primary underline"
+                      href={`/desk/billing/customer/${invoice.customer.id}/invoice/${invoice.id}`}
+                    >
+                      #{invoice.invoiceNumber}
+                    </Link>
+                  </td>
                   <td className="px-4 py-2">
                     <Link
                       href={`/desk/customers/${invoice.customer.id}`}
                       className="text-gray-900 underline hover:no-underline"
                     >
-                      {invoice.customer.user.name ?? invoice.customer.user.email}
+                      {invoice.customer.user.name ??
+                        invoice.customer.user.email}
                     </Link>
                   </td>
                   <td className="px-4 py-2">
@@ -157,11 +225,15 @@ export default async function BillingPage({
                   </td>
                   <td className="px-4 py-2 text-gray-600">
                     {invoice.billingPeriodStart
-                      ? new Date(invoice.billingPeriodStart).toLocaleDateString()
+                      ? formatBusinessDate(invoice.billingPeriodStart)
                       : "—"}
                   </td>
-                  <td className="px-4 py-2 text-right">{formatCents(invoice.amountDueCents)}</td>
-                  <td className="px-4 py-2 text-right">{formatCents(invoice.amountPaidCents)}</td>
+                  <td className="px-4 py-2 text-right">
+                    {formatCents(invoice.amountDueCents)}
+                  </td>
+                  <td className="px-4 py-2 text-right">
+                    {formatCents(invoice.amountPaidCents)}
+                  </td>
                 </tr>
               ))}
             </tbody>

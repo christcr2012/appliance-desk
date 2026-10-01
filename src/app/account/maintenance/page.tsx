@@ -2,15 +2,16 @@ import { getServerSession } from "@/lib/session";
 import { getPortalData, getPortalApplianceOptions } from "@/domains/portal";
 import { maintenanceStatusLabel } from "@/lib/status-labels";
 import { NewRequestForm } from "./new-request-form";
+import { formatBusinessDate } from "@/lib/business-date";
 
 export const metadata = { title: "Maintenance" };
 
 export default async function AccountMaintenancePage({
   searchParams,
 }: {
-  searchParams: Promise<{ applianceId?: string }>;
+  searchParams: Promise<{ applianceId?: string; request?: string }>;
 }) {
-  const { applianceId } = await searchParams;
+  const { applianceId, request } = await searchParams;
   const session = await getServerSession();
   const [customer, applianceOptions] = session
     ? await Promise.all([
@@ -37,8 +38,26 @@ export default async function AccountMaintenancePage({
         Something not working right? Let us know and we&apos;ll follow up.
       </p>
 
+      {request === "pickup" && (
+        <p
+          role="status"
+          className="mt-4 rounded-lg border border-line bg-subtle p-4 text-sm text-ink"
+        >
+          Tell us which property and appliances you want picked up, and your
+          preferred dates. This submits a request for review; it does not cancel
+          your rental or change billing automatically.
+        </p>
+      )}
       <div className="mt-6">
-        <NewRequestForm customerId={customer.id} appliances={applianceOptions} initialApplianceId={initialApplianceId} />
+        <NewRequestForm
+          customerId={customer.id}
+          appliances={applianceOptions}
+          initialApplianceId={initialApplianceId}
+          initialProblem={request === "pickup" ? "Pickup request: " : ""}
+          requestTitle={
+            request === "pickup" ? "Request pickup" : "Report a problem"
+          }
+        />
       </div>
 
       <div className="mt-8">
@@ -57,7 +76,7 @@ export default async function AccountMaintenancePage({
                 </p>
                 <p className="text-gray-600">{r.problem}</p>
                 <p className="mt-1 text-xs text-gray-500">
-                  Submitted {new Date(r.openedAt).toLocaleDateString()}
+                  Submitted {formatBusinessDate(r.openedAt)}
                 </p>
               </li>
             ))}

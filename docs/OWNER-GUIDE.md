@@ -10,6 +10,34 @@ the most current state.
 fully built and running today, in Stripe's test mode — see "Billing,
 statements, and late fees" below.)
 
+## Updated desk and portal navigation (PR previews, 2026-09-30)
+
+Customer records have Overview, Properties, Rentals, Service, Billing, and
+Activity sections. Choose a property, then **New rental here** or **Schedule
+visit here** to carry that address into the next form. **Activity** keeps notes
+and recorded changes together; use **Older entries** for more history.
+
+Leads support search, status filters, pending quotes, and **No next task**.
+**Add next task** opens the inquiry's own follow-up area. Converting a lead
+continues to use the existing customer account and invitation process.
+
+Settings is divided into sections. **Business profile**, **Service area**, and
+**Rental policies** each have their own save button. Products/pricing and staff
+keep their existing controls. **Integrations** shows whether configuration
+exists; it does not certify that payments or messages have been delivered.
+If a save fails, your edits stay in the form for another attempt.
+
+Billing's **All invoices** clears the selected filter. Select an invoice number
+for the exact document, or a customer for their statement. Invoice totals can
+include deposits, fees, and tax; they are separate from rental revenue.
+The rental progress card tracks signature, equipment, delivery, and billing
+separately. A signature or required deposit amount does not prove payment.
+
+Customers see their rental summary, recorded next visit, invoice needing
+attention, and **Report a problem**/**Request pickup**. Pickup submits a request
+for the business to review; it does not cancel an agreement or change billing.
+Failed requests retain their text and photos until successfully submitted.
+
 ## Logging in
 
 Go to `/login` and sign in with your email and password.
@@ -172,9 +200,9 @@ order is received all at once.
 
 ## Changing prices, fees, and the prepaid-term discount
 
-Go to **Settings** to change delivery/installation/removal fees, tax
-rate, and per-appliance pricing/visibility — all in plain dollars, not
-code. The **Prepaid-term discounts** section is where you set your own
+Go to **Settings → Rental policies** to change delivery/installation/removal fees, tax
+rate. Use **Products and pricing** for per-appliance pricing/visibility — all
+in plain dollars. The **Prepaid-term discounts** section is where you set your own
 dollar amounts for the 6-month and 12-month prepay discounts (separately
 for a "set" vs. a single unit), and turn the 12-month free-first-month
 bonus on or off. Changing any of these numbers only affects agreements

@@ -34,13 +34,12 @@ export async function getInvoicesPage(
 ) {
   return prisma.invoice.findMany({
     where: filter?.delinquentOnly ? { status: "DELINQUENT" } : undefined,
-    include: {
-      customer: { include: { user: { select: { name: true, email: true } } } },
-      agreement: { select: { id: true } },
-      lineItems: true,
-      payments: true,
+    select: {
+      id: true, invoiceNumber: true, status: true, billingPeriodStart: true,
+      amountDueCents: true, amountPaidCents: true,
+      customer: { select: { id: true, user: { select: { name: true, email: true } } } },
     },
-    orderBy: [{ createdAt: "desc" }],
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     skip,
     take: pageSize,
   });
@@ -172,3 +171,4 @@ export async function getRevenueDashboard() {
     mrrTrend: computeMrrTrend(allAgreementsForTrend, 6, now),
   };
 }
+

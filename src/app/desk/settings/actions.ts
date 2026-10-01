@@ -1,5 +1,7 @@
 "use server";
 
+import { businessSettingsSchema } from "@/domains/settings/form-schema";
+
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireRole } from "@/lib/session";
@@ -23,31 +25,6 @@ import { dollarsToCents } from "@/domains/pricing";
 // settings-form.tsx — and converted to integer cents right here, in the
 // one place that talks to the database, per docs/BUSINESS-RULES.md
 // ("money is stored as integer cents, never floating point").
-const businessSettingsSchema = z.object({
-  publicBusinessName: z.string().trim().min(1).max(200),
-  publicPhone: z.string().trim().min(1).max(30),
-  publicEmail: z.string().trim().email(),
-  publicAddress: z.string().trim().min(1).max(300),
-  serviceAreaCities: z.string().trim(),
-  serviceAreaZips: z.string().trim(),
-  deliveryFeeDollars: z.coerce.number().min(0).max(100000),
-  installationFeeDollars: z.coerce.number().min(0).max(100000),
-  removalFeeDollars: z.coerce.number().min(0).max(100000),
-  damageWaiverEnabled: z.coerce.boolean(),
-  depositEnabled: z.coerce.boolean(),
-  lateFeeGraceDays: z.coerce.number().int().min(0).max(90),
-  lateFeeFlatDollars: z.coerce.number().min(0).max(100000),
-  lateFeePercent: z.coerce.number().int().min(0).max(100),
-  taxRatePermille: z.coerce.number().int().min(0).max(1000),
-  taxRateConfirmed: z.coerce.boolean(),
-  sixMonthPrepaySetDollars: z.coerce.number().min(0).max(1000),
-  sixMonthPrepaySingleDollars: z.coerce.number().min(0).max(1000),
-  twelveMonthPrepaySetDollars: z.coerce.number().min(0).max(1000),
-  twelveMonthPrepaySingleDollars: z.coerce.number().min(0).max(1000),
-  twelveMonthPrepayFreeMonthEnabled: z.coerce.boolean(),
-  referralRewardDollars: z.coerce.number().min(0).max(1000),
-  draftReservationHoldDays: z.coerce.number().int().min(1).max(90),
-});
 
 function splitList(value: string): string[] {
   return value
@@ -86,20 +63,34 @@ export async function updateSettingsAction(
     ...rest
   } = parsed.data;
 
-  await updateBusinessSettings(session.user.id, {
-    ...rest,
-    oneTimeDeliveryFeeCents: dollarsToCents(deliveryFeeDollars),
-    oneTimeInstallationFeeCents: dollarsToCents(installationFeeDollars),
-    oneTimeRemovalFeeCents: dollarsToCents(removalFeeDollars),
-    lateFeeFlatCents: dollarsToCents(lateFeeFlatDollars),
-    sixMonthPrepayDiscountSetCents: dollarsToCents(sixMonthPrepaySetDollars),
-    sixMonthPrepayDiscountSingleCents: dollarsToCents(sixMonthPrepaySingleDollars),
-    twelveMonthPrepayDiscountSetCents: dollarsToCents(twelveMonthPrepaySetDollars),
-    twelveMonthPrepayDiscountSingleCents: dollarsToCents(twelveMonthPrepaySingleDollars),
-    referralRewardCents: dollarsToCents(referralRewardDollars),
-    serviceAreaCities: splitList(serviceAreaCities),
-    serviceAreaZips: splitList(serviceAreaZips),
-  });
+  try {
+    await updateBusinessSettings(session.user.id, {
+      ...rest,
+      oneTimeDeliveryFeeCents: dollarsToCents(deliveryFeeDollars),
+      oneTimeInstallationFeeCents: dollarsToCents(installationFeeDollars),
+      oneTimeRemovalFeeCents: dollarsToCents(removalFeeDollars),
+      lateFeeFlatCents: dollarsToCents(lateFeeFlatDollars),
+      sixMonthPrepayDiscountSetCents: dollarsToCents(sixMonthPrepaySetDollars),
+      sixMonthPrepayDiscountSingleCents: dollarsToCents(
+        sixMonthPrepaySingleDollars,
+      ),
+      twelveMonthPrepayDiscountSetCents: dollarsToCents(
+        twelveMonthPrepaySetDollars,
+      ),
+      twelveMonthPrepayDiscountSingleCents: dollarsToCents(
+        twelveMonthPrepaySingleDollars,
+      ),
+      referralRewardCents: dollarsToCents(referralRewardDollars),
+      serviceAreaCities: splitList(serviceAreaCities),
+      serviceAreaZips: splitList(serviceAreaZips),
+    });
+  } catch {
+    return {
+      status: "error",
+      message:
+        "Settings could not be saved. Your changes are still in the form; please try again.",
+    };
+  }
 
   revalidatePath("/", "layout");
   revalidatePath("/desk/settings");
@@ -157,7 +148,8 @@ export async function createApplianceTypeAction(
   if (!parsed.success) {
     return {
       status: "error",
-      message: parsed.error.issues[0]?.message ?? "Please fix the highlighted fields.",
+      message:
+        parsed.error.issues[0]?.message ?? "Please fix the highlighted fields.",
     };
   }
 
@@ -169,7 +161,10 @@ export async function createApplianceTypeAction(
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Could not create that appliance type.",
+      message:
+        error instanceof Error
+          ? error.message
+          : "Could not create that appliance type.",
     };
   }
 
@@ -246,7 +241,8 @@ export async function createStaffAccountAction(
   if (!parsed.success) {
     return {
       status: "error",
-      message: parsed.error.issues[0]?.message ?? "Please fix the highlighted fields.",
+      message:
+        parsed.error.issues[0]?.message ?? "Please fix the highlighted fields.",
     };
   }
 
@@ -255,7 +251,10 @@ export async function createStaffAccountAction(
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Couldn't create that account.",
+      message:
+        error instanceof Error
+          ? error.message
+          : "Couldn't create that account.",
     };
   }
 
@@ -291,7 +290,10 @@ export async function deactivateStaffAccountAction(
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Couldn't remove that account's access.",
+      message:
+        error instanceof Error
+          ? error.message
+          : "Couldn't remove that account's access.",
     };
   }
 
@@ -311,12 +313,39 @@ export async function reactivateStaffAccountAction(
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Couldn't restore that account.",
+      message:
+        error instanceof Error
+          ? error.message
+          : "Couldn't restore that account.",
     };
   }
 
   revalidatePath("/desk/settings");
   revalidatePath("/desk/activity");
 
+  return { status: "success" };
+}
+
+/** Section saves whitelist fields on the server, never write stale fields
+ * from other sections, and retain the existing settings/audit source of truth. */
+export async function updateSettingsSectionAction(
+  section: string,
+  raw: Record<string, unknown>,
+): Promise<SettingsActionState> {
+  const session = await requireRole("OWNER", "ADMIN");
+  const { settingsSectionUpdate } = await import("@/domains/settings/sections");
+  const parsed = settingsSectionUpdate(section, raw);
+  if (!parsed.success) return { status: "error", message: parsed.message };
+  try {
+    await updateBusinessSettings(session.user.id, parsed.update);
+  } catch {
+    return {
+      status: "error",
+      message:
+        "Settings could not be saved. Your changes are still in the form; please try again.",
+    };
+  }
+  revalidatePath("/", "layout");
+  revalidatePath("/desk/settings");
   return { status: "success" };
 }
