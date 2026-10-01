@@ -54,6 +54,9 @@ test("bulk inventory reports distinct skipped units and persists the successful 
     await expect(
       page.getByLabel(`Select ${assets[2]}`, { exact: true }),
     ).toBeChecked();
+    // The mutation refresh streams metadata separately from the updated list.
+    // Audit the completed document, rather than the temporary refresh state.
+    await expect(page).toHaveTitle(/Inventory/);
     expect(
       (
         await new AxeBuilder({ page })
