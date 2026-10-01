@@ -1,22 +1,33 @@
-## 2026-10-01 — Owner-authorized review fallback and merge progress
+## 2026-10-01 — Current review repair checkpoint
 
-Chris explicitly authorized continuing without automated code review when it is
-unavailable and merging PRs whenever safe. AGENTS.md records that policy: inspect
-the exact head, check all existing submissions/threads, pass full CI/applicable
-preview checks, record the unavailable review honestly, and guard the merge SHA.
-No new authority for activation, spending or destructive data changes.
+#117–#120 are merged to main 4151c998f01ea099b481ec74d23ad327dbee8672.
+Each exact head was inspected, passed full CI and had a ready Vercel preview.
+Expected-head merges used; stacked PRs retargeted to main and merge trees matched
+validated heads. CI runs: #117 36854516416, #118 36854626321,
+#119 36858433312, #120 36858585089. The inherited browser alert locator was fixed
+and full reruns passed; no failed PR merged. Automated review remains unavailable
+due quota, explicitly waived by Chris October 1. AGENTS.md now requires previous
+PR/dependency/all-state review continuity and permits safe agent merges.
 
-#117 merged to main fdc7de4046abe76036bae3f8ef6b934592a3bf09 after inspection of
-8418428571, full CI 36854516416 and ready Vercel. Known review defects verified;
-thirteen CRM/purchasing threads resolved with specific evidence replies. #118 merged to main 9a917f3c47e14b027e51e889a64792afda5f9439. Its tested head
-bd89a9ac10 and prospective merge had identical tree 3ac1e57ed59555e488bf1cdca1f183ebdbd947d2;
-full CI 36854626321 and ready Vercel remained applicable after retargeting. #119/#120 full CI failed solely on the inherited setup-recovery browser
-locator matching Next's route announcer alongside the form alert. Scope it to
-the warning text; full reruns required. #120's phone/desktop print checks passed.
+Twenty-four threads resolved with specific evidence: twenty-one historical findings
+and three #117 findings. Seventy historical findings remain open; see the ledger.
+Task visibility follows the approved O09 shared-team contract, with assignment/Mine
+still gated on O02. Do not mistake review repair for completed overhaul backlog.
 
-#119 real Better Auth callback/privacy tests passed in CI (802 tests total) and
-#120's tests passed (822 total); provider acceptance behavior is verified.
-No failed PR merged. O02 hosted fixture/storage and O32 sequencing remain gated.
+Current follow-on repairs general lead capture when no appliance types are published
+and labels every new rental customer's address input. Appliance selection stays
+required when published options exist; stale/private type IDs are rejected.
+Consent, honeypot and rate limits stay enforced. Behavior tests exercise the real
+client resolver/action, plus a guarded disposable-CI lead/consent database test
+and phone keyboard/axe/customer-address persistence browser check. Local: 786 tests pass; twelve CI-only cases skipped and four existing database
+suites excluded locally. Typecheck/lint pass (two existing warnings). Full CI,
+exact-head inspection and preview pending; those two threads remain open.
+
+O02 hosted isolation/independent preview storage and O32 sequencing remain gated.
+No live payment/message activation, spending or destructive customer-data changes.
+Rollback for merged repairs: revert their PRs. Earlier dated checkpoints below are
+historical and superseded by this current status.
+
 ## 2026-10-01 — Business export review repairs and release gate status
 
 Checked preceding/latest #119 and dependency #118 reviews/threads before this

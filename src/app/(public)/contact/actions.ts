@@ -2,7 +2,8 @@
 
 import { headers } from "next/headers";
 import { createLead } from "@/domains/leads";
-import { leadFormSchema } from "@/domains/leads/schema";
+import { leadFormSchemaForCatalog } from "@/domains/leads/schema";
+import { getPublishedApplianceTypes } from "@/domains/pricing";
 import { isRateLimited } from "@/lib/rate-limit";
 
 export type SubmitLeadState =
@@ -19,7 +20,7 @@ const RATE_LIMIT = { max: 5, windowMs: 10 * 60 * 1000 }; // 5 submissions / 10 m
 export async function submitLead(
   raw: unknown,
 ): Promise<SubmitLeadState> {
-  const parsed = leadFormSchema.safeParse(raw);
+  const parsed = leadFormSchemaForCatalog(false).safeParse(raw);
   if (!parsed.success) {
     return {
       status: "error",
@@ -50,6 +51,14 @@ export async function submitLead(
   }
 
   try {
+    const catalog = await getPublishedApplianceTypes();
+    if (catalog.length > 0 && parsed.data.applianceTypeIds.length === 0) {
+      return { status: "error", message: "Select at least one appliance, then send your request." };
+    }
+    const publishedIds = new Set(catalog.map(type => type.id));
+    if (parsed.data.applianceTypeIds.some(id => !publishedIds.has(id))) {
+      return { status: "error", message: "The appliance options changed. Refresh this page and try again." };
+    }
     await createLead(parsed.data);
     return { status: "success" };
   } catch (error) {

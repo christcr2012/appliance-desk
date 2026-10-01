@@ -64,4 +64,9 @@ export const leadFormSchema = z.object({
   website: z.string().max(200).optional().or(z.literal("")),
 });
 
+/** General enquiries remain possible before any appliance types are published. */
+export function leadFormSchemaForCatalog(hasPublishedTypes: boolean) {
+  return hasPublishedTypes ? leadFormSchema : leadFormSchema.extend({ applianceTypeIds: z.array(z.string()) });
+}
+
 export type LeadFormInput = z.infer<typeof leadFormSchema>;

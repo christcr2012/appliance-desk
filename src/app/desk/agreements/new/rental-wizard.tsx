@@ -618,55 +618,86 @@ export function RentalWizard({
                   Service address
                 </legend>
                 <div className="mt-2 space-y-3">
-                  <input
-                    disabled={isPending}
-                    type="text"
-                    required
-                    placeholder="Street address"
-                    value={newCustomer.line1}
-                    onChange={(e) => updateNewCustomer("line1", e.target.value)}
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                  />
-                  <input
-                    disabled={isPending}
-                    type="text"
-                    placeholder="Apt / unit (optional)"
-                    value={newCustomer.line2}
-                    onChange={(e) => updateNewCustomer("line2", e.target.value)}
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                  />
+                  <div>
+                    <label htmlFor="nc-line1" className="mb-1 block text-sm font-medium text-gray-700">
+                      Street address
+                    </label>
+                    <input
+                      id="nc-line1"
+                      autoComplete="street-address"
+                      disabled={isPending}
+                      type="text"
+                      required
+                      placeholder="Street address"
+                      value={newCustomer.line1}
+                      onChange={(e) => updateNewCustomer("line1", e.target.value)}
+                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="nc-line2" className="mb-1 block text-sm font-medium text-gray-700">
+                      Apartment / unit (optional)
+                    </label>
+                    <input
+                      id="nc-line2"
+                      autoComplete="address-line2"
+                      disabled={isPending}
+                      type="text"
+                      placeholder="Apt / unit (optional)"
+                      value={newCustomer.line2}
+                      onChange={(e) => updateNewCustomer("line2", e.target.value)}
+                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                    />
+                  </div>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                    <input
-                      disabled={isPending}
-                      type="text"
-                      required
-                      placeholder="City"
-                      value={newCustomer.city}
-                      onChange={(e) =>
-                        updateNewCustomer("city", e.target.value)
-                      }
-                      className="rounded-md border border-gray-300 px-3 py-2 text-sm"
-                    />
-                    <input
-                      disabled={isPending}
-                      type="text"
-                      placeholder="State"
-                      maxLength={2}
-                      value={newCustomer.state}
-                      onChange={(e) =>
-                        updateNewCustomer("state", e.target.value)
-                      }
-                      className="rounded-md border border-gray-300 px-3 py-2 text-sm"
-                    />
-                    <input
-                      disabled={isPending}
-                      type="text"
-                      required
-                      placeholder="ZIP"
-                      value={newCustomer.zip}
-                      onChange={(e) => updateNewCustomer("zip", e.target.value)}
-                      className="rounded-md border border-gray-300 px-3 py-2 text-sm"
-                    />
+                    <div>
+                      <label htmlFor="nc-city" className="mb-1 block text-sm font-medium text-gray-700">
+                        City
+                      </label>
+                      <input
+                        id="nc-city"
+                        autoComplete="address-level2"
+                        disabled={isPending}
+                        type="text"
+                        required
+                        placeholder="City"
+                        value={newCustomer.city}
+                        onChange={(e) => updateNewCustomer("city", e.target.value)}
+                        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="nc-state" className="mb-1 block text-sm font-medium text-gray-700">
+                        State
+                      </label>
+                      <input
+                        id="nc-state"
+                        autoComplete="address-level1"
+                        disabled={isPending}
+                        type="text"
+                        maxLength={2}
+                        placeholder="State"
+                        value={newCustomer.state}
+                        onChange={(e) => updateNewCustomer("state", e.target.value)}
+                        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="nc-zip" className="mb-1 block text-sm font-medium text-gray-700">
+                        ZIP
+                      </label>
+                      <input
+                        id="nc-zip"
+                        autoComplete="postal-code"
+                        disabled={isPending}
+                        type="text"
+                        required
+                        placeholder="ZIP"
+                        value={newCustomer.zip}
+                        onChange={(e) => updateNewCustomer("zip", e.target.value)}
+                        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                      />
+                    </div>
                   </div>
                 </div>
               </fieldset>
