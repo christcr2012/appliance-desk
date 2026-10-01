@@ -370,3 +370,31 @@ uncertain/failed attempts intentionally stop to avoid duplicates. Ask your
 technical helper to reconcile that attempt with the provider record; do not
 reset the sequence or import the address again. SENT is provider acceptance,
 not proof the email reached the inbox. No tracking pixels are added.
+
+### Returning to an unfinished rental
+
+After saving the customer and terms, the builder shows a **Resume saved builder**
+link. Bookmark it to return to the same draft. Refresh restores saved appliances
+and their actual monthly prices, including any term discount. Saved customer and
+terms appear read-only; review them before adding equipment. If a save response
+is lost, refresh the current builder link to check the saved result before trying
+again. An agreement already sent for signature opens its agreement page instead.
+
+### Reading Revenue and recorded payments
+
+Estimated monthly and annual rates come from agreed rental prices; they are not
+a forecast of cash or profit. Gross invoice payments include successful provider
+payments and payments you recorded manually, and may include deposits, fees and
+tax. Refunds are shown separately. Choose Gross payments or Invoice refunds,
+then This UTC month or All recorded dates. Totals include every matching record;
+the list shows 25 per page. Each row opens its original invoice. Dates on records
+display in Colorado time, while the report's monthly windows use UTC. No costs
+are deducted, so this report does not establish profit.
+
+### Deposit amounts in the accounting CSV
+
+The CSV counts cash from successful invoice payments once. Those payments
+already include any signing or estimate deposit. A deposit record on an
+agreement is a liability record, so it does not add another positive cash row.
+Invoice refunds and returned deposits appear as separate negative amounts.
+Keep using the agreement's deposit details to review the remaining liability.

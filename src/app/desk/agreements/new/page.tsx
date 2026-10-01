@@ -3,16 +3,42 @@ import { requireRole } from "@/lib/session";
 import { getCustomers } from "@/domains/customers";
 import { getAppliances } from "@/domains/inventory";
 import { RentalWizard } from "./rental-wizard";
+import { getAgreementById } from "@/domains/agreements";
+import { draftRequestId } from "@/domains/agreements/draft-request";
+import { notFound, redirect } from "next/navigation";
 
 export const metadata = { title: "New agreement" };
 
 export default async function NewAgreementPage({
   searchParams,
 }: {
-  searchParams: Promise<{ customerId?: string; serviceAddressId?: string }>;
+  searchParams: Promise<{
+    customerId?: string;
+    serviceAddressId?: string;
+    draftId?: string;
+    requestKey?: string;
+  }>;
 }) {
-  await requireRole("OWNER", "ADMIN");
-  const { customerId, serviceAddressId } = await searchParams;
+  const session = await requireRole("OWNER", "ADMIN");
+  const query = await searchParams;
+  let requestedId: string | undefined;
+  let requestKey: string | undefined;
+  if (query.requestKey) {
+    try {
+      requestedId = draftRequestId(session.user.id, query.requestKey);
+      requestKey = query.requestKey;
+    } catch {
+      /* Invalid URL input cannot supply a save identity. */
+    }
+  }
+  if (query.draftId && query.draftId.length > 128) notFound();
+  const draftId = query.draftId ?? requestedId;
+  const draft = draftId ? await getAgreementById(draftId) : null;
+  if (query.draftId && !draft) notFound();
+  if (draft && draft.status !== "DRAFT")
+    redirect(`/desk/agreements/${draft.id}`);
+  const customerId = draft?.customerId ?? query.customerId;
+  const serviceAddressId = draft?.serviceAddressId ?? query.serviceAddressId;
   const [customers, availableAppliances] = await Promise.all([
     getCustomers(),
     getAppliances({ status: "AVAILABLE" }),
@@ -35,6 +61,37 @@ export default async function NewAgreementPage({
 
       <div className="mt-6">
         <RentalWizard
+          initialRequestKey={requestKey}
+          initialDraft={
+            draft
+              ? {
+                  id: draft.id,
+                  customerId: draft.customerId,
+                  customerName:
+                    draft.customer.user.name ?? draft.customer.user.email,
+                  serviceAddressId: draft.serviceAddressId,
+                  termMonths: draft.termMonths,
+                  depositCents: draft.depositCents,
+                  damageWaiverCents: draft.damageWaiverCents,
+                  lateFeeGraceDays: draft.lateFeeGraceDays,
+                  lateFeeCents: draft.lateFeeCents,
+                  lateFeePercent: draft.lateFeePercent,
+                  taxRatePermille: draft.taxRatePermille,
+                  paidInFullInAdvance: draft.paidInFullInAdvance,
+                  lines: draft.lines.map((l) => ({
+                    id: l.id,
+                    label: l.label,
+                    monthlyPriceCents: l.monthlyPriceCents,
+                    applianceNames: l.assignments
+                      .map(
+                        (a) =>
+                          `${a.appliance.applianceType.name} (${a.appliance.assetNumber})`,
+                      )
+                      .join(", "),
+                  })),
+                }
+              : undefined
+          }
           customers={customers.map((c) => ({
             id: c.id,
             name: c.user.name ?? c.user.email,

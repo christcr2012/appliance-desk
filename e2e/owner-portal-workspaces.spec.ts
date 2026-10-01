@@ -147,12 +147,19 @@ for (const role of ["owner", "customer"] as const) {
           .click();
         await expect(page).toHaveURL(/request=pickup$/);
         await expect(page.getByRole("status")).toContainText("does not cancel");
-        const text = `Pickup request: CI fixture washer next week ${Date.now()}`;
-        await page.getByLabel("What's going on?").fill(text);
+        await expect(page.getByLabel("What's going on?")).toHaveValue("");
         await page.getByRole("button", { name: "Submit request" }).click();
-        await expect(page.getByText(text, { exact: true })).toBeVisible();
+        await expect(page.getByLabel("What's going on?")).toBeFocused();
+        const details = `CI fixture washer next week ${Date.now()}`;
+        const text = `Pickup request: ${details}`;
+        await page.getByLabel("What's going on?").fill(details);
+        await page.getByRole("button", { name: "Submit request" }).click();
+        // The textarea already contains this text before the save finishes.
+        // Wait for the server-backed request list before testing persistence.
+        const savedRequest = page.getByRole("listitem").getByText(text, { exact: true });
+        await expect(savedRequest).toBeVisible();
         await page.reload();
-        await expect(page.getByText(text, { exact: true })).toBeVisible();
+        await expect(savedRequest).toBeVisible();
       });
     }
   });

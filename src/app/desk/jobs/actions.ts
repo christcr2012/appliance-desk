@@ -46,33 +46,46 @@ const newJobSchema = z.object({
 
 export async function createJobAction(
   raw: Record<string, unknown>,
-): Promise<{ status: "success"; jobId: string } | { status: "error"; message: string }> {
+): Promise<
+  { status: "success"; jobId: string } | { status: "error"; message: string }
+> {
   const session = await requireRole("OWNER", "ADMIN");
 
   const parsed = newJobSchema.safeParse(raw);
   if (!parsed.success) {
     return {
       status: "error",
-      message: parsed.error.issues[0]?.message ?? "Please fix the highlighted fields.",
+      message:
+        parsed.error.issues[0]?.message ?? "Please fix the highlighted fields.",
     };
   }
   const data = parsed.data;
 
-  const job = await createJob(session.user.id, {
-    type: data.type,
-    scheduledAt: data.scheduledAt ? new Date(data.scheduledAt) : null,
-    customerId: data.customerId || null,
-    serviceAddressId: data.serviceAddressId || null,
-    agreementId: data.agreementId || null,
-    maintenanceRequestId: data.maintenanceRequestId || null,
-    applianceIds: data.applianceIds ?? [],
-    notes: data.notes || null,
-  });
+  let job;
+  try {
+    job = await createJob(session.user.id, {
+      type: data.type,
+      scheduledAt: data.scheduledAt ? new Date(data.scheduledAt) : null,
+      customerId: data.customerId || null,
+      serviceAddressId: data.serviceAddressId || null,
+      agreementId: data.agreementId || null,
+      maintenanceRequestId: data.maintenanceRequestId || null,
+      applianceIds: data.applianceIds ?? [],
+      notes: data.notes || null,
+    });
+  } catch (error) {
+    return {
+      status: "error",
+      message:
+        error instanceof Error ? error.message : "Couldn't create this visit.",
+    };
+  }
 
   revalidatePath("/desk/jobs");
   revalidatePath("/desk/dashboard");
   if (data.agreementId) revalidatePath(`/desk/agreements/${data.agreementId}`);
-  if (data.maintenanceRequestId) revalidatePath(`/desk/maintenance/${data.maintenanceRequestId}`);
+  if (data.maintenanceRequestId)
+    revalidatePath(`/desk/maintenance/${data.maintenanceRequestId}`);
 
   return { status: "success", jobId: job.id };
 }
@@ -241,3 +254,4 @@ export async function updateJobChecklistAction(
   revalidatePath("/desk/dispatch");
   return { status: "success" };
 }
+

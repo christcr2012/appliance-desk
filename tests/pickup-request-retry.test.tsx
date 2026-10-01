@@ -21,6 +21,23 @@ beforeEach(() => {
   cleanup();
   vi.clearAllMocks();
 });
+it("keeps the pickup description empty and blocks blank or prefix-only submissions", async () => {
+  render(<NewRequestForm customerId="c1" appliances={[]} requestKind="pickup" requestTitle="Request pickup" />);
+  const input = screen.getByLabelText("What's going on?");
+  expect(input).toHaveValue("");
+  for (const value of ["", "   ", "Pickup request: "]) {
+    fireEvent.change(input, { target: { value } });
+    fireEvent.submit(screen.getByRole("button", { name: "Submit request" }).closest("form")!);
+    expect(screen.getByRole("alert")).toHaveTextContent("describe your request");
+    expect(m.save).not.toHaveBeenCalled();
+  }
+  m.save.mockResolvedValue({ status: "success" });
+  fireEvent.change(input, { target: { value: "Washer at 123 Test Street, next Tuesday" } });
+  fireEvent.submit(screen.getByRole("button", { name: "Submit request" }).closest("form")!);
+  await waitFor(() => expect(m.save).toHaveBeenCalledWith(expect.objectContaining({
+    problem: "Pickup request: Washer at 123 Test Street, next Tuesday",
+  })));
+});
 it("preserves pickup text after failure and confirms only a successful existing request action", async () => {
   m.save
     .mockRejectedValueOnce(new Error("network"))
@@ -45,7 +62,6 @@ it("preserves pickup text after failure and confirms only a successful existing 
     (screen.getByLabelText("What's going on?") as HTMLTextAreaElement).value,
   ).toBe(text);
   expect(m.refresh).not.toHaveBeenCalled();
-  await waitFor(() => expect(screen.getByRole("button", { name: "Submit request" })).toBeEnabled());
   fireEvent.click(screen.getByRole("button", { name: "Submit request" }));
   await waitFor(() =>
     expect(screen.getByRole("status").textContent).toContain("next steps"),

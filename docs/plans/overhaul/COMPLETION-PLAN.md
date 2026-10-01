@@ -48,10 +48,10 @@ needed. Do not claim a whole card complete from a partial implementation.
 | O01 | Automated evidence passed | #96/#99 CI role, payload and upload-denial checks; manual acceptance remains explicit |
 | O02 | IN_PROGRESS | DB target guards, provider suppression and populated migration proof shipped; hosted fixture/file-store proof still incomplete |
 | O03–O06 | Implemented, automated checks passed | #100/#101 merged; #101 head d9e526a8165772e5cbd1fad8c2ae0d42f052033c CI 36778920651 successful; owner/manual review unclaimed |
-| O07/O08 | IN_REVIEW, automated evidence passed | #102 head 883a8f90a21135902450fff8c4e6663b631fdeae, CI 36784399079 successful; preview READY; 24 CI screenshots inspected; owner acceptance pending |
+| O07/O08 | Merged, automated evidence passed | #102 head 883a8f90a21135902450fff8c4e6663b631fdeae, CI 36784399079 successful; preview READY; 24 CI screenshots inspected; owner acceptance pending |
 | O11 | IN_REVIEW subcard | Validated property prefill and upcoming-job context; no new unit hierarchy or property-level request ownership claim |
 | O09/O10/O13/O14 | BLOCKED contract dependencies | Require full O02 gate; task-list presentation already shipped without assignment |
-| O12/O18/O20/O21 | IN_REVIEW subcards | Second batch: settings sections, billing presentation, scoped portal/request paths, independent agreement progress. 694 local tests pass; CI/build/browser/preview pending. Full draft-resume and reporting work remain |
+| O12/O18/O20/O21 | Application subcards automated checks passed | #103: 726 tests/122 browser checks; #108: 744 tests/123 browser checks. READY previews; saved-builder/product screenshots inspected. Whole-card/manual/capacity acceptance remains explicit |
 | O15–O17/O19 | Remaining | Operations depend on O13/O14; report families follow verified money presentation |
 | O22–O28 | Remaining / schema dependencies | Require O02 and relevant prerequisite cards |
 | O29 | DEFERRED conditional | No actual import dataset supplied |
@@ -87,6 +87,46 @@ create a cancellation, refund, automatic pickup job, or billing change.
 
 Agreement progress is a subcard only: signature, required deposit, current
 assignments, completed delivery and started/blocked billing are independent.
-Durable builder save/resume and unknown-outcome retry still need implementation.
+Durable builder checkpoints and draft-save retry recovery are implemented in the third batch; real database/browser/preview acceptance remains pending.
 Money presentation preserves existing cents/statement source calculations; no
 new ledger or provider writes. Revert the PR for rollback; no migration.
+
+## Rental recovery batch — 2026-10-01
+
+Existing agreement IDs enforce actor-scoped draft-save deduplication without a
+migration. Draft/audit transaction, replay-term checks, server resume DTOs,
+read-only saved terms and actual discounted cents are implemented. Job and
+rental writes enforce property/customer context. Local 709 tests/typecheck pass;
+lint zero errors/two existing warnings. Real concurrent/rollback/foreign-property
+DB proof and six width/theme saved-builder browser checks await CI. O12/O11
+whole-card completion and O02 infrastructure gates remain explicit.
+
+First rental batch CI 36813353081: 742 tests and build passed; 121 browser
+checks passed including six saved-builder widths/themes. Two inherited settings
+phone checks failed from absolute screen-reader labels escaping their table
+scroll area. Relative containment repair shared with #103; final CI pending.
+Keyboard Back now activates the real saved review transition. Additional line/
+signature lost-response tests preserve input and avoid false success messages.
+Preview branch Neon reports storage enabled but no buckets; this is not app
+private-storage/runtime evidence and does not satisfy O02.
+
+## Revenue family — 2026-10-01
+
+O19 revenue definitions/backing records implemented, CI pending. Rates are
+estimates; succeeded invoice payments are gross recorded amounts, not rent or
+profit. Refunds and deposit refunds have separate sources. Consistent UTC bounds,
+partially paid overdue balances, future/boundary trend fixes and owner-only
+repeatable-read count/sum/25-row invoice drill-through. 717 broad local tests plus
+one dashboard fixture test pass; real DB/browser proof awaits CI. Other report
+families (earnings, asset costs, growth/source conversion) remain unfinished.
+
+## Verified source checkpoint — 2026-10-01
+
+#103 head 4addf2f passed CI 36815045153; #108 head ed797c7 passed
+36815060816; #109 head 6a9b923 passed 36815637476 (752 tests and
+129 browser checks). Each preview READY; hosted protected interaction unclaimed.
+Cash export follow-on removes duplicate positive Deposit liability rows: invoice
+and estimate deposits are already real Payment cash. Refund outflows remain.
+Eight focused tests/typecheck pass; added real webhook fixture reconciliation,
+full CI pending. Other O19 report families remain; O02 infrastructure and
+O30/O31 whole-flow/manual/capacity evidence are not complete.
