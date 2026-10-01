@@ -1,3 +1,34 @@
+## 2026-10-01 — Historical review recovery from merged main
+
+Verified #105/#116 merged; resumed from main d7c10346214fcec548fffcc8d0d1b709e4dbecbf.
+Inventoried all 108 PRs and 36 review submissions, including closed/unmerged
+#89; 91 inline threads remain unresolved. The reconciliation ledger is
+`docs/reviews/2026-10-01-review-reconciliation.md`. Older resolved line locations
+or merged status are not treated as verification. New backlog features wait
+for outstanding review triage/repairs.
+
+AGENTS.md now requires previous/latest/dependency PR review checks before
+every new PR, current-code dispositions, behavior tests and verification before
+thread resolution. This implements the owner's 2026-10-01 process instruction.
+
+First coherent CRM repair: account/credential creation, lead claim, customer,
+property and audit now share one transaction using Better Auth's configured
+password hasher. Activation runs only after commit. A competing conversion or
+failed audit cannot create an orphan login or invite an uncommitted customer.
+New email capture for email-less leads is owner/admin-only, refuses overwrites
+or converted records, and saves its audit atomically. Reopening clears the lost
+reason; the property-manager scoring premium requires multiple units. Customer
+notes navigate to newest unfiltered activity on success and preserve failed
+input; next visit excludes past appointments.
+
+Local verification: 739 tests passed (five CI-only cases skipped), typecheck
+and lint passed (two existing warnings). Exact-head CI/preview remain pending. Disposable-CI real Postgres proof adds
+concurrent new-account conversion, failed-audit rollback/retry and persisted
+lost-reason clearing. Existing browser scenarios now save from activity-only
+history and add/reload a missing lead email. No migration or live provider,
+spending, production fixture or customer-data cleanup. Rollback: PR revert.
+O02 hosted isolation/private-storage and O32 sequencing remain incomplete.
+
 ## 2026-10-01 — PR #105 conflict resolution
 
 Merged current main into the Google Workspace documentation branch while

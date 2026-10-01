@@ -110,3 +110,11 @@ describe("scoreLead", () => {
     expect(result.reasons).not.toContain("Flagged high-value");
   });
 });
+
+it("does not grant the multi-unit property-manager premium for one unit", () => {
+  const one = scoreLead({ desiredTerm: "month-to-month", quantity: 1, isPropertyManager: true, isBusiness: true });
+  const twelve = scoreLead({ desiredTerm: "12-month", quantity: 1, isPropertyManager: false, isBusiness: false });
+  expect(one.score).toBeLessThan(twelve.score);
+  expect(one.isHighValue).toBe(false);
+  expect(one.reasons.some(reason => reason.includes("property manager"))).toBe(false);
+});

@@ -73,6 +73,29 @@ anything outside this project.
   `docs/HANDOFF.md`, and stop to report to Chris before starting the next
   phase.
 
+## Review continuity — required before starting each PR
+
+- At session start, inventory unaddressed review submissions and unresolved
+  inline threads across open, merged and closed PRs. Consult the reconciliation
+  ledger when present; merged/closed/outdated status is not proof of resolution.
+- Before starting each new PR, check the preceding work PR, the latest repository
+  PR and every predecessor/dependency for submitted reviews (including review
+  bodies), inline threads and new comments. Reuse the session inventory and read
+  new or changed submissions rather than repeating unchanged history.
+- Check each actionable finding against current code. Fix valid defects with
+  behavioral regression tests before new backlog features. Related fixes may form
+  a coherent follow-on PR; preserve dependency and acceptance gates.
+- Record a disposition for every finding: verified existing fix with evidence,
+  fix under review, superseded requirement with its authoritative contract, or
+  unresolved/blocked with the reason and next step. Never silently drop a finding
+  because its PR was merged, closed, or its line became outdated.
+- Resolve threads only after verifying the fix or documented disposition. Fixes
+  require exact-head review, full CI and applicable preview/acceptance checks.
+  Re-read reviews before merge; new commits invalidate earlier head evidence.
+- Update docs/HANDOFF.md and the review ledger before handoff. Unverified or
+  blocked findings remain open. Review automation silence is not an approval;
+  record what exact-head review actually ran and its result.
+
 ## Where the rules actually live
 
 - Pricing, lead scoring, statuses, fees → `docs/BUSINESS-RULES.md` (one
