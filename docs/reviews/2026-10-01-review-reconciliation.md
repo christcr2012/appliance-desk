@@ -43,13 +43,13 @@ sequencing remain incomplete. No live activation, spending or customer-data clea
 | [#38](https://github.com/christcr2012/appliance-desk/pull/38#discussion_r4118039254) | Make local fixture instructions load `.env.local` | Pending |
 | [#39](https://github.com/christcr2012/appliance-desk/pull/39#discussion_r4118271829) | Add regression tests for the new status labels | Pending |
 | [#39](https://github.com/christcr2012/appliance-desk/pull/39#discussion_r4118271833) | Let the desk content flex item shrink | Pending |
-| [#52](https://github.com/christcr2012/appliance-desk/pull/52#discussion_r4119608648) | Limit the SWAP completion prompt to the replacement | Pending |
+| [#52](https://github.com/christcr2012/appliance-desk/pull/52#discussion_r4119608648) | Limit the SWAP completion prompt to the replacement | Staff job follow-up repair implemented; full CI/exact-head/preview pending |
 | [#52](https://github.com/christcr2012/appliance-desk/pull/52#discussion_r4119608655) | Filter appliance audits to actual status changes | Pending |
 | [#52](https://github.com/christcr2012/appliance-desk/pull/52#discussion_r4119608659) | Capture agreement-driven transitions in appliance history | Pending |
-| [#53](https://github.com/christcr2012/appliance-desk/pull/53#discussion_r4119719016) | Anchor dispatch dates to America/Denver | Implemented in Colorado dispatch repair; full CI/exact-head inspection/preview pending |
-| [#53](https://github.com/christcr2012/appliance-desk/pull/53#discussion_r4119719027) | Include adjacent-range jobs in conflict detection | Implemented in Colorado dispatch repair; full CI/exact-head inspection/preview pending |
-| [#53](https://github.com/christcr2012/appliance-desk/pull/53#discussion_r4119719038) | Add real behavior coverage for dispatch persistence | Implemented in Colorado dispatch repair; full CI/exact-head inspection/preview pending |
-| [#53](https://github.com/christcr2012/appliance-desk/pull/53#discussion_r4119719046) | Update the handoff with the completed dispatch work | Implemented in Colorado dispatch repair; full CI/exact-head inspection/preview pending |
+| [#53](https://github.com/christcr2012/appliance-desk/pull/53#discussion_r4119719016) | Anchor dispatch dates to America/Denver | Verified/merged #123; CI 36864737390 (842 tests/136 browser checks), all 14 blobs + Vercel; resolved |
+| [#53](https://github.com/christcr2012/appliance-desk/pull/53#discussion_r4119719027) | Include adjacent-range jobs in conflict detection | Verified/merged #123; CI 36864737390 (842 tests/136 browser checks), all 14 blobs + Vercel; resolved |
+| [#53](https://github.com/christcr2012/appliance-desk/pull/53#discussion_r4119719038) | Add real behavior coverage for dispatch persistence | Verified/merged #123; CI 36864737390 (842 tests/136 browser checks), all 14 blobs + Vercel; resolved |
+| [#53](https://github.com/christcr2012/appliance-desk/pull/53#discussion_r4119719046) | Update the handoff with the completed dispatch work | Verified/merged #123; CI 36864737390 (842 tests/136 browser checks), all 14 blobs + Vercel; resolved |
 | [#54](https://github.com/christcr2012/appliance-desk/pull/54#discussion_r4119814097) | Persist edits made after returning to earlier steps | Pending |
 | [#54](https://github.com/christcr2012/appliance-desk/pull/54#discussion_r4119814104) | Use the discounted monthly price in the review total | Pending |
 | [#54](https://github.com/christcr2012/appliance-desk/pull/54#discussion_r4119814111) | Add accessible labels to every address input | Verified/merged #121; CI 36861119917 phone keyboard/axe/address persistence + Vercel; resolved |
@@ -62,7 +62,7 @@ sequencing remain incomplete. No live activation, spending or customer-data clea
 | [#57](https://github.com/christcr2012/appliance-desk/pull/57#discussion_r4123169719) | Persist edits when revisiting wizard steps | Pending |
 | [#57](https://github.com/christcr2012/appliance-desk/pull/57#discussion_r4123169721) | Display the discounted monthly price in the review | Pending |
 | [#57](https://github.com/christcr2012/appliance-desk/pull/57#discussion_r4123169727) | Compare rent against rent in the earnings report | Pending |
-| [#57](https://github.com/christcr2012/appliance-desk/pull/57#discussion_r4123169735) | Use America/Denver for dispatch calendar calculations | Implemented in Colorado dispatch repair; full CI/exact-head inspection/preview pending |
+| [#57](https://github.com/christcr2012/appliance-desk/pull/57#discussion_r4123169735) | Use America/Denver for dispatch calendar calculations | Verified/merged #123; CI 36864737390 (842 tests/136 browser checks), all 14 blobs + Vercel; resolved |
 | [#57](https://github.com/christcr2012/appliance-desk/pull/57#discussion_r4123169741) | Neutralize formulas in CSV cells | Verified/merged #120; CI 36858585089 + Vercel; automated review waived; resolved |
 | [#57](https://github.com/christcr2012/appliance-desk/pull/57#discussion_r4123169747) | Document the new database records in DATABASE.md | Pending |
 | [#58](https://github.com/christcr2012/appliance-desk/pull/58#discussion_r4123386805) | Clean up Blob objects when references are discarded | Pending |
@@ -75,12 +75,12 @@ sequencing remain incomplete. No live activation, spending or customer-data clea
 | [#60](https://github.com/christcr2012/appliance-desk/pull/60#discussion_r4124170433) | Accept only trusted uploaded photo URLs | Pending |
 | [#60](https://github.com/christcr2012/appliance-desk/pull/60#discussion_r4124170447) | Remove the contradictory maintenance-photo roadmap entry | Pending |
 | [#61](https://github.com/christcr2012/appliance-desk/pull/61#discussion_r4124590917) | Mark the restore attribution as unconfirmed | Pending |
-| [#62](https://github.com/christcr2012/appliance-desk/pull/62#discussion_r4125549128) | Restrict financial operational pages from STAFF | Pending |
+| [#62](https://github.com/christcr2012/appliance-desk/pull/62#discussion_r4125549128) | Restrict financial operational pages from STAFF | Verified existing #105 role guards/projections; current #123 CI real staff payload/route checks; resolved |
 | [#62](https://github.com/christcr2012/appliance-desk/pull/62#discussion_r4125549136) | Honor failed email results before recording a reminder | Verified/merged #119; CI 36858433312 + Vercel; automated review waived; resolved |
-| [#62](https://github.com/christcr2012/appliance-desk/pull/62#discussion_r4125549141) | Scope staff appliance updates to the originating job | Pending |
+| [#62](https://github.com/christcr2012/appliance-desk/pull/62#discussion_r4125549141) | Scope staff appliance updates to the originating job | Staff job follow-up repair implemented; full CI/exact-head/preview pending |
 | [#62](https://github.com/christcr2012/appliance-desk/pull/62#discussion_r4125549150) | Propagate staff activation delivery failures | Verified/merged #119; CI 36858433312 + Vercel; automated review waived; resolved |
-| [#62](https://github.com/christcr2012/appliance-desk/pull/62#discussion_r4125549157) | Keep completed swap jobs visible for status follow-up | Pending |
-| [#62](https://github.com/christcr2012/appliance-desk/pull/62#discussion_r4125549168) | Filter the driver view to the signed-in staff member | Pending |
+| [#62](https://github.com/christcr2012/appliance-desk/pull/62#discussion_r4125549157) | Keep completed swap jobs visible for status follow-up | Staff job follow-up repair implemented; full CI/exact-head/preview pending |
+| [#62](https://github.com/christcr2012/appliance-desk/pull/62#discussion_r4125549168) | Filter the driver view to the signed-in staff member | Staff job follow-up repair implemented; full CI/exact-head/preview pending |
 | [#76](https://github.com/christcr2012/appliance-desk/pull/76#discussion_r4135862592) | Apply the brand kit's heading weight | Pending |
 | [#76](https://github.com/christcr2012/appliance-desk/pull/76#discussion_r4135862605) | Keep the design-system brand guidance in sync | Pending |
 | [#78](https://github.com/christcr2012/appliance-desk/pull/78#discussion_r4136765429) | Ask before installing the Neon CLI globally | Pending |
@@ -131,22 +131,27 @@ historical findings remain open; pending does not mean fixed.
 Also reconciled existing ACH settlement/retry and two-customer isolation fixes
 against current code and actual Postgres tests in #120 full CI; three threads resolved.
 
-Preceding/latest #122 submissions/threads/comments checked before Colorado dispatch
-repair; no findings, automated review quota notice 5931613975. Calendar grouping,
-day/week/agenda ranges and driver day/display now use explicit America/Denver;
-23/25-hour days resolve both midnights independently. Conflict candidates include
-the adjacent two-hour windows, while only visible-range jobs render.
+#123 head 0308d9e00111ab093d0697ba9e80e69a088bf211 passed full CI
+36864737390: 842 tests/136 browser checks. All 14 published blobs matched inspected
+local commit; prospective main merge tree matched tested head. Vercel ready.
+Merged 2f75a47b03248215e1722921f042a4b9f9566594; five calendar/coverage/handoff
+findings resolved. Existing #105 financial isolation verified against current
+role guards, narrow operational projections and real staff payload/route tests;
+#62 financial isolation thread resolved. Thirty-seven resolutions total:
+thirty-four historical plus three #117 findings; fifty-seven historical remain.
 
-Local 796 tests pass, typecheck/lint pass (two existing warnings). New regressions
-cover invalid dates, evening/year boundaries, DST, driver ranges and rendered
-boundary warnings. Guarded real-Postgres query checks and phone day/week/agenda,
-checklist server-action persistence/reload and axe browser checks require full CI.
-Five findings remain open until that verification/preview and exact-head inspection.
-This repairs existing behavior; it does not complete O13/O14 or add assignment,
-duration/version fields. New-job input/timezone unification remains in its gated
-contract; no stored timestamps are rewritten.
-
-Known remaining defects include paid-in-full subscription handling, recurring
-waiver and earnings comparison. Staff job-origin status scope and driver SWAP
-follow-up are valid unresolved findings. New backlog features remain behind
-reconciliation; O02/O32 and live-action approvals unchanged.
+Before this follow-on, preceding/latest #123 reviews/threads/comments checked:
+no findings; quota notice 5931872476. Owner explicitly waived unavailable automated
+review. Staff job appliance updates require and verify job membership before writes;
+owner/admin broader authority retained. Swap suggestions use frozen guided-swap
+audit intent, restricted to linked units, and never guess legacy replacements.
+Failed writes show retryable errors. Driver completion opens swap/maintenance job
+detail; route explicitly shared/unassigned. No assignment schema or Mine claim.
+Local 807 tests pass, fifteen guarded CI-only cases skipped and four existing DB
+suites excluded; types/lint pass (two existing warnings). Real disposable Postgres
+membership/provenance/audit/financial projection regression and phone staff swap
+completion/update/reload/axe checks await full CI and preview. Four findings remain
+open until verification. No O13/O14 completion, scheduling write unification or
+stored timestamp rewrite. Paid-in-full billing, recurring waiver and earnings
+comparison remain priorities before new backlog features. O02 storage/isolation,
+O32 sequencing and live-action approvals unchanged.

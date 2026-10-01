@@ -55,7 +55,11 @@ export function DriverJobCard({ job }: { job: DriverJob }) {
       if (result.status === "error") {
         setError(result.message);
       } else {
-        router.refresh();
+        if (status === "COMPLETED" && (job.type === "SWAP" || job.type === "MAINTENANCE_VISIT")) {
+          router.push(`/desk/jobs/${job.id}`);
+        } else {
+          router.refresh();
+        }
       }
     });
   }

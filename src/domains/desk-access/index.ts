@@ -97,12 +97,31 @@ export async function getOperationalAgreementById(id: string) {
   });
 }
 
+async function swapReplacementIdsFor(job: { id: string; type: string; appliances: { appliance: { id: string } }[] }) {
+  if (job.type !== "SWAP") return [];
+  // The guided swap records the incoming unit's frozen intent in its audit.
+  // Current status alone cannot distinguish it from the returned broken unit.
+  const entries = await prisma.auditLog.findMany({
+    where: {
+      action: "appliance.unit.status", entityType: "Appliance",
+      entityId: { in: job.appliances.map(item => item.appliance.id) },
+      AND: [
+        { newValue: { path: ["jobId"], equals: job.id } },
+        { newValue: { path: ["reason"], equals: "Swap started" } },
+        { newValue: { path: ["status"], equals: "RESERVED" } },
+      ],
+    },
+    select: { entityId: true },
+  });
+  return [...new Set(entries.flatMap(entry => entry.entityId ? [entry.entityId] : []))];
+}
+
 /** STAFF's client-component payload contains no costs or full agreement. */
 export async function getDeskJobById(id: string) {
   const session = await requireRole("OWNER", "ADMIN", "STAFF");
   if (session.user.role === "OWNER" || session.user.role === "ADMIN") {
     const job = await getJobById(id);
-    return job ? { ...job, canViewFinance: true as const } : null;
+    return job ? { ...job, swapReplacementIds: await swapReplacementIdsFor(job), canViewFinance: true as const } : null;
   }
   const job = await prisma.job.findUnique({
     where: { id },
@@ -133,7 +152,7 @@ export async function getDeskJobById(id: string) {
       },
     },
   });
-  return job ? { ...job, canViewFinance: false as const } : null;
+  return job ? { ...job, swapReplacementIds: await swapReplacementIdsFor(job), canViewFinance: false as const } : null;
 }
 
 export async function getOperationalApplianceById(id: string) {
