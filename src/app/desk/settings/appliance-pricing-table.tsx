@@ -85,7 +85,9 @@ function ApplianceRow({ row }: { row: ApplianceTypeRow }) {
   const [photoUrl, setPhotoUrl] = useState(row.photoUrl ?? "");
   const [isPending, startTransition] = useTransition();
   const [isPhotoPending, startPhotoTransition] = useTransition();
-  const [savedPrice, setSavedPrice] = useState(false);
+  const [priceMessage, setPriceMessage] = useState<
+    { kind: "success" | "error"; text: string } | null
+  >(null);
   const [photoMessage, setPhotoMessage] = useState<
     { kind: "success" | "error"; text: string } | null
   >(null);
@@ -117,10 +119,10 @@ function ApplianceRow({ row }: { row: ApplianceTypeRow }) {
             min={0}
             step="0.01"
             value={price}
-            disabled={!row.isActive}
+            disabled={isPending || !row.isActive}
             onChange={(e) => {
               setPrice(e.target.value);
-              setSavedPrice(false);
+              setPriceMessage(null);
             }}
             className="w-24 rounded-lg border border-gray-300 px-2 py-1.5 disabled:bg-gray-50"
           />
@@ -128,17 +130,29 @@ function ApplianceRow({ row }: { row: ApplianceTypeRow }) {
             type="button"
             disabled={isPending || !row.isActive}
             onClick={() => {
+              setPriceMessage(null);
               startTransition(async () => {
-                await updateAppliancePriceAction(row.id, parseFloat(price));
-                setSavedPrice(true);
+                try {
+                  const result = await updateAppliancePriceAction(row.id, parseFloat(price));
+                  setPriceMessage(result.status === "success"
+                    ? { kind: "success", text: "Saved" }
+                    : { kind: "error", text: result.status === "error" ? result.message : "Price save was not confirmed. Reload to check it before retrying." });
+                } catch {
+                  setPriceMessage({ kind: "error", text: "Price save was not confirmed. Your amount is still here; reload to check it before retrying." });
+                }
               });
             }}
             className="rounded-md bg-gray-900 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
           >
             {isPending ? "Saving…" : "Save"}
           </button>
-          {savedPrice && !isPending && (
-            <span className="text-xs text-green-700">Saved</span>
+          {priceMessage && !isPending && (
+            <span
+              role={priceMessage.kind === "error" ? "alert" : "status"}
+              className={`text-xs ${priceMessage.kind === "error" ? "text-red-700" : "text-green-700"}`}
+            >
+              {priceMessage.text}
+            </span>
           )}
         </div>
       </td>
@@ -310,4 +324,3 @@ function NewApplianceTypeForm() {
     </form>
   );
 }
-
