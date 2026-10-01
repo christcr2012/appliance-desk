@@ -40,6 +40,7 @@ export function InventoryList({ appliances, canManage = false }: { appliances: A
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkStatus, setBulkStatus] = useState<ApplianceStatus>("AVAILABLE");
   const [message, setMessage] = useState<string | null>(null);
+  const [skipped, setSkipped] = useState<{ applianceId: string; reason: string }[]>([]);
 
   function toggle(id: string) {
     setSelected((prev) => {
@@ -58,20 +59,22 @@ export function InventoryList({ appliances, canManage = false }: { appliances: A
 
   function handleApplyBulk() {
     setMessage(null);
+    setSkipped([]);
     startTransition(async () => {
-      const result = await bulkUpdateApplianceStatusAction([...selected], bulkStatus);
+      let result;
+      try {
+        result = await bulkUpdateApplianceStatusAction([...selected], bulkStatus);
+      } catch {
+        setMessage("The changes were not confirmed. Check the inventory before retrying; your selection is still here.");
+        return;
+      }
       if (result.status === "error") {
         setMessage(result.message);
         return;
       }
-      const parts = [`Updated ${result.updatedCount}.`];
-      if (result.skippedCount > 0) {
-        parts.push(
-          `Skipped ${result.skippedCount} (${result.skipMessage ?? "not a valid change for that unit"}).`,
-        );
-      }
-      setMessage(parts.join(" "));
-      setSelected(new Set());
+      setMessage(`Updated ${result.updated.length}. Skipped ${result.skipped.length}.`);
+      setSkipped(result.skipped);
+      setSelected(new Set(result.skipped.map(item => item.applianceId)));
       router.refresh();
     });
   }
@@ -85,6 +88,7 @@ export function InventoryList({ appliances, canManage = false }: { appliances: A
             Set status to
           </label>
           <select
+            disabled={isPending}
             id="bulkStatus"
             value={bulkStatus}
             onChange={(e) => setBulkStatus(e.target.value as ApplianceStatus)}
@@ -106,6 +110,7 @@ export function InventoryList({ appliances, canManage = false }: { appliances: A
           </button>
           <button
             type="button"
+            disabled={isPending}
             onClick={() => setSelected(new Set())}
             className="text-sm text-gray-600 hover:underline"
           >
@@ -115,14 +120,26 @@ export function InventoryList({ appliances, canManage = false }: { appliances: A
       )}
 
       {message && (
-        <p role="status" className="mb-3 text-sm text-gray-700">
-          {message}
-        </p>
+        <div role="status" className="mb-3 text-sm text-gray-700">
+          <p>{message}</p>
+          {skipped.length > 0 && (
+            <ul className="mt-2 list-disc pl-5">
+              {skipped.map((item) => (
+                <li key={item.applianceId}>
+                  <Link href={`/desk/inventory/${item.applianceId}`} className="underline">
+                    {appliances.find(appliance => appliance.id === item.applianceId)?.assetNumber ?? item.applianceId}
+                  </Link>{": "}{item.reason}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       )}
 
       <div className="rounded-lg border border-gray-200 bg-white">
         {canManage && <label className="flex items-center gap-2 border-b border-gray-200 px-4 py-2 text-sm text-gray-600">
           <input
+            disabled={isPending}
             type="checkbox"
             checked={selected.size === appliances.length && appliances.length > 0}
             onChange={toggleAll}
@@ -133,6 +150,7 @@ export function InventoryList({ appliances, canManage = false }: { appliances: A
           {appliances.map((appliance) => (
             <li key={appliance.id} className="flex items-center gap-3 px-4 py-4 hover:bg-gray-50">
               {canManage && <input
+                disabled={isPending}
                 type="checkbox"
                 aria-label={`Select ${appliance.assetNumber}`}
                 checked={selected.has(appliance.id)}
@@ -167,4 +185,3 @@ export function InventoryList({ appliances, canManage = false }: { appliances: A
     </div>
   );
 }
-

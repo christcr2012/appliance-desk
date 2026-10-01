@@ -19,11 +19,11 @@ sequencing remain incomplete. No live activation, spending or customer-data clea
 |---|---|---|
 | [#1](https://github.com/christcr2012/appliance-desk/pull/1#discussion_r4112148766) | Source metadata titles from business settings | Pending |
 | [#1](https://github.com/christcr2012/appliance-desk/pull/1#discussion_r4112148769) | Record fee changes in PricingRule | Pending |
-| [#1](https://github.com/christcr2012/appliance-desk/pull/1#discussion_r4112148772) | Preserve lead capture when no types are published | Implemented in onboarding repair; full CI/exact-head inspection/preview pending |
+| [#1](https://github.com/christcr2012/appliance-desk/pull/1#discussion_r4112148772) | Preserve lead capture when no types are published | Verified/merged #121; CI 36861119917 (830 tests/134 browser checks) + Vercel; resolved |
 | [#1](https://github.com/christcr2012/appliance-desk/pull/1#discussion_r4112148774) | Show price-save errors instead of success | Pending |
 | [#1](https://github.com/christcr2012/appliance-desk/pull/1#discussion_r4112148776) | Gate the property-manager premium on multiple units | Verified/merged #117; CI 36854516416 + Vercel; automated review waived; resolved |
 | [#2](https://github.com/christcr2012/appliance-desk/pull/2#discussion_r4112288147) | Keep delivery troubleshooting open until the send result is checked | Pending |
-| [#14](https://github.com/christcr2012/appliance-desk/pull/14#discussion_r4113000933) | Add the required cross-customer isolation tests | Pending |
+| [#14](https://github.com/christcr2012/appliance-desk/pull/14#discussion_r4113000933) | Add the required cross-customer isolation tests | Verified existing two-customer real-Postgres portal/maintenance/invoice isolation; #120 CI 36858585089; resolved |
 | [#14](https://github.com/christcr2012/appliance-desk/pull/14#discussion_r4113000937) | Include the waiver in the monthly total | Pending |
 | [#14](https://github.com/christcr2012/appliance-desk/pull/14#discussion_r4113000939) | Restrict maintenance appliances to active agreements | Pending |
 | [#14](https://github.com/christcr2012/appliance-desk/pull/14#discussion_r4113000942) | Stop reporting an agreed deposit as paid | Pending |
@@ -34,8 +34,8 @@ sequencing remain incomplete. No live activation, spending or customer-data clea
 | [#30](https://github.com/christcr2012/appliance-desk/pull/30#discussion_r4116857382) | Review the non-MySQL advisory separately | Pending |
 | [#30](https://github.com/christcr2012/appliance-desk/pull/30#discussion_r4116857387) | Record this security pass in the handoff | Pending |
 | [#31](https://github.com/christcr2012/appliance-desk/pull/31#discussion_r4117061551) | Update the handoff when unblocking Stripe work | Pending |
-| [#32](https://github.com/christcr2012/appliance-desk/pull/32#discussion_r4117202521) | Wait for ACH settlement before recording payment | Pending |
-| [#32](https://github.com/christcr2012/appliance-desk/pull/32#discussion_r4117202524) | Reconcile a failed invoice when Stripe later collects it | Pending |
+| [#32](https://github.com/christcr2012/appliance-desk/pull/32#discussion_r4117202521) | Wait for ACH settlement before recording payment | Verified existing pending/settled/failed ACH real-Postgres regressions; #120 CI 36858585089; resolved |
+| [#32](https://github.com/christcr2012/appliance-desk/pull/32#discussion_r4117202524) | Reconcile a failed invoice when Stripe later collects it | Verified existing failed-to-paid same-invoice real-Postgres recovery; #120 CI 36858585089; resolved |
 | [#32](https://github.com/christcr2012/appliance-desk/pull/32#discussion_r4117202529) | Honor paid-in-full agreements before starting a subscription | Pending |
 | [#32](https://github.com/christcr2012/appliance-desk/pull/32#discussion_r4117202535) | Keep the damage waiver as a recurring monthly charge | Pending |
 | [#32](https://github.com/christcr2012/appliance-desk/pull/32#discussion_r4117202542) | Provide a way to resume an abandoned Checkout | Pending |
@@ -52,11 +52,11 @@ sequencing remain incomplete. No live activation, spending or customer-data clea
 | [#53](https://github.com/christcr2012/appliance-desk/pull/53#discussion_r4119719046) | Update the handoff with the completed dispatch work | Pending |
 | [#54](https://github.com/christcr2012/appliance-desk/pull/54#discussion_r4119814097) | Persist edits made after returning to earlier steps | Pending |
 | [#54](https://github.com/christcr2012/appliance-desk/pull/54#discussion_r4119814104) | Use the discounted monthly price in the review total | Pending |
-| [#54](https://github.com/christcr2012/appliance-desk/pull/54#discussion_r4119814111) | Add accessible labels to every address input | Implemented in onboarding repair; full CI/exact-head inspection/preview pending |
+| [#54](https://github.com/christcr2012/appliance-desk/pull/54#discussion_r4119814111) | Add accessible labels to every address input | Verified/merged #121; CI 36861119917 phone keyboard/axe/address persistence + Vercel; resolved |
 | [#54](https://github.com/christcr2012/appliance-desk/pull/54#discussion_r4119814118) | Surface failed activation emails before advancing | Verified/merged #119; CI 36858433312 + Vercel; automated review waived; resolved |
 | [#55](https://github.com/christcr2012/appliance-desk/pull/55#discussion_r4119945202) | Neutralize spreadsheet formulas in exported CSV cells | Verified/merged #120; CI 36858585089 + Vercel; automated review waived; resolved |
-| [#55](https://github.com/christcr2012/appliance-desk/pull/55#discussion_r4119945208) | Add a unique tie-breaker to paginated job ordering | Pending |
-| [#55](https://github.com/christcr2012/appliance-desk/pull/55#discussion_r4119945212) | Return every skipped appliance and its reason | Pending |
+| [#55](https://github.com/christcr2012/appliance-desk/pull/55#discussion_r4119945208) | Add a unique tie-breaker to paginated job ordering | Implemented stable scheduledAt/id job pagination; full CI/exact-head inspection/preview pending |
+| [#55](https://github.com/christcr2012/appliance-desk/pull/55#discussion_r4119945212) | Return every skipped appliance and its reason | Implemented every skipped asset/reason and preserved selection; full CI/exact-head inspection/preview pending |
 | [#56](https://github.com/christcr2012/appliance-desk/pull/56#discussion_r4120027259) | Compare recurring receipts instead of all invoice payments | Pending |
 | [#56](https://github.com/christcr2012/appliance-desk/pull/56#discussion_r4120027266) | Honor calendar-month anniversary billing in the estimate | Pending |
 | [#57](https://github.com/christcr2012/appliance-desk/pull/57#discussion_r4123169719) | Persist edits when revisiting wizard steps | Pending |
@@ -111,24 +111,30 @@ sequencing remain incomplete. No live activation, spending or customer-data clea
 
 ## Current verification checkpoint
 
-#117–#120 merged after exact-head inspection, passing full CI and ready Vercel
-previews. Recorded expected-head merges; stacked PRs retargeted to main and
-prospective merge trees matched tested heads. Automated review quota unavailable;
-Chris explicitly waived that step October 1. No review success invented or credits
-purchased. Twenty-four threads resolved: twenty-one historical findings and three
-new #117 normalization/scoring-contract/malformed-email findings. Replies cite
-specific tests and disposition; the remaining seventy historical findings stay open.
+#117–#121 merged after exact-head inspection, full CI and ready Vercel. Expected-head
+merges used; stacked PRs retargeted to main and merge trees matched tested heads.
+Automated review quota unavailable; Chris waived that step October 1. Twenty-nine
+threads resolved: twenty-six historical and three new #117 findings. Sixty-five
+historical findings remain open; pending does not mean fixed.
 
 - #117 head 8418428571: CI 36854516416; merged fdc7de4.
 - #118 head bd89a9ac10: CI 36854626321; merged 9a917f3.
-- #119 head 2bcbcf1498: CI 36858433312; merged 18f272e. Actual Better Auth
-  callback/privacy, reminder retry and staff phone recovery passed.
-- #120 head 8d8002dfe3: CI 36858585089; merged 4151c99. CSV safety, default/saved
-  checklist and phone/desktop print checks passed.
+- #119 head 2bcbcf1498: CI 36858433312; merged 18f272e.
+- #120 head 8d8002dfe3: CI 36858585089; merged 4151c99.
+- #121 head 73416ff92a: CI 36861119917 (830 tests/134 browser checks); merged
+  b5a4319. Empty-catalog lead/consent persistence and phone address accessibility
+  and reload verified. Both historical findings resolved after merge.
 
-Preceding/latest #120 reviews, threads and conversation checked before the new
-onboarding repair. No new findings; automatic review returned quota notice
-5930485468. Empty-catalog lead capture and rental address labels are implemented
-with behavior regressions; full CI, exact-head inspection and preview pending.
-Do not resolve those two findings until verification passes. New backlog feature
-work remains behind reconciliation; O02/O32 and live-action approvals unchanged.
+Also reconciled existing ACH settlement/retry and two-customer isolation fixes
+against current code and actual Postgres tests in #120 full CI; three threads resolved.
+
+Preceding/latest #121 reviews/threads/comments checked before operational-results
+repair; no findings, automated review quota notice 5931305976. Stable job paging
+and per-unit skipped results/selection recovery implemented with action/UI tests,
+disposable database pagination and phone bulk persistence/axe browser checks.
+Full CI/preview and exact-head inspection pending; those two threads stay open.
+
+Known remaining defects include Colorado dispatch/driver calendar handling,
+paid-in-full subscription handling, recurring waiver and earnings comparison.
+Do not infer those resolved from passing generic suites. New backlog features
+remain behind reconciliation; O02/O32 and live-action approvals unchanged.
