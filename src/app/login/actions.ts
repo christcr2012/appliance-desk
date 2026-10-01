@@ -47,11 +47,12 @@ export async function getPostLoginDestination(nextParam: string | null): Promise
     return "/login";
   }
 
-  const role = (session.user as { role?: Role }).role ?? "CUSTOMER";
+  const role = session.user.role;
+  if (!Object.hasOwn(ROLE_LANDING_PAGE, role)) return "/login";
 
   if (isSafeNextPath(nextParam)) {
     return nextParam;
   }
 
-  return ROLE_LANDING_PAGE[role] ?? "/account";
+  return ROLE_LANDING_PAGE[role];
 }

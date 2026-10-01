@@ -25,8 +25,8 @@ sequencing remain incomplete. No live activation, spending or customer-data clea
 | [#2](https://github.com/christcr2012/appliance-desk/pull/2#discussion_r4112288147) | Keep delivery troubleshooting open until the send result is checked | Pending |
 | [#14](https://github.com/christcr2012/appliance-desk/pull/14#discussion_r4113000933) | Add the required cross-customer isolation tests | Verified existing two-customer real-Postgres portal/maintenance/invoice isolation; #120 CI 36858585089; resolved |
 | [#14](https://github.com/christcr2012/appliance-desk/pull/14#discussion_r4113000937) | Include the waiver in the monthly total | Verified/merged #125; CI 36870323155 (860 tests/138 browser checks), exact 16 blobs/Vercel; prepaid protected, waiver reconciled to later one-time contract; resolved |
-| [#14](https://github.com/christcr2012/appliance-desk/pull/14#discussion_r4113000939) | Restrict maintenance appliances to active agreements | Current shared ACTIVE/delivered filter inspected; eight real-Postgres eligibility cases added, full CI/exact-head verification pending; thread remains open |
-| [#14](https://github.com/christcr2012/appliance-desk/pull/14#discussion_r4113000942) | Stop reporting an agreed deposit as paid | Current rentals page labels Deposit required; three actual-page presentation regressions pass locally; full CI/exact-head verification pending; thread remains open |
+| [#14](https://github.com/christcr2012/appliance-desk/pull/14#discussion_r4113000939) | Restrict maintenance appliances to active agreements | Verified/merged #129; CI 36882411929 (878/138), eight real DB eligibility/submission cases, exact four blobs/main tree/Vercel; resolved |
+| [#14](https://github.com/christcr2012/appliance-desk/pull/14#discussion_r4113000942) | Stop reporting an agreed deposit as paid | Verified/merged #129; CI 36882411929 (878/138), three actual server-page render cases, exact four blobs/main tree/Vercel; resolved |
 | [#28](https://github.com/christcr2012/appliance-desk/pull/28#discussion_r4114120283) | Add an automated regression test for the generated title | Actual generator/settings-name regression plus real home default/child composed browser titles added; full CI/exact-head pending |
 | [#29](https://github.com/christcr2012/appliance-desk/pull/29#discussion_r4116481229) | Correct the live lead-recipient state | Pending |
 | [#29](https://github.com/christcr2012/appliance-desk/pull/29#discussion_r4116481236) | Keep the Resend domain marked as pending | Pending |
@@ -222,3 +222,20 @@ including seven real DB race/rollback tests; four source blobs and prospective m
 merge tree verified. Full security audit/hosted provider capacity remain incomplete.
 Preceding/latest #129 reviews/threads/comments checked: no blocking findings;
 quota notice 5934332376, owner waiver applies. #129 still awaits final CI gates.
+
+Current update: #129 merged da3cf4243686805195640f9dd3293e38a8621e61 at exact head
+5ef63a05a68591c1f107ded52b572f634e4ad3bb, CI 36882411929 (878/138), ready Vercel;
+four blobs and matching prospective main tree verified. Two #14 threads replied
+with accepted evidence then resolved. Totals: 46 resolutions (43 historical +
+three #117), 48 historical still open. #130 price-save/metadata remains under full
+CI 36884412728; its three related threads remain open until gates pass.
+
+Security audit P1 follow-on validates identity, known role and explicit archive
+state before exposing sessions. Direct readers receive active accounts only;
+requireSession preserves the deactivation redirect. Missing/unknown roles no longer
+become CUSTOMER. Twelve malformed/archive cases and login role denial added; real
+provider sign-in→API/page deactivation denial→restoration tests remain CI acceptance.
+A broad local run exposed an existing pickup retry test race (alert before pending
+settles); it now waits for the retry button to be enabled without weakening behavior.
+No live setup/message/schema changes. Preceding/latest #130 reviews/threads/comments
+checked: no findings, quota notice 5934632895; owner waiver applies.
