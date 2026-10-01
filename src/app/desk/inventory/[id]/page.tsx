@@ -13,6 +13,7 @@ import { ApplianceDetailPanel } from "./appliance-detail-panel";
 import { PartsSection } from "./parts-section";
 import { GuidedActionsPanel } from "./guided-actions-panel";
 import { HistoryTimeline } from "./history-timeline";
+import { ApplianceEarningsSummary } from "@/components/desk/appliance-earnings-summary";
 
 export const metadata = { title: "Appliance" };
 
@@ -62,34 +63,7 @@ export default async function ApplianceDetailPage({
           ` · purchased ${new Date(appliance.purchaseDate).toLocaleDateString()}`}
       </p>
 
-      {profitability && (
-        <div className="mt-4 grid grid-cols-2 gap-3 rounded-lg border border-gray-200 bg-white p-4 text-sm sm:grid-cols-4">
-          <div>
-            <p className="text-gray-500">Lifetime revenue</p>
-            <p className="font-medium text-gray-900">
-              {formatCents(profitability.revenueCents)}
-            </p>
-          </div>
-          <div>
-            <p className="text-gray-500">Repair costs</p>
-            <p className="font-medium text-gray-900">
-              {formatCents(profitability.repairCostCents)}
-            </p>
-          </div>
-          <div>
-            <p className="text-gray-500">Net contribution</p>
-            <p className="font-medium text-gray-900">
-              {formatCents(profitability.netContributionCents)}
-            </p>
-          </div>
-          <div>
-            <p className="text-gray-500">Paid for itself?</p>
-            <p className="font-medium text-gray-900">
-              {profitability.paidForItself ? "Yes" : "Not yet"}
-            </p>
-          </div>
-        </div>
-      )}
+      {profitability && <ApplianceEarningsSummary report={profitability} />}
 
       <div className="mt-6 space-y-6">
         <GuidedActionsPanel
