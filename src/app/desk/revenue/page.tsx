@@ -148,23 +148,31 @@ export default async function RevenuePage({
             Content-Security-Policy header — every avoidable inline
             style keeps that policy stricter). The bars below stay
             inline since their height is computed per data point. */}
-        <div aria-hidden="true" className="mt-4 flex h-40 items-end gap-3">
-          {stats.mrrTrend.map((point) => (
-            <div
-              key={point.monthLabel}
-              className="flex flex-1 flex-col items-center gap-1"
-            >
+        {stats.mrrTrend.some((point) => point.mrrCents > 0) ? (
+          <div aria-hidden="true" className="mt-4 flex h-40 items-end gap-3">
+            {stats.mrrTrend.map((point) => (
               <div
-                className="w-full rounded-t bg-primary"
-                style={{
-                  height: `${Math.max(0, (point.mrrCents / maxTrendCents) * 140)}px`,
-                }}
-                title={formatCents(point.mrrCents)}
-              />
-              <span className="text-xs text-gray-500">{point.monthLabel}</span>
-            </div>
-          ))}
-        </div>
+                key={point.monthLabel}
+                className="flex flex-1 flex-col items-center gap-1"
+              >
+                <div
+                  className="w-full rounded-t bg-primary"
+                  style={{
+                    height: `${Math.max(0, (point.mrrCents / maxTrendCents) * 140)}px`,
+                  }}
+                  title={formatCents(point.mrrCents)}
+                />
+                <span className="text-xs text-gray-500">
+                  {point.monthLabel}
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="mt-4 rounded-lg bg-subtle p-4 text-sm text-ink-soft">
+            No positive monthly rates recorded in this period.
+          </p>
+        )}
       </div>
 
       <p className="mt-4 max-w-2xl text-sm text-ink-soft">
@@ -172,14 +180,14 @@ export default async function RevenuePage({
         is MRR × 12. Gross payments include provider-reported and owner-recorded
         payments marked succeeded, including any deposit, fees and tax on their
         invoices. Refunds are shown separately; gross payments are not net cash
-        or rental revenue. Past-due balances use recorded OPEN/DELINQUENT
-        invoices with a past due date and subtract recorded paid amounts.
-        Closed-rental counts use last update time, which may differ from the
-        actual closure date.
+        or rental revenue. Past-due balances use recorded
+        OPEN/PARTIALLY_PAID/DELINQUENT invoices with a past due date and
+        subtract recorded paid amounts. Closed-rental counts use last update
+        time, which may differ from the actual closure date.
       </p>
       <SectionCard
         title="Monthly rate values"
-        description="Estimated agreement rates; no mock chart values."
+        description="Estimated agreement rates for each UTC month."
       >
         <dl className="mt-4 grid gap-3 sm:grid-cols-3">
           {stats.mrrTrend.map((point) => (

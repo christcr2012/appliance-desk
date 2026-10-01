@@ -6,13 +6,11 @@
 // generic "date / type / who / reference / amount" shape any tool can
 // import, rather than betting on one product's own format.
 //
-// Covers every place real money actually moves in this app: a
-// succeeded card/ACH payment, a refund on an invoice, a security
-// deposit refunded at
-// move-out. Amounts follow the standard accounting-ledger convention —
-// positive for money coming in, negative for money going back out — so
-// a plain SUM() of the amount column in a spreadsheet is the real net
-// cash movement, not something the bookkeeper has to sign-flip by hand.
+// Succeeded invoice Payment rows cover manual payments and deposits collected
+// at signing or estimate approval. Deposit records are liabilities, not another
+// cash receipt. Invoice refunds and deposit refunds are independent outflows.
+// Positive amounts are incoming cash; negative amounts are refunds. Summing
+// the amount column gives recorded net cash, never rental revenue or profit.
 import { prisma } from "@/lib/prisma";
 
 export type AccountingTransactionType = "Payment" | "Refund" | "Deposit refunded";

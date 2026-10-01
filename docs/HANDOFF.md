@@ -7,7 +7,7 @@ ed797c7ad4aae1efe395807791a6946bd0981db9, CI 36815060816 (744 tests,
 CI 36815637476 (752 tests, 129 browser checks). Each full run includes real
 Postgres, migrations, typecheck, lint, build and axe. Matching Vercel previews
 are READY. Product and saved-builder phone/tablet/desktop screenshots inspected;
-revenue screenshot review in progress. Protected hosted interaction and manual
+revenue screenshots at phone/tablet/desktop inspected. Protected hosted interaction and manual
 acceptance remain unclaimed. Owner merges in order #103, #108, #109.
 
 Found and corrected related accounting export duplication: both signing and
@@ -22,7 +22,7 @@ records only. CSV columns and provider/ledger records remain unchanged.
 Eight focused export tests pass; typecheck passes. Added real existing webhook
 fixture assertions: signing $192.92 stays $192.92 despite a $150 deposit mirror;
 converted estimate's $200 approval payment stays $200 despite its later mirror.
-Real DB/full CI pending for this correction. No schema or provider activation;
+Revenue copy now explicitly includes partially paid overdue invoices and shows an honest empty rate state instead of a blank chart. Real DB/full CI pending for this correction. No schema or provider activation;
 rollback is PR revert. O02 hosted runtime/private-file proof is still incomplete;
 Neon preview storage reports enabled but has no buckets and is not app isolation
 proof. Vercel connector lacks needed environment/storage operations. Browser
