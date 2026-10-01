@@ -17,7 +17,7 @@ mirror without receiving more cash. Export previously added the liability as
 another positive receipt, doubling and misdating deposit collections. Export
 now includes succeeded Payment receipts and separate invoice/deposit refund
 outflows only; no positive Deposit liability rows. Deposit query reads refunded
-records only. CSV columns and provider/ledger records remain unchanged.
+records only; all three cash sources use one repeatable-read snapshot. CSV columns and provider/ledger records remain unchanged.
 
 Eight focused export tests pass; typecheck passes. Added real existing webhook
 fixture assertions: signing $192.92 stays $192.92 despite a $150 deposit mirror;

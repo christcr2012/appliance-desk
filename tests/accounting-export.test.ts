@@ -4,12 +4,14 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 // Task #73) — a flat, signed ledger of every real payment, refund, and
 // security deposit movement, for the accounting CSV export.
 
+const transaction = vi.fn();
 const paymentFindMany = vi.fn();
 const refundFindMany = vi.fn();
 const depositFindMany = vi.fn();
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
+    $transaction: (...args: unknown[]) => transaction(...args),
     payment: { findMany: (...args: unknown[]) => paymentFindMany(...args) },
     refund: { findMany: (...args: unknown[]) => refundFindMany(...args) },
     deposit: { findMany: (...args: unknown[]) => depositFindMany(...args) },
@@ -38,6 +40,13 @@ function customerRef(
 
 describe("getAccountingTransactions", () => {
   beforeEach(() => {
+    transaction.mockReset().mockImplementation((callback) =>
+      callback({
+        payment: { findMany: (...args: unknown[]) => paymentFindMany(...args) },
+        refund: { findMany: (...args: unknown[]) => refundFindMany(...args) },
+        deposit: { findMany: (...args: unknown[]) => depositFindMany(...args) },
+      }),
+    );
     paymentFindMany.mockReset().mockResolvedValue([]);
     refundFindMany.mockReset().mockResolvedValue([]);
     depositFindMany.mockReset().mockResolvedValue([]);
@@ -47,6 +56,9 @@ describe("getAccountingTransactions", () => {
     await getAccountingTransactions();
     const args = paymentFindMany.mock.calls[0][0];
     expect(args.where).toEqual({ status: "succeeded" });
+    expect(transaction.mock.calls[0][1]).toEqual({
+      isolationLevel: "RepeatableRead",
+    });
   });
 
   it("includes a succeeded payment as a positive amount", async () => {

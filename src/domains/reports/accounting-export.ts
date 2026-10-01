@@ -13,7 +13,8 @@
 // the amount column gives recorded net cash, never rental revenue or profit.
 import { prisma } from "@/lib/prisma";
 
-export type AccountingTransactionType = "Payment" | "Refund" | "Deposit refunded";
+export type AccountingTransactionType =
+  "Payment" | "Refund" | "Deposit refunded";
 
 export type AccountingTransactionRow = {
   date: Date;
@@ -26,7 +27,10 @@ export type AccountingTransactionRow = {
   notes: string;
 };
 
-function customerDisplayName(customer: { user: { name: string | null; email: string }; companyName: string | null }) {
+function customerDisplayName(customer: {
+  user: { name: string | null; email: string };
+  companyName: string | null;
+}) {
   return customer.user.name ?? customer.user.email;
 }
 
@@ -37,50 +41,71 @@ function customerDisplayName(customer: { user: { name: string | null; email: str
  * re-derives an amount — these tables are already the source of truth
  * for what actually happened (docs/DATABASE.md).
  */
-export async function getAccountingTransactions(): Promise<AccountingTransactionRow[]> {
-  const [payments, refunds, deposits] = await Promise.all([
-    prisma.payment.findMany({
-      where: { status: "succeeded" },
-      select: {
-        amountCents: true,
-        method: true,
-        createdAt: true,
-        invoice: {
+export async function getAccountingTransactions(): Promise<
+  AccountingTransactionRow[]
+> {
+  const [payments, refunds, deposits] = await prisma.$transaction(
+    async (tx) =>
+      Promise.all([
+        tx.payment.findMany({
+          where: { status: "succeeded" },
           select: {
-            invoiceNumber: true,
-            customer: { select: { companyName: true, user: { select: { name: true, email: true } } } },
+            amountCents: true,
+            method: true,
+            createdAt: true,
+            invoice: {
+              select: {
+                invoiceNumber: true,
+                customer: {
+                  select: {
+                    companyName: true,
+                    user: { select: { name: true, email: true } },
+                  },
+                },
+              },
+            },
           },
-        },
-      },
-    }),
-    prisma.refund.findMany({
-      select: {
-        amountCents: true,
-        reason: true,
-        notes: true,
-        createdAt: true,
-        invoice: {
+        }),
+        tx.refund.findMany({
           select: {
-            invoiceNumber: true,
-            customer: { select: { companyName: true, user: { select: { name: true, email: true } } } },
+            amountCents: true,
+            reason: true,
+            notes: true,
+            createdAt: true,
+            invoice: {
+              select: {
+                invoiceNumber: true,
+                customer: {
+                  select: {
+                    companyName: true,
+                    user: { select: { name: true, email: true } },
+                  },
+                },
+              },
+            },
           },
-        },
-      },
-    }),
-    prisma.deposit.findMany({
-      where: { refundedAt: { not: null } },
-      select: {
-        refundedAt: true,
-        refundedAmountCents: true,
-        deductionReason: true,
-        agreement: {
+        }),
+        tx.deposit.findMany({
+          where: { refundedAt: { not: null } },
           select: {
-            customer: { select: { companyName: true, user: { select: { name: true, email: true } } } },
+            refundedAt: true,
+            refundedAmountCents: true,
+            deductionReason: true,
+            agreement: {
+              select: {
+                customer: {
+                  select: {
+                    companyName: true,
+                    user: { select: { name: true, email: true } },
+                  },
+                },
+              },
+            },
           },
-        },
-      },
-    }),
-  ]);
+        }),
+      ]),
+    { isolationLevel: "RepeatableRead" },
+  );
 
   const rows: AccountingTransactionRow[] = [];
 
@@ -132,4 +157,3 @@ export async function getAccountingTransactions(): Promise<AccountingTransaction
   rows.sort((a, b) => a.date.getTime() - b.date.getTime());
   return rows;
 }
-
