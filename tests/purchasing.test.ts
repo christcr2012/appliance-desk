@@ -11,6 +11,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 const purchaseOrderCreate = vi.fn();
 const purchaseOrderFindUniqueOrThrow = vi.fn();
 const purchaseOrderUpdate = vi.fn();
+const purchaseOrderClaim = vi.fn();
+const lockPart = vi.fn();
 const partRecordUpdate = vi.fn();
 const partRecordFindUniqueOrThrow = vi.fn();
 const partRecordFindMany = vi.fn();
@@ -18,8 +20,9 @@ const auditLogCreate = vi.fn();
 
 function makeTx() {
   return {
-    partRecord: { update: (...args: unknown[]) => partRecordUpdate(...args) },
-    purchaseOrder: { update: (...args: unknown[]) => purchaseOrderUpdate(...args) },
+    $queryRaw: lockPart,
+    partRecord: { findUniqueOrThrow: partRecordFindUniqueOrThrow, update: (...args: unknown[]) => partRecordUpdate(...args) },
+    purchaseOrder: { findUniqueOrThrow: purchaseOrderFindUniqueOrThrow, updateMany: purchaseOrderClaim, update: (...args: unknown[]) => purchaseOrderUpdate(...args) },
     auditLog: { create: (...args: unknown[]) => auditLogCreate(...args) },
   };
 }
@@ -51,6 +54,8 @@ import {
 } from "@/domains/purchasing";
 
 beforeEach(() => {
+  purchaseOrderClaim.mockReset().mockResolvedValue({ count: 1 });
+  lockPart.mockReset().mockResolvedValue([]);
   purchaseOrderCreate.mockReset();
   purchaseOrderFindUniqueOrThrow.mockReset();
   purchaseOrderUpdate.mockReset().mockResolvedValue({});
@@ -100,6 +105,7 @@ describe("createPurchaseOrder", () => {
 
 describe("markPurchaseOrderOrdered", () => {
   it("throws if the order isn't DRAFT", async () => {
+    purchaseOrderClaim.mockResolvedValueOnce({ count: 0 });
     purchaseOrderFindUniqueOrThrow.mockResolvedValue({ id: "po-1", status: "ORDERED" });
     await expect(markPurchaseOrderOrdered("user-1", "po-1")).rejects.toThrow(/draft/);
     expect(purchaseOrderUpdate).not.toHaveBeenCalled();
@@ -108,7 +114,7 @@ describe("markPurchaseOrderOrdered", () => {
   it("moves a DRAFT order to ORDERED", async () => {
     purchaseOrderFindUniqueOrThrow.mockResolvedValue({ id: "po-1", status: "DRAFT" });
     await markPurchaseOrderOrdered("user-1", "po-1");
-    expect(purchaseOrderUpdate).toHaveBeenCalledWith(
+    expect(purchaseOrderClaim).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ status: "ORDERED" }) }),
     );
   });
@@ -116,6 +122,7 @@ describe("markPurchaseOrderOrdered", () => {
 
 describe("receivePurchaseOrder", () => {
   it("throws if the order isn't ORDERED", async () => {
+    purchaseOrderClaim.mockResolvedValueOnce({ count: 0 });
     purchaseOrderFindUniqueOrThrow.mockResolvedValue({ id: "po-1", status: "DRAFT", lines: [] });
     await expect(receivePurchaseOrder("user-1", "po-1")).rejects.toThrow(/ordered/);
     expect(partRecordUpdate).not.toHaveBeenCalled();
@@ -138,7 +145,7 @@ describe("receivePurchaseOrder", () => {
       where: { id: "part-1" },
       data: { quantityOnHand: { increment: 5 } },
     });
-    expect(purchaseOrderUpdate).toHaveBeenCalledWith(
+    expect(purchaseOrderClaim).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ status: "RECEIVED" }) }),
     );
   });
@@ -146,11 +153,13 @@ describe("receivePurchaseOrder", () => {
 
 describe("cancelPurchaseOrder", () => {
   it("throws if the order is already RECEIVED", async () => {
+    purchaseOrderClaim.mockResolvedValueOnce({ count: 0 });
     purchaseOrderFindUniqueOrThrow.mockResolvedValue({ id: "po-1", status: "RECEIVED" });
     await expect(cancelPurchaseOrder("user-1", "po-1")).rejects.toThrow(/can't be cancelled/);
   });
 
   it("throws if the order is already CANCELLED", async () => {
+    purchaseOrderClaim.mockResolvedValueOnce({ count: 0 });
     purchaseOrderFindUniqueOrThrow.mockResolvedValue({ id: "po-1", status: "CANCELLED" });
     await expect(cancelPurchaseOrder("user-1", "po-1")).rejects.toThrow(/can't be cancelled/);
   });
@@ -158,8 +167,8 @@ describe("cancelPurchaseOrder", () => {
   it("cancels a DRAFT or ORDERED order", async () => {
     purchaseOrderFindUniqueOrThrow.mockResolvedValue({ id: "po-1", status: "ORDERED" });
     await cancelPurchaseOrder("user-1", "po-1");
-    expect(purchaseOrderUpdate).toHaveBeenCalledWith({
-      where: { id: "po-1" },
+    expect(purchaseOrderClaim).toHaveBeenCalledWith({
+      where: { id: "po-1", status: { in: ["DRAFT", "ORDERED"] } },
       data: { status: "CANCELLED" },
     });
   });
@@ -206,4 +215,17 @@ describe("getLowStockParts", () => {
       expect.objectContaining({ where: { reorderThreshold: { not: null } } }),
     );
   });
+});
+
+it("failed receiving claims cannot increment stock or audit", async () => {
+  purchaseOrderClaim.mockResolvedValueOnce({ count: 0 });
+  await expect(receivePurchaseOrder("user-1", "po-1")).rejects.toThrow(/ordered/);
+  expect(partRecordUpdate).not.toHaveBeenCalled();
+  expect(auditLogCreate).not.toHaveBeenCalled();
+});
+it("locks part stock before reading and does not accept fractional/invalid usage", async () => {
+  partRecordFindUniqueOrThrow.mockResolvedValue({ quantityOnHand: 5 });
+  await recordPartUsage("user-1", "part-1", 2);
+  expect(lockPart.mock.invocationCallOrder[0]).toBeLessThan(partRecordFindUniqueOrThrow.mock.invocationCallOrder[0]);
+  for (const amount of [1.5, NaN, Infinity]) await expect(recordPartUsage("user-1", "part-1", amount)).rejects.toThrow();
 });

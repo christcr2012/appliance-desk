@@ -1,3 +1,26 @@
+## 2026-10-01 — Purchasing review correctness batch
+
+Follow-on to #117, without completing O17 or bypassing O02. Checked #117
+review before this PR; its valid normalization/contract findings were repaired
+on its own branch and carried forward. Full #117 rerun remains pending.
+
+Existing order/receive/cancel transitions now claim their allowed status in
+one transaction with the audit. Receiving claims before any stock increment;
+simultaneous receipt or cancellation cannot both commit. Part usage locks the
+part row before read/clamp/write and saves its audit in the same transaction;
+concurrent usage/receipt cannot lose a decrement. Usage rejects non-integer,
+non-finite quantities. No new schema, partial-receipt or ordering automation.
+
+Stock editing seeds current refreshed quantities when opened, preserving edits
+on failed saves. All purchase-order line fields have associated, distinct labels,
+including after line removal. Local: 743 tests pass, four real-Postgres suites
+excluded and nine CI-only cases skip; typecheck/lint pass (two existing warnings).
+Four guarded disposable-DB tests cover concurrent receipt, cancellation races,
+audit rollback/retry and overlapping/clamped part usage. Phone browser check
+covers labels, keyboard, axe and saved/reloaded order lines; full CI/preview
+and exact-head review remain pending. Rollback: PR revert.
+No live activation, spending, production fixture or customer-data cleanup.
+
 ### PR #117 exact-head review follow-up
 
 Review of 5ba88ef found two valid issues: direct transactional account creation
