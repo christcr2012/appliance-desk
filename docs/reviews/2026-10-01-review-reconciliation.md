@@ -21,7 +21,7 @@ sequencing remain incomplete. No live activation, spending or customer-data clea
 | [#1](https://github.com/christcr2012/appliance-desk/pull/1#discussion_r4112148769) | Record fee changes in PricingRule | Pending |
 | [#1](https://github.com/christcr2012/appliance-desk/pull/1#discussion_r4112148772) | Preserve lead capture when no types are published | Pending |
 | [#1](https://github.com/christcr2012/appliance-desk/pull/1#discussion_r4112148774) | Show price-save errors instead of success | Pending |
-| [#1](https://github.com/christcr2012/appliance-desk/pull/1#discussion_r4112148776) | Gate the property-manager premium on multiple units | Implemented in CRM repair; full CI/preview pending |
+| [#1](https://github.com/christcr2012/appliance-desk/pull/1#discussion_r4112148776) | Gate the property-manager premium on multiple units | Verified/merged #117; CI 36854516416 + Vercel; automated review waived; resolved |
 | [#2](https://github.com/christcr2012/appliance-desk/pull/2#discussion_r4112288147) | Keep delivery troubleshooting open until the send result is checked | Pending |
 | [#14](https://github.com/christcr2012/appliance-desk/pull/14#discussion_r4113000933) | Add the required cross-customer isolation tests | Pending |
 | [#14](https://github.com/christcr2012/appliance-desk/pull/14#discussion_r4113000937) | Include the waiver in the monthly total | Pending |
@@ -86,7 +86,7 @@ sequencing remain incomplete. No live activation, spending or customer-data clea
 | [#78](https://github.com/christcr2012/appliance-desk/pull/78#discussion_r4136765429) | Ask before installing the Neon CLI globally | Pending |
 | [#79](https://github.com/christcr2012/appliance-desk/pull/79#discussion_r4136879568) | Hide desk chrome when printing work orders | Implemented in business export repair; full CI/exact-head review/preview pending |
 | [#79](https://github.com/christcr2012/appliance-desk/pull/79#discussion_r4136879577) | Apply default job checklists to work orders | Implemented in business export repair; full CI/exact-head review/preview pending |
-| [#80](https://github.com/christcr2012/appliance-desk/pull/80#discussion_r4137359495) | Add the promised way to supply a missing email | Implemented in CRM repair; full CI/preview pending |
+| [#80](https://github.com/christcr2012/appliance-desk/pull/80#discussion_r4137359495) | Add the promised way to supply a missing email | Verified/merged #117; CI 36854516416 + Vercel; automated review waived; resolved |
 | [#80](https://github.com/christcr2012/appliance-desk/pull/80#discussion_r4137359503) | Hide the add-lead control from staff or allow the action | Pending |
 | [#80](https://github.com/christcr2012/appliance-desk/pull/80#discussion_r4137359513) | Cover the new persistence and approval flow with tests | Pending |
 | [#81](https://github.com/christcr2012/appliance-desk/pull/81#discussion_r4138431819) | Add behavior tests before marking the CRM buildout complete | Pending |
@@ -94,17 +94,17 @@ sequencing remain incomplete. No live activation, spending or customer-data clea
 | [#81](https://github.com/christcr2012/appliance-desk/pull/81#discussion_r4138431837) | Keep tasks due today out of the overdue group | Pending |
 | [#81](https://github.com/christcr2012/appliance-desk/pull/81#discussion_r4138431842) | Preserve the selected Colorado due date | Pending |
 | [#81](https://github.com/christcr2012/appliance-desk/pull/81#discussion_r4138431849) | Calculate Today using Mountain Time | Pending |
-| [#81](https://github.com/christcr2012/appliance-desk/pull/81#discussion_r4138431858) | Clear the lost reason when reopening a lead | Implemented in CRM repair; full CI/preview pending |
-| [#83](https://github.com/christcr2012/appliance-desk/pull/83#discussion_r4138909733) | Make purchase-order receiving atomic | Implemented in purchasing repair; full CI/preview pending |
-| [#83](https://github.com/christcr2012/appliance-desk/pull/83#discussion_r4138909741) | Synchronize the stock editor after stock changes | Implemented in purchasing repair; full CI/preview pending |
-| [#83](https://github.com/christcr2012/appliance-desk/pull/83#discussion_r4138909747) | Associate every purchase-order line label with its field | Implemented in purchasing repair; full CI/preview pending |
-| [#83](https://github.com/christcr2012/appliance-desk/pull/83#discussion_r4138909752) | Subtract used parts atomically | Implemented in purchasing repair; full CI/preview pending |
+| [#81](https://github.com/christcr2012/appliance-desk/pull/81#discussion_r4138431858) | Clear the lost reason when reopening a lead | Verified/merged #117; CI 36854516416 + Vercel; automated review waived; resolved |
+| [#83](https://github.com/christcr2012/appliance-desk/pull/83#discussion_r4138909733) | Make purchase-order receiving atomic | Verified/merged #118; CI 36854626321 + Vercel; automated review waived; resolved |
+| [#83](https://github.com/christcr2012/appliance-desk/pull/83#discussion_r4138909741) | Synchronize the stock editor after stock changes | Verified/merged #118; CI 36854626321 + Vercel; automated review waived; resolved |
+| [#83](https://github.com/christcr2012/appliance-desk/pull/83#discussion_r4138909747) | Associate every purchase-order line label with its field | Verified/merged #118; CI 36854626321 + Vercel; automated review waived; resolved |
+| [#83](https://github.com/christcr2012/appliance-desk/pull/83#discussion_r4138909752) | Subtract used parts atomically | Verified/merged #118; CI 36854626321 + Vercel; automated review waived; resolved |
 | [#83](https://github.com/christcr2012/appliance-desk/pull/83#discussion_r4138909756) | Record the completed feature in the handoff | Pending |
 | [#86](https://github.com/christcr2012/appliance-desk/pull/86#discussion_r4143931482) | Block preview writes from changing live email settings | Pending |
 | [#98](https://github.com/christcr2012/appliance-desk/pull/98#discussion_r4147176159) | Expect the later email-verification backfill | Pending |
-| [#102](https://github.com/christcr2012/appliance-desk/pull/102#discussion_r4149812016) | Return to newest notes after adding from a filtered page | Implemented in CRM repair; full CI/preview pending |
-| [#102](https://github.com/christcr2012/appliance-desk/pull/102#discussion_r4149812022) | Exclude overdue scheduled jobs from the next-visit slot | Implemented in CRM repair; full CI/preview pending |
-| [#102](https://github.com/christcr2012/appliance-desk/pull/102#discussion_r4149812032) | Claim the lead before sending account side effects | Implemented in CRM repair; full CI/preview pending |
+| [#102](https://github.com/christcr2012/appliance-desk/pull/102#discussion_r4149812016) | Return to newest notes after adding from a filtered page | Verified/merged #117; CI 36854516416 + Vercel; automated review waived; resolved |
+| [#102](https://github.com/christcr2012/appliance-desk/pull/102#discussion_r4149812022) | Exclude overdue scheduled jobs from the next-visit slot | Verified/merged #117; CI 36854516416 + Vercel; automated review waived; resolved |
+| [#102](https://github.com/christcr2012/appliance-desk/pull/102#discussion_r4149812032) | Claim the lead before sending account side effects | Verified/merged #117; CI 36854516416 + Vercel; automated review waived; resolved |
 | [#104](https://github.com/christcr2012/appliance-desk/pull/104#discussion_r4149971361) | Remove omitted concept files from the checksum inventory | Pending |
 | [#104](https://github.com/christcr2012/appliance-desk/pull/104#discussion_r4149971370) | Replace the empty light-mark PNG | Pending |
 | [#104](https://github.com/christcr2012/appliance-desk/pull/104#discussion_r4149971375) | Mark the official logo copies as still pending | Pending |
@@ -123,3 +123,13 @@ sequencing remain incomplete. No live activation, spending or customer-data clea
 - #117 head 8418428571: full CI run 36854516416 and Vercel passed. Exact-head automated review blocked by quota; no threads resolved.
 - #118 head bd89a9ac10: full CI run 36854626321 and Vercel passed, including race/rollback and phone purchase-order persistence/axe checks. Review blocked by quota; unmerged.
 - #119 head 55c7c7d030: automatic review returned quota notice 5930386836. Full CI/preview pending at this checkpoint; no review pass claimed.
+## 2026-10-01 — Owner review fallback and verified resolutions
+
+Chris authorized skipping unavailable automated code review and safe agent merges.
+#117 exact head 8418428571 and #118 bd89a9ac10 were inspected, passed full CI
+and Vercel, and merged to main (fdc7de4 / 9a917f3). Thirteen threads resolved
+with replies linking specific behavior evidence: ten historical CRM/purchasing
+findings plus #117's normalization, scoring-contract and validation findings.
+Review unavailability is explicitly waived, never reported as a passing review.
+#119/#120 remain unmerged until their inherited browser locator failure is repaired
+and full CI/preview passes. Remaining findings remain open.

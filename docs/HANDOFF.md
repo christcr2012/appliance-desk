@@ -1,3 +1,22 @@
+## 2026-10-01 — Owner-authorized review fallback and merge progress
+
+Chris explicitly authorized continuing without automated code review when it is
+unavailable and merging PRs whenever safe. AGENTS.md records that policy: inspect
+the exact head, check all existing submissions/threads, pass full CI/applicable
+preview checks, record the unavailable review honestly, and guard the merge SHA.
+No new authority for activation, spending or destructive data changes.
+
+#117 merged to main fdc7de4046abe76036bae3f8ef6b934592a3bf09 after inspection of
+8418428571, full CI 36854516416 and ready Vercel. Known review defects verified;
+thirteen CRM/purchasing threads resolved with specific evidence replies. #118 merged to main 9a917f3c47e14b027e51e889a64792afda5f9439. Its tested head
+bd89a9ac10 and prospective merge had identical tree 3ac1e57ed59555e488bf1cdca1f183ebdbd947d2;
+full CI 36854626321 and ready Vercel remained applicable after retargeting. #119/#120 full CI failed solely on the inherited setup-recovery browser
+locator matching Next's route announcer alongside the form alert. Scope it to
+the warning text; full reruns required. #120's phone/desktop print checks passed.
+
+#119 real Better Auth callback/privacy tests passed in CI (802 tests total) and
+#120's tests passed (822 total); provider acceptance behavior is verified.
+No failed PR merged. O02 hosted fixture/storage and O32 sequencing remain gated.
 ## 2026-10-01 — Business export review repairs and release gate status
 
 Checked preceding/latest #119 and dependency #118 reviews/threads before this

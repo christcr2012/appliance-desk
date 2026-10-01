@@ -4,7 +4,9 @@ This entry supersedes the earlier model switching, eight-file limit and
 release-by-release implementation pauses. Chris asked to finish the approved
 work at high quality with minimal repeated reading/testing and no more model
 switching. Continue with the currently selected model, single agent, coherent
-PRs, owner merges after passing checks. Existing acceptance criteria and
+PRs. On 2026-10-01 Chris authorized agent merges when safe and proceeding without
+automated review when unavailable; record the waiver and exact-head inspection.
+Full CI and applicable preview checks remain required. Existing acceptance criteria and
 separate approvals for activation, spending and destructive changes remain.
 
 ## Current priority — 2026-10-01
@@ -13,10 +15,12 @@ separate approvals for activation, spending and destructive changes remain.
 inventoried; 91 unresolved historical threads are tracked in
 `docs/reviews/2026-10-01-review-reconciliation.md`. Reconcile them against current
 code and repair valid defects with behavior evidence before new backlog work.
-CRM #117 and purchasing #118 pass full CI/Vercel; exact-head review is blocked.
-Email outcome repairs #119 are published; business export repairs prepared.
-Codex exact-head review requests are blocked by its usage limit; CI/preview alone
-do not authorize merge or thread resolution. No threads resolved.
+CRM #117 and purchasing #118 merged after full CI/Vercel and exact-head
+inspection; Chris waived unavailable automated review on 2026-10-01.
+Email outcome repairs #119 and business export repairs #120 are published;
+the inherited setup browser locator is corrected and full reruns are required.
+Record the owner waiver and exact-head inspection. Full CI/preview remain required.
+Thirteen verified CRM/purchasing threads resolved; remaining findings stay open.
 Preserve O02 storage/isolation and O32 sequencing; no model changes.
 
 ## Execution
