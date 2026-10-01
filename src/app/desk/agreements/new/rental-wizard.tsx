@@ -457,6 +457,7 @@ export function RentalWizard({
           </p>
           <button
             type="button"
+            disabled={isPending}
             onClick={() => setStep("appliances")}
             className="min-h-11 rounded-lg bg-action px-4 py-2 text-on-action"
           >
@@ -845,6 +846,7 @@ export function RentalWizard({
           <div className="flex gap-2">
             <button
               type="button"
+              disabled={isPending}
               onClick={() => setStep("customer")}
               className="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:border-gray-400"
             >
@@ -966,6 +968,7 @@ export function RentalWizard({
           <div className="flex gap-2 border-t border-gray-100 pt-4">
             <button
               type="button"
+              disabled={isPending}
               onClick={() => setStep("terms")}
               className="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:border-gray-400"
             >
@@ -973,6 +976,7 @@ export function RentalWizard({
             </button>
             <button
               type="button"
+              disabled={isPending}
               onClick={handleAppliancesStepNext}
               className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
             >
@@ -1009,6 +1013,7 @@ export function RentalWizard({
             <div className="flex flex-wrap gap-2 border-t border-gray-100 pt-4">
               <button
                 type="button"
+                disabled={isPending}
                 onClick={() => setStep("appliances")}
                 className="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:border-gray-400"
               >

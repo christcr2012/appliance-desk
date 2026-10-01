@@ -96,3 +96,61 @@ it("stores the request key in the URL before an ambiguous save and keeps term ed
       .value,
   ).toBe("6");
 });
+
+it("preserves appliance inputs and selection when the line response is lost", async () => {
+  m.add.mockRejectedValue(new Error("lost response"));
+  render(
+    <RentalWizard
+      customers={customers}
+      availableAppliances={[
+        { id: "unit1", assetNumber: "A1", typeName: "Washer" },
+      ]}
+      initialCustomerId="c1"
+      initialServiceAddressId="a1"
+      initialDraft={{ ...draft, lines: [] }}
+    />,
+  );
+  fireEvent.change(screen.getByLabelText("Label"), {
+    target: { value: "New washer" },
+  });
+  fireEvent.change(
+    screen.getByLabelText("Monthly price before any discount ($)"),
+    { target: { value: "35" } },
+  );
+  fireEvent.click(screen.getByRole("checkbox", { name: "Washer (A1)" }));
+  fireEvent.click(screen.getByRole("button", { name: "Add to agreement" }));
+  await waitFor(() =>
+    expect(screen.getByRole("alert").textContent).toContain("not confirmed"),
+  );
+  expect(screen.getByLabelText("Label")).toHaveValue("New washer");
+  expect(
+    screen.getByLabelText("Monthly price before any discount ($)"),
+  ).toHaveValue(35);
+  expect(screen.getByRole("checkbox", { name: "Washer (A1)" })).toBeChecked();
+  expect(screen.queryByText("New washer — $35.00/mo")).not.toBeInTheDocument();
+});
+it("keeps the saved review and avoids a success claim after an ambiguous signature send", async () => {
+  m.send.mockRejectedValue(new Error("lost response"));
+  render(
+    <RentalWizard
+      customers={customers}
+      availableAppliances={[]}
+      initialCustomerId="c1"
+      initialServiceAddressId="a1"
+      initialDraft={draft}
+    />,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Send for signature" }));
+  await waitFor(() =>
+    expect(screen.getByRole("alert").textContent).toContain(
+      "Sending was not confirmed",
+    ),
+  );
+  expect(screen.getByText("Total: $32.50/mo")).toBeVisible();
+  expect(screen.queryByText("Sent for signature.")).not.toBeInTheDocument();
+  await waitFor(() =>
+    expect(
+      screen.getByRole("button", { name: "Send for signature" }),
+    ).toBeEnabled(),
+  );
+});

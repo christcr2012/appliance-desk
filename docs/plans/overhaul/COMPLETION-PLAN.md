@@ -100,3 +100,12 @@ rental writes enforce property/customer context. Local 709 tests/typecheck pass;
 lint zero errors/two existing warnings. Real concurrent/rollback/foreign-property
 DB proof and six width/theme saved-builder browser checks await CI. O12/O11
 whole-card completion and O02 infrastructure gates remain explicit.
+
+First rental batch CI 36813353081: 742 tests and build passed; 121 browser
+checks passed including six saved-builder widths/themes. Two inherited settings
+phone checks failed from absolute screen-reader labels escaping their table
+scroll area. Relative containment repair shared with #103; final CI pending.
+Keyboard Back now activates the real saved review transition. Additional line/
+signature lost-response tests preserve input and avoid false success messages.
+Preview branch Neon reports storage enabled but no buckets; this is not app
+private-storage/runtime evidence and does not satisfy O02.

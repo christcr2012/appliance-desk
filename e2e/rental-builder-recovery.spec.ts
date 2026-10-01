@@ -90,12 +90,18 @@ test("draft and reserved line survive refresh with discounted pricing and one ch
       });
     }
   }
-  // Keyboard navigation reaches a real saved checkpoint, without submitting it.
-  await page.keyboard.press("Tab");
-  expect(
-    await page.evaluate(() => document.activeElement !== document.body),
-  ).toBe(true);
-  await page.getByRole("button", { name: "Back", exact: true }).click();
+  // Reach and activate Back using the keyboard, preserving the saved line.
+  const back = page.getByRole("button", { name: "Back", exact: true });
+  for (let tab = 0; tab < 80; tab++) {
+    if (await back.evaluate((element) => element === document.activeElement))
+      break;
+    await page.keyboard.press("Tab");
+  }
+  await expect(back).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(
+    page.getByRole("heading", { name: /Appliances \(1 added/ }),
+  ).toBeVisible();
   await expect(
     page.getByText("CI saved washer — $32.50/mo", { exact: true }),
   ).toBeVisible();
