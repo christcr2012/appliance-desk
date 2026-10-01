@@ -11,11 +11,19 @@ test("saved non-placeholder business name composes home and child browser titles
   test.skip(!enabled, "Disposable CI database only");
   const { prisma } = await import("../src/lib/prisma");
   const { publicBusinessName } = await prisma.businessSettings.findUniqueOrThrow({ where: { id: "singleton" } });
-  expect(publicBusinessName).not.toContain("[Company Name]");
-  await page.goto("/");
-  await expect(page).toHaveTitle(`${publicBusinessName} — Appliance Rentals in Colorado`);
-  await page.goto("/pricing");
-  await expect(page).toHaveTitle(`Pricing — ${publicBusinessName}`);
+  const fixtureName = `Title fixture ${randomUUID()}`;
+  try {
+    // The disposable seed intentionally uses a placeholder. Own this temporary
+    // value and restore it conditionally; no production settings are touched.
+    await prisma.businessSettings.update({ where: { id: "singleton" }, data: { publicBusinessName: fixtureName } });
+    for (const [path, title] of [["/", `${fixtureName} — Appliance Rentals in Colorado`], ["/pricing", `Pricing — ${fixtureName}`]]) {
+      await page.goto(path);
+      await expect(page).toHaveTitle(title);
+      expect(await page.title()).not.toContain("[Company Name]");
+    }
+  } finally {
+    await prisma.businessSettings.updateMany({ where: { id: "singleton", publicBusinessName: fixtureName }, data: { publicBusinessName } });
+  }
 });
 
 test("phone price editor reports rejected saves and persists a confirmed correction", async ({ page }, info) => {
