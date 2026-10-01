@@ -8,21 +8,31 @@ const enabled = process.env.CI === "true" && ["localhost", "127.0.0.1"].includes
 test.use({ storageState: fs.existsSync(owner) ? owner : undefined });
 
 test("saved non-placeholder business name composes home and child browser titles", async ({ page }) => {
-  test.skip(!enabled, "Disposable CI database only");
+  test.skip(!enabled || !fs.existsSync(owner), "Disposable CI database only");
   const { prisma } = await import("../src/lib/prisma");
   const { publicBusinessName } = await prisma.businessSettings.findUniqueOrThrow({ where: { id: "singleton" } });
   const fixtureName = `Title fixture ${randomUUID()}`;
   try {
     // The disposable seed intentionally uses a placeholder. Own this temporary
     // value and restore it conditionally; no production settings are touched.
-    await prisma.businessSettings.update({ where: { id: "singleton" }, data: { publicBusinessName: fixtureName } });
+    await page.goto("/desk/settings?section=profile");
+    await page.getByLabel("Business name", { exact: true }).fill(fixtureName);
+    await page.getByRole("button", { name: "Save this section" }).click();
+    await expect(page.getByRole("status")).toHaveText("Settings saved.");
+    expect((await prisma.businessSettings.findUniqueOrThrow({ where: { id: "singleton" } })).publicBusinessName).toBe(fixtureName);
     for (const [path, title] of [["/", `${fixtureName} — Appliance Rentals in Colorado`], ["/pricing", `Pricing — ${fixtureName}`]]) {
       await page.goto(path);
       await expect(page).toHaveTitle(title);
       expect(await page.title()).not.toContain("[Company Name]");
     }
   } finally {
-    await prisma.businessSettings.updateMany({ where: { id: "singleton", publicBusinessName: fixtureName }, data: { publicBusinessName } });
+    const current = await prisma.businessSettings.findUniqueOrThrow({ where: { id: "singleton" } });
+    if (current.publicBusinessName === fixtureName) {
+      await page.goto("/desk/settings?section=profile");
+      await page.getByLabel("Business name", { exact: true }).fill(publicBusinessName);
+      await page.getByRole("button", { name: "Save this section" }).click();
+      await expect(page.getByRole("status")).toHaveText("Settings saved.");
+    }
   }
 });
 
