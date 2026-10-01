@@ -1,3 +1,4 @@
+import { sendPasswordEmail } from "@/lib/password-email";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // "Add a customer directly" (2026-09-27) — Chris signing someone up
@@ -86,7 +87,10 @@ describe("createCustomerDirectly — Chris adding a customer himself", () => {
     );
     auditLogCreate.mockReset().mockResolvedValue({});
     signUpEmail.mockReset().mockResolvedValue({ user: { id: "user-1" } });
-    requestPasswordReset.mockReset().mockResolvedValue({ status: true });
+    requestPasswordReset.mockReset().mockImplementation(async ({ body }) => {
+      await sendPasswordEmail({ to: body.email, subject: "Setup", text: "Setup" });
+      return { status: true };
+    });
   });
 
   it("creates one ServiceAddress per property for a portfolio (property-manager) customer", async () => {

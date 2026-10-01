@@ -129,6 +129,21 @@ describe("sendUpcomingBillingReminders", () => {
     });
   });
 
+  it("leaves suppressed or rejected provider sends retryable and continues the batch", async () => {
+    const cycle = new Date("2026-10-01");
+    rentalAgreementFindMany.mockResolvedValue([
+      agreement({ id: "retry", nextBillingDate: cycle }),
+      agreement({ id: "accepted", nextBillingDate: cycle }),
+    ]);
+    sendEmail.mockResolvedValueOnce({ sent: false }).mockResolvedValueOnce({ sent: true });
+    expect(await sendUpcomingBillingReminders()).toEqual({ sent: 1, failed: 1 });
+    expect(rentalAgreementUpdate).toHaveBeenCalledTimes(1);
+    expect(rentalAgreementUpdate).toHaveBeenCalledWith({ where: { id: "accepted" }, data: { billingReminderSentForDate: cycle } });
+    rentalAgreementFindMany.mockResolvedValue([agreement({ id: "retry", nextBillingDate: cycle })]);
+    expect(await sendUpcomingBillingReminders()).toEqual({ sent: 1, failed: 0 });
+    expect(rentalAgreementUpdate).toHaveBeenLastCalledWith({ where: { id: "retry" }, data: { billingReminderSentForDate: cycle } });
+  });
+
   it("queries only ACTIVE, Stripe-subscribed agreements due within the window", async () => {
     rentalAgreementFindMany.mockResolvedValue([]);
 

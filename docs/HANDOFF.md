@@ -1,3 +1,52 @@
+## 2026-10-01 — Owner-authorized review fallback and merge progress
+
+Chris explicitly authorized continuing without automated code review when it is
+unavailable and merging PRs whenever safe. AGENTS.md records that policy: inspect
+the exact head, check all existing submissions/threads, pass full CI/applicable
+preview checks, record the unavailable review honestly, and guard the merge SHA.
+No new authority for activation, spending or destructive data changes.
+
+#117 merged to main fdc7de4046abe76036bae3f8ef6b934592a3bf09 after inspection of
+8418428571, full CI 36854516416 and ready Vercel. Known review defects verified;
+thirteen CRM/purchasing threads resolved with specific evidence replies. #118 merged to main 9a917f3c47e14b027e51e889a64792afda5f9439. Its tested head
+bd89a9ac10 and prospective merge had identical tree 3ac1e57ed59555e488bf1cdca1f183ebdbd947d2;
+full CI 36854626321 and ready Vercel remained applicable after retargeting. #119/#120 full CI failed solely on the inherited setup-recovery browser
+locator matching Next's route announcer alongside the form alert. Scope it to
+the warning text; full reruns required. #120's phone/desktop print checks passed.
+
+#119 real Better Auth callback/privacy tests passed in CI (802 tests total) and
+#120's tests passed (822 total); provider acceptance behavior is verified.
+No failed PR merged. O02 hosted fixture/storage and O32 sequencing remain gated.
+
+## 2026-10-01 — Email outcome review repairs
+
+Prepared follow-on to #118 after checking both predecessor reviews/threads and
+conversation comments. Codex review requests on #117/#118 were blocked by the
+review usage limit (comments 5930234718 / 5930248471). No credits purchased,
+model changed, review success claimed, thread resolved or PR merged. Fresh-head
+CI/preview proceed independently; required exact-head review remains pending.
+
+Billing reminders now honor sendEmail.sent before recording dedup or incrementing
+sent, leaving provider failures/suppressed sends retryable and continuing the batch.
+Customer/staff invitations capture acceptance from the configured password-email
+callback in an isolated async request context. Better Auth's generic success and
+its caught callback errors no longer masquerade as accepted mail. Public resets
+retain their identical known/unknown-account response. Concurrent same-address
+invitations cannot share results. No provider key, activation or live message sent.
+Staff action forwards acceptance and the form explains saved-account/retry status.
+Rental builder preserves an unsent-setup warning with the saved customer's recovery
+link after moving to terms. No duplicate-create recommendation or new schema.
+
+Local: 759 tests passed, eleven guarded CI-only cases skipped and four existing
+real-Postgres suites excluded. Types and lint passed (two existing warnings).
+New tests cover false-result/retry, concurrent acceptance isolation, callback absence,
+action roles/result propagation and rendered recovery. Disposable CI tests exercise
+the actual Better Auth callback and public privacy; phone browser checks saved staff,
+failed resend, axe and reload. Full CI, exact-head review and preview pending.
+React review: event-driven state, server role guard, serializable acceptance flag,
+alert/recovery link; no new client provider imports or fetch waterfall.
+Rollback: PR revert. O02 isolation/storage and O32 sequencing remain gated.
+
 ## 2026-10-01 — Review and CI follow-up
 
 PR #117 head 2ebdddc passed full CI (run 36852649575) and Vercel deployment.

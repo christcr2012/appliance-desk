@@ -2,6 +2,7 @@ import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { prisma } from "./prisma";
 import { sendEmail } from "./email";
+import { sendPasswordEmail } from "./password-email";
 
 // Central auth configuration. Roles are OWNER / ADMIN / CUSTOMER — see
 // docs/BUSINESS-RULES.md for what each role can do. Every owner/admin
@@ -64,7 +65,7 @@ export const auth = betterAuth({
     // "set your first password" and "reset a forgotten password" are one
     // code path, not two to keep in sync.
     sendResetPassword: async ({ user, url }) => {
-      await sendEmail({
+      await sendPasswordEmail({
         to: user.email,
         subject: "Set your Appliance Desk password",
         text: `Hi${user.name ? ` ${user.name}` : ""},\n\nUse the link below to set your password for Appliance Desk. This link expires in 1 hour and can only be used once.\n\n${url}\n\nIf you didn't request this, you can safely ignore this email — your password won't change.`,

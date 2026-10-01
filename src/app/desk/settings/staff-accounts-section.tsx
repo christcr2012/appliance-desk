@@ -37,8 +37,10 @@ export function StaffAccountsSection({ accounts }: { accounts: StaffAccountRow[]
         setFormMessage({ kind: "error", text: result.message });
       } else {
         setFormMessage({
-          kind: "success",
-          text: `Account created. We emailed ${email} a link to set their password.`,
+          kind: result.activationEmailSent ? "success" : "error",
+          text: result.activationEmailSent
+            ? `Account created. We emailed ${email} a link to set their password.`
+            : "Account created, but the setup email was not sent. Use Resend setup email on this account to retry; do not create another account.",
         });
         setName("");
         setEmail("");

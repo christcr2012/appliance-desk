@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { requestInvitationEmail } from "@/lib/password-email";
 import { generateUnusedAccountPassword } from "@/domains/leads";
 
 // ---------------------------------------------------------------------------
@@ -53,15 +54,7 @@ export async function createStaffAccount(
     data: { role: "STAFF", emailVerified: true },
   });
 
-  let activationEmailSent = false;
-  try {
-    await auth.api.requestPasswordReset({
-      body: { email: input.email, redirectTo: "/reset-password" },
-    });
-    activationEmailSent = true;
-  } catch (error) {
-    console.error("[staff] Failed to send staff activation email", error);
-  }
+  const activationEmailSent = await resendStaffActivationEmail(input.email);
 
   await prisma.auditLog.create({
     data: {
@@ -77,13 +70,9 @@ export async function createStaffAccount(
 }
 
 export async function resendStaffActivationEmail(email: string): Promise<boolean> {
-  try {
-    await auth.api.requestPasswordReset({ body: { email, redirectTo: "/reset-password" } });
-    return true;
-  } catch (error) {
-    console.error("[staff] Failed to resend staff activation email", error);
-    return false;
-  }
+  return requestInvitationEmail(email, () => auth.api.requestPasswordReset({
+    body: { email, redirectTo: "/reset-password" },
+  }));
 }
 
 /** Immediately ends a staff member's access: signs them out of every
