@@ -1,264 +1,195 @@
 # Complete Code Audit Roadmap
 
 **Date:** October 1, 2026  
-**Scope:** All business domains in `src/domains/*` + cross-cutting concerns  
-**Purpose:** Identify performance issues, security gaps, business logic correctness, and scaling risks  
-**Status:** Audit packages defined; sequential execution starting with Package 1
+**Scope:** Appliance Desk business domains, user surfaces, infrastructure boundaries, and cross-cutting production concerns  
+**Purpose:** Identify confirmed security, financial, operational, product-integration, accessibility, reliability, scaling, and launch-readiness risks  
+**Status:** **Audit discovery complete — Packages 1–8 performed. Cross-package synthesis is next.**
 
 ---
 
-## Audit Packages (6 total)
+## Audit program closeout
 
-This document outlines 6 audit packages covering ~19 interconnected domains. Each package groups logically related domains to keep recommendations connected instead of fragmented. Audits are executed sequentially; each produces a detailed markdown report linked below.
+The audit program began as six packages. During execution, two material scope extensions were required:
 
-### Executive Summary: Risk-Prioritized Sequencing
+- **Package 7** was added to audit the finished product as an integrated whole: backend capability ↔ frontend management coverage, workflow seams, brand consistency, and accessibility.
+- **Package 8** was added as the final catch-all after audit oversight found that several substantial operational domains — especially `billing`, `inventory`, `jobs`, and `purchasing` — had never been assigned as primary domains in the original six-package map.
 
-| Priority | Package | Risk Profile | Key Domains |
-|----------|---------|--------------|-------------|
-| **1 (High)** | **Package 2: Agreements/Pricing/Referrals** | **Financial correctness, pricing leaks, referral payout bugs** | `agreements`, `pricing`, `referrals` |
-| **2 (High)** | **Package 1: Customer Lifecycle & Portal** | **Data isolation, customer experience, retention** | `customers`, `portal`, `maintenance`, `estimates`, `activity` |
-| **3 (High)** | **Package 3: Staff/Access/Accountability** | **Permission boundaries, audit trails, scaling** | `staff`, `desk-access`, `tasks`, `exceptions` |
-| **4 (Med)** | **Package 6: Platform Integrity** | **Data safety, resilience, catastrophic failure** | `uploads`, `backup`, `auth`, `session` cross-cutting |
-| **5 (Med)** | **Package 5: Config & Reporting** | **Operational visibility, business decisions** | `settings`, `reports`, `dashboard` |
-| **6 (Low)** | **Package 4: Growth/Marketing/Retention** | **User acquisition & retention, churn signals** | `growth`, `launch`, `search` |
-
-**Note:** Packages are listed in execution order (Package 1 first, Package 2 etc.) but have been **re-ranked above by risk** so you can prioritize if time is limited.
+The eight completed independent reports contain **117 findings total: 8 Critical, 58 High, and 51 Medium**. These are audit findings, not 117 independent implementation tasks. The synthesis must deduplicate shared root causes and reconcile overlaps with B01–B36, the overhaul roadmap, security reviews, and historical GitHub review findings.
 
 ---
 
-## Package 1: Customer Relationship & Lifecycle (Portal, Maintenance, Estimates, Activity)
+## Completed packages
 
-**Domains:** `src/domains/customers`, `src/domains/portal`, `src/domains/maintenance`, `src/domains/estimates`, `src/domains/activity`
-
-### Focus Areas
-1. **Data Isolation & Security** — Is every query scoped by the logged-in user's own ID? Can customer A see B's records?
-2. **Customer Portal Flows** — Self-service maintenance requests, contract visibility, billing self-service, account settings
-3. **Maintenance Request Workflow** — State machine correctness (submitted → reviewing → scheduled → in_progress → resolved → closed), proper transitions
-4. **Estimate/Quote Lifecycle** — Generation, status tracking, customer visibility, conversion to rental agreements
-5. **Activity Timeline & Audit** — Is the activity feed correctly scoped per-customer? Proper audit logging of changes?
-6. **Performance** — N+1 queries, missing indexes, pagination correctness (especially important as customer count grows)
-7. **Error Handling** — Concurrent request handling, idempotency, retry logic
-
-### Status
-- ✅ **Data isolation tests exist:** `tests/customer-isolation.test.ts` proves customer A cannot read B's records (real database-backed)
-- ✅ **Maintenance state machine defined:** `src/domains/maintenance/index.ts` has `ALLOWED_TRANSITIONS` + `canTransitionMaintenanceStatus()`
-- ⚠️ **Estimates domain:** Search shows no results; may not exist yet or be minimal stub — needs investigation
-- ⚠️ **Activity domain:** Architecture needs verification; cursor-based pagination in `timeline-page.ts` needs correctness check
-
-### Report
-- **Full Audit Report:** `docs/audits/Package-1-Customer-Lifecycle.md` (to be generated)
-- **Key Files to Review:**
-  - `src/domains/portal/index.ts` — customer portal entry points
-  - `src/domains/maintenance/index.ts` — maintenance workflow logic
-  - `src/domains/customers/workspace.ts` — staff customer context
-  - `src/domains/customers/operational.ts` — operational queries with role guards
-  - `src/domains/customers/timeline-page.ts` — activity timeline pagination
-  - `tests/customer-isolation.test.ts` — data isolation proof (real DB)
-  - `tests/maintenance.test.ts` — status transition rules
+| Package | Scope | Critical | High | Medium | Total | Report |
+| --- | --- | ---: | ---: | ---: | ---: | --- |
+| **1 — Customer Lifecycle** | customers, portal, maintenance, estimates, activity | 2 | 7 | 8 | 17 | `docs/audits/Package-1-Independent-Audit-and-Action-Plan.md` |
+| **2 — Agreements / Pricing / Referrals** | agreements, pricing, referrals | 4 | 8 | 5 | 17 | `docs/audits/Package-2-Agreements-Pricing-Referrals.md` |
+| **3 — Staff / Access / Accountability** | staff, desk access, tasks, exceptions | 0 | 5 | 5 | 10 | `docs/audits/Package-3-Staff-Access-Accountability.md` |
+| **4 — Growth / Marketing / Retention** | growth, launch, leads/search signals | 0 | 6 | 6 | 12 | `docs/audits/Package-4-Growth-Marketing-Retention.md` |
+| **5 — Configuration / Reporting** | settings, reporting, dashboard, accounting semantics | 0 | 7 | 5 | 12 | `docs/audits/Package-5-Configuration-Reporting.md` |
+| **6 — Platform Integrity** | auth/session, uploads/media, backup/recovery, privacy/consent/security boundaries | 1 | 7 | 6 | 14 | `docs/audits/Package-6-Platform-Integrity.md` |
+| **7 — Product Integration / Brand / Accessibility** | backend↔frontend coverage, workflow integration, owner self-sufficiency, Evergreen implementation, accessibility | 0 | 7 | 9 | 16 | `docs/audits/Package-7-Product-Integration-Brand-Accessibility.md` |
+| **8 — Operational Core / Residual Risk** | billing, inventory/fleet, jobs/dispatch, purchasing, concurrency, business time, audit atomicity, residual launch seams | 1 | 11 | 7 | 19 | `docs/audits/Package-8-Operational-Core-Residual-Risk.md` |
+| **Total** |  | **8** | **58** | **51** | **117** |  |
 
 ---
 
-## Package 2: Agreements, Pricing & Referral Logic
+# Package scope summary
 
-**Domains:** `src/domains/agreements`, `src/domains/pricing`, `src/domains/referrals`
+## Package 1 — Customer Relationship & Lifecycle
 
-### Focus Areas
-1. **Rental Agreement Lifecycle** — Creation, status transitions (DRAFT, ACTIVE, ENDED, TERMINATED), contract terms
-2. **Pricing Rules & Calculations** — How monthly rent is computed, discounts applied, pricing history tracked
-3. **Referral Program** — Code generation, eligibility, reward computation (pending → rewarded), payout timing
-4. **Price Snapshots** — Are historical prices frozen at the moment the agreement was signed? Can a future price change rewrite past billing?
-5. **Concurrent Agreement Creation** — Can two simultaneous API calls both create agreements for the same customer? Race conditions?
-6. **Pricing Leaks** — Does any query expose pricing to someone who shouldn't see it (e.g., a STAFF account seeing customer pricing)?
-7. **Referral Payout Edge Cases** — What happens if a referrer converts back to a lead? If a referred customer churn and then re-signs? Duplicate rewards?
+Primary questions:
 
-### Status
-- ✅ **Agreements have active-appliance queries:** `src/domains/agreements/active-appliances.ts` distinguishes customer-supplied ID vs. user-scoped lookup
-- ⚠️ **Pricing domain unclear:** Search returned settings pricing but not a dedicated `src/domains/pricing` — may be within agreements or settings
-- ⚠️ **Referral status tracked:** Schema shows `ReferralStatus` enum (PENDING, REWARDED) but reward logic needs verification
-- ⚠️ **Concurrent draft safety:** HANDOFF.md mentions "concurrent draft saves create one agreement and audit" — needs full logic review
+- customer isolation and portal scoping;
+- maintenance lifecycle correctness;
+- estimate/quote lifecycle and conversion;
+- customer-facing activity/history;
+- concurrency, pagination, and failure behavior around those flows.
 
-### Report
-- **Full Audit Report:** `docs/audits/Package-2-Agreements-Pricing-Referrals.md` (to be generated)
-- **Key Files to Review:**
-  - `src/domains/agreements/*` — agreement lifecycle
-  - `src/domains/pricing/*` (if exists) or pricing logic in `src/domains/agreements` or `src/domains/settings`
-  - `src/domains/referrals/*` — referral reward logic
-  - `prisma/schema.prisma` — Referral, RentalAgreement, PricingRule models
+## Package 2 — Agreements, Pricing & Referral Logic
 
----
+Primary questions:
 
-## Package 3: Staff, Access & Accountability (Permissions, Tasks, Exceptions)
+- rental agreement lifecycle and frozen contract terms;
+- pricing/discount correctness and historical snapshots;
+- inventory reservation implications at agreement boundaries;
+- referral eligibility, reward timing, and duplicate/retry behavior;
+- concurrent agreement/pricing mutations.
 
-**Domains:** `src/domains/staff`, `src/domains/desk-access`, `src/domains/tasks`, `src/domains/exceptions`
+## Package 3 — Staff, Access & Accountability
 
-### Focus Areas
-1. **Staff Role Permissions** — OWNER vs. ADMIN vs. STAFF role boundaries; what can STAFF see/do?
-2. **Permission Enforcement** — Is `requireRole()` called on every sensitive operation? Can a STAFF account access owner-only data?
-3. **Task Assignment & Visibility** — Who sees which tasks? Can one staff member see another's assigned tasks?
-4. **Exception Inbox** — Alerts/flags requiring attention; proper scoping by user, team, or business-wide?
-5. **Audit Trail for Staff Actions** — Every staff action logged? Can staff see audit logs? Proper role guard?
-6. **Concurrent Task Updates** — Two staff members try to claim the same task — what happens?
-7. **Offboarding Safety** — When a staff member is deactivated, are their sessions killed immediately? Can they still access data?
+Primary questions:
 
-### Status
-- ✅ **Staff role created:** Role-based access in schema; `src/domains/staff/index.ts` has `createStaffAccount()`, `deactivateStaffAccount()`
-- ✅ **Deactivation safety:** `archivedAt` field rides along on session; `requireSession()` refuses archived accounts
-- ⚠️ **Desk access domain:** Not yet explored — may be minimal or a UI router concern
-- ⚠️ **Tasks & exceptions:** Need to verify scope boundaries and concurrent safety
+- OWNER / ADMIN / STAFF authorization boundaries;
+- deactivation and session lifetime;
+- task assignment/visibility/concurrency;
+- exception-inbox correctness and scale;
+- staff mutation accountability and audit safety.
 
-### Report
-- **Full Audit Report:** `docs/audits/Package-3-Staff-Access-Accountability.md` (to be generated)
-- **Key Files to Review:**
-  - `src/domains/staff/index.ts` — staff account lifecycle
-  - `src/lib/session.ts` — role guards and session handling
-  - `src/domains/tasks/*` (if exists) — task assignment and visibility
-  - `src/domains/exceptions/*` (if exists) — exception/alert system
-  - Middleware in `src/app` for route-level access control
+## Package 4 — Growth, Marketing & Retention
 
----
+Primary questions:
 
-## Package 4: Growth, Marketing & Retention Signals
+- lead qualification/scoring and source semantics;
+- launch-list consent and delivery behavior;
+- role-aware global search;
+- growth/utilization/retention signals;
+- scale and truthfulness of marketing/operational metrics.
 
-**Domains:** `src/domains/growth`, `src/domains/launch`, `src/domains/search`
+## Package 5 — Business Configuration & Reporting
 
-### Focus Areas
-1. **Lead Scoring & Qualification** — Is lead scoring correct? High-value flagging working?
-2. **Churn Detection & Win-Back Signals** — Any proactive alerts for at-risk customers?
-3. **Launch/Interest List** — Pre-launch interest capture; follow-up automation
-4. **Global Search Performance** — Case-insensitive "contains" search across customers, appliances, leads; is it fast enough?
-5. **Search Result Scoping** — Does search respect role permissions (e.g., STAFF can't see customer billing info)?
-6. **Fleet Utilization Metrics** — Are there signals/dashboards for "how many appliances are AVAILABLE vs. RENTED"?
+Primary questions:
 
-### Status
-- ✅ **Lead scoring exists:** `src/domains/leads/scoring.ts` computes score + reasons
-- ⚠️ **Growth/launch/search:** Minimal exploration so far; packages exist but scale/correctness unclear
-- ⚠️ **Search performance:** `searchAll()` in `src/domains/search/index.ts` uses `Promise.all()` for parallel queries; needs limit verification
+- settings persistence, validation, and audit behavior;
+- financial/reporting semantics;
+- gross vs. net collections, refunds, deposits, tax, credits, and payment dates;
+- accounting-export completeness;
+- dashboard/report scaling and historical correctness.
 
-### Report
-- **Full Audit Report:** `docs/audits/Package-4-Growth-Marketing-Retention.md` (to be generated)
-- **Key Files to Review:**
-  - `src/domains/leads/scoring.ts` — lead scoring logic
-  - `src/domains/search/index.ts` — search implementation
-  - `src/domains/growth/*` (if exists) — growth metrics
-  - `src/domains/launch/*` (if exists) — launch feature
+## Package 6 — Platform Integrity
 
----
+Primary questions:
 
-## Package 5: Business Configuration & Reporting
+- authentication/session/account-recovery boundaries;
+- file upload and private-media authorization;
+- backup completeness and practical restore capability;
+- provider/logging secret and PII boundaries;
+- privacy/consent alignment and production hardening.
 
-**Domains:** `src/domains/settings`, `src/domains/reports`, `src/domains/dashboard`
+## Package 7 — Product Integration, UI Coverage & Brand Accessibility
 
-### Focus Areas
-1. **Business Settings Persistence** — Service area (zip codes, cities), pricing defaults, business rules; are changes audited?
-2. **Configuration Validation** — Can a bad setting break the system? (e.g., empty service area, zero pricing)
-3. **Dashboard Correctness** — Revenue, customer count, open tasks, churn indicators; are queries correct?
-4. **Reporting Accuracy** — Revenue reporting (Phase 6B, Stripe integration); are refunds counted? Partial refunds? Tax handling?
-5. **Export Completeness** — CSV exports (accounting, work orders); are all required fields included? Properly escaped?
-6. **Performance on Large Datasets** — Can reporting queries handle thousands of invoices/jobs efficiently?
-7. **Historical Data Integrity** — When a pricing rule changes, do old invoices still show the correct price? PricingRule snapshots work?
+Primary questions:
 
-### Status
-- ✅ **Settings domain exists:** `src/domains/settings/index.ts` has business config; pricing updates create audit + `PricingRule` snapshots
-- ✅ **CSV export safety:** HANDOFF.md notes CSV formulas are neutralized; numeric values stay numeric
-- ✅ **Print media:** Desk chrome hidden when printing; proper layout
-- ⚠️ **Dashboard domain:** Needs verification; likely queries multiple tables
-- ⚠️ **Reporting pagination:** Used in billing; needs correctness check
+- does every owner-operable backend capability have an appropriate frontend control?
+- does the customer/owner UI expose the correct workflow state without leaking internal data?
+- do workflows connect cleanly end-to-end rather than terminating in dead ends?
+- is Evergreen v2.0 implemented consistently across public, authenticated, dark, print/document, and communication surfaces?
+- is accessibility adaptive and evidence-based rather than achieved by replacing the normal brand with generic gray?
+- does automated/manual accessibility acceptance cover the actual current route/state surface?
 
-### Report
-- **Full Audit Report:** `docs/audits/Package-5-Configuration-Reporting.md` (to be generated)
-- **Key Files to Review:**
-  - `src/domains/settings/index.ts` — business config lifecycle
-  - `src/domains/reports/*` — reporting logic
-  - `src/app/desk/dashboard/*` — dashboard page + data fetching
-  - `src/domains/billing/revenue-records.ts` — revenue report queries
-  - Schema: `PricingRule`, `BusinessSettings` models
+Brand policy established by Package 7:
+
+1. **Evergreen is the normal light/dark presentation.**
+2. Semantic status colors remain distinct from decorative brand colors and never carry meaning alone.
+3. Accessibility preferences adapt presentation when requested (`prefers-reduced-motion`, `prefers-contrast`, `forced-colors`, keyboard/focus/zoom/reflow/screen-reader semantics).
+4. A screen reader by itself is not a reason to replace the visual brand.
+
+## Package 8 — Operational Core & Residual Risk
+
+Package 8 closes the primary-domain omission in the original roadmap.
+
+Primary domains:
+
+```text
+src/domains/billing/*
+src/domains/inventory/*
+src/domains/jobs/*
+src/domains/purchasing/*
+```
+
+Residual cross-cutting questions:
+
+- money and provider concurrency;
+- physical-custody/lifecycle correctness;
+- dispatch and America/Denver calendar semantics;
+- local mutation ↔ audit atomicity;
+- scheduled automation idempotency/reconciliation;
+- inventory/part/purchase/job-cost consistency;
+- operational list scaling;
+- release-policy seams not cleanly owned by Packages 1–7.
+
+The package found one new Critical financial-integrity race in concurrent manual-payment allocation plus eleven High and seven Medium findings.
 
 ---
 
-## Package 6: Platform Integrity — Auth, Uploads, Backup, Compliance
+# Audit methodology and evidence standard
 
-**Domains:** `src/domains/uploads`, `src/domains/backup`, plus cross-cutting `src/lib/auth.ts`, `src/lib/session.ts`, `proxy.ts`
+A finding is included only when it can be tied to concrete repository behavior, data flow, schema behavior, or missing acceptance evidence. The package reports distinguish:
 
-### Focus Areas
-1. **File Upload Security** — MIME type validation, size limits, path traversal protection; stored where?
-2. **File Access Control** — Can customer A download customer B's uploaded file? URL guessing?
-3. **Backup Completeness & Restore Testing** — Full database backups? Appliance photos? Uploaded docs? Can restore be tested regularly?
-4. **Session Security** — Session timeout, concurrent session limits, token rotation, CSRF protection
-5. **Authentication Flow** — Better Auth integration; email verification; password reset; account recovery
-6. **Email Compliance** — Unsubscribe links, TCPA consent (SMS opt-in), data privacy responses
-7. **Sensitive Data in Logs** — Are passwords, tokens, API keys ever logged? Proper masking?
-8. **Onboarding Data Leaks** — Can a new user sign up, see past customers' data, delete their account, leaving orphan records?
+- **confirmed defect/risk** from a suggested future enhancement;
+- **underlying record correctness** from presentation/reporting correctness;
+- **automated evidence** from manual acceptance still required;
+- **intentional infrastructure-only controls** from genuine missing owner UI;
+- **historical findings already fixed** from findings still present on the audited commit.
 
-### Status
-- ⚠️ **Uploads domain:** Not yet explored in detail; HANDOFF.md mentions photo URLs (Vercel Blob storage) but security unclear
-- ⚠️ **Backup domain:** May be infrastructure rather than app code; needs clarification
-- ✅ **Session security:** `archivedAt` field prevents archived user access; sessions deleted on deactivation
-- ✅ **Email compliance:** Consent tracking via `ConsentRecord` model (kind: lead_form_privacy, sms_opt_in)
-- ⚠️ **Better Auth integration:** In use; review for edge cases in activation flow, callback handling
-
-### Report
-- **Full Audit Report:** `docs/audits/Package-6-Platform-Integrity.md` (to be generated)
-- **Key Files to Review:**
-  - `src/domains/uploads/*` (if exists) or file handling in relevant domains
-  - `src/lib/auth.ts` — auth helpers
-  - `src/lib/session.ts` — session middleware + requireRole/requireSession
-  - `src/middleware.ts` — global middleware
-  - `docs/DECISIONS.md` — auth/session decisions
-  - `tests/customer-isolation.test.ts` — real DB test with concurrent patterns
-  - Schema: `ConsentRecord`, `User`, `Session`, `Account` models
+The reports preserve overlaps explicitly so the synthesis can collapse them rather than implement the same fix repeatedly.
 
 ---
 
-## Audit Execution Plan
+# Audit completion criteria
 
-### Schedule
-1. **Package 1 (Customer Lifecycle)** — Run first
-2. **Package 2 (Agreements/Pricing)** — Run second (depends on understanding Package 1's domain interactions)
-3. **Package 3 (Staff/Access)** — Run third
-4. **Package 4 (Growth/Marketing)** — Run fourth
-5. **Package 5 (Config/Reporting)** — Run fifth
-6. **Package 6 (Platform Integrity)** — Run sixth (can run in parallel with others if needed)
+Audit **discovery** is complete because:
 
-### Expected Deliverables
-- **Per-package markdown report** in `docs/audits/` with:
-  - **Executive summary** (findings by severity)
-  - **Critical issues** (security, data loss, business logic failure)
-  - **High-risk patterns** (performance, scalability, maintainability)
-  - **Recommended fixes** with file paths, line numbers, and implementation notes
-  - **Test coverage notes** (what's proven, what needs testing)
+- [x] customer lifecycle, agreements/pricing, staff/access, growth, configuration/reporting, and platform integrity were independently audited;
+- [x] backend↔frontend coverage and full-product integration were independently audited;
+- [x] branding and accessibility implementation were independently audited;
+- [x] previously unowned operational-core domains — billing, inventory, jobs, purchasing — received direct audit coverage;
+- [x] a final residual sweep covered concurrency, time, automation, auditability, cost integrity, scaling, and launch-policy seams;
+- [x] each report contains concrete findings, remediation direction, and acceptance evidence;
+- [x] overlap with existing B01–B36 / roadmap / historical review work is explicitly acknowledged rather than silently discarded.
 
-- **Synthesis document** (`docs/AUDIT_SYNTHESIS.md`) after all 6 packages:
-  - **Cross-package issues** (e.g., a query pattern used everywhere)
-  - **Architectural recommendations** (refactoring priorities, new patterns to adopt)
-  - **Rollout plan** (which fixes first, which can wait)
-
-### Success Criteria
-- ✅ All 6 packages audited
-- ✅ Each report includes at least 5–10 specific findings (critical, high, medium-risk)
-- ✅ Every finding references a file path + ideally a line number
-- ✅ Recommendations are actionable (not "make it faster" but "index `rentalAgreements.customerId` because query X scans 10k rows")
-- ✅ No false positives (every flagged issue is confirmed, not speculative)
-- ✅ Synthesis doc prioritizes which fixes to start with
+Audit discovery being complete **does not mean the product is launch-ready**. Critical/High remediation, integrated acceptance, owner walkthrough, production configuration, legal/business approvals, and explicit release authorization remain separate gates.
 
 ---
 
-## How to Use This Document
+# Next artifact — cross-package synthesis
 
-1. **For prioritization:** Consult the "Risk-Prioritized Sequencing" table above to focus on highest-risk packages first
-2. **For implementation:** Each package report will include a "Fix Priority" section; tackle CRITICAL first, then HIGH
-3. **For tracking:** Link each issue to a GitHub issue or PR as it's fixed
-4. **For handoff:** New audits after features are added should reference this roadmap to stay consistent
+Create `docs/AUDIT_SYNTHESIS.md` from all eight reports plus the existing project-control sources.
 
----
+The synthesis must:
 
-## Notes
-
-- **Estimates domain:** Search yielded no results; may be minimal stub, in schema but not yet wired, or named differently
-- **Growth/Launch domains:** Minimal exploration; details will emerge in Package 4 audit
-- **Cursor-based pagination:** `src/domains/customers/timeline-page.ts` uses cursors; verify correctness vs. offset pagination elsewhere
-- **Real DB tests:** `tests/customer-isolation.test.ts` and `tests/jobs-pagination-integration.test.ts` run against real Postgres; these are valuable proof points
-- **Performance baseline:** No benchmarks yet; Package 1 and 2 audits will establish baseline queries and identify N+1 patterns
+1. **Deduplicate root causes.** Do not turn 117 findings into 117 tickets.
+2. **Reconcile existing work.** Map each root cause to B01–B36, O-cards/remaining batches, historical code-review findings, security reviews, and already-landed fixes.
+3. **Prioritize by consequence and dependency.** Critical financial/security/data-integrity invariants first; then High operational/launch blockers; then Medium hardening/scaling.
+4. **Build a small number of large remediation batches.** The owner has explicitly required far fewer substantial PRs because full CI is expensive.
+5. **Define acceptance evidence before implementation.** Each batch must identify the exact tests, integration scenarios, preview checks, migration proof, provider reconciliation, accessibility/manual acceptance, or owner decision needed to call it complete.
+6. **Preserve explicit owner decisions.** Do not invent fee amounts, legal policy, activation approvals, spending, destructive real-data changes, or production provider actions.
+7. **End with one launch-readiness ledger.** Every Critical/High finding must be fixed, explicitly accepted/deferred by the owner where appropriate, or mapped to a still-open release blocker. No issue may disappear merely because it overlaps another document.
 
 ---
 
-**Next Step:** Run Package 1 audit. See `docs/audits/Package-1-Customer-Lifecycle.md` when complete.
+## Historical note
+
+The older `docs/audits/Package-1-Customer-Lifecycle.md` is intentionally retained for comparison. The eight independent reports listed above are the audit-program deliverables used for synthesis.
+
+**Next step:** build the cross-package synthesis and convert the deduplicated remediation scope into the smallest practical number of high-quality implementation batches.
