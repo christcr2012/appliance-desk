@@ -5,7 +5,17 @@ import { useRouter } from "next/navigation";
 import { createTaskAction } from "./actions";
 import { primaryActionClass } from "@/components/desk/workspace";
 
-export function NewTaskForm() {
+import { TaskFields, readTaskFields, type TaskAssignee } from "./task-fields";
+
+export function NewTaskForm({
+  assignees = [],
+  link,
+  initialNote = "",
+}: {
+  assignees?: TaskAssignee[];
+  link?: { leadId?: string; customerId?: string; jobId?: string };
+  initialNote?: string;
+}) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -22,16 +32,16 @@ export function NewTaskForm() {
       className="space-y-3"
       onSubmit={(e) => {
         e.preventDefault();
-        const data = new FormData(e.currentTarget);
+        const data = readTaskFields(e.currentTarget);
         setError(null);
         setSaved(false);
         startTransition(async () => {
           try {
             const result = await createTaskAction({
-              note: String(data.get("note") ?? ""),
-              dueDate: String(data.get("dueDate") ?? ""),
+              ...data,
+              ...link,
             });
-            if (result.status === "error") {
+            if (result.status !== "success") {
               showError(result.message);
               return;
             }
@@ -46,39 +56,12 @@ export function NewTaskForm() {
         });
       }}
     >
-      <div>
-        <label
-          htmlFor="task-note"
-          className="mb-1 block text-sm font-medium text-ink"
-        >
-          New task
-        </label>
-        <input
-          id="task-note"
-          name="note"
-          required
-          maxLength={500}
-          disabled={isPending}
-          placeholder="For example, call a property manager about renewing"
-          className="min-h-11 w-full rounded-lg border border-control bg-surface px-3 py-2 text-ink"
-        />
-      </div>
+      <TaskFields
+        assignees={assignees}
+        disabled={isPending}
+        note={initialNote}
+      />
       <div className="flex flex-wrap items-end gap-3">
-        <div>
-          <label
-            htmlFor="task-due"
-            className="mb-1 block text-sm font-medium text-ink"
-          >
-            Due date (optional)
-          </label>
-          <input
-            id="task-due"
-            name="dueDate"
-            type="date"
-            disabled={isPending}
-            className="min-h-11 max-w-full rounded-lg border border-control bg-surface px-3 py-2 text-ink"
-          />
-        </div>
         <button
           type="submit"
           disabled={isPending}

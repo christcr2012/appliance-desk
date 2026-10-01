@@ -1,3 +1,134 @@
+## Batch 1 integrated implementation — pending CI/preview acceptance
+
+O09/O10 implemented in ai/codex/roadmap-foundation-and-tasks alongside O02 proof
+and O11 property context. Additive StaffTask assignment/priority/version migration
+keeps old tasks unassigned/Normal/version 1. Shared team visibility, Mine,
+Unassigned and Completed views; active staff assignment, immutable record links,
+version conflicts preserving drafts, repeated completion safety and reopening.
+All effective task writes/audits are transactional, actor/assignee identity rows
+locked through validation/write. STAFF lead metadata and archived record links
+are omitted. Linked panels reuse the same editor/actions; note-to-task shortcut
+creates the same linked task without messages/contact-history invention.
+
+62 focused task/customer/property/schema tests and four note-shortcut tests pass.
+Typecheck and full lint pass (two existing warnings); migration safety passes.
+New real disposable-Postgres concurrency/deactivation tests are CI-only and not
+claimed as executed locally. Populated upgrade proof now inserts a pre-assignment
+task and asserts preserved data/defaults; schema-health negative proof targets
+version. StaffTask backup policy already covers all new scalar fields. Added one
+browser flow covering linked create/assign/Mine, competing draft, complete/reopen,
+Unassigned, mobile overflow/axe and confirmation/removal. Full CI/build/browser,
+hosted final-head preview and exact-head inspection remain pending.
+
+React checklist applied: independent page reads parallelized, no new global
+client state or query effect; editor captures its initial version while retaining
+uncontrolled field text across conflict/refresh. No financial/provider/message
+changes. Existing PR #133 review/comments rechecked: no new actionable finding;
+automated review quota unavailable under prior owner waiver. Audit registers stay
+open/deferred. This batch includes consolidation plan and #130–#133 final evidence.
+
+## Hosted preview prerequisite cleared — 2026-10-01
+
+Remote foundation/tasks branch checkpoint 57255a0cd3f7b9fbd22cfab2f9cfcdb587c1ff4a
+built READY as dpl_D96CFwsEVairFmWdwrxP1LYmb6qd. Owner authenticated through the
+secure sign-in form to the existing preview OWNER account. Hosted storage check
+passed private write/exact read, unsigned provider denial and owned-file cleanup
+with verified absence. Path preview-checks/7321caae-efbf-456a-89c0-04666953104d.txt;
+result screenshot inspected. No production credential fallback, messages or payments.
+See plans/overhaul/PREVIEW-ISOLATION-PROOF.md. O09/O10 infrastructure prerequisite
+is now cleared; final integrated batch acceptance/CI remains pending. Continue
+same substantial branch with tasks and local O11 property context; no small PR.
+Preview photo/backup APIs remain disabled. Audit implementations remain deferred.
+
+## Batch 1 latest infrastructure execution — 2026-10-01
+
+Owner approved the previously rejected existing-store scope reduction and
+exact two-fixture cleanup. Saved original store connection as Production
+only; preview subscriber deleted with exact identity/no-deliveries predicates
+and remaining=0; exact private file removed and empty list verified.
+Production data/providers unchanged. Existing deployments need redeployment
+to receive environment changes; preview photo/backup guards remain closed.
+
+Added owner-only /desk/settings/preview-storage check, gated to verified
+Vercel Preview credential/store, with one generated UUID file, actual private
+read, unsigned HTTP denial and exact owned-file cleanup/absence check.
+41 focused storage/DB guard tests, targeted lint and typecheck pass; 18 storage
+tests/lint rerun after cleanup-feedback correction also pass. Hosted runtime
+execution and full batch CI remain pending. Publish a checkpoint on the same
+foundation/tasks branch for necessary hosted proof, no separate small PR.
+See plans/overhaul/PREVIEW-ISOLATION-PROOF.md. O09 schema waits for that proof.
+
+## Earlier batch 1 infrastructure checkpoint — 2026-10-01
+
+Dashboard fallback and preview credential connection explicitly approved.
+Created independent private store store_6Sttks2ULJ8wG5hl, connected only to
+Appliance Desk Preview with sensitive PREVIEW_PRIVATE_BLOB credentials.
+Hosted launch-form UUID fixture exists on preview and is absent in production.
+Synthetic private file dashboard write/read passed; token-free HTTP returned
+Vercel 403; exact file prefix absent from production store. Full evidence and
+resource identities: plans/overhaul/PREVIEW-ISOLATION-PROOF.md.
+
+O02 still incomplete: original production store connection includes Preview
+and Development. Automatic approval review rejected restricting it to
+Production because that change was not explicitly authorized and could
+disrupt those environments. No change applied. Need owner approval for this
+specific scope reduction and owned fixture cleanup. Newly injected variables
+also need a new preview deployment and actual runtime private-file proof.
+Existing photo/backup preview guards remain closed. O09 schema remains blocked;
+no small PR or full CI run. The earlier access blocker below is superseded.
+
+## Batch 1 implementation checkpoint — 2026-10-01
+
+Branch ai/codex/roadmap-foundation-and-tasks. Independently eligible O11 property
+context implemented locally: selected Properties tab includes actual linked
+visits and open requests; location comes only from same-customer recorded job
+addresses, never current asset assignment. Requests without a recorded property
+remain visible; multiple recorded property links are disclosed. Server component,
+narrow request fields, owner/admin gate; no new schema or request ownership model.
+
+16 focused tests pass (property links/unknown/foreign/multiple locations, denied
+query, existing customer tabs/pagination); targeted lint/typecheck pass. Full
+batch CI/browser/preview acceptance remains pending; no small PR/full suite run.
+O11 whole-card acceptance not claimed. React review: no new client state/query
+waterfall; details fetched only on selected Properties tab.
+
+Neon branch separation and Vercel project identities reverified. O02 runtime
+fixture/independent private file workflow still blocked: Vercel connector cannot
+change storage/env, and CLI credentials are absent. Concrete dashboard/proof
+steps in plans/overhaul/PREVIEW-SETUP.md. Browser fallback needs owner permission;
+no schema work, resource purchase or production changes performed. Next: obtain
+that access, complete O02, then O09/O10 as part of this same batch.
+
+## Current handoff — 2026-10-01: consolidate remaining work
+
+Chris stopped the small-PR cadence. Follow
+[REMAINING-BATCHES.md](plans/overhaul/REMAINING-BATCHES.md): five substantial
+batches, plus at most one Google follow-up if external prerequisites lag.
+No standalone planning PR: these local docs ship with batch 1 implementation.
+Branch ai/codex/roadmap-foundation-and-tasks. Begin O02 hosted runtime and
+independent storage proof plus O09/O10/O11; schema waits for the O02 gate.
+Current model/single agent, full batch CI, exact-head merge and separate
+activation/spending/destructive approvals remain. Audits after the roadmap.
+
+#130–#133 merged in dependency order. #131 head
+f72496a9bff403e98909eac953adebdf8eaee1ef: CI 36897085690 passed 897 tests/141
+browser checks. #132 head 196c7ffb65633e623b53dd7403c0f88a6d7f1829:
+CI 36897127297 passed 897/143. #133 head
+abe3f800b9a413d1db2816ece92a757416300407: CI 36897635675 passed 902/144.
+All previews READY at exact heads. Inspected all six report width/theme
+screenshots and verified all 12 published #133 blobs. Prospective #132/#133
+main trees matched tested heads. Main merge:
+d13c112753a95e00450636c4891fe1c0236592f0. Final inspections are on the PRs;
+automated review quota unavailable under owner waiver, no independent review
+claimed. Protected preview pages redirect at Vercel auth; actual application
+browser acceptance comes from disposable CI. Manual owner/hosted production
+acceptance not inferred from merge.
+
+O19 fleet subcard passed automated acceptance. Remaining source/growth/earnings
+definitions and whole-card proof join batch 3. Earlier workspaces preserved;
+their application edits were already shipped/superseded, no unique unfinished
+application feature found. Historical status entries below are old checkpoints.
+
 ## Owner sequencing update — 2026-10-01 (current)
 
 Chris explicitly requested completing and merging the existing green PRs, then

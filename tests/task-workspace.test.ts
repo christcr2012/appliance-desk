@@ -16,7 +16,7 @@ import {
 } from "@/domains/tasks/workspace";
 beforeEach(() => {
   vi.resetAllMocks();
-  m.role.mockResolvedValue({ user: { role: "STAFF" } });
+  m.role.mockResolvedValue({ user: { id: "staff", role: "STAFF" } });
   m.count.mockResolvedValue(62);
   m.findMany.mockResolvedValue([]);
 });
@@ -30,6 +30,7 @@ it("clamps pagination, limits records, and retains a stable tie-breaker", async 
       skip: 50,
       where: { completedAt: null },
       orderBy: [
+        { priority: "desc" },
         { dueDate: { sort: "asc", nulls: "last" } },
         { createdAt: "asc" },
         { id: "asc" },
@@ -83,3 +84,22 @@ it.each([() => getTaskWorkspace("all", 1), () => getDueTaskSummary()])(
     expect(m.findMany).not.toHaveBeenCalled();
   },
 );
+
+it("uses the current identity for Mine and preserves team visibility", async () => {
+  await getTaskWorkspace("today", 1, now, "mine");
+  expect(m.count).toHaveBeenLastCalledWith({
+    where: expect.objectContaining({
+      assigneeUserId: "staff",
+      completedAt: null,
+    }),
+  });
+  await getTaskWorkspace("all", 1, now, "unassigned");
+  expect(m.count).toHaveBeenLastCalledWith({
+    where: { completedAt: null, assigneeUserId: null },
+  });
+  await getTaskWorkspace("all", 1, now, "completed");
+  expect(m.count).toHaveBeenLastCalledWith({
+    where: { completedAt: { not: null } },
+  });
+  expect(m.findMany.mock.calls[0][0].select.lead).toBe(false);
+});

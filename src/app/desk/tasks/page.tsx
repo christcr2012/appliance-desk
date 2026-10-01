@@ -3,7 +3,10 @@ import {
   getTaskWorkspace,
   parseTaskFilter,
   TASK_FILTERS,
+  TASK_VIEWS,
+  parseTaskView,
 } from "@/domains/tasks/workspace";
+import { getTaskAssignees } from "@/domains/tasks";
 import { businessDateKey } from "@/lib/business-date";
 import {
   PageHeader,
@@ -21,16 +24,17 @@ export const metadata = { title: "Tasks" };
 export default async function TasksPage({
   searchParams,
 }: {
-  searchParams: Promise<{ due?: string; page?: string }>;
+  searchParams: Promise<{ due?: string; page?: string; view?: string }>;
 }) {
   const params = await searchParams;
   const filter = parseTaskFilter(params.due);
+  const view = parseTaskView(params.view);
   const now = new Date();
-  const { tasks, ...pagination } = await getTaskWorkspace(
-    filter,
-    Number(params.page ?? 1),
-    now,
-  );
+  const [workspace, assignees] = await Promise.all([
+    getTaskWorkspace(filter, Number(params.page ?? 1), now, view),
+    getTaskAssignees(),
+  ]);
+  const { tasks, ...pagination } = workspace;
   return (
     <div className="max-w-4xl">
       <PageHeader
@@ -47,25 +51,41 @@ export default async function TasksPage({
           title="Add a follow-up"
           description="Give the team a clear next step and an optional due date."
         >
-          <NewTaskForm />
+          <NewTaskForm assignees={assignees} />
         </SectionCard>
       </div>
       <FilterBar
+        label="Choose task view"
+        items={TASK_VIEWS.map((v) => ({
+          label: v.label,
+          href: `/desk/tasks?view=${v.value}&due=${filter}`,
+          active: view === v.value,
+        }))}
+      />
+      <FilterBar
         label="Filter tasks by due date"
         items={TASK_FILTERS.map((f) => ({
-          label: f.label,
-          href: `/desk/tasks?due=${f.value}`,
+          label:
+            view === "completed" && f.value === "all"
+              ? "All due dates"
+              : f.label,
+          href: `/desk/tasks?view=${view}&due=${f.value}`,
           active: filter === f.value,
         }))}
       />
       <SectionCard
-        title={TASK_FILTERS.find((f) => f.value === filter)!.label}
-        description={`${pagination.totalCount} open ${pagination.totalCount === 1 ? "task" : "tasks"}`}
+        title={`${TASK_VIEWS.find((v) => v.value === view)!.label} · ${view === "completed" && filter === "all" ? "All due dates" : TASK_FILTERS.find((f) => f.value === filter)!.label}`}
+        description={`${pagination.totalCount} ${view === "completed" ? "completed" : "open"} ${pagination.totalCount === 1 ? "task" : "tasks"}`}
       >
         {tasks.length ? (
           <ul className="divide-y divide-line">
             {tasks.map((task) => (
-              <TaskRow key={task.id} task={task} today={businessDateKey(now)} />
+              <TaskRow
+                key={task.id}
+                task={task}
+                assignees={assignees}
+                today={businessDateKey(now)}
+              />
             ))}
           </ul>
         ) : (
@@ -76,7 +96,9 @@ export default async function TasksPage({
         )}
         <Pagination
           {...pagination}
-          buildHref={(page) => `/desk/tasks?due=${filter}&page=${page}`}
+          buildHref={(page) =>
+            `/desk/tasks?view=${view}&due=${filter}&page=${page}`
+          }
         />
       </SectionCard>
     </div>

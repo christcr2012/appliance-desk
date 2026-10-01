@@ -55,6 +55,7 @@ model User {
   customerNotes   CustomerNote[]
   leadNotes       LeadNote[]
   createdTasks    StaffTask[] @relation("StaffTaskCreatedBy")
+  assignedTasks   StaffTask[] @relation("StaffTaskAssignedTo")
   createdPurchaseOrders PurchaseOrder[] @relation("PurchaseOrderCreatedBy")
 
   @@index([role])
@@ -1430,10 +1431,20 @@ model CustomerContact {
 // themself). Optionally linked to whatever it's about, purely for a
 // convenient link back — deleting the linked record never deletes the
 // task. See docs/DECISIONS.md's 2026-09-29 CRM-buildout entry.
+enum TaskPriority {
+  LOW
+  NORMAL
+  HIGH
+}
+
 model StaffTask {
   id      String @id @default(cuid())
   note    String
   dueDate DateTime?
+  priority TaskPriority @default(NORMAL)
+  version Int @default(1)
+  assigneeUserId String?
+  assignee User? @relation("StaffTaskAssignedTo", fields: [assigneeUserId], references: [id], onDelete: SetNull)
 
   leadId     String?
   lead       Lead?     @relation(fields: [leadId], references: [id], onDelete: SetNull)
@@ -1450,6 +1461,7 @@ model StaffTask {
   createdAt DateTime @default(now())
 
   @@index([completedAt, dueDate])
+  @@index([assigneeUserId, completedAt])
   @@index([leadId])
   @@index([customerId])
   @@index([jobId])

@@ -27,8 +27,7 @@ it("stores the chosen calendar date unchanged and invalidates Today and Tasks", 
       .status,
   ).toBe("success");
   expect(m.create).toHaveBeenCalledWith(
-    "staff",
-    expect.objectContaining({ dueDate: new Date("2026-09-30T00:00:00Z") }),
+    expect.objectContaining({ dueDate: "2026-09-30", priority: "NORMAL" }),
   );
   expect(m.revalidate).toHaveBeenCalledWith("/desk/today");
   expect(m.revalidate).toHaveBeenCalledWith("/desk/tasks");

@@ -1,3 +1,14 @@
+## Current owner batching instruction — 2026-10-01
+
+Chris requires far fewer, much larger PRs because each PR repeats full CI.
+Use [REMAINING-BATCHES.md](REMAINING-BATCHES.md): five substantial remaining
+batches, with at most one conditional Google follow-up if external gates lag.
+This supersedes small card/file/page-family/report/cron/integration PR splits
+and old model/phase-stop schedules. Keep one agent/current model, acceptance
+criteria, O02 and other dependencies, full batch CI/preview and separate live,
+spending/destructive approvals. Audit implementation follows the original
+roadmap. No planning-only PR: include this checkpoint with batch 1 code.
+
 # Low-cost implementation guide and paste-ready prompt
 
 ## Current execution override — 2026-09-30

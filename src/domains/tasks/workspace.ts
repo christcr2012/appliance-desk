@@ -35,17 +35,41 @@ export function taskFilterWhere(
   };
   return { completedAt: null, ...dates[filter] };
 }
-const select = {
-  id: true,
-  note: true,
-  dueDate: true,
-  lead: { select: { id: true, contactName: true } },
-  customer: {
-    select: { id: true, user: { select: { name: true, email: true } } },
-  },
-  job: { select: { id: true, type: true } },
-} satisfies Prisma.StaffTaskSelect;
+export const TASK_VIEWS = [
+  { value: "team", label: "Team" },
+  { value: "mine", label: "Mine" },
+  { value: "unassigned", label: "Unassigned" },
+  { value: "completed", label: "Completed" },
+] as const;
+export type TaskView = (typeof TASK_VIEWS)[number]["value"];
+export function parseTaskView(value?: string): TaskView {
+  return TASK_VIEWS.find((v) => v.value === value)?.value ?? "team";
+}
+function selection(role: string) {
+  return {
+    id: true,
+    note: true,
+    dueDate: true,
+    priority: true,
+    version: true,
+    completedAt: true,
+    assignee: {
+      select: { id: true, name: true, email: true, archivedAt: true },
+    },
+    lead:
+      role !== "STAFF" ? { select: { id: true, contactName: true } } : false,
+    customer: {
+      where: { archivedAt: null },
+      select: { id: true, user: { select: { name: true, email: true } } },
+    },
+    job: {
+      where: { OR: [{ customerId: null }, { customer: { archivedAt: null } }] },
+      select: { id: true, type: true },
+    },
+  } satisfies Prisma.StaffTaskSelect;
+}
 const orderBy = [
+  { priority: "desc" },
   { dueDate: { sort: "asc", nulls: "last" } },
   { createdAt: "asc" },
   { id: "asc" },
@@ -55,9 +79,20 @@ export async function getTaskWorkspace(
   filter: TaskDueFilter,
   requestedPage: number,
   now = new Date(),
+  view: TaskView = "team",
 ) {
-  await requireRole("OWNER", "ADMIN", "STAFF");
-  const where = taskFilterWhere(filter, now);
+  const session = await requireRole("OWNER", "ADMIN", "STAFF");
+  const select = selection(session.user.role);
+  const where: Prisma.StaffTaskWhereInput = {
+    ...taskFilterWhere(filter, now),
+    ...(view === "mine"
+      ? { assigneeUserId: session.user.id }
+      : view === "unassigned"
+        ? { assigneeUserId: null }
+        : view === "completed"
+          ? { completedAt: { not: null } }
+          : {}),
+  };
   const totalCount = await prisma.staffTask.count({ where });
   const totalPages = Math.max(1, Math.ceil(totalCount / TASK_PAGE_SIZE));
   const page = Math.min(
@@ -75,7 +110,8 @@ export async function getTaskWorkspace(
 }
 
 export async function getDueTaskSummary(now = new Date()) {
-  await requireRole("OWNER", "ADMIN", "STAFF");
+  const session = await requireRole("OWNER", "ADMIN", "STAFF");
+  const select = selection(session.user.role);
   const where = { completedAt: null, dueDate: { lt: taskDates(now).tomorrow } };
   const [tasks, totalCount, overdueCount] = await Promise.all([
     prisma.staffTask.findMany({ where, select, orderBy, take: 6 }),

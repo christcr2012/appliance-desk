@@ -398,3 +398,15 @@ already include any signing or estimate deposit. A deposit record on an
 agreement is a liability record, so it does not add another positive cash row.
 Invoice refunds and returned deposits appear as separate negative amounts.
 Keep using the agreement's deposit details to review the remaining liability.
+
+
+### Assigning and tracking follow-ups
+
+Open Tasks to add a note, optional date, priority and team member. Team shows
+shared work; Mine shows work assigned to you; Unassigned shows work needing an
+owner. Use Edit task to change the note, date, priority or assignee. If someone
+else saved first, your draft stays on screen: copy it before reloading, then
+apply it to the latest task. Done moves a task to Completed, where Reopen brings
+it back. Tasks created on a customer or lead stay linked to that record. The
+Make this a task button turns the current note text into a linked follow-up;
+it does not send a message or save a separate contact-history note.

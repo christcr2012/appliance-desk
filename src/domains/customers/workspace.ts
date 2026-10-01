@@ -26,7 +26,10 @@ export async function getCustomerIdentity(id: string) {
     },
   });
 }
-export async function getCustomerOverview(customerId: string, now = new Date()) {
+export async function getCustomerOverview(
+  customerId: string,
+  now = new Date(),
+) {
   await requireRole("OWNER", "ADMIN");
   const [activeRentals, openService, propertyCount, nextJob, tasks] =
     await Promise.all([
@@ -58,6 +61,11 @@ export async function getCustomerOverview(customerId: string, now = new Date()) 
       // Existing shared linked-task behavior; the global Tasks workspace is paginated.
       prisma.staffTask.findMany({
         where: { customerId },
+        include: {
+          assignee: {
+            select: { id: true, name: true, email: true, archivedAt: true },
+          },
+        },
         orderBy: [
           { completedAt: "asc" },
           { createdAt: "desc" },
@@ -84,7 +92,36 @@ export async function getCustomerProperties(customerId: string) {
       },
       jobs: {
         where: { status: { in: ["SCHEDULED", "IN_PROGRESS"] } },
-        select: { id: true, serviceAddressId: true, scheduledAt: true },
+        select: {
+          id: true,
+          serviceAddressId: true,
+          scheduledAt: true,
+          type: true,
+          status: true,
+        },
+        orderBy: [
+          { scheduledAt: { sort: "asc", nulls: "last" } },
+          { id: "asc" },
+        ],
+      },
+      maintenanceRequests: {
+        where: {
+          status: {
+            in: ["SUBMITTED", "REVIEWING", "SCHEDULED", "IN_PROGRESS"],
+          },
+        },
+        select: {
+          id: true,
+          problem: true,
+          status: true,
+          // Requests have no property field. Show only the location explicitly
+          // recorded on this customer's linked job; never infer it from an asset.
+          jobs: {
+            where: { customerId, serviceAddress: { customerId } },
+            select: { serviceAddressId: true },
+          },
+        },
+        orderBy: [{ openedAt: "asc" }, { id: "asc" }],
       },
     },
   });

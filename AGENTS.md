@@ -211,3 +211,16 @@ in this document and linked plans. Preserve the audit registers and unresolved
 findings for that later work; deferral is not resolution. Preserve existing
 correctness protections, O02/O13/O14/O32 dependencies, CI/preview acceptance and
 separate approvals for live activation, spending and destructive real-data changes.
+
+## Owner PR consolidation update — 2026-10-01
+
+Chris explicitly requires far fewer, much larger PRs. Follow
+docs/plans/overhaul/REMAINING-BATCHES.md: five remaining substantial batches,
+with a single Google follow-up only if external gates lag. This supersedes
+card-per-PR, eight-file, separate contract/UI, one report/cron, six Google PR
+and old model/phase-stop schedules. Ordered local commits and focused checks
+preserve reviewability. Submit complete user outcomes; full CI is a batch gate,
+not an edit loop. Consolidate repairs in the same PR. Include plan/HANDOFF with
+implementation; no separate documentation PR for this instruction.
+Keep acceptance/dependencies, current model/single agent, exact-head merges
+and separate live/spending/destructive approvals. Audits follow the roadmap.

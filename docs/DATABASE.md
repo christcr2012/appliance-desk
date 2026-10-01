@@ -230,3 +230,18 @@ those can be added later without a redesign.
 
 Migration `20260930040000_prelaunch_interest` creates only these three tables
 and their indexes. It does not rewrite or delete any existing business data.
+
+
+## Team task assignment — October 1, 2026
+
+StaffTask adds nullable assigneeUserId (User relation, SetNull on deletion),
+TaskPriority LOW/NORMAL/HIGH (NORMAL default) and integer version (1 default).
+The additive migration leaves every existing task unassigned and preserves links,
+notes, dates and completion. Assignee/completion index supports Mine/Unassigned.
+Version-checked writes and audit entries share one transaction; active actor and
+assignee User rows are held FOR SHARE until commit so access removal cannot race
+validation. Task links are fixed at creation and validated before creation.
+StaffTask remains included in BACKUP_MODEL_POLICY; scalar exports include all
+new columns. Generated schema-health checks read every scalar even for empty
+tables; disposable CI's negative check now removes version and proves rejection.
+Populated upgrade fixture proves old task defaults and record links survive.

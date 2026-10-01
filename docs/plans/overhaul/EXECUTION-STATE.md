@@ -1,3 +1,24 @@
+## Current owner batching instruction — 2026-10-01
+
+Chris requires far fewer, much larger PRs because each PR repeats full CI.
+Use [REMAINING-BATCHES.md](REMAINING-BATCHES.md): five substantial remaining
+batches, with at most one conditional Google follow-up if external gates lag.
+This supersedes small card/file/page-family/report/cron/integration PR splits
+and old model/phase-stop schedules. Keep one agent/current model, acceptance
+criteria, O02 and other dependencies, full batch CI/preview and separate live,
+spending/destructive approvals. Audit implementation follows the original
+roadmap. No planning-only PR: include this checkpoint with batch 1 code.
+
+## Current checkpoint — 2026-10-01
+
+Main d13c112753a95e00450636c4891fe1c0236592f0 contains merged #130–#133.
+Next branch: ai/codex/roadmap-foundation-and-tasks. Batch 1 scope/proof is in
+REMAINING-BATCHES.md. These checkpoint docs will ship with implementation,
+not another small PR. O02 hosted runtime/private storage proof is incomplete;
+dependent schema stays blocked. No unique unfinished application changes were
+found in the preserved earlier workspaces. Older entries are evidence history,
+not the current PR schedule.
+
 ## 2026-09-30 — Owner and portal workspaces; CRM checks green
 
 PR #102 head 883a8f90a21135902450fff8c4e6663b631fdeae passed full CI

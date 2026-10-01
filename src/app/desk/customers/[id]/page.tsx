@@ -34,6 +34,7 @@ import { ContactsPanel } from "./contacts-panel";
 import { ServiceAddressesPanel } from "./service-addresses-panel";
 import { LinkedTasksPanel } from "@/components/linked-tasks-panel";
 import { BillingContext } from "./billing-context";
+import { PropertyServiceContext } from "@/components/desk/property-service-context";
 
 export const metadata = { title: "Customer" };
 type Search = {
@@ -139,6 +140,11 @@ export default async function CustomerDetailPage({
             ),
           }))}
           jobs={data.jobs}
+        />
+        <PropertyServiceContext
+          addresses={data.serviceAddresses}
+          jobs={data.jobs}
+          requests={data.maintenanceRequests}
         />
         <ContactsPanel customerId={id} contacts={data.contacts} />
       </div>
