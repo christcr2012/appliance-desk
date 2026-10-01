@@ -6,16 +6,15 @@
 // generic "date / type / who / reference / amount" shape any tool can
 // import, rather than betting on one product's own format.
 //
-// Covers every place real money actually moves in this app: a
-// succeeded card/ACH payment, a refund on an invoice, a security
-// deposit collected at signing, and a security deposit refunded at
-// move-out. Amounts follow the standard accounting-ledger convention —
-// positive for money coming in, negative for money going back out — so
-// a plain SUM() of the amount column in a spreadsheet is the real net
-// cash movement, not something the bookkeeper has to sign-flip by hand.
+// Succeeded invoice Payment rows cover manual payments and deposits collected
+// at signing or estimate approval. Deposit records are liabilities, not another
+// cash receipt. Invoice refunds and deposit refunds are independent outflows.
+// Positive amounts are incoming cash; negative amounts are refunds. Summing
+// the amount column gives recorded net cash, never rental revenue or profit.
 import { prisma } from "@/lib/prisma";
 
-export type AccountingTransactionType = "Payment" | "Refund" | "Deposit collected" | "Deposit refunded";
+export type AccountingTransactionType =
+  "Payment" | "Refund" | "Deposit refunded";
 
 export type AccountingTransactionRow = {
   date: Date;
@@ -28,7 +27,10 @@ export type AccountingTransactionRow = {
   notes: string;
 };
 
-function customerDisplayName(customer: { user: { name: string | null; email: string }; companyName: string | null }) {
+function customerDisplayName(customer: {
+  user: { name: string | null; email: string };
+  companyName: string | null;
+}) {
   return customer.user.name ?? customer.user.email;
 }
 
@@ -39,51 +41,71 @@ function customerDisplayName(customer: { user: { name: string | null; email: str
  * re-derives an amount — these tables are already the source of truth
  * for what actually happened (docs/DATABASE.md).
  */
-export async function getAccountingTransactions(): Promise<AccountingTransactionRow[]> {
-  const [payments, refunds, deposits] = await Promise.all([
-    prisma.payment.findMany({
-      where: { status: "succeeded" },
-      select: {
-        amountCents: true,
-        method: true,
-        createdAt: true,
-        invoice: {
+export async function getAccountingTransactions(): Promise<
+  AccountingTransactionRow[]
+> {
+  const [payments, refunds, deposits] = await prisma.$transaction(
+    async (tx) =>
+      Promise.all([
+        tx.payment.findMany({
+          where: { status: "succeeded" },
           select: {
-            invoiceNumber: true,
-            customer: { select: { companyName: true, user: { select: { name: true, email: true } } } },
+            amountCents: true,
+            method: true,
+            createdAt: true,
+            invoice: {
+              select: {
+                invoiceNumber: true,
+                customer: {
+                  select: {
+                    companyName: true,
+                    user: { select: { name: true, email: true } },
+                  },
+                },
+              },
+            },
           },
-        },
-      },
-    }),
-    prisma.refund.findMany({
-      select: {
-        amountCents: true,
-        reason: true,
-        notes: true,
-        createdAt: true,
-        invoice: {
+        }),
+        tx.refund.findMany({
           select: {
-            invoiceNumber: true,
-            customer: { select: { companyName: true, user: { select: { name: true, email: true } } } },
+            amountCents: true,
+            reason: true,
+            notes: true,
+            createdAt: true,
+            invoice: {
+              select: {
+                invoiceNumber: true,
+                customer: {
+                  select: {
+                    companyName: true,
+                    user: { select: { name: true, email: true } },
+                  },
+                },
+              },
+            },
           },
-        },
-      },
-    }),
-    prisma.deposit.findMany({
-      select: {
-        amountCents: true,
-        createdAt: true,
-        refundedAt: true,
-        refundedAmountCents: true,
-        deductionReason: true,
-        agreement: {
+        }),
+        tx.deposit.findMany({
+          where: { refundedAt: { not: null } },
           select: {
-            customer: { select: { companyName: true, user: { select: { name: true, email: true } } } },
+            refundedAt: true,
+            refundedAmountCents: true,
+            deductionReason: true,
+            agreement: {
+              select: {
+                customer: {
+                  select: {
+                    companyName: true,
+                    user: { select: { name: true, email: true } },
+                  },
+                },
+              },
+            },
           },
-        },
-      },
-    }),
-  ]);
+        }),
+      ]),
+    { isolationLevel: "RepeatableRead" },
+  );
 
   const rows: AccountingTransactionRow[] = [];
 
@@ -114,16 +136,10 @@ export async function getAccountingTransactions(): Promise<AccountingTransaction
   }
 
   for (const d of deposits) {
-    rows.push({
-      date: d.createdAt,
-      type: "Deposit collected",
-      customerName: customerDisplayName(d.agreement.customer),
-      companyName: d.agreement.customer.companyName ?? "",
-      invoiceNumber: null,
-      amountCents: d.amountCents,
-      methodOrReason: "",
-      notes: "",
-    });
+    // Both signing and estimate-approval deposits already create succeeded
+    // Payment rows (billing/webhooks.ts). Deposit records track the liability;
+    // conversion can create that record later, without another cash receipt.
+    // Emitting its amount here would double-count cash and misdate conversion.
     if (d.refundedAt) {
       rows.push({
         date: d.refundedAt,

@@ -81,3 +81,13 @@ describe("computeMrrTrend", () => {
     expect(points.every((p) => p.mrrCents === 0)).toBe(true);
   });
 });
+
+
+it("does not project a future billing start into the current month", () => {
+  const result = computeMrrTrend([{ billingStartedAt: new Date("2026-06-25T00:00:00Z"), endDate: null, lines: [{ monthlyPriceCents: 5000 }] }], 1, new Date("2026-06-15T00:00:00Z"));
+  expect(result[0].mrrCents).toBe(0);
+});
+it("does not include an agreement ending exactly at the month's opening boundary", () => {
+  const result = computeMrrTrend([{ billingStartedAt: new Date("2026-01-01T00:00:00Z"), endDate: new Date("2026-06-01T00:00:00Z"), lines: [{ monthlyPriceCents: 5000 }] }], 1, new Date("2026-06-15T00:00:00Z"));
+  expect(result[0].mrrCents).toBe(0);
+});

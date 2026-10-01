@@ -20,12 +20,14 @@ export function NewRequestForm({
   customerId,
   initialApplianceId = "",
   initialProblem = "",
+  requestKind = "maintenance",
   requestTitle = "Report a problem",
 }: {
   appliances: ApplianceOption[];
   customerId: string;
   initialApplianceId?: string;
   initialProblem?: string;
+  requestKind?: "pickup" | "maintenance";
   requestTitle?: string;
 }) {
   const router = useRouter();
@@ -42,11 +44,15 @@ export function NewRequestForm({
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    if (!problem.replace(/^pickup request:\s*/i, "").trim()) {
+      setError("Please describe your request, including pickup details if applicable.");
+      return;
+    }
     startTransition(async () => {
       let result;
       try {
         result = await createMaintenanceRequestAction({
-          problem,
+          problem: requestKind === "pickup" ? `Pickup request: ${problem.trim()}` : problem,
           applianceId,
           priority,
           photoUrls,

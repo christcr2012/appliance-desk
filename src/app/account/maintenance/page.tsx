@@ -53,7 +53,7 @@ export default async function AccountMaintenancePage({
           customerId={customer.id}
           appliances={applianceOptions}
           initialApplianceId={initialApplianceId}
-          initialProblem={request === "pickup" ? "Pickup request: " : ""}
+          requestKind={request === "pickup" ? "pickup" : "maintenance"}
           requestTitle={
             request === "pickup" ? "Request pickup" : "Report a problem"
           }

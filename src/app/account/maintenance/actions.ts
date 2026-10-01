@@ -11,7 +11,9 @@ export type MaintenanceRequestActionState =
   | { status: "error"; message: string };
 
 const newRequestSchema = z.object({
-  problem: z.string().trim().min(1, "Describe the problem.").max(2000),
+  problem: z.string().trim().min(1, "Describe the problem.").max(2000)
+    .refine((value) => value.replace(/^pickup request:\s*/i, "").trim().length > 0,
+      "Please describe your request, including pickup details if applicable."),
   applianceId: z.string().trim().optional().or(z.literal("")),
   priority: z.enum(["LOW", "NORMAL", "HIGH", "URGENT"]).optional(),
   // Blob URLs already uploaded client-side via PhotoUploadField — see

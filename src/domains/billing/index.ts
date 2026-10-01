@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getStripeClient } from "@/lib/stripe";
-import { computeMrrTrend } from "./revenue";
+import { computeMrrTrend, revenuePeriod } from "./revenue";
 
 export { createCheckoutSessionForAgreement, buildCheckoutLinePlan } from "./checkout";
 export { processStripeWebhookEvent } from "./webhooks";
@@ -74,15 +74,14 @@ export async function createBillingPortalSession(customerId: string): Promise<st
 // approximation, and docs/DECISIONS.md for the full writeup.
 // ---------------------------------------------------------------------------
 
-/** Everything /desk/revenue shows, in one call. Real Stripe-confirmed
- * money (collected revenue, past-due, failed payments) comes straight
- * from Invoice/Payment — nothing estimated there. MRR/ARR and the trend
+/** Rate estimates and recorded gross invoice payments. Payments may include
+ * manual entries, deposits, tax and fees; sums do not subtract refunds and
+ * are not rent or profit. Month windows use UTC record timestamps. MRR/ARR and the trend
  * line are reconstructed from agreements' own agreed pricing (see
  * computeMrrTrend's own doc comment for what that does and doesn't
  * capture). */
-export async function getRevenueDashboard() {
-  const now = new Date();
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+export async function getRevenueDashboard(now = new Date()) {
+  const period = revenuePeriod(now, true);
 
   const [
     activeAgreements,
@@ -101,7 +100,7 @@ export async function getRevenueDashboard() {
     // active-rental/active-customer counts below only count ones where
     // billing has actually started.
     prisma.rentalAgreement.findMany({
-      where: { status: "ACTIVE", billingStartedAt: { not: null } },
+      where: { status: "ACTIVE", billingStartedAt: { not: null, lte: now } },
       select: { customerId: true, lines: { select: { monthlyPriceCents: true } } },
     }),
     prisma.rentalAgreement.findMany({
@@ -113,36 +112,36 @@ export async function getRevenueDashboard() {
       },
     }),
     prisma.rentalAgreement.findMany({
-      where: { status: "ACTIVE", billingStartedAt: { not: null } },
+      where: { status: "ACTIVE", billingStartedAt: { not: null, lte: now } },
       select: { customerId: true },
       distinct: ["customerId"],
     }),
     prisma.rentalAgreement.count({
-      where: { startDate: { gte: startOfMonth } },
+      where: { startDate: period },
     }),
     prisma.rentalAgreement.count({
       where: {
         status: { in: ["ENDED", "CANCELLED"] },
-        updatedAt: { gte: startOfMonth },
+        updatedAt: period,
       },
     }),
     prisma.payment.aggregate({
-      where: { status: "succeeded", createdAt: { gte: startOfMonth } },
+      where: { status: "succeeded", createdAt: period },
       _sum: { amountCents: true },
     }),
     prisma.payment.aggregate({
-      where: { status: "succeeded" },
+      where: { status: "succeeded", createdAt: revenuePeriod(now, false) },
       _sum: { amountCents: true },
     }),
     prisma.invoice.findMany({
       where: {
-        status: { in: ["DELINQUENT", "OPEN"] },
+        status: { in: ["DELINQUENT", "OPEN", "PARTIALLY_PAID"] },
         dueDate: { lt: now },
       },
       select: { amountDueCents: true, amountPaidCents: true },
     }),
     prisma.payment.count({
-      where: { status: "failed", createdAt: { gte: startOfMonth } },
+      where: { status: "failed", createdAt: period },
     }),
   ]);
 
@@ -151,7 +150,8 @@ export async function getRevenueDashboard() {
     0,
   );
 
-  const pastDueCents = pastDueInvoices.reduce(
+  const outstandingInvoices = pastDueInvoices.filter((invoice) => invoice.amountDueCents > invoice.amountPaidCents);
+  const pastDueCents = outstandingInvoices.reduce(
     (sum, inv) => sum + Math.max(0, inv.amountDueCents - inv.amountPaidCents),
     0,
   );
@@ -166,7 +166,7 @@ export async function getRevenueDashboard() {
     collectedThisMonthCents: collectedThisMonthCents._sum.amountCents ?? 0,
     collectedAllTimeCents: collectedAllTimeCents._sum.amountCents ?? 0,
     pastDueCents,
-    pastDueInvoiceCount: pastDueInvoices.length,
+    pastDueInvoiceCount: outstandingInvoices.length,
     failedPaymentsThisMonth,
     mrrTrend: computeMrrTrend(allAgreementsForTrend, 6, now),
   };

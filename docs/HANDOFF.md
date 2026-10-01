@@ -1,3 +1,91 @@
+## 2026-10-01 — Issue fixes and recovery of merged feature branches
+
+PRs #109/#110 were merged into predecessor feature branches, not main. This
+batch carries the tested rental/revenue/export stack onto current main while
+preserving main's handoff and brand assets. Fixes #106: pickup text starts empty,
+client/server reject blank and prefix-only requests, meaningful requests retain
+the pickup label, and failed saves preserve input. Fixes #115: payment/refund
+source links use the existing billing customer invoice route. Regression tests
+exercise both sources, server validation/session identity and form submissions;
+CI browser test requires empty pickup details before submission.
+
+Local: 729 tests pass, two CI-only tests skip; four real-Postgres suites await
+CI. Typecheck and lint pass (two existing warnings); diff whitespace clean.
+Updated-head database/build/browser/preview gates are pending, not complete.
+#97 closed with prior merged CI and fresh 13 control tests; #111/#114 closed as
+duplicates of #106/#107. O32 planning defects #107/#112/#113 are addressed in
+PR #105; runtime Google integration remains unimplemented and gated. No schema,
+live data, provider activation or configuration changes. Rollback: PR revert.
+
+## 2026-10-01 — Verified workspaces and cash-export correction
+
+Verified source heads: #103 4addf2fbf5a392981b81f162034b79626e3219d3,
+CI 36815045153 (726 tests, 122 browser checks); #108
+ed797c7ad4aae1efe395807791a6946bd0981db9, CI 36815060816 (744 tests,
+123 browser checks); #109 6a9b9235e4a55858ffc5fdce88d17e68a773eccd,
+CI 36815637476 (752 tests, 129 browser checks). Each full run includes real
+Postgres, migrations, typecheck, lint, build and axe. Matching Vercel previews
+are READY. Product and saved-builder phone/tablet/desktop screenshots inspected;
+revenue screenshots at phone/tablet/desktop inspected. Protected hosted interaction and manual
+acceptance remain unclaimed. Owner merges in order #103, #108, #109.
+
+Found and corrected related accounting export duplication: both signing and
+estimate-approval deposits already create real Invoice/Payment records
+(billing/webhooks.ts). Estimate conversion later creates a Deposit liability
+mirror without receiving more cash. Export previously added the liability as
+another positive receipt, doubling and misdating deposit collections. Export
+now includes succeeded Payment receipts and separate invoice/deposit refund
+outflows only; no positive Deposit liability rows. Deposit query reads refunded
+records only; all three cash sources use one repeatable-read snapshot. CSV columns and provider/ledger records remain unchanged.
+
+Eight focused export tests pass; typecheck passes. Added real existing webhook
+fixture assertions: signing $192.92 stays $192.92 despite a $150 deposit mirror;
+converted estimate's $200 approval payment stays $200 despite its later mirror.
+Revenue copy now explicitly includes partially paid overdue invoices and shows an honest empty rate state instead of a blank chart. Real DB/full CI pending for this correction. No schema or provider activation;
+rollback is PR revert. O02 hosted runtime/private-file proof is still incomplete;
+Neon preview storage reports enabled but has no buckets and is not app isolation
+proof. Vercel connector lacks needed environment/storage operations. Browser
+fallback requires explicit permission before opening the signed-in dashboard.
+Other report families and O30/O31 capacity/recovery/manual/launch proof remain.
+
+## 2026-10-01 — Revenue definitions and backing records
+
+O19 revenue family now labels MRR/ARR as estimated agreed rates and invoice
+payments as gross recorded cash, not exact Stripe rent/profit. Manual payments,
+deposits, fees and tax may be included; invoice refunds are separate from deposit
+refunds and from original payment dates. No cost deduction or profit claim.
+Monthly record windows consistently use UTC and exclude future records; source
+record timestamps display in Colorado. Closed rentals use last-update dates,
+explicitly not a churn/closure-date history. Partially paid past-due balances now
+count; zero/overpaid balances do not inflate the unpaid-invoice count. Trend
+excludes future billing starts and agreements ending at the month boundary.
+
+Owner-only source views use repeatable-read count/sum/25-row snapshots, stable
+createdAt/id ordering, whitelisted URL filters and exact invoice links. Numeric
+monthly rate values accompany the decorative estimate chart. Local: 717 broad
+tests pass (two real-DB-only tests skip, four existing DB suites excluded), plus
+new dashboard reconciliation test passes; typecheck and lint pass with two
+existing warnings. Real disposable-DB proof for manual/provider payments,
+deposit-inclusive gross, refunds and pending/failed/future exclusions and six
+width/theme source/filter/Back/keyboard/axe checks are included; full CI pending.
+No schema or live provider changes; rollback is PR revert. Other O19 report
+families and O02-dependent work remain incomplete.
+
+#103/#108 retry tests now wait for React transitions to enable controls before
+retrying, preserving failure/input/success assertions. Final heads 4addf2f and
+ed797c7 are in full CI; not yet claimed green. Catalog containment includes its
+absolute accessibility labels and keeps document-overflow checks intact.
+
+## 2026-10-01 — Saved rental checkpoints and property write validation
+
+CRM PR #102 merged. Owner/portal PR #103 remains in review. Measured phone scroll width 638px came from absolutely positioned screen-reader labels escaping the table scroll region. A relative scroll container now contains those labels; six product screenshots added; full rerun pending. Checks remain unchanged.
+
+O12 recovery subcard: draft create and audit commit together. Actor-scoped UUID request keys use the existing primary-key constraint to recover overlapping or lost-response saves; conflicting terms reject. The URL records the key before dispatch, then the saved draft ID. Refresh restores persisted terms, assignments and actual discounted cents. Saved terms remain read-only; drafts that advanced past DRAFT open their agreement. Pending and failed actions preserve input and show honest recovery feedback. Line reservations retain their existing atomic claim; ambiguous line saves direct the owner to refresh the saved checkpoint before retrying. No schema, signature/payment activation or new ledger.
+
+O11 write boundary: rental creation rejects missing, foreign or archived customer properties; jobs reject mismatched property/agreement/request customer context before any write. Presentation prefill alone was insufficient; these checks protect the authoritative write paths.
+
+Local verification: 709 tests pass in 100 suites, plus two new lost-response tests pass in the focused recovery suite; one CI-only rollback test skips locally, four existing real-DB suites excluded. Typecheck passes; lint has zero errors and two existing warnings. Added real disposable-DB concurrent-save, conflicting-terms, foreign-property and failed-audit rollback assertions; First #108 head 06d8342 passed 742 real-DB/unit tests, build, and 121 browser checks including all saved-builder layouts. Only two inherited product-phone overflow checks failed; shared fix integrated, final rerun pending. Vercel preview was READY; protected interactive access unclaimed. Builder browser coverage includes saved-line refresh, exact discounted total, Back, six width/theme screenshots and axe. Whole O12 and O11 cards remain incomplete; O02 hosted fixture/private-storage proof and schema-dependent cards remain blocked. Rollback: revert this PR, no migration rollback.
+
 ## 2026-09-30 — Owner and portal workspaces; CRM checks green
 
 PR #102 head 883a8f90a21135902450fff8c4e6663b631fdeae passed full CI

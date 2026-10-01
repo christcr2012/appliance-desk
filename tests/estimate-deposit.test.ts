@@ -3,6 +3,7 @@ import type Stripe from "stripe";
 import { prisma } from "@/lib/prisma";
 import { __setStripeClientForTests } from "@/lib/stripe";
 import { processStripeWebhookEvent } from "@/domains/billing/webhooks";
+import { getAccountingTransactions } from "@/domains/reports/accounting-export";
 import { convertEstimateToAgreements } from "@/domains/estimates";
 
 // ---------------------------------------------------------------------------
@@ -203,5 +204,12 @@ describe("convertEstimateToAgreements — applying an already-collected deposit"
     // *charging* it again at signing is what's skipped (see
     // createCheckoutSessionForAgreement in src/domains/billing/checkout.ts).
     expect(agreement.depositCents).toBe(20000);
+    // Approval already wrote the cash Payment. Conversion's Deposit is a
+    // liability mirror and must not add another positive export movement.
+    const rows = (await getAccountingTransactions()).filter(row => row.customerName === "Estimate Deposit Customer");
+    expect(rows.filter(row => row.type === "Payment")).toHaveLength(1);
+    expect(rows.map(row => row.amountCents).reduce((sum, amount) => sum + amount, 0)).toBe(20000);
+    expect(rows).toHaveLength(1);
   });
 });
+
