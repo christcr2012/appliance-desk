@@ -143,7 +143,38 @@ async function main() {
       ["upgrade-unverified"],
     );
     assert.equal(converted.rows[0].emailVerified, false);
+    // Upgrade a populated pre-assignment task table, rather than only a clean install.
+    for (const migration of await readdir(
+      path.join(root, "prisma/migrations"),
+      { withFileTypes: true },
+    )) {
+      if (
+        migration.isDirectory() &&
+        migration.name < "20261001190000_staff_task_assignment"
+      ) {
+        await cp(
+          path.join(root, "prisma/migrations", migration.name),
+          path.join(migrations, migration.name),
+          { recursive: true },
+        );
+      }
+    }
+    deploy(baselineConfig);
+    await fixtureClient.query(
+      `INSERT INTO "StaffTask" (id,note,"dueDate","createdByUserId","customerId") VALUES ('upgrade-task','Preserve follow-up','2026-11-02','upgrade-user','upgrade-customer')`,
+    );
     deploy(path.join(root, "prisma.config.ts"));
+    const preservedTask = await fixtureClient.query(
+      `SELECT note,"dueDate","customerId","assigneeUserId",priority,version FROM "StaffTask" WHERE id='upgrade-task'`,
+    );
+    assert.deepEqual(preservedTask.rows[0], {
+      note: "Preserve follow-up",
+      dueDate: new Date("2026-11-02"),
+      customerId: "upgrade-customer",
+      assigneeUserId: null,
+      priority: "NORMAL",
+      version: 1,
+    });
     const after = await snapshot();
     // This historical migration intentionally changes timestamp verification to boolean.
     assert.deepEqual(after, { ...before, emailVerified: true });

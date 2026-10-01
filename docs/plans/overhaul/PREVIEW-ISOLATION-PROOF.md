@@ -1,8 +1,9 @@
 # Hosted preview isolation evidence — 2026-10-01
 
-Status: runtime DB and provider private-store checks passed; original store
-restricted to Production, original owned fixtures removed. O02 remains
-incomplete pending hosted application private-file proof and batch gate G.
+Status: hosted database and application private-file isolation checks passed;
+original store restricted to Production, all owned fixtures removed. The O02
+infrastructure prerequisite is cleared for O09/O10. Final integrated batch gate G
+remains pending; no separate proof PR or full-CI rerun.
 
 ## Latest execution checkpoint
 
@@ -33,7 +34,29 @@ the current form. No schema change or activation of preview photo/backup APIs.
 After the cleanup-feedback correction, all 18 storage tests and targeted lint
 passed again. No full suite/CI rerun. Publish a branch checkpoint for the
 necessary hosted runtime proof, not a separate PR; keep O09/O10/O11 in this
-same batch. Hosted execution of the new page is still pending.
+same batch. Hosted execution subsequently passed as recorded below.
+
+## Hosted application private-file proof — passed
+
+Deployment dpl_D96CFwsEVairFmWdwrxP1LYmb6qd reached READY at remote head
+57255a0cd3f7b9fbd22cfab2f9cfcdb587c1ff4a on
+ai/codex/roadmap-foundation-and-tasks. Only the six proof implementation/test/doc
+files were published at this checkpoint, based directly on remote main; local
+recovered snapshot ancestry was not pushed. No PR or full CI was started.
+
+Owner signed in through the secure browser-auth form to the existing preview
+OWNER account. Executed /desk/settings/preview-storage through the actual hosted
+application. Its rendered result confirmed: private write and exact-content read
+passed, tokenless access was refused, and the test file was removed. Generated
+owned path: preview-checks/7321caae-efbf-456a-89c0-04666953104d.txt.
+The implementation requires unsigned HTTP 403 and verifies get returns null after
+cleanup before reporting success. The result screenshot was saved and inspected.
+No production credential fallback, real customer content, payment or message.
+
+Together with the earlier database branch write/absence proof and independent
+private store identity, this clears the infrastructure prerequisite for task
+schema work. Preview photo/backup APIs remain disabled; enabling them is not
+claimed by this diagnostic. O02 final integrated batch acceptance remains pending.
 
 ## Hosted database write
 
@@ -85,10 +108,10 @@ Limitations: dashboard download stalled; no downloaded-file comparison is
 claimed. Browser direct navigation was client-blocked and is not anonymous
 denial evidence. The authenticated dashboard read and independent HTTP 403
 are the evidence. Do not save or publish dashboard-generated delegated URLs;
-they contain temporary access signatures. No hosted application private-file
-write/read using the newly injected variables has been demonstrated yet.
-Existing deployed previews predate the connection and require a new deployment
-to receive its variables. Photo-token and backup preview guards remain closed.
+they contain temporary access signatures. At that earlier provider checkpoint,
+application runtime proof was still pending; the new deployment and hosted check
+above subsequently passed. Older deployments predate the connection and require
+a new deployment to receive its variables. Photo-token and backup guards remain closed.
 
 ## Earlier blocked connection checkpoint — resolved by owner approval above
 
@@ -107,6 +130,6 @@ branch when its integrated source is ready, and prove actual runtime private
 file use before calling O02 complete. Ask for exact owned fixture cleanup;
 never delete or reset unrelated preview or production data.
 
-O09 schema remains blocked on full O02. Keep this evidence and the already
-implemented property context in the same substantial batch; no small proof
-PR or full-CI rerun for this checkpoint.
+At this earlier checkpoint O09 schema was blocked. The subsequent hosted
+application proof above clears that infrastructure prerequisite. Keep this evidence
+and property/task work in the same substantial batch; no small proof PR.

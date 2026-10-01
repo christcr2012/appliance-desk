@@ -1,3 +1,11 @@
+## Current execution plan — 2026-10-01
+
+Group the remaining original roadmap into five substantial PRs:
+[Remaining batches](plans/overhaul/REMAINING-BATCHES.md). Preserve shipped work
+and finish only missing behavior/proof. Audits follow the roadmap; O29 needs
+an actual dataset. Google may need one combined later PR if external setup
+gates lag. This checkpoint ships with implementation, not a planning PR.
+
 ## Owner sequencing update — 2026-10-01 (current)
 
 Chris explicitly requested completing and merging the existing green PRs, then

@@ -1,3 +1,14 @@
+## Current owner batching instruction — 2026-10-01
+
+Chris requires far fewer, much larger PRs because each PR repeats full CI.
+Use [REMAINING-BATCHES.md](REMAINING-BATCHES.md): five substantial remaining
+batches, with at most one conditional Google follow-up if external gates lag.
+This supersedes small card/file/page-family/report/cron/integration PR splits
+and old model/phase-stop schedules. Keep one agent/current model, acceptance
+criteria, O02 and other dependencies, full batch CI/preview and separate live,
+spending/destructive approvals. Audit implementation follows the original
+roadmap. No planning-only PR: include this checkpoint with batch 1 code.
+
 ## Owner sequencing update — 2026-10-01 (current)
 
 Chris explicitly requested completing and merging the existing green PRs, then
@@ -182,7 +193,7 @@ Eight focused tests/typecheck pass; added real webhook fixture reconciliation,
 full CI pending. Other O19 report families remain; O02 infrastructure and
 O30/O31 whole-flow/manual/capacity evidence are not complete.
 
-## O19 fleet/asset report subcard — implementation pending verification
+## O19 fleet/asset report subcard — automated acceptance passed in #133
 
 Fleet and appliance detail explain assignment-based rental value, recorded costs,
 contribution, cost recovery and utilization. Explicit zero costs are known; null
@@ -191,5 +202,7 @@ exact supporting repair links. Full-fleet totals are independent of a paginated
 25-row incomplete-cost filter. Existing 30-day rate proration and full shared-job
 cost allocation remain unchanged and disclosed; no collected-profit claim.
 Focused numerical, missing/zero-cost, authorization and pagination behavior tests
-pass. Real disposable browser/mobile/theme/axe coverage added; full CI/preview
-pending. No schema/provider change. Growth/source and whole-card acceptance remain.
+pass. Real disposable browser/mobile/theme/axe coverage passed in CI 36897635675
+(902 tests / 144 browser checks); READY exact-head preview, six screenshots
+inspected and #133 merged. No schema/provider change. Growth/source and
+whole-card/manual acceptance remain.

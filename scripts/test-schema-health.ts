@@ -17,7 +17,7 @@ async function main() {
       // StaffTask was absent from the old representative-table check. It is
       // still empty here (before seed), proving empty tables are validated.
       assert.equal(await tx.staffTask.count(), 0);
-      await tx.$executeRaw`ALTER TABLE "StaffTask" DROP COLUMN "note"`;
+      await tx.$executeRaw`ALTER TABLE "StaffTask" DROP COLUMN "version"`;
       await verifySchemaHealth(tx);
       // Force rollback even if the check unexpectedly succeeds.
       throw new Error("Schema health accepted a missing column.");

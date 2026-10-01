@@ -11,6 +11,8 @@ const m = vi.hoisted(() => ({
   complete: vi.fn(),
   remove: vi.fn(),
   refresh: vi.fn(),
+  update: vi.fn(),
+  reopen: vi.fn(),
 }));
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh: m.refresh }),
@@ -19,6 +21,8 @@ vi.mock("@/app/desk/tasks/actions", () => ({
   createTaskAction: m.create,
   completeTaskAction: m.complete,
   deleteTaskAction: m.remove,
+  updateTaskAction: m.update,
+  reopenTaskAction: m.reopen,
 }));
 import { NewTaskForm } from "@/app/desk/tasks/new-task-form";
 import { TaskRow } from "@/app/desk/tasks/task-row";
@@ -46,13 +50,17 @@ it("preserves text and date after a rejected save, resets only after confirmed s
     "2026-09-30",
   );
   expect(m.refresh).not.toHaveBeenCalled();
-  await waitFor(() => expect(screen.getByRole("button", { name: "Add task" })).toBeEnabled());
+  await waitFor(() =>
+    expect(screen.getByRole("button", { name: "Add task" })).toBeEnabled(),
+  );
   fireEvent.click(screen.getByRole("button", { name: "Add task" }));
   expect(await screen.findByRole("status")).toHaveTextContent("Task added.");
   expect(screen.getByLabelText("New task")).toHaveValue("");
   expect(m.create).toHaveBeenLastCalledWith({
     note: "Call customer",
     dueDate: "2026-09-30",
+    priority: "NORMAL",
+    assigneeUserId: "",
   });
 });
 it("does not claim success for an ambiguous network error", async () => {
@@ -70,6 +78,10 @@ it("does not claim success for an ambiguous network error", async () => {
 });
 const task = {
   id: "t1",
+  priority: "NORMAL",
+  version: 1,
+  completedAt: null,
+  assignee: null,
   note: "Call customer",
   dueDate: new Date("2026-09-30"),
   customer: null,
@@ -98,7 +110,7 @@ it("requires removal confirmation and preserves linked task on mutation failure"
   expect(m.refresh).not.toHaveBeenCalled();
 });
 it("refreshes only after the completion action succeeds", async () => {
-  m.complete.mockResolvedValue(undefined);
+  m.complete.mockResolvedValue({ status: "success" });
   render(
     <ul>
       <TaskRow task={task} today="2026-10-01" />
@@ -107,5 +119,46 @@ it("refreshes only after the completion action succeeds", async () => {
   expect(screen.getByText(/Overdue/)).toBeVisible();
   fireEvent.click(screen.getByRole("button", { name: "Done" }));
   await waitFor(() => expect(m.refresh).toHaveBeenCalledOnce());
-  expect(m.complete).toHaveBeenCalledWith("t1");
+  expect(m.complete).toHaveBeenCalledWith("t1", 1);
+});
+
+it("keeps a stale editor's text, date and assignee instead of claiming success", async () => {
+  m.update.mockResolvedValue({
+    status: "conflict",
+    message:
+      "Someone changed this task. Your text is preserved; reload before saving again.",
+  });
+  render(
+    <ul>
+      <TaskRow
+        task={task}
+        assignees={[
+          { id: "staff", name: "Staff", email: "staff@example.test" },
+        ]}
+      />
+    </ul>,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Edit task" }));
+  fireEvent.change(screen.getByLabelText("Task note"), {
+    target: { value: "Keep my new text" },
+  });
+  fireEvent.change(screen.getByLabelText("Assigned to"), {
+    target: { value: "staff" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Save task" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent("Someone changed");
+  expect(screen.getByLabelText("Task note")).toHaveValue("Keep my new text");
+  expect(screen.getByLabelText("Assigned to")).toHaveValue("staff");
+  expect(m.refresh).not.toHaveBeenCalled();
+});
+it("reopens only after server confirmation", async () => {
+  m.reopen.mockResolvedValue({ status: "success" });
+  render(
+    <ul>
+      <TaskRow task={{ ...task, completedAt: new Date(), version: 4 }} />
+    </ul>,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Reopen" }));
+  expect(await screen.findByRole("status")).toHaveTextContent("Task reopened.");
+  expect(m.reopen).toHaveBeenCalledWith("t1", 4);
 });

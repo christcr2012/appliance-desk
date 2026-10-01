@@ -1082,3 +1082,19 @@ claim plus a unique subscriber/step record prevents overlapping cron runs
 from sending duplicates. SENT means accepted by Resend, not inbox delivery.
 There is no open tracking, SMS automation, purchased list import, or automated
 outreach to people who have not opted in.
+
+
+## Team follow-ups — October 1, 2026
+
+Tasks remain shared across OWNER/ADMIN/STAFF. Team lists all open tasks; Mine
+means assigned to the signed-in person, Unassigned means no assignee, and
+Completed permits reopening. Assignment is to an active OWNER/ADMIN/STAFF
+account only. Deactivated assignees remain visible as inactive until reassigned.
+Priority is explicit Low/Normal/High, Normal for existing tasks; higher priority
+sorts first, then the date-only Colorado deadline (undated last) and stable ties.
+Edits require the displayed version. Competing changes return conflict and keep
+the user's draft. Completion/reopen already in that state has no extra effects;
+all effective mutations receive atomic audit entries. Links remain unchanged on
+editing/reassignment/completion/reopening. STAFF cannot create or see lead links;
+archived customer/job links are omitted. Notes may create a linked follow-up
+without sending any message or recording an invented contact promise.
