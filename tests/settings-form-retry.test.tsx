@@ -40,6 +40,7 @@ it("retains typed edits on rejected save and lets the owner retry", async () => 
     (screen.getByLabelText("Business name") as HTMLInputElement).value,
   ).toBe("Edited");
   expect(screen.queryByLabelText("Delivery fee")).toBeNull();
+  await waitFor(() => expect(screen.getByRole("button", { name: "Save this section" })).toBeEnabled());
   fireEvent.click(screen.getByRole("button", { name: "Save this section" }));
   await waitFor(() =>
     expect(screen.getByRole("status").textContent).toBe("Settings saved."),
