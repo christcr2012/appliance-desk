@@ -72,13 +72,18 @@ for (const role of ["owner", "customer"] as const) {
             await page.goto(route);
             await expect(page.locator("main h1")).toBeVisible();
             await accessible(page);
-            if (route === routes[0]) {
-              const image = info.outputPath(`${role}-${width}-${theme}.png`);
+            if (route === routes[0] || route.includes("section=products")) {
+              const image = info.outputPath(
+                `${role}-${width}-${theme}-${route.includes("section=products") ? "products" : "home"}.png`,
+              );
               await page.screenshot({ path: image, fullPage: true });
-              await info.attach(`${role}-${width}-${theme}`, {
-                path: image,
-                contentType: "image/png",
-              });
+              await info.attach(
+                `${role}-${width}-${theme}-${route.includes("section=products") ? "products" : "home"}`,
+                {
+                  path: image,
+                  contentType: "image/png",
+                },
+              );
             }
           }
         });
