@@ -95,10 +95,10 @@ sequencing remain incomplete. No live activation, spending or customer-data clea
 | [#81](https://github.com/christcr2012/appliance-desk/pull/81#discussion_r4138431842) | Preserve the selected Colorado due date | Pending |
 | [#81](https://github.com/christcr2012/appliance-desk/pull/81#discussion_r4138431849) | Calculate Today using Mountain Time | Pending |
 | [#81](https://github.com/christcr2012/appliance-desk/pull/81#discussion_r4138431858) | Clear the lost reason when reopening a lead | Implemented in CRM repair; full CI/preview pending |
-| [#83](https://github.com/christcr2012/appliance-desk/pull/83#discussion_r4138909733) | Make purchase-order receiving atomic | Pending |
-| [#83](https://github.com/christcr2012/appliance-desk/pull/83#discussion_r4138909741) | Synchronize the stock editor after stock changes | Pending |
-| [#83](https://github.com/christcr2012/appliance-desk/pull/83#discussion_r4138909747) | Associate every purchase-order line label with its field | Pending |
-| [#83](https://github.com/christcr2012/appliance-desk/pull/83#discussion_r4138909752) | Subtract used parts atomically | Pending |
+| [#83](https://github.com/christcr2012/appliance-desk/pull/83#discussion_r4138909733) | Make purchase-order receiving atomic | Implemented in purchasing repair; full CI/preview pending |
+| [#83](https://github.com/christcr2012/appliance-desk/pull/83#discussion_r4138909741) | Synchronize the stock editor after stock changes | Implemented in purchasing repair; full CI/preview pending |
+| [#83](https://github.com/christcr2012/appliance-desk/pull/83#discussion_r4138909747) | Associate every purchase-order line label with its field | Implemented in purchasing repair; full CI/preview pending |
+| [#83](https://github.com/christcr2012/appliance-desk/pull/83#discussion_r4138909752) | Subtract used parts atomically | Implemented in purchasing repair; full CI/preview pending |
 | [#83](https://github.com/christcr2012/appliance-desk/pull/83#discussion_r4138909756) | Record the completed feature in the handoff | Pending |
 | [#86](https://github.com/christcr2012/appliance-desk/pull/86#discussion_r4143931482) | Block preview writes from changing live email settings | Pending |
 | [#98](https://github.com/christcr2012/appliance-desk/pull/98#discussion_r4147176159) | Expect the later email-verification backfill | Pending |

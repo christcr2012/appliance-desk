@@ -86,8 +86,9 @@ export function NewPurchaseOrderForm({
             <div key={i} className="rounded-md border border-gray-200 p-3">
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <div>
-                  <label className="block text-xs text-gray-600">Part on file (optional)</label>
+                  <label htmlFor={`po-line-${i}-part`} className="block text-xs text-gray-600">Part on file (optional)</label>
                   <select
+                    id={`po-line-${i}-part`}
                     value={line.partRecordId}
                     onChange={(e) => updateLine(i, { partRecordId: e.target.value })}
                     className="mt-1 block w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
@@ -101,8 +102,9 @@ export function NewPurchaseOrderForm({
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-600">Description</label>
+                  <label htmlFor={`po-line-${i}-description`} className="block text-xs text-gray-600">Description</label>
                   <input
+                    id={`po-line-${i}-description`}
                     type="text"
                     required
                     value={line.description}
@@ -113,8 +115,9 @@ export function NewPurchaseOrderForm({
               </div>
               <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
                 <div>
-                  <label className="block text-xs text-gray-600">Quantity</label>
+                  <label htmlFor={`po-line-${i}-quantity`} className="block text-xs text-gray-600">Quantity</label>
                   <input
+                    id={`po-line-${i}-quantity`}
                     type="number"
                     min={1}
                     required
@@ -124,8 +127,9 @@ export function NewPurchaseOrderForm({
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-600">Unit cost ($)</label>
+                  <label htmlFor={`po-line-${i}-cost`} className="block text-xs text-gray-600">Unit cost ($)</label>
                   <input
+                    id={`po-line-${i}-cost`}
                     type="number"
                     min={0}
                     step="0.01"

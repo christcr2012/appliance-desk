@@ -153,26 +153,17 @@ export async function getPurchaseOrderById(id: string) {
  * automate on his behalf) rather than anything that talks to a
  * supplier's system. */
 export async function markPurchaseOrderOrdered(userId: string, purchaseOrderId: string) {
-  const order = await prisma.purchaseOrder.findUniqueOrThrow({ where: { id: purchaseOrderId } });
-  if (order.status !== "DRAFT") {
-    throw new Error("Only a draft purchase order can be marked as ordered.");
-  }
-
-  const updated = await prisma.purchaseOrder.update({
-    where: { id: purchaseOrderId },
-    data: { status: "ORDERED", orderedAt: new Date() },
+  return prisma.$transaction(async tx => {
+    const claim = await tx.purchaseOrder.updateMany({
+      where: { id: purchaseOrderId, status: "DRAFT" },
+      data: { status: "ORDERED", orderedAt: new Date() },
+    });
+    if (claim.count !== 1) throw new Error("Only a draft purchase order can be marked as ordered.");
+    await tx.auditLog.create({ data: {
+      userId, action: "purchase_order.order", entityType: "PurchaseOrder", entityId: purchaseOrderId,
+    } });
+    return tx.purchaseOrder.findUniqueOrThrow({ where: { id: purchaseOrderId } });
   });
-
-  await prisma.auditLog.create({
-    data: {
-      userId,
-      action: "purchase_order.order",
-      entityType: "PurchaseOrder",
-      entityId: purchaseOrderId,
-    },
-  });
-
-  return updated;
 }
 
 /**
@@ -189,15 +180,19 @@ export async function markPurchaseOrderOrdered(userId: string, purchaseOrderId: 
  * so this can't accidentally double-add stock.
  */
 export async function receivePurchaseOrder(userId: string, purchaseOrderId: string) {
-  const order = await prisma.purchaseOrder.findUniqueOrThrow({
-    where: { id: purchaseOrderId },
-    include: { lines: true },
-  });
-  if (order.status !== "ORDERED") {
-    throw new Error("Only a purchase order that's been marked as ordered can be received.");
-  }
-
   await prisma.$transaction(async (tx) => {
+    // The status claim serializes competing receive/cancel operations before
+    // stock changes. A later failure rolls back both the claim and increments.
+    const claim = await tx.purchaseOrder.updateMany({
+      where: { id: purchaseOrderId, status: "ORDERED" },
+      data: { status: "RECEIVED", receivedAt: new Date() },
+    });
+    if (claim.count !== 1) {
+      throw new Error("Only a purchase order that's been marked as ordered can be received.");
+    }
+    const order = await tx.purchaseOrder.findUniqueOrThrow({
+      where: { id: purchaseOrderId }, include: { lines: true },
+    });
     for (const line of order.lines) {
       if (line.partRecordId) {
         await tx.partRecord.update({
@@ -206,11 +201,6 @@ export async function receivePurchaseOrder(userId: string, purchaseOrderId: stri
         });
       }
     }
-
-    await tx.purchaseOrder.update({
-      where: { id: purchaseOrderId },
-      data: { status: "RECEIVED", receivedAt: new Date() },
-    });
 
     await tx.auditLog.create({
       data: {
@@ -225,23 +215,15 @@ export async function receivePurchaseOrder(userId: string, purchaseOrderId: stri
 }
 
 export async function cancelPurchaseOrder(userId: string, purchaseOrderId: string) {
-  const order = await prisma.purchaseOrder.findUniqueOrThrow({ where: { id: purchaseOrderId } });
-  if (order.status === "RECEIVED" || order.status === "CANCELLED") {
-    throw new Error("This purchase order can't be cancelled anymore.");
-  }
-
-  await prisma.purchaseOrder.update({
-    where: { id: purchaseOrderId },
-    data: { status: "CANCELLED" },
-  });
-
-  await prisma.auditLog.create({
-    data: {
-      userId,
-      action: "purchase_order.cancel",
-      entityType: "PurchaseOrder",
-      entityId: purchaseOrderId,
-    },
+  await prisma.$transaction(async tx => {
+    const claim = await tx.purchaseOrder.updateMany({
+      where: { id: purchaseOrderId, status: { in: ["DRAFT", "ORDERED"] } },
+      data: { status: "CANCELLED" },
+    });
+    if (claim.count !== 1) throw new Error("This purchase order can't be cancelled anymore.");
+    await tx.auditLog.create({ data: {
+      userId, action: "purchase_order.cancel", entityType: "PurchaseOrder", entityId: purchaseOrderId,
+    } });
   });
 }
 
@@ -252,30 +234,24 @@ export async function cancelPurchaseOrder(userId: string, purchaseOrderId: strin
  * typo (using more than's on hand) is silently floored rather than
  * producing a confusing negative count. */
 export async function recordPartUsage(userId: string, partRecordId: string, quantity: number) {
-  if (quantity < 1) {
+  if (!Number.isSafeInteger(quantity) || quantity < 1) {
     throw new Error("Enter how many were used.");
   }
 
-  const part = await prisma.partRecord.findUniqueOrThrow({ where: { id: partRecordId } });
-  const newQuantity = Math.max(0, part.quantityOnHand - quantity);
-
-  const updated = await prisma.partRecord.update({
-    where: { id: partRecordId },
-    data: { quantityOnHand: newQuantity },
-  });
-
-  await prisma.auditLog.create({
-    data: {
-      userId,
-      action: "part.use",
-      entityType: "PartRecord",
-      entityId: partRecordId,
+  return prisma.$transaction(async tx => {
+    // A row lock protects the read/clamp/write against simultaneous use or
+    // receiving stock. Bound parameters; no external resource or provider call.
+    await tx.$queryRaw`SELECT "id" FROM "PartRecord" WHERE "id" = ${partRecordId} FOR UPDATE`;
+    const part = await tx.partRecord.findUniqueOrThrow({ where: { id: partRecordId } });
+    const newQuantity = Math.max(0, part.quantityOnHand - quantity);
+    const updated = await tx.partRecord.update({ where: { id: partRecordId }, data: { quantityOnHand: newQuantity } });
+    await tx.auditLog.create({ data: {
+      userId, action: "part.use", entityType: "PartRecord", entityId: partRecordId,
       oldValue: { quantityOnHand: part.quantityOnHand },
       newValue: { quantityOnHand: newQuantity, usedQuantity: quantity },
-    },
+    } });
+    return updated;
   });
-
-  return updated;
 }
 
 export type PartStockSettingsInput = {

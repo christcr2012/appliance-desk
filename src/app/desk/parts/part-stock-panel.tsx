@@ -83,7 +83,7 @@ export function PartStockPanel({
         <button type="button" onClick={() => setMode("view")} className="text-gray-500">
           Cancel
         </button>
-        {error && <span className="text-red-700">{error}</span>}
+        {error && <span role="alert" className="text-red-700">{error}</span>}
       </form>
     );
   }
@@ -120,7 +120,7 @@ export function PartStockPanel({
         <button type="button" onClick={() => setMode("view")} className="text-gray-500">
           Cancel
         </button>
-        {error && <span className="text-red-700">{error}</span>}
+        {error && <span role="alert" className="text-red-700">{error}</span>}
       </form>
     );
   }
@@ -135,7 +135,12 @@ export function PartStockPanel({
       <button type="button" onClick={() => setMode("use")} className="text-gray-700 underline">
         Used some
       </button>
-      <button type="button" onClick={() => setMode("settings")} className="text-gray-700 underline">
+      <button type="button" onClick={() => {
+        setSettingsQuantity(String(quantityOnHand));
+        setSettingsThreshold(reorderThreshold !== null ? String(reorderThreshold) : "");
+        setError(null);
+        setMode("settings");
+      }} className="text-gray-700 underline">
         Edit stock
       </button>
     </div>
