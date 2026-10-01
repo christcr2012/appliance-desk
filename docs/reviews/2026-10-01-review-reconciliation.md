@@ -193,3 +193,7 @@ launch gates. This changes planning, not financial/lifecycle policy or productio
 Checked preceding/latest #125/#126 reviews/threads/comments: only the submitted
 documentation review, no blocking findings. Automated quota unavailable and waived.
 Security audit webhook concurrency/partial-failure P0 remains first code priority.
+
+Owner follow-up adds B34–B36: customer renewal, early termination fee workflow and
+optional auto-renewal. These are scope/acceptance additions, not shipped features
+or approved fee amounts/live collection. Existing signed/payment history preserved.

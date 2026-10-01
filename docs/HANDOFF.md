@@ -45,15 +45,18 @@ webhook concurrency/partial-failure remains open and first code priority. No
 claim that the security audit's nine items or the overhaul are complete.
 
 Chris's new 33-item business audit is now mapped in
-`docs/reviews/2026-10-01-business-logic-audit.md` (B01–B33), Completion Plan,
+`docs/reviews/2026-10-01-business-logic-audit.md` (B01–B36), Completion Plan,
 TASKS O31, ROADMAP and AGENTS. He prefers all outcomes before launch; explicit owner
 approval is needed for narrower scope. Existing late fees, consolidated statements,
 consent writes, phone staff workflow and stock protection are recorded as current
 foundations with remaining acceptance, not falsely marked absent or complete.
-New gaps/policy/data inputs are explicit. No billing-before-delivery, reservation
+Customer renewal, early termination fees and optional auto-renewal are added as
+B34–B36, with customer confirmation/consent, fee-policy and duplicate/overlap recovery
+acceptance. Fee amounts and live activation remain unapproved. New gaps/policy/data
+inputs are explicit. No billing-before-delivery, reservation
 release, refund/retention or legal rule changed by this documentation update.
 
-This follow-on is documentation only. Source/plan links and all 33 IDs checked;
+This follow-on is documentation only. Source/plan links and all 36 IDs checked;
 full CI/preview and exact-head review remain pending at submission. Subsequent code
 work begins with schema-free webhook concurrency/rollback and delayed-settlement
 regressions. Keep current model/single agent. Full O02 hosted fixture/independent

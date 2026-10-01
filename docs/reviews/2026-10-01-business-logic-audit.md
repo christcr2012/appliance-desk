@@ -4,9 +4,11 @@ Chris supplied a 33-item strategic audit on October 1, 2026 and requested that
 it be worked into the broader scope, preferably completed before launch. This
 file preserves all requested outcomes and maps them to current evidence and
 remaining work. It is a business review, not proof of a defect or a legal opinion.
+The owner subsequently added customer renewal, early termination fees and optional
+auto-renewal (B34–B36). Those are also prelaunch scope.
 Current inspected baseline: main e1ff6688ad322146accedc74b3a63351a9ea127c.
 
-The launch target now includes B01–B33 below. An existing implementation is not
+The launch target now includes B01–B36 below. An existing implementation is not
 whole-flow acceptance. Each item needs behavioral evidence and owner acceptance,
 or an explicit owner-approved change/deferment, before O31 claims launch-ready.
 Do not silently discard an item because it overlaps an existing card. Existing
@@ -56,6 +58,21 @@ O13/O14 scheduling contracts and O32 Google Workspace sequencing.
 | B32 | Nonnegative part stock, shortage warning and attributed stock history | **Implemented protection, warning acceptance remaining.** #118 transaction/row-lock repair and `purchasing/index.ts` prevent negative edits and clamp usage to zero, recording actual stock changes. Existing tests cover overlapping receiving/usage. Stock-shortage UI and whether excess requested use should be rejected or acknowledged need acceptance; do not claim negative-stock corruption still exists or silently change the approved clamp policy. | Purchasing validation; O02 if DB constraint; owner shortage policy |
 | B33 | Appliance condition history with before/after, actor/reason and visible timeline | **Partial.** `inventory.updateApplianceDetails` records `appliance.unit.update` with actor/new values and concurrency check. It lacks established condition-specific before/after/reason acceptance; historical status-only timeline defects remain in the review ledger. Reuse AuditLog before adding a duplicate history table and verify failed-write atomicity/history display. | Historical inventory review repair; O02 only if new schema |
 
+## Customer lifecycle extension — owner request, October 1
+
+These three additions extend the original 33-item audit; they do not retroactively
+change an existing signed agreement or authorize live collection.
+
+| ID | Requested business outcome | Current evidence and remaining acceptance | Dependencies |
+|---|---|---|---|
+| B34 | Customer can request and confirm renewal of a rental agreement | **New scope; not implemented/verified here.** Offer eligible customer-scoped renewals with the proposed term, appliances, price, billing dates and updated terms shown before confirmation. Preserve the old signed terms, signatures, invoices and payments; record the new term/approval/signature as applicable. Define owner approval, availability and account-standing rules. Test ownership, ended/cancelled agreements, duplicate submission, competing return/renewal, provider failure and successful reload. Renewal must not create overlapping subscriptions or charge a second deposit without an explicit approved rule. | O12/O20; O02 for schema; B19/B28/B30; billing policy and staged provider evidence |
+| B35 | Customer can cancel early with a disclosed termination-fee workflow | **New scope; policy and implementation remaining.** Provide an eligibility/fee quotation before confirmation: effective end date, remaining obligation, credits/refunds, termination fee, unpaid balance and appliance pickup/return requirements. Define the formula, caps, exceptions, notice period and whether the request requires owner approval in a versioned policy incorporated into applicable signed terms. Do not invent fee amounts or apply a new fee retroactively. Record request, decision, consent, actor and reason; separate request, agreement ending, return and actual financial settlement. Test duplicate requests, disputes/waivers, failed collection, prepaid agreements and cancellation during renewal. | B06/B11/B13/B18/B28; O02/O12/O20; owner policy/legal review; separate live collection approval |
+| B36 | Customer can opt into and disable automatic renewal | **New scope; not implemented/verified here.** Require explicit opt-in with versioned renewal terms, term length, price/change rules, notice/reminder timing and how to disable. Store attributable consent and preference history; show the next renewal date and confirmation. Disabling must stop future renewal without silently cancelling the current rental. At the boundary recheck account/agreement eligibility and preference, use atomic idempotent renewal and recover ambiguous provider outcomes without duplicate charges/terms. Define notices and price-change/reconfirmation policy before activation. Test opt-out racing the renewal job, cancellation/return conflicts, failed renewal, repeated runs and customer isolation. | B20 consent patterns; B34/B35; O02/O24–O28; O32 communication sequence; owner policy/legal review and live activation approval |
+
+Keep explicit renewal, automatic renewal and early termination distinct. A customer
+request does not itself prove that appliances were returned, billing stopped, a fee
+was collected or a new term was signed. The portal must show those facts honestly.
+
 ## Launch gates and implementation order
 
 1. Reconcile current historical reviews and security-audit P0 first. Transactional
@@ -69,7 +86,7 @@ O13/O14 scheduling contracts and O32 Google Workspace sequencing.
 4. Treat B12, B15, B18–B22, B28/B30/B31 and critical unbilled/failed-delivery cases
    as billing/launch acceptance, alongside the existing O30/O31 checks. Preserve
    test-mode staging until Chris separately authorizes real customer collection.
-5. Deliver remaining B08/B09/B11/B14/B16/B17/B23/B25/B26/B29/B33 and the approved
+5. Deliver remaining B08/B09/B11/B14/B16/B17/B23/B25/B26/B29/B33–B36 and the approved
    B21/B24 retention/export design before launch, unless Chris explicitly approves
    a narrower launch. B27 still requires the actual import dataset. No placeholder
    implementation, generic "phase complete" claim or unapproved deferment.
@@ -77,10 +94,13 @@ O13/O14 scheduling contracts and O32 Google Workspace sequencing.
 Each PR records B/O IDs, current contract, real behavior tests, exact-head review,
 CI/preview evidence and owner/manual limitations. Existing passing suites can be
 reused when unchanged; new evidence must test actual failures and recovery. The
-33 rows are tracking records, not executable stubs or promises of shipped features.
+36 rows are tracking records, not executable stubs or promises of shipped features.
 
 ## Decisions that must be made concrete before affected implementation
 
+- Renewal eligibility, terms/prices, approval/signature requirements, automatic-renewal
+  notices and consent, and early termination fee formula/caps/exceptions. No fee
+  amount or renewal collection is authorized by this scope addition.
 - Whether any rent can be charged/backdated without completed delivery, and the
   actual entitlement/owner approval required; default remains delivery-first.
 - What counts as recent reservation activity, whether inactivity permits automatic

@@ -32,14 +32,15 @@ Preserve O02 storage/isolation and O32 sequencing; no model changes.
 
 ## Expanded owner business scope — 2026-10-01
 
-Chris supplied a comprehensive 33-item operational/business audit and prefers all
+Chris supplied a comprehensive 33-item operational/business audit, then added
+customer renewal, early termination fees and optional auto-renewal (B34–B36). He prefers all
 outcomes completed before launch. [Business audit reconciliation](../../reviews/2026-10-01-business-logic-audit.md)
-tracks B01–B33, existing evidence, missing acceptance, policy inputs and dependencies.
+tracks B01–B36, existing evidence, missing acceptance, policy inputs and dependencies.
 This is approved planning scope, not a claim that the audit's "missing" assertions
 are all current defects. Existing late-fee automation, statements, consent records,
 phone staff work and nonnegative parts require verification rather than duplication.
 
-O31 launch acceptance now includes all B01–B33, or an explicit owner-approved
+O31 launch acceptance now includes all B01–B36, or an explicit owner-approved
 scope change/deferment. Billing essentials include staged isolation, drift
 reconciliation, stored signing/invoice artifacts, consent provenance, tax boundaries,
 refund/unused-term policies and outage recovery. Historical review repairs and the

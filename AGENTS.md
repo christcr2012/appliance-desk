@@ -82,7 +82,7 @@ anything outside this project.
 - Read `docs/AI-PR-READ-FIRST.md` before planning or merging each PR; check its
   applicable security/billing constraints against the changes and record evidence.
 - Track the owner's expanded prelaunch business scope in
-  `docs/reviews/2026-10-01-business-logic-audit.md` (B01–B33). Reconcile claims
+  `docs/reviews/2026-10-01-business-logic-audit.md` (B01–B36). Reconcile claims
   against current behavior; use its launch gates and explicit policy dependencies.
   Never silently defer those outcomes or override existing financial rules.
 - At session start, inventory unaddressed review submissions and unresolved
