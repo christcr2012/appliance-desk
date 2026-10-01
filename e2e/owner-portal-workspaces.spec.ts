@@ -6,6 +6,7 @@ async function accessible(page: Page) {
     await page.evaluate(
       () => document.documentElement.scrollWidth <= window.innerWidth,
     ),
+    `Horizontal overflow at ${page.url()}`,
   ).toBe(true);
   expect(
     (
