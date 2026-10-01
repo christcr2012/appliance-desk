@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type Stripe from "stripe";
 import { prisma } from "@/lib/prisma";
 import { __setStripeClientForTests } from "@/lib/stripe";
+import { getAccountingTransactions } from "@/domains/reports/accounting-export";
 import { processStripeWebhookEvent } from "@/domains/billing/webhooks";
 
 // ---------------------------------------------------------------------------
@@ -212,6 +213,10 @@ describe("processStripeWebhookEvent — checkout.session.completed", () => {
     expect(invoice!.status).toBe("PAID");
     expect(invoice!.customerId).toBe(customerId);
     expect(invoice!.amountPaidCents).toBe(19292);
+    const cashRows = (await getAccountingTransactions()).filter(row => row.customerName === "Billing Test Customer");
+    expect(cashRows).toHaveLength(1);
+    expect(cashRows.reduce((sum, row) => sum + row.amountCents, 0)).toBe(19292);
+
     expect(invoice!.taxCents).toBe(292);
 
     const rentalLine = invoice!.lineItems.find((li) => li.kind === "RENTAL");
@@ -491,3 +496,4 @@ describe("processStripeWebhookEvent — checkout.session.async_payment_succeeded
     expect(log).not.toBeNull();
   });
 });
+

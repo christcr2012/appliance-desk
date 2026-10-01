@@ -8,14 +8,14 @@
 //
 // Covers every place real money actually moves in this app: a
 // succeeded card/ACH payment, a refund on an invoice, a security
-// deposit collected at signing, and a security deposit refunded at
+// deposit refunded at
 // move-out. Amounts follow the standard accounting-ledger convention —
 // positive for money coming in, negative for money going back out — so
 // a plain SUM() of the amount column in a spreadsheet is the real net
 // cash movement, not something the bookkeeper has to sign-flip by hand.
 import { prisma } from "@/lib/prisma";
 
-export type AccountingTransactionType = "Payment" | "Refund" | "Deposit collected" | "Deposit refunded";
+export type AccountingTransactionType = "Payment" | "Refund" | "Deposit refunded";
 
 export type AccountingTransactionRow = {
   date: Date;
@@ -70,9 +70,8 @@ export async function getAccountingTransactions(): Promise<AccountingTransaction
       },
     }),
     prisma.deposit.findMany({
+      where: { refundedAt: { not: null } },
       select: {
-        amountCents: true,
-        createdAt: true,
         refundedAt: true,
         refundedAmountCents: true,
         deductionReason: true,
@@ -114,16 +113,10 @@ export async function getAccountingTransactions(): Promise<AccountingTransaction
   }
 
   for (const d of deposits) {
-    rows.push({
-      date: d.createdAt,
-      type: "Deposit collected",
-      customerName: customerDisplayName(d.agreement.customer),
-      companyName: d.agreement.customer.companyName ?? "",
-      invoiceNumber: null,
-      amountCents: d.amountCents,
-      methodOrReason: "",
-      notes: "",
-    });
+    // Both signing and estimate-approval deposits already create succeeded
+    // Payment rows (billing/webhooks.ts). Deposit records track the liability;
+    // conversion can create that record later, without another cash receipt.
+    // Emitting its amount here would double-count cash and misdate conversion.
     if (d.refundedAt) {
       rows.push({
         date: d.refundedAt,
@@ -141,3 +134,4 @@ export async function getAccountingTransactions(): Promise<AccountingTransaction
   rows.sort((a, b) => a.date.getTime() - b.date.getTime());
   return rows;
 }
+
