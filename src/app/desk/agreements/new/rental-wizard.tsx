@@ -110,6 +110,7 @@ export function RentalWizard({
   );
   const requestKey = useRef(initialRequestKey);
   const [error, setError] = useState<string | null>(null);
+  const [activationWarning, setActivationWarning] = useState<string | null>(null);
 
   // Step 1 — customer
   const [customerMode, setCustomerMode] = useState<"existing" | "new">(
@@ -203,6 +204,7 @@ export function RentalWizard({
         );
         return;
       }
+      setActivationWarning(result.isNewAccount && !result.activationEmailSent ? result.customerId : null);
       setCustomerId(result.customerId);
       setCustomerName(newCustomer.name);
       const created = result.serviceAddresses.map((a) => ({
@@ -420,6 +422,17 @@ export function RentalWizard({
       {error && (
         <p role="alert" className="mt-4 text-sm text-red-700">
           {error}
+        </p>
+      )}
+
+      {activationWarning && (
+        <p role="alert" className="mt-4 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+          Customer saved, but the setup email was not sent. They cannot sign in
+          until they set their password. Open their{" "}
+          <Link href={`/desk/customers/${activationWarning}`} className="underline">
+            customer record
+          </Link>{" "}
+          and use Resend activation email. Do not create another customer.
         </p>
       )}
 

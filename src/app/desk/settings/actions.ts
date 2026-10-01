@@ -234,7 +234,7 @@ const newStaffAccountSchema = z.object({
 
 export async function createStaffAccountAction(
   raw: Record<string, unknown>,
-): Promise<SettingsActionState> {
+): Promise<SettingsActionState & { activationEmailSent?: boolean }> {
   const session = await requireRole("OWNER", "ADMIN");
 
   const parsed = newStaffAccountSchema.safeParse(raw);
@@ -247,7 +247,10 @@ export async function createStaffAccountAction(
   }
 
   try {
-    await createStaffAccount(session.user.id, parsed.data);
+    const result = await createStaffAccount(session.user.id, parsed.data);
+    revalidatePath("/desk/settings");
+    revalidatePath("/desk/activity");
+    return { status: "success", activationEmailSent: result.activationEmailSent };
   } catch (error) {
     return {
       status: "error",
@@ -258,10 +261,6 @@ export async function createStaffAccountAction(
     };
   }
 
-  revalidatePath("/desk/settings");
-  revalidatePath("/desk/activity");
-
-  return { status: "success" };
 }
 
 export async function resendStaffActivationEmailAction(

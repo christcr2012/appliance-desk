@@ -2,6 +2,7 @@ import { randomBytes, randomUUID } from "node:crypto";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { requestInvitationEmail } from "@/lib/password-email";
 import { sendEmail } from "@/lib/email";
 import { getBusinessSettings, parseServiceArea } from "@/domains/settings";
 import { generateUniqueReferralCode, linkReferralIfCodeProvided } from "@/domains/referrals";
@@ -369,19 +370,12 @@ export function generateUnusedAccountPassword(): string {
  * 6A item 2). Best-effort: a failed send is logged (see sendEmail) but
  * never throws, since the account itself is already created either way
  * and Chris can use "Resend activation email" from the customer's page
- * to try again. Returns whether the send was attempted without error —
- * not a delivery guarantee, same meaning as sendEmail's own result
- * elsewhere in this codebase. */
+ * to try again. Returns provider acceptance, not inbox delivery. Better Auth's
+ * generic reset success alone does not establish that any email was sent. */
 export async function sendCustomerActivationEmail(email: string): Promise<boolean> {
-  try {
-    await auth.api.requestPasswordReset({
-      body: { email, redirectTo: "/reset-password" },
-    });
-    return true;
-  } catch (error) {
-    console.error("[leads] Failed to send customer activation email", error);
-    return false;
-  }
+  return requestInvitationEmail(email, () => auth.api.requestPasswordReset({
+    body: { email, redirectTo: "/reset-password" },
+  }));
 }
 
 /**

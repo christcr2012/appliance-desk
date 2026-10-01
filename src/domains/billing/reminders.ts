@@ -75,11 +75,15 @@ export async function sendUpcomingBillingReminders(): Promise<{
     });
 
     try {
-      await sendEmail({
+      const delivery = await sendEmail({
         to: agreement.customer.user.email,
         subject: "Your upcoming payment",
         text: `Hi${agreement.customer.user.name ? ` ${agreement.customer.user.name}` : ""},\n\nJust a heads-up: your next rental payment is scheduled for ${dateLabel}${approxAmountCents !== null ? ` for approximately ${formatCents(approxAmountCents)}` : ""}. No action is needed — this will be charged automatically to the payment method on file.\n\nIf anything about your rental has changed, or you have questions, just reply to this email.`,
       });
+      if (!delivery.sent) {
+        failed += 1;
+        continue;
+      }
       await prisma.rentalAgreement.update({
         where: { id: agreement.id },
         data: { billingReminderSentForDate: agreement.nextBillingDate },

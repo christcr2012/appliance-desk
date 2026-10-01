@@ -1,3 +1,4 @@
+import { sendPasswordEmail } from "@/lib/password-email";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { randomUUID } from "node:crypto";
 import { hashPassword, verifyPassword } from "better-auth/crypto";
@@ -6,6 +7,7 @@ vi.mock("@/lib/auth", () => ({ auth: {
   $context: Promise.resolve({ password: { hash: (password: string) => hashPassword(password) } }),
   api: { requestPasswordReset: reset },
 } }));
+vi.mock("@/lib/email", () => ({ sendEmail: vi.fn().mockResolvedValue({ sent: true }) }));
 import { prisma } from "@/lib/prisma";
 import { convertLeadToCustomer, updateLeadStatus } from "@/domains/leads";
 
@@ -25,6 +27,7 @@ describe.skipIf(!enabled)("lead conversion atomic recovery", () => {
       leadIds.push(lead.id);
     }
     reset.mockImplementation(async ({ body }) => {
+      await sendPasswordEmail({ to: body.email, subject: "Setup", text: "Setup" });
       // Sending is permitted only after both the customer and conversion commit.
       expect(await prisma.customer.count({ where: { user: { email: body.email } } })).toBe(1);
       expect(await prisma.lead.count({ where: { email: { equals: body.email, mode: "insensitive" }, status: "CONVERTED" } })).toBe(1);

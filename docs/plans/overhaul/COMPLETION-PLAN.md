@@ -13,7 +13,9 @@ separate approvals for activation, spending and destructive changes remain.
 inventoried; 91 unresolved historical threads are tracked in
 `docs/reviews/2026-10-01-review-reconciliation.md`. Reconcile them against current
 code and repair valid defects with behavior evidence before new backlog work.
-The first CRM repair is in preparation; full gates pending, no threads resolved.
+CRM #117 and purchasing #118 are under review; email outcome repairs prepared.
+Codex exact-head review requests are blocked by its usage limit; CI/preview alone
+do not authorize merge or thread resolution. No threads resolved.
 Preserve O02 storage/isolation and O32 sequencing; no model changes.
 
 ## Execution

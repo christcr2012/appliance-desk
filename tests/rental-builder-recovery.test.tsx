@@ -6,14 +6,14 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
-const m = vi.hoisted(() => ({ create: vi.fn(), add: vi.fn(), send: vi.fn() }));
+const m = vi.hoisted(() => ({ create: vi.fn(), add: vi.fn(), send: vi.fn(), customer: vi.fn() }));
 vi.mock("@/app/desk/agreements/actions", () => ({
   createDraftAgreementAction: m.create,
   addRentalLineAction: m.add,
   sendForSignatureAction: m.send,
 }));
 vi.mock("@/app/desk/customers/actions", () => ({
-  createCustomerAction: vi.fn(),
+  createCustomerAction: m.customer,
 }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 import { RentalWizard } from "@/app/desk/agreements/new/rental-wizard";
@@ -153,4 +153,15 @@ it("keeps the saved review and avoids a success claim after an ambiguous signatu
       screen.getByRole("button", { name: "Send for signature" }),
     ).toBeEnabled(),
   );
+});
+
+it("keeps an unsent activation warning with a recovery link after saving a new customer", async () => {
+  m.customer.mockResolvedValue({ status: "success", customerId: "new-customer", isNewAccount: true, activationEmailSent: false, serviceAddresses: [{ id: "new-address", line1: "123 Main", city: "Greeley", state: "CO", zip: "80631" }] });
+  render(<RentalWizard customers={[]} availableAppliances={[]} />);
+  fireEvent.submit(screen.getByRole("button", { name: "Next: term & fees" }).closest("form")!);
+  const warning = await screen.findByRole("alert");
+  expect(warning).toHaveTextContent("setup email was not sent");
+  expect(screen.getByRole("link", { name: "customer record" })).toHaveAttribute("href", "/desk/customers/new-customer");
+  expect(screen.getByLabelText("Term (months, optional)")).toBeInTheDocument();
+  expect(m.customer).toHaveBeenCalledTimes(1);
 });

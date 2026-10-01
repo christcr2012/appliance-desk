@@ -1,3 +1,32 @@
+## 2026-10-01 — Email outcome review repairs
+
+Prepared follow-on to #118 after checking both predecessor reviews/threads and
+conversation comments. Codex review requests on #117/#118 were blocked by the
+review usage limit (comments 5930234718 / 5930248471). No credits purchased,
+model changed, review success claimed, thread resolved or PR merged. Fresh-head
+CI/preview proceed independently; required exact-head review remains pending.
+
+Billing reminders now honor sendEmail.sent before recording dedup or incrementing
+sent, leaving provider failures/suppressed sends retryable and continuing the batch.
+Customer/staff invitations capture acceptance from the configured password-email
+callback in an isolated async request context. Better Auth's generic success and
+its caught callback errors no longer masquerade as accepted mail. Public resets
+retain their identical known/unknown-account response. Concurrent same-address
+invitations cannot share results. No provider key, activation or live message sent.
+Staff action forwards acceptance and the form explains saved-account/retry status.
+Rental builder preserves an unsent-setup warning with the saved customer's recovery
+link after moving to terms. No duplicate-create recommendation or new schema.
+
+Local: 759 tests passed, eleven guarded CI-only cases skipped and four existing
+real-Postgres suites excluded. Types and lint passed (two existing warnings).
+New tests cover false-result/retry, concurrent acceptance isolation, callback absence,
+action roles/result propagation and rendered recovery. Disposable CI tests exercise
+the actual Better Auth callback and public privacy; phone browser checks saved staff,
+failed resend, axe and reload. Full CI, exact-head review and preview pending.
+React review: event-driven state, server role guard, serializable acceptance flag,
+alert/recovery link; no new client provider imports or fetch waterfall.
+Rollback: PR revert. O02 isolation/storage and O32 sequencing remain gated.
+
 ## 2026-10-01 — Review and CI follow-up
 
 PR #117 head 2ebdddc passed full CI (run 36852649575) and Vercel deployment.

@@ -1,3 +1,4 @@
+import { sendPasswordEmail } from "@/lib/password-email";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Phase 6A item 2 (customer account invitation & password recovery):
@@ -94,7 +95,10 @@ describe("convertLeadToCustomer — customer activation, no relayed passwords", 
     signUpEmail.mockReset().mockResolvedValue({ user: { id: "user-1" } });
     userCreate.mockReset().mockResolvedValue({ id: "user-1", role: "CUSTOMER" });
     hashPassword.mockReset().mockResolvedValue("native-hash");
-    requestPasswordReset.mockReset().mockResolvedValue({ status: true });
+    requestPasswordReset.mockReset().mockImplementation(async ({ body }) => {
+      await sendPasswordEmail({ to: body.email, subject: "Setup", text: "Setup" });
+      return { status: true };
+    });
   });
 
   it("creates a new account with a discarded random password and emails an activation link — never returns a password", async () => {
@@ -216,7 +220,10 @@ describe("sendCustomerActivationEmail", () => {
   });
 
   it("returns true when Better Auth's request-password-reset call succeeds", async () => {
-    requestPasswordReset.mockResolvedValue({ status: true });
+    requestPasswordReset.mockImplementation(async ({ body }) => {
+      await sendPasswordEmail({ to: body.email, subject: "Setup", text: "Setup" });
+      return { status: true };
+    });
     const { sendCustomerActivationEmail } = await import("@/domains/leads");
 
     await expect(sendCustomerActivationEmail("a@example.com")).resolves.toBe(true);

@@ -1,3 +1,4 @@
+import { sendPasswordEmail } from "@/lib/password-email";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Staff permissions framework (Task #66, docs/DECISIONS.md 2026-09-28) —
@@ -49,7 +50,10 @@ describe("createStaffAccount", () => {
     userUpdate.mockReset().mockResolvedValue({ id: "staff-1", role: "STAFF" });
     auditLogCreate.mockReset().mockResolvedValue({});
     signUpEmail.mockReset().mockResolvedValue({ user: { id: "staff-1" } });
-    requestPasswordReset.mockReset().mockResolvedValue({ status: true });
+    requestPasswordReset.mockReset().mockImplementation(async ({ body }) => {
+      await sendPasswordEmail({ to: body.email, subject: "Setup", text: "Setup" });
+      return { status: true };
+    });
   });
 
   it("creates the account with a discarded random password, sets role STAFF, and emails an activation link", async () => {
@@ -152,3 +156,5 @@ describe("reactivateStaffAccount", () => {
     });
   });
 });
+
+vi.mock("@/lib/email", () => ({ sendEmail: vi.fn().mockResolvedValue({ sent: true }) }));

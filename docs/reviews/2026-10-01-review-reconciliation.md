@@ -53,7 +53,7 @@ sequencing remain incomplete. No live activation, spending or customer-data clea
 | [#54](https://github.com/christcr2012/appliance-desk/pull/54#discussion_r4119814097) | Persist edits made after returning to earlier steps | Pending |
 | [#54](https://github.com/christcr2012/appliance-desk/pull/54#discussion_r4119814104) | Use the discounted monthly price in the review total | Pending |
 | [#54](https://github.com/christcr2012/appliance-desk/pull/54#discussion_r4119814111) | Add accessible labels to every address input | Pending |
-| [#54](https://github.com/christcr2012/appliance-desk/pull/54#discussion_r4119814118) | Surface failed activation emails before advancing | Pending |
+| [#54](https://github.com/christcr2012/appliance-desk/pull/54#discussion_r4119814118) | Surface failed activation emails before advancing | Implemented in email outcome repair; full CI/exact-head review/preview pending |
 | [#55](https://github.com/christcr2012/appliance-desk/pull/55#discussion_r4119945202) | Neutralize spreadsheet formulas in exported CSV cells | Pending |
 | [#55](https://github.com/christcr2012/appliance-desk/pull/55#discussion_r4119945208) | Add a unique tie-breaker to paginated job ordering | Pending |
 | [#55](https://github.com/christcr2012/appliance-desk/pull/55#discussion_r4119945212) | Return every skipped appliance and its reason | Pending |
@@ -76,9 +76,9 @@ sequencing remain incomplete. No live activation, spending or customer-data clea
 | [#60](https://github.com/christcr2012/appliance-desk/pull/60#discussion_r4124170447) | Remove the contradictory maintenance-photo roadmap entry | Pending |
 | [#61](https://github.com/christcr2012/appliance-desk/pull/61#discussion_r4124590917) | Mark the restore attribution as unconfirmed | Pending |
 | [#62](https://github.com/christcr2012/appliance-desk/pull/62#discussion_r4125549128) | Restrict financial operational pages from STAFF | Pending |
-| [#62](https://github.com/christcr2012/appliance-desk/pull/62#discussion_r4125549136) | Honor failed email results before recording a reminder | Pending |
+| [#62](https://github.com/christcr2012/appliance-desk/pull/62#discussion_r4125549136) | Honor failed email results before recording a reminder | Implemented in email outcome repair; full CI/exact-head review/preview pending |
 | [#62](https://github.com/christcr2012/appliance-desk/pull/62#discussion_r4125549141) | Scope staff appliance updates to the originating job | Pending |
-| [#62](https://github.com/christcr2012/appliance-desk/pull/62#discussion_r4125549150) | Propagate staff activation delivery failures | Pending |
+| [#62](https://github.com/christcr2012/appliance-desk/pull/62#discussion_r4125549150) | Propagate staff activation delivery failures | Implemented in email outcome repair; full CI/exact-head review/preview pending |
 | [#62](https://github.com/christcr2012/appliance-desk/pull/62#discussion_r4125549157) | Keep completed swap jobs visible for status follow-up | Pending |
 | [#62](https://github.com/christcr2012/appliance-desk/pull/62#discussion_r4125549168) | Filter the driver view to the signed-in staff member | Pending |
 | [#76](https://github.com/christcr2012/appliance-desk/pull/76#discussion_r4135862592) | Apply the brand kit's heading weight | Pending |
@@ -113,3 +113,7 @@ sequencing remain incomplete. No live activation, spending or customer-data clea
 
 - 5ba88ef: email normalization and scoring contract findings implemented in 2ebdddc.
 - 2ebdddc: malformed legacy email validation finding implemented; new exact-head review/full CI/preview pending. Thread [4154663228](https://github.com/christcr2012/appliance-desk/pull/117#discussion_r4154663228) remains open.
+
+## Exact-head review availability
+
+#117 request on 8418428571 and #118 request on bd89a9ac10 returned Codex review usage-limit notices (5930234718 / 5930248471). Review did not run; CI/preview do not discharge this gate. Threads remain open; no merges or review-credit purchase.
