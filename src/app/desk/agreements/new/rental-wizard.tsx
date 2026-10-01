@@ -796,7 +796,7 @@ export function RentalWizard({
                 htmlFor="damageWaiverDollars"
                 className="block text-sm font-medium text-gray-700"
               >
-                Damage waiver ($/mo, optional)
+                Damage waiver ($, one time at signing, optional)
               </label>
               <input
                 disabled={isPending}

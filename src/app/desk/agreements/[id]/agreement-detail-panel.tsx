@@ -182,7 +182,7 @@ export function AgreementDetailPanel({
           {agreement.termMonths ? `${agreement.termMonths}-month term` : "Month-to-month"}
           {agreement.depositCents > 0 && ` · Deposit ${formatCents(agreement.depositCents)}`}
           {agreement.damageWaiverCents > 0 &&
-            ` · Damage waiver ${formatCents(agreement.damageWaiverCents)}/mo`}
+            ` · Damage waiver ${formatCents(agreement.damageWaiverCents)} once at signing`}
           {agreement.paidInFullInAdvance && " · Paid in full, in advance"}
         </p>
 

@@ -28,39 +28,40 @@ See `docs/AI-PR-READ-FIRST.md` for the full audit and the categorized fix-now / 
 
 ## 2026-10-01 — Current review repair checkpoint
 
-#117–#123 merged; main 2f75a47b03248215e1722921f042a4b9f9566594.
-Each used exact-head inspection, full CI, ready Vercel and expected-head merge.
-#123 CI 36864737390 passed 842 tests/136 browser checks, including actual Colorado
-DST queries, phone day/week/agenda and checklist persistence/reload/axe. All 14
-published blobs matched inspected local commit; merge tree matched tested head.
-Automated review quota unavailable, explicitly waived by Chris October 1.
-AGENTS.md requires preceding/dependency/all-state review continuity and safe merges.
+#117–#124 merged; main 827b282b18786205b5826c430c0b19bb6ae7331d. Each used
+exact-head inspection, full CI, ready Vercel and expected-head merge. #123 passed
+842 tests/136 browser checks (36864737390); #124 passed 854/137 (36867157292),
+including real staff membership/provenance/audit/financial projections and phone
+shared route→swap completion→replacement status→reload/axe. All 15 #124 published
+blobs inspected; prospective merge tree matched tested head. Four staff findings
+resolved after verification. Automated review quota unavailable, explicitly waived
+by Chris October 1. Forty-one verified resolutions: thirty-eight historical plus
+three #117 findings. Fifty-three historical remain; see the ledger.
 
-Thirty-seven threads resolved with evidence: thirty-four historical plus three
-#117 findings. Fifty-seven historical findings remain open; ledger tracks them.
-Existing #105 financial isolation verified against current role guards/projections
-and real staff route/payload tests; historical finding resolved. No overhaul
-completion claim. O02 hosted fixture/independent preview storage remains incomplete,
-O13/O14 assignment/duration/version gates and O32 sequencing preserved.
+Audit docs PR #126 reviewed at c416e4cc648095265236a0c04ea88d49da7d88ed,
+review 5379930095. Original HANDOFF deletion corrected: audit reminder prepended,
+current main retained verbatim. Two-document diff, no code changes/deletions.
+Full CI remains pending. AGENTS now requires reading the full audit for every PR.
 
-Current follow-on repairs staff job-origin appliance update authorization, SWAP
-replacement-only suggestions and driver completion follow-up. Membership verified
-before writes; owner/admin inventory authority preserved. Incoming-unit identity
-comes from recorded guided-swap intent, never current-status guesses. Legacy swaps
-without intent ask owner/admin confirmation. Failed saves show errors and preserve
-retry. Driver route explicitly shared/unassigned; swap/maintenance completion opens
-job detail. No assignment schema or individual-route claim.
+Prepaid PR #125 integrates the audit before merge and reruns exact-head CI.
+It returns before Stripe calls for recorded full-term advance payments, independent
+of the free-month bonus; clears stale recurring-billing errors without inventing
+receipts/billing start dates. Builder, owner agreement and signing waiver labels
+match the later approved one-time signing contract. No existing subscriptions
+cancelled or rewritten. Local 812 tests pass; sixteen guarded CI-only cases skipped,
+four existing DB suites excluded; types/lint pass (two existing warnings). Added
+real disposable delivery and phone signing/owner presentation/axe tests await
+current exact-head full CI/preview. Three prepaid/waiver findings remain open.
+Existing duplicate/ACH success/failure webhook tests remain in full CI; no settlement
+logic changes. New guard proves no recurring provider calls or fabricated invoices.
 
-Local 807 tests pass; fifteen guarded CI-only cases skipped and four existing DB
-suites excluded. Types/lint pass (two existing warnings). Unit/UI regressions cover
-membership denial, successful attribution, replacement-only prompt, failed retry,
-legacy notice and follow-up navigation. Guarded real-Postgres and phone staff
-completion/status persistence/financial payload/axe checks await full CI/preview
-and exact-head inspection; four related historical findings remain open.
-
-Next review priorities include paid-in-full billing, recurring waiver and earnings
-comparison. No live activation, spending or destructive business-data changes.
-Rollback: PR revert. Older checkpoints below are historical and superseded here.
+Audit P0 webhook concurrency/partial-failure remains open and takes priority over
+earnings work. Other remaining reviews include abandoned Checkout recovery,
+rent-only/refund-adjusted calendar earnings and legacy findings in the ledger.
+O02 hosted fixture/independent storage remains incomplete; O13/O14 schema/assignment
+and O32 sequencing preserved. Driver route is explicitly shared/unassigned. No
+live activation, spending or destructive business-data changes. Rollback: PR revert.
+Older checkpoints below are historical and superseded by this current status.
 
 ## 2026-10-01 — Business export review repairs and release gate status
 

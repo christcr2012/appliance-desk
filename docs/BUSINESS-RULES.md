@@ -745,6 +745,15 @@ only begins once Chris marks the delivery/installation job
 **Completed**, i.e. once the machine has actually reached the
 customer.
 
+- When Chris has recorded `paidInFullInAdvance`, delivery never starts a
+  recurring rent subscription, with or without the free-month bonus. This flag
+  records his full-term payment decision; the guard does not invent a new
+  payment receipt or recurring-billing start date. Existing subscriptions are
+  not cancelled automatically or backfilled by this repair.
+- Damage waiver labels in the builder, owner agreement and customer signing
+  page explicitly say one time at signing, matching this later approved rule.
+  The earlier monthly-waiver review recommendation is superseded by the
+  September 28 lifecycle decision; frozen fee amounts remain unchanged.
 - If there's nothing to charge at signing (no deposit, no damage
   waiver), the signing checkout just saves a payment method and
   charges nothing.

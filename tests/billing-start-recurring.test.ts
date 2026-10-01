@@ -64,6 +64,29 @@ describe("startRecurringBillingForAgreement", () => {
     expect(subscriptionsCreate).not.toHaveBeenCalled();
   });
 
+  it.each([true, false])("never starts monthly rent for a recorded full-term payment, free-month bonus %s", async freeMonthGranted => {
+    rentalAgreementFindUniqueOrThrow.mockResolvedValue(baseAgreement({
+      termMonths: 12, paidInFullInAdvance: true, freeMonthGranted,
+      customer: { stripeCustomerId: null, stripeDefaultPaymentMethodId: null },
+      billingBlockedReason: null,
+    }));
+    const { startRecurringBillingForAgreement } = await import("@/domains/billing/checkout");
+    await startRecurringBillingForAgreement("agr-1");
+    await startRecurringBillingForAgreement("agr-1");
+    expect(productsCreate).not.toHaveBeenCalled();
+    expect(subscriptionsCreate).not.toHaveBeenCalled();
+    expect(taxRatesList).not.toHaveBeenCalled();
+    expect(rentalAgreementUpdate).not.toHaveBeenCalled();
+  });
+
+  it("clears a stale recurring-billing error for a prepaid agreement without recording a new collection", async () => {
+    rentalAgreementFindUniqueOrThrow.mockResolvedValue(baseAgreement({ paidInFullInAdvance: true, billingBlockedReason: "Missing card" }));
+    const { startRecurringBillingForAgreement } = await import("@/domains/billing/checkout");
+    await startRecurringBillingForAgreement("agr-1");
+    expect(rentalAgreementUpdate).toHaveBeenCalledWith({ where: { id: "agr-1" }, data: { billingBlockedReason: null } });
+    expect(subscriptionsCreate).not.toHaveBeenCalled();
+  });
+
   it("records billingBlockedReason instead of throwing when there's no saved payment method", async () => {
     rentalAgreementFindUniqueOrThrow.mockResolvedValue(
       baseAgreement({ customer: { stripeCustomerId: "cus_fake_1", stripeDefaultPaymentMethodId: null } }),

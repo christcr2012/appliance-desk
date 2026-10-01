@@ -74,7 +74,7 @@ export default async function SignPage({
           <p>Deposit: {formatCents(agreement.depositCents)}</p>
         )}
         {agreement.damageWaiverCents > 0 && (
-          <p>Damage waiver: {formatCents(agreement.damageWaiverCents)}/month</p>
+          <p>Damage waiver: {formatCents(agreement.damageWaiverCents)} once at signing</p>
         )}
         {(agreement.lateFeeCents > 0 || agreement.lateFeePercent > 0) && (
           <p>

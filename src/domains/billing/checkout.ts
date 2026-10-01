@@ -353,6 +353,17 @@ export async function startRecurringBillingForAgreement(agreementId: string): Pr
     },
   });
 
+  if (agreement.paidInFullInAdvance) {
+    // Chris recorded the full term as paid at creation. Delivery must never
+    // charge that rent again or invent another payment/receipt for it.
+    if (agreement.billingBlockedReason) {
+      await prisma.rentalAgreement.update({
+        where: { id: agreementId },
+        data: { billingBlockedReason: null },
+      });
+    }
+    return;
+  }
   if (agreement.stripeSubscriptionId) return; // already billing — nothing to do
 
   const plan = buildCheckoutLinePlan(agreement).filter((item) => item.recurring);

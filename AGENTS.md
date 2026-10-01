@@ -79,6 +79,8 @@ anything outside this project.
 
 ## Review continuity — required before starting each PR
 
+- Read `docs/AI-PR-READ-FIRST.md` before planning or merging each PR; check its
+  applicable security/billing constraints against the changes and record evidence.
 - At session start, inventory unaddressed review submissions and unresolved
   inline threads across open, merged and closed PRs. Consult the reconciliation
   ledger when present; merged/closed/outdated status is not proof of resolution.

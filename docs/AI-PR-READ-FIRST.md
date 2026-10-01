@@ -114,3 +114,4 @@ These constraints must be accounted for in subsequent PRs and should be treated 
 ---
 
 This note was added on 2026-10-01 as a project safety audit for future AI agent PR work.
+

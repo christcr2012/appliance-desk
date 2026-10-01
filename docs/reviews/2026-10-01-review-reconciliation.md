@@ -24,7 +24,7 @@ sequencing remain incomplete. No live activation, spending or customer-data clea
 | [#1](https://github.com/christcr2012/appliance-desk/pull/1#discussion_r4112148776) | Gate the property-manager premium on multiple units | Verified/merged #117; CI 36854516416 + Vercel; automated review waived; resolved |
 | [#2](https://github.com/christcr2012/appliance-desk/pull/2#discussion_r4112288147) | Keep delivery troubleshooting open until the send result is checked | Pending |
 | [#14](https://github.com/christcr2012/appliance-desk/pull/14#discussion_r4113000933) | Add the required cross-customer isolation tests | Verified existing two-customer real-Postgres portal/maintenance/invoice isolation; #120 CI 36858585089; resolved |
-| [#14](https://github.com/christcr2012/appliance-desk/pull/14#discussion_r4113000937) | Include the waiver in the monthly total | Pending |
+| [#14](https://github.com/christcr2012/appliance-desk/pull/14#discussion_r4113000937) | Include the waiver in the monthly total | Prepaid/waiver repair implemented; later Sep 28 one-time waiver contract controls; full CI/exact-head/preview pending |
 | [#14](https://github.com/christcr2012/appliance-desk/pull/14#discussion_r4113000939) | Restrict maintenance appliances to active agreements | Pending |
 | [#14](https://github.com/christcr2012/appliance-desk/pull/14#discussion_r4113000942) | Stop reporting an agreed deposit as paid | Pending |
 | [#28](https://github.com/christcr2012/appliance-desk/pull/28#discussion_r4114120283) | Add an automated regression test for the generated title | Pending |
@@ -36,14 +36,14 @@ sequencing remain incomplete. No live activation, spending or customer-data clea
 | [#31](https://github.com/christcr2012/appliance-desk/pull/31#discussion_r4117061551) | Update the handoff when unblocking Stripe work | Pending |
 | [#32](https://github.com/christcr2012/appliance-desk/pull/32#discussion_r4117202521) | Wait for ACH settlement before recording payment | Verified existing pending/settled/failed ACH real-Postgres regressions; #120 CI 36858585089; resolved |
 | [#32](https://github.com/christcr2012/appliance-desk/pull/32#discussion_r4117202524) | Reconcile a failed invoice when Stripe later collects it | Verified existing failed-to-paid same-invoice real-Postgres recovery; #120 CI 36858585089; resolved |
-| [#32](https://github.com/christcr2012/appliance-desk/pull/32#discussion_r4117202529) | Honor paid-in-full agreements before starting a subscription | Pending |
-| [#32](https://github.com/christcr2012/appliance-desk/pull/32#discussion_r4117202535) | Keep the damage waiver as a recurring monthly charge | Pending |
+| [#32](https://github.com/christcr2012/appliance-desk/pull/32#discussion_r4117202529) | Honor paid-in-full agreements before starting a subscription | Prepaid/waiver repair implemented; later Sep 28 one-time waiver contract controls; full CI/exact-head/preview pending |
+| [#32](https://github.com/christcr2012/appliance-desk/pull/32#discussion_r4117202535) | Keep the damage waiver as a recurring monthly charge | Prepaid/waiver repair implemented; later Sep 28 one-time waiver contract controls; full CI/exact-head/preview pending |
 | [#32](https://github.com/christcr2012/appliance-desk/pull/32#discussion_r4117202542) | Provide a way to resume an abandoned Checkout | Pending |
 | [#37](https://github.com/christcr2012/appliance-desk/pull/37#discussion_r4118009218) | Update the stale webhook setup instruction | Pending |
 | [#38](https://github.com/christcr2012/appliance-desk/pull/38#discussion_r4118039254) | Make local fixture instructions load `.env.local` | Pending |
 | [#39](https://github.com/christcr2012/appliance-desk/pull/39#discussion_r4118271829) | Add regression tests for the new status labels | Pending |
 | [#39](https://github.com/christcr2012/appliance-desk/pull/39#discussion_r4118271833) | Let the desk content flex item shrink | Pending |
-| [#52](https://github.com/christcr2012/appliance-desk/pull/52#discussion_r4119608648) | Limit the SWAP completion prompt to the replacement | Staff job follow-up repair implemented; full CI/exact-head/preview pending |
+| [#52](https://github.com/christcr2012/appliance-desk/pull/52#discussion_r4119608648) | Limit the SWAP completion prompt to the replacement | Verified/merged #124; CI 36867157292 (854 tests/137 browser checks), all 15 blobs + Vercel; resolved |
 | [#52](https://github.com/christcr2012/appliance-desk/pull/52#discussion_r4119608655) | Filter appliance audits to actual status changes | Pending |
 | [#52](https://github.com/christcr2012/appliance-desk/pull/52#discussion_r4119608659) | Capture agreement-driven transitions in appliance history | Pending |
 | [#53](https://github.com/christcr2012/appliance-desk/pull/53#discussion_r4119719016) | Anchor dispatch dates to America/Denver | Verified/merged #123; CI 36864737390 (842 tests/136 browser checks), all 14 blobs + Vercel; resolved |
@@ -77,10 +77,10 @@ sequencing remain incomplete. No live activation, spending or customer-data clea
 | [#61](https://github.com/christcr2012/appliance-desk/pull/61#discussion_r4124590917) | Mark the restore attribution as unconfirmed | Pending |
 | [#62](https://github.com/christcr2012/appliance-desk/pull/62#discussion_r4125549128) | Restrict financial operational pages from STAFF | Verified existing #105 role guards/projections; current #123 CI real staff payload/route checks; resolved |
 | [#62](https://github.com/christcr2012/appliance-desk/pull/62#discussion_r4125549136) | Honor failed email results before recording a reminder | Verified/merged #119; CI 36858433312 + Vercel; automated review waived; resolved |
-| [#62](https://github.com/christcr2012/appliance-desk/pull/62#discussion_r4125549141) | Scope staff appliance updates to the originating job | Staff job follow-up repair implemented; full CI/exact-head/preview pending |
+| [#62](https://github.com/christcr2012/appliance-desk/pull/62#discussion_r4125549141) | Scope staff appliance updates to the originating job | Verified/merged #124; CI 36867157292 (854 tests/137 browser checks), all 15 blobs + Vercel; resolved |
 | [#62](https://github.com/christcr2012/appliance-desk/pull/62#discussion_r4125549150) | Propagate staff activation delivery failures | Verified/merged #119; CI 36858433312 + Vercel; automated review waived; resolved |
-| [#62](https://github.com/christcr2012/appliance-desk/pull/62#discussion_r4125549157) | Keep completed swap jobs visible for status follow-up | Staff job follow-up repair implemented; full CI/exact-head/preview pending |
-| [#62](https://github.com/christcr2012/appliance-desk/pull/62#discussion_r4125549168) | Filter the driver view to the signed-in staff member | Staff job follow-up repair implemented; full CI/exact-head/preview pending |
+| [#62](https://github.com/christcr2012/appliance-desk/pull/62#discussion_r4125549157) | Keep completed swap jobs visible for status follow-up | Verified/merged #124; CI 36867157292 (854 tests/137 browser checks), all 15 blobs + Vercel; resolved |
+| [#62](https://github.com/christcr2012/appliance-desk/pull/62#discussion_r4125549168) | Filter the driver view to the signed-in staff member | Verified/merged #124; CI 36867157292 (854 tests/137 browser checks), all 15 blobs + Vercel; resolved |
 | [#76](https://github.com/christcr2012/appliance-desk/pull/76#discussion_r4135862592) | Apply the brand kit's heading weight | Pending |
 | [#76](https://github.com/christcr2012/appliance-desk/pull/76#discussion_r4135862605) | Keep the design-system brand guidance in sync | Pending |
 | [#78](https://github.com/christcr2012/appliance-desk/pull/78#discussion_r4136765429) | Ask before installing the Neon CLI globally | Pending |
@@ -111,10 +111,10 @@ sequencing remain incomplete. No live activation, spending or customer-data clea
 
 ## Current verification checkpoint
 
-#117–#122 merged after exact-head inspection, full CI and ready Vercel. Expected-head
+#117–#123 merged after exact-head inspection, full CI and ready Vercel. Expected-head
 merges used; stacked PRs retargeted to main and merge trees matched tested heads.
-Automated review quota unavailable; Chris waived that step October 1. Thirty-one
-threads resolved: twenty-eight historical and three new #117 findings. Sixty-three
+Automated review quota unavailable; Chris waived that step October 1. Forty-one
+threads resolved: thirty-eight historical and three new #117 findings. Fifty-three
 historical findings remain open; pending does not mean fixed.
 
 - #117 head 8418428571: CI 36854516416; merged fdc7de4.
@@ -137,8 +137,8 @@ local commit; prospective main merge tree matched tested head. Vercel ready.
 Merged 2f75a47b03248215e1722921f042a4b9f9566594; five calendar/coverage/handoff
 findings resolved. Existing #105 financial isolation verified against current
 role guards, narrow operational projections and real staff payload/route tests;
-#62 financial isolation thread resolved. Thirty-seven resolutions total:
-thirty-four historical plus three #117 findings; fifty-seven historical remain.
+#62 financial isolation thread resolved. Forty-one resolutions total:
+thirty-eight historical plus three #117 findings; fifty-three historical remain.
 
 Before this follow-on, preceding/latest #123 reviews/threads/comments checked:
 no findings; quota notice 5931872476. Owner explicitly waived unavailable automated
@@ -155,3 +155,29 @@ open until verification. No O13/O14 completion, scheduling write unification or
 stored timestamp rewrite. Paid-in-full billing, recurring waiver and earnings
 comparison remain priorities before new backlog features. O02 storage/isolation,
 O32 sequencing and live-action approvals unchanged.
+
+Prepaid follow-on checked preceding/latest #124 submissions/threads/comments before
+starting: no findings; automated quota notice 5932207577, owner waiver retained.
+#124 staff workflow merged after full CI 36867157292: 854 tests/137 browser
+checks, ready Vercel and all 15 inspected blobs; four findings resolved. This follow-on avoids
+recurring rent for recorded full-term advance payments before any Stripe calls,
+with either free-month setting and without fabricating receipts/billing start dates.
+Damage waiver screens now match the later approved one-time signing contract,
+superseding the old recurring-waiver recommendation. Local 812 tests pass;
+sixteen guarded CI-only cases skipped, four existing DB suites excluded. Types/lint
+pass (two existing warnings). Real disposable delivery and phone actual signing/
+owner labels/axe checks await CI. Three prepaid/waiver findings remain open.
+Existing subscriptions are not cancelled or rewritten. Abandoned Checkout recovery,
+rent-only/refund-adjusted earnings and calendar billing estimates remain unresolved.
+
+Security/billing audit #126 reviewed at c416e4cc648095265236a0c04ea88d49da7d88ed:
+original HANDOFF replacement corrected to prepend the reminder and retain current
+main verbatim. Exact two-document diff, zero production changes/deletions; submitted
+review 5379930095. Full CI pending. This prepaid follow-on incorporates that audit
+before merge and reruns exact-head CI after integration. AGENTS requires reading
+the full audit per PR. Existing duplicate-event, delayed ACH success/failure and
+failed-to-paid webhook regressions remain in full CI; no webhook/payment settlement
+logic changes here. New prepaid tests verify no recurring provider calls or
+fabricated invoice/start date. The audit's concurrency/partial-failure P0 remains
+open and takes priority over earnings work. Preview host gates and best-effort
+limiter interpretation remain intact; no provider activation or infrastructure edit.

@@ -177,3 +177,9 @@ it("names every address control and persists the entered service address", async
   expect(m.customer).toHaveBeenCalledWith(expect.objectContaining({ addresses: [{ line1: "123 Main", line2: "B", city: "Greeley", state: "CO", zip: "80631" }] }));
   expect(await screen.findByLabelText("Term (months, optional)")).toBeInTheDocument();
 });
+it("labels the optional waiver as a one-time signing charge", () => {
+  render(<RentalWizard customers={customers} availableAppliances={[]} initialCustomerId="c1" initialServiceAddressId="a1" />);
+  fireEvent.click(screen.getByRole("button", { name: "Next: term & fees" }));
+  expect(screen.getByLabelText("Damage waiver ($, one time at signing, optional)")).toBeVisible();
+  expect(screen.queryByLabelText("Damage waiver ($/mo, optional)")).toBeNull();
+});
