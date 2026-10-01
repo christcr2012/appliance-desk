@@ -417,7 +417,7 @@ export async function convertLeadToCustomer(userId: string | null, leadId: strin
   if (!check.ok) {
     throw new Error(check.reason);
   }
-  const email = lead.email as string; // canConvertLead guarantees this
+  const email = (lead.email as string).trim().toLowerCase(); // Match Better Auth reset/sign-in normalization.
 
   let isNewAccount = false;
 

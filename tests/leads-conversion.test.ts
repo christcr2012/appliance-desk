@@ -124,6 +124,16 @@ describe("convertLeadToCustomer — customer activation, no relayed passwords", 
     expect(result).not.toHaveProperty("tempPassword");
   });
 
+  it("normalizes legacy mixed-case lead email before lookup, creation and activation", async () => {
+    leadFindUniqueOrThrow.mockResolvedValue({ ...LEAD, email: " Customer@Example.com " });
+    userFindUnique.mockResolvedValue(null);
+    const { convertLeadToCustomer } = await import("@/domains/leads");
+    await convertLeadToCustomer("owner-1", "lead-1");
+    expect(userFindUnique).toHaveBeenCalledWith({ where: { email: "customer@example.com" } });
+    expect(userCreate).toHaveBeenCalledWith({ data: expect.objectContaining({ email: "customer@example.com" }) });
+    expect(requestPasswordReset).toHaveBeenCalledWith({ body: { email: "customer@example.com", redirectTo: "/reset-password" } });
+  });
+
   it("reuses an existing customer account and sends no activation email — nothing new to send", async () => {
     userFindUnique.mockResolvedValue({ id: "user-1", role: "CUSTOMER" });
     const { convertLeadToCustomer } = await import("@/domains/leads");

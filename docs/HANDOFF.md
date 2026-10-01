@@ -1,3 +1,12 @@
+### PR #117 exact-head review follow-up
+
+Review of 5ba88ef found two valid issues: direct transactional account creation
+must match Better Auth's lowercase/trim email normalization, and the scoring
+point list must state the existing multi-unit ranking condition explicitly.
+Both corrected, with mixed-case legacy lead unit coverage and uppercase leads
+in the disposable-DB concurrency/rollback suite. New-head CI/review/preview
+supersede the initial run; no threads resolved before those gates pass.
+
 ## 2026-10-01 — Historical review recovery from merged main
 
 Verified #105/#116 merged; resumed from main d7c10346214fcec548fffcc8d0d1b709e4dbecbf.

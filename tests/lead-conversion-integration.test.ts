@@ -21,13 +21,13 @@ describe.skipIf(!enabled)("lead conversion atomic recovery", () => {
   beforeAll(async () => {
     ownerId = (await prisma.user.findFirstOrThrow({ where: { role: "OWNER" } })).id;
     for (const email of emails) {
-      const lead = await prisma.lead.create({ data: { contactName: "Conversion fixture", email, phone: "5551234567", status: "NEW" } });
+      const lead = await prisma.lead.create({ data: { contactName: "Conversion fixture", email: email.toUpperCase(), phone: "5551234567", status: "NEW" } });
       leadIds.push(lead.id);
     }
     reset.mockImplementation(async ({ body }) => {
       // Sending is permitted only after both the customer and conversion commit.
       expect(await prisma.customer.count({ where: { user: { email: body.email } } })).toBe(1);
-      expect(await prisma.lead.count({ where: { email: body.email, status: "CONVERTED" } })).toBe(1);
+      expect(await prisma.lead.count({ where: { email: { equals: body.email, mode: "insensitive" }, status: "CONVERTED" } })).toBe(1);
     });
   });
   afterAll(async () => {
