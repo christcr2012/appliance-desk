@@ -16,6 +16,7 @@ const getBusinessSettings = vi.fn();
 
 function makeTx() {
   return {
+    rentalAgreement: { create: rentalAgreementCreate },
     rentalLine: { create: rentalLineCreate },
     appliance: { updateMany: applianceUpdateMany, findUnique: vi.fn() },
     applianceAssignment: { create: applianceAssignmentCreate },
@@ -25,6 +26,12 @@ function makeTx() {
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
+    serviceAddress: {
+      findUnique: async () => ({
+        customerId: "cust-1",
+        customer: { archivedAt: null },
+      }),
+    },
     rentalAgreement: {
       findUniqueOrThrow: (...args: unknown[]) => findUniqueOrThrow(...args),
       create: (...args: unknown[]) => rentalAgreementCreate(...args),
@@ -49,10 +56,12 @@ const DEFAULT_SETTINGS = {
 
 describe("createDraftAgreement — prepaid-term discount wiring", () => {
   beforeEach(() => {
-    rentalAgreementCreate.mockReset().mockImplementation(({ data }: { data: unknown }) => ({
-      id: "agr-1",
-      ...(data as object),
-    }));
+    rentalAgreementCreate
+      .mockReset()
+      .mockImplementation(({ data }: { data: unknown }) => ({
+        id: "agr-1",
+        ...(data as object),
+      }));
     auditLogCreate.mockReset().mockResolvedValue({});
     getBusinessSettings.mockReset().mockResolvedValue(DEFAULT_SETTINGS);
   });
@@ -134,7 +143,10 @@ describe("createDraftAgreement — prepaid-term discount wiring", () => {
   });
 
   it("sets reservationExpiresAt using the owner-configured hold-days count (Phase 6A item 6)", async () => {
-    getBusinessSettings.mockResolvedValue({ ...DEFAULT_SETTINGS, draftReservationHoldDays: 3 });
+    getBusinessSettings.mockResolvedValue({
+      ...DEFAULT_SETTINGS,
+      draftReservationHoldDays: 3,
+    });
     const { createDraftAgreement } = await import("@/domains/agreements");
 
     const before = Date.now();
@@ -147,7 +159,9 @@ describe("createDraftAgreement — prepaid-term discount wiring", () => {
 
     const call = rentalAgreementCreate.mock.calls[0][0];
     const expiresAt: Date = call.data.reservationExpiresAt;
-    expect(expiresAt.getTime()).toBeGreaterThan(before + 2 * 24 * 60 * 60 * 1000);
+    expect(expiresAt.getTime()).toBeGreaterThan(
+      before + 2 * 24 * 60 * 60 * 1000,
+    );
     expect(expiresAt.getTime()).toBeLessThan(after + 4 * 24 * 60 * 60 * 1000);
   });
 });
@@ -163,7 +177,11 @@ describe("addRentalLine — prepaid-term discount wiring", () => {
   });
 
   it("applies the SET discount for a 12-month agreement's 2-appliance line", async () => {
-    findUniqueOrThrow.mockResolvedValue({ id: "agr-1", status: "DRAFT", termMonths: 12 });
+    findUniqueOrThrow.mockResolvedValue({
+      id: "agr-1",
+      status: "DRAFT",
+      termMonths: 12,
+    });
     const { addRentalLine } = await import("@/domains/agreements");
 
     await addRentalLine("user-1", "agr-1", {
@@ -184,7 +202,11 @@ describe("addRentalLine — prepaid-term discount wiring", () => {
   });
 
   it("applies the SINGLE discount for a 6-month agreement's 1-appliance line", async () => {
-    findUniqueOrThrow.mockResolvedValue({ id: "agr-1", status: "DRAFT", termMonths: 6 });
+    findUniqueOrThrow.mockResolvedValue({
+      id: "agr-1",
+      status: "DRAFT",
+      termMonths: 6,
+    });
     const { addRentalLine } = await import("@/domains/agreements");
 
     await addRentalLine("user-1", "agr-1", {
@@ -205,7 +227,11 @@ describe("addRentalLine — prepaid-term discount wiring", () => {
   });
 
   it("applies no discount for a month-to-month agreement", async () => {
-    findUniqueOrThrow.mockResolvedValue({ id: "agr-1", status: "DRAFT", termMonths: null });
+    findUniqueOrThrow.mockResolvedValue({
+      id: "agr-1",
+      status: "DRAFT",
+      termMonths: null,
+    });
     const { addRentalLine } = await import("@/domains/agreements");
 
     await addRentalLine("user-1", "agr-1", {
@@ -226,7 +252,11 @@ describe("addRentalLine — prepaid-term discount wiring", () => {
   });
 
   it("never lets the discount push the charged price below $0", async () => {
-    findUniqueOrThrow.mockResolvedValue({ id: "agr-1", status: "DRAFT", termMonths: 12 });
+    findUniqueOrThrow.mockResolvedValue({
+      id: "agr-1",
+      status: "DRAFT",
+      termMonths: 12,
+    });
     const { addRentalLine } = await import("@/domains/agreements");
 
     await addRentalLine("user-1", "agr-1", {

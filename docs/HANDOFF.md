@@ -1,3 +1,13 @@
+## 2026-10-01 — Saved rental checkpoints and property write validation
+
+CRM PR #102 merged. Owner/portal PR #103 head 4a945e81021cbe632825a646f9e990a685b2544b remains in review: database tests/build passed; full browser rerun pending after bounding the product table's phone scroll region. Earlier failures were repaired without weakening checks.
+
+O12 recovery subcard: draft create and audit commit together. Actor-scoped UUID request keys use the existing primary-key constraint to recover overlapping or lost-response saves; conflicting terms reject. The URL records the key before dispatch, then the saved draft ID. Refresh restores persisted terms, assignments and actual discounted cents. Saved terms remain read-only; drafts that advanced past DRAFT open their agreement. Pending and failed actions preserve input and show honest recovery feedback. Line reservations retain their existing atomic claim; ambiguous line saves direct the owner to refresh the saved checkpoint before retrying. No schema, signature/payment activation or new ledger.
+
+O11 write boundary: rental creation rejects missing, foreign or archived customer properties; jobs reject mismatched property/agreement/request customer context before any write. Presentation prefill alone was insufficient; these checks protect the authoritative write paths.
+
+Local verification: 709 tests pass in 100 suites; one CI-only rollback test skips locally, four existing real-DB suites excluded. Typecheck passes; lint has zero errors and two existing warnings. Added real disposable-DB concurrent-save, conflicting-terms, foreign-property and failed-audit rollback assertions; CI/browser/build and hosted preview pending. Builder browser coverage includes saved-line refresh, exact discounted total, Back, six width/theme screenshots and axe. Whole O12 and O11 cards remain incomplete; O02 hosted fixture/private-storage proof and schema-dependent cards remain blocked. Rollback: revert this PR, no migration rollback.
+
 ## 2026-09-30 — Owner and portal workspaces; CRM checks green
 
 PR #102 head 883a8f90a21135902450fff8c4e6663b631fdeae passed full CI

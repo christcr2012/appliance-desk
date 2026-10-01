@@ -370,3 +370,12 @@ uncertain/failed attempts intentionally stop to avoid duplicates. Ask your
 technical helper to reconcile that attempt with the provider record; do not
 reset the sequence or import the address again. SENT is provider acceptance,
 not proof the email reached the inbox. No tracking pixels are added.
+
+### Returning to an unfinished rental
+
+After saving the customer and terms, the builder shows a **Resume saved builder**
+link. Bookmark it to return to the same draft. Refresh restores saved appliances
+and their actual monthly prices, including any term discount. Saved customer and
+terms appear read-only; review them before adding equipment. If a save response
+is lost, refresh the current builder link to check the saved result before trying
+again. An agreement already sent for signature opens its agreement page instead.

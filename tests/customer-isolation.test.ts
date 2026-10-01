@@ -2,6 +2,8 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 const session = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/session", () => ({ getServerSession: session }));
 import { getPortalHome } from "@/domains/portal/workspace";
+import { createDraftAgreement } from "@/domains/agreements";
+import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import {
   getPortalData,
@@ -51,6 +53,64 @@ type Fixture = {
 let applianceTypeId: string;
 let customerA: Fixture;
 let customerB: Fixture;
+
+it("concurrent draft saves create one agreement and audit, reject foreign property, and rollback failed audit", async () => {
+  const actor = await prisma.user.findFirstOrThrow({
+    where: { role: "OWNER" },
+    select: { id: true },
+  });
+  const input = {
+    customerId: customerA.customerId,
+    serviceAddressId: customerA.serviceAddressId,
+    requestKey: randomUUID(),
+    termMonths: 6,
+  };
+  let savedId: string | undefined;
+  try {
+    const [a, b] = await Promise.all([
+      createDraftAgreement(actor.id, input),
+      createDraftAgreement(actor.id, input),
+    ]);
+    savedId = a.id;
+    expect(a.id).toBe(b.id);
+    expect(
+      await prisma.auditLog.count({
+        where: { entityId: a.id, action: "agreement.create" },
+      }),
+    ).toBe(1);
+    await expect(
+      createDraftAgreement(actor.id, { ...input, depositCents: 123 }),
+    ).rejects.toThrow("different terms");
+    await expect(
+      createDraftAgreement(actor.id, {
+        ...input,
+        requestKey: randomUUID(),
+        serviceAddressId: customerB.serviceAddressId,
+      }),
+    ).rejects.toThrow("active customer");
+    const count = await prisma.rentalAgreement.count({
+      where: { customerId: customerA.customerId },
+    });
+    await expect(
+      createDraftAgreement(`missing-${randomUUID()}`, {
+        ...input,
+        requestKey: randomUUID(),
+      }),
+    ).rejects.toThrow();
+    expect(
+      await prisma.rentalAgreement.count({
+        where: { customerId: customerA.customerId },
+      }),
+    ).toBe(count);
+  } finally {
+    if (savedId) {
+      await prisma.auditLog.deleteMany({
+        where: { entityType: "RentalAgreement", entityId: savedId },
+      });
+      await prisma.rentalAgreement.delete({ where: { id: savedId } });
+    }
+  }
+});
 
 it("portal home ignores foreign properties and reconciles only the signed-in customer's records", async () => {
   for (const [own, foreign] of [
