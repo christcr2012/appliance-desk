@@ -71,6 +71,7 @@ type JobRow = {
     };
   }[];
   photos: { id: string; url: string; altText: string | null }[];
+  swapReplacementIds?: string[];
 };
 
 export function JobDetailPanel({ job, canViewFinance = false }: { job: JobRow; canViewFinance?: boolean }) {
@@ -103,14 +104,18 @@ export function JobDetailPanel({ job, canViewFinance = false }: { job: JobRow; c
       ? job.appliances
           .map((a) => a.appliance)
           .filter(
-            (a) => a.status !== suggestedStatus && !appliancesJustUpdated.has(a.id),
+            (a) => a.status !== suggestedStatus && !appliancesJustUpdated.has(a.id)
+              && (job.type !== "SWAP" || job.swapReplacementIds?.includes(a.id) === true),
           )
       : [];
 
   function handleUpdateApplianceStatus(applianceId: string, status: ApplianceStatus) {
+    setStatusMessage(null);
     startTransition(async () => {
-      const result = await updateApplianceStatusFromJobAction(applianceId, status);
-      if (result.status !== "error") {
+      const result = await updateApplianceStatusFromJobAction(applianceId, status, job.id);
+      if (result.status === "error") {
+        setStatusMessage(result.message);
+      } else {
         setAppliancesJustUpdated((prev) => new Set(prev).add(applianceId));
         router.refresh();
       }
@@ -253,6 +258,13 @@ export function JobDetailPanel({ job, canViewFinance = false }: { job: JobRow; c
             ))}
           </ul>
         </div>
+      )}
+
+      {job.status === "COMPLETED" && job.type === "SWAP" && !job.swapReplacementIds?.length && (
+        <p className="rounded-lg border border-gray-200 bg-white p-5 text-sm text-gray-700">
+          This visit has no recorded replacement appliance. Ask an owner or admin to
+          confirm the incoming unit before updating its status.
+        </p>
       )}
 
       {appliancesNeedingUpdate.length > 0 && suggestedStatus && (
@@ -434,4 +446,3 @@ export function JobDetailPanel({ job, canViewFinance = false }: { job: JobRow; c
     </div>
   );
 }
-

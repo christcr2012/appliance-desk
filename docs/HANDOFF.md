@@ -1,38 +1,38 @@
 ## 2026-10-01 — Current review repair checkpoint
 
-#117–#122 merged to main 9bcdda47d359204d854f31f2c15ac282a139fa48 after
-exact-head inspection, full CI and ready Vercel. Expected-head merges used;
-stacked PRs retargeted to main with merge trees matching tested heads.
-#121 CI 36861119917 passed 830 tests/134 browser checks; #122 CI 36862952621
-passed 835/135, including real 60-job pagination and phone mixed bulk results,
-selection retention, axe and persisted statuses. Earlier runs are in the ledger.
+#117–#123 merged; main 2f75a47b03248215e1722921f042a4b9f9566594.
+Each used exact-head inspection, full CI, ready Vercel and expected-head merge.
+#123 CI 36864737390 passed 842 tests/136 browser checks, including actual Colorado
+DST queries, phone day/week/agenda and checklist persistence/reload/axe. All 14
+published blobs matched inspected local commit; merge tree matched tested head.
 Automated review quota unavailable, explicitly waived by Chris October 1.
 AGENTS.md requires preceding/dependency/all-state review continuity and safe merges.
 
-Thirty-one threads resolved with specific evidence: twenty-eight historical plus
-three #117 findings. Sixty-three historical findings remain open; see the ledger.
-Existing ACH settlement/retry and cross-customer isolation fixes also verified.
-Task visibility follows O09 shared-team contract; assignment/Mine remains O02-gated.
-This is review reconciliation, not overhaul completion.
+Thirty-seven threads resolved with evidence: thirty-four historical plus three
+#117 findings. Fifty-seven historical findings remain open; ledger tracks them.
+Existing #105 financial isolation verified against current role guards/projections
+and real staff route/payload tests; historical finding resolved. No overhaul
+completion claim. O02 hosted fixture/independent preview storage remains incomplete,
+O13/O14 assignment/duration/version gates and O32 sequencing preserved.
 
-Current follow-on fixes Colorado dispatch date selection, grouping, day/week/agenda
-boundaries and displays, plus driver day/display. Independent midnights preserve
-23/25-hour DST days. Adjacent-range jobs participate in the existing two-hour
-conflict advisory without rendering outside the selected range. Unit/render tests
-cover evenings, invalid date rollover, year change, DST and boundary conflicts.
-Guarded disposable CI tests cover real scheduled/unscheduled/closed queries and
-phone day/week/agenda consistency, checklist server-action save/reload and axe.
-Local: 796 tests pass; fourteen CI-only cases skipped and four existing database
-suites excluded. Typecheck/lint pass (two existing warnings). Full CI/preview and
-exact-head inspection pending; five historical findings remain open until verified.
+Current follow-on repairs staff job-origin appliance update authorization, SWAP
+replacement-only suggestions and driver completion follow-up. Membership verified
+before writes; owner/admin inventory authority preserved. Incoming-unit identity
+comes from recorded guided-swap intent, never current-status guesses. Legacy swaps
+without intent ask owner/admin confirmation. Failed saves show errors and preserve
+retry. Driver route explicitly shared/unassigned; swap/maintenance completion opens
+job detail. No assignment schema or individual-route claim.
 
-No duration/assignment/version fields added, no O13/O14 completion or schedule
-backfill. New-job input/timezone unification remains in its gated contract.
-Remaining priorities include staff job-origin appliance scope, SWAP follow-up,
-paid-in-full billing, recurring waiver and earnings comparison. O02 hosted fixture/
-independent preview storage and O32 sequencing remain gated. No live activation,
-spending or destructive customer-data changes. Rollback: PR revert. Earlier dated
-checkpoints below are historical and superseded by this current status.
+Local 807 tests pass; fifteen guarded CI-only cases skipped and four existing DB
+suites excluded. Types/lint pass (two existing warnings). Unit/UI regressions cover
+membership denial, successful attribution, replacement-only prompt, failed retry,
+legacy notice and follow-up navigation. Guarded real-Postgres and phone staff
+completion/status persistence/financial payload/axe checks await full CI/preview
+and exact-head inspection; four related historical findings remain open.
+
+Next review priorities include paid-in-full billing, recurring waiver and earnings
+comparison. No live activation, spending or destructive business-data changes.
+Rollback: PR revert. Older checkpoints below are historical and superseded here.
 
 ## 2026-10-01 — Business export review repairs and release gate status
 

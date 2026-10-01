@@ -56,6 +56,7 @@ export default async function JobDetailPage({
         <JobDetailPanel job={{
           id: job.id, type: job.type, status: job.status,
           completionNotes: job.completionNotes, checklist: job.checklist,
+          swapReplacementIds: job.swapReplacementIds,
           appliances: job.appliances.map(({ appliance }) => ({ appliance: {
             id: appliance.id, assetNumber: appliance.assetNumber, status: appliance.status,
             applianceType: { name: appliance.applianceType.name },
