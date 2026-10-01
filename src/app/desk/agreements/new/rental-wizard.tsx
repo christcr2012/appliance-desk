@@ -1,8 +1,14 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
+import { formatCents } from "@/domains/pricing/money";
 import Link from "next/link";
-import { createDraftAgreementAction, addRentalLineAction, sendForSignatureAction } from "../actions";
+import { useRouter } from "next/navigation";
+import {
+  createDraftAgreementAction,
+  addRentalLineAction,
+  sendForSignatureAction,
+} from "../actions";
 import { createCustomerAction } from "../../customers/actions";
 
 // ---------------------------------------------------------------------------
@@ -56,35 +62,77 @@ const EMPTY_NEW_CUSTOMER = {
   zip: "",
 };
 
-type AddedLine = { label: string; monthlyDollars: string; applianceNames: string };
+type AddedLine = {
+  id: string;
+  label: string;
+  monthlyPriceCents: number;
+  applianceNames: string;
+};
+type SavedDraft = {
+  id: string;
+  customerId: string;
+  customerName: string;
+  serviceAddressId: string;
+  termMonths: number | null;
+  depositCents: number;
+  damageWaiverCents: number;
+  lateFeeGraceDays: number;
+  lateFeeCents: number;
+  lateFeePercent: number;
+  taxRatePermille: number;
+  paidInFullInAdvance: boolean;
+  lines: AddedLine[];
+};
 
 export function RentalWizard({
   customers,
   availableAppliances: initialAvailableAppliances,
   initialCustomerId,
   initialServiceAddressId,
+  initialDraft,
+  initialRequestKey,
 }: {
   customers: CustomerOption[];
   availableAppliances: ApplianceOption[];
   initialCustomerId?: string;
   initialServiceAddressId?: string;
+  initialDraft?: SavedDraft;
+  initialRequestKey?: string;
 }) {
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [step, setStep] = useState<Step>("customer");
+  const [step, setStep] = useState<Step>(
+    initialDraft
+      ? initialDraft.lines.length
+        ? "review"
+        : "appliances"
+      : "customer",
+  );
+  const requestKey = useRef(initialRequestKey);
   const [error, setError] = useState<string | null>(null);
 
   // Step 1 — customer
   const [customerMode, setCustomerMode] = useState<"existing" | "new">(
     initialCustomerId ? "existing" : customers.length > 0 ? "existing" : "new",
   );
-  const [customerId, setCustomerId] = useState(initialCustomerId ?? customers[0]?.id ?? "");
+  const [customerId, setCustomerId] = useState(
+    initialCustomerId ?? customers[0]?.id ?? "",
+  );
   const [customerName, setCustomerName] = useState(
-    customers.find((c) => c.id === (initialCustomerId ?? customers[0]?.id))?.name ?? "",
+    initialDraft?.customerName ??
+      customers.find((c) => c.id === (initialCustomerId ?? customers[0]?.id))
+        ?.name ??
+      "",
   );
   const [addresses, setAddresses] = useState(
-    customers.find((c) => c.id === (initialCustomerId ?? customers[0]?.id))?.serviceAddresses ?? [],
+    customers.find((c) => c.id === (initialCustomerId ?? customers[0]?.id))
+      ?.serviceAddresses ?? [],
   );
-  const [serviceAddressId, setServiceAddressId] = useState(addresses.some(a => a.id === initialServiceAddressId) ? initialServiceAddressId! : addresses[0]?.id ?? "");
+  const [serviceAddressId, setServiceAddressId] = useState(
+    addresses.some((a) => a.id === initialServiceAddressId)
+      ? initialServiceAddressId!
+      : (addresses[0]?.id ?? ""),
+  );
   const [newCustomer, setNewCustomer] = useState(EMPTY_NEW_CUSTOMER);
 
   function updateNewCustomer<K extends keyof typeof EMPTY_NEW_CUSTOMER>(
@@ -122,25 +170,37 @@ export function RentalWizard({
     }
 
     startTransition(async () => {
-      const result = await createCustomerAction({
-        name: newCustomer.name,
-        email: newCustomer.email,
-        phone: newCustomer.phone,
-        isBusiness: newCustomer.isBusiness,
-        isPropertyManager: newCustomer.isPropertyManager,
-        companyName: newCustomer.companyName,
-        addresses: [
-          {
-            line1: newCustomer.line1,
-            line2: newCustomer.line2,
-            city: newCustomer.city,
-            state: newCustomer.state,
-            zip: newCustomer.zip,
-          },
-        ],
-      });
+      let result;
+      try {
+        result = await createCustomerAction({
+          name: newCustomer.name,
+          email: newCustomer.email,
+          phone: newCustomer.phone,
+          isBusiness: newCustomer.isBusiness,
+          isPropertyManager: newCustomer.isPropertyManager,
+          companyName: newCustomer.companyName,
+          addresses: [
+            {
+              line1: newCustomer.line1,
+              line2: newCustomer.line2,
+              city: newCustomer.city,
+              state: newCustomer.state,
+              zip: newCustomer.zip,
+            },
+          ],
+        });
+      } catch {
+        setError(
+          "Customer creation was not confirmed. Check the customer list before retrying; your inputs are still here.",
+        );
+        return;
+      }
       if (result.status !== "success") {
-        setError(result.status === "error" ? result.message : "Couldn't add that customer.");
+        setError(
+          result.status === "error"
+            ? result.message
+            : "Couldn't add that customer.",
+        );
         return;
       }
       setCustomerId(result.customerId);
@@ -156,8 +216,25 @@ export function RentalWizard({
   }
 
   // Step 2 — term & fees
-  const [termFields, setTermFields] = useState(EMPTY_TERM_FIELDS);
-  const [agreementId, setAgreementId] = useState<string | null>(null);
+  const [termFields, setTermFields] = useState(
+    initialDraft
+      ? {
+          termMonths: initialDraft.termMonths?.toString() ?? "",
+          depositDollars: (initialDraft.depositCents / 100).toString(),
+          damageWaiverDollars: (
+            initialDraft.damageWaiverCents / 100
+          ).toString(),
+          lateFeeGraceDays: initialDraft.lateFeeGraceDays.toString(),
+          lateFeeDollars: (initialDraft.lateFeeCents / 100).toString(),
+          lateFeePercent: initialDraft.lateFeePercent.toString(),
+          taxRatePercent: (initialDraft.taxRatePermille / 10).toString(),
+          paidInFullInAdvance: initialDraft.paidInFullInAdvance,
+        }
+      : EMPTY_TERM_FIELDS,
+  );
+  const [agreementId, setAgreementId] = useState<string | null>(
+    initialDraft?.id ?? null,
+  );
 
   function updateTerm<K extends keyof typeof EMPTY_TERM_FIELDS>(
     key: K,
@@ -176,26 +253,60 @@ export function RentalWizard({
       return;
     }
     startTransition(async () => {
-      const result = await createDraftAgreementAction({
-        customerId,
-        serviceAddressId,
-        ...termFields,
-      });
+      requestKey.current ??= crypto.randomUUID();
+      const params = new URLSearchParams(window.location.search);
+      params.set("requestKey", requestKey.current);
+      params.set("customerId", customerId);
+      params.set("serviceAddressId", serviceAddressId);
+      window.history.replaceState(
+        null,
+        "",
+        `${window.location.pathname}?${params}`,
+      );
+      let result;
+      try {
+        result = await createDraftAgreementAction({
+          requestKey: requestKey.current,
+          customerId,
+          serviceAddressId,
+          ...termFields,
+        });
+      } catch {
+        setError(
+          "The draft save was not confirmed. Reload this page to recover the saved draft before trying again.",
+        );
+        return;
+      }
       if (result.status === "error") {
         setError(result.message);
         return;
       }
       setAgreementId(result.agreementId);
+      if (result.agreementStatus !== "DRAFT") {
+        router.push(`/desk/agreements/${result.agreementId}`);
+        return;
+      }
+      window.history.replaceState(
+        null,
+        "",
+        `/desk/agreements/new?draftId=${encodeURIComponent(result.agreementId)}`,
+      );
       setStep("appliances");
     });
   }
 
   // Step 3 — appliances
-  const [availableAppliances, setAvailableAppliances] = useState(initialAvailableAppliances);
-  const [addedLines, setAddedLines] = useState<AddedLine[]>([]);
+  const [availableAppliances, setAvailableAppliances] = useState(
+    initialAvailableAppliances,
+  );
+  const [addedLines, setAddedLines] = useState<AddedLine[]>(
+    initialDraft?.lines ?? [],
+  );
   const [label, setLabel] = useState("");
   const [listPriceDollars, setListPriceDollars] = useState("");
-  const [selectedApplianceIds, setSelectedApplianceIds] = useState<string[]>([]);
+  const [selectedApplianceIds, setSelectedApplianceIds] = useState<string[]>(
+    [],
+  );
 
   function toggleAppliance(id: string) {
     setSelectedApplianceIds((prev) =>
@@ -208,11 +319,19 @@ export function RentalWizard({
     setError(null);
     if (!agreementId) return;
     startTransition(async () => {
-      const result = await addRentalLineAction(agreementId, {
-        label,
-        listPriceDollars,
-        applianceIds: selectedApplianceIds,
-      });
+      let result;
+      try {
+        result = await addRentalLineAction(agreementId, {
+          label,
+          listPriceDollars,
+          applianceIds: selectedApplianceIds,
+        });
+      } catch {
+        setError(
+          "The appliance save was not confirmed. Reload the saved draft to check its lines before retrying. Your inputs are still here.",
+        );
+        return;
+      }
       if (result.status === "error") {
         setError(result.message);
         return;
@@ -221,8 +340,13 @@ export function RentalWizard({
         .filter((a) => selectedApplianceIds.includes(a.id))
         .map((a) => `${a.typeName} (${a.assetNumber})`)
         .join(", ");
-      setAddedLines((prev) => [...prev, { label, monthlyDollars: listPriceDollars, applianceNames: names }]);
-      setAvailableAppliances((prev) => prev.filter((a) => !selectedApplianceIds.includes(a.id)));
+      setAddedLines((prev) => [
+        ...prev,
+        { ...result.line, applianceNames: names },
+      ]);
+      setAvailableAppliances((prev) =>
+        prev.filter((a) => !selectedApplianceIds.includes(a.id)),
+      );
       setLabel("");
       setListPriceDollars("");
       setSelectedApplianceIds([]);
@@ -245,7 +369,15 @@ export function RentalWizard({
     setError(null);
     if (!agreementId) return;
     startTransition(async () => {
-      const result = await sendForSignatureAction(agreementId);
+      let result;
+      try {
+        result = await sendForSignatureAction(agreementId);
+      } catch {
+        setError(
+          "Sending was not confirmed. Open the saved agreement to check its signature status before retrying.",
+        );
+        return;
+      }
       if (result.status === "error") {
         setError(result.message);
         return;
@@ -254,14 +386,18 @@ export function RentalWizard({
     });
   }
 
-  const monthlyTotal = addedLines.reduce((sum, l) => sum + (Number(l.monthlyDollars) || 0), 0);
+  const monthlyTotal = addedLines.reduce(
+    (sum, l) => sum + l.monthlyPriceCents,
+    0,
+  );
 
   return (
     <div>
       <ol className="flex flex-wrap gap-2" aria-label="Rental builder steps">
         {STEPS.map((s, i) => {
           const currentIndex = STEPS.findIndex((x) => x.key === step);
-          const done = i < currentIndex || (agreementId && s.key === "customer");
+          const done =
+            i < currentIndex || (agreementId && s.key === "customer");
           const active = s.key === step;
           return (
             <li
@@ -287,7 +423,49 @@ export function RentalWizard({
         </p>
       )}
 
-      {step === "customer" && (
+      {agreementId && (
+        <div
+          role="status"
+          className="mt-4 rounded-lg border border-line bg-subtle p-4 text-sm text-ink"
+        >
+          Draft saved. Customer, property and terms are fixed for this draft.
+          Appliance lines are saved as you add them.{" "}
+          <Link
+            className="underline"
+            href={`/desk/agreements/new?draftId=${agreementId}`}
+          >
+            Resume saved builder
+          </Link>{" "}
+          ·{" "}
+          <Link className="underline" href={`/desk/agreements/${agreementId}`}>
+            Open saved agreement
+          </Link>
+        </div>
+      )}
+      {agreementId && (step === "customer" || step === "terms") && (
+        <div className="mt-4 space-y-3 rounded-lg border border-line bg-surface p-4">
+          <h2 className="font-semibold">Saved customer and terms</h2>
+          <p>
+            {customerName} ·{" "}
+            {termFields.termMonths
+              ? `${termFields.termMonths}-month term`
+              : "Month-to-month"}
+          </p>
+          <p className="text-sm text-ink-soft">
+            To use different terms, open a separate draft. This checkpoint
+            preserves the saved agreement.
+          </p>
+          <button
+            type="button"
+            disabled={isPending}
+            onClick={() => setStep("appliances")}
+            className="min-h-11 rounded-lg bg-action px-4 py-2 text-on-action"
+          >
+            Continue with saved draft
+          </button>
+        </div>
+      )}
+      {step === "customer" && !agreementId && (
         <form
           onSubmit={handleCustomerStepNext}
           className="mt-4 space-y-4 rounded-lg border border-gray-200 bg-white p-5"
@@ -298,6 +476,7 @@ export function RentalWizard({
             <div className="flex gap-4 text-sm">
               <label className="flex items-center gap-1.5">
                 <input
+                  disabled={isPending}
                   type="radio"
                   checked={customerMode === "existing"}
                   onChange={() => setCustomerMode("existing")}
@@ -306,6 +485,7 @@ export function RentalWizard({
               </label>
               <label className="flex items-center gap-1.5">
                 <input
+                  disabled={isPending}
                   type="radio"
                   checked={customerMode === "new"}
                   onChange={() => setCustomerMode("new")}
@@ -318,10 +498,14 @@ export function RentalWizard({
           {customerMode === "existing" ? (
             <>
               <div>
-                <label htmlFor="customerId" className="block text-sm font-medium text-gray-700">
+                <label
+                  htmlFor="customerId"
+                  className="block text-sm font-medium text-gray-700"
+                >
                   Customer
                 </label>
                 <select
+                  disabled={isPending}
                   id="customerId"
                   value={customerId}
                   onChange={(e) => handleExistingCustomerChange(e.target.value)}
@@ -335,7 +519,10 @@ export function RentalWizard({
                 </select>
               </div>
               <div>
-                <label htmlFor="serviceAddressId" className="block text-sm font-medium text-gray-700">
+                <label
+                  htmlFor="serviceAddressId"
+                  className="block text-sm font-medium text-gray-700"
+                >
                   Service address
                 </label>
                 {addresses.length === 0 ? (
@@ -344,6 +531,7 @@ export function RentalWizard({
                   </p>
                 ) : (
                   <select
+                    disabled={isPending}
                     id="serviceAddressId"
                     value={serviceAddressId}
                     onChange={(e) => setServiceAddressId(e.target.value)}
@@ -362,10 +550,14 @@ export function RentalWizard({
             <>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
-                  <label htmlFor="ncName" className="block text-sm font-medium text-gray-700">
+                  <label
+                    htmlFor="ncName"
+                    className="block text-sm font-medium text-gray-700"
+                  >
                     Name
                   </label>
                   <input
+                    disabled={isPending}
                     id="ncName"
                     type="text"
                     required
@@ -375,10 +567,14 @@ export function RentalWizard({
                   />
                 </div>
                 <div>
-                  <label htmlFor="ncEmail" className="block text-sm font-medium text-gray-700">
+                  <label
+                    htmlFor="ncEmail"
+                    className="block text-sm font-medium text-gray-700"
+                  >
                     Email
                   </label>
                   <input
+                    disabled={isPending}
                     id="ncEmail"
                     type="email"
                     required
@@ -389,10 +585,14 @@ export function RentalWizard({
                 </div>
               </div>
               <div>
-                <label htmlFor="ncPhone" className="block text-sm font-medium text-gray-700">
+                <label
+                  htmlFor="ncPhone"
+                  className="block text-sm font-medium text-gray-700"
+                >
                   Phone (optional)
                 </label>
                 <input
+                  disabled={isPending}
                   id="ncPhone"
                   type="tel"
                   value={newCustomer.phone}
@@ -401,9 +601,12 @@ export function RentalWizard({
                 />
               </div>
               <fieldset className="border-t border-gray-100 pt-3">
-                <legend className="text-sm font-medium text-gray-700">Service address</legend>
+                <legend className="text-sm font-medium text-gray-700">
+                  Service address
+                </legend>
                 <div className="mt-2 space-y-3">
                   <input
+                    disabled={isPending}
                     type="text"
                     required
                     placeholder="Street address"
@@ -412,6 +615,7 @@ export function RentalWizard({
                     className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                   />
                   <input
+                    disabled={isPending}
                     type="text"
                     placeholder="Apt / unit (optional)"
                     value={newCustomer.line2}
@@ -420,22 +624,29 @@ export function RentalWizard({
                   />
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                     <input
+                      disabled={isPending}
                       type="text"
                       required
                       placeholder="City"
                       value={newCustomer.city}
-                      onChange={(e) => updateNewCustomer("city", e.target.value)}
+                      onChange={(e) =>
+                        updateNewCustomer("city", e.target.value)
+                      }
                       className="rounded-md border border-gray-300 px-3 py-2 text-sm"
                     />
                     <input
+                      disabled={isPending}
                       type="text"
                       placeholder="State"
                       maxLength={2}
                       value={newCustomer.state}
-                      onChange={(e) => updateNewCustomer("state", e.target.value)}
+                      onChange={(e) =>
+                        updateNewCustomer("state", e.target.value)
+                      }
                       className="rounded-md border border-gray-300 px-3 py-2 text-sm"
                     />
                     <input
+                      disabled={isPending}
                       type="text"
                       required
                       placeholder="ZIP"
@@ -459,19 +670,25 @@ export function RentalWizard({
         </form>
       )}
 
-      {step === "terms" && (
+      {step === "terms" && !agreementId && (
         <form
           onSubmit={handleTermsStepNext}
           className="mt-4 space-y-4 rounded-lg border border-gray-200 bg-white p-5"
         >
-          <h2 className="font-medium text-gray-900">Term & fees for {customerName}</h2>
+          <h2 className="font-medium text-gray-900">
+            Term & fees for {customerName}
+          </h2>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label htmlFor="termMonths" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="termMonths"
+                className="block text-sm font-medium text-gray-700"
+              >
                 Term (months, optional)
               </label>
               <input
+                disabled={isPending}
                 id="termMonths"
                 type="number"
                 min={1}
@@ -484,18 +701,24 @@ export function RentalWizard({
                 }}
                 className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
               />
-              {(termFields.termMonths === "6" || termFields.termMonths === "12") && (
+              {(termFields.termMonths === "6" ||
+                termFields.termMonths === "12") && (
                 <p className="mt-1 text-xs text-gray-500">
                   A {termFields.termMonths}-month term automatically gets the{" "}
-                  {termFields.termMonths}-month prepay discount (set from /desk/settings).
+                  {termFields.termMonths}-month prepay discount (set from
+                  /desk/settings).
                 </p>
               )}
             </div>
             <div>
-              <label htmlFor="depositDollars" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="depositDollars"
+                className="block text-sm font-medium text-gray-700"
+              >
                 Deposit ($, optional)
               </label>
               <input
+                disabled={isPending}
                 id="depositDollars"
                 type="number"
                 min={0}
@@ -510,13 +733,16 @@ export function RentalWizard({
           {termFields.termMonths === "12" && (
             <label className="flex items-center gap-2 rounded-md bg-blue-50 p-3 text-sm text-blue-900">
               <input
+                disabled={isPending}
                 type="checkbox"
                 checked={termFields.paidInFullInAdvance}
-                onChange={(e) => updateTerm("paidInFullInAdvance", e.target.checked)}
+                onChange={(e) =>
+                  updateTerm("paidInFullInAdvance", e.target.checked)
+                }
                 className="h-4 w-4"
               />
-              Customer is paying the full 12 months in advance (earns the free-month bonus,
-              if that&apos;s turned on in Settings)
+              Customer is paying the full 12 months in advance (earns the
+              free-month bonus, if that&apos;s turned on in Settings)
             </label>
           )}
 
@@ -529,20 +755,27 @@ export function RentalWizard({
                 Damage waiver ($/mo, optional)
               </label>
               <input
+                disabled={isPending}
                 id="damageWaiverDollars"
                 type="number"
                 min={0}
                 step="0.01"
                 value={termFields.damageWaiverDollars}
-                onChange={(e) => updateTerm("damageWaiverDollars", e.target.value)}
+                onChange={(e) =>
+                  updateTerm("damageWaiverDollars", e.target.value)
+                }
                 className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
               />
             </div>
             <div>
-              <label htmlFor="taxRatePercent" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="taxRatePercent"
+                className="block text-sm font-medium text-gray-700"
+              >
                 Tax rate (%, optional)
               </label>
               <input
+                disabled={isPending}
                 id="taxRatePercent"
                 type="number"
                 min={0}
@@ -556,10 +789,14 @@ export function RentalWizard({
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div>
-              <label htmlFor="lateFeeGraceDays" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="lateFeeGraceDays"
+                className="block text-sm font-medium text-gray-700"
+              >
                 Late fee grace (days)
               </label>
               <input
+                disabled={isPending}
                 id="lateFeeGraceDays"
                 type="number"
                 min={0}
@@ -569,10 +806,14 @@ export function RentalWizard({
               />
             </div>
             <div>
-              <label htmlFor="lateFeeDollars" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="lateFeeDollars"
+                className="block text-sm font-medium text-gray-700"
+              >
                 Late fee flat ($)
               </label>
               <input
+                disabled={isPending}
                 id="lateFeeDollars"
                 type="number"
                 min={0}
@@ -583,10 +824,14 @@ export function RentalWizard({
               />
             </div>
             <div>
-              <label htmlFor="lateFeePercent" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="lateFeePercent"
+                className="block text-sm font-medium text-gray-700"
+              >
                 Late fee (%)
               </label>
               <input
+                disabled={isPending}
                 id="lateFeePercent"
                 type="number"
                 min={0}
@@ -601,6 +846,7 @@ export function RentalWizard({
           <div className="flex gap-2">
             <button
               type="button"
+              disabled={isPending}
               onClick={() => setStep("customer")}
               className="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:border-gray-400"
             >
@@ -620,15 +866,16 @@ export function RentalWizard({
       {step === "appliances" && agreementId && (
         <div className="mt-4 space-y-4 rounded-lg border border-gray-200 bg-white p-5">
           <h2 className="font-medium text-gray-900">
-            Appliances ({addedLines.length} added{monthlyTotal > 0 && ` — $${monthlyTotal.toFixed(2)}/mo`})
+            Appliances ({addedLines.length} added
+            {monthlyTotal > 0 && ` — ${formatCents(monthlyTotal)}/mo`})
           </h2>
 
           {addedLines.length > 0 && (
             <ul className="divide-y divide-gray-100 text-sm">
-              {addedLines.map((l, i) => (
-                <li key={i} className="py-2">
+              {addedLines.map((l) => (
+                <li key={l.id} className="py-2">
                   <p className="font-medium text-gray-900">
-                    {l.label} — ${Number(l.monthlyDollars || 0).toFixed(2)}/mo
+                    {l.label} — {formatCents(l.monthlyPriceCents)}/mo
                   </p>
                   <p className="text-gray-600">{l.applianceNames}</p>
                 </li>
@@ -636,13 +883,20 @@ export function RentalWizard({
             </ul>
           )}
 
-          <form onSubmit={handleAddLine} className="space-y-3 border-t border-gray-100 pt-4">
+          <form
+            onSubmit={handleAddLine}
+            className="space-y-3 border-t border-gray-100 pt-4"
+          >
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label htmlFor="lineLabel" className="block text-sm font-medium text-gray-700">
+                <label
+                  htmlFor="lineLabel"
+                  className="block text-sm font-medium text-gray-700"
+                >
                   Label
                 </label>
                 <input
+                  disabled={isPending}
                   id="lineLabel"
                   type="text"
                   required
@@ -653,10 +907,14 @@ export function RentalWizard({
                 />
               </div>
               <div>
-                <label htmlFor="listPriceDollars" className="block text-sm font-medium text-gray-700">
+                <label
+                  htmlFor="listPriceDollars"
+                  className="block text-sm font-medium text-gray-700"
+                >
                   Monthly price before any discount ($)
                 </label>
                 <input
+                  disabled={isPending}
                   id="listPriceDollars"
                   type="number"
                   min={0}
@@ -671,8 +929,8 @@ export function RentalWizard({
 
             <div>
               <p className="block text-sm font-medium text-gray-700">
-                Which appliance(s)? (select 2 for a set — sets get the higher prepay
-                discount rate)
+                Which appliance(s)? (select 2 for a set — sets get the higher
+                prepay discount rate)
               </p>
               {availableAppliances.length === 0 ? (
                 <p className="mt-1 text-sm text-gray-600">
@@ -681,8 +939,12 @@ export function RentalWizard({
               ) : (
                 <div className="mt-2 max-h-48 space-y-1 overflow-y-auto rounded-md border border-gray-200 p-2">
                   {availableAppliances.map((a) => (
-                    <label key={a.id} className="flex items-center gap-2 text-sm">
+                    <label
+                      key={a.id}
+                      className="flex items-center gap-2 text-sm"
+                    >
                       <input
+                        disabled={isPending}
                         type="checkbox"
                         checked={selectedApplianceIds.includes(a.id)}
                         onChange={() => toggleAppliance(a.id)}
@@ -706,6 +968,7 @@ export function RentalWizard({
           <div className="flex gap-2 border-t border-gray-100 pt-4">
             <button
               type="button"
+              disabled={isPending}
               onClick={() => setStep("terms")}
               className="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:border-gray-400"
             >
@@ -713,6 +976,7 @@ export function RentalWizard({
             </button>
             <button
               type="button"
+              disabled={isPending}
               onClick={handleAppliancesStepNext}
               className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
             >
@@ -726,24 +990,30 @@ export function RentalWizard({
         <div className="mt-4 space-y-4 rounded-lg border border-gray-200 bg-white p-5">
           <h2 className="font-medium text-gray-900">Review</h2>
           <p className="text-sm text-gray-600">
-            {customerName} — {termFields.termMonths ? `${termFields.termMonths}-month term` : "Month-to-month"}
+            {customerName} —{" "}
+            {termFields.termMonths
+              ? `${termFields.termMonths}-month term`
+              : "Month-to-month"}
           </p>
           <ul className="divide-y divide-gray-100 text-sm">
-            {addedLines.map((l, i) => (
-              <li key={i} className="py-2">
+            {addedLines.map((l) => (
+              <li key={l.id} className="py-2">
                 <p className="font-medium text-gray-900">
-                  {l.label} — ${Number(l.monthlyDollars || 0).toFixed(2)}/mo
+                  {l.label} — {formatCents(l.monthlyPriceCents)}/mo
                 </p>
                 <p className="text-gray-600">{l.applianceNames}</p>
               </li>
             ))}
           </ul>
-          <p className="font-medium text-gray-900">Total: ${monthlyTotal.toFixed(2)}/mo</p>
+          <p className="font-medium text-gray-900">
+            Total: {formatCents(monthlyTotal)}/mo
+          </p>
 
           {!sent ? (
             <div className="flex flex-wrap gap-2 border-t border-gray-100 pt-4">
               <button
                 type="button"
+                disabled={isPending}
                 onClick={() => setStep("appliances")}
                 className="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:border-gray-400"
               >
@@ -768,7 +1038,10 @@ export function RentalWizard({
             <div className="rounded-md bg-green-50 p-3 text-sm text-green-900">
               <p className="font-medium">Sent for signature.</p>
               <p className="mt-1">
-                <Link href={`/desk/agreements/${agreementId}`} className="underline">
+                <Link
+                  href={`/desk/agreements/${agreementId}`}
+                  className="underline"
+                >
                   Open this agreement
                 </Link>{" "}
                 to get the signing link to send the customer.
@@ -780,10 +1053,10 @@ export function RentalWizard({
 
       {(step === "appliances" || step === "review") && !agreementId && (
         <p className="mt-4 text-sm text-red-700">
-          Something went wrong creating the draft agreement — go back and try again.
+          Something went wrong creating the draft agreement — go back and try
+          again.
         </p>
       )}
     </div>
   );
 }
-

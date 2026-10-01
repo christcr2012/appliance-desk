@@ -1,3 +1,4 @@
+import { draftRequestId } from "./draft-request";
 import { requireRole } from "@/lib/session";
 import Stripe from "stripe";
 import { prisma } from "@/lib/prisma";
@@ -107,6 +108,7 @@ export async function getAgreementById(id: string) {
 }
 
 export type NewAgreementInput = {
+  requestKey?: string;
   customerId: string;
   serviceAddressId: string;
   termMonths?: number | null;
@@ -131,7 +133,10 @@ export type NewAgreementInput = {
  * toggle — and that decision is frozen into freeMonthGranted immediately,
  * so a later change to the toggle can never retroactively add or remove
  * the bonus from an agreement that's already been created. */
-export async function createDraftAgreement(userId: string, input: NewAgreementInput) {
+export async function createDraftAgreement(
+  userId: string,
+  input: NewAgreementInput,
+) {
   const termMonths = input.termMonths ?? null;
   const paidInFullInAdvance = input.paidInFullInAdvance ?? false;
 
@@ -141,6 +146,52 @@ export async function createDraftAgreement(userId: string, input: NewAgreementIn
     );
   }
 
+  const address = await prisma.serviceAddress.findUnique({
+    where: { id: input.serviceAddressId },
+    select: { customerId: true, customer: { select: { archivedAt: true } } },
+  });
+  if (
+    !address ||
+    address.customerId !== input.customerId ||
+    address.customer.archivedAt
+  )
+    throw new Error(
+      "Choose a service address belonging to this active customer.",
+    );
+  const requestedId = input.requestKey
+    ? draftRequestId(userId, input.requestKey)
+    : undefined;
+  const terms = {
+    customerId: input.customerId,
+    serviceAddressId: input.serviceAddressId,
+    termMonths,
+    depositCents: input.depositCents ?? 0,
+    damageWaiverCents: input.damageWaiverCents ?? 0,
+    lateFeeGraceDays: input.lateFeeGraceDays ?? 5,
+    lateFeeCents: input.lateFeeCents ?? 0,
+    lateFeePercent: input.lateFeePercent ?? 0,
+    taxRatePermille: input.taxRatePermille ?? 0,
+    paidInFullInAdvance,
+  };
+  async function savedRequest() {
+    if (!requestedId) return null;
+    const saved = await prisma.rentalAgreement.findUnique({
+      where: { id: requestedId },
+    });
+    if (!saved) return null;
+    if (
+      Object.entries(terms).some(
+        ([key, value]) => saved[key as keyof typeof saved] !== value,
+      )
+    )
+      throw new Error(
+        "This save request already has different terms. Open the saved draft before continuing.",
+      );
+    return saved;
+  }
+  const saved = await savedRequest();
+  if (saved) return saved;
+
   const settings = await getBusinessSettings();
   const freeMonthGranted = isFreeMonthEarned(
     termMonths,
@@ -148,34 +199,53 @@ export async function createDraftAgreement(userId: string, input: NewAgreementIn
     settings.twelveMonthPrepayFreeMonthEnabled,
   );
 
-  const agreement = await prisma.rentalAgreement.create({
-    data: {
-      customerId: input.customerId,
-      serviceAddressId: input.serviceAddressId,
-      termMonths,
-      depositCents: input.depositCents ?? 0,
-      damageWaiverCents: input.damageWaiverCents ?? 0,
-      lateFeeGraceDays: input.lateFeeGraceDays ?? 5,
-      lateFeeCents: input.lateFeeCents ?? 0,
-      lateFeePercent: input.lateFeePercent ?? 0,
-      taxRatePermille: input.taxRatePermille ?? 0,
-      paidInFullInAdvance,
-      freeMonthGranted,
-      reservationExpiresAt: addDays(new Date(), settings.draftReservationHoldDays),
-    },
-  });
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const agreement = await tx.rentalAgreement.create({
+        data: {
+          ...(requestedId ? { id: requestedId } : {}),
+          customerId: input.customerId,
+          serviceAddressId: input.serviceAddressId,
+          termMonths,
+          depositCents: input.depositCents ?? 0,
+          damageWaiverCents: input.damageWaiverCents ?? 0,
+          lateFeeGraceDays: input.lateFeeGraceDays ?? 5,
+          lateFeeCents: input.lateFeeCents ?? 0,
+          lateFeePercent: input.lateFeePercent ?? 0,
+          taxRatePermille: input.taxRatePermille ?? 0,
+          paidInFullInAdvance,
+          freeMonthGranted,
+          reservationExpiresAt: addDays(
+            new Date(),
+            settings.draftReservationHoldDays,
+          ),
+        },
+      });
 
-  await prisma.auditLog.create({
-    data: {
-      userId,
-      action: "agreement.create",
-      entityType: "RentalAgreement",
-      entityId: agreement.id,
-      newValue: { customerId: input.customerId, termMonths, paidInFullInAdvance, freeMonthGranted },
-    },
-  });
+      await tx.auditLog.create({
+        data: {
+          userId,
+          action: "agreement.create",
+          entityType: "RentalAgreement",
+          entityId: agreement.id,
+          newValue: {
+            customerId: input.customerId,
+            termMonths,
+            paidInFullInAdvance,
+            freeMonthGranted,
+          },
+        },
+      });
 
-  return agreement;
+      return agreement;
+    });
+  } catch (error) {
+    if (requestedId && (error as { code?: string }).code === "P2002") {
+      const existing = await savedRequest();
+      if (existing) return existing;
+    }
+    throw error;
+  }
 }
 
 export type NewRentalLineInput = {

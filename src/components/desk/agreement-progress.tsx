@@ -18,6 +18,14 @@ export function AgreementProgress({
           Open next step
         </Link>
       )}
+      {agreement.status === "DRAFT" && (
+        <Link
+          className={secondaryActionClass}
+          href={`/desk/agreements/new?draftId=${agreement.id}`}
+        >
+          Resume rental builder
+        </Link>
+      )}
       <dl className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {data.milestones.map((m) => (
           <div key={m.label}>

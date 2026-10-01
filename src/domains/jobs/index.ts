@@ -126,6 +126,33 @@ export type NewJobInput = {
 };
 
 export async function createJob(userId: string, input: NewJobInput) {
+  if (input.serviceAddressId) {
+    const address = await prisma.serviceAddress.findUnique({
+      where: { id: input.serviceAddressId },
+      select: { customerId: true },
+    });
+    if (!address || !input.customerId || address.customerId !== input.customerId)
+      throw new Error("Choose a service address belonging to this customer.");
+  }
+  if (input.agreementId) {
+    const agreement = await prisma.rentalAgreement.findUnique({
+      where: { id: input.agreementId },
+      select: { customerId: true, serviceAddressId: true },
+    });
+    if (
+      !agreement || !input.customerId || agreement.customerId !== input.customerId ||
+      (input.serviceAddressId && agreement.serviceAddressId !== input.serviceAddressId)
+    )
+      throw new Error("Choose an agreement belonging to this customer and property.");
+  }
+  if (input.maintenanceRequestId) {
+    const request = await prisma.maintenanceRequest.findUnique({
+      where: { id: input.maintenanceRequestId },
+      select: { customerId: true },
+    });
+    if (!request || !input.customerId || request.customerId !== input.customerId)
+      throw new Error("Choose a service request belonging to this customer.");
+  }
   const job = await prisma.job.create({
     data: {
       type: input.type,
@@ -433,4 +460,3 @@ export async function updateJobChecklist(jobId: string, checklist: ChecklistItem
     data: { checklist },
   });
 }
-
