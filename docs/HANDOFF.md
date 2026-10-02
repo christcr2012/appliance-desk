@@ -6,6 +6,12 @@ files: owner-portal-workspaces 59.5s, revenue-records 51.7s, crm-workspace
 45.0s, accessibility-authenticated 23.9s. All three shards green, deactivation
 spec passed in 3.3s with the wider budget. No rebalancing needed yet.
 
+**Standing target recorded (Chris, 2026-10-02): full CI ≤ 5 minutes per PR,
+docs-only PRs near-free.** Rules in `AGENTS.md` → "CI speed budget";
+maintenance guide (where time goes, how to add tests without blowing the
+budget, when/how to rebalance or add a shard, why docs-only PRs still run a
+10-second classifier) in `docs/ARCHITECTURE.md` → "Keeping CI under 5 minutes".
+
 `.github/workflows/ci.yml`'s `e2e` job is now a 3-shard matrix (each shard: own
 throwaway Postgres, migrate, seed, build, then the spec files assigned to it in
 `e2e/shards.json`, run by `scripts/e2e-shard.mjs`). The `ci` gate still requires

@@ -348,6 +348,51 @@ Never rely on hiding a nav link as the only protection for anything.
 
 A final `ci` job (the historical required-check name) succeeds only if every job above succeeded — for the browser shards, GitHub reports the matrix as a whole, so one failing shard fails the gate. Vercel deploys previews for every PR and production on merge to `main` independently of this workflow.
 
+## Keeping CI under 5 minutes
+
+**Target (owner, 2026-10-02): a full CI run on any PR finishes in ≤ 5 minutes; documentation-only PRs cost ~10 seconds.** Measured on merge of PR #137: 4m28s full, ~10s docs-only. This section is the maintenance guide for that number as the project grows. The short version is in `AGENTS.md` ("CI speed budget").
+
+### Where the time goes
+
+The jobs run in parallel, so **the run takes as long as its slowest job** — and that is always one of the browser shards:
+
+| Job | Typical | What it's made of |
+|---|---|---|
+| classify | 6s | diff the PR; docs-only → skip everything below |
+| static checks | ~1.5 min | npm ci 30s · typecheck 25s · lint 23s · shard-assignment check 1s |
+| database (migrations + unit/integration tests) | ~2–2.5 min | containers 18s · npm ci 28s · migrate/health/upgrade drills ~15s · seed 3s · **vitest ~60–70s** |
+| browser shard × 3 | ~3.5–4.2 min each | **fixed ~2.5–3 min**: containers 17s · npm ci 26s · migrate+health+seed 6s · `next build` ~85s · browser install ~25s · then **that shard's tests 85–130s** |
+| ci (gate) | 3s | passes only if every job above passed |
+
+So the critical path is: *fixed browser-shard overhead (~3 min) + the slowest shard's tests*. The 5-minute target therefore means **no shard's test step may exceed ~2 minutes**. The fixed overhead cannot be parallelized away — every shard needs its own build and database — so the only levers are (a) how much browser testing there is and (b) how evenly it is spread.
+
+### Rules when adding tests
+
+1. **Default to unit tests.** `tests/` (vitest, real Postgres) runs ~1,000 tests in about a minute; the same minute buys roughly 20 browser tests. Reserve `e2e/` for what needs a browser: axe accessibility scans, real login/session/cookie behavior, security headers, and one full click-through per major user flow. Business rules, pricing, permissions, data integrity → unit tests.
+2. **Assign every new spec file.** `scripts/e2e-shard.mjs --check` runs in the static job and fails the PR if an `e2e/*.spec.ts` is missing from `e2e/shards.json`, listed twice, or listed but deleted. Add it to the group with the most headroom.
+3. **Read the real numbers, don't guess.** After every run each shard prints one notice: `e2e shard "<group>" durations (NNs of test time): file 59.5s, file 51.7s, …`. The raw log and HTML report are often unreachable from sandboxes; the notices are not — `gh api repos/<owner>/<repo>/check-runs/<job_id>/annotations`. Job-level timings: `gh api repos/<owner>/<repo>/actions/runs/<run_id>/jobs`.
+4. **Reuse saved sessions.** `e2e/global-setup.ts` logs in once per role and saves the session; tests start signed in via `test.use({ storageState })`. A real login per test both slows the suite and times out under load (see the 2026-09-27 HANDOFF entry). A test that legitimately must log in for real with expensive setup declares `test.slow()` rather than raising global timeouts.
+5. **Keep the shared prefix lean.** Anything added before the test step of the browser job runs three times per PR. New one-off checks (lint-like scripts, schema drills, migration checks) belong in `static` or `database`, which have ~2.5–3 min of headroom.
+6. **Dependencies cost on every job.** `npm ci` runs four times per PR (~30s each). A heavy new dependency shows up four times over. Prefer small, tree-shakable packages; check `npm ci` time in the job steps after adding one.
+7. **Build cache.** `.next/cache` is restored keyed on `package-lock.json`; a lockfile change invalidates it and the build step grows (~85s → longer) for that one run. That's expected — don't chase it.
+
+### When a shard gets too heavy
+
+- **One group over ~2 min, others under:** move its heaviest file(s) to the lightest group in `e2e/shards.json`. That's the whole change; the static check verifies it.
+- **Every group near 2 min:** add a shard. Add a fourth group in `e2e/shards.json`, add its name to the `shard:` list in `.github/workflows/ci.yml` (`e2e` job matrix), move files into it. Cost: ~3 more billed runner-minutes per run (this is a private repo; GitHub bills by runner-minute). Playwright's own `--shard=N/M` is **not** used because it balances by test count and this suite's durations are very uneven — it put ~4× the work on one runner.
+- **A single spec file over ~60s:** it probably does too much. Split it by user flow so it can be spread across groups, or move assertions that don't need a browser into unit tests.
+- **Unit job approaching 3 min:** shard vitest first (`vitest run --shard=N/M` in a matrix, same shape as the browser job) — it has no build step so each extra shard is cheap. Watch for tests that assume they own the seeded data.
+
+### Documentation-only PRs
+
+The `classify` job diffs the PR against its base; if every changed file is under `docs/` or ends in `.md`, the heavy jobs are skipped and the `ci` gate passes immediately — about 10 seconds end to end. Workflow, config, script, schema, source and test changes always get the full run (fail-safe: an empty or indeterminate diff also runs everything). A PR that mixes code and docs is a code PR.
+
+The tiny classify/gate pair is kept on purpose rather than `paths-ignore`-ing the workflow entirely: when `main` is set to *require* the `ci` check (planned once the plan allows protected branches), a PR whose workflow never runs can never report that check and can never merge. Ten seconds is the price of that safety.
+
+### Known floor
+
+With the current fixed overhead, ~4 min is about the floor for a full run on standard runners. Larger (paid) runners would cut the build and test steps but are not justified yet. Below that, the gains are in individual slow tests, not in more parallelism.
+
 ## Folder layout
 
 ```
