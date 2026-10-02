@@ -4,6 +4,7 @@ import Image from "next/image";
 import { requireRole } from "@/lib/session";
 import { getMaintenanceRequestById } from "@/domains/maintenance";
 import { MaintenanceDetailPanel } from "./maintenance-detail-panel";
+import { privatePhotoReadPath } from "@/lib/photo-storage";
 
 export const metadata = { title: "Maintenance request" };
 
@@ -52,23 +53,26 @@ export default async function MaintenanceDetailPage({
             Photo{request.photos.length > 1 ? "s" : ""} from the customer
           </h2>
           <div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-3">
-            {request.photos.map((p) => (
-              <a
-                key={p.id}
-                href={p.url}
-                target="_blank"
-                rel="noreferrer"
-                className="relative block h-32 w-full overflow-hidden rounded-lg"
-              >
-                <Image
-                  src={p.url}
-                  alt={p.altText ?? "Photo of the problem from the customer"}
-                  fill
-                  sizes="(min-width: 640px) 33vw, 45vw"
-                  className="object-cover"
-                />
-              </a>
-            ))}
+            {request.photos.map((p) => {
+              const readUrl = privatePhotoReadPath(p.id);
+              return (
+                <a
+                  key={p.id}
+                  href={readUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="relative block h-32 w-full overflow-hidden rounded-lg"
+                >
+                  <Image
+                    src={readUrl}
+                    alt={p.altText ?? "Photo of the problem from the customer"}
+                    fill
+                    sizes="(min-width: 640px) 33vw, 45vw"
+                    className="object-cover"
+                  />
+                </a>
+              );
+            })}
           </div>
         </div>
       )}
