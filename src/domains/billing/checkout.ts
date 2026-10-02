@@ -1,6 +1,11 @@
 import { prisma } from "@/lib/prisma";
 import { getStripeClient } from "@/lib/stripe";
 import { rewardReferralIfEligible } from "@/domains/referrals";
+import {
+  claimProviderOperation,
+  completeProviderOperation,
+  runProviderCall,
+} from "./provider-ops";
 
 // ---------------------------------------------------------------------------
 // Phase 6B — turning a signed rental agreement into a real Stripe
@@ -83,32 +88,130 @@ export function buildCheckoutLinePlan(agreement: LinePlanInput): CheckoutLinePla
   return plan;
 }
 
-/** Creates the real Stripe Customer for this Customer's first-ever charge,
- * or returns the existing one — never recreated, per the schema comment
- * on Customer.stripeCustomerId. */
+/**
+ * Returns the one Stripe Customer linked to this local Customer. Creation is
+ * a durable provider operation: the Customer row is locked while the local
+ * claim is made, Stripe is called only after that transaction commits, and a
+ * second short transaction records the provider result without ever
+ * overwriting a different provider id that won a race.
+ */
 export async function ensureStripeCustomer(customerId: string): Promise<string> {
-  const customer = await prisma.customer.findUniqueOrThrow({
-    where: { id: customerId },
-    include: { user: { select: { name: true, email: true } } },
+  const idempotencyKey = `customer-create-${customerId}`;
+
+  const claimed = await prisma.$transaction(async (tx) => {
+    const locked = await tx.$queryRaw<Array<{ id: string; stripeCustomerId: string | null }>>`
+      SELECT "id", "stripeCustomerId"
+      FROM "Customer"
+      WHERE "id" = ${customerId}
+      FOR UPDATE
+    `;
+    if (!locked[0]) {
+      throw new Error(`Customer ${customerId} does not exist.`);
+    }
+    if (locked[0].stripeCustomerId) {
+      return { done: true as const, providerObjectId: locked[0].stripeCustomerId };
+    }
+
+    const customer = await tx.customer.findUniqueOrThrow({
+      where: { id: customerId },
+      include: { user: { select: { name: true, email: true } } },
+    });
+    const claim = await claimProviderOperation(tx, {
+      kind: "CUSTOMER_CREATE",
+      subjectType: "Customer",
+      subjectId: customerId,
+      idempotencyKey,
+    });
+
+    if (claim.done) {
+      await tx.customer.update({
+        where: { id: customerId },
+        data: { stripeCustomerId: claim.providerObjectId },
+      });
+      return { done: true as const, providerObjectId: claim.providerObjectId };
+    }
+
+    return {
+      done: false as const,
+      opId: claim.opId,
+      idempotencyKey: claim.idempotencyKey,
+      name: customer.user.name,
+      email: customer.user.email,
+    };
   });
 
-  if (customer.stripeCustomerId) {
-    return customer.stripeCustomerId;
-  }
+  if (claimed.done) return claimed.providerObjectId;
 
   const stripe = getStripeClient();
-  const stripeCustomer = await stripe.customers.create({
-    name: customer.user.name ?? undefined,
-    email: customer.user.email,
-    metadata: { customerId: customer.id },
-  });
+  const providerResult = await runProviderCall(() =>
+    stripe.customers.create(
+      {
+        name: claimed.name ?? undefined,
+        email: claimed.email,
+        metadata: { customerId },
+      },
+      { idempotencyKey: claimed.idempotencyKey },
+    ),
+  );
 
-  await prisma.customer.update({
-    where: { id: customerId },
-    data: { stripeCustomerId: stripeCustomer.id },
-  });
+  if (!providerResult.ok) {
+    await prisma.$transaction((tx) =>
+      completeProviderOperation(
+        tx,
+        claimed.opId,
+        providerResult.outcome === "UNKNOWN"
+          ? { status: "UNKNOWN", error: providerResult.error }
+          : { status: "FAILED", error: providerResult.error },
+      ),
+    );
+    throw new Error("Couldn't set up billing for this customer — try again in a minute.");
+  }
 
-  return stripeCustomer.id;
+  const stripeCustomerId = providerResult.value.id;
+  return prisma.$transaction(async (tx) => {
+    const locked = await tx.$queryRaw<Array<{ id: string; stripeCustomerId: string | null }>>`
+      SELECT "id", "stripeCustomerId"
+      FROM "Customer"
+      WHERE "id" = ${customerId}
+      FOR UPDATE
+    `;
+    const customer = locked[0];
+    if (!customer) {
+      await completeProviderOperation(tx, claimed.opId, {
+        status: "DRIFT",
+        providerObjectId: stripeCustomerId,
+        note: `Stripe customer ${stripeCustomerId} was created after local customer ${customerId} disappeared.`,
+      });
+      throw new Error("Customer disappeared while billing was being set up.");
+    }
+
+    if (!customer.stripeCustomerId) {
+      await tx.customer.update({
+        where: { id: customerId },
+        data: { stripeCustomerId },
+      });
+      await completeProviderOperation(tx, claimed.opId, {
+        status: "SUCCEEDED",
+        providerObjectId: stripeCustomerId,
+      });
+      return stripeCustomerId;
+    }
+
+    if (customer.stripeCustomerId === stripeCustomerId) {
+      await completeProviderOperation(tx, claimed.opId, {
+        status: "SUCCEEDED",
+        providerObjectId: stripeCustomerId,
+      });
+      return stripeCustomerId;
+    }
+
+    await completeProviderOperation(tx, claimed.opId, {
+      status: "DRIFT",
+      providerObjectId: stripeCustomerId,
+      note: `Stripe returned ${stripeCustomerId}, but customer ${customerId} is already linked to ${customer.stripeCustomerId}.`,
+    });
+    return customer.stripeCustomerId;
+  });
 }
 
 /** Finds an existing Stripe Tax Rate matching this exact percentage
