@@ -3,7 +3,7 @@
 The operating system for Robinson Appliance Rentals (Colorado): a public
 website that brings in leads, an admin "desk" where the business runs,
 and a customer portal. See `AGENTS.md` for the full ground rules and
-`docs/HANDOFF.md` for exactly what currently works.
+`docs/archive/HANDOFF-2026-09-26-to-2026-10-02.md` for exactly what currently works.
 
 ## Stack
 

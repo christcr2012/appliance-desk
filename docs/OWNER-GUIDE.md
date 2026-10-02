@@ -3,7 +3,7 @@
 This explains how to actually run Robinson Appliance Rentals day to day
 using Appliance Desk, as it exists right now. It's updated every time a
 feature ships or changes — if something here doesn't match what you see
-on screen, tell whoever's helping you and check `docs/HANDOFF.md` for
+on screen, tell whoever's helping you and check `docs/archive/HANDOFF-2026-09-26-to-2026-10-02.md` for
 the most current state.
 
 (Corrected 2026-09-29 — this line had gone stale: billing/payments are
@@ -335,7 +335,7 @@ caught up. See `docs/ROADMAP.md` for the always-current, fuller list.)
 
 ## What to do if something breaks
 
-1. Check `docs/HANDOFF.md` — it always says what currently works and
+1. Check `docs/archive/HANDOFF-2026-09-26-to-2026-10-02.md` — it always says what currently works and
    what's known to be broken.
 2. If the site is down or showing errors for customers, that should
    show up automatically in Sentry and you'd be alerted.

@@ -140,7 +140,7 @@ and the evidence still required. Approval does not merge or enable services.
 
 ## Google Workspace work belongs in the Claude handoff
 
-Read [CLAUDE-WORKSPACE-SETUP.md](CLAUDE-WORKSPACE-SETUP.md). Chris reports Claude
+Read [CLAUDE-WORKSPACE-SETUP.md](../../plans/overhaul/CLAUDE-WORKSPACE-SETUP.md). Chris reports Claude
 has the required connector. Keep Sol/Luna app batches intact; give Claude exact
 Workspace dependencies and receive verified non-secret settings back. Before
 marking an email or Google integration complete, document every required Admin,

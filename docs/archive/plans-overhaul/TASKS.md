@@ -384,7 +384,7 @@ below. **Sequencing: start only after Releases A and B are verified, after
 Chris's live walkthrough, and after connector cards P4-1–P4-3 in the
 google-workspace-mcp repo are done.** Full specification, existing Google
 resource IDs, and the one-time owner setup are in
-[../google-workspace-integration/README.md](../google-workspace-integration/README.md).
+[../google-workspace-integration/README.md](../../plans/google-workspace-integration/README.md).
 
 ### O32 — Google Workspace runtime integration (L, six PRs; current-model review per PR)
 - Depends: O01, O02, O06, O07, O08, O26 (ledger shape), connector P4-1–P4-3,
@@ -417,7 +417,7 @@ release. A planning document, passing typecheck, or a screenshot alone is not VE
 
 ## External Google Workspace setup dependencies
 
-[Claude Workspace setup register](CLAUDE-WORKSPACE-SETUP.md) owns GW-01–GW-14.
+[Claude Workspace setup register](../../plans/overhaul/CLAUDE-WORKSPACE-SETUP.md) owns GW-01–GW-14.
 O00 reconciles its observed inventory; O21 email settings consume GW-04/GW-07;
 O26–O28 communication work preserves existing Resend and uses verified routing
 where relevant. O31 reports GW-08/GW-09 activation evidence or explicit blockers.

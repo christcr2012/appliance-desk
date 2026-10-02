@@ -694,7 +694,7 @@ public-facing access other than through this app, over a pooled
 connection string that lives only in Vercel's environment variables),
 but it should be revisited — either by upgrading the Neon plan or
 freeing up a protected-branch slot on another project — before real
-customer data goes in. Tracked in `docs/HANDOFF.md` and
+customer data goes in. Tracked in `docs/archive/HANDOFF-2026-09-26-to-2026-10-02.md` and
 `docs/ROADMAP.md`.
 
 ---
@@ -1226,7 +1226,7 @@ database was Chris manually pasting its SQL into Neon's console,
 before or alongside each Vercel deploy. This already caused one real
 production failure early on (PR #4), and caused a second scare this
 session (a Vercel build crashed prerendering "/" because the live
-database hadn't been migrated yet — see docs/HANDOFF.md). Vercel's
+database hadn't been migrated yet — see docs/archive/HANDOFF-2026-09-26-to-2026-10-02.md). Vercel's
 build never ran `prisma migrate deploy` on its own, and nothing
 stopped application code from running against a schema it didn't
 match.
@@ -3505,7 +3505,7 @@ CANCELLED-before-RECEIVED rule, and the receiving flow actually
 increments `PartRecord.quantityOnHand` by the received quantities and
 not before. Opened as its own PR (#83) rather than folded into the
 hardening/estimate-follow-through PR (#82), following this project's
-one-feature-per-PR convention — see `docs/HANDOFF.md` for how that PR
+one-feature-per-PR convention — see `docs/archive/HANDOFF-2026-09-26-to-2026-10-02.md` for how that PR
 was merged.
 
 ## 2026-09-29 — Finishing the icon set: a shared `<StatusBadge>` for every status everywhere

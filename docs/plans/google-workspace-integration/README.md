@@ -5,7 +5,7 @@ Calendar and mail integrations "stay conditional and require their own
 authorized card before runtime sync is built." On 2026-09-30 Chris authorized
 that work, in writing, after a full day of Google Workspace setup done with
 Claude. This document is the authorized card's specification. The card itself
-is **O32** in [`../overhaul/TASKS.md`](../overhaul/TASKS.md).
+is **O32** in [`../../archive/plans-overhaul/TASKS.md`](../../archive/plans-overhaul/TASKS.md).
 
 ## Why this is here
 
@@ -34,7 +34,7 @@ already exists"). This spec is the app-side half.
    data (his "Stage 1: prove it"). Integration bugs are far harder to tell
    from core bugs when both are new.
 3. **The connector-side prerequisites are done**: cards P4-1 through P4-3 in
-   the `google-workspace-mcp` repo plan (`docs/plan/TASKS.md` there). They give
+   the `google-workspace-mcp` repo plan (`docs/archive/plans-overhaul/TASKS.md` there). They give
    the app the stable calendar and folder IDs and the delegation pattern.
 
 The right moment is the start of what the Completion Plan calls **Stage 4**.
@@ -194,7 +194,7 @@ first, direction badge, open-in-Gmail link, reply box. Lead record → same.
 
 Each PR: behavioral tests (payload builders, matcher, conflict rule, naming),
 `docs/ARCHITECTURE.md` updated with new env vars and the delegation entry,
-`docs/HANDOFF.md` entry, ledger row in `../overhaul/TASKS.md`.
+`docs/archive/HANDOFF-2026-09-26-to-2026-10-02.md` entry, ledger row in `../../archive/plans-overhaul/TASKS.md`.
 
 ## What Chris does once (15 minutes), before PR 1 merges
 

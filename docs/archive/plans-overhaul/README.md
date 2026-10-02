@@ -17,7 +17,7 @@ not a claim that the redesign or new features have been implemented.
    authoritative execution order, exact models and mandatory switch instructions.
    [PR stack rules](PR-STACK.md) require each PR to build on the previous one
    and Claude to review the complete selected chain before any merge.
-1. [Design and system specification](DESIGN.md): current-state audit, navigation,
+1. [Design and system specification](../../plans/overhaul/DESIGN.md): current-state audit, navigation,
    brand/UI rules, detailed screen layouts, backend contracts and release scope.
 2. [Implementation cards](TASKS.md): 32 ordered tasks with dependencies, file
    entry points, model assignment, acceptance checks and release gates.
@@ -25,9 +25,9 @@ not a claim that the redesign or new features have been implemented.
    prompt, review prompt, token/cost controls and verified model guidance.
 4. [Owner inputs](../../OWNER-INPUTS.md): mailing address, reply/public email,
    phone, release decisions and other inputs; known facts are not asked again.
-5. [Google Workspace connector](GOOGLE-WORKSPACE.md): identified repository,
+5. [Google Workspace connector](../../plans/overhaul/GOOGLE-WORKSPACE.md): identified repository,
    deployed MCP URL, connection steps and what remains unverified.
-   [Claude Workspace setup register](CLAUDE-WORKSPACE-SETUP.md): Admin alias
+   [Claude Workspace setup register](../../plans/overhaul/CLAUDE-WORKSPACE-SETUP.md): Admin alias
    verification/creation, inbox and email setup, conditional Drive/Calendar work,
    required owner inputs and completion evidence.
 

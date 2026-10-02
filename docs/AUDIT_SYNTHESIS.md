@@ -51,7 +51,7 @@ This synthesis reconciles the following project-control sources rather than repl
 8. `docs/audits/Package-7-Product-Integration-Brand-Accessibility.md`.
 9. `docs/audits/Package-8-Operational-Core-Residual-Risk.md`.
 10. `docs/reviews/2026-10-01-business-logic-audit.md` — B01–B36.
-11. `docs/plans/overhaul/COMPLETION-PLAN.md` and `REMAINING-BATCHES.md` — O-card/product roadmap and owner batching instruction.
+11. `docs/archive/plans-overhaul/COMPLETION-PLAN.md` and `REMAINING-BATCHES.md` — O-card/product roadmap and owner batching instruction.
 12. `docs/reviews/2026-10-01-review-reconciliation.md` — historical GitHub review inventory.
 13. Current code/tests on the audited `main` commit.
 

@@ -1,7 +1,7 @@
 import * as Sentry from "@sentry/nextjs";
 
 // Runs once when the server starts (both in Node and on the Edge runtime).
-// See docs/HANDOFF.md for the SENTRY_DSN environment variable this needs.
+// See docs/archive/HANDOFF-2026-09-26-to-2026-10-02.md for the SENTRY_DSN environment variable this needs.
 export async function register() {
   if (process.env.NEXT_RUNTIME === "nodejs") {
     Sentry.init({

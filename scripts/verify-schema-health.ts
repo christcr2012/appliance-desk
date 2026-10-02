@@ -12,7 +12,7 @@
 // build's static prerendering of "/" crashed deep inside
 // src/domains/settings/index.ts with a cryptic Prisma error ("column...
 // does not exist") because the database hadn't been migrated yet before
-// the build ran (see docs/HANDOFF.md). Catching the same problem here,
+// the build ran (see docs/archive/HANDOFF-2026-09-26-to-2026-10-02.md). Catching the same problem here,
 // first, with a message that says plainly what's wrong, is much easier
 // for a non-developer (or the next AI session) to act on than a
 // stack trace buried inside Next.js's own build output.
@@ -40,7 +40,7 @@ main()
         "type is missing or different from what the code needs). This almost always means a " +
         "migration wasn't actually applied, or only partially applied. The deploy is being stopped " +
         "at this step, before the app is built or goes live, so the site keeps running its last " +
-        "working version for real customers instead of breaking. See docs/HANDOFF.md and " +
+        "working version for real customers instead of breaking. See docs/archive/HANDOFF-2026-09-26-to-2026-10-02.md and " +
         'docs/DECISIONS.md\'s "Safe production database migrations" entry for what to check next.\n',
     );
     console.error(error);

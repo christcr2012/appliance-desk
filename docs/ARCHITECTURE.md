@@ -336,7 +336,7 @@ Never rely on hiding a nav link as the only protection for anything.
 
 ## Error monitoring
 
-[Sentry](https://sentry.io) via `@sentry/nextjs`, wired in `instrumentation.ts` (server/edge) and `instrumentation-client.ts` (browser). Inactive until `SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN` are set as Vercel environment variables — see `docs/HANDOFF.md` for the setup step.
+[Sentry](https://sentry.io) via `@sentry/nextjs`, wired in `instrumentation.ts` (server/edge) and `instrumentation-client.ts` (browser). Inactive until `SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN` are set as Vercel environment variables — see `docs/archive/HANDOFF-2026-09-26-to-2026-10-02.md` for the setup step.
 
 ## CI/CD
 
