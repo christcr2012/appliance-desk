@@ -55,6 +55,10 @@ export const auth = betterAuth({
     // inbox control before the recipient can choose a real password.
     requireEmailVerification: true,
     minPasswordLength: 10,
+    // Password recovery is also an account-compromise boundary. Revoking
+    // existing sessions prevents a stolen 14-day session cookie from
+    // surviving after the legitimate user changes the credential.
+    revokeSessionsOnPasswordReset: true,
     // Real "forgot password" flow (Phase 6A item 2 — customer account
     // invitation & password recovery). Better Auth generates and verifies
     // the one-time, expiring token itself (see the Verification table) —
