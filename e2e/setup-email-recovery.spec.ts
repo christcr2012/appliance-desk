@@ -12,6 +12,7 @@ test("unsent staff setup preserves the account and offers resend recovery", asyn
   await page.setViewportSize({ width: 360, height: 800 });
   const email = `setup-${Date.now()}@example.test`;
   await page.goto("/desk/settings?section=staff");
+  await expect(page).toHaveTitle(/Settings/);
   await page.getByLabel("Name", { exact: true }).fill("Setup recovery fixture");
   await page.getByLabel("Email", { exact: true }).fill(email);
   await page.getByRole("button", { name: "Add staff account", exact: true }).click();
@@ -20,8 +21,14 @@ test("unsent staff setup preserves the account and offers resend recovery", asyn
   await expect(row).toHaveCount(1);
   await row.getByRole("button", { name: "Resend setup email" }).click();
   await expect(row.getByRole("alert")).toBeVisible();
+  // Next can briefly replace document metadata while a server-action RSC
+  // response is settling. Verify the real page title is back before Axe scans;
+  // this strengthens the accessibility check rather than disabling its
+  // document-title rule. If metadata does not recover, this assertion fails.
+  await expect(page).toHaveTitle(/Settings/);
   expect((await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze()).violations).toEqual([]);
   await info.attach("setup-recovery-phone", { body: await page.screenshot({ fullPage: true }), contentType: "image/png" });
   await page.reload();
+  await expect(page).toHaveTitle(/Settings/);
   await expect(page.getByRole("row").filter({ hasText: email })).toHaveCount(1);
 });
