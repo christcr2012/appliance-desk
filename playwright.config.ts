@@ -12,8 +12,11 @@ export default defineConfig({
   // in environments that can't fetch the raw job log or the html report
   // artifact (both are served from a blob-storage redirect that isn't
   // always reachable). Locally, keep the plain list reporter only.
+  // The JSON reporter feeds scripts/e2e-shard.mjs, which prints per-file
+  // durations as notices so the CI shard groups (e2e/shards.json) can be
+  // rebalanced from real numbers.
   reporter: process.env.CI
-    ? [["list"], ["github"], ["html", { open: "never" }]]
+    ? [["list"], ["github"], ["html", { open: "never" }], ["json", { outputFile: "playwright-results.json" }]]
     : [["list"]],
   webServer: {
     command: "npm run start",

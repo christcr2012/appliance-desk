@@ -7,6 +7,12 @@ const enabled = process.env.CI === "true" && ["localhost", "127.0.0.1"].includes
 
 test("real customer session denies direct API and protected pages after deactivation", async ({ page }) => {
   test.skip(!enabled, "Disposable CI database only");
+  // Triple the default 30s budget: this test provisions its login through a
+  // cold `npx tsx` child process (tsx + Prisma + Better Auth password hashing)
+  // and then logs in for real, all inside the test's own timer. On a loaded
+  // CI runner that setup alone can eat most of 30s — it timed out exactly
+  // that way the first time it ran alongside the staff-security suite.
+  test.slow();
   const { prisma } = await import("../src/lib/prisma");
   const tag = randomUUID();
   const email = `session-${tag}@example.test`;

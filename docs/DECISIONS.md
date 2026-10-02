@@ -3770,11 +3770,29 @@ production build and the browser/axe tests still gate merges in GitHub Actions.
 ## 2026-10-02 — Browser acceptance suite sharded across 3 CI runners
 
 **Decision:** The `e2e` job in `.github/workflows/ci.yml` now runs as a 3-way
-matrix. Each shard builds and seeds its own throwaway Postgres and runs its
-slice of the Playwright/axe specs with Playwright's native
-`--shard=N/3`. The aggregate `ci` gate is unchanged and fails if any shard
-fails. Chris asked whether CI could be broken into further simultaneous
-pieces without compromising quality or security, and approved this.
+matrix. Each shard builds and seeds its own throwaway Postgres and runs the
+spec files assigned to it in `e2e/shards.json` via `scripts/e2e-shard.mjs`.
+The aggregate `ci` gate is unchanged and fails if any shard fails. Chris asked
+whether CI could be broken into further simultaneous pieces without
+compromising quality or security, and approved this.
+
+**Why explicit groups and not Playwright's `--shard`:** the first attempt used
+`playwright test --shard=N/3`. It ran in 6m12s (down from ~8m30s) but was
+lopsided: two shards finished their tests in ~65s while the third took 233s,
+because Playwright balances by test *count* and this suite's durations are
+very uneven (the owner/desk workspace flows dominate). A 4-way `--shard` was
+worse still (69 tests on one runner, 3 on another). So the assignment is
+explicit, balanced by measured duration, guarded so no spec file can go
+unassigned, and each shard reports per-file durations as CI notices for
+future rebalancing.
+
+**Also fixed on the way:** `e2e/session-deactivation.spec.ts` timed out once
+at 30s under the new layout — it provisions its login through a cold `npx tsx`
+child process and then logs in for real, all inside the test's own timer, and
+it ran alongside the 35-test staff-security file on a busy runner. It now
+declares `test.slow()` (90s budget), the standard Playwright answer for a test
+with expensive setup. This is the same "real login under CI load" pattern
+documented on 2026-09-27.
 
 **Why:** After the earlier split into static / database / browser jobs, the
 last three green runs on `main` and PR #136 spent ~1.5 min on static checks,

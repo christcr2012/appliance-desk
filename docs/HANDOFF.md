@@ -1,15 +1,22 @@
 ## CI browser suite sharded 3 ways — 2026-10-02, verifying on PR
 
 `.github/workflows/ci.yml`'s `e2e` job is now a 3-shard matrix (each shard: own
-throwaway Postgres, migrate, seed, build, `playwright test --shard=N/3`). The
-`ci` gate still requires every shard. Expected: browser job ~8.3 min → ~4.5 min,
-total CI ~8.5 → ~4.5 min, at ~1.6× the billed runner-minutes. Nothing skipped.
-Verified locally that the shards cover all 145 browser tests exactly once.
-Docs: `docs/ARCHITECTURE.md` CI/CD section rewritten to describe the actual
-parallel layout (it still described the old single job); dated entry in
-`docs/DECISIONS.md`. No application source changed. The first real timing
-numbers come from this PR's own CI run — check they match the estimate before
-treating this as settled.
+throwaway Postgres, migrate, seed, build, then the spec files assigned to it in
+`e2e/shards.json`, run by `scripts/e2e-shard.mjs`). The `ci` gate still requires
+every shard; the static job also fails if a spec file is unassigned. Nothing
+skipped — verified locally the three groups cover all 24 files / 145 tests
+exactly once (27 + 23 + 95), with anchored file patterns (Playwright's
+substring matching would otherwise have run rental-address-accessibility twice).
+First attempt with Playwright's own `--shard=N/3` measured 6m12s total (from
+~8m30s) but was lopsided (65s / 233s / 63s of tests per shard); explicit
+duration-balanced groups replace it. Each shard now prints per-file durations
+as a CI notice — read them from this PR's run and rebalance `shards.json` if a
+group is still much heavier than the others. `session-deactivation.spec.ts`
+got `test.slow()` after a 30s timeout under the new layout (cold child-process
+provisioning + real login). Docs: `docs/ARCHITECTURE.md` CI/CD section
+rewritten to describe the actual parallel layout; dated `docs/DECISIONS.md`
+entry. No application source changed. Still pending: all three shards green
+on this PR and real per-shard timings.
 
 ## Batch A (PR #136) CI repair — 2026-10-02, pending CI on the pushed head
 
