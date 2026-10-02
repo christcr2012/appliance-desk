@@ -39,7 +39,12 @@ export async function submitLaunchSignup(
     h.get("x-forwarded-for")?.split(",")[0]?.trim() ||
     h.get("x-real-ip") ||
     "unknown";
-  if (isRateLimited(`launch:${ip}`, { max: 5, windowMs: 10 * 60 * 1000 })) {
+  if (
+    await isRateLimited(`launch:${ip}`, {
+      max: 5,
+      windowMs: 10 * 60 * 1000,
+    })
+  ) {
     return {
       status: "error",
       message: "Please wait a few minutes before trying again.",
