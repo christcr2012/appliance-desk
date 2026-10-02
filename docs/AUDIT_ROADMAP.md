@@ -3,7 +3,7 @@
 **Date:** October 1, 2026  
 **Scope:** Appliance Desk business domains, user surfaces, infrastructure boundaries, and cross-cutting production concerns  
 **Purpose:** Identify confirmed security, financial, operational, product-integration, accessibility, reliability, scaling, and launch-readiness risks  
-**Status:** **Audit discovery complete — Packages 1–8 performed. Cross-package synthesis is next.**
+**Status:** **COMPLETE — Packages 1–8 and the cross-package synthesis have been completed. Remediation is tracked by `docs/AUDIT_SYNTHESIS.md`.**
 
 ---
 
@@ -14,7 +14,9 @@ The audit program began as six packages. During execution, two material scope ex
 - **Package 7** was added to audit the finished product as an integrated whole: backend capability ↔ frontend management coverage, workflow seams, brand consistency, and accessibility.
 - **Package 8** was added as the final catch-all after audit oversight found that several substantial operational domains — especially `billing`, `inventory`, `jobs`, and `purchasing` — had never been assigned as primary domains in the original six-package map.
 
-The eight completed independent reports contain **117 findings total: 8 Critical, 58 High, and 51 Medium**. These are audit findings, not 117 independent implementation tasks. The synthesis must deduplicate shared root causes and reconcile overlaps with B01–B36, the overhaul roadmap, security reviews, and historical GitHub review findings.
+The eight completed independent reports contain **117 findings total: 8 Critical, 58 High, and 51 Medium**.
+
+Those are audit findings, not 117 independent implementation tasks. `docs/AUDIT_SYNTHESIS.md` deduplicates them into **12 cross-package root causes** and organizes the remaining work into **six substantial implementation batches (A–F)**, plus at most one dependency-driven Google Workspace follow-up if O32 prerequisites remain unavailable.
 
 ---
 
@@ -28,168 +30,134 @@ The eight completed independent reports contain **117 findings total: 8 Critical
 | **4 — Growth / Marketing / Retention** | growth, launch, leads/search signals | 0 | 6 | 6 | 12 | `docs/audits/Package-4-Growth-Marketing-Retention.md` |
 | **5 — Configuration / Reporting** | settings, reporting, dashboard, accounting semantics | 0 | 7 | 5 | 12 | `docs/audits/Package-5-Configuration-Reporting.md` |
 | **6 — Platform Integrity** | auth/session, uploads/media, backup/recovery, privacy/consent/security boundaries | 1 | 7 | 6 | 14 | `docs/audits/Package-6-Platform-Integrity.md` |
-| **7 — Product Integration / Brand / Accessibility** | backend↔frontend coverage, workflow integration, owner self-sufficiency, Evergreen implementation, accessibility | 0 | 7 | 9 | 16 | `docs/audits/Package-7-Product-Integration-Brand-Accessibility.md` |
+| **7 — Product Integration / Brand / Accessibility** | backend↔frontend coverage, owner self-sufficiency, Evergreen implementation, accessibility | 0 | 7 | 9 | 16 | `docs/audits/Package-7-Product-Integration-Brand-Accessibility.md` |
 | **8 — Operational Core / Residual Risk** | billing, inventory/fleet, jobs/dispatch, purchasing, concurrency, business time, audit atomicity, residual launch seams | 1 | 11 | 7 | 19 | `docs/audits/Package-8-Operational-Core-Residual-Risk.md` |
 | **Total** |  | **8** | **58** | **51** | **117** |  |
 
 ---
 
-# Package scope summary
+## Package scope summary
 
-## Package 1 — Customer Relationship & Lifecycle
+### Package 1 — Customer Relationship & Lifecycle
 
-Primary questions:
+Customer isolation and portal scoping; maintenance lifecycle; estimate/quote lifecycle and conversion; activity/history; pagination, concurrency and failure behavior.
 
-- customer isolation and portal scoping;
-- maintenance lifecycle correctness;
-- estimate/quote lifecycle and conversion;
-- customer-facing activity/history;
-- concurrency, pagination, and failure behavior around those flows.
+### Package 2 — Agreements, Pricing & Referral Logic
 
-## Package 2 — Agreements, Pricing & Referral Logic
+Agreement lifecycle, frozen contract terms, pricing/discount history, inventory reservation implications, referral eligibility/rewards, Stripe identity and agreement-billing boundaries.
 
-Primary questions:
+### Package 3 — Staff, Access & Accountability
 
-- rental agreement lifecycle and frozen contract terms;
-- pricing/discount correctness and historical snapshots;
-- inventory reservation implications at agreement boundaries;
-- referral eligibility, reward timing, and duplicate/retry behavior;
-- concurrent agreement/pricing mutations.
+OWNER/ADMIN/STAFF boundaries, staff account lifecycle/offboarding, task assignment and concurrency, exception inbox behavior, operational mutation authority and accountability.
 
-## Package 3 — Staff, Access & Accountability
+### Package 4 — Growth, Marketing & Retention
 
-Primary questions:
+Lead qualification/scoring, launch-list consent and delivery, role-aware search, growth/utilization/retention signals and their scale/truthfulness.
 
-- OWNER / ADMIN / STAFF authorization boundaries;
-- deactivation and session lifetime;
-- task assignment/visibility/concurrency;
-- exception-inbox correctness and scale;
-- staff mutation accountability and audit safety.
+### Package 5 — Business Configuration & Reporting
 
-## Package 4 — Growth, Marketing & Retention
+Settings persistence, financial/reporting semantics, gross/net/refund/deposit/tax/credit distinctions, accounting export, dashboard/report scaling and historical correctness.
 
-Primary questions:
+### Package 6 — Platform Integrity
 
-- lead qualification/scoring and source semantics;
-- launch-list consent and delivery behavior;
-- role-aware global search;
-- growth/utilization/retention signals;
-- scale and truthfulness of marketing/operational metrics.
+Authentication/session/account recovery, upload/private-media boundaries, backup/recovery, sensitive logging, consent/privacy alignment and production hardening.
 
-## Package 5 — Business Configuration & Reporting
+### Package 7 — Product Integration, UI Coverage & Brand Accessibility
 
-Primary questions:
+Backend capability ↔ frontend controls, owner self-sufficiency, workflow integration, Evergreen brand implementation, light/dark behavior, accessibility adaptation and full-product acceptance coverage.
 
-- settings persistence, validation, and audit behavior;
-- financial/reporting semantics;
-- gross vs. net collections, refunds, deposits, tax, credits, and payment dates;
-- accounting-export completeness;
-- dashboard/report scaling and historical correctness.
+**Brand policy established by Package 7:**
 
-## Package 6 — Platform Integrity
-
-Primary questions:
-
-- authentication/session/account-recovery boundaries;
-- file upload and private-media authorization;
-- backup completeness and practical restore capability;
-- provider/logging secret and PII boundaries;
-- privacy/consent alignment and production hardening.
-
-## Package 7 — Product Integration, UI Coverage & Brand Accessibility
-
-Primary questions:
-
-- does every owner-operable backend capability have an appropriate frontend control?
-- does the customer/owner UI expose the correct workflow state without leaking internal data?
-- do workflows connect cleanly end-to-end rather than terminating in dead ends?
-- is Evergreen v2.0 implemented consistently across public, authenticated, dark, print/document, and communication surfaces?
-- is accessibility adaptive and evidence-based rather than achieved by replacing the normal brand with generic gray?
-- does automated/manual accessibility acceptance cover the actual current route/state surface?
-
-Brand policy established by Package 7:
-
-1. **Evergreen is the normal light/dark presentation.**
-2. Semantic status colors remain distinct from decorative brand colors and never carry meaning alone.
+1. Evergreen is the normal light/dark presentation.
+2. Semantic status colors stay distinct from decorative brand colors and never carry meaning alone.
 3. Accessibility preferences adapt presentation when requested (`prefers-reduced-motion`, `prefers-contrast`, `forced-colors`, keyboard/focus/zoom/reflow/screen-reader semantics).
 4. A screen reader by itself is not a reason to replace the visual brand.
 
-## Package 8 — Operational Core & Residual Risk
+### Package 8 — Operational Core & Residual Risk
 
-Package 8 closes the primary-domain omission in the original roadmap.
-
-Primary domains:
-
-```text
-src/domains/billing/*
-src/domains/inventory/*
-src/domains/jobs/*
-src/domains/purchasing/*
-```
-
-Residual cross-cutting questions:
-
-- money and provider concurrency;
-- physical-custody/lifecycle correctness;
-- dispatch and America/Denver calendar semantics;
-- local mutation ↔ audit atomicity;
-- scheduled automation idempotency/reconciliation;
-- inventory/part/purchase/job-cost consistency;
-- operational list scaling;
-- release-policy seams not cleanly owned by Packages 1–7.
-
-The package found one new Critical financial-integrity race in concurrent manual-payment allocation plus eleven High and seven Medium findings.
+Direct audit ownership for `billing`, `inventory`, `jobs` and `purchasing`, plus residual concurrency, audit atomicity, America/Denver business-time behavior, scheduled automation, lifecycle/custody, cost integrity, list scaling and launch-policy seams.
 
 ---
 
-# Audit methodology and evidence standard
+## Audit methodology and evidence standard
 
-A finding is included only when it can be tied to concrete repository behavior, data flow, schema behavior, or missing acceptance evidence. The package reports distinguish:
+A finding is included only when it can be tied to concrete repository behavior, data flow, schema behavior, provider behavior or missing acceptance evidence. Reports distinguish:
 
-- **confirmed defect/risk** from a suggested future enhancement;
-- **underlying record correctness** from presentation/reporting correctness;
-- **automated evidence** from manual acceptance still required;
-- **intentional infrastructure-only controls** from genuine missing owner UI;
-- **historical findings already fixed** from findings still present on the audited commit.
+- confirmed defect/risk from future enhancement;
+- underlying-record correctness from presentation/report correctness;
+- automated evidence from manual acceptance still required;
+- intentional infrastructure-only controls from genuine missing owner UI;
+- historical findings already fixed from findings still present on the audited commit.
 
-The reports preserve overlaps explicitly so the synthesis can collapse them rather than implement the same fix repeatedly.
-
----
-
-# Audit completion criteria
-
-Audit **discovery** is complete because:
-
-- [x] customer lifecycle, agreements/pricing, staff/access, growth, configuration/reporting, and platform integrity were independently audited;
-- [x] backend↔frontend coverage and full-product integration were independently audited;
-- [x] branding and accessibility implementation were independently audited;
-- [x] previously unowned operational-core domains — billing, inventory, jobs, purchasing — received direct audit coverage;
-- [x] a final residual sweep covered concurrency, time, automation, auditability, cost integrity, scaling, and launch-policy seams;
-- [x] each report contains concrete findings, remediation direction, and acceptance evidence;
-- [x] overlap with existing B01–B36 / roadmap / historical review work is explicitly acknowledged rather than silently discarded.
-
-Audit discovery being complete **does not mean the product is launch-ready**. Critical/High remediation, integrated acceptance, owner walkthrough, production configuration, legal/business approvals, and explicit release authorization remain separate gates.
+Overlaps are intentionally preserved in package reports so the synthesis can collapse them rather than implement the same root cause repeatedly.
 
 ---
 
-# Next artifact — cross-package synthesis
+## Audit discovery completion criteria
 
-Create `docs/AUDIT_SYNTHESIS.md` from all eight reports plus the existing project-control sources.
+- [x] Customer lifecycle, agreements/pricing, staff/access, growth, configuration/reporting and platform integrity independently audited.
+- [x] Backend↔frontend coverage and full-product integration independently audited.
+- [x] Branding and accessibility implementation independently audited.
+- [x] Previously unowned operational-core domains — billing, inventory, jobs and purchasing — directly audited.
+- [x] Final residual sweep covered concurrency, time, automation, auditability, cost integrity, scaling and launch-policy seams.
+- [x] Each report contains concrete findings, remediation direction and acceptance evidence.
+- [x] B01–B36, O-roadmap, historical review/security work and policy dependencies retained rather than silently discarded.
 
-The synthesis must:
+---
 
-1. **Deduplicate root causes.** Do not turn 117 findings into 117 tickets.
-2. **Reconcile existing work.** Map each root cause to B01–B36, O-cards/remaining batches, historical code-review findings, security reviews, and already-landed fixes.
-3. **Prioritize by consequence and dependency.** Critical financial/security/data-integrity invariants first; then High operational/launch blockers; then Medium hardening/scaling.
-4. **Build a small number of large remediation batches.** The owner has explicitly required far fewer substantial PRs because full CI is expensive.
-5. **Define acceptance evidence before implementation.** Each batch must identify the exact tests, integration scenarios, preview checks, migration proof, provider reconciliation, accessibility/manual acceptance, or owner decision needed to call it complete.
-6. **Preserve explicit owner decisions.** Do not invent fee amounts, legal policy, activation approvals, spending, destructive real-data changes, or production provider actions.
-7. **End with one launch-readiness ledger.** Every Critical/High finding must be fixed, explicitly accepted/deferred by the owner where appropriate, or mapped to a still-open release blocker. No issue may disappear merely because it overlaps another document.
+## Cross-package synthesis — complete
+
+**Final synthesis:** `docs/AUDIT_SYNTHESIS.md`
+
+The synthesis is part of the audit-program deliverable and is included in the same documentation PR as Packages 1–8.
+
+It has completed the required closeout work:
+
+- [x] deduplicated the 117 findings into **12 shared root causes**;
+- [x] reconciled the package findings with **B01–B36**;
+- [x] reconciled remaining **O-card / original-roadmap** work;
+- [x] defined how historical GitHub review findings are discharged without one-PR-per-thread fragmentation;
+- [x] prioritized Critical integrity/security prerequisites before dependent new work;
+- [x] converted remaining implementation into **six substantial batches (A–F)**;
+- [x] defined acceptance evidence for every batch before implementation;
+- [x] preserved owner/legal/provider/live/destructive approval gates;
+- [x] created one launch-readiness ledger covering all Critical/High package findings, B01–B36, historical reviews, recovery, accessibility/brand and owner release inputs.
+
+---
+
+## Implementation program produced by synthesis
+
+| Batch | Purpose |
+| --- | --- |
+| **A — Critical integrity & platform safety** | atomic state claims, estimate conversion, agreement lifecycle foundation, auth/pre-hijacking closure, manual-payment serialization, identity/private-data prerequisites |
+| **B — Billing, provider reconciliation & financial ledger** | Stripe identity/subscription/referral reconciliation, money allocation/refunds/credits/deposits, drift workbench, term/renewal/termination/auto-renew financial contracts |
+| **C — Rental-to-service operations, custody, inventory & purchasing** | dispatch/jobs, physical custody, maintenance/swap/removal/inspection, STAFF job authority, inventory creation/history, purchasing/parts/cost provenance |
+| **D — Owner/customer control plane, website, evidence & privacy** | website CMS, settings coverage, policy/config UI, customer lifecycle controls, signed artifacts, privacy/retention/evidence workflows |
+| **E — Communications, reporting, growth, branding & accessibility** | durable messaging, consent/suppression, reporting/growth semantics, search, automation health, Evergreen semantic-token migration and WCAG 2.2 AA engineering acceptance |
+| **F — Integrated verification, recovery, owner handoff & launch ledger** | full business scenarios, capacity/recovery/restore proof, owner runbook, B01–B36 closeout, review reconciliation and release readiness |
+
+**Conditional:** O32 Google Workspace may ship in one additional follow-up only when external prerequisites make inclusion in E/F impossible. Do not split Calendar/Drive/Gmail into multiple tiny PRs.
+
+---
+
+## What “audit complete” means
+
+Audit discovery and synthesis are complete. This does **not** mean the product is launch-ready.
+
+Still required:
+
+- implementation of Batches A–F;
+- Critical/High finding closure with evidence;
+- B01–B36 acceptance or explicit owner-approved scope decisions;
+- remaining valid historical review resolution;
+- integrated/manual/accessibility/recovery acceptance;
+- legal/policy/provider inputs;
+- explicit owner production-launch authorization.
 
 ---
 
 ## Historical note
 
-The older `docs/audits/Package-1-Customer-Lifecycle.md` is intentionally retained for comparison. The eight independent reports listed above are the audit-program deliverables used for synthesis.
+The older `docs/audits/Package-1-Customer-Lifecycle.md` is intentionally retained for comparison. The eight independent reports above and `docs/AUDIT_SYNTHESIS.md` are the authoritative audit-program deliverables.
 
-**Next step:** build the cross-package synthesis and convert the deduplicated remediation scope into the smallest practical number of high-quality implementation batches.
+**Next step after this audit PR merges:** begin **Batch A — Critical integrity & platform safety**, refreshing current `main` first so already-landed fixes are not duplicated.
