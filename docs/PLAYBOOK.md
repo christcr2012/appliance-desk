@@ -11,9 +11,13 @@ like, and what to do if it fails. The rules behind the steps are in
    If a row is **IN PROGRESS** with a branch name, continue that branch
    instead of starting over — check it out and read its latest commits.
 3. Read that batch's section in `docs/PLAN.md` end to end.
-4. Open only the reference docs the batch section lists.
-5. Sync: `git fetch origin && git checkout main && git pull --ff-only`.
-6. Check for open PRs (`gh pr list`). Do not duplicate work that is open.
+4. Read the batch's design, `docs/designs/BATCH-<X>.md`, end to end, and
+   run every check in its "Verify before starting" table. **If the design
+   is missing, marked DRAFT, or any check is false: stop and report.** You
+   do not implement without an approved design (`docs/designs/README.md`).
+5. Open only the reference docs the batch section and the design list.
+6. Sync: `git fetch origin && git checkout main && git pull --ff-only`.
+7. Check for open PRs (`gh pr list`). Do not duplicate work that is open.
 
 Done when: you can say in eight lines what the batch delivers, how it will
 be accepted, and which existing files you will touch.
@@ -46,7 +50,13 @@ test fixtures. If an existing implementation is wrong, fix it in place.
 
 ## Step 3 — Implement in ordered commits
 
-Order the work so a reviewer can read the PR commit by commit:
+**The design's work units are the commit order.** One work unit = one
+commit, named `WU-<X><n>: <name>`. Inside a work unit, order the changes as
+below. Do not re-decide anything in the design's "Decisions" section; when
+the design is silent on something that matters, stop and ask (its
+"Stop-and-ask" list) instead of inventing.
+
+Within a work unit, order the work so a reviewer can read it:
 
 1. Schema/migration (additive only) + `docs/DATABASE.md` + backup/schema-health
    coverage for new tables or columns.
@@ -232,5 +242,10 @@ re-verify first. Merging never covers the "Hard limits" in `AGENTS.md`.
   (schema, money, data deletion, public promises): do the preparatory work,
   set out the choice, and stop.
 - Something in the docs contradicts the code: the code's tests are the truth
-  for behavior, `AGENTS.md` is the truth for rules, `docs/PLAN.md` for scope.
-  Note the contradiction in `docs/STATUS.md` and fix the doc in your PR.
+  for behavior, `AGENTS.md` is the truth for rules, `docs/PLAN.md` for scope,
+  `docs/designs/BATCH-<X>.md` for how. Note the contradiction in
+  `docs/STATUS.md` and fix the doc in your PR.
+- The design is wrong (a decision cannot work against the real code): stop.
+  Do not replace the decision in code. Record exactly what is wrong in
+  `docs/STATUS.md` and the PR; a heavy-model session amends the design
+  (dated "Amendments" section) and you resume from the amended text.

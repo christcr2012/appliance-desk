@@ -1,8 +1,8 @@
 # START HERE — what this project is and where everything lives
 
 Read after `AGENTS.md`. This file changes rarely. Current state is in
-`docs/STATUS.md`; the work is in `docs/PLAN.md`; the procedure is in
-`docs/PLAYBOOK.md`.
+`docs/STATUS.md`; the work is in `docs/PLAN.md`; how each batch is built is
+in `docs/designs/`; the procedure is in `docs/PLAYBOOK.md`.
 
 ## The business, in one paragraph
 
@@ -57,6 +57,7 @@ docs/               everything below
 | `docs/START-HERE.md` | This file. |
 | `docs/STATUS.md` | Where work stands: batch table, blockers, what is next. Updated every session. |
 | `docs/PLAN.md` | The six remaining batches (A–F) with full acceptance criteria, and the launch gates. |
+| `docs/designs/BATCH-<X>.md` | The approved design for each batch — the *how*: decisions, exact schema, signatures, work units, tests, stop-and-ask. `docs/designs/README.md` has the rule and the template. |
 | `docs/PLAYBOOK.md` | Step-by-step procedure for a batch, including local verification. |
 | `docs/OWNER-INPUTS.md` | Decisions only Chris can make, with stable IDs. |
 

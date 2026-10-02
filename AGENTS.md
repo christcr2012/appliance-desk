@@ -15,7 +15,8 @@ Reading order at the start of every session (about 10 minutes total):
 2. `docs/START-HERE.md` — what the project is, where everything lives.
 3. `docs/STATUS.md` — exactly where work stands right now and what is next.
 4. `docs/PLAN.md` — the section for the batch you are working on.
-5. `docs/PLAYBOOK.md` — the step-by-step procedure for doing a batch.
+5. `docs/designs/BATCH-<X>.md` — the approved design for that batch (how).
+6. `docs/PLAYBOOK.md` — the step-by-step procedure for doing a batch.
 
 Then open only the reference docs the batch section names. Do not read
 `docs/DECISIONS.md`, `docs/archive/`, or the audit reports end to end — search
@@ -96,6 +97,13 @@ resulting behavior are verified.
 
 ## How work is organized
 
+- **Implement only from an approved design.** Every batch has
+  `docs/designs/BATCH-<X>.md` written by a heavy-reasoning model after
+  reading the code: decisions, schema, signatures, work units, tests,
+  stop-and-ask points. The implementing model follows it literally, does
+  not re-decide, does not add tables/columns/libraries/patterns the design
+  does not name, and stops to ask where the design is silent. No design,
+  or a DRAFT one → stop and report; do not start.
 - **One agent, one batch at a time, in one substantial PR.** Chris has
   explicitly asked for far fewer, much larger PRs because every PR costs a
   full CI run. Do not open a PR per card, page, cron, migration, test repair,
@@ -147,6 +155,7 @@ resulting behavior are verified.
 | Screen layouts and interaction specs for the overhaul | `docs/plans/overhaul/DESIGN.md` |
 | Product behavior spec | `docs/PRODUCT-SPEC.md` |
 | The work plan (batches, acceptance, launch gates) | `docs/PLAN.md` |
+| How each batch is built (decisions, schema, work units, tests) | `docs/designs/BATCH-<X>.md` — implement only from an approved design |
 | Current state | `docs/STATUS.md` |
 | Owner decisions needed | `docs/OWNER-INPUTS.md` |
 | Dated decisions and reasons | `docs/DECISIONS.md` (append a dated entry when you make a design decision) |

@@ -139,7 +139,7 @@ As Section 2. `AssetNumberCounter`, `PartStockMovement`, `JobPartUsage` join sch
 
 ### WU-C2 — Job contract: assignee, duration, version, conflicts (C5)
 Closes: O13.
-Files: `src/domains/jobs/dispatch.ts`, `src/domains/jobs/index.ts` (`createJob`, new `updateJobSchedule`), `src/app/desk/jobs/actions.ts`, `tests/jobs-dispatch.test.ts` (extend), `tests/jobs-schedule-integration.test.ts` (new).
+Files: `src/domains/jobs/dispatch.ts`, `src/domains/jobs/index.ts` (`createJob`, new `updateJobSchedule`), `src/app/desk/jobs/actions.ts`, `tests/dispatch-board.test.ts` (extend; also see `tests/jobs-status-concurrency.test.ts` for the claim pattern), `tests/jobs-schedule-integration.test.ts` (new).
 ```ts
 // dispatch.ts
 export type DispatchableJob = { id: string; scheduledAt: Date | null; durationMinutes: number | null; assignedToUserId: string | null };

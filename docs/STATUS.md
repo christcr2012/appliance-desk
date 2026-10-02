@@ -66,6 +66,11 @@ See `docs/OWNER-INPUTS.md` for the full register. The ones Batch B needs:
 
 ## Session log (last two batches only)
 
+- **2026-10-02 (later)** — Design documents written for Batches B–F
+  (`docs/designs/`), with the rule that implementation models build only
+  from an approved design and stop where it is silent. B is designed
+  against current code; C–F each open with a "verify before starting"
+  table to re-check after the preceding batch merges.
 - **2026-10-02** — Docs consolidated: new `AGENTS.md`, `START-HERE`,
   `STATUS`, `PLAN`, `PLAYBOOK`; retired plan files and old HANDOFF moved to
   `docs/archive/`. CI sharded (#137). Batch A merged (#136). Next: Batch B.

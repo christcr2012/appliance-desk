@@ -11,6 +11,12 @@ requirements are quoted inline so you do not need the archived card file.
 Order: **A (merged) → B → C → D → E → F**, plus one conditional Google PR.
 `docs/STATUS.md` says which one is next.
 
+**Every batch has a design document in `docs/designs/` that says *how* to
+build it** — decisions already made, exact schema, function signatures,
+ordered work units, named tests, and where to stop and ask. This plan is
+the *what* and the acceptance; the design is the *how*. Implementation
+starts only from an approved design (`docs/designs/README.md`).
+
 ## Rules that apply to every batch
 
 These are the acceptance requirements every batch inherits (the old plan
@@ -86,6 +92,8 @@ outcome.
 ---
 
 ## Batch B — Billing, provider reconciliation & financial ledger — NEXT
+
+**Design: `docs/designs/BATCH-B.md`** — read it in full before Step 2 of the playbook; its work units are the commit order.
 
 ### Purpose
 
@@ -173,6 +181,8 @@ for billing reminders (E), live payment activation (owner gate).
 ---
 
 ## Batch C — Rental-to-service operations, custody, inventory & purchasing
+
+**Design: `docs/designs/BATCH-C.md`** — read it in full before Step 2 of the playbook; its work units are the commit order.
 
 ### Purpose
 
@@ -264,6 +274,8 @@ Owner decision UI for deposits/refunds (D); automation run history (E).
 ---
 
 ## Batch D — Owner/customer control plane, website, evidence & privacy
+
+**Design: `docs/designs/BATCH-D.md`** — read it in full before Step 2 of the playbook; its work units are the commit order.
 
 ### Purpose
 
@@ -359,6 +371,8 @@ Message sending (E); Google (E/conditional); launch authorization (F).
 ---
 
 ## Batch E — Communications, reporting, growth, branding & accessibility
+
+**Design: `docs/designs/BATCH-E.md`** — read it in full before Step 2 of the playbook; its work units are the commit order.
 
 ### Purpose
 
@@ -482,6 +496,8 @@ Launch authorization and the final evidence ledger (F).
 ---
 
 ## Batch F — Integrated verification, recovery, owner handoff & launch ledger
+
+**Design: `docs/designs/BATCH-F.md`** — read it in full before Step 2 of the playbook; its work units are the commit order.
 
 ### Purpose
 
