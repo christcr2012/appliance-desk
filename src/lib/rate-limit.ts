@@ -1,50 +1,91 @@
+import { createHash } from "node:crypto";
+import { prisma } from "@/lib/prisma";
+
+export type RateLimitOptions = { max: number; windowMs: number };
+
+function storageIdentity(key: string): { id: string; identifier: string } {
+  // Public request keys usually contain an IP address. Persist only a one-way
+  // digest so the anti-abuse store doesn't become another clear-text IP log.
+  const digest = createHash("sha256").update(key).digest("hex");
+  return {
+    id: `rate_limit_${digest}`,
+    identifier: `rate-limit:${digest}`,
+  };
+}
+
+function parseTimestamps(value: string | undefined): number[] {
+  if (!value) return [];
+  try {
+    const parsed: unknown = JSON.parse(value);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(
+      (item): item is number =>
+        typeof item === "number" && Number.isFinite(item) && item >= 0,
+    );
+  } catch {
+    return [];
+  }
+}
+
 /**
- * A minimal, zero-infrastructure rate limiter for public forms (Phase
- * 6A item 7 — spam/abuse protection). Keeps a sliding window of recent
- * submission timestamps per key (typically an IP address) in memory.
+ * Shared rolling-window limiter for public endpoints.
  *
- * Honest limitation, on purpose: Vercel can run multiple serverless
- * instances of the same route, each with its own memory, so this is
- * "best effort" — it won't catch a determined attacker spreading
- * requests across instances or IPs. It's still real, meaningful
- * protection against the common case (a script hammering the endpoint
- * from one IP) with no new paid service, no schema change, and nothing
- * for Chris to set up. If abuse becomes a real problem in practice, the
- * next real upgrade is a persistent store (see docs/DECISIONS.md) or
- * Cloudflare Turnstile (docs/ROADMAP.md) — not something to build
- * speculatively before there's evidence it's needed.
+ * State lives in the existing Better Auth Verification table under a reserved
+ * `rate-limit:` namespace, one deterministic row per hashed key. A Postgres
+ * transaction-level advisory lock serializes the read/filter/write sequence,
+ * so concurrent requests routed to different Vercel instances still observe
+ * one shared count. Expired timestamps are discarded every time the key is
+ * touched; the row itself is reusable and contains no clear-text IP address.
  */
-
-const buckets = new Map<string, number[]>();
-
-/** Returns true if `key` is allowed one more request within the last
- * `windowMs` milliseconds, given at most `max` requests are allowed in
- * that window — and records this request if so. */
-export function isRateLimited(
+export async function isRateLimited(
   key: string,
-  { max, windowMs }: { max: number; windowMs: number },
-): boolean {
-  const now = Date.now();
-  const cutoff = now - windowMs;
-  const timestamps = (buckets.get(key) ?? []).filter((t) => t > cutoff);
-
-  if (timestamps.length >= max) {
-    buckets.set(key, timestamps);
-    return true;
+  { max, windowMs }: RateLimitOptions,
+): Promise<boolean> {
+  if (!key || !Number.isInteger(max) || max < 1 || !Number.isFinite(windowMs) || windowMs <= 0) {
+    throw new Error("Invalid rate-limit configuration.");
   }
 
-  timestamps.push(now);
-  buckets.set(key, timestamps);
+  const { id, identifier } = storageIdentity(key);
+  const nowMs = Date.now();
+  const cutoff = nowMs - windowMs;
 
-  // Cheap, occasional cleanup so this Map never grows unbounded across
-  // a long-lived serverless instance's lifetime.
-  if (buckets.size > 5000) {
-    for (const [k, ts] of buckets) {
-      const kept = ts.filter((t) => t > cutoff);
-      if (kept.length === 0) buckets.delete(k);
-      else buckets.set(k, kept);
-    }
-  }
+  return prisma.$transaction(async (tx) => {
+    // hashtextextended gives a stable signed bigint lock key. The namespace is
+    // already SHA-256-derived, so unrelated application locks cannot collide
+    // except at the database's unavoidable 64-bit advisory-lock probability.
+    await tx.$queryRaw`
+      SELECT pg_advisory_xact_lock(hashtextextended(${identifier}, 0))
+    `;
 
-  return false;
+    const current = await tx.verification.findUnique({
+      where: { id },
+      select: { value: true },
+    });
+    const timestamps = parseTimestamps(current?.value).filter(
+      (timestamp) => timestamp > cutoff,
+    );
+
+    const limited = timestamps.length >= max;
+    if (!limited) timestamps.push(nowMs);
+
+    const expiresAt = new Date(
+      (timestamps.at(-1) ?? nowMs) + windowMs,
+    );
+    await tx.verification.upsert({
+      where: { id },
+      create: {
+        id,
+        identifier,
+        value: JSON.stringify(timestamps),
+        expiresAt,
+      },
+      update: {
+        identifier,
+        value: JSON.stringify(timestamps),
+        expiresAt,
+      },
+    });
+
+    return limited;
+  });
 }
