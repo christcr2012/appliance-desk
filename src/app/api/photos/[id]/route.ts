@@ -40,6 +40,9 @@ export async function GET(
   const teamRole = role === "OWNER" || role === "ADMIN" || role === "STAFF";
   const customerOwnsMaintenancePhoto =
     role === "CUSTOMER" &&
+    photo.maintenanceRequestId !== null &&
+    photo.jobId === null &&
+    photo.applianceId === null &&
     photo.maintenanceRequest?.customer.userId === session.user.id;
 
   if (!teamRole && !customerOwnsMaintenancePhoto) {
