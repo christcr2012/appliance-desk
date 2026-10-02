@@ -38,19 +38,22 @@ export async function POST(request: Request): Promise<NextResponse> {
 
     const body = parsed.data;
     const pathname = body.payload.pathname;
+
+    // Preserve the existing authorization contract: malformed, arbitrary and
+    // out-of-scope paths are denied before any provider/storage selection.
+    if (!(await canUploadPhoto(session.user, pathname))) {
+      return NextResponse.json(
+        { error: "You cannot upload a photo to this record." },
+        { status: 403 },
+      );
+    }
+
     const isPublic = isPublicPhotoPath(pathname);
     const isPrivate = isPrivatePhotoPath(pathname);
     if (!isPublic && !isPrivate) {
       return NextResponse.json(
         { error: "Invalid photo storage namespace." },
         { status: 400 },
-      );
-    }
-
-    if (!(await canUploadPhoto(session.user, pathname))) {
-      return NextResponse.json(
-        { error: "You cannot upload a photo to this record." },
-        { status: 403 },
       );
     }
 
