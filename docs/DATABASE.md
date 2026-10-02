@@ -108,7 +108,9 @@ in UTC and only converted to Mountain Time for display.
   optionally trace back to the Estimate that produced it — see above.
   `taxRatePermille` (also on `BusinessSettings`) is stored as tenths
   of a percent — `73` means 7.3% — see `docs/BUSINESS-RULES.md`'s
-  "Sales tax" note for why.
+  "Sales tax" note for why. Batch B adds nullable renewal/auto-renew and
+  early-termination snapshot fields; null means the owner policy has not
+  been configured and the corresponding customer action must stay off.
 - **RentalLine** — one priced line on that agreement (e.g. "Washer/Dryer
   set @ $60/mo").
 - **ApplianceAssignment** — which physical `Appliance` fulfills a given
@@ -141,52 +143,65 @@ in UTC and only converted to Mountain Time for display.
 Redesigned for Phase 6B (docs/DECISIONS.md has the dated writeup) and
 now wired up for real: signing an agreement creates a Stripe Checkout
 Session, and Stripe's webhooks (`src/domains/billing/webhooks.ts`) are
-what actually writes these rows — never our own server, since Stripe
-is the one source of truth for whether money moved. See
-`docs/ARCHITECTURE.md`'s "Payments (Stripe)" section for the moving
-parts.
+what actually writes payment facts — never our own server merely assuming
+money moved. See `docs/ARCHITECTURE.md`'s "Payments (Stripe)" section for
+the moving parts.
 
-- **Invoice** — one bill, covering one billing period (billing is
-  always *in advance* — see docs/BUSINESS-RULES.md). Has a
-  human-facing `invoiceNumber` separate from its internal id, and its
-  own subtotal/discount/tax/late-fee breakdown, computed once at
-  creation and never recalculated.
+Batch B adds a durable local financial/provider layer so a successful Stripe
+call followed by a crashed process can be reconciled without creating the
+same external object twice or losing the local link.
+
+- **ProviderOperation** — one durable intent for every Stripe write that
+  Batch B owns (customer/subscription create or cancel, balance credit,
+  refund). The deterministic `idempotencyKey`, status, provider object id,
+  attempts and sanitized failure make provider/local drift observable and
+  recoverable (design D1/D2).
+- **Receipt** — one real-world payment event, whether Stripe or manual.
+  One combined check is one receipt even when it is allocated across several
+  invoices. `stripeChargeId` is unique for Stripe receipts so webhook replay
+  cannot create a second receipt for the same cash (design D6).
+- **Payment** — an allocation of a receipt to one invoice. It keeps the
+  existing per-invoice shape and gains nullable `receiptId` for pre-Batch-B
+  rows; the Batch B backfill links those historical rows (design D6).
+- **CreditApplication** — an auditable, locked allocation of one
+  `CustomerCredit` to one invoice. It is created together with the negative
+  CREDIT invoice line and decrement of `remainingCents`, making double-spend
+  prevention a database-backed transaction fact (design D7).
+- **Invoice** — one bill, covering one billing period (billing is always
+  *in advance* — see docs/BUSINESS-RULES.md). Has a human-facing
+  `invoiceNumber` separate from its internal id, its own immutable amount
+  snapshot, and Batch B's integer `version` for deterministic racing writes.
 - **InvoiceLineItem** — one priced line on an invoice (rent, a fee, the
   deposit, tax, a discount, a later credit or correction), snapshotted
-  at creation and never edited afterward — the same immutability rule
-  RentalAgreement's own price fields already follow. Fixing a mistake
-  or crediting a customer always adds a new line, never changes an old
-  one.
-- **Payment** — one attempt to collect an invoice (card or ACH), with
-  its own status (including `ach_pending`, since a bank transfer takes
-  a few business days to clear, unlike a card) and attempt number.
+  at creation and never edited afterward. A partial unique database index
+  now enforces at most one `LATE_FEE` line per invoice.
 - **Refund** — money refunded from an already-paid invoice (a security
   deposit's own refund stays on `Deposit` below — different kind of
   money, its own existing record). Always has a reason and who
   authorized it; never automatic.
-- **CustomerCredit** — an account-level credit (goodwill, resolving an
-  overpayment, a referral reward — see `Referral` below) that reduces
-  what a customer owes on a *future* invoice.
+- **CustomerCredit** — the local source of truth for an account-level
+  credit. Batch B records its source (`sourceType`/`sourceId`/`side`),
+  provider-delivery timestamp and per-invoice applications so a referral,
+  refund-to-credit, or overpayment cannot mint or spend twice (design D3/D7).
 - **WebhookEvent** — every Stripe webhook event this app has ever
   processed, by Stripe's own event id, so a duplicate delivery (webhook
   delivery is at-least-once) is never acted on twice.
-- **Deposit** — a security deposit tied to an agreement, now also
-  recording who authorized a refund and why it was less than the full
-  amount, when it's less.
-- **Referral** (2026-09-28, Task #68) — links a customer
-  (`referrerCustomer`) to whoever they referred in
-  (`referredCustomer`, `@unique` — a customer can only be the referred
-  party once), `PENDING` until the referred customer's billing starts,
-  then `REWARDED` with a frozen snapshot of what was actually paid out
-  (`rewardCents`). See `docs/DECISIONS.md`'s 2026-09-28 "Referral
-  program" entry.
+- **Deposit** — a security deposit tied to an agreement, also recording
+  who authorized a refund and why it was less than the full amount.
+- **Referral** — links a referrer to one referred customer. Batch B adds
+  `REWARDING` between `PENDING` and `REWARDED`: the row is claimed before
+  credits are minted/provider pushes begin, so concurrent paid events cannot
+  grant a referral twice (design D4).
 
 ## Settings, content & compliance
 
 - **BusinessSettings** — the one-row table behind `/desk/settings`:
   pricing defaults, fees, tax rate (starts at 0% with a warning until a
   CPA confirms the real rate), business info, service area, and the
-  homepage announcement banner. Public pages read this at request time.
+  homepage announcement banner. Batch B's renewal/termination policy fields
+  are all nullable by design: null means the owner has not established that
+  policy and dependent customer actions remain unavailable rather than using
+  an invented default.
 - **SiteContent** — editable text blocks for the public site (headline,
   FAQ entries, etc.), keyed by a string like `"home.headline"`.
 - **Photo** — an uploaded image (appliance condition, job before/after,
@@ -214,7 +229,6 @@ see `docs/BUSINESS-RULES.md`), but the shapes above (separate `Lead`,
 `RentalAgreement`, `Job` records with clear statuses) were chosen so
 those can be added later without a redesign.
 
-
 ## Prelaunch interest (2026-09-29)
 
 - **LaunchSettings** — singleton with prelaunch-mode and email-enable switches,
@@ -230,7 +244,6 @@ those can be added later without a redesign.
 
 Migration `20260930040000_prelaunch_interest` creates only these three tables
 and their indexes. It does not rewrite or delete any existing business data.
-
 
 ## Team task assignment — October 1, 2026
 
