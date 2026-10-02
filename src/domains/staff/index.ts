@@ -1,124 +1,131 @@
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { requestInvitationEmail } from "@/lib/password-email";
-import { generateUnusedAccountPassword } from "@/domains/leads";
+import {
+  createTrustedCredentialUserInTx,
+  generateUnusedAccountPassword,
+  normalizeAccountEmail,
+} from "@/lib/account-provisioning";
 
 // ---------------------------------------------------------------------------
 // Staff permissions framework (Task #66, docs/DECISIONS.md 2026-09-28) —
 // a STAFF login role: day-to-day operational access (jobs, dispatch,
-// customers, inventory, maintenance), but not business financials
-// (Dashboard, Billing, Revenue, Reports, Growth) or Settings. Those pages
-// each call requireRole("OWNER", "ADMIN") directly — never rely on a
-// hidden nav link alone (see src/lib/session.ts's own comment).
-//
-// Chris didn't have specific roles in mind yet (e.g. a separate "driver"
-// vs "office" tier) — this is deliberately one role, built so it's safe
-// to hand to a new hire the day he needs to, not a full role-editor.
+// customers, inventory, maintenance), but not business financials or
+// settings. Restricted pages enforce their roles on the server.
 // ---------------------------------------------------------------------------
 
 export async function getStaffAccounts() {
   return prisma.user.findMany({
     where: { role: "STAFF" },
     orderBy: [{ createdAt: "desc" }],
-    select: { id: true, name: true, email: true, createdAt: true, archivedAt: true },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      createdAt: true,
+      archivedAt: true,
+    },
   });
 }
 
 /**
- * Creates a new STAFF login and emails them the same "set your password"
- * link customer accounts activate with (see
- * src/domains/leads' sendCustomerActivationEmail — same mechanism,
- * reimplemented here rather than importing a customer-named helper into
- * an unrelated domain). Chris never learns or relays the account's
- * password, same as a customer's.
+ * Creates a STAFF login through the same trusted server-side credential
+ * provisioning primitive used for customers. User creation and audit evidence
+ * commit together; the activation email is attempted only after that durable
+ * transaction succeeds.
  */
 export async function createStaffAccount(
   actingUserId: string,
   input: { name: string; email: string },
 ) {
-  const existing = await prisma.user.findUnique({ where: { email: input.email } });
-  if (existing) {
-    throw new Error(`${input.email} is already in use by another account.`);
-  }
+  const email = normalizeAccountEmail(input.email);
 
-  const signUp = await auth.api.signUpEmail({
-    body: { email: input.email, password: generateUnusedAccountPassword(), name: input.name },
-  });
-  // emailVerified is set true immediately (Task #70) rather than making a
-  // staff member click a separate "verify your email" link on top of the
-  // activation link below — the activation email IS the proof they
-  // control this inbox (they can't set a password without clicking it),
-  // so a second verification step would be redundant, not more secure.
-  const account = await prisma.user.update({
-    where: { id: signUp.user.id },
-    data: { role: "STAFF", emailVerified: true },
-  });
+  const account = await prisma.$transaction(async (tx) => {
+    const existing = await tx.user.findUnique({ where: { email } });
+    if (existing) {
+      throw new Error(`${email} is already in use by another account.`);
+    }
 
-  const activationEmailSent = await resendStaffActivationEmail(input.email);
+    const created = await createTrustedCredentialUserInTx(tx, {
+      email,
+      name: input.name,
+      role: "STAFF",
+      password: generateUnusedAccountPassword(),
+    });
 
-  await prisma.auditLog.create({
-    data: {
-      userId: actingUserId,
-      action: "staff.create",
-      entityType: "User",
-      entityId: account.id,
-      newValue: { email: input.email, name: input.name },
-    },
+    await tx.auditLog.create({
+      data: {
+        userId: actingUserId,
+        action: "staff.create",
+        entityType: "User",
+        entityId: created.id,
+        newValue: { email, name: input.name },
+      },
+    });
+
+    return created;
   });
 
+  const activationEmailSent = await resendStaffActivationEmail(email);
   return { account, activationEmailSent };
 }
 
 export async function resendStaffActivationEmail(email: string): Promise<boolean> {
-  return requestInvitationEmail(email, () => auth.api.requestPasswordReset({
-    body: { email, redirectTo: "/reset-password" },
-  }));
+  return requestInvitationEmail(normalizeAccountEmail(email), () =>
+    auth.api.requestPasswordReset({
+      body: { email: normalizeAccountEmail(email), redirectTo: "/reset-password" },
+    }),
+  );
 }
 
 /** Immediately ends a staff member's access: signs them out of every
- * device right now (deletes their live sessions) and marks the account
- * so `requireSession()` refuses it even after a fresh sign-in — see
- * that function's own comment for how `archivedAt` rides along on the
- * session without an extra database call on every page. The User row
- * itself is kept, not deleted, so past audit-log entries and job
- * history still point to a real name. */
-export async function deactivateStaffAccount(actingUserId: string, staffUserId: string) {
+ * device and marks the account so requireSession() refuses it. */
+export async function deactivateStaffAccount(
+  actingUserId: string,
+  staffUserId: string,
+) {
   const staff = await prisma.user.findUniqueOrThrow({ where: { id: staffUserId } });
   if (staff.role !== "STAFF") {
     throw new Error("That account isn't a staff login.");
   }
 
-  await prisma.$transaction([
-    prisma.user.update({ where: { id: staffUserId }, data: { archivedAt: new Date() } }),
-    prisma.session.deleteMany({ where: { userId: staffUserId } }),
-  ]);
-
-  await prisma.auditLog.create({
-    data: {
-      userId: actingUserId,
-      action: "staff.deactivate",
-      entityType: "User",
-      entityId: staffUserId,
-    },
+  await prisma.$transaction(async (tx) => {
+    await tx.user.update({
+      where: { id: staffUserId },
+      data: { archivedAt: new Date() },
+    });
+    await tx.session.deleteMany({ where: { userId: staffUserId } });
+    await tx.auditLog.create({
+      data: {
+        userId: actingUserId,
+        action: "staff.deactivate",
+        entityType: "User",
+        entityId: staffUserId,
+      },
+    });
   });
 }
 
 /** Restores a previously-removed staff login. Their old password still
  * works (nothing about it changed) — no new activation email needed. */
-export async function reactivateStaffAccount(actingUserId: string, staffUserId: string) {
+export async function reactivateStaffAccount(
+  actingUserId: string,
+  staffUserId: string,
+) {
   const staff = await prisma.user.findUniqueOrThrow({ where: { id: staffUserId } });
   if (staff.role !== "STAFF") {
     throw new Error("That account isn't a staff login.");
   }
 
-  await prisma.user.update({ where: { id: staffUserId }, data: { archivedAt: null } });
-
-  await prisma.auditLog.create({
-    data: {
-      userId: actingUserId,
-      action: "staff.reactivate",
-      entityType: "User",
-      entityId: staffUserId,
-    },
+  await prisma.$transaction(async (tx) => {
+    await tx.user.update({ where: { id: staffUserId }, data: { archivedAt: null } });
+    await tx.auditLog.create({
+      data: {
+        userId: actingUserId,
+        action: "staff.reactivate",
+        entityType: "User",
+        entityId: staffUserId,
+      },
+    });
   });
 }
