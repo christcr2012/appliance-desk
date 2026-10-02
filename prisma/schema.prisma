@@ -151,6 +151,7 @@ model Customer {
   rentalAgreements RentalAgreement[]
   maintenanceRequests MaintenanceRequest[]
   invoices         Invoice[]
+  receipts         Receipt[]
   credits          CustomerCredit[]
   consentRecords   ConsentRecord[]
   notes            CustomerNote[]
@@ -175,13 +176,13 @@ model Customer {
 // pick: "discount for both people," i.e. give X/get X). A referral is
 // created the moment a referred lead converts to a customer (linking
 // referrer -> new customer) and stays PENDING until that new customer
-// actually starts paying (RentalAgreement.billingStartedAt is set) —
-// rewarding on signup alone would pay out for someone who never
-// actually rents. See src/domains/referrals for the reward logic.
+// actually starts paying. Batch B adds REWARDING as the claimed/in-flight
+// state before provider credit delivery is complete.
 // ---------------------------------------------------------------------------
 
 enum ReferralStatus {
   PENDING
+  REWARDING
   REWARDED
 }
 
@@ -672,6 +673,16 @@ model RentalAgreement {
   // never goes silently unbilled — see the exception inbox.
   billingBlockedReason String?
 
+  // Batch B (D9/D10). All nullable; null = feature/policy not configured.
+  renewalPreference        String?   // "NONE" | "AUTO_RENEW"; null = never asked
+  autoRenewConsentedAt     DateTime?
+  autoRenewTermsVersion    String?
+  renewedFromAgreementId   String?
+  terminationRequestedAt   DateTime?
+  terminationEffectiveOn   DateTime?
+  terminationFeeCents      Int?
+  terminationPolicyVersion String?
+
   lines RentalLine[]
 
   signature   SignatureRecord?
@@ -1072,17 +1083,7 @@ model EstimateLineItem {
 }
 
 // ---------------------------------------------------------------------------
-// Billing (Phase 6B — see docs/DECISIONS.md's "Phase 6B billing data
-// model redesign" entry for the full writeup, and docs/BUSINESS-RULES.md's
-// "Billing rules" section for the plain-English billing policy: anniversary
-// billing, deposits charged up front, cards + ACH both offered, billing in
-// advance).
-//
-// Nothing reads or writes these models yet as of this redesign — Stripe
-// wiring is the next, separate piece of work, once Chris has a real
-// Stripe test-mode account. This redesign exists so that work has a data
-// model worth building against, instead of retrofitting one under
-// pressure once real invoices exist.
+// Billing
 // ---------------------------------------------------------------------------
 
 enum InvoiceStatus {
@@ -1097,12 +1098,6 @@ enum InvoiceStatus {
   REFUNDED
 }
 
-// One line per invoice, snapshotted at the moment the invoice is created
-// and never edited afterward — a historical invoice must never silently
-// change because pricing or settings changed later (same immutability
-// rule as RentalAgreement's own price snapshot). Correcting a mistake or
-// crediting a customer always adds a new line (kind ADJUSTMENT or
-// CREDIT), never edits an existing one.
 enum InvoiceLineItemKind {
   RENTAL
   DELIVERY_FEE
@@ -1117,10 +1112,80 @@ enum InvoiceLineItemKind {
   ADJUSTMENT
 }
 
+// Batch B — provider operations (docs/designs/BATCH-B.md D1/D2)
+enum ProviderOperationKind {
+  CUSTOMER_CREATE
+  SUBSCRIPTION_CREATE
+  SUBSCRIPTION_CANCEL
+  BALANCE_CREDIT
+  REFUND_CREATE
+}
+
+enum ProviderOperationStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  UNKNOWN
+  DRIFT
+}
+
+model ProviderOperation {
+  id               String                  @id @default(cuid())
+  kind             ProviderOperationKind
+  subjectType      String
+  subjectId        String
+  idempotencyKey   String                  @unique
+  status           ProviderOperationStatus @default(PENDING)
+  providerObjectId String?
+  attempts         Int                     @default(0)
+  lastError        String?
+  requestedAt      DateTime                @default(now())
+  completedAt      DateTime?
+  updatedAt        DateTime                @updatedAt
+
+  @@index([subjectType, subjectId])
+  @@index([status, requestedAt])
+}
+
+// Batch B — receipts, allocations, credit applications (D6/D7)
+enum ReceiptSource {
+  STRIPE
+  MANUAL
+}
+
+model Receipt {
+  id               String        @id @default(cuid())
+  customerId       String
+  customer         Customer      @relation(fields: [customerId], references: [id])
+  source           ReceiptSource
+  amountCents      Int
+  method           String
+  stripeChargeId   String?       @unique
+  receivedOn       DateTime
+  recordedByUserId String?
+  notes            String?
+  payments         Payment[]
+  createdAt        DateTime      @default(now())
+
+  @@index([customerId, receivedOn])
+}
+
+model CreditApplication {
+  id              String         @id @default(cuid())
+  creditId        String
+  credit          CustomerCredit @relation(fields: [creditId], references: [id])
+  invoiceId       String
+  invoice         Invoice        @relation(fields: [invoiceId], references: [id])
+  amountCents     Int
+  appliedByUserId String?
+  createdAt       DateTime       @default(now())
+
+  @@index([creditId])
+  @@index([invoiceId])
+}
+
 model Invoice {
   id          String        @id @default(cuid())
-  // Sequential, human-facing invoice number (what a customer sees on a
-  // receipt) — separate from `id`, which is only ever an internal key.
   invoiceNumber Int         @unique @default(autoincrement())
   customerId  String
   customer    Customer      @relation(fields: [customerId], references: [id])
@@ -1128,33 +1193,28 @@ model Invoice {
   agreement   RentalAgreement? @relation(fields: [agreementId], references: [id])
 
   status      InvoiceStatus @default(DRAFT)
+  version     Int           @default(1)
 
-  // The rental period this invoice actually covers — billing is always
-  // in advance (docs/BUSINESS-RULES.md), so these dates are the month
-  // being paid FOR, not the month the invoice was sent in.
   billingPeriodStart DateTime?
   billingPeriodEnd   DateTime?
 
-  // Rolled-up totals, computed from this invoice's own lineItems at
-  // creation time and never recalculated later — the lineItems are the
-  // real source of truth; these are a convenient, immutable summary of
-  // them (docs/DATABASE.md).
   subtotalCents   Int @default(0)
   discountCents   Int @default(0)
   taxCents        Int @default(0)
   lateFeeCents    Int @default(0)
   amountDueCents  Int
   amountPaidCents Int @default(0)
-  dueDate     DateTime?
+  dueDate         DateTime?
 
-  cancelledAt     DateTime?
-  writtenOffAt    DateTime?
+  cancelledAt      DateTime?
+  writtenOffAt     DateTime?
   writtenOffReason String?
 
-  stripeInvoiceId String? @unique
-  lineItems   InvoiceLineItem[]
-  payments    Payment[]
-  refunds     Refund[]
+  stripeInvoiceId    String? @unique
+  lineItems           InvoiceLineItem[]
+  payments            Payment[]
+  refunds             Refund[]
+  creditApplications  CreditApplication[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1175,10 +1235,6 @@ model InvoiceLineItem {
   // other total on the invoice is a plain sum of these.
   amountCents Int
   quantity    Int      @default(1)
-
-  // Optional traceability back to the specific rental line this charge
-  // came from — never used to recompute the amount, only to answer "why
-  // is this line on the invoice."
   rentalLineId String?
 
   createdAt DateTime @default(now())
@@ -1191,30 +1247,24 @@ model Payment {
   invoiceId   String
   invoice     Invoice  @relation(fields: [invoiceId], references: [id])
   amountCents Int
-  method      String?  // card | ach
-  // succeeded | failed | pending | ach_pending (ACH takes a few business
-  // days to clear — this state means Stripe accepted the attempt but it
-  // hasn't posted yet, distinct from a card charge's near-instant result)
+  method      String?
   status      String
   attemptNumber Int    @default(1)
   stripeChargeId String?
   stripePaymentIntentId String?
   failureReason String?
-
-  // A payment Chris recorded by hand (a check, cash, or a bank transfer
-  // he confirmed himself) rather than one Stripe reported through a
-  // webhook — see src/domains/billing/manual-payments.ts. Both null on
-  // every Stripe-sourced Payment (the only kind that existed before
-  // this); recordedByUserId being set is what distinguishes a manual
-  // payment from a Stripe one, not the method string (Stripe payments
-  // use "card"/"ach"; manual ones use "check"/"cash"/"bank_transfer"/
-  // "other").
   notes String?
   recordedByUserId String?
+
+  // Batch B D6: one real-world payment event can allocate to many invoices.
+  // Nullable for pre-Batch-B rows until WU-B5's idempotent backfill links them.
+  receiptId String?
+  receipt   Receipt? @relation(fields: [receiptId], references: [id])
 
   createdAt DateTime @default(now())
 
   @@index([invoiceId])
+  @@index([receiptId])
 }
 
 enum RefundReason {
@@ -1225,11 +1275,6 @@ enum RefundReason {
   OTHER
 }
 
-// A refund of money already paid on an invoice — separate from a
-// security-deposit refund, which stays on Deposit itself
-// (Deposit.refundedAt/refundedAmountCents) since that's a different kind
-// of money with its own existing record. Every refund here always
-// happened after a real payment, so it's always tied to one Invoice.
 model Refund {
   id          String       @id @default(cuid())
   invoiceId   String
@@ -1237,7 +1282,7 @@ model Refund {
   amountCents Int
   reason      RefundReason
   notes       String?
-  authorizedByUserId String? // the OWNER/ADMIN who approved it — never automatic
+  authorizedByUserId String?
   stripeRefundId String?
 
   createdAt DateTime @default(now())
@@ -1245,11 +1290,6 @@ model Refund {
   @@index([invoiceId])
 }
 
-// An account-level credit (e.g. goodwill, or resolving an overpayment)
-// that reduces what a customer owes on a FUTURE invoice — deliberately
-// separate from Refund (money going back to a payment method) and from
-// InvoiceLineItem's CREDIT kind (which is how a credit actually gets
-// applied to a specific invoice once it's used).
 model CustomerCredit {
   id             String   @id @default(cuid())
   customerId     String
@@ -1260,19 +1300,24 @@ model CustomerCredit {
   notes          String?
   authorizedByUserId String?
 
+  // Batch B D3/D4/D7: immutable provenance and provider-delivery state.
+  sourceType String?
+  sourceId   String?
+  side       String?
+  appliedViaStripeAt DateTime?
+  applications CreditApplication[]
+
   createdAt DateTime @default(now())
 
   @@index([customerId])
+  @@unique([sourceType, sourceId, side])
 }
 
 // Every Stripe webhook event this app has ever processed, keyed by
 // Stripe's own event id — webhook delivery is at-least-once, so Stripe
 // (or a retried delivery after a timeout) can send the same event twice.
-// Checking this table before acting on an event, and inserting into it
-// as part of the same action, is what makes webhook processing
-// idempotent (docs/BUSINESS-RULES.md's billing rules).
 model WebhookEvent {
-  id          String   @id // Stripe's own event id, e.g. "evt_..."
+  id          String   @id
   type        String
   processedAt DateTime @default(now())
 }
@@ -1295,10 +1340,6 @@ model BusinessSettings {
   socialLinks        Json   @default("{}")
   logoUrl            String?
 
-  // Delivery and installation are separate, optional one-time fees —
-  // Chris may charge for one, both, or neither (e.g. a delivery-only fee
-  // when the customer hooks up the appliance themselves). Each shows as
-  // its own line item on /pricing. See docs/BUSINESS-RULES.md.
   oneTimeDeliveryFeeCents     Int @default(0)
   oneTimeInstallationFeeCents Int @default(0)
   oneTimeRemovalFeeCents      Int @default(0)
@@ -1307,50 +1348,39 @@ model BusinessSettings {
   lateFeeGraceDays        Int     @default(5)
   lateFeeFlatCents        Int     @default(0)
   lateFeePercent          Int     @default(0)
-  taxRatePermille         Int     @default(0) // 0 until a CPA confirms the real rate
+  taxRatePermille         Int     @default(0)
   taxRateConfirmed        Boolean @default(false)
 
   announcementBannerText String?
   announcementBannerOn   Boolean @default(false)
 
-  // Prepaid-term discounts (Chris's explicit request, docs/DECISIONS.md
-  // has the dated design decision, docs/BUSINESS-RULES.md's Pricing
-  // section has the full rule). Four independent, owner-adjustable dollar
-  // amounts — never derived from one another — plus a separate toggle for
-  // the "first month free" bonus on a 12-month term paid fully in
-  // advance. Defaults match the figures Chris gave as a starting point.
   sixMonthPrepayDiscountSetCents       Int     @default(500)
   sixMonthPrepayDiscountSingleCents    Int     @default(250)
   twelveMonthPrepayDiscountSetCents    Int     @default(1000)
   twelveMonthPrepayDiscountSingleCents Int     @default(500)
   twelveMonthPrepayFreeMonthEnabled    Boolean @default(true)
 
-  // Referral program (Task #68, docs/DECISIONS.md 2026-09-28) — one
-  // owner-adjustable dollar amount, applied to BOTH the referrer and
-  // the new customer they referred (Chris's explicit pick: "discount
-  // for both people," not a one-sided reward). Applied as a Stripe
-  // account-balance credit on each side once the referred customer's
-  // billing actually starts — see src/domains/referrals.
   referralRewardCents Int @default(2500)
-
-  // Reservation aging (Phase 6A item 6 — see docs/BUSINESS-RULES.md).
-  // How many days a DRAFT/AWAITING_SIGNATURE agreement's reserved
-  // appliances are held before the desk flags it as stale. Owner-
-  // adjustable, same pattern as every other business rule here.
   draftReservationHoldDays Int @default(7)
-
-  // Return-inspection checklist (rental lifecycle, 2026-09-28) — a JSON
-  // string array of items Chris ticks off before a returned machine can
-  // be rented again. Empty means "use the built-in default list"
-  // (DEFAULT_INSPECTION_CHECKLIST in src/domains/inventory/lifecycle.ts).
   inspectionChecklist Json @default("[]")
+
+  // Batch B D10: null means policy not set; dependent actions stay unavailable.
+  earlyTerminationFeeCents    Int?
+  earlyTerminationFeePercent  Int?
+  earlyTerminationFeeCapCents Int?
+  earlyTerminationNoticeDays  Int?
+  unusedTermTreatment         String?
+  autoRenewNoticeDays         Int?
+  autoRenewTermsVersion       String?
+  renewalTermsText            String?
+  terminationTermsText        String?
 
   updatedAt DateTime @updatedAt
 }
 
 model SiteContent {
   id    String @id @default(cuid())
-  key   String @unique // "home.headline", "rentals.body", "faq.entry.1", ...
+  key   String @unique
   value String
   updatedAt DateTime @updatedAt
 }
@@ -1374,19 +1404,11 @@ model ConsentRecord {
   id         String   @id @default(cuid())
   customerId String?
   customer   Customer? @relation(fields: [customerId], references: [id])
-  kind       String   // "lead_form_privacy" | "sms_opt_in" | "data_export_request" | "data_deletion_request"
+  kind       String
   details    Json?
   createdAt  DateTime @default(now())
 }
 
-// Customer workspace (2026-09-28, docs/BUSINESS-RULES.md) — a free-text
-// note Chris (or another staff account) leaves on a customer's own
-// record: a phone call, something they said, a reminder for next time.
-// Deliberately separate from AuditLog, which records what the SYSTEM did
-// (status changes, created rows) — a note is something a person chose to
-// write down, never generated automatically, and is never edited or
-// deleted (an honest record of who said what and when, same reasoning as
-// AuditLog itself).
 model CustomerNote {
   id         String   @id @default(cuid())
   customerId String
@@ -1400,20 +1422,13 @@ model CustomerNote {
   @@index([customerId])
 }
 
-// A business/property-manager customer's account is one login (the
-// primary contact), but the people Chris actually needs to reach for a
-// given property aren't always that same person (a site manager for
-// scheduling access, an accounts-payable contact for billing questions).
-// Purely informational — never a login, never billed — just numbers and
-// names Chris can find on the customer's own page instead of digging
-// through old emails or notes.
 model CustomerContact {
   id         String   @id @default(cuid())
   customerId String
   customer   Customer @relation(fields: [customerId], references: [id])
 
   name  String
-  role  String? // e.g. "Site manager", "Accounts payable"
+  role  String?
   phone String?
   email String?
   notes String?
@@ -1423,14 +1438,6 @@ model CustomerContact {
   @@index([customerId])
 }
 
-// A staff member's own follow-up reminder — "call the Oak Street
-// property manager back Thursday about renewing" — distinct from the
-// system-generated exception flags in src/domains/growth /
-// src/domains/exceptions (those are automatically detected from billing/
-// job/agreement state; this is something a person chose to jot down for
-// themself). Optionally linked to whatever it's about, purely for a
-// convenient link back — deleting the linked record never deletes the
-// task. See docs/DECISIONS.md's 2026-09-29 CRM-buildout entry.
 enum TaskPriority {
   LOW
   NORMAL
@@ -1471,7 +1478,7 @@ model AuditLog {
   id        String   @id @default(cuid())
   userId    String?
   user      User?    @relation(fields: [userId], references: [id])
-  action    String   // e.g. "pricing.update", "lead.convert"
+  action    String
   entityType String
   entityId   String?
   oldValue   Json?
@@ -1481,7 +1488,6 @@ model AuditLog {
   @@index([entityType, entityId])
   @@index([createdAt])
 }
-
 
 // Prelaunch interest is not a quote, customer, reservation, or SMS consent.
 model LaunchSettings {
