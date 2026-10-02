@@ -37,8 +37,6 @@ function Stat({
   );
 }
 
-// OWNER/ADMIN only (docs/DECISIONS.md, 2026-09-28 "Staff permissions
-// framework") — never rely on the nav link being hidden alone.
 export default async function RevenuePage({
   searchParams,
 }: {
@@ -53,6 +51,7 @@ export default async function RevenuePage({
     getRevenueDashboard(asOf),
     getRevenueRecords(source, monthOnly, query.page, asOf),
   ]);
+
   function recordsHref(
     page = 1,
     nextSource = source,
@@ -60,13 +59,17 @@ export default async function RevenuePage({
   ) {
     return `/desk/revenue?${new URLSearchParams({ source: nextSource, scope: nextMonthOnly ? "month" : "all", page: String(page) })}`;
   }
-  const maxTrendCents = Math.max(1, ...stats.mrrTrend.map((p) => p.mrrCents));
+
+  const maxTrendCents = Math.max(
+    1,
+    ...stats.mrrTrend.map((point) => point.mrrCents),
+  );
 
   return (
     <div>
       <PageHeader
-        title="Revenue and recorded payments"
-        description="Agreed rental rates, gross invoice payments and recorded refunds have different meanings."
+        title="Revenue and cash activity"
+        description="Agreed rental rates, real cash receipts, invoice allocations and refunds are tracked separately so the numbers keep their meaning."
         secondaryActions={
           <Link
             className="min-h-11 inline-flex items-center text-primary underline"
@@ -77,11 +80,13 @@ export default async function RevenuePage({
         }
       />
       <p className="text-sm text-ink-soft">
-        As of {formatBusinessDate(asOf)} · {formatBusinessTime(asOf)}. Monthly
-        figures and trend use UTC calendar months. Payments use their recorded
-        creation time; provider settlement dates may differ. No costs are
-        deducted, so this report cannot establish profit.
+        As of {formatBusinessDate(asOf)} · {formatBusinessTime(asOf)}. Gross
+        cash cards use each receipt&apos;s actual received date; the detailed
+        invoice-allocation list below uses the allocation record date. Monthly
+        rate trend still uses UTC calendar months. No costs are deducted, so
+        this report cannot establish profit.
       </p>
+
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Stat
           label="Estimated monthly rate (MRR)"
@@ -94,11 +99,11 @@ export default async function RevenuePage({
           tone="good"
         />
         <Stat
-          label="Gross invoice payments this month"
+          label="Gross cash received this month"
           value={formatCents(stats.collectedThisMonthCents)}
         />
         <Stat
-          label="Gross invoice payments all-time"
+          label="Gross cash received all-time"
           value={formatCents(stats.collectedAllTimeCents)}
         />
         <Stat
@@ -143,11 +148,6 @@ export default async function RevenuePage({
           overlaps each month. A mid-month rental contributes its full rate;
           this is not invoiced rent or cash received.
         </p>
-        {/* h-40 = 160px — a static value, so a plain Tailwind class
-            instead of an inline `style` (2026-09-29, alongside the new
-            Content-Security-Policy header — every avoidable inline
-            style keeps that policy stricter). The bars below stay
-            inline since their height is computed per data point. */}
         {stats.mrrTrend.some((point) => point.mrrCents > 0) ? (
           <div aria-hidden="true" className="mt-4 flex h-40 items-end gap-3">
             {stats.mrrTrend.map((point) => (
@@ -177,14 +177,15 @@ export default async function RevenuePage({
 
       <p className="mt-4 max-w-2xl text-sm text-ink-soft">
         Current MRR sums line prices on ACTIVE rentals with billing started; ARR
-        is MRR × 12. Gross payments include provider-reported and owner-recorded
-        payments marked succeeded, including any deposit, fees and tax on their
-        invoices. Refunds are shown separately; gross payments are not net cash
-        or rental revenue. Past-due balances use recorded
+        is MRR × 12. Gross cash received comes from Receipt records, so one
+        combined check is counted once even when it pays several invoices, and
+        any unallocated overpayment is still part of the cash received. Refunds
+        are shown separately. Past-due balances use recorded
         OPEN/PARTIALLY_PAID/DELINQUENT invoices with a past due date and
-        subtract recorded paid amounts. Closed-rental counts use last update
-        time, which may differ from the actual closure date.
+        subtract recorded paid allocations. Closed-rental counts use last
+        update time, which may differ from the actual closure date.
       </p>
+
       <SectionCard
         title="Monthly rate values"
         description="Estimated agreement rates for each UTC month."
@@ -198,12 +199,13 @@ export default async function RevenuePage({
           ))}
         </dl>
       </SectionCard>
+
       <div className="mt-6">
         <FilterBar
-          label="Payment report source"
+          label="Invoice ledger source"
           items={[
             {
-              label: "Gross payments",
+              label: "Payment allocations",
               href: recordsHref(1, "payments"),
               active: source === "payments",
             },
@@ -215,7 +217,7 @@ export default async function RevenuePage({
           ]}
         />
         <FilterBar
-          label="Payment report period"
+          label="Invoice ledger period"
           items={[
             {
               label: "This UTC month",
@@ -232,16 +234,18 @@ export default async function RevenuePage({
         <SectionCard
           title={
             source === "payments"
-              ? "Recorded gross invoice payments"
+              ? "Recorded invoice payment allocations"
               : "Recorded invoice refunds"
           }
           description={`${records.meta.totalCount} matching records · ${formatCents(records.totalCents)} total · newest first. All totals include records beyond this page.`}
         >
           <p className="mb-4 text-sm text-ink-soft">
-            Refunds use the refund record date, not the original payment date.
-            Security-deposit refunds have their own deposit records and are not
-            included here. Unpaid, pending and failed payment attempts do not
-            count as gross payments.
+            Payment rows below are allocations to individual invoices, not
+            independent cash receipts. One receipt can therefore appear across
+            several invoice allocations. Refunds use the refund record date,
+            not the original payment date. Security-deposit refunds have their
+            own deposit records and are not included here. Unpaid, pending and
+            failed payment attempts do not count as successful allocations.
           </p>
           {records.rows.length === 0 ? (
             <p>No matching records.</p>
