@@ -88,7 +88,7 @@ describe("provider operation claims", () => {
       [row({ requestedAt: new Date(Date.now() - 300_000), attempts: 2 })],
     ]);
 
-    await expect(claimProviderOperation(tx, input,)).resolves.toEqual({
+    await expect(claimProviderOperation(tx, input)).resolves.toEqual({
       done: false,
       opId: "op-1",
       idempotencyKey: input.idempotencyKey,
@@ -120,11 +120,9 @@ describe("provider call outcome classification", () => {
   it("maps Stripe connection and API/server failures to UNKNOWN", async () => {
     const connectionError = new Stripe.errors.StripeConnectionError({
       message: "network timeout",
-      type: "api_connection_error",
     });
     const apiError = new Stripe.errors.StripeAPIError({
       message: "server unavailable",
-      type: "api_error",
     });
 
     await expect(runProviderCall(async () => Promise.reject(connectionError))).resolves.toMatchObject({
