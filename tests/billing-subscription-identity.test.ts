@@ -9,7 +9,6 @@ const mocks = vi.hoisted(() => ({
   auditCreate: vi.fn(),
   transaction: vi.fn(),
   retrieveSubscription: vi.fn(),
-  processCore: vi.fn(),
 }));
 
 vi.mock("@/lib/prisma", () => ({
@@ -27,10 +26,6 @@ vi.mock("@/lib/stripe", () => ({
       retrieve: (...args: unknown[]) => mocks.retrieveSubscription(...args),
     },
   }),
-}));
-
-vi.mock("@/domains/billing/webhooks-core", () => ({
-  processStripeWebhookEvent: (...args: unknown[]) => mocks.processCore(...args),
 }));
 
 function event(type: string, object: unknown): Stripe.Event {
@@ -63,7 +58,6 @@ describe("Stripe subscription identity recovery", () => {
       id: "sub-1",
       metadata: { agreementId: "agr-1" },
     });
-    mocks.processCore.mockResolvedValue(undefined);
     mocks.transaction.mockImplementation(async (callback: (tx: unknown) => Promise<unknown>) =>
       callback({
         $queryRaw: (...args: unknown[]) => mocks.queryRaw(...args),
@@ -80,21 +74,22 @@ describe("Stripe subscription identity recovery", () => {
 
   it("skips provider lookup when the subscription is already linked locally", async () => {
     mocks.findBySubscription.mockResolvedValue({ id: "agr-1" });
-    const webhook = invoiceEvent("invoice.paid", "sub-1");
-    const { processStripeWebhookEvent } = await import("@/domains/billing/webhooks");
+    const { ensureSubscriptionIdentityForWebhook } = await import(
+      "@/domains/billing/subscription-identity"
+    );
 
-    await processStripeWebhookEvent(webhook);
+    await ensureSubscriptionIdentityForWebhook(invoiceEvent("invoice.paid", "sub-1"));
 
     expect(mocks.retrieveSubscription).not.toHaveBeenCalled();
     expect(mocks.transaction).not.toHaveBeenCalled();
-    expect(mocks.processCore).toHaveBeenCalledWith(webhook);
   });
 
-  it("heals a missing subscription id from invoice subscription metadata before processing money", async () => {
-    const webhook = invoiceEvent("invoice.paid", "sub-1");
-    const { processStripeWebhookEvent } = await import("@/domains/billing/webhooks");
+  it("heals a missing subscription id from invoice subscription metadata", async () => {
+    const { ensureSubscriptionIdentityForWebhook } = await import(
+      "@/domains/billing/subscription-identity"
+    );
 
-    await processStripeWebhookEvent(webhook);
+    await ensureSubscriptionIdentityForWebhook(invoiceEvent("invoice.paid", "sub-1"));
 
     expect(mocks.retrieveSubscription).toHaveBeenCalledWith("sub-1");
     expect(mocks.updateAgreement).toHaveBeenCalledWith({
@@ -108,43 +103,47 @@ describe("Stripe subscription identity recovery", () => {
         entityId: "agr-1",
       }),
     });
-    expect(mocks.processCore).toHaveBeenCalledWith(webhook);
   });
 
   it("uses metadata already present on subscription.deleted without another Stripe read", async () => {
-    const webhook = deletedEvent("sub-1", "agr-1");
-    const { processStripeWebhookEvent } = await import("@/domains/billing/webhooks");
+    const { ensureSubscriptionIdentityForWebhook } = await import(
+      "@/domains/billing/subscription-identity"
+    );
 
-    await processStripeWebhookEvent(webhook);
+    await ensureSubscriptionIdentityForWebhook(deletedEvent("sub-1", "agr-1"));
 
     expect(mocks.retrieveSubscription).not.toHaveBeenCalled();
     expect(mocks.updateAgreement).toHaveBeenCalledWith({
       where: { id: "agr-1" },
       data: { stripeSubscriptionId: "sub-1" },
     });
-    expect(mocks.processCore).toHaveBeenCalledWith(webhook);
   });
 
   it("never overwrites a different subscription already linked to the metadata agreement", async () => {
     mocks.queryRaw.mockResolvedValue([{ id: "agr-1", stripeSubscriptionId: "sub-other" }]);
-    const webhook = invoiceEvent("invoice.payment_failed", "sub-1");
-    const { processStripeWebhookEvent } = await import("@/domains/billing/webhooks");
+    const { ensureSubscriptionIdentityForWebhook } = await import(
+      "@/domains/billing/subscription-identity"
+    );
 
-    await expect(processStripeWebhookEvent(webhook)).rejects.toThrow(/identity conflict/i);
+    await expect(
+      ensureSubscriptionIdentityForWebhook(invoiceEvent("invoice.payment_failed", "sub-1")),
+    ).rejects.toThrow(/identity conflict/i);
 
     expect(mocks.updateAgreement).not.toHaveBeenCalled();
     expect(mocks.auditCreate).toHaveBeenCalledWith({
       data: expect.objectContaining({ action: "billing.subscription_id_conflict" }),
     });
-    expect(mocks.processCore).not.toHaveBeenCalled();
   });
 
   it("rejects metadata that would attach one Stripe subscription to a second agreement", async () => {
     mocks.txFindBySubscription.mockResolvedValue({ id: "agr-other" });
-    const webhook = invoiceEvent("invoice.paid", "sub-1");
-    const { processStripeWebhookEvent } = await import("@/domains/billing/webhooks");
+    const { ensureSubscriptionIdentityForWebhook } = await import(
+      "@/domains/billing/subscription-identity"
+    );
 
-    await expect(processStripeWebhookEvent(webhook)).rejects.toThrow(/identity conflict/i);
+    await expect(
+      ensureSubscriptionIdentityForWebhook(invoiceEvent("invoice.paid", "sub-1")),
+    ).rejects.toThrow(/identity conflict/i);
 
     expect(mocks.updateAgreement).not.toHaveBeenCalled();
     expect(mocks.auditCreate).toHaveBeenCalledWith({
@@ -153,18 +152,29 @@ describe("Stripe subscription identity recovery", () => {
         entityId: "agr-1",
       }),
     });
-    expect(mocks.processCore).not.toHaveBeenCalled();
   });
 
   it("leaves unrelated Stripe subscriptions alone when metadata has no agreement id", async () => {
     mocks.retrieveSubscription.mockResolvedValue({ id: "sub-1", metadata: {} });
-    const webhook = invoiceEvent("invoice.paid", "sub-1");
-    const { processStripeWebhookEvent } = await import("@/domains/billing/webhooks");
+    const { ensureSubscriptionIdentityForWebhook } = await import(
+      "@/domains/billing/subscription-identity"
+    );
 
-    await processStripeWebhookEvent(webhook);
+    await ensureSubscriptionIdentityForWebhook(invoiceEvent("invoice.paid", "sub-1"));
 
     expect(mocks.transaction).not.toHaveBeenCalled();
     expect(mocks.updateAgreement).not.toHaveBeenCalled();
-    expect(mocks.processCore).toHaveBeenCalledWith(webhook);
+  });
+
+  it("ignores webhook types that cannot carry recurring subscription identity", async () => {
+    const { ensureSubscriptionIdentityForWebhook } = await import(
+      "@/domains/billing/subscription-identity"
+    );
+
+    await ensureSubscriptionIdentityForWebhook(event("checkout.session.completed", { id: "cs-1" }));
+
+    expect(mocks.findBySubscription).not.toHaveBeenCalled();
+    expect(mocks.retrieveSubscription).not.toHaveBeenCalled();
+    expect(mocks.transaction).not.toHaveBeenCalled();
   });
 });
