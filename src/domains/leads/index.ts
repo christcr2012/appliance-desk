@@ -1,25 +1,23 @@
-import { randomBytes, randomUUID } from "node:crypto";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { requestInvitationEmail } from "@/lib/password-email";
 import { sendEmail } from "@/lib/email";
+import {
+  createTrustedCredentialUserInTx,
+  generateUnusedAccountPassword,
+  normalizeAccountEmail,
+} from "@/lib/account-provisioning";
 import { getBusinessSettings, parseServiceArea } from "@/domains/settings";
 import { generateUniqueReferralCode, linkReferralIfCodeProvided } from "@/domains/referrals";
 import { scoreLead } from "./scoring";
 import type { LeadFormInput } from "./schema";
-import type { Lead, LeadStatus } from "@prisma/client";
+import type { Lead, LeadStatus, Prisma } from "@prisma/client";
 
 /**
  * Creates a Lead from a validated public lead-form submission: computes
- * whether the address is in the service area, scores the lead (see
- * scoring.ts), saves the Lead + its appliance requests + a consent
- * record in one transaction, and emails Chris a notification
- * (docs/BUSINESS-RULES.md: "Chris is notified immediately by email of
- * every new lead. High-value leads are flagged as such.").
- *
- * A failed notification email never fails the submission — the visitor
- * sees success once the lead is safely in the database either way.
+ * whether the address is in the service area, scores the lead, saves the
+ * Lead + requests + consent in one transaction, then notifies Chris.
  */
 export async function createLead(input: LeadFormInput) {
   const settings = await getBusinessSettings();
@@ -139,24 +137,7 @@ export type ManualLeadInput = {
   notes?: string | null;
 };
 
-/**
- * Lets staff add a lead directly — a phone call, a walk-in, or the
- * "start an estimate for someone new" flow on /desk/estimates/new
- * (createEstimateDraftForNewLead below calls this first). Flagged by
- * Chris (2026-09-29) as a real gap: the only way a Lead could exist was
- * through the public contact form, so a call-in inquiry had nowhere to
- * go except straight to "Add a customer" — skipping the lead pipeline
- * (scoring, status tracking, follow-up) entirely.
- *
- * Deliberately lighter than createLead above: no appliance-type
- * selection, no desired term, no privacy-consent checkbox — none of
- * that applies when Chris himself is the one typing this in, not a
- * website visitor agreeing to a form. `desiredTerm`/`quantity` are left
- * at scoreLead's own defaults (month-to-month, 1) so this lead can
- * still be scored and shown in the pipeline even with minimal detail;
- * Chris can fill in the rest later from the lead's own page. No
- * "new lead" notification email either — he's the one creating it.
- */
+/** Lets staff add a phone/walk-in/manual lead. */
 export async function createLeadManually(userId: string, input: ManualLeadInput) {
   const { score, reasons, isHighValue } = scoreLead({
     desiredTerm: null,
@@ -197,21 +178,14 @@ export async function createLeadManually(userId: string, input: ManualLeadInput)
   return lead;
 }
 
-// ---------------------------------------------------------------------------
-// /desk/leads — browsing, status changes, and lead → customer conversion.
-// See docs/BUSINESS-RULES.md ("How the business operates at launch").
-// ---------------------------------------------------------------------------
-
 const ALL_STATUSES: LeadStatus[] = ["NEW", "CONTACTED", "CONVERTED", "LOST"];
 
-/** Total Lead count matching the same optional status filter as getLeads —
- * used to clamp the page number for /desk/leads's paginated view. See
- * src/domains/pagination.ts. */
 export async function getLeadsCount(filter?: { status?: LeadStatus }): Promise<number> {
-  return prisma.lead.count({ where: filter?.status ? { status: filter.status } : undefined });
+  return prisma.lead.count({
+    where: filter?.status ? { status: filter.status } : undefined,
+  });
 }
 
-/** Paginated variant of getLeads. */
 export async function getLeadsPage(
   filter: { status?: LeadStatus } | undefined,
   skip: number,
@@ -226,11 +200,7 @@ export async function getLeadsPage(
   });
 }
 
-/** Count of leads in each status, for the /desk/leads status tabs and the
- * dashboard's "needing attention" number. */
-export async function getLeadCountsByStatus(): Promise<
-  Record<LeadStatus, number>
-> {
+export async function getLeadCountsByStatus(): Promise<Record<LeadStatus, number>> {
   const counts = await prisma.lead.groupBy({
     by: ["status"],
     _count: { _all: true },
@@ -251,18 +221,6 @@ export async function getLeadById(id: string) {
   });
 }
 
-/** Changes a lead's status (e.g. marking it Contacted or Lost) and logs who
- * did it. Converting to a customer is a separate, more involved operation —
- * see convertLeadToCustomer below — so "CONVERTED" is deliberately not a
- * status this function accepts on its own.
- *
- * `lostReason` is required when (and only meaningful when) `status` is
- * `"LOST"` (2026-09-29, Chris's CRM brainstorm — docs/DECISIONS.md): a
- * `LOST` status with no reason tells Chris nothing he can act on later
- * (too expensive? wrong service area? never called back?), so this
- * throws rather than silently accepting a blank one. Any reason given
- * for a non-LOST status is ignored rather than erroring — the UI simply
- * never sends one for the other statuses. */
 export async function updateLeadStatus(
   userId: string,
   leadId: string,
@@ -290,25 +248,15 @@ export async function updateLeadStatus(
       entityType: "Lead",
       entityId: leadId,
       oldValue: { status: before.status },
-      newValue: status === "LOST" ? { status, lostReason: updated.lostReason } : { status },
+      newValue:
+        status === "LOST"
+          ? { status, lostReason: updated.lostReason }
+          : { status },
     },
   });
 
   return updated;
 }
-
-// ---------------------------------------------------------------------------
-// A lead's own contact/communication history — "called Tuesday, no
-// answer," "emailed the estimate again" — the same LeadNote pattern
-// CustomerNote already gives customers (src/domains/customers/timeline.ts),
-// extended to leads (2026-09-29, Chris's CRM brainstorm — see
-// docs/DECISIONS.md). Deliberately its own small set of functions rather
-// than a full timeline merge like getCustomerTimeline: a lead's page
-// doesn't yet have the several related-entity types (agreements, jobs,
-// maintenance requests) that make a merged timeline worthwhile for a
-// customer — just notes plus the lead's own AuditLog history, which
-// /desk/activity already lets Chris filter to by entity.
-// ---------------------------------------------------------------------------
 
 export async function getLeadNotes(leadId: string) {
   return prisma.leadNote.findMany({
@@ -318,7 +266,11 @@ export async function getLeadNotes(leadId: string) {
   });
 }
 
-export async function addLeadNote(leadId: string, authorId: string, body: string): Promise<void> {
+export async function addLeadNote(
+  leadId: string,
+  authorId: string,
+  body: string,
+): Promise<void> {
   const trimmed = body.trim();
   if (!trimmed) {
     throw new Error("A note can't be empty.");
@@ -328,10 +280,6 @@ export async function addLeadNote(leadId: string, authorId: string, body: string
   });
 }
 
-/** Pure guard used before converting a lead — no database access, so it's
- * safe to unit-test directly (see tests/leads.test.ts) despite the rest of
- * this file needing a real database. Kept in sync with the checks
- * convertLeadToCustomer actually enforces below. */
 export function canConvertLead(
   lead: Pick<Lead, "status" | "email">,
 ): { ok: true } | { ok: false; reason: string } {
@@ -351,180 +299,170 @@ export function canConvertLead(
   return { ok: true };
 }
 
-/** Better Auth's signUpEmail requires *some* password to create the
- * account with, but nobody ever needs to know or use this one — the
- * customer sets their own real password via the activation email (see
- * sendCustomerActivationEmail below), the same way a forgotten password
- * is reset. Random and immediately discarded on purpose. Exported so
- * src/domains/customers' direct-customer-creation flow (Chris adding a
- * customer himself, not via lead conversion) can create an account the
- * same safe way instead of duplicating this. */
-export function generateUnusedAccountPassword(): string {
-  return randomBytes(24).toString("base64url");
+// Compatibility export for existing callers/tests. The implementation now
+// lives in the server-only account provisioning module so customer, staff,
+// lead and CI setup cannot drift into different credential-creation paths.
+export { generateUnusedAccountPassword } from "@/lib/account-provisioning";
+
+export async function sendCustomerActivationEmail(email: string): Promise<boolean> {
+  const normalized = normalizeAccountEmail(email);
+  return requestInvitationEmail(normalized, () =>
+    auth.api.requestPasswordReset({
+      body: { email: normalized, redirectTo: "/reset-password" },
+    }),
+  );
 }
 
-/** Sends a new or existing customer the same "set your password" email
- * Better Auth's forgot-password flow uses (see src/lib/auth.ts's
- * sendResetPassword) — reused deliberately as the account-activation
- * mechanism instead of inventing a separate invite-token system (Phase
- * 6A item 2). Best-effort: a failed send is logged (see sendEmail) but
- * never throws, since the account itself is already created either way
- * and Chris can use "Resend activation email" from the customer's page
- * to try again. Returns provider acceptance, not inbox delivery. Better Auth's
- * generic reset success alone does not establish that any email was sent. */
-export async function sendCustomerActivationEmail(email: string): Promise<boolean> {
-  return requestInvitationEmail(email, () => auth.api.requestPasswordReset({
-    body: { email, redirectTo: "/reset-password" },
-  }));
-}
+export type ConvertLeadInTxOptions = {
+  /** Used by a public estimate approval when a phone-entered lead had no
+   * email until the approver supplied one. The email write, lead claim,
+   * account/customer creation and caller's surrounding estimate mutation can
+   * then all share one transaction. */
+  emailOverride?: string | null;
+};
 
 /**
- * Converts a Lead into a Customer (+ User account + ServiceAddress),
- * per docs/BUSINESS-RULES.md step 3 ("Chris converts the lead into a
- * Customer... one click carries the lead's info over"). Deliberately
- * stops short of creating a RentalAgreement — that's Phase 4
- * (e-signature, job scheduling) and needs its own real workflow, not a
- * default guessed here.
+ * Transaction-capable lead conversion primitive. Callers that need lead
+ * conversion to be atomic with another state machine (notably estimate
+ * approval) use this directly; ordinary desk conversion uses the wrapper
+ * below.
  *
- * If a User with this email already exists (e.g. the customer already
- * has an account, or this lead's contact converted before under the
- * same email), reuses it instead of erroring — conversion should never
- * fail just because the lookup happened twice.
- *
- * Chris never learns or relays a customer's password (Phase 6A item 2):
- * a brand-new account gets an unusable random password that's discarded
- * immediately, and the customer is emailed a "set your password" link
- * (sendCustomerActivationEmail) so they activate their own account. See
- * "Resend activation email" on /desk/customers/[id] for re-sending it
- * later if the first email didn't arrive or the link expired.
- *
- * `userId` is null when this runs as a side effect of the customer's
- * own public approval of a lead-started estimate (approveEstimate in
- * src/domains/estimates) rather than a staff click on /desk/leads —
- * there's no staff user to attribute that conversion to, and
- * AuditLog.userId is nullable for exactly this kind of system/public
- * action.
+ * Security invariant: an existing CUSTOMER User with no trusted Customer
+ * relationship is NOT adopted. That state could predate the closure of the
+ * public sign-up endpoint, so matching an email string is insufficient proof
+ * that the credential belongs to this real customer.
  */
-export async function convertLeadToCustomer(userId: string | null, leadId: string) {
-  const lead = await prisma.lead.findUniqueOrThrow({ where: { id: leadId } });
+export async function convertLeadToCustomerInTx(
+  tx: Prisma.TransactionClient,
+  userId: string | null,
+  leadId: string,
+  options: ConvertLeadInTxOptions = {},
+) {
+  const lead = await tx.lead.findUniqueOrThrow({ where: { id: leadId } });
 
-  const check = canConvertLead(lead);
+  const effectiveEmail = options.emailOverride?.trim() || lead.email;
+  const check = canConvertLead({ ...lead, email: effectiveEmail });
   if (!check.ok) {
     throw new Error(check.reason);
   }
-  const email = (lead.email as string).trim().toLowerCase(); // Match Better Auth reset/sign-in normalization.
+  const email = normalizeAccountEmail(effectiveEmail as string);
+
+  const claim = await tx.lead.updateMany({
+    where: { id: lead.id, status: lead.status },
+    data: {
+      status: "CONVERTED",
+      ...(options.emailOverride ? { email } : {}),
+    },
+  });
+  if (claim.count !== 1) {
+    throw new Error(
+      "This lead changed while converting. Refresh its record before trying again.",
+    );
+  }
 
   let isNewAccount = false;
-
-  const customer = await prisma.$transaction(async (tx) => {
-    // Claim the unchanged stage before creating customer/address records.
-    // Postgres serializes competing updates to this row; a second click
-    // sees the converted stage and cannot create another property or audit.
-    // Any later failure rolls the claim back with the rest of the transaction.
-    const claim = await tx.lead.updateMany({
-      where: { id: lead.id, status: lead.status },
-      data: { status: "CONVERTED" },
-    });
-    if (claim.count !== 1) {
-      throw new Error("This lead changed while converting. Refresh its record before trying again.");
-    }
-    // Account and credential creation belongs to the same transaction as
-    // the lead claim/customer/address/audit. A failed or competing conversion
-    // cannot leave an orphan login or send an invitation for an uncommitted customer.
-    let account = await tx.user.findUnique({ where: { email } });
-    if (account && account.role !== "CUSTOMER") {
-      throw new Error(`${email} belongs to a staff account, not a customer — use a different email for this lead first.`);
-    }
-    if (!account) {
-      const id = randomUUID();
-      const context = await auth.$context;
-      const password = await context.password.hash(generateUnusedAccountPassword());
-      account = await tx.user.create({
-        data: {
-          id, email, name: lead.contactName, role: "CUSTOMER", emailVerified: true,
-          accounts: { create: { providerId: "credential", accountId: id, password } },
-        },
-      });
-      isNewAccount = true;
-    }
-    let customerRow = await tx.customer.findUnique({
-      where: { userId: account!.id },
-    });
-
-    if (!customerRow) {
-      customerRow = await tx.customer.create({
-        data: {
-          userId: account!.id,
-          phone: lead.phone,
-          isBusiness: lead.isBusiness,
-          isPropertyManager: lead.isPropertyManager,
-          companyName: lead.companyName,
-          referralCode: await generateUniqueReferralCode(tx),
-        },
-      });
-      // Only a brand-new customer can be "referred" — an existing
-      // account converting from a second lead already has whatever
-      // referral link it started with, if any.
-      await linkReferralIfCodeProvided(tx, customerRow.id, lead.referredByCode);
-    }
-
-    if (lead.addressLine1 && lead.city && lead.zip) {
-      await tx.serviceAddress.create({
-        data: {
-          customerId: customerRow.id,
-          line1: lead.addressLine1,
-          city: lead.city,
-          zip: lead.zip,
-        },
-      });
-    }
-
-    await tx.lead.update({
-      where: { id: lead.id },
-      data: { status: "CONVERTED", convertedCustomerId: customerRow.id },
-    });
-
-    await tx.auditLog.create({
-      data: {
-        userId,
-        action: "lead.convert",
-        entityType: "Lead",
-        entityId: lead.id,
-        oldValue: { status: lead.status },
-        newValue: { status: "CONVERTED", customerId: customerRow.id },
-      },
-    });
-
-    return customerRow;
+  let account = await tx.user.findUnique({
+    where: { email },
+    include: { customer: true },
   });
 
-  const activationEmailSent = isNewAccount ? await sendCustomerActivationEmail(email) : false;
-  return { customer, isNewAccount, activationEmailSent };
+  if (account && account.role !== "CUSTOMER") {
+    throw new Error(
+      `${email} belongs to a staff account, not a customer — use a different email for this lead first.`,
+    );
+  }
+
+  if (account && !account.customer) {
+    throw new Error(
+      `${email} already has an unattached login. For security, recover or verify that account before linking customer data to it.`,
+    );
+  }
+
+  if (!account) {
+    const created = await createTrustedCredentialUserInTx(tx, {
+      email,
+      name: lead.contactName,
+      role: "CUSTOMER",
+      password: generateUnusedAccountPassword(),
+    });
+    account = { ...created, customer: null };
+    isNewAccount = true;
+  }
+
+  let customerRow = account.customer;
+  if (!customerRow) {
+    customerRow = await tx.customer.create({
+      data: {
+        userId: account.id,
+        phone: lead.phone,
+        isBusiness: lead.isBusiness,
+        isPropertyManager: lead.isPropertyManager,
+        companyName: lead.companyName,
+        referralCode: await generateUniqueReferralCode(tx),
+      },
+    });
+    await linkReferralIfCodeProvided(tx, customerRow.id, lead.referredByCode);
+  }
+
+  if (lead.addressLine1 && lead.city && lead.zip) {
+    await tx.serviceAddress.create({
+      data: {
+        customerId: customerRow.id,
+        line1: lead.addressLine1,
+        city: lead.city,
+        zip: lead.zip,
+      },
+    });
+  }
+
+  await tx.lead.update({
+    where: { id: lead.id },
+    data: {
+      status: "CONVERTED",
+      convertedCustomerId: customerRow.id,
+      ...(options.emailOverride ? { email } : {}),
+    },
+  });
+
+  await tx.auditLog.create({
+    data: {
+      userId,
+      action: "lead.convert",
+      entityType: "Lead",
+      entityId: lead.id,
+      oldValue: { status: lead.status },
+      newValue: { status: "CONVERTED", customerId: customerRow.id },
+    },
+  });
+
+  return { customer: customerRow, isNewAccount, email };
 }
 
-// ---------------------------------------------------------------------------
-// Lead-source ROI reporting (2026-09-29, Chris's CRM brainstorm — see
-// docs/DECISIONS.md). Lead.howHeard has been captured on every lead
-// since Phase 2, but until this nothing ever added it up — it just sat
-// on each lead's own detail page, one at a time. Feeds a new section on
-// /desk/reports.
-// ---------------------------------------------------------------------------
+export async function convertLeadToCustomer(
+  userId: string | null,
+  leadId: string,
+) {
+  const result = await prisma.$transaction((tx) =>
+    convertLeadToCustomerInTx(tx, userId, leadId),
+  );
+
+  const activationEmailSent = result.isNewAccount
+    ? await sendCustomerActivationEmail(result.email)
+    : false;
+  return {
+    customer: result.customer,
+    isNewAccount: result.isNewAccount,
+    activationEmailSent,
+  };
+}
 
 export type LeadSourceBreakdownRow = {
   source: string;
   total: number;
   converted: number;
-  conversionRate: number; // 0–1; 0 when total is 0 to avoid a NaN in the UI
+  conversionRate: number;
 };
 
-/** Every lead grouped by how they heard about us, with how many of each
- * group actually converted to a customer — highest lead count first.
- * "Not given" groups leads with no `howHeard` on file (most likely
- * staff-entered ones — see `createLeadManually` — since the public form
- * requires an answer). Small, in-memory grouping rather than a raw SQL
- * GROUP BY: this table is leads, not transactions, so it'll stay small
- * enough for this to be fine for a long time — revisit if it ever isn't
- * (same reasoning `getAllEstimates`'s own comment gives). */
 export async function getLeadSourceBreakdown(): Promise<LeadSourceBreakdownRow[]> {
   const leads = await prisma.lead.findMany({
     select: { howHeard: true, status: true },
@@ -548,4 +486,3 @@ export async function getLeadSourceBreakdown(): Promise<LeadSourceBreakdownRow[]
     }))
     .sort((a, b) => b.total - a.total);
 }
-
