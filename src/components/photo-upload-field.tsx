@@ -10,21 +10,21 @@ type Props = {
    * doesn't need to be unique on its own since Blob adds a random suffix.
    */
   pathPrefix: string;
-  /** Called once the file has finished uploading, with its public URL. */
+  /**
+   * Operational/customer evidence is private by default. Public must be an
+   * explicit caller decision and is reserved for catalog/marketing imagery.
+   */
+  access?: "private" | "public";
+  /** Called once the file has finished uploading, with its storage URL. */
   onUploaded: (url: string) => void;
   onError?: (message: string) => void;
   label?: string;
   disabled?: boolean;
 };
 
-// Deliberately no `capture` attribute on the file input below. With plain
-// accept="image/*", phones offer BOTH "Take Photo" and "Choose from
-// Library" from one native picker; adding `capture` would skip that
-// choice and jump straight to the camera. See docs/DECISIONS.md
-// (2026-09-28, "Photo uploads: camera/file picker instead of pasting a
-// URL") for why this replaced every "paste an image URL" field.
 export function PhotoUploadField({
   pathPrefix,
+  access = "private",
   onUploaded,
   onError,
   label = "Add a photo",
@@ -36,25 +36,23 @@ export function PhotoUploadField({
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    // Reset the input immediately so picking the exact same file again
-    // still fires onChange next time.
     if (inputRef.current) {
       inputRef.current.value = "";
     }
-    if (!file) {
-      return;
-    }
+    if (!file) return;
 
     setIsUploading(true);
     try {
       const result = await upload(`${pathPrefix}/${file.name}`, file, {
-        access: "public",
+        access,
         handleUploadUrl: "/api/uploads/photo",
       });
       onUploaded(result.url);
     } catch (error) {
       onError?.(
-        error instanceof Error ? error.message : "Could not upload that photo. Try again.",
+        error instanceof Error
+          ? error.message
+          : "Could not upload that photo. Try again.",
       );
     } finally {
       setIsUploading(false);
