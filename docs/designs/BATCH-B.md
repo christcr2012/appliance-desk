@@ -459,6 +459,19 @@ export async function applyCreditToInvoice(tx, input: { creditId: string; invoic
 `writeOffInvoice`: inside its transaction, lock the invoice `FOR UPDATE` first, then re-read status and `amountPaidCents`; refuse if status is PAID or `amountPaidCents >= amountDueCents`; bump `version`.
 Tests: apply more than remaining → rejected; apply to PAID invoice → rejected; Stripe-applied credit → rejected; happy path balances; (integration) concurrent write-off vs manual payment that completes the invoice → exactly one succeeds and the invoice ends PAID, never WRITTEN_OFF.
 
+### WU-B7b — Refund decisions at the domain level (D1 for `REFUND_CREATE`)
+Closes: B06, B13 (domain part); UI is Batch D (WU-D5).
+Files: `src/domains/billing/refunds.ts` (new), `tests/billing-refunds.test.ts`, `tests/billing-refunds-integration.test.ts`.
+```ts
+export async function decideDepositRefund(userId, input: { depositId: string; refundCents: number; deductionReason?: string; disputeNotes?: string; expectedVersion?: number }): Promise<{ providerOpId: string | null }>;
+// OWNER/ADMIN only (assertActiveTeamActor + role check); tx1: lock Deposit FOR UPDATE; reject if already refunded or refundCents > amountCents or (refundCents < amountCents && !deductionReason);
+// write refundedAt/refundedAmountCents/deductionReason/refundedByUserId; audit "deposit.refund_decided"; if the deposit was collected through Stripe (find the Receipt by the deposit's invoice line), claim REFUND_CREATE key `deposit-refund-${depositId}`;
+// after commit: stripe.refunds.create({ charge, amount, metadata:{ depositId } }, { idempotencyKey }); tx2 completes the op and writes Deposit.stripeRefundId. Manual (cash/check) deposits: no provider op; the owner records how it was returned in notes.
+export async function issueInvoiceRefund(userId, input: { invoiceId: string; amountCents: number; reason: RefundReason; notes?: string; toCredit?: boolean }): Promise<{ refundId: string; providerOpId: string | null }>;
+// tx1: lock invoice + customer ledger; reject if amount > amountPaidCents − already refunded; create Refund row; if toCredit → CustomerCredit{sourceType:"REFUND_TO_CREDIT", sourceId: refundId} instead of a provider refund; else claim REFUND_CREATE key `invoice-refund-${refundId}` and call stripe.refunds.create after commit against the Receipt's stripeChargeId; manual receipts → no provider op (owner returns money by hand; recorded).
+```
+Tests: partial deposit refund without reason rejected; over-refund rejected; second decision rejected; Stripe UNKNOWN leaves op UNKNOWN and the local decision intact; `toCredit` mints exactly one credit; STAFF rejected.
+
 ### WU-B8 — Late fees (D5)
 Closes: P2 H3, P8 H3, B12.
 Files: `src/domains/billing/late-fees.ts`, `src/app/api/cron/late-fees/route.ts` (unchanged unless it needs to surface "skipped: another run active"), `tests/billing-late-fees.test.ts` (extend), `tests/billing-late-fees-integration.test.ts` (new).
