@@ -22,13 +22,14 @@ const DESK_PAGES = ["/desk/today", "/desk/dashboard", "/desk/agreements", "/desk
 const ACCOUNT_PAGES = ["/account", "/account/billing"];
 
 /**
- * The public header intentionally uses `transition-colors`. Adding `.dark`
- * switches its token immediately, but the rendered link can spend ~150ms
- * interpolating from the old light color to the final dark color. Axe must
- * inspect the settled theme, not a transient animation frame. This waits on
- * the actual computed color becoming equal to an identical element without a
- * transition; it is a semantic readiness check, not a sleep and not an Axe
- * suppression.
+ * The public marketing header intentionally uses `transition-colors`.
+ * Adding `.dark` switches its token immediately, but a rendered nav link can
+ * spend ~150ms interpolating from the old light color to the final dark color.
+ * Axe must inspect the settled theme, not a transient animation frame.
+ *
+ * Pages such as /login do not render that marketing nav at all. In that case
+ * there is no public-header transition to wait for; `.dark` plus the normal Axe
+ * scan remains the correct readiness/quality check.
  */
 async function expectPublicDarkThemeSettled(page: Page) {
   await expect(page.locator("html")).toHaveClass(/dark/);
@@ -39,7 +40,7 @@ async function expectPublicDarkThemeSettled(page: Page) {
           const transitioning = document.querySelector<HTMLAnchorElement>(
             'header a[href="/pricing"]',
           );
-          if (!transitioning) return false;
+          if (!transitioning) return true;
 
           const probe = document.createElement("span");
           probe.className = "text-ink-soft";
