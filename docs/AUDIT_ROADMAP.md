@@ -39,31 +39,24 @@ Those are audit findings, not 117 independent implementation tasks. `docs/AUDIT_
 ## Package scope summary
 
 ### Package 1 — Customer Relationship & Lifecycle
-
 Customer isolation and portal scoping; maintenance lifecycle; estimate/quote lifecycle and conversion; activity/history; pagination, concurrency and failure behavior.
 
 ### Package 2 — Agreements, Pricing & Referral Logic
-
 Agreement lifecycle, frozen contract terms, pricing/discount history, inventory reservation implications, referral eligibility/rewards, Stripe identity and agreement-billing boundaries.
 
 ### Package 3 — Staff, Access & Accountability
-
 OWNER/ADMIN/STAFF boundaries, staff account lifecycle/offboarding, task assignment and concurrency, exception inbox behavior, operational mutation authority and accountability.
 
 ### Package 4 — Growth, Marketing & Retention
-
 Lead qualification/scoring, launch-list consent and delivery, role-aware search, growth/utilization/retention signals and their scale/truthfulness.
 
 ### Package 5 — Business Configuration & Reporting
-
 Settings persistence, financial/reporting semantics, gross/net/refund/deposit/tax/credit distinctions, accounting export, dashboard/report scaling and historical correctness.
 
 ### Package 6 — Platform Integrity
-
 Authentication/session/account recovery, upload/private-media boundaries, backup/recovery, sensitive logging, consent/privacy alignment and production hardening.
 
 ### Package 7 — Product Integration, UI Coverage & Brand Accessibility
-
 Backend capability ↔ frontend controls, owner self-sufficiency, workflow integration, Evergreen brand implementation, light/dark behavior, accessibility adaptation and full-product acceptance coverage.
 
 **Brand policy established by Package 7:**
@@ -74,20 +67,13 @@ Backend capability ↔ frontend controls, owner self-sufficiency, workflow integ
 4. A screen reader by itself is not a reason to replace the visual brand.
 
 ### Package 8 — Operational Core & Residual Risk
-
 Direct audit ownership for `billing`, `inventory`, `jobs` and `purchasing`, plus residual concurrency, audit atomicity, America/Denver business-time behavior, scheduled automation, lifecycle/custody, cost integrity, list scaling and launch-policy seams.
 
 ---
 
 ## Audit methodology and evidence standard
 
-A finding is included only when it can be tied to concrete repository behavior, data flow, schema behavior, provider behavior or missing acceptance evidence. Reports distinguish:
-
-- confirmed defect/risk from future enhancement;
-- underlying-record correctness from presentation/report correctness;
-- automated evidence from manual acceptance still required;
-- intentional infrastructure-only controls from genuine missing owner UI;
-- historical findings already fixed from findings still present on the audited commit.
+A finding is included only when it can be tied to concrete repository behavior, data flow, schema behavior, provider behavior or missing acceptance evidence. Reports distinguish confirmed defects from enhancements, underlying-record correctness from presentation correctness, automated evidence from manual acceptance, intentional infrastructure-only controls from genuine missing owner UI, and historical findings already fixed from findings still present on the audited commit.
 
 Overlaps are intentionally preserved in package reports so the synthesis can collapse them rather than implement the same root cause repeatedly.
 
