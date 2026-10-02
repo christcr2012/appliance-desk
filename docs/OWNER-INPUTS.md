@@ -29,6 +29,7 @@ Only ask for the inputs needed by the next release. Do not ask all at once.
 | IN-14 | Optional later, triggered by demand | First real portfolio account's unit/contact/consolidated-charge requirements | A new unit hierarchy or consolidated Stripe charge feature | Existing multiple service addresses, contacts and consolidated statements remain available |
 | IN-16 | Answered; Claude verification pending | 2026-09-30: Chris reports Robinson Google Workspace is connected as a personal plugin and Claude can use it. Delegate Workspace setup to Claude; do not ask Chris to reconnect it for ChatGPT. Claude verifies intended business identity and Admin privileges (GW-01). | Verified connector-assisted setup | Follow plans/overhaul/CLAUDE-WORKSPACE-SETUP.md; core overhaul continues independently |
 | IN-15 | Awaiting Chris only if needed | Approval of any additional paid service, higher hosting tier or storage purchase | Spending | Prefer existing services; record measured limits before recommending a purchase |
+| IN-17 | Answered; implementation pending in Batch B WU-B10 | 2026-10-02: sales-tax rates must support **thousandths of one percent**. Example: `7.375%` must be stored/calculated exactly; owner-facing inputs remain ordinary percentages, not internal integer units. Preserve the existing tax-confirmed gate and never guess the applicable rate. | Nothing; owner precision decision is complete. B22/WU-B10 implements it. | Use integer thousandth-percent storage/math and per-line half-up rounding; migrate existing tenths-percent values without losing meaning. |
 
 ## Confirmed facts — do not ask again
 
@@ -40,6 +41,9 @@ Only ask for the inputs needed by the next release. Do not ask all at once.
   through the owner interface once built.
 - The implementation must follow AGENTS.md, preserve working features, use
   reviewed branches/PRs and report before the next phase.
+- Sales-tax precision decision (IN-17): support rates to 0.001 percentage point
+  (for example 7.375%) using exact integer-backed storage/calculation. This is
+  a precision requirement only, not approval of any particular tax rate.
 
 ## How to close an input
 
