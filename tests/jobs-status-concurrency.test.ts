@@ -1,28 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-// Real gap fixed 2026-09-27 (found by a code review, see
-// docs/DECISIONS.md): updateJobStatus used to read a job's status, check
-// the transition was allowed, then write unconditionally — two
-// overlapping requests for the same job could both pass the check and
-// the second write would silently clobber the first with no warning.
-// This proves the fix's actual guard: the write itself must be an atomic
-// conditional updateMany requiring the status to still match what was
-// just read, and a count of anything other than 1 must abort rather than
-// silently proceeding — the same pattern already proven for appliance
-// reservations in tests/agreements-reservation.test.ts.
+// This focused unit suite proves the job-status compare-and-set behavior.
+// The separate real-Postgres staff-offboarding integration test proves the
+// team-actor row-lock fence; mocking it here keeps these assertions about the
+// job's own state race rather than coupling two concurrency mechanisms.
 
 const jobFindUniqueOrThrow = vi.fn();
 const jobUpdateMany = vi.fn();
 const auditLogCreate = vi.fn();
+const assertActiveTeamActor = vi.fn();
 
-// updateJobStatus wraps its write in prisma.$transaction (added
-// 2026-09-27 for this same atomic-conditional-update fix, extended
-// 2026-09-28 to also move appliances along the rental lifecycle when a
-// job completes — see src/domains/jobs/index.ts). The fake tx just
-// reuses these same mocks so the transaction body's tx.job.updateMany /
-// tx.auditLog.create calls are observed exactly like the un-transacted
-// calls this test suite already asserts on. Neither test here completes
-// a job, so the appliance-lifecycle side of the transaction never runs.
+vi.mock("@/lib/team-actor", () => ({
+  assertActiveTeamActor: (...args: unknown[]) => assertActiveTeamActor(...args),
+}));
+
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     job: {
@@ -43,6 +34,11 @@ vi.mock("@/lib/prisma", () => ({
 
 describe("updateJobStatus — atomic conditional update", () => {
   beforeEach(() => {
+    assertActiveTeamActor.mockReset().mockResolvedValue({
+      id: "user-1",
+      role: "STAFF",
+      archivedAt: null,
+    });
     jobFindUniqueOrThrow.mockReset().mockResolvedValue({
       id: "job-1",
       status: "SCHEDULED",
@@ -53,12 +49,13 @@ describe("updateJobStatus — atomic conditional update", () => {
     auditLogCreate.mockReset().mockResolvedValue({});
   });
 
-  it("writes via a conditional updateMany requiring the status just read, not a plain update", async () => {
+  it("checks the actor inside the transaction and conditionally writes the status just read", async () => {
     jobUpdateMany.mockResolvedValue({ count: 1 });
     const { updateJobStatus } = await import("@/domains/jobs");
 
     await updateJobStatus("user-1", "job-1", "IN_PROGRESS");
 
+    expect(assertActiveTeamActor).toHaveBeenCalled();
     expect(jobUpdateMany).toHaveBeenCalledWith({
       where: { id: "job-1", status: "SCHEDULED" },
       data: expect.objectContaining({ status: "IN_PROGRESS" }),
@@ -66,7 +63,7 @@ describe("updateJobStatus — atomic conditional update", () => {
     expect(auditLogCreate).toHaveBeenCalled();
   });
 
-  it("aborts — and never logs the change — when the conditional update loses the race (count 0)", async () => {
+  it("aborts — and never logs the change — when the conditional update loses the race", async () => {
     jobUpdateMany.mockResolvedValue({ count: 0 });
     const { updateJobStatus } = await import("@/domains/jobs");
 
