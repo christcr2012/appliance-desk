@@ -3,6 +3,7 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 import { getOperationalApplianceById } from "@/domains/desk-access";
 import { APPLIANCE_STATUS_LABELS } from "@/domains/inventory/lifecycle";
+import { privatePhotoReadPath } from "@/lib/photo-storage";
 
 export async function OperationalAppliance({ id }: { id: string }) {
   const appliance = await getOperationalApplianceById(id);
@@ -52,7 +53,7 @@ export async function OperationalAppliance({ id }: { id: string }) {
             {appliance.photos.map((photo) => (
               <Image
                 key={photo.id}
-                src={photo.url}
+                src={privatePhotoReadPath(photo.id)}
                 alt={photo.altText ?? "Condition photo"}
                 width={300}
                 height={240}
