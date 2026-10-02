@@ -15,8 +15,14 @@ type Props = {
    * explicit caller decision and is reserved for catalog/marketing imagery.
    */
   access?: "private" | "public";
-  /** Called once the file has finished uploading, with its storage URL. */
-  onUploaded: (url: string) => void;
+  /**
+   * Called after upload with both the durable provider URL to persist and a
+   * browser-readable preview URL. Private Blob URLs cannot be fetched by the
+   * browser directly, so private uploads get a temporary object URL backed by
+   * the file the user just selected. Callers that keep that preview should
+   * revoke it when replacing/removing it or after the durable record is saved.
+   */
+  onUploaded: (storageUrl: string, previewUrl: string) => void;
   onError?: (message: string) => void;
   label?: string;
   disabled?: boolean;
@@ -47,7 +53,8 @@ export function PhotoUploadField({
         access,
         handleUploadUrl: "/api/uploads/photo",
       });
-      onUploaded(result.url);
+      const previewUrl = access === "private" ? URL.createObjectURL(file) : result.url;
+      onUploaded(result.url, previewUrl);
     } catch (error) {
       onError?.(
         error instanceof Error
