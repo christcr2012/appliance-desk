@@ -1,20 +1,13 @@
-// Generic accounting export (2026-09-28, Task #73) — a plain CSV of
-// every real money movement this app knows about, for Chris to hand to
-// a bookkeeper or import into whatever accounting software he ends up
-// using (he doesn't have one yet — see docs/BUSINESS-RULES.md's growth-
-// ideas list, idea #14). Deliberately not QuickBooks-specific: a flat,
-// generic "date / type / who / reference / amount" shape any tool can
-// import, rather than betting on one product's own format.
-//
-// Succeeded invoice Payment rows cover manual payments and deposits collected
-// at signing or estimate approval. Deposit records are liabilities, not another
-// cash receipt. Invoice refunds and deposit refunds are independent outflows.
-// Positive amounts are incoming cash; negative amounts are refunds. Summing
-// the amount column gives recorded net cash, never rental revenue or profit.
+// Generic accounting export: one row per real money movement. Successful
+// incoming cash comes from Receipt, never from its per-invoice Payment
+// allocations; that prevents one combined check from appearing as several
+// independent cash receipts. Refunds remain independent outflows.
 import { prisma } from "@/lib/prisma";
 
 export type AccountingTransactionType =
-  "Payment" | "Refund" | "Deposit refunded";
+  | "Payment"
+  | "Refund"
+  | "Deposit refunded";
 
 export type AccountingTransactionRow = {
   date: Date;
@@ -34,35 +27,26 @@ function customerDisplayName(customer: {
   return customer.user.name ?? customer.user.email;
 }
 
-/**
- * Every real money movement, oldest first — the natural order for a
- * bookkeeper reading it top to bottom, and for a running-balance check
- * in a spreadsheet. Pulls straight from Payment/Refund/Deposit, never
- * re-derives an amount — these tables are already the source of truth
- * for what actually happened (docs/DATABASE.md).
- */
 export async function getAccountingTransactions(): Promise<
   AccountingTransactionRow[]
 > {
-  const [payments, refunds, deposits] = await prisma.$transaction(
+  const [receipts, refunds, deposits] = await prisma.$transaction(
     async (tx) =>
       Promise.all([
-        tx.payment.findMany({
-          where: { status: "succeeded" },
+        tx.receipt.findMany({
           select: {
             amountCents: true,
             method: true,
-            createdAt: true,
-            invoice: {
+            notes: true,
+            receivedOn: true,
+            customer: {
               select: {
-                invoiceNumber: true,
-                customer: {
-                  select: {
-                    companyName: true,
-                    user: { select: { name: true, email: true } },
-                  },
-                },
+                companyName: true,
+                user: { select: { name: true, email: true } },
               },
+            },
+            payments: {
+              select: { invoice: { select: { invoiceNumber: true } } },
             },
           },
         }),
@@ -109,49 +93,50 @@ export async function getAccountingTransactions(): Promise<
 
   const rows: AccountingTransactionRow[] = [];
 
-  for (const p of payments) {
+  for (const receipt of receipts) {
+    const invoiceNumbers = [
+      ...new Set(receipt.payments.map((payment) => payment.invoice.invoiceNumber)),
+    ];
     rows.push({
-      date: p.createdAt,
+      date: receipt.receivedOn,
       type: "Payment",
-      customerName: customerDisplayName(p.invoice.customer),
-      companyName: p.invoice.customer.companyName ?? "",
-      invoiceNumber: p.invoice.invoiceNumber,
-      amountCents: p.amountCents,
-      methodOrReason: p.method ?? "",
-      notes: "",
+      customerName: customerDisplayName(receipt.customer),
+      companyName: receipt.customer.companyName ?? "",
+      // One receipt can span several invoices. Leave the single-invoice
+      // reference blank rather than falsely assigning the whole cash event to
+      // one allocation; detailed allocation remains in Payment rows.
+      invoiceNumber: invoiceNumbers.length === 1 ? invoiceNumbers[0]! : null,
+      amountCents: receipt.amountCents,
+      methodOrReason: receipt.method,
+      notes: receipt.notes ?? "",
     });
   }
 
-  for (const r of refunds) {
+  for (const refund of refunds) {
     rows.push({
-      date: r.createdAt,
+      date: refund.createdAt,
       type: "Refund",
-      customerName: customerDisplayName(r.invoice.customer),
-      companyName: r.invoice.customer.companyName ?? "",
-      invoiceNumber: r.invoice.invoiceNumber,
-      amountCents: -r.amountCents,
-      methodOrReason: r.reason,
-      notes: r.notes ?? "",
+      customerName: customerDisplayName(refund.invoice.customer),
+      companyName: refund.invoice.customer.companyName ?? "",
+      invoiceNumber: refund.invoice.invoiceNumber,
+      amountCents: -refund.amountCents,
+      methodOrReason: refund.reason,
+      notes: refund.notes ?? "",
     });
   }
 
-  for (const d of deposits) {
-    // Both signing and estimate-approval deposits already create succeeded
-    // Payment rows (billing/webhooks.ts). Deposit records track the liability;
-    // conversion can create that record later, without another cash receipt.
-    // Emitting its amount here would double-count cash and misdate conversion.
-    if (d.refundedAt) {
-      rows.push({
-        date: d.refundedAt,
-        type: "Deposit refunded",
-        customerName: customerDisplayName(d.agreement.customer),
-        companyName: d.agreement.customer.companyName ?? "",
-        invoiceNumber: null,
-        amountCents: -(d.refundedAmountCents ?? 0),
-        methodOrReason: "",
-        notes: d.deductionReason ?? "",
-      });
-    }
+  for (const deposit of deposits) {
+    if (!deposit.refundedAt) continue;
+    rows.push({
+      date: deposit.refundedAt,
+      type: "Deposit refunded",
+      customerName: customerDisplayName(deposit.agreement.customer),
+      companyName: deposit.agreement.customer.companyName ?? "",
+      invoiceNumber: null,
+      amountCents: -(deposit.refundedAmountCents ?? 0),
+      methodOrReason: "",
+      notes: deposit.deductionReason ?? "",
+    });
   }
 
   rows.sort((a, b) => a.date.getTime() - b.date.getTime());

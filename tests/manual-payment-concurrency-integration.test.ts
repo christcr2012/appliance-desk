@@ -51,8 +51,9 @@ describe.skipIf(!enabled)("manual payment ledger concurrency", () => {
     await prisma.payment.deleteMany({
       where: { invoiceId: { in: invoiceIds } },
     });
-    await prisma.invoice.deleteMany({ where: { id: { in: invoiceIds } } });
     await prisma.customerCredit.deleteMany({ where: { customerId } });
+    await prisma.receipt.deleteMany({ where: { customerId } });
+    await prisma.invoice.deleteMany({ where: { id: { in: invoiceIds } } });
     await prisma.customer.deleteMany({ where: { id: customerId } });
     await prisma.user.deleteMany({ where: { id: customerUserId } });
   });
@@ -70,7 +71,7 @@ describe.skipIf(!enabled)("manual payment ledger concurrency", () => {
     return row.id;
   }
 
-  it("two simultaneous payments cannot leave Payment rows ahead of the invoice balance", async () => {
+  it("two simultaneous payments preserve both receipts and cannot leave allocations ahead of the invoice", async () => {
     const invoiceId = await invoice(10_000);
 
     const [first, second] = await Promise.all([
@@ -96,9 +97,14 @@ describe.skipIf(!enabled)("manual payment ledger concurrency", () => {
       where: { invoiceId, status: "succeeded" },
     });
     expect(payments).toHaveLength(2);
-    expect(payments.reduce((sum, payment) => sum + payment.amountCents, 0)).toBe(
-      10_000,
-    );
+    expect(payments.every((payment) => payment.receiptId !== null)).toBe(true);
+    expect(new Set(payments.map((payment) => payment.receiptId)).size).toBe(2);
+    expect(
+      payments.reduce((sum, payment) => sum + payment.amountCents, 0),
+    ).toBe(10_000);
+    expect(
+      await prisma.receipt.count({ where: { customerId, source: "MANUAL" } }),
+    ).toBeGreaterThanOrEqual(2);
     expect(stored.amountPaidCents).toBe(10_000);
     expect(stored.status).toBe("PAID");
     expect(
@@ -110,6 +116,7 @@ describe.skipIf(!enabled)("manual payment ledger concurrency", () => {
 
   it("full payment and write-off serialize so exactly one terminal financial decision wins", async () => {
     const invoiceId = await invoice(5_000);
+    const receiptsBefore = await prisma.receipt.count({ where: { customerId } });
 
     const results = await Promise.allSettled([
       recordManualPayment(customerId, ownerId, {
@@ -120,23 +127,26 @@ describe.skipIf(!enabled)("manual payment ledger concurrency", () => {
       writeOffInvoice(invoiceId, ownerId, "Concurrency test write-off"),
     ]);
 
-    expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(
-      1,
-    );
+    expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
     const stored = await prisma.invoice.findUniqueOrThrow({
       where: { id: invoiceId },
     });
     expect(["PAID", "WRITTEN_OFF"]).toContain(stored.status);
 
     const payments = await prisma.payment.findMany({ where: { invoiceId } });
+    const receiptsAfter = await prisma.receipt.count({ where: { customerId } });
     if (stored.status === "PAID") {
       expect(stored.amountPaidCents).toBe(5_000);
-      expect(payments.reduce((sum, payment) => sum + payment.amountCents, 0)).toBe(
-        5_000,
-      );
+      expect(
+        payments.reduce((sum, payment) => sum + payment.amountCents, 0),
+      ).toBe(5_000);
+      expect(payments).toHaveLength(1);
+      expect(payments[0]?.receiptId).not.toBeNull();
+      expect(receiptsAfter).toBe(receiptsBefore + 1);
     } else {
       expect(stored.amountPaidCents).toBe(0);
       expect(payments).toHaveLength(0);
+      expect(receiptsAfter).toBe(receiptsBefore);
     }
   });
 });

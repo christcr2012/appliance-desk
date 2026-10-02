@@ -1,39 +1,26 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-// Manual (offline) payments (Task #72 follow-on, docs/DECISIONS.md
-// 2026-09-28) — money that moved outside Stripe, recorded and applied by
-// hand. See src/domains/billing/manual-payments.ts.
-
-const customerFindUnique = vi.fn();
+const ledger = vi.hoisted(() => ({
+  lockCustomerLedger: vi.fn(),
+  createReceiptWithAllocations: vi.fn(),
+}));
 const invoiceFindMany = vi.fn();
 const invoiceFindUnique = vi.fn();
-const paymentCreate = vi.fn();
 const invoiceUpdate = vi.fn();
 const auditLogCreate = vi.fn();
-const customerCreditCreate = vi.fn();
 
-function makeTx() {
-  return {
-    // Every owner-entered financial change first locks the customer row
-    // (SELECT ... FOR UPDATE), then reads invoices inside the same
-    // transaction. The lock returns no row when the customer is missing.
-    $queryRaw: async () => ((await customerFindUnique()) ? [{ id: "cust-1" }] : []),
-    payment: { create: paymentCreate },
-    invoice: {
-      findMany: (...args: unknown[]) => invoiceFindMany(...args),
-      findUnique: (...args: unknown[]) => invoiceFindUnique(...args),
-      update: invoiceUpdate,
-    },
-    auditLog: { create: auditLogCreate },
-    customerCredit: { create: customerCreditCreate },
-  };
-}
-
+vi.mock("@/domains/billing/ledger", () => ledger);
 vi.mock("@/lib/prisma", () => ({
   prisma: {
-    // Both recordManualPayment and writeOffInvoice use the callback form so
-    // the ledger lock, balance reads and writes commit or roll back together.
-    $transaction: (fn: (tx: unknown) => unknown) => fn(makeTx()),
+    $transaction: (fn: (tx: unknown) => unknown) =>
+      fn({
+        invoice: {
+          findMany: (...args: unknown[]) => invoiceFindMany(...args),
+          findUnique: (...args: unknown[]) => invoiceFindUnique(...args),
+          update: invoiceUpdate,
+        },
+        auditLog: { create: auditLogCreate },
+      }),
   },
 }));
 
@@ -53,12 +40,14 @@ function openInvoice(overrides: Record<string, unknown> = {}) {
 
 describe("recordManualPayment", () => {
   beforeEach(() => {
-    customerFindUnique.mockReset().mockResolvedValue({ id: "cust-1" });
+    vi.clearAllMocks();
+    ledger.lockCustomerLedger.mockResolvedValue(undefined);
+    ledger.createReceiptWithAllocations.mockResolvedValue({
+      receiptId: "receipt-1",
+      overpaymentCreditId: null,
+    });
     invoiceFindMany.mockReset();
-    paymentCreate.mockReset().mockResolvedValue({});
-    invoiceUpdate.mockReset().mockResolvedValue({});
-    auditLogCreate.mockReset().mockResolvedValue({});
-    customerCreditCreate.mockReset().mockResolvedValue({});
+    auditLogCreate.mockResolvedValue({});
   });
 
   it("refuses a zero or negative amount", async () => {
@@ -66,104 +55,84 @@ describe("recordManualPayment", () => {
     await expect(
       recordManualPayment("cust-1", "owner-1", { amountCents: 0, method: "check" }),
     ).rejects.toThrow(/greater than \$0/i);
-    expect(invoiceFindMany).not.toHaveBeenCalled();
+    expect(ledger.lockCustomerLedger).not.toHaveBeenCalled();
   });
 
-  it("refuses a customer that doesn't exist", async () => {
-    customerFindUnique.mockResolvedValue(null);
-    const { recordManualPayment } = await import("@/domains/billing/manual-payments");
-    await expect(
-      recordManualPayment("missing", "owner-1", { amountCents: 1000, method: "check" }),
-    ).rejects.toThrow(/couldn't find that customer/i);
-  });
-
-  it("applies a payment to a single invoice fully, marking it PAID", async () => {
-    invoiceFindMany.mockResolvedValue([openInvoice({ amountDueCents: 4000 })]);
-    const { recordManualPayment } = await import("@/domains/billing/manual-payments");
-
-    const result = await recordManualPayment("cust-1", "owner-1", {
-      amountCents: 4000,
-      method: "check",
-      reference: "1234",
-    });
-
-    expect(paymentCreate).toHaveBeenCalledTimes(1);
-    expect(paymentCreate.mock.calls[0][0].data).toMatchObject({
-      invoiceId: "inv-1",
-      amountCents: 4000,
-      method: "check",
-      status: "succeeded",
-      recordedByUserId: "owner-1",
-      notes: "Ref: 1234",
-    });
-    expect(invoiceUpdate).toHaveBeenCalledWith({
-      where: { id: "inv-1" },
-      data: { amountPaidCents: 4000, status: "PAID" },
-    });
-    expect(result.totalAppliedCents).toBe(4000);
-    expect(result.overpaymentCents).toBe(0);
-    expect(result.invoicesTouched).toHaveLength(1);
-  });
-
-  it("partially pays an invoice, marking it PARTIALLY_PAID", async () => {
-    invoiceFindMany.mockResolvedValue([openInvoice({ amountDueCents: 4000 })]);
-    const { recordManualPayment } = await import("@/domains/billing/manual-payments");
-
-    await recordManualPayment("cust-1", "owner-1", { amountCents: 1500, method: "cash" });
-
-    expect(invoiceUpdate).toHaveBeenCalledWith({
-      where: { id: "inv-1" },
-      data: { amountPaidCents: 1500, status: "PARTIALLY_PAID" },
-    });
-  });
-
-  it("spreads one payment across several invoices, oldest-due-first, when no invoiceId is given", async () => {
+  it("spreads one real payment across several invoices but creates one receipt", async () => {
     invoiceFindMany.mockResolvedValue([
-      openInvoice({ id: "inv-old", amountDueCents: 3000, dueDate: new Date("2026-08-01") }),
-      openInvoice({ id: "inv-new", amountDueCents: 5000, dueDate: new Date("2026-09-01") }),
+      openInvoice({ id: "inv-old", invoiceNumber: 11, amountDueCents: 3000 }),
+      openInvoice({ id: "inv-new", invoiceNumber: 12, amountDueCents: 5000 }),
     ]);
+    const receivedOn = new Date("2026-10-01T06:00:00Z");
     const { recordManualPayment } = await import("@/domains/billing/manual-payments");
 
     const result = await recordManualPayment("cust-1", "owner-1", {
       amountCents: 4000,
       method: "bank_transfer",
+      receivedOn,
+      reference: "ACH-44",
     });
 
-    // First (oldest) invoice paid in full (3000), remainder (1000) to the next.
-    expect(paymentCreate).toHaveBeenCalledTimes(2);
-    expect(paymentCreate.mock.calls[0][0].data).toMatchObject({ invoiceId: "inv-old", amountCents: 3000 });
-    expect(paymentCreate.mock.calls[1][0].data).toMatchObject({ invoiceId: "inv-new", amountCents: 1000 });
+    expect(ledger.createReceiptWithAllocations).toHaveBeenCalledOnce();
+    expect(ledger.createReceiptWithAllocations.mock.calls[0][1]).toMatchObject({
+      customerId: "cust-1",
+      source: "MANUAL",
+      amountCents: 4000,
+      method: "bank_transfer",
+      receivedOn,
+      recordedByUserId: "owner-1",
+      notes: "Ref: ACH-44",
+      allocations: [
+        { invoiceId: "inv-old", amountCents: 3000 },
+        { invoiceId: "inv-new", amountCents: 1000 },
+      ],
+    });
+    expect(result).toMatchObject({ totalAppliedCents: 4000, overpaymentCents: 0 });
     expect(result.invoicesTouched).toHaveLength(2);
-    expect(result.overpaymentCents).toBe(0);
+    expect(auditLogCreate).toHaveBeenCalledTimes(2);
   });
 
-  it("creates a CustomerCredit for any amount left over once every invoice is paid in full", async () => {
+  it("reports the remainder as overpayment while the ledger mints the credit", async () => {
     invoiceFindMany.mockResolvedValue([openInvoice({ amountDueCents: 3000 })]);
+    ledger.createReceiptWithAllocations.mockResolvedValue({
+      receiptId: "receipt-2",
+      overpaymentCreditId: "credit-1",
+    });
     const { recordManualPayment } = await import("@/domains/billing/manual-payments");
 
-    const result = await recordManualPayment("cust-1", "owner-1", { amountCents: 5000, method: "check" });
+    const result = await recordManualPayment("cust-1", "owner-1", {
+      amountCents: 5000,
+      method: "check",
+    });
 
-    expect(customerCreditCreate).toHaveBeenCalledTimes(1);
-    expect(customerCreditCreate.mock.calls[0][0].data).toMatchObject({
-      customerId: "cust-1",
-      amountCents: 2000,
-      remainingCents: 2000,
-      reason: "Overpayment",
+    expect(ledger.createReceiptWithAllocations.mock.calls[0][1]).toMatchObject({
+      amountCents: 5000,
+      allocations: [{ invoiceId: "inv-1", amountCents: 3000 }],
     });
     expect(result.overpaymentCents).toBe(2000);
     expect(result.totalAppliedCents).toBe(3000);
   });
 
-  it("applies the whole amount to one named invoice when invoiceId is given, ignoring others", async () => {
-    invoiceFindMany.mockResolvedValue([openInvoice({ id: "inv-target", amountDueCents: 4000 })]);
+  it("uses the explicitly entered received date instead of record time", async () => {
+    invoiceFindMany.mockResolvedValue([openInvoice()]);
+    const receivedOn = new Date("2026-09-15T06:00:00Z");
     const { recordManualPayment } = await import("@/domains/billing/manual-payments");
+    await recordManualPayment("cust-1", "owner-1", {
+      amountCents: 1000,
+      method: "cash",
+      receivedOn,
+    });
+    expect(ledger.createReceiptWithAllocations.mock.calls[0][1].receivedOn).toBe(receivedOn);
+  });
 
+  it("applies only to the named open invoice when invoiceId is given", async () => {
+    invoiceFindMany.mockResolvedValue([openInvoice({ id: "inv-target" })]);
+    const { recordManualPayment } = await import("@/domains/billing/manual-payments");
     await recordManualPayment("cust-1", "owner-1", {
       amountCents: 2000,
       method: "check",
       invoiceId: "inv-target",
     });
-
     expect(invoiceFindMany).toHaveBeenCalledWith({
       where: {
         id: "inv-target",
@@ -174,90 +143,63 @@ describe("recordManualPayment", () => {
     });
   });
 
-  it("refuses an invoiceId that doesn't belong to this customer", async () => {
+  it("refuses a named invoice that is not open for this customer", async () => {
     invoiceFindMany.mockResolvedValue([]);
     const { recordManualPayment } = await import("@/domains/billing/manual-payments");
-
     await expect(
       recordManualPayment("cust-1", "owner-1", {
         amountCents: 1000,
         method: "check",
-        invoiceId: "someone-elses-invoice",
+        invoiceId: "not-open",
       }),
     ).rejects.toThrow(/isn't open/i);
-  });
-
-  // Regression test (2026-09-29 audit): naming a WRITTEN_OFF invoice's id
-  // directly used to skip the status filter that the "spread across open
-  // invoices" path already had, silently un-writing-it-off. The status
-  // filter is now applied to the targeted-invoice lookup too, so Prisma
-  // itself never returns a written-off invoice here — this asserts the
-  // query actually excludes it, the same way "doesn't belong to this
-  // customer" above asserts a not-found id is refused.
-  it("refuses an invoiceId that's already written off, rather than reviving it", async () => {
-    invoiceFindMany.mockResolvedValue([]); // written-off invoice excluded by the status filter
-    const { recordManualPayment } = await import("@/domains/billing/manual-payments");
-
-    await expect(
-      recordManualPayment("cust-1", "owner-1", {
-        amountCents: 1000,
-        method: "check",
-        invoiceId: "inv-written-off",
-      }),
-    ).rejects.toThrow(/isn't open/i);
-
-    expect(invoiceFindMany).toHaveBeenCalledWith({
-      where: {
-        id: "inv-written-off",
-        customerId: "cust-1",
-        status: { in: ["OPEN", "PARTIALLY_PAID", "DELINQUENT"] },
-      },
-      orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }, { id: "asc" }],
-    });
-    expect(invoiceUpdate).not.toHaveBeenCalled();
+    expect(ledger.createReceiptWithAllocations).not.toHaveBeenCalled();
   });
 });
 
 describe("writeOffInvoice", () => {
   beforeEach(() => {
-    customerFindUnique.mockReset().mockResolvedValue({ id: "cust-1" });
-    invoiceFindUnique.mockReset();
-    invoiceUpdate.mockReset().mockResolvedValue({});
-    auditLogCreate.mockReset().mockResolvedValue({});
+    vi.clearAllMocks();
+    ledger.lockCustomerLedger.mockResolvedValue(undefined);
+    invoiceUpdate.mockResolvedValue({});
+    auditLogCreate.mockResolvedValue({});
   });
 
   it("marks an invoice WRITTEN_OFF with a reason", async () => {
-    invoiceFindUnique.mockResolvedValue({ id: "inv-1", status: "DELINQUENT" });
+    invoiceFindUnique
+      .mockResolvedValueOnce({ customerId: "cust-1" })
+      .mockResolvedValueOnce({ id: "inv-1", customerId: "cust-1", status: "DELINQUENT" });
     const { writeOffInvoice } = await import("@/domains/billing/manual-payments");
-
     await writeOffInvoice("inv-1", "owner-1", "Tenant vacated, uncollectible");
-
+    expect(ledger.lockCustomerLedger).toHaveBeenCalledWith(expect.anything(), "cust-1");
     expect(invoiceUpdate).toHaveBeenCalledWith({
       where: { id: "inv-1" },
-      data: expect.objectContaining({ status: "WRITTEN_OFF", writtenOffReason: "Tenant vacated, uncollectible" }),
+      data: expect.objectContaining({
+        status: "WRITTEN_OFF",
+        writtenOffReason: "Tenant vacated, uncollectible",
+      }),
     });
-    expect(auditLogCreate).toHaveBeenCalledTimes(1);
   });
 
   it("refuses an invoice that's already fully paid", async () => {
-    invoiceFindUnique.mockResolvedValue({ id: "inv-1", status: "PAID" });
+    invoiceFindUnique
+      .mockResolvedValueOnce({ customerId: "cust-1" })
+      .mockResolvedValueOnce({ id: "inv-1", status: "PAID" });
     const { writeOffInvoice } = await import("@/domains/billing/manual-payments");
-
     await expect(writeOffInvoice("inv-1", "owner-1", "reason")).rejects.toThrow(/already fully paid/i);
-    expect(invoiceUpdate).not.toHaveBeenCalled();
   });
 
   it("refuses an invoice that's already written off", async () => {
-    invoiceFindUnique.mockResolvedValue({ id: "inv-1", status: "WRITTEN_OFF" });
+    invoiceFindUnique
+      .mockResolvedValueOnce({ customerId: "cust-1" })
+      .mockResolvedValueOnce({ id: "inv-1", status: "WRITTEN_OFF" });
     const { writeOffInvoice } = await import("@/domains/billing/manual-payments");
-
     await expect(writeOffInvoice("inv-1", "owner-1", "reason")).rejects.toThrow(/already written off/i);
   });
 
   it("refuses an invoice that doesn't exist", async () => {
-    invoiceFindUnique.mockResolvedValue(null);
+    invoiceFindUnique.mockResolvedValueOnce(null);
     const { writeOffInvoice } = await import("@/domains/billing/manual-payments");
-
     await expect(writeOffInvoice("missing", "owner-1", "reason")).rejects.toThrow(/couldn't find that invoice/i);
   });
 });

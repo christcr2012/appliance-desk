@@ -1,5 +1,5 @@
 import fs from "node:fs";
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
 // Dark mode (Chris asked for this, 2026-09-27) is implemented as a
@@ -21,6 +21,46 @@ const PUBLIC_PAGES = ["/", "/login", "/pricing", "/how-it-works", "/contact"];
 const DESK_PAGES = ["/desk/today", "/desk/dashboard", "/desk/agreements", "/desk/billing", "/desk/inventory"];
 const ACCOUNT_PAGES = ["/account", "/account/billing"];
 
+/**
+ * The public marketing header intentionally uses `transition-colors`.
+ * Adding `.dark` switches its token immediately, but a rendered nav link can
+ * spend ~150ms interpolating from the old light color to the final dark color.
+ * Axe must inspect the settled theme, not a transient animation frame.
+ *
+ * Pages such as /login do not render that marketing nav at all. In that case
+ * there is no public-header transition to wait for; `.dark` plus the normal Axe
+ * scan remains the correct readiness/quality check.
+ */
+async function expectPublicDarkThemeSettled(page: Page) {
+  await expect(page.locator("html")).toHaveClass(/dark/);
+  await expect
+    .poll(
+      () =>
+        page.evaluate(() => {
+          const transitioning = document.querySelector<HTMLAnchorElement>(
+            'header a[href="/pricing"]',
+          );
+          if (!transitioning) return true;
+
+          const probe = document.createElement("span");
+          probe.className = "text-ink-soft";
+          probe.setAttribute("aria-hidden", "true");
+          probe.style.position = "absolute";
+          probe.style.visibility = "hidden";
+          document.body.appendChild(probe);
+          const settled =
+            getComputedStyle(transitioning).color === getComputedStyle(probe).color;
+          probe.remove();
+          return settled;
+        }),
+      {
+        message:
+          "public dark-mode color transition should settle before accessibility analysis",
+      },
+    )
+    .toBe(true);
+}
+
 test.describe("public pages in dark mode", () => {
   test.use({ colorScheme: "dark" });
 
@@ -29,7 +69,7 @@ test.describe("public pages in dark mode", () => {
       page,
     }) => {
       await page.goto(path);
-      await expect(page.locator("html")).toHaveClass(/dark/);
+      await expectPublicDarkThemeSettled(page);
       const results = await new AxeBuilder({ page })
         .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
         .analyze();

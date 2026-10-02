@@ -1,8 +1,10 @@
 import fs from "node:fs";
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+
 const owner = "e2e/.auth/owner.json";
 test.use({ storageState: fs.existsSync(owner) ? owner : undefined });
+
 test.beforeEach(() => {
   if (process.env.CI) expect(fs.existsSync(owner)).toBe(true);
   test.skip(
@@ -10,6 +12,7 @@ test.beforeEach(() => {
     "Disposable CI owner only",
   );
 });
+
 for (const width of [360, 768, 1440])
   for (const theme of ["light", "dark"]) {
     test(`revenue definitions and source filters at ${width}px ${theme}`, async ({
@@ -21,34 +24,43 @@ for (const width of [360, 768, 1440])
         theme,
       );
       await page.goto("/desk/revenue");
+
       await expect(
         page.getByRole("heading", {
-          name: "Revenue and recorded payments",
+          name: "Revenue and cash activity",
           exact: true,
         }),
       ).toBeVisible();
       await expect(
-        page.getByText(/gross payments are not net cash or rental revenue/i),
+        page.getByText(
+          /real cash receipts, invoice allocations and refunds are tracked separately/i,
+        ),
       ).toBeVisible();
+      await expect(
+        page.getByText(/gross cash received comes from Receipt records/i),
+      ).toBeVisible();
+
       for (const source of ["payments", "refunds"]) {
         await page
-          .getByRole("navigation", { name: "Payment report source" })
+          .getByRole("navigation", { name: "Invoice ledger source" })
           .getByRole("link", {
-            name: source === "payments" ? "Gross payments" : "Invoice refunds",
+            name:
+              source === "payments" ? "Payment allocations" : "Invoice refunds",
             exact: true,
           })
           .click();
         await expect(page).toHaveURL(new RegExp(`source=${source}`));
         await page
-          .getByRole("navigation", { name: "Payment report period" })
+          .getByRole("navigation", { name: "Invoice ledger period" })
           .getByRole("link", { name: "This UTC month", exact: true })
           .click();
         await expect(page).toHaveURL(/scope=month/);
         await page
-          .getByRole("navigation", { name: "Payment report period" })
+          .getByRole("navigation", { name: "Invoice ledger period" })
           .getByRole("link", { name: "All recorded dates", exact: true })
           .click();
         await expect(page).toHaveURL(/scope=all/);
+
         expect(
           await page.evaluate(
             () => document.documentElement.scrollWidth <= window.innerWidth,
@@ -61,6 +73,7 @@ for (const width of [360, 768, 1440])
               .analyze()
           ).violations,
         ).toEqual([]);
+
         const image = info.outputPath(
           `revenue-${source}-${width}-${theme}.png`,
         );
@@ -70,25 +83,32 @@ for (const width of [360, 768, 1440])
           contentType: "image/png",
         });
       }
+
       await page.reload();
       await expect(page).toHaveURL(/source=refunds.*scope=all/);
       await page.goBack();
       await expect(page).toHaveURL(/source=refunds.*scope=month/);
-      const gross = page
-        .getByRole("navigation", { name: "Payment report source" })
-        .getByRole("link", { name: "Gross payments", exact: true });
+
+      const allocations = page
+        .getByRole("navigation", { name: "Invoice ledger source" })
+        .getByRole("link", { name: "Payment allocations", exact: true });
       for (let tab = 0; tab < 80; tab++) {
-        if (await gross.evaluate((el) => el === document.activeElement)) break;
+        if (await allocations.evaluate((el) => el === document.activeElement)) {
+          break;
+        }
         await page.keyboard.press("Tab");
       }
-      await expect(gross).toBeFocused();
+      await expect(allocations).toBeFocused();
       await page.keyboard.press("Enter");
       await expect(page).toHaveURL(/source=payments.*scope=month/);
       await expect(
         page.getByRole("heading", {
-          name: "Recorded gross invoice payments",
+          name: "Recorded invoice payment allocations",
           exact: true,
         }),
+      ).toBeVisible();
+      await expect(
+        page.getByText(/allocations to individual invoices, not independent cash receipts/i),
       ).toBeVisible();
     });
   }

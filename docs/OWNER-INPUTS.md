@@ -4,7 +4,8 @@ Updated 2026-10-02. This is the project decision register, not a claim that
 these items have been entered into the live app's Tasks screen. Chris asked
 that work requiring his input be recorded rather than repeatedly interrupting
 implementation. Update this file when an answer is supplied; reference the
-ID from `docs/STATUS.md`, the PR description and the affected batch in `docs/PLAN.md`. Never store passwords or keys here.
+ID from `docs/STATUS.md`, the PR description and the affected batch in
+`docs/PLAN.md`. Never store passwords or keys here.
 
 Status meanings: **Awaiting Chris** = an actual choice or supplied item is
 needed; **Verify existing** = check the existing decision/configuration first,
@@ -30,6 +31,7 @@ Only ask for the inputs needed by the next release. Do not ask all at once.
 | IN-16 | Answered; Claude verification pending | 2026-09-30: Chris reports Robinson Google Workspace is connected as a personal plugin and Claude can use it. Delegate Workspace setup to Claude; do not ask Chris to reconnect it for ChatGPT. Claude verifies intended business identity and Admin privileges (GW-01). | Verified connector-assisted setup | Follow plans/overhaul/CLAUDE-WORKSPACE-SETUP.md; core overhaul continues independently |
 | IN-15 | Awaiting Chris only if needed | Approval of any additional paid service, higher hosting tier or storage purchase | Spending | Prefer existing services; record measured limits before recommending a purchase |
 | IN-17 | Answered; implementation pending in Batch B WU-B10 | 2026-10-02: sales-tax rates must support **thousandths of one percent**. Example: `7.375%` must be stored/calculated exactly; owner-facing inputs remain ordinary percentages, not internal integer units. Preserve the existing tax-confirmed gate and never guess the applicable rate. | Nothing; owner precision decision is complete. B22/WU-B10 implements it. | Use integer thousandth-percent storage/math and per-line half-up rounding; migrate existing tenths-percent values without losing meaning. |
+| IN-18 | Release operation after WU-B5 merge; **no owner decision required** | After the WU-B5 production migration is confirmed healthy, run `scripts/backfill-receipts.ts --confirm` once against production, verify every historical successful Payment now has a Receipt, then run it a second time and require a no-op result. Failed payment attempts intentionally remain without receipts. | Historical cash-receipt completeness for reconciliation/reporting | Do not run before the receipt migration is deployed. New payments already write Receipts transactionally, so normal operation can be tested independently. |
 
 ## Confirmed facts — do not ask again
 
@@ -44,6 +46,8 @@ Only ask for the inputs needed by the next release. Do not ask all at once.
 - Sales-tax precision decision (IN-17): support rates to 0.001 percentage point
   (for example 7.375%) using exact integer-backed storage/calculation. This is
   a precision requirement only, not approval of any particular tax rate.
+- Receipt backfill (IN-18) is a release operation, not an owner choice; do not
+  interrupt Chris for approval once WU-B5's normal release gates are green.
 
 ## How to close an input
 

@@ -9,6 +9,7 @@ import pg from "pg";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { verifySchemaHealth } from "../src/lib/schema-health";
+import { backfillReceipts } from "./backfill-receipts";
 import { migrationUpgradeTarget } from "./lib/migration-upgrade-safety";
 import {
   prepareUpgradeBaseline,
@@ -16,7 +17,6 @@ import {
 } from "./lib/migration-upgrade-baseline";
 
 async function main() {
-  // Complete all target checks before creating clients, directories or databases.
   const target = migrationUpgradeTarget({
     CI: process.env.CI,
     VERCEL: process.env.VERCEL,
@@ -61,7 +61,6 @@ async function main() {
 
   try {
     await admin.connect();
-    // Name is generated internally using a fixed prefix and hex, never supplied by a caller.
     await admin.query(`CREATE DATABASE "${database}"`);
     created = true;
     temporary = await mkdtemp(path.join(root, ".migration-upgrade-"));
@@ -73,19 +72,19 @@ async function main() {
       `import { defineConfig, env } from "prisma/config";\nexport default defineConfig({ schema: ${JSON.stringify(path.join(root, "prisma/schema.prisma"))}, migrations: { path: ${JSON.stringify(migrations)} }, datasource: { url: env("DIRECT_URL") } });\n`,
     );
     deploy(baselineConfig);
-    fixtureClient = new pg.Client({
-      connectionString: upgradedTarget.toString(),
-    });
+
+    fixtureClient = new pg.Client({ connectionString: upgradedTarget.toString() });
     await fixtureClient.connect();
     const initial = await fixtureClient.query(
       'SELECT migration_name FROM "_prisma_migrations" WHERE finished_at IS NOT NULL',
     );
     assert.deepEqual(
-      initial.rows.map((r) => r.migration_name),
+      initial.rows.map((row) => row.migration_name),
       [UPGRADE_BASELINE],
     );
 
-    // Synthetic records exercise old types, money, links and dates before later ALTERs.
+    // Synthetic records exercise old types, money, links and dates before
+    // later ALTERs. Uppercase SUCCEEDED is intentional historical input.
     await fixtureClient.query(`
       INSERT INTO "User" (id,email,"emailVerified",name,"updatedAt") VALUES
         ('upgrade-user','upgrade@example.test','2026-09-26T12:00:00Z','Upgrade Customer',now()),
@@ -117,15 +116,11 @@ async function main() {
         JOIN "ApplianceType" t ON t.id=a."applianceTypeId"
         JOIN "Invoice" i ON i."agreementId"=r.id AND i."customerId"=c.id
         JOIN "Payment" p ON p."invoiceId"=i.id WHERE u.id='upgrade-user'`);
-      assert.equal(
-        result.rows.length,
-        1,
-        "Upgrade must preserve all fixture links.",
-      );
+      assert.equal(result.rows.length, 1, "Upgrade must preserve all fixture links.");
       return result.rows[0];
     }
+
     const before = await snapshot();
-    // Prove the conversion before the later require-email-verification backfill.
     for (const migration of [
       "20260926151500_verification_updated_at",
       "20260926163000_user_email_verified_boolean",
@@ -143,11 +138,10 @@ async function main() {
       ["upgrade-unverified"],
     );
     assert.equal(converted.rows[0].emailVerified, false);
-    // Upgrade a populated pre-assignment task table, rather than only a clean install.
-    for (const migration of await readdir(
-      path.join(root, "prisma/migrations"),
-      { withFileTypes: true },
-    )) {
+
+    for (const migration of await readdir(path.join(root, "prisma/migrations"), {
+      withFileTypes: true,
+    })) {
       if (
         migration.isDirectory() &&
         migration.name < "20261001190000_staff_task_assignment"
@@ -163,6 +157,7 @@ async function main() {
     await fixtureClient.query(
       `INSERT INTO "StaffTask" (id,note,"dueDate","createdByUserId","customerId") VALUES ('upgrade-task','Preserve follow-up','2026-11-02','upgrade-user','upgrade-customer')`,
     );
+
     deploy(path.join(root, "prisma.config.ts"));
     const preservedTask = await fixtureClient.query(
       `SELECT note,"dueDate","customerId","assigneeUserId",priority,version FROM "StaffTask" WHERE id='upgrade-task'`,
@@ -175,34 +170,50 @@ async function main() {
       priority: "NORMAL",
       version: 1,
     });
+
     const after = await snapshot();
-    // This historical migration intentionally changes timestamp verification to boolean.
     assert.deepEqual(after, { ...before, emailVerified: true });
     const unverified = await fixtureClient.query(
       'SELECT "emailVerified" FROM "User" WHERE id=$1',
       ["upgrade-unverified"],
     );
-    // 20260928160000_require_email_verification deliberately backfills existing accounts.
     assert.equal(unverified.rows[0].emailVerified, true);
+
     const history = await fixtureClient.query(
       'SELECT migration_name FROM "_prisma_migrations" WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL ORDER BY migration_name',
     );
     const expected = (
-      await readdir(path.join(root, "prisma/migrations"), {
-        withFileTypes: true,
-      })
+      await readdir(path.join(root, "prisma/migrations"), { withFileTypes: true })
     )
-      .filter((d) => d.isDirectory())
-      .map((d) => d.name)
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name)
       .sort();
     assert.deepEqual(
-      history.rows.map((r) => r.migration_name),
+      history.rows.map((row) => row.migration_name),
       expected,
     );
+
     schemaClient = new PrismaClient({
       adapter: new PrismaPg({ connectionString: upgradedTarget.toString() }),
     });
     await verifySchemaHealth(schemaClient);
+
+    const backfill = await backfillReceipts(schemaClient);
+    assert.equal(backfill.paymentsLinked, 1);
+    assert.equal(backfill.receiptsCreated, 1);
+    const linked = await schemaClient.payment.findUniqueOrThrow({
+      where: { id: "upgrade-payment" },
+      include: { receipt: true },
+    });
+    assert.ok(linked.receiptId, "Historical succeeded payment must be linked to a receipt.");
+    assert.equal(linked.receipt?.amountCents, 3500);
+    assert.equal(linked.receipt?.source, "MANUAL");
+
+    const repeatedBackfill = await backfillReceipts(schemaClient);
+    assert.equal(repeatedBackfill.paymentsLinked, 0);
+    assert.equal(repeatedBackfill.receiptsCreated, 0);
+    assert.equal(await schemaClient.receipt.count({ where: { customerId: "upgrade-customer" } }), 1);
+
     // Deploy retry must be a no-op for records and migration history.
     deploy(path.join(root, "prisma.config.ts"));
     assert.deepEqual(await snapshot(), after);
@@ -212,7 +223,7 @@ async function main() {
     assert.equal(repeated.rows[0].count, expected.length);
     await verifySchemaHealth(schemaClient);
     console.log(
-      `[migration-upgrade] ${expected.length} migrations verified; records, links, money and retry preserved.`,
+      `[migration-upgrade] ${expected.length} migrations verified; records, links, money, receipt backfill and retry preserved.`,
     );
   } finally {
     await schemaClient?.$disconnect();
