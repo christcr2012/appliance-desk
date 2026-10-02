@@ -1,42 +1,80 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-// Billing starts at delivery (2026-09-28): startRecurringBillingForAgreement
-// is called once a delivery/installation job for an agreement is marked
-// COMPLETED (src/domains/jobs/index.ts). It uses the payment method saved
-// at signing to create the real Stripe Subscription — or, if there isn't
-// one yet, records why on the agreement instead of throwing.
+const mocks = vi.hoisted(() => {
+  class RetryLater extends Error {
+    constructor(message = "This provider operation is already in progress.") {
+      super(message);
+      this.name = "RetryLater";
+    }
+  }
 
-const rentalAgreementFindUniqueOrThrow = vi.fn();
-const rentalAgreementUpdate = vi.fn();
-const taxRatesList = vi.fn();
-const productsCreate = vi.fn();
-const subscriptionsCreate = vi.fn();
+  return {
+    RetryLater,
+    queryRaw: vi.fn(),
+    rentalAgreementFindUniqueOrThrow: vi.fn(),
+    rentalAgreementUpdate: vi.fn(),
+    claimProviderOperation: vi.fn(),
+    completeProviderOperation: vi.fn(),
+    runProviderCall: vi.fn(),
+    taxRatesList: vi.fn(),
+    taxRatesCreate: vi.fn(),
+    productsCreate: vi.fn(),
+    subscriptionsCreate: vi.fn(),
+  };
+});
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
+    $transaction: async (callback: (tx: unknown) => Promise<unknown>) =>
+      callback({
+        $queryRaw: (...args: unknown[]) => mocks.queryRaw(...args),
+        rentalAgreement: {
+          findUniqueOrThrow: (...args: unknown[]) =>
+            mocks.rentalAgreementFindUniqueOrThrow(...args),
+          update: (...args: unknown[]) => mocks.rentalAgreementUpdate(...args),
+        },
+      }),
     rentalAgreement: {
-      findUniqueOrThrow: (...args: unknown[]) => rentalAgreementFindUniqueOrThrow(...args),
-      update: (...args: unknown[]) => rentalAgreementUpdate(...args),
+      update: (...args: unknown[]) => mocks.rentalAgreementUpdate(...args),
     },
   },
 }));
 
+vi.mock("@/domains/billing/provider-ops", () => ({
+  RetryLater: mocks.RetryLater,
+  claimProviderOperation: (...args: unknown[]) => mocks.claimProviderOperation(...args),
+  completeProviderOperation: (...args: unknown[]) => mocks.completeProviderOperation(...args),
+  runProviderCall: (...args: unknown[]) => mocks.runProviderCall(...args),
+}));
+
 vi.mock("@/lib/stripe", () => ({
   getStripeClient: () => ({
-    taxRates: { list: (...args: unknown[]) => taxRatesList(...args) },
-    products: { create: (...args: unknown[]) => productsCreate(...args) },
-    subscriptions: { create: (...args: unknown[]) => subscriptionsCreate(...args) },
+    taxRates: {
+      list: (...args: unknown[]) => mocks.taxRatesList(...args),
+      create: (...args: unknown[]) => mocks.taxRatesCreate(...args),
+    },
+    products: { create: (...args: unknown[]) => mocks.productsCreate(...args) },
+    subscriptions: { create: (...args: unknown[]) => mocks.subscriptionsCreate(...args) },
   }),
 }));
 
 function baseAgreement(overrides: Record<string, unknown> = {}) {
   return {
     id: "agr-1",
+    customerId: "customer-1",
     stripeSubscriptionId: null,
+    billingStartedAt: null,
+    billingBlockedReason: null,
+    termMonths: null,
+    endDate: null,
+    paidInFullInAdvance: false,
     taxRatePermille: 0,
     depositCents: 0,
     damageWaiverCents: 0,
-    customer: { stripeCustomerId: "cus_fake_1", stripeDefaultPaymentMethodId: "pm_fake_1" },
+    customer: {
+      stripeCustomerId: "cus_fake_1",
+      stripeDefaultPaymentMethodId: "pm_fake_1",
+    },
     lines: [{ id: "line-1", label: "Washer", monthlyPriceCents: 4000 }],
     ...overrides,
   };
@@ -44,100 +82,215 @@ function baseAgreement(overrides: Record<string, unknown> = {}) {
 
 describe("startRecurringBillingForAgreement", () => {
   beforeEach(() => {
-    rentalAgreementFindUniqueOrThrow.mockReset();
-    rentalAgreementUpdate.mockReset().mockResolvedValue({});
-    taxRatesList.mockReset().mockResolvedValue({ data: [] });
-    productsCreate.mockReset().mockImplementation(async ({ name }: { name: string }) => ({
+    vi.clearAllMocks();
+
+    mocks.queryRaw.mockResolvedValue([
+      { id: "agr-1", stripeSubscriptionId: null, billingStartedAt: null },
+    ]);
+    mocks.rentalAgreementFindUniqueOrThrow.mockResolvedValue(baseAgreement());
+    mocks.rentalAgreementUpdate.mockResolvedValue({});
+    mocks.claimProviderOperation.mockResolvedValue({
+      done: false,
+      opId: "provider-op-1",
+      idempotencyKey: "subscription-create-agr-1",
+    });
+    mocks.completeProviderOperation.mockResolvedValue(undefined);
+    mocks.taxRatesList.mockResolvedValue({ data: [] });
+    mocks.taxRatesCreate.mockResolvedValue({ id: "txr_fake_1" });
+    mocks.productsCreate.mockImplementation(async ({ name }: { name: string }) => ({
       id: `prod_${name.replace(/\s+/g, "_")}`,
     }));
-    subscriptionsCreate.mockReset().mockResolvedValue({ id: "sub_fake_1" });
+    mocks.subscriptionsCreate.mockResolvedValue({ id: "sub_fake_1" });
+    mocks.runProviderCall.mockImplementation(async (call: () => Promise<unknown>) => {
+      try {
+        return { ok: true, value: await call() };
+      } catch (error) {
+        return { ok: false, outcome: "FAILED", error };
+      }
+    });
   });
 
-  it("does nothing when the agreement is already billing (idempotent)", async () => {
-    rentalAgreementFindUniqueOrThrow.mockResolvedValue(
+  it("does nothing when the agreement already has a subscription id", async () => {
+    mocks.rentalAgreementFindUniqueOrThrow.mockResolvedValue(
       baseAgreement({ stripeSubscriptionId: "sub_already" }),
     );
     const { startRecurringBillingForAgreement } = await import("@/domains/billing/checkout");
 
     await startRecurringBillingForAgreement("agr-1");
 
-    expect(subscriptionsCreate).not.toHaveBeenCalled();
+    expect(mocks.claimProviderOperation).not.toHaveBeenCalled();
+    expect(mocks.productsCreate).not.toHaveBeenCalled();
+    expect(mocks.subscriptionsCreate).not.toHaveBeenCalled();
   });
 
-  it.each([true, false])("never starts monthly rent for a recorded full-term payment, free-month bonus %s", async freeMonthGranted => {
-    rentalAgreementFindUniqueOrThrow.mockResolvedValue(baseAgreement({
-      termMonths: 12, paidInFullInAdvance: true, freeMonthGranted,
-      customer: { stripeCustomerId: null, stripeDefaultPaymentMethodId: null },
-      billingBlockedReason: null,
-    }));
-    const { startRecurringBillingForAgreement } = await import("@/domains/billing/checkout");
-    await startRecurringBillingForAgreement("agr-1");
-    await startRecurringBillingForAgreement("agr-1");
-    expect(productsCreate).not.toHaveBeenCalled();
-    expect(subscriptionsCreate).not.toHaveBeenCalled();
-    expect(taxRatesList).not.toHaveBeenCalled();
-    expect(rentalAgreementUpdate).not.toHaveBeenCalled();
-  });
+  it.each([true, false])(
+    "never starts recurring rent for a recorded full-term payment, free-month bonus %s",
+    async (freeMonthGranted) => {
+      mocks.rentalAgreementFindUniqueOrThrow.mockResolvedValue(
+        baseAgreement({
+          termMonths: 12,
+          paidInFullInAdvance: true,
+          freeMonthGranted,
+          customer: { stripeCustomerId: null, stripeDefaultPaymentMethodId: null },
+        }),
+      );
+      const { startRecurringBillingForAgreement } = await import("@/domains/billing/checkout");
 
-  it("clears a stale recurring-billing error for a prepaid agreement without recording a new collection", async () => {
-    rentalAgreementFindUniqueOrThrow.mockResolvedValue(baseAgreement({ paidInFullInAdvance: true, billingBlockedReason: "Missing card" }));
-    const { startRecurringBillingForAgreement } = await import("@/domains/billing/checkout");
-    await startRecurringBillingForAgreement("agr-1");
-    expect(rentalAgreementUpdate).toHaveBeenCalledWith({ where: { id: "agr-1" }, data: { billingBlockedReason: null } });
-    expect(subscriptionsCreate).not.toHaveBeenCalled();
-  });
+      await startRecurringBillingForAgreement("agr-1");
 
-  it("records billingBlockedReason instead of throwing when there's no saved payment method", async () => {
-    rentalAgreementFindUniqueOrThrow.mockResolvedValue(
-      baseAgreement({ customer: { stripeCustomerId: "cus_fake_1", stripeDefaultPaymentMethodId: null } }),
+      expect(mocks.claimProviderOperation).not.toHaveBeenCalled();
+      expect(mocks.productsCreate).not.toHaveBeenCalled();
+      expect(mocks.subscriptionsCreate).not.toHaveBeenCalled();
+    },
+  );
+
+  it("clears a stale recurring-billing blocker for a prepaid agreement", async () => {
+    mocks.rentalAgreementFindUniqueOrThrow.mockResolvedValue(
+      baseAgreement({ paidInFullInAdvance: true, billingBlockedReason: "Missing card" }),
     );
     const { startRecurringBillingForAgreement } = await import("@/domains/billing/checkout");
 
     await startRecurringBillingForAgreement("agr-1");
 
-    expect(subscriptionsCreate).not.toHaveBeenCalled();
-    expect(rentalAgreementUpdate).toHaveBeenCalledWith({
+    expect(mocks.rentalAgreementUpdate).toHaveBeenCalledWith({
+      where: { id: "agr-1" },
+      data: { billingBlockedReason: null },
+    });
+    expect(mocks.subscriptionsCreate).not.toHaveBeenCalled();
+  });
+
+  it("records a blocker instead of throwing when no saved payment method exists", async () => {
+    mocks.rentalAgreementFindUniqueOrThrow.mockResolvedValue(
+      baseAgreement({
+        customer: { stripeCustomerId: "cus_fake_1", stripeDefaultPaymentMethodId: null },
+      }),
+    );
+    const { startRecurringBillingForAgreement } = await import("@/domains/billing/checkout");
+
+    await expect(startRecurringBillingForAgreement("agr-1")).resolves.not.toThrow();
+
+    expect(mocks.subscriptionsCreate).not.toHaveBeenCalled();
+    expect(mocks.rentalAgreementUpdate).toHaveBeenCalledWith({
       where: { id: "agr-1" },
       data: { billingBlockedReason: expect.stringMatching(/hasn't completed checkout/i) },
     });
   });
 
-  it("creates a real Subscription using the saved payment method, with a Product per rental line", async () => {
-    rentalAgreementFindUniqueOrThrow.mockResolvedValue(baseAgreement());
+  it("persists the Stripe subscription id after a successful provider write", async () => {
     const { startRecurringBillingForAgreement } = await import("@/domains/billing/checkout");
 
     await startRecurringBillingForAgreement("agr-1");
 
-    expect(productsCreate).toHaveBeenCalledWith(
-      expect.objectContaining({ name: "Washer" }),
+    expect(mocks.productsCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "Washer",
+        metadata: expect.objectContaining({ agreementId: "agr-1", rentalLineId: "line-1" }),
+      }),
+      { idempotencyKey: "product-line-1" },
     );
-    expect(subscriptionsCreate).toHaveBeenCalledTimes(1);
-    const [params, options] = subscriptionsCreate.mock.calls[0];
-    expect(params.customer).toBe("cus_fake_1");
-    expect(params.default_payment_method).toBe("pm_fake_1");
-    expect(params.items).toHaveLength(1);
-    expect(params.items[0].price_data.unit_amount).toBe(4000);
-    expect(params.items[0].price_data.recurring).toEqual({ interval: "month" });
-    expect(options).toEqual({ idempotencyKey: "subscription-agreement-agr-1" });
+    expect(mocks.subscriptionsCreate).toHaveBeenCalledTimes(1);
+    const [params, options] = mocks.subscriptionsCreate.mock.calls[0]!;
+    expect(params).toEqual(
+      expect.objectContaining({
+        customer: "cus_fake_1",
+        default_payment_method: "pm_fake_1",
+        metadata: { agreementId: "agr-1" },
+      }),
+    );
+    expect(params).not.toHaveProperty("cancel_at");
+    expect(options).toEqual({ idempotencyKey: "subscription-create-agr-1" });
 
-    // Clears any previous blocked reason and stamps when billing actually
-    // started (used by the MRR/ARR revenue trend — src/domains/billing/revenue.ts).
-    expect(rentalAgreementUpdate).toHaveBeenCalledWith({
+    expect(mocks.rentalAgreementUpdate).toHaveBeenCalledWith({
       where: { id: "agr-1" },
-      data: { billingBlockedReason: null, billingStartedAt: expect.any(Date) },
+      data: {
+        stripeSubscriptionId: "sub_fake_1",
+        billingStartedAt: expect.any(Date),
+        billingBlockedReason: null,
+      },
+    });
+    expect(mocks.completeProviderOperation).toHaveBeenCalledWith(
+      expect.anything(),
+      "provider-op-1",
+      { status: "SUCCEEDED", providerObjectId: "sub_fake_1" },
+    );
+  });
+
+  it("heals the local subscription id from an already-succeeded provider operation", async () => {
+    mocks.claimProviderOperation.mockResolvedValue({
+      done: true,
+      providerObjectId: "sub_recovered",
+    });
+    const { startRecurringBillingForAgreement } = await import("@/domains/billing/checkout");
+
+    await startRecurringBillingForAgreement("agr-1");
+
+    expect(mocks.subscriptionsCreate).not.toHaveBeenCalled();
+    expect(mocks.rentalAgreementUpdate).toHaveBeenCalledWith({
+      where: { id: "agr-1" },
+      data: {
+        stripeSubscriptionId: "sub_recovered",
+        billingStartedAt: expect.any(Date),
+        billingBlockedReason: null,
+      },
     });
   });
 
-  it("records billingBlockedReason (never throws) when Stripe itself refuses the charge", async () => {
-    rentalAgreementFindUniqueOrThrow.mockResolvedValue(baseAgreement());
-    subscriptionsCreate.mockRejectedValue(new Error("Your card was declined."));
+  it("sets cancel_at to the last second of the Colorado end date for a fixed term", async () => {
+    mocks.rentalAgreementFindUniqueOrThrow.mockResolvedValue(
+      baseAgreement({
+        termMonths: 12,
+        endDate: new Date("2026-11-01T12:00:00.000Z"),
+      }),
+    );
+    const { startRecurringBillingForAgreement } = await import("@/domains/billing/checkout");
+
+    await startRecurringBillingForAgreement("agr-1");
+
+    const [params] = mocks.subscriptionsCreate.mock.calls[0]!;
+    expect(params.cancel_at).toBe(Math.floor(Date.parse("2026-11-02T06:59:59.000Z") / 1000));
+  });
+
+  it("marks an ambiguous Stripe result UNKNOWN and blocks automatic retry", async () => {
+    const timeout = Object.assign(new Error("socket reset"), { code: "ECONNRESET" });
+    mocks.runProviderCall.mockResolvedValue({ ok: false, outcome: "UNKNOWN", error: timeout });
     const { startRecurringBillingForAgreement } = await import("@/domains/billing/checkout");
 
     await expect(startRecurringBillingForAgreement("agr-1")).resolves.not.toThrow();
 
-    expect(rentalAgreementUpdate).toHaveBeenCalledWith({
+    expect(mocks.completeProviderOperation).toHaveBeenCalledWith(
+      expect.anything(),
+      "provider-op-1",
+      { status: "UNKNOWN", error: timeout },
+    );
+    expect(mocks.rentalAgreementUpdate).toHaveBeenCalledWith({
       where: { id: "agr-1" },
-      data: { billingBlockedReason: expect.stringContaining("Your card was declined.") },
+      data: { billingBlockedReason: expect.stringMatching(/reconcile stripe/i) },
+    });
+  });
+
+  it("never overwrites a different subscription id that appears during reconciliation", async () => {
+    mocks.queryRaw
+      .mockResolvedValueOnce([
+        { id: "agr-1", stripeSubscriptionId: null, billingStartedAt: null },
+      ])
+      .mockResolvedValueOnce([
+        { id: "agr-1", stripeSubscriptionId: "sub_other", billingStartedAt: null },
+      ]);
+    const { startRecurringBillingForAgreement } = await import("@/domains/billing/checkout");
+
+    await startRecurringBillingForAgreement("agr-1");
+
+    expect(mocks.completeProviderOperation).toHaveBeenCalledWith(
+      expect.anything(),
+      "provider-op-1",
+      expect.objectContaining({
+        status: "DRIFT",
+        providerObjectId: "sub_fake_1",
+      }),
+    );
+    expect(mocks.rentalAgreementUpdate).toHaveBeenCalledWith({
+      where: { id: "agr-1" },
+      data: { billingBlockedReason: expect.stringMatching(/reconcile stripe/i) },
     });
   });
 });

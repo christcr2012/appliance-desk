@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getStripeClient } from "@/lib/stripe";
 import { processStripeWebhookEvent } from "@/domains/billing/webhooks";
+import { ensureSubscriptionIdentityForWebhook } from "@/domains/billing/subscription-identity";
 import { isNonProductionDeployment } from "@/lib/deployment-safety";
 
 // Stripe webhook endpoint — see docs/ARCHITECTURE.md's "Payments (Stripe)"
@@ -49,6 +50,11 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   try {
+    // Recover provider/local subscription identity before the serialized
+    // money-processing transaction. This keeps Stripe network latency out of
+    // the global webhook advisory lock while still making invoice/deletion
+    // events recoverable if the subscription-create response was lost locally.
+    await ensureSubscriptionIdentityForWebhook(event);
     await processStripeWebhookEvent(event);
   } catch (error) {
     // Returning a 500 tells Stripe to retry this same event later — the

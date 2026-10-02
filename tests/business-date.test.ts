@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  businessDateEnd,
   businessDateKey,
   businessDayBounds,
   formatBusinessTime,
@@ -49,6 +50,19 @@ describe("Colorado business calendar independent of server timezone", () => {
       expect(bounds.end.toISOString()).toBe(end);
     },
   );
+
+  it.each([
+    ["2026-03-08", "2026-03-09T05:59:59.000Z"],
+    ["2026-11-01", "2026-11-02T06:59:59.000Z"],
+    ["2026-09-30", "2026-10-01T05:59:59.000Z"],
+  ])("resolves the final whole second of %s across DST safely", (key, expected) => {
+    expect(businessDateEnd(key).toISOString()).toBe(expected);
+  });
+
+  it("rejects an invalid end-date key instead of guessing", () => {
+    expect(() => businessDateEnd("2026-02-30")).toThrow(/invalid business date/i);
+  });
+
   it("does not shift a date-only deadline into the previous evening", () => {
     const due = new Date("2026-09-30");
     expect(formatTaskDate(due)).toBe("Sep 30, 2026");
