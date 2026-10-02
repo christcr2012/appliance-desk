@@ -1,30 +1,29 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import Stripe from "stripe";
 
-// Real-money bug fixed 2026-09-27 (found by a code review, see
-// docs/DECISIONS.md): ending or cancelling an agreement used to update
-// only our own database — it never told Stripe to stop the recurring
-// subscription, so a customer Chris considered "done" kept being billed
-// every month. closeAgreement now cancels the Stripe subscription first,
-// and only proceeds to update our own records if that succeeds (or the
-// subscription was already gone on Stripe's side).
+// Ending/cancelling an agreement must stop the Stripe subscription before
+// declaring the local rental closed. Batch A also serializes the local state
+// change on the agreement row so a concurrent lifecycle transition cannot be
+// overwritten after the provider call returns.
 
 const findUniqueOrThrow = vi.fn();
 const rentalLineFindMany = vi.fn();
 const applianceAssignmentUpdate = vi.fn();
 const applianceUpdate = vi.fn();
-const rentalAgreementUpdateMany = vi.fn();
+const rentalAgreementUpdate = vi.fn();
 const rentalAgreementFindUniqueOrThrowInTx = vi.fn();
 const auditLogCreate = vi.fn();
+const queryRaw = vi.fn();
 const subscriptionsCancel = vi.fn();
 
 function makeTx() {
   return {
+    $queryRaw: (...args: unknown[]) => queryRaw(...args),
     rentalLine: { findMany: rentalLineFindMany },
     applianceAssignment: { update: applianceAssignmentUpdate },
     appliance: { update: applianceUpdate },
     rentalAgreement: {
-      updateMany: rentalAgreementUpdateMany,
+      update: rentalAgreementUpdate,
       findUniqueOrThrow: rentalAgreementFindUniqueOrThrowInTx,
     },
     auditLog: { create: auditLogCreate },
@@ -33,7 +32,9 @@ function makeTx() {
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
-    rentalAgreement: { findUniqueOrThrow: (...args: unknown[]) => findUniqueOrThrow(...args) },
+    rentalAgreement: {
+      findUniqueOrThrow: (...args: unknown[]) => findUniqueOrThrow(...args),
+    },
     $transaction: async (fn: (tx: unknown) => unknown) => fn(makeTx()),
   },
 }));
@@ -51,13 +52,27 @@ describe("closeAgreement — stops the real Stripe subscription", () => {
       status: "ACTIVE",
       stripeSubscriptionId: "sub_123",
     });
+    queryRaw.mockReset().mockResolvedValue([{ id: "agr-1" }]);
     rentalLineFindMany.mockReset().mockResolvedValue([]);
     applianceAssignmentUpdate.mockReset().mockResolvedValue({});
     applianceUpdate.mockReset().mockResolvedValue({});
-    rentalAgreementUpdateMany.mockReset().mockResolvedValue({ count: 1 });
+    rentalAgreementUpdate.mockReset().mockResolvedValue({ id: "agr-1" });
+    // lockRentalAgreementInTx reads once before the update, and the return
+    // value reads again after the update.
     rentalAgreementFindUniqueOrThrowInTx
       .mockReset()
-      .mockResolvedValue({ id: "agr-1", status: "ENDED" });
+      .mockResolvedValueOnce({
+        id: "agr-1",
+        status: "ACTIVE",
+        endDate: null,
+        stripeSubscriptionId: "sub_123",
+      })
+      .mockResolvedValue({
+        id: "agr-1",
+        status: "ENDED",
+        endDate: new Date(),
+        stripeSubscriptionId: "sub_123",
+      });
     auditLogCreate.mockReset().mockResolvedValue({});
     subscriptionsCancel.mockReset().mockResolvedValue({});
   });
@@ -68,24 +83,42 @@ describe("closeAgreement — stops the real Stripe subscription", () => {
     await endAgreement("user-1", "agr-1");
 
     expect(subscriptionsCancel).toHaveBeenCalledWith("sub_123");
-    expect(rentalAgreementUpdateMany).toHaveBeenCalledWith({
-      where: { id: "agr-1", status: "ACTIVE" },
+    expect(queryRaw).toHaveBeenCalled();
+    expect(rentalAgreementUpdate).toHaveBeenCalledWith({
+      where: { id: "agr-1" },
       data: expect.objectContaining({ status: "ENDED" }),
     });
   });
 
-  it("skips the Stripe call entirely when the agreement never had a subscription (e.g. cancelled before ever being billed)", async () => {
+  it("skips Stripe when the agreement never had a subscription", async () => {
     findUniqueOrThrow.mockResolvedValue({
       id: "agr-1",
       status: "DRAFT",
       stripeSubscriptionId: null,
     });
+    rentalAgreementFindUniqueOrThrowInTx
+      .mockReset()
+      .mockResolvedValueOnce({
+        id: "agr-1",
+        status: "DRAFT",
+        endDate: null,
+        stripeSubscriptionId: null,
+      })
+      .mockResolvedValue({
+        id: "agr-1",
+        status: "CANCELLED",
+        endDate: null,
+        stripeSubscriptionId: null,
+      });
     const { cancelAgreement } = await import("@/domains/agreements");
 
     await cancelAgreement("user-1", "agr-1");
 
     expect(subscriptionsCancel).not.toHaveBeenCalled();
-    expect(rentalAgreementUpdateMany).toHaveBeenCalled();
+    expect(rentalAgreementUpdate).toHaveBeenCalledWith({
+      where: { id: "agr-1" },
+      data: expect.objectContaining({ status: "CANCELLED" }),
+    });
   });
 
   it("proceeds with the local close when Stripe says the subscription is already gone", async () => {
@@ -100,10 +133,10 @@ describe("closeAgreement — stops the real Stripe subscription", () => {
 
     await endAgreement("user-1", "agr-1");
 
-    expect(rentalAgreementUpdateMany).toHaveBeenCalled();
+    expect(rentalAgreementUpdate).toHaveBeenCalled();
   });
 
-  it("blocks the whole close when Stripe fails for any other reason — never tells Chris it's ended while billing might still be running", async () => {
+  it("blocks the whole close when Stripe fails for any other reason", async () => {
     subscriptionsCancel.mockRejectedValue(
       new Stripe.errors.StripeAPIError({
         message: "Stripe is temporarily unavailable",
@@ -115,23 +148,24 @@ describe("closeAgreement — stops the real Stripe subscription", () => {
     await expect(endAgreement("user-1", "agr-1")).rejects.toThrow(
       "Stripe is temporarily unavailable",
     );
-    expect(rentalAgreementUpdateMany).not.toHaveBeenCalled();
+    expect(queryRaw).not.toHaveBeenCalled();
+    expect(rentalAgreementUpdate).not.toHaveBeenCalled();
   });
 
-  // Real gap fixed 2026-09-27 (found by a code review, see
-  // docs/DECISIONS.md): the local close used to be a plain update, so a
-  // conflicting simultaneous change to this agreement (two tabs, a
-  // retried request) would be silently overwritten with no warning.
-  it("refuses the close (without losing the already-cancelled Stripe subscription) when the agreement was changed by someone else in between", async () => {
-    rentalAgreementUpdateMany.mockResolvedValue({ count: 0 });
+  it("refuses the local close when the state changed during the provider call", async () => {
+    rentalAgreementFindUniqueOrThrowInTx.mockReset().mockResolvedValue({
+      id: "agr-1",
+      status: "CANCELLED",
+      endDate: null,
+      stripeSubscriptionId: "sub_123",
+    });
     const { endAgreement } = await import("@/domains/agreements");
 
     await expect(endAgreement("user-1", "agr-1")).rejects.toThrow(
       /changed by someone else/,
     );
-    // Stripe's cancellation already happened and is never undone here —
-    // it's the right outcome regardless of which local write wins.
     expect(subscriptionsCancel).toHaveBeenCalledWith("sub_123");
+    expect(rentalAgreementUpdate).not.toHaveBeenCalled();
     expect(auditLogCreate).not.toHaveBeenCalled();
   });
 });
