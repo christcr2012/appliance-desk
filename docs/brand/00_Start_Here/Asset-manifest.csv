@@ -29,7 +29,7 @@ path,bytes,format
 01_Logos/mark/Robinson-mark-evergreen.png,33873,png
 01_Logos/mark/Robinson-mark-evergreen.svg,309,svg
 01_Logos/mark/Robinson-mark-light.pdf,668,pdf
-01_Logos/mark/Robinson-mark-light.png,0,png
+01_Logos/mark/Robinson-mark-light.png,4677,png
 01_Logos/mark/Robinson-mark-light.svg,309,svg
 01_Logos/mark/Robinson-mark-white.pdf,639,pdf
 01_Logos/mark/Robinson-mark-white.png,28657,png
@@ -170,7 +170,4 @@ path,bytes,format
 09_Handoff/Regeneration.md,810,md
 09_Handoff/Website-and-Claude-handoff.md,2226,md
 09_Handoff/build_kit.py,54197,py
-10_Concept_Visualization/Generation-prompt.txt,1098,txt
-10_Concept_Visualization/Initial-concept-board-NOT-production.png,1490239,png
-10_Concept_Visualization/READ-ME.md,344,md
 Brand-Kit-Index.html,26297,html
