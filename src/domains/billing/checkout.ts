@@ -168,7 +168,7 @@ export async function ensureStripeCustomer(customerId: string): Promise<string> 
   }
 
   const stripeCustomerId = providerResult.value.id;
-  return prisma.$transaction(async (tx) => {
+  const finalId = await prisma.$transaction(async (tx) => {
     const locked = await tx.$queryRaw<Array<{ id: string; stripeCustomerId: string | null }>>`
       SELECT "id", "stripeCustomerId"
       FROM "Customer"
@@ -182,7 +182,7 @@ export async function ensureStripeCustomer(customerId: string): Promise<string> 
         providerObjectId: stripeCustomerId,
         note: `Stripe customer ${stripeCustomerId} was created after local customer ${customerId} disappeared.`,
       });
-      throw new Error("Customer disappeared while billing was being set up.");
+      return null;
     }
 
     if (!customer.stripeCustomerId) {
@@ -212,6 +212,11 @@ export async function ensureStripeCustomer(customerId: string): Promise<string> 
     });
     return customer.stripeCustomerId;
   });
+
+  if (!finalId) {
+    throw new Error("Customer disappeared while billing was being set up.");
+  }
+  return finalId;
 }
 
 /** Finds an existing Stripe Tax Rate matching this exact percentage
