@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { createReceiptWithAllocations } from "@/domains/billing/ledger";
+import { backfillReceipts } from "../scripts/backfill-receipts";
 
 const target = new URL(
   process.env.DATABASE_URL ?? "postgresql://localhost/unset",
@@ -140,5 +141,37 @@ describe.skipIf(!enabled)("receipt ledger — real Postgres", () => {
         },
       }),
     ).rejects.toThrow();
+  });
+
+  it("refuses to backfill legacy manual overpayments instead of understating cash", async () => {
+    const invoiceId = await invoice(1_000);
+    const payment = await prisma.payment.create({
+      data: {
+        invoiceId,
+        amountCents: 1_000,
+        method: "check",
+        status: "succeeded",
+        recordedByUserId: userId,
+      },
+    });
+    const legacyCredit = await prisma.customerCredit.create({
+      data: {
+        customerId,
+        amountCents: 500,
+        remainingCents: 500,
+        reason: "Overpayment",
+        authorizedByUserId: userId,
+      },
+    });
+    const receiptsBefore = await prisma.receipt.count({ where: { customerId } });
+
+    await expect(backfillReceipts(prisma)).rejects.toThrow(/legacy overpayment credit/i);
+
+    expect(await prisma.receipt.count({ where: { customerId } })).toBe(receiptsBefore);
+    expect(
+      (await prisma.payment.findUniqueOrThrow({ where: { id: payment.id } })).receiptId,
+    ).toBeNull();
+
+    await prisma.customerCredit.delete({ where: { id: legacyCredit.id } });
   });
 });

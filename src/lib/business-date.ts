@@ -41,11 +41,27 @@ function addCalendarDays(key: string, days: number): string {
   return calendar.toISOString().slice(0, 10);
 }
 
+function firstOfNextMonth(key: string): string {
+  const [year, month] = key.split("-").map(Number);
+  const next = new Date(Date.UTC(year, month, 1));
+  return next.toISOString().slice(0, 10);
+}
+
 export function businessDayBounds(now = new Date()) {
   const key = businessDateKey(now);
   return {
     start: midnight(key),
     end: midnight(addCalendarDays(key, 1)),
+  };
+}
+
+/** Colorado-local month boundaries, resolving DST at each midnight separately. */
+export function businessMonthBounds(now = new Date()) {
+  const key = businessDateKey(now);
+  const startKey = `${key.slice(0, 7)}-01`;
+  return {
+    start: midnight(startKey),
+    end: midnight(firstOfNextMonth(startKey)),
   };
 }
 

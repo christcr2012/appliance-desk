@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getStripeClient } from "@/lib/stripe";
+import { businessMonthBounds } from "@/lib/business-date";
 import { computeMrrTrend, revenuePeriod } from "./revenue";
 
 export { createCheckoutSessionForAgreement, buildCheckoutLinePlan } from "./checkout";
@@ -85,6 +86,8 @@ export async function createBillingPortalSession(
  */
 export async function getRevenueDashboard(now = new Date()) {
   const period = revenuePeriod(now, true);
+  const cashMonth = businessMonthBounds(now);
+  const cashPeriod = { gte: cashMonth.start, lte: now };
 
   const [
     activeAgreements,
@@ -125,7 +128,7 @@ export async function getRevenueDashboard(now = new Date()) {
       },
     }),
     prisma.receipt.aggregate({
-      where: { receivedOn: period },
+      where: { receivedOn: cashPeriod },
       _sum: { amountCents: true },
     }),
     prisma.receipt.aggregate({

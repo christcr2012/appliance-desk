@@ -7,6 +7,7 @@ import {
   createReceiptWithAllocations,
   recordFailedPaymentAttempt,
 } from "./ledger";
+import { resolveStripeInvoiceCashEvents } from "./stripe-invoice-payments";
 
 async function alreadyProcessed(db: Prisma.TransactionClient, eventId: string): Promise<boolean> {
   return (await db.webhookEvent.findUnique({ where: { id: eventId } })) !== null;
@@ -138,18 +139,16 @@ async function recordPaidInvoice(
     .filter((item) => item.kind !== "TAX")
     .reduce((sum, item) => sum + item.amountCents, 0);
 
-  const paymentIntentId = extractPaymentIntentId(stripeInvoice);
-  const fallbackPaidAt = stripeInvoice.status_transitions?.paid_at
-    ? new Date(stripeInvoice.status_transitions.paid_at * 1000)
-    : new Date();
-  const paymentDetails = await resolvePaymentDetails(paymentIntentId, fallbackPaidAt);
+  const cashEvents = await resolveStripeInvoiceCashEvents(stripeInvoice);
   const nextBillingDate = stripeInvoice.period_end
     ? new Date(stripeInvoice.period_end * 1000)
     : null;
 
-  const hasCashReceipt = stripeInvoice.amount_paid > 0;
   const invoiceFields = {
-    status: hasCashReceipt ? ("OPEN" as const) : ("PAID" as const),
+    status:
+      cashEvents.length === 0 || stripeInvoice.amount_due === 0
+        ? ("PAID" as const)
+        : ("OPEN" as const),
     billingPeriodStart: stripeInvoice.period_start
       ? new Date(stripeInvoice.period_start * 1000)
       : null,
@@ -181,23 +180,26 @@ async function recordPaidInvoice(
         },
       });
 
-  if (hasCashReceipt) {
+  let allocatedToInvoiceCents = 0;
+  for (const cashEvent of cashEvents) {
+    const outstandingCents = Math.max(0, stripeInvoice.amount_due - allocatedToInvoiceCents);
+    const appliedCents = Math.min(cashEvent.amountCents, outstandingCents);
     const { receiptId } = await createReceiptWithAllocations(db, {
       customerId,
       source: "STRIPE",
-      amountCents: stripeInvoice.amount_paid,
-      method: paymentDetails.method ?? "other",
-      receivedOn: paymentDetails.receivedOn,
-      stripeChargeId: paymentDetails.stripeChargeId ?? undefined,
-      allocations: [{ invoiceId: invoice.id, amountCents: stripeInvoice.amount_paid }],
+      amountCents: cashEvent.amountCents,
+      method: cashEvent.method,
+      receivedOn: cashEvent.receivedOn,
+      stripeChargeId: cashEvent.stripeChargeId ?? undefined,
+      allocations:
+        appliedCents > 0 ? [{ invoiceId: invoice.id, amountCents: appliedCents }] : [],
     });
-    if (paymentIntentId) {
-      await attachProviderIdsToReceiptPayments(db, {
-        receiptId,
-        stripePaymentIntentId: paymentIntentId,
-        stripeChargeId: paymentDetails.stripeChargeId,
-      });
-    }
+    await attachProviderIdsToReceiptPayments(db, {
+      receiptId,
+      stripePaymentIntentId: cashEvent.paymentIntentId,
+      stripeChargeId: cashEvent.stripeChargeId,
+    });
+    allocatedToInvoiceCents += appliedCents;
   }
 
   const depositLine = lineItemsData.find((item) => item.kind === "DEPOSIT");

@@ -18,6 +18,39 @@ const SUCCESS_STATUSES = ["succeeded", "SUCCEEDED"];
 export async function backfillReceipts(
   client: PrismaClient,
 ): Promise<ReceiptBackfillResult> {
+  // Before Receipt existed, manual overpayments stored only the applied
+  // portion as Payment rows and put the cash remainder in an unprovenanced
+  // CustomerCredit. There is no reliable key that tells us which historical
+  // Payment group a legacy credit belonged to. Refuse to manufacture a lower
+  // cash receipt and falsely declare the backfill complete; production must
+  // reconcile these explicit exceptions first if any exist.
+  const unresolvedLegacyOverpayments = await client.customerCredit.findMany({
+    where: {
+      reason: "Overpayment",
+      sourceType: null,
+      sourceId: null,
+    },
+    select: {
+      id: true,
+      customerId: true,
+      amountCents: true,
+      createdAt: true,
+    },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+  });
+  if (unresolvedLegacyOverpayments.length > 0) {
+    const sample = unresolvedLegacyOverpayments
+      .slice(0, 10)
+      .map(
+        (credit) =>
+          `${credit.id} (customer ${credit.customerId}, ${credit.amountCents} cents, ${credit.createdAt.toISOString()})`,
+      )
+      .join(", ");
+    throw new Error(
+      `Receipt backfill blocked: found ${unresolvedLegacyOverpayments.length} legacy overpayment credit(s) without receipt provenance. Reconcile them before declaring the cash ledger complete. ${sample}`,
+    );
+  }
+
   const candidates = await client.payment.findMany({
     where: { receiptId: null, status: { in: SUCCESS_STATUSES } },
     select: {

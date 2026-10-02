@@ -3,6 +3,7 @@ import {
   businessDateEnd,
   businessDateKey,
   businessDayBounds,
+  businessMonthBounds,
   formatBusinessTime,
   formatTaskDate,
   taskDueBucket,
@@ -50,6 +51,28 @@ describe("Colorado business calendar independent of server timezone", () => {
       expect(bounds.end.toISOString()).toBe(end);
     },
   );
+
+  it.each([
+    [
+      "2026-03-15T12:00:00Z",
+      "2026-03-01T07:00:00.000Z",
+      "2026-04-01T06:00:00.000Z",
+    ],
+    [
+      "2026-10-15T12:00:00Z",
+      "2026-10-01T06:00:00.000Z",
+      "2026-11-01T06:00:00.000Z",
+    ],
+    [
+      "2026-11-15T12:00:00Z",
+      "2026-11-01T06:00:00.000Z",
+      "2026-12-01T07:00:00.000Z",
+    ],
+  ])("resolves the Colorado month containing %s across DST", (input, start, end) => {
+    const bounds = businessMonthBounds(new Date(input));
+    expect(bounds.start.toISOString()).toBe(start);
+    expect(bounds.end.toISOString()).toBe(end);
+  });
 
   it.each([
     ["2026-03-08", "2026-03-09T05:59:59.000Z"],

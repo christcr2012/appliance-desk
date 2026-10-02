@@ -17,7 +17,10 @@ vi.mock("@/lib/prisma", () => ({
 vi.mock("@/lib/stripe", () => ({ getStripeClient: vi.fn() }));
 import { getRevenueDashboard } from "@/domains/billing";
 
-it("reconciles rates, receipt cash totals and partially paid balances with consistent period bounds", async () => {
+it("reconciles rates, receipt cash totals and partially paid balances with Colorado cash-month bounds", async () => {
+  // 00:30 UTC on October 1 is still September 30 in Colorado. Receipt cash
+  // must therefore remain in September even though older rate metrics keep
+  // their existing UTC period contract.
   const now = new Date("2026-10-01T00:30:00Z");
   m.agreements
     .mockResolvedValueOnce([
@@ -55,11 +58,12 @@ it("reconciles rates, receipt cash totals and partially paid balances with consi
     activeCustomerCount: 1,
   });
 
-  const period = { gte: new Date("2026-10-01T00:00:00Z"), lte: now };
-  expect(m.receipts.mock.calls[0][0].where).toEqual({ receivedOn: period });
-  expect(m.rentals.mock.calls[0][0].where.startDate).toEqual(period);
-  expect(m.rentals.mock.calls[1][0].where.updatedAt).toEqual(period);
-  expect(m.failures.mock.calls[0][0].where.createdAt).toEqual(period);
+  const ratePeriod = { gte: new Date("2026-10-01T00:00:00Z"), lte: now };
+  const cashPeriod = { gte: new Date("2026-09-01T06:00:00Z"), lte: now };
+  expect(m.receipts.mock.calls[0][0].where).toEqual({ receivedOn: cashPeriod });
+  expect(m.rentals.mock.calls[0][0].where.startDate).toEqual(ratePeriod);
+  expect(m.rentals.mock.calls[1][0].where.updatedAt).toEqual(ratePeriod);
+  expect(m.failures.mock.calls[0][0].where.createdAt).toEqual(ratePeriod);
   expect(m.agreements.mock.calls[0][0].where.billingStartedAt).toEqual({
     not: null,
     lte: now,
