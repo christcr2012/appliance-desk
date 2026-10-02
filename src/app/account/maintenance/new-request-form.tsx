@@ -2,7 +2,6 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import { createMaintenanceRequestAction } from "./actions";
 import { PhotoUploadField } from "@/components/photo-upload-field";
 
@@ -153,28 +152,25 @@ export function NewRequestForm({
           A picture of the problem — a leak, a broken part, anything that helps.
         </p>
         {photoUrls.length > 0 && (
-          <div className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-6">
-            {photoUrls.map((url) => (
-              <div key={url} className="relative">
-                <Image
-                  src={url}
-                  alt="Photo of the problem"
-                  width={64}
-                  height={64}
-                  className="h-16 w-16 rounded-md object-cover"
-                />
+          <div className="mt-2 space-y-2">
+            <p className="text-xs text-green-700">
+              {photoUrls.length} photo{photoUrls.length === 1 ? "" : "s"} uploaded securely.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {photoUrls.map((url, index) => (
                 <button
+                  key={url}
                   type="button"
                   onClick={() =>
                     setPhotoUrls((urls) => urls.filter((u) => u !== url))
                   }
-                  aria-label="Remove this photo"
-                  className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-gray-900 text-xs text-white"
+                  aria-label={`Remove uploaded photo ${index + 1}`}
+                  className="rounded-md border border-gray-300 px-2 py-1 text-xs text-gray-700 hover:border-gray-400"
                 >
-                  ×
+                  Remove photo {index + 1}
                 </button>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         )}
         {photoUrls.length < MAX_PHOTOS && (
