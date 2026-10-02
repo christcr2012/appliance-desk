@@ -154,10 +154,23 @@ jobs:
         run: npm test
 
   e2e:
-    name: production build and browser acceptance
+    # The browser suite is the slowest part of CI by a wide margin (~5 min of
+    # Playwright on top of ~3 min of install/migrate/seed/build), so it is
+    # sharded across several runners. Each shard checks out, builds and seeds
+    # its own throwaway Postgres, then runs its slice of the spec files via
+    # Playwright's native `--shard`. Nothing is skipped: every test still runs
+    # exactly once, and the aggregate `ci` gate below fails if any shard fails.
+    # Trade-off: more billed runner minutes per run in exchange for roughly
+    # half the wall-clock time. Change `total` and the `shard` list together.
+    name: production build and browser acceptance (shard ${{ matrix.shard }}/${{ matrix.total }})
     needs: classify
     if: needs.classify.outputs.app_changed == 'true'
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        total: [3]
+        shard: [1, 2, 3]
 
     services:
       postgres:
@@ -233,20 +246,22 @@ jobs:
         if: steps.playwright-cache.outputs.cache-hit == 'true'
         run: npx playwright install-deps chromium
 
-      - name: Accessibility, security and end-to-end tests
-        run: npm run test:e2e
+      - name: Accessibility, security and end-to-end tests (this shard's slice)
+        run: npm run test:e2e -- --shard=${{ matrix.shard }}/${{ matrix.total }}
 
       - name: Upload Playwright report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
+          name: playwright-report-shard-${{ matrix.shard }}-of-${{ matrix.total }}
           path: playwright-report/
           retention-days: 14
 
   # Preserve the historical required-check name (`ci`) as one final gate. A
   # docs-only PR reaches this job quickly; an application PR succeeds only if
-  # every parallel quality job above succeeded.
+  # every parallel quality job above succeeded. `needs.e2e.result` is GitHub's
+  # aggregate over the whole shard matrix: it is "success" only when every
+  # shard succeeded, so one failing shard fails this gate.
   ci:
     name: ci
     if: always()

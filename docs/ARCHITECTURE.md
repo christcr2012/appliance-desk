@@ -340,7 +340,13 @@ Never rely on hiding a nav link as the only protection for anything.
 
 ## CI/CD
 
-`.github/workflows/ci.yml` runs on every PR and on `main`, in order: install dependencies → check for un-reviewed destructive migrations → apply database migrations (against a throwaway Postgres) → verify schema health (the same check production runs before building) → seed business content and test-only OWNER/CUSTOMER accounts → type-check → lint → unit tests → build → install Playwright browsers → accessibility & e2e tests → upload the Playwright report. Vercel deploys previews for every PR and production on merge to `main` independently of this workflow.
+`.github/workflows/ci.yml` runs on every PR and on `main`. A tiny `classify` job first decides whether the change touches the application (anything outside `docs/` and `*.md`); documentation-only PRs skip the heavy suites. Application changes then run three independent jobs **in parallel**, each on its own runner:
+
+- **static checks** — install → type-check → lint (no database).
+- **migrations and unit/integration tests** — throwaway Postgres → check for un-reviewed destructive migrations → apply migrations → verify schema health (the same check production runs before building) → prove schema health rejects a missing column → prove a populated historical database upgrades → seed business content and test-only OWNER/CUSTOMER/STAFF accounts → unit and real-Postgres integration tests.
+- **production build and browser acceptance** — sharded across 3 runners. Each shard gets its own throwaway Postgres, applies migrations, verifies schema health, seeds, runs the production build, installs the Playwright browser, then runs *its third* of the Playwright/axe accessibility, security and end-to-end specs (`playwright test --shard=N/3`). Every spec still runs exactly once per CI run; sharding only changes which runner it runs on. Each shard uploads its own Playwright report (`playwright-report-shard-N-of-3`).
+
+A final `ci` job (the historical required-check name) succeeds only if every job above succeeded — for the browser shards, GitHub reports the matrix as a whole, so one failing shard fails the gate. Vercel deploys previews for every PR and production on merge to `main` independently of this workflow.
 
 ## Folder layout
 

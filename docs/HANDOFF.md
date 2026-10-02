@@ -1,3 +1,16 @@
+## CI browser suite sharded 3 ways — 2026-10-02, verifying on PR
+
+`.github/workflows/ci.yml`'s `e2e` job is now a 3-shard matrix (each shard: own
+throwaway Postgres, migrate, seed, build, `playwright test --shard=N/3`). The
+`ci` gate still requires every shard. Expected: browser job ~8.3 min → ~4.5 min,
+total CI ~8.5 → ~4.5 min, at ~1.6× the billed runner-minutes. Nothing skipped.
+Verified locally that the shards cover all 145 browser tests exactly once.
+Docs: `docs/ARCHITECTURE.md` CI/CD section rewritten to describe the actual
+parallel layout (it still described the old single job); dated entry in
+`docs/DECISIONS.md`. No application source changed. The first real timing
+numbers come from this PR's own CI run — check they match the estimate before
+treating this as settled.
+
 ## Batch A (PR #136) CI repair — 2026-10-02, pending CI on the pushed head
 
 CI on audit-remediation/batch-a-critical-integrity was failing for two reasons,
