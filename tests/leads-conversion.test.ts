@@ -30,7 +30,11 @@ function makeTx() {
     user: { findUnique: userFindUnique, create: userCreate },
     customer: { findUnique: customerFindUnique, create: customerCreate },
     serviceAddress: { create: serviceAddressCreate },
-    lead: { update: leadUpdate, updateMany: leadClaim },
+    lead: {
+      findUniqueOrThrow: leadFindUniqueOrThrow,
+      update: leadUpdate,
+      updateMany: leadClaim,
+    },
     auditLog: { create: auditLogCreate },
   };
 }
@@ -240,4 +244,3 @@ describe("sendCustomerActivationEmail", () => {
   });
 
 });
-
