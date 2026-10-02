@@ -14,8 +14,22 @@ const customerFindUniqueOrThrow = vi.fn();
 const checkoutSessionsCreate = vi.fn();
 const depositCount = vi.fn();
 
+async function runTransaction(callback: (tx: unknown) => Promise<unknown>) {
+  const customer = await customerFindUniqueOrThrow();
+  return callback({
+    $queryRaw: vi.fn().mockResolvedValue([
+      { id: customer.id, stripeCustomerId: customer.stripeCustomerId },
+    ]),
+    customer: {
+      findUniqueOrThrow: (...args: unknown[]) => customerFindUniqueOrThrow(...args),
+      update: vi.fn(),
+    },
+  });
+}
+
 vi.mock("@/lib/prisma", () => ({
   prisma: {
+    $transaction: (callback: (tx: unknown) => Promise<unknown>) => runTransaction(callback),
     rentalAgreement: {
       findUniqueOrThrow: (...args: unknown[]) => rentalAgreementFindUniqueOrThrow(...args),
     },
