@@ -12,6 +12,7 @@ import {
   updateJobChecklist,
 } from "@/domains/jobs";
 import { updateApplianceStatus } from "@/domains/inventory";
+import { updateApplianceStatusAsTeamActor } from "@/domains/inventory/guarded-status";
 import type { JobStatus, JobType, ApplianceStatus } from "@prisma/client";
 import { ALL_APPLIANCE_STATUSES } from "@/domains/inventory/lifecycle";
 
@@ -231,12 +232,18 @@ export async function updateApplianceStatusFromJobAction(
           message: "This appliance is not linked to the originating job.",
         };
       }
+      await updateApplianceStatusAsTeamActor(
+        session.user.id,
+        applianceId,
+        status as ApplianceStatus,
+      );
+    } else {
+      await updateApplianceStatus(
+        session.user.id,
+        applianceId,
+        status as ApplianceStatus,
+      );
     }
-    await updateApplianceStatus(
-      session.user.id,
-      applianceId,
-      status as ApplianceStatus,
-    );
   } catch (error) {
     return {
       status: "error",
