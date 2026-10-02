@@ -1,4 +1,10 @@
-## CI browser suite sharded 3 ways — 2026-10-02, verifying on PR
+## CI browser suite sharded 3 ways — 2026-10-02, measured and merged (PR #137)
+
+**Result:** full CI run 4m28s (from ~8m30s). Per shard, tests only:
+accessibility-and-security 84s, owner-flows 129s, desk-flows 103s. Slowest
+files: owner-portal-workspaces 59.5s, revenue-records 51.7s, crm-workspace
+45.0s, accessibility-authenticated 23.9s. All three shards green, deactivation
+spec passed in 3.3s with the wider budget. No rebalancing needed yet.
 
 `.github/workflows/ci.yml`'s `e2e` job is now a 3-shard matrix (each shard: own
 throwaway Postgres, migrate, seed, build, then the spec files assigned to it in
@@ -15,8 +21,7 @@ group is still much heavier than the others. `session-deactivation.spec.ts`
 got `test.slow()` after a 30s timeout under the new layout (cold child-process
 provisioning + real login). Docs: `docs/ARCHITECTURE.md` CI/CD section
 rewritten to describe the actual parallel layout; dated `docs/DECISIONS.md`
-entry. No application source changed. Still pending: all three shards green
-on this PR and real per-shard timings.
+entry. No application source changed.
 
 ## Batch A (PR #136) CI repair — 2026-10-02, pending CI on the pushed head
 
