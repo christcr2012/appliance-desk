@@ -50,10 +50,9 @@ export async function isRateLimited(
   const cutoff = nowMs - windowMs;
 
   return prisma.$transaction(async (tx) => {
-    // hashtextextended gives a stable signed bigint lock key. The namespace is
-    // already SHA-256-derived, so unrelated application locks cannot collide
-    // except at the database's unavoidable 64-bit advisory-lock probability.
-    await tx.$queryRaw`
+    // pg_advisory_xact_lock returns void. Execute it as a statement rather
+    // than asking the adapter to deserialize a result column.
+    await tx.$executeRaw`
       SELECT pg_advisory_xact_lock(hashtextextended(${identifier}, 0))
     `;
 
