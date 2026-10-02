@@ -336,7 +336,7 @@ Never rely on hiding a nav link as the only protection for anything.
 
 ## Error monitoring
 
-[Sentry](https://sentry.io) via `@sentry/nextjs`, wired in `instrumentation.ts` (server/edge) and `instrumentation-client.ts` (browser). Inactive until `SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN` are set as Vercel environment variables — see `docs/HANDOFF.md` for the setup step.
+[Sentry](https://sentry.io) via `@sentry/nextjs`, wired in `instrumentation.ts` (server/edge) and `instrumentation-client.ts` (browser). Inactive until `SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN` are set as Vercel environment variables — see `docs/archive/HANDOFF-2026-09-26-to-2026-10-02.md` for the setup step.
 
 ## CI/CD
 
@@ -371,7 +371,7 @@ So the critical path is: *fixed browser-shard overhead (~3 min) + the slowest sh
 1. **Default to unit tests.** `tests/` (vitest, real Postgres) runs ~1,000 tests in about a minute; the same minute buys roughly 20 browser tests. Reserve `e2e/` for what needs a browser: axe accessibility scans, real login/session/cookie behavior, security headers, and one full click-through per major user flow. Business rules, pricing, permissions, data integrity → unit tests.
 2. **Assign every new spec file.** `scripts/e2e-shard.mjs --check` runs in the static job and fails the PR if an `e2e/*.spec.ts` is missing from `e2e/shards.json`, listed twice, or listed but deleted. Add it to the group with the most headroom.
 3. **Read the real numbers, don't guess.** After every run each shard prints one notice: `e2e shard "<group>" durations (NNs of test time): file 59.5s, file 51.7s, …`. The raw log and HTML report are often unreachable from sandboxes; the notices are not — `gh api repos/<owner>/<repo>/check-runs/<job_id>/annotations`. Job-level timings: `gh api repos/<owner>/<repo>/actions/runs/<run_id>/jobs`.
-4. **Reuse saved sessions.** `e2e/global-setup.ts` logs in once per role and saves the session; tests start signed in via `test.use({ storageState })`. A real login per test both slows the suite and times out under load (see the 2026-09-27 HANDOFF entry). A test that legitimately must log in for real with expensive setup declares `test.slow()` rather than raising global timeouts.
+4. **Reuse saved sessions.** `e2e/global-setup.ts` logs in once per role and saves the session; tests start signed in via `test.use({ storageState })`. A real login per test both slows the suite and times out under load (see the 2026-09-27 entry in `docs/archive/HANDOFF-2026-09-26-to-2026-10-02.md`). A test that legitimately must log in for real with expensive setup declares `test.slow()` rather than raising global timeouts.
 5. **Keep the shared prefix lean.** Anything added before the test step of the browser job runs three times per PR. New one-off checks (lint-like scripts, schema drills, migration checks) belong in `static` or `database`, which have ~2.5–3 min of headroom.
 6. **Dependencies cost on every job.** `npm ci` runs four times per PR (~30s each). A heavy new dependency shows up four times over. Prefer small, tree-shakable packages; check `npm ci` time in the job steps after adding one.
 7. **Build cache.** `.next/cache` is restored keyed on `package-lock.json`; a lockfile change invalidates it and the build step grows (~85s → longer) for that one run. That's expected — don't chase it.
@@ -456,5 +456,5 @@ provider behavior is preserved and covered by mocked-provider regressions.
 
 No credentials, tables, paid services or activation added. This does not verify
 DATABASE_URL/DIRECT_URL target identities. The separate Neon preview branch is
-recorded in HANDOFF; full O02 fixture/storage/migration evidence remains pending.
+recorded in `docs/archive/HANDOFF-2026-09-26-to-2026-10-02.md`; the O02 isolation proof later landed in `docs/plans/overhaul/PREVIEW-ISOLATION-PROOF.md` (#134).
 Historical shared-preview-DB statements above refer to earlier sessions.

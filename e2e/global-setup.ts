@@ -10,7 +10,7 @@ import { loginAs } from "./utils/auth";
 // was fragile under Playwright's default parallelism — 15 real logins
 // fired in quick succession against one `next start` process on a
 // modest CI runner intermittently timed out waiting for a response
-// (see docs/HANDOFF.md's dated entry). Logging in twice, total, instead
+// (see docs/archive/HANDOFF-2026-09-26-to-2026-10-02.md's dated entry). Logging in twice, total, instead
 // of fifteen times is both the standard Playwright pattern for this
 // ("reuse signed-in state") and the actual fix.
 //

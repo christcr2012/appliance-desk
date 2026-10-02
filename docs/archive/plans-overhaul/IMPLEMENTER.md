@@ -1,3 +1,8 @@
+> **RETIRED DOCUMENT — reference only.** Moved to `docs/archive/` on 2026-10-02.
+> Nothing in this file is a current instruction; any "current", "next" or
+> "supersedes" language below is historical. The working documents are
+> `AGENTS.md`, `docs/STATUS.md`, `docs/PLAN.md` and `docs/PLAYBOOK.md`.
+
 ## Current owner batching instruction — 2026-10-01
 
 Chris requires far fewer, much larger PRs because each PR repeats full CI.
@@ -140,7 +145,7 @@ and the evidence still required. Approval does not merge or enable services.
 
 ## Google Workspace work belongs in the Claude handoff
 
-Read [CLAUDE-WORKSPACE-SETUP.md](CLAUDE-WORKSPACE-SETUP.md). Chris reports Claude
+Read [CLAUDE-WORKSPACE-SETUP.md](../../plans/overhaul/CLAUDE-WORKSPACE-SETUP.md). Chris reports Claude
 has the required connector. Keep Sol/Luna app batches intact; give Claude exact
 Workspace dependencies and receive verified non-secret settings back. Before
 marking an email or Google integration complete, document every required Admin,

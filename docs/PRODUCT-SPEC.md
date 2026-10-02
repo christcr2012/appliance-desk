@@ -1,6 +1,6 @@
 # Product spec — features & acceptance criteria
 
-Organized by the phase plan in `docs/HANDOFF.md`. Each feature lists what
+Organized by the phase plan in `docs/archive/HANDOFF-2026-09-26-to-2026-10-02.md`. Each feature lists what
 "working" means for it. Update this file as each phase is built —
 acceptance criteria should be written (or at least sketched) *before* a
 feature is built, not reverse-engineered after.
@@ -39,7 +39,7 @@ feature is built, not reverse-engineered after.
 - [ ] Sentry is wired in code (`instrumentation.ts` /
       `instrumentation-client.ts`) but **inactive** until `SENTRY_DSN` /
       `NEXT_PUBLIC_SENTRY_DSN` are set as real values in Vercel — see
-      `docs/HANDOFF.md`.
+      `docs/archive/HANDOFF-2026-09-26-to-2026-10-02.md`.
 
 ## Phase 2 — Public website, settings, lead capture
 
@@ -307,7 +307,7 @@ was already part of the Phase 1 schema.
 - [x] Deliberately does not auto-change the request's status when a job
       is scheduled — Chris still moves it through the flow by hand (see
       `docs/BUSINESS-RULES.md`).
-- **Needs a schema migration** — see `docs/HANDOFF.md`.
+- **Needs a schema migration** — see `docs/archive/HANDOFF-2026-09-26-to-2026-10-02.md`.
 
 ## Phase 6A — Production hardening & safety
 

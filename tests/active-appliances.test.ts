@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // This tests the query SHAPE this module sends to Prisma, not a live
 // database — that's what CI's real Postgres integration tests are for
-// (see docs/HANDOFF.md's note on this project's testing convention). What
+// (see docs/archive/HANDOFF-2026-09-26-to-2026-10-02.md's note on this project's testing convention). What
 // matters here, and what regressed before this fix (Verified Finding #2):
 // every call site must ask for `status: "ACTIVE"` on the agreement, never
 // leave it unfiltered.

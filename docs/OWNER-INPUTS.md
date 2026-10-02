@@ -1,10 +1,10 @@
 # Owner inputs and launch decisions
 
-Updated 2026-09-30. This is the project decision register, not a claim that
+Updated 2026-10-02. This is the project decision register, not a claim that
 these items have been entered into the live app's Tasks screen. Chris asked
 that work requiring his input be recorded rather than repeatedly interrupting
 implementation. Update this file when an answer is supplied; reference the
-ID from HANDOFF and the affected build task. Never store passwords or keys here.
+ID from `docs/STATUS.md`, the PR description and the affected batch in `docs/PLAN.md`. Never store passwords or keys here.
 
 Status meanings: **Awaiting Chris** = an actual choice or supplied item is
 needed; **Verify existing** = check the existing decision/configuration first,

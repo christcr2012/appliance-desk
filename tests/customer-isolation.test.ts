@@ -14,7 +14,7 @@ import { getInvoiceDetail } from "@/domains/billing/invoice-detail";
 
 // ---------------------------------------------------------------------------
 // The first real, database-backed integration test in this project (Phase
-// 6A item 3 — see docs/HANDOFF.md). Deliberately does NOT mock @/lib/prisma:
+// 6A item 3 — see docs/archive/HANDOFF-2026-09-26-to-2026-10-02.md). Deliberately does NOT mock @/lib/prisma:
 // docs/BUSINESS-RULES.md's "Customer data isolation (security-critical)"
 // rule — a customer must never be able to see or touch another customer's
 // records — is exactly the kind of thing a mocked prisma client can't

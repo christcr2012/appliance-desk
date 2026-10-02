@@ -1,41 +1,10 @@
-## Current execution plan — 2026-10-01
-
-Group the remaining original roadmap into five substantial PRs:
-[Remaining batches](plans/overhaul/REMAINING-BATCHES.md). Preserve shipped work
-and finish only missing behavior/proof. Audits follow the roadmap; O29 needs
-an actual dataset. Google may need one combined later PR if external setup
-gates lag. This checkpoint ships with implementation, not a planning PR.
-
-## Owner sequencing update — 2026-10-01 (current)
-
-Chris explicitly requested completing and merging the existing green PRs, then
-continuing the original roadmap. Implementations from all audits, including
-historical review repairs and B01–B36, are deferred until after the roadmap.
-This supersedes earlier audit-before-feature and audit-expanded launch sequencing
-in this document and linked plans. Preserve the audit registers and unresolved
-findings for that later work; deferral is not resolution. Preserve existing
-correctness protections, O02/O13/O14/O32 dependencies, CI/preview acceptance and
-separate approvals for live activation, spending and destructive real-data changes.
-
-## 2026-10-01 — Owner business audit expands the launch target
-
-Chris asked to work the comprehensive 33-item business audit into the scope and
-prefers everything done before launch. Customer renewal, early termination fees
-and optional auto-renewal subsequently extend that scope as B34–B36. The evidence-backed register is
-[Business audit reconciliation](reviews/2026-10-01-business-logic-audit.md); the
-execution/launch gates live in [Completion plan](plans/overhaul/COMPLETION-PLAN.md).
-B01–B36 are current scope, including existing implementations still needing
-acceptance; older "later phase" labels below do not silently defer them. Historical
-reviews/security P0 precede features. O02 isolation/storage, O13/O14 and O32
-sequencing and live/spending/destructive approvals remain intact. Policy and data
-inputs are explicit blockers, not placeholders or shipped behavior.
-
 # Roadmap — deferred & suggested items
 
-Things intentionally **not** built yet, either because they belong to a
-later phase (see `docs/HANDOFF.md` for the phase plan) or because they're
-a suggestion an AI had while working and is flagging for Chris to decide
-on — never built unasked.
+Things intentionally **not** built yet — either deferred by the plan
+(`docs/PLAN.md` is the plan; `docs/STATUS.md` says where it stands) or a
+suggestion an AI had while working and is flagging for Chris to decide on.
+Nothing here is built unasked. Add new ideas at the end of the relevant
+section with a date.
 
 ## Deferred to a later phase (already scoped, just not yet)
 
@@ -54,7 +23,7 @@ on — never built unasked.
   Needed one schema migration (`Appliance.color`, `Appliance.features`,
   new `PartRecord` table) — **Chris needs to run this migration's SQL
   in Neon before or right alongside deploying**, same as the PR #4
-  incident documented in `docs/HANDOFF.md`, since Vercel's build does
+  incident documented in `docs/archive/HANDOFF-2026-09-26-to-2026-10-02.md`, since Vercel's build does
   not run `prisma migrate deploy` automatically.
 - Rental agreements, e-signature, job scheduling, condition photos —
   Phase 4.
@@ -397,7 +366,7 @@ on — never built unasked.
 An AI session went through the whole codebase at Chris's request looking
 for bugs, broken links, dead code, and improvement opportunities. The
 concrete bugs and quick fixes found were fixed the same session (see
-`docs/HANDOFF.md`'s 2026-09-29 audit entry). These are the larger,
+`docs/archive/HANDOFF-2026-09-26-to-2026-10-02.md`'s 2026-09-29 audit entry). These are the larger,
 lower-urgency items that need a deliberate decision rather than an
 obvious fix — flagged here per `AGENTS.md`'s "add it to the roadmap,
 don't build it unasked" rule:
@@ -444,7 +413,7 @@ complex isn't something to run through standard free-delivery/standard-fee
 self-checkout, nor is it a normal one-off inquiry — it needs a real,
 custom-priced estimate, but this should only apply to the deals that
 actually need it, "built into the system smartly," not bolted onto
-every lead. Built end-to-end — see `docs/HANDOFF.md`'s "Estimates for
+every lead. Built end-to-end — see `docs/archive/HANDOFF-2026-09-26-to-2026-10-02.md`'s "Estimates for
 property managers / bulk & multi-unit deals" entry and
 `docs/BUSINESS-RULES.md`'s matching section for exactly how it works:
 staff-only creation, a real no-login online "approve" click by the
@@ -540,7 +509,7 @@ than proposed as near-term work.
 ## Prelaunch presence follow-ons (2026-09-29)
 
 The user authorized an initial signup/welcome-email phase (see PRODUCT-SPEC
-and HANDOFF). After its PR/preview review: confirm actual launch date before
+and `docs/STATUS.md`). After its PR/preview review: confirm actual launch date before
 a launch broadcast; Google Business Profile eligibility and setup; Facebook
 Page/Metricool connection; local partnership drafts; post-service review
 requests for all eligible customers without satisfaction/review gating; and
@@ -552,8 +521,8 @@ volume warrants it. General preview database isolation remains separate.
 ## 2026-09-30 — Comprehensive overhaul plan (design complete; not implemented)
 
 Chris requested a complete UI/UX and business-system implementation plan that
-a lower-cost model can execute. See [plan index](plans/overhaul/README.md),
-[design](plans/overhaul/DESIGN.md), and [32 task cards](plans/overhaul/TASKS.md).
+a lower-cost model can execute. See [plan index](archive/plans-overhaul/README.md),
+[design](plans/overhaul/DESIGN.md), and [32 task cards](archive/plans-overhaul/TASKS.md).
 This preserves existing CRM, estimate, billing, dispatch, purchasing and
 customer-portal capabilities; it does not mark old review suggestions as
 unbuilt merely because their historical documentation is stale.
@@ -600,6 +569,6 @@ integration" he asked for) after a day of Workspace setup with Claude: branded
 mailbox and send-as identities, a Denver-time "Deliveries & Service" calendar,
 the business Drive folder tree, and a proven service-account pattern. Spec and
 all resource IDs: `docs/plans/google-workspace-integration/README.md`; card
-O32 in `docs/plans/overhaul/TASKS.md`. **Do not start before Releases A/B are
+O32 in `docs/archive/plans-overhaul/TASKS.md`. **Do not start before Releases A/B are
 verified and Chris's live walkthrough is done.** Deliberately left out:
 Google Tasks/Keep, Sheets-as-reporting, Contacts sync.

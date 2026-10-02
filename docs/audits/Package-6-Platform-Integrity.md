@@ -470,7 +470,7 @@ src/domains/backup/index.ts
 src/domains/backup/manifest.ts
 docs/ROADMAP.md
 docs/PRODUCT-SPEC.md
-docs/HANDOFF.md
+docs/archive/HANDOFF-2026-09-26-to-2026-10-02.md
 ```
 
 ### Problem

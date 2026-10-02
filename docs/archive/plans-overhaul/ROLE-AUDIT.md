@@ -1,3 +1,8 @@
+> **RETIRED DOCUMENT — reference only.** Moved to `docs/archive/` on 2026-10-02.
+> Nothing in this file is a current instruction; any "current", "next" or
+> "supersedes" language below is historical. The working documents are
+> `AGENTS.md`, `docs/STATUS.md`, `docs/PLAN.md` and `docs/PLAYBOOK.md`.
+
 # O01 role and data boundaries
 
 Status: IN_REVIEW pending gate G on grouped foundation PR.

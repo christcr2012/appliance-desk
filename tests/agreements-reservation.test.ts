@@ -9,7 +9,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 // `count` of anything other than 1 must abort the whole transaction rather
 // than silently proceeding. Real concurrent-request behavior needs a real
 // database under load (tracked as future integration-test infrastructure,
-// see docs/HANDOFF.md) — this proves the guard logic itself is correct and
+// see docs/archive/HANDOFF-2026-09-26-to-2026-10-02.md) — this proves the guard logic itself is correct and
 // wired in the right order.
 
 const findUniqueOrThrow = vi.fn();

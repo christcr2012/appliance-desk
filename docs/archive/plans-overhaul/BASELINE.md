@@ -1,3 +1,8 @@
+> **RETIRED DOCUMENT — reference only.** Moved to `docs/archive/` on 2026-10-02.
+> Nothing in this file is a current instruction; any "current", "next" or
+> "supersedes" language below is historical. The working documents are
+> `AGENTS.md`, `docs/STATUS.md`, `docs/PLAN.md` and `docs/PLAYBOOK.md`.
+
 # O00 baseline reconciliation — 2026-09-30
 
 Batch B1 authorized by Chris: “Begin batch B one.” Selected settings updated

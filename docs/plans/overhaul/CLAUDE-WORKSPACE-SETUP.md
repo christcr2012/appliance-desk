@@ -7,7 +7,7 @@ plans setup; it does not claim any Admin changes or message tests have run.
 
 ## Execution contract
 
-Read AGENTS.md, latest HANDOFF, ARCHITECTURE's email address table and
+Read AGENTS.md, `docs/STATUS.md`, ARCHITECTURE's email address table and
 OWNER-INPUTS before acting. Discover actual connector tools and their schemas;
 do not invent tool names or assume a connected account has Admin privileges.
 Verify the intended domain and business account first. The existing MCP may
@@ -33,7 +33,7 @@ with exact settings and evidence needed, rather than marking them complete.
 | GW-06 | Audit receiving-domain verification/MX and sending authentication for both Workspace and existing Resend. Check SPF, DKIM and DMARC against current official provider instructions; document missing DNS records and the responsible DNS account. | Actual observed configuration and verification state, not assumed success. DNS changes may require a separate provider; do not replace working mail routing or publish duplicate/conflicting records. |
 | GW-07 | Reconcile app settings and Vercel variables with the verified addresses. Preserve Resend as the app sender. Track publicEmail, From, Reply-To, lead, maintenance and billing notification destinations separately; inspect actual code before assigning setting names. | Non-secret settings map and environment scope; only approved values applied. Google Admin does not configure Vercel, Resend or app settings automatically. Preserve test/preview isolation. |
 | GW-08 | Prepare and, after explicit send authorization, run a small end-to-end mail test with an owner-approved test inbox: receive at each required alias, reply through intended identity, and exercise the relevant app notification in isolation. | Delivery/receipt and reply route confirmed, header authentication results recorded, no accidental real lead/customer or marketing enrollment. A tool success response alone is insufficient. |
-| GW-09 | Close launch blockers separately: approved postal footer IN-01, monitored public/reply address IN-02, existing consent/unsubscribe flow, and explicit email activation decision. | Update owner-input register and HANDOFF. Creating aliases never turns on the welcome sequence, broadcasts, SMS or live payments. |
+| GW-09 | Close launch blockers separately: approved postal footer IN-01, monitored public/reply address IN-02, existing consent/unsubscribe flow, and explicit email activation decision. | Update owner-input register and `docs/STATUS.md`. Creating aliases never turns on the welcome sequence, broadcasts, SMS or live payments. |
 
 ### Address inventory to verify, not invent
 
@@ -78,8 +78,8 @@ message history or dispatch flows with an undocumented Google workflow.
 
 ## Order, model coordination and evidence
 
-1. Claude performs GW-01/02 inventory first. It can happen while the Sol/Luna
-   app batches proceed; no extra model switch in those batches is required.
+1. Claude performs GW-01/02 inventory first. It can happen while the app
+   batches (`docs/PLAN.md`) proceed independently.
 2. Resolve only missing IN-02 decisions, then perform approved GW-03 through
    GW-07 configuration. Hand the exact settings contract to the app implementer.
 3. GW-08/09 gate actual email activation. GW-10 through GW-14 are conditional
@@ -91,7 +91,7 @@ message history or dispatch flows with an undocumented Google workflow.
    APPLIED_UNVERIFIED, VERIFIED or DEFERRED with reason, date, agent,
    non-secret resource ID, before/after values, test evidence and next action.
    Initial state: all tasks NOT_STARTED; connection availability is owner-reported.
-6. Put concrete Admin changes and observations in HANDOFF/ARCHITECTURE and
+6. Put concrete Admin changes and observations in `docs/STATUS.md`/ARCHITECTURE and
    decision answers in OWNER-INPUTS. Configuration evidence must distinguish
    proposed, applied and verified. Preserve other business configuration.
 7. Code/docs changes follow PR-STACK.md and Claude review before merge. External
