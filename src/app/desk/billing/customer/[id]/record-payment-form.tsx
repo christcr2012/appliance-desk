@@ -4,14 +4,12 @@ import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { recordPaymentAction } from "./actions";
 import { formatCents } from "@/domains/pricing/money";
+import { businessDateKey } from "@/lib/business-date";
 
 type OpenInvoiceOption = { id: string; invoiceNumber: number; balanceCents: number };
 
 /** Chris recording a check/cash/bank-transfer payment. With no invoice
- * picked, the amount spreads across every open invoice oldest-due-first
- * — the "one combined check for three properties" case
- * (src/domains/billing/manual-payments.ts). Picking one invoice applies
- * the whole amount there instead, for the ordinary single-invoice case. */
+ * picked, the amount spreads across every open invoice oldest-due-first. */
 export function RecordPaymentForm({
   customerId,
   openInvoices,
@@ -33,6 +31,7 @@ export function RecordPaymentForm({
       const result = await recordPaymentAction(customerId, {
         amountDollars: Number(data.get("amountDollars") ?? 0),
         method: (data.get("method") as "check" | "cash" | "bank_transfer" | "other") ?? "check",
+        receivedOn: String(data.get("receivedOn") ?? ""),
         invoiceId: String(data.get("invoiceId") ?? ""),
         reference: String(data.get("reference") ?? ""),
         notes: String(data.get("notes") ?? ""),
@@ -80,8 +79,8 @@ export function RecordPaymentForm({
 
       {showForm && (
         <form ref={formRef} onSubmit={handleSubmit} className="mt-4 space-y-3">
-          <div className="flex gap-2">
-            <div className="flex-1">
+          <div className="grid gap-2 sm:grid-cols-3">
+            <div>
               <label htmlFor="amountDollars" className="block text-xs font-medium text-gray-700">
                 Amount ($)
               </label>
@@ -95,7 +94,7 @@ export function RecordPaymentForm({
                 className="mt-1 w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm"
               />
             </div>
-            <div className="flex-1">
+            <div>
               <label htmlFor="method" className="block text-xs font-medium text-gray-700">
                 Method
               </label>
@@ -110,6 +109,19 @@ export function RecordPaymentForm({
                 <option value="bank_transfer">Bank transfer</option>
                 <option value="other">Other</option>
               </select>
+            </div>
+            <div>
+              <label htmlFor="receivedOn" className="block text-xs font-medium text-gray-700">
+                Date received
+              </label>
+              <input
+                id="receivedOn"
+                name="receivedOn"
+                type="date"
+                required
+                defaultValue={businessDateKey(new Date())}
+                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+              />
             </div>
           </div>
 

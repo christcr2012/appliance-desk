@@ -5,6 +5,7 @@ import { z } from "zod";
 import { requireRole } from "@/lib/session";
 import { recordManualPayment, writeOffInvoice } from "@/domains/billing";
 import { dollarsToCents } from "@/domains/pricing/money";
+import { businessDateFromKey } from "@/lib/business-date";
 
 export type RecordPaymentState =
   | { status: "idle" }
@@ -19,6 +20,7 @@ export type RecordPaymentState =
 const recordPaymentSchema = z.object({
   amountDollars: z.coerce.number().positive("Enter an amount greater than $0."),
   method: z.enum(["check", "cash", "bank_transfer", "other"]),
+  receivedOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Enter the date the payment was received."),
   invoiceId: z.string().trim().optional().or(z.literal("")),
   reference: z.string().trim().max(200).optional().or(z.literal("")),
   notes: z.string().trim().max(1000).optional().or(z.literal("")),
@@ -27,9 +29,7 @@ const recordPaymentSchema = z.object({
 export type RecordPaymentInput = z.infer<typeof recordPaymentSchema>;
 
 /** Chris recording money that moved outside Stripe — a check, cash, or a
- * bank transfer he confirmed himself. See
- * src/domains/billing/manual-payments.ts for why this exists and how it
- * spreads across a customer's open invoices. */
+ * bank transfer he confirmed himself. */
 export async function recordPaymentAction(
   customerId: string,
   input: RecordPaymentInput,
@@ -44,10 +44,16 @@ export async function recordPaymentAction(
     };
   }
 
+  const receivedOn = businessDateFromKey(parsed.data.receivedOn);
+  if (!receivedOn) {
+    return { status: "error", message: "Enter a valid date the payment was received." };
+  }
+
   try {
     const result = await recordManualPayment(customerId, session.user.id, {
       amountCents: dollarsToCents(parsed.data.amountDollars),
       method: parsed.data.method,
+      receivedOn,
       invoiceId: parsed.data.invoiceId || undefined,
       reference: parsed.data.reference || undefined,
       notes: parsed.data.notes || undefined,
@@ -56,11 +62,6 @@ export async function recordPaymentAction(
     revalidatePath(`/desk/billing/customer/${customerId}`);
     revalidatePath("/desk/billing");
     revalidatePath(`/desk/customers/${customerId}`);
-    // The dashboard's MRR/past-due figures are derived from
-    // invoices/payments (src/domains/dashboard/index.ts) — added
-    // 2026-09-29 audit fix so a recorded payment shows up there right
-    // away instead of waiting for the dashboard's own next natural
-    // revalidation.
     revalidatePath("/desk/dashboard");
 
     return {
@@ -97,7 +98,7 @@ export async function writeOffInvoiceAction(
     await writeOffInvoice(invoiceId, session.user.id, reason.trim());
     revalidatePath(`/desk/billing/customer/${customerId}`);
     revalidatePath("/desk/billing");
-    revalidatePath("/desk/dashboard"); // same reasoning as recordPaymentAction above
+    revalidatePath("/desk/dashboard");
     return { status: "success" };
   } catch (error) {
     return {

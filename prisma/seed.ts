@@ -1,18 +1,15 @@
 /**
  * One-time-ish setup script, in three independent parts:
  *
- * 1. Business content (BusinessSettings singleton + starter
- *    ApplianceType rows) — always runs, needs no secrets, and is safe to
- *    run any number of times.
- * 2. Chris's OWNER account — only runs if OWNER_EMAIL and OWNER_PASSWORD
- *    are set. Safe to re-run.
+ * 1. Business content (BusinessSettings singleton + starter ApplianceType rows)
+ *    — always runs, needs no secrets, and is safe to run any number of times.
+ * 2. Chris's OWNER account — only runs if OWNER_EMAIL and OWNER_PASSWORD are set.
  * 3. Test-only CUSTOMER/STAFF accounts used only in CI's disposable local
  *    Postgres database for authenticated browser/security acceptance.
  *
  * Public Better Auth signup is intentionally disabled. These trusted setup
  * flows create Better Auth-compatible credential rows directly through the
- * same server-only provisioning helper production customer/staff workflows
- * use; there is no hidden dependency on the public sign-up endpoint.
+ * same server-only provisioning helper production customer/staff workflows use.
  */
 import { prisma } from "../src/lib/prisma";
 import { generateReferralCode } from "../src/domains/referrals/code";
@@ -164,13 +161,14 @@ async function seedTestCustomerFixture() {
     },
   });
 
+  const receivedOn = new Date();
   const invoice = await prisma.invoice.create({
     data: {
       customerId: customer.id,
       agreementId: agreement.id,
       status: "PAID",
-      billingPeriodStart: new Date(),
-      billingPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      billingPeriodStart: receivedOn,
+      billingPeriodEnd: new Date(receivedOn.getTime() + 30 * 24 * 60 * 60 * 1000),
       subtotalCents: 6000,
       taxCents: 438,
       amountDueCents: 21438,
@@ -195,9 +193,19 @@ async function seedTestCustomerFixture() {
     },
   });
 
+  const receipt = await prisma.receipt.create({
+    data: {
+      customerId: customer.id,
+      source: "STRIPE",
+      amountCents: 21438,
+      method: "card",
+      receivedOn,
+    },
+  });
   await prisma.payment.create({
     data: {
       invoiceId: invoice.id,
+      receiptId: receipt.id,
       amountCents: 21438,
       method: "card",
       status: "succeeded",

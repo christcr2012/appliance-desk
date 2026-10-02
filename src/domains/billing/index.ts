@@ -8,25 +8,29 @@ export { computeMrrTrend } from "./revenue";
 export type { MrrTrendPoint } from "./revenue";
 export { sendUpcomingBillingReminders } from "./reminders";
 export { getCustomerStatement, getCustomersWithOpenBalances } from "./statements";
-export type { CustomerStatement, StatementProperty, StatementInvoice, StatementLineItem } from "./statements";
+export type {
+  CustomerStatement,
+  StatementProperty,
+  StatementInvoice,
+  StatementLineItem,
+} from "./statements";
 export { recordManualPayment, writeOffInvoice } from "./manual-payments";
-export type { ManualPaymentInput, ManualPaymentMethod, ManualPaymentResult } from "./manual-payments";
+export type {
+  ManualPaymentInput,
+  ManualPaymentMethod,
+  ManualPaymentResult,
+} from "./manual-payments";
 export { applyLateFees, sendLateFeeDigestToChris } from "./late-fees";
 export type { LateFeeApplication } from "./late-fees";
 
-/** Total Invoice count matching the same optional delinquentOnly filter
- * as getInvoicesPage — used to clamp the page number for
- * /desk/billing's paginated invoice list. */
-export async function getInvoicesCount(filter?: { delinquentOnly?: boolean }): Promise<number> {
+export async function getInvoicesCount(filter?: {
+  delinquentOnly?: boolean;
+}): Promise<number> {
   return prisma.invoice.count({
     where: filter?.delinquentOnly ? { status: "DELINQUENT" } : undefined,
   });
 }
 
-/** Paginated variant of the old getInvoices — every invoice, newest
- * first, for the desk-wide billing view (/desk/billing). Optionally
- * filtered to just the delinquent ones, for Chris's collections view
- * (docs/ROADMAP.md). */
 export async function getInvoicesPage(
   filter: { delinquentOnly?: boolean } | undefined,
   skip: number,
@@ -35,9 +39,18 @@ export async function getInvoicesPage(
   return prisma.invoice.findMany({
     where: filter?.delinquentOnly ? { status: "DELINQUENT" } : undefined,
     select: {
-      id: true, invoiceNumber: true, status: true, billingPeriodStart: true,
-      amountDueCents: true, amountPaidCents: true,
-      customer: { select: { id: true, user: { select: { name: true, email: true } } } },
+      id: true,
+      invoiceNumber: true,
+      status: true,
+      billingPeriodStart: true,
+      amountDueCents: true,
+      amountPaidCents: true,
+      customer: {
+        select: {
+          id: true,
+          user: { select: { name: true, email: true } },
+        },
+      },
     },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     skip,
@@ -45,14 +58,10 @@ export async function getInvoicesPage(
   });
 }
 
-/** A link to Stripe's own hosted Customer Portal, where a customer can
- * update their payment method, switch between card/ACH, and download past
- * invoices/receipts themselves — per docs/BUSINESS-RULES.md's billing
- * rules ("via Stripe's hosted Checkout/Customer Portal"), so none of that
- * needs building here. Returns null if this customer has never actually
- * been billed yet (no Stripe customer exists for them), since the portal
- * has nothing to show until then. */
-export async function createBillingPortalSession(customerId: string): Promise<string | null> {
+/** Stripe-hosted Customer Portal; local servers never handle card/bank data. */
+export async function createBillingPortalSession(
+  customerId: string,
+): Promise<string | null> {
   const customer = await prisma.customer.findUniqueOrThrow({
     where: { id: customerId },
     select: { stripeCustomerId: true },
@@ -68,18 +77,12 @@ export async function createBillingPortalSession(customerId: string): Promise<st
   return session.url;
 }
 
-// ---------------------------------------------------------------------------
-// MRR/ARR financial dashboard (2026-09-27, /desk/revenue) — see
-// src/domains/billing/revenue.ts for computeMrrTrend's own documented
-// approximation, and docs/DECISIONS.md for the full writeup.
-// ---------------------------------------------------------------------------
-
-/** Rate estimates and recorded gross invoice payments. Payments may include
- * manual entries, deposits, tax and fees; sums do not subtract refunds and
- * are not rent or profit. Month windows use UTC record timestamps. MRR/ARR and the trend
- * line are reconstructed from agreements' own agreed pricing (see
- * computeMrrTrend's own doc comment for what that does and doesn't
- * capture). */
+/**
+ * Operational revenue dashboard. MRR/ARR remain agreement-rate metrics.
+ * "Collected" is gross cash received and therefore comes from Receipt, not
+ * Payment allocations: one $400 combined check is $400 once even when it
+ * allocates across several invoices, and its month is based on receivedOn.
+ */
 export async function getRevenueDashboard(now = new Date()) {
   const period = revenuePeriod(now, true);
 
@@ -94,14 +97,12 @@ export async function getRevenueDashboard(now = new Date()) {
     pastDueInvoices,
     failedPaymentsThisMonth,
   ] = await Promise.all([
-    // Billing starts at delivery, not at signing (2026-09-28): an ACTIVE
-    // agreement with no billingStartedAt yet is signed but not delivered,
-    // so it isn't generating any recurring revenue yet — MRR/ARR and the
-    // active-rental/active-customer counts below only count ones where
-    // billing has actually started.
     prisma.rentalAgreement.findMany({
       where: { status: "ACTIVE", billingStartedAt: { not: null, lte: now } },
-      select: { customerId: true, lines: { select: { monthlyPriceCents: true } } },
+      select: {
+        customerId: true,
+        lines: { select: { monthlyPriceCents: true } },
+      },
     }),
     prisma.rentalAgreement.findMany({
       where: { billingStartedAt: { not: null } },
@@ -116,21 +117,19 @@ export async function getRevenueDashboard(now = new Date()) {
       select: { customerId: true },
       distinct: ["customerId"],
     }),
-    prisma.rentalAgreement.count({
-      where: { startDate: period },
-    }),
+    prisma.rentalAgreement.count({ where: { startDate: period } }),
     prisma.rentalAgreement.count({
       where: {
         status: { in: ["ENDED", "CANCELLED"] },
         updatedAt: period,
       },
     }),
-    prisma.payment.aggregate({
-      where: { status: "succeeded", createdAt: period },
+    prisma.receipt.aggregate({
+      where: { receivedOn: period },
       _sum: { amountCents: true },
     }),
-    prisma.payment.aggregate({
-      where: { status: "succeeded", createdAt: revenuePeriod(now, false) },
+    prisma.receipt.aggregate({
+      where: { receivedOn: revenuePeriod(now, false) },
       _sum: { amountCents: true },
     }),
     prisma.invoice.findMany({
@@ -146,13 +145,20 @@ export async function getRevenueDashboard(now = new Date()) {
   ]);
 
   const mrrCents = activeAgreements.reduce(
-    (sum, a) => sum + a.lines.reduce((s, l) => s + l.monthlyPriceCents, 0),
+    (sum, agreement) =>
+      sum +
+      agreement.lines.reduce(
+        (lineSum, line) => lineSum + line.monthlyPriceCents,
+        0,
+      ),
     0,
   );
-
-  const outstandingInvoices = pastDueInvoices.filter((invoice) => invoice.amountDueCents > invoice.amountPaidCents);
+  const outstandingInvoices = pastDueInvoices.filter(
+    (invoice) => invoice.amountDueCents > invoice.amountPaidCents,
+  );
   const pastDueCents = outstandingInvoices.reduce(
-    (sum, inv) => sum + Math.max(0, inv.amountDueCents - inv.amountPaidCents),
+    (sum, invoice) =>
+      sum + Math.max(0, invoice.amountDueCents - invoice.amountPaidCents),
     0,
   );
 
@@ -171,4 +177,3 @@ export async function getRevenueDashboard(now = new Date()) {
     mrrTrend: computeMrrTrend(allAgreementsForTrend, 6, now),
   };
 }
-
