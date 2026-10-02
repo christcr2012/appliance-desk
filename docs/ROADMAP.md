@@ -509,7 +509,7 @@ than proposed as near-term work.
 ## Prelaunch presence follow-ons (2026-09-29)
 
 The user authorized an initial signup/welcome-email phase (see PRODUCT-SPEC
-and HANDOFF). After its PR/preview review: confirm actual launch date before
+and `docs/STATUS.md`). After its PR/preview review: confirm actual launch date before
 a launch broadcast; Google Business Profile eligibility and setup; Facebook
 Page/Metricool connection; local partnership drafts; post-service review
 requests for all eligible customers without satisfaction/review gating; and

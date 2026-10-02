@@ -3814,3 +3814,33 @@ each paying ~3 min of install/migrate/seed/build overhead means roughly 13
 billed minutes for the browser job per run instead of ~8. Quality and
 security gates are identical — nothing is skipped. If Actions spend becomes a
 concern, reduce `total` and the `shard` list together in the workflow.
+
+## 2026-10-02 — Documentation consolidated into a short working set plus an archive
+
+**Decision:** Chris asked that the working documents be rewritten so lower-cost
+models can implement the remaining work at high quality, with retired
+documents kept in an archive for reference. The working set is now:
+`AGENTS.md` (rules, no superseded layers), `docs/START-HERE.md` (orientation),
+`docs/STATUS.md` (current state, kept short), `docs/PLAN.md` (Batches A–F
+with self-contained deliverables, acceptance checklists, owner gates and the
+launch gates), `docs/PLAYBOOK.md` (step-by-step procedure incl. local
+verification) and `docs/OWNER-INPUTS.md`. `docs/HANDOFF.md` (3,500 lines),
+the `docs/plans/overhaul/` planning stack (TASKS, MODEL-BATCHES, PR-STACK,
+IMPLEMENTER, COMPLETION-PLAN, EXECUTION-STATE, REMAINING-BATCHES, BASELINE,
+WORKSPACE-IMPLEMENTATION, ROLE-AUDIT, README) and `REPOSITORY_OVERVIEW.md`
+moved to `docs/archive/` with a retired banner; `docs/archive/README.md`
+indexes them. Rule books (BUSINESS-RULES, DATABASE, ARCHITECTURE,
+DESIGN-SYSTEM, PRODUCT-SPEC, OWNER-GUIDE, DESIGN.md, preview/Google setup
+docs, audits, reviews) stayed in place.
+
+**Why:** the previous documents were layered — five dated "owner update"
+sections in AGENTS.md alone, and plan files whose body text was cancelled by
+headers pasted above it. A model had to reconcile which instructions were
+still true before it could start, and the mandatory first read (HANDOFF) was
+3,500 lines. Every rule is now stated once, in one place, as current.
+
+**What was preserved:** every word of the old documents (archive), the audit
+registers and B01–B36 (still referenced by ID from `docs/PLAN.md`), the review
+reconciliation ledger, the sequencing from `docs/AUDIT_SYNTHESIS.md` (Batches
+A–F with the O-cards folded in per its placement table), and all owner gates.
+Code comments that cited `docs/HANDOFF.md` now cite the archived path.

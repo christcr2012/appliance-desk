@@ -1,3 +1,8 @@
+> **RETIRED DOCUMENT — reference only.** Moved to `docs/archive/` on 2026-10-02.
+> Nothing in this file is a current instruction; any "current", "next" or
+> "supersedes" language below is historical. The working documents are
+> `AGENTS.md`, `docs/STATUS.md`, `docs/PLAN.md` and `docs/PLAYBOOK.md`.
+
 # Daily workspace implementation
 
 2026-09-30. Implements shared presentation/navigation and Today/task-list work.
