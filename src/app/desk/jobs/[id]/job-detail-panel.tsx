@@ -16,11 +16,6 @@ import { APPLIANCE_STATUS_LABELS } from "@/domains/inventory/lifecycle";
 import { parseChecklist, type ChecklistItem } from "@/domains/jobs/checklist";
 import { PhotoUploadField } from "@/components/photo-upload-field";
 
-// Rental lifecycle (2026-09-28): completing a delivery, installation, or
-// pickup now moves its appliances along automatically on the server (see
-// applyJobCompletionToAppliances in src/domains/jobs). Swaps still get a
-// one-click suggestion here for the machine going in; maintenance visits
-// are left entirely to Chris.
 const SUGGESTED_STATUS_FOR_TYPE: Record<JobType, ApplianceStatus | null> = {
   DELIVERY: null,
   INSTALLATION: null,
@@ -45,8 +40,6 @@ const ALL_STATUSES: { value: JobStatus; label: string }[] = [
   { value: "CANCELLED", label: "Cancelled" },
 ];
 
-// Mirrors ALLOWED_JOB_TRANSITIONS in src/domains/jobs/index.ts — only to
-// grey out invalid buttons; the real enforcement is server-side.
 const ALLOWED_NEXT: Record<JobStatus, JobStatus[]> = {
   SCHEDULED: ["IN_PROGRESS", "CANCELLED"],
   IN_PROGRESS: ["COMPLETED", "CANCELLED"],
@@ -74,12 +67,23 @@ type JobRow = {
   swapReplacementIds?: string[];
 };
 
-export function JobDetailPanel({ job, canViewFinance = false }: { job: JobRow; canViewFinance?: boolean }) {
+function revokePreview(url: string): void {
+  if (url.startsWith("blob:")) URL.revokeObjectURL(url);
+}
+
+export function JobDetailPanel({
+  job,
+  canViewFinance = false,
+}: {
+  job: JobRow;
+  canViewFinance?: boolean;
+}) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [completionNotes, setCompletionNotes] = useState(job.completionNotes ?? "");
   const [photoUrl, setPhotoUrl] = useState("");
+  const [photoPreviewUrl, setPhotoPreviewUrl] = useState("");
   const [photoAlt, setPhotoAlt] = useState("");
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [partsCostDollars, setPartsCostDollars] = useState(
@@ -104,8 +108,10 @@ export function JobDetailPanel({ job, canViewFinance = false }: { job: JobRow; c
       ? job.appliances
           .map((a) => a.appliance)
           .filter(
-            (a) => a.status !== suggestedStatus && !appliancesJustUpdated.has(a.id)
-              && (job.type !== "SWAP" || job.swapReplacementIds?.includes(a.id) === true),
+            (a) =>
+              a.status !== suggestedStatus &&
+              !appliancesJustUpdated.has(a.id) &&
+              (job.type !== "SWAP" || job.swapReplacementIds?.includes(a.id) === true),
           )
       : [];
 
@@ -169,11 +175,16 @@ export function JobDetailPanel({ job, canViewFinance = false }: { job: JobRow; c
     e.preventDefault();
     setPhotoError(null);
     startTransition(async () => {
-      const result = await addJobPhotoAction(job.id, { url: photoUrl, altText: photoAlt });
+      const result = await addJobPhotoAction(job.id, {
+        url: photoUrl,
+        altText: photoAlt,
+      });
       if (result.status === "error") {
         setPhotoError(result.message);
       } else {
+        revokePreview(photoPreviewUrl);
         setPhotoUrl("");
+        setPhotoPreviewUrl("");
         setPhotoAlt("");
         router.refresh();
       }
@@ -260,12 +271,14 @@ export function JobDetailPanel({ job, canViewFinance = false }: { job: JobRow; c
         </div>
       )}
 
-      {job.status === "COMPLETED" && job.type === "SWAP" && !job.swapReplacementIds?.length && (
-        <p className="rounded-lg border border-gray-200 bg-white p-5 text-sm text-gray-700">
-          This visit has no recorded replacement appliance. Ask an owner or admin to
-          confirm the incoming unit before updating its status.
-        </p>
-      )}
+      {job.status === "COMPLETED" &&
+        job.type === "SWAP" &&
+        !job.swapReplacementIds?.length && (
+          <p className="rounded-lg border border-gray-200 bg-white p-5 text-sm text-gray-700">
+            This visit has no recorded replacement appliance. Ask an owner or admin to
+            confirm the incoming unit before updating its status.
+          </p>
+        )}
 
       {appliancesNeedingUpdate.length > 0 && suggestedStatus && (
         <div className="rounded-lg border border-gray-200 bg-primary-soft p-5">
@@ -273,8 +286,8 @@ export function JobDetailPanel({ job, canViewFinance = false }: { job: JobRow; c
           <p className="mt-1 text-sm text-primary-dark">
             This job&apos;s done — want to mark{" "}
             {appliancesNeedingUpdate.length === 1 ? "it" : "these"} as{" "}
-            {STATUS_LABEL[suggestedStatus]} now? This never happens
-            automatically — you decide each time.
+            {STATUS_LABEL[suggestedStatus]} now? This never happens automatically — you
+            decide each time.
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
             {appliancesNeedingUpdate.map((appliance) => (
@@ -302,9 +315,9 @@ export function JobDetailPanel({ job, canViewFinance = false }: { job: JobRow; c
         <div className="rounded-lg border border-gray-200 bg-white p-5">
           <h2 className="font-medium text-gray-900">Repair cost</h2>
           <p className="mt-1 text-sm text-gray-600">
-            What this repair actually cost — used to track each
-            appliance&apos;s profitability on the Fleet page. Leave blank if
-            unknown; it&apos;s counted as $0 until you enter it.
+            What this repair actually cost — used to track each appliance&apos;s
+            profitability on the Fleet page. Leave blank if unknown; it&apos;s counted as
+            $0 until you enter it.
           </p>
           <form onSubmit={handleSaveCosts} className="mt-3 flex flex-wrap items-end gap-4">
             <div>
@@ -396,21 +409,24 @@ export function JobDetailPanel({ job, canViewFinance = false }: { job: JobRow; c
           <div>
             <span className="block text-sm font-medium text-gray-700">Photo</span>
             <div className="mt-1 flex items-center gap-3">
-              {photoUrl && (
+              {photoPreviewUrl && (
                 <Image
-                  src={photoUrl}
+                  src={photoPreviewUrl}
                   alt="Selected condition photo, not yet added"
                   width={64}
                   height={64}
+                  unoptimized
                   className="h-16 w-16 rounded-md object-cover"
                 />
               )}
               <PhotoUploadField
                 pathPrefix={`jobs/${job.id}`}
                 label={photoUrl ? "Replace photo" : "Take or choose a photo"}
-                onUploaded={(url) => {
+                onUploaded={(storageUrl, previewUrl) => {
                   setPhotoError(null);
-                  setPhotoUrl(url);
+                  revokePreview(photoPreviewUrl);
+                  setPhotoUrl(storageUrl);
+                  setPhotoPreviewUrl(previewUrl);
                 }}
                 onError={(message) => setPhotoError(message)}
               />
