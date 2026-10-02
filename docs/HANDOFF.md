@@ -1,3 +1,34 @@
+## CI browser suite sharded 3 ways — 2026-10-02, measured and merged (PR #137)
+
+**Result:** full CI run 4m28s (from ~8m30s). Per shard, tests only:
+accessibility-and-security 84s, owner-flows 129s, desk-flows 103s. Slowest
+files: owner-portal-workspaces 59.5s, revenue-records 51.7s, crm-workspace
+45.0s, accessibility-authenticated 23.9s. All three shards green, deactivation
+spec passed in 3.3s with the wider budget. No rebalancing needed yet.
+
+**Standing target recorded (Chris, 2026-10-02): full CI ≤ 5 minutes per PR,
+docs-only PRs near-free.** Rules in `AGENTS.md` → "CI speed budget";
+maintenance guide (where time goes, how to add tests without blowing the
+budget, when/how to rebalance or add a shard, why docs-only PRs still run a
+10-second classifier) in `docs/ARCHITECTURE.md` → "Keeping CI under 5 minutes".
+
+`.github/workflows/ci.yml`'s `e2e` job is now a 3-shard matrix (each shard: own
+throwaway Postgres, migrate, seed, build, then the spec files assigned to it in
+`e2e/shards.json`, run by `scripts/e2e-shard.mjs`). The `ci` gate still requires
+every shard; the static job also fails if a spec file is unassigned. Nothing
+skipped — verified locally the three groups cover all 24 files / 145 tests
+exactly once (27 + 23 + 95), with anchored file patterns (Playwright's
+substring matching would otherwise have run rental-address-accessibility twice).
+First attempt with Playwright's own `--shard=N/3` measured 6m12s total (from
+~8m30s) but was lopsided (65s / 233s / 63s of tests per shard); explicit
+duration-balanced groups replace it. Each shard now prints per-file durations
+as a CI notice — read them from this PR's run and rebalance `shards.json` if a
+group is still much heavier than the others. `session-deactivation.spec.ts`
+got `test.slow()` after a 30s timeout under the new layout (cold child-process
+provisioning + real login). Docs: `docs/ARCHITECTURE.md` CI/CD section
+rewritten to describe the actual parallel layout; dated `docs/DECISIONS.md`
+entry. No application source changed.
+
 ## Batch A (PR #136) CI repair — 2026-10-02, pending CI on the pushed head
 
 CI on audit-remediation/batch-a-critical-integrity was failing for two reasons,

@@ -87,6 +87,9 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Every browser spec file is assigned to exactly one CI shard
+        run: node scripts/e2e-shard.mjs --check
+
   database:
     name: migrations and unit/integration tests
     needs: classify
@@ -154,10 +157,25 @@ jobs:
         run: npm test
 
   e2e:
-    name: production build and browser acceptance
+    # The browser suite is the slowest part of CI by a wide margin (~5 min of
+    # Playwright on top of ~3 min of install/migrate/seed/build), so it is
+    # sharded across several runners. Each shard checks out, builds and seeds
+    # its own throwaway Postgres, then runs the spec files assigned to it in
+    # e2e/shards.json (explicit groups balanced by measured duration —
+    # Playwright's built-in count-based `--shard` was badly lopsided here).
+    # scripts/e2e-shard.mjs refuses to run if any spec file is unassigned or
+    # double-assigned, so nothing can silently stop running. Every test runs
+    # exactly once, and the aggregate `ci` gate below fails if any shard fails.
+    # Trade-off: more billed runner minutes per run for less wall-clock time.
+    # To add a shard: add a group to e2e/shards.json and list it here.
+    name: production build and browser acceptance (${{ matrix.shard }})
     needs: classify
     if: needs.classify.outputs.app_changed == 'true'
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [owner-flows, desk-flows, accessibility-and-security]
 
     services:
       postgres:
@@ -233,20 +251,22 @@ jobs:
         if: steps.playwright-cache.outputs.cache-hit == 'true'
         run: npx playwright install-deps chromium
 
-      - name: Accessibility, security and end-to-end tests
-        run: npm run test:e2e
+      - name: Accessibility, security and end-to-end tests (this shard's spec files)
+        run: node scripts/e2e-shard.mjs ${{ matrix.shard }}
 
       - name: Upload Playwright report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.shard }}
           path: playwright-report/
           retention-days: 14
 
   # Preserve the historical required-check name (`ci`) as one final gate. A
   # docs-only PR reaches this job quickly; an application PR succeeds only if
-  # every parallel quality job above succeeded.
+  # every parallel quality job above succeeded. `needs.e2e.result` is GitHub's
+  # aggregate over the whole shard matrix: it is "success" only when every
+  # shard succeeded, so one failing shard fails this gate.
   ci:
     name: ci
     if: always()

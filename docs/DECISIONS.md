@@ -3767,3 +3767,50 @@ suite locally found all 31 in one pass.
 **Limits:** The workaround is only for the throwaway local database. It does not
 replace CI: `prisma migrate`, the migration-upgrade/schema-health drills, the
 production build and the browser/axe tests still gate merges in GitHub Actions.
+## 2026-10-02 — Browser acceptance suite sharded across 3 CI runners
+
+**Decision:** The `e2e` job in `.github/workflows/ci.yml` now runs as a 3-way
+matrix. Each shard builds and seeds its own throwaway Postgres and runs the
+spec files assigned to it in `e2e/shards.json` via `scripts/e2e-shard.mjs`.
+The aggregate `ci` gate is unchanged and fails if any shard fails. Chris asked
+whether CI could be broken into further simultaneous pieces without
+compromising quality or security, and approved this.
+
+**Why explicit groups and not Playwright's `--shard`:** the first attempt used
+`playwright test --shard=N/3`. It ran in 6m12s (down from ~8m30s) but was
+lopsided: two shards finished their tests in ~65s while the third took 233s,
+because Playwright balances by test *count* and this suite's durations are
+very uneven (the owner/desk workspace flows dominate). A 4-way `--shard` was
+worse still (69 tests on one runner, 3 on another). So the assignment is
+explicit, balanced by measured duration, guarded so no spec file can go
+unassigned, and each shard reports per-file durations as CI notices for
+future rebalancing.
+
+**Also fixed on the way:** `e2e/session-deactivation.spec.ts` timed out once
+at 30s under the new layout — it provisions its login through a cold `npx tsx`
+child process and then logs in for real, all inside the test's own timer, and
+it ran alongside the 35-test staff-security file on a busy runner. It now
+declares `test.slow()` (90s budget), the standard Playwright answer for a test
+with expensive setup. This is the same "real login under CI load" pattern
+documented on 2026-09-27.
+
+**Why:** After the earlier split into static / database / browser jobs, the
+last three green runs on `main` and PR #136 spent ~1.5 min on static checks,
+~2–2.5 min on migrations + unit tests, and **~8.3 min** on build + browser
+acceptance — of which ~5.2 min was Playwright itself on a 4-core runner. No
+further job split could help because that one step *was* the remaining time.
+Sharding is the only lever left that keeps every test running: expected
+wall-clock for the browser job drops to roughly 4–4.5 min, total CI to ~4.5
+min. Verified locally with `playwright test --list --shard=N/3`: 51 + 50 + 44
+= 145 tests, no test in more than one shard.
+
+**What was rejected:** more Playwright workers on one runner (CPU-bound and
+tests would share one database, inviting flaky collisions); building once and
+copying `.next` to the test runners (the artifact transfer costs about as much
+as the 85-second build it would save); larger paid runners (not justified yet).
+
+**Cost:** the repo is private, so GitHub bills runner-minutes. Three shards
+each paying ~3 min of install/migrate/seed/build overhead means roughly 13
+billed minutes for the browser job per run instead of ~8. Quality and
+security gates are identical — nothing is skipped. If Actions spend becomes a
+concern, reduce `total` and the `shard` list together in the workflow.

@@ -136,9 +136,12 @@ npm run db:migrate:deploy          # apply pending migrations (CI/production)
 npm run db:seed                     # one-time: creates Chris's OWNER account
 ```
 
-CI (`.github/workflows/ci.yml`) runs migrate-deploy, typecheck, lint,
-unit tests, build, and Playwright/axe accessibility tests against a real
-throwaway Postgres — on every PR and on `main`.
+CI (`.github/workflows/ci.yml`) runs on every PR and on `main` as parallel
+jobs: static checks (typecheck, lint, shard-assignment check); migrations +
+unit/integration tests against a real throwaway Postgres; and the production
+build + Playwright/axe browser suite, split across 3 runners by the groups in
+`e2e/shards.json`. Docs-only PRs skip all of it (~10 s). Budget: ≤ 5 min —
+see "CI speed budget" below and `docs/ARCHITECTURE.md`.
 
 ## A real constraint you should know about
 
@@ -188,6 +191,36 @@ Rules for this workaround: use it only against the throwaway local database
 (never Neon/production); do not commit the placeholder or any generated client;
 migration-upgrade and schema-health drills (`scripts/test-migration-upgrade.ts`
 etc.) and `npm run db:migrate:deploy` stay CI-only.
+
+## CI speed budget — 5 minutes per PR, owner's standing target (2026-10-02)
+
+Chris set a hard target: **a full CI run on a pull request must finish in
+5 minutes or less**, and documentation-only PRs must stay near-free. As of
+2026-10-02 a full run takes ~4.5 min and a docs-only PR ~10 s. Every agent
+adding tests, CI steps or dependencies is responsible for keeping it there.
+The how-to lives in `docs/ARCHITECTURE.md` → "Keeping CI under 5 minutes";
+the rules that matter most:
+
+1. **Prefer unit tests (`tests/`, vitest) over browser tests (`e2e/`).** A
+   browser test costs 10–50× a unit test and sits on CI's critical path.
+   Write a browser test only for what truly needs a browser: accessibility
+   (axe), real login/session behavior, security headers, a full user flow.
+2. **Every new `e2e/*.spec.ts` must be assigned to a group in
+   `e2e/shards.json`** — CI fails otherwise. Put it in the *lightest* group
+   (each shard prints per-file durations as a notice on every run; read
+   them from the Checks API annotations).
+3. **No browser shard's test step may exceed ~2 minutes.** Past that,
+   rebalance the groups; if all groups are full, add a shard (one new group
+   in `e2e/shards.json` + one entry in the workflow matrix). Each shard
+   costs ~3 billed runner-minutes per run.
+4. **Never log in per test** — reuse the saved sessions from
+   `e2e/global-setup.ts` (`test.use({ storageState })`).
+5. **Don't add steps to the browser job's shared prefix** (install → migrate
+   → seed → build) — every shard pays it. One-off checks go in the `static`
+   or `database` job.
+6. If the unit/integration job (`database`) approaches 3 minutes, shard
+   vitest the same way (`vitest run --shard=N/M`) before anything else.
+7. Verify locally, push once. Each push cancels the previous run.
 
 ## Lessons from the Batch A CI failures (2026-10-02)
 
