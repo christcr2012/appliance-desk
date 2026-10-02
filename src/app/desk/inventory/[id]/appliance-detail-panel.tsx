@@ -20,9 +20,6 @@ const ALL_STATUSES: { value: ApplianceStatus; label: string }[] = ALL_APPLIANCE_
   (value) => ({ value, label: APPLIANCE_STATUS_LABELS[value] }),
 );
 
-// The same shared rules the server enforces (src/domains/inventory/
-// lifecycle.ts, no database import) — used here only to decide which
-// buttons to show; the server is still the real gate.
 const ALLOWED_NEXT = ALLOWED_APPLIANCE_TRANSITIONS;
 
 type ApplianceRow = {
@@ -40,12 +37,13 @@ type ApplianceRow = {
   photos: { id: string; url: string; altText: string | null }[];
 };
 
-/** Appliance.features is stored as JSONB (a free-form string array — see
- * src/domains/inventory) so Prisma hands it back as `unknown`; this just
- * narrows it defensively rather than trusting the shape blindly. */
 function featuresToText(features: unknown): string {
   if (!Array.isArray(features)) return "";
   return features.filter((f): f is string => typeof f === "string").join(", ");
+}
+
+function revokePreview(url: string): void {
+  if (url.startsWith("blob:")) URL.revokeObjectURL(url);
 }
 
 export function ApplianceDetailPanel({ appliance }: { appliance: ApplianceRow }) {
@@ -66,6 +64,7 @@ export function ApplianceDetailPanel({ appliance }: { appliance: ApplianceRow })
     { kind: "success" | "error"; text: string } | null
   >(null);
   const [photoUrl, setPhotoUrl] = useState("");
+  const [photoPreviewUrl, setPhotoPreviewUrl] = useState("");
   const [photoAlt, setPhotoAlt] = useState("");
   const [photoError, setPhotoError] = useState<string | null>(null);
 
@@ -92,10 +91,6 @@ export function ApplianceDetailPanel({ appliance }: { appliance: ApplianceRow })
     startTransition(async () => {
       const result = await updateApplianceDetailsAction(appliance.id, {
         ...fields,
-        // See updateApplianceDetails' optimistic-concurrency comment
-        // (src/domains/inventory/index.ts) — this is what lets the
-        // server tell whether the record changed since this form was
-        // loaded, rather than blindly overwriting a more recent edit.
         expectedUpdatedAt: appliance.updatedAt.toISOString(),
       });
       if (result.status === "error") {
@@ -118,7 +113,9 @@ export function ApplianceDetailPanel({ appliance }: { appliance: ApplianceRow })
       if (result.status === "error") {
         setPhotoError(result.message);
       } else {
+        revokePreview(photoPreviewUrl);
         setPhotoUrl("");
+        setPhotoPreviewUrl("");
         setPhotoAlt("");
         router.refresh();
       }
@@ -133,24 +130,22 @@ export function ApplianceDetailPanel({ appliance }: { appliance: ApplianceRow })
         </h2>
         {nextStatuses.length === 0 ? (
           <p className="mt-2 text-sm text-gray-600">
-            Retired appliances can&apos;t change status — add a new unit
-            instead if this was retired by mistake.
+            Retired appliances can&apos;t change status — add a new unit instead if
+            this was retired by mistake.
           </p>
         ) : (
           <div className="mt-3 flex flex-wrap gap-2">
-            {ALL_STATUSES.filter((s) => nextStatuses.includes(s.value)).map(
-              (s) => (
-                <button
-                  key={s.value}
-                  type="button"
-                  disabled={isPending}
-                  onClick={() => handleStatusChange(s.value)}
-                  className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:border-gray-400 disabled:opacity-50"
-                >
-                  Mark {s.label}
-                </button>
-              ),
-            )}
+            {ALL_STATUSES.filter((s) => nextStatuses.includes(s.value)).map((s) => (
+              <button
+                key={s.value}
+                type="button"
+                disabled={isPending}
+                onClick={() => handleStatusChange(s.value)}
+                className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:border-gray-400 disabled:opacity-50"
+              >
+                Mark {s.label}
+              </button>
+            ))}
           </div>
         )}
         {statusMessage && (
@@ -279,7 +274,7 @@ export function ApplianceDetailPanel({ appliance }: { appliance: ApplianceRow })
         <button
           type="submit"
           disabled={isPending}
-          className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+          className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-60"
         >
           {isPending ? "Saving…" : "Save details"}
         </button>
@@ -319,28 +314,34 @@ export function ApplianceDetailPanel({ appliance }: { appliance: ApplianceRow })
           <div>
             <span className="block text-sm font-medium text-gray-700">Photo</span>
             <div className="mt-1 flex items-center gap-3">
-              {photoUrl && (
+              {photoPreviewUrl && (
                 <Image
-                  src={photoUrl}
+                  src={photoPreviewUrl}
                   alt="Selected photo, not yet added"
                   width={64}
                   height={64}
+                  unoptimized
                   className="h-16 w-16 rounded-md object-cover"
                 />
               )}
               <PhotoUploadField
                 pathPrefix={`appliances/${appliance.id}`}
                 label={photoUrl ? "Replace photo" : "Take or choose a photo"}
-                onUploaded={(url) => {
+                onUploaded={(storageUrl, previewUrl) => {
                   setPhotoError(null);
-                  setPhotoUrl(url);
+                  revokePreview(photoPreviewUrl);
+                  setPhotoUrl(storageUrl);
+                  setPhotoPreviewUrl(previewUrl);
                 }}
                 onError={(message) => setPhotoError(message)}
               />
             </div>
           </div>
           <div>
-            <label htmlFor="appliancePhotoAlt" className="block text-sm font-medium text-gray-700">
+            <label
+              htmlFor="appliancePhotoAlt"
+              className="block text-sm font-medium text-gray-700"
+            >
               Description (optional)
             </label>
             <input
