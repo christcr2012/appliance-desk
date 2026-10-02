@@ -187,6 +187,7 @@ function ApplianceRow({ row }: { row: ApplianceTypeRow }) {
           )}
           <PhotoUploadField
             pathPrefix="appliance-types"
+            access="public"
             label={photoUrl ? "Replace photo" : "Add photo"}
             disabled={isPhotoPending || !row.isActive}
             onUploaded={(url) => {

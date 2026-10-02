@@ -10,7 +10,87 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  ci:
+  classify:
+    name: classify changes
+    runs-on: ubuntu-latest
+    outputs:
+      app_changed: ${{ steps.changes.outputs.app_changed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - id: changes
+        name: Detect application-impacting changes
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # Pushes to main always get the full suite. Path classification is
+          # only an optimization for pull requests.
+          if [[ "$EVENT_NAME" != "pull_request" ]]; then
+            echo "app_changed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          mapfile -t changed_files < <(git diff --name-only "$BASE_SHA" "$HEAD_SHA")
+
+          # Fail safe: an empty/indeterminate diff runs the full suite rather
+          # than accidentally treating an application change as documentation.
+          if (( ${#changed_files[@]} == 0 )); then
+            echo "app_changed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          app_changed=false
+          for file in "${changed_files[@]}"; do
+            # Documentation-only means Markdown anywhere or files under docs/.
+            # Workflow/config/scripts/schema/source/test changes all remain
+            # application-impacting and receive the complete quality gates.
+            if [[ "$file" != docs/* && "$file" != *.md ]]; then
+              app_changed=true
+              break
+            fi
+          done
+
+          echo "app_changed=$app_changed" >> "$GITHUB_OUTPUT"
+
+  static:
+    name: static checks
+    needs: classify
+    if: needs.classify.outputs.app_changed == 'true'
+    runs-on: ubuntu-latest
+    env:
+      # Prisma resolves both variables during postinstall/generate even though
+      # static checks never connect to a database. These deliberately point at
+      # localhost so this job cannot reach production infrastructure.
+      DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/appliance_desk_static
+      DIRECT_URL: postgresql://ci:ci@127.0.0.1:5432/appliance_desk_static
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-check
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+  database:
+    name: migrations and unit/integration tests
+    needs: classify
+    if: needs.classify.outputs.app_changed == 'true'
     runs-on: ubuntu-latest
 
     services:
@@ -23,10 +103,10 @@ jobs:
         ports:
           - 5432:5432
         options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
+          --health-cmd "pg_isready -U test -d appliance_desk_test"
+          --health-interval 5s
           --health-timeout 5s
-          --health-retries 5
+          --health-retries 10
 
     env:
       DATABASE_URL: postgresql://test:test@localhost:5432/appliance_desk_test
@@ -34,11 +114,6 @@ jobs:
       BETTER_AUTH_SECRET: ci-test-secret-not-for-production-use-only
       BETTER_AUTH_URL: http://localhost:3000
       NEXT_PUBLIC_APP_URL: http://localhost:3000
-      # Test-only login accounts, seeded ONLY into this job's throwaway
-      # Postgres container (destroyed at the end of the run) — never set
-      # against the real production database. This is what lets
-      # e2e/accessibility-authenticated.spec.ts log in for real and check
-      # /desk/** and /account/** pages, not just the public site.
       OWNER_EMAIL: ci-owner@example.test
       OWNER_PASSWORD: Ci-Test-Owner-Password-Not-Real-1!
       TEST_CUSTOMER_EMAIL: ci-customer@example.test
@@ -72,25 +147,93 @@ jobs:
       - name: Prove populated historical database upgrades and deployment retry
         run: npx tsx scripts/test-migration-upgrade.ts
 
-      - name: Seed business content + test-only OWNER/CUSTOMER accounts
+      - name: Seed business content + test-only OWNER/CUSTOMER/STAFF accounts
         run: npm run db:seed
 
-      - name: Type-check
-        run: npm run typecheck
-
-      - name: Lint
-        run: npm run lint
-
-      - name: Unit tests
+      - name: Unit and real-Postgres integration tests
         run: npm test
 
-      - name: Build
+  e2e:
+    name: production build and browser acceptance
+    needs: classify
+    if: needs.classify.outputs.app_changed == 'true'
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: appliance_desk_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U test -d appliance_desk_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://test:test@localhost:5432/appliance_desk_test
+      DIRECT_URL: postgresql://test:test@localhost:5432/appliance_desk_test
+      BETTER_AUTH_SECRET: ci-test-secret-not-for-production-use-only
+      BETTER_AUTH_URL: http://localhost:3000
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      OWNER_EMAIL: ci-owner@example.test
+      OWNER_PASSWORD: Ci-Test-Owner-Password-Not-Real-1!
+      TEST_CUSTOMER_EMAIL: ci-customer@example.test
+      TEST_CUSTOMER_PASSWORD: Ci-Test-Customer-Password-Not-Real-1!
+      TEST_STAFF_EMAIL: ci-staff@example.test
+      TEST_STAFF_PASSWORD: Ci-Test-Staff-Password-Not-Real-1!
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Apply database migrations
+        run: npm run db:migrate:deploy
+
+      - name: Verify schema health before the production build
+        run: npm run db:verify-schema-health
+
+      - name: Seed browser-test accounts and business fixtures
+        run: npm run db:seed
+
+      - name: Restore Next build cache
+        uses: actions/cache@v4
+        with:
+          path: .next/cache
+          key: next-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-${{ github.sha }}
+          restore-keys: |
+            next-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-
+
+      - name: Production build
         run: npm run build
 
-      - name: Install Playwright browsers
+      - name: Restore Playwright browser cache
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+      - name: Install Playwright browser and OS dependencies
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: npx playwright install --with-deps chromium
 
-      - name: Accessibility & e2e tests
+      - name: Install Playwright OS dependencies
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+
+      - name: Accessibility, security and end-to-end tests
         run: npm run test:e2e
 
       - name: Upload Playwright report
@@ -100,3 +243,42 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 14
+
+  # Preserve the historical required-check name (`ci`) as one final gate. A
+  # docs-only PR reaches this job quickly; an application PR succeeds only if
+  # every parallel quality job above succeeded.
+  ci:
+    name: ci
+    if: always()
+    needs: [classify, static, database, e2e]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify required quality jobs
+        env:
+          APP_CHANGED: ${{ needs.classify.outputs.app_changed }}
+          CLASSIFY_RESULT: ${{ needs.classify.result }}
+          STATIC_RESULT: ${{ needs.static.result }}
+          DATABASE_RESULT: ${{ needs.database.result }}
+          E2E_RESULT: ${{ needs.e2e.result }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ "$CLASSIFY_RESULT" != "success" ]]; then
+            echo "Change classification failed."
+            exit 1
+          fi
+
+          if [[ "$APP_CHANGED" != "true" ]]; then
+            echo "Documentation-only pull request: heavy application suites intentionally skipped."
+            exit 0
+          fi
+
+          for result in "$STATIC_RESULT" "$DATABASE_RESULT" "$E2E_RESULT"; do
+            if [[ "$result" != "success" ]]; then
+              echo "A required quality job did not succeed: $result"
+              exit 1
+            fi
+          done
+
+          echo "All application quality gates passed."

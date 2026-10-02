@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getDeskJobById } from "@/domains/desk-access";
 import { JobDetailPanel } from "./job-detail-panel";
+import { privatePhotoReadPath } from "@/lib/photo-storage";
 
 export const metadata = { title: "Job" };
 
@@ -61,7 +62,11 @@ export default async function JobDetailPage({
             id: appliance.id, assetNumber: appliance.assetNumber, status: appliance.status,
             applianceType: { name: appliance.applianceType.name },
           } })),
-          photos: job.photos.map(({ id, url, altText }) => ({ id, url, altText })),
+          photos: job.photos.map(({ id: photoId, altText }) => ({
+            id: photoId,
+            url: privatePhotoReadPath(photoId),
+            altText,
+          })),
           ...(job.canViewFinance ? { partsCostCents: job.partsCostCents, laborCostCents: job.laborCostCents } : {}),
         }} canViewFinance={canViewFinance} />
       </div>

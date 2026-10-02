@@ -3746,3 +3746,24 @@ header, including the Sentry-wrapped Next configuration, rather than inspecting
 a configuration object. CI uses next build/start on HTTP loopback: this proves
 header emission, not HTTPS browser enforcement or domain preload acceptance.
 Full CI/preview/exact-head inspection remains pending at submission.
+
+
+## 2026-10-02 — Local verification via a Prisma-engine workaround is now approved
+
+**Decision:** Chris explicitly approved working around the sandbox's 403 on
+`binaries.prisma.sh` (see the 2026-09-26 entry above, which had said not to).
+`prisma generate` does not need the schema-engine binary, so it works when
+`PRISMA_SCHEMA_ENGINE_BINARY` points at a placeholder file; the schema is then
+loaded into a throwaway local Postgres by running each
+`prisma/migrations/*/migration.sql` with `psql`. This lets any agent run the
+complete unit suite (and seed) before pushing. Exact steps are in `AGENTS.md`.
+
+**Why:** Batch A (PR #136) went through about nine CI runs in one morning. The
+real cause was 31 outdated unit-test fakes plus one browser test using the
+sign-up endpoint that the same PR closed; GitHub's summary showed only the first
+10 failures, so fixes were guesses and each retry cost ~10 minutes. Running the
+suite locally found all 31 in one pass.
+
+**Limits:** The workaround is only for the throwaway local database. It does not
+replace CI: `prisma migrate`, the migration-upgrade/schema-health drills, the
+production build and the browser/axe tests still gate merges in GitHub Actions.

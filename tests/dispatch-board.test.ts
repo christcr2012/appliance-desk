@@ -30,7 +30,8 @@ describe("findConflictingJobIds", () => {
       {
         id: "b",
         scheduledAt: new Date(
-          new Date("2026-09-28T09:00:00").getTime() + (ASSUMED_JOB_DURATION_MINUTES - 10) * 60 * 1000,
+          new Date("2026-09-28T09:00:00").getTime() +
+            (ASSUMED_JOB_DURATION_MINUTES - 10) * 60 * 1000,
         ),
       },
     ];
@@ -130,18 +131,37 @@ describe("checklistProgress", () => {
 const jobFindMany = vi.fn();
 const jobFindUniqueOrThrow = vi.fn();
 const jobUpdate = vi.fn();
+const auditLogCreate = vi.fn();
+const assertActiveTeamActor = vi.fn();
 
-vi.mock("@/lib/session", () => ({ requireRole: vi.fn().mockResolvedValue({ user: { role: "OWNER" } }) }));
+vi.mock("@/lib/session", () => ({
+  requireRole: vi.fn().mockResolvedValue({ user: { role: "OWNER" } }),
+}));
 
-vi.mock("@/lib/prisma", () => ({
-  prisma: {
+vi.mock("@/lib/team-actor", () => ({
+  assertActiveTeamActor: (...args: unknown[]) => assertActiveTeamActor(...args),
+}));
+
+vi.mock("@/lib/prisma", () => {
+  const tx = {
     job: {
       findMany: (...args: unknown[]) => jobFindMany(...args),
       findUniqueOrThrow: (...args: unknown[]) => jobFindUniqueOrThrow(...args),
       update: (...args: unknown[]) => jobUpdate(...args),
     },
-  },
-}));
+    auditLog: {
+      create: (...args: unknown[]) => auditLogCreate(...args),
+    },
+  };
+
+  return {
+    prisma: {
+      ...tx,
+      $transaction: async (callback: (transaction: typeof tx) => unknown) =>
+        callback(tx),
+    },
+  };
+});
 
 vi.mock("@/domains/inventory/lifecycle", () => ({
   applianceStatusOnJobCompleted: vi.fn(),
@@ -154,24 +174,38 @@ beforeEach(() => {
   jobFindMany.mockReset();
   jobFindUniqueOrThrow.mockReset();
   jobUpdate.mockReset();
+  auditLogCreate.mockReset();
+  assertActiveTeamActor.mockReset();
 });
 
 describe("getDispatchBoardJobs", () => {
   it("queries scheduled (in-range, active-status) jobs and unscheduled active jobs separately", async () => {
-    const visit = { id: "job-1", scheduledAt: new Date("2026-09-28T18:00:00Z") };
-    jobFindMany.mockResolvedValueOnce([visit]).mockResolvedValueOnce([{ id: "job-2" }]);
+    const visit = {
+      id: "job-1",
+      scheduledAt: new Date("2026-09-28T18:00:00Z"),
+    };
+    jobFindMany
+      .mockResolvedValueOnce([visit])
+      .mockResolvedValueOnce([{ id: "job-2" }]);
     const { getDispatchBoardJobs } = await import("@/domains/jobs");
 
     const start = new Date("2026-09-28T00:00:00");
     const end = new Date("2026-09-29T00:00:00");
     const result = await getDispatchBoardJobs(start, end);
 
-    expect(result).toEqual({ scheduled: [visit], unscheduled: [{ id: "job-2" }], conflictCandidates: [visit] });
+    expect(result).toEqual({
+      scheduled: [visit],
+      unscheduled: [{ id: "job-2" }],
+      conflictCandidates: [visit],
+    });
 
     const [scheduledArgs] = jobFindMany.mock.calls[0];
     expect(scheduledArgs.where).toEqual({
       status: { in: ["SCHEDULED", "IN_PROGRESS"] },
-      scheduledAt: { gte: new Date(start.getTime() - 120 * 60 * 1000), lt: new Date(end.getTime() + 120 * 60 * 1000) },
+      scheduledAt: {
+        gte: new Date(start.getTime() - 120 * 60 * 1000),
+        lt: new Date(end.getTime() + 120 * 60 * 1000),
+      },
     });
 
     const [unscheduledArgs] = jobFindMany.mock.calls[1];
@@ -190,16 +224,32 @@ describe("getJobChecklist / updateJobChecklist", () => {
     expect(await getJobChecklist("job-1")).toEqual(defaultChecklistFor("REMOVAL"));
   });
 
-  it("updateJobChecklist saves the checklist as given, with no status gate", async () => {
+  it("updateJobChecklist saves the checklist as given after fencing the active actor", async () => {
+    jobFindUniqueOrThrow.mockResolvedValue({ checklist: [] });
     jobUpdate.mockResolvedValue({});
+    auditLogCreate.mockResolvedValue({});
     const { updateJobChecklist } = await import("@/domains/jobs");
     const checklist = [{ item: "Custom", checked: true }];
 
-    await updateJobChecklist("job-1", checklist);
+    await updateJobChecklist("staff-1", "job-1", checklist);
 
+    expect(assertActiveTeamActor).toHaveBeenCalledWith(
+      expect.any(Object),
+      "staff-1",
+    );
     expect(jobUpdate).toHaveBeenCalledWith({
       where: { id: "job-1" },
       data: { checklist },
+    });
+    expect(auditLogCreate).toHaveBeenCalledWith({
+      data: {
+        userId: "staff-1",
+        action: "job.checklist.update",
+        entityType: "Job",
+        entityId: "job-1",
+        oldValue: { checklist: [] },
+        newValue: { checklist },
+      },
     });
   });
 });

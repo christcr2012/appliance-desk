@@ -1,49 +1,16 @@
 import { prisma } from "@/lib/prisma";
-import type { EstimateStatus } from "@prisma/client";
+import type { EstimateStatus, Prisma } from "@prisma/client";
 import { sendEmail } from "@/lib/email";
 import { getBusinessSettings } from "@/domains/settings";
-import { createDraftAgreement } from "@/domains/agreements";
-import { createLeadManually, convertLeadToCustomer, type ManualLeadInput } from "@/domains/leads";
-
-// ---------------------------------------------------------------------------
-// Estimates (2026-09-29 — see docs/DECISIONS.md's "Estimates for
-// property managers / bulk & multi-unit deals" entry for the full
-// writeup and docs/BUSINESS-RULES.md for the plain-English rule this
-// implements). Chris's own framing: a client ordering appliances for a
-// whole apartment complex isn't standard free-delivery/standard-fee
-// self-checkout, nor an ordinary one-off inquiry — it needs a real,
-// custom-priced estimate, but only for the deals that actually need
-// one. So this is deliberately:
-//
-// - Staff-created only (OWNER/ADMIN) — never auto-generated from a
-//   Lead's answers. A "property manager" flag never silently changes
-//   anyone's price on its own. Usually starts from an existing
-//   Customer, but doesn't have to (2026-09-29, Chris's own report:
-//   "I can't start an estimate unless there's an existing customer" —
-//   a real gap) — createEstimateDraftForNewLead lets staff start one
-//   for someone who isn't a customer yet, creating a Lead for them
-//   first (via src/domains/leads' createLeadManually) so the deal is
-//   tracked in the ordinary lead pipeline (score, status, follow-up)
-//   rather than silently skipping it. See that function's own comment,
-//   and approveEstimate's, for how/when a lead-started estimate
-//   becomes a real customer.
-// - A pricing PROPOSAL, not a commitment — creating or sending an
-//   Estimate never reserves real inventory. Converting an approved one
-//   (convertEstimateToAgreements, below) only creates DRAFT
-//   RentalAgreement "shells" with the agreed high-level terms; Chris
-//   still adds real RentalLine(s) with actual physical appliances the
-//   normal way (src/domains/agreements's addRentalLine), same
-//   appliance-reservation safeguards as every other agreement.
-// - The public approval link reuses the exact pattern the e-signature
-//   flow already established (SignatureRecord/the /sign/[id] page):
-//   the record's own unguessable cuid `id` IS the link, gated by
-//   possession of it, not a login.
-// ---------------------------------------------------------------------------
+import { createDraftAgreementInTx } from "@/domains/agreements";
+import {
+  createLeadManually,
+  convertLeadToCustomerInTx,
+  sendCustomerActivationEmail,
+  type ManualLeadInput,
+} from "@/domains/leads";
 
 const EDITABLE_STATUSES: EstimateStatus[] = ["DRAFT", "CHANGES_REQUESTED"];
-// A status the public link should still render something useful for —
-// everything except DRAFT (never sent, so the link shouldn't be
-// reachable yet).
 const PUBLICLY_VIEWABLE_STATUSES: EstimateStatus[] = [
   "SENT",
   "VIEWED",
@@ -53,6 +20,24 @@ const PUBLICLY_VIEWABLE_STATUSES: EstimateStatus[] = [
   "EXPIRED",
   "CONVERTED",
 ];
+const AWAITING_RESPONSE_STATUSES: EstimateStatus[] = ["SENT", "VIEWED"];
+const FOLLOW_UP_AFTER_DAYS = 3;
+
+async function lockEstimateInTx(
+  tx: Prisma.TransactionClient,
+  estimateId: string,
+) {
+  const rows = await tx.$queryRaw<Array<{ id: string }>>`
+    SELECT "id"
+    FROM "Estimate"
+    WHERE "id" = ${estimateId}
+    FOR UPDATE
+  `;
+  if (rows.length !== 1) {
+    throw new Error("Couldn't find that estimate.");
+  }
+  return tx.estimate.findUniqueOrThrow({ where: { id: estimateId } });
+}
 
 export type NewEstimateInput = {
   customerId: string;
@@ -63,7 +48,10 @@ export type NewEstimateInput = {
   validUntil?: Date | null;
 };
 
-export async function createEstimateDraft(userId: string, input: NewEstimateInput) {
+export async function createEstimateDraft(
+  userId: string,
+  input: NewEstimateInput,
+) {
   const estimate = await prisma.estimate.create({
     data: {
       customerId: input.customerId,
@@ -85,31 +73,17 @@ export async function createEstimateDraft(userId: string, input: NewEstimateInpu
       newValue: { customerId: input.customerId, title: input.title },
     },
   });
-
   return estimate;
 }
 
 export type NewEstimateForLeadInput = Omit<NewEstimateInput, "customerId">;
 
-/**
- * The "I don't have a customer or a lead for this yet" path
- * (2026-09-29, Chris's report). Creates a Lead first
- * (src/domains/leads' createLeadManually — same lightweight capture as
- * the standalone "Add a lead" page), then an Estimate tied to that lead
- * instead of a customer. The lead shows up in the ordinary /desk/leads
- * pipeline right away — sending this estimate doesn't hide it there.
- *
- * The estimate can still be built and sent with only a Lead behind it;
- * see approveEstimate for what happens once the customer actually says
- * yes.
- */
 export async function createEstimateDraftForNewLead(
   userId: string,
   leadInput: ManualLeadInput,
   estimateInput: NewEstimateForLeadInput,
 ) {
   const lead = await createLeadManually(userId, leadInput);
-
   const estimate = await prisma.estimate.create({
     data: {
       leadId: lead.id,
@@ -131,7 +105,6 @@ export async function createEstimateDraftForNewLead(
       newValue: { leadId: lead.id, title: estimateInput.title },
     },
   });
-
   return estimate;
 }
 
@@ -143,25 +116,27 @@ export type NewEstimateLineItemInput = {
   oneTimeFeeCents?: number;
 };
 
-/** Adds a line item to an estimate still being worked on (DRAFT, or
- * CHANGES_REQUESTED — a customer asked for changes and Chris is
- * revising it before re-sending). Any other status means it's already
- * out for a decision or settled, and editing it there would silently
- * change what a customer already saw/approved. */
 export async function addEstimateLineItem(
   userId: string,
   estimateId: string,
   input: NewEstimateLineItemInput,
 ) {
-  const estimate = await prisma.estimate.findUniqueOrThrow({ where: { id: estimateId } });
+  const estimate = await prisma.estimate.findUniqueOrThrow({
+    where: { id: estimateId },
+  });
   if (!EDITABLE_STATUSES.includes(estimate.status)) {
-    throw new Error("This estimate has already been sent — you can't edit its line items now.");
+    throw new Error(
+      "This estimate has already been sent — you can't edit its line items now.",
+    );
   }
-  if (input.quantity < 1) {
-    throw new Error("Quantity must be at least 1.");
-  }
-  if ((input.monthlyPriceCents ?? 0) === 0 && (input.oneTimeFeeCents ?? 0) === 0) {
-    throw new Error("Enter a monthly amount, a one-time fee, or both — not zero for everything.");
+  if (input.quantity < 1) throw new Error("Quantity must be at least 1.");
+  if (
+    (input.monthlyPriceCents ?? 0) === 0 &&
+    (input.oneTimeFeeCents ?? 0) === 0
+  ) {
+    throw new Error(
+      "Enter a monthly amount, a one-time fee, or both — not zero for everything.",
+    );
   }
 
   const line = await prisma.estimateLineItem.create({
@@ -174,7 +149,6 @@ export async function addEstimateLineItem(
       oneTimeFeeCents: input.oneTimeFeeCents ?? 0,
     },
   });
-
   await prisma.auditLog.create({
     data: {
       userId,
@@ -184,21 +158,23 @@ export async function addEstimateLineItem(
       newValue: { description: input.description, quantity: input.quantity },
     },
   });
-
   return line;
 }
 
-export async function removeEstimateLineItem(userId: string, lineItemId: string) {
+export async function removeEstimateLineItem(
+  userId: string,
+  lineItemId: string,
+) {
   const line = await prisma.estimateLineItem.findUniqueOrThrow({
     where: { id: lineItemId },
     include: { estimate: true },
   });
   if (!EDITABLE_STATUSES.includes(line.estimate.status)) {
-    throw new Error("This estimate has already been sent — you can't edit its line items now.");
+    throw new Error(
+      "This estimate has already been sent — you can't edit its line items now.",
+    );
   }
-
   await prisma.estimateLineItem.delete({ where: { id: lineItemId } });
-
   await prisma.auditLog.create({
     data: {
       userId,
@@ -218,16 +194,18 @@ export async function getEstimatesForCustomer(customerId: string) {
   });
 }
 
-/** Every estimate across every customer, newest first — feeds
- * /desk/estimates. Unpaginated for now, same call as this app's other
- * smaller lists (see docs/ROADMAP.md's pagination note) — fine at
- * today's size, worth revisiting once this list reaches the low
- * thousands. */
 export async function getAllEstimates() {
   return prisma.estimate.findMany({
     include: {
-      customer: { select: { companyName: true, user: { select: { name: true, email: true } } } },
-      lead: { select: { contactName: true, companyName: true, status: true } },
+      customer: {
+        select: {
+          companyName: true,
+          user: { select: { name: true, email: true } },
+        },
+      },
+      lead: {
+        select: { contactName: true, companyName: true, status: true },
+      },
       lineItems: true,
     },
     orderBy: [{ createdAt: "desc" }],
@@ -246,31 +224,52 @@ export async function getEstimateDetail(estimateId: string) {
           serviceAddresses: true,
         },
       },
-      lead: { select: { id: true, contactName: true, companyName: true, phone: true, status: true } },
-      lineItems: { include: { serviceAddress: true }, orderBy: [{ createdAt: "asc" }] },
-      createdAgreements: { select: { id: true, serviceAddressId: true, status: true } },
+      lead: {
+        select: {
+          id: true,
+          contactName: true,
+          companyName: true,
+          phone: true,
+          status: true,
+        },
+      },
+      lineItems: {
+        include: { serviceAddress: true },
+        orderBy: [{ createdAt: "asc" }],
+      },
+      createdAgreements: {
+        select: { id: true, serviceAddressId: true, status: true },
+      },
     },
   });
 }
 
-export function totalMonthlyCents(lineItems: { monthlyPriceCents: number; quantity: number }[]): number {
-  return lineItems.reduce((sum, l) => sum + l.monthlyPriceCents * l.quantity, 0);
-}
-export function totalOneTimeCents(lineItems: { oneTimeFeeCents: number; quantity: number }[]): number {
-  return lineItems.reduce((sum, l) => sum + l.oneTimeFeeCents * l.quantity, 0);
+export function totalMonthlyCents(
+  lineItems: { monthlyPriceCents: number; quantity: number }[],
+): number {
+  return lineItems.reduce(
+    (sum, line) => sum + line.monthlyPriceCents * line.quantity,
+    0,
+  );
 }
 
-/** Marks an estimate SENT and emails the customer a link to view and
- * approve it (reusing the same branded-email wrapper every other
- * transactional email in this app already uses — see src/lib/email.ts).
- * Requires at least one line item; an empty estimate has nothing for
- * the customer to actually approve. */
+export function totalOneTimeCents(
+  lineItems: { oneTimeFeeCents: number; quantity: number }[],
+): number {
+  return lineItems.reduce(
+    (sum, line) => sum + line.oneTimeFeeCents * line.quantity,
+    0,
+  );
+}
+
 export async function sendEstimate(userId: string, estimateId: string) {
   const estimate = await prisma.estimate.findUniqueOrThrow({
     where: { id: estimateId },
     include: {
       lineItems: true,
-      customer: { select: { user: { select: { name: true, email: true } } } },
+      customer: {
+        select: { user: { select: { name: true, email: true } } },
+      },
       lead: { select: { contactName: true, email: true } },
     },
   });
@@ -280,8 +279,7 @@ export async function sendEstimate(userId: string, estimateId: string) {
   if (estimate.lineItems.length === 0) {
     throw new Error("Add at least one line item before sending this estimate.");
   }
-  // Estimate.customer/lead: exactly one of customerId/leadId is set —
-  // see the Estimate model's own comment.
+
   const recipientEmail = estimate.customer?.user.email ?? estimate.lead?.email;
   const recipientName = estimate.customer
     ? (estimate.customer.user.name ?? estimate.customer.user.email)
@@ -308,16 +306,20 @@ export async function sendEstimate(userId: string, estimateId: string) {
   ]);
 
   const settings = await getBusinessSettings();
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://robinsonappliancerentals.com";
+  const appUrl =
+    process.env.NEXT_PUBLIC_APP_URL ?? "https://robinsonappliancerentals.com";
   const monthly = totalMonthlyCents(estimate.lineItems);
   const oneTime = totalOneTimeCents(estimate.lineItems);
-
   const parts = [
     `Hi${recipientName ? ` ${recipientName}` : ""},`,
     `${settings.publicBusinessName} has prepared estimate #${estimate.estimateNumber}${estimate.title ? ` (${estimate.title})` : ""} for you.`,
   ];
-  if (monthly > 0) parts.push(`Estimated recurring total: $${(monthly / 100).toFixed(2)}/month.`);
-  if (oneTime > 0) parts.push(`Estimated one-time charges: $${(oneTime / 100).toFixed(2)}.`);
+  if (monthly > 0) {
+    parts.push(`Estimated recurring total: $${(monthly / 100).toFixed(2)}/month.`);
+  }
+  if (oneTime > 0) {
+    parts.push(`Estimated one-time charges: $${(oneTime / 100).toFixed(2)}.`);
+  }
   if (estimate.clientMessage) parts.push(estimate.clientMessage);
   parts.push("Review the full details and let us know if it works for you:");
   parts.push(`${appUrl}/estimate/${estimate.id}`);
@@ -330,35 +332,22 @@ export async function sendEstimate(userId: string, estimateId: string) {
   });
 }
 
-const FOLLOW_UP_AFTER_DAYS = 3;
-// Same statuses sendEstimate can be called from, plus VIEWED — an
-// estimate the customer opened but never actually decided on is still
-// unanswered, same as one they never opened at all.
-const AWAITING_RESPONSE_STATUSES: EstimateStatus[] = ["SENT", "VIEWED"];
-
-/**
- * Sends a single "still interested?" follow-up email for every estimate
- * that's been sitting SENT/VIEWED for at least FOLLOW_UP_AFTER_DAYS with
- * no reminder already sent for its current sentAt (2026-09-29 — see
- * docs/ROADMAP.md's "Automatic follow-up on a sent-but-unanswered
- * estimate" entry). Reuses the exact reminder-email machinery/cadence
- * pattern src/domains/billing/reminders.ts already established for
- * billing reminders — driven by a daily cron
- * (src/app/api/cron/estimate-follow-ups, vercel.json), best-effort per
- * estimate so one failed email never blocks the rest, dedupe by
- * comparing followUpSentForSentAt against the estimate's own sentAt
- * (see that field's schema comment for why a re-send resets the cycle).
- */
-export async function sendEstimateFollowUpReminders(): Promise<{ sent: number; failed: number }> {
-  const cutoff = new Date(Date.now() - FOLLOW_UP_AFTER_DAYS * 24 * 60 * 60 * 1000);
-
+export async function sendEstimateFollowUpReminders(): Promise<{
+  sent: number;
+  failed: number;
+}> {
+  const cutoff = new Date(
+    Date.now() - FOLLOW_UP_AFTER_DAYS * 24 * 60 * 60 * 1000,
+  );
   const dueEstimates = await prisma.estimate.findMany({
     where: {
       status: { in: AWAITING_RESPONSE_STATUSES },
       sentAt: { not: null, lte: cutoff },
     },
     include: {
-      customer: { select: { user: { select: { name: true, email: true } } } },
+      customer: {
+        select: { user: { select: { name: true, email: true } } },
+      },
       lead: { select: { contactName: true, email: true } },
     },
   });
@@ -366,19 +355,21 @@ export async function sendEstimateFollowUpReminders(): Promise<{ sent: number; f
   let sent = 0;
   let failed = 0;
   const settings = await getBusinessSettings();
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://robinsonappliancerentals.com";
+  const appUrl =
+    process.env.NEXT_PUBLIC_APP_URL ?? "https://robinsonappliancerentals.com";
 
   for (const estimate of dueEstimates) {
-    if (!estimate.sentAt) continue; // satisfies TS — the query above already guarantees this
-    const alreadySentForThisCycle =
-      estimate.followUpSentForSentAt?.getTime() === estimate.sentAt.getTime();
-    if (alreadySentForThisCycle) continue;
-
+    if (!estimate.sentAt) continue;
+    if (
+      estimate.followUpSentForSentAt?.getTime() === estimate.sentAt.getTime()
+    ) {
+      continue;
+    }
     const recipientEmail = estimate.customer?.user.email ?? estimate.lead?.email;
     const recipientName = estimate.customer
       ? (estimate.customer.user.name ?? estimate.customer.user.email)
       : estimate.lead?.contactName;
-    if (!recipientEmail) continue; // shouldn't happen — sendEstimate already required one before this could be SENT
+    if (!recipientEmail) continue;
 
     try {
       await sendEmail({
@@ -399,39 +390,61 @@ export async function sendEstimateFollowUpReminders(): Promise<{ sent: number; f
       });
       sent += 1;
     } catch (error) {
-      console.error("[estimates] Failed to send follow-up reminder", estimate.id, error);
+      console.error(
+        "[estimates] Failed to send follow-up reminder",
+        estimate.id,
+        error,
+      );
       failed += 1;
     }
   }
-
   return { sent, failed };
 }
 
-/** Loads what the public /estimate/[id] page needs. Viewable any time
- * after it's been sent — including after a final decision — so the
- * link always shows the estimate's current, real status rather than
- * going dead the moment something happens. Marks it VIEWED (once) the
- * first time it's actually opened after being sent, same spirit as
- * SignatureRecord's own read-tracking. */
-export async function getEstimateForApproval(id: string) {
-  const estimate = await prisma.estimate.findUnique({
+async function loadPublicEstimate(id: string) {
+  return prisma.estimate.findUnique({
     where: { id },
     include: {
-      customer: { select: { companyName: true, user: { select: { name: true, email: true } } } },
+      customer: {
+        select: {
+          companyName: true,
+          user: { select: { name: true, email: true } },
+        },
+      },
       lead: { select: { contactName: true, companyName: true } },
-      lineItems: { include: { serviceAddress: true }, orderBy: [{ createdAt: "asc" }] },
+      lineItems: {
+        include: { serviceAddress: true },
+        orderBy: [{ createdAt: "asc" }],
+      },
     },
   });
-  if (!estimate || !PUBLICLY_VIEWABLE_STATUSES.includes(estimate.status)) return null;
+}
 
-  if (estimate.status === "SENT") {
-    await prisma.estimate.update({
-      where: { id },
-      data: { status: "VIEWED", viewedAt: new Date() },
-    });
-    return { ...estimate, status: "VIEWED" as EstimateStatus, viewedAt: new Date() };
+/**
+ * Viewing is a one-way SENT -> VIEWED compare-and-set. If approval or a
+ * change request wins the race first, this call re-reads and returns that
+ * newer state instead of overwriting the terminal response with VIEWED.
+ */
+export async function getEstimateForApproval(id: string) {
+  const estimate = await loadPublicEstimate(id);
+  if (!estimate || !PUBLICLY_VIEWABLE_STATUSES.includes(estimate.status)) {
+    return null;
   }
 
+  if (estimate.status === "SENT") {
+    const viewedAt = new Date();
+    const claimed = await prisma.estimate.updateMany({
+      where: { id, status: "SENT" },
+      data: { status: "VIEWED", viewedAt },
+    });
+    if (claimed.count === 1) {
+      return { ...estimate, status: "VIEWED" as EstimateStatus, viewedAt };
+    }
+    const current = await loadPublicEstimate(id);
+    return current && PUBLICLY_VIEWABLE_STATUSES.includes(current.status)
+      ? current
+      : null;
+  }
   return estimate;
 }
 
@@ -441,92 +454,81 @@ export type ApproveEstimateInput = {
   ipAddress: string | null;
 };
 
-/** The customer's own approval action — no login required, gated
- * entirely by having the unguessable estimate link (see the file
- * comment at the top). Only SENT/VIEWED can be approved: not DRAFT (not
- * sent yet), and not already APPROVED/DECLINED/CONVERTED (no re-deciding
- * through a stale tab).
- *
- * If this estimate started from a Lead (no customerId yet), approving
- * it is the trigger that turns them into a real Customer — right here,
- * not at "sent" or "delivery." Chris's own instinct (2026-09-29,
- * discussed at length) was to wait for an actual payment or a
- * completed delivery, but neither of those is technically possible
- * before an account exists: signing an agreement and collecting money
- * through Stripe both require a real Customer row (and its own Stripe
- * customer) to exist first — there's no way to charge someone who
- * isn't one yet. Approval is the earliest point that's both possible
- * and honest: it's the customer's own clear "yes," typed by them, not
- * Chris guessing. Nothing about WHEN money actually moves changes —
- * the resulting agreement still isn't signed automatically, a deposit
- * still isn't charged until it's actually signed (the existing
- * Checkout flow), and recurring billing still doesn't start until
- * their delivery job is marked completed, exactly as for every other
- * customer. Becoming a "Customer" here just means the account/plumbing
- * needed for that later flow now exists — not that anything has been
- * charged or delivered yet.
+/**
+ * Approval, any lead -> customer conversion, and the estimate's terminal
+ * response are one transaction under an Estimate row lock. Approval and
+ * request-changes can no longer both succeed from overlapping stale tabs.
  */
-export async function approveEstimate(id: string, input: ApproveEstimateInput) {
-  const estimate = await prisma.estimate.findUniqueOrThrow({ where: { id } });
-  if (estimate.status !== "SENT" && estimate.status !== "VIEWED") {
-    throw new Error("This estimate isn't available to approve right now.");
-  }
-
-  let customerId = estimate.customerId;
-
-  if (!customerId && estimate.leadId) {
-    const lead = await prisma.lead.findUniqueOrThrow({ where: { id: estimate.leadId } });
-    if (lead.status === "CONVERTED" && lead.convertedCustomerId) {
-      // Already converted from a different estimate/action in the
-      // meantime — reuse that customer rather than converting twice.
-      customerId = lead.convertedCustomerId;
-    } else {
-      if (!lead.email) {
-        // The lead was captured without an email (e.g. a quick
-        // phone-call entry) — the approver just gave us one right now,
-        // so use it. conversion needs an email to create the login.
-        await prisma.lead.update({
-          where: { id: lead.id },
-          data: { email: input.approverEmail },
-        });
-      }
-      const { customer } = await convertLeadToCustomer(null, lead.id);
-      customerId = customer.id;
+export async function approveEstimate(
+  id: string,
+  input: ApproveEstimateInput,
+) {
+  const result = await prisma.$transaction(async (tx) => {
+    const estimate = await lockEstimateInTx(tx, id);
+    if (!AWAITING_RESPONSE_STATUSES.includes(estimate.status)) {
+      throw new Error("This estimate isn't available to approve right now.");
     }
-  }
 
-  await prisma.estimate.update({
-    where: { id },
-    data: {
-      status: "APPROVED",
-      respondedAt: new Date(),
-      approverName: input.approverName,
-      approverEmail: input.approverEmail,
-      approverIpAddress: input.ipAddress,
-      customerId,
-    },
+    let customerId = estimate.customerId;
+    let activationEmail: string | null = null;
+
+    if (!customerId && estimate.leadId) {
+      const lead = await tx.lead.findUniqueOrThrow({
+        where: { id: estimate.leadId },
+      });
+      if (lead.status === "CONVERTED" && lead.convertedCustomerId) {
+        customerId = lead.convertedCustomerId;
+      } else {
+        const converted = await convertLeadToCustomerInTx(
+          tx,
+          null,
+          lead.id,
+          { emailOverride: lead.email ? undefined : input.approverEmail },
+        );
+        customerId = converted.customer.id;
+        if (converted.isNewAccount) activationEmail = converted.email;
+      }
+    }
+
+    await tx.estimate.update({
+      where: { id },
+      data: {
+        status: "APPROVED",
+        respondedAt: new Date(),
+        approverName: input.approverName,
+        approverEmail: input.approverEmail,
+        approverIpAddress: input.ipAddress,
+        customerId,
+      },
+    });
+
+    return { customerId, activationEmail };
   });
+
+  if (result.activationEmail) {
+    await sendCustomerActivationEmail(result.activationEmail);
+  }
 }
 
-/** The customer asking for changes instead of approving — same access
- * rule as approveEstimate. Leaves the estimate visible to Chris with
- * their message so he can revise the line items and re-send. */
 export async function requestEstimateChanges(id: string, message: string) {
-  const estimate = await prisma.estimate.findUniqueOrThrow({ where: { id } });
-  if (estimate.status !== "SENT" && estimate.status !== "VIEWED") {
-    throw new Error("This estimate isn't available to respond to right now.");
-  }
-  if (!message.trim()) {
+  const trimmed = message.trim();
+  if (!trimmed) {
     throw new Error("Let us know what you'd like changed.");
   }
 
-  await prisma.estimate.update({
-    where: { id },
-    data: {
-      status: "CHANGES_REQUESTED",
-      respondedAt: new Date(),
-      changesRequestedMessage: message.trim(),
-    },
+  await prisma.$transaction(async (tx) => {
+    const estimate = await lockEstimateInTx(tx, id);
+    if (!AWAITING_RESPONSE_STATUSES.includes(estimate.status)) {
+      throw new Error("This estimate isn't available to respond to right now.");
+    }
+    await tx.estimate.update({
+      where: { id },
+      data: {
+        status: "CHANGES_REQUESTED",
+        respondedAt: new Date(),
+        changesRequestedMessage: trimmed,
+      },
+    });
   });
 }
 
@@ -534,19 +536,11 @@ export type ConvertEstimateInput =
   | { mode: "single"; serviceAddressId: string }
   | { mode: "per-property" };
 
-/** Pure — no database access, directly unit-testable (see
- * tests/estimates.test.ts) — same reasoning as
- * canTransitionAgreementStatus in src/domains/agreements. Works out
- * which property address(es) the resulting agreement(s) should be
- * attached to; convertEstimateToAgreements below just loops over the
- * result and calls createDraftAgreement once per address. */
 export function resolveConversionAddresses(
   lineItems: { description: string; serviceAddressId: string | null }[],
   input: ConvertEstimateInput,
 ): string[] {
-  if (input.mode === "single") {
-    return [input.serviceAddressId];
-  }
+  if (input.mode === "single") return [input.serviceAddressId];
   const addressIds = new Set<string>();
   for (const line of lineItems) {
     if (!line.serviceAddressId) {
@@ -560,112 +554,95 @@ export function resolveConversionAddresses(
 }
 
 /**
- * Converts an APPROVED estimate into one or more DRAFT RentalAgreement
- * shells, using createDraftAgreement (the same function the ordinary
- * "new agreement" desk flow uses) so a converted estimate produces
- * agreements identical in shape to any other. Deliberately does NOT
- * add RentalLine/appliance assignments here — see the file comment at
- * the top for why: that step always needs Chris to pick real physical
- * appliances (src/domains/agreements's addRentalLine already enforces
- * this atomically), which an estimate's line items — pricing intent,
- * not inventory reservations — were never meant to bypass.
- *
- * "single": every line item's pricing rolls into one agreement,
- * attached to the one serviceAddressId given (the estimate's line
- * items may reference several properties or none — this mode ignores
- * that and puts it all on one address, e.g. the complex's own address
- * on file). "per-property": groups line items by their own
- * serviceAddressId into one agreement per distinct property — every
- * line item must have one set, or this throws rather than silently
- * dropping a line item's terms.
+ * APPROVED -> CONVERTED is now one locked database transaction. All draft
+ * agreements, source-estimate links, an applicable prepaid Deposit, the
+ * estimate transition and audit either commit together or roll back together.
+ * A retry after a committed conversion returns the already-created agreement
+ * IDs; concurrent conversions serialize on the Estimate row and cannot create
+ * duplicate shells.
  */
 export async function convertEstimateToAgreements(
   userId: string,
   estimateId: string,
   input: ConvertEstimateInput,
 ) {
-  const estimate = await prisma.estimate.findUniqueOrThrow({
-    where: { id: estimateId },
-    include: { lineItems: true },
-  });
-  if (estimate.status !== "APPROVED") {
-    throw new Error("Only an approved estimate can be converted.");
-  }
-  if (estimate.lineItems.length === 0) {
-    throw new Error("This estimate has no line items to convert.");
-  }
-  // Defensive only — approveEstimate always fills customerId in before
-  // an estimate can reach APPROVED (converting the lead behind it into
-  // a real customer first if it started from one). This should never
-  // actually be null here.
-  if (!estimate.customerId) {
-    throw new Error("This estimate isn't linked to a customer yet.");
-  }
+  const settings = await getBusinessSettings();
 
-  const serviceAddressIds = resolveConversionAddresses(estimate.lineItems, input);
+  return prisma.$transaction(async (tx) => {
+    const estimate = await lockEstimateInTx(tx, estimateId);
 
-  const createdAgreementIds: string[] = [];
-
-  // If this estimate's deposit was already collected when the customer
-  // approved it online (createDepositCheckoutSessionForEstimate, in
-  // src/domains/billing/checkout.ts — see docs/ROADMAP.md's "A deposit
-  // collected at the moment a quote/estimate is approved" entry), record
-  // it as a real Deposit on the resulting agreement right now, so signing
-  // Checkout later doesn't try to collect it a second time
-  // (createCheckoutSessionForAgreement skips a deposit line whenever a
-  // Deposit row already exists). Only applied when conversion produces
-  // exactly one agreement — a "per-property" conversion can produce
-  // several from this one estimate, and the one already-collected
-  // deposit has no honest single agreement to attach itself to, so in
-  // that case each agreement is left to collect its own deposit at
-  // signing, the ordinary way, and Chris reconciles the already-
-  // collected amount by hand (still visible on the estimate's own page).
-  const applyPrepaidDepositHere =
-    estimate.depositPaidAt !== null && serviceAddressIds.length === 1;
-
-  // The line items themselves aren't copied onto the new agreement here
-  // (see the function comment above) — they stay visible as reference
-  // on the estimate's own page (getEstimateDetail links back to every
-  // agreement it produced) for Chris to work from while adding real
-  // RentalLine(s) the normal way.
-  for (const serviceAddressId of serviceAddressIds) {
-    const agreement = await createDraftAgreement(userId, {
-      customerId: estimate.customerId,
-      serviceAddressId,
-      depositCents: estimate.depositCents,
-    });
-    await prisma.rentalAgreement.update({
-      where: { id: agreement.id },
-      data: { sourceEstimateId: estimate.id },
-    });
-
-    if (applyPrepaidDepositHere) {
-      await prisma.deposit.create({
-        data: {
-          agreementId: agreement.id,
-          amountCents: estimate.depositCents,
-          refundable: true,
-        },
+    if (estimate.status === "CONVERTED") {
+      const existing = await tx.rentalAgreement.findMany({
+        where: { sourceEstimateId: estimateId },
+        select: { id: true },
+        orderBy: [{ createdAt: "asc" }, { id: "asc" }],
       });
+      if (existing.length === 0) {
+        throw new Error(
+          "This estimate is marked converted but has no linked agreements. Review it before retrying.",
+        );
+      }
+      return existing.map((agreement) => agreement.id);
     }
 
-    createdAgreementIds.push(agreement.id);
-  }
+    if (estimate.status !== "APPROVED") {
+      throw new Error("Only an approved estimate can be converted.");
+    }
+    if (!estimate.customerId) {
+      throw new Error("This estimate isn't linked to a customer yet.");
+    }
 
-  await prisma.estimate.update({
-    where: { id: estimateId },
-    data: { status: "CONVERTED", convertedAt: new Date() },
+    const lineItems = await tx.estimateLineItem.findMany({
+      where: { estimateId },
+      orderBy: [{ createdAt: "asc" }],
+    });
+    if (lineItems.length === 0) {
+      throw new Error("This estimate has no line items to convert.");
+    }
+
+    const serviceAddressIds = resolveConversionAddresses(lineItems, input);
+    const applyPrepaidDepositHere =
+      estimate.depositPaidAt !== null && serviceAddressIds.length === 1;
+    const createdAgreementIds: string[] = [];
+
+    for (const serviceAddressId of serviceAddressIds) {
+      const agreement = await createDraftAgreementInTx(
+        tx,
+        userId,
+        {
+          customerId: estimate.customerId,
+          serviceAddressId,
+          depositCents: estimate.depositCents,
+        },
+        { sourceEstimateId: estimate.id, settings },
+      );
+
+      if (applyPrepaidDepositHere) {
+        await tx.deposit.create({
+          data: {
+            agreementId: agreement.id,
+            amountCents: estimate.depositCents,
+            refundable: true,
+          },
+        });
+      }
+      createdAgreementIds.push(agreement.id);
+    }
+
+    await tx.estimate.update({
+      where: { id: estimateId },
+      data: { status: "CONVERTED", convertedAt: new Date() },
+    });
+    await tx.auditLog.create({
+      data: {
+        userId,
+        action: "estimate.convert",
+        entityType: "Estimate",
+        entityId: estimateId,
+        newValue: { mode: input.mode, agreementIds: createdAgreementIds },
+      },
+    });
+
+    return createdAgreementIds;
   });
-
-  await prisma.auditLog.create({
-    data: {
-      userId,
-      action: "estimate.convert",
-      entityType: "Estimate",
-      entityId: estimateId,
-      newValue: { mode: input.mode, agreementIds: createdAgreementIds },
-    },
-  });
-
-  return createdAgreementIds;
 }

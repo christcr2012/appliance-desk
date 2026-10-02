@@ -13,17 +13,25 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const userFindUnique = vi.fn();
 const userUpdate = vi.fn();
+const userCreate = vi.fn();
+const hashPassword = vi.fn();
 const customerFindUnique = vi.fn();
 const customerCreate = vi.fn();
 const serviceAddressCreate = vi.fn();
 const auditLogCreate = vi.fn();
-const signUpEmail = vi.fn();
 const requestPasswordReset = vi.fn();
 
 const txCustomerFindUnique = vi.fn();
 
+// Account creation is now part of the business transaction: the user lookup,
+// credential user + account rows, customer, addresses and audit entry all
+// run on `tx`, so they commit or roll back together.
 function makeTx() {
   return {
+    user: {
+      findUnique: (...args: unknown[]) => userFindUnique(...args),
+      create: (...args: unknown[]) => userCreate(...args),
+    },
     customer: { create: customerCreate, findUnique: txCustomerFindUnique },
     serviceAddress: { create: serviceAddressCreate },
     auditLog: { create: auditLogCreate },
@@ -45,8 +53,10 @@ vi.mock("@/lib/prisma", () => ({
 
 vi.mock("@/lib/auth", () => ({
   auth: {
+    $context: Promise.resolve({
+      password: { hash: (...args: unknown[]) => hashPassword(...args) },
+    }),
     api: {
-      signUpEmail: (...args: unknown[]) => signUpEmail(...args),
       requestPasswordReset: (...args: unknown[]) => requestPasswordReset(...args),
     },
   },
@@ -86,7 +96,12 @@ describe("createCustomerDirectly — Chris adding a customer himself", () => {
       Promise.resolve({ id: `addr-${args.data.line1}`, ...args.data }),
     );
     auditLogCreate.mockReset().mockResolvedValue({});
-    signUpEmail.mockReset().mockResolvedValue({ user: { id: "user-1" } });
+    userCreate.mockReset().mockImplementation(async ({ data }) => ({
+      id: data.id,
+      email: data.email,
+      role: data.role,
+    }));
+    hashPassword.mockReset().mockResolvedValue("native-hash");
     requestPasswordReset.mockReset().mockImplementation(async ({ body }) => {
       await sendPasswordEmail({ to: body.email, subject: "Setup", text: "Setup" });
       return { status: true };
@@ -121,19 +136,33 @@ describe("createCustomerDirectly — Chris adding a customer himself", () => {
 
     const result = await createCustomerDirectly("owner-1", INPUT);
 
-    expect(signUpEmail).toHaveBeenCalledTimes(1);
-    const signUpArgs = signUpEmail.mock.calls[0][0];
-    expect(signUpArgs.body.email).toBe("pat@example.com");
-    expect(typeof signUpArgs.body.password).toBe("string");
-    expect(signUpArgs.body.password.length).toBeGreaterThan(20);
+    expect(hashPassword).toHaveBeenCalledTimes(1);
+    expect(typeof hashPassword.mock.calls[0][0]).toBe("string");
+    expect(hashPassword.mock.calls[0][0].length).toBeGreaterThan(20);
+    expect(userCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        email: "pat@example.com",
+        role: "CUSTOMER",
+        emailVerified: true,
+        accounts: {
+          create: expect.objectContaining({
+            providerId: "credential",
+            password: "native-hash",
+          }),
+        },
+      }),
+    });
     expect(result.isNewAccount).toBe(true);
     expect(result.activationEmailSent).toBe(true);
     expect(result).not.toHaveProperty("tempPassword");
   });
 
   it("refuses to add a customer on an email that already belongs to a customer account", async () => {
-    userFindUnique.mockResolvedValue({ id: "user-1", role: "CUSTOMER" });
-    customerFindUnique.mockResolvedValue({ id: "cust-existing" });
+    userFindUnique.mockResolvedValue({
+      id: "user-1",
+      role: "CUSTOMER",
+      customer: { id: "cust-existing" },
+    });
     const { createCustomerDirectly } = await import("@/domains/customers");
 
     await expect(createCustomerDirectly("owner-1", INPUT)).rejects.toThrow(
@@ -143,13 +172,13 @@ describe("createCustomerDirectly — Chris adding a customer himself", () => {
   });
 
   it("refuses to add a customer on an email that belongs to a staff (OWNER/ADMIN) account", async () => {
-    userFindUnique.mockResolvedValue({ id: "staff-1", role: "OWNER" });
+    userFindUnique.mockResolvedValue({ id: "staff-1", role: "OWNER", customer: null });
     const { createCustomerDirectly } = await import("@/domains/customers");
 
     await expect(createCustomerDirectly("owner-1", INPUT)).rejects.toThrow(
       /staff account/i,
     );
-    expect(signUpEmail).not.toHaveBeenCalled();
+    expect(userCreate).not.toHaveBeenCalled();
     expect(customerCreate).not.toHaveBeenCalled();
   });
 
@@ -164,5 +193,16 @@ describe("createCustomerDirectly — Chris adding a customer himself", () => {
     expect(auditArgs.action).toBe("customer.create");
     expect(auditArgs.newValue.addressCount).toBe(3);
     expect(auditArgs.newValue.isPropertyManager).toBe(true);
+  });
+
+  it("refuses an existing login with no customer record instead of silently adopting it", async () => {
+    userFindUnique.mockResolvedValue({ id: "user-2", role: "CUSTOMER", customer: null });
+    const { createCustomerDirectly } = await import("@/domains/customers");
+
+    await expect(createCustomerDirectly("owner-1", INPUT)).rejects.toThrow(
+      /unattached login/i,
+    );
+    expect(userCreate).not.toHaveBeenCalled();
+    expect(customerCreate).not.toHaveBeenCalled();
   });
 });

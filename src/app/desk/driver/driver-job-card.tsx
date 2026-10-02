@@ -4,7 +4,6 @@ import { formatBusinessTime } from "@/lib/business-date";
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import { updateJobStatusAction, addJobPhotoAction } from "../jobs/actions";
 import { PhotoUploadField } from "@/components/photo-upload-field";
 import type { JobStatus, JobType } from "@prisma/client";
@@ -167,13 +166,7 @@ export function DriverJobCard({ job }: { job: DriverJob }) {
       {showPhoto && (
         <div className="mt-3 flex items-center gap-3 border-t border-gray-100 pt-3">
           {photoUrl && (
-            <Image
-              src={photoUrl}
-              alt="Selected photo, not yet added"
-              width={64}
-              height={64}
-              className="h-16 w-16 rounded-md object-cover"
-            />
+            <span className="text-xs text-green-700">Photo uploaded securely.</span>
           )}
           <PhotoUploadField
             pathPrefix={`jobs/${job.id}`}

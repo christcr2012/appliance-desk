@@ -14,8 +14,16 @@ const customerCreditCreate = vi.fn();
 
 function makeTx() {
   return {
+    // Every owner-entered financial change first locks the customer row
+    // (SELECT ... FOR UPDATE), then reads invoices inside the same
+    // transaction. The lock returns no row when the customer is missing.
+    $queryRaw: async () => ((await customerFindUnique()) ? [{ id: "cust-1" }] : []),
     payment: { create: paymentCreate },
-    invoice: { update: invoiceUpdate },
+    invoice: {
+      findMany: (...args: unknown[]) => invoiceFindMany(...args),
+      findUnique: (...args: unknown[]) => invoiceFindUnique(...args),
+      update: invoiceUpdate,
+    },
     auditLog: { create: auditLogCreate },
     customerCredit: { create: customerCreditCreate },
   };
@@ -23,23 +31,9 @@ function makeTx() {
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
-    customer: {
-      findUnique: (...args: unknown[]) => customerFindUnique(...args),
-    },
-    invoice: {
-      findMany: (...args: unknown[]) => invoiceFindMany(...args),
-      findUnique: (...args: unknown[]) => invoiceFindUnique(...args),
-      update: (...args: unknown[]) => invoiceUpdate(...args),
-    },
-    auditLog: {
-      create: (...args: unknown[]) => auditLogCreate(...args),
-    },
-    // recordManualPayment uses the callback form ($transaction(async (tx) =>
-    // ...)); writeOffInvoice uses the array form ($transaction([...])),
-    // which runs each promise through the top-level mocks above instead of
-    // tx. Support both shapes here.
-    $transaction: (arg: ((tx: unknown) => unknown) | Promise<unknown>[]) =>
-      typeof arg === "function" ? arg(makeTx()) : Promise.all(arg),
+    // Both recordManualPayment and writeOffInvoice use the callback form so
+    // the ledger lock, balance reads and writes commit or roll back together.
+    $transaction: (fn: (tx: unknown) => unknown) => fn(makeTx()),
   },
 }));
 
@@ -176,7 +170,7 @@ describe("recordManualPayment", () => {
         customerId: "cust-1",
         status: { in: ["OPEN", "PARTIALLY_PAID", "DELINQUENT"] },
       },
-      orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
+      orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }, { id: "asc" }],
     });
   });
 
@@ -218,7 +212,7 @@ describe("recordManualPayment", () => {
         customerId: "cust-1",
         status: { in: ["OPEN", "PARTIALLY_PAID", "DELINQUENT"] },
       },
-      orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
+      orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }, { id: "asc" }],
     });
     expect(invoiceUpdate).not.toHaveBeenCalled();
   });
@@ -226,6 +220,7 @@ describe("recordManualPayment", () => {
 
 describe("writeOffInvoice", () => {
   beforeEach(() => {
+    customerFindUnique.mockReset().mockResolvedValue({ id: "cust-1" });
     invoiceFindUnique.mockReset();
     invoiceUpdate.mockReset().mockResolvedValue({});
     auditLogCreate.mockReset().mockResolvedValue({});

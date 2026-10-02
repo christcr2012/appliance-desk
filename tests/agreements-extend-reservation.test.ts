@@ -12,13 +12,23 @@ const update = vi.fn();
 const auditLogCreate = vi.fn();
 const getBusinessSettings = vi.fn();
 
-vi.mock("@/lib/prisma", () => ({
-  prisma: {
+// extendReservation now runs in one transaction that locks the agreement row
+// (FOR UPDATE) before checking its status, so the fake transaction needs the
+// lock query as well as the agreement and audit writes.
+function makeTx() {
+  return {
+    $queryRaw: async () => [{ id: "agr-1" }],
     rentalAgreement: {
       findUniqueOrThrow: (...args: unknown[]) => findUniqueOrThrow(...args),
       update: (...args: unknown[]) => update(...args),
     },
     auditLog: { create: (...args: unknown[]) => auditLogCreate(...args) },
+  };
+}
+
+vi.mock("@/lib/prisma", () => ({
+  prisma: {
+    $transaction: async (fn: (tx: unknown) => unknown) => fn(makeTx()),
   },
 }));
 

@@ -4,20 +4,14 @@ import { z } from "zod";
 import { getServerSession } from "@/lib/session";
 import { isNonProductionDeployment } from "@/lib/deployment-safety";
 import { canUploadPhoto } from "@/domains/uploads";
+import {
+  getPrivatePhotoStore,
+  getPublicPhotoWriteToken,
+  isPrivatePhotoPath,
+  isPublicPhotoPath,
+} from "@/lib/photo-storage";
 
-// Mints one-time upload tokens for every "add a photo" button in the app
-// — appliance-type photos and job condition photos in the desk
-// (OWNER/ADMIN), and, as of 2026-09-28, a customer's own photo on a
-// maintenance request they're submitting (src/app/account/maintenance).
-// The file itself goes straight from the phone/browser to Vercel Blob
-// storage — never through this server — this route only decides
-// *whether* to hand out a token at all, so a signed-out visitor can't use
-// it to fill the Blob store with junk. Tokens are scoped to the caller's
-// permitted record namespace; customers use their own maintenance folder,
-// staff use existing jobs and OWNER/ADMIN manage inventory/site photos. See
-// docs/DECISIONS.md (2026-09-28, "Photo uploads: camera/file picker
-// instead of pasting a URL").
-const MAX_UPLOAD_BYTES = 15 * 1024 * 1024; // 15MB — comfortably covers one phone photo
+const MAX_UPLOAD_BYTES = 15 * 1024 * 1024;
 const uploadBody = z.object({
   type: z.literal("blob.generate-client-token"),
   payload: z.object({
@@ -33,18 +27,6 @@ export async function POST(request: Request): Promise<NextResponse> {
     return NextResponse.json({ error: "Not signed in." }, { status: 401 });
   }
 
-  // Preview currently has no verified independent Blob store. Refuse
-  // token minting even if a production Blob credential was inherited.
-  if (isNonProductionDeployment()) {
-    return NextResponse.json(
-      {
-        error:
-          "Photo uploads are disabled in previews until separate storage is verified.",
-      },
-      { status: 503 },
-    );
-  }
-
   try {
     const parsed = uploadBody.safeParse(await request.json());
     if (!parsed.success) {
@@ -53,19 +35,68 @@ export async function POST(request: Request): Promise<NextResponse> {
         { status: 400 },
       );
     }
+
     const body = parsed.data;
-    if (!(await canUploadPhoto(session.user, body.payload.pathname))) {
+    const pathname = body.payload.pathname;
+
+    // Preserve the existing authorization contract: malformed, arbitrary and
+    // out-of-scope paths are denied before any provider/storage selection.
+    if (!(await canUploadPhoto(session.user, pathname))) {
       return NextResponse.json(
         { error: "You cannot upload a photo to this record." },
         { status: 403 },
       );
     }
+
+    const isPublic = isPublicPhotoPath(pathname);
+    const isPrivate = isPrivatePhotoPath(pathname);
+    if (!isPublic && !isPrivate) {
+      return NextResponse.json(
+        { error: "Invalid photo storage namespace." },
+        { status: 400 },
+      );
+    }
+
+    let token: string | null;
+    if (isPublic) {
+      // The production catalog-photo store is deliberately connected only to
+      // Production. Never let a preview inherit/use that credential.
+      if (isNonProductionDeployment()) {
+        return NextResponse.json(
+          {
+            error:
+              "Public catalog photo uploads are disabled outside production.",
+          },
+          { status: 503 },
+        );
+      }
+      token = getPublicPhotoWriteToken();
+    } else {
+      // Operational/customer evidence must never fall back to the public Blob
+      // credential. Preview uses its already-verified independent private
+      // store; production requires an explicitly configured private store.
+      token = getPrivatePhotoStore()?.token ?? null;
+    }
+
+    if (!token) {
+      return NextResponse.json(
+        {
+          error: isPrivate
+            ? "Private photo storage is not configured for this environment."
+            : "Photo storage is not configured for this environment.",
+        },
+        { status: 503 },
+      );
+    }
+
     const jsonResponse = await handleUpload({
       body,
       request,
-      onBeforeGenerateToken: async (pathname) => {
-        if (pathname !== body.payload.pathname)
+      token,
+      onBeforeGenerateToken: async (requestedPathname) => {
+        if (requestedPathname !== pathname) {
           throw new Error("Upload path changed.");
+        }
         return {
           allowedContentTypes: [
             "image/jpeg",

@@ -6,10 +6,7 @@ import { approveEstimate, requestEstimateChanges } from "@/domains/estimates";
 import { createDepositCheckoutSessionForEstimate } from "@/domains/billing/checkout";
 import { isRateLimited } from "@/lib/rate-limit";
 
-// Same threat model and pattern as src/app/sign/[id]/actions.ts: a
-// public, unauthenticated POST, gated by possession of the unguessable
-// link rather than a login, so it gets the same per-IP throttle.
-const RATE_LIMIT = { max: 10, windowMs: 10 * 60 * 1000 }; // 10 attempts / 10 min / IP
+const RATE_LIMIT = { max: 10, windowMs: 10 * 60 * 1000 };
 
 export type EstimateResponseState =
   | { status: "idle" }
@@ -45,7 +42,12 @@ export async function approveEstimateAction(
   }
 
   const ipAddress = await getIp();
-  if (isRateLimited(`estimate-respond:${ipAddress ?? "unknown"}`, RATE_LIMIT)) {
+  if (
+    await isRateLimited(
+      `estimate-respond:${ipAddress ?? "unknown"}`,
+      RATE_LIMIT,
+    )
+  ) {
     return {
       status: "error",
       message: "Too many attempts from this connection recently — please wait a few minutes and try again.",
@@ -58,12 +60,6 @@ export async function approveEstimateAction(
       approverEmail: parsed.data.approverEmail,
       ipAddress,
     });
-    // If this estimate has a deposit, collect it right now (2026-09-29 —
-    // see docs/ROADMAP.md's "A deposit collected at the moment a
-    // quote/estimate is approved" entry) rather than waiting until the
-    // resulting agreement is signed later. Returns null when there's
-    // nothing to collect (no deposit on this estimate), in which case
-    // approval is simply done.
     const checkoutUrl = await createDepositCheckoutSessionForEstimate(estimateId);
     if (checkoutUrl) {
       return { status: "redirecting", url: checkoutUrl };
@@ -77,16 +73,16 @@ export async function approveEstimateAction(
   }
 }
 
-/** Re-triggers the deposit Checkout Session for an estimate that's
- * already APPROVED but whose deposit wasn't collected yet — covers a
- * customer who cancelled out of Stripe Checkout the first time (landed
- * back on cancel_url) and wants to try again from the public estimate
- * page (src/app/estimate/[id]/page.tsx's "Pay deposit" prompt). */
 export async function payEstimateDepositAction(
   estimateId: string,
 ): Promise<EstimateResponseState> {
   const ipAddress = await getIp();
-  if (isRateLimited(`estimate-respond:${ipAddress ?? "unknown"}`, RATE_LIMIT)) {
+  if (
+    await isRateLimited(
+      `estimate-respond:${ipAddress ?? "unknown"}`,
+      RATE_LIMIT,
+    )
+  ) {
     return {
       status: "error",
       message: "Too many attempts from this connection recently — please wait a few minutes and try again.",
@@ -96,7 +92,7 @@ export async function payEstimateDepositAction(
   try {
     const checkoutUrl = await createDepositCheckoutSessionForEstimate(estimateId);
     if (!checkoutUrl) {
-      return { status: "approved" }; // already paid, or nothing to collect
+      return { status: "approved" };
     }
     return { status: "redirecting", url: checkoutUrl };
   } catch (error) {
@@ -124,7 +120,12 @@ export async function requestEstimateChangesAction(
   }
 
   const ipAddress = await getIp();
-  if (isRateLimited(`estimate-respond:${ipAddress ?? "unknown"}`, RATE_LIMIT)) {
+  if (
+    await isRateLimited(
+      `estimate-respond:${ipAddress ?? "unknown"}`,
+      RATE_LIMIT,
+    )
+  ) {
     return {
       status: "error",
       message: "Too many attempts from this connection recently — please wait a few minutes and try again.",

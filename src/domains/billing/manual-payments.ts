@@ -1,4 +1,4 @@
-import type { InvoiceStatus } from "@prisma/client";
+import type { InvoiceStatus, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 // ---------------------------------------------------------------------------
@@ -44,6 +44,28 @@ function nextInvoiceStatus(amountDueCents: number, amountPaidCents: number): Inv
 }
 
 /**
+ * Serialize every owner-entered financial mutation for one customer before
+ * reading invoice balances. A customer row is the natural aggregate lock:
+ * one combined offline payment can span several invoices, so locking only
+ * one invoice would still allow two allocators to read different stale
+ * snapshots of the same customer's open balance.
+ *
+ * All callers that compete with manual allocation (currently payment entry
+ * and write-off below) take this lock first, then read/revalidate invoices.
+ */
+async function lockCustomerLedger(tx: Prisma.TransactionClient, customerId: string) {
+  const rows = await tx.$queryRaw<Array<{ id: string }>>`
+    SELECT "id"
+    FROM "Customer"
+    WHERE "id" = ${customerId}
+    FOR UPDATE
+  `;
+  if (rows.length !== 1) {
+    throw new Error("Couldn't find that customer.");
+  }
+}
+
+/**
  * Records a payment Chris took outside Stripe and applies it to the
  * customer's open balance. With no invoiceId, spreads the amount across
  * every OPEN/PARTIALLY_PAID/DELINQUENT invoice for that customer,
@@ -53,10 +75,10 @@ function nextInvoiceStatus(amountDueCents: number, amountPaidCents: number): Inv
  * CustomerCredit (the same model referral rewards already use), so an
  * overpayment is never silently lost or left unaccounted for.
  *
- * Refuses zero/negative amounts and a request that names an invoice
- * belonging to a different customer. Never touches Stripe — this is
- * purely our own ledger catching up to money that already changed hands
- * by some other means.
+ * The customer ledger row is locked before invoice balances are read. Two
+ * simultaneous manual-payment requests therefore cannot both calculate from
+ * the same stale amountPaidCents and later overwrite each other's invoice
+ * balance while still leaving two succeeded Payment rows.
  */
 export async function recordManualPayment(
   customerId: string,
@@ -67,36 +89,35 @@ export async function recordManualPayment(
     throw new Error("Enter a payment amount greater than $0.");
   }
 
-  const customer = await prisma.customer.findUnique({ where: { id: customerId } });
-  if (!customer) {
-    throw new Error("Couldn't find that customer.");
-  }
-
-  // Same open-invoice statuses required whether a specific invoice was
-  // picked or the payment is spreading across everything open (2026-09-29
-  // audit fix) — without this filter here too, naming a WRITTEN_OFF (or
-  // already-PAID) invoice's id directly would silently apply money to it
-  // and flip its status back to OPEN/PARTIALLY_PAID/PAID, resurrecting an
-  // invoice Chris had deliberately written off. The desk UI's own invoice
-  // picker already excludes those, so this wasn't reachable through normal
-  // use, but this function shouldn't rely on the UI to enforce that.
-  const targetInvoices = await prisma.invoice.findMany({
-    where: input.invoiceId
-      ? { id: input.invoiceId, customerId, status: { in: ["OPEN", "PARTIALLY_PAID", "DELINQUENT"] } }
-      : { customerId, status: { in: ["OPEN", "PARTIALLY_PAID", "DELINQUENT"] } },
-    orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
-  });
-
-  if (input.invoiceId && targetInvoices.length === 0) {
-    throw new Error(
-      "That invoice isn't open — it may already be paid or written off, or belongs to a different customer.",
-    );
-  }
-
   let remainingCents = input.amountCents;
   const invoicesTouched: ManualPaymentResult["invoicesTouched"] = [];
 
   await prisma.$transaction(async (tx) => {
+    await lockCustomerLedger(tx, customerId);
+
+    // Read only after the aggregate lock is held. The same open-invoice
+    // statuses are required whether a specific invoice was picked or the
+    // payment is spreading across everything open.
+    const targetInvoices = await tx.invoice.findMany({
+      where: input.invoiceId
+        ? {
+            id: input.invoiceId,
+            customerId,
+            status: { in: ["OPEN", "PARTIALLY_PAID", "DELINQUENT"] },
+          }
+        : {
+            customerId,
+            status: { in: ["OPEN", "PARTIALLY_PAID", "DELINQUENT"] },
+          },
+      orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }, { id: "asc" }],
+    });
+
+    if (input.invoiceId && targetInvoices.length === 0) {
+      throw new Error(
+        "That invoice isn't open — it may already be paid or written off, or belongs to a different customer.",
+      );
+    }
+
     for (const invoice of targetInvoices) {
       if (remainingCents <= 0) break;
       const owedCents = Math.max(0, invoice.amountDueCents - invoice.amountPaidCents);
@@ -113,9 +134,10 @@ export async function recordManualPayment(
           method: input.method,
           status: "succeeded",
           recordedByUserId: actingUserId,
-          notes: [input.reference ? `Ref: ${input.reference}` : null, input.notes || null]
-            .filter(Boolean)
-            .join(" — ") || null,
+          notes:
+            [input.reference ? `Ref: ${input.reference}` : null, input.notes || null]
+              .filter(Boolean)
+              .join(" — ") || null,
         },
       });
 
@@ -130,7 +152,11 @@ export async function recordManualPayment(
           action: "billing.manual_payment",
           entityType: "Invoice",
           entityId: invoice.id,
-          newValue: { amountCents: appliedCents, method: input.method, reference: input.reference ?? null },
+          newValue: {
+            amountCents: appliedCents,
+            method: input.method,
+            reference: input.reference ?? null,
+          },
         },
       });
 
@@ -145,9 +171,7 @@ export async function recordManualPayment(
 
     // Leftover beyond every open invoice — an overpayment, not an error.
     // Recorded as a CustomerCredit so it's visible on the customer's own
-    // page (src/app/desk/customers/[id]/page.tsx already renders
-    // customer.credits) and available to apply toward whatever they owe
-    // next, the same way a referral reward already works.
+    // page and available to apply toward whatever they owe next.
     if (remainingCents > 0) {
       await tx.customerCredit.create({
         data: {
@@ -172,36 +196,49 @@ export async function recordManualPayment(
 }
 
 /**
- * Marks an invoice uncollectible — a dispute Chris isn't going to win, a
- * long-gone tenant, a bad debt he's decided to eat rather than keep
- * chasing. Sets Invoice.status to WRITTEN_OFF (already in the schema's
- * InvoiceStatus enum, unused before this) and records why, so it drops
- * out of the DELINQUENT/PAST_DUE_INVOICE exception without pretending it
- * was actually paid. Refuses an invoice that's already fully paid or
- * already written off — there's nothing to write off in either case.
+ * Marks an invoice uncollectible. It uses the same customer-ledger lock as
+ * manual payment allocation and re-reads the invoice after acquiring that
+ * lock. Payment vs write-off therefore has a deterministic serialized order:
+ * the second operation sees the first operation's committed balance/status
+ * rather than acting on a stale pre-lock snapshot.
  */
 export async function writeOffInvoice(
   invoiceId: string,
   actingUserId: string,
   reason: string,
 ): Promise<void> {
-  const invoice = await prisma.invoice.findUnique({ where: { id: invoiceId } });
-  if (!invoice) {
-    throw new Error("Couldn't find that invoice.");
-  }
-  if (invoice.status === "PAID") {
-    throw new Error("This invoice is already fully paid — nothing to write off.");
-  }
-  if (invoice.status === "WRITTEN_OFF") {
-    throw new Error("This invoice is already written off.");
-  }
-
-  await prisma.$transaction([
-    prisma.invoice.update({
+  await prisma.$transaction(async (tx) => {
+    const beforeLock = await tx.invoice.findUnique({
       where: { id: invoiceId },
-      data: { status: "WRITTEN_OFF", writtenOffAt: new Date(), writtenOffReason: reason },
-    }),
-    prisma.auditLog.create({
+      select: { customerId: true },
+    });
+    if (!beforeLock) {
+      throw new Error("Couldn't find that invoice.");
+    }
+
+    await lockCustomerLedger(tx, beforeLock.customerId);
+
+    const invoice = await tx.invoice.findUnique({ where: { id: invoiceId } });
+    if (!invoice) {
+      throw new Error("Couldn't find that invoice.");
+    }
+    if (invoice.status === "PAID") {
+      throw new Error("This invoice is already fully paid — nothing to write off.");
+    }
+    if (invoice.status === "WRITTEN_OFF") {
+      throw new Error("This invoice is already written off.");
+    }
+
+    await tx.invoice.update({
+      where: { id: invoiceId },
+      data: {
+        status: "WRITTEN_OFF",
+        writtenOffAt: new Date(),
+        writtenOffReason: reason,
+      },
+    });
+
+    await tx.auditLog.create({
       data: {
         userId: actingUserId,
         action: "billing.invoice_written_off",
@@ -209,6 +246,6 @@ export async function writeOffInvoice(
         entityId: invoiceId,
         newValue: { reason },
       },
-    }),
-  ]);
+    });
+  });
 }

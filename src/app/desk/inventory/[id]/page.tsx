@@ -14,6 +14,7 @@ import { PartsSection } from "./parts-section";
 import { GuidedActionsPanel } from "./guided-actions-panel";
 import { HistoryTimeline } from "./history-timeline";
 import { ApplianceEarningsSummary } from "@/components/desk/appliance-earnings-summary";
+import { privatePhotoReadPath } from "@/lib/photo-storage";
 
 export const metadata = { title: "Appliance" };
 
@@ -71,7 +72,15 @@ export default async function ApplianceDetailPage({
           status={appliance.status}
           inspectionChecklist={inspectionChecklist}
         />
-        <ApplianceDetailPanel appliance={appliance} />
+        <ApplianceDetailPanel
+          appliance={{
+            ...appliance,
+            photos: appliance.photos.map((photo) => ({
+              ...photo,
+              url: privatePhotoReadPath(photo.id),
+            })),
+          }}
+        />
         <PartsSection
           modelNumber={appliance.model}
           manufacturer={appliance.manufacturer}

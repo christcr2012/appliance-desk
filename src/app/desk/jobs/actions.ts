@@ -12,6 +12,7 @@ import {
   updateJobChecklist,
 } from "@/domains/jobs";
 import { updateApplianceStatus } from "@/domains/inventory";
+import { updateApplianceStatusAsTeamActor } from "@/domains/inventory/guarded-status";
 import type { JobStatus, JobType, ApplianceStatus } from "@prisma/client";
 import { ALL_APPLIANCE_STATUSES } from "@/domains/inventory/lifecycle";
 
@@ -96,10 +97,6 @@ export async function updateJobStatusAction(
   status: string,
   completionNotes?: string,
 ): Promise<JobActionState> {
-  // Staff (e.g. a driver marking a shared team visit started/delivered) can do
-  // this too — see docs/DECISIONS.md, 2026-09-28 "Staff permissions
-  // framework". Setting a job's REPAIR COST stays OWNER/ADMIN only
-  // (below) since that's financial, not operational.
   const session = await requireRole("OWNER", "ADMIN", "STAFF");
 
   if (!ALL_JOB_STATUSES.includes(status as JobStatus)) {
@@ -107,7 +104,12 @@ export async function updateJobStatusAction(
   }
 
   try {
-    await updateJobStatus(session.user.id, jobId, status as JobStatus, completionNotes);
+    await updateJobStatus(
+      session.user.id,
+      jobId,
+      status as JobStatus,
+      completionNotes,
+    );
   } catch (error) {
     return {
       status: "error",
@@ -131,24 +133,29 @@ export async function addJobPhotoAction(
   jobId: string,
   raw: Record<string, unknown>,
 ): Promise<JobActionState> {
-  // Staff too — condition photos are usually taken by whoever's actually
-  // on site (see docs/DECISIONS.md, 2026-09-28 "Staff permissions
-  // framework").
   const session = await requireRole("OWNER", "ADMIN", "STAFF");
 
   const parsed = photoSchema.safeParse(raw);
   if (!parsed.success) {
     return {
       status: "error",
-      message: parsed.error.issues[0]?.message ?? "Please fix the highlighted fields.",
+      message:
+        parsed.error.issues[0]?.message ?? "Please fix the highlighted fields.",
     };
   }
   const data = parsed.data;
 
-  await addJobPhoto(session.user.id, jobId, {
-    url: data.url,
-    altText: data.altText || null,
-  });
+  try {
+    await addJobPhoto(session.user.id, jobId, {
+      url: data.url,
+      altText: data.altText || null,
+    });
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Couldn't add that photo.",
+    };
+  }
 
   revalidatePath(`/desk/jobs/${jobId}`);
   return { status: "success" };
@@ -159,11 +166,6 @@ const repairCostSchema = z.object({
   laborCostDollars: z.string().trim().optional().or(z.literal("")),
 });
 
-/** Dollars in from the form, cents out to the database — same pattern as
- * every other money field in this app (docs/DESIGN-SYSTEM.md's
- * dollars-in/cents-out convention). An empty field means "not entered,"
- * not "$0" — left null rather than defaulted, so a repair with an unknown
- * cost doesn't silently show as free in the profitability numbers. */
 function dollarsToCentsOrNull(raw: string | undefined): number | null {
   if (!raw || raw.trim() === "") return null;
   const dollars = Number(raw);
@@ -181,14 +183,23 @@ export async function setJobRepairCostsAction(
   if (!parsed.success) {
     return {
       status: "error",
-      message: parsed.error.issues[0]?.message ?? "Please fix the highlighted fields.",
+      message:
+        parsed.error.issues[0]?.message ?? "Please fix the highlighted fields.",
     };
   }
 
-  await setJobRepairCosts(session.user.id, jobId, {
-    partsCostCents: dollarsToCentsOrNull(parsed.data.partsCostDollars),
-    laborCostCents: dollarsToCentsOrNull(parsed.data.laborCostDollars),
-  });
+  try {
+    await setJobRepairCosts(session.user.id, jobId, {
+      partsCostCents: dollarsToCentsOrNull(parsed.data.partsCostDollars),
+      laborCostCents: dollarsToCentsOrNull(parsed.data.laborCostDollars),
+    });
+  } catch (error) {
+    return {
+      status: "error",
+      message:
+        error instanceof Error ? error.message : "Couldn't update repair costs.",
+    };
+  }
 
   revalidatePath(`/desk/jobs/${jobId}`);
   revalidatePath("/desk/fleet");
@@ -196,13 +207,6 @@ export async function setJobRepairCostsAction(
   return { status: "success" };
 }
 
-/** The one-click "update this appliance's status" suggestion shown on a
- * completed job's own page (workflow-continuity fix, 2026-09-27 — Chris
- * pointed out actions in this app tend to dead-end instead of pointing at
- * the obvious next step). Goes through the exact same
- * updateApplianceStatus used everywhere else, so the same allowed-
- * transition rules and audit logging apply — this is a shortcut to an
- * existing action, never a separate path. */
 export async function updateApplianceStatusFromJobAction(
   applianceId: string,
   status: string,
@@ -216,17 +220,35 @@ export async function updateApplianceStatusFromJobAction(
 
   try {
     if (session.user.role === "STAFF") {
-      if (!jobId || !await prisma.jobAppliance.findFirst({
-        where: { jobId, applianceId }, select: { id: true },
-      })) {
-        return { status: "error", message: "This appliance is not linked to the originating job." };
+      if (
+        !jobId ||
+        !(await prisma.jobAppliance.findFirst({
+          where: { jobId, applianceId },
+          select: { id: true },
+        }))
+      ) {
+        return {
+          status: "error",
+          message: "This appliance is not linked to the originating job.",
+        };
       }
+      await updateApplianceStatusAsTeamActor(
+        session.user.id,
+        applianceId,
+        status as ApplianceStatus,
+      );
+    } else {
+      await updateApplianceStatus(
+        session.user.id,
+        applianceId,
+        status as ApplianceStatus,
+      );
     }
-    await updateApplianceStatus(session.user.id, applianceId, status as ApplianceStatus);
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Couldn't update that appliance.",
+      message:
+        error instanceof Error ? error.message : "Couldn't update that appliance.",
     };
   }
 
@@ -243,24 +265,32 @@ const checklistItemSchema = z.object({
   checked: z.boolean(),
 });
 
-/** Saves Chris's progress on a job's completion checklist — see
- * src/domains/jobs/checklist.ts. Purely a field-work aid, so this is
- * deliberately lightweight: no status check, just "this is what's
- * checked now." */
 export async function updateJobChecklistAction(
   jobId: string,
   checklist: unknown,
 ): Promise<JobActionState> {
-  await requireRole("OWNER", "ADMIN", "STAFF");
+  const session = await requireRole("OWNER", "ADMIN", "STAFF");
 
   const parsed = z.array(checklistItemSchema).safeParse(checklist);
   if (!parsed.success) {
-    return { status: "error", message: "That checklist wasn't in a format we could save." };
+    return {
+      status: "error",
+      message: "That checklist wasn't in a format we could save.",
+    };
   }
 
-  await updateJobChecklist(jobId, parsed.data);
+  try {
+    await updateJobChecklist(session.user.id, jobId, parsed.data);
+  } catch (error) {
+    return {
+      status: "error",
+      message:
+        error instanceof Error ? error.message : "Couldn't update that checklist.",
+    };
+  }
 
   revalidatePath(`/desk/jobs/${jobId}`);
   revalidatePath("/desk/dispatch");
+  revalidatePath("/desk/activity");
   return { status: "success" };
 }

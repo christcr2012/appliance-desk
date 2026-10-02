@@ -1,4 +1,25 @@
-## Batch 1 integrated implementation — pending CI/preview acceptance
+## Batch A (PR #136) CI repair — 2026-10-02, pending CI on the pushed head
+
+CI on audit-remediation/batch-a-critical-integrity was failing for two reasons,
+neither a product defect. (1) 31 unit tests across 10 files still faked the
+database the old way; Batch A moved those writes into transactions that lock a
+row first and re-check the acting staff member, so the fakes now provide the
+lock query, the same `tx` calls and a `$transaction` callback (agreement draft/
+extend/reservation/sign, manual payments and write-offs, customer creation, lead
+conversion, job creation and checklist saves). Added coverage for the refusals
+those paths now enforce (unattached login not adopted; deactivated staff blocked).
+(2) e2e/session-deactivation.spec.ts created its customer through the public
+sign-up endpoint that Batch A deliberately closed; it now uses
+scripts/create-ci-login.ts (real trusted provisioning, CI throwaway DB only).
+Sign-up stays disabled. GitHub shows only the first 10 errors per step, which hid
+the real count.
+
+Verified locally against a throwaway Postgres 16 using the approved Prisma
+workaround (AGENTS.md): full `vitest run` 148 files / 983 tests pass. Not run
+locally and still pending CI: build, browser/axe suite (including the changed
+session-deactivation spec), migration-upgrade drills. No application source
+changed in this repair. Audit registers stay open/deferred.
+
 
 O09/O10 implemented in ai/codex/roadmap-foundation-and-tasks alongside O02 proof
 and O11 property context. Additive StaffTask assignment/priority/version migration

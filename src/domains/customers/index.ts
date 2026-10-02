@@ -1,11 +1,12 @@
 import { requireRole } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
-import { auth } from "@/lib/auth";
-import { getActiveApplianceOptionsForCustomer } from "@/domains/agreements/active-appliances";
 import {
+  createTrustedCredentialUserInTx,
   generateUnusedAccountPassword,
-  sendCustomerActivationEmail,
-} from "@/domains/leads";
+  normalizeAccountEmail,
+} from "@/lib/account-provisioning";
+import { getActiveApplianceOptionsForCustomer } from "@/domains/agreements/active-appliances";
+import { sendCustomerActivationEmail } from "@/domains/leads";
 import { generateUniqueReferralCode } from "@/domains/referrals";
 
 export { getCustomerTimeline, getCustomerContacts } from "./timeline";
@@ -13,14 +14,9 @@ export type { TimelineEntry } from "./timeline";
 
 /**
  * Customers — created either by converting a Lead (src/domains/leads'
- * convertLeadToCustomer) or, since the "add a customer directly"
- * request (2026-09-27, in response to the Astra design review flagging
- * that Chris had no way to add a customer without an inbound lead —
- * see docs/DECISIONS.md), directly here via createCustomerDirectly.
- * Both paths create the same shape of record (a login-capable User +
- * Customer, optionally with ServiceAddress rows) and share the same
- * account-creation helpers so there's exactly one way a customer
- * account gets created, not two that could drift apart.
+ * convertLeadToCustomer) or directly here via createCustomerDirectly.
+ * Both paths create the same Better Auth-compatible credential account and
+ * Customer relationship inside the same business transaction.
  */
 export async function getCustomers() {
   return prisma.customer.findMany({
@@ -40,11 +36,7 @@ export async function getCustomersCount(): Promise<number> {
   return prisma.customer.count({ where: { archivedAt: null } });
 }
 
-/** Paginated variant for /desk/customers's own list, as the customer
- * roster grows past a page — see src/domains/pagination.ts.
- * getCustomers() above stays unpaginated for the callers that need
- * every customer at once (the rental builder wizard's picker, the new-
- * job form's picker). */
+/** Paginated variant for /desk/customers's own list. */
 export async function getCustomersPage(skip: number, pageSize: number) {
   return prisma.customer.findMany({
     where: { archivedAt: null },
@@ -74,15 +66,19 @@ export async function getCustomerById(id: string) {
         include: { serviceAddress: true },
         orderBy: [{ scheduledAt: "desc" }],
       },
-      // Referral program (Task #68) — this customer's own shareable
-      // code, who referred them in (if anyone), everyone they've
-      // referred in turn, and any credits on file (referral rewards or
-      // otherwise — CustomerCredit isn't referral-specific).
       referredBy: {
-        include: { referrerCustomer: { include: { user: { select: { name: true, email: true } } } } },
+        include: {
+          referrerCustomer: {
+            include: { user: { select: { name: true, email: true } } },
+          },
+        },
       },
       referralsMade: {
-        include: { referredCustomer: { include: { user: { select: { name: true, email: true } } } } },
+        include: {
+          referredCustomer: {
+            include: { user: { select: { name: true, email: true } } },
+          },
+        },
         orderBy: [{ createdAt: "desc" }],
       },
       credits: {
@@ -93,12 +89,7 @@ export async function getCustomerById(id: string) {
 }
 
 /** The appliances currently assigned to this customer through an ACTIVE
- * rental agreement — used to prefill the appliance checkboxes when
- * scheduling a job linked to one of their maintenance requests. Staff-side
- * mirror of src/domains/portal/index.ts's getPortalApplianceOptions; both
- * go through the same shared helper in
- * src/domains/agreements/active-appliances.ts so "what counts as this
- * customer's current rental equipment" can never drift between the two. */
+ * rental agreement. */
 export async function getCustomerApplianceOptions(customerId: string) {
   return getActiveApplianceOptionsForCustomer(customerId);
 }
@@ -118,77 +109,63 @@ export type NewCustomerInput = {
   isBusiness: boolean;
   isPropertyManager: boolean;
   companyName?: string;
-  /** One or more properties to put on file up front — a household
-     customer typically adds just the one they're renting at, while a
-     property manager (per the Astra brief's portfolio-account ask) can
-     list every property they manage right away instead of one at a
-     time later. The schema already supported many addresses per
-     customer (ServiceAddress[] on Customer) before this existed; this
-     is what actually lets Chris use that from the desk. */
   addresses: NewCustomerAddressInput[];
 };
 
-/** Chris adding a customer himself — a landlord who called in, a
- * walk-in, a property manager he's already been talking to outside the
- * website — rather than waiting for a Lead to convert. Mirrors
- * convertLeadToCustomer's account-creation logic exactly (same "someone
- * already has this email" and "that email belongs to staff" checks,
- * same random-password + activation-email pattern) so there's one
- * consistent way a customer ends up with a working login, whichever
- * path created them. */
+/**
+ * Chris adding a customer himself — a landlord who called in, a walk-in,
+ * or a property manager already being handled outside the lead form.
+ *
+ * Security invariant: an unexplained pre-existing CUSTOMER User without a
+ * Customer record is never adopted merely because its email matches. Before
+ * public signup was disabled, such a row could have been created by someone
+ * else. Attaching real business data to that credential would turn an email
+ * collision into account pre-hijacking. That legacy state must go through an
+ * explicit recovery/claim process instead.
+ *
+ * For a genuinely new customer, credential User, Customer, addresses and
+ * audit evidence all commit in one transaction. The activation email is sent
+ * only after that transaction succeeds, so a failed business write cannot
+ * leave an invited orphan login.
+ */
 export async function createCustomerDirectly(
   actingUserId: string,
   input: NewCustomerInput,
 ) {
-  let account = await prisma.user.findUnique({ where: { email: input.email } });
-
-  if (
-    account &&
-    (account.role === "OWNER" || account.role === "ADMIN" || account.role === "STAFF")
-  ) {
-    throw new Error(
-      `${input.email} belongs to a staff account, not a customer — use a different email for this customer.`,
-    );
-  }
-
-  if (account) {
-    const existing = await prisma.customer.findUnique({
-      where: { userId: account.id },
-    });
-    if (existing) {
-      throw new Error(
-        `${input.email} is already a customer — open their existing record instead of creating a new one.`,
-      );
-    }
-  }
-
-  const isNewAccount = !account;
-  let activationEmailSent = false;
-
-  if (!account) {
-    const signUp = await auth.api.signUpEmail({
-      body: {
-        email: input.email,
-        password: generateUnusedAccountPassword(),
-        name: input.name,
-      },
-    });
-    // emailVerified is set true immediately (Task #70) — the activation
-    // email below already proves the customer controls this inbox (they
-    // can't set a password without clicking its link), so a separate
-    // "verify your email" step would be redundant, not more secure. See
-    // the matching comment in src/domains/leads/index.ts.
-    account = await prisma.user.update({
-      where: { id: signUp.user.id },
-      data: { role: "CUSTOMER", emailVerified: true },
-    });
-    activationEmailSent = await sendCustomerActivationEmail(input.email);
-  }
+  const email = normalizeAccountEmail(input.email);
 
   const { customer, serviceAddresses } = await prisma.$transaction(async (tx) => {
+    const existingUser = await tx.user.findUnique({
+      where: { email },
+      include: { customer: { select: { id: true } } },
+    });
+
+    if (existingUser) {
+      if (existingUser.role !== "CUSTOMER") {
+        throw new Error(
+          `${email} belongs to a staff account, not a customer — use a different email for this customer.`,
+        );
+      }
+      if (existingUser.customer) {
+        throw new Error(
+          `${email} is already a customer — open their existing record instead of creating a new one.`,
+        );
+      }
+      throw new Error(
+        `${email} already has an unattached login. For security, recover or verify that account before linking customer data to it.`,
+      );
+    }
+
+    const account = await createTrustedCredentialUserInTx(tx, {
+      email,
+      name: input.name,
+      role: "CUSTOMER",
+      password: generateUnusedAccountPassword(),
+    });
+
     const customerRow = await tx.customer.create({
       data: {
-        userId: account!.id,
+        userId: account.id,
         phone: input.phone || null,
         isBusiness: input.isBusiness,
         isPropertyManager: input.isPropertyManager,
@@ -197,10 +174,6 @@ export async function createCustomerDirectly(
       },
     });
 
-    // Returned to the caller (used by the rental builder wizard —
-    // src/app/desk/agreements/new — to move straight into picking this
-    // brand-new customer's just-created address for the agreement,
-    // without a second round-trip to look it up).
     const addresses = [];
     for (const address of input.addresses) {
       addresses.push(
@@ -224,7 +197,7 @@ export async function createCustomerDirectly(
         entityType: "Customer",
         entityId: customerRow.id,
         newValue: {
-          email: input.email,
+          email,
           isPropertyManager: input.isPropertyManager,
           addressCount: input.addresses.length,
         },
@@ -234,19 +207,16 @@ export async function createCustomerDirectly(
     return { customer: customerRow, serviceAddresses: addresses };
   });
 
-  return { customer, serviceAddresses, isNewAccount, activationEmailSent };
+  const activationEmailSent = await sendCustomerActivationEmail(email);
+  return {
+    customer,
+    serviceAddresses,
+    isNewAccount: true,
+    activationEmailSent,
+  };
 }
 
-/** Adding a property to a customer who already exists — a property
- * manager picking up another building, or a household customer moving
- * and keeping the old address on file for a final job. Until this
- * existed, addresses could only be added at customer-creation time
- * (createCustomerDirectly above); anything after that needed a direct
- * database edit — see docs/BUSINESS-RULES.md's "Property managers /
- * portfolio accounts" section. Mirrors the address-creation shape
- * inside createCustomerDirectly exactly, including the same audit log,
- * so a property added here looks identical in the customer's timeline
- * to one added at signup. */
+/** Adding a property to a customer who already exists. */
 export async function addServiceAddress(
   customerId: string,
   actingUserId: string,
@@ -274,11 +244,15 @@ export async function addServiceAddress(
         action: "customer.address.add",
         entityType: "Customer",
         entityId: customerId,
-        newValue: { line1: input.line1, city: input.city, state: input.state || "CO", zip: input.zip },
+        newValue: {
+          line1: input.line1,
+          city: input.city,
+          state: input.state || "CO",
+          zip: input.zip,
+        },
       },
     }),
   ]);
 
   return address;
 }
-
