@@ -64,8 +64,7 @@ export function businessDateFromKey(key: string): Date | null {
  * boundary without assuming every local day is exactly 24 hours long.
  */
 export function businessDateEnd(key: string): Date {
-  const start = businessDateFromKey(key);
-  if (!start) throw new Error(`Invalid business date: ${key}`);
+  if (!businessDateFromKey(key)) throw new Error(`Invalid business date: ${key}`);
   return new Date(midnight(addCalendarDays(key, 1)).getTime() - 1000);
 }
 
