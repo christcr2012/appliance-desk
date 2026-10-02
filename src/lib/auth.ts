@@ -39,31 +39,29 @@ export const auth = betterAuth({
     },
   emailAndPassword: {
     enabled: true,
+    // Appliance Desk is invite/provision-only. Leaving Better Auth's
+    // sign-up endpoint enabled allowed an anonymous person to pre-create a
+    // CUSTOMER User for somebody else's email, after which a later business
+    // workflow could accidentally attach the real Customer record to that
+    // attacker-controlled credential. Trusted account creation now writes
+    // Better Auth-compatible User + Account rows server-side through
+    // src/lib/account-provisioning.ts instead of using the public endpoint.
+    disableSignUp: true,
     // Flipped on 2026-09-28 (Task #70) now that email sending is
     // verified in production (see docs/ARCHITECTURE.md's "Real business
-    // email" work, Task #69). Every account this app creates (customer
-    // or staff) sets emailVerified: true itself the moment it's created
-    // — see the comments in src/domains/leads/index.ts,
-    // src/domains/customers/index.ts, and src/domains/staff/index.ts —
-    // because the "set your password" activation email those flows
-    // already send is itself proof the person controls that inbox
-    // (there's no self-serve signup in this app for a second, separate
-    // verification step to actually protect against). This flag mainly
-    // exists so that invariant is enforced by Better Auth itself, not
-    // just by convention, and so a future signup path that forgets to
-    // set emailVerified doesn't silently skip verification.
+    // email" work, Task #69). Every account this app provisions (customer
+    // or staff) sets emailVerified: true in the same trusted transaction
+    // that creates the account. The activation/reset email still proves
+    // inbox control before the recipient can choose a real password.
     requireEmailVerification: true,
     minPasswordLength: 10,
     // Real "forgot password" flow (Phase 6A item 2 — customer account
     // invitation & password recovery). Better Auth generates and verifies
     // the one-time, expiring token itself (see the Verification table) —
     // this callback only has to deliver the link. Reused as the customer
-    // *activation* mechanism too (see convertLeadToCustomer in
-    // src/domains/leads/index.ts): rather than inventing a separate
-    // invite-token system, a brand-new customer account is activated by
-    // triggering this same reset-password email right after signup, so
-    // "set your first password" and "reset a forgotten password" are one
-    // code path, not two to keep in sync.
+    // *activation* mechanism too: brand-new provisioned accounts receive
+    // this reset-password email so "set your first password" and "reset a
+    // forgotten password" stay one code path.
     sendResetPassword: async ({ user, url }) => {
       await sendPasswordEmail({
         to: user.email,
@@ -74,15 +72,9 @@ export const auth = betterAuth({
     },
   },
   emailVerification: {
-    // sendOnSignUp is deliberately false: every account this app creates
-    // sets emailVerified: true itself right after signUpEmail (see the
-    // requireEmailVerification comment above), so a customer or staff
-    // member should never actually see this email in normal use — it
-    // would only double up on the "set your password" activation email
-    // they already get. This callback exists as a safety net (Better
-    // Auth needs it configured for a clean "please verify" error instead
-    // of a generic one) and for "resend verification email" if Chris
-    // ever needs it from a support situation.
+    // sendOnSignUp remains false because public sign-up itself is disabled.
+    // This callback is retained for Better Auth's verification machinery and
+    // any future explicitly-approved support flow.
     sendOnSignUp: false,
     autoSignInAfterVerification: true,
     sendVerificationEmail: async ({ user, url }) => {
