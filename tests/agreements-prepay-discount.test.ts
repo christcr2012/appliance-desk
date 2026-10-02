@@ -16,7 +16,19 @@ const getBusinessSettings = vi.fn();
 
 function makeTx() {
   return {
-    rentalAgreement: { create: rentalAgreementCreate },
+    // Agreement writes now run inside one transaction that first locks the
+    // agreement row (FOR UPDATE) and validates the service address inside it.
+    $queryRaw: async () => [{ id: "agr-1" }],
+    serviceAddress: {
+      findUnique: async () => ({
+        customerId: "cust-1",
+        customer: { archivedAt: null },
+      }),
+    },
+    rentalAgreement: {
+      create: rentalAgreementCreate,
+      findUniqueOrThrow: (...args: unknown[]) => findUniqueOrThrow(...args),
+    },
     rentalLine: { create: rentalLineCreate },
     appliance: { updateMany: applianceUpdateMany, findUnique: vi.fn() },
     applianceAssignment: { create: applianceAssignmentCreate },

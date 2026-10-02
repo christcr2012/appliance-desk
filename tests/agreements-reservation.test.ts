@@ -22,6 +22,10 @@ const getBusinessSettings = vi.fn();
 
 function makeTx() {
   return {
+    // addRentalLine now locks the agreement row (FOR UPDATE) inside the
+    // transaction and reads the agreement through tx, so the fake tx needs both.
+    $queryRaw: async () => [{ id: "agr-1" }],
+    rentalAgreement: { findUniqueOrThrow: (...args: unknown[]) => findUniqueOrThrow(...args) },
     rentalLine: { create: rentalLineCreate },
     appliance: { updateMany: applianceUpdateMany, findUnique: applianceFindUnique },
     applianceAssignment: { create: applianceAssignmentCreate },

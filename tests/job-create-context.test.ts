@@ -5,14 +5,25 @@ const m = vi.hoisted(() => ({
   request: vi.fn(),
   create: vi.fn(),
   audit: vi.fn(),
+  actor: vi.fn(),
 }));
-vi.mock("@/lib/prisma", () => ({
-  prisma: {
+// createJob now runs in one transaction that first re-checks (with a row
+// lock) that the acting staff member is still active and allowed, then
+// validates the customer links and writes the job and audit entry.
+function makeTx() {
+  return {
+    $queryRaw: async () => [],
+    user: { findUnique: m.actor },
     serviceAddress: { findUnique: m.address },
     rentalAgreement: { findUnique: m.agreement },
     maintenanceRequest: { findUnique: m.request },
     job: { create: m.create },
     auditLog: { create: m.audit },
+  };
+}
+vi.mock("@/lib/prisma", () => ({
+  prisma: {
+    $transaction: async (fn: (tx: unknown) => unknown) => fn(makeTx()),
   },
 }));
 import { createJob } from "@/domains/jobs";
@@ -22,6 +33,22 @@ beforeEach(() => {
   m.agreement.mockResolvedValue({ customerId: "c1", serviceAddressId: "a1" });
   m.request.mockResolvedValue({ customerId: "c1" });
   m.create.mockResolvedValue({ id: "j1" });
+  m.actor.mockResolvedValue({ id: "owner", role: "OWNER", archivedAt: null });
+});
+it("refuses a deactivated or non-admin actor before any link check or write", async () => {
+  for (const actor of [
+    null,
+    { id: "owner", role: "OWNER", archivedAt: new Date() },
+    { id: "owner", role: "STAFF", archivedAt: null },
+  ]) {
+    m.actor.mockResolvedValue(actor);
+    await expect(
+      createJob("owner", { type: "DELIVERY", customerId: "c1" }),
+    ).rejects.toThrow("no longer has access");
+  }
+  expect(m.address).not.toHaveBeenCalled();
+  expect(m.create).not.toHaveBeenCalled();
+  expect(m.audit).not.toHaveBeenCalled();
 });
 it("rejects a foreign property before writing a job or audit", async () => {
   m.address.mockResolvedValue({ customerId: "c2" });

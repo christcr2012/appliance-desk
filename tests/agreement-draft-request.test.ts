@@ -48,6 +48,9 @@ beforeEach(() => {
   });
   m.tx.mockImplementation(async (callback) =>
     callback({
+      // The property check now happens inside the same transaction as the
+      // insert, so a bad property rolls everything back before any write.
+      serviceAddress: { findUnique: m.address },
       rentalAgreement: { create: m.create },
       auditLog: { create: m.audit },
     }),
@@ -90,7 +93,8 @@ it("rejects a foreign or archived property before any draft or audit write", asy
       "active customer",
     );
   }
-  expect(m.tx).not.toHaveBeenCalled();
+  expect(m.create).not.toHaveBeenCalled();
+  expect(m.audit).not.toHaveBeenCalled();
 });
 it("uses one transaction for the draft and audit and propagates an audit failure", async () => {
   m.audit.mockRejectedValue(new Error("audit down"));

@@ -16,8 +16,14 @@ const auditLogCreate = vi.fn();
 
 function makeTx() {
   return {
+    // Signing locks the agreement row (FOR UPDATE) and re-reads its status
+    // inside the transaction before the conditional signature update.
+    $queryRaw: async () => [{ id: "agr-1" }],
     signatureRecord: { updateMany: signatureRecordUpdateMany },
-    rentalAgreement: { update: rentalAgreementUpdate },
+    rentalAgreement: {
+      findUniqueOrThrow: async () => ({ id: "agr-1", status: "AWAITING_SIGNATURE" }),
+      update: rentalAgreementUpdate,
+    },
     rentalLine: { findMany: rentalLineFindMany },
     auditLog: { create: auditLogCreate },
   };
@@ -56,7 +62,7 @@ describe("signAgreement — atomic conditional update", () => {
     });
 
     expect(signatureRecordUpdateMany).toHaveBeenCalledWith({
-      where: { id: "sig-1", signedAt: null },
+      where: { id: "sig-1", agreementId: "agr-1", signedAt: null },
       data: expect.objectContaining({ signerName: "Jane Doe" }),
     });
     expect(rentalAgreementUpdate).toHaveBeenCalled();

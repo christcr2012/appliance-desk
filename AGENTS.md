@@ -148,8 +148,68 @@ The sandbox this project was originally built in could not reach
 sandbox network policy, not a bug in the app. GitHub Actions and Vercel
 both have normal internet access and run these commands successfully —
 CI passing is the real verification gate, not any one contributor's
-local sandbox. If you hit the same 403 in your own environment, don't
-retry or work around it — note it and move on. See `docs/DECISIONS.md`.
+local sandbox. See `docs/DECISIONS.md`.
+
+**Update 2026-10-02 — Chris explicitly approved working around this block.**
+Do not stop at the 403 or push untested code and wait for CI to tell you what
+broke. You can run the whole unit suite locally; it takes about five minutes to
+set up and has repeatedly caught failures that cost ~10 minutes each in CI. The
+recipe (verified on Node 22 with the Postgres 16 that ships in the sandbox):
+
+1. `npm ci --ignore-scripts` (skips the postinstall that hits the 403).
+2. Generate the Prisma client without the blocked download. `generate` does not
+   actually need the schema-engine binary, so point Prisma at a placeholder:
+   ```bash
+   printf '#!/bin/sh\nexit 1\n' > /tmp/fake-engine && chmod +x /tmp/fake-engine
+   DATABASE_URL=postgresql://test:test@localhost:5432/x \
+   DIRECT_URL=postgresql://test:test@localhost:5432/x \
+   PRISMA_SCHEMA_ENGINE_BINARY=/tmp/fake-engine npx prisma generate
+   ```
+   This only writes to `node_modules`. It cannot run migrations (see step 3).
+3. Start a throwaway Postgres and load the schema by hand, because
+   `prisma migrate` really does need the blocked engine:
+   ```bash
+   mkdir /tmp/pgdata && chown postgres /tmp/pgdata   # NOT inside a /tmp/claude-* dir; the postgres user can't read those
+   B=/usr/lib/postgresql/16/bin
+   su postgres -c "$B/initdb -D /tmp/pgdata -A trust"
+   su postgres -c "$B/pg_ctl -D /tmp/pgdata -o '-p 5432 -k /tmp' -l /tmp/pg.log start"
+   psql -h localhost -U postgres -c "create role test superuser login password 'test'"
+   psql -h localhost -U postgres -c "create database appliance_desk_test owner test"
+   for d in $(ls -d prisma/migrations/*/ | sort); do
+     [ -f $d/migration.sql ] && PGPASSWORD=test psql -q -v ON_ERROR_STOP=1 -h localhost -U test -d appliance_desk_test -f $d/migration.sql
+   done
+   ```
+4. Export the same env CI uses (copy the `env:` block from `.github/workflows/ci.yml`:
+   `DATABASE_URL`/`DIRECT_URL` pointing at `appliance_desk_test`, `BETTER_AUTH_*`,
+   `NEXT_PUBLIC_APP_URL`, the OWNER/TEST_* logins, and `CI=true`), then
+   `npm run db:seed` and `npx vitest run`. Expect every test to pass.
+
+Rules for this workaround: use it only against the throwaway local database
+(never Neon/production); do not commit the placeholder or any generated client;
+migration-upgrade and schema-health drills (`scripts/test-migration-upgrade.ts`
+etc.) and `npm run db:migrate:deploy` stay CI-only.
+
+## Lessons from the Batch A CI failures (2026-10-02)
+
+- **Change code and its tests together.** Batch A moved many writes into
+  database transactions that lock a row first (`SELECT ... FOR UPDATE`) and
+  re-check the acting staff member (`assertActiveTeamActor`). Every unit test
+  that fakes the database must now provide `$queryRaw`, the same `tx` calls the
+  code makes, and a `$transaction` that hands the callback that fake `tx`. If
+  you touch a domain function's database calls, grep `tests/` for that domain
+  and update the fakes in the same commit.
+- **CI only shows the first 10 failures per step.** GitHub's summary annotations
+  are capped, so "10 failures" can really be 30. Run the full suite locally
+  (above) before pushing; read CI failures with
+  `gh api repos/<owner>/<repo>/check-runs/<job_id>/annotations` (raw log
+  downloads are blocked in the sandbox).
+- **Public sign-up is disabled on purpose** (`disableSignUp` in `src/lib/auth.ts`).
+  Browser tests must never call `/api/auth/sign-up/email`. Create disposable
+  logins with `scripts/create-ci-login.ts` (runs the app's real trusted
+  provisioning; refuses to run outside CI's throwaway database). Do not re-enable
+  sign-up to make a test pass.
+- **Don't push in rapid bursts.** Each push cancels the previous CI run (concurrency
+  group). Verify locally, then push once.
 
 <!-- BEGIN:nextjs-agent-rules -->
 

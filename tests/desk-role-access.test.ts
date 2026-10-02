@@ -9,12 +9,27 @@ const mocks = vi.hoisted(() => ({
   updateJob: vi.fn(),
   appliance: vi.fn(),
   customer: vi.fn(),
+  actor: vi.fn(),
+  jobBefore: vi.fn(),
+  audit: vi.fn(),
 }));
 vi.mock("@/lib/session", () => ({ requireRole: mocks.requireRole }));
 vi.mock("@/lib/auth", () => ({ auth: { api: {} } }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
+// Checklist saves now run in one transaction: re-verify (with a row lock) that
+// the acting staff member is still active, read the old checklist, update it,
+// and write the audit entry together.
+function makeTx() {
+  return {
+    $queryRaw: async () => [],
+    user: { findUnique: mocks.actor },
+    job: { findUniqueOrThrow: mocks.jobBefore, update: mocks.updateJob },
+    auditLog: { create: mocks.audit },
+  };
+}
 vi.mock("@/lib/prisma", () => ({
   prisma: {
+    $transaction: async (fn: (tx: unknown) => unknown) => fn(makeTx()),
     rentalAgreement: {
       findUnique: mocks.agreement,
       findMany: mocks.agreements,
@@ -43,8 +58,11 @@ beforeEach(() => {
   mocks.role = "STAFF";
   mocks.requireRole.mockImplementation(async (...allowed: string[]) => {
     if (!allowed.includes(mocks.role)) throw new Error("unauthorized");
-    return { user: { role: mocks.role } };
+    return { user: { id: "staff-1", role: mocks.role } };
   });
+  mocks.actor.mockResolvedValue({ id: "staff-1", role: "STAFF", archivedAt: null });
+  mocks.jobBefore.mockResolvedValue({ checklist: [] });
+  mocks.audit.mockResolvedValue({});
   for (const read of [
     mocks.agreement,
     mocks.job,
@@ -74,6 +92,16 @@ describe("desk query permissions", () => {
     const checklist = [{ item: "Operational check", checked: true }];
     expect(await updateJobChecklistAction("j-1", checklist)).toEqual({ status: "success" });
     expect(mocks.updateJob).toHaveBeenCalledWith({ where: { id: "j-1" }, data: { checklist } });
+    expect(mocks.audit).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ action: "job.checklist.update", userId: "staff-1" }) }),
+    );
+  });
+  it("refuses a checklist save from a staff member who has since been deactivated", async () => {
+    mocks.actor.mockResolvedValue({ id: "staff-1", role: "STAFF", archivedAt: new Date() });
+    const result = await updateJobChecklistAction("j-1", [{ item: "Operational check", checked: true }]);
+    expect(result).toMatchObject({ status: "error" });
+    expect(mocks.updateJob).not.toHaveBeenCalled();
+    expect(mocks.audit).not.toHaveBeenCalled();
   });
   it("returns staff agreement counts without prices or free-text rental labels", async () => {
     mocks.agreements.mockResolvedValue([

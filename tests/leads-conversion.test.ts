@@ -137,7 +137,10 @@ describe("convertLeadToCustomer — customer activation, no relayed passwords", 
     userFindUnique.mockResolvedValue(null);
     const { convertLeadToCustomer } = await import("@/domains/leads");
     await convertLeadToCustomer("owner-1", "lead-1");
-    expect(userFindUnique).toHaveBeenCalledWith({ where: { email: "customer@example.com" } });
+    expect(userFindUnique).toHaveBeenCalledWith({
+      where: { email: "customer@example.com" },
+      include: { customer: true },
+    });
     expect(userCreate).toHaveBeenCalledWith({ data: expect.objectContaining({ email: "customer@example.com" }) });
     expect(requestPasswordReset).toHaveBeenCalledWith({ body: { email: "customer@example.com", redirectTo: "/reset-password" } });
   });
@@ -155,7 +158,9 @@ describe("convertLeadToCustomer — customer activation, no relayed passwords", 
   });
 
   it("reuses an existing customer account and sends no activation email — nothing new to send", async () => {
-    userFindUnique.mockResolvedValue({ id: "user-1", role: "CUSTOMER" });
+    // An existing login is only reused when it already has a trusted Customer
+    // record; a bare login is refused (see the next test).
+    userFindUnique.mockResolvedValue({ id: "user-1", role: "CUSTOMER", customer: { id: "cust-existing" } });
     const { convertLeadToCustomer } = await import("@/domains/leads");
 
     const result = await convertLeadToCustomer("owner-1", "lead-1");
@@ -199,12 +204,20 @@ describe("convertLeadToCustomer — customer activation, no relayed passwords", 
     expect(serviceAddressCreate).not.toHaveBeenCalled();
     expect(auditLogCreate).not.toHaveBeenCalled();
   });
+  it("refuses an existing login with no customer record instead of silently adopting it", async () => {
+    userFindUnique.mockResolvedValue({ id: "user-1", role: "CUSTOMER", customer: null });
+    const { convertLeadToCustomer } = await import("@/domains/leads");
+    await expect(convertLeadToCustomer("owner-1", "lead-1")).rejects.toThrow(/unattached login/i);
+    expect(userCreate).not.toHaveBeenCalled();
+    expect(customerCreate).not.toHaveBeenCalled();
+    expect(requestPasswordReset).not.toHaveBeenCalled();
+  });
   it("claims the original stage before writing the conversion", async () => {
-    userFindUnique.mockResolvedValue({ id: "user-1", role: "CUSTOMER" });
+    userFindUnique.mockResolvedValue({ id: "user-1", role: "CUSTOMER", customer: { id: "cust-existing" } });
     const { convertLeadToCustomer } = await import("@/domains/leads");
     await convertLeadToCustomer("owner-1", "lead-1");
     expect(leadClaim).toHaveBeenCalledWith({ where: { id: "lead-1", status: "NEW" }, data: { status: "CONVERTED" } });
-    expect(leadClaim.mock.invocationCallOrder[0]).toBeLessThan(customerFindUnique.mock.invocationCallOrder[0]);
+    expect(leadClaim.mock.invocationCallOrder[0]).toBeLessThan(leadUpdate.mock.invocationCallOrder[0]);
   });
 
 });
