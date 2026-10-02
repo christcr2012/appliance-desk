@@ -58,23 +58,30 @@ if (!assertVerifiedPreviewTarget()) {
 
 const rows = await loadRows();
 const legacy = rows.find((row) => row.migration_name === LEGACY_NAME);
-const canonical = rows.find((row) => row.migration_name === CANONICAL_NAME);
+const canonicalApplied = rows.find(
+  (row) => row.migration_name === CANONICAL_NAME && row.finished_at && !row.rolled_back_at,
+);
 
-if (canonical?.finished_at && !canonical.rolled_back_at) {
+if (canonicalApplied) {
+  if (canonicalApplied.checksum !== EXPECTED_CHECKSUM) {
+    fail("Canonical Batch B migration is applied with an unexpected checksum.");
+  }
   console.log("[preview-migration-repair] Canonical Batch B migration is already applied; nothing to do.");
   process.exit(0);
 }
+
+const canonicalFailed = rows.find(
+  (row) => row.migration_name === CANONICAL_NAME && !row.finished_at && !row.rolled_back_at,
+);
 
 if (
   !legacy?.finished_at ||
   legacy.rolled_back_at ||
   legacy.checksum !== EXPECTED_CHECKSUM ||
   Number(legacy.applied_steps_count) !== 1 ||
-  !canonical ||
-  canonical.finished_at ||
-  canonical.rolled_back_at ||
-  canonical.checksum !== EXPECTED_CHECKSUM ||
-  Number(canonical.applied_steps_count) !== 0
+  !canonicalFailed ||
+  canonicalFailed.checksum !== EXPECTED_CHECKSUM ||
+  Number(canonicalFailed.applied_steps_count) !== 0
 ) {
   fail("Migration history does not match the one known-safe renamed-migration recovery case.");
 }
@@ -94,8 +101,10 @@ if (result.status !== 0) {
 }
 
 const verifiedRows = await loadRows();
-const verifiedCanonical = verifiedRows.find((row) => row.migration_name === CANONICAL_NAME);
-if (!verifiedCanonical?.finished_at || verifiedCanonical.rolled_back_at) {
+const verifiedCanonical = verifiedRows.find(
+  (row) => row.migration_name === CANONICAL_NAME && row.finished_at && !row.rolled_back_at,
+);
+if (!verifiedCanonical || verifiedCanonical.checksum !== EXPECTED_CHECKSUM) {
   fail("Prisma reported success but the canonical migration is still not marked applied.");
 }
 console.log("[preview-migration-repair] Migration history repaired successfully.");
