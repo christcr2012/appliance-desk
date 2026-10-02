@@ -35,13 +35,17 @@ function midnight(key: string): Date {
   return new Date(instant);
 }
 
+function addCalendarDays(key: string, days: number): string {
+  const calendar = new Date(`${key}T00:00:00Z`);
+  calendar.setUTCDate(calendar.getUTCDate() + days);
+  return calendar.toISOString().slice(0, 10);
+}
+
 export function businessDayBounds(now = new Date()) {
   const key = businessDateKey(now);
-  const next = new Date(`${key}T00:00:00Z`);
-  next.setUTCDate(next.getUTCDate() + 1);
   return {
     start: midnight(key),
-    end: midnight(next.toISOString().slice(0, 10)),
+    end: midnight(addCalendarDays(key, 1)),
   };
 }
 
@@ -53,10 +57,20 @@ export function businessDateFromKey(key: string): Date | null {
   return midnight(key);
 }
 
+/**
+ * Resolve the last whole second of a Colorado business date. This is safe
+ * across DST transitions because the next local midnight is resolved first;
+ * callers such as Stripe `cancel_at` can therefore use a real business-day
+ * boundary without assuming every local day is exactly 24 hours long.
+ */
+export function businessDateEnd(key: string): Date {
+  const start = businessDateFromKey(key);
+  if (!start) throw new Error(`Invalid business date: ${key}`);
+  return new Date(midnight(addCalendarDays(key, 1)).getTime() - 1000);
+}
+
 export function addBusinessDays(date: Date, days: number): Date {
-  const calendar = new Date(`${businessDateKey(date)}T00:00:00Z`);
-  calendar.setUTCDate(calendar.getUTCDate() + days);
-  return midnight(calendar.toISOString().slice(0, 10));
+  return midnight(addCalendarDays(businessDateKey(date), days));
 }
 
 export function formatBusinessDate(date: Date) {
