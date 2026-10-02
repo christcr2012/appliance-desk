@@ -64,6 +64,12 @@ jobs:
     needs: classify
     if: needs.classify.outputs.app_changed == 'true'
     runs-on: ubuntu-latest
+    env:
+      # Prisma resolves both variables during postinstall/generate even though
+      # static checks never connect to a database. These deliberately point at
+      # localhost so this job cannot reach production infrastructure.
+      DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/appliance_desk_static
+      DIRECT_URL: postgresql://ci:ci@127.0.0.1:5432/appliance_desk_static
     steps:
       - uses: actions/checkout@v4
 
