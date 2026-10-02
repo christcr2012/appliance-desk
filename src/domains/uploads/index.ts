@@ -38,16 +38,23 @@ export async function canUploadPhoto(
       })) !== null
     );
   }
-  if (
-    segments[0] === "maintenance-requests" &&
-    (user.role ?? "CUSTOMER") === "CUSTOMER"
-  ) {
-    return (
-      (await prisma.customer.findFirst({
-        where: { id, userId: user.id, archivedAt: null },
-        select: { id: true },
-      })) !== null
-    );
+  if (segments[0] === "maintenance-requests") {
+    if (manager) {
+      return (
+        (await prisma.customer.findFirst({
+          where: { id, archivedAt: null },
+          select: { id: true },
+        })) !== null
+      );
+    }
+    if ((user.role ?? "CUSTOMER") === "CUSTOMER") {
+      return (
+        (await prisma.customer.findFirst({
+          where: { id, userId: user.id, archivedAt: null },
+          select: { id: true },
+        })) !== null
+      );
+    }
   }
   return false;
 }
