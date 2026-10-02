@@ -16,7 +16,7 @@
     "db:reset-test-data": "tsx scripts/reset-test-data.ts",
     "check:migrations": "node scripts/check-migrations.mjs",
     "db:verify-schema-health": "tsx scripts/verify-schema-health.ts",
-    "vercel-build": "npm run check:migrations && npm run db:migrate:deploy && npm run db:verify-schema-health && npm run build",
+    "vercel-build": "npm run check:migrations && node scripts/repair-preview-migration-history.mjs && npm run db:migrate:deploy && npm run db:verify-schema-health && npm run build",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test"
