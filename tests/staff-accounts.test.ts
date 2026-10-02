@@ -9,12 +9,26 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 // and reactivate.
 
 const userFindUnique = vi.fn();
+const userCreate = vi.fn();
 const userUpdate = vi.fn();
 const userFindUniqueOrThrow = vi.fn();
 const sessionDeleteMany = vi.fn();
 const auditLogCreate = vi.fn();
-const signUpEmail = vi.fn();
+const hashPassword = vi.fn();
 const requestPasswordReset = vi.fn();
+
+function makeTx() {
+  return {
+    user: {
+      findUnique: (...args: unknown[]) => userFindUnique(...args),
+      create: (...args: unknown[]) => userCreate(...args),
+      update: (...args: unknown[]) => userUpdate(...args),
+      findUniqueOrThrow: (...args: unknown[]) => userFindUniqueOrThrow(...args),
+    },
+    session: { deleteMany: (...args: unknown[]) => sessionDeleteMany(...args) },
+    auditLog: { create: (...args: unknown[]) => auditLogCreate(...args) },
+  };
+}
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
@@ -25,14 +39,19 @@ vi.mock("@/lib/prisma", () => ({
     },
     session: { deleteMany: (...args: unknown[]) => sessionDeleteMany(...args) },
     auditLog: { create: (...args: unknown[]) => auditLogCreate(...args) },
-    $transaction: async (ops: unknown[]) => Promise.all(ops),
+    $transaction: async (arg: unknown) =>
+      typeof arg === "function"
+        ? (arg as (tx: ReturnType<typeof makeTx>) => unknown)(makeTx())
+        : Promise.all(arg as unknown[]),
   },
 }));
 
 vi.mock("@/lib/auth", () => ({
   auth: {
+    $context: Promise.resolve({
+      password: { hash: (...args: unknown[]) => hashPassword(...args) },
+    }),
     api: {
-      signUpEmail: (...args: unknown[]) => signUpEmail(...args),
       requestPasswordReset: (...args: unknown[]) => requestPasswordReset(...args),
     },
   },
@@ -47,31 +66,49 @@ import {
 describe("createStaffAccount", () => {
   beforeEach(() => {
     userFindUnique.mockReset().mockResolvedValue(null);
+    userCreate.mockReset().mockResolvedValue({
+      id: "staff-1",
+      email: "jamie@example.com",
+      name: "Jamie Driver",
+      role: "STAFF",
+    });
     userUpdate.mockReset().mockResolvedValue({ id: "staff-1", role: "STAFF" });
     auditLogCreate.mockReset().mockResolvedValue({});
-    signUpEmail.mockReset().mockResolvedValue({ user: { id: "staff-1" } });
+    hashPassword.mockReset().mockResolvedValue("native-hash");
     requestPasswordReset.mockReset().mockImplementation(async ({ body }) => {
       await sendPasswordEmail({ to: body.email, subject: "Setup", text: "Setup" });
       return { status: true };
     });
   });
 
-  it("creates the account with a discarded random password, sets role STAFF, and emails an activation link", async () => {
+  it("creates the credential account transactionally with a discarded random password and emails an activation link", async () => {
     const result = await createStaffAccount("owner-1", {
       name: "Jamie Driver",
       email: "jamie@example.com",
     });
 
-    expect(signUpEmail).toHaveBeenCalledTimes(1);
-    const signUpArgs = signUpEmail.mock.calls[0][0];
-    expect(signUpArgs.body.email).toBe("jamie@example.com");
-    expect(typeof signUpArgs.body.password).toBe("string");
-    expect(signUpArgs.body.password.length).toBeGreaterThan(20);
+    expect(hashPassword).toHaveBeenCalledTimes(1);
+    expect(typeof hashPassword.mock.calls[0][0]).toBe("string");
+    expect(hashPassword.mock.calls[0][0].length).toBeGreaterThan(20);
 
-    expect(userUpdate).toHaveBeenCalledWith({
-      where: { id: "staff-1" },
-      data: { role: "STAFF", emailVerified: true },
+    expect(userCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        email: "jamie@example.com",
+        name: "Jamie Driver",
+        role: "STAFF",
+        emailVerified: true,
+        accounts: {
+          create: expect.objectContaining({
+            providerId: "credential",
+            password: "native-hash",
+          }),
+        },
+      }),
     });
+    expect(requestPasswordReset).toHaveBeenCalledWith({
+      body: { email: "jamie@example.com", redirectTo: "/reset-password" },
+    });
+    expect(result.account.id).toBe("staff-1");
     expect(result.activationEmailSent).toBe(true);
   });
 
@@ -81,10 +118,12 @@ describe("createStaffAccount", () => {
     await expect(
       createStaffAccount("owner-1", { name: "Jamie Driver", email: "jamie@example.com" }),
     ).rejects.toThrow(/already in use/i);
-    expect(signUpEmail).not.toHaveBeenCalled();
+    expect(userCreate).not.toHaveBeenCalled();
+    expect(hashPassword).not.toHaveBeenCalled();
+    expect(requestPasswordReset).not.toHaveBeenCalled();
   });
 
-  it("logs a staff.create audit entry", async () => {
+  it("logs a staff.create audit entry before sending the activation email", async () => {
     await createStaffAccount("owner-1", { name: "Jamie Driver", email: "jamie@example.com" });
 
     expect(auditLogCreate).toHaveBeenCalledWith({
@@ -96,6 +135,9 @@ describe("createStaffAccount", () => {
         newValue: { email: "jamie@example.com", name: "Jamie Driver" },
       },
     });
+    expect(auditLogCreate.mock.invocationCallOrder[0]).toBeLessThan(
+      requestPasswordReset.mock.invocationCallOrder[0],
+    );
   });
 });
 
