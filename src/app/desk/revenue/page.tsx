@@ -69,7 +69,7 @@ export default async function RevenuePage({
     <div>
       <PageHeader
         title="Revenue and cash activity"
-        description="Agreed rental rates, real cash receipts, invoice allocations and refunds are tracked separately so the numbers keep their meaning."
+        description="Agreed rental rates, real cash receipts and refunds are tracked separately so the numbers keep their meaning."
         secondaryActions={
           <Link
             className="min-h-11 inline-flex items-center text-primary underline"
@@ -80,11 +80,10 @@ export default async function RevenuePage({
         }
       />
       <p className="text-sm text-ink-soft">
-        As of {formatBusinessDate(asOf)} · {formatBusinessTime(asOf)}. Gross
-        cash cards use each receipt&apos;s actual received date; the detailed
-        invoice-allocation list below uses the allocation record date. Monthly
-        rate trend still uses UTC calendar months. No costs are deducted, so
-        this report cannot establish profit.
+        As of {formatBusinessDate(asOf)} · {formatBusinessTime(asOf)}. Cash
+        activity uses each Receipt&apos;s actual received date and Colorado
+        business-month boundaries. The MRR trend remains an agreement-rate
+        estimate and is not cash or profit.
       </p>
 
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -180,10 +179,9 @@ export default async function RevenuePage({
         is MRR × 12. Gross cash received comes from Receipt records, so one
         combined check is counted once even when it pays several invoices, and
         any unallocated overpayment is still part of the cash received. Refunds
-        are shown separately. Past-due balances use recorded
-        OPEN/PARTIALLY_PAID/DELINQUENT invoices with a past due date and
-        subtract recorded paid allocations. Closed-rental counts use last
-        update time, which may differ from the actual closure date.
+        are shown separately. Past-due balances use recorded invoice
+        allocations. Closed-rental counts use last update time, which may differ
+        from the actual closure date.
       </p>
 
       <SectionCard
@@ -202,10 +200,10 @@ export default async function RevenuePage({
 
       <div className="mt-6">
         <FilterBar
-          label="Invoice ledger source"
+          label="Cash ledger source"
           items={[
             {
-              label: "Payment allocations",
+              label: "Cash receipts",
               href: recordsHref(1, "payments"),
               active: source === "payments",
             },
@@ -217,10 +215,10 @@ export default async function RevenuePage({
           ]}
         />
         <FilterBar
-          label="Invoice ledger period"
+          label="Cash ledger period"
           items={[
             {
-              label: "This UTC month",
+              label: "This business month",
               href: recordsHref(1, source, true),
               active: monthOnly,
             },
@@ -232,20 +230,13 @@ export default async function RevenuePage({
           ]}
         />
         <SectionCard
-          title={
-            source === "payments"
-              ? "Recorded invoice payment allocations"
-              : "Recorded invoice refunds"
-          }
+          title={source === "payments" ? "Recorded cash receipts" : "Recorded invoice refunds"}
           description={`${records.meta.totalCount} matching records · ${formatCents(records.totalCents)} total · newest first. All totals include records beyond this page.`}
         >
           <p className="mb-4 text-sm text-ink-soft">
-            Payment rows below are allocations to individual invoices, not
-            independent cash receipts. One receipt can therefore appear across
-            several invoice allocations. Refunds use the refund record date,
-            not the original payment date. Security-deposit refunds have their
-            own deposit records and are not included here. Unpaid, pending and
-            failed payment attempts do not count as successful allocations.
+            Receipt rows are real cash events, not invoice allocations. A single
+            receipt can cover several invoices and can include unallocated
+            overpayment. Refund rows use their own recorded refund date.
           </p>
           {records.rows.length === 0 ? (
             <p>No matching records.</p>
@@ -257,14 +248,25 @@ export default async function RevenuePage({
                   className="py-4 sm:flex sm:items-start sm:justify-between sm:gap-4"
                 >
                   <div className="min-w-0">
-                    <Link
-                      className="break-words text-primary underline"
-                      href={`/desk/billing/customer/${row.invoice.customerId}/invoice/${row.invoice.id}`}
-                    >
-                      Invoice #{row.invoice.invoiceNumber} ·{" "}
-                      {row.invoice.customer.user.name ??
-                        row.invoice.customer.user.email}
-                    </Link>
+                    {row.invoice ? (
+                      <Link
+                        className="break-words text-primary underline"
+                        href={`/desk/billing/customer/${row.invoice.customerId}/invoice/${row.invoice.id}`}
+                      >
+                        Invoice #{row.invoice.invoiceNumber} ·{" "}
+                        {row.invoice.customer.user.name ?? row.invoice.customer.user.email}
+                      </Link>
+                    ) : (
+                      <Link
+                        className="break-words text-primary underline"
+                        href={`/desk/billing/customer/${row.customer.id}`}
+                      >
+                        {row.customer.user.name ?? row.customer.user.email} ·{" "}
+                        {row.allocationCount === 0
+                          ? "unallocated receipt"
+                          : `${row.allocationCount} invoice allocations`}
+                      </Link>
+                    )}
                     <p className="text-sm text-ink-soft">
                       {row.basis} · {formatBusinessDate(row.createdAt)} ·{" "}
                       {formatBusinessTime(row.createdAt)}
