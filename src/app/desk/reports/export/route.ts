@@ -2,6 +2,7 @@ import { requireRole } from "@/lib/session";
 import { getAccountingTransactions } from "@/domains/reports";
 import { formatCentsAsPlainDecimal } from "@/domains/pricing/money";
 import { toCsv } from "@/lib/csv";
+import { businessDateKey } from "@/lib/business-date";
 
 /** Accounting export (Task #73) — every real payment, refund, and
  * security deposit movement, oldest first, as a generic CSV any
@@ -15,8 +16,10 @@ export async function GET() {
 
   const csv = toCsv(
     [
-      { key: "date", header: "Date" },
+      { key: "date", header: "Date (Colorado)" },
       { key: "type", header: "Type" },
+      { key: "recordId", header: "Record ID" },
+      { key: "source", header: "Source" },
       { key: "customerName", header: "Customer" },
       { key: "companyName", header: "Company" },
       { key: "invoiceNumber", header: "Invoice #" },
@@ -25,8 +28,11 @@ export async function GET() {
       { key: "notes", header: "Notes" },
     ],
     transactions.map((t) => ({
-      date: t.date.toISOString().slice(0, 10),
+      // Colorado business date: a 9pm Mountain payment is that day, not the next UTC day.
+      date: businessDateKey(t.date),
       type: t.type,
+      recordId: t.recordId,
+      source: t.source,
       customerName: t.customerName,
       companyName: t.companyName,
       invoiceNumber: t.invoiceNumber ?? "",
@@ -39,7 +45,7 @@ export async function GET() {
   return new Response(csv, {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": `attachment; filename="transactions-${new Date().toISOString().slice(0, 10)}.csv"`,
+      "Content-Disposition": `attachment; filename="transactions-${businessDateKey(new Date())}.csv"`,
     },
   });
 }

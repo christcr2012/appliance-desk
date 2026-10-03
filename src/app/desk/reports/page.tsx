@@ -53,7 +53,7 @@ export default async function ReportsPage() {
           </p>
         </div>
         <div className="rounded-lg border border-gray-200 bg-white p-5">
-          <p className="text-sm text-gray-600">Actually collected</p>
+          <p className="text-sm text-gray-600">Collected, net of refunds</p>
           <p className="mt-1 text-2xl font-semibold text-gray-900">
             {formatCents(earnings.totals.actualCents)}
           </p>
@@ -181,8 +181,10 @@ export default async function ReportsPage() {
         &ldquo;Estimated&rdquo; is reconstructed from each agreement&apos;s
         own agreed monthly price and how long it&apos;s actually been
         billing — the same math used elsewhere in the app for revenue
-        trends. &ldquo;Collected&rdquo; comes straight from what Stripe has
-        actually processed. This is a reconciliation aid, not a legal
+        trends. &ldquo;Collected&rdquo; is money received and account credit
+        applied to that agreement&apos;s invoices (card, check, cash and
+        any other recorded payment), minus refunds recorded on them. It is
+        the same basis on every row and in the totals. This is a reconciliation aid, not a legal
         record — the real invoice/payment history on each customer&apos;s
         page is always the exact figure.
       </p>

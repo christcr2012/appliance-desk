@@ -413,16 +413,32 @@ again. An agreement already sent for signature opens its agreement page instead.
 ### Reading Revenue and recorded payments
 
 Estimated monthly and annual rates come from agreed rental prices; they are not
-a forecast of cash or profit. Gross invoice payments include successful provider
-payments and payments you recorded manually, and may include deposits, fees and
-tax. Refunds are shown separately. Choose Gross payments or Invoice refunds,
-then This UTC month or All recorded dates. Totals include every matching record;
-the list shows 25 per page. Each row opens its original invoice. Dates on records
-display in Colorado time, while the report's monthly windows use UTC. No costs
-are deducted, so this report does not establish profit.
+a forecast of cash or profit. Cash received lists each payment once (card
+payments and payments you recorded yourself), even when one check paid several
+invoices; any part not applied to an invoice shows as account credit. It may
+include deposits, fees and tax. Refunds are shown separately, and a refund you
+kept as account credit is marked because no cash left the business. Choose Cash
+received or Invoice refunds, then This month (Colorado) or All recorded dates.
+"This month" is the Colorado calendar month. Totals include every matching
+record; the list shows 25 per page. Each row links to the customer's statement
+and to the exact invoices it paid. No costs are deducted, so this report does not
+establish profit. (The six-month rate trend still groups by UTC month.)
+
+### Reading a customer statement
+
+Open a customer's statement from Billing. Under the totals, "How this balance adds
+up" shows: carried forward + billed − payments applied − account credit applied −
+written off = balance owed. Draft and voided invoices are left out, and a
+written-off invoice no longer counts as owed. Refunds are listed beside the
+balance because they do not reopen an invoice. If the numbers cannot add up (for
+example, an old payment with no record), a yellow warning tells you to review the
+invoices. The statement's CSV ends with the same summary lines.
 
 ### Deposit amounts in the accounting CSV
 
+The CSV counts cash from each payment (receipt) once, with its record ID and where
+it came from (card/Stripe or recorded by you), using the Colorado date. A refund
+you kept as account credit is labeled "Refund to account credit".
 The CSV counts cash from successful invoice payments once. Those payments
 already include any signing or estimate deposit. A deposit record on an
 agreement is a liability record, so it does not add another positive cash row.

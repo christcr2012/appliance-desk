@@ -54,6 +54,34 @@ export type StatementProperty = {
   totalBalanceCents: number;
 };
 
+/**
+ * How the statement's closing balance is built from the ledger, so a reader
+ * can check it adds up:
+ *   carried forward + invoiced - payments applied - credits applied
+ *   - written off = balance owed.
+ * `balanced` is false when the stored invoice totals do not match the payment
+ * and credit records (for example an old payment with no allocation record);
+ * the screen then says the statement needs review instead of hiding it.
+ * Refunds never reopen an invoice, so they are shown beside the balance.
+ */
+export type StatementReconciliation = {
+  /** Still owed on invoices from before the chosen period (0 when no period is chosen). */
+  carriedForwardCents: number;
+  /** Total billed on non-draft, non-voided invoices in the statement. */
+  invoicedCents: number;
+  paymentsAppliedCents: number;
+  creditsAppliedCents: number;
+  /** Unpaid remainder forgiven on written-off invoices. */
+  writtenOffCents: number;
+  /** What the customer owes now (carried forward plus unpaid open invoices). */
+  closingBalanceCents: number;
+  balanced: boolean;
+  /** Refunds recorded against these invoices: shown for information, not part of the balance. */
+  refundedCents: number;
+  /** Unspent account credit the customer holds. */
+  creditAvailableCents: number;
+};
+
 export type CustomerStatement = {
   customerId: string;
   customerName: string;
@@ -63,7 +91,61 @@ export type CustomerStatement = {
   totalPaidCents: number;
   totalBalanceCents: number;
   openInvoiceCount: number;
+  reconciliation: StatementReconciliation;
 };
+
+/** Invoices whose unpaid remainder is money the customer still owes. */
+const OWED_STATUSES = new Set(["OPEN", "PARTIALLY_PAID", "DELINQUENT", "FAILED"]);
+/** Invoices that count as billed: drafts and voided invoices never reached the customer. */
+const NOT_BILLED_STATUSES = new Set(["DRAFT", "VOID"]);
+
+export type ReconciliationInvoice = {
+  status: string;
+  amountDueCents: number;
+  amountPaidCents: number;
+  succeededPaymentCents: number;
+  creditAppliedCents: number;
+  refundedCents: number;
+};
+
+/** Pure: builds the reconciliation from invoice records. */
+export function reconcileStatement(
+  invoices: ReconciliationInvoice[],
+  carriedForwardCents: number,
+  creditAvailableCents: number,
+): StatementReconciliation {
+  let invoicedCents = 0;
+  let paymentsAppliedCents = 0;
+  let creditsAppliedCents = 0;
+  let writtenOffCents = 0;
+  let owedCents = 0;
+  let refundedCents = 0;
+  for (const invoice of invoices) {
+    refundedCents += invoice.refundedCents;
+    if (NOT_BILLED_STATUSES.has(invoice.status)) continue;
+    const unpaid = Math.max(0, invoice.amountDueCents - invoice.amountPaidCents);
+    invoicedCents += invoice.amountDueCents;
+    paymentsAppliedCents += invoice.succeededPaymentCents;
+    creditsAppliedCents += invoice.creditAppliedCents;
+    if (invoice.status === "WRITTEN_OFF") writtenOffCents += unpaid;
+    if (OWED_STATUSES.has(invoice.status)) owedCents += unpaid;
+  }
+  const closingBalanceCents = carriedForwardCents + owedCents;
+  const balanced =
+    carriedForwardCents + invoicedCents - paymentsAppliedCents - creditsAppliedCents - writtenOffCents ===
+    closingBalanceCents;
+  return {
+    carriedForwardCents,
+    invoicedCents,
+    paymentsAppliedCents,
+    creditsAppliedCents,
+    writtenOffCents,
+    closingBalanceCents,
+    balanced,
+    refundedCents,
+    creditAvailableCents,
+  };
+}
 
 function addressLabel(a: { line1: string; line2: string | null; city: string; state: string; zip: string } | null): string {
   if (!a) return "No property on file";
@@ -109,6 +191,9 @@ export async function getCustomerStatement(
         include: {
           lineItems: { orderBy: [{ createdAt: "asc" }] },
           agreement: { select: { serviceAddress: true } },
+          payments: { where: { status: "succeeded" }, select: { amountCents: true } },
+          creditApplications: { select: { amountCents: true } },
+          refunds: { select: { amountCents: true } },
         },
         orderBy: [{ createdAt: "desc" }],
       },
@@ -116,6 +201,29 @@ export async function getCustomerStatement(
   });
 
   if (!customer) return null;
+
+  // Money still owed on invoices from before a chosen period, plus the
+  // customer's unspent credit, so the closing balance is the full picture.
+  const [earlier, credits] = await Promise.all([
+    options?.periodStart
+      ? prisma.invoice.findMany({
+          where: {
+            customerId,
+            status: { in: [...OWED_STATUSES] as never[] },
+            billingPeriodStart: { lt: options.periodStart },
+          },
+          select: { amountDueCents: true, amountPaidCents: true },
+        })
+      : Promise.resolve([]),
+    prisma.customerCredit.aggregate({
+      where: { customerId },
+      _sum: { remainingCents: true },
+    }),
+  ]);
+  const carriedForwardCents = earlier.reduce(
+    (sum, inv) => sum + Math.max(0, inv.amountDueCents - inv.amountPaidCents),
+    0,
+  );
 
   const groups = new Map<string, StatementProperty>();
 
@@ -136,7 +244,12 @@ export async function getCustomerStatement(
       groups.set(groupKey, group);
     }
 
-    const balanceCents = Math.max(0, invoice.amountDueCents - invoice.amountPaidCents);
+    // Only invoices the customer still owes count toward a balance; a voided
+    // draft or a written-off invoice owes nothing.
+    const balanceCents = OWED_STATUSES.has(invoice.status)
+      ? Math.max(0, invoice.amountDueCents - invoice.amountPaidCents)
+      : 0;
+    const billed = !NOT_BILLED_STATUSES.has(invoice.status);
     group.invoices.push({
       id: invoice.id,
       invoiceNumber: invoice.invoiceNumber,
@@ -159,8 +272,10 @@ export async function getCustomerStatement(
         quantity: li.quantity,
       })),
     });
-    group.totalDueCents += invoice.amountDueCents;
-    group.totalPaidCents += invoice.amountPaidCents;
+    if (billed) {
+      group.totalDueCents += invoice.amountDueCents;
+      group.totalPaidCents += invoice.amountPaidCents;
+    }
     group.totalBalanceCents += balanceCents;
   }
 
@@ -172,6 +287,19 @@ export async function getCustomerStatement(
     ["OPEN", "PARTIALLY_PAID", "DELINQUENT"].includes(inv.status),
   ).length;
 
+  const reconciliation = reconcileStatement(
+    customer.invoices.map((inv) => ({
+      status: inv.status,
+      amountDueCents: inv.amountDueCents,
+      amountPaidCents: inv.amountPaidCents,
+      succeededPaymentCents: inv.payments.reduce((sum, p) => sum + p.amountCents, 0),
+      creditAppliedCents: inv.creditApplications.reduce((sum, c) => sum + c.amountCents, 0),
+      refundedCents: inv.refunds.reduce((sum, r) => sum + r.amountCents, 0),
+    })),
+    carriedForwardCents,
+    credits._sum.remainingCents ?? 0,
+  );
+
   return {
     customerId: customer.id,
     customerName: customer.user.name ?? customer.user.email,
@@ -181,6 +309,7 @@ export async function getCustomerStatement(
     totalPaidCents: properties.reduce((s, p) => s + p.totalPaidCents, 0),
     totalBalanceCents: properties.reduce((s, p) => s + p.totalBalanceCents, 0),
     openInvoiceCount,
+    reconciliation,
   };
 }
 

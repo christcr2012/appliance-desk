@@ -916,6 +916,23 @@ is never replaced by a default.
   `src/domains/billing/tax.ts`; storage, the settings screen, the rental
   builder, the public pricing page, agreement snapshots and Stripe tax-rate
   creation all use thousandths of a percent.
+- **Reports and statements read the ledger** (Batch B, WU-B11). "Collected"
+  means money actually received (`Receipt`, by the Colorado day it was
+  received, including any overpayment) minus cash refunds (`collectedBetween`
+  in `src/domains/billing/collected.ts`). A refund the owner kept as account
+  credit (`CustomerCredit.sourceType = REFUND_TO_CREDIT`) returns no cash, so it
+  is reported separately and not subtracted from collected cash. "This month"
+  everywhere in revenue reporting is the Colorado calendar month
+  (`revenuePeriod`); the six-month rate trend still uses UTC months. Invoice
+  lines map to owner-facing groups in `src/domains/billing/categories.ts`.
+  The earnings report's "collected" for an agreement is money received and credit
+  applied to its invoices minus refunds recorded on them, on every row and total.
+  A customer statement shows: carried forward + billed (excluding DRAFT and
+  VOID) − payments applied − account credit applied − written off = balance
+  owed, and warns when the records do not add up. Only OPEN, PARTIALLY_PAID,
+  DELINQUENT and FAILED invoices count as owed; written-off, voided and draft
+  invoices never do. The accounting CSV gives every row its record ID and source
+  and uses the Colorado date.
 
 ## Cross-cutting desk tools (2026-09-28)
 

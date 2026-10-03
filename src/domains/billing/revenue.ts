@@ -1,3 +1,5 @@
+import { businessMonthBounds } from "@/lib/business-date";
+
 // ---------------------------------------------------------------------------
 // MRR/ARR financial dashboard (2026-09-27) — see docs/DECISIONS.md for how
 // this fits with what already existed (Stripe billing, per-invoice views)
@@ -86,14 +88,14 @@ export function computeMrrTrend(
 }
 
 
+/**
+ * The period used by revenue and cash readers. "This month" is Colorado's
+ * calendar month (America/Denver, DST-aware), never the server's or UTC's, so
+ * a payment taken at 9pm on the last evening of a month lands in that month.
+ */
 export function revenuePeriod(asOf: Date, monthOnly: boolean) {
   return {
-    ...(monthOnly
-      ? {
-          gte: new Date(Date.UTC(asOf.getUTCFullYear(), asOf.getUTCMonth(), 1)),
-        }
-      : {}),
+    ...(monthOnly ? { gte: businessMonthBounds(asOf).start } : {}),
     lte: asOf,
   };
 }
-

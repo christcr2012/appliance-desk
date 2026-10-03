@@ -4,6 +4,7 @@ const transaction = vi.fn();
 const receiptFindMany = vi.fn();
 const refundFindMany = vi.fn();
 const depositFindMany = vi.fn();
+const creditFindMany = vi.fn();
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
@@ -31,6 +32,8 @@ function customerRef(
 
 function receipt(overrides: Record<string, unknown> = {}) {
   return {
+    id: "receipt-1",
+    source: "STRIPE",
     amountCents: 6000,
     method: "card",
     notes: null,
@@ -48,11 +51,13 @@ describe("getAccountingTransactions", () => {
         receipt: { findMany: (...args: unknown[]) => receiptFindMany(...args) },
         refund: { findMany: (...args: unknown[]) => refundFindMany(...args) },
         deposit: { findMany: (...args: unknown[]) => depositFindMany(...args) },
+        customerCredit: { findMany: (...args: unknown[]) => creditFindMany(...args) },
       }),
     );
     receiptFindMany.mockReset().mockResolvedValue([]);
     refundFindMany.mockReset().mockResolvedValue([]);
     depositFindMany.mockReset().mockResolvedValue([]);
+    creditFindMany.mockReset().mockResolvedValue([]);
   });
 
   it("exports receipts as the incoming-cash source of truth", async () => {
@@ -101,6 +106,7 @@ describe("getAccountingTransactions", () => {
   it("includes a refund as a negative amount", async () => {
     refundFindMany.mockResolvedValue([
       {
+        id: "refund-1",
         amountCents: 2000,
         reason: "GOODWILL",
         notes: "Late delivery",
@@ -115,6 +121,39 @@ describe("getAccountingTransactions", () => {
       methodOrReason: "GOODWILL",
       notes: "Late delivery",
     });
+  });
+
+  it("traces each row to its ledger record and says where a payment came from", async () => {
+    receiptFindMany.mockResolvedValue([receipt({ id: "rcpt-9", source: "MANUAL", method: "check" })]);
+    refundFindMany.mockResolvedValue([
+      {
+        id: "ref-9",
+        amountCents: 500,
+        reason: "GOODWILL",
+        notes: null,
+        createdAt: new Date("2026-05-09"),
+        invoice: { invoiceNumber: 9, customer: customerRef() },
+      },
+    ]);
+    const rows = await getAccountingTransactions();
+    expect(rows.find((r) => r.type === "Payment")).toMatchObject({ recordId: "rcpt-9", source: "MANUAL" });
+    expect(rows.find((r) => r.type === "Refund")).toMatchObject({ recordId: "ref-9", source: "" });
+  });
+
+  it("labels a refund kept as account credit so it is not mistaken for cash returned", async () => {
+    refundFindMany.mockResolvedValue([
+      {
+        id: "ref-credit",
+        amountCents: 4000,
+        reason: "BILLING_ERROR",
+        notes: null,
+        createdAt: new Date("2026-05-09"),
+        invoice: { invoiceNumber: 4, customer: customerRef() },
+      },
+    ]);
+    creditFindMany.mockResolvedValue([{ sourceId: "ref-credit" }]);
+    const rows = await getAccountingTransactions();
+    expect(rows[0]).toMatchObject({ type: "Refund to account credit", amountCents: -4000 });
   });
 
   it("exports only the negative cash movement for a refunded deposit", async () => {
@@ -141,6 +180,7 @@ describe("getAccountingTransactions", () => {
     ]);
     refundFindMany.mockResolvedValue([
       {
+        id: "refund-2",
         amountCents: 2000,
         reason: "OTHER",
         notes: null,
@@ -174,6 +214,7 @@ describe("getAccountingTransactions", () => {
     ]);
     refundFindMany.mockResolvedValue([
       {
+        id: "refund-3",
         amountCents: 1000,
         reason: "OVERPAYMENT",
         notes: null,

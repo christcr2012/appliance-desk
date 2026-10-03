@@ -21,7 +21,7 @@ export async function GET(
     notFound();
   }
 
-  const rows = statement.properties.flatMap((property) =>
+  const rows: Record<string, string | number>[] = statement.properties.flatMap((property) =>
     property.invoices.map((invoice) => ({
       property: property.addressLabel,
       invoiceNumber: invoice.invoiceNumber,
@@ -35,6 +35,27 @@ export async function GET(
       balance: formatCentsAsPlainDecimal(invoice.balanceCents),
       lateFee: formatCentsAsPlainDecimal(invoice.lateFeeCents),
     })),
+  );
+
+  const r = statement.reconciliation;
+  const summary = (label: string, cents: number) => ({
+    property: "Statement summary",
+    invoiceNumber: "",
+    status: label,
+    billingPeriodStart: "",
+    dueDate: "",
+    amountDue: "",
+    amountPaid: "",
+    balance: formatCentsAsPlainDecimal(cents),
+    lateFee: "",
+  });
+  rows.push(
+    summary("Carried forward", r.carriedForwardCents),
+    summary("Billed", r.invoicedCents),
+    summary("Payments applied", -r.paymentsAppliedCents),
+    summary("Account credit applied", -r.creditsAppliedCents),
+    summary("Written off", -r.writtenOffCents),
+    summary(r.balanced ? "Balance owed" : "Balance owed (DOES NOT RECONCILE - review invoices)", r.closingBalanceCents),
   );
 
   const csv = toCsv(
