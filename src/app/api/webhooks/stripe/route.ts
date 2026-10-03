@@ -62,7 +62,7 @@ export async function POST(request: Request): Promise<Response> {
     // transaction, but provider balance writes intentionally happen only after
     // that transaction commits. A replayed invoice.paid can surface an existing
     // REWARDING referral here without replaying the invoice itself.
-    for (const referralId of result.referralIdsToSettle) {
+    for (const referralId of result?.referralIdsToSettle ?? []) {
       await settleReferralCredits(referralId);
     }
   } catch (error) {
