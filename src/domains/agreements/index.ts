@@ -636,18 +636,22 @@ async function closeAgreement(
     return local.updated;
   }
 
+  const stripeSubscriptionId = local.stripeSubscriptionId;
+  const providerClaim = local.providerClaim;
   const result = await runProviderCall(async () => {
     try {
       const stripe = getStripeClient();
-      await stripe.subscriptions.cancel(local.stripeSubscriptionId!);
-      return local.stripeSubscriptionId!;
+      await stripe.subscriptions.cancel(stripeSubscriptionId, undefined, {
+        idempotencyKey: providerClaim.idempotencyKey,
+      });
+      return stripeSubscriptionId;
     } catch (error) {
       const providerError = error as { type?: string; code?: string };
       if (
         providerError.type === "StripeInvalidRequestError" &&
         providerError.code === "resource_missing"
       ) {
-        return local.stripeSubscriptionId!;
+        return stripeSubscriptionId;
       }
       throw error;
     }
@@ -655,13 +659,13 @@ async function closeAgreement(
 
   await prisma.$transaction(async (tx) => {
     if (result.ok) {
-      await completeProviderOperation(tx, local.providerClaim.opId, {
+      await completeProviderOperation(tx, providerClaim.opId, {
         status: "SUCCEEDED",
         providerObjectId: result.value,
       });
       return;
     }
-    await completeProviderOperation(tx, local.providerClaim.opId, {
+    await completeProviderOperation(tx, providerClaim.opId, {
       status: result.outcome,
       error: result.error,
     });
