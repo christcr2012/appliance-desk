@@ -60,7 +60,7 @@ describe("brand-kit integrity", () => {
     }
   });
 
-  it("contains a real rendered light-mark PNG", () => {
+  it("contains a production-resolution rendered light-mark PNG", () => {
     const lightMark = resolve(BRAND_ROOT, "01_Logos/mark/Robinson-mark-light.png");
     expect(existsSync(lightMark)).toBe(true);
     expect(statSync(lightMark).size).toBeGreaterThan(0);
@@ -68,5 +68,8 @@ describe("brand-kit integrity", () => {
     expect(bytes.subarray(0, 8)).toEqual(
       Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
     );
+    expect(bytes.subarray(12, 16).toString("ascii")).toBe("IHDR");
+    expect(bytes.readUInt32BE(16)).toBe(1600);
+    expect(bytes.readUInt32BE(20)).toBe(1600);
   });
 });
