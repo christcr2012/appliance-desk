@@ -8,6 +8,17 @@ section with a date.
 
 ## Deferred to a later phase (already scoped, just not yet)
 
+- **Reduce a live Stripe subscription after an early return** (2026-10-03,
+  from the pickup-billing rules): when some appliances come back while the
+  rental continues, take their rental line off the subscription from the
+  next period (a `SUBSCRIPTION_UPDATE`-style provider operation with
+  reconciliation). Until then the item is listed on Today → "Returned item
+  still on monthly bill". Needs IN-28 and the Batch C design.
+- **Company-caused late pickup waiver** (IN-24): record who caused a late
+  pickup and waive the late-return charge for company fault. Batch C design.
+- **Collect late-return invoices through Stripe automatically** (today they
+  are ordinary open invoices, like the early-ending fee).
+
 - Lead scoring UI (browsing/filtering leads in the desk, not just the
   score itself — that's done) — **done, Phase 3 (2026-09-26).**
   Lead → customer conversion — **done, Phase 3.** Owner dashboard

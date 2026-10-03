@@ -1031,6 +1031,45 @@ is never replaced by a default.
   invoices never do. The accounting CSV gives every row its record ID and source
   and uses the Colorado date.
 
+## Pickups and returns: late return, early return, pickup day (2026-10-03)
+
+Chris's rules (IN-24 / IN-26 / IN-27), each an owner-changeable setting on
+Desk → Settings → **Pickups and returns** with its recommended value
+pre-selected and explained on the screen. Nothing here is hard-coded; the
+technical layout is in `docs/ARCHITECTURE.md` ("Pickup and return billing").
+
+1. **Late return.** A customer who keeps an item past the end date of their
+   agreement is charged a daily rate for each day past the end date, per
+   item. Setting: the daily rate is the item's monthly price ÷ 30
+   (**default**) or a fixed owner-set dollar amount per day. The late days
+   appear on the next bill as their own line, labeled
+   `Late return – [item] – [N] days` (one line per item), with the
+   agreement's sales tax. The bill is an ordinary open invoice: it is never
+   charged to a card automatically, so the owner can adjust or write it off
+   (for example a late pickup that was the company's fault — the automatic
+   waiver for that is still to be built, IN-24).
+2. **Early return (some items back while the agreement continues).** The
+   current period is billed in full as normal. On the **next** bill the
+   customer gets a credit for each early-returned item, prorated by the day
+   for the number of days in the billed period the item was not in their
+   possession. Setting: the per-day amount is the item's monthly price ÷ 30
+   (**default**) or ÷ the actual number of days in that billing month. The
+   credit is its own line, `Credit – [item] returned early – [N] days`.
+   Early returns only: items that are lost, stolen or damaged go through the
+   damage/loss process and get **no** credit. A washer+dryer set's price is
+   split evenly per machine. Rentals paid in full in advance get no
+   automatic credit (owner decides, as with early endings). The returned
+   item's rental line stays on the monthly subscription until IN-28 is
+   answered; such items are listed on Today until the owner adjusts them.
+3. **The pickup day is not billed.** The final chargeable day of any rental
+   is the day **before** the pickup/return date — for normal end-of-agreement
+   pickups, late returns and early returns alike. An item picked up on the
+   1st of the month is not charged for the 1st. Setting: on/off, **default
+   on**.
+
+Days are Colorado calendar days. Daily amounts are rounded once on the
+total, not per day.
+
 ## Cross-cutting desk tools (2026-09-28)
 
 Task #44 of the September 2026 build plan. Small tools shared across

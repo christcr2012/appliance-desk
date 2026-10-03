@@ -3,6 +3,11 @@ import { prisma } from "@/lib/prisma";
 import type { JobStatus, JobType, Prisma } from "@prisma/client";
 import { applianceStatusOnJobCompleted } from "@/domains/inventory/lifecycle";
 import { startRecurringBillingForAgreement } from "@/domains/billing/checkout";
+import {
+  pushEarlyReturnCreditToStripe,
+  recordPickupBillingOnRemoval,
+  type PickupBillingOutcome,
+} from "@/domains/billing/pickup-billing-events";
 import { parseChecklist, type ChecklistItem } from "./checklist";
 import { businessDayBounds } from "@/lib/business-date";
 import { ASSUMED_JOB_DURATION_MINUTES } from "./dispatch";
@@ -218,7 +223,7 @@ export async function updateJobStatus(
   newStatus: JobStatus,
   completionNotes?: string | null,
 ) {
-  const { updated, before } = await prisma.$transaction(async (tx) => {
+  const { updated, before, pickupBilling } = await prisma.$transaction(async (tx) => {
     await assertActiveTeamActor(tx, userId);
 
     const before = await tx.job.findUniqueOrThrow({ where: { id: jobId } });
@@ -254,13 +259,51 @@ export async function updateJobStatus(
       },
     });
 
+    let pickupBilling: PickupBillingOutcome | null = null;
     if (newStatus === "COMPLETED") {
-      await applyJobCompletionToAppliances(tx, userId, before);
+      const moved = await applyJobCompletionToAppliances(tx, userId, before);
+      // A completed pickup settles billing for the appliances it took away
+      // (late-return charges or early-return credits), in this same transaction.
+      if (before.type === "REMOVAL" && before.agreementId) {
+        pickupBilling = await recordPickupBillingOnRemoval(tx, {
+          userId,
+          jobId,
+          agreementId: before.agreementId,
+          applianceIds: moved,
+          completedAt: new Date(),
+        });
+        if (pickupBilling.notes.length > 0) {
+          await tx.auditLog.create({
+            data: {
+              userId,
+              action: "job.pickup_billing",
+              entityType: "Job",
+              entityId: jobId,
+              newValue: {
+                agreementId: before.agreementId,
+                lateReturnInvoiceId: pickupBilling.lateReturnInvoiceId,
+                earlyReturnCreditIds: pickupBilling.earlyReturnCreditIds,
+                notes: pickupBilling.notes,
+              },
+            },
+          });
+        }
+      }
     }
 
     const updated = await tx.job.findUniqueOrThrow({ where: { id: jobId } });
-    return { updated, before };
+    return { updated, before, pickupBilling };
   });
+
+  // Credits are sent to Stripe only once the local record is committed; a
+  // failure here is retried by the billing reconciliation pass.
+  for (const creditId of pickupBilling?.earlyReturnCreditIds ?? []) {
+    try {
+      await pushEarlyReturnCreditToStripe(creditId);
+    } catch (error) {
+      console.error(`Job ${jobId} completed but couldn't send early-return credit ${creditId} to Stripe yet:`, error);
+    }
+  }
 
   if (
     newStatus === "COMPLETED" &&
@@ -280,11 +323,12 @@ export async function updateJobStatus(
   return updated;
 }
 
+/** Moves each of the job's appliances to its next status. Returns the ids that actually moved. */
 async function applyJobCompletionToAppliances(
   tx: Prisma.TransactionClient,
   userId: string,
   job: { id: string; type: JobType; agreementId: string | null },
-) {
+): Promise<string[]> {
   const listed = await tx.jobAppliance.findMany({
     where: { jobId: job.id },
     select: { applianceId: true },
@@ -315,6 +359,7 @@ async function applyJobCompletionToAppliances(
     }
   }
 
+  const movedIds: string[] = [];
   for (const applianceId of applianceIds) {
     const appliance = await tx.appliance.findUniqueOrThrow({
       where: { id: applianceId },
@@ -328,6 +373,7 @@ async function applyJobCompletionToAppliances(
       data: { status: next },
     });
     if (moved.count !== 1) continue;
+    movedIds.push(applianceId);
 
     await tx.auditLog.create({
       data: {
@@ -344,6 +390,7 @@ async function applyJobCompletionToAppliances(
       },
     });
   }
+  return movedIds;
 }
 
 export async function addJobPhoto(

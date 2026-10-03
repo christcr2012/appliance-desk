@@ -11,6 +11,7 @@ import {
   recordFailedPaymentAttempt,
 } from "./ledger";
 import { resolveStripeInvoiceCashEvents } from "./stripe-invoice-payments";
+import { appliedBalanceCreditCents, creditLinesForAppliedBalance } from "./applied-credit-lines";
 import { HELD_CONFLICT_STATUS, HELD_PAYMENT_STATUS, HELD_REFUNDED_STATUS, HELD_TO_CREDIT_STATUS } from "./payment-status";
 
 async function alreadyProcessed(db: Prisma.TransactionClient, eventId: string): Promise<boolean> {
@@ -24,6 +25,8 @@ async function markProcessed(db: Prisma.TransactionClient, event: Stripe.Event):
 function inferLineItemKind(description: string | null): InvoiceLineItemKind {
   if (description === "Security deposit") return "DEPOSIT";
   if (description === "Damage waiver") return "DAMAGE_WAIVER";
+  if (description?.startsWith("Late return – ")) return "LATE_RETURN";
+  if (description?.startsWith("Credit – ")) return "CREDIT";
   return "RENTAL";
 }
 
@@ -201,6 +204,20 @@ async function recordPaidInvoice(
       rentalLineId: null,
     });
   }
+  // Credit Stripe took off this bill from the customer's account balance shows
+  // as labeled lines, so the customer can see what each credit was for.
+  const appliedCreditCents = appliedBalanceCreditCents(stripeInvoice);
+  let shownCreditIds: string[] = [];
+  if (appliedCreditCents > 0) {
+    const unshown = await db.customerCredit.findMany({
+      where: { customerId, appliedViaStripeAt: { not: null }, shownOnInvoiceId: null },
+      orderBy: { appliedViaStripeAt: "asc" },
+      select: { id: true, amountCents: true, reason: true },
+    });
+    const creditLines = creditLinesForAppliedBalance(appliedCreditCents, unshown);
+    lineItemsData.push(...creditLines.lines);
+    shownCreditIds = creditLines.shownCreditIds;
+  }
   const subtotalCents = lineItemsData
     .filter((item) => item.kind !== "TAX")
     .reduce((sum, item) => sum + item.amountCents, 0);
@@ -245,6 +262,13 @@ async function recordPaidInvoice(
           lineItems: { createMany: { data: lineItemsData } },
         },
       });
+
+  if (shownCreditIds.length > 0) {
+    await db.customerCredit.updateMany({
+      where: { id: { in: shownCreditIds }, shownOnInvoiceId: null },
+      data: { shownOnInvoiceId: invoice.id },
+    });
+  }
 
   let allocatedToInvoiceCents = 0;
   for (const cashEvent of cashEvents) {

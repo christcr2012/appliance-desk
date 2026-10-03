@@ -1,5 +1,6 @@
 import { businessDayBounds } from "@/lib/business-date";
 import { prisma } from "@/lib/prisma";
+import { EARLY_RETURN_UNASSIGN_REASON } from "@/domains/billing/pickup-billing";
 import { requireRole } from "@/lib/session";
 import {
   APPLIANCE_MAINTENANCE_DUE_DAYS,
@@ -9,6 +10,7 @@ import {
   applianceMaintenanceDueException,
   billingBlockedException,
   earlyEndingNotDoneException,
+  returnedItemStillBilledException,
   noticeWaitingException,
   missingRepairCostException,
   overdueJobException,
@@ -71,6 +73,7 @@ export async function getExceptions(): Promise<ExceptionItem[]> {
     stuckRenewals,
     stuckEndings,
     waitingNotices,
+    earlyReturnsStillBilled,
   ] = await Promise.all([
     canViewFinance ? prisma.rentalAgreement.findMany({
       where: { billingBlockedReason: { not: null } },
@@ -210,9 +213,36 @@ export async function getExceptions(): Promise<ExceptionItem[]> {
           },
         })
       : Promise.resolve([]),
+    canViewFinance
+      ? prisma.applianceAssignment.findMany({
+          where: {
+            unassignReason: EARLY_RETURN_UNASSIGN_REASON,
+            rentalLine: { agreement: { status: "ACTIVE", stripeSubscriptionId: { not: null } } },
+          },
+          select: {
+            unassignedAt: true,
+            appliance: { select: { assetNumber: true, applianceType: { select: { name: true } } } },
+            rentalLine: {
+              select: {
+                agreement: {
+                  select: { id: true, customer: { select: { user: { select: { name: true, email: true } } } } },
+                },
+              },
+            },
+          },
+        })
+      : Promise.resolve([]),
   ]);
 
   const items: ExceptionItem[] = [
+    ...earlyReturnsStillBilled.map((a) =>
+      returnedItemStillBilledException({
+        agreementId: a.rentalLine.agreement.id,
+        itemLabel: `${a.appliance.applianceType.name} #${a.appliance.assetNumber}`,
+        returnedAt: a.unassignedAt ?? now,
+        customerName: customerDisplayName(a.rentalLine.agreement.customer),
+      }),
+    ),
     ...waitingNotices.map((n) =>
       noticeWaitingException({ id: n.id, createdAt: n.createdAt, customerName: customerDisplayName(n.customer) }),
     ),

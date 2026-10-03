@@ -63,6 +63,32 @@ Moved to a later batch on purpose (not forgotten): per-customer terms screens
 (estimate / setup / sign-up) and the customer- and owner-facing screens that show
 a termination quote or start a renewal belong to Batch D, which owns those screens.
 
+## Pickup and return billing (2026-10-03, built ahead of the Batch C design at Chris's direction)
+
+Branch `ai/claude/pickup-billing-rules`, stacked on #164. Chris answered IN-24
+(customer-caused part), IN-26 (return side) and IN-27 with three rules and asked
+for them as owner settings; built exactly as stated:
+
+- [x] Settings: Desk → Settings → Pickups and returns (late-return daily rate:
+      monthly ÷ 30 or fixed; early-return credit basis: ÷ 30 or actual days;
+      pickup day not billed, on by default), explained on the screen, with
+      "Restore recommended values". Migration `20261003270000_pickup_billing_rules`.
+- [x] Late return: one open invoice with a `Late return – [item] – [N] days`
+      line per item (+ the agreement's tax) when a REMOVAL job completes for an
+      ended agreement. Never auto-charged.
+- [x] Early return: item released from the agreement, `CustomerCredit` sent to
+      Stripe as balance credit, shown on the next mirrored bill as
+      `Credit – [item] returned early – [N] days`.
+- [x] Pickup day not billed, applied to both.
+- [x] Tests: 3-day late return; one item returned 10 days early on a 2-item
+      agreement; pickup on the 1st not charged (plus DST, rounding, fixed
+      rate, actual-days basis, settings parsing, fake-transaction event
+      tests). Full suite green on a throwaway Postgres.
+- [ ] **Not built, needs Chris (IN-28):** the returned item's line stays on
+      the Stripe subscription; listed on Today → "Returned item still on
+      monthly bill" until adjusted by hand.
+- [ ] **Not built (Batch C design):** company-caused late pickup waiver (IN-24).
+
 ## Open items carried across batches
 
 - Historical review threads: ~50 remain open in
@@ -87,6 +113,8 @@ emails; building continues with sending switched off) and IN-17's CPA check of t
 7.375% rate.
 
 ## Session log (last two batches only)
+
+- **2026-10-03 (Claude, pickup billing rules)** — Chris gave the three pickup/return billing rules (late return per day per item; early-return credit on the next bill; pickup day never charged) as owner settings with defaults, to be built on the open PR (#164). Built them as `ai/claude/pickup-billing-rules` stacked on #164: settings section with on-screen explanations, pure rule module, pickup-job wiring, Stripe balance credit, labeled lines on the mirrored bill, 38 new tests (one against a real Postgres: the credit line on the next mirrored bill, replay-safe), docs (ARCHITECTURE billing section, BUSINESS-RULES, OWNER-INPUTS IN-24/26/27 + new IN-28, DECISIONS, ROADMAP, GO-LIVE). Full suite green locally on a throwaway Postgres; settings screen passed the light/dark accessibility sweep. Open for Chris: IN-28 (ongoing monthly charge for a returned item) and the company-fault waiver.
 
 - **2026-10-03 (Claude, Batch B close-out + review catch-up)** — Chris asked whether I was following the review-continuity rule. I was not for #151–#153 (I had only read the #148/#149 comments). Read every open Codex thread on #148–#153 (9) and dispositioned each in the close-out PR: 3 fixed in this PR (signing wording, browser test of the signing terms, legacy `SUCCEEDED` payments in statements), 1 fixed by a safety migration (old/new tax columns kept in step during deploys), 1 design doc amended (D12), 3 already fixed (evidence in PR), 1 still open (renewal shows active before its start date, IN-22). Also fixed a real race (a Stripe payment arriving while a write-off is saved) and added real-database tests for credit, webhook race, renewals and drift. Acceptance ledger: `docs/reviews/2026-10-03-batch-b-acceptance.md`. Rule from now on: every new PR starts by reading the previous PR's review threads and fixing or dispositioning each.
 

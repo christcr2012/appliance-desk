@@ -1131,6 +1131,9 @@ enum InvoiceLineItemKind {
   CREDIT
   ADJUSTMENT
   EARLY_TERMINATION_FEE
+  // Rent for days an item was kept past the agreement's end date
+  // ("Late return – [item] – [N] days"). Not a late-PAYMENT fee.
+  LATE_RETURN
 }
 
 // Batch B — provider operations (docs/designs/BATCH-B.md D1/D2)
@@ -1328,6 +1331,10 @@ model CustomerCredit {
   sourceId   String?
   side       String?
   appliedViaStripeAt DateTime?
+  // The local mirror of the Stripe invoice this Stripe-applied credit was shown
+  // on as its own labeled line (src/domains/billing/webhooks.ts). Null until
+  // Stripe has used it on a bill. Local applications use CreditApplication.
+  shownOnInvoiceId String?
   applications CreditApplication[]
 
   createdAt DateTime @default(now())
@@ -1404,6 +1411,19 @@ model BusinessSettings {
   autoRenewTermsVersion       String?
   renewalTermsText            String?
   terminationTermsText        String?
+
+  // Pickup and return billing (owner decisions IN-24 / IN-26 / IN-27, 2026-10-03;
+  // src/domains/billing/pickup-billing.ts is the only reader).
+  // How the daily rate for a LATE return is found: "MONTHLY_DIV_30" = that item's
+  // monthly price divided by 30; "FIXED" = the dollar amount below, per day.
+  lateReturnRateMode        String  @default("MONTHLY_DIV_30")
+  lateReturnFixedDailyCents Int     @default(0)
+  // How the per-day credit for an EARLY return is found: "MONTHLY_DIV_30" or
+  // "ACTUAL_DAYS_IN_MONTH" (the real length of that billing month, 28 to 31 days).
+  earlyReturnProrationBasis String  @default("MONTHLY_DIV_30")
+  // ON (default): the pickup/return day itself is never charged; the last charged
+  // day is the day before. OFF: the pickup day is charged like any other day.
+  pickupDayNotBilled        Boolean @default(true)
 
   updatedAt DateTime @updatedAt
 }

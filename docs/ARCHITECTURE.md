@@ -202,6 +202,84 @@ unsigned request claiming to be Stripe — that's now resolved.
 deferred — see "Automation rules" below. Dunning beyond Stripe's own
 built-in retry logic is still not built.
 
+### Pickup and return billing (owner decisions IN-24 / IN-26 / IN-27, 2026-10-03)
+
+Three owner-changeable rules decide what a customer is charged or credited
+when an appliance is picked up or returned on a day other than the
+agreement's end date. Nothing is hard-coded: the settings live in
+`BusinessSettings` (`lateReturnRateMode`, `lateReturnFixedDailyCents`,
+`earlyReturnProrationBasis`, `pickupDayNotBilled`), are edited on
+`/desk/settings?section=pickups` ("Pickups and returns", owner and admin,
+with every choice explained on the screen and a "Restore recommended
+values" button), and are read by exactly one module.
+
+| Piece | Where |
+|---|---|
+| The rules themselves (pure, no database): day counting, daily rates, labels | `src/domains/billing/pickup-billing.ts` |
+| What a completed pickup does to billing (invoice, credit, audit) | `src/domains/billing/pickup-billing-events.ts` |
+| Where it is triggered | `updateJobStatus` in `src/domains/jobs/index.ts`, when a REMOVAL job is marked Completed |
+| Settings parsing and form defaults | `src/domains/settings/pickup-billing.ts`, `src/app/desk/settings/pickup-billing-form.tsx` |
+| Credit shown on the next bill | `src/domains/billing/applied-credit-lines.ts`, used by `recordPaidInvoice` in `webhooks.ts` |
+| Tests | `tests/billing-pickup-billing.test.ts`, `tests/billing-pickup-billing-events.test.ts`, `tests/settings-pickup-billing.test.ts` |
+
+How each rule works:
+
+1. **Late return.** The agreement's `endDate` is its last paid-for day
+   (fixed terms store it as the last second of that Colorado date; Stripe's
+   `cancel_at` uses the same instant). When a REMOVAL job completes for an
+   **ENDED** agreement, each appliance it took away is charged for every
+   Colorado calendar day from the day after the end date through the last
+   chargeable day (rule 3). Daily rate: the item's monthly price ÷ 30
+   (default) or the owner's fixed amount per day. The total is rounded once
+   (`round(price × days ÷ 30)`), never per day. The charges become one
+   ordinary `OPEN` invoice with one `LATE_RETURN` line per appliance,
+   labeled `Late return – [item] – [N] days`, plus the agreement's own sales
+   tax (`taxRateMilliPercent`, the same rate its rent carries) — the same
+   way the early-ending fee is billed. Nothing is charged to a card
+   automatically: the customer pays it like any other invoice, and the
+   owner can see, adjust or write it off. Audit: `billing.late_return_invoiced`.
+2. **Early return (partial pickup on a rental that continues).** When a
+   REMOVAL job completes for an **ACTIVE** agreement, each appliance it took
+   away is released from the agreement (`ApplianceAssignment.unassignedAt`,
+   reason `Returned early`) and earns a `CustomerCredit`
+   (`sourceType = EARLY_RETURN`, `sourceId = <jobId>:<applianceId>`) for the
+   days of the already-billed period it was not in the customer's hands —
+   from the first day not charged (the return day under rule 3) through the
+   last day of that anniversary period (`billingPeriodFor(billingStartedAt, n)`,
+   the same tiling the subscription uses). Daily rate: monthly price ÷ 30
+   (default) or ÷ the real length of that period (28–31 days); never more
+   than one month's price. A "set" (two appliances on one rental line)
+   splits its line price evenly per item. After the job's transaction
+   commits, the credit is sent to Stripe as customer-balance credit
+   (`BALANCE_CREDIT` provider operation, idempotency key
+   `early-return-credit-<creditId>`, retried by the reconciliation pass like
+   referral credits), so it comes off the customer's **next** monthly
+   charge. When that next Stripe invoice is mirrored, the applied balance
+   is shown as its own `CREDIT` line per credit —
+   `Credit – [item] returned early – [N] days` — oldest credit first,
+   never more than Stripe actually applied, with any unmatched remainder
+   shown as "Account credit applied"; each credit records which invoice it
+   was shown on (`CustomerCredit.shownOnInvoiceId`). Rentals paid in full
+   in advance, and agreements whose billing never started, get no automatic
+   credit (noted in the audit entry for the owner). Lost, stolen or damaged
+   appliances never come through this path. Audit: `billing.early_return_credit`.
+   - **Not automated yet:** the returned appliance's rental line stays on
+     the Stripe subscription, so from the following month the charge would
+     include it again. Until reducing a live subscription is designed
+     (Batch C, `docs/OWNER-INPUTS.md` IN-28), every such appliance is listed
+     on the owner's attention list (Today → "Returned item still on monthly
+     bill") so the owner can adjust the charge by hand.
+3. **Pickup day not billed** (default on). The last chargeable day of any
+   rental is the day before the pickup/return date, for normal end-of-
+   agreement pickups, late returns and early returns alike. With the switch
+   off, the pickup day is charged like any other day. Dates are Colorado
+   calendar dates (`businessDateKey`), so a pickup at 11:30 pm is on that
+   day, not the next UTC day, and daylight-saving changes count as whole days.
+
+Every rule's outcome is written to the job's audit trail
+(`job.pickup_billing`) in plain words, including why an appliance got no
+charge or credit.
+
 ## Automation rules (scheduled jobs)
 
 **As of 2026-09-28**, later extended 2026-09-29. Checks that used to

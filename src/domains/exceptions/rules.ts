@@ -27,7 +27,8 @@ export type ExceptionCategory =
   | "APPLIANCE_MAINTENANCE_DUE"
   | "RENEWAL_NOT_STARTED"
   | "EARLY_ENDING_NOT_DONE"
-  | "NOTICE_WAITING";
+  | "NOTICE_WAITING"
+  | "RETURNED_ITEM_STILL_BILLED";
 
 export type ExceptionSeverity = "high" | "medium";
 
@@ -88,6 +89,30 @@ export function renewalNotStartedException(agreement: {
       "The renewal is signed but could not take over from the rental it renews (that rental may have been ended or cancelled early). Open it to cancel or fix it.",
     href: `/desk/agreements/${agreement.id}`,
     since: agreement.startDate,
+  };
+}
+
+/**
+ * An appliance was returned early (a partial pickup on a rental that carries on)
+ * and its unused days were credited, but its rental line is still on the
+ * customer's monthly subscription, so the next month would charge for it again.
+ * Reducing a live subscription is not automated yet; until it is, the owner
+ * must adjust the charge by hand (docs/OWNER-INPUTS.md IN-28).
+ */
+export function returnedItemStillBilledException(item: {
+  agreementId: string;
+  itemLabel: string;
+  returnedAt: Date;
+  customerName: string;
+}): ExceptionItem {
+  return {
+    category: "RETURNED_ITEM_STILL_BILLED",
+    severity: "high",
+    title: `${item.itemLabel} came back early but is still on ${item.customerName}'s monthly bill`,
+    detail:
+      "The unused days of the current month were credited. From next month the monthly charge still includes this appliance until its rental line is taken off the subscription in Stripe or the customer is credited each month.",
+    href: `/desk/agreements/${item.agreementId}`,
+    since: item.returnedAt,
   };
 }
 
