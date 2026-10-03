@@ -6,6 +6,7 @@ const invoiceLineItemCreate = vi.fn();
 const invoiceUpdate = vi.fn();
 const auditLogCreate = vi.fn();
 const queryRaw = vi.fn();
+const transaction = vi.fn();
 const sendEmail = vi.fn();
 const getBusinessSettings = vi.fn();
 
@@ -24,8 +25,7 @@ vi.mock("@/lib/prisma", () => {
   };
   return {
     prisma: {
-      $transaction: async (callback: (client: typeof tx) => Promise<unknown>) =>
-        callback(tx),
+      $transaction: (...args: unknown[]) => transaction(...args),
     },
   };
 });
@@ -95,6 +95,20 @@ describe("applyLateFees", () => {
     invoiceLineItemCreate.mockReset().mockResolvedValue({});
     invoiceUpdate.mockReset().mockResolvedValue({});
     auditLogCreate.mockReset().mockResolvedValue({});
+    transaction.mockReset().mockImplementation(async (callback: (client: any) => Promise<unknown>) =>
+      callback({
+        $queryRaw: (...args: unknown[]) => queryRaw(...args),
+        invoice: {
+          findMany: (...args: unknown[]) => invoiceFindMany(...args),
+          findUniqueOrThrow: (...args: unknown[]) => invoiceFindUniqueOrThrow(...args),
+          update: (...args: unknown[]) => invoiceUpdate(...args),
+        },
+        invoiceLineItem: {
+          create: (...args: unknown[]) => invoiceLineItemCreate(...args),
+        },
+        auditLog: { create: (...args: unknown[]) => auditLogCreate(...args) },
+      }),
+    );
     queryRaw.mockReset().mockImplementation(async (strings: TemplateStringsArray) => {
       const sql = strings.join("?");
       if (sql.includes("pg_advisory_xact_lock")) return [{ pg_advisory_xact_lock: "" }];
@@ -110,6 +124,46 @@ describe("applyLateFees", () => {
     expect(queryRaw).toHaveBeenCalledTimes(1);
     expect(String(queryRaw.mock.calls[0]?.[0])).toContain("pg_advisory_xact_lock");
     expect(invoiceFindMany).toHaveBeenCalledTimes(1);
+  });
+
+  it("holds one transaction and one advisory lock across multiple 100-row pages", async () => {
+    const ids = Array.from({ length: 100 }, (_, index) => ({ id: `inv-${index}` }));
+    invoiceFindMany.mockReset().mockResolvedValueOnce(ids).mockResolvedValueOnce([]);
+    queryRaw.mockReset().mockImplementation(async (strings: TemplateStringsArray, ...values: unknown[]) => {
+      const sql = strings.join("?");
+      if (sql.includes("pg_advisory_xact_lock")) return [{ pg_advisory_xact_lock: "" }];
+      if (sql.includes('FROM "Invoice"')) {
+        return [
+          {
+            id: String(values[0]),
+            invoiceNumber: 1,
+            status: "DELINQUENT",
+            dueDate: new Date("2026-09-01T18:00:00Z"),
+            lateFeeCents: 0,
+            amountDueCents: 4_000,
+            amountPaidCents: 0,
+            agreementId: "agr-1",
+          },
+        ];
+      }
+      throw new Error(`Unexpected query: ${sql}`);
+    });
+    invoiceFindUniqueOrThrow.mockReset().mockImplementation(async ({ where }: any) =>
+      candidateInvoice({
+        id: where.id,
+        agreement: { lateFeeGraceDays: 5, lateFeeCents: 500, lateFeePercent: 0 },
+      }),
+    );
+
+    const { applyLateFees } = await import("@/domains/billing/late-fees");
+    const result = await applyLateFees();
+
+    expect(result).toHaveLength(100);
+    expect(transaction).toHaveBeenCalledTimes(1);
+    expect(
+      queryRaw.mock.calls.filter((call) => String(call[0]).includes("pg_advisory_xact_lock")),
+    ).toHaveLength(1);
+    expect(invoiceFindMany).toHaveBeenCalledTimes(2);
   });
 
   it("skips an invoice whose agreement has no late fee configured", async () => {
