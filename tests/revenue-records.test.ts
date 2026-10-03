@@ -1,63 +1,78 @@
 import { beforeEach, expect, it, vi } from "vitest";
+
 const m = vi.hoisted(() => ({
   role: vi.fn(),
   tx: vi.fn(),
-  aggregate: vi.fn(),
-  rows: vi.fn(),
+  receiptAggregate: vi.fn(),
+  receipts: vi.fn(),
   refundAggregate: vi.fn(),
   refunds: vi.fn(),
 }));
+
 vi.mock("@/lib/session", () => ({ requireRole: m.role }));
 vi.mock("@/lib/prisma", () => ({ prisma: { $transaction: m.tx } }));
+
 import {
   getRevenueRecords,
   revenuePeriod,
 } from "@/domains/billing/revenue-records";
-const asOf = new Date("2026-10-01T00:30:00Z");
+
+const asOf = new Date("2026-10-01T00:30:00Z"); // Sep 30, 6:30 PM MDT
+
 beforeEach(() => {
   vi.clearAllMocks();
   m.role.mockResolvedValue({});
-  m.aggregate.mockResolvedValue({
+  m.receiptAggregate.mockResolvedValue({
     _count: { _all: 26 },
-    _sum: { amountCents: 5400 },
+    _sum: { amountCents: 8400 },
   });
   m.refundAggregate.mockResolvedValue({
     _count: { _all: 1 },
     _sum: { amountCents: 600 },
   });
-  m.rows.mockResolvedValue([
+  m.receipts.mockResolvedValue([
     {
-      id: "p1",
-      createdAt: asOf,
-      amountCents: 5400,
+      id: "receipt-1",
+      source: "MANUAL",
+      amountCents: 8400,
       method: "cash",
-      recordedByUserId: "owner",
-      invoice: {
-        id: "i1",
-        customerId: "c1",
-        invoiceNumber: 10,
-        customer: {
-          user: { name: "Customer", email: "customer@example.test" },
-        },
+      receivedOn: asOf,
+      customer: {
+        id: "c1",
+        user: { name: "Customer", email: "customer@example.test" },
       },
+      payments: [
+        {
+          invoice: {
+            id: "i1",
+            customerId: "c1",
+            invoiceNumber: 10,
+            customer: {
+              user: { name: "Customer", email: "customer@example.test" },
+            },
+          },
+        },
+      ],
     },
   ]);
   m.refunds.mockResolvedValue([]);
   m.tx.mockImplementation((fn) =>
     fn({
-      payment: { aggregate: m.aggregate, findMany: m.rows },
+      receipt: { aggregate: m.receiptAggregate, findMany: m.receipts },
       refund: { aggregate: m.refundAggregate, findMany: m.refunds },
     }),
   );
 });
-it("uses UTC month boundaries and excludes future record timestamps", () => {
+
+it("uses Colorado business-month boundaries and excludes future timestamps", () => {
   expect(revenuePeriod(asOf, true)).toEqual({
-    gte: new Date("2026-10-01T00:00:00Z"),
+    gte: new Date("2026-09-01T06:00:00.000Z"),
     lte: asOf,
   });
   expect(revenuePeriod(asOf, false)).toEqual({ lte: asOf });
 });
-it("reconciles sum/count and bounded stable payment rows with one snapshot and exact invoice links", async () => {
+
+it("reconciles sum/count and bounded stable receipt rows in one snapshot", async () => {
   const result = await getRevenueRecords("payments", true, "999", asOf);
   expect(result.meta).toMatchObject({
     page: 2,
@@ -65,37 +80,80 @@ it("reconciles sum/count and bounded stable payment rows with one snapshot and e
     skip: 25,
     pageSize: 25,
   });
-  expect(result.totalCents).toBe(5400);
-  const aggregate = m.aggregate.mock.calls[0][0];
-  const read = m.rows.mock.calls[0][0];
+  expect(result.totalCents).toBe(8400);
+  const aggregate = m.receiptAggregate.mock.calls[0][0];
+  const read = m.receipts.mock.calls[0][0];
   expect(aggregate.where).toEqual(read.where);
-  expect(read.where.status).toBe("succeeded");
   expect(read).toMatchObject({
     take: 25,
     skip: 25,
-    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    orderBy: [{ receivedOn: "desc" }, { id: "desc" }],
   });
   expect(result.rows[0]).toMatchObject({
-    basis: "Owner-recorded payment",
+    id: "receipt-1",
+    receiptId: "receipt-1",
+    source: "MANUAL",
+    basis: "Owner-recorded cash receipt",
     invoice: { id: "i1", customerId: "c1" },
   });
-  expect(result.rows[0]).not.toHaveProperty("recordedByUserId");
   expect(m.tx.mock.calls[0][1]).toEqual({ isolationLevel: "RepeatableRead" });
   expect(m.refunds).not.toHaveBeenCalled();
 });
-it("reads invoice refunds separately without treating them as gross payments", async () => {
+
+it("keeps a multi-invoice or overpayment receipt as one cash row", async () => {
+  m.receipts.mockResolvedValue([
+    {
+      id: "receipt-combined",
+      source: "MANUAL",
+      amountCents: 25_000,
+      method: "check",
+      receivedOn: asOf,
+      customer: {
+        id: "c1",
+        user: { name: "Customer", email: "customer@example.test" },
+      },
+      payments: [
+        {
+          invoice: {
+            id: "i1",
+            customerId: "c1",
+            invoiceNumber: 10,
+            customer: { user: { name: "Customer", email: "customer@example.test" } },
+          },
+        },
+        {
+          invoice: {
+            id: "i2",
+            customerId: "c1",
+            invoiceNumber: 11,
+            customer: { user: { name: "Customer", email: "customer@example.test" } },
+          },
+        },
+      ],
+    },
+  ]);
+
+  const result = await getRevenueRecords("payments", false, "1", asOf);
+  expect(result.rows[0]).toMatchObject({
+    id: "receipt-combined",
+    amountCents: 25_000,
+    invoice: null,
+    allocationCount: 2,
+  });
+});
+
+it("reads invoice refunds separately without treating them as gross receipts", async () => {
   const result = await getRevenueRecords("refunds", false, "1", asOf);
   expect(result.totalCents).toBe(600);
   expect(m.refunds.mock.calls[0][0].where).toEqual({
     createdAt: { lte: asOf },
   });
-  expect(m.aggregate).not.toHaveBeenCalled();
+  expect(m.receiptAggregate).not.toHaveBeenCalled();
 });
+
 it("denies unauthorized roles before touching the database", async () => {
   m.role.mockRejectedValue(new Error("Forbidden"));
-  await expect(getRevenueRecords("payments", true)).rejects.toThrow(
-    "Forbidden",
-  );
+  await expect(getRevenueRecords("payments", true)).rejects.toThrow("Forbidden");
   expect(m.tx).not.toHaveBeenCalled();
   expect(m.role).toHaveBeenCalledWith("OWNER", "ADMIN");
 });
