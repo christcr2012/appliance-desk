@@ -129,6 +129,18 @@ resulting behavior are verified.
   toggles — must be a stored setting editable in the app (with a reasonable
   starting value), never a hard-coded constant. If something truly must stay
   in code, say why in the PR.
+  Every such setting must be explained **in the screen itself**, in plain
+  words anyone can follow (Chris, 2026-10-03): what the setting does, what each
+  choice means for a customer, the starting value and why it was chosen, who
+  can change it, and a way to restore the recommended value. No jargon, no
+  "see the docs".
+- **Design drift check at the start of every batch.** Approved designs for later
+  batches were written before earlier batches changed the code. Before coding a
+  batch, follow the drift check in `docs/designs/README.md`: read
+  `docs/designs/CHANGES-SINCE-DESIGN.md`, verify the design against the code,
+  record and amend differences, and stop with a written stronger-model prompt only
+  for decision-level conflicts (money, statuses, permissions, database design).
+  When your batch merges, add its changes to `CHANGES-SINCE-DESIGN.md`.
 - **Do not switch models; ask for a stronger one in writing.** If a task needs
   a heavier-reasoning model (for example writing an approved batch design),
   stop on that task, and give Chris a complete, self-contained prompt to run
@@ -184,6 +196,12 @@ resulting behavior are verified.
    *fixed (evidence)*, *already fixed (evidence)*, *superseded (by what)*, or
    *still open (why, next step)*. Never silently drop one.
 4. Resolve a review thread only after verifying the fix at the exact head.
+5. **Do not merge before the automated reviewers have posted.** Codex and Copilot
+   post a few minutes after every push (a "Running Copilot Code Review" workflow run
+   shows Copilot still working). "Zero threads" while a reviewer is still running
+   means unreviewed, not clean: wait for it to finish, list the threads again, then
+   merge. A review that arrives after a merge is handled in the next PR (and
+   recorded in its description).
 
 ## Where the rules live (one source of truth each)
 

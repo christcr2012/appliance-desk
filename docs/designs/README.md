@@ -34,6 +34,34 @@ turn comes, the design pass is a *re-verification*: read §0, re-read the code
 it names, amend the design (dated note at the top) if the code moved, then
 mark it approved for implementation in the table above.
 
+## Design drift check — required at the start of every batch (Chris, 2026-10-03)
+
+Designs for C–F were written before B was built, and each batch changes what the
+next one assumes. The implementing model (whichever model Chris has selected) does
+this check itself, **before writing any code**:
+
+1. Read `docs/designs/CHANGES-SINCE-DESIGN.md` and the design's "Verify before
+   starting" table. Check every row against the code (grep the names, read the
+   functions, run the claim), not against memory.
+2. Read the design's work units against the code they touch and against
+   `docs/BUSINESS-RULES.md`; list every place where the design names a function,
+   file, status, table or rule that no longer matches.
+3. Write the result as a dated "Drift check" section at the top of the design
+   (what matched, what moved, and the exact amendment for each difference), and add
+   anything later batches need to `CHANGES-SINCE-DESIGN.md`. Small differences
+   (a moved file, a renamed function, a status the design must now include) are
+   amended in the design and the batch proceeds.
+4. **Stop and hand Chris a prompt for a stronger model** when a difference touches
+   a *decision*, not a name: a money rule, a status or state-machine rule, a
+   permission boundary, the database design, or anything the design says needs a
+   stop-and-ask, and the right amendment is not obvious from the code and docs. The
+   prompt must be self-contained (the design, the code locations, the specific
+   conflict, and the question). Continue only with work that does not depend on it.
+5. Mark the design "Approved" again in the table above only after steps 1–3.
+
+When a batch merges, its last task is to add the dated lines to
+`CHANGES-SINCE-DESIGN.md` so the next drift check starts from facts.
+
 ## When a design turns out to be wrong mid-implementation
 
 Stop. Record what is wrong in `docs/STATUS.md` under the batch row and in the

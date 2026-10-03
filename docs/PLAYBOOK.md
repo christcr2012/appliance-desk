@@ -22,6 +22,14 @@ like, and what to do if it fails. The rules behind the steps are in
 Done when: you can say in eight lines what the batch delivers, how it will
 be accepted, and which existing files you will touch.
 
+## Step 0b — Design drift check (start of every batch)
+
+Before the first line of a batch's code, do the design drift check in
+`docs/designs/README.md` (read `docs/designs/CHANGES-SINCE-DESIGN.md`, verify the
+design's "Verify before starting" table against the code, write the dated drift
+section, amend small differences, and stop with a stronger-model prompt for
+decision-level conflicts).
+
 ## Step 1 — Branch
 
 ```bash
@@ -272,11 +280,25 @@ evidence; preview checked; review continuity recorded; automated review
 requested or its waiver recorded. Then merge with the expected-head SHA:
 
 ```bash
-# Stacked PRs cannot use the plain /merge route; use the asynchronous one and poll it.
-gh api -X PUT repos/<owner>/<repo>/pulls/<n>/merge-async \
-  -f merge_method=merge -f merge_action=direct_merge -f sha=<head-sha> --jq .details.uuid
-gh api repos/<owner>/<repo>/pulls/<n>/merge-async/<uuid> --jq .status   # wait for "merged"
+# Stacked PRs cannot use the plain /merge route; use the asynchronous one.
+resp=$(gh api -X PUT repos/<owner>/<repo>/pulls/<n>/merge-async \
+  -f merge_method=merge -f merge_action=direct_merge -f sha=<head-sha>)
+echo "$resp" | jq -r '.status, .details.message'
+# Only "pending" carries a uuid. Poll it until it is no longer pending:
+uuid=$(echo "$resp" | jq -r '.details.uuid // empty')
+while [ -n "$uuid" ]; do
+  r=$(gh api repos/<owner>/<repo>/pulls/<n>/merge-async/$uuid)
+  [ "$(echo "$r" | jq -r .status)" != "pending" ] && { echo "$r" | jq -r '.status, .details.message'; break; }
+  sleep 5
+done
+# "merged" = done. "failed" = read details.message (closed, draft, or head moved).
+# "enqueued" = in a merge queue: NOT merged yet; confirm separately.
 ```
+
+Before merging, confirm the reviewers have finished: the `Running Copilot Code
+Review` workflow run is completed and a Codex review exists for the current head;
+then list the threads once more (see Step 5.3). Late comments on a merged PR go
+into the next PR.
 
 Merge a stack **from the bottom up**, one PR at a time. After each merge the
 next PR's base may still name the merged branch: set it to `main`
@@ -285,7 +307,7 @@ fresh CI at its (possibly rewritten) head before merging it. If its history now
 conflicts only because the lower PR was merged with a rewritten history, rebase
 the rest of the stack onto `origin/main` with
 `git rebase --onto origin/main <old-lower-head> <top-branch> --update-refs`, then
-push each branch. The repository merges with merge commits (no squash).
+push each branch with `git push --force-with-lease=<branch>:<its-old-remote-sha> origin <branch>` (never a plain force; a plain push is rejected after a rebase). The repository merges with merge commits (no squash).
 A failed browser job can be re-run with
 `gh api -X POST repos/<owner>/<repo>/actions/runs/<run-id>/rerun-failed-jobs`
 (find the run with `actions/runs?head_sha=<sha>`; pick the one named CI). The

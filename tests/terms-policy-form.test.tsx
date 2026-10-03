@@ -95,3 +95,30 @@ it("tells the owner that changes only reach agreements sent for signing afterwar
   expect(screen.getByText(/apply only to rental agreements that are sent for signing/)).toBeTruthy();
   expect(screen.getByText(/keeps the terms it was sent with/)).toBeTruthy();
 });
+
+it("restores the recommended starting terms into the form without saving anything", () => {
+  render(<TermsPolicyForm defaultValues={termsPolicyDefaults({})} />);
+  fireEvent.click(screen.getByRole("button", { name: "Restore recommended starting terms" }));
+  expect((screen.getByLabelText("Flat fee") as HTMLInputElement).value).toBe("50");
+  expect((screen.getByLabelText("Percent of the rent still owed") as HTMLInputElement).value).toBe("25");
+  expect((screen.getByLabelText("Days of notice the customer must give") as HTMLInputElement).value).toBe("30");
+  expect(
+    (screen.getByLabelText(/what happens to the months they did not use/) as HTMLSelectElement).value,
+  ).toBe("REFUND");
+  expect(screen.getByRole("status").textContent).toMatch(/Nothing is saved until/);
+  expect(m.save).not.toHaveBeenCalled();
+});
+
+it("will not let the restore button change the form while a save is in flight", async () => {
+  let finish: (v: { status: "success" }) => void = () => {};
+  m.save.mockReturnValueOnce(new Promise((resolve) => { finish = resolve; }));
+  render(<TermsPolicyForm defaultValues={termsPolicyDefaults({})} />);
+  fireEvent.click(screen.getByRole("button", { name: "Save this section" }));
+  await waitFor(() =>
+    expect((screen.getByRole("button", { name: "Restore recommended starting terms" }) as HTMLButtonElement).disabled).toBe(true),
+  );
+  finish({ status: "success" });
+  await waitFor(() =>
+    expect((screen.getByRole("button", { name: "Restore recommended starting terms" }) as HTMLButtonElement).disabled).toBe(false),
+  );
+});

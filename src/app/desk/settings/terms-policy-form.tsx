@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { updateTermsPolicyAction } from "./actions";
 import type { TermsPolicyFormValues } from "@/domains/settings/terms-policy";
+import { RECOMMENDED_TERMS_POLICY } from "@/domains/settings/recommended-terms";
 
 const inputClass = "w-full max-w-sm rounded-lg border border-gray-300 px-3 py-2 text-sm";
 
@@ -52,6 +53,13 @@ export function TermsPolicyForm({ defaultValues }: { defaultValues: TermsPolicyF
           {message.text}
         </p>
       )}
+
+      <p className="rounded-lg border border-gray-300 px-4 py-3 text-sm text-gray-900">
+        The starting values here come from common practice for equipment rentals and Colorado&rsquo;s
+        automatic-renewal law (a reminder 25 to 40 days before a renewal, and an easy way to
+        cancel). Every number and sentence is yours to change. Owners and admins can edit this
+        section. Please have a Colorado attorney read the wording before you rely on it.
+      </p>
 
       <p className="rounded-lg border border-gray-300 px-4 py-3 text-sm text-gray-900">
         Changes here apply only to rental agreements that are sent for signing <strong>after</strong> you
@@ -199,13 +207,29 @@ export function TermsPolicyForm({ defaultValues }: { defaultValues: TermsPolicyF
         </div>
       </fieldset>
 
-      <button
-        type="submit"
-        disabled={saving}
-        className="rounded-full bg-gray-900 px-6 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
-      >
-        {saving ? "Saving…" : "Save this section"}
-      </button>
+      <div className="flex flex-wrap items-center gap-4">
+        <button
+          type="submit"
+          disabled={saving}
+          className="rounded-full bg-gray-900 px-6 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+        >
+          {saving ? "Saving…" : "Save this section"}
+        </button>
+        <button
+          type="button"
+          disabled={saving}
+          onClick={() => {
+            setValues(RECOMMENDED_TERMS_POLICY);
+            setMessage({
+              kind: "success",
+              text: "The recommended starting terms are filled in below. Nothing is saved until you press “Save this section”.",
+            });
+          }}
+          className="rounded-full border border-gray-400 px-5 py-2.5 text-sm font-semibold text-gray-900 disabled:opacity-60"
+        >
+          Restore recommended starting terms
+        </button>
+      </div>
     </form>
   );
 }

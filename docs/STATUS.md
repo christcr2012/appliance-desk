@@ -12,7 +12,7 @@ Last updated: 2026-10-03 (evening) · `main` includes the whole Batch B stack th
 | Batch | Status | PR / branch | Evidence | Notes |
 |---|---|---|---|---|
 | A — Critical integrity & platform safety | **MERGED** | #136 (2026-10-02) | Full CI green; real-Postgres concurrency and adversarial auth tests | Audit registers stay open; nothing in A claims a B–F item. |
-| B — Billing, provider reconciliation & financial ledger | **IN PROGRESS (core merged; follow-ups open)** | Merged to `main`: #141, #145, #146, #147, #148, #149, #151, #152, #153, #154 (2026-10-03) | Real-database tests for provider operations, receipts/allocations, credits, refunds, late fees, write-off races, renewals, drift workbench, statements and reports; acceptance ledger `docs/reviews/2026-10-03-batch-b-acceptance.md` with review dispositions; CI green at each merged head | Not done (honest list in the acceptance ledger): renewal billing and acting on auto-renew consent, scheduled early-termination execution, notice emails (IN-21), policy values not entered (IN-19), renewal shows active before its start (IN-22), screen to resolve held payments (IN-23), per-customer terms screens (Batch D). Do not mark B complete until that list is empty or Chris accepts it. |
+| B — Billing, provider reconciliation & financial ledger | **IN PROGRESS (core merged; follow-ups open)** | Merged to `main`: #141, #145, #146, #147, #148, #149, #151, #152, #153, #154 (2026-10-03) | Real-database tests for provider operations, receipts/allocations, credits, refunds, late fees, write-off races, renewals, drift workbench, statements and reports; acceptance ledger `docs/reviews/2026-10-03-batch-b-acceptance.md` with review dispositions; CI green at each merged head | Not done (honest list in the acceptance ledger): renewal billing and acting on auto-renew consent, scheduled early-termination execution, notice emails (IN-21), renewal shows active before its start (IN-22), screen to resolve held payments (IN-23), per-customer terms screens (Batch D). Do not mark B complete until that list is empty or Chris accepts it. |
 | C — Rental-to-service operations, custody, inventory & purchasing | NOT STARTED | — | — | Depends on B's ledger primitives where money is touched. |
 | D — Owner/customer control plane, website, evidence & privacy | NOT STARTED | — | — | Uses B contracts for renewal/cancel UI. |
 | E — Communications, reporting, growth, branding & accessibility | NOT STARTED | — | — | Google (O32) only if GW prerequisites are ready; otherwise one later PR. |
@@ -41,36 +41,27 @@ deny-by-default (#131), CI parallelized and sharded (#136, #137).
 - Chris plans to upgrade the Neon plan for protected branches and per-preview
   database branching; not done yet.
 
-## Batch B — what is left (as of 2026-10-03)
+## Batch B — what is left (as of 2026-10-03, evening)
 
-- **Done in the WU-B10 PR:** Colorado billing-period helper with DST tests,
-  early-termination quote/request, renewal draft, auto-renew consent, tax
-  rounding helpers (thousandth-percent), policy fields exposed in settings.
-- **Done in the stacked term-start PR (`ai/claude/batch-b-term-start-and-policy-settings`):**
-  fixed terms start at delivery (end date saved at first billing attempt, sent
-  to Stripe as `cancel_at`), and Settings → "Ending and renewing rentals" lets
-  the owner enter every termination/renewal value in the app.
-- **Done in the locked-terms PR (stacked on the term-start PR):** agreements keep
-  their own ending/renewal terms (frozen when sent for signing; per-customer
-  override stored but no screen yet), quotes and auto-renew use those locked
-  terms, customers can act on their own agreement, the early-termination request
-  time is set by the server, renewal drafts keep their agreed start date, term-end
-  readers use the saved end date, settings writes re-check the active owner/admin,
-  and ending early needs published wording. This fixed all 5 Codex findings on
-  #147/#148 (dispositions in the PR). New process: review fixes ride the next
-  planned PR (AGENTS.md).
-- **Not done, honestly:** (0) 30-day notice to customers when terms change,
-  month-to-month terms taking effect after that notice, the notice email (live
-  customer email needs Chris's approval), and per-customer terms screens
-  (estimate/setup/sign-up) — planned for the next PR; agreements sent for
-  signing before this change have no locked terms; (1) Chris has not entered the policy values yet, so
-  early-termination quotes and auto-renew are unavailable until he does (IN-19);
-  (2) [done: tax rates are now stored and charged exactly — see log]; (3) renewal drafts
-  carry no appliance assignments and nothing acts on auto-renew consent yet;
-  (4) no customer- or owner-facing screen shows a termination quote or starts a
-  renewal yet (Batch D); (5) WU-B11 and WU-B12; (6) the new settings tab's
-  accessibility scan and form were verified locally by unit/component tests, but
-  the browser test of it runs first in CI.
+The core of Batch B (ledger, provider reconciliation, statements, reports, locked
+terms, exact tax, held payments) is merged; see
+`docs/reviews/2026-10-03-batch-b-acceptance.md` for the item-by-item evidence.
+Chris asked (2026-10-03) for the leftovers to be finished inside Batch B as a
+second stack, `batch-b-completion-*`, in this order. Tick each when merged:
+
+- [x] Recommended starting terms policy (IN-19), editable by owner and admin (migration 20261003200000 writes the starting values once, only if the owner entered nothing; "Restore recommended starting terms" button in Settings; tests: recommended-terms, recommended-terms-integration, terms-policy-form)
+      (this PR).
+- [ ] Renewals signed ahead of time get a "starts on [date]" state (IN-22).
+- [ ] Held-payment screen: owner resolves a held payment per case (IN-23).
+- [ ] Auto-renew and scheduled early-termination execution (nothing acts on
+      auto-renew consent or on a scheduled ending yet).
+- [ ] Term-change notices (IN-21): notice record and 30-day rule; email sending
+      stays OFF until Chris approves live customer email.
+- [ ] Out-of-order Stripe webhook cases (acceptance item 3).
+
+Moved to a later batch on purpose (not forgotten): per-customer terms screens
+(estimate / setup / sign-up) and the customer- and owner-facing screens that show
+a termination quote or start a renewal belong to Batch D, which owns those screens.
 
 ## Open items carried across batches
 
@@ -86,14 +77,14 @@ deny-by-default (#131), CI parallelized and sharded (#136, #137).
 
 ## Owner inputs currently blocking something
 
-See `docs/OWNER-INPUTS.md` for the full register. The ones Batch B needs:
-
-- Early-termination fee policy, unused-term/refund policy, auto-renew terms
-  and notice periods (B34–B36 financial contracts). Build the
-  provider/ledger plumbing without them; keep policy-dependent behavior
-  unexercised until answered.
-- Tax precision policy (if the ledger corrections require a rounding
-  decision).
+See `docs/OWNER-INPUTS.md` for the full register. Chris gave direction on
+2026-10-03: IN-19 use best practice and keep it editable (starting values now
+installed); IN-22 use best practice for a renewal signed in advance (to be built,
+unchecked above); IN-23 per-case choice with a recommended option (screen to be
+built, unchecked above). IN-22 and IN-23 stay "awaiting" until built and shown to him.
+Still waiting on him: IN-21 (wording and approval for sending live customer
+emails; building continues with sending switched off) and IN-17's CPA check of the
+7.375% rate.
 
 ## Session log (last two batches only)
 
