@@ -229,7 +229,7 @@ export function RentalWizard({
           lateFeeGraceDays: initialDraft.lateFeeGraceDays.toString(),
           lateFeeDollars: (initialDraft.lateFeeCents / 100).toString(),
           lateFeePercent: initialDraft.lateFeePercent.toString(),
-          taxRatePercent: (initialDraft.taxRatePermille / 10).toString(),
+          taxRatePercent: (initialDraft.taxRatePermille / 1000).toString(),
           paidInFullInAdvance: initialDraft.paidInFullInAdvance,
         }
       : EMPTY_TERM_FIELDS,
@@ -823,7 +823,7 @@ export function RentalWizard({
                 id="taxRatePercent"
                 type="number"
                 min={0}
-                step="0.01"
+                step="0.001"
                 value={termFields.taxRatePercent}
                 onChange={(e) => updateTerm("taxRatePercent", e.target.value)}
                 className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
