@@ -56,7 +56,7 @@ second stack, `batch-b-completion-*`, in this order. Tick each when merged:
 - [x] Auto-renew and scheduled early-termination execution (nightly pass: month-to-month renewal queued for customers who agreed; agreed endings carried out with the fee invoiced, never auto-charged; prepaid rentals left for the owner; tests `agreements-auto-renew-and-termination-integration`, `auto-renew-termination-rules`). Pickup-based billing stop is Batch C (IN-24).
 - [ ] Term-change notices (IN-21): notice record and 30-day rule; email sending
       stays OFF until Chris approves live customer email.
-- [ ] Out-of-order Stripe webhook cases (acceptance item 3).
+- [x] Out-of-order Stripe webhook cases (acceptance item 3): real-Postgres tests `billing-webhook-ordering-integration` (the code already handled them; now proven).
 
 Moved to a later batch on purpose (not forgotten): per-customer terms screens
 (estimate / setup / sign-up) and the customer- and owner-facing screens that show
