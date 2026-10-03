@@ -31,10 +31,12 @@ function customerRef(
 
 function receipt(overrides: Record<string, unknown> = {}) {
   return {
+    id: "receipt-1",
+    source: "STRIPE",
     amountCents: 6000,
     method: "card",
     notes: null,
-    receivedOn: new Date("2026-05-01"),
+    receivedOn: new Date("2026-05-01T18:00:00Z"),
     customer: customerRef(),
     payments: [{ invoice: { invoiceNumber: 101 } }],
     ...overrides,
@@ -55,24 +57,29 @@ describe("getAccountingTransactions", () => {
     depositFindMany.mockReset().mockResolvedValue([]);
   });
 
-  it("exports receipts as the incoming-cash source of truth", async () => {
+  it("exports receipts as the incoming-cash source of truth with receipt identity", async () => {
     receiptFindMany.mockResolvedValue([receipt()]);
     const rows = await getAccountingTransactions();
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({
       type: "Payment",
+      receiptId: "receipt-1",
+      source: "STRIPE",
       amountCents: 6000,
       invoiceNumber: 101,
-      date: new Date("2026-05-01"),
+      date: new Date("2026-05-01T18:00:00Z"),
+      receivedOn: new Date("2026-05-01T18:00:00Z"),
     });
     expect(transaction.mock.calls[0][1]).toEqual({ isolationLevel: "RepeatableRead" });
   });
 
-  it("uses one row for a combined receipt and does not pretend one invoice owns it", async () => {
+  it("uses one row for a combined/overpayment receipt and does not pretend one invoice owns it", async () => {
     receiptFindMany.mockResolvedValue([
       receipt({
+        id: "receipt-combined",
         amountCents: 25_000,
         method: "check",
+        source: "MANUAL",
         payments: [
           { invoice: { invoiceNumber: 101 } },
           { invoice: { invoiceNumber: 102 } },
@@ -84,21 +91,24 @@ describe("getAccountingTransactions", () => {
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({
       type: "Payment",
+      receiptId: "receipt-combined",
+      source: "MANUAL",
       amountCents: 25_000,
       invoiceNumber: null,
       methodOrReason: "check",
     });
   });
 
-  it("uses the receipt's receivedOn rather than application-created timestamps", async () => {
+  it("uses the receipt's receivedOn rather than allocation-created timestamps", async () => {
     receiptFindMany.mockResolvedValue([
       receipt({ receivedOn: new Date("2026-04-15T06:00:00Z") }),
     ]);
     const rows = await getAccountingTransactions();
     expect(rows[0]?.date).toEqual(new Date("2026-04-15T06:00:00Z"));
+    expect(rows[0]?.receivedOn).toEqual(new Date("2026-04-15T06:00:00Z"));
   });
 
-  it("includes a refund as a negative amount", async () => {
+  it("includes a refund as a negative amount with an explicit source", async () => {
     refundFindMany.mockResolvedValue([
       {
         amountCents: 2000,
@@ -111,6 +121,8 @@ describe("getAccountingTransactions", () => {
     const rows = await getAccountingTransactions();
     expect(rows[0]).toMatchObject({
       type: "Refund",
+      receiptId: null,
+      source: "REFUND",
       amountCents: -2000,
       methodOrReason: "GOODWILL",
       notes: "Late delivery",
@@ -130,6 +142,8 @@ describe("getAccountingTransactions", () => {
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({
       type: "Deposit refunded",
+      receiptId: null,
+      source: "DEPOSIT_REFUND",
       amountCents: -12000,
       notes: "Water damage to floor",
     });
