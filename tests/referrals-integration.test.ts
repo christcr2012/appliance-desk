@@ -40,6 +40,10 @@ type Fixture = {
   referredCustomerId: string;
 };
 
+type BalanceTransactionParams = {
+  metadata?: { creditId?: string };
+};
+
 const fixtures: Fixture[] = [];
 
 async function createFixture(options?: {
@@ -258,13 +262,15 @@ describe.skipIf(!enabled)("referral reward ledger in disposable Postgres", () =>
 
     const providerStarted = deferred();
     const allowProvider = deferred();
-    mocks.createBalanceTransaction.mockImplementation(async (_customerId, params: any) => {
-      if (params?.metadata?.creditId === credit.id) {
-        providerStarted.resolve();
-        await allowProvider.promise;
-      }
-      return { id: `cbtxn_${params?.metadata?.creditId ?? randomUUID()}` };
-    });
+    mocks.createBalanceTransaction.mockImplementation(
+      async (_customerId: unknown, params: BalanceTransactionParams) => {
+        if (params.metadata?.creditId === credit.id) {
+          providerStarted.resolve();
+          await allowProvider.promise;
+        }
+        return { id: `cbtxn_${params.metadata?.creditId ?? randomUUID()}` };
+      },
+    );
 
     const settlement = settleReferralCredits(fixture.referralId);
     await providerStarted.promise;
