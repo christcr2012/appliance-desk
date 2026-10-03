@@ -148,6 +148,7 @@ describe("billing provider reconciliation", () => {
       opId: "op-retry",
       idempotencyKey: "retry-key",
     });
+    mocks.providerUpdate.mockResolvedValue({});
     mocks.queryRaw.mockResolvedValue([]);
     mocks.runProviderCall.mockImplementation(async (call: () => Promise<unknown>) => {
       try {
@@ -239,6 +240,10 @@ describe("billing provider reconciliation", () => {
       "op-1",
       { status: "UNKNOWN", error: retryError },
     );
+    expect(mocks.providerUpdate).toHaveBeenCalledWith({
+      where: { id: "op-1" },
+      data: { updatedAt: expect.any(Date) },
+    });
   });
 
   it("finds an ambiguous balance-credit write on a later Stripe page", async () => {
@@ -360,7 +365,7 @@ describe("billing provider reconciliation", () => {
     );
   });
 
-  it("does not blindly retry an UNKNOWN refund without provider evidence", async () => {
+  it("rotates an unresolved UNKNOWN refund behind unattempted reconciliation work", async () => {
     const idempotencyKey = "invoice-refund-refund-1-charge-ch_123";
     mocks.providerFindMany.mockResolvedValue([
       {
@@ -378,6 +383,15 @@ describe("billing provider reconciliation", () => {
     await expect(finishPendingProviderOperations()).resolves.toEqual({
       completed: 0,
       stillUnknown: 1,
+    });
+    expect(mocks.providerFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        orderBy: [{ updatedAt: "asc" }, { requestedAt: "asc" }],
+      }),
+    );
+    expect(mocks.providerUpdate).toHaveBeenCalledWith({
+      where: { id: "op-refund" },
+      data: { updatedAt: expect.any(Date) },
     });
     expect(mocks.claimProviderOperation).not.toHaveBeenCalled();
     expect(mocks.refundCreate).not.toHaveBeenCalled();
@@ -459,5 +473,25 @@ describe("detectDrift", () => {
     expect(mocks.creditUpdate).not.toHaveBeenCalled();
     expect(mocks.depositUpdateMany).not.toHaveBeenCalled();
     expect(mocks.refundUpdateMany).not.toHaveBeenCalled();
+  });
+
+  it("treats Stripe deleted-customer objects as missing billing identities", async () => {
+    mocks.customerRetrieve.mockResolvedValue({
+      id: "cus_missing",
+      object: "customer",
+      deleted: true,
+    });
+
+    const rows = await detectDrift(20);
+    expect(rows).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: "STRIPE_CUSTOMER_MISSING",
+          subjectType: "Customer",
+          subjectId: "cust-missing",
+          detail: expect.stringContaining("deleted Stripe customer cus_missing"),
+        }),
+      ]),
+    );
   });
 });
