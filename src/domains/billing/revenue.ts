@@ -57,13 +57,24 @@ export function computeMrrTrend(
   return points;
 }
 
-/**
- * Timestamp predicate for owner-facing period views. "This month" follows
- * the Colorado business calendar instead of the server/UTC month. All-time
- * still excludes future-dated records relative to the supplied snapshot.
- */
+/** Existing UTC-month contract for rental-start/closed/failed-attempt metrics. */
 export function revenuePeriod(asOf: Date, monthOnly: boolean) {
   if (!Number.isFinite(asOf.getTime())) throw new Error("Invalid revenue snapshot time.");
+  return {
+    ...(monthOnly
+      ? {
+          gte: new Date(
+            Date.UTC(asOf.getUTCFullYear(), asOf.getUTCMonth(), 1),
+          ),
+        }
+      : {}),
+    lte: asOf,
+  };
+}
+
+/** Colorado business-month contract for real cash Receipt/Refund activity. */
+export function cashRevenuePeriod(asOf: Date, monthOnly: boolean) {
+  if (!Number.isFinite(asOf.getTime())) throw new Error("Invalid cash snapshot time.");
   if (!monthOnly) return { lte: asOf };
   const month = businessMonthBounds(asOf);
   return { gte: month.start, lte: asOf };
