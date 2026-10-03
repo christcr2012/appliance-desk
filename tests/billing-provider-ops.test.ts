@@ -121,7 +121,7 @@ describe("provider operation claims", () => {
     expect(update).not.toHaveBeenCalled();
   });
 
-  it("allows UNKNOWN takeover only after reconciliation has provider evidence", async () => {
+  it("allows UNKNOWN takeover only when provider evidence matches the observed attempt", async () => {
     const originalRequestedAt = new Date(Date.now() - 3_600_000);
     const { tx, update } = makeTx([
       [],
@@ -138,7 +138,7 @@ describe("provider operation claims", () => {
     await expect(
       claimProviderOperation(tx, {
         ...input,
-        reconcileUnknownAfterProviderEvidence: true,
+        reconcileUnknownAfterProviderEvidence: { expectedAttempts: 2 },
       }),
     ).resolves.toEqual({
       done: false,
@@ -155,6 +155,21 @@ describe("provider operation claims", () => {
       }),
     });
     expect(update.mock.calls[0]?.[0]?.data).not.toHaveProperty("requestedAt");
+  });
+
+  it("rejects stale provider evidence after a newer UNKNOWN attempt", async () => {
+    const { tx, update } = makeTx([
+      [],
+      [row({ status: "UNKNOWN", attempts: 3 })],
+    ]);
+
+    await expect(
+      claimProviderOperation(tx, {
+        ...input,
+        reconcileUnknownAfterProviderEvidence: { expectedAttempts: 2 },
+      }),
+    ).rejects.toBeInstanceOf(RetryLater);
+    expect(update).not.toHaveBeenCalled();
   });
 
   it("rejects accidental reuse of one idempotency key for another subject", async () => {
