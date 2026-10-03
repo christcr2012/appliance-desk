@@ -91,6 +91,11 @@ describe("termsPolicyUpdate: what the owner types becomes saved settings", () =>
     expect(fail({ feePercent: "-1" })).toMatch(/whole number/);
     expect(fail({ noticeDays: "366" })).toMatch(/Days of notice/);
     expect(fail({ autoRenewNoticeDays: "x" })).toMatch(/renewal notice/);
+    // Colorado asks for the reminder 25 to 40 days before an automatic renewal.
+    expect(fail({ autoRenewNoticeDays: "24" })).toMatch(/25 to 40/);
+    expect(fail({ autoRenewNoticeDays: "41" })).toMatch(/25 to 40/);
+    expect(ok({ autoRenewNoticeDays: "25" }).autoRenewNoticeDays).toBe(25);
+    expect(ok({ autoRenewNoticeDays: "40" }).autoRenewNoticeDays).toBe(40);
   });
 
   it("only accepts the three real choices for unused prepaid time", () => {

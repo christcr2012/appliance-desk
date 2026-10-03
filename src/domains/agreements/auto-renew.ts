@@ -4,7 +4,7 @@ import { syncSubscriptionTerm } from "@/domains/billing/subscription-term";
 import { cancelAgreement, lockRentalAgreementInTx } from "./index";
 import { renewalCreateData } from "./renewal-data";
 import { snapshotAutoRenew } from "./terms-snapshot";
-import { createNoticeInTx, withdrawWaitingNoticesForAgreement } from "@/domains/notices";
+import { createNoticeInTx } from "@/domains/notices";
 import { composeRenewalReminder, renewalReminderKey } from "@/domains/notices/renewal-reminder";
 
 /**
@@ -168,8 +168,6 @@ export async function cancelWithdrawnAutoRenewals(
     try {
       await cancelAgreement(actorUserId, renewal.id);
       cancelled += 1;
-      // The reminder about a renewal that will not happen no longer needs to go out.
-      await withdrawWaitingNoticesForAgreement(renewal.renewedFromAgreementId!, "RENEWAL_REMINDER");
     } catch (error) {
       // Already moved on (for example it just started or was cancelled by hand); the nightly pass looks again.
       console.error(`Could not cancel withdrawn auto-renewal ${renewal.id}:`, error);

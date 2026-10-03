@@ -15,8 +15,8 @@ vi.mock("@/lib/stripe", () => ({
   }),
 }));
 
-vi.mock("@/lib/email", () => ({
-  sendEmail: (...args: unknown[]) => mocks.sendEmail(...args),
+vi.mock("@/lib/customer-email", () => ({
+  sendCustomerEmail: (...args: unknown[]) => mocks.sendEmail(...args),
 }));
 
 import { prisma } from "@/lib/prisma";

@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import type { EstimateStatus, Prisma } from "@prisma/client";
-import { sendEmail } from "@/lib/email";
+import { sendCustomerEmail } from "@/lib/customer-email";
 import { getBusinessSettings } from "@/domains/settings";
 import { createDraftAgreementInTx } from "@/domains/agreements";
 import {
@@ -324,7 +324,7 @@ export async function sendEstimate(userId: string, estimateId: string) {
   parts.push("Review the full details and let us know if it works for you:");
   parts.push(`${appUrl}/estimate/${estimate.id}`);
 
-  await sendEmail({
+  await sendCustomerEmail({
     to: recipientEmail,
     subject: `Estimate #${estimate.estimateNumber} from ${settings.publicBusinessName}`,
     text: parts.join("\n\n"),
@@ -372,7 +372,7 @@ export async function sendEstimateFollowUpReminders(): Promise<{
     if (!recipientEmail) continue;
 
     try {
-      await sendEmail({
+      await sendCustomerEmail({
         to: recipientEmail,
         subject: `Following up on estimate #${estimate.estimateNumber}`,
         text: [

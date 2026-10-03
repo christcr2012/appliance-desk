@@ -636,6 +636,18 @@ async function closeAgreement(
       }
     }
 
+    // A cancelled automatic renewal's reminder no longer needs to go out: withdrawn in the same transaction.
+    if (newStatus === "CANCELLED" && agreement.createdByAutoRenew && agreement.renewedFromAgreementId) {
+      await tx.customerNotice.updateMany({
+        where: {
+          agreementId: agreement.renewedFromAgreementId,
+          kind: "RENEWAL_REMINDER",
+          status: { in: ["PENDING", "SENDING"] },
+        },
+        data: { status: "NOT_NEEDED" },
+      });
+    }
+
     await tx.auditLog.create({
       data: {
         userId,

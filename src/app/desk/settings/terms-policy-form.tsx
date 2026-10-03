@@ -183,7 +183,7 @@ export function TermsPolicyForm({ defaultValues }: { defaultValues: TermsPolicyF
         </p>
         <div>
           <label htmlFor="terms-autoRenewNoticeDays" className="mb-1 block text-sm font-medium text-gray-900">
-            Days before the term ends that the customer is told it will renew
+            Days before the term ends that the customer is told it will renew (25 to 40)
           </label>
           <input
             id="terms-autoRenewNoticeDays"

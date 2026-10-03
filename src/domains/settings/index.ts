@@ -37,6 +37,7 @@ const DEFAULT_SETTINGS = {
   twelveMonthPrepayFreeMonthEnabled: true,
   referralRewardCents: 2500,
   draftReservationHoldDays: 7,
+  customerEmailEnabled: false,
   inspectionChecklist: [] as unknown,
   // Batch B policy fields: null means the owner has not decided yet.
   earlyTerminationFeeCents: null as number | null,

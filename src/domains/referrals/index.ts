@@ -1,7 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getStripeClient } from "@/lib/stripe";
-import { sendEmail } from "@/lib/email";
+import { sendCustomerEmail } from "@/lib/customer-email";
 import { formatCents } from "@/domains/pricing";
 import {
   claimProviderOperation,
@@ -276,7 +276,7 @@ async function sendReferralRewardNotice(input: {
   reason: string;
   appliedViaStripe: boolean;
 }): Promise<void> {
-  const result = await sendEmail({
+  const result = await sendCustomerEmail({
     to: input.email,
     subject: "You've got a referral credit",
     text: `Hi${input.name ? ` ${input.name}` : ""},\n\n${input.reason}. A ${formatCents(input.rewardCents)} credit has been added to your account${input.appliedViaStripe ? " and will automatically reduce your next payment" : ""}.\n\nThanks for being part of our referral program!`,

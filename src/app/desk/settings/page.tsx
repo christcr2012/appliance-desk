@@ -17,6 +17,8 @@ import { formatBusinessDate, formatBusinessTime } from "@/lib/business-date";
 import { SettingsForm } from "./settings-form";
 import { AppliancePricingTable } from "./appliance-pricing-table";
 import { StaffAccountsSection } from "./staff-accounts-section";
+import { CustomerEmailSwitch } from "./customer-email-switch";
+import { isNonProductionDeployment } from "@/lib/deployment-safety";
 import { TermsPolicyForm } from "./terms-policy-form";
 import { termsPolicyDefaults, termsPolicyStatus } from "@/domains/settings/terms-policy";
 import { formatTaxRate } from "@/domains/billing/tax";
@@ -29,7 +31,7 @@ export default async function DeskSettingsPage({
 }: {
   searchParams: Promise<{ section?: string }>;
 }) {
-  await requireRole("OWNER", "ADMIN");
+  const session = await requireRole("OWNER", "ADMIN");
   const section = settingsSection((await searchParams).section);
   const settings = await getBusinessSettings();
   let content: React.ReactNode;
@@ -125,6 +127,15 @@ export default async function DeskSettingsPage({
         }
         description="Configuration is shown separately from verified delivery. No credentials are displayed."
       >
+        {section === "notifications" && (
+          <div className="mb-6 rounded-lg border border-gray-300 p-4">
+            <CustomerEmailSwitch
+              enabled={settings.customerEmailEnabled === true}
+              canChange={(session.user as { role?: string }).role === "OWNER"}
+              preview={isNonProductionDeployment()}
+            />
+          </div>
+        )}
         <dl className="space-y-4">
           {status.map((item) => (
             <div key={item.name}>

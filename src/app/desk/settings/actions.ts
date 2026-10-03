@@ -373,3 +373,17 @@ export async function updateTermsPolicyAction(
   revalidatePath("/desk/settings");
   return { status: "success" };
 }
+
+/** The owner's master switch for emails to customers. Owner only. */
+export async function setCustomerEmailAction(enabled: boolean): Promise<SettingsActionState> {
+  const session = await requireRole("OWNER");
+  const { setCustomerEmailEnabled } = await import("@/domains/settings/customer-email-switch");
+  try {
+    await setCustomerEmailEnabled(session.user.id, enabled === true);
+  } catch {
+    return { status: "error", message: "That could not be saved. Nothing was changed." };
+  }
+  revalidatePath("/desk/settings");
+  revalidatePath("/desk/notices");
+  return { status: "success" };
+}

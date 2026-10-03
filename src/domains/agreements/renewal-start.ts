@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { lockCustomerLedger } from "@/domains/billing/ledger";
 import { syncSubscriptionTerm, termSyncKey } from "@/domains/billing/subscription-term";
 import { fixedTermEndDate } from "@/lib/business-date";
-import { reminderDelivered } from "@/domains/notices";
+import { checkReminderDelivered } from "@/domains/notices";
 import { renewalReminderKey } from "@/domains/notices/renewal-reminder";
 import { lockRentalAgreementInTx } from "./index";
 
@@ -32,7 +32,7 @@ import { lockRentalAgreementInTx } from "./index";
 
 export type RenewalStartResult =
   | { started: true; renewalId: string; endedAgreementId: string; appliancesMoved: number }
-  | { started: false; renewalId: string; reason: "NOT_SCHEDULED" | "NOT_YET" | "OLD_NOT_ACTIVE" | "NO_RENEWED_FROM" | "BILLING_NOT_READY" | "AUTO_RENEW_WITHDRAWN" | "NOTICE_NOT_SENT"; message: string };
+  | { started: false; renewalId: string; reason: "NOT_SCHEDULED" | "NOT_YET" | "OLD_NOT_ACTIVE" | "NO_RENEWED_FROM" | "BILLING_NOT_READY" | "AUTO_RENEW_WITHDRAWN" | "NOTICE_NOT_SENT" | "NOTICE_OUT_OF_WINDOW"; message: string };
 
 const MESSAGES = {
   NOT_SCHEDULED: "This renewal is not waiting to start.",
@@ -42,6 +42,8 @@ const MESSAGES = {
   NO_RENEWED_FROM: "This agreement is not a renewal of another agreement.",
   NOTICE_NOT_SENT:
     "The customer has not yet been sent the renewal reminder, so this automatic renewal is on hold. Send it (or mark it as delivered) under Notices, and the renewal will start on its own.",
+  NOTICE_OUT_OF_WINDOW:
+    "The renewal reminder reached the customer outside the 25 to 40 days before the renewal that Colorado asks for, so this automatic renewal will not start by itself. Cancel the renewal (the customer's rental then simply ends or you renew it by hand) or ask your attorney how to proceed.",
   AUTO_RENEW_WITHDRAWN:
     "The customer turned auto-renew off or asked to end the rental, so this automatic renewal will not start. It is cancelled automatically.",
   BILLING_NOT_READY:
@@ -106,8 +108,10 @@ export async function startRenewalInTx(
   }
 
   // Colorado asks for a reminder 25-40 days before an automatic renewal: never renew without one.
-  if (renewal.createdByAutoRenew && old.endDate && !(await reminderDelivered(tx, renewalReminderKey(old.id, old.endDate)))) {
-    return fail("NOTICE_NOT_SENT");
+  if (renewal.createdByAutoRenew && old.endDate) {
+    const check = await checkReminderDelivered(tx, renewalReminderKey(old.id, old.endDate), renewal.startDate);
+    if (check === "NOT_DELIVERED") return fail("NOTICE_NOT_SENT");
+    if (check === "OUT_OF_WINDOW") return fail("NOTICE_OUT_OF_WINDOW");
   }
 
   // The subscription keeps charging only if its end date was moved at signing.

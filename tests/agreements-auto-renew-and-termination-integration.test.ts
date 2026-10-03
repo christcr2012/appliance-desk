@@ -21,7 +21,7 @@ import { markNoticeDeliveredByHand, sendPendingNotices } from "@/domains/notices
 import { renewalReminderKey } from "@/domains/notices/renewal-reminder";
 
 const emailMock = vi.hoisted(() => ({ send: vi.fn() }));
-vi.mock("@/lib/email", () => ({ sendEmail: emailMock.send }));
+vi.mock("@/lib/customer-email", () => ({ sendCustomerEmail: emailMock.send }));
 import { syncTerminationEnd } from "@/domains/billing/subscription-term";
 
 const url = new URL(process.env.DATABASE_URL ?? "postgresql://localhost/unset");
@@ -103,7 +103,7 @@ describe.skipIf(!enabled)("auto-renew and agreed early endings are carried out",
   const deliver = (a: { id: string; endDate: Date | null }) =>
     prisma.customerNotice.update({
       where: { dedupeKey: renewalReminderKey(a.id, a.endDate!) },
-      data: { status: "SENT", sentAt: new Date(), sentVia: "HAND: test" },
+      data: { status: "SENT", sentAt: new Date("2027-10-10T15:00:00Z"), sentVia: "HAND: test" },
     });
   const renewalsOf = (id: string) =>
     prisma.rentalAgreement.findMany({ where: { renewedFromAgreementId: id }, include: { lines: true } });
@@ -224,6 +224,9 @@ describe.skipIf(!enabled)("auto-renew and agreed early endings are carried out",
       try {
         const pending = (await noticeOf(b))!;
         await expect(markNoticeDeliveredByHand(userId, pending.id, "phoned")).rejects.toThrow();
+        await expect(
+          markNoticeDeliveredByHand(ownerId, pending.id, "phoned", new Date(Date.now() + 3 * 86_400_000)),
+        ).rejects.toThrow(/future/);
         await markNoticeDeliveredByHand(ownerId, pending.id, "phoned");
         const done = (await noticeOf(b))!;
         expect(done.status).toBe("SENT");
@@ -235,6 +238,45 @@ describe.skipIf(!enabled)("auto-renew and agreed early endings are carried out",
         await prisma.auditLog.deleteMany({ where: { userId: ownerId } });
         await prisma.user.delete({ where: { id: ownerId } });
       }
+    });
+
+    it("a reminder delivered outside the 25 to 40 days before the renewal does not let it start by itself", async () => {
+      const a = await agreement();
+      await runAutoRenewals(windowOpen);
+      const auto = (await renewalsOf(a.id))[0]!;
+      for (const when of ["2027-11-05T15:00:00Z", "2027-09-01T15:00:00Z"]) {
+        await prisma.customerNotice.update({
+          where: { dedupeKey: renewalReminderKey(a.id, a.endDate!) },
+          data: { status: "SENT", sentAt: new Date(when), sentVia: "EMAIL" },
+        });
+        const result = await startRenewalIfDue(auto.id, afterTerm);
+        expect(result.started).toBe(false);
+        if (!result.started) expect(result.reason).toBe("NOTICE_OUT_OF_WINDOW");
+      }
+      await deliver(a);
+      expect((await startRenewalIfDue(auto.id, afterTerm)).started).toBe(true);
+    });
+
+    it("the nightly job and the owner cannot both deliver a notice: it is claimed first, so it is emailed at most once", async () => {
+      const a = await agreement();
+      await runAutoRenewals(windowOpen);
+      emailMock.send.mockReset().mockImplementation(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 150));
+        return { sent: true };
+      });
+      await Promise.all([sendPendingNotices(), sendPendingNotices()]);
+      const mine = (await noticeOf(a))!;
+      expect(mine.status).toBe("SENT");
+      expect(mine.sentVia).toBe("EMAIL");
+      expect(mine.attempts).toBe(1);
+    });
+
+    it("a notice whose send failed goes back to waiting (never stuck as 'sending')", async () => {
+      const a = await agreement();
+      await runAutoRenewals(windowOpen);
+      emailMock.send.mockReset().mockRejectedValue(new Error("provider down"));
+      await sendPendingNotices();
+      expect((await noticeOf(a))!.status).toBe("PENDING");
     });
 
     it("turning auto-renew off withdraws the waiting reminder", async () => {
