@@ -64,7 +64,7 @@ beforeAll(async () => {
       status: "ACTIVE",
       depositCents: 15000,
       damageWaiverCents: 0,
-      taxRatePermille: 73,
+      taxRateMilliPercent: 7300,
     },
   });
   agreementId = agreement.id;

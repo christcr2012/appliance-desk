@@ -5,6 +5,7 @@ import { ButtonLink } from "@/components/site/button-link";
 import { ApplianceMedia } from "@/components/site/appliance-icon";
 import { getBusinessSettings } from "@/domains/settings";
 import { getPublishedApplianceTypes, formatCents } from "@/domains/pricing";
+import { formatTaxRate } from "@/domains/billing/tax";
 
 export const metadata: Metadata = {
   title: "Pricing",
@@ -141,7 +142,7 @@ export default async function PricingPage() {
               <li>
                 <span className="font-medium text-ink">Sales tax:</span>{" "}
                 {settings.taxRateConfirmed
-                  ? `${(settings.taxRatePermille / 10).toFixed(2)}% applied at invoice time.`
+                  ? `${formatTaxRate(settings.taxRateMilliPercent)} applied at invoice time.`
                   : "not yet finalized — will be added at invoice time and shown before you owe anything."}
               </li>
               <li>

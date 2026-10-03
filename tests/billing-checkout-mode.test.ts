@@ -59,7 +59,7 @@ function baseAgreement(overrides: Record<string, unknown> = {}) {
   return {
     id: "agr-1",
     customerId: "cust-1",
-    taxRatePermille: 0,
+    taxRateMilliPercent: 0,
     depositCents: 0,
     damageWaiverCents: 0,
     customer: { stripeCustomerId: "cus_fake_1", user: { name: "Test", email: "t@example.test" } },

@@ -58,7 +58,7 @@ describe("createCheckoutSessionForAgreement — idempotency", () => {
     rentalAgreementFindUniqueOrThrow.mockReset().mockResolvedValue({
       id: "agr-1",
       customerId: "cust-1",
-      taxRatePermille: 0,
+      taxRateMilliPercent: 0,
       depositCents: 0,
       damageWaiverCents: 0,
       customer: { stripeCustomerId: "cus_fake_1", user: { name: "Test", email: "t@example.test" } },
@@ -103,7 +103,7 @@ describe("createCheckoutSessionForAgreement — idempotency", () => {
     rentalAgreementFindUniqueOrThrow.mockResolvedValue({
       id: "agr-2",
       customerId: "cust-2",
-      taxRatePermille: 0,
+      taxRateMilliPercent: 0,
       depositCents: 0,
       damageWaiverCents: 0,
       customer: { stripeCustomerId: "cus_fake_2", user: { name: "Test 2", email: "t2@example.test" } },

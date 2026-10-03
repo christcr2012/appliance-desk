@@ -68,7 +68,7 @@ function baseAgreement(overrides: Record<string, unknown> = {}) {
     termMonths: null,
     endDate: null,
     paidInFullInAdvance: false,
-    taxRatePermille: 0,
+    taxRateMilliPercent: 0,
     depositCents: 0,
     damageWaiverCents: 0,
     customer: {
@@ -390,6 +390,62 @@ describe("startRecurringBillingForAgreement", () => {
     expect(mocks.rentalAgreementUpdate).toHaveBeenCalledWith({
       where: { id: "agr-1" },
       data: { billingBlockedReason: expect.stringMatching(/reconcile stripe/i) },
+    });
+  });
+
+  describe("exact tax rates sent to Stripe", () => {
+    it("creates a 7.375% rate exactly when none exists", async () => {
+      mocks.rentalAgreementFindUniqueOrThrow.mockResolvedValue(
+        baseAgreement({ taxRateMilliPercent: 7375 }),
+      );
+      const { startRecurringBillingForAgreement } = await import("@/domains/billing/checkout");
+
+      await startRecurringBillingForAgreement("agr-1");
+
+      expect(mocks.taxRatesCreate).toHaveBeenCalledWith(
+        expect.objectContaining({ percentage: 7.375, inclusive: false }),
+      );
+    });
+
+    it("reuses a matching rate found on a later page instead of creating a duplicate", async () => {
+      mocks.rentalAgreementFindUniqueOrThrow.mockResolvedValue(
+        baseAgreement({ taxRateMilliPercent: 7375 }),
+      );
+      mocks.taxRatesList
+        .mockResolvedValueOnce({
+          data: [{ id: "txr_other", percentage: 7.3, inclusive: false }],
+          has_more: true,
+        })
+        .mockResolvedValueOnce({
+          data: [
+            { id: "txr_inclusive", percentage: 7.375, inclusive: true },
+            { id: "txr_match", percentage: 7.375, inclusive: false },
+          ],
+          has_more: false,
+        });
+      const { startRecurringBillingForAgreement } = await import("@/domains/billing/checkout");
+
+      await startRecurringBillingForAgreement("agr-1");
+
+      expect(mocks.taxRatesCreate).not.toHaveBeenCalled();
+      expect(mocks.taxRatesList).toHaveBeenLastCalledWith(
+        expect.objectContaining({ starting_after: "txr_other" }),
+      );
+    });
+
+    it("does not treat 7.3% as 7.375%", async () => {
+      mocks.rentalAgreementFindUniqueOrThrow.mockResolvedValue(
+        baseAgreement({ taxRateMilliPercent: 7375 }),
+      );
+      mocks.taxRatesList.mockResolvedValue({
+        data: [{ id: "txr_73", percentage: 7.3, inclusive: false }],
+        has_more: false,
+      });
+      const { startRecurringBillingForAgreement } = await import("@/domains/billing/checkout");
+
+      await startRecurringBillingForAgreement("agr-1");
+
+      expect(mocks.taxRatesCreate).toHaveBeenCalledOnce();
     });
   });
 });

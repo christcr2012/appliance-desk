@@ -131,7 +131,7 @@ export type NewAgreementInput = {
   lateFeeGraceDays?: number;
   lateFeeCents?: number;
   lateFeePercent?: number;
-  taxRatePermille?: number;
+  taxRateMilliPercent?: number;
   paidInFullInAdvance?: boolean;
 };
 
@@ -206,7 +206,7 @@ export async function createDraftAgreementInTx(
       lateFeeGraceDays: input.lateFeeGraceDays ?? 5,
       lateFeeCents: input.lateFeeCents ?? 0,
       lateFeePercent: input.lateFeePercent ?? 0,
-      taxRatePermille: input.taxRatePermille ?? 0,
+      taxRateMilliPercent: input.taxRateMilliPercent ?? 0,
       paidInFullInAdvance,
       freeMonthGranted,
       reservationExpiresAt: addDays(
@@ -252,7 +252,7 @@ export async function createDraftAgreement(
     lateFeeGraceDays: input.lateFeeGraceDays ?? 5,
     lateFeeCents: input.lateFeeCents ?? 0,
     lateFeePercent: input.lateFeePercent ?? 0,
-    taxRatePermille: input.taxRatePermille ?? 0,
+    taxRateMilliPercent: input.taxRateMilliPercent ?? 0,
     paidInFullInAdvance,
   };
 

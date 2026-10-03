@@ -19,6 +19,7 @@ import { AppliancePricingTable } from "./appliance-pricing-table";
 import { StaffAccountsSection } from "./staff-accounts-section";
 import { TermsPolicyForm } from "./terms-policy-form";
 import { termsPolicyDefaults, termsPolicyStatus } from "@/domains/settings/terms-policy";
+import { formatTaxRate } from "@/domains/billing/tax";
 export const metadata = {
   title: "Settings",
   robots: { index: false, follow: false },
@@ -181,7 +182,7 @@ export default async function DeskSettingsPage({
             lateFeeGraceDays: settings.lateFeeGraceDays,
             lateFeeFlatDollars: settings.lateFeeFlatCents / 100,
             lateFeePercent: settings.lateFeePercent,
-            taxRatePermille: settings.taxRatePermille,
+            taxRatePercentText: formatTaxRate(settings.taxRateMilliPercent).replace("%", ""),
             taxRateConfirmed: settings.taxRateConfirmed,
             sixMonthPrepaySetDollars:
               settings.sixMonthPrepayDiscountSetCents / 100,

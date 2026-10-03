@@ -195,15 +195,27 @@ export async function ensureStripeCustomer(customerId: string): Promise<string> 
 }
 
 /** Reuse a matching exclusive Stripe tax rate; 0% needs no Stripe object. */
-async function getOrCreateTaxRate(taxRatePermille: number): Promise<string | null> {
-  if (taxRatePermille <= 0) return null;
+async function getOrCreateTaxRate(taxRateMilliPercent: number): Promise<string | null> {
+  if (taxRateMilliPercent <= 0) return null;
 
   const stripe = getStripeClient();
-  const percentage = taxRatePermille / 10;
-  const existing = await stripe.taxRates.list({ limit: 100, active: true });
-  const match = existing.data.find(
-    (rate) => !rate.inclusive && Math.abs(rate.percentage - percentage) < 0.0001,
-  );
+  // Thousandths of a percent -> Stripe percentage (Stripe accepts up to 4 decimals).
+  const percentage = taxRateMilliPercent / 1000;
+  // Walk every page so a rate that already exists is reused, not duplicated.
+  let match: { id: string } | undefined;
+  let startingAfter: string | undefined;
+  for (let pageNumber = 0; pageNumber < 100 && !match; pageNumber += 1) {
+    const page = await stripe.taxRates.list({
+      limit: 100,
+      active: true,
+      ...(startingAfter ? { starting_after: startingAfter } : {}),
+    });
+    match = page.data.find(
+      (rate) => !rate.inclusive && Math.abs(rate.percentage - percentage) < 0.00005,
+    );
+    if (!page.has_more || page.data.length === 0) break;
+    startingAfter = page.data[page.data.length - 1].id;
+  }
   if (match) return match.id;
 
   const created = await stripe.taxRates.create({
@@ -371,7 +383,7 @@ export async function startRecurringBillingForAgreement(agreementId: string): Pr
           id: string;
           termMonths: number | null;
           endDate: Date | null;
-          taxRatePermille: number;
+          taxRateMilliPercent: number;
           customer: {
             stripeCustomerId: string;
             stripeDefaultPaymentMethodId: string;
@@ -469,7 +481,7 @@ export async function startRecurringBillingForAgreement(agreementId: string): Pr
           id: agreement.id,
           termMonths: agreement.termMonths,
           endDate,
-          taxRatePermille: agreement.taxRatePermille,
+          taxRateMilliPercent: agreement.taxRateMilliPercent,
           customer: {
             stripeCustomerId: agreement.customer.stripeCustomerId,
             stripeDefaultPaymentMethodId:
@@ -499,7 +511,7 @@ export async function startRecurringBillingForAgreement(agreementId: string): Pr
   let taxRateId: string | null;
   let items;
   try {
-    taxRateId = await getOrCreateTaxRate(claimed.agreement.taxRatePermille);
+    taxRateId = await getOrCreateTaxRate(claimed.agreement.taxRateMilliPercent);
     items = await Promise.all(
       claimed.agreement.plan.map(async (item) => {
         const product = await stripe.products.create(
