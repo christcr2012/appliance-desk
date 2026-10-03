@@ -7,3 +7,6 @@
 681b062a713c8d7cbc770434f463b84c5b480eca:tests/deployment-safety.test.ts:stripe-access-token:38
 ab6e003400ca58e422b182ad4bc05055122bc46a:tests/billing-provider-ops.test.ts:stripe-access-token:193
 ab6e003400ca58e422b182ad4bc05055122bc46a:tests/billing-provider-ops.test.ts:stripe-access-token:195
+# Reviewed 2026-10-03: made-up string in a test about hiding keys in error text (older branch commit, PR #139); not a real key.
+f34e5077b8648c5d8b494c3011757cc7b4c37bb7:tests/billing-provider-ops.test.ts:stripe-access-token:195
+f34e5077b8648c5d8b494c3011757cc7b4c37bb7:tests/billing-provider-ops.test.ts:stripe-access-token:197
