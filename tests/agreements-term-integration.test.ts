@@ -144,6 +144,7 @@ describe.skipIf(!enabled)("fixed-term termination, renewal and auto-renew in dis
     await prisma.invoice.deleteMany({ where: { customerId } });
     await prisma.signatureRecord.deleteMany({ where: { agreementId: { in: ids } } });
     await prisma.rentalLine.deleteMany({ where: { agreementId: { in: ids } } });
+    await prisma.rentalAgreement.deleteMany({ where: { renewedFromAgreementId: { in: ids } } });
     await prisma.rentalAgreement.deleteMany({ where: { id: { in: ids } } });
     await prisma.serviceAddress.deleteMany({ where: { id: addressId } });
     await prisma.customer.deleteMany({ where: { id: { in: [customerId, otherCustomerId] } } });
@@ -230,6 +231,19 @@ describe.skipIf(!enabled)("fixed-term termination, renewal and auto-renew in dis
       await requestEarlyTermination(customer, agreement.id, timestampOnly, { now: requestedOn });
       const saved = await prisma.rentalAgreement.findUniqueOrThrow({ where: { id: agreement.id } });
       expect(saved.terminationRequestedAt?.toISOString()).toBe(requestedOn.toISOString());
+    });
+
+    it("is refused while a renewal made by hand is in progress (draft, sent or signed)", async () => {
+      const agreement = await lockedAgreement();
+      const draft = await prisma.rentalAgreement.create({
+        data: { customerId, serviceAddressId: addressId, status: "DRAFT", termMonths: 12, renewedFromAgreementId: agreement.id },
+      });
+      const quote = (await getEarlyTerminationQuote(agreement.id, requestedOn))!;
+      await expect(requestEarlyTermination(owner, agreement.id, quote, { now: requestedOn })).rejects.toThrow(
+        /renewal in progress/,
+      );
+      await prisma.rentalAgreement.update({ where: { id: draft.id }, data: { status: "CANCELLED" } });
+      await requestEarlyTermination(owner, agreement.id, quote, { now: requestedOn });
     });
 
     it("rejects a second request and a stale quote", async () => {

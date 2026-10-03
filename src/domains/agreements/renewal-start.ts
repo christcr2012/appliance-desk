@@ -186,8 +186,26 @@ export async function startRenewalInTx(
 export async function startRenewalIfDue(renewalId: string, now = new Date()): Promise<RenewalStartResult> {
   // Make sure the subscription's end date has been moved (normally done when the
   // renewal was signed; this retries it, and is a no-op once confirmed).
-  const current = await prisma.rentalAgreement.findUnique({ where: { id: renewalId }, select: { status: true } });
-  if (current?.status === "SCHEDULED") await syncSubscriptionTerm(renewalId, "extend");
+  const current = await prisma.rentalAgreement.findUnique({
+    where: { id: renewalId },
+    select: {
+      status: true,
+      createdByAutoRenew: true,
+      renewedFromAgreementId: true,
+    },
+  });
+  const renewed =
+    current?.createdByAutoRenew && current.renewedFromAgreementId
+      ? await prisma.rentalAgreement.findUnique({
+          where: { id: current.renewedFromAgreementId },
+          select: { renewalPreference: true, terminationRequestedAt: true },
+        })
+      : null;
+  // An automatic renewal the customer withdrew must not touch the subscription at all.
+  const withdrawn =
+    current?.createdByAutoRenew &&
+    (renewed?.renewalPreference !== "AUTO_RENEW" || Boolean(renewed?.terminationRequestedAt));
+  if (current?.status === "SCHEDULED" && !withdrawn) await syncSubscriptionTerm(renewalId, "extend");
   return prisma.$transaction((tx) => startRenewalInTx(tx, renewalId, now));
 }
 

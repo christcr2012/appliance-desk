@@ -164,6 +164,23 @@ describe.skipIf(!enabled)("auto-renew and agreed early endings are carried out",
       expect(await renewalsOf(a.id)).toHaveLength(1);
     });
 
+    it("two overlapping nightly runs queue exactly one renewal", async () => {
+      const a = await agreement();
+      await Promise.all([runAutoRenewals(windowOpen), runAutoRenewals(windowOpen)]);
+      const renewals = await renewalsOf(a.id);
+      expect(renewals).toHaveLength(1);
+      expect(
+        await prisma.auditLog.count({ where: { entityId: renewals[0]!.id, action: "agreement.auto_renewal_scheduled" } }),
+      ).toBe(1);
+      expect(await prisma.providerOperation.count({ where: { subjectId: renewals[0]!.id } })).toBe(1);
+    });
+
+    it("never auto-renews a rental that was paid in advance (no monthly billing to carry on)", async () => {
+      const a = await agreement({ paidInFullInAdvance: true, sub: false });
+      await runAutoRenewals(windowOpen);
+      expect(await renewalsOf(a.id)).toHaveLength(0);
+    });
+
     it("skips agreements that did not agree, asked to end early, or whose term already ran out", async () => {
       const off = await agreement({ renewalPreference: "NONE" });
       const ending = await agreement({ terminationRequestedAt: windowClosed, terminationEffectiveOn: effectiveOn });
@@ -205,7 +222,10 @@ describe.skipIf(!enabled)("auto-renew and agreed early endings are carried out",
       await runAutoRenewals(windowOpen);
       const auto = (await renewalsOf(a.id))[0]!;
       await prisma.rentalAgreement.update({ where: { id: a.id }, data: { renewalPreference: "NONE" } });
+      stripeMock.update.mockClear();
       const result = await startRenewalIfDue(auto.id, afterTerm);
+      // The withdrawn renewal must not touch the customer's subscription at all.
+      expect(stripeMock.update).not.toHaveBeenCalled();
       expect(result.started).toBe(false);
       if (!result.started) expect(result.reason).toBe("AUTO_RENEW_WITHDRAWN");
       expect((await get(a.id)).status).toBe("ACTIVE");
@@ -272,6 +292,14 @@ describe.skipIf(!enabled)("auto-renew and agreed early endings are carried out",
 
       await runDueTerminations(onEnding);
       expect(await prisma.invoice.count({ where: { agreementId: a.id } })).toBe(1);
+    });
+
+    it("two overlapping nightly runs invoice the fee once and end the rental once", async () => {
+      const a = await ending();
+      await Promise.all([runDueTerminations(onEnding), runDueTerminations(onEnding)]);
+      expect((await get(a.id)).status).toBe("ENDED");
+      expect(await prisma.invoice.count({ where: { agreementId: a.id } })).toBe(1);
+      expect(await prisma.auditLog.count({ where: { entityId: a.id, action: "agreement.end" } })).toBe(1);
     });
 
     it("a waived (zero) fee still ends the rental but creates no invoice", async () => {

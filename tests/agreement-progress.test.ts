@@ -73,3 +73,9 @@ it("signed but unassigned equipment does not suggest a delivery before assignmen
     agreementProgress({ ...base, lines: [{ assignments: [] }] }).next.label,
   ).toContain("Assign equipment");
 });
+
+it("an automatic renewal says it renews automatically instead of showing as signed or not signed", () => {
+  const p = agreementProgress({ ...base, status: "SCHEDULED", createdByAutoRenew: true, signature: null });
+  expect(p.milestones.find((m) => m.label === "Signature")?.state).toMatch(/renews automatically/i);
+  expect(p.next.label).toMatch(/Automatic renewal/);
+});

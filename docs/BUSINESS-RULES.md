@@ -986,8 +986,21 @@ is never replaced by a default.
   wording or notice days change). Consent is recorded only for the renewal-terms
   version the agreement was signed with, by the owner/admin or by the customer on
   their own agreement, with a consent record each time it is turned on or off.
-  Turning it off never ends the agreement. Nothing yet acts on the consent: no
-  job creates the renewal automatically.
+  Turning it off never ends the agreement. **Acting on consent (nightly):** once
+  the agreement's own reminder window opens (term end minus the notice days it was
+  signed with), the system queues a month-to-month renewal ("signed, starts later",
+  marked as automatic, no signature record) with the same lines and prices; Stripe's
+  end date is cleared. Rentals paid in advance are never auto-renewed (no monthly
+  billing to carry on; the owner decides). Turning auto-renew off, or asking to end
+  early, cancels a queued automatic renewal; a renewal started by hand is never
+  cancelled that way, and ending early is refused while one is in progress. An
+  automatic renewal never starts if consent was withdrawn.
+- **Agreed early endings (nightly):** requesting an early ending sets Stripe's end
+  date to one second before the agreed ending date. On that date the fee (if any) is
+  invoiced once as an OPEN invoice with an "Early ending fee" line (no tax added yet,
+  IN-25; never charged automatically) and the rental ends with its last day as the end
+  date. Rentals paid in advance are not ended automatically; they appear in "Needs your
+  attention" (owner and admin only) for the owner to settle the unused months.
 - **Sales tax rounding** (owner decision IN-17): rates are exact to 0.001
   percentage point, held in thousandths of a percent (7.375% is 7375). Tax is
   computed per line, rounded half away from zero to the cent, then summed, so an

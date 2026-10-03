@@ -271,15 +271,15 @@ export async function requestEarlyTermination(
     if (agreement.terminationRequestedAt) {
       throw new Error("An early termination has already been requested for this agreement.");
     }
-    // A renewal someone signed by hand contradicts ending early: sort that out first.
-    // An automatic one (from the customer's auto-renew) is simply cancelled below.
-    const signedRenewal = await tx.rentalAgreement.findFirst({
-      where: { renewedFromAgreementId: agreementId, status: "SCHEDULED", createdByAutoRenew: false },
+    // A renewal someone made by hand (draft, sent or signed) contradicts ending early: sort
+    // that out first. An automatic one (from the customer's auto-renew) is cancelled below.
+    const handMadeRenewal = await tx.rentalAgreement.findFirst({
+      where: { renewedFromAgreementId: agreementId, status: { not: "CANCELLED" }, createdByAutoRenew: false },
       select: { id: true },
     });
-    if (signedRenewal) {
+    if (handMadeRenewal) {
       throw new Error(
-        "This rental has a signed renewal waiting to start. Cancel the renewal first, then request the early ending.",
+        "This rental has a renewal in progress. Cancel the renewal first, then request the early ending.",
       );
     }
     const current = quoteEarlyTermination(termAgreement, policy, now);

@@ -47,6 +47,8 @@ async function createAutoRenewal(agreementId: string, now: Date): Promise<Create
       old.renewalPreference !== "AUTO_RENEW" ||
       !old.autoRenewConsentedAt ||
       old.terminationRequestedAt ||
+      // A rental paid in advance has no monthly billing to carry on: the owner decides how it continues.
+      old.paidInFullInAdvance ||
       !old.termMonths ||
       !old.endDate
     ) {
@@ -151,6 +153,7 @@ export async function runAutoRenewals(now = new Date()): Promise<AutoRenewRunRes
       status: "ACTIVE",
       renewalPreference: "AUTO_RENEW",
       terminationRequestedAt: null,
+      paidInFullInAdvance: false,
       termMonths: { not: null },
       endDate: { not: null },
     },

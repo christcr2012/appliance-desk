@@ -180,10 +180,10 @@ export async function getExceptions(): Promise<ExceptionItem[]> {
         customer: { select: { user: { select: { name: true, email: true } } } },
       },
     }),
-    prisma.rentalAgreement.findMany({
+    canViewFinance ? prisma.rentalAgreement.findMany({
       where: {
         status: "ACTIVE",
-        terminationEffectiveOn: { lt: addDays(now, -RENEWAL_START_GRACE_DAYS) },
+        terminationEffectiveOn: { lt: now },
       },
       select: {
         id: true,
@@ -191,16 +191,16 @@ export async function getExceptions(): Promise<ExceptionItem[]> {
         paidInFullInAdvance: true,
         customer: { select: { user: { select: { name: true, email: true } } } },
       },
-    }),
+    }) : Promise.resolve([]),
   ]);
 
   const items: ExceptionItem[] = [
     ...stuckEndings
-      .filter((a): a is typeof a & { terminationEffectiveOn: Date } => a.terminationEffectiveOn !== null)
+      .filter((a) => a.terminationEffectiveOn !== null)
       .map((a) =>
         earlyEndingNotDoneException({
           id: a.id,
-          terminationEffectiveOn: a.terminationEffectiveOn,
+          terminationEffectiveOn: a.terminationEffectiveOn as Date,
           prepaid: a.paidInFullInAdvance,
           customerName: customerDisplayName(a.customer),
         }),

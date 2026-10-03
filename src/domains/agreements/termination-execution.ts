@@ -124,7 +124,14 @@ export async function executeAgreedTermination(
   const feeInvoiced = await createFeeInvoiceIfNeeded(agreementId);
   // The rental's last day is the day before the ending date (it ends at the start of that day).
   const lastSecond = new Date(agreement.terminationEffectiveOn.getTime() - 1000);
-  await endAgreementOnAgreedDate(agreementId, lastSecond);
+  try {
+    await endAgreementOnAgreedDate(agreementId, lastSecond);
+  } catch (error) {
+    // Another run (or the owner) ended it a moment ago: nothing left to do.
+    const now = await prisma.rentalAgreement.findUnique({ where: { id: agreementId }, select: { status: true } });
+    if (now && now.status !== "ACTIVE") return { ended: false, feeInvoiced };
+    throw error;
+  }
   return { ended: true, feeInvoiced };
 }
 
