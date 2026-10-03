@@ -41,6 +41,7 @@ export default async function NoticesPage() {
               createdLabel={formatBusinessDate(n.createdAt)}
               subject={n.subject}
               body={n.body}
+              possiblySent={n.status === "SENDING"}
             />
           ))}
         </ul>

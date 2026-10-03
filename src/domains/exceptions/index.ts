@@ -196,7 +196,13 @@ export async function getExceptions(): Promise<ExceptionItem[]> {
     }) : Promise.resolve([]),
     canViewFinance
       ? prisma.customerNotice.findMany({
-          where: { status: "PENDING" },
+          where: {
+            OR: [
+              { status: "PENDING" },
+              // A send that was interrupted may already have gone out: a person has to check.
+              { status: "SENDING", updatedAt: { lt: new Date(now.getTime() - 15 * 60_000) } },
+            ],
+          },
           select: {
             id: true,
             createdAt: true,

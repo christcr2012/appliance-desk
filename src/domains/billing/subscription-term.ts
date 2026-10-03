@@ -83,7 +83,15 @@ async function loadPair(renewalId: string) {
   if (!renewal?.renewedFromAgreementId) return null;
   const old = await prisma.rentalAgreement.findUnique({
     where: { id: renewal.renewedFromAgreementId },
-    select: { id: true, termMonths: true, endDate: true, terminationEffectiveOn: true, stripeSubscriptionId: true },
+    select: {
+      id: true,
+      termMonths: true,
+      endDate: true,
+      terminationEffectiveOn: true,
+      terminationRequestedAt: true,
+      renewalPreference: true,
+      stripeSubscriptionId: true,
+    },
   });
   if (!old) return null;
   return { renewal, old, subscriptionId: renewal.stripeSubscriptionId ?? old.stripeSubscriptionId };
@@ -97,6 +105,11 @@ export async function desiredSubscriptionTerm(renewalId: string, direction: Term
   // An automatic renewal only extends billing once the customer's reminder was delivered on time:
   // until then Stripe keeps the old end date, so nothing is billed past the term for a renewal that cannot start.
   if (direction === "extend" && renewal.createdByAutoRenew && renewal.status !== "CANCELLED") {
+    // The customer's current choice always wins: an opt-out or an early-ending request that has been
+    // saved but whose renewal has not been cancelled yet must never let billing be extended.
+    if (old.renewalPreference !== "AUTO_RENEW" || old.terminationRequestedAt !== null || renewal.status !== "SCHEDULED") {
+      return null;
+    }
     const oldFull = await prisma.rentalAgreement.findUnique({ where: { id: old.id }, select: { endDate: true } });
     if (!oldFull?.endDate || !renewal.startDate) return null;
     const check = await checkReminderDelivered(prisma, renewalReminderKey(old.id, oldFull.endDate), renewal.startDate);

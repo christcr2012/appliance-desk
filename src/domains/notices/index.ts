@@ -49,19 +49,29 @@ export async function createNoticeInTx(
 
 export type NoticeSendResult = { sent: number; stillWaiting: number };
 
-/** A claim older than this is treated as abandoned (the run died) and the notice is tried again. */
+/**
+ * A claim older than this means the run died mid-send. We do NOT send it again by ourselves: the email provider may
+ * already have accepted it (a second email, or a delivery date that no longer fits the 25-40 day window). It is shown to the
+ * owner as "may already have been sent" so a person decides.
+ */
 const CLAIM_STALE_MINUTES = 15;
 
 /** A renewal reminder is only worth sending while the automatic renewal it warns about is still waiting. */
-async function stillNeeded(noticeId: string): Promise<boolean> {
+type NoticeNeed = "GONE" | "OUT_OF_WINDOW" | "OK";
+
+async function noticeNeed(noticeId: string, now: Date): Promise<NoticeNeed> {
   const notice = await prisma.customerNotice.findUnique({ where: { id: noticeId }, select: { kind: true, agreementId: true } });
-  if (!notice) return false;
-  if (notice.kind !== "RENEWAL_REMINDER" || !notice.agreementId) return true;
+  if (!notice) return "GONE";
+  if (notice.kind !== "RENEWAL_REMINDER" || !notice.agreementId) return "OK";
   const renewal = await prisma.rentalAgreement.findFirst({
     where: { renewedFromAgreementId: notice.agreementId, createdByAutoRenew: true, status: "SCHEDULED" },
-    select: { id: true },
+    select: { startDate: true },
   });
-  return renewal !== null;
+  if (!renewal?.startDate) return "GONE";
+  // Sending a reminder that can no longer be delivered 25 to 40 days ahead would promise a renewal the
+  // system will not start. It stays on the owner's list instead.
+  const daysBefore = businessDaysBetween(now, renewal.startDate);
+  return daysBefore >= REMINDER_MIN_DAYS_BEFORE && daysBefore <= REMINDER_MAX_DAYS_BEFORE ? "OK" : "OUT_OF_WINDOW";
 }
 
 /**
@@ -70,11 +80,12 @@ async function stillNeeded(noticeId: string): Promise<boolean> {
  * delivered" can never both deliver it. Email being off leaves them waiting; a failure on
  * one never blocks the rest.
  */
-export async function sendPendingNotices(): Promise<NoticeSendResult> {
-  const staleBefore = new Date(Date.now() - CLAIM_STALE_MINUTES * 60_000);
+export async function sendPendingNotices(now = new Date()): Promise<NoticeSendResult> {
   const waiting = await prisma.customerNotice.findMany({
-    where: { OR: [{ status: "PENDING" }, { status: "SENDING", updatedAt: { lt: staleBefore } }] },
-    orderBy: { createdAt: "asc" },
+    where: { status: "PENDING" },
+    // Least recently tried first: a notice that keeps failing goes to the back (its updatedAt moves forward each
+    // try), so 200 permanently failing notices can never starve a newer one.
+    orderBy: [{ updatedAt: "asc" }, { createdAt: "asc" }],
     take: 200,
     select: {
       id: true,
@@ -93,8 +104,17 @@ export async function sendPendingNotices(): Promise<NoticeSendResult> {
       data: { status: "SENDING", attempts: { increment: 1 } },
     });
     if (claimed.count !== 1) continue; // someone else (or the owner) got there first
-    if (!(await stillNeeded(notice.id))) {
+    const need = await noticeNeed(notice.id, now);
+    if (need === "GONE") {
       await prisma.customerNotice.updateMany({ where: { id: notice.id, status: "SENDING" }, data: { status: "NOT_NEEDED" } });
+      continue;
+    }
+    if (need === "OUT_OF_WINDOW") {
+      await prisma.customerNotice.updateMany({
+        where: { id: notice.id, status: "SENDING" },
+        data: { status: "PENDING", attempts: { decrement: 1 } },
+      });
+      stillWaiting += 1;
       continue;
     }
     try {
@@ -130,12 +150,13 @@ export async function markNoticeDeliveredByHand(
   if (cleaned.length < 2) throw new Error("Say how you delivered it (for example “phoned”, “mailed”, “in person”).");
   await prisma.$transaction(async (tx) => {
     await assertActiveTeamActor(tx, userId, ["OWNER", "ADMIN"]);
-    const rows = await tx.$queryRaw<Array<{ status: string }>>`
-      SELECT "status" FROM "CustomerNotice" WHERE "id" = ${noticeId} FOR UPDATE
+    const rows = await tx.$queryRaw<Array<{ status: string; updatedAt: Date }>>`
+      SELECT "status", "updatedAt" FROM "CustomerNotice" WHERE "id" = ${noticeId} FOR UPDATE
     `;
     const row = rows[0];
     if (!row) throw new Error("Couldn't find that notice.");
-    if (row.status !== "PENDING") throw new Error("That notice is not waiting to be sent.");
+    const interrupted = row.status === "SENDING" && isInterruptedSend(row.updatedAt);
+    if (row.status !== "PENDING" && !interrupted) throw new Error("That notice is not waiting to be sent.");
     const now = new Date();
     const when = deliveredOn ?? now;
     if (when.getTime() > now.getTime()) throw new Error("The delivery date can't be in the future.");
@@ -155,13 +176,20 @@ export async function markNoticeDeliveredByHand(
   });
 }
 
+function isInterruptedSend(updatedAt: Date): boolean {
+  return Date.now() - updatedAt.getTime() > CLAIM_STALE_MINUTES * 60_000;
+}
+
+/** Notices waiting for the owner: not yet sent, or a send that was interrupted and may already have gone out. */
 export async function listWaitingNotices() {
+  const staleBefore = new Date(Date.now() - CLAIM_STALE_MINUTES * 60_000);
   return prisma.customerNotice.findMany({
-    where: { status: "PENDING" },
+    where: { OR: [{ status: "PENDING" }, { status: "SENDING", updatedAt: { lt: staleBefore } }] },
     orderBy: { createdAt: "asc" },
     select: {
       id: true,
       kind: true,
+      status: true,
       subject: true,
       body: true,
       createdAt: true,

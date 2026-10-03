@@ -204,3 +204,9 @@ Chris asked for a dashboard switch for live customer email. Built: `BusinessSett
 - A customer can turn off automatic renewal from "My rentals" (Colorado expects an easy online cancel).
 - With customer email off, an estimate is still marked sent but the owner is told to share the link; estimate follow-ups are not marked as sent.
 - A written prompt for a stronger-model review of these rules is in `docs/prompts/REVIEW-RENEWAL-NOTICES.md` (optional, owner's choice).
+
+### 2026-10-03 addendum: second Copilot round and the independent review of PR #161
+- A reminder is never emailed once it can no longer be delivered 25 to 40 days before the renewal; it stays on the owner's Notices list.
+- An interrupted email send is never retried by itself (the provider may already have sent it): the owner sees "may already have been sent" and records the real delivery date by hand.
+- A saved opt-out or early-ending request blocks any billing extension at once, before the renewal's cancellation has run. Notices that keep failing go to the back of the line.
+- An independent review (`docs/reviews/2026-10-03-pr161-independent-review.md`) found larger gaps that need a design, not a patch: overlapping Stripe updates (R1), a lost billing-stop restoration after a crash (R2), no customer cancel after the first renewal (R3), annual reminders (R4), uncertain-send recovery (R6), manual-delivery evidence (D2). Automatic renewal stays switched off (settings left blank) until `docs/prompts/DESIGN-BATCH-B-RENEWAL-LIFECYCLE.md` has been run and built. Recorded as a blocker in `docs/GO-LIVE-CHECKLIST.md`.

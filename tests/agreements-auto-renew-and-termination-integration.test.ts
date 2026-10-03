@@ -17,7 +17,7 @@ import { runAutoRenewals, extendBillingForDeliveredAutoRenewals } from "@/domain
 import { runDueTerminations } from "@/domains/agreements/termination-execution";
 import { startRenewalIfDue } from "@/domains/agreements/renewal-start";
 import { setAutoRenew } from "@/domains/agreements/term";
-import { markNoticeDeliveredByHand, sendPendingNotices } from "@/domains/notices";
+import { listWaitingNotices, markNoticeDeliveredByHand, sendPendingNotices } from "@/domains/notices";
 import { renewalReminderKey } from "@/domains/notices/renewal-reminder";
 
 const emailMock = vi.hoisted(() => ({ send: vi.fn() }));
@@ -34,6 +34,8 @@ const termEnd = new Date("2027-11-08T06:59:59Z");
 const renewalStart = new Date("2027-11-08T07:00:00Z");
 const windowClosed = new Date("2027-09-01T12:00:00Z");
 const windowOpen = new Date("2027-10-20T12:00:00Z");
+// 27 days before the renewal starts: inside the 25 to 40 day reminder window.
+const inReminderWindow = new Date("2027-10-12T18:00:00Z");
 const afterTerm = new Date("2027-11-09T12:00:00Z");
 const effectiveOn = new Date("2027-03-08T07:00:00Z");
 const beforeEnding = new Date("2027-03-01T12:00:00Z");
@@ -212,13 +214,13 @@ describe.skipIf(!enabled)("auto-renew and agreed early endings are carried out",
     it("email being off leaves the reminder waiting; email on marks it sent; the owner can mark it delivered by hand", async () => {
       const a = await agreement();
       await runAutoRenewals(windowOpen);
-      const off = await sendPendingNotices();
+      const off = await sendPendingNotices(inReminderWindow);
       expect(off.stillWaiting).toBeGreaterThanOrEqual(1);
       expect((await noticeOf(a))!.status).toBe("PENDING");
       expect((await noticeOf(a))!.attempts).toBeGreaterThanOrEqual(1);
 
       emailMock.send.mockResolvedValue({ sent: true });
-      await sendPendingNotices();
+      await sendPendingNotices(inReminderWindow);
       const sent = (await noticeOf(a))!;
       expect(sent.status).toBe("SENT");
       expect(sent.sentVia).toBe("EMAIL");
@@ -270,7 +272,7 @@ describe.skipIf(!enabled)("auto-renew and agreed early endings are carried out",
         await new Promise((resolve) => setTimeout(resolve, 150));
         return { sent: true };
       });
-      await Promise.all([sendPendingNotices(), sendPendingNotices()]);
+      await Promise.all([sendPendingNotices(inReminderWindow), sendPendingNotices(inReminderWindow)]);
       const mine = (await noticeOf(a))!;
       expect(mine.status).toBe("SENT");
       expect(mine.sentVia).toBe("EMAIL");
@@ -281,7 +283,7 @@ describe.skipIf(!enabled)("auto-renew and agreed early endings are carried out",
       const a = await agreement();
       await runAutoRenewals(windowOpen);
       emailMock.send.mockReset().mockRejectedValue(new Error("provider down"));
-      await sendPendingNotices();
+      await sendPendingNotices(inReminderWindow);
       expect((await noticeOf(a))!.status).toBe("PENDING");
     });
 
@@ -325,6 +327,79 @@ describe.skipIf(!enabled)("auto-renew and agreed early endings are carried out",
         await prisma.auditLog.deleteMany({ where: { userId: ownerId } });
         await prisma.user.delete({ where: { id: ownerId } });
       }
+    });
+
+    it("never emails a reminder that can no longer be delivered 25 to 40 days ahead; it stays on the owner's list", async () => {
+      const a = await agreement();
+      await runAutoRenewals(windowOpen);
+      emailMock.send.mockReset().mockResolvedValue({ sent: true });
+      const tooLate = new Date("2027-11-02T18:00:00Z"); // 6 days before the renewal
+      const result = await sendPendingNotices(tooLate);
+      expect(result.sent).toBe(0);
+      expect(emailMock.send).not.toHaveBeenCalled();
+      const waiting = (await noticeOf(a))!;
+      expect(waiting.status).toBe("PENDING");
+      expect(waiting.attempts).toBe(0);
+      expect((await listWaitingNotices()).some((n) => n.id === waiting.id)).toBe(true);
+    });
+
+    it("an interrupted send is never retried by itself (the provider may have sent it); the owner sees it and settles it by hand", async () => {
+      const a = await agreement();
+      await runAutoRenewals(windowOpen);
+      const key = renewalReminderKey(a.id, a.endDate!);
+      await prisma.customerNotice.update({
+        where: { dedupeKey: key },
+        data: { status: "SENDING", updatedAt: new Date(Date.now() - 3 * 60 * 60_000) },
+      });
+      emailMock.send.mockReset().mockResolvedValue({ sent: true });
+      await sendPendingNotices(inReminderWindow);
+      const stuck = (await noticeOf(a))!;
+      expect(emailMock.send).not.toHaveBeenCalledWith(expect.objectContaining({ idempotencyKey: `customer-notice-${stuck.id}` }));
+      expect(stuck.status).toBe("SENDING");
+      const listed = (await listWaitingNotices()).find((n) => n.id === stuck.id);
+      expect(listed?.status).toBe("SENDING");
+
+      const ownerId = `ar-owner3-${tag}`;
+      await prisma.user.create({ data: { id: ownerId, email: `${tag}-o3@example.test`, name: "AR Owner 3", role: "OWNER", emailVerified: true } });
+      try {
+        const when = new Date(Date.now() - 86_400_000);
+        await markNoticeDeliveredByHand(ownerId, stuck.id, "checked provider log", when);
+        const done = (await noticeOf(a))!;
+        expect(done.status).toBe("SENT");
+        expect(done.sentAt?.toISOString()).toBe(when.toISOString());
+      } finally {
+        await prisma.customerNotice.updateMany({ where: { sentByUserId: ownerId }, data: { sentByUserId: null } });
+        await prisma.auditLog.deleteMany({ where: { userId: ownerId } });
+        await prisma.user.delete({ where: { id: ownerId } });
+      }
+    });
+
+    it("an opt-out that is saved but whose renewal is not cancelled yet can never let billing be extended", async () => {
+      const a = await agreement();
+      await runAutoRenewals(windowOpen);
+      await deliver(a);
+      // The customer's choice is saved first; the renewal's cancellation follows a moment later.
+      await prisma.rentalAgreement.update({ where: { id: a.id }, data: { renewalPreference: "NONE" } });
+      stripeMock.update.mockClear();
+      await extendBillingForDeliveredAutoRenewals(windowOpen);
+      expect(stripeMock.update).not.toHaveBeenCalled();
+    });
+
+    it("a notice that keeps failing goes to the back of the line, so it cannot starve newer notices", async () => {
+      const a = await agreement();
+      const b = await agreement();
+      await runAutoRenewals(windowOpen);
+      const first = (await noticeOf(a))!;
+      const second = (await noticeOf(b))!;
+      emailMock.send.mockReset().mockImplementation(async (input: { idempotencyKey?: string }) => {
+        if (input.idempotencyKey === `customer-notice-${first.id}`) throw new Error("rejected address");
+        return { sent: true };
+      });
+      await sendPendingNotices(inReminderWindow);
+      await sendPendingNotices(inReminderWindow);
+      expect((await noticeOf(b))!.status).toBe("SENT");
+      expect((await noticeOf(a))!.status).toBe("PENDING");
+      expect(second.id).not.toBe(first.id);
     });
 
     it("two overlapping nightly runs queue exactly one renewal", async () => {

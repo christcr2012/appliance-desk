@@ -12,6 +12,7 @@ export type NoticeCardProps = {
   createdLabel: string;
   subject: string;
   body: string;
+  possiblySent?: boolean;
 };
 
 export function NoticeCard(props: NoticeCardProps) {
@@ -41,6 +42,13 @@ export function NoticeCard(props: NoticeCardProps) {
       <p className="mt-1 text-sm text-gray-700">
         Created {props.createdLabel}. It goes to {props.customerEmail} once live customer email is turned on.
       </p>
+      {props.possiblySent && (
+        <p role="status" className="mt-2 rounded border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900">
+          The email may already have gone out: the send was interrupted before we could record it. We will not send it again
+          by ourselves. Check your email provider&rsquo;s sent list (or ask the customer), then mark it as delivered below with
+          the real date.
+        </p>
+      )}
       <p className="mt-3 text-sm font-medium text-gray-900">{props.subject}</p>
       <pre className="mt-1 whitespace-pre-wrap rounded border border-gray-200 bg-gray-50 p-3 font-sans text-sm text-gray-800">
         {props.body}

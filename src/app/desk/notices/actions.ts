@@ -21,7 +21,7 @@ export async function markNoticeDeliveredAction(input: { noticeId: string; how: 
   const parsed = schema.safeParse(input);
   if (!parsed.success) return { status: "error", message: "Say how you delivered it." };
   let deliveredOn: Date | undefined;
-  if (parsed.data.deliveredOn) {
+  if (parsed.data.deliveredOn !== undefined) {
     const day = businessDateFromKey(parsed.data.deliveredOn);
     if (!day) return { status: "error", message: "Enter the date it was delivered." };
     deliveredOn = day;

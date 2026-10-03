@@ -26,6 +26,7 @@ Legend: **Owner** = only Chris can do it · **Agent** = Claude can do it once yo
 | [ ] | Owner switch "Send emails to customers" turned On | Desk → Settings → Notifications (owner only; built, starts Off) | Off | Renewal reminders on Desk → Notices turn "sent" (nightly), or send one by turning it on then waiting for the next night |
 | [ ] | Launch-list emails | Desk → Launch controls (has its own approval, separate from the switch above) (Owner) | Off | |
 | [ ] | Where staff alerts go | Vercel `BILLING_NOTIFICATION_EMAIL`, `LEAD_NOTIFICATION_EMAIL`, `MAINTENANCE_NOTIFICATION_EMAIL` (Owner) | Not set | Test lead/billing alert arrives |
+| [ ] | **DO NOT fill in the automatic-renewal wording and notice days (Settings → Ending and renewing rentals) until the renewal-lifecycle design amendment is built** | Settings (Owner) | Left blank = automatic renewal stays off | Open findings R1-R4, D1-D2 in `docs/reviews/2026-10-03-pr161-independent-review.md`: billing updates can overlap, the customer loses the cancel button after the first renewal, annual reminders stop, manual-delivery evidence rule. Prompt: `docs/prompts/DESIGN-BATCH-B-RENEWAL-LIFECYCLE.md` |
 | [ ] | Customer "Turn off automatic renewal" button tried end to end on the live site | My rentals page (customer account) | Built | Use a test customer with auto-renew on |
 | [ ] | Wording of every customer message read and approved | Notices, billing reminders, launch emails (Owner) | Draft wording | You approve each |
 
