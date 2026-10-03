@@ -117,11 +117,13 @@ resulting behavior are verified.
 - **Branch names:** `ai/<tool>/<topic>` (for example `ai/codex/batch-b-billing`).
   Branch from current `main`, or from the previous unmerged PR's branch when
   stacking; retarget `main` once the predecessor merges.
-- **Verify locally, push once.** Each push cancels the previous CI run and
-  bills the partial minutes. The local verification recipe is in
-  `docs/PLAYBOOK.md`; it takes ~5 minutes to set up and catches most failures.
+- **Verify locally before you push.** CI is free and fast now (see "CI"), but
+  pushing broken work wastes everyone's time and a failing run is noise. The
+  local verification recipe is in `docs/PLAYBOOK.md`; it takes ~5 minutes to set
+  up and catches most failures.
 - **Merging:** Chris has authorized agents to merge their own PRs (2026-10-01)
-  when all of these are true: full CI green at the exact head being merged,
+  when all of these are true: the `ci` check green at the exact head being
+  merged (CI runs on every push; check it is the latest head),
   the PR's acceptance list is met with evidence, applicable preview checks
   pass, and the review steps below are done. Merge with the expected-head SHA.
   New commits invalidate earlier evidence — re-check before merging. The
@@ -129,7 +131,15 @@ resulting behavior are verified.
 - **Automated review:** if an automated reviewer is available, request it. If
   it is not (quota, outage), Chris has waived it (2026-10-01): inspect the
   diff yourself, record "automated review unavailable — waived" in the PR,
-  and never claim a review ran that did not.
+  and never claim a review ran that did not. Codex reviews every PR
+  automatically when it is opened, so it is normally available: read its
+  comments before writing "unavailable". Never write "waived" without checking.
+- **Review fixes ride the next planned PR (Chris, 2026-10-03).** Do not open or
+  push a separate PR just to fix review comments — each push costs a CI run.
+  Collect valid findings from all open PRs, fix them (with regression tests)
+  inside the next planned PR of the stack, and record each disposition there.
+  Exception: a finding that is a security or money-correctness hole in code
+  already merged to `main` gets fixed immediately.
 
 ## Review continuity — before each PR
 
@@ -195,32 +205,47 @@ resulting behavior are verified.
 - **Migrations** are additive and reviewed by `scripts/check-migrations.mjs`
   in CI. Production runs `prisma migrate deploy` during `vercel-build`.
 
-## CI speed budget — 5 minutes per PR (owner's standing target, 2026-10-02)
+## CI — fast, free, and checks for secrets (owner, 2026-10-03)
 
-A full CI run on a pull request must finish in **5 minutes or less**;
-documentation-only PRs stay near-free (~10 seconds). As of 2026-10-02 a full
-run takes ~4.5 min. Every agent adding tests, CI steps, or dependencies keeps
-it there. The maintenance guide is `docs/ARCHITECTURE.md` → "Keeping CI under
-5 minutes". The rules that matter most:
+The repository is **public**, so GitHub Actions minutes on standard runners are
+free (the private-repo allowance ran out on day 3 of October). CI is therefore
+built for **speed**, not minute-saving: every check runs in parallel on every
+push to a pull request, with a goal of results in about 3 minutes
+(`docs/ARCHITECTURE.md` → "CI layout and speed"). The rules:
 
-1. **Prefer unit tests (`tests/`, vitest) over browser tests (`e2e/`).** A
-   browser test costs 10–50× a unit test and sits on CI's critical path.
-   Browser tests are for what truly needs a browser: axe accessibility, real
-   login/session behavior, security headers, one full click-through per
-   major user flow.
-2. **Every new `e2e/*.spec.ts` must be assigned to a group in
-   `e2e/shards.json`** — CI fails otherwise. Put it in the lightest group;
-   each shard prints per-file durations as a CI notice on every run.
-3. **No browser shard's test step may exceed ~2 minutes.** Past that,
-   rebalance the groups; if all are full, add a shard (one group in
-   `e2e/shards.json` + one matrix entry in `.github/workflows/ci.yml`).
-4. **Never log in per test** — reuse the saved sessions from
+1. **Verify locally first, then push.** Free minutes are not a reason to push
+   broken work: run the local recipe in `docs/PLAYBOOK.md` (typecheck, lint,
+   the whole vitest suite). **If you touched `src/app/`, `src/components/`,
+   `src/lib/` or `e2e/`, also run the affected browser/accessibility specs
+   locally (PLAYBOOK 4c).** Never push to "see what CI says".
+2. **The `ci` check is the single gate.** It needs the secret scan, type-check
+   and lint, all three unit-test shards and all four browser shards. It runs on
+   every push to a PR and on `main`; the browser suite also runs nightly. Never
+   merge on a stale result: the `ci` check must be green at the exact head.
+3. **Public repository = anything committed is public forever.** Never commit
+   secrets, real customer data, or private infrastructure identifiers (Neon
+   branch/endpoint ids, Vercel project/team ids, production URLs with
+   credentials). CI runs `scripts/check-secrets.mjs` (our rules; the allowlist
+   of reviewed harmless values is inside it) and `gitleaks` over the full git
+   history on every run — including docs-only changes. A failure blocks the
+   merge. Fix by removing the value (and, if it was real, telling Chris so the
+   credential is rotated — deleting it from a later commit does not un-publish
+   it). Do not add to `.gitleaksignore` or the script's allowlist without
+   saying why in the PR.
+4. **Workflow safety.** `.github/workflows/ci.yml` has `permissions: contents: read`,
+   uses no repository secrets, and only throwaway test values. Never use
+   `pull_request_target`, never add secrets to it, never echo environment values.
+5. **Prefer unit tests (`tests/`, vitest) over browser tests (`e2e/`).** Browser
+   tests are the slowest part of CI. Use them for axe accessibility, real
+   login/session behavior, security headers, one click-through per major flow.
+6. **Every new `e2e/*.spec.ts` must be assigned to a group in
+   `e2e/shards.json`** (browser-a … browser-d; CI fails otherwise). Keep the
+   groups balanced by real durations.
+7. **Never log in per test** — reuse the saved sessions from
    `e2e/global-setup.ts` (`test.use({ storageState })`).
-5. **Don't add steps to the browser job's shared prefix** (install →
-   migrate → seed → build); every shard pays it. One-off checks go in the
-   `static` or `database` job.
-6. If the unit/integration job approaches 3 minutes, shard vitest
-   (`vitest run --shard=N/M`) before anything else.
+8. **Keep the pipeline fast.** New one-off checks go in the `static` job (or
+   `secrets`), not a new job, unless they can run in parallel without delaying
+   the slowest job. The maintenance guide is `docs/ARCHITECTURE.md`.
 
 ## How to run things
 
@@ -237,10 +262,15 @@ npm run db:migrate:deploy          # apply pending migrations (CI/production)
 npm run db:seed                     # seeds business content (+ test accounts in CI)
 ```
 
-CI (`.github/workflows/ci.yml`) runs on every PR and on `main` as parallel
-jobs: static checks; migrations + unit/integration tests on a throwaway
-Postgres; and the production build + browser suite split across 3 runners by
-`e2e/shards.json`. Docs-only PRs skip all of it.
+CI (`.github/workflows/ci.yml`) runs in parallel: a secret scan, type-check +
+lint, the unit/integration tests in 3 shards on throwaway Postgres databases,
+and the production build + browser suite in 4 shards. Docs-only changes skip the
+heavy jobs but never the secret scan. See "CI" above.
+
+**Browser tests locally:** cloud sandboxes include Chromium; PLAYWRIGHT_BROWSERS_PATH
+is preset and `playwright install` is forbidden. The build needs a font stand-in
+and the browser needs a path shim: the exact recipe is `docs/PLAYBOOK.md` 4c. Do
+not skip browser specs for screen changes because "the sandbox has no browser".
 
 **Sandbox constraint:** some sandboxes cannot reach `binaries.prisma.sh`, so
 `prisma generate`/`migrate` fail there with a 403. That is network policy, not

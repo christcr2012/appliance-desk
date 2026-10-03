@@ -1,0 +1,7 @@
+# gitleaks configuration. This repository is public: CI scans the whole git
+# history for credentials on every run. Default rules plus the allowlist of
+# reviewed fake test strings in .gitleaksignore (by fingerprint).
+title = "appliance-desk"
+
+[extend]
+useDefault = true

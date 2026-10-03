@@ -62,6 +62,7 @@ export async function getChurnRiskCustomers(asOf: Date = new Date()): Promise<Ch
           id: true,
           customerId: true,
           startDate: true,
+          endDate: true,
           termMonths: true,
           customer: { select: { user: { select: { name: true, email: true } } } },
         },
@@ -85,13 +86,15 @@ export async function getChurnRiskCustomers(asOf: Date = new Date()): Promise<Ch
   const maintenanceCounts = countByCustomerId(recentMaintenanceRequests);
 
   const rows = agreements.map((agreement) => {
-    const daysUntilTermEnd =
+    // The saved end date (set when billing starts, at delivery) is the real
+    // end of the term; start + term months is only the fallback for agreements
+    // that never recorded one.
+    const termEnd =
       agreement.termMonths && agreement.startDate
-        ? Math.round(
-            (addMonthsUtc(agreement.startDate, agreement.termMonths).getTime() - asOf.getTime()) /
-              MS_PER_DAY,
-          )
+        ? (agreement.endDate ?? addMonthsUtc(agreement.startDate, agreement.termMonths))
         : null;
+    const daysUntilTermEnd =
+      termEnd === null ? null : Math.round((termEnd.getTime() - asOf.getTime()) / MS_PER_DAY);
 
     const risk = computeChurnRisk({
       pastDueInvoiceCount: pastDueCounts.get(agreement.customerId) ?? 0,

@@ -68,7 +68,7 @@ docs/               everything below
 | `docs/BUSINESS-RULES.md` | Prices, fees, discounts, lead scoring, statuses and transitions. The one source of truth for business behavior. |
 | `docs/PRODUCT-SPEC.md` | What each screen/flow does, by role. |
 | `docs/DATABASE.md` | Tables, why they are shaped that way, backup policy. |
-| `docs/ARCHITECTURE.md` | Vercel/Neon/GitHub wiring, env vars, email addresses, CI layout and the 5-minute CI budget guide. |
+| `docs/ARCHITECTURE.md` | Vercel/Neon/GitHub wiring, env vars, email addresses, CI layout and the CI cost guide. |
 | `docs/DESIGN-SYSTEM.md` | Tokens, components, accessibility rules. `docs/brand/` has the Evergreen kit. |
 | `docs/plans/overhaul/DESIGN.md` | Screen blueprints and interaction specs for the desk/portal overhaul (sections 4–8 are the ones batches cite). |
 | `docs/OWNER-GUIDE.md` | How Chris operates the finished product. Keep it true as features land. |

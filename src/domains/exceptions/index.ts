@@ -146,6 +146,7 @@ export async function getExceptions(): Promise<ExceptionItem[]> {
         id: true,
         termMonths: true,
         startDate: true,
+        endDate: true,
         customer: { select: { user: { select: { name: true, email: true } } } },
       },
     }),
@@ -238,7 +239,7 @@ export async function getExceptions(): Promise<ExceptionItem[]> {
         (a): a is typeof a & { termMonths: number; startDate: Date } =>
           a.termMonths !== null && a.startDate !== null,
       )
-      .map((a) => ({ ...a, termEndDate: addMonths(a.startDate, a.termMonths) }))
+      .map((a) => ({ ...a, termEndDate: a.endDate ?? addMonths(a.startDate, a.termMonths) }))
       .filter((a) => a.termEndDate < now)
       .map((a) =>
         agreementTermExpiredException({

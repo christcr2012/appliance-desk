@@ -14,6 +14,7 @@ import {
   type TerminationPolicy,
   type UnusedTermTreatment,
 } from "./term-policy";
+import { snapshotAutoRenew, snapshotTerminationPolicy } from "./terms-snapshot";
 
 export {
   autoRenewPolicyReady,
@@ -33,6 +34,42 @@ export {
  */
 
 const POLICY_ROLES = ["OWNER", "ADMIN"] as const;
+
+/**
+ * Who is acting. Staff (owner/admin) can act on any agreement; a customer can
+ * act only on their own. Both are re-checked inside the same transaction as
+ * the change, so a deactivated account cannot slip an action in.
+ */
+export type TermActor = { userId: string; kind: "team" | "customer" };
+
+async function lockAgreementForActor(
+  tx: Prisma.TransactionClient,
+  actor: TermActor,
+  agreementId: string,
+) {
+  if (actor.kind === "team") {
+    await assertActiveTeamActor(tx, actor.userId, POLICY_ROLES);
+    return lockRentalAgreementInTx(tx, agreementId);
+  }
+  await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${actor.userId} FOR SHARE`;
+  const user = await tx.user.findUnique({
+    where: { id: actor.userId },
+    select: { role: true, archivedAt: true },
+  });
+  if (!user || user.archivedAt || user.role !== "CUSTOMER") {
+    throw new Error("This account no longer has access to make that change.");
+  }
+  const agreement = await lockRentalAgreementInTx(tx, agreementId);
+  const customer = await tx.customer.findUnique({
+    where: { userId: actor.userId },
+    select: { id: true },
+  });
+  // Same message as a missing agreement, so another customer's id reveals nothing.
+  if (!customer || customer.id !== agreement.customerId) {
+    throw new Error("Couldn't find that rental agreement.");
+  }
+  return agreement;
+}
 const OPEN_INVOICE_STATUSES = ["OPEN", "PARTIALLY_PAID", "DELINQUENT"] as const;
 const MAX_PERIODS = 600;
 
@@ -135,7 +172,7 @@ export function quoteEarlyTermination(
 async function loadTermAgreement(
   tx: Prisma.TransactionClient,
   agreementId: string,
-): Promise<TermAgreement> {
+): Promise<TermAgreement & { termsSnapshot: unknown }> {
   const agreement = await tx.rentalAgreement.findUniqueOrThrow({
     where: { id: agreementId },
     select: {
@@ -143,6 +180,7 @@ async function loadTermAgreement(
       endDate: true,
       nextBillingDate: true,
       paidInFullInAdvance: true,
+      termsSnapshot: true,
       lines: { select: { monthlyPriceCents: true } },
     },
   });
@@ -155,6 +193,7 @@ async function loadTermAgreement(
     endDate: agreement.endDate,
     nextBillingDate: agreement.nextBillingDate,
     paidInFullInAdvance: agreement.paidInFullInAdvance,
+    termsSnapshot: agreement.termsSnapshot,
     monthlyTotalCents: agreement.lines.reduce((sum, line) => sum + line.monthlyPriceCents, 0),
     unpaidBalanceCents: openInvoices.reduce(
       (sum, invoice) => sum + Math.max(0, invoice.amountDueCents - invoice.amountPaidCents),
@@ -167,9 +206,9 @@ async function loadSettings(tx: Prisma.TransactionClient) {
   return tx.businessSettings.findUnique({ where: { id: "singleton" } });
 }
 
+/** Compares everything the person saw except when the quote was made (the server decides that). */
 function sameQuote(a: EarlyTerminationQuote, b: EarlyTerminationQuote): boolean {
   return (
-    a.requestedOn.getTime() === b.requestedOn.getTime() &&
     a.effectiveOn.getTime() === b.effectiveOn.getTime() &&
     a.remainingTermMonths === b.remainingTermMonths &&
     a.remainingRentCents === b.remainingRentCents &&
@@ -181,49 +220,55 @@ function sameQuote(a: EarlyTerminationQuote, b: EarlyTerminationQuote): boolean 
   );
 }
 
-/** Read-only quote for a real agreement using the owner's saved policy. Returns null when the policy is not set. */
+/**
+ * Read-only quote for a real agreement, using the terms that agreement is
+ * locked to (not today's system-wide settings). Returns null when the
+ * agreement has no agreed early-ending terms.
+ */
 export async function getEarlyTerminationQuote(
   agreementId: string,
   requestedOn: Date = new Date(),
 ): Promise<EarlyTerminationQuote | null> {
   return prisma.$transaction(async (tx) => {
-    const policy = loadTerminationPolicy((await loadSettings(tx)) ?? {});
+    const agreement = await loadTermAgreement(tx, agreementId);
+    const policy = snapshotTerminationPolicy(agreement.termsSnapshot);
     if (!policy) return null;
-    return quoteEarlyTermination(await loadTermAgreement(tx, agreementId), policy, requestedOn);
+    return quoteEarlyTermination(agreement, policy, requestedOn);
   });
 }
 
 /**
- * Record an early-termination request. Re-quotes under the agreement lock and
- * rejects if anything in the quote changed since the person saw it. Does NOT
- * end the agreement: ending happens on `terminationEffectiveOn` through the
- * existing close path.
+ * Record an early-termination request. The request time is taken from the
+ * server clock here, never from the caller: the displayed quote is only
+ * checked against a fresh quote made now (everything but its own timestamp
+ * must match), so a changed or backdated quote cannot get through. Uses the
+ * terms the agreement is locked to. Does NOT end the agreement: ending
+ * happens on `terminationEffectiveOn` through the existing close path.
+ * `options.now` exists for tests; no production caller passes it.
  */
 export async function requestEarlyTermination(
-  userId: string,
+  actor: TermActor,
   agreementId: string,
   quote: EarlyTerminationQuote,
+  options: { now?: Date } = {},
 ): Promise<void> {
+  const now = options.now ?? new Date();
   await prisma.$transaction(async (tx) => {
-    await assertActiveTeamActor(tx, userId, POLICY_ROLES);
-    const policy = loadTerminationPolicy((await loadSettings(tx)) ?? {});
-    if (!policy) {
-      throw new Error(
-        "Early termination isn't available yet — the termination policy hasn't been set.",
-      );
-    }
-    const agreement = await lockRentalAgreementInTx(tx, agreementId);
+    const agreement = await lockAgreementForActor(tx, actor, agreementId);
     if (agreement.status !== "ACTIVE") {
       throw new Error("Only an active agreement can be terminated early.");
+    }
+    const termAgreement = await loadTermAgreement(tx, agreementId);
+    const policy = snapshotTerminationPolicy(termAgreement.termsSnapshot);
+    if (!policy) {
+      throw new Error(
+        "Early termination isn't available for this agreement — it wasn't signed with early-ending terms.",
+      );
     }
     if (agreement.terminationRequestedAt) {
       throw new Error("An early termination has already been requested for this agreement.");
     }
-    const current = quoteEarlyTermination(
-      await loadTermAgreement(tx, agreementId),
-      policy,
-      quote.requestedOn,
-    );
+    const current = quoteEarlyTermination(termAgreement, policy, now);
     if (!sameQuote(current, quote)) {
       throw new Error("The numbers changed since this quote was made. Review the new quote and try again.");
     }
@@ -238,11 +283,12 @@ export async function requestEarlyTermination(
     });
     await tx.auditLog.create({
       data: {
-        userId,
+        userId: actor.userId,
         action: "agreement.termination_requested",
         entityType: "RentalAgreement",
         entityId: agreementId,
         newValue: {
+          requestedBy: actor.kind,
           requestedOn: current.requestedOn.toISOString(),
           effectiveOn: current.effectiveOn.toISOString(),
           remainingTermMonths: current.remainingTermMonths,
@@ -314,6 +360,8 @@ export async function renewAgreement(
         paidInFullInAdvance: false,
         freeMonthGranted: false,
         renewedFromAgreementId: old.id,
+        // The agreed start: signing the renewal early must not start it early.
+        startDate: new Date(businessEndOfDay(old.endDate).getTime() + 1000),
         reservationExpiresAt: addBusinessDays(new Date(), holdDays),
         lines: {
           create: lines.map((line) => ({
@@ -344,28 +392,28 @@ export async function renewAgreement(
 }
 
 /**
- * Record or withdraw the customer's auto-renew consent. Consent is only
- * accepted for the terms version the owner currently publishes, and every
- * change leaves a ConsentRecord. Turning it off never ends the agreement.
+ * Record or withdraw the customer's auto-renew consent. Consent is given to
+ * the auto-renew terms this agreement was signed with (not today's
+ * system-wide wording), and every change leaves a ConsentRecord. A customer
+ * can act on their own agreement only. Turning it off never ends the agreement.
  */
 export async function setAutoRenew(
-  userId: string,
+  actor: TermActor,
   agreementId: string,
   input: { enabled: boolean; termsVersion: string },
 ): Promise<void> {
   await prisma.$transaction(async (tx) => {
-    await assertActiveTeamActor(tx, userId, POLICY_ROLES);
-    const settings = await loadSettings(tx);
-    const agreement = await lockRentalAgreementInTx(tx, agreementId);
+    const agreement = await lockAgreementForActor(tx, actor, agreementId);
     if (agreement.status !== "ACTIVE") {
       throw new Error("Auto-renew can only be changed on an active agreement.");
     }
     if (input.enabled) {
-      if (!settings || !autoRenewPolicyReady(settings)) {
-        throw new Error("Auto-renew isn't available yet — the renewal terms haven't been set.");
+      const locked = snapshotAutoRenew(agreement.termsSnapshot);
+      if (!locked) {
+        throw new Error("Auto-renew isn't available for this agreement — it wasn't signed with renewal terms.");
       }
-      if (input.termsVersion !== settings.autoRenewTermsVersion) {
-        throw new Error("Those renewal terms are out of date. Show the customer the current terms and try again.");
+      if (input.termsVersion !== locked.termsVersion) {
+        throw new Error("Those renewal terms are out of date. Show the customer this agreement's terms and try again.");
       }
     }
     const now = new Date();
@@ -387,17 +435,18 @@ export async function setAutoRenew(
           agreementId,
           enabled: input.enabled,
           termsVersion: input.termsVersion,
-          recordedByUserId: userId,
+          recordedByUserId: actor.userId,
+          recordedBy: actor.kind,
         },
       },
     });
     await tx.auditLog.create({
       data: {
-        userId,
+        userId: actor.userId,
         action: input.enabled ? "agreement.auto_renew_enabled" : "agreement.auto_renew_disabled",
         entityType: "RentalAgreement",
         entityId: agreementId,
-        newValue: { termsVersion: input.termsVersion },
+        newValue: { termsVersion: input.termsVersion, by: actor.kind },
       },
     });
   });

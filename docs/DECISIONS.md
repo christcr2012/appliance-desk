@@ -63,3 +63,55 @@ the complete original history preserved unchanged behind that index.
 
 Going forward, new decisions are recorded here. Historical context is pulled
 from the archive only when a concrete question requires it.
+
+### 2026-10-03 — Code-review fixes ride the next planned PR
+
+Chris decided that review comments are fixed inside the next planned PR rather
+than in their own PRs or extra pushes, because every push costs a CI run. Each
+finding still gets a recorded disposition and a regression test. Only a
+security or money-correctness hole already on `main` is fixed immediately.
+
+### 2026-10-03 — Agreements keep their own terms; policy changes need 30 days' notice
+
+Chris decided: fixed-term leases are locked to the ending/renewal terms they
+signed; changing the system-wide terms must not affect them. Month-to-month
+agreements follow the system-wide terms, effective 30 days after the change,
+with every customer told in writing (current leases unaffected, month-to-month
+affected). Terms can also be customized per customer at sign-up/setup/estimate.
+Consequence: early-ending quotes read the agreement's saved terms, not the live
+settings. Sending the notice is live customer email and needs Chris's approval
+before it is turned on.
+
+### 2026-10-03 — CI is built to cost minutes, not to be fast
+
+GitHub Actions minutes ran out on day 3 of the month: ~190 runs since Oct 1
+(43 cancelled mid-run, still billed) at ~22 billed minutes per full run (five
+working jobs, three of them repeating install + build for the browser tests).
+Chris asked for a drastic efficiency improvement. Changes: CI runs when a PR is
+opened or marked ready, not on every push (re-run by hand once after local
+verification); draft PRs run nothing; type-check, lint and the unit suite share
+one job; the browser suite runs on one runner, only when the change can affect
+a browser, and nightly on `main`; a push to `main` runs the cheap checks only;
+the failure-only Playwright report is kept 3 days. This supersedes the
+2026-10-02 "5-minute wall-clock" goal, which was achieved by spending more
+minutes. Accepted trade-off: a logic-only change that breaks a screen is caught
+by the nightly run, not before merge. Not done: making the repo public (free
+Actions, but exposes the code).
+
+### 2026-10-03 — Repository made public; CI rebuilt for speed and secret scanning
+
+Chris made the repository public (the code is a customized version of existing
+things, nothing in it needs to be private), which makes standard Actions minutes
+free. This supersedes the cost-saving CI of the same day: CI now runs on every
+push, all checks in parallel (secret scan, type-check + lint, unit tests in 3
+shards, browser tests in 4 shards), with `permissions: contents: read` and no
+secrets. Quality is unchanged or better: same checks, plus `scripts/check-secrets.mjs`
+and gitleaks over the whole git history on every run, including docs-only
+changes. Real production Neon/Vercel identifiers found in old docs and one test
+were replaced with placeholders; they remain in git history (identifiers only, no
+passwords or keys), so Chris was advised to optionally rotate the production
+database password. The 1-to-2-minute target was not promised for browser tests:
+a production build plus browser install is a fixed cost of about two minutes per
+runner. Chris must enable GitHub secret scanning/push protection and the fork
+pull-request approval setting himself (agents cannot reach those settings).
+

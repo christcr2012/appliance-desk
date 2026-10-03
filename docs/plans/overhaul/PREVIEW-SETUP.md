@@ -24,9 +24,9 @@ earlier unavailable-dashboard blocker; no dependent schema or small PR yet.
 ## Earlier batch 1 checkpoint — 2026-10-01
 
 Reverified Neon preview br-broad-union-b784qy62 is separate from protected
-production br-wild-smoke-b7etke32, under appliance-desk project
-jolly-term-08991992. Vercel project prj_3HAWVPau4QJqPu8hf6PbgRBlbLOi belongs
-to team_PUafLQmqT7LYBaBs8lEOPYMG and has preview SSO protection.
+production <production-branch-id>, under appliance-desk project
+jolly-term-08991992. Vercel project <vercel-project-id> belongs
+to <vercel-team-id> and has preview SSO protection.
 Vercel get_project currently needs both projectId and idOrName arguments.
 
 O02 remains BLOCKED on hosted runtime fixture and independent private file
@@ -62,7 +62,7 @@ operations until independent storage is verified.
 Status: IN_REVIEW safeguard; full O02 incomplete.
 
 Read-only Neon metadata on 2026-09-30 verifies project jolly-term-08991992:
-- Production main: br-wild-smoke-b7etke32, ep-ancient-glitter-b7q9bto9.
+- Production main: <production-branch-id>, <production-endpoint-id>.
 - Separate vercel-preview-2: br-broad-union-b784qy62, ep-silent-hill-b7rpraoc.
 
 preview-database-safety.ts permits the verified preview endpoint's stable

@@ -41,7 +41,8 @@ export type AutoRenewPolicySettings = {
 /**
  * Returns the termination policy, or null when it is not fully set or any
  * value is invalid. Required: notice days, unused-term treatment, and at least
- * one fee value (0 is a valid, deliberate "no fee"; null is "not decided").
+ * one fee value (0 is a valid, deliberate "no fee"; null is "not decided"),
+ * and the terms wording customers will see.
  */
 export function loadTerminationPolicy(
   settings: TerminationPolicySettings,
@@ -61,10 +62,13 @@ export function loadTerminationPolicy(
   if (feeCents !== null && !isNonNegativeInt(feeCents)) return null;
   if (feePercent !== null && (!isNonNegativeInt(feePercent) || feePercent > 100)) return null;
   if (feeCapCents !== null && !isNonNegativeInt(feeCapCents)) return null;
+  // Customers must be shown the owner's wording before ending early is
+  // offered, so blank wording is an incomplete policy (same as auto-renew).
+  if (typeof termsText !== "string" || termsText.trim() === "") return null;
 
   const version = createHash("sha256")
     .update(
-      JSON.stringify([feeCents, feePercent, feeCapCents, noticeDays, unusedTerm, termsText ?? ""]),
+      JSON.stringify([feeCents, feePercent, feeCapCents, noticeDays, unusedTerm, termsText]),
     )
     .digest("hex")
     .slice(0, 12);

@@ -92,6 +92,9 @@ for (const width of [360, 768, 1440])
       const allocations = page
         .getByRole("navigation", { name: "Invoice ledger source" })
         .getByRole("link", { name: "Payment allocations", exact: true });
+      // After "back" the address changes before the page content does. Wait until the
+      // links on screen belong to the month view, or Enter can follow a stale link.
+      await expect(allocations).toHaveAttribute("href", /scope=month/);
       for (let tab = 0; tab < 80; tab++) {
         if (await allocations.evaluate((el) => el === document.activeElement)) {
           break;

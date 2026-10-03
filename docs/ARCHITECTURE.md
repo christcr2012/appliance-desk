@@ -348,50 +348,51 @@ Never rely on hiding a nav link as the only protection for anything.
 
 A final `ci` job (the historical required-check name) succeeds only if every job above succeeded — for the browser shards, GitHub reports the matrix as a whole, so one failing shard fails the gate. Vercel deploys previews for every PR and production on merge to `main` independently of this workflow.
 
-## Keeping CI under 5 minutes
+## CI layout and speed
 
-**Target (owner, 2026-10-02): a full CI run on any PR finishes in ≤ 5 minutes; documentation-only PRs cost ~10 seconds.** Measured on merge of PR #137: 4m28s full, ~10s docs-only. This section is the maintenance guide for that number as the project grows. The short version is in `AGENTS.md` ("CI speed budget").
+**Priority (owner, 2026-10-03): fastest possible CI at equal or better quality.** The repository is public, so standard-runner Actions minutes are free; this replaces the same-day cost-saving design (one browser runner, CI only when a PR opens). The short version is in `AGENTS.md` ("CI"). Nothing was dropped: the same checks and tests run, spread over more machines, plus a new secret scan.
 
-### Where the time goes
+### What a run is made of (all jobs run side by side)
 
-The jobs run in parallel, so **the run takes as long as its slowest job** — and that is always one of the browser shards:
-
-| Job | Typical | What it's made of |
+| Job | What it does | Expected |
 |---|---|---|
-| classify | 6s | diff the PR; docs-only → skip everything below |
-| static checks | ~1.5 min | npm ci 30s · typecheck 25s · lint 23s · shard-assignment check 1s |
-| database (migrations + unit/integration tests) | ~2–2.5 min | containers 18s · npm ci 28s · migrate/health/upgrade drills ~15s · seed 3s · **vitest ~60–70s** |
-| browser shard × 3 | ~3.5–4.2 min each | **fixed ~2.5–3 min**: containers 17s · npm ci 26s · migrate+health+seed 6s · `next build` ~85s · browser install ~25s · then **that shard's tests 85–130s** |
-| ci (gate) | 3s | passes only if every job above passed |
+| classify | decides docs-only vs code (checkout only, no install) | ~10s |
+| secret scan | `scripts/check-secrets.mjs` + gitleaks (pinned, checksum-verified) over the full git history; always runs | ~20s |
+| type-check, lint and repo checks | `npm ci`, then typecheck and lint at the same time, browser-group check, migration check | ~1–1.5 min |
+| unit tests ×3 | each shard: own Postgres, migrate, seed, `vitest --shard=N/3`; shard 1 also runs schema-health and migration-upgrade drills | ~1.5 min |
+| browser tests ×4 | each shard: own Postgres, migrate, seed, production build (cached), its spec group from `e2e/shards.json` | ~3 min |
+| ci (gate) | passes only if everything required passed | ~5s |
 
-So the critical path is: *fixed browser-shard overhead (~3 min) + the slowest shard's tests*. The 5-minute target therefore means **no shard's test step may exceed ~2 minutes**. The fixed overhead cannot be parallelized away — every shard needs its own build and database — so the only levers are (a) how much browser testing there is and (b) how evenly it is spread.
+Wall-clock for a full run is the slowest job (browser shards): fixed setup of roughly two minutes (container, `npm ci`, `next build`, browser OS libraries) plus about a minute of tests. Getting a browser run under about 2–3 minutes is not realistic with a full production build; unit/lint feedback is faster and arrives first.
+
+### When CI runs
+
+- **Pull request:** on every push (new pushes cancel the older run). Pull requests from forks need approval for workflows (see below).
+- **Push to `main`:** everything.
+- **Nightly (03:17 Denver in summer):** everything on `main`.
+- **By hand:** Actions → CI → Run workflow, or `gh workflow run ci.yml --ref <branch> -f base=<base branch>`.
+- **Docs-only changes** (every file under `docs/` or `*.md`) skip type-check, unit and browser jobs; the secret scan and the gate still run.
+
+### Secret and private-identifier scanning
+
+- `scripts/check-secrets.mjs` (tests: `tests/check-secrets.test.ts`) flags live/real-length Stripe keys, webhook secrets, GitHub/AWS/Google/Slack/Resend/Twilio/Anthropic/OpenAI/Vercel tokens, private keys, database URLs with embedded passwords to non-local hosts, Neon/Vercel production identifiers, and committed `.env` files. It prints only a label, file, line, and the first 6 characters.
+- Intentional exceptions (the verified preview endpoint in `src/lib/preview-database-safety.ts`, obviously fake test values) are listed inside the script; fake-looking test strings reviewed once are in `.gitleaksignore`. Adding to either needs a stated reason in the PR.
+- gitleaks (`.gitleaks.toml`, default rules) scans every commit, because a secret removed in a later commit is still public.
+- **Owner-only settings GitHub requires a person to set** (agents cannot): Settings → Code security → enable *Secret scanning* and *Push protection* (free for public repos); Settings → Actions → General → *Fork pull request workflows* → require approval for all outside contributors.
 
 ### Rules when adding tests
 
-1. **Default to unit tests.** `tests/` (vitest, real Postgres) runs ~1,000 tests in about a minute; the same minute buys roughly 20 browser tests. Reserve `e2e/` for what needs a browser: axe accessibility scans, real login/session/cookie behavior, security headers, and one full click-through per major user flow. Business rules, pricing, permissions, data integrity → unit tests.
-2. **Assign every new spec file.** `scripts/e2e-shard.mjs --check` runs in the static job and fails the PR if an `e2e/*.spec.ts` is missing from `e2e/shards.json`, listed twice, or listed but deleted. Add it to the group with the most headroom.
-3. **Read the real numbers, don't guess.** After every run each shard prints one notice: `e2e shard "<group>" durations (NNs of test time): file 59.5s, file 51.7s, …`. The raw log and HTML report are often unreachable from sandboxes; the notices are not — `gh api repos/<owner>/<repo>/check-runs/<job_id>/annotations`. Job-level timings: `gh api repos/<owner>/<repo>/actions/runs/<run_id>/jobs`.
-4. **Reuse saved sessions.** `e2e/global-setup.ts` logs in once per role and saves the session; tests start signed in via `test.use({ storageState })`. A real login per test both slows the suite and times out under load (see the 2026-09-27 entry in `docs/archive/HANDOFF-2026-09-26-to-2026-10-02.md`). A test that legitimately must log in for real with expensive setup declares `test.slow()` rather than raising global timeouts.
-5. **Keep the shared prefix lean.** Anything added before the test step of the browser job runs three times per PR. New one-off checks (lint-like scripts, schema drills, migration checks) belong in `static` or `database`, which have ~2.5–3 min of headroom.
-6. **Dependencies cost on every job.** `npm ci` runs four times per PR (~30s each). A heavy new dependency shows up four times over. Prefer small, tree-shakable packages; check `npm ci` time in the job steps after adding one.
-7. **Build cache.** `.next/cache` is restored keyed on `package-lock.json`; a lockfile change invalidates it and the build step grows (~85s → longer) for that one run. That's expected — don't chase it.
+1. **Default to unit tests.** `tests/` (vitest, real Postgres) is split over three runners; browser tests carry the heavy fixed cost.
+2. **Assign every new spec file** in `e2e/shards.json` (the `static` job runs `scripts/e2e-shard.mjs --check`). Rebalance groups from real durations (printed as notices after each browser run) when one shard becomes the slowest.
+3. **Reuse saved sessions.** `e2e/global-setup.ts` logs in once per role; tests use `test.use({ storageState })`.
+4. **Build cache and Playwright cache** are restored per run; keep `package-lock.json` changes deliberate because they invalidate both.
+5. **Artifacts** (the Playwright report) are uploaded only when a shard fails, kept 3 days.
 
-### When a shard gets too heavy
+### If a job gets slow
 
-- **One group over ~2 min, others under:** move its heaviest file(s) to the lightest group in `e2e/shards.json`. That's the whole change; the static check verifies it.
-- **Every group near 2 min:** add a shard. Add a fourth group in `e2e/shards.json`, add its name to the `shard:` list in `.github/workflows/ci.yml` (`e2e` job matrix), move files into it. Cost: ~3 more billed runner-minutes per run (this is a private repo; GitHub bills by runner-minute). Playwright's own `--shard=N/M` is **not** used because it balances by test count and this suite's durations are very uneven — it put ~4× the work on one runner.
-- **A single spec file over ~60s:** it probably does too much. Split it by user flow so it can be spread across groups, or move assertions that don't need a browser into unit tests.
-- **Unit job approaching 3 min:** shard vitest first (`vitest run --shard=N/M` in a matrix, same shape as the browser job) — it has no build step so each extra shard is cheap. Watch for tests that assume they own the seeded data.
-
-### Documentation-only PRs
-
-The `classify` job diffs the PR against its base; if every changed file is under `docs/` or ends in `.md`, the heavy jobs are skipped and the `ci` gate passes immediately — about 10 seconds end to end. Workflow, config, script, schema, source and test changes always get the full run (fail-safe: an empty or indeterminate diff also runs everything). A PR that mixes code and docs is a code PR.
-
-The tiny classify/gate pair is kept on purpose rather than `paths-ignore`-ing the workflow entirely: when `main` is set to *require* the `ci` check (planned once the plan allows protected branches), a PR whose workflow never runs can never report that check and can never merge. Ten seconds is the price of that safety.
-
-### Known floor
-
-With the current fixed overhead, ~4 min is about the floor for a full run on standard runners. Larger (paid) runners would cut the build and test steps but are not justified yet. Below that, the gains are in individual slow tests, not in more parallelism.
+- A browser shard is the slowest job: move a spec to the lightest group (`e2e/shards.json`) or add a fifth group; each new shard repeats about two minutes of setup in parallel, which costs nothing in a public repo.
+- A single spec over ~60s: split it or move assertions into unit tests.
+- Unit tests: raise the shard count in the `unit` matrix and the `--shard=N/M` denominator together.
 
 ## Folder layout
 

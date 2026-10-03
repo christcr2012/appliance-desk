@@ -1,9 +1,37 @@
 name: CI
 
+# Built for SPEED (owner, 2026-10-03). The repository is public, so GitHub
+# Actions minutes on standard runners are free; the only cost that matters now
+# is how long a person waits. So every check runs in parallel, on every push:
+#   secrets  - leaked-key and private-identifier scan (always runs, even for docs)
+#   static   - type-check + lint (side by side) + migration/browser-group checks
+#   unit     - the whole vitest suite split over 3 runners, each with its own
+#              throwaway Postgres
+#   e2e      - production build + browser/accessibility tests split over 4 runners
+#   ci       - the single gate that branch protection / merging looks at
+# Nothing was removed from the old pipeline: the same checks, same tests, same
+# build; they are only spread across more machines. Docs-only changes skip the
+# heavy jobs but never skip the secrets scan.
+#
+# Public repo safety: this workflow only ever has read access to the code
+# (`permissions: contents: read`), uses no repository secrets, and every
+# database/auth value below is a throwaway test value. Keep it that way: never
+# use `pull_request_target`, never add secrets here.
 on:
   pull_request:
   push:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      base:
+        description: "Branch to compare against when deciding what to run (the PR's base, or main)"
+        required: false
+        default: main
+  schedule:
+    - cron: "17 9 * * *" # nightly full run of main (03:17 America/Denver in summer)
+
+permissions:
+  contents: read
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -13,6 +41,7 @@ jobs:
   classify:
     name: classify changes
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     outputs:
       app_changed: ${{ steps.changes.outputs.app_changed }}
     steps:
@@ -21,26 +50,35 @@ jobs:
           fetch-depth: 0
 
       - id: changes
-        name: Detect application-impacting changes
+        name: Decide whether anything besides documentation changed
         env:
           EVENT_NAME: ${{ github.event_name }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          DISPATCH_BASE: ${{ inputs.base }}
         shell: bash
         run: |
           set -euo pipefail
 
-          # Pushes to main always get the full suite. Path classification is
-          # only an optimization for pull requests.
-          if [[ "$EVENT_NAME" != "pull_request" ]]; then
+          # Pushes to main and nightly runs always run everything.
+          if [[ "$EVENT_NAME" == "push" || "$EVENT_NAME" == "schedule" ]]; then
             echo "app_changed=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          mapfile -t changed_files < <(git diff --name-only "$BASE_SHA" "$HEAD_SHA")
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            base="${DISPATCH_BASE:-main}"
+            if ! git fetch --quiet origin "$base" 2>/dev/null; then
+              echo "Could not fetch '$base': running everything to be safe."
+              echo "app_changed=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            mapfile -t changed_files < <(git diff --name-only "origin/$base...HEAD")
+          else
+            mapfile -t changed_files < <(git diff --name-only "$BASE_SHA" "$HEAD_SHA")
+          fi
 
-          # Fail safe: an empty/indeterminate diff runs the full suite rather
-          # than accidentally treating an application change as documentation.
+          # Fail safe: an empty/indeterminate diff runs everything.
           if (( ${#changed_files[@]} == 0 )); then
             echo "app_changed=true" >> "$GITHUB_OUTPUT"
             exit 0
@@ -49,81 +87,63 @@ jobs:
           app_changed=false
           for file in "${changed_files[@]}"; do
             # Documentation-only means Markdown anywhere or files under docs/.
-            # Workflow/config/scripts/schema/source/test changes all remain
-            # application-impacting and receive the complete quality gates.
             if [[ "$file" != docs/* && "$file" != *.md ]]; then
               app_changed=true
-              break
             fi
           done
-
           echo "app_changed=$app_changed" >> "$GITHUB_OUTPUT"
 
-  static:
-    name: static checks
-    needs: classify
-    if: needs.classify.outputs.app_changed == 'true'
+  secrets:
+    # Always runs (also for docs-only changes and nightly): a leaked key in a
+    # Markdown file is still a leaked key. Two independent scanners:
+    #   1. scripts/check-secrets.mjs - this project's own rules (live Stripe
+    #      keys, real database URLs, Neon/Vercel production identifiers,
+    #      committed .env files, ...). Reviewed allowlist lives in the script.
+    #   2. gitleaks - the widely used scanner, over the WHOLE git history.
+    # Neither prints the secret itself, only the file, line and a short label.
+    name: secret scan
     runs-on: ubuntu-latest
-    env:
-      # Prisma resolves both variables during postinstall/generate even though
-      # static checks never connect to a database. These deliberately point at
-      # localhost so this job cannot reach production infrastructure.
-      DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/appliance_desk_static
-      DIRECT_URL: postgresql://ci:ci@127.0.0.1:5432/appliance_desk_static
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Project secret and private-identifier scan
+        run: node scripts/check-secrets.mjs
 
-      - name: Type-check
-        run: npm run typecheck
+      - name: Install gitleaks (pinned version, checksum verified)
+        run: |
+          set -euo pipefail
+          version=8.28.0
+          sha256=a65b5253807a68ac0cafa4414031fd740aeb55f54fb7e55f386acb52e6a840eb
+          curl -sSfL -o gitleaks.tar.gz "https://github.com/gitleaks/gitleaks/releases/download/v${version}/gitleaks_${version}_linux_x64.tar.gz"
+          echo "${sha256}  gitleaks.tar.gz" | sha256sum -c -
+          tar -xzf gitleaks.tar.gz gitleaks
+          rm gitleaks.tar.gz
 
-      - name: Lint
-        run: npm run lint
+      - name: gitleaks scan of the full git history
+        run: ./gitleaks detect --source . --config .gitleaks.toml --redact --no-banner --exit-code 1
 
-      - name: Every browser spec file is assigned to exactly one CI shard
-        run: node scripts/e2e-shard.mjs --check
-
-  database:
-    name: migrations and unit/integration tests
+  static:
+    # Type-check and lint share one install and run side by side.
+    name: type-check, lint and repo checks
     needs: classify
     if: needs.classify.outputs.app_changed == 'true'
     runs-on: ubuntu-latest
-
-    services:
-      postgres:
-        image: postgres:17
-        env:
-          POSTGRES_USER: test
-          POSTGRES_PASSWORD: test
-          POSTGRES_DB: appliance_desk_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U test -d appliance_desk_test"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-
+    timeout-minutes: 10
     env:
+      # `npm ci` runs `prisma generate`, which needs the variable to exist (no
+      # database is contacted in this job).
       DATABASE_URL: postgresql://test:test@localhost:5432/appliance_desk_test
       DIRECT_URL: postgresql://test:test@localhost:5432/appliance_desk_test
       BETTER_AUTH_SECRET: ci-test-secret-not-for-production-use-only
       BETTER_AUTH_URL: http://localhost:3000
       NEXT_PUBLIC_APP_URL: http://localhost:3000
-      OWNER_EMAIL: ci-owner@example.test
-      OWNER_PASSWORD: Ci-Test-Owner-Password-Not-Real-1!
-      TEST_CUSTOMER_EMAIL: ci-customer@example.test
-      TEST_CUSTOMER_PASSWORD: Ci-Test-Customer-Password-Not-Real-1!
-      TEST_STAFF_EMAIL: ci-staff@example.test
-      TEST_STAFF_PASSWORD: Ci-Test-Staff-Password-Not-Real-1!
-
     steps:
       - uses: actions/checkout@v4
 
@@ -133,49 +153,42 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --no-audit --no-fund
+
+      - name: Type-check and lint (in parallel)
+        shell: bash
+        run: |
+          set -uo pipefail
+          npm run typecheck > typecheck.log 2>&1 &
+          tc=$!
+          npm run lint > lint.log 2>&1 &
+          li=$!
+          status=0
+          wait "$tc" || { echo "::error::Type-check failed"; status=1; }
+          wait "$li" || { echo "::error::Lint failed"; status=1; }
+          echo "===== type-check ====="; cat typecheck.log
+          echo "===== lint ====="; cat lint.log
+          exit "$status"
+
+      - name: Every browser spec file is assigned to exactly one CI group
+        run: node scripts/e2e-shard.mjs --check
 
       - name: Check for un-reviewed destructive migrations
         run: npm run check:migrations
 
-      - name: Apply database migrations
-        run: npm run db:migrate:deploy
-
-      - name: Verify schema health (same check production runs before building)
-        run: npm run db:verify-schema-health
-
-      - name: Prove schema health rejects a missing column (disposable database only)
-        run: npx tsx scripts/test-schema-health.ts
-
-      - name: Prove populated historical database upgrades and deployment retry
-        run: npx tsx scripts/test-migration-upgrade.ts
-
-      - name: Seed business content + test-only OWNER/CUSTOMER/STAFF accounts
-        run: npm run db:seed
-
-      - name: Unit and real-Postgres integration tests
-        run: npm test
-
-  e2e:
-    # The browser suite is the slowest part of CI by a wide margin (~5 min of
-    # Playwright on top of ~3 min of install/migrate/seed/build), so it is
-    # sharded across several runners. Each shard checks out, builds and seeds
-    # its own throwaway Postgres, then runs the spec files assigned to it in
-    # e2e/shards.json (explicit groups balanced by measured duration —
-    # Playwright's built-in count-based `--shard` was badly lopsided here).
-    # scripts/e2e-shard.mjs refuses to run if any spec file is unassigned or
-    # double-assigned, so nothing can silently stop running. Every test runs
-    # exactly once, and the aggregate `ci` gate below fails if any shard fails.
-    # Trade-off: more billed runner minutes per run for less wall-clock time.
-    # To add a shard: add a group to e2e/shards.json and list it here.
-    name: production build and browser acceptance (${{ matrix.shard }})
+  unit:
+    # The whole unit and real-Postgres suite, split over 3 runners. Each runner
+    # has its own throwaway database, so tests cannot interfere. Vitest's
+    # --shard splits by test file, so every file runs exactly once.
+    name: unit tests (${{ matrix.shard }}/3)
     needs: classify
     if: needs.classify.outputs.app_changed == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
-        shard: [owner-flows, desk-flows, accessibility-and-security]
+        shard: [1, 2, 3]
 
     services:
       postgres:
@@ -188,9 +201,9 @@ jobs:
           - 5432:5432
         options: >-
           --health-cmd "pg_isready -U test -d appliance_desk_test"
-          --health-interval 5s
+          --health-interval 2s
           --health-timeout 5s
-          --health-retries 10
+          --health-retries 15
 
     env:
       DATABASE_URL: postgresql://test:test@localhost:5432/appliance_desk_test
@@ -214,13 +227,81 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --no-audit --no-fund
 
       - name: Apply database migrations
         run: npm run db:migrate:deploy
 
-      - name: Verify schema health before the production build
-        run: npm run db:verify-schema-health
+      - name: Verify schema health and migration upgrade (once, on shard 1)
+        if: matrix.shard == 1
+        run: |
+          npm run db:verify-schema-health
+          npx tsx scripts/test-schema-health.ts
+          npx tsx scripts/test-migration-upgrade.ts
+          # those two scripts use their own throwaway databases; the shared one is still clean
+
+      - name: Seed business content + test-only OWNER/CUSTOMER/STAFF accounts
+        run: npm run db:seed
+
+      - name: Unit and real-Postgres integration tests (shard ${{ matrix.shard }} of 3)
+        run: npx vitest run --shard=${{ matrix.shard }}/3
+
+  e2e:
+    # Production build + browser/accessibility/security tests, split over 4
+    # runners balanced by measured spec duration (e2e/shards.json).
+    # scripts/e2e-shard.mjs refuses to run if any spec file is unassigned, so
+    # nothing can silently stop running.
+    name: browser tests (${{ matrix.shard }})
+    needs: classify
+    if: needs.classify.outputs.app_changed == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [browser-a, browser-b, browser-c, browser-d]
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: appliance_desk_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U test -d appliance_desk_test"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 15
+
+    env:
+      DATABASE_URL: postgresql://test:test@localhost:5432/appliance_desk_test
+      DIRECT_URL: postgresql://test:test@localhost:5432/appliance_desk_test
+      BETTER_AUTH_SECRET: ci-test-secret-not-for-production-use-only
+      BETTER_AUTH_URL: http://localhost:3000
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      OWNER_EMAIL: ci-owner@example.test
+      OWNER_PASSWORD: Ci-Test-Owner-Password-Not-Real-1!
+      TEST_CUSTOMER_EMAIL: ci-customer@example.test
+      TEST_CUSTOMER_PASSWORD: Ci-Test-Customer-Password-Not-Real-1!
+      TEST_STAFF_EMAIL: ci-staff@example.test
+      TEST_STAFF_PASSWORD: Ci-Test-Staff-Password-Not-Real-1!
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Apply database migrations
+        run: npm run db:migrate:deploy
 
       - name: Seed browser-test accounts and business fixtures
         run: npm run db:seed
@@ -251,34 +332,35 @@ jobs:
         if: steps.playwright-cache.outputs.cache-hit == 'true'
         run: npx playwright install-deps chromium
 
-      - name: Accessibility, security and end-to-end tests (this shard's spec files)
+      - name: Accessibility, security and end-to-end tests (${{ matrix.shard }})
         run: node scripts/e2e-shard.mjs ${{ matrix.shard }}
 
+      # Only kept when something failed.
       - name: Upload Playwright report
-        if: always()
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report-${{ matrix.shard }}
           path: playwright-report/
-          retention-days: 14
+          retention-days: 3
 
-  # Preserve the historical required-check name (`ci`) as one final gate. A
-  # docs-only PR reaches this job quickly; an application PR succeeds only if
-  # every parallel quality job above succeeded. `needs.e2e.result` is GitHub's
-  # aggregate over the whole shard matrix: it is "success" only when every
-  # shard succeeded, so one failing shard fails this gate.
+  # One final gate named `ci`. It passes only when every job that was supposed
+  # to run succeeded. The secret scan is always required. The heavy jobs are
+  # required unless the change was documentation only.
   ci:
     name: ci
     if: always()
-    needs: [classify, static, database, e2e]
+    needs: [classify, secrets, static, unit, e2e]
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Verify required quality jobs
         env:
           APP_CHANGED: ${{ needs.classify.outputs.app_changed }}
           CLASSIFY_RESULT: ${{ needs.classify.result }}
+          SECRETS_RESULT: ${{ needs.secrets.result }}
           STATIC_RESULT: ${{ needs.static.result }}
-          DATABASE_RESULT: ${{ needs.database.result }}
+          UNIT_RESULT: ${{ needs.unit.result }}
           E2E_RESULT: ${{ needs.e2e.result }}
         shell: bash
         run: |
@@ -288,17 +370,18 @@ jobs:
             echo "Change classification failed."
             exit 1
           fi
-
+          if [[ "$SECRETS_RESULT" != "success" ]]; then
+            echo "Secret scan did not succeed: $SECRETS_RESULT"
+            exit 1
+          fi
           if [[ "$APP_CHANGED" != "true" ]]; then
-            echo "Documentation-only pull request: heavy application suites intentionally skipped."
+            echo "Documentation-only change: secret scan passed; heavy suites intentionally skipped."
             exit 0
           fi
-
-          for result in "$STATIC_RESULT" "$DATABASE_RESULT" "$E2E_RESULT"; do
-            if [[ "$result" != "success" ]]; then
-              echo "A required quality job did not succeed: $result"
+          for pair in "type-check/lint:$STATIC_RESULT" "unit tests:$UNIT_RESULT" "browser tests:$E2E_RESULT"; do
+            if [[ "${pair#*:}" != "success" ]]; then
+              echo "${pair%%:*} did not succeed: ${pair#*:}"
               exit 1
             fi
           done
-
-          echo "All application quality gates passed."
+          echo "All quality gates passed."

@@ -683,6 +683,17 @@ model RentalAgreement {
   terminationFeeCents      Int?
   terminationPolicyVersion String?
 
+  // Terms this agreement is locked to (2026-10-03 decision). Frozen when the
+  // agreement is sent for signing, from termsOverride when the owner
+  // customized it for this customer, otherwise from the system-wide settings.
+  // Null = no terms were agreed (agreements sent before this existed, or no
+  // policy configured at the time), so ending early / auto-renew stay
+  // unavailable for it. Shape: see src/domains/agreements/terms-snapshot.ts.
+  termsSnapshot Json?
+  // Per-customer terms the owner entered before sending for signing.
+  // Same shape as the policy fields in BusinessSettings; null = use system-wide.
+  termsOverride Json?
+
   lines RentalLine[]
 
   signature   SignatureRecord?

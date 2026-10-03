@@ -1,0 +1,12 @@
+# Reviewed 2026-10-03: obviously fake test strings (short placeholder values in unit tests).
+# Real credentials must never be added here; rotate them instead.
+06d8342cc10565654975900ef7a75e378a360973:tests/agreement-draft-request.test.ts:generic-api-key:20
+5308ab8ee0c6e6bb73cb80c3bebc62cd02b7ef5f:tests/billing-reconciliation.test.ts:generic-api-key:305
+5308ab8ee0c6e6bb73cb80c3bebc62cd02b7ef5f:tests/billing-reconciliation.test.ts:generic-api-key:363
+57255a0cd3f7b9fbd22cfab2f9cfcdb587c1ff4a:tests/preview-storage.test.ts:generic-api-key:8
+681b062a713c8d7cbc770434f463b84c5b480eca:tests/deployment-safety.test.ts:stripe-access-token:38
+ab6e003400ca58e422b182ad4bc05055122bc46a:tests/billing-provider-ops.test.ts:stripe-access-token:193
+ab6e003400ca58e422b182ad4bc05055122bc46a:tests/billing-provider-ops.test.ts:stripe-access-token:195
+# Reviewed 2026-10-03: made-up string in a test about hiding keys in error text (older branch commit, PR #139); not a real key.
+f34e5077b8648c5d8b494c3011757cc7b4c37bb7:tests/billing-provider-ops.test.ts:stripe-access-token:195
+f34e5077b8648c5d8b494c3011757cc7b4c37bb7:tests/billing-provider-ops.test.ts:stripe-access-token:197

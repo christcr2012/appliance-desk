@@ -6,6 +6,7 @@
 //
 //   node scripts/e2e-shard.mjs --check          validate the assignment only
 //   node scripts/e2e-shard.mjs <group-name>      validate, then run that group
+//   node scripts/e2e-shard.mjs all               validate, then run every group on one runner (what CI does)
 //
 // Validation fails if any e2e/*.spec.ts is missing from shards.json, listed
 // twice, or listed but no longer exists — so adding a spec file without
@@ -71,12 +72,12 @@ function reportDurations(group) {
 
 const arg = process.argv[2];
 if (!arg) {
-  console.error("Usage: node scripts/e2e-shard.mjs --check | <group-name>");
+  console.error("Usage: node scripts/e2e-shard.mjs --check | all | <group-name>");
   process.exit(2);
 }
 validate();
 if (arg === "--check") process.exit(0);
-if (!groups[arg]) {
+if (arg !== "all" && !groups[arg]) {
   console.error(`Unknown group "${arg}". Known: ${Object.keys(groups).join(", ")}`);
   process.exit(2);
 }
@@ -86,7 +87,8 @@ if (!groups[arg]) {
 // Playwright treats each file argument as a regex matched anywhere in the
 // path, so "accessibility.spec.ts" would also match
 // "rental-address-accessibility.spec.ts". Anchor each one to exactly its file.
-const patterns = groups[arg].map((f) => `/e2e/${f.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`);
+const files = arg === "all" ? Object.values(groups).flat() : groups[arg];
+const patterns = files.map((f) => `/e2e/${f.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`);
 const result = spawnSync("npx", ["playwright", "test", ...patterns], { stdio: "inherit", cwd: root });
 reportDurations(arg);
 process.exit(result.status ?? 1);

@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import {
   autoRenewPolicyReady,
   loadTerminationPolicy,
@@ -64,10 +63,8 @@ function textOrNull(raw: unknown, label: string): Parsed<string | null> {
   return { ok: true, value };
 }
 
-/** Version label for the published auto-renew terms: changes whenever the notice period or the wording changes. */
-export function autoRenewTermsVersionFor(noticeDays: number, termsText: string): string {
-  return `ar-${createHash("sha256").update(JSON.stringify([noticeDays, termsText])).digest("hex").slice(0, 10)}`;
-}
+export { autoRenewTermsVersionFor } from "@/domains/agreements/terms-snapshot";
+import { autoRenewTermsVersionFor } from "@/domains/agreements/terms-snapshot";
 
 export function termsPolicyUpdate(
   raw: Record<string, unknown>,
@@ -139,6 +136,7 @@ export function termsPolicyStatus(
   if (settings.earlyTerminationFeeCents == null && settings.earlyTerminationFeePercent == null) {
     earlyMissing.push("a flat fee or a percent (enter 0 if there should be no fee)");
   }
+  if (!settings.terminationTermsText?.trim()) earlyMissing.push("the wording customers will see about ending early");
   const renewMissing: string[] = [];
   if (settings.autoRenewNoticeDays == null) renewMissing.push("days of renewal notice");
   if (!settings.renewalTermsText?.trim()) renewMissing.push("the auto-renew terms wording");
