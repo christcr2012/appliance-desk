@@ -1,25 +1,5 @@
 import { prisma } from "@/lib/prisma";
 
-// ---------------------------------------------------------------------------
-// Consolidated statements (Task #72, docs/DECISIONS.md 2026-09-28
-// "Consolidated statements + manual payments + automated late fees") —
-// the piece of "formal B2B invoicing for property managers" that's safe
-// to build without touching how Stripe actually charges anyone.
-//
-// Every RentalAgreement still bills independently through its own Stripe
-// Subscription (see docs/ARCHITECTURE.md's "Payments (Stripe)" section) —
-// that machinery is untouched. What's new here is a READ-ONLY rollup: one
-// customer's invoices across every property they have, grouped by
-// ServiceAddress, with running totals — the "one statement" a property
-// manager with several buildings actually wants to look at, even though
-// each property is still charged separately underneath. Combining the
-// actual Stripe charges into one transaction is a much bigger, riskier
-// change (see that DECISIONS.md entry for why it was deliberately not
-// attempted) and isn't needed to solve the real problem: seeing
-// everything in one place, and being able to record one combined payment
-// against it (src/domains/billing/manual-payments.ts).
-// ---------------------------------------------------------------------------
-
 export type StatementLineItem = {
   id: string;
   kind: string;
@@ -54,6 +34,15 @@ export type StatementProperty = {
   totalBalanceCents: number;
 };
 
+export type StatementReconciliation = {
+  openingBalanceCents: number;
+  invoiceChargesCents: number;
+  receiptAllocationsCents: number;
+  creditsAppliedCents: number;
+  refundsCents: number;
+  closingBalanceCents: number;
+};
+
 export type CustomerStatement = {
   customerId: string;
   customerName: string;
@@ -63,28 +52,39 @@ export type CustomerStatement = {
   totalPaidCents: number;
   totalBalanceCents: number;
   openInvoiceCount: number;
+  reconciliation: StatementReconciliation;
 };
 
-function addressLabel(a: { line1: string; line2: string | null; city: string; state: string; zip: string } | null): string {
+function addressLabel(a: {
+  line1: string;
+  line2: string | null;
+  city: string;
+  state: string;
+  zip: string;
+} | null): string {
   if (!a) return "No property on file";
   return `${a.line1}${a.line2 ? `, ${a.line2}` : ""}, ${a.city}, ${a.state} ${a.zip}`;
 }
 
+function within(date: Date, start?: Date, end?: Date): boolean {
+  if (start && date < start) return false;
+  if (end && date > end) return false;
+  return true;
+}
+
+function before(date: Date, start?: Date): boolean {
+  return Boolean(start && date < start);
+}
+
 /**
- * One customer's whole billing picture, grouped by property instead of
- * one flat list — the desk-side "combined statement"
- * (/desk/billing/customer/[id]) and, for a customer with more than one
- * property, the same grouping the customer portal's own /account/billing
- * uses (docs/BUSINESS-RULES.md's "customer portal's own 'All properties'
- * selector" gap — grouping the existing per-property invoices in place
- * turned out to answer that better than a separate address-switcher
- * would, since a property manager wants to see every property's balance
- * at once, not pick one to hide the rest).
+ * Customer billing statement with an auditable ledger footer:
+ * opening balance + invoice charges - receipt allocations - credits applied
+ * + refunds = closing balance.
  *
- * Optionally scoped to a billing period (periodStart/periodEnd, matched
- * against Invoice.billingPeriodStart) — omitted, every invoice on file is
- * included, which is what both UIs use by default (a property manager
- * wants to see everything currently owed, not just one month).
+ * Receipt *allocations* are used here rather than whole Receipt amounts. This
+ * keeps an unallocated overpayment from reducing an invoice balance twice when
+ * its resulting CustomerCredit is later applied. Whole receipts remain the
+ * source of truth for cash reporting/export.
  */
 export async function getCustomerStatement(
   customerId: string,
@@ -97,18 +97,22 @@ export async function getCustomerStatement(
       companyName: true,
       user: { select: { name: true, email: true } },
       invoices: {
-        where:
-          options?.periodStart || options?.periodEnd
-            ? {
-                billingPeriodStart: {
-                  gte: options.periodStart,
-                  lte: options.periodEnd,
-                },
-              }
-            : undefined,
         include: {
           lineItems: { orderBy: [{ createdAt: "asc" }] },
           agreement: { select: { serviceAddress: true } },
+          payments: {
+            where: { status: "succeeded", receiptId: { not: null } },
+            select: {
+              amountCents: true,
+              receipt: { select: { receivedOn: true } },
+            },
+          },
+          creditApplications: {
+            select: { amountCents: true, createdAt: true },
+          },
+          refunds: {
+            select: { amountCents: true, createdAt: true },
+          },
         },
         orderBy: [{ createdAt: "desc" }],
       },
@@ -117,12 +121,18 @@ export async function getCustomerStatement(
 
   if (!customer) return null;
 
-  const groups = new Map<string, StatementProperty>();
+  const periodStart = options?.periodStart;
+  const periodEnd = options?.periodEnd;
+  const selectedInvoices = customer.invoices.filter((invoice) => {
+    if (!periodStart && !periodEnd) return true;
+    const date = invoice.billingPeriodStart ?? invoice.createdAt;
+    return within(date, periodStart, periodEnd);
+  });
 
-  for (const invoice of customer.invoices) {
+  const groups = new Map<string, StatementProperty>();
+  for (const invoice of selectedInvoices) {
     const address = invoice.agreement?.serviceAddress ?? null;
     const groupKey = address?.id ?? "no-property";
-
     let group = groups.get(groupKey);
     if (!group) {
       group = {
@@ -136,7 +146,21 @@ export async function getCustomerStatement(
       groups.set(groupKey, group);
     }
 
-    const balanceCents = Math.max(0, invoice.amountDueCents - invoice.amountPaidCents);
+    const receiptAllocationsCents = invoice.payments.reduce(
+      (sum, payment) => sum + payment.amountCents,
+      0,
+    );
+    const creditsAppliedCents = invoice.creditApplications.reduce(
+      (sum, application) => sum + application.amountCents,
+      0,
+    );
+    const refundsCents = invoice.refunds.reduce(
+      (sum, refund) => sum + refund.amountCents,
+      0,
+    );
+    const ledgerPaidCents = receiptAllocationsCents + creditsAppliedCents - refundsCents;
+    const balanceCents = Math.max(0, invoice.amountDueCents - ledgerPaidCents);
+
     group.invoices.push({
       id: invoice.id,
       invoiceNumber: invoice.invoiceNumber,
@@ -149,18 +173,18 @@ export async function getCustomerStatement(
       taxCents: invoice.taxCents,
       lateFeeCents: invoice.lateFeeCents,
       amountDueCents: invoice.amountDueCents,
-      amountPaidCents: invoice.amountPaidCents,
+      amountPaidCents: ledgerPaidCents,
       balanceCents,
-      lineItems: invoice.lineItems.map((li) => ({
-        id: li.id,
-        kind: li.kind,
-        description: li.description,
-        amountCents: li.amountCents,
-        quantity: li.quantity,
+      lineItems: invoice.lineItems.map((line) => ({
+        id: line.id,
+        kind: line.kind,
+        description: line.description,
+        amountCents: line.amountCents,
+        quantity: line.quantity,
       })),
     });
     group.totalDueCents += invoice.amountDueCents;
-    group.totalPaidCents += invoice.amountPaidCents;
+    group.totalPaidCents += ledgerPaidCents;
     group.totalBalanceCents += balanceCents;
   }
 
@@ -168,30 +192,88 @@ export async function getCustomerStatement(
     a.addressLabel.localeCompare(b.addressLabel),
   );
 
-  const openInvoiceCount = customer.invoices.filter((inv) =>
-    ["OPEN", "PARTIALLY_PAID", "DELINQUENT"].includes(inv.status),
-  ).length;
+  let openingBalanceCents = 0;
+  let invoiceChargesCents = 0;
+  let receiptAllocationsCents = 0;
+  let creditsAppliedCents = 0;
+  let refundsCents = 0;
+
+  for (const invoice of customer.invoices) {
+    const invoiceDate = invoice.billingPeriodStart ?? invoice.createdAt;
+    if (before(invoiceDate, periodStart)) openingBalanceCents += invoice.amountDueCents;
+    else if (within(invoiceDate, periodStart, periodEnd)) {
+      invoiceChargesCents += invoice.amountDueCents;
+    }
+
+    for (const payment of invoice.payments) {
+      const receivedOn = payment.receipt?.receivedOn;
+      if (!receivedOn) continue;
+      if (before(receivedOn, periodStart)) openingBalanceCents -= payment.amountCents;
+      else if (within(receivedOn, periodStart, periodEnd)) {
+        receiptAllocationsCents += payment.amountCents;
+      }
+    }
+    for (const application of invoice.creditApplications) {
+      if (before(application.createdAt, periodStart)) {
+        openingBalanceCents -= application.amountCents;
+      } else if (within(application.createdAt, periodStart, periodEnd)) {
+        creditsAppliedCents += application.amountCents;
+      }
+    }
+    for (const refund of invoice.refunds) {
+      if (before(refund.createdAt, periodStart)) openingBalanceCents += refund.amountCents;
+      else if (within(refund.createdAt, periodStart, periodEnd)) {
+        refundsCents += refund.amountCents;
+      }
+    }
+  }
+
+  const closingBalanceCents =
+    openingBalanceCents +
+    invoiceChargesCents -
+    receiptAllocationsCents -
+    creditsAppliedCents +
+    refundsCents;
+
+  const openInvoiceCount = selectedInvoices.filter((invoice) => {
+    const receipts = invoice.payments.reduce((sum, payment) => sum + payment.amountCents, 0);
+    const credits = invoice.creditApplications.reduce(
+      (sum, application) => sum + application.amountCents,
+      0,
+    );
+    const refunds = invoice.refunds.reduce((sum, refund) => sum + refund.amountCents, 0);
+    return invoice.amountDueCents - receipts - credits + refunds > 0;
+  }).length;
 
   return {
     customerId: customer.id,
     customerName: customer.user.name ?? customer.user.email,
     companyName: customer.companyName,
     properties,
-    totalDueCents: properties.reduce((s, p) => s + p.totalDueCents, 0),
-    totalPaidCents: properties.reduce((s, p) => s + p.totalPaidCents, 0),
-    totalBalanceCents: properties.reduce((s, p) => s + p.totalBalanceCents, 0),
+    totalDueCents: properties.reduce((sum, property) => sum + property.totalDueCents, 0),
+    totalPaidCents: properties.reduce((sum, property) => sum + property.totalPaidCents, 0),
+    totalBalanceCents: properties.reduce(
+      (sum, property) => sum + property.totalBalanceCents,
+      0,
+    ),
     openInvoiceCount,
+    reconciliation: {
+      openingBalanceCents,
+      invoiceChargesCents,
+      receiptAllocationsCents,
+      creditsAppliedCents,
+      refundsCents,
+      closingBalanceCents,
+    },
   };
 }
 
-/** Every customer with more than one open/unpaid invoice right now —
- * feeds /desk/billing's "Statements" view, which lists customers (not
- * individual invoices) so Chris can jump straight to whoever has a
- * balance, instead of scanning a flat invoice table for repeated names. */
 export async function getCustomersWithOpenBalances() {
   const rows = await prisma.customer.findMany({
     where: {
-      invoices: { some: { status: { in: ["OPEN", "PARTIALLY_PAID", "DELINQUENT"] } } },
+      invoices: {
+        some: { status: { in: ["OPEN", "PARTIALLY_PAID", "DELINQUENT"] } },
+      },
     },
     select: {
       id: true,
@@ -208,15 +290,16 @@ export async function getCustomersWithOpenBalances() {
   });
 
   return rows
-    .map((c) => ({
-      id: c.id,
-      customerName: c.user.name ?? c.user.email,
-      companyName: c.companyName,
-      isPropertyManager: c.isPropertyManager,
-      propertyCount: c._count.serviceAddresses,
-      openInvoiceCount: c.invoices.length,
-      balanceCents: c.invoices.reduce(
-        (sum, inv) => sum + Math.max(0, inv.amountDueCents - inv.amountPaidCents),
+    .map((customer) => ({
+      id: customer.id,
+      customerName: customer.user.name ?? customer.user.email,
+      companyName: customer.companyName,
+      isPropertyManager: customer.isPropertyManager,
+      propertyCount: customer._count.serviceAddresses,
+      openInvoiceCount: customer.invoices.length,
+      balanceCents: customer.invoices.reduce(
+        (sum, invoice) =>
+          sum + Math.max(0, invoice.amountDueCents - invoice.amountPaidCents),
         0,
       ),
     }))
