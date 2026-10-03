@@ -116,6 +116,16 @@ export type BusinessSettingsUpdate = Partial<{
   twelveMonthPrepayFreeMonthEnabled: boolean;
   referralRewardCents: number;
   draftReservationHoldDays: number;
+  // Rental ending and renewal policy (null = not decided yet).
+  earlyTerminationFeeCents: number | null;
+  earlyTerminationFeePercent: number | null;
+  earlyTerminationFeeCapCents: number | null;
+  earlyTerminationNoticeDays: number | null;
+  unusedTermTreatment: string | null;
+  terminationTermsText: string | null;
+  autoRenewNoticeDays: number | null;
+  autoRenewTermsVersion: string | null;
+  renewalTermsText: string | null;
 }>;
 
 /**

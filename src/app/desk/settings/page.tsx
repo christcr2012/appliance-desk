@@ -17,6 +17,8 @@ import { formatBusinessDate, formatBusinessTime } from "@/lib/business-date";
 import { SettingsForm } from "./settings-form";
 import { AppliancePricingTable } from "./appliance-pricing-table";
 import { StaffAccountsSection } from "./staff-accounts-section";
+import { TermsPolicyForm } from "./terms-policy-form";
+import { termsPolicyDefaults, termsPolicyStatus } from "@/domains/settings/terms-policy";
 export const metadata = {
   title: "Settings",
   robots: { index: false, follow: false },
@@ -47,6 +49,28 @@ export default async function DeskSettingsPage({
             photoUrl: t.photoUrl,
           }))}
         />
+      </SectionCard>
+    );
+  } else if (section === "terms") {
+    const status = termsPolicyStatus(settings);
+    const line = (label: string, feature: { available: boolean; missing: string[] }) => (
+      <li key={label}>
+        <span className="font-medium text-ink">{label}:</span>{" "}
+        {feature.available
+          ? "available to use."
+          : `not available yet. Still needed: ${feature.missing.join("; ")}.`}
+      </li>
+    );
+    content = (
+      <SectionCard
+        title="Ending and renewing rentals"
+        description="Set the rules here whenever you like. Agreements already signed keep working; new quotes use what is saved."
+      >
+        <ul className="mb-6 space-y-1 rounded-lg bg-subtle p-3 text-sm text-ink-soft">
+          {line("Ending early", status.earlyEnding)}
+          {line("Automatic renewal", status.autoRenew)}
+        </ul>
+        <TermsPolicyForm defaultValues={termsPolicyDefaults(settings)} />
       </SectionCard>
     );
   } else if (section === "staff") {

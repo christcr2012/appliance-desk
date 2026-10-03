@@ -348,3 +348,25 @@ export async function updateSettingsSectionAction(
   revalidatePath("/desk/settings");
   return { status: "success" };
 }
+
+/** Saves the "Ending and renewing rentals" policy. Blank fields are saved as
+ * "not decided yet"; the auto-renew terms version is generated, never typed. */
+export async function updateTermsPolicyAction(
+  raw: Record<string, unknown>,
+): Promise<SettingsActionState> {
+  const session = await requireRole("OWNER", "ADMIN");
+  const { termsPolicyUpdate } = await import("@/domains/settings/terms-policy");
+  const parsed = termsPolicyUpdate(raw);
+  if (!parsed.success) return { status: "error", message: parsed.message };
+  try {
+    await updateBusinessSettings(session.user.id, parsed.update);
+  } catch {
+    return {
+      status: "error",
+      message:
+        "Settings could not be saved. Your changes are still in the form; please try again.",
+    };
+  }
+  revalidatePath("/desk/settings");
+  return { status: "success" };
+}
