@@ -7,6 +7,7 @@ import { renewalReminderKey } from "@/domains/notices/renewal-reminder";
 import {
   claimProviderOperation,
   completeProviderOperation,
+  RetryLater,
   runProviderCall,
 } from "./provider-ops";
 
@@ -144,14 +145,21 @@ export async function syncSubscriptionTerm(
   const desired = await desiredSubscriptionTerm(renewalId, direction);
   if (!desired) return "skipped";
 
-  const claim = await prisma.$transaction((tx) =>
-    claimProviderOperation(tx, {
-      kind: "SUBSCRIPTION_UPDATE",
-      subjectType: "RentalAgreement",
-      subjectId: renewalId,
-      idempotencyKey: termSyncKey(renewalId, direction),
-    }),
-  );
+  let claim;
+  try {
+    claim = await prisma.$transaction((tx) =>
+      claimProviderOperation(tx, {
+        kind: "SUBSCRIPTION_UPDATE",
+        subjectType: "RentalAgreement",
+        subjectId: renewalId,
+        idempotencyKey: termSyncKey(renewalId, direction),
+      }),
+    );
+  } catch (error) {
+    // Another worker is already making this same change: report it as still in progress instead of failing the caller.
+    if (error instanceof RetryLater) return "pending";
+    throw error;
+  }
   if (claim.done) return "done";
 
   if (desired.moot) {
