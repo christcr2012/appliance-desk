@@ -1,3 +1,4 @@
+import { HELD_PAYMENT_STATUS } from "./payment-status";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
 import { parsePage, paginationMeta } from "@/domains/pagination";
@@ -45,6 +46,7 @@ export async function getRevenueRecords(
             payments: {
               select: {
                 amountCents: true,
+                status: true,
                 invoice: { select: { id: true, invoiceNumber: true } },
               },
             },
@@ -58,7 +60,13 @@ export async function getRevenueRecords(
           totalCents: total._sum.amountCents ?? 0,
           toCreditCents: 0,
           rows: rows.map((r) => {
-            const allocatedCents = r.payments.reduce((sum, p) => sum + p.amountCents, 0);
+            // A payment that arrived after its invoice was closed is "held" for the owner: it is
+            // not applied to that invoice and is not account credit (IN-23).
+            const applied = r.payments.filter((p) => p.status !== HELD_PAYMENT_STATUS);
+            const heldCents = r.payments
+              .filter((p) => p.status === HELD_PAYMENT_STATUS)
+              .reduce((sum, p) => sum + p.amountCents, 0);
+            const allocatedCents = applied.reduce((sum, p) => sum + p.amountCents, 0);
             return {
               id: r.id,
               amountCents: r.amountCents,
@@ -66,12 +74,13 @@ export async function getRevenueRecords(
               customerId: r.customer.id,
               customerName: r.customer.user.name ?? r.customer.user.email,
               method: r.method,
-              invoices: r.payments.map((p) => ({
+              invoices: applied.map((p) => ({
                 id: p.invoice.id,
                 invoiceNumber: p.invoice.invoiceNumber,
                 amountCents: p.amountCents,
               })),
-              unallocatedCents: Math.max(0, r.amountCents - allocatedCents),
+              unallocatedCents: Math.max(0, r.amountCents - allocatedCents - heldCents),
+              heldCents,
               basis:
                 r.source === "STRIPE"
                   ? "Card or Stripe payment"
@@ -129,6 +138,7 @@ export async function getRevenueRecords(
           method: "",
           invoices: [{ id: r.invoice.id, invoiceNumber: r.invoice.invoiceNumber, amountCents: r.amountCents }],
           unallocatedCents: 0,
+          heldCents: 0,
           basis: creditRefundIds.has(r.id)
             ? "Refund kept as account credit (no cash returned)"
             : "Refund returned to the customer",

@@ -168,7 +168,12 @@ same external object twice or losing the local link.
   is when the money moved, and `recordedByUserId` is who entered a manual one.
 - **Payment** — an allocation of a receipt to one invoice. It keeps the
   existing per-invoice shape and gains nullable `receiptId` for pre-Batch-B
-  rows; the Batch B backfill links those historical rows (design D6).
+  rows; the Batch B backfill links those historical rows (design D6). Its
+  `status` is free text: `succeeded` (or the older `SUCCEEDED`) means the money
+  applied, `failed` is an attempt, and `held` means a card payment that arrived
+  after the invoice was written off or voided — recorded, applied to nothing,
+  and not spendable until the owner decides (IN-23). The shared rule is in
+  `src/domains/billing/payment-status.ts`.
 - **CreditApplication** — an auditable, locked allocation of one
   `CustomerCredit` to one invoice. It is created together with the negative
   CREDIT invoice line and decrement of `remainingCents`, making double-spend

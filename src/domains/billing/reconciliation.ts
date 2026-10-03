@@ -1,6 +1,6 @@
 import type { ProviderOperationStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { SUCCESSFUL_PAYMENT_STATUSES } from "./payment-status";
+import { HELD_PAYMENT_STATUS, SUCCESSFUL_PAYMENT_STATUSES } from "./payment-status";
 import { getStripeClient } from "@/lib/stripe";
 import {
   claimProviderOperation,
@@ -18,7 +18,8 @@ export type DriftRow = {
     | "LOCAL_ACTIVE_NO_SUB"
     | "STRIPE_CUSTOMER_MISSING"
     | "INVOICE_STATUS_MISMATCH"
-    | "PAYMENT_WITHOUT_RECEIPT";
+    | "PAYMENT_WITHOUT_RECEIPT"
+    | "HELD_PAYMENT";
   subjectType: string;
   subjectId: string;
   detail: string;
@@ -731,6 +732,24 @@ export async function detectDrift(limit = 200): Promise<DriftRow[]> {
       subjectType: "Payment",
       subjectId: payment.id,
       detail: `Succeeded payment on invoice ${payment.invoiceId} has no Receipt ledger event.`,
+      since: payment.createdAt,
+    })),
+  );
+  if (rows.length >= bounded) return rows.slice(0, bounded);
+
+  // Card payments that arrived after an invoice was closed: real money waiting for the owner's decision (IN-23).
+  const heldPayments = await prisma.payment.findMany({
+    where: { status: HELD_PAYMENT_STATUS },
+    select: { id: true, invoiceId: true, amountCents: true, createdAt: true },
+    orderBy: { createdAt: "asc" },
+    take: bounded - rows.length,
+  });
+  rows.push(
+    ...heldPayments.map((payment) => ({
+      kind: "HELD_PAYMENT" as const,
+      subjectType: "Payment",
+      subjectId: payment.id,
+      detail: `${payment.amountCents}¢ was paid by card on invoice ${payment.invoiceId} after it was written off or voided. It is held, not applied. Decide what to do with it.`,
       since: payment.createdAt,
     })),
   );

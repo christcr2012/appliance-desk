@@ -233,6 +233,7 @@ describe.skipIf(!enabled)("billing drift detection (read-only) in disposable Pos
     await pay("noReceipt", "paidFull", "succeeded", null);
     await pay("withReceipt", "paidFull", "succeeded", receipt.id);
     await pay("failedNoReceipt", "openUnpaid", "failed", null);
+    await pay("held", "openUnpaid", "held", receipt.id);
 
     // Provider operations, oldest first so ordering is deterministic.
     await makeOp("pending", "PENDING", new Date(base + 1_000), 1);
@@ -346,6 +347,7 @@ describe.skipIf(!enabled)("billing drift detection (read-only) in disposable Pos
       ["INVOICE_STATUS_MISMATCH", "Invoice", ids.invoices.paidShort, /PAID invoice has 4000¢ paid against 10000¢ due/],
       ["INVOICE_STATUS_MISMATCH", "Invoice", ids.invoices.openCovered, /OPEN invoice has 10000¢ paid against 10000¢ due/],
       ["PAYMENT_WITHOUT_RECEIPT", "Payment", ids.payments.noReceipt, /no Receipt ledger event/],
+      ["HELD_PAYMENT", "Payment", ids.payments.held, /after it was written off or voided\. It is held, not applied/],
       ["SUB_LIVE_BUT_LOCAL_CLOSED", "RentalAgreement", ids.agreements.endedLive, /is active\./],
       ["STRIPE_CUSTOMER_MISSING", "Customer", ids.customers.cusdeleted, /deleted Stripe customer/],
       ["STRIPE_CUSTOMER_MISSING", "Customer", ids.customers.cusmissing, /missing Stripe customer/],

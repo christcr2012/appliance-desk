@@ -95,6 +95,22 @@ it("shows an overpayment as money held as account credit", async () => {
   const result = await getRevenueRecords("payments", true, "1", asOf);
   expect(result.rows[0]).toMatchObject({ amountCents: 10000, unallocatedCents: 6000, basis: "Card or Stripe payment" });
 });
+it("keeps a payment that arrived after its invoice was closed apart from applied money and from account credit", async () => {
+  m.rows.mockResolvedValue([
+    {
+      id: "r3",
+      receivedOn: asOf,
+      amountCents: 10000,
+      method: "card",
+      source: "STRIPE",
+      recordedByUserId: null,
+      customer: { id: "c1", user: { name: "Customer", email: "customer@example.test" } },
+      payments: [{ amountCents: 10000, status: "held", invoice: { id: "i9", invoiceNumber: 99 } }],
+    },
+  ]);
+  const result = await getRevenueRecords("payments", true, "1", asOf);
+  expect(result.rows[0]).toMatchObject({ amountCents: 10000, heldCents: 10000, unallocatedCents: 0, invoices: [] });
+});
 it("reads refunds separately and says which ones returned no cash", async () => {
   const result = await getRevenueRecords("refunds", false, "1", asOf);
   expect(result.totalCents).toBe(900);

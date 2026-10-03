@@ -7,6 +7,7 @@ import {
   attachProviderIdsToReceiptPayments,
   createReceiptWithAllocations,
   lockCustomerLedger,
+  holdReceiptForClosedInvoice,
   recordFailedPaymentAttempt,
 } from "./ledger";
 import { resolveStripeInvoiceCashEvents } from "./stripe-invoice-payments";
@@ -103,9 +104,11 @@ async function resolvePaymentDetails(
 /**
  * Stripe took real money for an invoice the owner has already written off (or
  * voided). The money is recorded as received, but it is not applied to the
- * closed invoice and the write-off is not silently undone: it is held as
- * account credit (an unallocated receipt) and an audit entry asks the owner to
- * review it.
+ * closed invoice, the write-off is not silently undone, and no spendable
+ * account credit is created: the owner decides what happens next (IN-23). It is
+ * held as a receipt plus a `held` payment row (see `holdReceiptForClosedInvoice`),
+ * which also lets a later Stripe refund of that charge find it. An audit entry
+ * asks the owner to review it.
  */
 async function holdPaymentForClosedInvoice(
   db: Prisma.TransactionClient,
@@ -116,19 +119,14 @@ async function holdPaymentForClosedInvoice(
 ): Promise<void> {
   const cashEvents = await resolveStripeInvoiceCashEvents(stripeInvoice);
   for (const cashEvent of cashEvents) {
-    const { receiptId } = await createReceiptWithAllocations(db, {
+    await holdReceiptForClosedInvoice(db, {
       customerId,
-      source: "STRIPE",
+      invoiceId,
       amountCents: cashEvent.amountCents,
       method: cashEvent.method,
       receivedOn: cashEvent.receivedOn,
-      stripeChargeId: cashEvent.stripeChargeId ?? undefined,
-      allocations: [],
-    });
-    await attachProviderIdsToReceiptPayments(db, {
-      receiptId,
-      stripePaymentIntentId: cashEvent.paymentIntentId,
       stripeChargeId: cashEvent.stripeChargeId,
+      stripePaymentIntentId: cashEvent.paymentIntentId,
     });
   }
   await db.auditLog.create({
@@ -141,7 +139,8 @@ async function holdPaymentForClosedInvoice(
         invoiceStatus: status,
         stripeInvoiceId: stripeInvoice.id,
         receivedCents: cashEvents.reduce((sum, e) => sum + e.amountCents, 0),
-        handling: "Held as account credit; the invoice was not reopened. Review and decide.",
+        handling:
+          "Held for the owner. The invoice was not reopened and no account credit was created. Review and decide.",
       },
     },
   });

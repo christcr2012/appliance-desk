@@ -24,7 +24,7 @@ the bottom is empty or accepted by Chris.**
 
 ## Findings the tests produced
 
-- **Fixed:** a Stripe `invoice.paid` event racing an owner write-off could leave an invoice PAID and still marked written off (the webhook rewrote the invoice without locking it). Now the webhook locks the customer and invoice first; if the invoice is already written off or void the money is held as account credit and flagged for review (IN-23).
+- **Fixed:** a Stripe `invoice.paid` event racing an owner write-off could leave an invoice PAID and still marked written off (the webhook rewrote the invoice without locking it). Now the webhook locks the customer and invoice first; if the invoice is already written off or void the money is recorded but held (a `held` payment, no spendable credit) and flagged for review (IN-23). Review follow-up (Codex on #154): the first version minted spendable credit before Chris had chosen, and a later Stripe refund of that charge could not find the payment; both fixed.
 - **Noted, not reproduced:** a losing concurrent subscription starter writes its "already being started" message outside the lock; in theory that could briefly leave a stale message after the winner succeeds.
 - **Limit, documented:** subscription healing after a crash re-uses the same Stripe idempotency key, which Stripe honours for about 24 hours; later recovery depends on the reconciliation job.
 
@@ -36,6 +36,7 @@ the bottom is empty or accepted by Chris.**
 - Notice emails for term changes (live customer email needs Chris's approval; IN-21).
 - Per-customer terms screens (Batch D).
 - Out-of-order webhook cases listed in item 3.
+- A screen for the owner to resolve a held payment (credit it, reverse the write-off, or refund it) — waiting on IN-23.
 
 ## Review dispositions (Codex threads open on #148–#153 when this PR was opened)
 
@@ -50,6 +51,9 @@ the bottom is empty or accepted by Chris.**
 | #152 | P1 approved design contradicts the tax migration | **Fixed here.** `docs/designs/BATCH-B.md` D12 and WU-B10 amended. |
 | #152 | P2 old/new tax columns can drift during deploy | **Fixed here.** Migration `20261003190000_tax_rate_columns_stay_in_step` adds two-way triggers; `tests/tax-rate-columns-sync-integration.test.ts` (4 cases, real Postgres). |
 | #153 | P2 statements drop legacy `SUCCEEDED` payments | **Fixed here.** One shared rule (`src/domains/billing/payment-status.ts`) used by statements, drift checks, the invoice page and the backfill script; `tests/billing-legacy-payment-status.test.ts` fails without the fix. |
+
+| #154 | P1 refund of a held payment cannot find it | **Fixed in this PR.** The hold now keeps a `held` payment row with the Stripe payment-intent id, so `charge.refunded` records the refund; `tests/billing-credit-and-webhook-race-integration.test.ts` "held (not spendable), recorded once, and a Stripe refund of it is recorded". |
+| #154 | P1 do not mint spendable credit before the owner approves (IN-23) | **Fixed in this PR.** No credit is created; the money is held and listed (drift workbench `HELD_PAYMENT`, revenue page). Design amended (D13 note). The owner action to resolve it waits on IN-23 and is on the Not-done list. |
 
 AI-PR-READ-FIRST constraints for this PR: webhook duplicate/ACH tests kept and extended
 (`tests/billing-credit-and-webhook-race-integration.test.ts`); no new email/SMS sends; no

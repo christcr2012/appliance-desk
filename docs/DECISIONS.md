@@ -164,3 +164,12 @@ a production build plus browser install is a fixed cost of about two minutes per
 runner. Chris must enable GitHub secret scanning/push protection and the fork
 pull-request approval setting himself (agents cannot reach those settings).
 
+
+### 2026-10-03 — Payments that arrive after a write-off are held, not credited (IN-23, review on #154)
+
+First version turned such a payment into spendable account credit. Codex pointed
+out (rightly) that this chose the money policy before Chris had, and that a later
+Stripe refund of that charge could not find the payment. Now the payment is a
+receipt plus a `held` payment row: recorded as cash received, applied to nothing,
+not spendable, visible to the owner, and refundable through the normal refund
+event. Resolving a held payment waits on IN-23.

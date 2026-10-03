@@ -145,6 +145,17 @@ both. All code reads and writes `taxRateMilliPercent` only, through the helpers
 in `src/domains/billing/tax.ts` (`parseTaxRatePercent`, `formatTaxRate`,
 `taxCentsForLine`). Reasons are in `docs/DECISIONS.md` (2026-10-03, tax storage).
 
+**D13. (Added 2026-10-03.) A card payment that arrives for an invoice already
+written off or voided is held, not credited.** Found by the race tests. The
+webhook locks the customer then the invoice; if the invoice is closed it records
+a receipt plus a payment row with status `held` (no schema change), creates no
+`CustomerCredit`, does not reopen the invoice, writes the audit entry
+`billing.payment_on_closed_invoice`, and shows the item as `HELD_PAYMENT` in the
+drift workbench. A later Stripe refund of the charge finds it through the stored
+payment-intent id. What to do with held money (credit it, reverse the write-off,
+or refund it) is owner input IN-23; the screen that does it is not built until
+Chris answers.
+
 ## 2. Schema changes (additive only)
 
 Add to `prisma/schema.prisma` exactly as written; generate one migration

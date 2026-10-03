@@ -274,7 +274,6 @@ describe.skipIf(!enabled)("credit application and paid-vs-write-off races in dis
       const event = { id: eventId, type: "invoice.paid", data: { object: stripeInvoice } } as unknown as Stripe.Event;
 
       // Alternate who is launched first so both orderings of lock acquisition get exercised.
-      const roundStartedAt = new Date();
       const launchPaidFirst = round % 2 === 0;
       const start = (which: "paid" | "off") =>
         which === "paid"
@@ -286,7 +285,7 @@ describe.skipIf(!enabled)("credit application and paid-vs-write-off races in dis
 
       const invoice = await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId } });
       const payments = await prisma.payment.findMany({ where: { invoiceId, status: "succeeded" } });
-      const receipts = await prisma.receipt.findMany({ where: { payments: { some: { invoiceId } } } });
+      const receipts = await prisma.receipt.findMany({ where: { payments: { some: { invoiceId, status: "succeeded" } } } });
       const paymentTotal = payments.reduce((s, p) => s + p.amountCents, 0);
       const ctx = `round ${round} (${launchPaidFirst ? "paid first" : "write-off first"}): ` +
         JSON.stringify({ status: invoice.status, paid: invoice.amountPaidCents, off: invoice.writtenOffAt, byName });
@@ -312,12 +311,16 @@ describe.skipIf(!enabled)("credit application and paid-vs-write-off races in dis
         expect(payments, ctx).toHaveLength(0);
         expect(receipts, ctx).toHaveLength(0);
         expect(byName.off.status, ctx).toBe("fulfilled");
-        // The card payment is real money: it must be on the books as an unapplied receipt
-        // (account credit) with a review note, not lost and not applied to the closed invoice.
-        const held = await prisma.receipt.findMany({
-          where: { customerId, payments: { none: {} }, amountCents: 10_000, createdAt: { gte: roundStartedAt } },
-        });
+        // The card payment is real money: it must be on the books as a held receipt (not applied
+        // to the closed invoice, and not turned into spendable credit), with a review note.
+        const held = await prisma.payment.findMany({ where: { invoiceId, status: "held" } });
         expect(held, ctx).toHaveLength(1);
+        expect(held[0].amountCents, ctx).toBe(10_000);
+        expect(held[0].receiptId, ctx).not.toBeNull();
+        expect(
+          await prisma.customerCredit.count({ where: { sourceId: held[0].receiptId! } }),
+          ctx,
+        ).toBe(0);
         expect(
           await prisma.auditLog.count({
             where: { action: "billing.payment_on_closed_invoice", entityId: invoiceId },
@@ -330,4 +333,77 @@ describe.skipIf(!enabled)("credit application and paid-vs-write-off races in dis
     // Sanity: both writers actually ran in every round.
     expect(outcomes.paid + outcomes.writtenOff).toBe(20);
   }, 120_000);
+
+  it("a card payment on a written-off invoice is held (not spendable), recorded once, and a Stripe refund of it is recorded", async () => {
+    const subscription = `sub_${tag}_held`;
+    const stripeInvoiceId = `in_${tag}_held`;
+    const chargeId = `ch_${tag}_held`;
+    const intentId = `pi_${tag}_held`;
+    const agreementId = `cr-agreement-${randomUUID()}`;
+    agreementIds.push(agreementId);
+    await prisma.rentalAgreement.create({
+      data: { id: agreementId, customerId, serviceAddressId: addressId, status: "ACTIVE", stripeSubscriptionId: subscription },
+    });
+    const invoiceId = await newInvoice({ stripeInvoiceId, agreementId });
+    await prisma.invoice.update({
+      where: { id: invoiceId },
+      data: { status: "WRITTEN_OFF", writtenOffAt: new Date() },
+    });
+    m.intent.mockImplementation(async (id: string) => ({
+      id,
+      payment_method: { id: `pm_${id}`, type: "card" },
+      latest_charge: { id: chargeId, created: Math.floor(Date.now() / 1000) },
+    }));
+    try {
+      const stripeInvoice = {
+        id: stripeInvoiceId,
+        status: "paid",
+        amount_due: 10_000,
+        amount_paid: 10_000,
+        parent: { subscription_details: { subscription } },
+        total_taxes: [],
+        payments: { data: [{ payment: { payment_intent: intentId } }] },
+        lines: { data: [{ description: "Washer", amount: 10_000 }] },
+      };
+      m.invoice.mockResolvedValue(stripeInvoice);
+      const paidEvent = (id: string) => {
+        eventIds.push(id);
+        return { id, type: "invoice.paid", data: { object: stripeInvoice } } as unknown as Stripe.Event;
+      };
+
+      await processStripeWebhookEvent(paidEvent(`evt_${tag}_held_1`));
+      // Stripe delivers again under a different event id: still exactly one held receipt.
+      await processStripeWebhookEvent(paidEvent(`evt_${tag}_held_2`));
+
+      const invoice = await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId } });
+      expect(invoice.status).toBe("WRITTEN_OFF");
+      expect(invoice.amountPaidCents).toBe(0);
+      const heldPayments = await prisma.payment.findMany({ where: { invoiceId } });
+      expect(heldPayments).toHaveLength(1);
+      expect(heldPayments[0]).toMatchObject({ status: "held", amountCents: 10_000, stripePaymentIntentId: intentId });
+      const receipts = await prisma.receipt.findMany({ where: { stripeChargeId: chargeId } });
+      expect(receipts).toHaveLength(1);
+      // Not spendable: no credit exists for it until the owner decides (IN-23).
+      expect(await prisma.customerCredit.count({ where: { sourceId: receipts[0].id } })).toBe(0);
+
+      // Stripe later refunds that charge: the refund must find the held payment.
+      eventIds.push(`evt_${tag}_held_refund`);
+      await processStripeWebhookEvent({
+        id: `evt_${tag}_held_refund`,
+        type: "charge.refunded",
+        data: { object: { id: chargeId, payment_intent: intentId, amount_refunded: 10_000, refunds: { data: [{ id: `re_${tag}` }] } } },
+      } as unknown as Stripe.Event);
+      const refunds = await prisma.refund.findMany({ where: { invoiceId } });
+      expect(refunds).toHaveLength(1);
+      expect(refunds[0].amountCents).toBe(10_000);
+      expect(await prisma.customerCredit.count({ where: { sourceId: receipts[0].id } })).toBe(0);
+      await prisma.refund.deleteMany({ where: { invoiceId } });
+    } finally {
+      m.intent.mockImplementation(async (id: string) => ({
+        id,
+        payment_method: { id: `pm_${id}`, type: "card" },
+        latest_charge: null,
+      }));
+    }
+  });
 });

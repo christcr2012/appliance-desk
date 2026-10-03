@@ -868,10 +868,15 @@ what was and wasn't built.
   touches (in id order). A write-off, a manual payment and a Stripe payment
   event therefore take turns instead of interleaving.
 - **Payment on a closed invoice.** If Stripe reports money for an invoice that
-  was already written off or voided, the money is recorded as an unapplied
-  receipt (account credit), the invoice is not reopened, and an audit entry
-  `billing.payment_on_closed_invoice` asks the owner to review it. (Whether to
-  reverse the write-off instead is an owner decision, IN-23.)
+  was already written off or voided, the money is recorded as a receipt plus a
+  payment row with status `held`. It is **not** applied to the closed invoice,
+  the invoice is not reopened, and **no spendable account credit is created**:
+  the owner decides what happens to it (IN-23). It shows in the drift workbench
+  (`HELD_PAYMENT`), on the revenue page as "held for your decision", and in an
+  audit entry `billing.payment_on_closed_invoice`. If Stripe later refunds that
+  charge, the refund is recorded against the closed invoice like any other.
+  Cash reports still count it as cash received, because it was. The screen that
+  lets the owner resolve a held payment is not built yet (waiting on IN-23).
 - **Provider operations.** Every Stripe write Batch B owns (customer or
   subscription create/cancel, balance credit, refund) first records a
   `ProviderOperation` with a fixed idempotency key, then calls Stripe, then

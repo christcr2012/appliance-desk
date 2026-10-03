@@ -21,7 +21,7 @@ beforeEach(() => {
     toCreditCents: 0,
     rows: [{ id: "source-record", amountCents: 4500, createdAt: new Date("2026-10-01T00:00:00Z"),
       basis: "Recorded payment", method: "check", customerId: "customer-456", customerName: "Test Customer",
-      unallocatedCents: 500,
+      unallocatedCents: 500, heldCents: 0,
       invoices: [{ id: "invoice-123", invoiceNumber: 123, amountCents: 4000 }, { id: "invoice-124", invoiceNumber: 124, amountCents: 0 }] }],
   });
 });
