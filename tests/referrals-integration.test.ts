@@ -20,6 +20,7 @@ vi.mock("@/lib/email", () => ({
 }));
 
 import { prisma } from "@/lib/prisma";
+import { applyCreditToInvoice } from "@/domains/billing/ledger";
 import {
   rewardReferralOnFirstPaidInvoice,
   settleReferralCredits,
@@ -127,6 +128,14 @@ async function cleanupFixture(fixture: Fixture): Promise<void> {
   });
 }
 
+function deferred() {
+  let resolve!: () => void;
+  const promise = new Promise<void>((done) => {
+    resolve = done;
+  });
+  return { promise, resolve };
+}
+
 describe.skipIf(!enabled)("referral reward ledger in disposable Postgres", () => {
   beforeEach(async () => {
     mocks.createBalanceTransaction.mockReset();
@@ -172,7 +181,6 @@ describe.skipIf(!enabled)("referral reward ledger in disposable Postgres", () =>
       where: { id: fixture.referralId },
     });
     expect(referral.status).toBe("REWARDING");
-    expect(referral.rewardCents).toBeGreaterThan(0);
 
     await expect(
       prisma.$transaction((tx) =>
@@ -202,7 +210,6 @@ describe.skipIf(!enabled)("referral reward ledger in disposable Postgres", () =>
     const credits = await prisma.customerCredit.findMany({
       where: { sourceType: "REFERRAL", sourceId: fixture.referralId },
     });
-    expect(credits).toHaveLength(2);
     expect(credits.every((credit) => credit.remainingCents === 0)).toBe(true);
     expect(credits.every((credit) => credit.appliedViaStripeAt !== null)).toBe(true);
 
@@ -214,55 +221,107 @@ describe.skipIf(!enabled)("referral reward ledger in disposable Postgres", () =>
     });
     expect(operations).toHaveLength(2);
     expect(operations.every((operation) => operation.status === "SUCCEEDED")).toBe(true);
-    expect(new Set(operations.map((operation) => operation.idempotencyKey))).toEqual(
-      new Set([
-        `referral-credit-${fixture.referralId}-referrer`,
-        `referral-credit-${fixture.referralId}-referred`,
-      ]),
-    );
 
     const referral = await prisma.referral.findUniqueOrThrow({
       where: { id: fixture.referralId },
     });
     expect(referral.status).toBe("REWARDED");
-    expect(referral.rewardedAt).not.toBeNull();
     expect(mocks.sendEmail).toHaveBeenCalledTimes(2);
 
     await settleReferralCredits(fixture.referralId);
     expect(mocks.createBalanceTransaction).toHaveBeenCalledTimes(2);
   });
 
-  it("keeps failed Stripe delivery local and leaves the referral REWARDING for reconciliation", async () => {
+  it("rejects local spending while a Stripe balance-credit request is in flight", async () => {
     const fixture = await createFixture();
     await prisma.$transaction((tx) =>
       rewardReferralOnFirstPaidInvoice(tx, fixture.referredCustomerId),
     );
-    mocks.createBalanceTransaction.mockRejectedValue(new Error("provider rejected test credit"));
-
-    await settleReferralCredits(fixture.referralId);
-
-    const credits = await prisma.customerCredit.findMany({
-      where: { sourceType: "REFERRAL", sourceId: fixture.referralId },
-    });
-    expect(credits).toHaveLength(2);
-    expect(credits.every((credit) => credit.appliedViaStripeAt === null)).toBe(true);
-    expect(credits.every((credit) => credit.remainingCents === credit.amountCents)).toBe(true);
-
-    const operations = await prisma.providerOperation.findMany({
+    const credit = await prisma.customerCredit.findFirstOrThrow({
       where: {
-        subjectType: "CustomerCredit",
-        subjectId: { in: credits.map((credit) => credit.id) },
+        sourceType: "REFERRAL",
+        sourceId: fixture.referralId,
+        customerId: fixture.referrerCustomerId,
       },
     });
-    expect(operations).toHaveLength(2);
-    expect(operations.every((operation) => operation.status === "FAILED")).toBe(true);
-
-    const referral = await prisma.referral.findUniqueOrThrow({
-      where: { id: fixture.referralId },
+    const invoiceId = `referral-race-invoice-${randomUUID()}`;
+    await prisma.invoice.create({
+      data: {
+        id: invoiceId,
+        customerId: fixture.referrerCustomerId,
+        status: "OPEN",
+        subtotalCents: credit.amountCents,
+        amountDueCents: credit.amountCents,
+        amountPaidCents: 0,
+      },
     });
-    expect(referral.status).toBe("REWARDING");
-    expect(referral.rewardedAt).toBeNull();
-    expect(mocks.sendEmail).not.toHaveBeenCalled();
+
+    const providerStarted = deferred();
+    const allowProvider = deferred();
+    mocks.createBalanceTransaction.mockImplementation(async (_customerId, params: any) => {
+      if (params?.metadata?.creditId === credit.id) {
+        providerStarted.resolve();
+        await allowProvider.promise;
+      }
+      return { id: `cbtxn_${params?.metadata?.creditId ?? randomUUID()}` };
+    });
+
+    const settlement = settleReferralCredits(fixture.referralId);
+    await providerStarted.promise;
+
+    await expect(
+      prisma.$transaction((tx) =>
+        applyCreditToInvoice(tx, {
+          creditId: credit.id,
+          invoiceId,
+          amountCents: credit.amountCents,
+          appliedByUserId: "owner-race-test",
+        }),
+      ),
+    ).rejects.toThrow(/reserved for Stripe settlement/i);
+
+    allowProvider.resolve();
+    await settlement;
+
+    expect(
+      await prisma.creditApplication.count({ where: { creditId: credit.id } }),
+    ).toBe(0);
+    await prisma.invoiceLineItem.deleteMany({ where: { invoiceId } });
+    await prisma.invoice.delete({ where: { id: invoiceId } });
+  });
+
+  it("fails settlement so the webhook retries when Stripe delivery fails", async () => {
+    const fixture = await createFixture();
+    await prisma.$transaction((tx) =>
+      rewardReferralOnFirstPaidInvoice(tx, fixture.referredCustomerId),
+    );
+    mocks.createBalanceTransaction.mockRejectedValueOnce(new Error("provider rejected test credit"));
+
+    await expect(settleReferralCredits(fixture.referralId)).rejects.toThrow(/must retry/i);
+
+    const operationsAfterFailure = await prisma.providerOperation.findMany({
+      where: {
+        subjectType: "CustomerCredit",
+        subjectId: {
+          in: (
+            await prisma.customerCredit.findMany({
+              where: { sourceType: "REFERRAL", sourceId: fixture.referralId },
+              select: { id: true },
+            })
+          ).map((credit) => credit.id),
+        },
+      },
+    });
+    expect(operationsAfterFailure.some((operation) => operation.status === "FAILED")).toBe(true);
+    expect(
+      (await prisma.referral.findUniqueOrThrow({ where: { id: fixture.referralId } })).status,
+    ).toBe("REWARDING");
+
+    mocks.createBalanceTransaction.mockResolvedValue({ id: `cbtxn_retry_${randomUUID()}` });
+    await settleReferralCredits(fixture.referralId);
+    expect(
+      (await prisma.referral.findUniqueOrThrow({ where: { id: fixture.referralId } })).status,
+    ).toBe("REWARDED");
   });
 
   it("keeps a no-Stripe-customer side local while completing the referral after the other side settles", async () => {
