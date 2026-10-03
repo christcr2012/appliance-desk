@@ -1,35 +1,37 @@
 {
-  "_comment": "Explicit CI shard assignment for the browser suite. Every e2e/*.spec.ts must appear in exactly one group (scripts/e2e-shard.mjs enforces this in CI). Playwright's built-in --shard splits by test COUNT, which left one shard with ~4x the runtime of the others here; balance these groups by measured DURATION instead. Each shard prints its slowest spec files as GitHub notices after it runs — use those to rebalance. See docs/ARCHITECTURE.md (CI/CD).",
+  "_comment": "Explicit CI shard assignment for the browser suite (4 parallel runners). Every e2e/*.spec.ts must appear in exactly one group (scripts/e2e-shard.mjs enforces this in CI). Balanced by measured duration on 2026-10-03 (~56s of test time per group; the two heaviest files cannot be split further). Each run prints per-file durations as a CI notice; rebalance from those numbers. See docs/ARCHITECTURE.md (Keeping CI fast).",
   "groups": {
-    "owner-flows": [
+    "browser-a": [
       "owner-portal-workspaces.spec.ts",
+      "fleet-report.spec.ts"
+    ],
+    "browser-b": [
       "revenue-records.spec.ts",
-      "launch.spec.ts",
-      "lead-form.spec.ts",
-      "appliance-price-save-feedback.spec.ts"
+      "accessibility-dark-mode.spec.ts"
     ],
-    "desk-flows": [
-      "desk-workspace.spec.ts",
+    "browser-c": [
       "crm-workspace.spec.ts",
-      "dispatch-calendar-recovery.spec.ts",
-      "fleet-report.spec.ts",
-      "inventory-bulk-feedback.spec.ts",
-      "purchasing-review.spec.ts",
-      "rental-address-accessibility.spec.ts",
-      "rental-builder-recovery.spec.ts"
-    ],
-    "accessibility-and-security": [
-      "accessibility.spec.ts",
       "accessibility-authenticated.spec.ts",
-      "accessibility-dark-mode.spec.ts",
+      "appliance-price-save-feedback.spec.ts",
+      "purchasing-review.spec.ts"
+    ],
+    "browser-d": [
       "staff-security.spec.ts",
-      "security-response-headers.spec.ts",
-      "session-deactivation.spec.ts",
-      "setup-email-recovery.spec.ts",
-      "signing-waiver-presentation.spec.ts",
-      "staff-job-follow-up.spec.ts",
+      "desk-workspace.spec.ts",
+      "accessibility.spec.ts",
+      "rental-builder-recovery.spec.ts",
       "task-assignment.spec.ts",
-      "work-order-print.spec.ts"
+      "inventory-bulk-feedback.spec.ts",
+      "session-deactivation.spec.ts",
+      "dispatch-calendar-recovery.spec.ts",
+      "staff-job-follow-up.spec.ts",
+      "rental-address-accessibility.spec.ts",
+      "setup-email-recovery.spec.ts",
+      "lead-form.spec.ts",
+      "launch.spec.ts",
+      "signing-waiver-presentation.spec.ts",
+      "work-order-print.spec.ts",
+      "security-response-headers.spec.ts"
     ]
   }
 }

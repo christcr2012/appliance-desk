@@ -97,3 +97,21 @@ the failure-only Playwright report is kept 3 days. This supersedes the
 minutes. Accepted trade-off: a logic-only change that breaks a screen is caught
 by the nightly run, not before merge. Not done: making the repo public (free
 Actions, but exposes the code).
+
+### 2026-10-03 — Repository made public; CI rebuilt for speed and secret scanning
+
+Chris made the repository public (the code is a customized version of existing
+things, nothing in it needs to be private), which makes standard Actions minutes
+free. This supersedes the cost-saving CI of the same day: CI now runs on every
+push, all checks in parallel (secret scan, type-check + lint, unit tests in 3
+shards, browser tests in 4 shards), with `permissions: contents: read` and no
+secrets. Quality is unchanged or better: same checks, plus `scripts/check-secrets.mjs`
+and gitleaks over the whole git history on every run, including docs-only
+changes. Real production Neon/Vercel identifiers found in old docs and one test
+were replaced with placeholders; they remain in git history (identifiers only, no
+passwords or keys), so Chris was advised to optionally rotate the production
+database password. The 1-to-2-minute target was not promised for browser tests:
+a production build plus browser install is a fixed cost of about two minutes per
+runner. Chris must enable GitHub secret scanning/push protection and the fork
+pull-request approval setting himself (agents cannot reach those settings).
+

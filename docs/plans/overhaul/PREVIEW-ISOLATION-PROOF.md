@@ -73,7 +73,7 @@ Narrow read-only queries against database `appliance_desk`, project
 | Target | Result |
 | --- | --- |
 | Preview `br-broad-union-b784qy62` | One LaunchSubscriber, `cmupulz97000004k1pnkmu08i`, nextStep 0 |
-| Production `br-wild-smoke-b7etke32` | No rows |
+| Production `<production-branch-id>` | No rows |
 
 Existing build/runtime URL allowlists and migration/upgrade evidence remain
 applicable. The hosted write proves runtime isolation, rather than inferring

@@ -62,7 +62,7 @@ describe("preview database targets", () => {
       for (const target of [
         undefined,
         "invalid",
-        url("ep-ancient-glitter-b7q9bto9.c-13.us-east-1.aws.neon.tech"),
+        url("ep-example-production-00000000.c-13.us-east-1.aws.neon.tech"),
         url("other.neon.tech"),
       ]) {
         expect(() =>

@@ -1,24 +1,24 @@
 name: CI
 
-# COST CONTROL (owner, 2026-10-03): GitHub Actions minutes are billed and the
-# monthly allowance was used up in three days, so this workflow is built to
-# run as rarely and as cheaply as it safely can:
-#   - A pull request runs CI when it is opened (or marked ready for review),
-#     NOT on every push to it. Verify locally, push once, then open the PR.
-#     To run CI again on a later push, start it by hand once the work is
-#     verified locally:  gh workflow run ci.yml --ref <branch>
-#     (Actions tab -> CI -> "Run workflow" does the same.)
-#   - Draft PRs never run CI. Mark ready for review when the work is verified.
-#   - Browser tests (the expensive part) run on a PR only when something that
-#     can change what a browser sees was touched (screens, shared libs, schema,
-#     browser tests, CI itself). Pure business-logic changes run the type
-#     check, lint and the full unit/real-Postgres suite instead.
-#   - A push to main runs the cheap checks only; the full browser suite runs
-#     once a night, and only if main changed that day.
-#   - Documentation-only changes run nothing heavy.
+# Built for SPEED (owner, 2026-10-03). The repository is public, so GitHub
+# Actions minutes on standard runners are free; the only cost that matters now
+# is how long a person waits. So every check runs in parallel, on every push:
+#   secrets  - leaked-key and private-identifier scan (always runs, even for docs)
+#   static   - type-check + lint (side by side) + migration/browser-group checks
+#   unit     - the whole vitest suite split over 3 runners, each with its own
+#              throwaway Postgres
+#   e2e      - production build + browser/accessibility tests split over 4 runners
+#   ci       - the single gate that branch protection / merging looks at
+# Nothing was removed from the old pipeline: the same checks, same tests, same
+# build; they are only spread across more machines. Docs-only changes skip the
+# heavy jobs but never skip the secrets scan.
+#
+# Public repo safety: this workflow only ever has read access to the code
+# (`permissions: contents: read`), uses no repository secrets, and every
+# database/auth value below is a throwaway test value. Keep it that way: never
+# use `pull_request_target`, never add secrets here.
 on:
   pull_request:
-    types: [opened, reopened, ready_for_review]
   push:
     branches: [main]
   workflow_dispatch:
@@ -28,7 +28,10 @@ on:
         required: false
         default: main
   schedule:
-    - cron: "17 9 * * *" # 03:17 America/Denver (MDT); skipped when main did not change
+    - cron: "17 9 * * *" # nightly full run of main (03:17 America/Denver in summer)
+
+permissions:
+  contents: read
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -37,18 +40,17 @@ concurrency:
 jobs:
   classify:
     name: classify changes
-    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     outputs:
       app_changed: ${{ steps.changes.outputs.app_changed }}
-      ui_changed: ${{ steps.changes.outputs.ui_changed }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       - id: changes
-        name: Decide what needs to run
+        name: Decide whether anything besides documentation changed
         env:
           EVENT_NAME: ${{ github.event_name }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
@@ -58,24 +60,9 @@ jobs:
         run: |
           set -euo pipefail
 
-          # Pushes to main: cheap checks only (the PR already ran the browser
-          # suite if it needed to; the nightly run covers the rest).
-          if [[ "$EVENT_NAME" == "push" ]]; then
+          # Pushes to main and nightly runs always run everything.
+          if [[ "$EVENT_NAME" == "push" || "$EVENT_NAME" == "schedule" ]]; then
             echo "app_changed=true" >> "$GITHUB_OUTPUT"
-            echo "ui_changed=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          # Nightly: the full suite, but only if main changed in the last day.
-          if [[ "$EVENT_NAME" == "schedule" ]]; then
-            if [[ -z "$(git log --since='25 hours ago' -1 --format=%H)" ]]; then
-              echo "No commits on main in the last day: nothing to run."
-              echo "app_changed=false" >> "$GITHUB_OUTPUT"
-              echo "ui_changed=false" >> "$GITHUB_OUTPUT"
-            else
-              echo "app_changed=true" >> "$GITHUB_OUTPUT"
-              echo "ui_changed=true" >> "$GITHUB_OUTPUT"
-            fi
             exit 0
           fi
 
@@ -84,7 +71,6 @@ jobs:
             if ! git fetch --quiet origin "$base" 2>/dev/null; then
               echo "Could not fetch '$base': running everything to be safe."
               echo "app_changed=true" >> "$GITHUB_OUTPUT"
-              echo "ui_changed=true" >> "$GITHUB_OUTPUT"
               exit 0
             fi
             mapfile -t changed_files < <(git diff --name-only "origin/$base...HEAD")
@@ -92,40 +78,109 @@ jobs:
             mapfile -t changed_files < <(git diff --name-only "$BASE_SHA" "$HEAD_SHA")
           fi
 
-          # Fail safe: an empty/indeterminate diff runs everything rather than
-          # accidentally treating an application change as documentation.
+          # Fail safe: an empty/indeterminate diff runs everything.
           if (( ${#changed_files[@]} == 0 )); then
             echo "app_changed=true" >> "$GITHUB_OUTPUT"
-            echo "ui_changed=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
           app_changed=false
-          ui_changed=false
           for file in "${changed_files[@]}"; do
             # Documentation-only means Markdown anywhere or files under docs/.
             if [[ "$file" != docs/* && "$file" != *.md ]]; then
               app_changed=true
             fi
-            # Anything that can change what a browser sees or does. Business
-            # logic under src/domains/ and unit tests under tests/ are covered
-            # by the unit/real-Postgres suite instead.
-            if [[ "$file" =~ ^(src/app/|src/components/|src/lib/|src/proxy|src/middleware|e2e/|public/|prisma/|scripts/|\.github/|package(-lock)?\.json$|next\.config|playwright\.config|postcss|tsconfig|eslint) ]]; then
-              ui_changed=true
-            fi
           done
-
           echo "app_changed=$app_changed" >> "$GITHUB_OUTPUT"
-          echo "ui_changed=$ui_changed" >> "$GITHUB_OUTPUT"
 
-  checks:
-    # Type-check, lint, migrations and the whole unit/real-Postgres suite in ONE
-    # job: one install, one database container, and a type or lint error stops
-    # the run before the slower database steps spend any minutes.
-    name: static checks and tests
+  secrets:
+    # Always runs (also for docs-only changes and nightly): a leaked key in a
+    # Markdown file is still a leaked key. Two independent scanners:
+    #   1. scripts/check-secrets.mjs - this project's own rules (live Stripe
+    #      keys, real database URLs, Neon/Vercel production identifiers,
+    #      committed .env files, ...). Reviewed allowlist lives in the script.
+    #   2. gitleaks - the widely used scanner, over the WHOLE git history.
+    # Neither prints the secret itself, only the file, line and a short label.
+    name: secret scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Project secret and private-identifier scan
+        run: node scripts/check-secrets.mjs
+
+      - name: Install gitleaks (pinned version, checksum verified)
+        run: |
+          set -euo pipefail
+          version=8.28.0
+          sha256=a65b5253807a68ac0cafa4414031fd740aeb55f54fb7e55f386acb52e6a840eb
+          curl -sSfL -o gitleaks.tar.gz "https://github.com/gitleaks/gitleaks/releases/download/v${version}/gitleaks_${version}_linux_x64.tar.gz"
+          echo "${sha256}  gitleaks.tar.gz" | sha256sum -c -
+          tar -xzf gitleaks.tar.gz gitleaks
+          rm gitleaks.tar.gz
+
+      - name: gitleaks scan of the full git history
+        run: ./gitleaks detect --source . --config .gitleaks.toml --redact --no-banner --exit-code 1
+
+  static:
+    # Type-check and lint share one install and run side by side.
+    name: type-check, lint and repo checks
     needs: classify
     if: needs.classify.outputs.app_changed == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Type-check and lint (in parallel)
+        shell: bash
+        run: |
+          set -uo pipefail
+          npm run typecheck > typecheck.log 2>&1 &
+          tc=$!
+          npm run lint > lint.log 2>&1 &
+          li=$!
+          status=0
+          wait "$tc" || { echo "::error::Type-check failed"; status=1; }
+          wait "$li" || { echo "::error::Lint failed"; status=1; }
+          echo "===== type-check ====="; cat typecheck.log
+          echo "===== lint ====="; cat lint.log
+          exit "$status"
+
+      - name: Every browser spec file is assigned to exactly one CI group
+        run: node scripts/e2e-shard.mjs --check
+
+      - name: Check for un-reviewed destructive migrations
+        run: npm run check:migrations
+
+  unit:
+    # The whole unit and real-Postgres suite, split over 3 runners. Each runner
+    # has its own throwaway database, so tests cannot interfere. Vitest's
+    # --shard splits by test file, so every file runs exactly once.
+    name: unit tests (${{ matrix.shard }}/3)
+    needs: classify
+    if: needs.classify.outputs.app_changed == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
 
     services:
       postgres:
@@ -138,9 +193,9 @@ jobs:
           - 5432:5432
         options: >-
           --health-cmd "pg_isready -U test -d appliance_desk_test"
-          --health-interval 5s
+          --health-interval 2s
           --health-timeout 5s
-          --health-retries 10
+          --health-retries 15
 
     env:
       DATABASE_URL: postgresql://test:test@localhost:5432/appliance_desk_test
@@ -166,48 +221,37 @@ jobs:
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
 
-      - name: Type-check
-        run: npm run typecheck
-
-      - name: Lint
-        run: npm run lint
-
-      - name: Every browser spec file is assigned to exactly one CI group
-        run: node scripts/e2e-shard.mjs --check
-
-      - name: Check for un-reviewed destructive migrations
-        run: npm run check:migrations
-
       - name: Apply database migrations
         run: npm run db:migrate:deploy
 
-      - name: Verify schema health (same check production runs before building)
-        run: npm run db:verify-schema-health
-
-      - name: Prove schema health rejects a missing column (disposable database only)
-        run: npx tsx scripts/test-schema-health.ts
-
-      - name: Prove populated historical database upgrades and deployment retry
-        run: npx tsx scripts/test-migration-upgrade.ts
+      - name: Verify schema health and migration upgrade (once, on shard 1)
+        if: matrix.shard == 1
+        run: |
+          npm run db:verify-schema-health
+          npx tsx scripts/test-schema-health.ts
+          npx tsx scripts/test-migration-upgrade.ts
+          # those two scripts use their own throwaway databases; the shared one is still clean
 
       - name: Seed business content + test-only OWNER/CUSTOMER/STAFF accounts
         run: npm run db:seed
 
-      - name: Unit and real-Postgres integration tests
-        run: npm test
+      - name: Unit and real-Postgres integration tests (shard ${{ matrix.shard }} of 3)
+        run: npx vitest run --shard=${{ matrix.shard }}/3
 
   e2e:
-    # The browser suite is the most expensive part of CI. It runs on ONE runner
-    # (one install, one build, one database) instead of three: the same tests
-    # in roughly 60% of the billed minutes. It runs only when the change can
-    # affect what a browser sees (see `classify`) and nightly on main.
-    # e2e/shards.json still groups the spec files; `all` runs every group, and
+    # Production build + browser/accessibility/security tests, split over 4
+    # runners balanced by measured spec duration (e2e/shards.json).
     # scripts/e2e-shard.mjs refuses to run if any spec file is unassigned, so
     # nothing can silently stop running.
-    name: production build and browser acceptance
+    name: browser tests (${{ matrix.shard }})
     needs: classify
-    if: needs.classify.outputs.ui_changed == 'true'
+    if: needs.classify.outputs.app_changed == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [browser-a, browser-b, browser-c, browser-d]
 
     services:
       postgres:
@@ -220,9 +264,9 @@ jobs:
           - 5432:5432
         options: >-
           --health-cmd "pg_isready -U test -d appliance_desk_test"
-          --health-interval 5s
+          --health-interval 2s
           --health-timeout 5s
-          --health-retries 10
+          --health-retries 15
 
     env:
       DATABASE_URL: postgresql://test:test@localhost:5432/appliance_desk_test
@@ -280,34 +324,35 @@ jobs:
         if: steps.playwright-cache.outputs.cache-hit == 'true'
         run: npx playwright install-deps chromium
 
-      - name: Accessibility, security and end-to-end tests
-        run: node scripts/e2e-shard.mjs all
+      - name: Accessibility, security and end-to-end tests (${{ matrix.shard }})
+        run: node scripts/e2e-shard.mjs ${{ matrix.shard }}
 
-      # Only kept when something failed (artifact storage is billed too).
+      # Only kept when something failed.
       - name: Upload Playwright report
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.shard }}
           path: playwright-report/
           retention-days: 3
 
-  # One final gate named `ci`. It passes when every job that was supposed to run
-  # succeeded. Draft PRs get no `ci` check at all (so a draft can never look
-  # green); the browser job is required only when `classify` said the change can
-  # affect the browser.
+  # One final gate named `ci`. It passes only when every job that was supposed
+  # to run succeeded. The secret scan is always required. The heavy jobs are
+  # required unless the change was documentation only.
   ci:
     name: ci
-    if: always() && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
-    needs: [classify, checks, e2e]
+    if: always()
+    needs: [classify, secrets, static, unit, e2e]
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Verify required quality jobs
         env:
           APP_CHANGED: ${{ needs.classify.outputs.app_changed }}
-          UI_CHANGED: ${{ needs.classify.outputs.ui_changed }}
           CLASSIFY_RESULT: ${{ needs.classify.result }}
-          CHECKS_RESULT: ${{ needs.checks.result }}
+          SECRETS_RESULT: ${{ needs.secrets.result }}
+          STATIC_RESULT: ${{ needs.static.result }}
+          UNIT_RESULT: ${{ needs.unit.result }}
           E2E_RESULT: ${{ needs.e2e.result }}
         shell: bash
         run: |
@@ -317,23 +362,18 @@ jobs:
             echo "Change classification failed."
             exit 1
           fi
-
-          if [[ "$APP_CHANGED" != "true" ]]; then
-            echo "Nothing application-impacting to check: heavy suites intentionally skipped."
-            exit 0
-          fi
-
-          if [[ "$CHECKS_RESULT" != "success" ]]; then
-            echo "Static checks and tests did not succeed: $CHECKS_RESULT"
+          if [[ "$SECRETS_RESULT" != "success" ]]; then
+            echo "Secret scan did not succeed: $SECRETS_RESULT"
             exit 1
           fi
-
-          if [[ "$UI_CHANGED" == "true" ]]; then
-            if [[ "$E2E_RESULT" != "success" ]]; then
-              echo "Browser acceptance did not succeed: $E2E_RESULT"
+          if [[ "$APP_CHANGED" != "true" ]]; then
+            echo "Documentation-only change: secret scan passed; heavy suites intentionally skipped."
+            exit 0
+          fi
+          for pair in "type-check/lint:$STATIC_RESULT" "unit tests:$UNIT_RESULT" "browser tests:$E2E_RESULT"; do
+            if [[ "${pair#*:}" != "success" ]]; then
+              echo "${pair%%:*} did not succeed: ${pair#*:}"
               exit 1
             fi
-            echo "All application quality gates passed (including browser tests)."
-          else
-            echo "Static checks and tests passed. Browser tests were skipped because nothing that affects a browser changed; the nightly run covers main."
-          fi
+          done
+          echo "All quality gates passed."

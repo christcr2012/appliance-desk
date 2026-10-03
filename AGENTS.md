@@ -117,13 +117,13 @@ resulting behavior are verified.
 - **Branch names:** `ai/<tool>/<topic>` (for example `ai/codex/batch-b-billing`).
   Branch from current `main`, or from the previous unmerged PR's branch when
   stacking; retarget `main` once the predecessor merges.
-- **Verify locally, push once.** CI no longer runs on every push (see "CI cost
-  budget"), but every run still costs real money. The local verification recipe
-  is in `docs/PLAYBOOK.md`; it takes ~5 minutes to set up and catches most
-  failures.
+- **Verify locally before you push.** CI is free and fast now (see "CI"), but
+  pushing broken work wastes everyone's time and a failing run is noise. The
+  local verification recipe is in `docs/PLAYBOOK.md`; it takes ~5 minutes to set
+  up and catches most failures.
 - **Merging:** Chris has authorized agents to merge their own PRs (2026-10-01)
   when all of these are true: the `ci` check green at the exact head being
-  merged (start it by hand if you pushed after the PR opened),
+  merged (CI runs on every push; check it is the latest head),
   the PR's acceptance list is met with evidence, applicable preview checks
   pass, and the review steps below are done. Merge with the expected-head SHA.
   New commits invalidate earlier evidence — re-check before merging. The
@@ -205,44 +205,47 @@ resulting behavior are verified.
 - **Migrations** are additive and reviewed by `scripts/check-migrations.mjs`
   in CI. Production runs `prisma migrate deploy` during `vercel-build`.
 
-## CI cost budget — GitHub Actions minutes are billed (owner, 2026-10-03)
+## CI — fast, free, and checks for secrets (owner, 2026-10-03)
 
-The monthly Actions allowance was used up on day 3 of October (about 190 runs,
-a quarter of them cancelled mid-way, which still bill). Treat CI minutes as
-money. One full run used to cost ~22 billed minutes; it is now ~13, and most
-runs are meant to cost far less. The rules:
+The repository is **public**, so GitHub Actions minutes on standard runners are
+free (the private-repo allowance ran out on day 3 of October). CI is therefore
+built for **speed**, not minute-saving: every check runs in parallel on every
+push to a pull request, with a goal of results in about 3 minutes
+(`docs/ARCHITECTURE.md` → "CI layout and speed"). The rules:
 
-1. **Local first, then push once, then open the PR.** CI starts when a PR is
-   opened (or marked ready for review), **not** on every push to it. Run the
-   local recipe in `docs/PLAYBOOK.md` (typecheck, lint, the whole vitest suite)
-   until it is clean. **If you touched `src/app/`, `src/components/`,
+1. **Verify locally first, then push.** Free minutes are not a reason to push
+   broken work: run the local recipe in `docs/PLAYBOOK.md` (typecheck, lint,
+   the whole vitest suite). **If you touched `src/app/`, `src/components/`,
    `src/lib/` or `e2e/`, also run the affected browser/accessibility specs
-   locally (PLAYBOOK 4c: the sandbox has Chromium and Playwright works with the
-   documented workarounds).** Then push, open the PR. Never push to "see what CI says".
-2. **Draft PRs run nothing.** Open a PR as a draft if the work is not verified.
-3. **To run CI again after a later push**, start it by hand once, when the work
-   is verified locally: `gh workflow run ci.yml --ref <branch> -f base=<the PR's base branch>`.
-   Check the result with `gh api repos/<owner>/<repo>/commits/<sha>/check-runs`.
-   A new push without a manual run leaves the old CI result on an old commit:
-   it is not evidence for the new head. Do not merge on stale evidence.
-4. **Browser tests run only when they can matter.** A PR runs the browser suite
-   only if it touches screens, shared libs, schema, browser tests, scripts, CI
-   or dependencies (the pattern is in `classify` in `.github/workflows/ci.yml`).
-   Pure business-logic and unit-test changes run type-check, lint and the full
-   unit/real-Postgres suite only. The full browser suite also runs nightly on
-   `main` (only if `main` changed), and a push to `main` runs the cheap checks.
-5. **Prefer unit tests (`tests/`, vitest) over browser tests (`e2e/`).** A
-   browser test costs 10–50× a unit test. Browser tests are for what truly needs
-   a browser: axe accessibility, real login/session behavior, security headers,
-   one click-through per major user flow.
+   locally (PLAYBOOK 4c).** Never push to "see what CI says".
+2. **The `ci` check is the single gate.** It needs the secret scan, type-check
+   and lint, all three unit-test shards and all four browser shards. It runs on
+   every push to a PR and on `main`; the browser suite also runs nightly. Never
+   merge on a stale result: the `ci` check must be green at the exact head.
+3. **Public repository = anything committed is public forever.** Never commit
+   secrets, real customer data, or private infrastructure identifiers (Neon
+   branch/endpoint ids, Vercel project/team ids, production URLs with
+   credentials). CI runs `scripts/check-secrets.mjs` (our rules; the allowlist
+   of reviewed harmless values is inside it) and `gitleaks` over the full git
+   history on every run — including docs-only changes. A failure blocks the
+   merge. Fix by removing the value (and, if it was real, telling Chris so the
+   credential is rotated — deleting it from a later commit does not un-publish
+   it). Do not add to `.gitleaksignore` or the script's allowlist without
+   saying why in the PR.
+4. **Workflow safety.** `.github/workflows/ci.yml` has `permissions: contents: read`,
+   uses no repository secrets, and only throwaway test values. Never use
+   `pull_request_target`, never add secrets to it, never echo environment values.
+5. **Prefer unit tests (`tests/`, vitest) over browser tests (`e2e/`).** Browser
+   tests are the slowest part of CI. Use them for axe accessibility, real
+   login/session behavior, security headers, one click-through per major flow.
 6. **Every new `e2e/*.spec.ts` must be assigned to a group in
-   `e2e/shards.json`** — CI fails otherwise (all groups now run on one runner).
+   `e2e/shards.json`** (browser-a … browser-d; CI fails otherwise). Keep the
+   groups balanced by real durations.
 7. **Never log in per test** — reuse the saved sessions from
    `e2e/global-setup.ts` (`test.use({ storageState })`).
-8. **Don't add jobs or steps casually.** Each job pays its own container and
-   `npm ci` (~1 minute). New one-off checks go in the `checks` job, before the
-   slow database steps. The maintenance guide is `docs/ARCHITECTURE.md` →
-   "Keeping CI cheap".
+8. **Keep the pipeline fast.** New one-off checks go in the `static` job (or
+   `secrets`), not a new job, unless they can run in parallel without delaying
+   the slowest job. The maintenance guide is `docs/ARCHITECTURE.md`.
 
 ## How to run things
 
@@ -259,10 +262,10 @@ npm run db:migrate:deploy          # apply pending migrations (CI/production)
 npm run db:seed                     # seeds business content (+ test accounts in CI)
 ```
 
-CI (`.github/workflows/ci.yml`) has two working jobs: one for type-check, lint,
-migrations and the unit/integration tests on a throwaway Postgres, and one for
-the production build + browser suite (only when the change can affect a
-browser). Docs-only changes skip both. See "CI cost budget" for when it runs.
+CI (`.github/workflows/ci.yml`) runs in parallel: a secret scan, type-check +
+lint, the unit/integration tests in 3 shards on throwaway Postgres databases,
+and the production build + browser suite in 4 shards. Docs-only changes skip the
+heavy jobs but never the secret scan. See "CI" above.
 
 **Browser tests locally:** cloud sandboxes include Chromium; PLAYWRIGHT_BROWSERS_PATH
 is preset and `playwright install` is forbidden. The build needs a font stand-in

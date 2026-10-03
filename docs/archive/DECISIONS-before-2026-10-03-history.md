@@ -3627,7 +3627,7 @@ estimate/purchasing/docs changes. Migration safety check and local type/lint
 checks pass; full CI is required before declaring this done.
 
 The documentation warns previews share production DB. Created isolated Neon
-branch dev-codex-prelaunch-interest-20260930 (br-bold-rain-b74uzbdy, project
+branch dev-codex-prelaunch-interest-20260930 (<neon-branch-id>, project
 jolly-term-08991992, 0.25 CU, 5-minute auto-suspend) and applied the exact new
 migration SQL there in a transaction; all three tables/columns were inspected.
 The local Prisma migration runner could not connect from this sandbox; it
@@ -3663,7 +3663,7 @@ in full because the first attempt's reasoning was wrong, not just its
 outcome:**
 
 1. Reused the existing Neon branch `dev-codex-prelaunch-interest-20260930`
-   (`br-bold-rain-b74uzbdy`), believing — incorrectly — that it was
+   (`<neon-branch-id>`), believing — incorrectly — that it was
    empty, based on its `written_data_bytes: 0` stat. **This was a wrong
    inference on my part.** Neon branches are always a full copy-on-write
    copy of the parent's data at fork time; "zero bytes written" means

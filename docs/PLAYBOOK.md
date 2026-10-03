@@ -82,8 +82,8 @@ Rules while implementing:
 ## Step 4 — Verify locally before any push
 
 Local verification takes ~5 minutes to set up and routinely catches failures
-that would cost a billed CI run each (and GitHub shows only the first 10
-failures per step, so one CI run rarely shows them all).
+that would otherwise fail in CI (GitHub shows only the first 10 failures per
+step, so one CI run rarely shows them all, and a red run is noise for Chris).
 
 ### 4a. Fast checks (every time)
 
@@ -212,8 +212,9 @@ check OK.
 3. `docs/ROADMAP.md`: anything out of scope you noticed.
 4. `docs/OWNER-INPUTS.md`: any new decision Chris needs (new ID) or any
    answer applied (status updated).
-5. Commit, then **push once**. Each extra push cancels the running CI and
-   bills the partial run.
+5. Commit, then push. Each push to a PR starts a fresh CI run and cancels the
+   older one; CI is free (public repo) but waiting on it is not, so push when
+   the work is verified locally.
 
 ## Step 7 — Open the PR
 

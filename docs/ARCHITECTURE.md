@@ -348,52 +348,51 @@ Never rely on hiding a nav link as the only protection for anything.
 
 A final `ci` job (the historical required-check name) succeeds only if every job above succeeded — for the browser shards, GitHub reports the matrix as a whole, so one failing shard fails the gate. Vercel deploys previews for every PR and production on merge to `main` independently of this workflow.
 
-## Keeping CI cheap
+## CI layout and speed
 
-**Priority (owner, 2026-10-03): fewer billed Actions minutes.** This replaces the earlier 2026-10-02 goal of a 5-minute wall-clock run, which was met by spreading the browser suite over three runners and so cost more minutes. The short version is in `AGENTS.md` ("CI cost budget").
+**Priority (owner, 2026-10-03): fastest possible CI at equal or better quality.** The repository is public, so standard-runner Actions minutes are free; this replaces the same-day cost-saving design (one browser runner, CI only when a PR opens). The short version is in `AGENTS.md` ("CI"). Nothing was dropped: the same checks and tests run, spread over more machines, plus a new secret scan.
 
-### What a run is made of
+### What a run is made of (all jobs run side by side)
 
-| Job | Typical | What it's made of |
+| Job | What it does | Expected |
 |---|---|---|
-| classify | ~6s | decides what needs to run (docs-only, browser-relevant, or neither) |
-| static checks and tests | ~3.5 min | container 20s · npm ci 25s · typecheck 25s · lint 23s · migrations/health/upgrade drills ~15s · seed 3s · **vitest ~60s** |
-| production build and browser acceptance (only when `ui_changed`) | ~7–8 min | container 15s · npm ci 30s · migrate+seed 10s · `next build` ~35s · browser deps 16s · **all browser tests ~6 min on one runner** |
-| ci (gate) | ~4s | passes only if every job that had to run succeeded |
+| classify | decides docs-only vs code (checkout only, no install) | ~10s |
+| secret scan | `scripts/check-secrets.mjs` + gitleaks (pinned, checksum-verified) over the full git history; always runs | ~20s |
+| type-check, lint and repo checks | `npm ci`, then typecheck and lint at the same time, browser-group check, migration check | ~1–1.5 min |
+| unit tests ×3 | each shard: own Postgres, migrate, seed, `vitest --shard=N/3`; shard 1 also runs schema-health and migration-upgrade drills | ~1.5 min |
+| browser tests ×4 | each shard: own Postgres, migrate, seed, production build (cached), its spec group from `e2e/shards.json` | ~3 min |
+| ci (gate) | passes only if everything required passed | ~5s |
 
-Billed time rounds each job up to a whole minute, so fewer, longer jobs cost less than many short ones. Before 2026-10-03 a full run was five working jobs (~22 billed minutes); it is now two (~13 billed minutes for a browser-relevant change, ~5 for a logic-only change, ~1 for docs).
+Wall-clock for a full run is the slowest job (browser shards): fixed setup of roughly two minutes (container, `npm ci`, `next build`, browser OS libraries) plus about a minute of tests. Getting a browser run under about 2–3 minutes is not realistic with a full production build; unit/lint feedback is faster and arrives first.
 
 ### When CI runs
 
-- **Pull request:** when opened, reopened, or marked ready for review. Not on every push, and never for drafts.
-- **Run it again by hand** after a later push (once, after local verification): `gh workflow run ci.yml --ref <branch> -f base=<base branch>` or Actions → CI → Run workflow.
-- **Push to `main`:** type-check, lint and unit/integration tests only.
-- **Nightly (03:17 Denver):** the full suite including browser tests, only if `main` changed in the last day.
-- **Browser tests on a PR** run only when a changed path matches the pattern in the `classify` job (screens, `src/lib`, `prisma/`, `e2e/`, `scripts/`, CI, `package*.json`, config). Business logic in `src/domains/` and tests in `tests/` run the unit suite only. The trade-off, accepted by the owner: a logic change that breaks a screen is caught by the nightly run (or by the next UI PR), not before merge.
+- **Pull request:** on every push (new pushes cancel the older run). Pull requests from forks need approval for workflows (see below).
+- **Push to `main`:** everything.
+- **Nightly (03:17 Denver in summer):** everything on `main`.
+- **By hand:** Actions → CI → Run workflow, or `gh workflow run ci.yml --ref <branch> -f base=<base branch>`.
+- **Docs-only changes** (every file under `docs/` or `*.md`) skip type-check, unit and browser jobs; the secret scan and the gate still run.
+
+### Secret and private-identifier scanning
+
+- `scripts/check-secrets.mjs` (tests: `tests/check-secrets.test.ts`) flags live/real-length Stripe keys, webhook secrets, GitHub/AWS/Google/Slack/Resend/Twilio/Anthropic/OpenAI/Vercel tokens, private keys, database URLs with embedded passwords to non-local hosts, Neon/Vercel production identifiers, and committed `.env` files. It prints only a label, file, line, and the first 6 characters.
+- Intentional exceptions (the verified preview endpoint in `src/lib/preview-database-safety.ts`, obviously fake test values) are listed inside the script; fake-looking test strings reviewed once are in `.gitleaksignore`. Adding to either needs a stated reason in the PR.
+- gitleaks (`.gitleaks.toml`, default rules) scans every commit, because a secret removed in a later commit is still public.
+- **Owner-only settings GitHub requires a person to set** (agents cannot): Settings → Code security → enable *Secret scanning* and *Push protection* (free for public repos); Settings → Actions → General → *Fork pull request workflows* → require approval for all outside contributors.
 
 ### Rules when adding tests
 
-1. **Default to unit tests.** `tests/` (vitest, real Postgres) runs ~1,200 tests in about a minute; the same minute buys roughly 20 browser tests. Reserve `e2e/` for axe accessibility scans, real login/session/cookie behavior, security headers, and one full click-through per major user flow.
-2. **Assign every new spec file** in `e2e/shards.json` (the `checks` job runs `scripts/e2e-shard.mjs --check`). The groups no longer map to separate runners; `all` runs every group.
-3. **Read the real numbers.** After every browser run one notice prints per-file durations: `gh api repos/<owner>/<repo>/check-runs/<job_id>/annotations`. Job timings: `gh api repos/<owner>/<repo>/actions/runs/<run_id>/jobs`.
-4. **Reuse saved sessions.** `e2e/global-setup.ts` logs in once per role; tests use `test.use({ storageState })`.
-5. **Dependencies cost on every job** (`npm ci` runs in both). Check install time after adding one.
-6. **Build cache.** `.next/cache` is restored keyed on `package-lock.json`.
-7. **Artifacts** (the Playwright report) are uploaded only when a run fails, kept 3 days: stored artifacts are billed too.
+1. **Default to unit tests.** `tests/` (vitest, real Postgres) is split over three runners; browser tests carry the heavy fixed cost.
+2. **Assign every new spec file** in `e2e/shards.json` (the `static` job runs `scripts/e2e-shard.mjs --check`). Rebalance groups from real durations (printed as notices after each browser run) when one shard becomes the slowest.
+3. **Reuse saved sessions.** `e2e/global-setup.ts` logs in once per role; tests use `test.use({ storageState })`.
+4. **Build cache and Playwright cache** are restored per run; keep `package-lock.json` changes deliberate because they invalidate both.
+5. **Artifacts** (the Playwright report) are uploaded only when a shard fails, kept 3 days.
 
-### If the browser job gets too slow
+### If a job gets slow
 
+- A browser shard is the slowest job: move a spec to the lightest group (`e2e/shards.json`) or add a fifth group; each new shard repeats about two minutes of setup in parallel, which costs nothing in a public repo.
 - A single spec over ~60s: split it or move assertions into unit tests.
-- More than ~10 minutes of browser tests: first remove or convert low-value browser tests; only then consider sharding again (it costs ~1.5 extra billed minutes per shard).
-
-### Documentation-only changes
-
-If every changed file is under `docs/` or ends in `.md`, the heavy jobs are skipped and the `ci` gate passes immediately. A change that mixes code and docs is a code change. The small classify/gate pair is kept (rather than `paths-ignore`) so a required `ci` check can still be reported if protected branches are enabled later.
-
-### Other ways to cut cost, not done
-
-- Making the repository public removes Actions charges entirely but exposes the source and business docs; not recommended.
-- Larger runners cost more per minute; not justified.
+- Unit tests: raise the shard count in the `unit` matrix and the `--shard=N/M` denominator together.
 
 ## Folder layout
 
