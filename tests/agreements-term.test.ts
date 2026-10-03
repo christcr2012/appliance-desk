@@ -140,6 +140,16 @@ describe("termination policy", () => {
     expect(quote.effectiveOn.toISOString()).toBe("2026-11-01T06:00:00.000Z");
     expect(quote.remainingTermMonths).toBe(2);
   });
+
+  it("moves to the following anniversary when notice passes the next billing date", () => {
+    const quote = quoteEarlyTermination(
+      agreementForQuote(),
+      { ...policyBase, noticeDays: 5 },
+      new Date("2026-10-30T18:00:00Z"),
+    );
+    expect(quote.effectiveOn.toISOString()).toBe("2026-12-01T07:00:00.000Z");
+    expect(quote.remainingTermMonths).toBe(1);
+  });
 });
 
 describe("term mutations", () => {
@@ -202,7 +212,7 @@ describe("term mutations", () => {
       lateFeeGraceDays: 5,
       lateFeeCents: 500,
       lateFeePercent: 10,
-      taxRatePermille: 73,
+      taxRatePermille: 7_300,
       lines: [
         {
           id: "line-old",
@@ -229,6 +239,7 @@ describe("term mutations", () => {
         customerId: "cust-1",
         serviceAddressId: "addr-1",
         termMonths: 12,
+        taxRatePermille: 7_300,
       }),
       select: { id: true },
     });
@@ -274,7 +285,7 @@ describe("term mutations", () => {
         customerId: "cust-1",
         kind: "auto_renew",
         details: expect.objectContaining({ enabled: false }),
-      }),
+      },
     });
     expect(
       (mocks.agreementUpdate.mock.calls[0]?.[0] as { data: Record<string, unknown> }).data,
