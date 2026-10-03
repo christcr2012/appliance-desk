@@ -266,7 +266,7 @@ appliance screens), `docs/audits/Package-8-*.md`, `docs/audits/Package-1-*.md`
 
 ### Owner inputs / gates
 
-None required to build. Reorder-point feature (O17B) only if justified.
+Three owner answers gate the money rules in item 14 (pickup/return billing) and must be collected before that work is built: **IN-24** (a customer-caused late return bills by the day or by the whole month; company-caused delay is already decided: not billed), **IN-26** (if only part of an order is delivered, billing starts for the delivered items or waits for the whole order) and **IN-27** (whether the pickup day counts as a billable day). Nothing may bill on a guess. These answers do not gate asset numbering, the parts ledger/archival or scheduling, but no slice may be built until it has an approved design with literal schema and signatures (see `docs/designs/BATCH-C.md`, approval table at the top). Reorder-point feature (O17B) only if justified.
 
 ### Not in this batch
 

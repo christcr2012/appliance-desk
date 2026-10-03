@@ -7,8 +7,8 @@ the questions only he can answer.
 
 ---
 
-Read `AGENTS.md`, `docs/BUSINESS-RULES.md`, `docs/PLAN.md` (Batch C, item 14), `docs/DECISIONS.md` and
-`docs/OWNER-INPUTS.md` (IN-24), and `docs/designs/BATCH-C.md` (including the drift check at the top).
+Read `AGENTS.md`, `docs/BUSINESS-RULES.md`, `docs/PLAN.md` (Batch C, item 14) and
+`docs/OWNER-INPUTS.md` (IN-24). Do not read `docs/DECISIONS.md` end to end: search it for "IN-24", "pickup" and "billing" and open only those entries, and `docs/designs/BATCH-C.md` (including the drift check at the top).
 
 ## The owner's rule (2026-10-03, in his words)
 "I would also like billing to end upon appliance pick up or return by customer, but if pick up is later than
