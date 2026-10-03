@@ -1,4 +1,14 @@
 import { z } from "zod";
+
+const taxRatePercent = z.coerce
+  .number()
+  .min(0)
+  .max(100)
+  .refine(
+    (value) => Math.abs(value * 1000 - Math.round(value * 1000)) < 1e-8,
+    "Tax rate can have at most three decimal places.",
+  );
+
 export const businessSettingsSchema = z.object({
   publicBusinessName: z.string().trim().min(1).max(200),
   publicPhone: z.string().trim().min(1).max(30),
@@ -14,7 +24,9 @@ export const businessSettingsSchema = z.object({
   lateFeeGraceDays: z.coerce.number().int().min(0).max(90),
   lateFeeFlatDollars: z.coerce.number().min(0).max(100000),
   lateFeePercent: z.coerce.number().int().min(0).max(100),
-  taxRatePermille: z.coerce.number().int().min(0).max(1000),
+  // Owner-facing value is a normal percentage such as 7.375. The server
+  // converts it to integer thousandths of one percentage point for storage.
+  taxRatePercent,
   taxRateConfirmed: z.boolean(),
   sixMonthPrepaySetDollars: z.coerce.number().min(0).max(1000),
   sixMonthPrepaySingleDollars: z.coerce.number().min(0).max(1000),
