@@ -1,13 +1,15 @@
 # Archive — retired documents, kept for reference only
 
 Nothing in this folder is an instruction. These files were the working
-documents before the 2026-10-02 consolidation; they are kept so history,
+documents before the 2026-10-02 consolidation, or were later retired when they
+became too large for routine working context. They are kept so history,
 reasoning and evidence can be looked up. If anything here disagrees with
-`AGENTS.md`, `docs/STATUS.md`, `docs/PLAN.md` or `docs/PLAYBOOK.md`, the
-working file wins.
+`AGENTS.md`, `docs/STATUS.md`, `docs/PLAN.md`, `docs/PLAYBOOK.md`, or the
+current `docs/DECISIONS.md`, the working file wins.
 
 | File | What it was | Why you might open it |
 |---|---|---|
+| `DECISIONS-before-2026-10-03.md` | Retired index for the original decisions log, with the same warning convention as the other retired documents. The unchanged historical payload is linked from that file. | Look up a specific pre-2026-10-03 decision, dated citation, feature rationale, or old code comment that says “see docs/DECISIONS.md”. Do not read the historical payload end to end during normal work. |
 | `HANDOFF-2026-09-26-to-2026-10-02.md` | The session-by-session handoff log from the first build through Batch A (3,500 lines, newest first). | Evidence for a specific PR; the reasoning behind a test convention; what a given day's session verified. Code comments that cite "HANDOFF" point here. |
 | `STATUS-LOG.md` | Entries trimmed from `docs/STATUS.md` after they aged out. | Status of batches older than the last two. (Created when the first entry is trimmed.) |
 | `REPOSITORY_OVERVIEW-2026-09.md` | An early third-party overview of the repo. Describes the app as a maintenance ticketing system; out of date. | Historical curiosity only. |
