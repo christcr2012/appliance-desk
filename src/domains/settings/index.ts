@@ -37,6 +37,16 @@ const DEFAULT_SETTINGS = {
   referralRewardCents: 2500,
   draftReservationHoldDays: 7,
   inspectionChecklist: [] as unknown,
+  // Batch B policy fields: null means the owner has not decided yet.
+  earlyTerminationFeeCents: null as number | null,
+  earlyTerminationFeePercent: null as number | null,
+  earlyTerminationFeeCapCents: null as number | null,
+  earlyTerminationNoticeDays: null as number | null,
+  unusedTermTreatment: null as string | null,
+  autoRenewNoticeDays: null as number | null,
+  autoRenewTermsVersion: null as string | null,
+  renewalTermsText: null as string | null,
+  terminationTermsText: null as string | null,
   updatedAt: new Date(0),
 };
 

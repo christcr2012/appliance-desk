@@ -5,14 +5,14 @@
 `docs/archive/STATUS-LOG.md`. The long history before 2026-10-02 is in
 `docs/archive/HANDOFF-2026-09-26-to-2026-10-02.md`.
 
-Last updated: 2026-10-02 · `main` = `f272f51`
+Last updated: 2026-10-03 · `main` = `9b5860b` (this file was stale from 2026-10-02 until now)
 
 ## Batch table
 
 | Batch | Status | PR / branch | Evidence | Notes |
 |---|---|---|---|---|
 | A — Critical integrity & platform safety | **MERGED** | #136 (2026-10-02) | Full CI green; real-Postgres concurrency and adversarial auth tests | Audit registers stay open; nothing in A claims a B–F item. |
-| B — Billing, provider reconciliation & financial ledger | **NEXT** | — | — | Needs owner policy inputs for renewal/termination/auto-renew financial contracts (see Owner inputs). Everything not depending on them proceeds. |
+| B — Billing, provider reconciliation & financial ledger | **IN PROGRESS** | Merged: #141 (receipts), #145 (B1 ledger core), #146 (B2 reconciliation). Open: `ai/claude/batch-b-term-and-tax` (WU-B10) | Code and tests exist for WU-B1–B9 (provider ops, Stripe customer/subscription idempotency, receipts and allocations, referrals, refunds, credits, late fees, reconciliation page and cron). WU-B10 pieces in the open PR with local full-suite evidence. | Remaining: WU-B10 follow-ups (below), WU-B11 reports/statements on the ledger, WU-B12 docs for the ledger tables and rules, acceptance ledger. Blocked on owner: IN-20 (when a fixed term starts), IN-19 (termination/renewal policy values, blocks Batch D screens only). |
 | C — Rental-to-service operations, custody, inventory & purchasing | NOT STARTED | — | — | Depends on B's ledger primitives where money is touched. |
 | D — Owner/customer control plane, website, evidence & privacy | NOT STARTED | — | — | Uses B contracts for renewal/cancel UI. |
 | E — Communications, reporting, growth, branding & accessibility | NOT STARTED | — | — | Google (O32) only if GW prerequisites are ready; otherwise one later PR. |
@@ -41,6 +41,18 @@ deny-by-default (#131), CI parallelized and sharded (#136, #137).
 - Chris plans to upgrade the Neon plan for protected branches and per-preview
   database branching; not done yet.
 
+## Batch B — what is left (as of 2026-10-03)
+
+- **Done in the WU-B10 PR:** Colorado billing-period helper with DST tests,
+  early-termination quote/request, renewal draft, auto-renew consent, tax
+  rounding helpers (thousandth-percent), policy fields exposed in settings.
+- **Not done, honestly:** (1) nothing sets a fixed-term agreement's `endDate`,
+  so the WU-B4 Stripe stop date is inert and termination/renewal refuse to run
+  on real agreements until IN-20 is answered; (2) tax rate storage, settings
+  screen, agreement snapshot and Stripe tax-rate creation still use tenths of a
+  percent (IN-17 follow-up); (3) renewal drafts carry no appliance assignments
+  and nothing acts on auto-renew consent yet; (4) WU-B11 and WU-B12.
+
 ## Open items carried across batches
 
 - Historical review threads: ~50 remain open in
@@ -65,6 +77,8 @@ See `docs/OWNER-INPUTS.md` for the full register. The ones Batch B needs:
   decision).
 
 ## Session log (last two batches only)
+
+- **2026-10-03 (Claude)** — Reviewed repo state (STATUS was behind: B1/B2 had merged). Built WU-B10 mechanism on `ai/claude/batch-b-term-and-tax`: tests ran locally against a throwaway Postgres. Found the fixed-term end-date gap (IN-20). Chris asked for stacked PRs in smaller chunks (see DECISIONS).
 
 - **2026-10-02 (later)** — Design documents written for Batches B–F
   (`docs/designs/`), with the rule that implementation models build only

@@ -838,6 +838,55 @@ what was and wasn't built.
   invoice never gets a second, larger fee later even if it falls
   behind again.
 
+## Fixed terms, renewal, early termination and tax rounding (Batch B, 2026-10-03)
+
+Mechanism only: no screen exposes any of this yet (Batch D). Every number the
+owner has not decided is stored as null, and null means "not available" — it
+is never replaced by a default.
+
+- **Billing dates are Colorado calendar dates.** An agreement's billing
+  anchor day is kept for its whole life: period N starts on the anchor's
+  day-of-month N months later, computed from the anchor each time (a 31st
+  anchor bills Feb 28/29, Mar 31, Apr 30 and does not drift). Periods tile
+  with no gap or overlap across daylight-saving changes
+  (`billingPeriodFor` in `src/lib/business-date.ts`). No proration inside a
+  month.
+- **Early termination can only take effect on a billing anniversary.**
+  Effective date = the first anniversary on or after (request date + notice
+  days), counted from the next billing date. If that falls past the end of the
+  term, nothing remains to charge.
+- **Early-termination fee** = min(cap, max(flat fee, remaining rent × percent)),
+  where remaining rent is the monthly total × the whole billing periods from
+  the effective date to the end of the term. Percent amounts round half up to
+  the cent. Zero whole months remaining means a zero fee.
+- **Termination policy** lives in `BusinessSettings` (flat fee, percent, cap,
+  notice days, unused-term treatment REFUND / CREDIT / RETAIN, terms text). It
+  is "set" only when notice days, the treatment and at least one fee value are
+  present and valid; `0` is a deliberate answer, null is not. Each quote carries
+  a policy version (a fingerprint of every value and the terms text) so a
+  request made against an older quote is refused.
+- **Requesting early termination records it; it does not end the agreement.**
+  Ending still goes through the normal close path on the effective date.
+  OWNER/ADMIN only.
+- **A prepaid term needs owner review.** The quote reports the unused prepaid
+  rent but does not decide how a free month or prepay discount is settled
+  (flagged `prepaidReviewRequired`).
+- **Renewal** creates a linked DRAFT copy of the lines and prices. It must start
+  the day after the current term ends, is allowed once, never charges a deposit
+  again, and does not copy appliance assignments (the appliances stay on the
+  current agreement until it ends).
+- **Auto-renew** consent is recorded only for the renewal-terms version the owner
+  currently publishes, with a consent record each time it is turned on or off.
+  Turning it off never ends the agreement. Nothing yet acts on the consent: no
+  job creates the renewal automatically.
+- **Sales tax rounding** (owner decision IN-17): rates are exact to 0.001
+  percentage point, held in thousandths of a percent (7.375% is 7375). Tax is
+  computed per line, rounded half away from zero to the cent, then summed, so an
+  invoice's tax can differ by a cent or two from taxing the subtotal once. The
+  existing stored rate (tenths of a percent) converts exactly (73 becomes 7300).
+  Helpers are in `src/domains/billing/tax.ts`; the stored rate and the settings
+  screen still use tenths until the follow-up that moves them.
+
 ## Cross-cutting desk tools (2026-09-28)
 
 Task #44 of the September 2026 build plan. Small tools shared across

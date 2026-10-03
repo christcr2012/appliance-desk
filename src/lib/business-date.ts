@@ -84,6 +84,53 @@ export function businessDateEnd(key: string): Date {
   return new Date(midnight(addCalendarDays(key, 1)).getTime() - 1000);
 }
 
+/**
+ * Last whole second of the Colorado business date that contains `date`.
+ * Same boundary Stripe `cancel_at` uses, exposed for any caller that holds an
+ * instant rather than a date key.
+ */
+export function businessEndOfDay(date: Date): Date {
+  return businessDateEnd(businessDateKey(date));
+}
+
+function daysInMonth(year: number, month1: number): number {
+  return new Date(Date.UTC(year, month1, 0)).getUTCDate();
+}
+
+/** Anniversary date key `monthsAhead` months after `anchorKey`, same day-of-month, clamped to the month's last day. */
+function anniversaryKey(anchorKey: string, monthsAhead: number): string {
+  const [year, month, day] = anchorKey.split("-").map(Number);
+  const index = year * 12 + (month - 1) + monthsAhead;
+  const targetYear = Math.floor(index / 12);
+  const targetMonth = (index % 12) + 1;
+  const targetDay = Math.min(day, daysInMonth(targetYear, targetMonth));
+  return `${String(targetYear).padStart(4, "0")}-${String(targetMonth).padStart(2, "0")}-${String(targetDay).padStart(2, "0")}`;
+}
+
+/**
+ * Anniversary billing period number `monthsAhead` for an agreement whose
+ * billing anchor is `anchor` (BUSINESS-RULES: same day each month, no
+ * proration). Period 0 starts on the anchor's Colorado date. Each period is
+ * computed from the anchor, never chained from the previous one, so a Jan 31
+ * anchor bills Feb 28, Mar 31, Apr 30 rather than drifting to the 28th.
+ * `start` is the Colorado midnight that opens the period; `end` is the
+ * Colorado midnight that opens the next one (exclusive), so periods tile with
+ * no gap or overlap even across daylight-saving changes.
+ */
+export function billingPeriodFor(
+  anchor: Date,
+  monthsAhead: number,
+): { start: Date; end: Date } {
+  if (!Number.isInteger(monthsAhead) || monthsAhead < 0) {
+    throw new Error("monthsAhead must be a whole number of months, zero or more.");
+  }
+  const anchorKey = businessDateKey(anchor);
+  return {
+    start: midnight(anniversaryKey(anchorKey, monthsAhead)),
+    end: midnight(anniversaryKey(anchorKey, monthsAhead + 1)),
+  };
+}
+
 export function addBusinessDays(date: Date, days: number): Date {
   return midnight(addCalendarDays(businessDateKey(date), days));
 }
