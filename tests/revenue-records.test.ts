@@ -13,6 +13,7 @@ vi.mock("@/lib/session", () => ({ requireRole: m.role }));
 vi.mock("@/lib/prisma", () => ({ prisma: { $transaction: m.tx } }));
 
 import {
+  cashRevenuePeriod,
   getRevenueRecords,
   revenuePeriod,
 } from "@/domains/billing/revenue-records";
@@ -64,12 +65,16 @@ beforeEach(() => {
   );
 });
 
-it("uses Colorado business-month boundaries and excludes future timestamps", () => {
+it("keeps rate metrics on UTC month while cash uses Colorado business month", () => {
   expect(revenuePeriod(asOf, true)).toEqual({
+    gte: new Date("2026-10-01T00:00:00.000Z"),
+    lte: asOf,
+  });
+  expect(cashRevenuePeriod(asOf, true)).toEqual({
     gte: new Date("2026-09-01T06:00:00.000Z"),
     lte: asOf,
   });
-  expect(revenuePeriod(asOf, false)).toEqual({ lte: asOf });
+  expect(cashRevenuePeriod(asOf, false)).toEqual({ lte: asOf });
 });
 
 it("reconciles sum/count and bounded stable receipt rows in one snapshot", async () => {
