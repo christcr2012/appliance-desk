@@ -1,4 +1,4 @@
-import type { RefundReason } from "@prisma/client";
+import type { Prisma, RefundReason } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getStripeClient } from "@/lib/stripe";
 import { assertActiveTeamActor } from "@/lib/team-actor";
@@ -25,7 +25,7 @@ async function executeStripeRefund(input: {
   claim: ClaimedRefund;
   amountCents: number;
   metadata: Record<string, string>;
-  onSuccess: (tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0], refundId: string) => Promise<void>;
+  onSuccess: (tx: Prisma.TransactionClient, refundId: string) => Promise<void>;
 }): Promise<void> {
   const stripe = getStripeClient();
   const result = await runProviderCall(() =>
@@ -297,7 +297,8 @@ export async function issueInvoiceRefund(
       (allocation) =>
         allocation.receipt?.stripeChargeId && allocation.amountCents >= input.amountCents,
     );
-    if (!source?.receipt?.stripeChargeId) {
+    const stripeChargeId = source?.receipt?.stripeChargeId ?? null;
+    if (!stripeChargeId) {
       throw new Error(
         "This refund spans multiple Stripe charges; automatic multi-charge refunds are not defined in Batch B.",
       );
@@ -322,7 +323,7 @@ export async function issueInvoiceRefund(
       claim: {
         providerOpId: claim.opId,
         idempotencyKey: claim.idempotencyKey,
-        stripeChargeId: source.receipt.stripeChargeId,
+        stripeChargeId,
       },
     };
   });
