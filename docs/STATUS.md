@@ -98,6 +98,8 @@ See `docs/OWNER-INPUTS.md` for the full register. The ones Batch B needs:
 
 ## Session log (last two batches only)
 
+- **2026-10-03 (Claude, CI cost)** — Actions minutes ran out on day 3. Rebuilt CI to cost ~half per run and run far less often (see AGENTS.md "CI cost budget", DECISIONS 2026-10-03). Verified on #149 head f622231 via a manual run: `ci` green (checks 173s, browser 353s). Local browser-test recipe added (PLAYBOOK 4c). #147/#148/#149 are stacked and unmerged; Batch B is not complete.
+
 - **2026-10-03 (Claude, locked terms)** — Chris: terms must be changeable system-wide without touching existing agreements, 30-day notice for month-to-month, per-customer customization; review fixes ride the next PR. Built locked terms + the 5 Codex fixes on a branch stacked on the term-start PR.
 
 - **2026-10-03 (Claude, later)** — Chris answered IN-20 (terms start at delivery) and said policy values must be settable in the app. Built both on a branch stacked on #147; local full-suite evidence in the PR.
