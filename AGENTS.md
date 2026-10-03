@@ -129,6 +129,11 @@ resulting behavior are verified.
   toggles — must be a stored setting editable in the app (with a reasonable
   starting value), never a hard-coded constant. If something truly must stay
   in code, say why in the PR.
+  Every such setting must be explained **in the screen itself**, in plain
+  words anyone can follow (Chris, 2026-10-03): what the setting does, what each
+  choice means for a customer, the starting value and why it was chosen, who
+  can change it, and a way to restore the recommended value. No jargon, no
+  "see the docs".
 - **Design drift check at the start of every batch.** Approved designs for later
   batches were written before earlier batches changed the code. Before coding a
   batch, follow the drift check in `docs/designs/README.md`: read
