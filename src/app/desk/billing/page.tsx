@@ -72,6 +72,11 @@ export default async function BillingPage({
             label: "By customer (statements)",
             active: showStatements,
           },
+          {
+            href: "/desk/billing/reconciliation",
+            label: "Reconciliation",
+            active: false,
+          },
         ]}
       />
       <p className="mb-4 text-sm text-ink-soft">
