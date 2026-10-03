@@ -32,8 +32,32 @@ export function cancelAtSecondsFor(term: { termMonths: number | null; endDate: D
     : null;
 }
 
+/**
+ * The end date for an agreement whose owner/customer asked to end it early: the
+ * subscription must stop BEFORE the billing anniversary the agreement ends on, or
+ * Stripe would bill one more month. An early ending that falls on or after the
+ * natural term end changes nothing.
+ */
+export function cancelAtSecondsForAgreement(term: {
+  termMonths: number | null;
+  endDate: Date | null;
+  terminationEffectiveOn: Date | null;
+}): number | null {
+  const natural = cancelAtSecondsFor(term);
+  if (!term.terminationEffectiveOn) return natural;
+  const early = Math.floor((term.terminationEffectiveOn.getTime() - 1000) / 1000);
+  return natural === null || early < natural ? early : natural;
+}
+
 export const termSyncKey = (renewalId: string, direction: TermSyncDirection) =>
   `subscription-term-${renewalId}-${direction}`;
+
+export const terminationSyncKey = (agreementId: string) => `subscription-termination-${agreementId}`;
+
+export function parseTerminationSyncKey(key: string): string | null {
+  const match = /^subscription-termination-(.+)$/.exec(key);
+  return match ? match[1]! : null;
+}
 
 export function parseTermSyncKey(key: string): { renewalId: string; direction: TermSyncDirection } | null {
   const match = /^subscription-term-(.+)-(extend|revert)$/.exec(key);
@@ -55,7 +79,7 @@ async function loadPair(renewalId: string) {
   if (!renewal?.renewedFromAgreementId) return null;
   const old = await prisma.rentalAgreement.findUnique({
     where: { id: renewal.renewedFromAgreementId },
-    select: { id: true, termMonths: true, endDate: true, stripeSubscriptionId: true },
+    select: { id: true, termMonths: true, endDate: true, terminationEffectiveOn: true, stripeSubscriptionId: true },
   });
   if (!old) return null;
   return { renewal, old, subscriptionId: renewal.stripeSubscriptionId ?? old.stripeSubscriptionId };
@@ -68,8 +92,12 @@ export async function desiredSubscriptionTerm(renewalId: string, direction: Term
   const { renewal, old } = pair;
   // An extend that is overtaken by a cancellation is moot; the revert covers it.
   if (direction === "extend" && renewal.status === "CANCELLED") return { moot: true as const, subscriptionId: pair.subscriptionId };
-  const term = direction === "extend" ? renewal : old;
-  return { moot: false as const, subscriptionId: pair.subscriptionId, cancelAt: cancelAtSecondsFor(term) };
+  const cancelAt =
+    direction === "extend"
+      ? cancelAtSecondsFor(renewal)
+      : // Giving the old term back must not undo an early ending that was asked for meanwhile.
+        cancelAtSecondsForAgreement(old);
+  return { moot: false as const, subscriptionId: pair.subscriptionId, cancelAt };
 }
 
 /** Stripe replays the stored answer for a repeated idempotency key (including a failure), so a retry uses a new key. */
@@ -131,6 +159,86 @@ export async function syncSubscriptionTerm(
 export async function extendConfirmed(renewalId: string): Promise<boolean> {
   const op = await prisma.providerOperation.findUnique({
     where: { idempotencyKey: termSyncKey(renewalId, "extend") },
+    select: { status: true },
+  });
+  return op?.status === "SUCCEEDED";
+}
+
+/** The end date Stripe should have for an agreement that is being ended early. */
+export async function desiredTerminationEnd(agreementId: string) {
+  const agreement = await prisma.rentalAgreement.findUnique({
+    where: { id: agreementId },
+    select: {
+      status: true,
+      termMonths: true,
+      endDate: true,
+      terminationEffectiveOn: true,
+      stripeSubscriptionId: true,
+    },
+  });
+  if (!agreement?.stripeSubscriptionId || !agreement.terminationEffectiveOn) return null;
+  // Already ended or cancelled: the close path cancels the subscription itself.
+  if (agreement.status !== "ACTIVE") {
+    return { moot: true as const, subscriptionId: agreement.stripeSubscriptionId };
+  }
+  return {
+    moot: false as const,
+    subscriptionId: agreement.stripeSubscriptionId,
+    cancelAt: cancelAtSecondsForAgreement(agreement),
+  };
+}
+
+/**
+ * Tell Stripe to stop billing before the anniversary an early ending falls on.
+ * Same durable-operation pattern as `syncSubscriptionTerm`; never throws for a
+ * provider problem (reconciliation retries it).
+ */
+export async function syncTerminationEnd(agreementId: string): Promise<TermSyncResult> {
+  const desired = await desiredTerminationEnd(agreementId);
+  if (!desired) return "skipped";
+
+  const claim = await prisma.$transaction((tx) =>
+    claimProviderOperation(tx, {
+      kind: "SUBSCRIPTION_UPDATE",
+      subjectType: "RentalAgreement",
+      subjectId: agreementId,
+      idempotencyKey: terminationSyncKey(agreementId),
+    }),
+  );
+  if (claim.done) return "done";
+
+  if (desired.moot) {
+    await prisma.$transaction((tx) =>
+      completeProviderOperation(tx, claim.opId, { status: "SUCCEEDED", providerObjectId: desired.subscriptionId }),
+    );
+    return "done";
+  }
+
+  const stripe = getStripeClient();
+  const key = await stripeKeyForAttempt(claim.opId, claim.idempotencyKey);
+  const result = await runProviderCall(() =>
+    stripe.subscriptions.update(
+      desired.subscriptionId,
+      { cancel_at: desired.cancelAt ?? "" },
+      { idempotencyKey: key },
+    ),
+  );
+  await prisma.$transaction((tx) =>
+    completeProviderOperation(
+      tx,
+      claim.opId,
+      result.ok
+        ? { status: "SUCCEEDED", providerObjectId: desired.subscriptionId }
+        : { status: result.outcome, error: result.error },
+    ),
+  );
+  return result.ok ? "done" : "pending";
+}
+
+/** Has Stripe confirmed the early end date for this agreement? (No subscription means nothing to confirm.) */
+export async function terminationEndConfirmed(agreementId: string): Promise<boolean> {
+  const op = await prisma.providerOperation.findUnique({
+    where: { idempotencyKey: terminationSyncKey(agreementId) },
     select: { status: true },
   });
   return op?.status === "SUCCEEDED";

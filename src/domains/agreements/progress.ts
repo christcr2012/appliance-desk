@@ -6,6 +6,8 @@ type ProgressInput = {
   billingStartedAt: Date | null;
   billingBlockedReason: string | null;
   signature: { signedAt: Date | null } | null;
+  /** The system queued this renewal because the customer agreed to auto-renew (no signature exists). */
+  createdByAutoRenew?: boolean;
   lines: { assignments: unknown[] }[];
   jobs: { id: string; type: string; status: string }[];
 };
@@ -36,7 +38,9 @@ export function agreementProgress(a: ProgressInput) {
   const milestones = [
     {
       label: "Signature",
-      state: signed
+      state: a.createdByAutoRenew
+        ? "Renews automatically (the customer agreed to auto-renew)"
+        : signed
         ? "Signed"
         : a.status === "AWAITING_SIGNATURE"
           ? "Awaiting signature"
@@ -70,8 +74,9 @@ export function agreementProgress(a: ProgressInput) {
       }
     : a.status === "SCHEDULED"
       ? {
-          label:
-            "Signed renewal. It starts on its start date; until then the equipment stays on the current rental. Nothing to do now.",
+          label: a.createdByAutoRenew
+            ? "Automatic renewal. The customer agreed to auto-renew, so it starts on its start date and continues month to month; until then the equipment stays on the current rental. It is cancelled automatically if they turn auto-renew off. Nothing to do now."
+            : "Signed renewal. It starts on its start date; until then the equipment stays on the current rental. Nothing to do now.",
           href: null,
         }
     : !a.lines.length

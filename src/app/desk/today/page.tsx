@@ -47,6 +47,7 @@ const CATEGORIES: Record<ExceptionCategory, { label: string; action: string }> =
       action: "Review appliance",
     },
     RENEWAL_NOT_STARTED: { label: "Renewal did not start", action: "Review renewal" },
+    EARLY_ENDING_NOT_DONE: { label: "Early ending not carried out", action: "Review ending" },
   };
 
 export default async function TodayPage() {

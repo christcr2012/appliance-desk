@@ -14,6 +14,9 @@ import {
   type TerminationPolicy,
   type UnusedTermTreatment,
 } from "./term-policy";
+import { cancelWithdrawnAutoRenewals } from "./auto-renew";
+import { syncTerminationEnd } from "@/domains/billing/subscription-term";
+import { renewalCreateData } from "./renewal-data";
 import { snapshotAutoRenew, snapshotTerminationPolicy } from "./terms-snapshot";
 
 export {
@@ -268,6 +271,17 @@ export async function requestEarlyTermination(
     if (agreement.terminationRequestedAt) {
       throw new Error("An early termination has already been requested for this agreement.");
     }
+    // A renewal someone made by hand (draft, sent or signed) contradicts ending early: sort
+    // that out first. An automatic one (from the customer's auto-renew) is cancelled below.
+    const handMadeRenewal = await tx.rentalAgreement.findFirst({
+      where: { renewedFromAgreementId: agreementId, status: { not: "CANCELLED" }, createdByAutoRenew: false },
+      select: { id: true },
+    });
+    if (handMadeRenewal) {
+      throw new Error(
+        "This rental has a renewal in progress. Cancel the renewal first, then request the early ending.",
+      );
+    }
     const current = quoteEarlyTermination(termAgreement, policy, now);
     if (!sameQuote(current, quote)) {
       throw new Error("The numbers changed since this quote was made. Review the new quote and try again.");
@@ -302,6 +316,18 @@ export async function requestEarlyTermination(
       },
     });
   });
+  // After the request is saved: stop an automatic renewal, and tell the card processor to
+  // stop billing before the ending date. Failures are retried by the nightly passes.
+  try {
+    await cancelWithdrawnAutoRenewals(actor.userId, agreementId);
+  } catch (error) {
+    console.error(`Could not cancel the automatic renewal of ${agreementId} yet:`, error);
+  }
+  try {
+    await syncTerminationEnd(agreementId);
+  } catch (error) {
+    console.error(`Could not move the billing end date of ${agreementId} yet:`, error);
+  }
 }
 
 /**
@@ -329,6 +355,9 @@ export async function renewAgreement(
     if (!old.termMonths || !old.endDate) {
       throw new Error("Only a fixed-term agreement with a recorded end date can be renewed.");
     }
+    if (old.terminationRequestedAt) {
+      throw new Error("This rental is ending early, so it can't be renewed.");
+    }
     const firstDayAfterTerm = businessDateKey(new Date(businessEndOfDay(old.endDate).getTime() + 1000));
     if (businessDateKey(input.startOn) !== firstDayAfterTerm) {
       throw new Error(
@@ -347,31 +376,10 @@ export async function renewAgreement(
     const holdDays = settings?.draftReservationHoldDays ?? 7;
     const lines = await tx.rentalLine.findMany({ where: { agreementId: old.id } });
     const created = await tx.rentalAgreement.create({
-      data: {
-        customerId: old.customerId,
-        serviceAddressId: old.serviceAddressId,
+      data: renewalCreateData(old, lines, {
         termMonths: input.termMonths,
-        depositCents: 0,
-        damageWaiverCents: old.damageWaiverCents,
-        lateFeeGraceDays: old.lateFeeGraceDays,
-        lateFeeCents: old.lateFeeCents,
-        lateFeePercent: old.lateFeePercent,
-        taxRateMilliPercent: old.taxRateMilliPercent,
-        paidInFullInAdvance: false,
-        freeMonthGranted: false,
-        renewedFromAgreementId: old.id,
-        // The agreed start: signing the renewal early must not start it early.
-        startDate: new Date(businessEndOfDay(old.endDate).getTime() + 1000),
         reservationExpiresAt: addBusinessDays(new Date(), holdDays),
-        lines: {
-          create: lines.map((line) => ({
-            label: line.label,
-            monthlyPriceCents: line.monthlyPriceCents,
-            listPriceCents: line.listPriceCents,
-            prepayDiscountCentsPerMonth: line.prepayDiscountCentsPerMonth,
-          })),
-        },
-      },
+      }),
     });
     await tx.auditLog.create({
       data: {
@@ -450,4 +458,13 @@ export async function setAutoRenew(
       },
     });
   });
+  if (!input.enabled) {
+    // Turning it off also cancels a renewal the system already queued. If this fails, the
+    // nightly pass cancels it, and the renewal can never start while auto-renew is off.
+    try {
+      await cancelWithdrawnAutoRenewals(actor.userId, agreementId);
+    } catch (error) {
+      console.error(`Could not cancel the automatic renewal of ${agreementId} yet:`, error);
+    }
+  }
 }

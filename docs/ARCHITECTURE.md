@@ -240,7 +240,8 @@ full reasoning behind the pattern.
   attempts a new charge itself.
 - **Starting signed renewals** (added 2026-10-03, IN-22) — a Vercel Cron job
   (`vercel.json`, once a day at 07:10 UTC, always after midnight in Denver) hits
-  `src/app/api/cron/start-renewals/route.ts`, which calls `startDueRenewals()`
+  `src/app/api/cron/start-renewals/route.ts`, which runs the whole nightly rental pass in order:
+  `runAutoRenewals()` (`auto-renew.ts`: queue month-to-month renewals for customers who agreed, cancel withdrawn ones), `runDueTerminations()` (`termination-execution.ts`: carry out agreed early endings, invoice the fee) and `startDueRenewals()`
   (`src/domains/agreements/renewal-start.ts`). Same `CRON_SECRET` protection.
   Safe to run twice; a renewal that cannot start is reported in the Today list.
 - **Daily database backup** (added 2026-09-29, part of a proactive

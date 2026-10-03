@@ -8,6 +8,7 @@ import {
   agreementTermExpiredException,
   applianceMaintenanceDueException,
   billingBlockedException,
+  earlyEndingNotDoneException,
   missingRepairCostException,
   overdueJobException,
   pastDueInvoiceException,
@@ -67,6 +68,7 @@ export async function getExceptions(): Promise<ExceptionItem[]> {
     activeTermAgreements,
     rentedAppliances,
     stuckRenewals,
+    stuckEndings,
   ] = await Promise.all([
     canViewFinance ? prisma.rentalAgreement.findMany({
       where: { billingBlockedReason: { not: null } },
@@ -178,9 +180,31 @@ export async function getExceptions(): Promise<ExceptionItem[]> {
         customer: { select: { user: { select: { name: true, email: true } } } },
       },
     }),
+    canViewFinance ? prisma.rentalAgreement.findMany({
+      where: {
+        status: "ACTIVE",
+        terminationEffectiveOn: { lt: now },
+      },
+      select: {
+        id: true,
+        terminationEffectiveOn: true,
+        paidInFullInAdvance: true,
+        customer: { select: { user: { select: { name: true, email: true } } } },
+      },
+    }) : Promise.resolve([]),
   ]);
 
   const items: ExceptionItem[] = [
+    ...stuckEndings
+      .filter((a) => a.terminationEffectiveOn !== null)
+      .map((a) =>
+        earlyEndingNotDoneException({
+          id: a.id,
+          terminationEffectiveOn: a.terminationEffectiveOn as Date,
+          prepaid: a.paidInFullInAdvance,
+          customerName: customerDisplayName(a.customer),
+        }),
+      ),
     ...stuckRenewals
       .filter((a): a is typeof a & { startDate: Date } => a.startDate !== null)
       .map((a) =>
