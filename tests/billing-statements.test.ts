@@ -1,8 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-
-// Consolidated statements (Task #72 follow-on, docs/DECISIONS.md
-// 2026-09-28) — grouping one customer's invoices by property and rolling
-// up totals. See src/domains/billing/statements.ts.
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const customerFindUnique = vi.fn();
 const customerFindMany = vi.fn();
@@ -16,14 +12,26 @@ vi.mock("@/lib/prisma", () => ({
   },
 }));
 
+function payment(
+  amountCents: number,
+  receivedOn = new Date("2026-09-10T18:00:00Z"),
+  receiptAmountCents = amountCents,
+) {
+  return {
+    amountCents,
+    receipt: { receivedOn, amountCents: receiptAmountCents },
+  };
+}
+
 function invoice(overrides: Record<string, unknown> = {}) {
   return {
     id: "inv-1",
     invoiceNumber: 1,
     status: "OPEN",
-    billingPeriodStart: new Date("2026-09-01"),
-    billingPeriodEnd: new Date("2026-10-01"),
-    dueDate: new Date("2026-09-05"),
+    createdAt: new Date("2026-09-01T18:00:00Z"),
+    billingPeriodStart: new Date("2026-09-01T06:00:00Z"),
+    billingPeriodEnd: new Date("2026-10-01T06:00:00Z"),
+    dueDate: new Date("2026-09-05T06:00:00Z"),
     subtotalCents: 4000,
     discountCents: 0,
     taxCents: 0,
@@ -31,22 +39,30 @@ function invoice(overrides: Record<string, unknown> = {}) {
     amountDueCents: 4000,
     amountPaidCents: 0,
     lineItems: [],
-    agreement: { serviceAddress: { id: "addr-1", line1: "1 Main St", line2: null, city: "Greeley", state: "CO", zip: "80631" } },
+    payments: [],
+    creditApplications: [],
+    refunds: [],
+    agreement: {
+      serviceAddress: {
+        id: "addr-1",
+        line1: "1 Main St",
+        line2: null,
+        city: "Greeley",
+        state: "CO",
+        zip: "80631",
+      },
+    },
     ...overrides,
   };
 }
 
 describe("getCustomerStatement", () => {
-  beforeEach(() => {
-    customerFindUnique.mockReset();
-  });
+  beforeEach(() => customerFindUnique.mockReset());
 
   it("returns null for a customer that doesn't exist", async () => {
     customerFindUnique.mockResolvedValue(null);
     const { getCustomerStatement } = await import("@/domains/billing/statements");
-
-    const result = await getCustomerStatement("missing");
-    expect(result).toBeNull();
+    await expect(getCustomerStatement("missing")).resolves.toBeNull();
   });
 
   it("groups invoices under their property's address", async () => {
@@ -59,16 +75,23 @@ describe("getCustomerStatement", () => {
         invoice({
           id: "inv-2",
           invoiceNumber: 2,
-          agreement: { serviceAddress: { id: "addr-2", line1: "2 Main St", line2: null, city: "Greeley", state: "CO", zip: "80631" } },
+          agreement: {
+            serviceAddress: {
+              id: "addr-2",
+              line1: "2 Main St",
+              line2: null,
+              city: "Greeley",
+              state: "CO",
+              zip: "80631",
+            },
+          },
         }),
       ],
     });
     const { getCustomerStatement } = await import("@/domains/billing/statements");
-
     const result = await getCustomerStatement("cust-1");
 
-    expect(result?.properties).toHaveLength(2);
-    expect(result?.properties.map((p) => p.addressLabel)).toEqual([
+    expect(result?.properties.map((property) => property.addressLabel)).toEqual([
       "1 Main St, Greeley, CO 80631",
       "2 Main St, Greeley, CO 80631",
     ]);
@@ -82,72 +105,132 @@ describe("getCustomerStatement", () => {
       invoices: [invoice({ agreement: null })],
     });
     const { getCustomerStatement } = await import("@/domains/billing/statements");
-
     const result = await getCustomerStatement("cust-1");
 
-    expect(result?.properties).toHaveLength(1);
     expect(result?.properties[0].addressLabel).toBe("No property on file");
     expect(result?.customerName).toBe("jane@example.com");
   });
 
-  it("computes running totals across properties, and balance as amountDue - amountPaid", async () => {
-    customerFindUnique.mockResolvedValue({
-      id: "cust-1",
-      companyName: null,
-      user: { name: "Pat Landlord", email: "pat@example.com" },
-      invoices: [
-        invoice({ id: "inv-1", invoiceNumber: 1, amountDueCents: 4000, amountPaidCents: 1000 }),
-        invoice({
-          id: "inv-2",
-          invoiceNumber: 2,
-          amountDueCents: 5000,
-          amountPaidCents: 5000,
-          agreement: { serviceAddress: { id: "addr-2", line1: "2 Main St", line2: null, city: "Greeley", state: "CO", zip: "80631" } },
-        }),
-      ],
-    });
-    const { getCustomerStatement } = await import("@/domains/billing/statements");
-
-    const result = await getCustomerStatement("cust-1");
-
-    expect(result?.totalDueCents).toBe(9000);
-    expect(result?.totalPaidCents).toBe(6000);
-    expect(result?.totalBalanceCents).toBe(3000);
-    const addr1 = result?.properties.find((p) => p.serviceAddressId === "addr-1");
-    expect(addr1?.totalBalanceCents).toBe(3000);
-  });
-
-  it("counts only OPEN/PARTIALLY_PAID/DELINQUENT invoices as open", async () => {
+  it("derives invoice balances from receipt allocations, credits and refunds", async () => {
     customerFindUnique.mockResolvedValue({
       id: "cust-1",
       companyName: null,
       user: { name: "Pat", email: "pat@example.com" },
       invoices: [
-        invoice({ id: "inv-1", status: "PAID" }),
-        invoice({ id: "inv-2", status: "DELINQUENT" }),
-        invoice({ id: "inv-3", status: "WRITTEN_OFF" }),
+        invoice({
+          amountDueCents: 5000,
+          amountPaidCents: 9999, // stale projection must not be trusted
+          payments: [payment(3000)],
+          creditApplications: [
+            { amountCents: 500, createdAt: new Date("2026-09-11T18:00:00Z") },
+          ],
+          refunds: [
+            { amountCents: 1000, createdAt: new Date("2026-09-12T18:00:00Z") },
+          ],
+        }),
       ],
     });
     const { getCustomerStatement } = await import("@/domains/billing/statements");
-
     const result = await getCustomerStatement("cust-1");
-    expect(result?.openInvoiceCount).toBe(1);
+
+    expect(result?.properties[0].invoices[0]).toMatchObject({
+      amountPaidCents: 2500,
+      balanceCents: 2500,
+    });
+  });
+
+  it("reconciles opening + invoices - receipt allocations - credits + refunds = closing, without counting overpayment twice", async () => {
+    customerFindUnique.mockResolvedValue({
+      id: "cust-1",
+      companyName: null,
+      user: { name: "Pat Landlord", email: "pat@example.com" },
+      invoices: [
+        invoice({
+          id: "inv-unpaid",
+          invoiceNumber: 1,
+          amountDueCents: 4000,
+          creditApplications: [
+            { amountCents: 1000, createdAt: new Date("2026-09-08T18:00:00Z") },
+          ],
+        }),
+        invoice({
+          id: "inv-partial",
+          invoiceNumber: 2,
+          amountDueCents: 5000,
+          payments: [payment(3000)],
+          refunds: [
+            { amountCents: 500, createdAt: new Date("2026-09-15T18:00:00Z") },
+          ],
+        }),
+        invoice({
+          id: "inv-overpayment-source",
+          invoiceNumber: 3,
+          amountDueCents: 2000,
+          // Whole receipt was $50; only $20 is allocated here. The $30 excess
+          // lives as customer credit and must not be subtracted again yet.
+          payments: [payment(2000, new Date("2026-09-20T18:00:00Z"), 5000)],
+        }),
+      ],
+    });
+    const { getCustomerStatement } = await import("@/domains/billing/statements");
+    const result = await getCustomerStatement("cust-1");
+
+    expect(result?.reconciliation).toEqual({
+      openingBalanceCents: 0,
+      invoiceChargesCents: 11_000,
+      receiptAllocationsCents: 5_000,
+      creditsAppliedCents: 1_000,
+      refundsCents: 500,
+      closingBalanceCents: 5_500,
+    });
+    expect(result?.totalBalanceCents).toBe(5_500);
+  });
+
+  it("moves pre-period ledger events into the opening balance", async () => {
+    customerFindUnique.mockResolvedValue({
+      id: "cust-1",
+      companyName: null,
+      user: { name: "Pat", email: "pat@example.com" },
+      invoices: [
+        invoice({
+          createdAt: new Date("2026-08-01T18:00:00Z"),
+          billingPeriodStart: new Date("2026-08-01T06:00:00Z"),
+          amountDueCents: 4000,
+          payments: [payment(1000, new Date("2026-08-10T18:00:00Z"))],
+        }),
+        invoice({ id: "inv-sep", invoiceNumber: 2, amountDueCents: 2000 }),
+      ],
+    });
+    const { getCustomerStatement } = await import("@/domains/billing/statements");
+    const result = await getCustomerStatement("cust-1", {
+      periodStart: new Date("2026-09-01T06:00:00Z"),
+      periodEnd: new Date("2026-10-01T05:59:59Z"),
+    });
+
+    expect(result?.reconciliation.openingBalanceCents).toBe(3000);
+    expect(result?.reconciliation.invoiceChargesCents).toBe(2000);
+    expect(result?.reconciliation.closingBalanceCents).toBe(5000);
   });
 });
 
 describe("getCustomersWithOpenBalances", () => {
-  beforeEach(() => {
-    customerFindMany.mockReset();
-  });
+  beforeEach(() => customerFindMany.mockReset());
 
-  it("sums each customer's open-invoice balance and sorts largest-owed first", async () => {
+  it("uses ledger events for balance, filters paid-up customers and sorts largest owed first", async () => {
     customerFindMany.mockResolvedValue([
       {
         id: "cust-1",
         companyName: null,
         isPropertyManager: false,
         user: { name: "Small Balance", email: "a@example.com" },
-        invoices: [{ amountDueCents: 1000, amountPaidCents: 0 }],
+        invoices: [
+          {
+            amountDueCents: 1000,
+            payments: [],
+            creditApplications: [],
+            refunds: [],
+          },
+        ],
         _count: { serviceAddresses: 1 },
       },
       {
@@ -156,20 +239,45 @@ describe("getCustomersWithOpenBalances", () => {
         isPropertyManager: true,
         user: { name: "Pat Landlord", email: "pat@example.com" },
         invoices: [
-          { amountDueCents: 4000, amountPaidCents: 1000 },
-          { amountDueCents: 5000, amountPaidCents: 0 },
+          {
+            amountDueCents: 4000,
+            payments: [payment(1000)],
+            creditApplications: [],
+            refunds: [],
+          },
+          {
+            amountDueCents: 5000,
+            payments: [],
+            creditApplications: [],
+            refunds: [],
+          },
         ],
         _count: { serviceAddresses: 3 },
       },
+      {
+        id: "cust-paid",
+        companyName: null,
+        isPropertyManager: false,
+        user: { name: "Paid Up", email: "paid@example.com" },
+        invoices: [
+          {
+            amountDueCents: 2000,
+            payments: [payment(2000)],
+            creditApplications: [],
+            refunds: [],
+          },
+        ],
+        _count: { serviceAddresses: 1 },
+      },
     ]);
     const { getCustomersWithOpenBalances } = await import("@/domains/billing/statements");
-
     const result = await getCustomersWithOpenBalances();
 
-    expect(result[0].id).toBe("cust-2");
-    expect(result[0].balanceCents).toBe(8000);
-    expect(result[0].propertyCount).toBe(3);
-    expect(result[1].id).toBe("cust-1");
-    expect(result[1].balanceCents).toBe(1000);
+    expect(result.map((row) => row.id)).toEqual(["cust-2", "cust-1"]);
+    expect(result[0]).toMatchObject({
+      balanceCents: 8000,
+      propertyCount: 3,
+      openInvoiceCount: 2,
+    });
   });
 });
