@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import type { EstimateStatus, Prisma } from "@prisma/client";
-import { sendEmail } from "@/lib/email";
+import { sendCustomerEmail } from "@/lib/customer-email";
 import { getBusinessSettings } from "@/domains/settings";
 import { createDraftAgreementInTx } from "@/domains/agreements";
 import {
@@ -262,7 +262,8 @@ export function totalOneTimeCents(
   );
 }
 
-export async function sendEstimate(userId: string, estimateId: string) {
+/** Marks the estimate sent and emails the link. `emailed` is false when live customer email is off, so the owner can share the link by hand. */
+export async function sendEstimate(userId: string, estimateId: string): Promise<{ emailed: boolean; outcome?: string }> {
   const estimate = await prisma.estimate.findUniqueOrThrow({
     where: { id: estimateId },
     include: {
@@ -324,12 +325,13 @@ export async function sendEstimate(userId: string, estimateId: string) {
   parts.push("Review the full details and let us know if it works for you:");
   parts.push(`${appUrl}/estimate/${estimate.id}`);
 
-  await sendEmail({
+  const result = await sendCustomerEmail({
     to: recipientEmail,
     subject: `Estimate #${estimate.estimateNumber} from ${settings.publicBusinessName}`,
     text: parts.join("\n\n"),
     actionLabel: "View & respond to estimate",
   });
+  return { emailed: result.sent, outcome: result.outcome };
 }
 
 export async function sendEstimateFollowUpReminders(): Promise<{
@@ -372,7 +374,7 @@ export async function sendEstimateFollowUpReminders(): Promise<{
     if (!recipientEmail) continue;
 
     try {
-      await sendEmail({
+      const result = await sendCustomerEmail({
         to: recipientEmail,
         subject: `Following up on estimate #${estimate.estimateNumber}`,
         text: [
@@ -383,12 +385,17 @@ export async function sendEstimateFollowUpReminders(): Promise<{
           "If your plans have changed or you have questions, just reply to this email.",
         ].join("\n\n"),
         actionLabel: "View & respond to estimate",
+        // Same key for the same estimate send, so a retry within the provider's 24-hour window cannot email twice.
+        idempotencyKey: `estimate-follow-up-${estimate.id}-${estimate.sentAt.getTime()}`,
       });
+      // Email switched off (or not sent): leave it unmarked so it goes out once email is on.
+      if (!result.sent && result.outcome !== "UNKNOWN") continue;
+      // An unknown outcome (lost response) may have been delivered: record it so it is not sent a second time.
       await prisma.estimate.update({
         where: { id: estimate.id },
         data: { followUpSentForSentAt: estimate.sentAt },
       });
-      sent += 1;
+      if (result.sent) sent += 1;
     } catch (error) {
       console.error(
         "[estimates] Failed to send follow-up reminder",

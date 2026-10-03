@@ -1,9 +1,13 @@
 import { prisma } from "@/lib/prisma";
 import { getStripeClient } from "@/lib/stripe";
 import { businessDateEnd, businessDateKey } from "@/lib/business-date";
+import { isAutoRenewEnabled } from "@/domains/settings/auto-renew-switch";
+import { checkReminderDelivered } from "@/domains/notices";
+import { renewalReminderKey } from "@/domains/notices/renewal-reminder";
 import {
   claimProviderOperation,
   completeProviderOperation,
+  RetryLater,
   runProviderCall,
 } from "./provider-ops";
 
@@ -74,12 +78,22 @@ async function loadPair(renewalId: string) {
       endDate: true,
       stripeSubscriptionId: true,
       renewedFromAgreementId: true,
+      createdByAutoRenew: true,
+      startDate: true,
     },
   });
   if (!renewal?.renewedFromAgreementId) return null;
   const old = await prisma.rentalAgreement.findUnique({
     where: { id: renewal.renewedFromAgreementId },
-    select: { id: true, termMonths: true, endDate: true, terminationEffectiveOn: true, stripeSubscriptionId: true },
+    select: {
+      id: true,
+      termMonths: true,
+      endDate: true,
+      terminationEffectiveOn: true,
+      terminationRequestedAt: true,
+      renewalPreference: true,
+      stripeSubscriptionId: true,
+    },
   });
   if (!old) return null;
   return { renewal, old, subscriptionId: renewal.stripeSubscriptionId ?? old.stripeSubscriptionId };
@@ -90,6 +104,20 @@ export async function desiredSubscriptionTerm(renewalId: string, direction: Term
   const pair = await loadPair(renewalId);
   if (!pair || !pair.subscriptionId) return null;
   const { renewal, old } = pair;
+  // An automatic renewal only extends billing once the customer's reminder was delivered on time:
+  // until then Stripe keeps the old end date, so nothing is billed past the term for a renewal that cannot start.
+  if (direction === "extend" && renewal.createdByAutoRenew && renewal.status !== "CANCELLED") {
+    // The customer's current choice always wins: an opt-out or an early-ending request that has been
+    // saved but whose renewal has not been cancelled yet must never let billing be extended.
+    if (!(await isAutoRenewEnabled())) return null;
+    if (old.renewalPreference !== "AUTO_RENEW" || old.terminationRequestedAt !== null || renewal.status !== "SCHEDULED") {
+      return null;
+    }
+    const oldFull = await prisma.rentalAgreement.findUnique({ where: { id: old.id }, select: { endDate: true } });
+    if (!oldFull?.endDate || !renewal.startDate) return null;
+    const check = await checkReminderDelivered(prisma, renewalReminderKey(old.id, oldFull.endDate), renewal.startDate);
+    if (check !== "OK") return null;
+  }
   // An extend that is overtaken by a cancellation is moot; the revert covers it.
   if (direction === "extend" && renewal.status === "CANCELLED") return { moot: true as const, subscriptionId: pair.subscriptionId };
   const cancelAt =
@@ -117,14 +145,21 @@ export async function syncSubscriptionTerm(
   const desired = await desiredSubscriptionTerm(renewalId, direction);
   if (!desired) return "skipped";
 
-  const claim = await prisma.$transaction((tx) =>
-    claimProviderOperation(tx, {
-      kind: "SUBSCRIPTION_UPDATE",
-      subjectType: "RentalAgreement",
-      subjectId: renewalId,
-      idempotencyKey: termSyncKey(renewalId, direction),
-    }),
-  );
+  let claim;
+  try {
+    claim = await prisma.$transaction((tx) =>
+      claimProviderOperation(tx, {
+        kind: "SUBSCRIPTION_UPDATE",
+        subjectType: "RentalAgreement",
+        subjectId: renewalId,
+        idempotencyKey: termSyncKey(renewalId, direction),
+      }),
+    );
+  } catch (error) {
+    // Another worker is already making this same change: report it as still in progress instead of failing the caller.
+    if (error instanceof RetryLater) return "pending";
+    throw error;
+  }
   if (claim.done) return "done";
 
   if (desired.moot) {

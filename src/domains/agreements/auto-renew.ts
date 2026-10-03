@@ -1,9 +1,12 @@
 import { prisma } from "@/lib/prisma";
-import { addBusinessDays } from "@/lib/business-date";
+import { isAutoRenewEnabled } from "@/domains/settings/auto-renew-switch";
+import { businessDaysBetween } from "@/lib/business-date";
 import { syncSubscriptionTerm } from "@/domains/billing/subscription-term";
 import { cancelAgreement, lockRentalAgreementInTx } from "./index";
 import { renewalCreateData } from "./renewal-data";
 import { snapshotAutoRenew } from "./terms-snapshot";
+import { createNoticeInTx } from "@/domains/notices";
+import { composeRenewalReminder, renewalReminderKey } from "@/domains/notices/renewal-reminder";
 
 /**
  * Acting on a customer's auto-renew agreement.
@@ -27,13 +30,18 @@ export type AutoRenewRunResult = {
   problems: Array<{ agreementId: string; message: string }>;
 };
 
-/** Is the reminder window open for this agreement, and has the term not already run out? */
+/**
+ * Is the reminder window open for this agreement, and has the term not already run out? Counted
+ * in Colorado calendar days from today to the day the renewal starts (the day after the term's
+ * last day), the same way the reminder's delivery date is checked.
+ */
 export function autoRenewWindowOpen(
   agreement: { endDate: Date; noticeDays: number },
   now: Date,
 ): boolean {
   if (now.getTime() > agreement.endDate.getTime()) return false;
-  return addBusinessDays(agreement.endDate, -agreement.noticeDays).getTime() <= now.getTime();
+  const renewalStart = new Date(agreement.endDate.getTime() + 1000);
+  return businessDaysBetween(now, renewalStart) <= agreement.noticeDays;
 }
 
 type CreateOutcome = { created: true; renewalId: string } | { created: false };
@@ -73,6 +81,37 @@ async function createAutoRenewal(agreementId: string, now: Date): Promise<Create
         status: "SCHEDULED",
         createdByAutoRenew: true,
       }),
+    });
+    // The reminder is created with the renewal, in the same transaction: no renewal without its reminder.
+    const [settings, customer] = await Promise.all([
+      tx.businessSettings.findUnique({
+        where: { id: "singleton" },
+        select: { publicBusinessName: true, publicPhone: true, publicEmail: true },
+      }),
+      tx.customer.findUniqueOrThrow({
+        where: { id: old.customerId },
+        select: { user: { select: { name: true, email: true } } },
+      }),
+    ]);
+    const reminder = composeRenewalReminder({
+      customerName: customer.user.name ?? customer.user.email,
+      termMonths: old.termMonths,
+      termEndDate: old.endDate,
+      renewalStartDate: created.startDate ?? old.endDate,
+      monthlyTotalCents: lines.reduce((sum, line) => sum + line.monthlyPriceCents, 0),
+      lineLabels: lines.map((line) => line.label),
+      renewalTermsText: locked.termsText,
+      businessName: settings?.publicBusinessName ?? "Robinson Appliance Rentals",
+      businessPhone: settings?.publicPhone ?? "",
+      businessEmail: settings?.publicEmail ?? "",
+    });
+    await createNoticeInTx(tx, {
+      customerId: old.customerId,
+      agreementId: old.id,
+      kind: "RENEWAL_REMINDER",
+      dedupeKey: renewalReminderKey(old.id, old.endDate),
+      subject: reminder.subject,
+      body: reminder.body,
     });
     await tx.auditLog.create({
       data: {
@@ -123,6 +162,9 @@ export async function cancelWithdrawnAutoRenewals(
     },
   });
   let cancelled = 0;
+  // With the owner's master switch OFF every queued automatic renewal is withdrawn, even though the customer
+  // is still opted in: cancelling restores the billing stop date and withdraws the waiting reminder.
+  const switchOn = await isAutoRenewEnabled();
   for (const renewal of waiting) {
     const old = await prisma.rentalAgreement.findUnique({
       where: { id: renewal.renewedFromAgreementId! },
@@ -130,6 +172,7 @@ export async function cancelWithdrawnAutoRenewals(
     });
     if (!old) continue;
     const stillWanted =
+      switchOn &&
       old.status === "ACTIVE" && old.renewalPreference === "AUTO_RENEW" && !old.terminationRequestedAt;
     if (stillWanted) continue;
     try {
@@ -147,6 +190,8 @@ export async function cancelWithdrawnAutoRenewals(
 export async function runAutoRenewals(now = new Date()): Promise<AutoRenewRunResult> {
   const result: AutoRenewRunResult = { created: 0, cancelled: 0, problems: [] };
   result.cancelled = await cancelWithdrawnAutoRenewals(null);
+  // Cancelling withdrawn renewals above always runs. Queuing new ones needs the owner's master switch.
+  if (!(await isAutoRenewEnabled())) return result;
 
   const candidates = await prisma.rentalAgreement.findMany({
     where: {
@@ -169,4 +214,26 @@ export async function runAutoRenewals(now = new Date()): Promise<AutoRenewRunRes
     }
   }
   return result;
+}
+
+/**
+ * Keep the subscription's end date until the reminder is delivered on time, THEN extend it
+ * (before the term ends): billing must never run past the old term for a renewal that cannot
+ * start. Safe to run any number of times; also called right after an owner marks a reminder delivered.
+ */
+export async function extendBillingForDeliveredAutoRenewals(now = new Date()): Promise<number> {
+  if (!(await isAutoRenewEnabled())) return 0;
+  const waiting = await prisma.rentalAgreement.findMany({
+    where: { status: "SCHEDULED", createdByAutoRenew: true, startDate: { gt: now } },
+    select: { id: true },
+  });
+  let extended = 0;
+  for (const { id } of waiting) {
+    try {
+      if ((await syncSubscriptionTerm(id, "extend")) === "done") extended += 1;
+    } catch (error) {
+      console.error(`Could not move the billing end date for automatic renewal ${id} yet:`, error);
+    }
+  }
+  return extended;
 }

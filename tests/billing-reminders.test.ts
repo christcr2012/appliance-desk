@@ -19,8 +19,8 @@ vi.mock("@/lib/prisma", () => ({
   },
 }));
 
-vi.mock("@/lib/email", () => ({
-  sendEmail: (...args: unknown[]) => sendEmail(...args),
+vi.mock("@/lib/customer-email", () => ({
+  sendCustomerEmail: (...args: unknown[]) => sendEmail(...args),
 }));
 
 import { sendUpcomingBillingReminders } from "@/domains/billing/reminders";

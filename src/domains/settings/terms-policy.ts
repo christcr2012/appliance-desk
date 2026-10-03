@@ -103,6 +103,13 @@ export function termsPolicyUpdate(
   }
 
   const renewalNoticeDays = (renewalNotice as { value: number | null }).value;
+  if (renewalNoticeDays !== null && (renewalNoticeDays < 25 || renewalNoticeDays > 40)) {
+    return {
+      success: false,
+      message:
+        "Days of renewal notice: Colorado asks for the reminder 25 to 40 days before an automatic renewal, so enter a number from 25 to 40 (30 is recommended).",
+    };
+  }
   const renewalTermsText = (renewalText as { value: string | null }).value;
 
   return {

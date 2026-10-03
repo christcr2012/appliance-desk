@@ -586,6 +586,8 @@ do not start deferred features.
 
 ## Launch-readiness gates
 
+The plain-English list of every switch, key and decision needed for real customers is `docs/GO-LIVE-CHECKLIST.md` (owner request 2026-10-03: everything is built working in the code, off in previews and live in production only when the owner completes the listed step). Every PR that adds a switch or a provider dependency adds a line there.
+
 Discharged across Batches A–F. A gate is checked only with linked evidence.
 
 **Gate 1 — Critical findings (all eight must be closed; no "accept risk"):**

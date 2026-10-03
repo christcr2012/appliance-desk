@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { TurnOffAutoRenew } from "./turn-off-auto-renew";
 import { formatBusinessDate, formatBusinessTime } from "@/lib/business-date";
 import { getServerSession } from "@/lib/session";
 import { getPortalData } from "@/domains/portal";
@@ -84,6 +85,14 @@ export default async function AccountRentalsPage() {
                   <p className="text-sm font-medium text-green-700">
                     Paid in full, in advance — your first month was free.
                   </p>
+                )}
+                {a.status === "ACTIVE" && a.renewalPreference === "AUTO_RENEW" && (
+                  <div className="mt-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
+                    <p className="text-sm text-gray-900">
+                      Your rental is set to renew automatically. If you would rather it ended, you can turn that off here at any time before the renewal date.
+                    </p>
+                    <TurnOffAutoRenew agreementId={a.id} />
+                  </div>
                 )}
                 {a.depositCents > 0 && (
                   <p className="text-sm text-gray-600">

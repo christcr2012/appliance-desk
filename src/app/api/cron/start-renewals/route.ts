@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { startDueRenewals } from "@/domains/agreements/renewal-start";
-import { runAutoRenewals } from "@/domains/agreements/auto-renew";
+import { runAutoRenewals, extendBillingForDeliveredAutoRenewals } from "@/domains/agreements/auto-renew";
+import { sendPendingNotices } from "@/domains/notices";
 import { runDueTerminations } from "@/domains/agreements/termination-execution";
 
 // Fired once a day by Vercel Cron (see vercel.json). The nightly rental
@@ -27,6 +28,10 @@ export async function GET(request: Request): Promise<NextResponse> {
   if (autoRenewals.problems.length > 0) {
     console.error("[cron] Automatic renewals that could not be queued:", autoRenewals.problems);
   }
+  // Reminders created above are emailed now. While live customer email is off they stay "waiting".
+  const notices = await sendPendingNotices();
+  // A reminder that was just delivered releases the held billing-date extension.
+  const billingExtended = await extendBillingForDeliveredAutoRenewals();
   const terminations = await runDueTerminations();
   if (terminations.needsReview.length > 0) {
     console.error("[cron] Early endings that need attention:", terminations.needsReview);
@@ -40,6 +45,9 @@ export async function GET(request: Request): Promise<NextResponse> {
     blocked: result.blocked.length,
     autoRenewalsQueued: autoRenewals.created,
     autoRenewalsCancelled: autoRenewals.cancelled,
+    noticesSent: notices.sent,
+    noticesWaiting: notices.stillWaiting,
+    billingExtended,
     endedEarly: terminations.ended,
     earlyEndingFeeInvoices: terminations.feeInvoices,
     earlyEndingsNeedingAttention: terminations.needsReview.length,

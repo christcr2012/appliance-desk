@@ -9,6 +9,7 @@ import {
   applianceMaintenanceDueException,
   billingBlockedException,
   earlyEndingNotDoneException,
+  noticeWaitingException,
   missingRepairCostException,
   overdueJobException,
   pastDueInvoiceException,
@@ -69,6 +70,7 @@ export async function getExceptions(): Promise<ExceptionItem[]> {
     rentedAppliances,
     stuckRenewals,
     stuckEndings,
+    waitingNotices,
   ] = await Promise.all([
     canViewFinance ? prisma.rentalAgreement.findMany({
       where: { billingBlockedReason: { not: null } },
@@ -192,9 +194,28 @@ export async function getExceptions(): Promise<ExceptionItem[]> {
         customer: { select: { user: { select: { name: true, email: true } } } },
       },
     }) : Promise.resolve([]),
+    canViewFinance
+      ? prisma.customerNotice.findMany({
+          where: {
+            OR: [
+              { status: "PENDING" },
+              // A send that was interrupted may already have gone out: a person has to check.
+              { status: "SENDING", updatedAt: { lt: new Date(now.getTime() - 15 * 60_000) } },
+            ],
+          },
+          select: {
+            id: true,
+            createdAt: true,
+            customer: { select: { user: { select: { name: true, email: true } } } },
+          },
+        })
+      : Promise.resolve([]),
   ]);
 
   const items: ExceptionItem[] = [
+    ...waitingNotices.map((n) =>
+      noticeWaitingException({ id: n.id, createdAt: n.createdAt, customerName: customerDisplayName(n.customer) }),
+    ),
     ...stuckEndings
       .filter((a) => a.terminationEffectiveOn !== null)
       .map((a) =>

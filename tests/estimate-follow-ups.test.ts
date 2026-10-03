@@ -21,8 +21,8 @@ vi.mock("@/lib/prisma", () => ({
   },
 }));
 
-vi.mock("@/lib/email", () => ({
-  sendEmail: (...args: unknown[]) => sendEmail(...args),
+vi.mock("@/lib/customer-email", () => ({
+  sendCustomerEmail: (...args: unknown[]) => sendEmail(...args),
 }));
 
 vi.mock("@/domains/settings", () => ({
@@ -79,6 +79,16 @@ describe("sendEstimateFollowUpReminders", () => {
     });
   });
 
+  it("gives each follow-up a stable key so a retry cannot email the same estimate twice", async () => {
+    const sentAt = new Date("2026-09-20T00:00:00Z");
+    estimateFindMany.mockResolvedValue([estimate({ id: "est-1", sentAt, customerEmail: "jane@example.com" })]);
+    await sendEstimateFollowUpReminders();
+    await sendEstimateFollowUpReminders();
+    const keys = sendEmail.mock.calls.map((c) => c[0].idempotencyKey);
+    expect(keys[0]).toBe(`estimate-follow-up-est-1-${sentAt.getTime()}`);
+    expect(keys[1]).toBe(keys[0]);
+  });
+
   it("skips an estimate already followed up on for its current sentAt", async () => {
     const sentAt = new Date("2026-09-20T00:00:00Z");
     estimateFindMany.mockResolvedValue([
@@ -126,5 +136,16 @@ describe("sendEstimateFollowUpReminders", () => {
 
     expect(result).toEqual({ sent: 1, failed: 1 });
     expect(estimateUpdate).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not mark or count a follow-up when customer email is switched off, so it goes out once email is on", async () => {
+    const sentAt = new Date("2026-09-20T00:00:00Z");
+    estimateFindMany.mockResolvedValue([estimate({ id: "est-1", sentAt, customerEmail: "jane@example.com" })]);
+    sendEmail.mockResolvedValue({ sent: false });
+
+    const result = await sendEstimateFollowUpReminders();
+
+    expect(result).toEqual({ sent: 0, failed: 0 });
+    expect(estimateUpdate).not.toHaveBeenCalled();
   });
 });

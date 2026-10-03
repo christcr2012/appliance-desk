@@ -185,7 +185,10 @@ describe.skipIf(!enabled)("a signed renewal starts on its start date and hands e
     const { renewal, appliance } = await pair();
     const results = await Promise.all([startRenewalIfDue(renewal.id, onStart), startRenewalIfDue(renewal.id, onStart)]);
     expect(results.filter((r) => r.started)).toHaveLength(1);
-    expect(results.find((r) => !r.started)).toMatchObject({ reason: "NOT_SCHEDULED" });
+    // The second caller is turned away either because the first already started it, or because the first is still
+    // finishing the billing hand-off (it simply tries again later). Either way it never starts a second time.
+    const loser = results.find((r) => !r.started);
+    expect(loser && !loser.started ? loser.reason : null).toMatch(/^(NOT_SCHEDULED|BILLING_NOT_READY)$/);
     const open = await prisma.applianceAssignment.count({ where: { applianceId: appliance.id, unassignedAt: null } });
     expect(open).toBe(1);
   });

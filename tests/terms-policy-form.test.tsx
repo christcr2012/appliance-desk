@@ -21,7 +21,7 @@ it("shows every setting with a plain label, blank when nothing has been decided"
     "Days of notice the customer must give",
     "If a customer prepaid, what happens to the months they did not use?",
     "Wording customers will see about ending early",
-    "Days before the term ends that the customer is told it will renew",
+    "Days before the term ends that the customer is told it will renew (25 to 40)",
     "Wording customers will see when they agree to renew",
   ]) {
     expect(screen.getByLabelText(label)).toBeTruthy();

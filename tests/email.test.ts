@@ -22,12 +22,12 @@ describe("sendEmail", () => {
     process.env.RESEND_API_KEY = "test";
     emailsSend.mockResolvedValueOnce({
       data: null,
-      error: { name: "validation_error" },
+      error: { name: "validation_error", statusCode: 422 },
     });
     const { sendEmail } = await import("@/lib/email");
     expect(
       await sendEmail({ to: "a@example.test", subject: "Hi", text: "Hello" }),
-    ).toEqual({ sent: false });
+    ).toEqual({ sent: false, outcome: "REJECTED" });
   });
 
   it("adds an escaped postal address, opt-out links and headers, and reply inbox for marketing only", async () => {
@@ -74,7 +74,7 @@ describe("sendEmail", () => {
       text: "Hello there.",
     });
 
-    expect(result).toEqual({ sent: false });
+    expect(result).toEqual({ sent: false, outcome: "NOT_ATTEMPTED" });
     expect(emailsSend).not.toHaveBeenCalled();
   });
 
@@ -89,7 +89,7 @@ describe("sendEmail", () => {
       text: "Hello there.\n\nSecond paragraph.",
     });
 
-    expect(result).toEqual({ sent: true });
+    expect(result).toEqual({ sent: true, outcome: "SENT" });
     expect(emailsSend).toHaveBeenCalledTimes(1);
     const call = emailsSend.mock.calls[0][0];
     expect(call.to).toBe("a@example.com");
@@ -138,6 +138,16 @@ describe("sendEmail", () => {
     expect(html).toContain("&quot;quoted&quot;");
   });
 
+  it("treats a returned transport error with no status (response lost or unreadable) as UNKNOWN, not rejected", async () => {
+    process.env.RESEND_API_KEY = "test";
+    emailsSend.mockResolvedValueOnce({ data: null, error: { name: "application_error", statusCode: null } });
+    emailsSend.mockResolvedValueOnce({ data: null, error: { name: "internal_server_error", statusCode: 500 } });
+    const { sendEmail } = await import("@/lib/email");
+    const input = { to: "a@example.test", subject: "Hi", text: "Hello" };
+    expect(await sendEmail(input)).toEqual({ sent: false, outcome: "UNKNOWN" });
+    expect(await sendEmail(input)).toEqual({ sent: false, outcome: "UNKNOWN" });
+  });
+
   it("logs and returns { sent: false } instead of throwing when Resend errors", async () => {
     process.env.RESEND_API_KEY = "re_test_key";
     emailsSend.mockRejectedValue(new Error("network down"));
@@ -151,7 +161,7 @@ describe("sendEmail", () => {
       text: "Hello.",
     });
 
-    expect(result).toEqual({ sent: false });
+    expect(result).toEqual({ sent: false, outcome: "UNKNOWN" });
     errorSpy.mockRestore();
   });
 });

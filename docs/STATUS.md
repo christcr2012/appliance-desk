@@ -54,7 +54,8 @@ second stack, `batch-b-completion-*`, in this order. Tick each when merged:
 - [x] Renewals signed ahead of time get a "signed, starts later" (SCHEDULED) state (IN-22): nightly start, one-step hand-off, reports, exceptions (PR in this stack; tests `agreements-scheduled-renewal-integration`, `scheduled-renewal-rules`).
 - [x] Held-payment screen: owner resolves a held payment per case (IN-23): Billing → Held payments, recommended choice highlighted (tests `billing-held-payments-integration`, `held-payment-card`).
 - [x] Auto-renew and scheduled early-termination execution (nightly pass: month-to-month renewal queued for customers who agreed; agreed endings carried out with the fee invoiced, never auto-charged; prepaid rentals left for the owner; tests `agreements-auto-renew-and-termination-integration`, `auto-renew-termination-rules`). Pickup-based billing stop is Batch C (IN-24).
-- [ ] Term-change notices (IN-21): notice record and 30-day rule; email sending
+- [x] (renewal reminder part) Notices: saved record, held-until-delivered rule, Desk → Notices (tests `renewal-reminder`, `agreements-auto-renew-and-termination-integration`). Owner email switch built (Desk → Settings → Notifications). Still open: the month-to-month 30-day change notice, waiting on Chris's IN-21 answer.
+- [ ] Term-change notices (IN-21), month-to-month part: notice record and 30-day rule; email sending
       stays OFF until Chris approves live customer email.
 - [x] Out-of-order Stripe webhook cases (acceptance item 3): real-Postgres tests `billing-webhook-ordering-integration` (the code already handled them; now proven).
 
