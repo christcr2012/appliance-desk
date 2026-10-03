@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  billingPeriodFor,
   businessDateEnd,
+  businessEndOfDay,
   businessDateKey,
   businessDayBounds,
   businessMonthBounds,
@@ -104,6 +106,71 @@ describe("Colorado business calendar independent of server timezone", () => {
     );
     expect(formatBusinessTime(new Date("2026-11-01T08:30:00Z"))).toBe(
       "1:30 AM MST",
+    );
+  });
+});
+
+describe("anniversary billing periods", () => {
+  const iso = (d: Date) => d.toISOString();
+
+  it.each([
+    // anchor instant, monthsAhead, expected start, expected end
+    ["2026-03-08T19:00:00Z", 0, "2026-03-08T07:00:00.000Z", "2026-04-08T06:00:00.000Z"],
+    ["2026-03-08T19:00:00Z", 1, "2026-04-08T06:00:00.000Z", "2026-05-08T06:00:00.000Z"],
+    ["2026-11-01T19:00:00Z", 0, "2026-11-01T06:00:00.000Z", "2026-12-01T07:00:00.000Z"],
+    ["2026-11-01T19:00:00Z", 1, "2026-12-01T07:00:00.000Z", "2027-01-01T07:00:00.000Z"],
+    ["2026-12-15T19:00:00Z", 1, "2027-01-15T07:00:00.000Z", "2027-02-15T07:00:00.000Z"],
+  ])("anchor %s period %i keeps the Colorado calendar day", (anchor, n, start, end) => {
+    const period = billingPeriodFor(new Date(anchor), n);
+    expect(iso(period.start)).toBe(start);
+    expect(iso(period.end)).toBe(end);
+  });
+
+  it("a Mar 8 anchor still bills on the 8th a year later, after the clocks changed twice", () => {
+    expect(iso(billingPeriodFor(new Date("2026-03-08T19:00:00Z"), 12).start)).toBe(
+      "2027-03-08T07:00:00.000Z",
+    );
+  });
+
+  it("uses the Colorado date of the anchor, not the UTC date", () => {
+    // 05:30Z on Mar 9 is still the evening of Mar 8 in Colorado.
+    const period = billingPeriodFor(new Date("2026-03-09T05:30:00Z"), 0);
+    expect(iso(period.start)).toBe("2026-03-08T07:00:00.000Z");
+  });
+
+  it("clamps a 31st anchor to short months without drifting", () => {
+    const anchor = new Date("2026-01-31T19:00:00Z");
+    expect(iso(billingPeriodFor(anchor, 1).start)).toBe("2026-02-28T07:00:00.000Z");
+    expect(iso(billingPeriodFor(anchor, 2).start)).toBe("2026-03-31T06:00:00.000Z");
+    expect(iso(billingPeriodFor(anchor, 3).start)).toBe("2026-04-30T06:00:00.000Z");
+  });
+
+  it("honors a leap day", () => {
+    expect(iso(billingPeriodFor(new Date("2028-01-31T19:00:00Z"), 1).start)).toBe(
+      "2028-02-29T07:00:00.000Z",
+    );
+  });
+
+  it("periods tile with no gap or overlap across both DST changes", () => {
+    const anchor = new Date("2026-01-31T19:00:00Z");
+    for (let n = 0; n < 24; n++) {
+      expect(iso(billingPeriodFor(anchor, n).end)).toBe(iso(billingPeriodFor(anchor, n + 1).start));
+    }
+  });
+
+  it("rejects a negative or fractional month count", () => {
+    expect(() => billingPeriodFor(new Date(), -1)).toThrow();
+    expect(() => billingPeriodFor(new Date(), 1.5)).toThrow();
+  });
+});
+
+describe("businessEndOfDay", () => {
+  it("is the last second of the Colorado day, on a 23-hour and a 25-hour day", () => {
+    expect(businessEndOfDay(new Date("2026-03-08T12:00:00Z")).toISOString()).toBe(
+      "2026-03-09T05:59:59.000Z",
+    );
+    expect(businessEndOfDay(new Date("2026-11-01T12:00:00Z")).toISOString()).toBe(
+      "2026-11-02T06:59:59.000Z",
     );
   });
 });
