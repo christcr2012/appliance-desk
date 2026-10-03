@@ -343,7 +343,6 @@ describe("billing provider reconciliation", () => {
         subjectType: "Refund",
         subjectId: "refund-1",
         idempotencyKey,
-        staleAfterMs: 0,
       },
     );
     expect(mocks.refundCreate).toHaveBeenCalledWith(
@@ -386,6 +385,13 @@ describe("billing provider reconciliation", () => {
     });
     expect(mocks.providerFindMany).toHaveBeenCalledWith(
       expect.objectContaining({
+        where: {
+          OR: [
+            { status: "PENDING", updatedAt: { lte: expect.any(Date) } },
+            { status: "UNKNOWN" },
+            { status: "FAILED" },
+          ],
+        },
         orderBy: [{ updatedAt: "asc" }, { requestedAt: "asc" }],
       }),
     );
