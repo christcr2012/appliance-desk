@@ -80,8 +80,8 @@ a termination quote or start a renewal belong to Batch D, which owns those scree
 See `docs/OWNER-INPUTS.md` for the full register. Chris gave direction on
 2026-10-03: IN-19 use best practice and keep it editable (starting values now
 installed); IN-22 use best practice for a renewal signed in advance (built: see
-"Answered" below); IN-23 per-case choice with a recommended option (screen to be
-built, unchecked above). IN-22 and IN-23 are both built.
+"Answered" in OWNER-INPUTS); IN-23 per-case choice with a recommended option.
+IN-22 and IN-23 are both built.
 Still waiting on him: IN-21 (wording and approval for sending live customer
 emails; building continues with sending switched off) and IN-17's CPA check of the
 7.375% rate.

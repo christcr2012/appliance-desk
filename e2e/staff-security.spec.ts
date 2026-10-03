@@ -88,6 +88,7 @@ test.describe("staff permissions", () => {
   for (const route of [
     "/desk/fleet",
     "/desk/billing",
+    "/desk/billing/held-payments",
     "/desk/revenue",
     "/desk/settings",
     "/desk/agreements/new",
