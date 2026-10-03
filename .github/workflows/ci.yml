@@ -136,6 +136,14 @@ jobs:
     if: needs.classify.outputs.app_changed == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    env:
+      # `npm ci` runs `prisma generate`, which needs the variable to exist (no
+      # database is contacted in this job).
+      DATABASE_URL: postgresql://test:test@localhost:5432/appliance_desk_test
+      DIRECT_URL: postgresql://test:test@localhost:5432/appliance_desk_test
+      BETTER_AUTH_SECRET: ci-test-secret-not-for-production-use-only
+      BETTER_AUTH_URL: http://localhost:3000
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
     steps:
       - uses: actions/checkout@v4
 
