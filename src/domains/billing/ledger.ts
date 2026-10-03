@@ -1,4 +1,5 @@
 import type { InvoiceStatus, Prisma } from "@prisma/client";
+import { HELD_PAYMENT_STATUS } from "./payment-status";
 
 const OPEN_INVOICE_STATUSES = new Set<InvoiceStatus>([
   "OPEN",
@@ -232,6 +233,70 @@ export async function createReceiptWithAllocations(
   }
 
   return { receiptId: receipt.id, overpaymentCreditId };
+}
+
+/**
+ * Real money arrived (by card) for an invoice the owner had already written off
+ * or voided. The cash is recorded as received, but it is NOT applied to the
+ * closed invoice and it is NOT turned into spendable account credit: what to do
+ * with it is the owner's decision (docs/OWNER-INPUTS.md IN-23). It is kept as
+ * a receipt plus a `held` payment row, which counts for no balance, appears in
+ * the drift workbench, and still lets a later Stripe refund find it.
+ * Safe to call again for the same charge.
+ */
+export async function holdReceiptForClosedInvoice(
+  tx: Prisma.TransactionClient,
+  input: {
+    customerId: string;
+    invoiceId: string;
+    amountCents: number;
+    method: string;
+    receivedOn: Date;
+    stripeChargeId?: string | null;
+    stripePaymentIntentId?: string | null;
+  },
+): Promise<{ receiptId: string; created: boolean }> {
+  positiveInteger(input.amountCents, "Held payment amount");
+  await lockCustomerLedger(tx, input.customerId);
+
+  if (input.stripeChargeId) {
+    const existing = await tx.receipt.findUnique({
+      where: { stripeChargeId: input.stripeChargeId },
+      select: { id: true, customerId: true, amountCents: true },
+    });
+    if (existing) {
+      if (existing.customerId !== input.customerId || existing.amountCents !== input.amountCents) {
+        throw new Error("Stripe charge is already recorded against different receipt data.");
+      }
+      return { receiptId: existing.id, created: false };
+    }
+  }
+
+  const receipt = await tx.receipt.create({
+    data: {
+      customerId: input.customerId,
+      source: "STRIPE",
+      amountCents: input.amountCents,
+      method: input.method,
+      stripeChargeId: input.stripeChargeId ?? null,
+      receivedOn: input.receivedOn,
+      notes: "Held: the invoice was already written off or voided. Waiting for the owner's decision.",
+    },
+    select: { id: true },
+  });
+  await tx.payment.create({
+    data: {
+      invoiceId: input.invoiceId,
+      receiptId: receipt.id,
+      amountCents: input.amountCents,
+      method: input.method,
+      status: HELD_PAYMENT_STATUS,
+      stripePaymentIntentId: input.stripePaymentIntentId ?? null,
+      stripeChargeId: input.stripeChargeId ?? null,
+      notes: "Held for the owner: payment arrived after the invoice was closed.",
+    },
+  });
+  return { receiptId: receipt.id, created: true };
 }
 
 export async function recordFailedPaymentAttempt(

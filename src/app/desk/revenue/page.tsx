@@ -279,6 +279,8 @@ export default async function RevenuePage({
                           ))}
                       {row.unallocatedCents > 0 &&
                         ` · ${formatCents(row.unallocatedCents)} held as account credit`}
+                      {row.heldCents > 0 &&
+                        ` · ${formatCents(row.heldCents)} held for your decision (it arrived after the invoice was closed)`}
                     </p>
                     <p className="text-sm text-ink-soft">
                       {row.basis}

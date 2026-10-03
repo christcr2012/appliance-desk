@@ -467,13 +467,24 @@ describe("detectDrift", () => {
         updatedAt: new Date("2026-10-01T03:00:00Z"),
       },
     ]);
-    mocks.paymentFindMany.mockResolvedValue([
-      {
-        id: "pay-orphan",
-        invoiceId: "inv-2",
-        createdAt: new Date("2026-10-01T04:00:00Z"),
-      },
-    ]);
+    mocks.paymentFindMany.mockImplementation(async (args: { where: { status: unknown } }) =>
+      args.where.status === "held"
+        ? [
+            {
+              id: "pay-held",
+              invoiceId: "inv-3",
+              amountCents: 10_000,
+              createdAt: new Date("2026-10-01T04:30:00Z"),
+            },
+          ]
+        : [
+            {
+              id: "pay-orphan",
+              invoiceId: "inv-2",
+              createdAt: new Date("2026-10-01T04:00:00Z"),
+            },
+          ],
+    );
     mocks.customerFindMany.mockResolvedValue([
       {
         id: "cust-missing",
@@ -496,6 +507,7 @@ describe("detectDrift", () => {
         "LOCAL_ACTIVE_NO_SUB",
         "INVOICE_STATUS_MISMATCH",
         "PAYMENT_WITHOUT_RECEIPT",
+        "HELD_PAYMENT",
         "SUB_LIVE_BUT_LOCAL_CLOSED",
         "STRIPE_CUSTOMER_MISSING",
       ]),

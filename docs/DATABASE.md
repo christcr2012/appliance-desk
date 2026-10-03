@@ -108,7 +108,7 @@ in UTC and only converted to Mountain Time for display.
   optionally trace back to the Estimate that produced it — see above.
   `taxRateMilliPercent` (also on `BusinessSettings`) is stored as
   thousandths of a percent — `7375` means 7.375% (the old
-  `taxRatePermille` tenths column is deprecated and unused) — see `docs/BUSINESS-RULES.md`'s
+  `taxRatePermille` tenths column is deprecated: code never reads it, and a database trigger keeps it in step until a cleanup batch removes both) — see `docs/BUSINESS-RULES.md`'s
   "Sales tax" note for why. Batch B adds nullable renewal/auto-renew and
   early-termination snapshot fields; null means the owner policy has not
   been configured and the corresponding customer action must stay off.
@@ -156,14 +156,24 @@ same external object twice or losing the local link.
   Batch B owns (customer/subscription create or cancel, balance credit,
   refund). The deterministic `idempotencyKey`, status, provider object id,
   attempts and sanitized failure make provider/local drift observable and
-  recoverable (design D1/D2).
+  recoverable (design D1/D2). `kind` is CUSTOMER_CREATE, SUBSCRIPTION_CREATE,
+  SUBSCRIPTION_CANCEL, BALANCE_CREDIT or REFUND_CREATE; `status` is PENDING,
+  SUCCEEDED, FAILED, UNKNOWN or DRIFT; `subjectType`/`subjectId` name the local
+  record it is about (for example `RentalAgreement` and its id).
 - **Receipt** — one real-world payment event, whether Stripe or manual.
   One combined check is one receipt even when it is allocated across several
   invoices. `stripeChargeId` is unique for Stripe receipts so webhook replay
-  cannot create a second receipt for the same cash (design D6).
+  cannot create a second receipt for the same cash (design D6). `source` is
+  STRIPE or MANUAL, `method` is free text (card, check, cash...), `receivedOn`
+  is when the money moved, and `recordedByUserId` is who entered a manual one.
 - **Payment** — an allocation of a receipt to one invoice. It keeps the
   existing per-invoice shape and gains nullable `receiptId` for pre-Batch-B
-  rows; the Batch B backfill links those historical rows (design D6).
+  rows; the Batch B backfill links those historical rows (design D6). Its
+  `status` is free text: `succeeded` (or the older `SUCCEEDED`) means the money
+  applied, `failed` is an attempt, and `held` means a card payment that arrived
+  after the invoice was written off or voided — recorded, applied to nothing,
+  and not spendable until the owner decides (IN-23). The shared rule is in
+  `src/domains/billing/payment-status.ts`.
 - **CreditApplication** — an auditable, locked allocation of one
   `CustomerCredit` to one invoice. It is created together with the negative
   CREDIT invoice line and decrement of `remainingCents`, making double-spend
@@ -179,11 +189,17 @@ same external object twice or losing the local link.
 - **Refund** — money refunded from an already-paid invoice (a security
   deposit's own refund stays on `Deposit` below — different kind of
   money, its own existing record). Always has a reason and who
-  authorized it; never automatic.
+  authorized it; never automatic. `stripeRefundId` is set when the money went
+  back to a card (backed by a REFUND_CREATE provider operation); a refund kept
+  as account credit has no Stripe id and a matching `CustomerCredit` with
+  `sourceType = REFUND_TO_CREDIT` and `sourceId` = the refund id.
 - **CustomerCredit** — the local source of truth for an account-level
   credit. Batch B records its source (`sourceType`/`sourceId`/`side`),
   provider-delivery timestamp and per-invoice applications so a referral,
   refund-to-credit, or overpayment cannot mint or spend twice (design D3/D7).
+  `@@unique([sourceType, sourceId, side])` allows one credit per source and
+  side. `sourceType` values in use: RECEIPT_OVERPAYMENT, REFUND_TO_CREDIT and the
+  referral reward types; manual credits have none.
 - **WebhookEvent** — every Stripe webhook event this app has ever
   processed, by Stripe's own event id, so a duplicate delivery (webhook
   delivery is at-least-once) is never acted on twice.

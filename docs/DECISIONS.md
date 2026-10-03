@@ -67,8 +67,12 @@ once. Revisit if CI failures after pushing become frequent.
 
 Added `taxRateMilliPercent` to `BusinessSettings` and `RentalAgreement` (additive
 migration; existing values multiplied by 100, proven on a scratch database:
-73 became 7300). The old `taxRatePermille` columns stay, unused, so nothing is
-dropped; a later cleanup migration may remove them. Settings, the rental
+73 became 7300). The old `taxRatePermille` columns stay so nothing is dropped. Because
+production runs migrations before the new app takes over, a second migration
+(`20261003190000_tax_rate_columns_stay_in_step`) adds a database trigger that keeps
+the two columns in step in both directions, so the old app saving a rate mid-deploy
+(or a rollback) can never leave tax at zero (review finding on #152). A later cleanup
+migration removes the old columns and the trigger together. Settings, the rental
 builder, the public pricing page and Stripe tax-rate creation use the exact
 value; new agreements start with the owner's rate once it is CPA-confirmed.
 Stripe's rate list is read page by page so an existing rate is reused rather
@@ -160,3 +164,12 @@ a production build plus browser install is a fixed cost of about two minutes per
 runner. Chris must enable GitHub secret scanning/push protection and the fork
 pull-request approval setting himself (agents cannot reach those settings).
 
+
+### 2026-10-03 — Payments that arrive after a write-off are held, not credited (IN-23, review on #154)
+
+First version turned such a payment into spendable account credit. Codex pointed
+out (rightly) that this chose the money policy before Chris had, and that a later
+Stripe refund of that charge could not find the payment. Now the payment is a
+receipt plus a `held` payment row: recorded as cash received, applied to nothing,
+not spendable, visible to the owner, and refundable through the normal refund
+event. Resolving a held payment waits on IN-23.

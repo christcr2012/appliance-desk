@@ -200,7 +200,7 @@ export function describeSnapshotTerms(raw: unknown): TermsDisclosure {
     ending,
     autoRenew: renew
       ? {
-          noticeLine: `You can opt out of automatic renewal with ${daysLabel(renew.noticeDays)} notice.`,
+          noticeLine: `Automatic renewal is optional and does not start unless it is turned on for your agreement. If it is turned on, you can turn it off with ${daysLabel(renew.noticeDays)} notice.`,
           termsText: renew.termsText,
         }
       : null,

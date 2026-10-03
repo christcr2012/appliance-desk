@@ -1,4 +1,5 @@
 import { pathToFileURL } from "node:url";
+import { SUCCESSFUL_PAYMENT_STATUSES } from "../src/domains/billing/payment-status";
 import type { PrismaClient } from "@prisma/client";
 
 export type ReceiptBackfillResult = {
@@ -7,7 +8,7 @@ export type ReceiptBackfillResult = {
   failedAttemptsSkipped: number;
 };
 
-const SUCCESS_STATUSES = ["succeeded", "SUCCEEDED"];
+const SUCCESS_STATUSES = [...SUCCESSFUL_PAYMENT_STATUSES];
 
 /**
  * Link historical successful Payment allocations to Receipt rows. Failed
