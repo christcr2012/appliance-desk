@@ -53,7 +53,7 @@ export function TermsPolicyForm({ defaultValues }: { defaultValues: TermsPolicyF
         </p>
       )}
 
-      <p className="rounded-lg bg-gray-50 px-4 py-3 text-sm text-gray-800">
+      <p className="rounded-lg border border-gray-300 px-4 py-3 text-sm text-gray-900">
         Changes here apply only to rental agreements that are sent for signing <strong>after</strong> you
         save. Every agreement already sent keeps the terms it was sent with, so changing these never
         changes a customer&rsquo;s current 6- or 12-month rental.
