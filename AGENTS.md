@@ -215,7 +215,10 @@ runs are meant to cost far less. The rules:
 1. **Local first, then push once, then open the PR.** CI starts when a PR is
    opened (or marked ready for review), **not** on every push to it. Run the
    local recipe in `docs/PLAYBOOK.md` (typecheck, lint, the whole vitest suite)
-   until it is clean, push, open the PR. Never push to "see what CI says".
+   until it is clean. **If you touched `src/app/`, `src/components/`,
+   `src/lib/` or `e2e/`, also run the affected browser/accessibility specs
+   locally (PLAYBOOK 4c: the sandbox has Chromium and Playwright works with the
+   documented workarounds).** Then push, open the PR. Never push to "see what CI says".
 2. **Draft PRs run nothing.** Open a PR as a draft if the work is not verified.
 3. **To run CI again after a later push**, start it by hand once, when the work
    is verified locally: `gh workflow run ci.yml --ref <branch> -f base=<the PR's base branch>`.
@@ -260,6 +263,11 @@ CI (`.github/workflows/ci.yml`) has two working jobs: one for type-check, lint,
 migrations and the unit/integration tests on a throwaway Postgres, and one for
 the production build + browser suite (only when the change can affect a
 browser). Docs-only changes skip both. See "CI cost budget" for when it runs.
+
+**Browser tests locally:** cloud sandboxes include Chromium; PLAYWRIGHT_BROWSERS_PATH
+is preset and `playwright install` is forbidden. The build needs a font stand-in
+and the browser needs a path shim: the exact recipe is `docs/PLAYBOOK.md` 4c. Do
+not skip browser specs for screen changes because "the sandbox has no browser".
 
 **Sandbox constraint:** some sandboxes cannot reach `binaries.prisma.sh`, so
 `prisma generate`/`migrate` fail there with a 403. That is network policy, not

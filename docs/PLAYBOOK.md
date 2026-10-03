@@ -143,6 +143,45 @@ or production); never commit the placeholder engine or the generated client;
 `prisma migrate deploy`, the migration-upgrade drill and the schema-health
 drill stay CI-only.
 
+### 4c. Browser and accessibility tests locally (required for screen changes)
+
+If you touched `src/app/`, `src/components/`, `src/lib/` or `e2e/`, run the
+browser specs that cover those screens **before pushing**. Skipping this is how
+a dark-mode contrast failure reached CI on 2026-10-03 and cost a billed run.
+Cloud sandboxes ship a Chromium and Playwright works there; two sandbox quirks
+need the workaround below (both local-only, nothing is committed):
+
+```bash
+S=<scratchpad dir>   # any scratch folder outside the repo
+
+# 1. The sandbox cannot reach fonts.googleapis.com, so `next build` fails on the
+#    Google font. Mock it (works with webpack, not Turbopack) using any local .woff2:
+cp "$(find / -name '*.woff2' -size +1k 2>/dev/null | head -1)" $S/mock.woff2
+cat > $S/font-mock.js <<EOF2
+const css = `@font-face { font-family: 'Manrope'; font-style: normal; font-weight: 200 800;
+  font-display: swap; src: url($S/mock.woff2) format('woff2'); unicode-range: U+0000-00FF; }`;
+module.exports = new Proxy({}, { get: () => css });
+EOF2
+export NEXT_FONT_GOOGLE_MOCKED_RESPONSES=$S/font-mock.js
+npx next build --webpack          # with the step-4 environment exported and the database seeded
+
+# 2. The preinstalled Chromium is an older build than this repo's Playwright
+#    wants (the error message names the folder, e.g. chromium_headless_shell-1243).
+#    Point Playwright at a shim folder that links to the installed binary:
+D=$S/pw/chromium_headless_shell-1243/chrome-headless-shell-linux64   # use the number from the error
+mkdir -p $D && ln -sf /opt/pw-browsers/chromium_headless_shell-1194/chrome-linux/headless_shell $D/chrome-headless-shell
+export PLAYWRIGHT_BROWSERS_PATH=$S/pw PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+
+# 3. Run the specs for what you changed (the whole suite is ~6 minutes)
+npx playwright test e2e/owner-portal-workspaces.spec.ts
+```
+
+Never run `playwright install` (the sandbox forbids it). The accessibility
+specs scan every screen in light and dark mode, so a new screen or a new
+coloured box should be added to the relevant scan list and run here first.
+The local run uses a webpack build and a stand-in font, so CI's
+Turbopack/real-font build remains the final authority.
+
 ### 4c. Browser tests (when you changed UI or a spec)
 
 `npm run build && npx playwright test <changed specs>` if the sandbox can
