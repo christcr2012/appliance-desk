@@ -2,7 +2,10 @@ import { createHash } from "node:crypto";
 import type { Prisma, RentalAgreementStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
-import { addBusinessDays, billingPeriodFor } from "@/lib/business-date";
+import {
+  addBusinessDays as addCalendarDays,
+  billingPeriodFor,
+} from "@/lib/business-date";
 
 export type UnusedTermTreatment = "REFUND" | "CREDIT" | "RETAIN";
 
@@ -102,10 +105,25 @@ function countWholeBillingMonths(effectiveOn: Date, endDate: Date): number {
   return months;
 }
 
+/** First anniversary boundary on or after target; never creates proration. */
+function billingAnniversaryOnOrAfter(
+  anchor: Date,
+  target: Date,
+  endDate: Date,
+): Date {
+  let months = 0;
+  let candidate = anchor;
+  while (candidate < target && candidate < endDate && months < 120) {
+    months += 1;
+    candidate = billingPeriodFor(anchor, months).start;
+  }
+  return candidate >= endDate ? endDate : candidate;
+}
+
 /**
  * Quote a fixed-term early termination without prorating inside a billing
- * month. Notice days are calendar days and effectiveOn never precedes the next
- * anniversary billing date.
+ * month. Notice days are Colorado-local calendar days. The effective date is
+ * always the first billing-anniversary boundary on or after the notice date.
  */
 export function quoteEarlyTermination(
   agreement: TerminationAgreement,
@@ -117,11 +135,13 @@ export function quoteEarlyTermination(
     throw new Error("Early termination only applies to a fixed-term agreement.");
   }
 
-  const noticeDate = addBusinessDays(requestedOn, policy.noticeDays);
-  const effectiveOn =
-    agreement.nextBillingDate && agreement.nextBillingDate > noticeDate
-      ? agreement.nextBillingDate
-      : noticeDate;
+  const noticeDate = addCalendarDays(requestedOn, policy.noticeDays);
+  const firstCandidate = agreement.nextBillingDate ?? agreement.startDate;
+  const effectiveOn = billingAnniversaryOnOrAfter(
+    firstCandidate,
+    noticeDate,
+    agreement.endDate,
+  );
   if (effectiveOn >= agreement.endDate) {
     return {
       requestedOn,
