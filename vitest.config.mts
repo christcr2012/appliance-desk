@@ -6,6 +6,7 @@ const SHARED_SETTINGS_TESTS = [
   "tests/agreements-term-integration.test.ts",
   "tests/settings-integration.test.ts",
   "tests/settings-terms-policy-integration.test.ts",
+  "tests/recommended-terms-integration.test.ts",
   "tests/tax-rate-columns-sync-integration.test.ts",
   "tests/tax-rate-storage.test.ts",
 ];

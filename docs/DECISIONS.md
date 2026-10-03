@@ -173,3 +173,6 @@ Stripe refund of that charge could not find the payment. Now the payment is a
 receipt plus a `held` payment row: recorded as cash received, applied to nothing,
 not spendable, visible to the owner, and refundable through the normal refund
 event. Resolving a held payment waits on IN-23.
+
+## 2026-10-03 — IN-19: recommended starting terms, still fully owner-editable
+Chris asked for common-practice defaults that the owner (and appropriate staff) can change. Decision: a one-time migration (`20261003200000_recommended_terms_starting_values`) writes the starting values only when all nine policy settings are empty, so nothing the owner already typed is ever overwritten. Values: $50 flat or 25% of rent still owed (larger of the two), capped at $200; 30 days notice; unused prepaid time refunded; 30-day renewal reminder (Colorado C.R.S. 6-1-732 requires 25–40); plain-English wording that repeats no changeable number. Editing stays with OWNER and ADMIN (existing `requireRole`); STAFF cannot. The Settings form has "Restore recommended starting terms" (fills the form; nothing saves until the owner presses save). Agreements already sent keep their frozen terms. The same values live in `src/domains/settings/recommended-terms.ts`; an integration test proves the migration and the app agree. A Colorado attorney should read the wording.

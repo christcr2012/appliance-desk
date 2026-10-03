@@ -12,7 +12,7 @@ Last updated: 2026-10-03 (evening) · `main` includes the whole Batch B stack th
 | Batch | Status | PR / branch | Evidence | Notes |
 |---|---|---|---|---|
 | A — Critical integrity & platform safety | **MERGED** | #136 (2026-10-02) | Full CI green; real-Postgres concurrency and adversarial auth tests | Audit registers stay open; nothing in A claims a B–F item. |
-| B — Billing, provider reconciliation & financial ledger | **IN PROGRESS (core merged; follow-ups open)** | Merged to `main`: #141, #145, #146, #147, #148, #149, #151, #152, #153, #154 (2026-10-03) | Real-database tests for provider operations, receipts/allocations, credits, refunds, late fees, write-off races, renewals, drift workbench, statements and reports; acceptance ledger `docs/reviews/2026-10-03-batch-b-acceptance.md` with review dispositions; CI green at each merged head | Not done (honest list in the acceptance ledger): renewal billing and acting on auto-renew consent, scheduled early-termination execution, notice emails (IN-21), policy values not entered (IN-19), renewal shows active before its start (IN-22), screen to resolve held payments (IN-23), per-customer terms screens (Batch D). Do not mark B complete until that list is empty or Chris accepts it. |
+| B — Billing, provider reconciliation & financial ledger | **IN PROGRESS (core merged; follow-ups open)** | Merged to `main`: #141, #145, #146, #147, #148, #149, #151, #152, #153, #154 (2026-10-03) | Real-database tests for provider operations, receipts/allocations, credits, refunds, late fees, write-off races, renewals, drift workbench, statements and reports; acceptance ledger `docs/reviews/2026-10-03-batch-b-acceptance.md` with review dispositions; CI green at each merged head | Not done (honest list in the acceptance ledger): renewal billing and acting on auto-renew consent, scheduled early-termination execution, notice emails (IN-21), renewal shows active before its start (IN-22), screen to resolve held payments (IN-23), per-customer terms screens (Batch D). Do not mark B complete until that list is empty or Chris accepts it. |
 | C — Rental-to-service operations, custody, inventory & purchasing | NOT STARTED | — | — | Depends on B's ledger primitives where money is touched. |
 | D — Owner/customer control plane, website, evidence & privacy | NOT STARTED | — | — | Uses B contracts for renewal/cancel UI. |
 | E — Communications, reporting, growth, branding & accessibility | NOT STARTED | — | — | Google (O32) only if GW prerequisites are ready; otherwise one later PR. |
@@ -49,7 +49,7 @@ terms, exact tax, held payments) is merged; see
 Chris asked (2026-10-03) for the leftovers to be finished inside Batch B as a
 second stack, `batch-b-completion-*`, in this order. Tick each when merged:
 
-- [ ] Recommended starting terms policy (IN-19), editable by owner and admin
+- [x] Recommended starting terms policy (IN-19), editable by owner and admin (migration 20261003200000 writes the starting values once, only if the owner entered nothing; "Restore recommended starting terms" button in Settings; tests: recommended-terms, recommended-terms-integration, terms-policy-form)
       (this PR).
 - [ ] Renewals signed ahead of time get a "starts on [date]" state (IN-22).
 - [ ] Held-payment screen: owner resolves a held payment per case (IN-23).
