@@ -12,6 +12,7 @@ vi.mock("@/lib/stripe", () => ({
 }));
 
 import { prisma } from "@/lib/prisma";
+import { SUCCESSFUL_PAYMENT_STATUSES } from "@/domains/billing/payment-status";
 import { processStripeWebhookEvent } from "@/domains/billing/webhooks";
 import { ensureSubscriptionIdentityForWebhook } from "@/domains/billing/subscription-identity";
 
@@ -70,7 +71,7 @@ describe.skipIf(!enabled)("Stripe messages that arrive out of order (real Postgr
   }
 
   const payments = (agreementId: string) =>
-    prisma.payment.count({ where: { invoice: { agreementId }, status: "succeeded" } });
+    prisma.payment.count({ where: { invoice: { agreementId }, status: { in: [...SUCCESSFUL_PAYMENT_STATUSES] } } });
   const receipts = (agreementId: string) =>
     prisma.receipt.count({ where: { payments: { some: { invoice: { agreementId } } } } });
 
