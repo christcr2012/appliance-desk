@@ -2,8 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
 import { parsePage, paginationMeta } from "@/domains/pagination";
 
-import { revenuePeriod } from "./revenue";
-export { revenuePeriod } from "./revenue";
+import { cashRevenuePeriod } from "./revenue";
+export { cashRevenuePeriod, revenuePeriod } from "./revenue";
 
 /**
  * Bounded cash-ledger records. The historical `payments` query-string value is
@@ -20,7 +20,7 @@ export async function getRevenueRecords(
   return prisma.$transaction(
     async (tx) => {
       if (source === "payments") {
-        const receivedOn = revenuePeriod(asOf, monthOnly);
+        const receivedOn = cashRevenuePeriod(asOf, monthOnly);
         const where = { receivedOn };
         const total = await tx.receipt.aggregate({
           where,
@@ -91,7 +91,7 @@ export async function getRevenueRecords(
         };
       }
 
-      const createdAt = revenuePeriod(asOf, monthOnly);
+      const createdAt = cashRevenuePeriod(asOf, monthOnly);
       const where = { createdAt };
       const total = await tx.refund.aggregate({
         where,
