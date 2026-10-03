@@ -141,7 +141,7 @@ export default async function PricingPage() {
               <li>
                 <span className="font-medium text-ink">Sales tax:</span>{" "}
                 {settings.taxRateConfirmed
-                  ? `${(settings.taxRatePermille / 10).toFixed(2)}% applied at invoice time.`
+                  ? `${settings.taxRatePermille / 1000}% applied at invoice time.`
                   : "not yet finalized — will be added at invoice time and shown before you owe anything."}
               </li>
               <li>
