@@ -243,6 +243,7 @@ describe("billing provider reconciliation", () => {
 
   it("finds an ambiguous balance-credit write on a later Stripe page", async () => {
     const requestedAt = new Date("2026-10-02T20:00:00Z");
+    const providerCreated = Math.floor(requestedAt.getTime() / 1000) + 10;
     mocks.providerFindMany.mockResolvedValue([
       {
         id: "op-credit",
@@ -265,14 +266,14 @@ describe("billing provider reconciliation", () => {
     });
     mocks.balanceList
       .mockResolvedValueOnce({
-        data: [{ id: "cbtxn_newer", created: 1_780_000_000, metadata: {} }],
+        data: [{ id: "cbtxn_newer", created: providerCreated, metadata: {} }],
         has_more: true,
       })
       .mockResolvedValueOnce({
         data: [
           {
             id: "cbtxn_match",
-            created: 1_780_000_000,
+            created: providerCreated,
             metadata: { creditId: "credit-1" },
           },
         ],
