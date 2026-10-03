@@ -1,0 +1,41 @@
+# What changed in the code after Batches C–F were designed
+
+Batches C–F were designed on 2026-10-02, before Batch B was built. Batch B changed
+some things those designs assume. **Read this file with each design's "Verify before
+starting" table**, and add a dated line here whenever a merged batch changes a rule,
+a name, a status value or a table that a later design relies on. This file is the
+running answer to "does the design still match the code?"; the design drift check
+(`docs/designs/README.md`) starts here.
+
+Last updated: 2026-10-03 (after Batch B core merged, #147–#155).
+
+## Rules a later batch must follow
+
+| Change (Batch B) | What a later design must do about it |
+|---|---|
+| **Tax is stored as `taxRateMilliPercent`** (thousandths of a percent, 7375 = 7.375%). `taxRatePermille` is deprecated, kept in step by a database trigger, and removed in a later cleanup. Use `src/domains/billing/tax.ts`. | Never read or write `taxRatePermille`. Any design text that says permille is superseded. |
+| **Money events are Receipts; Payments are per-invoice allocations.** Overpayment becomes a `CustomerCredit`. | Cash reports and "collected" read receipts (`collectedBetween` in `src/domains/billing/collected.ts`; categories in `categories.ts`). Do not sum `Payment` rows for cash. |
+| **Payment status is not one spelling.** Use `src/domains/billing/payment-status.ts` (`SUCCESSFUL_PAYMENT_STATUSES`, `isSuccessfulPaymentStatus`, `HELD_PAYMENT_STATUS`). Older rows say `SUCCEEDED`. | Never write `status: "succeeded"` in a filter or comparison. |
+| **Held payments:** a card payment on an already written-off/voided invoice is a receipt plus a payment row with status `held`. No credit, invoice not reopened. | Anything that lists payments, balances or cash must treat `held` as "received but not applied". |
+| **Lock order for every money writer: customer (`lockCustomerLedger`), then invoices in id order, then re-read.** The Stripe webhook now follows it too. | New code that changes an invoice, credit or receipt must take the same locks, or it can race a write-off or a webhook. |
+| **Business months are Colorado months** (`businessMonthBounds`, `businessDateKey` in `src/lib/business-date.ts`), not UTC months. | Reports and "this month" filters use them. |
+| **Fixed terms start at delivery.** `endDate` is saved at the first billing attempt and sent to Stripe as `cancel_at`. Readers use `endDate ?? start + term`. | Do not recompute a term end from the signing date. |
+| **Agreements carry a frozen copy of their ending/renewal terms** (`termsSnapshot`, frozen when sent for signing). Policy lives in Settings → "Ending and renewing rentals" (OWNER/ADMIN). | Customer screens show the agreement's own frozen terms, never the current settings. |
+| **Provider writes go through `ProviderOperation`** (idempotency key, statuses PENDING/SUCCEEDED/FAILED/UNKNOWN/DRIFT). Read-only drift workbench at `/desk/billing/reconciliation`. | New Stripe writes use `runProviderCall`; new mismatch kinds are added to `detectDrift`. |
+| **Tests that write the single business-settings row** must be listed in `SHARED_SETTINGS_TESTS` in `vitest.config.mts`. | Add new such tests to that list. |
+| **CI:** 3 unit shards, 4 browser shards, one `ci` gate, secret scan; every new `e2e/*.spec.ts` needs a group in `e2e/shards.json`. | See `docs/ARCHITECTURE.md`. |
+
+## Known name or location differences from the designs
+
+| Design says | Code actually has |
+|---|---|
+| Batch D A2: `collectedBetween` in `src/domains/billing/categories.ts` | It is in `src/domains/billing/collected.ts` (`categories.ts` holds the category rules). |
+| Batch D A2: `createRenewalDraft` (implied by "term/renewal functions") | Renewal drafting lives in `src/domains/agreements/term.ts`; verify the exact export before use. |
+
+## Open Batch B items that change what later batches see
+
+Updated as the Batch B completion stack merges (`docs/STATUS.md`): scheduled renewals
+(IN-22) add a "starts on a date" agreement state; held-payment resolution (IN-23)
+adds owner actions on held payments; auto-renew/early-termination execution and term
+notices (IN-21) add jobs and records. Batch C's inventory availability and Batch D's
+customer screens must read these, not assume `ACTIVE` means "currently in service".

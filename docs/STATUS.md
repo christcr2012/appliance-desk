@@ -41,36 +41,27 @@ deny-by-default (#131), CI parallelized and sharded (#136, #137).
 - Chris plans to upgrade the Neon plan for protected branches and per-preview
   database branching; not done yet.
 
-## Batch B — what is left (as of 2026-10-03)
+## Batch B — what is left (as of 2026-10-03, evening)
 
-- **Done in the WU-B10 PR:** Colorado billing-period helper with DST tests,
-  early-termination quote/request, renewal draft, auto-renew consent, tax
-  rounding helpers (thousandth-percent), policy fields exposed in settings.
-- **Done in the stacked term-start PR (`ai/claude/batch-b-term-start-and-policy-settings`):**
-  fixed terms start at delivery (end date saved at first billing attempt, sent
-  to Stripe as `cancel_at`), and Settings → "Ending and renewing rentals" lets
-  the owner enter every termination/renewal value in the app.
-- **Done in the locked-terms PR (stacked on the term-start PR):** agreements keep
-  their own ending/renewal terms (frozen when sent for signing; per-customer
-  override stored but no screen yet), quotes and auto-renew use those locked
-  terms, customers can act on their own agreement, the early-termination request
-  time is set by the server, renewal drafts keep their agreed start date, term-end
-  readers use the saved end date, settings writes re-check the active owner/admin,
-  and ending early needs published wording. This fixed all 5 Codex findings on
-  #147/#148 (dispositions in the PR). New process: review fixes ride the next
-  planned PR (AGENTS.md).
-- **Not done, honestly:** (0) 30-day notice to customers when terms change,
-  month-to-month terms taking effect after that notice, the notice email (live
-  customer email needs Chris's approval), and per-customer terms screens
-  (estimate/setup/sign-up) — planned for the next PR; agreements sent for
-  signing before this change have no locked terms; (1) Chris has not entered the policy values yet, so
-  early-termination quotes and auto-renew are unavailable until he does (IN-19);
-  (2) [done: tax rates are now stored and charged exactly — see log]; (3) renewal drafts
-  carry no appliance assignments and nothing acts on auto-renew consent yet;
-  (4) no customer- or owner-facing screen shows a termination quote or starts a
-  renewal yet (Batch D); (5) WU-B11 and WU-B12; (6) the new settings tab's
-  accessibility scan and form were verified locally by unit/component tests, but
-  the browser test of it runs first in CI.
+The core of Batch B (ledger, provider reconciliation, statements, reports, locked
+terms, exact tax, held payments) is merged; see
+`docs/reviews/2026-10-03-batch-b-acceptance.md` for the item-by-item evidence.
+Chris asked (2026-10-03) for the leftovers to be finished inside Batch B as a
+second stack, `batch-b-completion-*`, in this order. Tick each when merged:
+
+- [ ] Recommended starting terms policy (IN-19), editable by owner and admin
+      (this PR).
+- [ ] Renewals signed ahead of time get a "starts on [date]" state (IN-22).
+- [ ] Held-payment screen: owner resolves a held payment per case (IN-23).
+- [ ] Auto-renew and scheduled early-termination execution (nothing acts on
+      auto-renew consent or on a scheduled ending yet).
+- [ ] Term-change notices (IN-21): notice record and 30-day rule; email sending
+      stays OFF until Chris approves live customer email.
+- [ ] Out-of-order Stripe webhook cases (acceptance item 3).
+
+Moved to a later batch on purpose (not forgotten): per-customer terms screens
+(estimate / setup / sign-up) and the customer- and owner-facing screens that show
+a termination quote or start a renewal belong to Batch D, which owns those screens.
 
 ## Open items carried across batches
 
@@ -86,14 +77,12 @@ deny-by-default (#131), CI parallelized and sharded (#136, #137).
 
 ## Owner inputs currently blocking something
 
-See `docs/OWNER-INPUTS.md` for the full register. The ones Batch B needs:
-
-- Early-termination fee policy, unused-term/refund policy, auto-renew terms
-  and notice periods (B34–B36 financial contracts). Build the
-  provider/ledger plumbing without them; keep policy-dependent behavior
-  unexercised until answered.
-- Tax precision policy (if the ledger corrections require a rounding
-  decision).
+See `docs/OWNER-INPUTS.md` for the full register. Chris answered IN-19, IN-22 and
+IN-23 on 2026-10-03: use best practice, make it editable (IN-19, IN-22), and give
+him options in plain English for IN-23 (done; the screen lets him choose per case).
+Still waiting on him: IN-21 (wording and approval for sending live customer
+emails; building continues with sending switched off) and IN-17's CPA check of the
+7.375% rate.
 
 ## Session log (last two batches only)
 
