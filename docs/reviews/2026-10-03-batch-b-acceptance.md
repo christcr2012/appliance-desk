@@ -31,7 +31,6 @@ the bottom is empty or accepted by Chris.**
 ## Not done (honest list)
 
 - Renewal billing and any job that acts on auto-renew consent or executes a scheduled early termination (nothing bills or ends a rental at the effective date yet).
-- A signed-ahead renewal shows as active before its start (IN-22).
 - Policy values are not entered yet (IN-19), so early-termination quotes are off until Chris enters them.
 - Notice emails for term changes (live customer email needs Chris's approval; IN-21).
 - Per-customer terms screens (Batch D).
@@ -45,7 +44,7 @@ the bottom is empty or accepted by Chris.**
 | #148 | P1 re-check the acting admin inside the policy write | **Already fixed.** `updateBusinessSettings` locks the settings row and calls `assertActiveTeamActor` inside its transaction (`src/domains/settings/index.ts`); `tests/settings-transaction.test.ts` "rejects a deactivated or non-admin author before touching settings". |
 | #148 | P2 term-end readers must use the saved end date | **Already fixed.** Growth and exceptions readers use `endDate ?? start + term` (`src/domains/growth/index.ts`, `src/domains/exceptions/index.ts`); `tests/growth.test.ts` and `tests/exceptions.test.ts` cover a delivery-date end. |
 | #149 | P1 show locked terms before the signature | **Fixed in #151** (signing page sections) and tightened here (wording, real-browser test). |
-| #149 | P2 renewal signed ahead shows ACTIVE before its start | **Still open.** Needs a status or reader change the design is silent on; owner input IN-22. Next step: decide in the next billing-adjacent PR once Chris answers. |
+| #149 | P2 renewal signed ahead shows ACTIVE before its start | **Fixed** in the scheduled-renewals PR: a signed renewal is now SCHEDULED ("signed, starts later") until its start date (`agreements-scheduled-renewal-integration`, `scheduled-renewal-rules`). |
 | #151 | P1 optional renewal described as already on | **Fixed here.** Wording now says renewal is optional and not started unless turned on; unit test and browser test assert "opt out" is gone. |
 | #151 | P1 test the real signing flow in a browser | **Fixed here.** `e2e/signing-waiver-presentation.spec.ts` has a fixed-term snapshot case: sections visible, before the "Sign agreement" button, axe clean at phone width (already assigned to a CI shard). |
 | #152 | P1 approved design contradicts the tax migration | **Fixed here.** `docs/designs/BATCH-B.md` D12 and WU-B10 amended. |

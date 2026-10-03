@@ -13,6 +13,10 @@
       "schedule": "0 13 * * *"
     },
     {
+      "path": "/api/cron/start-renewals",
+      "schedule": "10 7 * * *"
+    },
+    {
       "path": "/api/cron/late-fees",
       "schedule": "0 15 * * *"
     },

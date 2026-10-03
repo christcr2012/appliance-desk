@@ -34,6 +34,19 @@ Last updated: 2026-10-03 (after Batch B core merged, #147–#155).
 
 ## Open Batch B items that change what later batches see
 
+**Scheduled renewals (IN-22, merged in the scheduled-renewals PR).** `RentalAgreementStatus`
+now has `SCHEDULED` (signed renewal whose start date has not arrived). It is NOT in force:
+every existing `status: "ACTIVE"` filter (active rentals, MRR/ARR, billing, reminders,
+reconciliation, appliance-ownership checks, portal) correctly excludes it. Batch C
+availability and Batch D screens must not treat SCHEDULED as active, and may show it as
+"renewal starting <date>". Appliances stay assigned to the old agreement until the start
+date; `startRenewalInTx` (`src/domains/agreements/renewal-start.ts`) then moves the
+assignments, the Stripe subscription pointer, next billing date, and deposit to the
+renewal and ends the old agreement in one transaction (nightly cron
+`/api/cron/start-renewals`; also run right after signing if already due). Ending or
+cancelling a rental that has a waiting renewal is refused until the renewal is cancelled.
+A renewal that cannot start raises the `RENEWAL_NOT_STARTED` exception.
+
 Updated as the Batch B completion stack merges (`docs/STATUS.md`): scheduled renewals
 (IN-22) add a "starts on a date" agreement state; held-payment resolution (IN-23)
 adds owner actions on held payments; auto-renew/early-termination execution and term

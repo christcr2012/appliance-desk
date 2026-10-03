@@ -11,6 +11,8 @@ import {
   missingRepairCostException,
   overdueJobException,
   pastDueInvoiceException,
+  renewalNotStartedException,
+  RENEWAL_START_GRACE_DAYS,
   sortExceptions,
   staleReservationException,
   uninspectedReturnException,
@@ -64,6 +66,7 @@ export async function getExceptions(): Promise<ExceptionItem[]> {
     missingRepairCostJobs,
     activeTermAgreements,
     rentedAppliances,
+    stuckRenewals,
   ] = await Promise.all([
     canViewFinance ? prisma.rentalAgreement.findMany({
       where: { billingBlockedReason: { not: null } },
@@ -164,9 +167,29 @@ export async function getExceptions(): Promise<ExceptionItem[]> {
         },
       },
     }),
+    prisma.rentalAgreement.findMany({
+      where: {
+        status: "SCHEDULED",
+        startDate: { lt: addDays(now, -RENEWAL_START_GRACE_DAYS) },
+      },
+      select: {
+        id: true,
+        startDate: true,
+        customer: { select: { user: { select: { name: true, email: true } } } },
+      },
+    }),
   ]);
 
   const items: ExceptionItem[] = [
+    ...stuckRenewals
+      .filter((a): a is typeof a & { startDate: Date } => a.startDate !== null)
+      .map((a) =>
+        renewalNotStartedException({
+          id: a.id,
+          startDate: a.startDate,
+          customerName: customerDisplayName(a.customer),
+        }),
+      ),
     ...billingBlockedAgreements
       .filter((a): a is typeof a & { billingBlockedReason: string } => a.billingBlockedReason !== null)
       .map((a) =>

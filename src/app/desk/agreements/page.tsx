@@ -16,6 +16,7 @@ const STATUS_TABS: { value: RentalAgreementStatus | "ALL"; label: string }[] = [
   { value: "ALL", label: "All" },
   { value: "DRAFT", label: "Draft" },
   { value: "AWAITING_SIGNATURE", label: "Awaiting signature" },
+  { value: "SCHEDULED", label: "Signed, starts later" },
   { value: "ACTIVE", label: "Active" },
   { value: "ENDED", label: "Ended" },
   { value: "CANCELLED", label: "Cancelled" },
@@ -25,6 +26,7 @@ function isAgreementStatus(value: string | undefined): value is RentalAgreementS
   return (
     value === "DRAFT" ||
     value === "AWAITING_SIGNATURE" ||
+    value === "SCHEDULED" ||
     value === "ACTIVE" ||
     value === "ENDED" ||
     value === "CANCELLED"

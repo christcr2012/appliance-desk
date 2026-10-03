@@ -101,6 +101,11 @@ export default async function DeskDashboardPage() {
           href="/desk/agreements?status=ACTIVE"
         />
         <StatCard
+          label="Renewals starting later"
+          value={stats.scheduledRenewalCount}
+          href="/desk/agreements?status=SCHEDULED"
+        />
+        <StatCard
           label="Stale reservation holds"
           value={stats.staleReservationCount}
           href="/desk/agreements"

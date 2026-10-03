@@ -48,7 +48,7 @@ describe("Today server-side visibility", () => {
     const result = await getExceptions();
     expect(result.map((x) => x.category)).toEqual(["OVERDUE_JOB"]);
     expect(mocks.invoice).not.toHaveBeenCalled();
-    expect(mocks.agreement).toHaveBeenCalledTimes(2);
+    expect(mocks.agreement).toHaveBeenCalledTimes(3);
     expect(
       mocks.agreement.mock.calls.every(
         ([query]) => !query.where.billingBlockedReason,

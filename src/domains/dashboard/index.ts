@@ -19,6 +19,7 @@ export async function getDashboardStats() {
     draftAgreementCount,
     awaitingSignatureCount,
     activeAgreementCount,
+    scheduledRenewalCount,
     upcomingJobCount,
     openMaintenanceRequestCount,
     staleReservationCount,
@@ -34,6 +35,9 @@ export async function getDashboardStats() {
     prisma.rentalAgreement.count({ where: { status: "DRAFT" } }),
     prisma.rentalAgreement.count({ where: { status: "AWAITING_SIGNATURE" } }),
     prisma.rentalAgreement.count({ where: { status: "ACTIVE" } }),
+    // Signed renewals waiting for their start date. Deliberately NOT part of the
+    // active count, MRR or ARR: they are not in force yet.
+    prisma.rentalAgreement.count({ where: { status: "SCHEDULED" } }),
     prisma.job.count({ where: { status: "SCHEDULED" } }),
     prisma.maintenanceRequest.count({
       where: { status: { notIn: ["RESOLVED", "CLOSED"] } },
@@ -70,6 +74,7 @@ export async function getDashboardStats() {
     draftAgreementCount,
     awaitingSignatureCount,
     activeAgreementCount,
+    scheduledRenewalCount,
     upcomingJobCount,
     openMaintenanceRequestCount,
     staleReservationCount,

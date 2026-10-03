@@ -24,7 +24,8 @@ export type ExceptionCategory =
   | "UNINSPECTED_RETURN"
   | "MISSING_REPAIR_COST"
   | "AGREEMENT_TERM_EXPIRED"
-  | "APPLIANCE_MAINTENANCE_DUE";
+  | "APPLIANCE_MAINTENANCE_DUE"
+  | "RENEWAL_NOT_STARTED";
 
 export type ExceptionSeverity = "high" | "medium";
 
@@ -66,6 +67,25 @@ export function billingBlockedException(agreement: {
     detail: agreement.billingBlockedReason,
     href: `/desk/agreements/${agreement.id}`,
     since: agreement.updatedAt,
+  };
+}
+
+/** A signed renewal whose start date passed over a day ago but that has not started (the nightly job could not start it). */
+export const RENEWAL_START_GRACE_DAYS = 1;
+
+export function renewalNotStartedException(agreement: {
+  id: string;
+  startDate: Date;
+  customerName: string;
+}): ExceptionItem {
+  return {
+    category: "RENEWAL_NOT_STARTED",
+    severity: "high",
+    title: `${agreement.customerName}'s renewal did not start on its start date`,
+    detail:
+      "The renewal is signed but could not take over from the rental it renews (that rental may have been ended or cancelled early). Open it to cancel or fix it.",
+    href: `/desk/agreements/${agreement.id}`,
+    since: agreement.startDate,
   };
 }
 

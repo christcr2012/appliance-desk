@@ -33,6 +33,7 @@ describe("customer-facing status labels", () => {
     const expected: Record<RentalAgreementStatus, string> = {
       DRAFT: "Being set up",
       AWAITING_SIGNATURE: "Waiting on your signature",
+      SCHEDULED: "Signed, starts later",
       ACTIVE: "Active",
       ENDED: "Ended",
       CANCELLED: "Cancelled",
