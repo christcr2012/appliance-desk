@@ -177,14 +177,35 @@ async function reconcileSubscriptionCancel(operation: RecoverableOperation): Pro
   }
 
   // A successful retrieve proving the subscription is still live resolves an
-  // earlier ambiguous cancel outcome. One more cancel is therefore safe.
+  // earlier ambiguous cancel outcome. Reclaim the durable operation under its
+  // normal lease before issuing another provider write. This serializes two
+  // reconcilers that both observed the subscription as active.
+  let claim;
+  try {
+    claim = await prisma.$transaction((tx) =>
+      claimProviderOperation(tx, {
+        kind: "SUBSCRIPTION_CANCEL",
+        subjectType: operation.subjectType,
+        subjectId: operation.subjectId,
+        idempotencyKey: operation.idempotencyKey,
+        reconcileUnknownAfterProviderEvidence: true,
+      }),
+    );
+  } catch (error) {
+    if (error instanceof RetryLater) return false;
+    throw error;
+  }
+  if (claim.done) return true;
+
   const result = await runProviderCall(() =>
-    stripe.subscriptions.cancel(subscriptionId),
+    stripe.subscriptions.cancel(subscriptionId, undefined, {
+      idempotencyKey: claim.idempotencyKey,
+    }),
   );
   await prisma.$transaction((tx) =>
     completeProviderOperation(
       tx,
-      operation.id,
+      claim.opId,
       result.ok
         ? { status: "SUCCEEDED", providerObjectId: subscriptionId }
         : { status: result.outcome, error: result.error },
