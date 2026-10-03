@@ -5,16 +5,16 @@ import {
   pickupBillingUpdate,
 } from "@/domains/settings/pickup-billing";
 import { RECOMMENDED_PICKUP_BILLING } from "@/domains/billing/pickup-billing";
-import { returnedItemStillBilledException } from "@/domains/exceptions/rules";
+import { itemNotDeliveredException } from "@/domains/exceptions/rules";
 
-// The "Pickups and returns" settings section: what the owner types is checked
+// The "Pickups and deliveries" settings section: what the owner types is checked
 // and converted here before it is saved.
 
 describe("pickupBillingUpdate", () => {
   const base = {
     lateReturnRateMode: "MONTHLY_DIV_30",
     lateReturnFixedDailyDollars: "",
-    earlyReturnProrationBasis: "MONTHLY_DIV_30",
+    lateDeliveryProrationBasis: "MONTHLY_DIV_30",
     pickupDayNotBilled: true,
   };
 
@@ -24,7 +24,7 @@ describe("pickupBillingUpdate", () => {
       update: {
         lateReturnRateMode: "MONTHLY_DIV_30",
         lateReturnFixedDailyCents: 0,
-        earlyReturnProrationBasis: "MONTHLY_DIV_30",
+        lateDeliveryProrationBasis: "MONTHLY_DIV_30",
         pickupDayNotBilled: true,
       },
     });
@@ -37,7 +37,7 @@ describe("pickupBillingUpdate", () => {
       update: {
         lateReturnRateMode: "FIXED",
         lateReturnFixedDailyCents: 250,
-        earlyReturnProrationBasis: "MONTHLY_DIV_30",
+        lateDeliveryProrationBasis: "MONTHLY_DIV_30",
         pickupDayNotBilled: true,
       },
     });
@@ -47,7 +47,7 @@ describe("pickupBillingUpdate", () => {
     expect(pickupBillingUpdate({ ...base, lateReturnRateMode: "FIXED" })).toMatchObject({ success: false });
     expect(pickupBillingUpdate({ ...base, lateReturnFixedDailyDollars: "two bucks" })).toMatchObject({ success: false });
     expect(pickupBillingUpdate({ ...base, lateReturnRateMode: "DOUBLE" })).toMatchObject({ success: false });
-    expect(pickupBillingUpdate({ ...base, earlyReturnProrationBasis: "" })).toMatchObject({ success: false });
+    expect(pickupBillingUpdate({ ...base, lateDeliveryProrationBasis: "" })).toMatchObject({ success: false });
     expect(pickupBillingUpdate({ ...base, pickupDayNotBilled: "yes" })).toMatchObject({ success: false });
     expect(pickupBillingUpdate({})).toMatchObject({ success: false });
   });
@@ -64,7 +64,7 @@ describe("form defaults", () => {
     expect(RECOMMENDED_PICKUP_BILLING_FORM).toEqual({
       lateReturnRateMode: "MONTHLY_DIV_30",
       lateReturnFixedDailyDollars: "",
-      earlyReturnProrationBasis: "MONTHLY_DIV_30",
+      lateDeliveryProrationBasis: "MONTHLY_DIV_30",
       pickupDayNotBilled: true,
     });
   });
@@ -76,18 +76,18 @@ describe("form defaults", () => {
   });
 });
 
-describe("returned item still on the monthly bill", () => {
-  it("points the owner at the rental and says what still has to happen", () => {
-    const item = returnedItemStillBilledException({
-      agreementId: "agr-2",
+describe("item not delivered yet", () => {
+  it("points staff at the delivery visit and says what still has to happen", () => {
+    const item = itemNotDeliveredException({
+      originalJobId: "job-1",
       itemLabel: "Dryer #D1",
-      returnedAt: new Date("2026-10-22T21:30:00Z"),
+      originalDeliveryDate: new Date("2026-10-01T06:00:00Z"),
       customerName: "Pat Example",
     });
-    expect(item.category).toBe("RETURNED_ITEM_STILL_BILLED");
+    expect(item.category).toBe("ITEM_NOT_DELIVERED");
     expect(item.severity).toBe("high");
-    expect(item.href).toBe("/desk/agreements/agr-2");
+    expect(item.href).toBe("/desk/jobs/job-1");
     expect(item.title).toContain("Dryer #D1");
-    expect(item.detail).toMatch(/still includes this appliance/);
+    expect(item.detail).toMatch(/Schedule a delivery job/);
   });
 });

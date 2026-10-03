@@ -53,7 +53,8 @@ const DEFAULT_SETTINGS = {
   // Pickup and return billing (IN-24 / IN-26 / IN-27): the recommended starting values.
   lateReturnRateMode: "MONTHLY_DIV_30",
   lateReturnFixedDailyCents: 0,
-  earlyReturnProrationBasis: "MONTHLY_DIV_30",
+  lateDeliveryProrationBasis: "MONTHLY_DIV_30",
+  earlyReturnProrationBasis: "MONTHLY_DIV_30", // deprecated column, never read
   pickupDayNotBilled: true,
   updatedAt: new Date(0),
 };
@@ -137,7 +138,7 @@ export type BusinessSettingsUpdate = Partial<{
   // Pickup and return billing (IN-24 / IN-26 / IN-27).
   lateReturnRateMode: string;
   lateReturnFixedDailyCents: number;
-  earlyReturnProrationBasis: string;
+  lateDeliveryProrationBasis: string;
   pickupDayNotBilled: boolean;
 }>;
 

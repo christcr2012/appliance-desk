@@ -49,7 +49,7 @@ const CATEGORIES: Record<ExceptionCategory, { label: string; action: string }> =
     RENEWAL_NOT_STARTED: { label: "Renewal did not start", action: "Review renewal" },
     NOTICE_WAITING: { label: "Renewal reminder waiting", action: "Send reminder" },
     EARLY_ENDING_NOT_DONE: { label: "Early ending not carried out", action: "Review ending" },
-    RETURNED_ITEM_STILL_BILLED: { label: "Returned item still on monthly bill", action: "Review rental" },
+    ITEM_NOT_DELIVERED: { label: "Item not delivered yet", action: "Review delivery" },
   };
 
 export default async function TodayPage() {

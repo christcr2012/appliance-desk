@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   RECOMMENDED_PICKUP_BILLING,
-  calculateEarlyReturnCredit,
+  calculateLateDeliveryCredit,
   calculateLateReturnCharge,
+  calculateNeverDeliveredCredit,
+  periodsBilledThrough,
   itemMonthlyPriceCents,
   lastChargeableDayKey,
   pickupBillingSettingsFrom,
@@ -12,7 +14,7 @@ import {
 import { appliedBalanceCreditCents, creditLinesForAppliedBalance } from "@/domains/billing/applied-credit-lines";
 import { businessDateFromKey, businessDateEnd } from "@/lib/business-date";
 
-// Pickup and return billing rules (owner decisions IN-24 / IN-26 / IN-27,
+// Pickup and delivery billing rules (owner decisions IN-24 / IN-26 / IN-27,
 // 2026-10-03). Pure functions; every date is a Colorado calendar date.
 
 const settings: PickupBillingSettings = { ...RECOMMENDED_PICKUP_BILLING };
@@ -119,12 +121,12 @@ describe("late return (rule 1)", () => {
   });
 });
 
-describe("early return on a 2-item agreement (rule 2)", () => {
-  // Washer + dryer set: one rental line at $60/month, two appliances. Billed
-  // Oct 1 – Oct 31 (period opens Oct 1, next period opens Nov 1). The dryer is
-  // returned Oct 22: with the pickup day not billed, the unused days are Oct
-  // 22 … Oct 31 = 10 days.
-  const period = { periodStart: day("2026-10-01"), periodEnd: day("2026-11-01") };
+describe("late delivery on a 2-item agreement (rule 2)", () => {
+  // Washer + dryer set: one rental line at $60/month, two appliances. The
+  // washer arrives Oct 1 and billing for the WHOLE agreement starts that day
+  // (period Oct 1 – Oct 31). The dryer only arrives Oct 11: it was missing
+  // Oct 1 … Oct 10 = 10 days.
+  const period = { start: day("2026-10-01"), end: day("2026-11-01") };
 
   it("splits a set's price evenly per item", () => {
     expect(itemMonthlyPriceCents(6_000, 2, 0)).toBe(3_000);
@@ -134,30 +136,34 @@ describe("early return on a 2-item agreement (rule 2)", () => {
     expect(itemMonthlyPriceCents(4_500, 1)).toBe(4_500);
   });
 
-  it("credits the returned item 10 days at its monthly share ÷ 30; the other item is untouched", () => {
-    const dryer = calculateEarlyReturnCredit({
+  it("credits the late item 10 days at its monthly share ÷ 30; the item that arrived on time gets nothing", () => {
+    const dryer = calculateLateDeliveryCredit({
       itemLabel: "Dryer #D-7",
       itemMonthlyPriceCents: itemMonthlyPriceCents(6_000, 2, 1),
-      ...period,
-      returnDate: afternoon("2026-10-22"),
+      originalDeliveryDate: day("2026-10-01"),
+      actualDeliveryDate: afternoon("2026-10-11"),
+      period,
+      maxCreditCents: 3_000,
       settings,
     });
     expect(dryer.days).toBe(10);
     expect(dryer.periodDays).toBe(31);
     expect(dryer.dailyRateCents).toBe(100);
     expect(dryer.amountCents).toBe(1_000);
-    expect(dryer.description).toBe("Credit – Dryer #D-7 returned early – 10 days");
-    expect(dryer.firstCreditedDayKey).toBe("2026-10-22");
-    expect(dryer.lastCreditedDayKey).toBe("2026-10-31");
+    expect(dryer.description).toBe("Credit – Dryer #D-7 delivered late – 10 days");
+    expect(dryer.firstCreditedDayKey).toBe("2026-10-01");
+    expect(dryer.lastCreditedDayKey).toBe("2026-10-10");
   });
 
   it("uses the real length of the billing month when the owner picks that basis", () => {
-    const dryer = calculateEarlyReturnCredit({
+    const dryer = calculateLateDeliveryCredit({
       itemLabel: "Dryer #D-7",
       itemMonthlyPriceCents: 3_000,
-      ...period,
-      returnDate: afternoon("2026-10-22"),
-      settings: { ...settings, earlyReturnProrationBasis: "ACTUAL_DAYS_IN_MONTH" },
+      originalDeliveryDate: day("2026-10-01"),
+      actualDeliveryDate: afternoon("2026-10-11"),
+      period,
+      maxCreditCents: 3_000,
+      settings: { ...settings, lateDeliveryProrationBasis: "ACTUAL_DAYS_IN_MONTH" },
     });
     expect(dryer.days).toBe(10);
     // $30 × 10 ÷ 31 = $9.677… → $9.68
@@ -165,40 +171,57 @@ describe("early return on a 2-item agreement (rule 2)", () => {
     expect(dryer.basis).toContain("31 days");
   });
 
-  it("credits one day fewer when the pickup day is billed", () => {
-    const dryer = calculateEarlyReturnCredit({
-      itemLabel: "Dryer #D-7",
-      itemMonthlyPriceCents: 3_000,
-      ...period,
-      returnDate: afternoon("2026-10-22"),
-      settings: { ...settings, pickupDayNotBilled: false },
-    });
-    expect(dryer.days).toBe(9);
-    expect(dryer.amountCents).toBe(900);
-  });
-
-  it("never credits more than the item's month, even with ÷ 30 on a 31-day month", () => {
-    const whole = calculateEarlyReturnCredit({
-      itemLabel: "Dryer #D-7",
-      itemMonthlyPriceCents: 3_000,
-      ...period,
-      returnDate: afternoon("2026-09-25"),
+  it("rounds the total once, not per day", () => {
+    // $35 ÷ 30 = $1.1666… per day; 3 days = $3.50, not 3 × $1.17 = $3.51.
+    const credit = calculateLateDeliveryCredit({
+      itemLabel: "Fridge #F-2",
+      itemMonthlyPriceCents: 3_500,
+      originalDeliveryDate: day("2026-10-01"),
+      actualDeliveryDate: afternoon("2026-10-04"),
+      period,
+      maxCreditCents: 3_500,
       settings,
     });
-    expect(whole.days).toBe(31);
-    expect(whole.amountCents).toBe(3_000);
+    expect(credit.amountCents).toBe(350);
   });
 
-  it("credits nothing for a return on the last day of the period", () => {
-    const none = calculateEarlyReturnCredit({
+  it("never credits more than was billed for the item", () => {
+    // 40 days late with ÷ 30 would be $40 of a $30 item; only one month was billed.
+    const credit = calculateLateDeliveryCredit({
       itemLabel: "Dryer #D-7",
       itemMonthlyPriceCents: 3_000,
-      ...period,
-      returnDate: afternoon("2026-10-31"),
-      settings: { ...settings, pickupDayNotBilled: false },
+      originalDeliveryDate: day("2026-10-01"),
+      actualDeliveryDate: afternoon("2026-11-10"),
+      period,
+      maxCreditCents: 3_000,
+      settings,
+    });
+    expect(credit.days).toBe(40);
+    expect(credit.amountCents).toBe(3_000);
+  });
+
+  it("credits nothing when the item arrives on the original date after all", () => {
+    const none = calculateLateDeliveryCredit({
+      itemLabel: "Dryer #D-7",
+      itemMonthlyPriceCents: 3_000,
+      originalDeliveryDate: day("2026-10-01"),
+      actualDeliveryDate: afternoon("2026-10-01"),
+      period,
+      maxCreditCents: 3_000,
+      settings,
     });
     expect(none.days).toBe(0);
     expect(none.amountCents).toBe(0);
+  });
+
+  it("an item never delivered and taken off the agreement is credited every month billed for it", () => {
+    const anchor = afternoon("2026-10-01");
+    expect(periodsBilledThrough(anchor, afternoon("2026-10-20"))).toBe(1);
+    expect(periodsBilledThrough(anchor, afternoon("2026-11-01"))).toBe(2);
+    expect(periodsBilledThrough(anchor, afternoon("2026-09-30"))).toBe(0);
+    const credit = calculateNeverDeliveredCredit({ itemLabel: "Dryer #D-7", itemMonthlyPriceCents: 3_000, periodsBilled: 2 });
+    expect(credit.amountCents).toBe(6_000);
+    expect(credit.description).toBe("Credit – Dryer #D-7 never delivered – 2 months billed");
   });
 });
 
@@ -216,18 +239,18 @@ describe("pickup on the 1st of the month (rule 3)", () => {
     expect(lastChargeableDayKey(afternoon("2026-10-01"), settings)).toBe("2026-09-30");
   });
 
-  it("does not charge the 1st: an item billed Oct 1–31 and returned on Oct 1 is credited all 31 days", () => {
-    const credit = calculateEarlyReturnCredit({
+  it("an item delivered on the 1st when billing started the 1st is not late at all", () => {
+    const credit = calculateLateDeliveryCredit({
       itemLabel: "Washer #W-101",
       itemMonthlyPriceCents: 4_500,
-      periodStart: day("2026-10-01"),
-      periodEnd: day("2026-11-01"),
-      returnDate: afternoon("2026-10-01"),
+      originalDeliveryDate: day("2026-10-01"),
+      actualDeliveryDate: afternoon("2026-10-01"),
+      period: { start: day("2026-10-01"), end: day("2026-11-01") },
+      maxCreditCents: 4_500,
       settings,
     });
-    expect(credit.days).toBe(31);
-    expect(credit.firstCreditedDayKey).toBe("2026-10-01");
-    expect(credit.amountCents).toBe(4_500);
+    expect(credit.days).toBe(0);
+    expect(credit.amountCents).toBe(0);
   });
 
   it("charges the 1st only when the owner turns the switch off", () => {
@@ -282,7 +305,7 @@ describe("settings", () => {
       pickupBillingSettingsFrom({
         lateReturnRateMode: "SOMETHING_ELSE",
         lateReturnFixedDailyCents: -5,
-        earlyReturnProrationBasis: null,
+        lateDeliveryProrationBasis: null,
         pickupDayNotBilled: null,
       }),
     ).toEqual(RECOMMENDED_PICKUP_BILLING);
@@ -293,13 +316,13 @@ describe("settings", () => {
       pickupBillingSettingsFrom({
         lateReturnRateMode: "FIXED",
         lateReturnFixedDailyCents: 250,
-        earlyReturnProrationBasis: "ACTUAL_DAYS_IN_MONTH",
+        lateDeliveryProrationBasis: "ACTUAL_DAYS_IN_MONTH",
         pickupDayNotBilled: false,
       }),
     ).toEqual({
       lateReturnRateMode: "FIXED",
       lateReturnFixedDailyCents: 250,
-      earlyReturnProrationBasis: "ACTUAL_DAYS_IN_MONTH",
+      lateDeliveryProrationBasis: "ACTUAL_DAYS_IN_MONTH",
       pickupDayNotBilled: false,
     });
   });
@@ -315,20 +338,31 @@ describe("credit shown on the next bill", () => {
   });
 
   it("labels each credit with its own reason, oldest first, and never more than Stripe applied", () => {
-    const { lines, shownCreditIds } = creditLinesForAppliedBalance(1_300, [
-      { id: "c1", amountCents: 1_000, reason: "Credit – Dryer #D-7 returned early – 10 days" },
-      { id: "c2", amountCents: 500, reason: "Credit – Washer #W-1 returned early – 5 days" },
+    const { lines, shown } = creditLinesForAppliedBalance(1_300, [
+      { id: "c1", amountCents: 1_000, shownCents: 0, reason: "Credit – Dryer #D-7 delivered late – 10 days" },
+      { id: "c2", amountCents: 500, shownCents: 0, reason: "Credit – Washer #W-1 delivered late – 5 days" },
     ]);
     expect(lines).toEqual([
-      { kind: "CREDIT", description: "Credit – Dryer #D-7 returned early – 10 days", amountCents: -1_000, rentalLineId: null },
-      { kind: "CREDIT", description: "Credit – Washer #W-1 returned early – 5 days", amountCents: -300, rentalLineId: null },
+      { kind: "CREDIT", description: "Credit – Dryer #D-7 delivered late – 10 days", amountCents: -1_000, rentalLineId: null },
+      { kind: "CREDIT", description: "Credit – Washer #W-1 delivered late – 5 days", amountCents: -300, rentalLineId: null },
     ]);
-    expect(shownCreditIds).toEqual(["c1", "c2"]);
+    expect(shown).toEqual([
+      { id: "c1", cents: 1_000, complete: true },
+      { id: "c2", cents: 300, complete: false },
+    ]);
   });
 
-  it("still shows credit it cannot match to a record", () => {
-    const { lines, shownCreditIds } = creditLinesForAppliedBalance(700, []);
+  it("shows only the unshown part of a credit Stripe split across two bills, and completes it on the second", () => {
+    const { lines, shown } = creditLinesForAppliedBalance(200, [
+      { id: "c2", amountCents: 500, shownCents: 300, reason: "Credit – Washer #W-1 delivered late – 5 days" },
+    ]);
+    expect(lines).toEqual([{ kind: "CREDIT", description: "Credit – Washer #W-1 delivered late – 5 days", amountCents: -200, rentalLineId: null }]);
+    expect(shown).toEqual([{ id: "c2", cents: 200, complete: true }]);
+  });
+
+  it("still shows credit it cannot match to a record (an old credit is not relabeled)", () => {
+    const { lines, shown } = creditLinesForAppliedBalance(700, []);
     expect(lines).toEqual([{ kind: "CREDIT", description: "Account credit applied", amountCents: -700, rentalLineId: null }]);
-    expect(shownCreditIds).toEqual([]);
+    expect(shown).toEqual([]);
   });
 });

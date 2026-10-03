@@ -1,13 +1,13 @@
 import {
   RECOMMENDED_PICKUP_BILLING,
-  isEarlyReturnProrationBasis,
+  isLateDeliveryProrationBasis,
   isLateReturnRateMode,
   type PickupBillingSettings,
 } from "@/domains/billing/pickup-billing";
 import type { BusinessSettingsUpdate } from "./index";
 
 /**
- * The owner's "Pickups and returns" billing settings (IN-24 / IN-26 / IN-27).
+ * The owner's "Pickups and deliveries" billing settings (IN-24 / IN-26 / IN-27).
  * Typed in ordinary units (a choice, a dollar amount, on/off), checked here,
  * and stored in BusinessSettings. Owners and admins can change them. Nothing
  * here is ever hard-coded in billing code: src/domains/billing/pickup-billing.ts
@@ -17,14 +17,14 @@ import type { BusinessSettingsUpdate } from "./index";
 export const PICKUP_BILLING_FIELDS = [
   "lateReturnRateMode",
   "lateReturnFixedDailyDollars",
-  "earlyReturnProrationBasis",
+  "lateDeliveryProrationBasis",
   "pickupDayNotBilled",
 ] as const;
 
 export type PickupBillingFormValues = {
   lateReturnRateMode: string;
   lateReturnFixedDailyDollars: string;
-  earlyReturnProrationBasis: string;
+  lateDeliveryProrationBasis: string;
   pickupDayNotBilled: boolean;
 };
 
@@ -53,8 +53,8 @@ export function pickupBillingUpdate(
   if (!isLateReturnRateMode(raw.lateReturnRateMode)) {
     return { success: false, message: "Choose how the daily late-return rate is worked out." };
   }
-  if (!isEarlyReturnProrationBasis(raw.earlyReturnProrationBasis)) {
-    return { success: false, message: "Choose how the daily early-return credit is worked out." };
+  if (!isLateDeliveryProrationBasis(raw.lateDeliveryProrationBasis)) {
+    return { success: false, message: "Choose how the daily late-delivery credit is worked out." };
   }
   if (typeof raw.pickupDayNotBilled !== "boolean") {
     return { success: false, message: "Choose whether the pickup day is charged." };
@@ -75,7 +75,7 @@ export function pickupBillingUpdate(
     update: {
       lateReturnRateMode: raw.lateReturnRateMode,
       lateReturnFixedDailyCents: fixedCents,
-      earlyReturnProrationBasis: raw.earlyReturnProrationBasis,
+      lateDeliveryProrationBasis: raw.lateDeliveryProrationBasis,
       pickupDayNotBilled: raw.pickupDayNotBilled,
     },
   };
@@ -87,7 +87,7 @@ export function pickupBillingDefaults(settings: PickupBillingSettings): PickupBi
     lateReturnRateMode: settings.lateReturnRateMode,
     lateReturnFixedDailyDollars:
       settings.lateReturnFixedDailyCents === 0 ? "" : (settings.lateReturnFixedDailyCents / 100).toFixed(2),
-    earlyReturnProrationBasis: settings.earlyReturnProrationBasis,
+    lateDeliveryProrationBasis: settings.lateDeliveryProrationBasis,
     pickupDayNotBilled: settings.pickupDayNotBilled,
   };
 }

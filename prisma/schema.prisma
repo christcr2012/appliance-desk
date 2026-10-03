@@ -421,6 +421,7 @@ model Appliance {
   assignments ApplianceAssignment[]
   photos      Photo[]
   jobs        JobAppliance[]
+  pendingDeliveries PendingDelivery[]
   maintenanceRequests MaintenanceRequest[]
   inspections ApplianceInspection[]
 
@@ -709,6 +710,7 @@ model RentalAgreement {
   jobs        Job[]
   invoices    Invoice[]
   deposits    Deposit[]
+  pendingDeliveries PendingDelivery[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -874,6 +876,13 @@ model Job {
   partsCostCents Int?
   laborCostCents Int?
 
+  // The Colorado date the work was actually done, entered by staff when the
+  // job is marked completed (defaults to that day). Billing that depends on
+  // WHEN an appliance changed hands (late-return charges, late-delivery
+  // credits) reads this first, then scheduledAt, never the moment the status
+  // button was pressed. Stored as the Colorado midnight of that date.
+  performedOn DateTime?
+
   // SMS notifications (Task #71) — set once a "your visit is today" text
   // has gone out for this job, same dedup shape as RentalAgreement.
   // billingReminderSentForDate: stops the daily cron from texting twice
@@ -882,6 +891,8 @@ model Job {
 
   appliances JobAppliance[]
   photos     Photo[]
+  pendingDeliveries  PendingDelivery[] @relation("PendingDeliveryOriginalJob")
+  completedDeliveries PendingDelivery[] @relation("PendingDeliveryDeliveredJob")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -892,6 +903,38 @@ model Job {
   @@index([serviceAddressId])
   @@index([agreementId])
   @@index([maintenanceRequestId])
+}
+
+// An agreement item that was NOT delivered on the delivery visit that started
+// billing (owner decision IN-26, 2026-10-03). The whole agreement is billed from
+// that visit as normal; when the item finally arrives the customer is credited
+// for the days it was missing, and if it never arrives and is taken off the
+// agreement, for everything billed for it. One row per item per original job.
+model PendingDelivery {
+  id            String   @id @default(cuid())
+  agreementId   String
+  agreement     RentalAgreement @relation(fields: [agreementId], references: [id])
+  rentalLineId  String
+  applianceId   String
+  appliance     Appliance @relation(fields: [applianceId], references: [id])
+  originalJobId String
+  originalJob   Job      @relation("PendingDeliveryOriginalJob", fields: [originalJobId], references: [id])
+  // The Colorado date billing started counting this item (the original visit's service date).
+  originalDeliveryDate DateTime
+  // Set when a later delivery job brought the item (its service date), or when
+  // the item was taken off the agreement because it never arrived.
+  deliveredOn    DateTime?
+  deliveredJobId String?
+  deliveredJob   Job?     @relation("PendingDeliveryDeliveredJob", fields: [deliveredJobId], references: [id])
+  removedAt      DateTime?
+  // The credit this row produced, if any (one at most).
+  creditId       String?  @unique
+  createdByUserId String?
+  createdAt DateTime @default(now())
+
+  @@unique([originalJobId, applianceId])
+  @@index([agreementId])
+  @@index([applianceId])
 }
 
 model JobAppliance {
@@ -1331,9 +1374,12 @@ model CustomerCredit {
   sourceId   String?
   side       String?
   appliedViaStripeAt DateTime?
-  // The local mirror of the Stripe invoice this Stripe-applied credit was shown
-  // on as its own labeled line (src/domains/billing/webhooks.ts). Null until
-  // Stripe has used it on a bill. Local applications use CreditApplication.
+  // Stripe-applied credits from the late-delivery rule are shown on the local
+  // mirror of the bill that used them, as their own labeled line
+  // (src/domains/billing/webhooks.ts). shownCents is how much has been shown so
+  // far (Stripe may use a credit across two bills); shownOnInvoiceId is set
+  // once the whole amount has been shown. Local applications use CreditApplication.
+  shownCents       Int     @default(0)
   shownOnInvoiceId String?
   applications CreditApplication[]
 
@@ -1418,8 +1464,12 @@ model BusinessSettings {
   // monthly price divided by 30; "FIXED" = the dollar amount below, per day.
   lateReturnRateMode        String  @default("MONTHLY_DIV_30")
   lateReturnFixedDailyCents Int     @default(0)
-  // How the per-day credit for an EARLY return is found: "MONTHLY_DIV_30" or
-  // "ACTUAL_DAYS_IN_MONTH" (the real length of that billing month, 28 to 31 days).
+  // How the per-day credit for an item delivered LATE is found: "MONTHLY_DIV_30"
+  // or "ACTUAL_DAYS_IN_MONTH" (the real length of that billing month, 28 to 31 days).
+  lateDeliveryProrationBasis String @default("MONTHLY_DIV_30")
+  // DEPRECATED (2026-10-03, same day it was added): the setting was first built
+  // for a misread "early return" rule. Copied into lateDeliveryProrationBasis
+  // by migration 20261003280000 and never read again; removed in a later cleanup.
   earlyReturnProrationBasis String  @default("MONTHLY_DIV_30")
   // ON (default): the pickup/return day itself is never charged; the last charged
   // day is the day before. OFF: the pickup day is charged like any other day.

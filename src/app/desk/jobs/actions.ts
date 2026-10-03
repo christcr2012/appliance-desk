@@ -96,12 +96,17 @@ export async function updateJobStatusAction(
   jobId: string,
   status: string,
   completionNotes?: string,
+  completion?: { performedOn?: string; notDeliveredApplianceIds?: string[] },
 ): Promise<JobActionState> {
   const session = await requireRole("OWNER", "ADMIN", "STAFF");
 
   if (!ALL_JOB_STATUSES.includes(status as JobStatus)) {
     return { status: "error", message: "That's not a valid status." };
   }
+  const notDelivered = Array.isArray(completion?.notDeliveredApplianceIds)
+    ? completion.notDeliveredApplianceIds.filter((id): id is string => typeof id === "string" && id.length > 0 && id.length < 64)
+    : [];
+  const performedOn = typeof completion?.performedOn === "string" ? completion.performedOn : undefined;
 
   try {
     await updateJobStatus(
@@ -109,6 +114,7 @@ export async function updateJobStatusAction(
       jobId,
       status as JobStatus,
       completionNotes,
+      status === "COMPLETED" ? { performedOn, notDeliveredApplianceIds: notDelivered } : {},
     );
   } catch (error) {
     return {
@@ -121,6 +127,25 @@ export async function updateJobStatusAction(
   revalidatePath(`/desk/jobs/${jobId}`);
   revalidatePath("/desk/dashboard");
   revalidatePath("/desk/activity");
+  revalidatePath("/desk/today");
+  return { status: "success" };
+}
+
+/** Owner/admin: take a never-delivered item off its agreement and credit everything billed for it. */
+export async function removeUndeliveredItemAction(pendingDeliveryId: string, jobId: string): Promise<JobActionState> {
+  const session = await requireRole("OWNER", "ADMIN");
+  if (typeof pendingDeliveryId !== "string" || pendingDeliveryId.length === 0 || pendingDeliveryId.length > 64) {
+    return { status: "error", message: "Couldn't find that waiting item." };
+  }
+  try {
+    const { removeUndeliveredItem } = await import("@/domains/billing/pickup-billing-events");
+    await removeUndeliveredItem(session.user.id, pendingDeliveryId);
+  } catch (error) {
+    return { status: "error", message: error instanceof Error ? error.message : "Couldn't remove that item." };
+  }
+  revalidatePath(`/desk/jobs/${jobId}`);
+  revalidatePath("/desk/today");
+  revalidatePath("/desk/inventory");
   return { status: "success" };
 }
 

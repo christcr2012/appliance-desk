@@ -89,8 +89,8 @@ export default async function DeskSettingsPage({
   } else if (section === "pickups") {
     content = (
       <SectionCard
-        title="Pickups and returns"
-        description="What a customer is charged or credited when an appliance comes back late, early, or on a day other than the end date."
+        title="Pickups and deliveries"
+        description="What a customer is charged when an appliance comes back late, credited when one is delivered late, and whether the pickup day counts."
       >
         <PickupBillingForm defaultValues={pickupBillingDefaults(pickupBillingSettingsFrom(settings))} />
       </SectionCard>

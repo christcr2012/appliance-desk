@@ -212,38 +212,64 @@ Chris asked for a dashboard switch for live customer email. Built: `BusinessSett
 - An independent review (`docs/reviews/2026-10-03-pr161-independent-review.md`) found larger gaps that need a design, not a patch: overlapping Stripe updates (R1), a lost billing-stop restoration after a crash (R2), no customer cancel after the first renewal (R3), annual reminders (R4), uncertain-send recovery (R6), manual-delivery evidence (D2). Automatic renewal is held by a new owner-only master switch, "Automatic renewals", OFF by default (blank wording settings were NOT a real off switch: a migration fills in recommended starting wording). It stays off until `docs/prompts/DESIGN-BATCH-B-RENEWAL-LIFECYCLE.md` has been run and built. Recorded as a blocker in `docs/GO-LIVE-CHECKLIST.md`.
 - Email results now say what happened (`NOT_ATTEMPTED`, `REJECTED`, `UNKNOWN`). An unknown outcome or a failed "sent" save leaves a notice as "may already have been sent" for the owner; it is never resent by itself. A reminder that missed its 25-40 day deadline shows a red "Deadline missed" warning on Notices and says a late delivery will not let the renewal start.
 
-## 2026-10-03 — Pickup and return billing rules (IN-24 / IN-26 / IN-27), built from Chris's own spec
+## 2026-10-03 — Pickup and delivery billing rules (IN-24 / IN-26 / IN-27), built from Chris's own spec
 
-Chris gave the three rules directly (late return charged per day per item;
-early return of some items credited per day on the next bill; the pickup day
-is never charged), each as an owner setting with a stated default. There was
-no approved Batch C design for them yet (the drift-check PR had just written
-the prompt for one), so this is an owner-directed exception to "implement only
+Chris gave three rules directly (late return charged per day per item; an
+item missing from the first delivery still billed with the whole agreement and
+credited per day on the next bill once it arrives; the pickup day is never
+charged), each as an owner setting with a stated default. There was no
+approved Batch C design for them yet (the drift-check PR had just written the
+prompt for one), so this is an owner-directed exception to "implement only
 from an approved design", kept to the rules as stated and no further.
+
+**Corrected the same day.** The first version of PR #165 misread rule 2 as an
+"early return" credit (an item returned while the agreement continues). Chris
+never asked for that; it was removed in the same PR and replaced with the
+late-delivery credit he actually described. The one setting that had shipped
+under the early-return name moved to `lateDeliveryProrationBasis` by a new
+migration; the old column is a dead leftover.
 
 Decisions made while building, and why:
 
 - **Late-return charges are an ordinary OPEN invoice, not a Stripe charge.**
-  The agreement has ended and its subscription is cancelled by then, so there
-  is no "next" recurring bill; the same pattern the early-ending fee uses
-  (visible, adjustable, never auto-charged) keeps the company-caused waiver
-  (IN-24, not built yet) possible by hand. The invoice carries the
-  agreement's own tax rate because the charge is rent.
-- **Early-return credits go to Stripe as customer-balance credit**, the
+  The agreement has ended (or is about to) and its subscription is cancelled
+  by then, so there is no "next" recurring bill; the same pattern the
+  early-ending fee uses (visible, adjustable, never auto-charged) keeps the
+  company-caused waiver (IN-24, not built yet) possible by hand. The invoice
+  carries the agreement's own tax rate because the charge is rent.
+- **Late vs on time is decided by the dates, never by the agreement's
+  status.** A pickup after the end date is a late return even while the
+  agreement is still marked ACTIVE (the nightly job may not have ended it
+  yet).
+- **The day a job's work happened is a fact staff record** (`Job.performedOn`,
+  defaulting to the day they complete it), else the scheduled date — never
+  the moment the status button was pressed, which can be days later.
+- **A missing item is a record, not a guess.** Staff tick what was not on the
+  truck when they complete the delivery; each becomes a `PendingDelivery`
+  that stays on Today until a later delivery job brings it. Billing for the
+  whole agreement starts from the first visit exactly as before (the
+  subscription already covered every line).
+- **Late-delivery credits go to Stripe as customer-balance credit**, the
   proven path referral rewards already use (durable provider operation,
   reconciled on failure), so the credit really comes off the next charge.
   The mirrored invoice shows the applied balance as labeled lines, oldest
-  credit first (`CustomerCredit.shownOnInvoiceId` records where it was shown).
-- **Daily amounts are rounded once on the total**, never per day, so three
-  days of a $35 item is $3.50, not $3.51.
+  first, only for credits of this source type, part by part
+  (`CustomerCredit.shownCents`, `shownOnInvoiceId`); credits from before the
+  rule existed are marked fully shown by the migration so they are never
+  relabeled.
+- **Daily amounts are rounded once on the total**, never per day, so ten days
+  of a $30 item is $10.00 and three days of a $35 item is $3.50, not $3.51.
 - **A set's price is split evenly per appliance** (one line, two machines):
   there is no per-appliance price to use instead; documented on the screen.
+- **A credit never exceeds what was billed for the item**: its monthly share
+  × the billing periods that have started.
 - **No credit for prepaid-in-full rentals or rentals whose billing never
   started**: the first needs the owner's eyes (same as early endings), the
   second has nothing to credit against. Both are recorded in the audit entry.
-- **The returned item's rental line stays on the subscription** (reducing a
-  live Stripe subscription is a provider operation nobody has designed);
-  surfaced as a high-severity attention item until IN-28 is answered.
-- **"Actual days in that month"** means the real length of that anniversary
-  billing period (28–31 days), the only exact reading for a rental billed
-  on, say, the 8th.
+- **A never-delivered item taken off the agreement still has its line on the
+  Stripe subscription.** Reducing a live subscription is a provider operation
+  nobody has designed; the audit entry tells the owner to adjust it in Stripe.
+  Roadmap item.
+- **"Actual days in that month"** means the real length of the anniversary
+  billing period that contains the original delivery date (28–31 days), the
+  only exact reading for a rental billed on, say, the 8th.

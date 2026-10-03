@@ -12,6 +12,7 @@ import {
 } from "./ledger";
 import { resolveStripeInvoiceCashEvents } from "./stripe-invoice-payments";
 import { appliedBalanceCreditCents, creditLinesForAppliedBalance } from "./applied-credit-lines";
+import { LATE_DELIVERY_CREDIT_SOURCE } from "./pickup-billing";
 import { HELD_CONFLICT_STATUS, HELD_PAYMENT_STATUS, HELD_REFUNDED_STATUS, HELD_TO_CREDIT_STATUS } from "./payment-status";
 
 async function alreadyProcessed(db: Prisma.TransactionClient, eventId: string): Promise<boolean> {
@@ -207,16 +208,20 @@ async function recordPaidInvoice(
   // Credit Stripe took off this bill from the customer's account balance shows
   // as labeled lines, so the customer can see what each credit was for.
   const appliedCreditCents = appliedBalanceCreditCents(stripeInvoice);
-  let shownCreditIds: string[] = [];
+  let shownCredits: Array<{ id: string; cents: number; complete: boolean }> = [];
   if (appliedCreditCents > 0) {
+    // Only this feature's credits, oldest first, each with what is still unshown.
     const unshown = await db.customerCredit.findMany({
-      where: { customerId, appliedViaStripeAt: { not: null }, shownOnInvoiceId: null },
+      where: { customerId, sourceType: LATE_DELIVERY_CREDIT_SOURCE, appliedViaStripeAt: { not: null }, shownOnInvoiceId: null },
       orderBy: { appliedViaStripeAt: "asc" },
-      select: { id: true, amountCents: true, reason: true },
+      select: { id: true, amountCents: true, shownCents: true, reason: true },
     });
-    const creditLines = creditLinesForAppliedBalance(appliedCreditCents, unshown);
+    const creditLines = creditLinesForAppliedBalance(
+      appliedCreditCents,
+      unshown.filter((c) => c.shownCents < c.amountCents),
+    );
     lineItemsData.push(...creditLines.lines);
-    shownCreditIds = creditLines.shownCreditIds;
+    shownCredits = creditLines.shown;
   }
   const subtotalCents = lineItemsData
     .filter((item) => item.kind !== "TAX")
@@ -263,10 +268,13 @@ async function recordPaidInvoice(
         },
       });
 
-  if (shownCreditIds.length > 0) {
-    await db.customerCredit.updateMany({
-      where: { id: { in: shownCreditIds }, shownOnInvoiceId: null },
-      data: { shownOnInvoiceId: invoice.id },
+  for (const shown of shownCredits) {
+    await db.customerCredit.update({
+      where: { id: shown.id },
+      data: {
+        shownCents: { increment: shown.cents },
+        ...(shown.complete ? { shownOnInvoiceId: invoice.id } : {}),
+      },
     });
   }
 

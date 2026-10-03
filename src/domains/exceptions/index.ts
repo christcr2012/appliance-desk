@@ -1,6 +1,5 @@
 import { businessDayBounds } from "@/lib/business-date";
 import { prisma } from "@/lib/prisma";
-import { EARLY_RETURN_UNASSIGN_REASON } from "@/domains/billing/pickup-billing";
 import { requireRole } from "@/lib/session";
 import {
   APPLIANCE_MAINTENANCE_DUE_DAYS,
@@ -10,7 +9,7 @@ import {
   applianceMaintenanceDueException,
   billingBlockedException,
   earlyEndingNotDoneException,
-  returnedItemStillBilledException,
+  itemNotDeliveredException,
   noticeWaitingException,
   missingRepairCostException,
   overdueJobException,
@@ -73,7 +72,7 @@ export async function getExceptions(): Promise<ExceptionItem[]> {
     stuckRenewals,
     stuckEndings,
     waitingNotices,
-    earlyReturnsStillBilled,
+    itemsNotDelivered,
   ] = await Promise.all([
     canViewFinance ? prisma.rentalAgreement.findMany({
       where: { billingBlockedReason: { not: null } },
@@ -213,34 +212,25 @@ export async function getExceptions(): Promise<ExceptionItem[]> {
           },
         })
       : Promise.resolve([]),
-    canViewFinance
-      ? prisma.applianceAssignment.findMany({
-          where: {
-            unassignReason: EARLY_RETURN_UNASSIGN_REASON,
-            rentalLine: { agreement: { status: "ACTIVE", stripeSubscriptionId: { not: null } } },
-          },
-          select: {
-            unassignedAt: true,
-            appliance: { select: { assetNumber: true, applianceType: { select: { name: true } } } },
-            rentalLine: {
-              select: {
-                agreement: {
-                  select: { id: true, customer: { select: { user: { select: { name: true, email: true } } } } },
-                },
-              },
-            },
-          },
-        })
-      : Promise.resolve([]),
+    // Operational, not money: every role sees an item that still has to be delivered.
+    prisma.pendingDelivery.findMany({
+      where: { deliveredOn: null, removedAt: null },
+      select: {
+        originalJobId: true,
+        originalDeliveryDate: true,
+        appliance: { select: { assetNumber: true, applianceType: { select: { name: true } } } },
+        agreement: { select: { customer: { select: { user: { select: { name: true, email: true } } } } } },
+      },
+    }),
   ]);
 
   const items: ExceptionItem[] = [
-    ...earlyReturnsStillBilled.map((a) =>
-      returnedItemStillBilledException({
-        agreementId: a.rentalLine.agreement.id,
-        itemLabel: `${a.appliance.applianceType.name} #${a.appliance.assetNumber}`,
-        returnedAt: a.unassignedAt ?? now,
-        customerName: customerDisplayName(a.rentalLine.agreement.customer),
+    ...itemsNotDelivered.map((p) =>
+      itemNotDeliveredException({
+        originalJobId: p.originalJobId,
+        itemLabel: `${p.appliance.applianceType.name} #${p.appliance.assetNumber}`,
+        originalDeliveryDate: p.originalDeliveryDate,
+        customerName: customerDisplayName(p.agreement.customer),
       }),
     ),
     ...waitingNotices.map((n) =>

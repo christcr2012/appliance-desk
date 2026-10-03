@@ -8,7 +8,7 @@ const mocks = vi.hoisted(() => ({
   request: vi.fn(),
   appliance: vi.fn(),
   notice: vi.fn(),
-  assignment: vi.fn(),
+  pendingDelivery: vi.fn(),
 }));
 vi.mock("@/lib/session", () => ({ requireRole: mocks.requireRole }));
 vi.mock("@/lib/prisma", () => ({
@@ -19,7 +19,7 @@ vi.mock("@/lib/prisma", () => ({
     maintenanceRequest: { findMany: mocks.request },
     appliance: { findMany: mocks.appliance },
     customerNotice: { findMany: mocks.notice },
-    applianceAssignment: { findMany: mocks.assignment },
+    pendingDelivery: { findMany: mocks.pendingDelivery },
   },
 }));
 
@@ -35,7 +35,7 @@ beforeEach(() => {
     mocks.request,
     mocks.appliance,
     mocks.notice,
-    mocks.assignment,
+    mocks.pendingDelivery,
   ]) {
     fn.mockResolvedValue([]);
   }
@@ -55,8 +55,8 @@ describe("Today server-side visibility", () => {
     expect(result.map((x) => x.category)).toEqual(["OVERDUE_JOB"]);
     expect(mocks.invoice).not.toHaveBeenCalled();
     expect(mocks.notice).not.toHaveBeenCalled();
-    // Returned-item billing is finance: never looked up for STAFF.
-    expect(mocks.assignment).not.toHaveBeenCalled();
+    // An item still waiting for delivery is operational: STAFF see it too.
+    expect(mocks.pendingDelivery).toHaveBeenCalledTimes(1);
     expect(mocks.agreement).toHaveBeenCalledTimes(3);
     expect(
       mocks.agreement.mock.calls.every(

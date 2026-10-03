@@ -6,6 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import {
   updateJobStatusAction,
+  removeUndeliveredItemAction,
   addJobPhotoAction,
   setJobRepairCostsAction,
   updateApplianceStatusFromJobAction,
@@ -71,17 +72,37 @@ function revokePreview(url: string): void {
   if (url.startsWith("blob:")) URL.revokeObjectURL(url);
 }
 
+type PendingDeliveryRow = {
+  id: string;
+  label: string;
+  originalDeliveryDate: string;
+  deliveredOn: string | null;
+  removed: boolean;
+};
+
 export function JobDetailPanel({
   job,
   canViewFinance = false,
+  deliveryCandidates = [],
+  pendingDeliveries = [],
+  today = "",
 }: {
   job: JobRow;
   canViewFinance?: boolean;
+  /** DELIVERY/INSTALLATION only: the appliances this visit will mark delivered, to tick off any that were not. */
+  deliveryCandidates?: Array<{ id: string; label: string }>;
+  /** Items this delivery visit recorded as not delivered. */
+  pendingDeliveries?: PendingDeliveryRow[];
+  /** Today's Colorado date (YYYY-MM-DD), the default "date the work was done". */
+  today?: string;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [completionNotes, setCompletionNotes] = useState(job.completionNotes ?? "");
+  const [performedOn, setPerformedOn] = useState(today);
+  const [notDelivered, setNotDelivered] = useState<Set<string>>(new Set());
+  const [removeMessage, setRemoveMessage] = useState<string | null>(null);
   const [photoUrl, setPhotoUrl] = useState("");
   const [photoPreviewUrl, setPhotoPreviewUrl] = useState("");
   const [photoAlt, setPhotoAlt] = useState("");
@@ -153,10 +174,22 @@ export function JobDetailPanel({
         job.id,
         status,
         status === "COMPLETED" ? completionNotes : undefined,
+        status === "COMPLETED" ? { performedOn, notDeliveredApplianceIds: [...notDelivered] } : undefined,
       );
       if (result.status === "error") {
         setStatusMessage(result.message);
       }
+      router.refresh();
+    });
+  }
+
+  function handleRemoveUndelivered(pendingDeliveryId: string) {
+    setRemoveMessage(null);
+    startTransition(async () => {
+      const result = await removeUndeliveredItemAction(pendingDeliveryId, job.id);
+      setRemoveMessage(
+        result.status === "error" ? result.message : "Taken off the agreement. The credit shows on the customer's next bill.",
+      );
       router.refresh();
     });
   }
@@ -211,6 +244,50 @@ export function JobDetailPanel({
               onChange={(e) => setCompletionNotes(e.target.value)}
               className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
             />
+            <label htmlFor="performedOn" className="mt-3 block text-sm font-medium text-gray-700">
+              Date the work was done
+            </label>
+            <input
+              id="performedOn"
+              type="date"
+              value={performedOn}
+              onChange={(e) => setPerformedOn(e.target.value)}
+              aria-describedby="performedOn-help"
+              className="mt-1 rounded-md border border-gray-300 px-3 py-2 text-sm"
+            />
+            <p id="performedOn-help" className="mt-1 text-xs text-gray-600">
+              Billing counts days from this date (a late return, or an item delivered late), not from the moment you press the button. Change it if you are recording the visit a day or two later.
+            </p>
+            {deliveryCandidates.length > 0 && (
+              <fieldset className="mt-3">
+                <legend className="text-sm font-medium text-gray-700">Anything NOT delivered on this visit?</legend>
+                <p className="text-xs text-gray-600">
+                  Tick an item that did not make it. The customer is still billed for the whole agreement from today; when the item arrives on a later delivery job they get a credit for the days it was missing, shown on their next bill.
+                </p>
+                <ul className="mt-2 space-y-1">
+                  {deliveryCandidates.map((candidate) => (
+                    <li key={candidate.id}>
+                      <label className="flex items-center gap-2 text-sm text-gray-700">
+                        <input
+                          type="checkbox"
+                          className="rounded"
+                          checked={notDelivered.has(candidate.id)}
+                          onChange={(e) =>
+                            setNotDelivered((prev) => {
+                              const next = new Set(prev);
+                              if (e.target.checked) next.add(candidate.id);
+                              else next.delete(candidate.id);
+                              return next;
+                            })
+                          }
+                        />
+                        {candidate.label} — not delivered
+                      </label>
+                    </li>
+                  ))}
+                </ul>
+              </fieldset>
+            )}
           </div>
         )}
 
@@ -241,6 +318,51 @@ export function JobDetailPanel({
           </p>
         )}
       </div>
+
+      {pendingDeliveries.length > 0 && (
+        <div className="rounded-lg border border-gray-200 bg-white p-5">
+          <h2 className="font-medium text-gray-900">Items not delivered on this visit</h2>
+          <p className="mt-1 text-sm text-gray-600">
+            The customer is billed for these from the original delivery date. Schedule a delivery job for each one; when that job is completed the credit for the missing days is worked out automatically.
+          </p>
+          <ul className="mt-3 space-y-2 text-sm text-gray-700">
+            {pendingDeliveries.map((item) => (
+              <li key={item.id} className="flex flex-wrap items-center justify-between gap-2">
+                <span>
+                  {item.label} — billed from {item.originalDeliveryDate}
+                  {item.deliveredOn
+                    ? `; delivered ${item.deliveredOn}, credit recorded`
+                    : item.removed
+                      ? "; taken off the agreement, credit recorded"
+                      : "; still waiting"}
+                </span>
+                {!item.deliveredOn && !item.removed && (
+                  <span className="flex flex-wrap gap-2">
+                    <Link href="/desk/jobs/new" className="text-primary hover:underline">
+                      Schedule a delivery
+                    </Link>
+                    {canViewFinance && (
+                      <button
+                        type="button"
+                        disabled={isPending}
+                        onClick={() => handleRemoveUndelivered(item.id)}
+                        className="rounded-md border border-gray-300 px-2 py-1 text-xs text-gray-700 hover:border-gray-400 disabled:opacity-50"
+                      >
+                        Never delivered — take it off the agreement and credit it
+                      </button>
+                    )}
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+          {removeMessage && (
+            <p role="status" className="mt-2 text-sm text-gray-700">
+              {removeMessage}
+            </p>
+          )}
+        </div>
+      )}
 
       {checklist.length > 0 && (
         <div className="rounded-lg border border-gray-200 bg-white p-5">

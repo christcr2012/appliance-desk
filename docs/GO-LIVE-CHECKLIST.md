@@ -17,8 +17,7 @@ Legend: **Owner** = only Chris can do it · **Agent** = Claude can do it once yo
 | [ ] | Sales tax rate confirmed with your CPA (7.375% starting value, IN-17) | Desk → Settings → tax, then tick "confirmed" (Owner) | Not confirmed | Settings shows the rate as confirmed |
 | [ ] | Prices, deposit, late fees, prepay discounts reviewed | Desk → Settings (Owner) | Starting values | You have read every number on the settings screens |
 | [ ] | Held-payment and refund rules understood | Desk → Billing → Held payments (Owner) | Built | Walkthrough done |
-| [ ] | Pickup and return billing rules reviewed (late-return rate, early-return credit basis, pickup day not charged) | Desk → Settings → Pickups and returns (Owner) | Recommended values | You have read the three rules and saved them |
-| [ ] | IN-28 answered: what happens to a returned item's monthly charge from the next month | `docs/OWNER-INPUTS.md` IN-28 (Owner) | Listed on Today until adjusted by hand | Decision recorded and built |
+| [ ] | Pickup and delivery billing rules reviewed (late-return rate, late-delivery credit basis, pickup day not charged) | Desk → Settings → Pickups and deliveries (Owner) | Recommended values | You have read the three rules and saved them |
 
 ## 2. Customer email
 | Done | Item | Where / how | Today | How you know it worked |

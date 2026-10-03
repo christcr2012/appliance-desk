@@ -8,12 +8,12 @@ section with a date.
 
 ## Deferred to a later phase (already scoped, just not yet)
 
-- **Reduce a live Stripe subscription after an early return** (2026-10-03,
-  from the pickup-billing rules): when some appliances come back while the
-  rental continues, take their rental line off the subscription from the
-  next period (a `SUBSCRIPTION_UPDATE`-style provider operation with
-  reconciliation). Until then the item is listed on Today → "Returned item
-  still on monthly bill". Needs IN-28 and the Batch C design.
+- **Take a never-delivered item's line off the live Stripe subscription**
+  (2026-10-03, from the late-delivery credit): when the owner removes an item
+  that never arrived, its rental line still bills every month until the
+  subscription is changed in Stripe by hand (the audit entry says so). Needs a
+  `SUBSCRIPTION_UPDATE`-style provider operation with reconciliation; Batch C
+  design.
 - **Company-caused late pickup waiver** (IN-24): record who caused a late
   pickup and waive the late-return charge for company fault. Batch C design.
 - **Collect late-return invoices through Stripe automatically** (today they

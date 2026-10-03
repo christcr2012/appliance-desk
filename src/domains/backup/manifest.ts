@@ -35,6 +35,7 @@ export const BACKUP_MODEL_POLICY = {
   Deposit: "deposit",
   Job: "job",
   JobAppliance: "jobAppliance",
+  PendingDelivery: "pendingDelivery",
   MaintenanceRequest: "maintenanceRequest",
   Estimate: "estimate",
   EstimateLineItem: "estimateLineItem",

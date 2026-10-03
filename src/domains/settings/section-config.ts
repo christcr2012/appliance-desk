@@ -4,7 +4,7 @@ export const SETTINGS_SECTIONS = [
   { id: "products", label: "Products and pricing" },
   { id: "policies", label: "Rental policies" },
   { id: "terms", label: "Ending and renewing rentals" },
-  { id: "pickups", label: "Pickups and returns" },
+  { id: "pickups", label: "Pickups and deliveries" },
   { id: "website", label: "Website" },
   { id: "notifications", label: "Notifications" },
   { id: "staff", label: "Staff" },

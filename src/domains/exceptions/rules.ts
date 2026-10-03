@@ -28,7 +28,7 @@ export type ExceptionCategory =
   | "RENEWAL_NOT_STARTED"
   | "EARLY_ENDING_NOT_DONE"
   | "NOTICE_WAITING"
-  | "RETURNED_ITEM_STILL_BILLED";
+  | "ITEM_NOT_DELIVERED";
 
 export type ExceptionSeverity = "high" | "medium";
 
@@ -93,26 +93,25 @@ export function renewalNotStartedException(agreement: {
 }
 
 /**
- * An appliance was returned early (a partial pickup on a rental that carries on)
- * and its unused days were credited, but its rental line is still on the
- * customer's monthly subscription, so the next month would charge for it again.
- * Reducing a live subscription is not automated yet; until it is, the owner
- * must adjust the charge by hand (docs/OWNER-INPUTS.md IN-28).
+ * An agreement item was not on the delivery visit that started billing and is
+ * still waiting (owner decision IN-26). The customer is being billed for it, so
+ * it must never be forgotten: schedule a delivery job for it, and when that job
+ * is completed the credit for the missing days is worked out automatically.
  */
-export function returnedItemStillBilledException(item: {
-  agreementId: string;
+export function itemNotDeliveredException(item: {
+  originalJobId: string;
   itemLabel: string;
-  returnedAt: Date;
+  originalDeliveryDate: Date;
   customerName: string;
 }): ExceptionItem {
   return {
-    category: "RETURNED_ITEM_STILL_BILLED",
+    category: "ITEM_NOT_DELIVERED",
     severity: "high",
-    title: `${item.itemLabel} came back early but is still on ${item.customerName}'s monthly bill`,
+    title: `${item.itemLabel} has not been delivered to ${item.customerName} yet`,
     detail:
-      "The unused days of the current month were credited. From next month the monthly charge still includes this appliance until its rental line is taken off the subscription in Stripe or the customer is credited each month.",
-    href: `/desk/agreements/${item.agreementId}`,
-    since: item.returnedAt,
+      "The customer is billed for it from the original delivery date. Schedule a delivery job for it; completing that job credits the customer for the days it was missing.",
+    href: `/desk/jobs/${item.originalJobId}`,
+    since: item.originalDeliveryDate,
   };
 }
 

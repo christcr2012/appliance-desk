@@ -1,14 +1,21 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { businessDateEnd, businessDateFromKey } from "@/lib/business-date";
 
-// What a completed pickup does to billing (src/domains/billing/pickup-billing-events.ts),
-// run against a fake transaction: the agreement, settings and assignments are
-// fixed and every write is captured.
+// What a completed job does to billing (src/domains/billing/pickup-billing-events.ts),
+// run against a fake transaction: the agreement, settings, assignments and
+// waiting items are fixed and every write is captured.
 
 vi.mock("@/lib/prisma", () => ({ prisma: {} }));
 vi.mock("@/lib/stripe", () => ({ getStripeClient: () => ({}) }));
+vi.mock("@/lib/team-actor", () => ({ assertActiveTeamActor: vi.fn() }));
 
-import { recordPickupBillingOnRemoval } from "@/domains/billing/pickup-billing-events";
+import {
+  jobServiceDate,
+  parsePerformedOn,
+  recordItemsNotDelivered,
+  recordLateDeliveries,
+  recordLateReturnOnRemoval,
+} from "@/domains/billing/pickup-billing-events";
 
 const day = (key: string) => businessDateFromKey(key)!;
 const afternoon = (key: string) => new Date(day(key).getTime() + 15.5 * 3_600_000);
@@ -16,8 +23,9 @@ const afternoon = (key: string) => new Date(day(key).getTime() + 15.5 * 3_600_00
 type Writes = {
   invoices: unknown[];
   credits: unknown[];
-  assignmentUpdates: unknown[];
-  audits: unknown[];
+  pendingCreated: unknown[];
+  pendingUpdates: unknown[];
+  audits: Array<{ action: string }>;
   locks: number;
 };
 
@@ -25,15 +33,22 @@ function fakeTx(input: {
   agreement: Record<string, unknown> | null;
   settings?: Record<string, unknown> | null;
   assignments: Array<Record<string, unknown>>;
+  pending?: Array<Record<string, unknown>>;
 }) {
-  const writes: Writes = { invoices: [], credits: [], assignmentUpdates: [], audits: [], locks: 0 };
+  const writes: Writes = { invoices: [], credits: [], pendingCreated: [], pendingUpdates: [], audits: [], locks: 0 };
   const tx = {
     rentalAgreement: { findUnique: vi.fn(async () => input.agreement) },
     businessSettings: { findUnique: vi.fn(async () => input.settings ?? null) },
-    applianceAssignment: {
-      findMany: vi.fn(async () => input.assignments),
+    applianceAssignment: { findMany: vi.fn(async () => input.assignments) },
+    pendingDelivery: {
+      findMany: vi.fn(async () => input.pending ?? []),
+      findUnique: vi.fn(async () => null),
+      create: vi.fn(async (args: { data: unknown }) => {
+        writes.pendingCreated.push(args.data);
+        return { id: `pd-${writes.pendingCreated.length}` };
+      }),
       update: vi.fn(async (args: unknown) => {
-        writes.assignmentUpdates.push(args);
+        writes.pendingUpdates.push(args);
         return {};
       }),
     },
@@ -50,7 +65,7 @@ function fakeTx(input: {
       }),
     },
     auditLog: {
-      create: vi.fn(async (args: { data: unknown }) => {
+      create: vi.fn(async (args: { data: { action: string } }) => {
         writes.audits.push(args.data);
         return {};
       }),
@@ -69,24 +84,37 @@ const line = (id: string, monthlyPriceCents: number, applianceIds: string[]) => 
   assignments: applianceIds.map((applianceId) => ({ applianceId })),
 });
 
-const assignment = (
-  id: string,
-  applianceId: string,
-  rentalLine: ReturnType<typeof line>,
-  name: string,
-  unassignedAt: Date | null = null,
-) => ({
+const assignment = (id: string, applianceId: string, rentalLine: ReturnType<typeof line>, name: string) => ({
   id,
   applianceId,
-  unassignedAt,
+  unassignedAt: null,
   rentalLine,
   appliance: { assetNumber: applianceId.toUpperCase(), applianceType: { name } },
 });
 
 beforeEach(() => vi.clearAllMocks());
 
-describe("late return on an ended agreement", () => {
-  const ended = {
+describe("the date a job's work happened", () => {
+  it("prefers the date staff recorded, then the scheduled date, then completion", () => {
+    const performedOn = day("2026-10-14");
+    const scheduledAt = afternoon("2026-10-13");
+    const completedAt = afternoon("2026-10-16");
+    expect(jobServiceDate({ performedOn, scheduledAt, completedAt })).toBe(performedOn);
+    expect(jobServiceDate({ performedOn: null, scheduledAt, completedAt })).toBe(scheduledAt);
+    expect(jobServiceDate({ performedOn: null, scheduledAt: null, completedAt })).toBe(completedAt);
+  });
+
+  it("parses the typed date as a Colorado date and rejects nonsense", () => {
+    expect(parsePerformedOn("2026-10-14")).toEqual({ ok: true, value: day("2026-10-14") });
+    expect(parsePerformedOn("")).toEqual({ ok: true, value: null });
+    expect(parsePerformedOn(undefined)).toEqual({ ok: true, value: null });
+    expect(parsePerformedOn("2026-02-30")).toMatchObject({ ok: false });
+    expect(parsePerformedOn("yesterday")).toMatchObject({ ok: false });
+  });
+});
+
+describe("late return (rule 1)", () => {
+  const base = {
     id: "agr-1",
     customerId: "cust-1",
     status: "ENDED",
@@ -97,17 +125,13 @@ describe("late return on an ended agreement", () => {
   };
 
   it("bills 3 late days per item on one open invoice, each as its own labeled line, with the agreement's tax", async () => {
-    const washerLine = line("line-w", 4_500, ["w1"]);
-    const { tx, writes } = fakeTx({
-      agreement: ended,
-      assignments: [assignment("as-1", "w1", washerLine, "Washer", day("2026-10-10"))],
-    });
-    const result = await recordPickupBillingOnRemoval(tx as never, {
+    const { tx, writes } = fakeTx({ agreement: base, assignments: [assignment("as-1", "w1", line("line-w", 4_500, ["w1"]), "Washer")] });
+    const result = await recordLateReturnOnRemoval(tx as never, {
       userId: "owner",
       jobId: "job-1",
       agreementId: "agr-1",
       applianceIds: ["w1"],
-      completedAt: afternoon("2026-10-14"),
+      pickupDate: afternoon("2026-10-14"),
     });
 
     expect(result.lateReturnInvoiceId).toBe("inv-1");
@@ -117,7 +141,7 @@ describe("late return on an ended agreement", () => {
       subtotalCents: number;
       taxCents: number;
       amountDueCents: number;
-      lineItems: { createMany: { data: Array<{ kind: string; description: string; amountCents: number; rentalLineId: string | null }> } };
+      lineItems: { createMany: { data: Array<Record<string, unknown>> } };
     };
     expect(invoice.status).toBe("OPEN");
     expect(invoice.subtotalCents).toBe(450);
@@ -127,47 +151,62 @@ describe("late return on an ended agreement", () => {
       { kind: "LATE_RETURN", description: "Late return – Washer #W1 – 3 days", amountCents: 450, quantity: 1, rentalLineId: "line-w" },
       { kind: "TAX", description: "Sales tax", amountCents: 33, quantity: 1, rentalLineId: null },
     ]);
-    expect(result.lateReturnCents).toBe(483);
     expect(writes.credits).toHaveLength(0);
-    expect((writes.audits[0] as { action: string }).action).toBe("billing.late_return_invoiced");
+    expect(writes.audits[0].action).toBe("billing.late_return_invoiced");
   });
 
-  it("bills nothing and writes no invoice for an on-time pickup", async () => {
+  it("a pickup after the end date is a late return even while the agreement is still marked ACTIVE, and gets no credit", async () => {
     const { tx, writes } = fakeTx({
-      agreement: ended,
-      assignments: [assignment("as-1", "w1", line("line-w", 4_500, ["w1"]), "Washer", day("2026-10-10"))],
+      agreement: { ...base, status: "ACTIVE" },
+      assignments: [assignment("as-1", "w1", line("line-w", 4_500, ["w1"]), "Washer")],
     });
-    const result = await recordPickupBillingOnRemoval(tx as never, {
+    const result = await recordLateReturnOnRemoval(tx as never, {
       userId: "owner",
       jobId: "job-1",
       agreementId: "agr-1",
       applianceIds: ["w1"],
-      completedAt: afternoon("2026-10-11"),
+      pickupDate: afternoon("2026-10-14"),
     });
-    expect(result.lateReturnInvoiceId).toBeNull();
-    expect(writes.invoices).toHaveLength(0);
-    expect(writes.locks).toBe(0);
-    expect(result.notes[0]).toMatch(/on time/);
+    expect(result.lateReturnInvoiceId).toBe("inv-1");
+    expect(result.lateReturnCents).toBe(483);
+    expect(writes.credits).toHaveLength(0);
+    expect(result.creditIds).toEqual([]);
   });
 
-  it("does nothing when the job took no appliances", async () => {
-    const { tx, writes } = fakeTx({ agreement: ended, assignments: [] });
-    const result = await recordPickupBillingOnRemoval(tx as never, {
+  it("uses the pickup date it is given, not the moment the button was pressed", async () => {
+    const { tx, writes } = fakeTx({ agreement: base, assignments: [assignment("as-1", "w1", line("line-w", 4_500, ["w1"]), "Washer")] });
+    // Recorded on Oct 20, but the truck went on Oct 12: one late day (Oct 11), not nine.
+    const result = await recordLateReturnOnRemoval(tx as never, {
       userId: "owner",
       jobId: "job-1",
       agreementId: "agr-1",
-      applianceIds: [],
-      completedAt: afternoon("2026-10-14"),
+      applianceIds: ["w1"],
+      pickupDate: day("2026-10-12"),
     });
-    expect(result.lateReturnInvoiceId).toBeNull();
-    expect(tx.rentalAgreement.findUnique).not.toHaveBeenCalled();
-    expect(writes.invoices).toHaveLength(0);
+    expect(result.lateReturnCents).toBeGreaterThan(0);
+    expect((writes.invoices[0] as { subtotalCents: number }).subtotalCents).toBe(150);
+  });
+
+  it("bills nothing and writes no invoice for an on-time pickup, or when the agreement has no end date", async () => {
+    for (const agreement of [base, { ...base, status: "ACTIVE", endDate: null }]) {
+      const { tx, writes } = fakeTx({ agreement, assignments: [assignment("as-1", "w1", line("line-w", 4_500, ["w1"]), "Washer")] });
+      const result = await recordLateReturnOnRemoval(tx as never, {
+        userId: "owner",
+        jobId: "job-1",
+        agreementId: "agr-1",
+        applianceIds: ["w1"],
+        pickupDate: afternoon("2026-10-11"),
+      });
+      expect(result.lateReturnInvoiceId).toBeNull();
+      expect(writes.invoices).toHaveLength(0);
+      expect(writes.locks).toBe(0);
+    }
   });
 });
 
-describe("early return on an active 2-item agreement", () => {
-  // Billing started Oct 1, so the billed month is Oct 1 – Oct 31. The dryer of a
-  // $60 washer+dryer set comes back Oct 22: 10 unused days at $30 ÷ 30 = $10.
+describe("late delivery on a 2-item agreement (rule 2)", () => {
+  // The washer arrived Oct 1 and billing for the whole $60 set started then;
+  // the dryer was marked not delivered and arrives Oct 11.
   const active = {
     id: "agr-2",
     customerId: "cust-1",
@@ -178,76 +217,111 @@ describe("early return on an active 2-item agreement", () => {
     taxRateMilliPercent: 0,
   };
   const setLine = line("line-set", 6_000, ["w1", "d1"]);
+  const waitingDryer = { id: "pd-1", applianceId: "d1", rentalLineId: "line-set", originalDeliveryDate: day("2026-10-01") };
 
-  it("releases the returned item and records a labeled credit for its unused days; the washer keeps billing", async () => {
+  it("records an item that was not on the first delivery, billed from that visit's date", async () => {
+    const { tx, writes } = fakeTx({ agreement: active, assignments: [assignment("as-d", "d1", setLine, "Dryer")] });
+    const result = await recordItemsNotDelivered(tx as never, {
+      userId: "staff",
+      jobId: "job-1",
+      agreementId: "agr-2",
+      applianceIds: ["d1"],
+      deliveryDate: day("2026-10-01"),
+    });
+    expect(result.pendingDeliveryIds).toEqual(["pd-1"]);
+    expect(writes.pendingCreated[0]).toMatchObject({
+      agreementId: "agr-2",
+      rentalLineId: "line-set",
+      applianceId: "d1",
+      originalJobId: "job-1",
+      originalDeliveryDate: day("2026-10-01"),
+    });
+    expect(writes.credits).toHaveLength(0);
+    expect(writes.audits[0].action).toBe("billing.item_not_delivered");
+  });
+
+  it("when the item arrives 10 days later, the whole agreement stays billed and a 10-day credit is recorded for the next bill", async () => {
     const { tx, writes } = fakeTx({
       agreement: active,
       assignments: [assignment("as-d", "d1", setLine, "Dryer")],
+      pending: [waitingDryer],
     });
-    const result = await recordPickupBillingOnRemoval(tx as never, {
-      userId: "owner",
+    const result = await recordLateDeliveries(tx as never, {
+      userId: "staff",
       jobId: "job-2",
       agreementId: "agr-2",
       applianceIds: ["d1"],
-      completedAt: afternoon("2026-10-22"),
+      deliveryDate: day("2026-10-11"),
     });
-
-    expect(writes.assignmentUpdates).toEqual([
-      { where: { id: "as-d" }, data: { unassignedAt: afternoon("2026-10-22"), unassignReason: "Returned early" } },
-    ]);
-    expect(result.earlyReturnCreditIds).toEqual(["credit-1"]);
-    expect(result.earlyReturnCents).toBe(1_000);
+    expect(result.creditIds).toEqual(["credit-1"]);
+    expect(result.creditCents).toBe(1_000);
+    expect(writes.invoices).toHaveLength(0); // nothing is re-billed; the subscription bills the whole agreement
     expect(writes.credits[0]).toMatchObject({
       customerId: "cust-1",
       amountCents: 1_000,
       remainingCents: 1_000,
-      reason: "Credit – Dryer #D1 returned early – 10 days",
-      sourceType: "EARLY_RETURN",
-      sourceId: "job-2:d1",
+      reason: "Credit – Dryer #D1 delivered late – 10 days",
+      sourceType: "LATE_DELIVERY",
+      sourceId: "pd-1",
       side: "CUSTOMER",
-      authorizedByUserId: "owner",
+      authorizedByUserId: "staff",
     });
-    expect(writes.invoices).toHaveLength(0);
-    expect((writes.audits[0] as { action: string }).action).toBe("billing.early_return_credit");
+    expect(writes.pendingUpdates).toEqual([
+      { where: { id: "pd-1" }, data: { deliveredOn: day("2026-10-11"), deliveredJobId: "job-2" } },
+      { where: { id: "pd-1" }, data: { creditId: "credit-1" } },
+    ]);
+    expect(writes.audits[0].action).toBe("billing.late_delivery_credit");
   });
 
-  it("gives no automatic credit when billing never started or the rental was prepaid", async () => {
+  it("an appliance with nothing waiting is just delivered: no credit, no record", async () => {
+    const { tx, writes } = fakeTx({ agreement: active, assignments: [assignment("as-w", "w1", setLine, "Washer")], pending: [] });
+    const result = await recordLateDeliveries(tx as never, {
+      userId: "staff",
+      jobId: "job-1",
+      agreementId: "agr-2",
+      applianceIds: ["w1"],
+      deliveryDate: day("2026-10-01"),
+    });
+    expect(result.creditIds).toEqual([]);
+    expect(writes.credits).toHaveLength(0);
+    expect(tx.rentalAgreement.findUnique).not.toHaveBeenCalled();
+  });
+
+  it("gives no automatic credit when billing never started or the rental was prepaid, but still closes the waiting item", async () => {
     for (const agreement of [
       { ...active, billingStartedAt: null },
       { ...active, paidInFullInAdvance: true },
     ]) {
-      const { tx, writes } = fakeTx({ agreement, assignments: [assignment("as-d", "d1", setLine, "Dryer")] });
-      const result = await recordPickupBillingOnRemoval(tx as never, {
-        userId: "owner",
+      const { tx, writes } = fakeTx({ agreement, assignments: [assignment("as-d", "d1", setLine, "Dryer")], pending: [waitingDryer] });
+      const result = await recordLateDeliveries(tx as never, {
+        userId: "staff",
         jobId: "job-2",
         agreementId: "agr-2",
         applianceIds: ["d1"],
-        completedAt: afternoon("2026-10-22"),
+        deliveryDate: day("2026-10-11"),
       });
-      expect(writes.assignmentUpdates).toHaveLength(1); // still released from the agreement
+      expect(writes.pendingUpdates).toHaveLength(1);
       expect(writes.credits).toHaveLength(0);
-      expect(result.earlyReturnCreditIds).toEqual([]);
+      expect(result.creditIds).toEqual([]);
       expect(result.notes[0]).toMatch(/no (credit|automatic credit)/);
     }
   });
 
-  it("uses the owner's saved proration basis and pickup-day switch", async () => {
+  it("uses the owner's saved proration basis", async () => {
     const { tx, writes } = fakeTx({
       agreement: active,
-      settings: { earlyReturnProrationBasis: "ACTUAL_DAYS_IN_MONTH", pickupDayNotBilled: false },
+      settings: { lateDeliveryProrationBasis: "ACTUAL_DAYS_IN_MONTH" },
       assignments: [assignment("as-d", "d1", setLine, "Dryer")],
+      pending: [waitingDryer],
     });
-    await recordPickupBillingOnRemoval(tx as never, {
-      userId: "owner",
+    await recordLateDeliveries(tx as never, {
+      userId: "staff",
       jobId: "job-2",
       agreementId: "agr-2",
       applianceIds: ["d1"],
-      completedAt: afternoon("2026-10-22"),
+      deliveryDate: day("2026-10-11"),
     });
-    // 9 unused days (Oct 23–31) at $30 ÷ 31 → $8.71
-    expect(writes.credits[0]).toMatchObject({
-      amountCents: 871,
-      reason: "Credit – Dryer #D1 returned early – 9 days",
-    });
+    // 10 missing days at $30 ÷ 31 → $9.68
+    expect(writes.credits[0]).toMatchObject({ amountCents: 968, reason: "Credit – Dryer #D1 delivered late – 10 days" });
   });
 });

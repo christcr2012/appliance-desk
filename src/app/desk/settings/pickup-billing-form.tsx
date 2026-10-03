@@ -8,7 +8,7 @@ import {
 } from "@/domains/settings/pickup-billing";
 
 /**
- * "Pickups and returns" billing settings. Every choice is explained on the
+ * "Pickups and deliveries" billing settings. Every choice is explained on the
  * screen itself: what it does, what it means for a customer, the recommended
  * starting value and why, and a button to put the recommended values back.
  */
@@ -25,7 +25,7 @@ export function PickupBillingForm({ defaultValues }: { defaultValues: PickupBill
       const result = await updatePickupBillingAction(values);
       setMessage(
         result.status === "success"
-          ? { kind: "success", text: "Settings saved. They apply to every pickup and return recorded from now on." }
+          ? { kind: "success", text: "Settings saved. They apply to every pickup and delivery recorded from now on." }
           : result.status === "error"
             ? { kind: "error", text: result.message }
             : null,
@@ -56,11 +56,11 @@ export function PickupBillingForm({ defaultValues }: { defaultValues: PickupBill
       )}
 
       <p className="rounded-lg border border-gray-300 px-4 py-3 text-sm text-gray-900">
-        These three rules decide what a customer is charged or credited when an appliance is picked up
-        or returned on a day other than the agreement&rsquo;s end date. Each one is a setting you can
-        change at any time; the change applies to pickups and returns recorded after you save. Owners
-        and admins can edit this section. Every charge or credit shows on the customer&rsquo;s bill as
-        its own clearly labeled line, so they can see exactly what it is for.
+        These three rules decide what a customer is charged when an appliance comes back late, credited
+        when an appliance is delivered late, and whether the pickup day itself counts. Each one is a
+        setting you can change at any time; the change applies to pickups and deliveries recorded after
+        you save. Owners and admins can edit this section. Every charge or credit shows on the
+        customer&rsquo;s bill as its own clearly labeled line, so they can see exactly what it is for.
       </p>
 
       <fieldset className="space-y-4">
@@ -134,25 +134,26 @@ export function PickupBillingForm({ defaultValues }: { defaultValues: PickupBill
 
       <fieldset className="space-y-4">
         <legend className="text-base font-semibold text-gray-900">
-          2. Early return — some appliances given back while the agreement continues
+          2. Late delivery — an item that was not on the first delivery
         </legend>
         <p className="text-sm text-gray-600">
-          When one or more appliances on an agreement come back early (or are picked up at a scheduled
-          visit) while the rest of the agreement carries on, the current month is billed in full as
-          usual. On the <strong>next</strong> bill the customer gets a credit for each returned
-          appliance, for the days of that billed month it was no longer in their hands, shown as
-          &ldquo;Credit – [appliance] returned early – [number] days&rdquo;. Appliances that are lost,
-          stolen or damaged are handled by the damage and loss process and get no credit. Choose how
-          the per-day credit is worked out:
+          When one or more appliances on an agreement are not delivered on the visit that starts billing
+          (for example the dryer was back-ordered), the <strong>whole agreement</strong> is billed as normal
+          from that first delivery date. When the missing appliance is delivered later, the customer gets a
+          credit on their <strong>next</strong> bill for each day it was missing — from the original
+          delivery date through the day before it arrived — shown as &ldquo;Credit – [appliance] delivered
+          late – [number] days&rdquo;. If it never arrives and you take it off the agreement, everything
+          billed for it is credited. The credit is never more than what was billed for that appliance.
+          Choose how the per-day credit is worked out:
         </p>
         <div className="space-y-3">
           <label className="flex items-start gap-3 text-sm text-gray-900">
             <input
               type="radio"
-              name="earlyReturnProrationBasis"
+              name="lateDeliveryProrationBasis"
               className={radioClass}
-              checked={values.earlyReturnProrationBasis === "MONTHLY_DIV_30"}
-              onChange={() => setValues((c) => ({ ...c, earlyReturnProrationBasis: "MONTHLY_DIV_30" }))}
+              checked={values.lateDeliveryProrationBasis === "MONTHLY_DIV_30"}
+              onChange={() => setValues((c) => ({ ...c, lateDeliveryProrationBasis: "MONTHLY_DIV_30" }))}
             />
             <span>
               <strong>The appliance&rsquo;s monthly price ÷ 30 (recommended)</strong>
@@ -160,18 +161,18 @@ export function PickupBillingForm({ defaultValues }: { defaultValues: PickupBill
               <span className="text-gray-600">
                 The same simple daily rate every month, and the same rate late returns use, so a customer
                 is never charged at one rate and credited at another. A $45-a-month appliance earns $1.50
-                back for each unused day.
+                back for each day it was missing.
               </span>
             </span>
           </label>
           <label className="flex items-start gap-3 text-sm text-gray-900">
             <input
               type="radio"
-              name="earlyReturnProrationBasis"
+              name="lateDeliveryProrationBasis"
               className={radioClass}
-              checked={values.earlyReturnProrationBasis === "ACTUAL_DAYS_IN_MONTH"}
+              checked={values.lateDeliveryProrationBasis === "ACTUAL_DAYS_IN_MONTH"}
               onChange={() =>
-                setValues((c) => ({ ...c, earlyReturnProrationBasis: "ACTUAL_DAYS_IN_MONTH" }))
+                setValues((c) => ({ ...c, lateDeliveryProrationBasis: "ACTUAL_DAYS_IN_MONTH" }))
               }
             />
             <span>
@@ -179,7 +180,7 @@ export function PickupBillingForm({ defaultValues }: { defaultValues: PickupBill
               <br />
               <span className="text-gray-600">
                 Exact to the calendar: a 31-day month credits a little less per day and a 28-day month a
-                little more, so a whole month of unused days always adds up to exactly one month&rsquo;s
+                little more, so a whole month of missing days always adds up to exactly one month&rsquo;s
                 price. Slightly harder for a customer to check by hand.
               </span>
             </span>
@@ -201,10 +202,10 @@ export function PickupBillingForm({ defaultValues }: { defaultValues: PickupBill
             <br />
             <span className="text-gray-600">
               With this on, the last day a customer pays for is the day <em>before</em> the pickup or
-              return. It applies to normal end-of-agreement pickups, late returns and early returns
-              alike: an appliance picked up on the 1st of the month is not charged for the 1st. It is on
-              to start with because the customer usually cannot use the appliance on the day it is
-              taken away. Turn it off to charge for the pickup day like any other day.
+              return, for normal end-of-agreement pickups and late returns alike: an appliance picked up
+              on the 1st of the month is not charged for the 1st. It is on to start with because the
+              customer usually cannot use the appliance on the day it is taken away. Turn it off to
+              charge for the pickup day like any other day.
             </span>
           </span>
         </label>
