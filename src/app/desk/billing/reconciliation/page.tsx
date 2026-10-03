@@ -1,17 +1,9 @@
 import Link from "next/link";
-import { requireRole } from "@/lib/session";
-import { detectDrift } from "@/domains/billing/reconciliation";
 import { formatBusinessDate, formatBusinessTime } from "@/lib/business-date";
 import { PageHeader } from "@/components/desk/workspace";
+import { loadBillingReconciliationPageData } from "./data";
 
 export const metadata = { title: "Billing reconciliation" };
-
-export async function loadBillingReconciliationPageData() {
-  await requireRole("OWNER", "ADMIN");
-  const checkedAt = new Date();
-  const rows = await detectDrift();
-  return { checkedAt, rows };
-}
 
 export default async function BillingReconciliationPage() {
   const { checkedAt, rows } = await loadBillingReconciliationPageData();
