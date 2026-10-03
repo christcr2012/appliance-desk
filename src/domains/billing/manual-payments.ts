@@ -151,9 +151,9 @@ export async function recordManualPayment(
 }
 
 /**
- * Marks an invoice uncollectible. Payment vs write-off uses the same customer
- * ledger lock, so whichever operation wins first becomes visible to the other
- * before it decides what is still legal.
+ * Mark an invoice uncollectible only from a locked, current invoice snapshot.
+ * A payment that reaches PAID first therefore cannot be overwritten by a
+ * stale write-off decision (P8 H1).
  */
 export async function writeOffInvoice(
   invoiceId: string,
@@ -161,21 +161,24 @@ export async function writeOffInvoice(
   reason: string,
 ): Promise<void> {
   await prisma.$transaction(async (tx) => {
-    const beforeLock = await tx.invoice.findUnique({
-      where: { id: invoiceId },
-      select: { customerId: true },
-    });
-    if (!beforeLock) {
-      throw new Error("Couldn't find that invoice.");
-    }
-
-    await lockCustomerLedger(tx, beforeLock.customerId);
-
-    const invoice = await tx.invoice.findUnique({ where: { id: invoiceId } });
+    const rows = await tx.$queryRaw<
+      Array<{
+        id: string;
+        status: InvoiceStatus;
+        amountDueCents: number;
+        amountPaidCents: number;
+      }>
+    >`
+      SELECT "id", "status", "amountDueCents", "amountPaidCents"
+      FROM "Invoice"
+      WHERE "id" = ${invoiceId}
+      FOR UPDATE
+    `;
+    const invoice = rows[0];
     if (!invoice) {
       throw new Error("Couldn't find that invoice.");
     }
-    if (invoice.status === "PAID") {
+    if (invoice.status === "PAID" || invoice.amountPaidCents >= invoice.amountDueCents) {
       throw new Error("This invoice is already fully paid — nothing to write off.");
     }
     if (invoice.status === "WRITTEN_OFF") {
@@ -188,6 +191,7 @@ export async function writeOffInvoice(
         status: "WRITTEN_OFF",
         writtenOffAt: new Date(),
         writtenOffReason: reason,
+        version: { increment: 1 },
       },
     });
 
