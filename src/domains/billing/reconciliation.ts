@@ -173,16 +173,23 @@ async function reconcileSubscriptionCancel(operation: RecoverableOperation): Pro
     throw error;
   }
 
-  // UNKNOWN is inspected but never blindly replayed. A definite FAILED or
-  // stale PENDING cancel is safe to retry because subscription cancellation
-  // itself is idempotent and a later resource_missing also counts as success.
-  if (operation.status === "UNKNOWN") return false;
+  // A successful retrieve that says the subscription is still live resolves
+  // the original ambiguous outcome: cancellation did not take effect. It is
+  // therefore safe to issue one more cancel request, even for UNKNOWN. Stripe
+  // cancellation is idempotent; a later resource_missing is also success.
   const result = await runProviderCall(() =>
     stripe.subscriptions.cancel(subscriptionId),
   );
-  if (!result.ok) return false;
-  await markOperationSucceeded(operation, subscriptionId);
-  return true;
+  await prisma.$transaction((tx) =>
+    completeProviderOperation(
+      tx,
+      operation.id,
+      result.ok
+        ? { status: "SUCCEEDED", providerObjectId: subscriptionId }
+        : { status: result.outcome, error: result.error },
+    ),
+  );
+  return result.ok;
 }
 
 async function reconcileBalanceCredit(operation: RecoverableOperation): Promise<boolean> {
