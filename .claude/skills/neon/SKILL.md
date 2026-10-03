@@ -176,12 +176,20 @@ Run `neon skills update` to update all installed Neon skills, or `neon skills up
 neon --version
 ```
 
-If that fails, install first:
+If that fails, do **not** install Neon globally without explicit user approval. Prefer an ephemeral invocation that does not persistently change the host environment:
 
 ```bash
-npm i -g neon       # npm
-bun add -g neon     # bun
-pnpm add -g neon    # pnpm
+npx neon@latest --version
+```
+
+When using the ephemeral path, prefix Neon commands in the examples below with `npx neon@latest` instead of `neon`.
+
+If persistent global installation is actually needed, ask the user first. Only after they approve, use one of Neon's documented global-install commands:
+
+```bash
+npm i -g neon@latest       # npm
+bun add -g neon@latest     # bun
+pnpm add -g neon@latest    # pnpm
 ```
 
 For full CLI installation options, see https://neon.com/docs/cli/install.md
@@ -217,9 +225,9 @@ If `init` already installed the Neon plugin, do not also run `neon mcp` and `neo
 
 When tooling already exists, only one component is missing, or env writes need `--no-env-pull`, use the manual steps below. `init` has no `--no-env-pull`. Before a command that pulls env, inspect existing configuration. If a supplied `DATABASE_URL` or `AWS_*` value must stay, pass `--no-env-pull` on `link` / `checkout` and write env to a separate `--file`.
 
-### 1. Install the Neon CLI
+### 1. Use the Neon CLI
 
-Use the install check above. Do not run `neon login` unattended. MCP remains the fallback when the CLI is unavailable, blocked, unauthenticated, or the user prefers it.
+Use the install check above. If no persistent CLI is installed, prefer the ephemeral `npx neon@latest ...` form. Do not install globally without explicit user approval, and do not run `neon login` unattended. MCP remains the fallback when the CLI is unavailable, blocked, unauthenticated, or the user prefers it.
 
 ### 2. Install the Neon MCP Server
 

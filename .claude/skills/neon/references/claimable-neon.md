@@ -8,21 +8,20 @@ Use this after the neon skill account check found no account.
 
 ## Path
 
-1. Install the CLI: `npm i -g neon@latest`
-2. If `neon claim --help` does not list `create`, skip to [If neon claim is missing](#if-neon-claim-is-missing).
+1. Use the CLI ephemerally by default with `npx neon@latest`; do **not** run `npm i -g neon@latest` unless the owner explicitly approves a host-global install.
+2. If `npx neon@latest claim --help` does not list `create`, skip to [If neon claim is missing](#if-neon-claim-is-missing).
 3. Write a `neon.ts` that declares the services you need, or skip the file and pass `--service` on create. Postgres is always requested. Request Auth when login is needed. Request `data-api` only for PostgREST / Supabase database-client compatibility.
-4. Create the project: `neon claim create --env-pull` (add `--service auth` if there is no `neon.ts` and login is requested)
-5. If create did not write env, pull it: `neon env pull`
-6. Use the `neon-postgres` skill for connections, schemas, and queries. Install it if it is missing: `neon skills -s neon-postgres`
+4. Create the project: `npx neon@latest claim create --env-pull` (add `--service auth` if there is no `neon.ts` and login is requested)
+5. If create did not write env, pull it: `npx neon@latest env pull`
+6. Use the `neon-postgres` skill for connections, schemas, and queries. Install it if it is missing: `npx neon@latest skills -s neon-postgres`
 
-Do not run `neon init --agent` or `neon auth` on this path; those need a human Neon account. `--api-key` and `--profile` are refused on `neon claim`.
+Do not run `npx neon@latest init --agent` or `npx neon@latest auth` on this path; those need a human Neon account. `--api-key` and `--profile` are refused on `neon claim`.
 
 ```bash
-npm i -g neon@latest
-neon claim --help
+npx neon@latest claim --help
 ```
 
-If that help lists `create` and you need Auth, `npm i @neon/config` and write `neon.ts`. Then `neon claim create --env-pull`.
+If that help lists `create` and you need Auth, `npm i @neon/config` and write `neon.ts`. Then `npx neon@latest claim create --env-pull`.
 
 ```typescript
 import { defineConfig } from "@neon/config/v1";
@@ -35,10 +34,10 @@ export default defineConfig({
 `claim create --service` accepts `postgres`, `auth`, `data-api`, `functions`, `object-storage`, and `ai-gateway`. `init --services` accepts the same names except `postgres` (every branch has it). Selecting `data-api` on init also declares Auth. Compatibility-only:
 
 ```bash
-neon claim create --service auth --service data-api --env-pull
+npx neon@latest claim create --service auth --service data-api --env-pull
 ```
 
-`neon claim create` reads `neon.ts` when it is present. It writes provisioned vars to an existing `.env`, otherwise `.env.local`, and gitignores that file. If `.env` or `.env.local` already has a `DATABASE_URL` (or other Neon-managed keys), pass `--file <path>` or `--no-env-pull`. The identity assertion is the pre-claim credential.
+`claim create` reads `neon.ts` when it is present. It writes provisioned vars to an existing `.env`, otherwise `.env.local`, and gitignores that file. If `.env` or `.env.local` already has a `DATABASE_URL` (or other Neon-managed keys), pass `--file <path>` or `--no-env-pull`. The identity assertion is the pre-claim credential.
 
 Before claim, Postgres is always granted; Auth and the Data API are granted when requested. Functions, Object Storage, and AI Gateway come back with `granted: false` and `reason: "requires_claim"`. The CLI prints those as `denied_capabilities`. Report what you were given. Do not retry or strip them.
 
@@ -48,16 +47,16 @@ After create, report the `project_id`, `project_expires_at`, and any denied capa
 
 Do not mint a claim URL until the human is ready. Opening the URL does not freeze access. Continuing to Neon starts the transfer and rotates `DATABASE_URL`. Existing access tokens are revoked. Auth and the Data API stay enabled when they were granted.
 
-A claim code expires in `expires_in` seconds (15 minutes / 900 today). If the unused code expires, mint another: `neon claim accept --no-open` or `POST /v1/projects/{id}/claim`. Each mint cancels the previous unused code. You can mint several times; only the latest unused code works. Re-issue only while `project_expires_at` is still in the future.
+A claim code expires in `expires_in` seconds (15 minutes / 900 today). If the unused code expires, mint another: `npx neon@latest claim accept --no-open` or `POST /v1/projects/{id}/claim`. Each mint cancels the previous unused code. You can mint several times; only the latest unused code works. Re-issue only while `project_expires_at` is still in the future.
 
 Continuing to Neon starts a transfer with a new 15-minute window and leaves the project key and database password revoked. If that window expires before the human accepts, mint again. Do not restore pre-claim `DATABASE_URL`.
 
-When `reconciled` is true, the pre-claim `DATABASE_URL` no longer works. Auth and Data API URLs stay if they were granted. The human signs in with `neon auth`. Then the agent runs `neon link` and `neon env pull` to write the new `DATABASE_URL`. `neon link` discovers the project after that sign-in.
+When `reconciled` is true, the pre-claim `DATABASE_URL` no longer works. Auth and Data API URLs stay if they were granted. The human signs in with `npx neon@latest auth`. Then the agent runs `npx neon@latest link` and `npx neon@latest env pull` to write the new `DATABASE_URL`. `neon link` discovers the project after that sign-in.
 
-Auth stays off unless requested at create or enabled later. Request the Data API only for PostgREST / Supabase database-client compatibility. On the unclaimed project, `neon.ts` plus `neon deploy` enables requested services. After claim, the same config talks to Neon directly. An external JWKS is only accepted after claim. Data API with the default auth provider requires Auth.
+Auth stays off unless requested at create or enabled later. Request the Data API only for PostgREST / Supabase database-client compatibility. On the unclaimed project, `neon.ts` plus `npx neon@latest deploy` enables requested services. After claim, the same config talks to Neon directly. An external JWKS is only accepted after claim. Data API with the default auth provider requires Auth.
 
 ```bash
-neon deploy
+npx neon@latest deploy
 ```
 
 ```typescript
@@ -73,17 +72,17 @@ export default defineConfig({
 
 ### With the CLI
 
-When the human is ready, run `neon claim accept --no-open`. Bare `neon claim accept` opens a browser. Report the `verification_url`, `user_code`, and `expires_in_seconds` the CLI printed (HTTP names: `verification_uri_complete`, `user_code`, `expires_in`). If the code expires, run `neon claim accept --no-open` again. Poll with `neon claim status`. The CLI re-exchanges the assertion; do not call the token endpoint yourself.
+When the human is ready, run `npx neon@latest claim accept --no-open`. Bare `npx neon@latest claim accept` opens a browser. Report the `verification_url`, `user_code`, and `expires_in_seconds` the CLI printed (HTTP names: `verification_uri_complete`, `user_code`, `expires_in`). If the code expires, run `npx neon@latest claim accept --no-open` again. Poll with `npx neon@latest claim status`. The CLI re-exchanges the assertion; do not call the token endpoint yourself.
 
 ```bash
-neon claim accept --no-open
-neon claim status
+npx neon@latest claim accept --no-open
+npx neon@latest claim status
 ```
 
 Permanently delete the unclaimed project (this does not cancel a claim):
 
 ```bash
-neon claim delete --yes
+npx neon@latest claim delete --yes
 ```
 
 ### With REST
@@ -109,9 +108,9 @@ GET  https://claimable.neon.tech/v1/projects/{id}/claim
 DELETE https://claimable.neon.tech/v1/projects/{id}
 ```
 
-| CLI                           | REST                                                                                              |
-| ----------------------------- | ------------------------------------------------------------------------------------------------- |
-| `neon claim create`           | `POST /v1/agent/identity`, then `POST /v1/oauth2/token`, then `GET /v1/projects/{id}/credentials` |
-| `neon claim accept --no-open` | `POST /v1/projects/{id}/claim`                                                                    |
-| `neon claim status`           | `GET /v1/projects/{id}/claim`                                                                     |
-| `neon claim delete --yes`     | `DELETE /v1/projects/{id}`                                                                        |
+| CLI                                      | REST                                                                                              |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `npx neon@latest claim create`           | `POST /v1/agent/identity`, then `POST /v1/oauth2/token`, then `GET /v1/projects/{id}/credentials` |
+| `npx neon@latest claim accept --no-open` | `POST /v1/projects/{id}/claim`                                                                    |
+| `npx neon@latest claim status`           | `GET /v1/projects/{id}/claim`                                                                     |
+| `npx neon@latest claim delete --yes`     | `DELETE /v1/projects/{id}`                                                                        |
