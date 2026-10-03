@@ -47,17 +47,13 @@ function missingResource(error: unknown): boolean {
 async function markOperationSucceeded(
   operation: RecoverableOperation,
   providerObjectId: string,
-  localRepair?: Parameters<typeof prisma.$transaction>[0],
 ): Promise<void> {
-  await prisma.$transaction(async (tx) => {
-    if (typeof localRepair === "function") {
-      await localRepair(tx);
-    }
-    await completeProviderOperation(tx, operation.id, {
+  await prisma.$transaction((tx) =>
+    completeProviderOperation(tx, operation.id, {
       status: "SUCCEEDED",
       providerObjectId,
-    });
-  });
+    }),
+  );
 }
 
 async function reconcileCustomerCreate(operation: RecoverableOperation): Promise<boolean> {
@@ -177,13 +173,12 @@ async function reconcileSubscriptionCancel(operation: RecoverableOperation): Pro
     throw error;
   }
 
-  // Cancellation is itself idempotent. A stale PENDING or definite FAILED
-  // operation can safely be retried; an UNKNOWN result is not guessed at.
+  // UNKNOWN is inspected but never blindly replayed. A definite FAILED or
+  // stale PENDING cancel is safe to retry because subscription cancellation
+  // itself is idempotent and a later resource_missing also counts as success.
   if (operation.status === "UNKNOWN") return false;
   const result = await runProviderCall(() =>
-    stripe.subscriptions.cancel(subscriptionId, {
-      idempotencyKey: operation.idempotencyKey,
-    }),
+    stripe.subscriptions.cancel(subscriptionId),
   );
   if (!result.ok) return false;
   await markOperationSucceeded(operation, subscriptionId);
@@ -229,8 +224,6 @@ async function reconcileBalanceCredit(operation: RecoverableOperation): Promise<
 
   if (operation.status === "UNKNOWN") return false;
 
-  // FAILED/stale-PENDING balance writes are safe to retry with the original
-  // idempotency key. Reclaim the operation so attempts/requestedAt remain true.
   let claim;
   try {
     claim = await prisma.$transaction((tx) =>
@@ -423,15 +416,9 @@ export async function detectDrift(limit = 200): Promise<DriftRow[]> {
   );
   if (rows.length >= bounded) return rows.slice(0, bounded);
 
-  const mismatchedInvoices = await prisma.invoice.findMany({
+  const invoiceCandidates = await prisma.invoice.findMany({
     where: {
-      OR: [
-        { status: "PAID", amountPaidCents: { lt: prisma.invoice.fields.amountDueCents } },
-        {
-          status: { in: ["OPEN", "PARTIALLY_PAID", "DELINQUENT"] },
-          amountPaidCents: { gte: prisma.invoice.fields.amountDueCents },
-        },
-      ],
+      status: { in: ["PAID", "OPEN", "PARTIALLY_PAID", "DELINQUENT"] },
     },
     select: {
       id: true,
@@ -440,17 +427,24 @@ export async function detectDrift(limit = 200): Promise<DriftRow[]> {
       amountPaidCents: true,
       updatedAt: true,
     },
-    take: bounded - rows.length,
+    orderBy: { updatedAt: "desc" },
+    take: Math.min(500, Math.max(50, (bounded - rows.length) * 4)),
   });
-  rows.push(
-    ...mismatchedInvoices.map((invoice) => ({
-      kind: "INVOICE_STATUS_MISMATCH" as const,
+  for (const invoice of invoiceCandidates) {
+    if (rows.length >= bounded) break;
+    const paidButShort =
+      invoice.status === "PAID" && invoice.amountPaidCents < invoice.amountDueCents;
+    const openButCovered =
+      invoice.status !== "PAID" && invoice.amountPaidCents >= invoice.amountDueCents;
+    if (!paidButShort && !openButCovered) continue;
+    rows.push({
+      kind: "INVOICE_STATUS_MISMATCH",
       subjectType: "Invoice",
       subjectId: invoice.id,
       detail: `${invoice.status} invoice has ${invoice.amountPaidCents}¢ paid against ${invoice.amountDueCents}¢ due.`,
       since: invoice.updatedAt,
-    })),
-  );
+    });
+  }
   if (rows.length >= bounded) return rows.slice(0, bounded);
 
   const paymentsWithoutReceipt = await prisma.payment.findMany({
