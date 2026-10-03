@@ -3,9 +3,11 @@ export type TaxableLine = {
 };
 
 /**
- * Half-up tax rounding per invoice line. `taxRatePermille` stores tenths of a
- * percent (73 = 7.3%), so the divisor is 1000. Negative adjustment lines keep
- * their sign and are rounded from their absolute value.
+ * Half-up tax rounding per invoice line. `taxRatePermille` is the legacy
+ * column/property name, but Batch B now stores thousandths of one percentage
+ * point (7375 = 7.375%), so cents × stored-rate is divided by 100,000.
+ * Negative adjustment lines keep their sign and are rounded from their
+ * absolute value.
  */
 export function taxCentsForLine(
   amountCents: number,
@@ -15,11 +17,13 @@ export function taxCentsForLine(
     throw new Error("Line amount must be a whole number of cents.");
   }
   if (!Number.isInteger(taxRatePermille) || taxRatePermille < 0) {
-    throw new Error("Tax rate must be a non-negative whole permille value.");
+    throw new Error(
+      "Tax rate must be a non-negative whole thousandth-percent value.",
+    );
   }
   const sign = amountCents < 0 ? -1 : 1;
   const absolute = Math.abs(amountCents);
-  return sign * Math.floor((absolute * taxRatePermille + 500) / 1000);
+  return sign * Math.floor((absolute * taxRatePermille + 50_000) / 100_000);
 }
 
 /** Round each line independently, then sum — never tax an aggregate total. */
