@@ -89,6 +89,7 @@ test.describe("staff permissions", () => {
     "/desk/fleet",
     "/desk/billing",
     "/desk/billing/held-payments",
+    "/desk/notices",
     "/desk/revenue",
     "/desk/settings",
     "/desk/agreements/new",

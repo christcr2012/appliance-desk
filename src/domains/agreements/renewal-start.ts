@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { lockCustomerLedger } from "@/domains/billing/ledger";
 import { syncSubscriptionTerm, termSyncKey } from "@/domains/billing/subscription-term";
 import { fixedTermEndDate } from "@/lib/business-date";
+import { reminderDelivered } from "@/domains/notices";
+import { renewalReminderKey } from "@/domains/notices/renewal-reminder";
 import { lockRentalAgreementInTx } from "./index";
 
 /**
@@ -30,7 +32,7 @@ import { lockRentalAgreementInTx } from "./index";
 
 export type RenewalStartResult =
   | { started: true; renewalId: string; endedAgreementId: string; appliancesMoved: number }
-  | { started: false; renewalId: string; reason: "NOT_SCHEDULED" | "NOT_YET" | "OLD_NOT_ACTIVE" | "NO_RENEWED_FROM" | "BILLING_NOT_READY" | "AUTO_RENEW_WITHDRAWN"; message: string };
+  | { started: false; renewalId: string; reason: "NOT_SCHEDULED" | "NOT_YET" | "OLD_NOT_ACTIVE" | "NO_RENEWED_FROM" | "BILLING_NOT_READY" | "AUTO_RENEW_WITHDRAWN" | "NOTICE_NOT_SENT"; message: string };
 
 const MESSAGES = {
   NOT_SCHEDULED: "This renewal is not waiting to start.",
@@ -38,6 +40,8 @@ const MESSAGES = {
   OLD_NOT_ACTIVE:
     "The rental this renews is no longer active (it was ended or cancelled), so the renewal cannot start. Review it and cancel or fix it.",
   NO_RENEWED_FROM: "This agreement is not a renewal of another agreement.",
+  NOTICE_NOT_SENT:
+    "The customer has not yet been sent the renewal reminder, so this automatic renewal is on hold. Send it (or mark it as delivered) under Notices, and the renewal will start on its own.",
   AUTO_RENEW_WITHDRAWN:
     "The customer turned auto-renew off or asked to end the rental, so this automatic renewal will not start. It is cancelled automatically.",
   BILLING_NOT_READY:
@@ -99,6 +103,11 @@ export async function startRenewalInTx(
   // An automatic renewal exists only because the customer agreed to it: if they changed their mind, it never starts.
   if (renewal.createdByAutoRenew && (old.renewalPreference !== "AUTO_RENEW" || old.terminationRequestedAt)) {
     return fail("AUTO_RENEW_WITHDRAWN");
+  }
+
+  // Colorado asks for a reminder 25-40 days before an automatic renewal: never renew without one.
+  if (renewal.createdByAutoRenew && old.endDate && !(await reminderDelivered(tx, renewalReminderKey(old.id, old.endDate)))) {
+    return fail("NOTICE_NOT_SENT");
   }
 
   // The subscription keeps charging only if its end date was moved at signing.

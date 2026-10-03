@@ -154,6 +154,7 @@ model Customer {
   receipts         Receipt[]
   credits          CustomerCredit[]
   consentRecords   ConsentRecord[]
+  notices          CustomerNotice[]
   notes            CustomerNote[]
   contacts         CustomerContact[]
   tasks            StaffTask[]
@@ -1421,6 +1422,33 @@ model Photo {
   maintenanceRequest   MaintenanceRequest? @relation(fields: [maintenanceRequestId], references: [id])
 
   createdAt DateTime @default(now())
+}
+
+// A message the customer is owed (for now: the renewal reminder Colorado's automatic-renewal
+// law requires 25-40 days before a renewal). The text is saved exactly as it was written, so
+// what was said can always be shown later. PENDING = not delivered yet (email is off until the
+// owner approves live email, or the owner has not marked it sent); SENT = delivered by email or
+// marked sent by hand; NOT_NEEDED = withdrawn before it mattered (e.g. auto-renew turned off).
+model CustomerNotice {
+  id          String    @id @default(cuid())
+  customerId  String
+  customer    Customer  @relation(fields: [customerId], references: [id])
+  agreementId String?
+  kind        String
+  dedupeKey   String    @unique
+  subject     String
+  body        String
+  status      String    @default("PENDING")
+  sentAt      DateTime?
+  sentVia     String?
+  sentByUserId String?
+  attempts    Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([status])
+  @@index([customerId])
+  @@index([agreementId])
 }
 
 model ConsentRecord {

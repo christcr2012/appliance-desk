@@ -26,7 +26,8 @@ export type ExceptionCategory =
   | "AGREEMENT_TERM_EXPIRED"
   | "APPLIANCE_MAINTENANCE_DUE"
   | "RENEWAL_NOT_STARTED"
-  | "EARLY_ENDING_NOT_DONE";
+  | "EARLY_ENDING_NOT_DONE"
+  | "NOTICE_WAITING";
 
 export type ExceptionSeverity = "high" | "medium";
 
@@ -106,6 +107,23 @@ export function earlyEndingNotDoneException(agreement: {
       : "The agreed ending date has passed but the rental is still active. Open it to end it.",
     href: `/desk/agreements/${agreement.id}`,
     since: agreement.terminationEffectiveOn,
+  };
+}
+
+/** A message the customer is owed that has not been delivered (live email is off, or the owner has not marked it sent). */
+export function noticeWaitingException(notice: {
+  id: string;
+  customerName: string;
+  createdAt: Date;
+}): ExceptionItem {
+  return {
+    category: "NOTICE_WAITING",
+    severity: "high",
+    title: `${notice.customerName} has a renewal reminder waiting to be sent`,
+    detail:
+      "Their automatic renewal will not start until this reminder is delivered. Send it yourself and mark it as delivered, or turn on live customer email.",
+    href: "/desk/notices",
+    since: notice.createdAt,
   };
 }
 

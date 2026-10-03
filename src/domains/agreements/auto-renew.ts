@@ -4,6 +4,8 @@ import { syncSubscriptionTerm } from "@/domains/billing/subscription-term";
 import { cancelAgreement, lockRentalAgreementInTx } from "./index";
 import { renewalCreateData } from "./renewal-data";
 import { snapshotAutoRenew } from "./terms-snapshot";
+import { createNoticeInTx, withdrawWaitingNoticesForAgreement } from "@/domains/notices";
+import { composeRenewalReminder, renewalReminderKey } from "@/domains/notices/renewal-reminder";
 
 /**
  * Acting on a customer's auto-renew agreement.
@@ -74,6 +76,37 @@ async function createAutoRenewal(agreementId: string, now: Date): Promise<Create
         createdByAutoRenew: true,
       }),
     });
+    // The reminder is created with the renewal, in the same transaction: no renewal without its reminder.
+    const [settings, customer] = await Promise.all([
+      tx.businessSettings.findUnique({
+        where: { id: "singleton" },
+        select: { publicBusinessName: true, publicPhone: true, publicEmail: true },
+      }),
+      tx.customer.findUniqueOrThrow({
+        where: { id: old.customerId },
+        select: { user: { select: { name: true, email: true } } },
+      }),
+    ]);
+    const reminder = composeRenewalReminder({
+      customerName: customer.user.name ?? customer.user.email,
+      termMonths: old.termMonths,
+      termEndDate: old.endDate,
+      renewalStartDate: created.startDate ?? old.endDate,
+      monthlyTotalCents: lines.reduce((sum, line) => sum + line.monthlyPriceCents, 0),
+      lineLabels: lines.map((line) => line.label),
+      renewalTermsText: locked.termsText,
+      businessName: settings?.publicBusinessName ?? "Robinson Appliance Rentals",
+      businessPhone: settings?.publicPhone ?? "",
+      businessEmail: settings?.publicEmail ?? "",
+    });
+    await createNoticeInTx(tx, {
+      customerId: old.customerId,
+      agreementId: old.id,
+      kind: "RENEWAL_REMINDER",
+      dedupeKey: renewalReminderKey(old.id, old.endDate),
+      subject: reminder.subject,
+      body: reminder.body,
+    });
     await tx.auditLog.create({
       data: {
         userId: null,
@@ -135,6 +168,8 @@ export async function cancelWithdrawnAutoRenewals(
     try {
       await cancelAgreement(actorUserId, renewal.id);
       cancelled += 1;
+      // The reminder about a renewal that will not happen no longer needs to go out.
+      await withdrawWaitingNoticesForAgreement(renewal.renewedFromAgreementId!, "RENEWAL_REMINDER");
     } catch (error) {
       // Already moved on (for example it just started or was cancelled by hand); the nightly pass looks again.
       console.error(`Could not cancel withdrawn auto-renewal ${renewal.id}:`, error);

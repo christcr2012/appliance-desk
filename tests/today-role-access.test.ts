@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   job: vi.fn(),
   request: vi.fn(),
   appliance: vi.fn(),
+  notice: vi.fn(),
 }));
 vi.mock("@/lib/session", () => ({ requireRole: mocks.requireRole }));
 vi.mock("@/lib/prisma", () => ({
@@ -16,6 +17,7 @@ vi.mock("@/lib/prisma", () => ({
     job: { findMany: mocks.job },
     maintenanceRequest: { findMany: mocks.request },
     appliance: { findMany: mocks.appliance },
+    customerNotice: { findMany: mocks.notice },
   },
 }));
 
@@ -30,6 +32,7 @@ beforeEach(() => {
     mocks.job,
     mocks.request,
     mocks.appliance,
+    mocks.notice,
   ]) {
     fn.mockResolvedValue([]);
   }
@@ -48,6 +51,7 @@ describe("Today server-side visibility", () => {
     const result = await getExceptions();
     expect(result.map((x) => x.category)).toEqual(["OVERDUE_JOB"]);
     expect(mocks.invoice).not.toHaveBeenCalled();
+    expect(mocks.notice).not.toHaveBeenCalled();
     expect(mocks.agreement).toHaveBeenCalledTimes(3);
     expect(
       mocks.agreement.mock.calls.every(

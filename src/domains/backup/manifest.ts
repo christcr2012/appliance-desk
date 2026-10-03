@@ -51,6 +51,7 @@ export const BACKUP_MODEL_POLICY = {
   SiteContent: "siteContent",
   Photo: "photo",
   ConsentRecord: "consentRecord",
+  CustomerNotice: "customerNotice",
   CustomerNote: "customerNote",
   CustomerContact: "customerContact",
   StaffTask: "staffTask",

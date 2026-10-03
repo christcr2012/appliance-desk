@@ -17,6 +17,11 @@ import { runAutoRenewals } from "@/domains/agreements/auto-renew";
 import { runDueTerminations } from "@/domains/agreements/termination-execution";
 import { startRenewalIfDue } from "@/domains/agreements/renewal-start";
 import { setAutoRenew } from "@/domains/agreements/term";
+import { markNoticeDeliveredByHand, sendPendingNotices } from "@/domains/notices";
+import { renewalReminderKey } from "@/domains/notices/renewal-reminder";
+
+const emailMock = vi.hoisted(() => ({ send: vi.fn() }));
+vi.mock("@/lib/email", () => ({ sendEmail: emailMock.send }));
 import { syncTerminationEnd } from "@/domains/billing/subscription-term";
 
 const url = new URL(process.env.DATABASE_URL ?? "postgresql://localhost/unset");
@@ -93,6 +98,13 @@ describe.skipIf(!enabled)("auto-renew and agreed early endings are carried out",
   }
 
   const get = (id: string) => prisma.rentalAgreement.findUniqueOrThrow({ where: { id } });
+  const noticeOf = (a: { id: string; endDate: Date | null }) =>
+    prisma.customerNotice.findUnique({ where: { dedupeKey: renewalReminderKey(a.id, a.endDate!) } });
+  const deliver = (a: { id: string; endDate: Date | null }) =>
+    prisma.customerNotice.update({
+      where: { dedupeKey: renewalReminderKey(a.id, a.endDate!) },
+      data: { status: "SENT", sentAt: new Date(), sentVia: "HAND: test" },
+    });
   const renewalsOf = (id: string) =>
     prisma.rentalAgreement.findMany({ where: { renewedFromAgreementId: id }, include: { lines: true } });
 
@@ -100,6 +112,7 @@ describe.skipIf(!enabled)("auto-renew and agreed early endings are carried out",
     stripeMock.update.mockReset().mockImplementation(async (id: string) => ({ id }));
     stripeMock.retrieve.mockReset();
     stripeMock.cancel.mockReset().mockImplementation(async (id: string) => ({ id }));
+    emailMock.send.mockReset().mockResolvedValue({ sent: false });
   });
 
   beforeAll(async () => {
@@ -124,6 +137,7 @@ describe.skipIf(!enabled)("auto-renew and agreed early endings are carried out",
     });
     await prisma.providerOperation.deleteMany({ where: { subjectId: { in: all } } });
     await prisma.invoice.deleteMany({ where: { agreementId: { in: all } } });
+    await prisma.customerNotice.deleteMany({ where: { customerId } });
     await prisma.consentRecord.deleteMany({ where: { customerId } });
     await prisma.applianceAssignment.deleteMany({ where: { rentalLine: { agreementId: { in: all } } } });
     await prisma.rentalLine.deleteMany({ where: { agreementId: { in: all } } });
@@ -162,6 +176,72 @@ describe.skipIf(!enabled)("auto-renew and agreed early endings are carried out",
 
       await runAutoRenewals(windowOpen);
       expect(await renewalsOf(a.id)).toHaveLength(1);
+    });
+
+    it("writes the renewal reminder with the renewal, using the wording the customer agreed to, and never duplicates it", async () => {
+      const a = await agreement();
+      await runAutoRenewals(windowOpen);
+      await runAutoRenewals(windowOpen);
+      const notice = (await noticeOf(a))!;
+      expect(notice.status).toBe("PENDING");
+      expect(notice.kind).toBe("RENEWAL_REMINDER");
+      expect(notice.body).toContain("Renews month to month.");
+      expect(notice.body).toContain("$60 a month");
+      expect(notice.body).toContain("Washer, Dryer");
+      expect(await prisma.customerNotice.count({ where: { agreementId: a.id } })).toBe(1);
+    });
+
+    it("an automatic renewal waits for its reminder: it will not start until the reminder is delivered", async () => {
+      const a = await agreement();
+      await runAutoRenewals(windowOpen);
+      const auto = (await renewalsOf(a.id))[0]!;
+      const held = await startRenewalIfDue(auto.id, afterTerm);
+      expect(held.started).toBe(false);
+      if (!held.started) expect(held.reason).toBe("NOTICE_NOT_SENT");
+      expect((await get(a.id)).status).toBe("ACTIVE");
+      await deliver(a);
+      expect((await startRenewalIfDue(auto.id, afterTerm)).started).toBe(true);
+    });
+
+    it("email being off leaves the reminder waiting; email on marks it sent; the owner can mark it delivered by hand", async () => {
+      const a = await agreement();
+      await runAutoRenewals(windowOpen);
+      const off = await sendPendingNotices();
+      expect(off.stillWaiting).toBeGreaterThanOrEqual(1);
+      expect((await noticeOf(a))!.status).toBe("PENDING");
+      expect((await noticeOf(a))!.attempts).toBeGreaterThanOrEqual(1);
+
+      emailMock.send.mockResolvedValue({ sent: true });
+      await sendPendingNotices();
+      const sent = (await noticeOf(a))!;
+      expect(sent.status).toBe("SENT");
+      expect(sent.sentVia).toBe("EMAIL");
+
+      const b = await agreement();
+      await runAutoRenewals(windowOpen);
+      const ownerId = `ar-owner-${tag}`;
+      await prisma.user.create({ data: { id: ownerId, email: `${tag}-o@example.test`, name: "AR Owner", role: "OWNER", emailVerified: true } });
+      try {
+        const pending = (await noticeOf(b))!;
+        await expect(markNoticeDeliveredByHand(userId, pending.id, "phoned")).rejects.toThrow();
+        await markNoticeDeliveredByHand(ownerId, pending.id, "phoned");
+        const done = (await noticeOf(b))!;
+        expect(done.status).toBe("SENT");
+        expect(done.sentVia).toBe("HAND: phoned");
+        expect(done.sentByUserId).toBe(ownerId);
+        await expect(markNoticeDeliveredByHand(ownerId, pending.id, "phoned")).rejects.toThrow(/not waiting/);
+      } finally {
+        await prisma.customerNotice.updateMany({ where: { sentByUserId: ownerId }, data: { sentByUserId: null } });
+        await prisma.auditLog.deleteMany({ where: { userId: ownerId } });
+        await prisma.user.delete({ where: { id: ownerId } });
+      }
+    });
+
+    it("turning auto-renew off withdraws the waiting reminder", async () => {
+      const a = await agreement();
+      await runAutoRenewals(windowOpen);
+      await setAutoRenew({ userId, kind: "customer" }, a.id, { enabled: false, termsVersion: "ar-test" });
+      expect((await noticeOf(a))!.status).toBe("NOT_NEEDED");
     });
 
     it("two overlapping nightly runs queue exactly one renewal", async () => {
@@ -238,6 +318,7 @@ describe.skipIf(!enabled)("auto-renew and agreed early endings are carried out",
       const a = await agreement();
       await runAutoRenewals(windowOpen);
       const auto = (await renewalsOf(a.id))[0]!;
+      await deliver(a);
       const result = await startRenewalIfDue(auto.id, afterTerm);
       expect(result.started).toBe(true);
       expect((await get(a.id)).status).toBe("ENDED");

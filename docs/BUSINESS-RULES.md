@@ -994,7 +994,10 @@ is never replaced by a default.
   billing to carry on; the owner decides). Turning auto-renew off, or asking to end
   early, cancels a queued automatic renewal; a renewal started by hand is never
   cancelled that way, and ending early is refused while one is in progress. An
-  automatic renewal never starts if consent was withdrawn.
+  automatic renewal never starts if consent was withdrawn, and never starts before
+  its renewal reminder (Colorado: 25-40 days before) has been delivered. The reminder is
+  written when the renewal is queued, from the wording the customer agreed to, saved as a
+  notice, emailed when live customer email is on, or marked delivered by hand by the owner.
 - **Agreed early endings (nightly):** requesting an early ending sets Stripe's end
   date to one second before the agreed ending date. On that date the fee (if any) is
   invoiced once as an OPEN invoice with an "Early ending fee" line (no tax added yet,
