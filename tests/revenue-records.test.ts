@@ -7,6 +7,7 @@ const m = vi.hoisted(() => ({
   receipts: vi.fn(),
   refundAggregate: vi.fn(),
   refunds: vi.fn(),
+  credits: vi.fn(),
 }));
 
 vi.mock("@/lib/session", () => ({ requireRole: m.role }));
@@ -57,10 +58,12 @@ beforeEach(() => {
     },
   ]);
   m.refunds.mockResolvedValue([]);
+  m.credits.mockResolvedValue([]);
   m.tx.mockImplementation((fn) =>
     fn({
       receipt: { aggregate: m.receiptAggregate, findMany: m.receipts },
       refund: { aggregate: m.refundAggregate, findMany: m.refunds },
+      customerCredit: { findMany: m.credits },
     }),
   );
 });
@@ -147,11 +150,22 @@ it("keeps a multi-invoice or overpayment receipt as one cash row", async () => {
   });
 });
 
-it("reads invoice refunds separately without treating them as gross receipts", async () => {
+it("reads only cash invoice refunds and excludes refund-to-credit from totals and pagination", async () => {
+  m.credits.mockResolvedValue([{ sourceId: "refund-credit" }]);
   const result = await getRevenueRecords("refunds", false, "1", asOf);
   expect(result.totalCents).toBe(600);
-  expect(m.refunds.mock.calls[0][0].where).toEqual({
+  const expectedWhere = {
     createdAt: { lte: asOf },
+    id: { notIn: ["refund-credit"] },
+  };
+  expect(m.refundAggregate.mock.calls[0][0].where).toEqual(expectedWhere);
+  expect(m.refunds.mock.calls[0][0].where).toEqual(expectedWhere);
+  expect(m.credits).toHaveBeenCalledWith({
+    where: {
+      sourceType: "REFUND_TO_CREDIT",
+      sourceId: { not: null },
+    },
+    select: { sourceId: true },
   });
   expect(m.receiptAggregate).not.toHaveBeenCalled();
 });
