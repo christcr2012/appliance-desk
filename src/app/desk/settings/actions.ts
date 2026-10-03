@@ -60,12 +60,14 @@ export async function updateSettingsAction(
     twelveMonthPrepaySetDollars,
     twelveMonthPrepaySingleDollars,
     referralRewardDollars,
+    taxRatePercent,
     ...rest
   } = parsed.data;
 
   try {
     await updateBusinessSettings(session.user.id, {
       ...rest,
+      taxRatePermille: Math.round(taxRatePercent * 1000),
       oneTimeDeliveryFeeCents: dollarsToCents(deliveryFeeDollars),
       oneTimeInstallationFeeCents: dollarsToCents(installationFeeDollars),
       oneTimeRemovalFeeCents: dollarsToCents(removalFeeDollars),
