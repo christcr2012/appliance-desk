@@ -76,6 +76,35 @@ function before(date: Date, start?: Date): boolean {
   return Boolean(start && date < start);
 }
 
+function invoiceLedgerTotals(invoice: {
+  amountDueCents: number;
+  payments: Array<{ amountCents: number }>;
+  creditApplications: Array<{ amountCents: number }>;
+  refunds: Array<{ amountCents: number }>;
+}) {
+  const receiptAllocationsCents = invoice.payments.reduce(
+    (sum, payment) => sum + payment.amountCents,
+    0,
+  );
+  const creditsAppliedCents = invoice.creditApplications.reduce(
+    (sum, application) => sum + application.amountCents,
+    0,
+  );
+  const refundsCents = invoice.refunds.reduce(
+    (sum, refund) => sum + refund.amountCents,
+    0,
+  );
+  const netAppliedCents =
+    receiptAllocationsCents + creditsAppliedCents - refundsCents;
+  return {
+    receiptAllocationsCents,
+    creditsAppliedCents,
+    refundsCents,
+    netAppliedCents,
+    balanceCents: Math.max(0, invoice.amountDueCents - netAppliedCents),
+  };
+}
+
 /**
  * Customer billing statement with an auditable ledger footer:
  * opening balance + invoice charges - receipt allocations - credits applied
@@ -104,7 +133,7 @@ export async function getCustomerStatement(
             where: { status: "succeeded", receiptId: { not: null } },
             select: {
               amountCents: true,
-              receipt: { select: { receivedOn: true } },
+              receipt: { select: { receivedOn: true, amountCents: true } },
             },
           },
           creditApplications: {
@@ -146,21 +175,7 @@ export async function getCustomerStatement(
       groups.set(groupKey, group);
     }
 
-    const receiptAllocationsCents = invoice.payments.reduce(
-      (sum, payment) => sum + payment.amountCents,
-      0,
-    );
-    const creditsAppliedCents = invoice.creditApplications.reduce(
-      (sum, application) => sum + application.amountCents,
-      0,
-    );
-    const refundsCents = invoice.refunds.reduce(
-      (sum, refund) => sum + refund.amountCents,
-      0,
-    );
-    const ledgerPaidCents = receiptAllocationsCents + creditsAppliedCents - refundsCents;
-    const balanceCents = Math.max(0, invoice.amountDueCents - ledgerPaidCents);
-
+    const ledger = invoiceLedgerTotals(invoice);
     group.invoices.push({
       id: invoice.id,
       invoiceNumber: invoice.invoiceNumber,
@@ -173,8 +188,8 @@ export async function getCustomerStatement(
       taxCents: invoice.taxCents,
       lateFeeCents: invoice.lateFeeCents,
       amountDueCents: invoice.amountDueCents,
-      amountPaidCents: ledgerPaidCents,
-      balanceCents,
+      amountPaidCents: ledger.netAppliedCents,
+      balanceCents: ledger.balanceCents,
       lineItems: invoice.lineItems.map((line) => ({
         id: line.id,
         kind: line.kind,
@@ -184,8 +199,8 @@ export async function getCustomerStatement(
       })),
     });
     group.totalDueCents += invoice.amountDueCents;
-    group.totalPaidCents += ledgerPaidCents;
-    group.totalBalanceCents += balanceCents;
+    group.totalPaidCents += ledger.netAppliedCents;
+    group.totalBalanceCents += ledger.balanceCents;
   }
 
   const properties = Array.from(groups.values()).sort((a, b) =>
@@ -235,15 +250,9 @@ export async function getCustomerStatement(
     creditsAppliedCents +
     refundsCents;
 
-  const openInvoiceCount = selectedInvoices.filter((invoice) => {
-    const receipts = invoice.payments.reduce((sum, payment) => sum + payment.amountCents, 0);
-    const credits = invoice.creditApplications.reduce(
-      (sum, application) => sum + application.amountCents,
-      0,
-    );
-    const refunds = invoice.refunds.reduce((sum, refund) => sum + refund.amountCents, 0);
-    return invoice.amountDueCents - receipts - credits + refunds > 0;
-  }).length;
+  const openInvoiceCount = selectedInvoices.filter(
+    (invoice) => invoiceLedgerTotals(invoice).balanceCents > 0,
+  ).length;
 
   return {
     customerId: customer.id,
@@ -282,7 +291,15 @@ export async function getCustomersWithOpenBalances() {
       user: { select: { name: true, email: true } },
       invoices: {
         where: { status: { in: ["OPEN", "PARTIALLY_PAID", "DELINQUENT"] } },
-        select: { amountDueCents: true, amountPaidCents: true },
+        select: {
+          amountDueCents: true,
+          payments: {
+            where: { status: "succeeded", receiptId: { not: null } },
+            select: { amountCents: true },
+          },
+          creditApplications: { select: { amountCents: true } },
+          refunds: { select: { amountCents: true } },
+        },
       },
       _count: { select: { serviceAddresses: true } },
     },
@@ -290,18 +307,20 @@ export async function getCustomersWithOpenBalances() {
   });
 
   return rows
-    .map((customer) => ({
-      id: customer.id,
-      customerName: customer.user.name ?? customer.user.email,
-      companyName: customer.companyName,
-      isPropertyManager: customer.isPropertyManager,
-      propertyCount: customer._count.serviceAddresses,
-      openInvoiceCount: customer.invoices.length,
-      balanceCents: customer.invoices.reduce(
-        (sum, invoice) =>
-          sum + Math.max(0, invoice.amountDueCents - invoice.amountPaidCents),
-        0,
-      ),
-    }))
+    .map((customer) => {
+      const balances = customer.invoices.map(
+        (invoice) => invoiceLedgerTotals(invoice).balanceCents,
+      );
+      return {
+        id: customer.id,
+        customerName: customer.user.name ?? customer.user.email,
+        companyName: customer.companyName,
+        isPropertyManager: customer.isPropertyManager,
+        propertyCount: customer._count.serviceAddresses,
+        openInvoiceCount: balances.filter((balance) => balance > 0).length,
+        balanceCents: balances.reduce((sum, balance) => sum + balance, 0),
+      };
+    })
+    .filter((customer) => customer.balanceCents > 0)
     .sort((a, b) => b.balanceCents - a.balanceCents);
 }
