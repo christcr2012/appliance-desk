@@ -35,7 +35,15 @@ const newAgreementSchema = z.object({
   lateFeeGraceDays: z.coerce.number().int().min(0).max(60).optional(),
   lateFeeDollars: z.coerce.number().min(0).max(1000).optional(),
   lateFeePercent: z.coerce.number().min(0).max(100).optional(),
-  taxRatePercent: z.coerce.number().min(0).max(20).optional(),
+  taxRatePercent: z.coerce
+    .number()
+    .min(0)
+    .max(20)
+    .refine(
+      (value) => Math.abs(value * 1000 - Math.round(value * 1000)) < 1e-8,
+      "Tax rate can have at most three decimal places.",
+    )
+    .optional(),
   paidInFullInAdvance: z.boolean().optional(),
 });
 
@@ -75,8 +83,9 @@ export async function createDraftAgreementAction(
         ? dollarsToCents(data.lateFeeDollars)
         : 0,
       lateFeePercent: data.lateFeePercent ?? 0,
+      // Stored as thousandths of one percentage point: 7.375% -> 7375.
       taxRatePermille: data.taxRatePercent
-        ? Math.round(data.taxRatePercent * 10)
+        ? Math.round(data.taxRatePercent * 1000)
         : 0,
       paidInFullInAdvance: data.paidInFullInAdvance ?? false,
     });
