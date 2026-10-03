@@ -95,19 +95,20 @@ describe("applyLateFees", () => {
     invoiceLineItemCreate.mockReset().mockResolvedValue({});
     invoiceUpdate.mockReset().mockResolvedValue({});
     auditLogCreate.mockReset().mockResolvedValue({});
-    transaction.mockReset().mockImplementation(async (callback: (client: any) => Promise<unknown>) =>
-      callback({
-        $queryRaw: (...args: unknown[]) => queryRaw(...args),
-        invoice: {
-          findMany: (...args: unknown[]) => invoiceFindMany(...args),
-          findUniqueOrThrow: (...args: unknown[]) => invoiceFindUniqueOrThrow(...args),
-          update: (...args: unknown[]) => invoiceUpdate(...args),
-        },
-        invoiceLineItem: {
-          create: (...args: unknown[]) => invoiceLineItemCreate(...args),
-        },
-        auditLog: { create: (...args: unknown[]) => auditLogCreate(...args) },
-      }),
+    transaction.mockReset().mockImplementation(
+      async (callback: (client: unknown) => Promise<unknown>) =>
+        callback({
+          $queryRaw: (...args: unknown[]) => queryRaw(...args),
+          invoice: {
+            findMany: (...args: unknown[]) => invoiceFindMany(...args),
+            findUniqueOrThrow: (...args: unknown[]) => invoiceFindUniqueOrThrow(...args),
+            update: (...args: unknown[]) => invoiceUpdate(...args),
+          },
+          invoiceLineItem: {
+            create: (...args: unknown[]) => invoiceLineItemCreate(...args),
+          },
+          auditLog: { create: (...args: unknown[]) => auditLogCreate(...args) },
+        }),
     );
     queryRaw.mockReset().mockImplementation(async (strings: TemplateStringsArray) => {
       const sql = strings.join("?");
@@ -148,11 +149,12 @@ describe("applyLateFees", () => {
       }
       throw new Error(`Unexpected query: ${sql}`);
     });
-    invoiceFindUniqueOrThrow.mockReset().mockImplementation(async ({ where }: any) =>
-      candidateInvoice({
-        id: where.id,
-        agreement: { lateFeeGraceDays: 5, lateFeeCents: 500, lateFeePercent: 0 },
-      }),
+    invoiceFindUniqueOrThrow.mockReset().mockImplementation(
+      async ({ where }: { where: { id: string } }) =>
+        candidateInvoice({
+          id: where.id,
+          agreement: { lateFeeGraceDays: 5, lateFeeCents: 500, lateFeePercent: 0 },
+        }),
     );
 
     const { applyLateFees } = await import("@/domains/billing/late-fees");
