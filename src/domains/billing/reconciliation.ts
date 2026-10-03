@@ -257,7 +257,9 @@ async function reconcileBalanceCredit(operation: RecoverableOperation): Promise<
 
   // UNKNOWN is never guessed at or blindly replayed. Provider evidence must
   // resolve it. Definite FAILED or stale PENDING operations can reuse the same
-  // idempotency key safely.
+  // idempotency key safely. claimProviderOperation enforces the normal lease
+  // before a PENDING takeover so overlapping reconcilers cannot steal a fresh
+  // retry from one another.
   if (operation.status === "UNKNOWN") return false;
 
   let claim;
@@ -268,7 +270,6 @@ async function reconcileBalanceCredit(operation: RecoverableOperation): Promise<
         subjectType: operation.subjectType,
         subjectId: operation.subjectId,
         idempotencyKey: operation.idempotencyKey,
-        staleAfterMs: 0,
       }),
     );
   } catch (error) {
@@ -464,7 +465,6 @@ async function retryDefiniteRefundFailure(
         subjectType: operation.subjectType,
         subjectId: operation.subjectId,
         idempotencyKey: operation.idempotencyKey,
-        staleAfterMs: 0,
       }),
     );
   } catch (error) {
@@ -569,7 +569,7 @@ export async function finishPendingProviderOperations(
   const operations = await prisma.providerOperation.findMany({
     where: {
       OR: [
-        { status: "PENDING", requestedAt: { lte: staleBefore } },
+        { status: "PENDING", updatedAt: { lte: staleBefore } },
         { status: "UNKNOWN" },
         { status: "FAILED" },
       ],
