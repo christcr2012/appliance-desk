@@ -104,16 +104,19 @@ resulting behavior are verified.
   not re-decide, does not add tables/columns/libraries/patterns the design
   does not name, and stops to ask where the design is silent. No design,
   or a DRAFT one → stop and report; do not start.
-- **One agent, one batch at a time, in one substantial PR.** Chris has
-  explicitly asked for far fewer, much larger PRs because every PR costs a
-  full CI run. Do not open a PR per card, page, cron, migration, test repair,
-  or documentation sentence. Ordered commits inside the PR keep it reviewable.
+- **One agent, one batch at a time, in manageable PRs.** Chris (2026-10-03)
+  replaced the earlier "one large PR per batch" rule: do work in manageable
+  chunks, and build each PR on top of the previous one so nothing waits on a
+  merge (see `docs/DECISIONS.md`, 2026-10-03). Every PR still costs a full CI
+  run, so do not open a PR per card, page, cron, migration, test repair, or
+  documentation sentence: a PR is a coherent chunk with its own tests. Ordered
+  commits inside the PR keep it reviewable.
 - **Model:** whichever model Chris has selected does the work. Older documents
   that assign cards to "Luna" or "Sol" or schedule model switches are
   historical. Do not stop to ask for a model switch.
 - **Branch names:** `ai/<tool>/<topic>` (for example `ai/codex/batch-b-billing`).
-  Branch from current `main`. If a batch depends on an unmerged predecessor,
-  branch from it and retarget `main` once the predecessor merges.
+  Branch from current `main`, or from the previous unmerged PR's branch when
+  stacking; retarget `main` once the predecessor merges.
 - **Verify locally, push once.** Each push cancels the previous CI run and
   bills the partial minutes. The local verification recipe is in
   `docs/PLAYBOOK.md`; it takes ~5 minutes to set up and catches most failures.
