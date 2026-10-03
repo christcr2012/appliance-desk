@@ -54,10 +54,11 @@ function providerRowMatches(
  * request. updatedAt is the mutable lease/attempt timestamp used to decide
  * whether an in-flight claim has gone stale.
  *
- * UNKNOWN remains non-retryable by default. A reconciliation path may set
- * reconcileUnknownAfterProviderEvidence only after a provider read has proven
- * the ambiguous write did not take effect; the row lock then serializes that
- * evidence-based retry against every competing worker.
+ * UNKNOWN remains non-retryable by default. Reconciliation may provide the
+ * attempt number it observed before a provider read proved the ambiguous write
+ * did not take effect. The row lock then requires that attempt to still match,
+ * preventing stale provider evidence from authorizing a later retry after a
+ * competing worker has already changed the provider outcome.
  */
 export async function claimProviderOperation(
   tx: Prisma.TransactionClient,
@@ -67,7 +68,7 @@ export async function claimProviderOperation(
     subjectId: string;
     idempotencyKey: string;
     staleAfterMs?: number;
-    reconcileUnknownAfterProviderEvidence?: boolean;
+    reconcileUnknownAfterProviderEvidence?: { expectedAttempts: number };
   },
 ): Promise<
   | { done: true; providerObjectId: string }
@@ -79,6 +80,15 @@ export async function claimProviderOperation(
   }
   if (!input.subjectType || !input.subjectId || !input.idempotencyKey) {
     throw new Error("Provider operation subject and idempotency key are required.");
+  }
+
+  const expectedUnknownAttempts =
+    input.reconcileUnknownAfterProviderEvidence?.expectedAttempts;
+  if (
+    expectedUnknownAttempts !== undefined &&
+    (!Number.isInteger(expectedUnknownAttempts) || expectedUnknownAttempts < 1)
+  ) {
+    throw new Error("UNKNOWN reconciliation expectedAttempts must be a positive integer.");
   }
 
   const now = new Date();
@@ -131,11 +141,15 @@ export async function claimProviderOperation(
     return { done: true, providerObjectId: existing.providerObjectId };
   }
 
-  if (
-    existing.status === "UNKNOWN" &&
-    !input.reconcileUnknownAfterProviderEvidence
-  ) {
-    throw new RetryLater("This provider operation has an unknown outcome and must be reconciled before retrying.");
+  if (existing.status === "UNKNOWN") {
+    if (
+      expectedUnknownAttempts === undefined ||
+      existing.attempts !== expectedUnknownAttempts
+    ) {
+      throw new RetryLater(
+        "This provider operation has an unknown outcome or newer provider attempt and must be reconciled before retrying.",
+      );
+    }
   }
   if (existing.status === "DRIFT") {
     throw new RetryLater("This provider operation is in provider/local drift and must be reconciled before retrying.");
@@ -148,8 +162,8 @@ export async function claimProviderOperation(
   }
 
   // FAILED is deliberately retryable. A stale PENDING claim is also taken
-  // over. UNKNOWN can only reach this point when reconciliation has explicit
-  // provider evidence that the earlier ambiguous write did not take effect.
+  // over. UNKNOWN can only reach this point when reconciliation has provider
+  // evidence tied to the exact attempt still stored under this row lock.
   // requestedAt remains unchanged so provider evidence searches stay anchored
   // to the original request.
   await tx.providerOperation.update({
