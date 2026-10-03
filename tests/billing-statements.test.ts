@@ -6,6 +6,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const customerFindUnique = vi.fn();
 const customerFindMany = vi.fn();
+const invoiceFindMany = vi.fn();
+const creditAggregate = vi.fn();
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
@@ -13,6 +15,8 @@ vi.mock("@/lib/prisma", () => ({
       findUnique: (...args: unknown[]) => customerFindUnique(...args),
       findMany: (...args: unknown[]) => customerFindMany(...args),
     },
+    invoice: { findMany: (...args: unknown[]) => invoiceFindMany(...args) },
+    customerCredit: { aggregate: (...args: unknown[]) => creditAggregate(...args) },
   },
 }));
 
@@ -31,6 +35,9 @@ function invoice(overrides: Record<string, unknown> = {}) {
     amountDueCents: 4000,
     amountPaidCents: 0,
     lineItems: [],
+    payments: [],
+    creditApplications: [],
+    refunds: [],
     agreement: { serviceAddress: { id: "addr-1", line1: "1 Main St", line2: null, city: "Greeley", state: "CO", zip: "80631" } },
     ...overrides,
   };
@@ -39,6 +46,8 @@ function invoice(overrides: Record<string, unknown> = {}) {
 describe("getCustomerStatement", () => {
   beforeEach(() => {
     customerFindUnique.mockReset();
+    invoiceFindMany.mockReset().mockResolvedValue([]);
+    creditAggregate.mockReset().mockResolvedValue({ _sum: { remainingCents: 0 } });
   });
 
   it("returns null for a customer that doesn't exist", async () => {
@@ -171,5 +180,88 @@ describe("getCustomersWithOpenBalances", () => {
     expect(result[0].propertyCount).toBe(3);
     expect(result[1].id).toBe("cust-1");
     expect(result[1].balanceCents).toBe(1000);
+  });
+});
+
+
+describe("statement reconciliation", () => {
+  beforeEach(() => {
+    customerFindUnique.mockReset();
+    invoiceFindMany.mockReset().mockResolvedValue([]);
+    creditAggregate.mockReset().mockResolvedValue({ _sum: { remainingCents: 1500 } });
+  });
+
+  // One customer with: a paid invoice that was later partly refunded, an unpaid
+  // invoice, a partially paid one, one paid with account credit, a written-off
+  // one, and a draft and a voided one that must not count.
+  function fixture() {
+    return {
+      id: "cust-1",
+      companyName: null,
+      user: { name: "Pat", email: "pat@example.com" },
+      invoices: [
+        invoice({ id: "paid", invoiceNumber: 1, status: "PAID", amountDueCents: 5000, amountPaidCents: 5000,
+          payments: [{ amountCents: 5000 }], refunds: [{ amountCents: 1200 }] }),
+        invoice({ id: "unpaid", invoiceNumber: 2, status: "OPEN", amountDueCents: 4000, amountPaidCents: 0 }),
+        invoice({ id: "partial", invoiceNumber: 3, status: "PARTIALLY_PAID", amountDueCents: 4000, amountPaidCents: 1500,
+          payments: [{ amountCents: 1500 }] }),
+        invoice({ id: "credit", invoiceNumber: 4, status: "PAID", amountDueCents: 2000, amountPaidCents: 2000,
+          creditApplications: [{ amountCents: 2000 }] }),
+        invoice({ id: "wo", invoiceNumber: 5, status: "WRITTEN_OFF", amountDueCents: 3000, amountPaidCents: 500,
+          payments: [{ amountCents: 500 }] }),
+        invoice({ id: "draft", invoiceNumber: 6, status: "DRAFT", amountDueCents: 9999, amountPaidCents: 0 }),
+        invoice({ id: "void", invoiceNumber: 7, status: "VOID", amountDueCents: 7777, amountPaidCents: 0 }),
+      ],
+    };
+  }
+
+  it("adds up: billed - payments - credits - written off = balance owed, ignoring drafts and voids", async () => {
+    customerFindUnique.mockResolvedValue(fixture());
+    const { getCustomerStatement } = await import("@/domains/billing/statements");
+    const statement = await getCustomerStatement("cust-1");
+    const r = statement!.reconciliation;
+    expect(r).toMatchObject({
+      carriedForwardCents: 0,
+      invoicedCents: 5000 + 4000 + 4000 + 2000 + 3000,
+      paymentsAppliedCents: 5000 + 1500 + 500,
+      creditsAppliedCents: 2000,
+      writtenOffCents: 2500,
+      closingBalanceCents: 4000 + 2500,
+      balanced: true,
+      refundedCents: 1200,
+      creditAvailableCents: 1500,
+    });
+    // The headline totals agree with the footer.
+    expect(statement!.totalBalanceCents).toBe(r.closingBalanceCents);
+    expect(statement!.totalDueCents).toBe(r.invoicedCents);
+  });
+
+  it("does not count a voided, draft or written-off invoice as money owed", async () => {
+    customerFindUnique.mockResolvedValue(fixture());
+    const { getCustomerStatement } = await import("@/domains/billing/statements");
+    const statement = await getCustomerStatement("cust-1");
+    const all = statement!.properties.flatMap((p) => p.invoices);
+    for (const id of ["draft", "void", "wo", "paid", "credit"]) {
+      expect(all.find((i) => i.id === id)!.balanceCents, id).toBe(0);
+    }
+  });
+
+  it("flags a statement whose paid amount has no matching payment record", async () => {
+    const data = fixture();
+    data.invoices[0] = invoice({ id: "paid", invoiceNumber: 1, status: "PAID", amountDueCents: 5000, amountPaidCents: 5000, payments: [] });
+    customerFindUnique.mockResolvedValue(data);
+    const { getCustomerStatement } = await import("@/domains/billing/statements");
+    const statement = await getCustomerStatement("cust-1");
+    expect(statement!.reconciliation.balanced).toBe(false);
+  });
+
+  it("carries forward what is still owed on invoices from before the chosen period", async () => {
+    customerFindUnique.mockResolvedValue(fixture());
+    invoiceFindMany.mockResolvedValue([{ amountDueCents: 6000, amountPaidCents: 1000 }]);
+    const { getCustomerStatement } = await import("@/domains/billing/statements");
+    const statement = await getCustomerStatement("cust-1", { periodStart: new Date("2026-09-01") });
+    expect(statement!.reconciliation.carriedForwardCents).toBe(5000);
+    expect(statement!.reconciliation.closingBalanceCents).toBe(5000 + 4000 + 2500);
+    expect(statement!.reconciliation.balanced).toBe(true);
   });
 });

@@ -58,8 +58,9 @@ it("reconciles rates, receipt cash totals and partially paid balances with Color
     activeCustomerCount: 1,
   });
 
-  const ratePeriod = { gte: new Date("2026-10-01T00:00:00Z"), lte: now };
+  // Every "this month" reader uses the Colorado calendar month (Sept 30 18:30 in Denver is still September).
   const cashPeriod = { gte: new Date("2026-09-01T06:00:00Z"), lte: now };
+  const ratePeriod = cashPeriod;
   expect(m.receipts.mock.calls[0][0].where).toEqual({ receivedOn: cashPeriod });
   expect(m.rentals.mock.calls[0][0].where.startDate).toEqual(ratePeriod);
   expect(m.rentals.mock.calls[1][0].where.updatedAt).toEqual(ratePeriod);

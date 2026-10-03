@@ -36,7 +36,7 @@ describe("getEarningsReport", () => {
         endDate: null,
         customer: { id: "cust-1", user: { name: "Jane Doe", email: "jane@example.com" } },
         lines: [{ monthlyPriceCents: 6000 }],
-        invoices: [{ amountPaidCents: 1000 }],
+        invoices: [{ amountPaidCents: 1000, refunds: [] }],
       },
       {
         id: "agr-current",
@@ -44,7 +44,7 @@ describe("getEarningsReport", () => {
         endDate: null,
         customer: { id: "cust-2", user: { name: "Sam Renter", email: "sam@example.com" } },
         lines: [{ monthlyPriceCents: 6000 }],
-        invoices: [{ amountPaidCents: 6000 }],
+        invoices: [{ amountPaidCents: 6000, refunds: [{ amountCents: 1500 }] }],
       },
     ]);
 
@@ -56,7 +56,9 @@ describe("getEarningsReport", () => {
     expect(report.totals.estimatedCents).toBe(
       report.rows[0].estimatedCents + report.rows[1].estimatedCents,
     );
-    expect(report.totals.actualCents).toBe(1000 + 6000);
+    // Collected is net of refunds recorded on the agreement's invoices (6000 paid, 1500 refunded).
+    expect(report.totals.actualCents).toBe(1000 + (6000 - 1500));
+    expect(report.rows.find((r) => r.agreementId === "agr-current")!.actualCents).toBe(4500);
   });
 
   it("falls back to the customer's email when they have no name on file", async () => {

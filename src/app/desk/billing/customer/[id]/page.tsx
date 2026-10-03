@@ -7,6 +7,7 @@ import { formatCents } from "@/domains/pricing/money";
 import { invoiceStatusLabel, invoiceStatusTone } from "@/lib/status-labels";
 import { ExportCsvLink } from "@/components/export-csv-link";
 import { StatusBadge } from "@/components/status-badge";
+import { StatementReconciliationCard } from "@/components/billing/statement-reconciliation";
 import { RecordPaymentForm } from "./record-payment-form";
 import { WriteOffButton } from "./write-off-button";
 
@@ -83,9 +84,12 @@ export default async function CustomerStatementPage({
 
       <p className="mt-4 text-sm text-ink-soft">
         These totals summarize invoice amounts and recorded payments, including
-        any deposits, fees and tax. They are not a measure of rental revenue.
-        Payment status reflects the last recorded update.
+        any deposits, fees and tax; draft and voided invoices are left out. They
+        are not a measure of rental revenue. Payment status reflects the last
+        recorded update.
       </p>
+
+      <StatementReconciliationCard reconciliation={statement.reconciliation} />
 
       <div className="mt-6">
         <RecordPaymentForm

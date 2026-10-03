@@ -74,6 +74,17 @@ value; new agreements start with the owner's rate once it is CPA-confirmed.
 Stripe's rate list is read page by page so an existing rate is reused rather
 than duplicated.
 
+### 2026-10-03 — Reports and statements read the ledger (WU-B11)
+
+Cash reports now come from receipts, not from per-invoice payment allocations,
+so one check is one row and overpayments are counted. A refund kept as account
+credit is not treated as cash returned. "This month" in revenue reporting is the
+Colorado month, replacing UTC (the old UTC wording was a documented simplification
+that contradicted the business-time-zone rule). Statement balances count only
+invoices actually owed; a voided, draft or written-off invoice no longer inflates
+"balance owed". Added an `ADJUSTMENT` group to the line categories because
+invoice lines of that kind exist and the design's list had none for them.
+
 ### 2026-10-03 — Fixed terms start at delivery; policy values are entered in the app
 
 Chris answered IN-20: a 6- or 12-month term starts at delivery (when billing

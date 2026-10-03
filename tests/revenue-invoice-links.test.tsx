@@ -18,16 +18,23 @@ beforeEach(() => {
   m.records.mockResolvedValue({
     meta: { totalCount: 1, page: 1, pageSize: 25, totalPages: 1, skip: 0 },
     totalCents: 4500,
+    toCreditCents: 0,
     rows: [{ id: "source-record", amountCents: 4500, createdAt: new Date("2026-10-01T00:00:00Z"),
-      basis: "Recorded payment", invoice: { id: "invoice-123", customerId: "customer-456",
-        invoiceNumber: 123, customer: { user: { name: "Test Customer", email: "test@example.test" } } } }],
+      basis: "Recorded payment", method: "check", customerId: "customer-456", customerName: "Test Customer",
+      unallocatedCents: 500,
+      invoices: [{ id: "invoice-123", invoiceNumber: 123, amountCents: 4000 }, { id: "invoice-124", invoiceNumber: 124, amountCents: 0 }] }],
   });
 });
-it.each(["payments", "refunds"])("%s drill-through opens the existing desk invoice route", async (source) => {
+it.each(["payments", "refunds"])("%s rows link to the customer statement and each exact desk invoice", async (source) => {
   render(await RevenuePage({ searchParams: Promise.resolve({ source, scope: "all" }) }));
-  expect(screen.getByRole("link", { name: "Invoice #123 · Test Customer" })).toHaveAttribute(
+  expect(screen.getByRole("link", { name: "Test Customer" })).toHaveAttribute("href", "/desk/billing/customer/customer-456");
+  expect(screen.getByRole("link", { name: "Invoice #123" })).toHaveAttribute(
     "href", "/desk/billing/customer/customer-456/invoice/invoice-123",
   );
+  expect(screen.getByRole("link", { name: "Invoice #124" })).toHaveAttribute(
+    "href", "/desk/billing/customer/customer-456/invoice/invoice-124",
+  );
+  expect(screen.getByText(/\$5 held as account credit/)).toBeVisible();
   expect(m.role).toHaveBeenCalledWith("OWNER", "ADMIN");
   expect(m.records).toHaveBeenCalledWith(source, false, undefined, expect.any(Date));
 });

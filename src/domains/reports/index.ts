@@ -35,12 +35,19 @@ export async function getEarningsReport(asOf: Date = new Date()): Promise<Earnin
       endDate: true,
       customer: { select: { id: true, user: { select: { name: true, email: true } } } },
       lines: { select: { monthlyPriceCents: true } },
-      invoices: { select: { amountPaidCents: true } },
+      invoices: { select: { amountPaidCents: true, refunds: { select: { amountCents: true } } } },
     },
   });
 
   const rows = agreements.map((agreement) => {
-    const invoicePaidCents = agreement.invoices.reduce((sum, inv) => sum + inv.amountPaidCents, 0);
+    // "Collected" = money received and credit applied to this agreement's
+    // invoices, minus anything refunded on them, so a refunded month no longer
+    // looks like a month that was paid.
+    const invoicePaidCents = agreement.invoices.reduce(
+      (sum, inv) =>
+        sum + inv.amountPaidCents - inv.refunds.reduce((refunded, r) => refunded + r.amountCents, 0),
+      0,
+    );
     const earnings = computeAgreementEarnings(
       {
         billingStartedAt: agreement.billingStartedAt,

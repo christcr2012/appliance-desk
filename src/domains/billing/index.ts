@@ -11,6 +11,7 @@ export { sendUpcomingBillingReminders } from "./reminders";
 export { getCustomerStatement, getCustomersWithOpenBalances } from "./statements";
 export type {
   CustomerStatement,
+  StatementReconciliation,
   StatementProperty,
   StatementInvoice,
   StatementLineItem,

@@ -45,14 +45,14 @@ for (const width of [360, 768, 1440])
           .getByRole("navigation", { name: "Invoice ledger source" })
           .getByRole("link", {
             name:
-              source === "payments" ? "Payment allocations" : "Invoice refunds",
+              source === "payments" ? "Cash received" : "Invoice refunds",
             exact: true,
           })
           .click();
         await expect(page).toHaveURL(new RegExp(`source=${source}`));
         await page
           .getByRole("navigation", { name: "Invoice ledger period" })
-          .getByRole("link", { name: "This UTC month", exact: true })
+          .getByRole("link", { name: "This month (Colorado)", exact: true })
           .click();
         await expect(page).toHaveURL(/scope=month/);
         await page
@@ -91,7 +91,7 @@ for (const width of [360, 768, 1440])
 
       const allocations = page
         .getByRole("navigation", { name: "Invoice ledger source" })
-        .getByRole("link", { name: "Payment allocations", exact: true });
+        .getByRole("link", { name: "Cash received", exact: true });
       // After "back" the address changes before the page content does. Wait until the
       // links on screen belong to the month view, or Enter can follow a stale link.
       await expect(allocations).toHaveAttribute("href", /scope=month/);
@@ -106,12 +106,12 @@ for (const width of [360, 768, 1440])
       await expect(page).toHaveURL(/source=payments.*scope=month/);
       await expect(
         page.getByRole("heading", {
-          name: "Recorded invoice payment allocations",
+          name: "Cash received (one row per payment)",
           exact: true,
         }),
       ).toBeVisible();
       await expect(
-        page.getByText(/allocations to individual invoices, not independent cash receipts/i),
+        page.getByText(/Each payment appears once, even when one check paid several/i),
       ).toBeVisible();
     });
   }

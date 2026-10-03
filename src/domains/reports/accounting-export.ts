@@ -7,9 +7,14 @@ import { prisma } from "@/lib/prisma";
 export type AccountingTransactionType =
   | "Payment"
   | "Refund"
+  | "Refund to account credit"
   | "Deposit refunded";
 
 export type AccountingTransactionRow = {
+  /** Receipt id for payments, refund id for refunds, so every row can be traced to the ledger. */
+  recordId: string;
+  /** Where a payment came from (STRIPE or MANUAL); blank for refunds and deposits. */
+  source: string;
   date: Date;
   type: AccountingTransactionType;
   customerName: string;
@@ -30,11 +35,13 @@ function customerDisplayName(customer: {
 export async function getAccountingTransactions(): Promise<
   AccountingTransactionRow[]
 > {
-  const [receipts, refunds, deposits] = await prisma.$transaction(
+  const [receipts, refunds, deposits, creditRefunds] = await prisma.$transaction(
     async (tx) =>
       Promise.all([
         tx.receipt.findMany({
           select: {
+            id: true,
+            source: true,
             amountCents: true,
             method: true,
             notes: true,
@@ -52,6 +59,7 @@ export async function getAccountingTransactions(): Promise<
         }),
         tx.refund.findMany({
           select: {
+            id: true,
             amountCents: true,
             reason: true,
             notes: true,
@@ -87,9 +95,16 @@ export async function getAccountingTransactions(): Promise<
             },
           },
         }),
+        tx.customerCredit.findMany({
+          where: { sourceType: "REFUND_TO_CREDIT" },
+          select: { sourceId: true },
+        }),
       ]),
     { isolationLevel: "RepeatableRead" },
   );
+  // A refund kept as account credit moves no cash; label it so the export's
+  // cash total is not understated.
+  const creditRefundIds = new Set(creditRefunds.map((c) => c.sourceId));
 
   const rows: AccountingTransactionRow[] = [];
 
@@ -98,6 +113,8 @@ export async function getAccountingTransactions(): Promise<
       ...new Set(receipt.payments.map((payment) => payment.invoice.invoiceNumber)),
     ];
     rows.push({
+      recordId: receipt.id,
+      source: receipt.source,
       date: receipt.receivedOn,
       type: "Payment",
       customerName: customerDisplayName(receipt.customer),
@@ -114,8 +131,10 @@ export async function getAccountingTransactions(): Promise<
 
   for (const refund of refunds) {
     rows.push({
+      recordId: refund.id,
+      source: "",
       date: refund.createdAt,
-      type: "Refund",
+      type: creditRefundIds.has(refund.id) ? "Refund to account credit" : "Refund",
       customerName: customerDisplayName(refund.invoice.customer),
       companyName: refund.invoice.customer.companyName ?? "",
       invoiceNumber: refund.invoice.invoiceNumber,
@@ -128,6 +147,8 @@ export async function getAccountingTransactions(): Promise<
   for (const deposit of deposits) {
     if (!deposit.refundedAt) continue;
     rows.push({
+      recordId: "",
+      source: "",
       date: deposit.refundedAt,
       type: "Deposit refunded",
       customerName: customerDisplayName(deposit.agreement.customer),

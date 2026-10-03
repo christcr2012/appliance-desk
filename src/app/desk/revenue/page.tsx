@@ -80,10 +80,10 @@ export default async function RevenuePage({
         }
       />
       <p className="text-sm text-ink-soft">
-        As of {formatBusinessDate(asOf)} · {formatBusinessTime(asOf)}. Gross
-        cash cards use each receipt&apos;s actual received date; the detailed
-        invoice-allocation list below uses the allocation record date. Monthly
-        rate trend still uses UTC calendar months. No costs are deducted, so
+        As of {formatBusinessDate(asOf)} · {formatBusinessTime(asOf)}. Cash
+        figures and the list below use each receipt&apos;s actual received date,
+        and &ldquo;this month&rdquo; is the Colorado calendar month. The
+        monthly-rate trend still groups by UTC month. No costs are deducted, so
         this report cannot establish profit.
       </p>
 
@@ -205,7 +205,7 @@ export default async function RevenuePage({
           label="Invoice ledger source"
           items={[
             {
-              label: "Payment allocations",
+              label: "Cash received",
               href: recordsHref(1, "payments"),
               active: source === "payments",
             },
@@ -220,7 +220,7 @@ export default async function RevenuePage({
           label="Invoice ledger period"
           items={[
             {
-              label: "This UTC month",
+              label: "This month (Colorado)",
               href: recordsHref(1, source, true),
               active: monthOnly,
             },
@@ -234,16 +234,16 @@ export default async function RevenuePage({
         <SectionCard
           title={
             source === "payments"
-              ? "Recorded invoice payment allocations"
+              ? "Cash received (one row per payment)"
               : "Recorded invoice refunds"
           }
-          description={`${records.meta.totalCount} matching records · ${formatCents(records.totalCents)} total · newest first. All totals include records beyond this page.`}
+          description={`${records.meta.totalCount} matching records · ${formatCents(records.totalCents)} total${source === "refunds" && records.toCreditCents > 0 ? ` (${formatCents(records.toCreditCents)} of it kept as account credit, so no cash left)` : ""} · newest first. All totals include records beyond this page.`}
         >
           <p className="mb-4 text-sm text-ink-soft">
-            Payment rows below are allocations to individual invoices, not
-            independent cash receipts. One receipt can therefore appear across
-            several invoice allocations. Refunds use the refund record date,
-            not the original payment date. Security-deposit refunds have their
+            Each payment appears once, even when one check paid several
+            invoices, and any amount not applied to an invoice is shown as
+            account credit. Refunds use the refund record date, not the
+            original payment date. Security-deposit refunds have their
             own deposit records and are not included here. Unpaid, pending and
             failed payment attempts do not count as successful allocations.
           </p>
@@ -259,14 +259,31 @@ export default async function RevenuePage({
                   <div className="min-w-0">
                     <Link
                       className="break-words text-primary underline"
-                      href={`/desk/billing/customer/${row.invoice.customerId}/invoice/${row.invoice.id}`}
+                      href={`/desk/billing/customer/${row.customerId}`}
                     >
-                      Invoice #{row.invoice.invoiceNumber} ·{" "}
-                      {row.invoice.customer.user.name ??
-                        row.invoice.customer.user.email}
+                      {row.customerName}
                     </Link>
+                    <p className="text-sm">
+                      {row.invoices.length === 0
+                        ? "Not applied to an invoice"
+                        : row.invoices.map((invoice, index) => (
+                            <span key={invoice.id}>
+                              {index > 0 && ", "}
+                              <Link
+                                className="text-primary underline"
+                                href={`/desk/billing/customer/${row.customerId}/invoice/${invoice.id}`}
+                              >
+                                Invoice #{invoice.invoiceNumber}
+                              </Link>
+                            </span>
+                          ))}
+                      {row.unallocatedCents > 0 &&
+                        ` · ${formatCents(row.unallocatedCents)} held as account credit`}
+                    </p>
                     <p className="text-sm text-ink-soft">
-                      {row.basis} · {formatBusinessDate(row.createdAt)} ·{" "}
+                      {row.basis}
+                      {row.method ? ` · ${row.method}` : ""} ·{" "}
+                      {formatBusinessDate(row.createdAt)} ·{" "}
                       {formatBusinessTime(row.createdAt)}
                     </p>
                   </div>
