@@ -168,6 +168,7 @@ describe("billing provider reconciliation", () => {
         subjectId: "agr-1",
         idempotencyKey: "subscription-cancel-agr-1",
         status: "UNKNOWN",
+        attempts: 2,
         requestedAt: new Date("2026-10-02T00:00:00Z"),
       },
     ]);
@@ -187,7 +188,7 @@ describe("billing provider reconciliation", () => {
     expect(mocks.subscriptionCancel).not.toHaveBeenCalled();
   });
 
-  it("retries an UNKNOWN cancellation under the provider lease after Stripe proves it is still live", async () => {
+  it("retries an UNKNOWN cancellation only with evidence bound to the observed attempt", async () => {
     mocks.providerFindMany.mockResolvedValue([
       {
         id: "op-1",
@@ -196,6 +197,7 @@ describe("billing provider reconciliation", () => {
         subjectId: "agr-1",
         idempotencyKey: "subscription-cancel-agr-1",
         status: "UNKNOWN",
+        attempts: 2,
         requestedAt: new Date("2026-10-02T00:00:00Z"),
       },
     ]);
@@ -214,7 +216,7 @@ describe("billing provider reconciliation", () => {
         subjectType: "RentalAgreement",
         subjectId: "agr-1",
         idempotencyKey: "subscription-cancel-agr-1",
-        reconcileUnknownAfterProviderEvidence: true,
+        reconcileUnknownAfterProviderEvidence: { expectedAttempts: 2 },
       },
     );
     expect(mocks.subscriptionCancel).toHaveBeenCalledWith(
@@ -229,7 +231,7 @@ describe("billing provider reconciliation", () => {
     );
   });
 
-  it("keeps an ambiguous leased cancellation retry UNKNOWN when the provider outcome is lost again", async () => {
+  it("keeps an ambiguous attempt-bound cancellation retry UNKNOWN when the provider outcome is lost again", async () => {
     mocks.providerFindMany.mockResolvedValue([
       {
         id: "op-1",
@@ -238,6 +240,7 @@ describe("billing provider reconciliation", () => {
         subjectId: "agr-1",
         idempotencyKey: "subscription-cancel-agr-1",
         status: "UNKNOWN",
+        attempts: 2,
         requestedAt: new Date("2026-10-02T00:00:00Z"),
       },
     ]);
@@ -250,6 +253,12 @@ describe("billing provider reconciliation", () => {
       completed: 0,
       stillUnknown: 1,
     });
+    expect(mocks.claimProviderOperation).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        reconcileUnknownAfterProviderEvidence: { expectedAttempts: 2 },
+      }),
+    );
     expect(mocks.subscriptionCancel).toHaveBeenCalledWith(
       "sub_123",
       undefined,
