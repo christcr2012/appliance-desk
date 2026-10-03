@@ -14,6 +14,19 @@ vi.mock("@/lib/prisma", () => ({
 
 import { getEarningsReport, getJobsMissingRepairCost } from "@/domains/reports";
 
+function customer(
+  id: string,
+  name: string | null,
+  email: string,
+  refundCreditSourceIds: string[] = [],
+) {
+  return {
+    id,
+    user: { name, email },
+    credits: refundCreditSourceIds.map((sourceId) => ({ sourceId })),
+  };
+}
+
 function invoice(overrides: Record<string, unknown> = {}) {
   return {
     amountDueCents: 6_000,
@@ -33,30 +46,27 @@ describe("getEarningsReport", () => {
     const args = agreementFindMany.mock.calls[0][0];
     expect(args.where.billingStartedAt).toEqual({ not: null, lte: asOf });
     expect(args.select.invoices.where.createdAt).toEqual({ lte: asOf });
+    expect(args.select.customer.select.credits.where).toEqual({
+      sourceType: "REFUND_TO_CREDIT",
+    });
   });
 
-  it("uses invoice charges vs receipt allocations minus refunds and sorts biggest gap first", async () => {
+  it("uses invoice charges vs receipt allocations minus cash refunds and sorts biggest gap first", async () => {
     agreementFindMany.mockResolvedValue([
       {
         id: "agr-behind",
-        customer: {
-          id: "cust-1",
-          user: { name: "Jane Doe", email: "jane@example.com" },
-        },
+        customer: customer("cust-1", "Jane Doe", "jane@example.com"),
         invoices: [
           invoice({
             amountDueCents: 12_000,
             payments: [{ amountCents: 8_000 }],
-            refunds: [{ amountCents: 1_000 }],
+            refunds: [{ id: "refund-cash", amountCents: 1_000 }],
           }),
         ],
       },
       {
         id: "agr-current",
-        customer: {
-          id: "cust-2",
-          user: { name: "Sam Renter", email: "sam@example.com" },
-        },
+        customer: customer("cust-2", "Sam Renter", "sam@example.com"),
         invoices: [invoice()],
       },
     ]);
@@ -83,21 +93,46 @@ describe("getEarningsReport", () => {
     });
   });
 
+  it("does not count refund-to-credit as cash leaving the business", async () => {
+    agreementFindMany.mockResolvedValue([
+      {
+        id: "agr-credit-refund",
+        customer: customer(
+          "cust-1",
+          "Jane Doe",
+          "jane@example.com",
+          ["refund-credit"],
+        ),
+        invoices: [
+          invoice({
+            amountDueCents: 6_000,
+            payments: [{ amountCents: 6_000 }],
+            refunds: [{ id: "refund-credit", amountCents: 2_000 }],
+          }),
+        ],
+      },
+    ]);
+
+    const report = await getEarningsReport(new Date("2026-10-01T12:00:00Z"));
+    expect(report.rows[0]).toMatchObject({
+      expectedChargesCents: 6_000,
+      netCollectedCents: 6_000,
+      gapCents: 0,
+    });
+  });
+
   it("cannot let a non-rent charge mask a shortfall through a mismatched basis", async () => {
     agreementFindMany.mockResolvedValue([
       {
         id: "agr-mixed",
-        customer: {
-          id: "cust-1",
-          user: { name: null, email: "noname@example.com" },
-        },
+        customer: customer("cust-1", null, "noname@example.com"),
         // Whole invoice basis: rent + deposit + tax = 16,438 due, while only
-        // 12,000 of actual receipt allocations remain after refund.
+        // 12,000 of actual receipt allocations remain after a cash refund.
         invoices: [
           invoice({
             amountDueCents: 16_438,
             payments: [{ amountCents: 13_000 }],
-            refunds: [{ amountCents: 1_000 }],
+            refunds: [{ id: "refund-cash", amountCents: 1_000 }],
           }),
         ],
       },
