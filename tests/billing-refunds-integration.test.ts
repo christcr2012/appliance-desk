@@ -10,10 +10,20 @@ import {
   vi,
 } from "vitest";
 
-const mocks = vi.hoisted(() => ({ refundCreate: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  refundCreate: vi.fn(),
+  checkoutSessionsList: vi.fn(),
+  paymentIntentRetrieve: vi.fn(),
+}));
 vi.mock("@/lib/stripe", () => ({
   getStripeClient: () => ({
     refunds: { create: (...args: unknown[]) => mocks.refundCreate(...args) },
+    checkout: {
+      sessions: { list: (...args: unknown[]) => mocks.checkoutSessionsList(...args) },
+    },
+    paymentIntents: {
+      retrieve: (...args: unknown[]) => mocks.paymentIntentRetrieve(...args),
+    },
   }),
 }));
 
@@ -37,6 +47,7 @@ type Fixture = {
   depositId: string;
   invoiceId: string;
   receiptId: string;
+  estimateId?: string;
 };
 
 const runTag = randomUUID().replaceAll("-", "");
@@ -162,11 +173,14 @@ async function cleanupFixture(fixture: Fixture): Promise<void> {
   }
   await prisma.refund.deleteMany({ where: { invoiceId: fixture.invoiceId } });
   await prisma.payment.deleteMany({ where: { invoiceId: fixture.invoiceId } });
-  await prisma.receipt.deleteMany({ where: { id: fixture.receiptId } });
+  await prisma.receipt.deleteMany({ where: { customerId: fixture.customerId } });
   await prisma.invoiceLineItem.deleteMany({ where: { invoiceId: fixture.invoiceId } });
   await prisma.invoice.deleteMany({ where: { id: fixture.invoiceId } });
   await prisma.deposit.deleteMany({ where: { id: fixture.depositId } });
   await prisma.rentalAgreement.deleteMany({ where: { id: fixture.agreementId } });
+  if (fixture.estimateId) {
+    await prisma.estimate.deleteMany({ where: { id: fixture.estimateId } });
+  }
   await prisma.serviceAddress.deleteMany({ where: { id: fixture.addressId } });
   await prisma.customer.deleteMany({ where: { id: fixture.customerId } });
   await prisma.user.deleteMany({ where: { id: fixture.userId } });
@@ -196,6 +210,8 @@ describe.skipIf(!enabled)("refund decisions in disposable Postgres", () => {
 
   beforeEach(() => {
     mocks.refundCreate.mockReset().mockResolvedValue({ id: `re_${randomUUID()}` });
+    mocks.checkoutSessionsList.mockReset().mockResolvedValue({ data: [] });
+    mocks.paymentIntentRetrieve.mockReset();
   });
 
   afterEach(async () => {
@@ -279,6 +295,70 @@ describe.skipIf(!enabled)("refund decisions in disposable Postgres", () => {
     expect(operation.status).toBe("UNKNOWN");
   });
 
+  it("recovers the Stripe charge for a prepaid estimate deposit after conversion", async () => {
+    const fixture = await createFixture("STRIPE");
+    const estimateId = `refund-estimate-${randomUUID()}`;
+    fixture.estimateId = estimateId;
+    await prisma.estimate.create({
+      data: {
+        id: estimateId,
+        customerId: fixture.customerId,
+        status: "CONVERTED",
+        title: "Legacy prepaid deposit",
+        depositCents: 5_000,
+        depositPaidAt: new Date("2026-10-01T18:00:00Z"),
+        createdByUserId: ownerId,
+      },
+    });
+    await prisma.customer.update({
+      where: { id: fixture.customerId },
+      data: { stripeCustomerId: "cus_estimate_refund_test" },
+    });
+    await prisma.rentalAgreement.update({
+      where: { id: fixture.agreementId },
+      data: { sourceEstimateId: estimateId },
+    });
+    await prisma.invoice.update({
+      where: { id: fixture.invoiceId },
+      data: { agreementId: null },
+    });
+    mocks.checkoutSessionsList.mockResolvedValue({
+      data: [
+        {
+          id: "cs_estimate_deposit",
+          metadata: { estimateId },
+          payment_status: "paid",
+          payment_intent: "pi_estimate_deposit",
+        },
+      ],
+    });
+    mocks.paymentIntentRetrieve.mockResolvedValue({
+      id: "pi_estimate_deposit",
+      latest_charge: "ch_estimate_deposit",
+    });
+    mocks.refundCreate.mockResolvedValue({ id: "re_estimate_deposit" });
+
+    await decideDepositRefund(ownerId, {
+      depositId: fixture.depositId,
+      refundCents: 5_000,
+    });
+
+    expect(mocks.checkoutSessionsList).toHaveBeenCalledWith({
+      customer: "cus_estimate_refund_test",
+      limit: 100,
+    });
+    expect(mocks.refundCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        charge: "ch_estimate_deposit",
+        amount: 5_000,
+      }),
+      expect.any(Object),
+    );
+    expect(
+      (await prisma.deposit.findUniqueOrThrow({ where: { id: fixture.depositId } })).stripeRefundId,
+    ).toBe("re_estimate_deposit");
+  });
+
   it("turns an invoice refund into exactly one local credit when requested", async () => {
     const fixture = await createFixture();
 
@@ -302,6 +382,81 @@ describe.skipIf(!enabled)("refund decisions in disposable Postgres", () => {
       remainingCents: 2_500,
       side: null,
     });
+  });
+
+  it("uses the next Stripe charge after an earlier partial refund reserved capacity", async () => {
+    const fixture = await createFixture("STRIPE");
+    await prisma.payment.deleteMany({ where: { invoiceId: fixture.invoiceId } });
+    await prisma.receipt.deleteMany({ where: { id: fixture.receiptId } });
+    const chargeOne = `ch_one_${randomUUID().replaceAll("-", "")}`;
+    const chargeTwo = `ch_two_${randomUUID().replaceAll("-", "")}`;
+    await prisma.receipt.create({
+      data: {
+        customerId: fixture.customerId,
+        source: "STRIPE",
+        amountCents: 5_000,
+        method: "card",
+        stripeChargeId: chargeOne,
+        receivedOn: new Date("2026-10-01T18:00:00Z"),
+        payments: {
+          create: {
+            invoiceId: fixture.invoiceId,
+            amountCents: 5_000,
+            method: "card",
+            status: "succeeded",
+          },
+        },
+      },
+    });
+    await prisma.receipt.create({
+      data: {
+        customerId: fixture.customerId,
+        source: "STRIPE",
+        amountCents: 5_000,
+        method: "card",
+        stripeChargeId: chargeTwo,
+        receivedOn: new Date("2026-10-02T18:00:00Z"),
+        payments: {
+          create: {
+            invoiceId: fixture.invoiceId,
+            amountCents: 5_000,
+            method: "card",
+            status: "succeeded",
+          },
+        },
+      },
+    });
+    mocks.refundCreate
+      .mockResolvedValueOnce({ id: "re_first" })
+      .mockResolvedValueOnce({ id: "re_second" });
+
+    await issueInvoiceRefund(ownerId, {
+      invoiceId: fixture.invoiceId,
+      amountCents: 3_000,
+      reason: "GOODWILL",
+    });
+    await issueInvoiceRefund(ownerId, {
+      invoiceId: fixture.invoiceId,
+      amountCents: 3_000,
+      reason: "GOODWILL",
+    });
+
+    expect(mocks.refundCreate).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ charge: chargeOne, amount: 3_000 }),
+      expect.any(Object),
+    );
+    expect(mocks.refundCreate).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ charge: chargeTwo, amount: 3_000 }),
+      expect.any(Object),
+    );
+    const operations = await prisma.providerOperation.findMany({
+      where: { kind: "REFUND_CREATE", subjectType: "Refund" },
+      select: { idempotencyKey: true },
+    });
+    expect(operations.some((operation) => operation.idempotencyKey.endsWith(chargeOne))).toBe(true);
+    expect(operations.some((operation) => operation.idempotencyKey.endsWith(chargeTwo))).toBe(true);
   });
 
   it("rejects refunds that exceed paid amount remaining after earlier refunds", async () => {
