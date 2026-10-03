@@ -144,6 +144,13 @@ export function fixedTermEndDate(termStart: Date, termMonths: number): Date {
   return new Date(billingPeriodFor(termStart, termMonths).start.getTime() - 1000);
 }
 
+/** Whole Colorado calendar days from `from`'s date to `to`'s date (negative when `to` is earlier). */
+export function businessDaysBetween(from: Date, to: Date): number {
+  const a = Date.parse(`${businessDateKey(from)}T00:00:00Z`);
+  const b = Date.parse(`${businessDateKey(to)}T00:00:00Z`);
+  return Math.round((b - a) / 86_400_000);
+}
+
 export function addBusinessDays(date: Date, days: number): Date {
   return midnight(addCalendarDays(businessDateKey(date), days));
 }

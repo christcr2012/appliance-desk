@@ -9,8 +9,14 @@ const termEnd = new Date("2027-11-08T06:59:59Z");
 describe("auto-renew window", () => {
   it("opens exactly the customer's notice days before the term ends and closes when the term has run out", () => {
     const agreement = { endDate: termEnd, noticeDays: 30 };
-    expect(autoRenewWindowOpen(agreement, new Date("2027-10-08T12:00:00Z"))).toBe(true);
-    expect(autoRenewWindowOpen(agreement, new Date("2027-10-07T12:00:00Z"))).toBe(false);
+    // Counted in Colorado calendar days to the renewal's first day (Nov 8): Oct 9 is exactly 30 days.
+    expect(autoRenewWindowOpen(agreement, new Date("2027-10-09T18:00:00Z"))).toBe(true);
+    expect(autoRenewWindowOpen(agreement, new Date("2027-10-08T18:00:00Z"))).toBe(false);
+    // The boundary is Colorado midnight (MDT, UTC-6, still in effect on Oct 9), not UTC midnight.
+    expect(autoRenewWindowOpen(agreement, new Date("2027-10-09T05:59:00Z"))).toBe(false);
+    expect(autoRenewWindowOpen(agreement, new Date("2027-10-09T06:00:00Z"))).toBe(true);
+    // Still open on the last day of the term, closed after it.
+    expect(autoRenewWindowOpen(agreement, new Date("2027-11-08T06:00:00Z"))).toBe(true);
     expect(autoRenewWindowOpen(agreement, new Date("2027-11-09T00:00:00Z"))).toBe(false);
   });
 });

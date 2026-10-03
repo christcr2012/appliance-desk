@@ -262,7 +262,8 @@ export function totalOneTimeCents(
   );
 }
 
-export async function sendEstimate(userId: string, estimateId: string) {
+/** Marks the estimate sent and emails the link. `emailed` is false when live customer email is off, so the owner can share the link by hand. */
+export async function sendEstimate(userId: string, estimateId: string): Promise<{ emailed: boolean }> {
   const estimate = await prisma.estimate.findUniqueOrThrow({
     where: { id: estimateId },
     include: {
@@ -324,12 +325,13 @@ export async function sendEstimate(userId: string, estimateId: string) {
   parts.push("Review the full details and let us know if it works for you:");
   parts.push(`${appUrl}/estimate/${estimate.id}`);
 
-  await sendCustomerEmail({
+  const result = await sendCustomerEmail({
     to: recipientEmail,
     subject: `Estimate #${estimate.estimateNumber} from ${settings.publicBusinessName}`,
     text: parts.join("\n\n"),
     actionLabel: "View & respond to estimate",
   });
+  return { emailed: result.sent };
 }
 
 export async function sendEstimateFollowUpReminders(): Promise<{
@@ -372,7 +374,7 @@ export async function sendEstimateFollowUpReminders(): Promise<{
     if (!recipientEmail) continue;
 
     try {
-      await sendCustomerEmail({
+      const result = await sendCustomerEmail({
         to: recipientEmail,
         subject: `Following up on estimate #${estimate.estimateNumber}`,
         text: [
@@ -384,6 +386,8 @@ export async function sendEstimateFollowUpReminders(): Promise<{
         ].join("\n\n"),
         actionLabel: "View & respond to estimate",
       });
+      // Email switched off (or not sent): leave it unmarked so it goes out once email is on.
+      if (!result.sent) continue;
       await prisma.estimate.update({
         where: { id: estimate.id },
         data: { followUpSentForSentAt: estimate.sentAt },

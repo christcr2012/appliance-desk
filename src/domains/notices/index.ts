@@ -2,6 +2,7 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { sendCustomerEmail } from "@/lib/customer-email";
 import { assertActiveTeamActor } from "@/lib/team-actor";
+import { businessDaysBetween } from "@/lib/business-date";
 
 /**
  * Messages the customer is owed, kept exactly as written.
@@ -29,8 +30,19 @@ export async function createNoticeInTx(
     body: string;
   },
 ): Promise<{ id: string; created: boolean }> {
-  const existing = await tx.customerNotice.findUnique({ where: { dedupeKey: input.dedupeKey }, select: { id: true } });
-  if (existing) return { id: existing.id, created: false };
+  const existing = await tx.customerNotice.findUnique({
+    where: { dedupeKey: input.dedupeKey },
+    select: { id: true, status: true },
+  });
+  if (existing) {
+    // Auto-renew turned off and back on in the same term: the withdrawn notice is needed again
+    // (same saved wording). A notice already delivered stays delivered.
+    if (existing.status === "NOT_NEEDED") {
+      await tx.customerNotice.update({ where: { id: existing.id }, data: { status: "PENDING" } });
+      return { id: existing.id, created: true };
+    }
+    return { id: existing.id, created: false };
+  }
   const created = await tx.customerNotice.create({ data: input, select: { id: true } });
   return { id: created.id, created: true };
 }
@@ -39,6 +51,18 @@ export type NoticeSendResult = { sent: number; stillWaiting: number };
 
 /** A claim older than this is treated as abandoned (the run died) and the notice is tried again. */
 const CLAIM_STALE_MINUTES = 15;
+
+/** A renewal reminder is only worth sending while the automatic renewal it warns about is still waiting. */
+async function stillNeeded(noticeId: string): Promise<boolean> {
+  const notice = await prisma.customerNotice.findUnique({ where: { id: noticeId }, select: { kind: true, agreementId: true } });
+  if (!notice) return false;
+  if (notice.kind !== "RENEWAL_REMINDER" || !notice.agreementId) return true;
+  const renewal = await prisma.rentalAgreement.findFirst({
+    where: { renewedFromAgreementId: notice.agreementId, createdByAutoRenew: true, status: "SCHEDULED" },
+    select: { id: true },
+  });
+  return renewal !== null;
+}
 
 /**
  * Try to email every waiting notice. Each notice is claimed (PENDING -> SENDING) in one
@@ -69,6 +93,10 @@ export async function sendPendingNotices(): Promise<NoticeSendResult> {
       data: { status: "SENDING", attempts: { increment: 1 } },
     });
     if (claimed.count !== 1) continue; // someone else (or the owner) got there first
+    if (!(await stillNeeded(notice.id))) {
+      await prisma.customerNotice.updateMany({ where: { id: notice.id, status: "SENDING" }, data: { status: "NOT_NEEDED" } });
+      continue;
+    }
     try {
       const result = await sendCustomerEmail({
         to: notice.customer.user.email,
@@ -102,8 +130,8 @@ export async function markNoticeDeliveredByHand(
   if (cleaned.length < 2) throw new Error("Say how you delivered it (for example “phoned”, “mailed”, “in person”).");
   await prisma.$transaction(async (tx) => {
     await assertActiveTeamActor(tx, userId, ["OWNER", "ADMIN"]);
-    const rows = await tx.$queryRaw<Array<{ status: string; createdAt: Date }>>`
-      SELECT "status", "createdAt" FROM "CustomerNotice" WHERE "id" = ${noticeId} FOR UPDATE
+    const rows = await tx.$queryRaw<Array<{ status: string }>>`
+      SELECT "status" FROM "CustomerNotice" WHERE "id" = ${noticeId} FOR UPDATE
     `;
     const row = rows[0];
     if (!row) throw new Error("Couldn't find that notice.");
@@ -111,9 +139,6 @@ export async function markNoticeDeliveredByHand(
     const now = new Date();
     const when = deliveredOn ?? now;
     if (when.getTime() > now.getTime()) throw new Error("The delivery date can't be in the future.");
-    if (when.getTime() < row.createdAt.getTime() - 24 * 60 * 60 * 1000) {
-      throw new Error("The delivery date can't be before the notice was written.");
-    }
     await tx.customerNotice.update({
       where: { id: noticeId },
       data: { status: "SENT", sentAt: when, sentVia: `HAND: ${cleaned.slice(0, 80)}`, sentByUserId: userId },
@@ -154,12 +179,12 @@ export type ReminderCheck = "OK" | "NOT_DELIVERED" | "OUT_OF_WINDOW";
 
 /** Was the reminder delivered, and inside the 25-40 day window before the renewal starts? */
 export async function checkReminderDelivered(
-  tx: Prisma.TransactionClient,
+  tx: Pick<Prisma.TransactionClient, "customerNotice">,
   dedupeKey: string,
   renewalStart: Date,
 ): Promise<ReminderCheck> {
   const notice = await tx.customerNotice.findUnique({ where: { dedupeKey }, select: { status: true, sentAt: true } });
   if (notice?.status !== "SENT" || !notice.sentAt) return "NOT_DELIVERED";
-  const daysBefore = (renewalStart.getTime() - notice.sentAt.getTime()) / 86_400_000;
+  const daysBefore = businessDaysBetween(notice.sentAt, renewalStart);
   return daysBefore >= REMINDER_MIN_DAYS_BEFORE && daysBefore <= REMINDER_MAX_DAYS_BEFORE ? "OK" : "OUT_OF_WINDOW";
 }

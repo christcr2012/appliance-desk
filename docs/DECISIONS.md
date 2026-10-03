@@ -195,3 +195,12 @@ Colorado's automatic-renewal law asks for a reminder 25 to 40 days before an aut
 
 ### 2026-10-03 addendum to IN-21 (Codex review of the notices PR) and the owner email switch
 Chris asked for a dashboard switch for live customer email. Built: `BusinessSettings.customerEmailEnabled` (migration `20261003250000`, starts OFF), Desk → Settings → Notifications, OWNER only (re-checked inside the transaction, every change in the audit log), with the plain-English explanation on screen. Every email addressed to a customer now goes through `sendCustomerEmail` (`src/lib/customer-email.ts`): renewal reminders, payment heads-up, estimates and follow-ups, referral credits. Staff alerts, sign-in/password email and the launch list (its own controls) are unchanged. Previews never send regardless. Also from the review: the nightly job claims a notice (PENDING→SENDING) before emailing so the job and an owner's "mark delivered" cannot both deliver it (a stale claim after 15 minutes is retried); a hand-delivered notice records the real delivery date the owner gives; an automatic renewal only starts if its reminder was delivered 25–40 days before the renewal (otherwise `NOTICE_OUT_OF_WINDOW`, shown in "Needs your attention"); cancelling an automatic renewal withdraws its reminder in the same transaction; the auto-renew notice-days setting now only accepts 25–40 (Colorado's window).
+
+### 2026-10-03 addendum to IN-21 (Copilot review of the notices PR)
+- The 25-to-40-day window is counted in Colorado calendar days (not 24-hour blocks), for both when the nightly job queues the renewal and when a delivery is checked.
+- For an automatic renewal, billing's end date is extended only after the reminder was delivered in the window. The nightly job (and the owner marking a notice delivered) releases it.
+- The owner can record the real delivery date when marking a notice delivered by hand.
+- Turning auto-renew off withdraws only a waiting reminder, never one being sent; turning it back on brings the same reminder back.
+- A customer can turn off automatic renewal from "My rentals" (Colorado expects an easy online cancel).
+- With customer email off, an estimate is still marked sent but the owner is told to share the link; estimate follow-ups are not marked as sent.
+- A written prompt for a stronger-model review of these rules is in `docs/prompts/REVIEW-RENEWAL-NOTICES.md` (optional, owner's choice).

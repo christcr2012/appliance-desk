@@ -642,7 +642,8 @@ async function closeAgreement(
         where: {
           agreementId: agreement.renewedFromAgreementId,
           kind: "RENEWAL_REMINDER",
-          status: { in: ["PENDING", "SENDING"] },
+          // Only a notice not yet being sent: one already in flight is recorded as sent when it lands.
+          status: "PENDING",
         },
         data: { status: "NOT_NEEDED" },
       });

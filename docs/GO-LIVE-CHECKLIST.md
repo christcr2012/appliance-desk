@@ -26,6 +26,7 @@ Legend: **Owner** = only Chris can do it · **Agent** = Claude can do it once yo
 | [ ] | Owner switch "Send emails to customers" turned On | Desk → Settings → Notifications (owner only; built, starts Off) | Off | Renewal reminders on Desk → Notices turn "sent" (nightly), or send one by turning it on then waiting for the next night |
 | [ ] | Launch-list emails | Desk → Launch controls (has its own approval, separate from the switch above) (Owner) | Off | |
 | [ ] | Where staff alerts go | Vercel `BILLING_NOTIFICATION_EMAIL`, `LEAD_NOTIFICATION_EMAIL`, `MAINTENANCE_NOTIFICATION_EMAIL` (Owner) | Not set | Test lead/billing alert arrives |
+| [ ] | Customer "Turn off automatic renewal" button tried end to end on the live site | My rentals page (customer account) | Built | Use a test customer with auto-renew on |
 | [ ] | Wording of every customer message read and approved | Notices, billing reminders, launch emails (Owner) | Draft wording | You approve each |
 
 Previews and test copies never send email, even with the key and the switch on (a safety rule in the code). The switch covers every email to a customer (renewal reminders, payment heads-up, estimates and follow-ups, referral credits); staff alerts and sign-in/password emails are not affected.

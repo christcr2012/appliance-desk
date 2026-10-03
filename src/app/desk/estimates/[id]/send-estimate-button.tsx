@@ -12,10 +12,17 @@ export function SendEstimateButton({
 }) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [sent, setSent] = useState(false);
+  const [sent, setSent] = useState<null | { emailed: boolean }>(null);
 
   if (sent) {
-    return <p className="text-sm text-green-700">Sent — the customer has been emailed a link.</p>;
+    return sent.emailed ? (
+      <p className="text-sm text-green-700">Sent — the customer has been emailed a link.</p>
+    ) : (
+      <p role="status" className="text-sm text-gray-900">
+        Marked as sent, but no email went out because customer email is turned off (Settings → Notifications).
+        Share this link with the customer yourself: <span className="font-mono">/estimate/{estimateId}</span> on your website.
+      </p>
+    );
   }
 
   return (
@@ -30,7 +37,7 @@ export function SendEstimateButton({
             if (result.status === "error") {
               setError(result.message);
             } else {
-              setSent(true);
+              setSent({ emailed: result.emailed === true });
             }
           })
         }

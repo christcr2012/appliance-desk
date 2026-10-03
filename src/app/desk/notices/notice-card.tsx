@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { markNoticeDeliveredAction } from "./actions";
+import { businessDateKey } from "@/lib/business-date";
 
 export type NoticeCardProps = {
   noticeId: string;
@@ -17,6 +18,7 @@ export function NoticeCard(props: NoticeCardProps) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [how, setHow] = useState("");
+  const [deliveredOn, setDeliveredOn] = useState(() => businessDateKey(new Date()));
   const [error, setError] = useState<string | null>(null);
   const inputId = `notice-how-${props.noticeId}`;
 
@@ -24,7 +26,7 @@ export function NoticeCard(props: NoticeCardProps) {
     event.preventDefault();
     setError(null);
     startTransition(async () => {
-      const result = await markNoticeDeliveredAction({ noticeId: props.noticeId, how });
+      const result = await markNoticeDeliveredAction({ noticeId: props.noticeId, how, deliveredOn });
       if (result.status === "error") {
         setError(result.message);
         return;
@@ -48,7 +50,7 @@ export function NoticeCard(props: NoticeCardProps) {
           Already delivered it yourself? How?
         </label>
         <p className="mt-1 text-xs text-gray-600">
-          For example “phoned”, “mailed” or “in person”. We save who marked it and when, then the customer&rsquo;s
+          For example “phoned”, “mailed” or “in person”. The date defaults to today; change it if you delivered it earlier. We save who marked it and when, then the customer&rsquo;s
           renewal can start on its date.
         </p>
         <div className="mt-2 flex flex-wrap items-center gap-3">
@@ -58,6 +60,17 @@ export function NoticeCard(props: NoticeCardProps) {
             onChange={(e) => setHow(e.target.value)}
             maxLength={80}
             className="w-full max-w-xs rounded-lg border border-gray-300 px-3 py-2 text-sm"
+          />
+          <label htmlFor={`${inputId}-date`} className="text-sm text-gray-900">
+            Date delivered
+          </label>
+          <input
+            id={`${inputId}-date`}
+            type="date"
+            value={deliveredOn}
+            max={businessDateKey(new Date())}
+            onChange={(e) => setDeliveredOn(e.target.value)}
+            className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
           />
           <button
             type="submit"

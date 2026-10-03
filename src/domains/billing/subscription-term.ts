@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { getStripeClient } from "@/lib/stripe";
 import { businessDateEnd, businessDateKey } from "@/lib/business-date";
+import { checkReminderDelivered } from "@/domains/notices";
+import { renewalReminderKey } from "@/domains/notices/renewal-reminder";
 import {
   claimProviderOperation,
   completeProviderOperation,
@@ -74,6 +76,8 @@ async function loadPair(renewalId: string) {
       endDate: true,
       stripeSubscriptionId: true,
       renewedFromAgreementId: true,
+      createdByAutoRenew: true,
+      startDate: true,
     },
   });
   if (!renewal?.renewedFromAgreementId) return null;
@@ -90,6 +94,14 @@ export async function desiredSubscriptionTerm(renewalId: string, direction: Term
   const pair = await loadPair(renewalId);
   if (!pair || !pair.subscriptionId) return null;
   const { renewal, old } = pair;
+  // An automatic renewal only extends billing once the customer's reminder was delivered on time:
+  // until then Stripe keeps the old end date, so nothing is billed past the term for a renewal that cannot start.
+  if (direction === "extend" && renewal.createdByAutoRenew && renewal.status !== "CANCELLED") {
+    const oldFull = await prisma.rentalAgreement.findUnique({ where: { id: old.id }, select: { endDate: true } });
+    if (!oldFull?.endDate || !renewal.startDate) return null;
+    const check = await checkReminderDelivered(prisma, renewalReminderKey(old.id, oldFull.endDate), renewal.startDate);
+    if (check !== "OK") return null;
+  }
   // An extend that is overtaken by a cancellation is moot; the revert covers it.
   if (direction === "extend" && renewal.status === "CANCELLED") return { moot: true as const, subscriptionId: pair.subscriptionId };
   const cancelAt =

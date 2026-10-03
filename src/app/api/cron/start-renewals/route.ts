@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { startDueRenewals } from "@/domains/agreements/renewal-start";
-import { runAutoRenewals } from "@/domains/agreements/auto-renew";
+import { runAutoRenewals, extendBillingForDeliveredAutoRenewals } from "@/domains/agreements/auto-renew";
 import { sendPendingNotices } from "@/domains/notices";
 import { runDueTerminations } from "@/domains/agreements/termination-execution";
 
@@ -30,6 +30,8 @@ export async function GET(request: Request): Promise<NextResponse> {
   }
   // Reminders created above are emailed now. While live customer email is off they stay "waiting".
   const notices = await sendPendingNotices();
+  // A reminder that was just delivered releases the held billing-date extension.
+  const billingExtended = await extendBillingForDeliveredAutoRenewals();
   const terminations = await runDueTerminations();
   if (terminations.needsReview.length > 0) {
     console.error("[cron] Early endings that need attention:", terminations.needsReview);
@@ -45,6 +47,7 @@ export async function GET(request: Request): Promise<NextResponse> {
     autoRenewalsCancelled: autoRenewals.cancelled,
     noticesSent: notices.sent,
     noticesWaiting: notices.stillWaiting,
+    billingExtended,
     endedEarly: terminations.ended,
     earlyEndingFeeInvoices: terminations.feeInvoices,
     earlyEndingsNeedingAttention: terminations.needsReview.length,

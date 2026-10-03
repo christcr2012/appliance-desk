@@ -127,4 +127,15 @@ describe("sendEstimateFollowUpReminders", () => {
     expect(result).toEqual({ sent: 1, failed: 1 });
     expect(estimateUpdate).toHaveBeenCalledTimes(1);
   });
+
+  it("does not mark or count a follow-up when customer email is switched off, so it goes out once email is on", async () => {
+    const sentAt = new Date("2026-09-20T00:00:00Z");
+    estimateFindMany.mockResolvedValue([estimate({ id: "est-1", sentAt, customerEmail: "jane@example.com" })]);
+    sendEmail.mockResolvedValue({ sent: false });
+
+    const result = await sendEstimateFollowUpReminders();
+
+    expect(result).toEqual({ sent: 0, failed: 0 });
+    expect(estimateUpdate).not.toHaveBeenCalled();
+  });
 });

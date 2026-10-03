@@ -35,7 +35,7 @@ export function composeRenewalReminder(input: RenewalReminderInput): { subject: 
     "The renewal terms you agreed to:",
     input.renewalTermsText.trim(),
     "",
-    `To stop the renewal, turn off automatic renewal in your customer account, or contact us before ${lastDay}: ${input.businessPhone} or ${input.businessEmail}.`,
+    `To stop the renewal, turn off automatic renewal on the “My rentals” page of your customer account, or contact us before ${lastDay}: ${input.businessPhone} or ${input.businessEmail}.`,
   ].join("\n");
   return { subject, body };
 }
