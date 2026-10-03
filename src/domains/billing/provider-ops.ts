@@ -20,6 +20,7 @@ type ProviderOperationRow = {
   providerObjectId: string | null;
   attempts: number;
   requestedAt: Date;
+  updatedAt: Date;
 };
 
 const DEFAULT_STALE_AFTER_MS = 120_000;
@@ -48,6 +49,10 @@ function providerRowMatches(
  * network call. A fresh idempotency key is inserted atomically. If the key
  * already exists, its row is locked before deciding whether the operation is
  * finished, actively owned, stale/retryable, or awaiting reconciliation.
+ *
+ * requestedAt is the immutable evidence anchor for the original provider
+ * request. updatedAt is the mutable lease/attempt timestamp used to decide
+ * whether an in-flight claim has gone stale.
  */
 export async function claimProviderOperation(
   tx: Prisma.TransactionClient,
@@ -90,7 +95,7 @@ export async function claimProviderOperation(
     ON CONFLICT ("idempotencyKey") DO NOTHING
     RETURNING
       "id", "kind", "subjectType", "subjectId", "idempotencyKey", "status",
-      "providerObjectId", "attempts", "requestedAt"
+      "providerObjectId", "attempts", "requestedAt", "updatedAt"
   `;
 
   if (inserted.length === 1) {
@@ -100,7 +105,7 @@ export async function claimProviderOperation(
   const rows = await tx.$queryRaw<ProviderOperationRow[]>`
     SELECT
       "id", "kind", "subjectType", "subjectId", "idempotencyKey", "status",
-      "providerObjectId", "attempts", "requestedAt"
+      "providerObjectId", "attempts", "requestedAt", "updatedAt"
     FROM "ProviderOperation"
     WHERE "idempotencyKey" = ${input.idempotencyKey}
     FOR UPDATE
@@ -127,21 +132,21 @@ export async function claimProviderOperation(
     throw new RetryLater("This provider operation is in provider/local drift and must be reconciled before retrying.");
   }
 
-  const requestedAtMs = new Date(existing.requestedAt).getTime();
-  const ageMs = Math.max(0, now.getTime() - requestedAtMs);
+  const updatedAtMs = new Date(existing.updatedAt).getTime();
+  const ageMs = Math.max(0, now.getTime() - updatedAtMs);
   if (existing.status === "PENDING" && ageMs < staleAfterMs) {
     throw new RetryLater();
   }
 
   // FAILED is deliberately retryable. A stale PENDING claim is also taken
   // over. UNKNOWN is not retried here because its provider-side outcome is
-  // ambiguous; reconciliation owns that state.
+  // ambiguous; reconciliation owns that state. requestedAt remains unchanged
+  // so later reconciliation can still search for the original provider write.
   await tx.providerOperation.update({
     where: { id: existing.id },
     data: {
       status: "PENDING",
       attempts: { increment: 1 },
-      requestedAt: now,
       completedAt: null,
       lastError: null,
     },
