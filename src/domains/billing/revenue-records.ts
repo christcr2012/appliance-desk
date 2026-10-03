@@ -8,7 +8,9 @@ export { cashRevenuePeriod, revenuePeriod } from "./revenue";
 /**
  * Bounded cash-ledger records. The historical `payments` query-string value is
  * retained for URL compatibility, but its rows are now Receipt cash events,
- * not per-invoice Payment allocations. Refunds remain separate outflows.
+ * not per-invoice Payment allocations. The refunds view contains invoice
+ * refunds that actually returned cash; refund-to-credit decisions stay out of
+ * cash totals and the accounting export reports deposit refunds separately.
  */
 export async function getRevenueRecords(
   source: "payments" | "refunds",
@@ -92,7 +94,22 @@ export async function getRevenueRecords(
       }
 
       const createdAt = cashRevenuePeriod(asOf, monthOnly);
-      const where = { createdAt };
+      const creditRefunds = await tx.customerCredit.findMany({
+        where: {
+          sourceType: "REFUND_TO_CREDIT",
+          sourceId: { not: null },
+        },
+        select: { sourceId: true },
+      });
+      const creditRefundIds = creditRefunds.flatMap((credit) =>
+        credit.sourceId ? [credit.sourceId] : [],
+      );
+      const where = {
+        createdAt,
+        ...(creditRefundIds.length
+          ? { id: { notIn: creditRefundIds } }
+          : {}),
+      };
       const total = await tx.refund.aggregate({
         where,
         _count: { _all: true },
@@ -140,7 +157,7 @@ export async function getRevenueRecords(
           },
           invoice: refund.invoice,
           allocationCount: 1,
-          basis: "Recorded invoice refund",
+          basis: "Recorded cash invoice refund",
         })),
       };
     },
