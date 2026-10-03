@@ -37,6 +37,15 @@ const DEFAULT_SETTINGS = {
   referralRewardCents: 2500,
   draftReservationHoldDays: 7,
   inspectionChecklist: [] as unknown,
+  earlyTerminationFeeCents: null as number | null,
+  earlyTerminationFeePercent: null as number | null,
+  earlyTerminationFeeCapCents: null as number | null,
+  earlyTerminationNoticeDays: null as number | null,
+  unusedTermTreatment: null as string | null,
+  autoRenewNoticeDays: null as number | null,
+  autoRenewTermsVersion: null as string | null,
+  renewalTermsText: null as string | null,
+  terminationTermsText: null as string | null,
   updatedAt: new Date(0),
 };
 
@@ -106,6 +115,15 @@ export type BusinessSettingsUpdate = Partial<{
   twelveMonthPrepayFreeMonthEnabled: boolean;
   referralRewardCents: number;
   draftReservationHoldDays: number;
+  earlyTerminationFeeCents: number | null;
+  earlyTerminationFeePercent: number | null;
+  earlyTerminationFeeCapCents: number | null;
+  earlyTerminationNoticeDays: number | null;
+  unusedTermTreatment: string | null;
+  autoRenewNoticeDays: number | null;
+  autoRenewTermsVersion: string | null;
+  renewalTermsText: string | null;
+  terminationTermsText: string | null;
 }>;
 
 /**
@@ -290,9 +308,6 @@ export async function createApplianceType(
     throw new Error("Name must contain at least one letter or number.");
   }
 
-  // Slugs must be unique — if "Washer" already exists, "washer-2" etc.
-  // This only matters if a retired type is later re-added under a name
-  // that collides with its own old slug, or two similarly-named types.
   let slug = baseSlug;
   let suffix = 2;
   while (await prisma.applianceType.findUnique({ where: { slug } })) {
