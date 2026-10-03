@@ -385,6 +385,8 @@ export async function sendEstimateFollowUpReminders(): Promise<{
           "If your plans have changed or you have questions, just reply to this email.",
         ].join("\n\n"),
         actionLabel: "View & respond to estimate",
+        // Same key for the same estimate send, so a retry within the provider's 24-hour window cannot email twice.
+        idempotencyKey: `estimate-follow-up-${estimate.id}-${estimate.sentAt.getTime()}`,
       });
       // Email switched off (or not sent): leave it unmarked so it goes out once email is on.
       if (!result.sent && result.outcome !== "UNKNOWN") continue;
