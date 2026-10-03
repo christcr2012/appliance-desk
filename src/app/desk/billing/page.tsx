@@ -73,6 +73,11 @@ export default async function BillingPage({
             active: showStatements,
           },
           {
+            href: "/desk/billing/held-payments",
+            label: "Held payments",
+            active: false,
+          },
+          {
             href: "/desk/billing/reconciliation",
             label: "Reconciliation",
             active: false,

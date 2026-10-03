@@ -1,4 +1,4 @@
-import { HELD_PAYMENT_STATUS } from "./payment-status";
+import { HELD_CONFLICT_STATUS, HELD_PAYMENT_STATUS, HELD_REFUNDED_STATUS, HELD_TO_CREDIT_STATUS } from "./payment-status";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
 import { parsePage, paginationMeta } from "@/domains/pagination";
@@ -62,7 +62,8 @@ export async function getRevenueRecords(
           rows: rows.map((r) => {
             // A payment that arrived after its invoice was closed is "held" for the owner: it is
             // not applied to that invoice and is not account credit (IN-23).
-            const applied = r.payments.filter((p) => p.status !== HELD_PAYMENT_STATUS);
+            const settledAway = new Set<string>([HELD_PAYMENT_STATUS, HELD_TO_CREDIT_STATUS, HELD_REFUNDED_STATUS, HELD_CONFLICT_STATUS]);
+            const applied = r.payments.filter((p) => !settledAway.has(p.status));
             const heldCents = r.payments
               .filter((p) => p.status === HELD_PAYMENT_STATUS)
               .reduce((sum, p) => sum + p.amountCents, 0);
@@ -79,7 +80,14 @@ export async function getRevenueRecords(
                 invoiceNumber: p.invoice.invoiceNumber,
                 amountCents: p.amountCents,
               })),
-              unallocatedCents: Math.max(0, r.amountCents - allocatedCents - heldCents),
+              // Money kept as credit counts as unallocated; money sent back to the card is neither.
+              unallocatedCents: Math.max(
+                0,
+                r.amountCents -
+                  allocatedCents -
+                  heldCents -
+                  r.payments.filter((p) => p.status === HELD_REFUNDED_STATUS).reduce((sum, p) => sum + p.amountCents, 0),
+              ),
               heldCents,
               basis:
                 r.source === "STRIPE"

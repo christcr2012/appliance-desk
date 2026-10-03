@@ -111,6 +111,23 @@ it("keeps a payment that arrived after its invoice was closed apart from applied
   const result = await getRevenueRecords("payments", true, "1", asOf);
   expect(result.rows[0]).toMatchObject({ amountCents: 10000, heldCents: 10000, unallocatedCents: 0, invoices: [] });
 });
+it("a settled held payment no longer shows as held: credit counts as unallocated, a card refund counts as neither", async () => {
+  const base = {
+    receivedOn: asOf,
+    amountCents: 10000,
+    method: "card",
+    source: "STRIPE",
+    recordedByUserId: null,
+    customer: { id: "c1", user: { name: "Customer", email: "customer@example.test" } },
+  };
+  m.rows.mockResolvedValue([
+    { ...base, id: "r4", payments: [{ amountCents: 10000, status: "held_to_credit", invoice: { id: "i1", invoiceNumber: 1 } }] },
+    { ...base, id: "r5", payments: [{ amountCents: 10000, status: "held_refunded", invoice: { id: "i2", invoiceNumber: 2 } }] },
+  ]);
+  const result = await getRevenueRecords("payments", true, "1", asOf);
+  expect(result.rows[0]).toMatchObject({ heldCents: 0, unallocatedCents: 10000, invoices: [] });
+  expect(result.rows[1]).toMatchObject({ heldCents: 0, unallocatedCents: 0, invoices: [] });
+});
 it("reads refunds separately and says which ones returned no cash", async () => {
   const result = await getRevenueRecords("refunds", false, "1", asOf);
   expect(result.totalCents).toBe(900);

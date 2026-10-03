@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getStripeClient } from "@/lib/stripe";
 import { assertActiveTeamActor } from "@/lib/team-actor";
 import { lockCustomerLedger } from "./ledger";
+import { HELD_PAYMENT_STATUS, HELD_REFUNDED_STATUS } from "./payment-status";
 import {
   claimProviderOperation,
   completeProviderOperation,
@@ -35,7 +36,7 @@ async function executeStripeRefund(input: {
   amountCents: number;
   metadata: Record<string, string>;
   onSuccess: (tx: Prisma.TransactionClient, refundId: string) => Promise<void>;
-}): Promise<void> {
+}): Promise<"SUCCEEDED" | "FAILED" | "UNKNOWN"> {
   const stripe = getStripeClient();
   const result = await runProviderCall(() =>
     stripe.refunds.create(
@@ -62,6 +63,7 @@ async function executeStripeRefund(input: {
       error: result.error,
     });
   });
+  return result.ok ? "SUCCEEDED" : result.outcome;
 }
 
 /**
@@ -486,4 +488,92 @@ export async function issueInvoiceRefund(
     refundId: prepared.refundId,
     providerOpId: prepared.claim.providerOpId,
   };
+}
+
+/**
+ * Send a held payment back to the customer's card (owner decision IN-23). The
+ * whole payment is refunded against the Stripe charge it came from. A refund
+ * record is written against the closed invoice (so reports show it and the
+ * Stripe "refunded" notification is recognized as already recorded), and the
+ * held payment is marked refunded in the same transaction that claims the
+ * provider operation; a Stripe failure is recovered by the billing
+ * reconciliation pass like any other refund.
+ */
+export async function refundHeldPayment(
+  userId: string,
+  paymentId: string,
+): Promise<{ refundId: string; providerOpId: string; outcome: "SUCCEEDED" | "FAILED" | "UNKNOWN" }> {
+  const prepared = await prisma.$transaction(async (tx) => {
+    await assertActiveTeamActor(tx, userId, ["OWNER", "ADMIN"]);
+    const identity = await tx.payment.findUnique({
+      where: { id: paymentId },
+      select: { invoice: { select: { id: true, customerId: true } } },
+    });
+    if (!identity) throw new Error("Couldn't find that held payment.");
+    await lockCustomerLedger(tx, identity.invoice.customerId);
+    const rows = await tx.$queryRaw<
+      Array<{ id: string; status: string; amountCents: number; receiptId: string | null }>
+    >`SELECT "id", "status", "amountCents", "receiptId" FROM "Payment" WHERE "id" = ${paymentId} FOR UPDATE`;
+    const payment = rows[0];
+    if (!payment) throw new Error("Couldn't find that held payment.");
+    if (payment.status !== HELD_PAYMENT_STATUS) throw new Error("This payment has already been dealt with.");
+    const receipt = payment.receiptId
+      ? await tx.receipt.findUnique({
+          where: { id: payment.receiptId },
+          select: { source: true, stripeChargeId: true },
+        })
+      : null;
+    if (!receipt || receipt.source !== "STRIPE" || !receipt.stripeChargeId) {
+      throw new Error("This payment didn't come through Stripe, so it can't be refunded to a card from here.");
+    }
+    const refund = await tx.refund.create({
+      data: {
+        invoiceId: identity.invoice.id,
+        amountCents: payment.amountCents,
+        reason: "OTHER",
+        notes: "Held payment (arrived after the invoice was closed) sent back to the customer's card.",
+        authorizedByUserId: userId,
+      },
+      select: { id: true },
+    });
+    await tx.payment.update({
+      where: { id: payment.id },
+      data: { status: HELD_REFUNDED_STATUS, notes: "Held payment refunded to the customer's card." },
+    });
+    await tx.auditLog.create({
+      data: {
+        userId,
+        action: "billing.held_payment_refunded",
+        entityType: "Payment",
+        entityId: payment.id,
+        newValue: { refundId: refund.id, amountCents: payment.amountCents },
+      },
+    });
+    const claim = await claimProviderOperation(tx, {
+      kind: "REFUND_CREATE",
+      subjectType: "Refund",
+      subjectId: refund.id,
+      idempotencyKey: invoiceRefundProviderKey(refund.id, receipt.stripeChargeId),
+    });
+    return {
+      refundId: refund.id,
+      amountCents: payment.amountCents,
+      invoiceId: identity.invoice.id,
+      claim: claim.done
+        ? null
+        : { providerOpId: claim.opId, idempotencyKey: claim.idempotencyKey, stripeChargeId: receipt.stripeChargeId },
+    };
+  });
+
+  if (!prepared.claim) return { refundId: prepared.refundId, providerOpId: "", outcome: "SUCCEEDED" };
+
+  const outcome = await executeStripeRefund({
+    claim: prepared.claim,
+    amountCents: prepared.amountCents,
+    metadata: { invoiceId: prepared.invoiceId, refundId: prepared.refundId },
+    onSuccess: async (tx, stripeRefundId) => {
+      await tx.refund.update({ where: { id: prepared.refundId }, data: { stripeRefundId } });
+    },
+  });
+  return { refundId: prepared.refundId, providerOpId: prepared.claim.providerOpId, outcome };
 }

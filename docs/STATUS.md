@@ -12,7 +12,7 @@ Last updated: 2026-10-03 (evening) · `main` includes the whole Batch B stack th
 | Batch | Status | PR / branch | Evidence | Notes |
 |---|---|---|---|---|
 | A — Critical integrity & platform safety | **MERGED** | #136 (2026-10-02) | Full CI green; real-Postgres concurrency and adversarial auth tests | Audit registers stay open; nothing in A claims a B–F item. |
-| B — Billing, provider reconciliation & financial ledger | **IN PROGRESS (core merged; follow-ups open)** | Merged to `main`: #141, #145, #146, #147, #148, #149, #151, #152, #153, #154 (2026-10-03) | Real-database tests for provider operations, receipts/allocations, credits, refunds, late fees, write-off races, renewals, drift workbench, statements and reports; acceptance ledger `docs/reviews/2026-10-03-batch-b-acceptance.md` with review dispositions; CI green at each merged head | Not done (honest list in the acceptance ledger): renewal billing and acting on auto-renew consent, scheduled early-termination execution, notice emails (IN-21), renewal shows active before its start (IN-22), screen to resolve held payments (IN-23), per-customer terms screens (Batch D). Do not mark B complete until that list is empty or Chris accepts it. |
+| B — Billing, provider reconciliation & financial ledger | **IN PROGRESS (core merged; follow-ups open)** | Merged to `main`: #141, #145, #146, #147, #148, #149, #151, #152, #153, #154 (2026-10-03) | Real-database tests for provider operations, receipts/allocations, credits, refunds, late fees, write-off races, renewals, drift workbench, statements and reports; acceptance ledger `docs/reviews/2026-10-03-batch-b-acceptance.md` with review dispositions; CI green at each merged head | Not done (honest list in the acceptance ledger): renewal billing and acting on auto-renew consent, scheduled early-termination execution, notice emails (IN-21), per-customer terms screens (Batch D). Do not mark B complete until that list is empty or Chris accepts it. |
 | C — Rental-to-service operations, custody, inventory & purchasing | NOT STARTED | — | — | Depends on B's ledger primitives where money is touched. |
 | D — Owner/customer control plane, website, evidence & privacy | NOT STARTED | — | — | Uses B contracts for renewal/cancel UI. |
 | E — Communications, reporting, growth, branding & accessibility | NOT STARTED | — | — | Google (O32) only if GW prerequisites are ready; otherwise one later PR. |
@@ -52,7 +52,7 @@ second stack, `batch-b-completion-*`, in this order. Tick each when merged:
 - [x] Recommended starting terms policy (IN-19), editable by owner and admin (migration 20261003200000 writes the starting values once, only if the owner entered nothing; "Restore recommended starting terms" button in Settings; tests: recommended-terms, recommended-terms-integration, terms-policy-form)
       (this PR).
 - [x] Renewals signed ahead of time get a "signed, starts later" (SCHEDULED) state (IN-22): nightly start, one-step hand-off, reports, exceptions (PR in this stack; tests `agreements-scheduled-renewal-integration`, `scheduled-renewal-rules`).
-- [ ] Held-payment screen: owner resolves a held payment per case (IN-23).
+- [x] Held-payment screen: owner resolves a held payment per case (IN-23): Billing → Held payments, recommended choice highlighted (tests `billing-held-payments-integration`, `held-payment-card`).
 - [ ] Auto-renew and scheduled early-termination execution (nothing acts on
       auto-renew consent or on a scheduled ending yet).
 - [ ] Term-change notices (IN-21): notice record and 30-day rule; email sending
@@ -80,8 +80,8 @@ a termination quote or start a renewal belong to Batch D, which owns those scree
 See `docs/OWNER-INPUTS.md` for the full register. Chris gave direction on
 2026-10-03: IN-19 use best practice and keep it editable (starting values now
 installed); IN-22 use best practice for a renewal signed in advance (built: see
-"Answered" below); IN-23 per-case choice with a recommended option (screen to be
-built, unchecked above). IN-22 and IN-23 stay "awaiting" until built and shown to him.
+"Answered" in OWNER-INPUTS); IN-23 per-case choice with a recommended option.
+IN-22 and IN-23 are both built.
 Still waiting on him: IN-21 (wording and approval for sending live customer
 emails; building continues with sending switched off) and IN-17's CPA check of the
 7.375% rate.

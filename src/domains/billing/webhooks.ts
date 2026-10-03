@@ -11,6 +11,7 @@ import {
   recordFailedPaymentAttempt,
 } from "./ledger";
 import { resolveStripeInvoiceCashEvents } from "./stripe-invoice-payments";
+import { HELD_CONFLICT_STATUS, HELD_PAYMENT_STATUS, HELD_REFUNDED_STATUS, HELD_TO_CREDIT_STATUS } from "./payment-status";
 
 async function alreadyProcessed(db: Prisma.TransactionClient, eventId: string): Promise<boolean> {
   return (await db.webhookEvent.findUnique({ where: { id: eventId } })) !== null;
@@ -733,11 +734,23 @@ async function handleChargeRefunded(
       : charge.payment_intent?.id;
   if (!paymentIntentId) return;
 
-  const payment = await db.payment.findFirst({
+  const found = await db.payment.findFirst({
     where: { stripePaymentIntentId: paymentIntentId },
-    select: { invoiceId: true },
+    select: { id: true, invoice: { select: { customerId: true } } },
+  });
+  if (!found) return;
+
+  // Same lock order as the owner's held-payment decisions (customer, then the
+  // payment row), so a Stripe refund and an owner decision can never both win.
+  await lockCustomerLedger(db, found.invoice.customerId);
+  const payment = await db.payment.findUnique({
+    where: { id: found.id },
+    select: { id: true, invoiceId: true, status: true, amountCents: true, receiptId: true, stripePaymentIntentId: true, stripeChargeId: true, method: true },
   });
   if (!payment) return;
+  await db.$queryRaw`SELECT "id" FROM "Payment" WHERE "id" = ${payment.id} FOR UPDATE`;
+  const locked = await db.payment.findUniqueOrThrow({ where: { id: payment.id }, select: { status: true, amountCents: true } });
+
   const alreadyRefundedCents = await db.refund.aggregate({
     where: { invoiceId: payment.invoiceId },
     _sum: { amountCents: true },
@@ -757,6 +770,63 @@ async function handleChargeRefunded(
         typeof charge.refunds?.data[0]?.id === "string" ? charge.refunds.data[0].id : null,
     },
   });
+
+  if (locked.status === HELD_PAYMENT_STATUS) {
+    // A held payment refunded in the Stripe dashboard no longer waits for the owner.
+    // A partial refund leaves the rest held: the refunded part becomes its own settled row.
+    const refundedPart = Math.min(newAmountCents, locked.amountCents);
+    if (refundedPart >= locked.amountCents) {
+      await db.payment.update({
+        where: { id: payment.id },
+        data: { status: HELD_REFUNDED_STATUS, notes: "Held payment refunded in Stripe." },
+      });
+    } else {
+      await db.payment.update({
+        where: { id: payment.id },
+        data: { amountCents: locked.amountCents - refundedPart },
+      });
+      await db.payment.create({
+        data: {
+          invoiceId: payment.invoiceId,
+          receiptId: payment.receiptId,
+          amountCents: refundedPart,
+          method: payment.method,
+          status: HELD_REFUNDED_STATUS,
+          stripePaymentIntentId: payment.stripePaymentIntentId,
+          stripeChargeId: payment.stripeChargeId,
+          notes: "Part of a held payment refunded in Stripe.",
+        },
+      });
+    }
+  } else if (locked.status === HELD_TO_CREDIT_STATUS) {
+    // The owner already kept this money as credit, and now Stripe returned it to the card.
+    // An unspent credit is withdrawn; a partly spent one needs the owner's eyes.
+    const credit = await db.customerCredit.findFirst({
+      where: { sourceType: "HELD_PAYMENT", sourceId: payment.id, side: null },
+      select: { id: true, amountCents: true, remainingCents: true },
+    });
+    if (credit && credit.remainingCents === credit.amountCents) {
+      await db.customerCredit.update({ where: { id: credit.id }, data: { remainingCents: 0 } });
+      await db.payment.update({
+        where: { id: payment.id },
+        data: { status: HELD_REFUNDED_STATUS, notes: "Refunded in Stripe; the credit that had been created was withdrawn." },
+      });
+    } else {
+      await db.payment.update({
+        where: { id: payment.id },
+        data: { status: HELD_CONFLICT_STATUS, notes: "Refunded in Stripe after the money was kept as credit and partly used." },
+      });
+    }
+    await db.auditLog.create({
+      data: {
+        userId: null,
+        action: "billing.held_credit_refunded_in_stripe",
+        entityType: "Payment",
+        entityId: payment.id,
+        newValue: { creditWithdrawn: credit?.remainingCents === credit?.amountCents },
+      },
+    });
+  }
 }
 
 async function handleSubscriptionDeleted(
