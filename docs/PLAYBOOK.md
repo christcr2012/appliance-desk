@@ -81,8 +81,12 @@ Rules while implementing:
 
 ## Step 4 — Verify locally before any push
 
-Local verification takes ~5 minutes to set up and routinely catches failures
-that would otherwise fail in CI (GitHub shows only the first 10 failures per
+**Default (agent decision, approved by Chris 2026-10-03): run only 4a — the
+cheap checks — before a push, and let CI run the full suite and browser specs.**
+The rest of this step (4b full local suite, 4c browser specs) is for when it is
+cheaper than guessing: migrations/SQL, a CI failure you cannot explain, or a
+spec you are iterating on. Local verification of the full suite takes ~5 minutes
+to set up and can catch failures that would otherwise fail in CI (GitHub shows only the first 10 failures per
 step, so one CI run rarely shows them all, and a red run is noise for Chris).
 
 ### 4a. Fast checks (every time)

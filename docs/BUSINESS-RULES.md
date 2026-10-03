@@ -29,11 +29,14 @@ Update this file in the same PR that changes a rule.
   - Sales tax: configurable rate, applied at invoice time. **Defaults to
     0% with a visible warning** until Chris confirms the real rate with
     a CPA. Never guess a tax rate. Stored in the database as
-    `taxRatePermille` — tenths of a percent, so **7.3% is stored as the
-    number 73**, not `7.3` or `0.073`. `/desk/settings` still shows and
-    accepts a normal percent; the ×10 conversion happens in code
-    (`getOrCreateTaxRate` in `src/domains/billing/checkout.ts`), never
-    by hand.
+    `taxRateMilliPercent` — thousandths of one percent, so **7.375% is
+    stored as the number 7375** (7.3% is 7300), not `7.375` or `0.07375`.
+    `/desk/settings` and the rental builder show and accept a normal
+    percent with up to three decimals; conversion happens only through
+    `parseTaxRatePercent` / `formatTaxRate` in `src/domains/billing/tax.ts`,
+    and `getOrCreateTaxRate` in `src/domains/billing/checkout.ts` sends
+    Stripe the exact percentage. The old `taxRatePermille` columns are
+    deprecated and unused.
 - **Prepaid-term discount** (Chris's explicit request — see
   `docs/DECISIONS.md` for the dated design decision this section
   summarizes): signing a 6- or 12-month term automatically lowers a rental
@@ -908,9 +911,11 @@ is never replaced by a default.
   percentage point, held in thousandths of a percent (7.375% is 7375). Tax is
   computed per line, rounded half away from zero to the cent, then summed, so an
   invoice's tax can differ by a cent or two from taxing the subtotal once. The
-  existing stored rate (tenths of a percent) converts exactly (73 becomes 7300).
-  Helpers are in `src/domains/billing/tax.ts`; the stored rate and the settings
-  screen still use tenths until the follow-up that moves them.
+  old tenths-of-a-percent rates were copied across exactly by migration
+  `20261003180000_tax_rate_milli_percent` (73 became 7300). Helpers are in
+  `src/domains/billing/tax.ts`; storage, the settings screen, the rental
+  builder, the public pricing page, agreement snapshots and Stripe tax-rate
+  creation all use thousandths of a percent.
 
 ## Cross-cutting desk tools (2026-09-28)
 

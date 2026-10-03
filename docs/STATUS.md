@@ -65,8 +65,7 @@ deny-by-default (#131), CI parallelized and sharded (#136, #137).
   (estimate/setup/sign-up) — planned for the next PR; agreements sent for
   signing before this change have no locked terms; (1) Chris has not entered the policy values yet, so
   early-termination quotes and auto-renew are unavailable until he does (IN-19);
-  (2) tax rate storage, settings screen, agreement snapshot and Stripe tax-rate
-  creation still use tenths of a percent (IN-17 follow-up); (3) renewal drafts
+  (2) [done: tax rates are now stored and charged exactly — see log]; (3) renewal drafts
   carry no appliance assignments and nothing acts on auto-renew consent yet;
   (4) no customer- or owner-facing screen shows a termination quote or starts a
   renewal yet (Batch D); (5) WU-B11 and WU-B12; (6) the new settings tab's
