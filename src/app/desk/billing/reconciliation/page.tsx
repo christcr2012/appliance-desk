@@ -6,10 +6,15 @@ import { PageHeader } from "@/components/desk/workspace";
 
 export const metadata = { title: "Billing reconciliation" };
 
-export default async function BillingReconciliationPage() {
+export async function loadBillingReconciliationPageData() {
   await requireRole("OWNER", "ADMIN");
   const checkedAt = new Date();
   const rows = await detectDrift();
+  return { checkedAt, rows };
+}
+
+export default async function BillingReconciliationPage() {
+  const { checkedAt, rows } = await loadBillingReconciliationPageData();
 
   return (
     <div>
