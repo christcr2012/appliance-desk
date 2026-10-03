@@ -220,6 +220,7 @@ describe("applyCreditToInvoice", () => {
   function creditTx(options?: {
     credit?: Partial<CreditState>;
     invoice?: Partial<InvoiceState>;
+    providerReserved?: boolean;
   }) {
     const credit: CreditState = {
       id: "credit-1",
@@ -243,6 +244,11 @@ describe("applyCreditToInvoice", () => {
         if (sql.includes('FROM "CustomerCredit"')) return [{ ...credit }];
         if (sql.includes('FROM "Invoice"')) return [{ ...invoiceState }];
         throw new Error(`Unexpected query: ${sql}`);
+      },
+      providerOperation: {
+        findFirst: vi.fn(async () =>
+          options?.providerReserved ? { id: "provider-op-1", status: "PENDING" } : null,
+        ),
       },
       creditApplication: {
         create: vi.fn(async ({ data }: { data: Record<string, unknown> }) => {
@@ -310,6 +316,19 @@ describe("applyCreditToInvoice", () => {
         amountCents: -5_000,
       }),
     ]);
+  });
+
+  it("rejects a credit as soon as provider settlement has reserved it", async () => {
+    const state = creditTx({ providerReserved: true });
+    await expect(
+      applyCreditToInvoice(state.fake, {
+        creditId: "credit-1",
+        invoiceId: "inv-1",
+        amountCents: 1_000,
+        appliedByUserId: "owner-1",
+      }),
+    ).rejects.toThrow(/reserved for Stripe settlement/i);
+    expect(state.applications).toHaveLength(0);
   });
 
   it("rejects spending more than the credit has remaining", async () => {
