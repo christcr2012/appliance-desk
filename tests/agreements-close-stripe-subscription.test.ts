@@ -1,66 +1,93 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import Stripe from "stripe";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-// Ending/cancelling an agreement must stop the Stripe subscription before
-// declaring the local rental closed. Batch A also serializes the local state
-// change on the agreement row so a concurrent lifecycle transition cannot be
-// overwritten after the provider call returns.
-
-const findUniqueOrThrow = vi.fn();
-const rentalLineFindMany = vi.fn();
-const applianceAssignmentUpdate = vi.fn();
-const applianceUpdate = vi.fn();
-const rentalAgreementUpdate = vi.fn();
-const rentalAgreementFindUniqueOrThrowInTx = vi.fn();
-const auditLogCreate = vi.fn();
-const queryRaw = vi.fn();
-const subscriptionsCancel = vi.fn();
+const mocks = vi.hoisted(() => ({
+  events: [] as string[],
+  claimProviderOperation: vi.fn(),
+  completeProviderOperation: vi.fn(),
+  runProviderCall: vi.fn(),
+  rentalLineFindMany: vi.fn(),
+  applianceAssignmentUpdate: vi.fn(),
+  applianceFindUniqueOrThrow: vi.fn(),
+  applianceUpdate: vi.fn(),
+  rentalAgreementUpdate: vi.fn(),
+  rentalAgreementFindUniqueOrThrow: vi.fn(),
+  auditLogCreate: vi.fn(),
+  queryRaw: vi.fn(),
+  subscriptionsCancel: vi.fn(),
+}));
 
 function makeTx() {
   return {
-    $queryRaw: (...args: unknown[]) => queryRaw(...args),
-    rentalLine: { findMany: rentalLineFindMany },
-    applianceAssignment: { update: applianceAssignmentUpdate },
-    appliance: { update: applianceUpdate },
-    rentalAgreement: {
-      update: rentalAgreementUpdate,
-      findUniqueOrThrow: rentalAgreementFindUniqueOrThrowInTx,
+    $queryRaw: (...args: unknown[]) => mocks.queryRaw(...args),
+    rentalLine: { findMany: mocks.rentalLineFindMany },
+    applianceAssignment: { update: mocks.applianceAssignmentUpdate },
+    appliance: {
+      findUniqueOrThrow: mocks.applianceFindUniqueOrThrow,
+      update: mocks.applianceUpdate,
     },
-    auditLog: { create: auditLogCreate },
+    rentalAgreement: {
+      update: async (...args: unknown[]) => {
+        mocks.events.push("local-update");
+        return mocks.rentalAgreementUpdate(...args);
+      },
+      findUniqueOrThrow: mocks.rentalAgreementFindUniqueOrThrow,
+    },
+    auditLog: { create: mocks.auditLogCreate },
   };
 }
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
-    rentalAgreement: {
-      findUniqueOrThrow: (...args: unknown[]) => findUniqueOrThrow(...args),
-    },
     $transaction: async (fn: (tx: unknown) => unknown) => fn(makeTx()),
   },
 }));
 
 vi.mock("@/lib/stripe", () => ({
   getStripeClient: () => ({
-    subscriptions: { cancel: (...args: unknown[]) => subscriptionsCancel(...args) },
+    subscriptions: {
+      cancel: async (...args: unknown[]) => {
+        mocks.events.push("stripe-cancel");
+        return mocks.subscriptionsCancel(...args);
+      },
+    },
   }),
 }));
 
-describe("closeAgreement — stops the real Stripe subscription", () => {
+vi.mock("@/domains/billing/provider-ops", () => ({
+  claimProviderOperation: (...args: unknown[]) =>
+    mocks.claimProviderOperation(...args),
+  completeProviderOperation: (...args: unknown[]) =>
+    mocks.completeProviderOperation(...args),
+  runProviderCall: (...args: unknown[]) => mocks.runProviderCall(...args),
+}));
+
+async function providerCallWrapper(call: () => Promise<unknown>) {
+  try {
+    return { ok: true as const, value: await call() };
+  } catch (error) {
+    const type = (error as { type?: string }).type;
+    return {
+      ok: false as const,
+      outcome:
+        type === "StripeConnectionError" || type === "StripeAPIError"
+          ? ("UNKNOWN" as const)
+          : ("FAILED" as const),
+      error,
+    };
+  }
+}
+
+describe("closeAgreement — durable provider cancellation", () => {
   beforeEach(() => {
-    findUniqueOrThrow.mockReset().mockResolvedValue({
-      id: "agr-1",
-      status: "ACTIVE",
-      stripeSubscriptionId: "sub_123",
-    });
-    queryRaw.mockReset().mockResolvedValue([{ id: "agr-1" }]);
-    rentalLineFindMany.mockReset().mockResolvedValue([]);
-    applianceAssignmentUpdate.mockReset().mockResolvedValue({});
-    applianceUpdate.mockReset().mockResolvedValue({});
-    rentalAgreementUpdate.mockReset().mockResolvedValue({ id: "agr-1" });
-    // lockRentalAgreementInTx reads once before the update, and the return
-    // value reads again after the update.
-    rentalAgreementFindUniqueOrThrowInTx
-      .mockReset()
+    vi.clearAllMocks();
+    mocks.events.length = 0;
+    mocks.queryRaw.mockResolvedValue([{ id: "agr-1" }]);
+    mocks.rentalLineFindMany.mockResolvedValue([]);
+    mocks.applianceAssignmentUpdate.mockResolvedValue({});
+    mocks.applianceFindUniqueOrThrow.mockResolvedValue({ status: "RENTED" });
+    mocks.applianceUpdate.mockResolvedValue({});
+    mocks.rentalAgreementUpdate.mockResolvedValue({ id: "agr-1" });
+    mocks.rentalAgreementFindUniqueOrThrow
       .mockResolvedValueOnce({
         id: "agr-1",
         status: "ACTIVE",
@@ -73,30 +100,66 @@ describe("closeAgreement — stops the real Stripe subscription", () => {
         endDate: new Date(),
         stripeSubscriptionId: "sub_123",
       });
-    auditLogCreate.mockReset().mockResolvedValue({});
-    subscriptionsCancel.mockReset().mockResolvedValue({});
+    mocks.auditLogCreate.mockResolvedValue({});
+    mocks.claimProviderOperation.mockResolvedValue({
+      done: false,
+      opId: "op-cancel-1",
+      idempotencyKey: "subscription-cancel-agr-1",
+    });
+    mocks.completeProviderOperation.mockResolvedValue(undefined);
+    mocks.subscriptionsCancel.mockResolvedValue({ id: "sub_123", status: "canceled" });
+    mocks.runProviderCall.mockImplementation(providerCallWrapper);
   });
 
-  it("cancels the agreement's Stripe subscription before updating local records", async () => {
+  it("commits the local close before calling Stripe", async () => {
     const { endAgreement } = await import("@/domains/agreements");
 
-    await endAgreement("user-1", "agr-1");
+    const result = await endAgreement("user-1", "agr-1");
 
-    expect(subscriptionsCancel).toHaveBeenCalledWith("sub_123");
-    expect(queryRaw).toHaveBeenCalled();
-    expect(rentalAgreementUpdate).toHaveBeenCalledWith({
+    expect(result.status).toBe("ENDED");
+    expect(mocks.claimProviderOperation).toHaveBeenCalledWith(
+      expect.anything(),
+      {
+        kind: "SUBSCRIPTION_CANCEL",
+        subjectType: "RentalAgreement",
+        subjectId: "agr-1",
+        idempotencyKey: "subscription-cancel-agr-1",
+      },
+    );
+    expect(mocks.events.indexOf("local-update")).toBeGreaterThanOrEqual(0);
+    expect(mocks.events.indexOf("stripe-cancel")).toBeGreaterThan(
+      mocks.events.indexOf("local-update"),
+    );
+    expect(mocks.completeProviderOperation).toHaveBeenCalledWith(
+      expect.anything(),
+      "op-cancel-1",
+      { status: "SUCCEEDED", providerObjectId: "sub_123" },
+    );
+  });
+
+  it("closes locally even when Stripe has an ambiguous failure and records UNKNOWN", async () => {
+    mocks.subscriptionsCancel.mockRejectedValue({
+      type: "StripeConnectionError",
+      message: "simulated connection loss",
+    });
+    const { endAgreement } = await import("@/domains/agreements");
+
+    const result = await endAgreement("user-1", "agr-1");
+
+    expect(result.status).toBe("ENDED");
+    expect(mocks.rentalAgreementUpdate).toHaveBeenCalledWith({
       where: { id: "agr-1" },
       data: expect.objectContaining({ status: "ENDED" }),
     });
+    expect(mocks.completeProviderOperation).toHaveBeenCalledWith(
+      expect.anything(),
+      "op-cancel-1",
+      expect.objectContaining({ status: "UNKNOWN" }),
+    );
   });
 
-  it("skips Stripe when the agreement never had a subscription", async () => {
-    findUniqueOrThrow.mockResolvedValue({
-      id: "agr-1",
-      status: "DRAFT",
-      stripeSubscriptionId: null,
-    });
-    rentalAgreementFindUniqueOrThrowInTx
+  it("skips provider work when an agreement never had a Stripe subscription", async () => {
+    mocks.rentalAgreementFindUniqueOrThrow
       .mockReset()
       .mockResolvedValueOnce({
         id: "agr-1",
@@ -112,60 +175,22 @@ describe("closeAgreement — stops the real Stripe subscription", () => {
       });
     const { cancelAgreement } = await import("@/domains/agreements");
 
-    await cancelAgreement("user-1", "agr-1");
+    const result = await cancelAgreement("user-1", "agr-1");
 
-    expect(subscriptionsCancel).not.toHaveBeenCalled();
-    expect(rentalAgreementUpdate).toHaveBeenCalledWith({
-      where: { id: "agr-1" },
-      data: expect.objectContaining({ status: "CANCELLED" }),
-    });
+    expect(result.status).toBe("CANCELLED");
+    expect(mocks.claimProviderOperation).not.toHaveBeenCalled();
+    expect(mocks.subscriptionsCancel).not.toHaveBeenCalled();
   });
 
-  it("proceeds with the local close when Stripe says the subscription is already gone", async () => {
-    subscriptionsCancel.mockRejectedValue(
-      new Stripe.errors.StripeInvalidRequestError({
-        message: "No such subscription: 'sub_123'",
-        code: "resource_missing",
-        type: "invalid_request_error",
-      }),
-    );
+  it("does not re-call Stripe when a previously completed cancel claim is returned", async () => {
+    mocks.claimProviderOperation.mockResolvedValue({
+      done: true,
+      providerObjectId: "sub_123",
+    });
     const { endAgreement } = await import("@/domains/agreements");
 
     await endAgreement("user-1", "agr-1");
 
-    expect(rentalAgreementUpdate).toHaveBeenCalled();
-  });
-
-  it("blocks the whole close when Stripe fails for any other reason", async () => {
-    subscriptionsCancel.mockRejectedValue(
-      new Stripe.errors.StripeAPIError({
-        message: "Stripe is temporarily unavailable",
-        type: "api_error",
-      }),
-    );
-    const { endAgreement } = await import("@/domains/agreements");
-
-    await expect(endAgreement("user-1", "agr-1")).rejects.toThrow(
-      "Stripe is temporarily unavailable",
-    );
-    expect(queryRaw).not.toHaveBeenCalled();
-    expect(rentalAgreementUpdate).not.toHaveBeenCalled();
-  });
-
-  it("refuses the local close when the state changed during the provider call", async () => {
-    rentalAgreementFindUniqueOrThrowInTx.mockReset().mockResolvedValue({
-      id: "agr-1",
-      status: "CANCELLED",
-      endDate: null,
-      stripeSubscriptionId: "sub_123",
-    });
-    const { endAgreement } = await import("@/domains/agreements");
-
-    await expect(endAgreement("user-1", "agr-1")).rejects.toThrow(
-      /changed by someone else/,
-    );
-    expect(subscriptionsCancel).toHaveBeenCalledWith("sub_123");
-    expect(rentalAgreementUpdate).not.toHaveBeenCalled();
-    expect(auditLogCreate).not.toHaveBeenCalled();
+    expect(mocks.subscriptionsCancel).not.toHaveBeenCalled();
   });
 });

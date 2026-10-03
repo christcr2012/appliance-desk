@@ -20,6 +20,7 @@ type ProviderOperationRow = {
   providerObjectId: string | null;
   attempts: number;
   requestedAt: Date;
+  updatedAt: Date;
 };
 
 const DEFAULT_STALE_AFTER_MS = 120_000;
@@ -48,6 +49,16 @@ function providerRowMatches(
  * network call. A fresh idempotency key is inserted atomically. If the key
  * already exists, its row is locked before deciding whether the operation is
  * finished, actively owned, stale/retryable, or awaiting reconciliation.
+ *
+ * requestedAt is the immutable evidence anchor for the original provider
+ * request. updatedAt is the mutable lease/attempt timestamp used to decide
+ * whether an in-flight claim has gone stale.
+ *
+ * UNKNOWN remains non-retryable by default. Reconciliation may provide the
+ * attempt number it observed before a provider read proved the ambiguous write
+ * did not take effect. The row lock then requires that attempt to still match,
+ * preventing stale provider evidence from authorizing a later retry after a
+ * competing worker has already changed the provider outcome.
  */
 export async function claimProviderOperation(
   tx: Prisma.TransactionClient,
@@ -57,6 +68,7 @@ export async function claimProviderOperation(
     subjectId: string;
     idempotencyKey: string;
     staleAfterMs?: number;
+    reconcileUnknownAfterProviderEvidence?: { expectedAttempts: number };
   },
 ): Promise<
   | { done: true; providerObjectId: string }
@@ -68,6 +80,15 @@ export async function claimProviderOperation(
   }
   if (!input.subjectType || !input.subjectId || !input.idempotencyKey) {
     throw new Error("Provider operation subject and idempotency key are required.");
+  }
+
+  const expectedUnknownAttempts =
+    input.reconcileUnknownAfterProviderEvidence?.expectedAttempts;
+  if (
+    expectedUnknownAttempts !== undefined &&
+    (!Number.isInteger(expectedUnknownAttempts) || expectedUnknownAttempts < 1)
+  ) {
+    throw new Error("UNKNOWN reconciliation expectedAttempts must be a positive integer.");
   }
 
   const now = new Date();
@@ -90,7 +111,7 @@ export async function claimProviderOperation(
     ON CONFLICT ("idempotencyKey") DO NOTHING
     RETURNING
       "id", "kind", "subjectType", "subjectId", "idempotencyKey", "status",
-      "providerObjectId", "attempts", "requestedAt"
+      "providerObjectId", "attempts", "requestedAt", "updatedAt"
   `;
 
   if (inserted.length === 1) {
@@ -100,7 +121,7 @@ export async function claimProviderOperation(
   const rows = await tx.$queryRaw<ProviderOperationRow[]>`
     SELECT
       "id", "kind", "subjectType", "subjectId", "idempotencyKey", "status",
-      "providerObjectId", "attempts", "requestedAt"
+      "providerObjectId", "attempts", "requestedAt", "updatedAt"
     FROM "ProviderOperation"
     WHERE "idempotencyKey" = ${input.idempotencyKey}
     FOR UPDATE
@@ -121,27 +142,35 @@ export async function claimProviderOperation(
   }
 
   if (existing.status === "UNKNOWN") {
-    throw new RetryLater("This provider operation has an unknown outcome and must be reconciled before retrying.");
+    if (
+      expectedUnknownAttempts === undefined ||
+      existing.attempts !== expectedUnknownAttempts
+    ) {
+      throw new RetryLater(
+        "This provider operation has an unknown outcome or newer provider attempt and must be reconciled before retrying.",
+      );
+    }
   }
   if (existing.status === "DRIFT") {
     throw new RetryLater("This provider operation is in provider/local drift and must be reconciled before retrying.");
   }
 
-  const requestedAtMs = new Date(existing.requestedAt).getTime();
-  const ageMs = Math.max(0, now.getTime() - requestedAtMs);
+  const updatedAtMs = new Date(existing.updatedAt).getTime();
+  const ageMs = Math.max(0, now.getTime() - updatedAtMs);
   if (existing.status === "PENDING" && ageMs < staleAfterMs) {
     throw new RetryLater();
   }
 
   // FAILED is deliberately retryable. A stale PENDING claim is also taken
-  // over. UNKNOWN is not retried here because its provider-side outcome is
-  // ambiguous; reconciliation owns that state.
+  // over. UNKNOWN can only reach this point when reconciliation has provider
+  // evidence tied to the exact attempt still stored under this row lock.
+  // requestedAt remains unchanged so provider evidence searches stay anchored
+  // to the original request.
   await tx.providerOperation.update({
     where: { id: existing.id },
     data: {
       status: "PENDING",
       attempts: { increment: 1 },
-      requestedAt: now,
       completedAt: null,
       lastError: null,
     },

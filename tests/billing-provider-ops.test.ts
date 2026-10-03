@@ -19,6 +19,7 @@ type Row = {
   providerObjectId: string | null;
   attempts: number;
   requestedAt: Date;
+  updatedAt: Date;
 };
 
 function makeTx(queryResults: unknown[][]) {
@@ -42,6 +43,7 @@ const input = {
 };
 
 function row(overrides: Partial<Row> = {}): Row {
+  const now = new Date();
   return {
     id: "op-1",
     kind: "CUSTOMER_CREATE",
@@ -51,7 +53,8 @@ function row(overrides: Partial<Row> = {}): Row {
     status: "PENDING",
     providerObjectId: null,
     attempts: 1,
-    requestedAt: new Date(),
+    requestedAt: now,
+    updatedAt: now,
     ...overrides,
   };
 }
@@ -65,7 +68,7 @@ describe("provider operation claims", () => {
       idempotencyKey: input.idempotencyKey,
     });
 
-    const second = makeTx([[], [row({ requestedAt: new Date() })]]);
+    const second = makeTx([[], [row({ requestedAt: new Date(Date.now() - 300_000) })]]);
     await expect(claimProviderOperation(second.tx, input)).rejects.toBeInstanceOf(RetryLater);
     expect(second.update).not.toHaveBeenCalled();
   });
@@ -82,10 +85,17 @@ describe("provider operation claims", () => {
     });
   });
 
-  it("takes over a stale pending operation and increments attempts", async () => {
+  it("takes over a stale pending operation using updatedAt without moving requestedAt", async () => {
+    const originalRequestedAt = new Date(Date.now() - 3_600_000);
     const { tx, update } = makeTx([
       [],
-      [row({ requestedAt: new Date(Date.now() - 300_000), attempts: 2 })],
+      [
+        row({
+          requestedAt: originalRequestedAt,
+          updatedAt: new Date(Date.now() - 300_000),
+          attempts: 2,
+        }),
+      ],
     ]);
 
     await expect(claimProviderOperation(tx, input)).resolves.toEqual({
@@ -102,11 +112,63 @@ describe("provider operation claims", () => {
         lastError: null,
       }),
     });
+    expect(update.mock.calls[0]?.[0]?.data).not.toHaveProperty("requestedAt");
   });
 
   it("does not blindly retry an UNKNOWN outcome", async () => {
     const { tx, update } = makeTx([[], [row({ status: "UNKNOWN" })]]);
     await expect(claimProviderOperation(tx, input)).rejects.toThrow(/reconciled/i);
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("allows UNKNOWN takeover only when provider evidence matches the observed attempt", async () => {
+    const originalRequestedAt = new Date(Date.now() - 3_600_000);
+    const { tx, update } = makeTx([
+      [],
+      [
+        row({
+          status: "UNKNOWN",
+          requestedAt: originalRequestedAt,
+          updatedAt: new Date(),
+          attempts: 2,
+        }),
+      ],
+    ]);
+
+    await expect(
+      claimProviderOperation(tx, {
+        ...input,
+        reconcileUnknownAfterProviderEvidence: { expectedAttempts: 2 },
+      }),
+    ).resolves.toEqual({
+      done: false,
+      opId: "op-1",
+      idempotencyKey: input.idempotencyKey,
+    });
+    expect(update).toHaveBeenCalledWith({
+      where: { id: "op-1" },
+      data: expect.objectContaining({
+        status: "PENDING",
+        attempts: { increment: 1 },
+        completedAt: null,
+        lastError: null,
+      }),
+    });
+    expect(update.mock.calls[0]?.[0]?.data).not.toHaveProperty("requestedAt");
+  });
+
+  it("rejects stale provider evidence after a newer UNKNOWN attempt", async () => {
+    const { tx, update } = makeTx([
+      [],
+      [row({ status: "UNKNOWN", attempts: 3 })],
+    ]);
+
+    await expect(
+      claimProviderOperation(tx, {
+        ...input,
+        reconcileUnknownAfterProviderEvidence: { expectedAttempts: 2 },
+      }),
+    ).rejects.toBeInstanceOf(RetryLater);
     expect(update).not.toHaveBeenCalled();
   });
 
