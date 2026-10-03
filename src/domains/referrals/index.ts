@@ -6,7 +6,6 @@ import { formatCents } from "@/domains/pricing";
 import {
   claimProviderOperation,
   completeProviderOperation,
-  RetryLater,
   runProviderCall,
 } from "@/domains/billing/provider-ops";
 import { generateReferralCode, normalizeReferralCode } from "./code";
@@ -16,7 +15,6 @@ export { generateReferralCode, normalizeReferralCode } from "./code";
 type Tx = Prisma.TransactionClient;
 type ReferralSide = "referrer" | "referred";
 
-/** Keeps generating a random code until one isn't already taken. */
 export async function generateUniqueReferralCode(tx: Tx): Promise<string> {
   for (let attempt = 0; attempt < 10; attempt++) {
     const code = generateReferralCode();
@@ -31,7 +29,6 @@ export async function generateUniqueReferralCode(tx: Tx): Promise<string> {
   );
 }
 
-/** Link a converted customer to the referrer whose code they supplied. */
 export async function linkReferralIfCodeProvided(
   tx: Tx,
   referredCustomerId: string,
@@ -61,10 +58,7 @@ export async function linkReferralIfCodeProvided(
 /**
  * Claim a referral reward only after the referred customer's invoice is truly
  * PAID. The Referral row is locked first, and both local CustomerCredit rows
- * are minted in the same transaction as PENDING -> REWARDING. That makes the
- * local reward exactly-once even when Stripe delivers duplicate paid events.
- *
- * Provider writes happen later, after the webhook transaction commits.
+ * are minted in the same transaction as PENDING -> REWARDING.
  */
 export async function rewardReferralOnFirstPaidInvoice(
   tx: Tx,
@@ -168,36 +162,49 @@ async function settleOneReferralCredit(input: {
   });
   if (latest.appliedViaStripeAt || !latest.customer.stripeCustomerId) return;
 
-  let claim:
-    | { done: true; providerObjectId: string }
-    | { done: false; opId: string; idempotencyKey: string };
-  try {
-    claim = await prisma.$transaction(async (tx) => {
-      const locked = await tx.$queryRaw<Array<{ id: string; appliedViaStripeAt: Date | null }>>`
-        SELECT "id", "appliedViaStripeAt"
-        FROM "CustomerCredit"
-        WHERE "id" = ${input.creditId}
-        FOR UPDATE
-      `;
-      const credit = locked[0];
-      if (!credit) throw new Error(`Referral credit ${input.creditId} no longer exists.`);
-      if (credit.appliedViaStripeAt) {
-        return { done: true as const, providerObjectId: "already-applied" };
-      }
+  const claim = await prisma.$transaction(async (tx) => {
+    const locked = await tx.$queryRaw<
+      Array<{
+        id: string;
+        amountCents: number;
+        remainingCents: number;
+        appliedViaStripeAt: Date | null;
+      }>
+    >`
+      SELECT "id", "amountCents", "remainingCents", "appliedViaStripeAt"
+      FROM "CustomerCredit"
+      WHERE "id" = ${input.creditId}
+      FOR UPDATE
+    `;
+    const credit = locked[0];
+    if (!credit) throw new Error(`Referral credit ${input.creditId} no longer exists.`);
+    if (credit.appliedViaStripeAt) {
+      return { kind: "done" as const, providerObjectId: "already-applied" };
+    }
 
-      return claimProviderOperation(tx, {
-        kind: "BALANCE_CREDIT",
-        subjectType: "CustomerCredit",
-        subjectId: input.creditId,
-        idempotencyKey: `referral-credit-${input.referralId}-${input.side}`,
-      });
+    // A local application that won before this lock chooses the local path for
+    // this credit. Never send the original full amount to Stripe afterward.
+    if (credit.remainingCents < credit.amountCents) {
+      return { kind: "local" as const };
+    }
+
+    const providerClaim = await claimProviderOperation(tx, {
+      kind: "BALANCE_CREDIT",
+      subjectType: "CustomerCredit",
+      subjectId: input.creditId,
+      idempotencyKey: `referral-credit-${input.referralId}-${input.side}`,
     });
-  } catch (error) {
-    if (error instanceof RetryLater) return;
-    throw error;
-  }
+    return providerClaim.done
+      ? { kind: "done" as const, providerObjectId: providerClaim.providerObjectId }
+      : {
+          kind: "claimed" as const,
+          opId: providerClaim.opId,
+          idempotencyKey: providerClaim.idempotencyKey,
+        };
+  });
 
-  if (claim.done) {
+  if (claim.kind === "local") return;
+  if (claim.kind === "done") {
     if (claim.providerObjectId !== "already-applied") {
       await markCreditAppliedViaStripe(input.creditId, claim.providerObjectId);
     }
@@ -251,6 +258,12 @@ async function settleOneReferralCredit(input: {
       error: result.error,
     });
   });
+
+  if (!result.ok) {
+    throw new Error(
+      `Referral credit provider settlement is ${result.outcome.toLowerCase()}; Stripe must retry this webhook until reconciliation succeeds.`,
+    );
+  }
 }
 
 async function sendReferralRewardNotice(input: {
@@ -278,6 +291,7 @@ async function finishReferralIfSettled(referralId: string): Promise<void> {
   const credits = await prisma.customerCredit.findMany({
     where: { sourceType: "REFERRAL", sourceId: referralId },
     include: {
+      applications: { select: { id: true }, take: 1 },
       customer: {
         select: {
           id: true,
@@ -292,7 +306,10 @@ async function finishReferralIfSettled(referralId: string): Promise<void> {
   }
 
   const allSettled = credits.every(
-    (credit) => credit.appliedViaStripeAt !== null || credit.customer.stripeCustomerId === null,
+    (credit) =>
+      credit.appliedViaStripeAt !== null ||
+      credit.customer.stripeCustomerId === null ||
+      credit.applications.length > 0,
   );
   if (!allSettled) return;
 
@@ -318,10 +335,10 @@ async function finishReferralIfSettled(referralId: string): Promise<void> {
 }
 
 /**
- * Deliver a claimed referral's two local credits to Stripe where possible.
- * Local credits are the source of truth; a side with no Stripe customer keeps
- * its credit local. Provider failures leave the referral REWARDING so the
- * reconciliation pass can retry without minting another local credit.
+ * Deliver a claimed referral's two local credits. Stripe-backed credits keep
+ * the webhook retrying until the provider outcome is known; B9 reconciliation
+ * can later take over ambiguous operations without ever minting another local
+ * credit. A side that started spending locally stays local for the remainder.
  */
 export async function settleReferralCredits(referralId: string): Promise<void> {
   const referral = await prisma.referral.findUnique({
@@ -350,4 +367,11 @@ export async function settleReferralCredits(referralId: string): Promise<void> {
   }
 
   await finishReferralIfSettled(referralId);
+  const final = await prisma.referral.findUnique({
+    where: { id: referralId },
+    select: { status: true },
+  });
+  if (final?.status === "REWARDING") {
+    throw new Error("Referral settlement is still pending; retry this webhook.");
+  }
 }
