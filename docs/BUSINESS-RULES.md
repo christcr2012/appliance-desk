@@ -370,7 +370,9 @@ Two small additions to the estimate flow above, from
    signing/audit experience, but it's a cost decision for him to make,
    not one to make unasked (see `docs/ROADMAP.md`, `docs/DECISIONS.md`).
 6. Signing moves the agreement to `ACTIVE` and its assigned appliances
-   from `RESERVED` to `RENTED`.
+   from `RESERVED` to `RENTED`. **Exception: a renewal** (an agreement with
+   `renewedFromAgreementId`) becomes `SCHEDULED` ("Signed, starts later"), not
+   `ACTIVE`; see "Renewal" below.
 7. Chris manually schedules the delivery/installation `Job` (and later,
    swaps, removals, or maintenance visits) from the agreement, and can
    log condition photos (taken with the device's camera or picked from
@@ -955,6 +957,22 @@ is never replaced by a default.
   signing early keeps it), is allowed once, never charges a deposit
   again, and does not copy appliance assignments (the appliances stay on the
   current agreement until it ends).
+- **A signed renewal is `SCHEDULED` until its start date** (owner decision IN-22,
+  2026-10-03). `SCHEDULED` is not in force: it is not an active rental, not
+  revenue (MRR/ARR), not billed, and holds no equipment, so inventory and
+  reports are never wrong. Transitions: `AWAITING_SIGNATURE → SCHEDULED →
+  ACTIVE` or `CANCELLED`. At signing the term end date is saved and the Stripe
+  subscription's end date is moved to the renewal's end (removed for
+  month-to-month), so billing continues. On the start date (nightly job, or at
+  once if signed after it) one transaction ends the old agreement, makes the
+  renewal `ACTIVE`, and moves the appliance assignments, the Stripe
+  subscription, the next billing date and any deposit to the renewal; the
+  renewal's billing start is its own start date. Equipment is not sent for
+  pickup. It will not start (and shows in Today) if the old rental was ended or
+  cancelled, if Stripe has not confirmed the new end date, or if the renewal's
+  lines do not match the old ones one-to-one or already hold equipment. Ending
+  or cancelling the old rental is refused while a renewal waits; cancelling the
+  renewal puts the old end date back on the subscription.
 - **Auto-renew** wording and notice days are entered by the owner in the same
   settings screen; the terms version is generated from them (it changes when the
   wording or notice days change). Consent is recorded only for the renewal-terms

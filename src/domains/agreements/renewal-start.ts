@@ -108,7 +108,17 @@ export async function startRenewalInTx(
     where: { agreementId: old.id },
     include: { assignments: { where: { unassignedAt: null } } },
   });
-  const newLines = await tx.rentalLine.findMany({ where: { agreementId: renewal.id } });
+  const newLines = await tx.rentalLine.findMany({
+    where: { agreementId: renewal.id },
+    include: { assignments: { where: { unassignedAt: null } } },
+  });
+  // The draft was edited with the normal editor: equipment reserved directly on
+  // the renewal would be left behind, so the owner has to sort it out first.
+  if (newLines.some((line) => line.assignments.length > 0)) {
+    throw new Error(
+      "The renewal already has equipment assigned to its own lines. Remove those assignments (the equipment moves over from the current rental automatically) and try again. Nothing was changed.",
+    );
+  }
   const pairs = pairLines(oldLines, newLines);
 
   let appliancesMoved = 0;

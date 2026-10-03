@@ -280,6 +280,19 @@ describe.skipIf(!enabled)("a signed renewal starts on its start date and hands e
     expect((await get(renewal.id)).status).toBe("SCHEDULED");
   });
 
+  it("refuses to start when equipment was reserved directly on the renewal's lines", async () => {
+    const { old, renewal } = await pair();
+    const line = await prisma.rentalLine.findFirstOrThrow({ where: { agreementId: renewal.id } });
+    const extra = await prisma.appliance.create({
+      data: { assetNumber: `RS-X-${tag}`, applianceTypeId: typeId, status: "RESERVED" },
+    });
+    applianceIds.push(extra.id);
+    await prisma.applianceAssignment.create({ data: { rentalLineId: line.id, applianceId: extra.id } });
+    await expect(startRenewalIfDue(renewal.id, onStart)).rejects.toThrow(/already has equipment assigned/);
+    expect((await get(old.id)).status).toBe("ACTIVE");
+    expect((await get(renewal.id)).status).toBe("SCHEDULED");
+  });
+
   it("gives the renewal its own billing start and keeps its term end", async () => {
     const { renewal } = await pair();
     await startRenewalIfDue(renewal.id, onStart);

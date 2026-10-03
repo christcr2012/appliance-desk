@@ -145,7 +145,7 @@ export function AgreementDetailPanel({
           <h2 className="font-medium text-gray-900">
             Status:{" "}
             {agreement.status === "SCHEDULED"
-              ? `Signed, starts ${agreement.startDate ? new Date(agreement.startDate).toLocaleDateString() : "later"}`
+              ? `Signed, starts ${agreement.startDate ? new Date(agreement.startDate).toLocaleDateString("en-US", { timeZone: "America/Denver" }) : "later"}`
               : agreement.status}
           </h2>
           <div className="flex gap-2">
