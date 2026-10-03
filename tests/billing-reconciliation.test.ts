@@ -6,9 +6,12 @@ const mocks = vi.hoisted(() => ({
   rentalFindUnique: vi.fn(),
   invoiceFindMany: vi.fn(),
   paymentFindMany: vi.fn(),
+  paymentFindFirst: vi.fn(),
   customerFindMany: vi.fn(),
   customerFindUnique: vi.fn(),
   creditFindUnique: vi.fn(),
+  depositFindUnique: vi.fn(),
+  refundFindUnique: vi.fn(),
   transaction: vi.fn(),
   providerUpdate: vi.fn(),
   rentalUpdate: vi.fn(),
@@ -28,17 +31,20 @@ const mocks = vi.hoisted(() => ({
   balanceList: vi.fn(),
   balanceCreate: vi.fn(),
   refundList: vi.fn(),
+  refundCreate: vi.fn(),
+  checkoutSessionsList: vi.fn(),
+  paymentIntentRetrieve: vi.fn(),
 }));
 
 function makeTx() {
   return {
     $queryRaw: (...args: unknown[]) => mocks.queryRaw(...args),
-    providerOperation: { update: mocks.providerUpdate },
-    rentalAgreement: { update: mocks.rentalUpdate },
-    customer: { update: mocks.customerUpdate },
-    customerCredit: { update: mocks.creditUpdate },
-    deposit: { updateMany: mocks.depositUpdateMany },
-    refund: { updateMany: mocks.refundUpdateMany },
+    providerOperation: { update: (...args: unknown[]) => mocks.providerUpdate(...args) },
+    rentalAgreement: { update: (...args: unknown[]) => mocks.rentalUpdate(...args) },
+    customer: { update: (...args: unknown[]) => mocks.customerUpdate(...args) },
+    customerCredit: { update: (...args: unknown[]) => mocks.creditUpdate(...args) },
+    deposit: { updateMany: (...args: unknown[]) => mocks.depositUpdateMany(...args) },
+    refund: { updateMany: (...args: unknown[]) => mocks.refundUpdateMany(...args) },
   };
 }
 
@@ -54,7 +60,10 @@ vi.mock("@/lib/prisma", () => ({
       update: (...args: unknown[]) => mocks.rentalUpdate(...args),
     },
     invoice: { findMany: (...args: unknown[]) => mocks.invoiceFindMany(...args) },
-    payment: { findMany: (...args: unknown[]) => mocks.paymentFindMany(...args) },
+    payment: {
+      findMany: (...args: unknown[]) => mocks.paymentFindMany(...args),
+      findFirst: (...args: unknown[]) => mocks.paymentFindFirst(...args),
+    },
     customer: {
       findMany: (...args: unknown[]) => mocks.customerFindMany(...args),
       findUnique: (...args: unknown[]) => mocks.customerFindUnique(...args),
@@ -64,8 +73,14 @@ vi.mock("@/lib/prisma", () => ({
       findUnique: (...args: unknown[]) => mocks.creditFindUnique(...args),
       update: (...args: unknown[]) => mocks.creditUpdate(...args),
     },
-    deposit: { updateMany: (...args: unknown[]) => mocks.depositUpdateMany(...args) },
-    refund: { updateMany: (...args: unknown[]) => mocks.refundUpdateMany(...args) },
+    deposit: {
+      findUnique: (...args: unknown[]) => mocks.depositFindUnique(...args),
+      updateMany: (...args: unknown[]) => mocks.depositUpdateMany(...args),
+    },
+    refund: {
+      findUnique: (...args: unknown[]) => mocks.refundFindUnique(...args),
+      updateMany: (...args: unknown[]) => mocks.refundUpdateMany(...args),
+    },
     $transaction: async (fn: (tx: ReturnType<typeof makeTx>) => unknown) => {
       mocks.transaction();
       return fn(makeTx());
@@ -86,7 +101,16 @@ vi.mock("@/lib/stripe", () => ({
       listBalanceTransactions: (...args: unknown[]) => mocks.balanceList(...args),
       createBalanceTransaction: (...args: unknown[]) => mocks.balanceCreate(...args),
     },
-    refunds: { list: (...args: unknown[]) => mocks.refundList(...args) },
+    refunds: {
+      list: (...args: unknown[]) => mocks.refundList(...args),
+      create: (...args: unknown[]) => mocks.refundCreate(...args),
+    },
+    checkout: {
+      sessions: { list: (...args: unknown[]) => mocks.checkoutSessionsList(...args) },
+    },
+    paymentIntents: {
+      retrieve: (...args: unknown[]) => mocks.paymentIntentRetrieve(...args),
+    },
   }),
 }));
 
@@ -111,12 +135,20 @@ describe("billing provider reconciliation", () => {
     mocks.rentalFindMany.mockResolvedValue([]);
     mocks.invoiceFindMany.mockResolvedValue([]);
     mocks.paymentFindMany.mockResolvedValue([]);
+    mocks.paymentFindFirst.mockResolvedValue(null);
     mocks.customerFindMany.mockResolvedValue([]);
-    mocks.refundList.mockResolvedValue({ data: [] });
-    mocks.balanceList.mockResolvedValue({ data: [] });
+    mocks.refundList.mockResolvedValue({ data: [], has_more: false });
+    mocks.balanceList.mockResolvedValue({ data: [], has_more: false });
+    mocks.checkoutSessionsList.mockResolvedValue({ data: [], has_more: false });
     mocks.subscriptionSearch.mockResolvedValue({ data: [] });
     mocks.customerSearch.mockResolvedValue({ data: [] });
     mocks.completeProviderOperation.mockResolvedValue(undefined);
+    mocks.claimProviderOperation.mockResolvedValue({
+      done: false,
+      opId: "op-retry",
+      idempotencyKey: "retry-key",
+    });
+    mocks.queryRaw.mockResolvedValue([]);
     mocks.runProviderCall.mockImplementation(async (call: () => Promise<unknown>) => {
       try {
         return { ok: true, value: await call() };
@@ -207,6 +239,147 @@ describe("billing provider reconciliation", () => {
       "op-1",
       { status: "UNKNOWN", error: retryError },
     );
+  });
+
+  it("finds an ambiguous balance-credit write on a later Stripe page", async () => {
+    const requestedAt = new Date("2026-10-02T20:00:00Z");
+    mocks.providerFindMany.mockResolvedValue([
+      {
+        id: "op-credit",
+        kind: "BALANCE_CREDIT",
+        subjectType: "CustomerCredit",
+        subjectId: "credit-1",
+        idempotencyKey: "referral-credit-ref-1-referrer",
+        status: "UNKNOWN",
+        requestedAt,
+      },
+    ]);
+    mocks.creditFindUnique.mockResolvedValue({
+      id: "credit-1",
+      amountCents: 2_500,
+      remainingCents: 2_500,
+      appliedViaStripeAt: null,
+      reason: "Referral reward",
+      sourceId: "ref-1",
+      customer: { stripeCustomerId: "cus_123" },
+    });
+    mocks.balanceList
+      .mockResolvedValueOnce({
+        data: [{ id: "cbtxn_newer", created: 1_780_000_000, metadata: {} }],
+        has_more: true,
+      })
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: "cbtxn_match",
+            created: 1_780_000_000,
+            metadata: { creditId: "credit-1" },
+          },
+        ],
+        has_more: false,
+      });
+    mocks.queryRaw.mockResolvedValue([{ appliedViaStripeAt: null }]);
+
+    await expect(finishPendingProviderOperations()).resolves.toEqual({
+      completed: 1,
+      stillUnknown: 0,
+    });
+    expect(mocks.balanceList).toHaveBeenNthCalledWith(1, "cus_123", { limit: 100 });
+    expect(mocks.balanceList).toHaveBeenNthCalledWith(2, "cus_123", {
+      limit: 100,
+      starting_after: "cbtxn_newer",
+    });
+    expect(mocks.creditUpdate).toHaveBeenCalledWith({
+      where: { id: "credit-1" },
+      data: { appliedViaStripeAt: expect.any(Date), remainingCents: 0 },
+    });
+    expect(mocks.completeProviderOperation).toHaveBeenCalledWith(
+      expect.anything(),
+      "op-credit",
+      { status: "SUCCEEDED", providerObjectId: "cbtxn_match" },
+    );
+    expect(mocks.balanceCreate).not.toHaveBeenCalled();
+  });
+
+  it("retries a definite failed invoice refund with the same reserved charge and idempotency key", async () => {
+    const idempotencyKey = "invoice-refund-refund-1-charge-ch_123";
+    mocks.providerFindMany.mockResolvedValue([
+      {
+        id: "op-refund",
+        kind: "REFUND_CREATE",
+        subjectType: "Refund",
+        subjectId: "refund-1",
+        idempotencyKey,
+        status: "FAILED",
+        requestedAt: new Date("2026-10-02T20:00:00Z"),
+      },
+    ]);
+    mocks.refundList.mockResolvedValue({ data: [], has_more: false });
+    mocks.refundFindUnique.mockResolvedValue({
+      amountCents: 3_000,
+      invoiceId: "invoice-1",
+    });
+    mocks.claimProviderOperation.mockResolvedValue({
+      done: false,
+      opId: "op-refund",
+      idempotencyKey,
+    });
+    mocks.refundCreate.mockResolvedValue({ id: "re_retry_123" });
+
+    await expect(finishPendingProviderOperations()).resolves.toEqual({
+      completed: 1,
+      stillUnknown: 0,
+    });
+    expect(mocks.claimProviderOperation).toHaveBeenCalledWith(
+      expect.anything(),
+      {
+        kind: "REFUND_CREATE",
+        subjectType: "Refund",
+        subjectId: "refund-1",
+        idempotencyKey,
+        staleAfterMs: 0,
+      },
+    );
+    expect(mocks.refundCreate).toHaveBeenCalledWith(
+      {
+        charge: "ch_123",
+        amount: 3_000,
+        metadata: { refundId: "refund-1", invoiceId: "invoice-1" },
+      },
+      { idempotencyKey },
+    );
+    expect(mocks.refundUpdateMany).toHaveBeenCalledWith({
+      where: { id: "refund-1", stripeRefundId: null },
+      data: { stripeRefundId: "re_retry_123" },
+    });
+    expect(mocks.completeProviderOperation).toHaveBeenCalledWith(
+      expect.anything(),
+      "op-refund",
+      { status: "SUCCEEDED", providerObjectId: "re_retry_123" },
+    );
+  });
+
+  it("does not blindly retry an UNKNOWN refund without provider evidence", async () => {
+    const idempotencyKey = "invoice-refund-refund-1-charge-ch_123";
+    mocks.providerFindMany.mockResolvedValue([
+      {
+        id: "op-refund",
+        kind: "REFUND_CREATE",
+        subjectType: "Refund",
+        subjectId: "refund-1",
+        idempotencyKey,
+        status: "UNKNOWN",
+        requestedAt: new Date("2026-10-02T20:00:00Z"),
+      },
+    ]);
+    mocks.refundList.mockResolvedValue({ data: [], has_more: false });
+
+    await expect(finishPendingProviderOperations()).resolves.toEqual({
+      completed: 0,
+      stillUnknown: 1,
+    });
+    expect(mocks.claimProviderOperation).not.toHaveBeenCalled();
+    expect(mocks.refundCreate).not.toHaveBeenCalled();
   });
 });
 
