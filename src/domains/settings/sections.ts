@@ -5,6 +5,7 @@ import {
   type EditableSettingsSection,
 } from "./section-config";
 import { dollarsToCents } from "@/domains/pricing/money";
+
 export function settingsSectionUpdate(
   section: string,
   raw: Record<string, unknown>,
@@ -49,6 +50,7 @@ export function settingsSectionUpdate(
     twelveMonthPrepaySetDollars,
     twelveMonthPrepaySingleDollars,
     referralRewardDollars,
+    taxRatePercent,
     ...rest
   } = parsed.data;
   const update: BusinessSettingsUpdate = { ...rest };
@@ -61,6 +63,8 @@ export function settingsSectionUpdate(
     update.serviceAreaCities = list(serviceAreaCities);
   if (serviceAreaZips !== undefined)
     update.serviceAreaZips = list(serviceAreaZips);
+  if (taxRatePercent !== undefined)
+    update.taxRatePermille = Math.round(taxRatePercent * 1000);
   for (const [key, value] of [
     ["oneTimeDeliveryFeeCents", deliveryFeeDollars],
     ["oneTimeInstallationFeeCents", installationFeeDollars],
