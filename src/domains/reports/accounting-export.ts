@@ -34,8 +34,8 @@ export async function getAccountingTransactions(): Promise<
   AccountingTransactionRow[]
 > {
   const [receipts, refunds, deposits] = await prisma.$transaction(
-    async (tx) =>
-      Promise.all([
+    async (tx) => {
+      const [receiptRows, refundRows, depositRows] = await Promise.all([
         tx.receipt.findMany({
           select: {
             id: true,
@@ -57,6 +57,7 @@ export async function getAccountingTransactions(): Promise<
         }),
         tx.refund.findMany({
           select: {
+            id: true,
             amountCents: true,
             reason: true,
             notes: true,
@@ -92,7 +93,30 @@ export async function getAccountingTransactions(): Promise<
             },
           },
         }),
-      ]),
+      ]);
+
+      const refundIds = refundRows.map((refund) => refund.id);
+      const creditRefunds = refundIds.length
+        ? await tx.customerCredit.findMany({
+            where: {
+              sourceType: "REFUND_TO_CREDIT",
+              sourceId: { in: refundIds },
+            },
+            select: { sourceId: true },
+          })
+        : [];
+      const creditRefundIds = new Set(
+        creditRefunds.flatMap((credit) =>
+          credit.sourceId ? [credit.sourceId] : [],
+        ),
+      );
+
+      return [
+        receiptRows,
+        refundRows.filter((refund) => !creditRefundIds.has(refund.id)),
+        depositRows,
+      ] as const;
+    },
     { isolationLevel: "RepeatableRead" },
   );
 
