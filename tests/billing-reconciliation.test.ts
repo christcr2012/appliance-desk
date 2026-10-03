@@ -117,6 +117,13 @@ describe("billing provider reconciliation", () => {
     mocks.subscriptionSearch.mockResolvedValue({ data: [] });
     mocks.customerSearch.mockResolvedValue({ data: [] });
     mocks.completeProviderOperation.mockResolvedValue(undefined);
+    mocks.runProviderCall.mockImplementation(async (call: () => Promise<unknown>) => {
+      try {
+        return { ok: true, value: await call() };
+      } catch (error) {
+        return { ok: false, outcome: "UNKNOWN", error };
+      }
+    });
   });
 
   it("marks an UNKNOWN subscription cancellation SUCCEEDED when Stripe reports it canceled", async () => {
@@ -146,7 +153,7 @@ describe("billing provider reconciliation", () => {
     expect(mocks.subscriptionCancel).not.toHaveBeenCalled();
   });
 
-  it("leaves an UNKNOWN cancellation unresolved when Stripe still reports it live", async () => {
+  it("retries an UNKNOWN cancellation once after Stripe proves the subscription is still live", async () => {
     mocks.providerFindMany.mockResolvedValue([
       {
         id: "op-1",
@@ -160,13 +167,46 @@ describe("billing provider reconciliation", () => {
     ]);
     mocks.rentalFindUnique.mockResolvedValue({ stripeSubscriptionId: "sub_123" });
     mocks.subscriptionRetrieve.mockResolvedValue({ id: "sub_123", status: "active" });
+    mocks.subscriptionCancel.mockResolvedValue({ id: "sub_123", status: "canceled" });
+
+    await expect(finishPendingProviderOperations()).resolves.toEqual({
+      completed: 1,
+      stillUnknown: 0,
+    });
+    expect(mocks.subscriptionCancel).toHaveBeenCalledWith("sub_123");
+    expect(mocks.completeProviderOperation).toHaveBeenCalledWith(
+      expect.anything(),
+      "op-1",
+      { status: "SUCCEEDED", providerObjectId: "sub_123" },
+    );
+  });
+
+  it("keeps an ambiguous retry UNKNOWN when the follow-up cancel also loses its provider outcome", async () => {
+    mocks.providerFindMany.mockResolvedValue([
+      {
+        id: "op-1",
+        kind: "SUBSCRIPTION_CANCEL",
+        subjectType: "RentalAgreement",
+        subjectId: "agr-1",
+        idempotencyKey: "subscription-cancel-agr-1",
+        status: "UNKNOWN",
+        requestedAt: new Date("2026-10-02T00:00:00Z"),
+      },
+    ]);
+    mocks.rentalFindUnique.mockResolvedValue({ stripeSubscriptionId: "sub_123" });
+    mocks.subscriptionRetrieve.mockResolvedValue({ id: "sub_123", status: "active" });
+    const retryError = new Error("simulated connection loss");
+    mocks.subscriptionCancel.mockRejectedValue(retryError);
 
     await expect(finishPendingProviderOperations()).resolves.toEqual({
       completed: 0,
       stillUnknown: 1,
     });
-    expect(mocks.subscriptionCancel).not.toHaveBeenCalled();
-    expect(mocks.completeProviderOperation).not.toHaveBeenCalled();
+    expect(mocks.completeProviderOperation).toHaveBeenCalledWith(
+      expect.anything(),
+      "op-1",
+      { status: "UNKNOWN", error: retryError },
+    );
   });
 });
 
