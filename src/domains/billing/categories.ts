@@ -42,9 +42,11 @@ export type CollectedSummary = {
 };
 
 /**
- * Real cash basis for reporting: Receipt receivedOn inside the period minus
- * Refund createdAt inside the same period. Receipt.amountCents is used whole,
- * so overpayments are included even when some cash is not allocated yet.
+ * Real cash basis for reporting: whole Receipt cash inside the period minus
+ * cash actually returned inside the same period. Refund decisions converted to
+ * CustomerCredit are deliberately excluded because no cash left the business;
+ * refunded deposits are included because they are real returned cash even
+ * though their lifecycle is recorded on Deposit instead of Refund.
  */
 export async function collectedBetween(
   customerId: string | null,
@@ -55,23 +57,52 @@ export async function collectedBetween(
     throw new Error("Collection period must have valid increasing boundaries.");
   }
 
-  const [receipts, refunds] = await prisma.$transaction(async (tx) =>
-    Promise.all([
-      tx.receipt.findMany({
-        where: {
-          ...(customerId ? { customerId } : {}),
-          receivedOn: { gte: from, lt: to },
-        },
-        select: { amountCents: true, method: true },
-      }),
-      tx.refund.findMany({
-        where: {
-          ...(customerId ? { invoice: { customerId } } : {}),
-          createdAt: { gte: from, lt: to },
-        },
-        select: { amountCents: true },
-      }),
-    ]),
+  const [receipts, refunds, depositRefunds] = await prisma.$transaction(
+    async (tx) => {
+      const [receiptRows, refundRows, depositRows] = await Promise.all([
+        tx.receipt.findMany({
+          where: {
+            ...(customerId ? { customerId } : {}),
+            receivedOn: { gte: from, lt: to },
+          },
+          select: { amountCents: true, method: true },
+        }),
+        tx.refund.findMany({
+          where: {
+            ...(customerId ? { invoice: { customerId } } : {}),
+            createdAt: { gte: from, lt: to },
+          },
+          select: { id: true, amountCents: true },
+        }),
+        tx.deposit.findMany({
+          where: {
+            refundedAt: { gte: from, lt: to },
+            ...(customerId ? { agreement: { customerId } } : {}),
+          },
+          select: { refundedAmountCents: true },
+        }),
+      ]);
+
+      const refundIds = refundRows.map((refund) => refund.id);
+      const creditRefunds = refundIds.length
+        ? await tx.customerCredit.findMany({
+            where: {
+              sourceType: "REFUND_TO_CREDIT",
+              sourceId: { in: refundIds },
+            },
+            select: { sourceId: true },
+          })
+        : [];
+      const creditRefundIds = new Set(
+        creditRefunds.flatMap((credit) => (credit.sourceId ? [credit.sourceId] : [])),
+      );
+
+      return [
+        receiptRows,
+        refundRows.filter((refund) => !creditRefundIds.has(refund.id)),
+        depositRows,
+      ] as const;
+    },
   );
 
   const byMethod: Record<string, number> = {};
@@ -81,7 +112,15 @@ export async function collectedBetween(
     const method = receipt.method.trim() || "other";
     byMethod[method] = (byMethod[method] ?? 0) + receipt.amountCents;
   }
-  const refundedCents = refunds.reduce((sum, refund) => sum + refund.amountCents, 0);
+  const invoiceRefundCents = refunds.reduce(
+    (sum, refund) => sum + refund.amountCents,
+    0,
+  );
+  const depositRefundCents = depositRefunds.reduce(
+    (sum, deposit) => sum + (deposit.refundedAmountCents ?? 0),
+    0,
+  );
+  const refundedCents = invoiceRefundCents + depositRefundCents;
 
   return {
     grossCents,
