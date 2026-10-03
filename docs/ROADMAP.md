@@ -572,3 +572,17 @@ all resource IDs: `docs/plans/google-workspace-integration/README.md`; card
 O32 in `docs/archive/plans-overhaul/TASKS.md`. **Do not start before Releases A/B are
 verified and Chris's live walkthrough is done.** Deliberately left out:
 Google Tasks/Keep, Sheets-as-reporting, Contacts sync.
+
+## 2026-10-03 — Test hardening noticed while merging Batch B (not built)
+
+- `e2e/purchasing-review.spec.ts` ("owner can name, keyboard edit and persist
+  purchase-order lines on a phone") failed intermittently in CI (twice, passed on
+  re-run): the purchase-order form's "Description" field did not appear within 30 s
+  after loading `/desk/purchase-orders/new`. Needs a look at what the page rendered
+  (screenshot artifact) and a proper wait or fix; do not just raise the timeout.
+- The revenue filter browser test raced the browser's "back" button (fixed in #149 by
+  waiting for the page to catch up); other specs that use `goBack()` followed by
+  keyboard navigation may have the same weakness.
+- Held payments (a card payment on a written-off invoice, IN-23): build the owner screen
+  that resolves one (credit the account, reverse the write-off, or refund) once Chris
+  decides.

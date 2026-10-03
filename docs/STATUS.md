@@ -5,14 +5,14 @@
 `docs/archive/STATUS-LOG.md`. The long history before 2026-10-02 is in
 `docs/archive/HANDOFF-2026-09-26-to-2026-10-02.md`.
 
-Last updated: 2026-10-03 · `main` = `9b5860b` (this file was stale from 2026-10-02 until now)
+Last updated: 2026-10-03 (evening) · `main` includes the whole Batch B stack through #154
 
 ## Batch table
 
 | Batch | Status | PR / branch | Evidence | Notes |
 |---|---|---|---|---|
 | A — Critical integrity & platform safety | **MERGED** | #136 (2026-10-02) | Full CI green; real-Postgres concurrency and adversarial auth tests | Audit registers stay open; nothing in A claims a B–F item. |
-| B — Billing, provider reconciliation & financial ledger | **IN PROGRESS** | Merged: #141 (receipts), #145 (B1 ledger core), #146 (B2 reconciliation). Open, stacked: #147 `ai/claude/batch-b-term-and-tax` (WU-B10), then `ai/claude/batch-b-term-start-and-policy-settings` | Code and tests exist for WU-B1–B9 (provider ops, Stripe customer/subscription idempotency, receipts and allocations, referrals, refunds, credits, late fees, reconciliation page and cron). WU-B10 pieces in the open PR with local full-suite evidence. | Remaining: WU-B10 follow-ups (below), WU-B11 reports/statements on the ledger, WU-B12 docs for the ledger tables and rules, acceptance ledger. Owner to enter: IN-19 policy values (in the app). |
+| B — Billing, provider reconciliation & financial ledger | **IN PROGRESS (core merged; follow-ups open)** | Merged to `main`: #141, #145, #146, #147, #148, #149, #151, #152, #153, #154 (2026-10-03) | Real-database tests for provider operations, receipts/allocations, credits, refunds, late fees, write-off races, renewals, drift workbench, statements and reports; acceptance ledger `docs/reviews/2026-10-03-batch-b-acceptance.md` with review dispositions; CI green at each merged head | Not done (honest list in the acceptance ledger): renewal billing and acting on auto-renew consent, scheduled early-termination execution, notice emails (IN-21), policy values not entered (IN-19), renewal shows active before its start (IN-22), screen to resolve held payments (IN-23), per-customer terms screens (Batch D). Do not mark B complete until that list is empty or Chris accepts it. |
 | C — Rental-to-service operations, custody, inventory & purchasing | NOT STARTED | — | — | Depends on B's ledger primitives where money is touched. |
 | D — Owner/customer control plane, website, evidence & privacy | NOT STARTED | — | — | Uses B contracts for renewal/cancel UI. |
 | E — Communications, reporting, growth, branding & accessibility | NOT STARTED | — | — | Google (O32) only if GW prerequisites are ready; otherwise one later PR. |

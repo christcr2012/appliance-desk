@@ -208,6 +208,16 @@ check OK.
 2. For every review finding or audit item you addressed, write its
    disposition (fixed / already fixed / superseded / still open) with the
    evidence. This also goes in the PR description.
+3. **Do this at the START of every new PR, not the end** (Chris, 2026-10-03):
+   list the unresolved threads on the previous PR and every PR below it in the
+   stack, read each comment in full, fix the valid ones in the new PR with a
+   regression test, and put a disposition table in the new PR's description.
+   GraphQL is blocked in agent sessions, so use REST:
+   `gh api repos/<o>/<r>/pulls/<n>/ccr/review_threads` (threads and comment ids),
+   `gh api repos/<o>/<r>/pulls/comments/<comment-id> --jq .body` (full text), and
+   `gh api -X POST repos/<o>/<r>/pulls/<n>/ccr/comments/<comment-id>/resolve`
+   (only after the fix is verified green at the exact head). Also re-read new
+   comments on the PR you just opened: Codex keeps commenting after each push.
 
 ## Step 6 — Update docs, then push once
 
@@ -262,8 +272,25 @@ evidence; preview checked; review continuity recorded; automated review
 requested or its waiver recorded. Then merge with the expected-head SHA:
 
 ```bash
-gh api -X PUT repos/<owner>/<repo>/pulls/<n>/merge -f merge_method=squash -f sha=<head-sha>
+# Stacked PRs cannot use the plain /merge route; use the asynchronous one and poll it.
+gh api -X PUT repos/<owner>/<repo>/pulls/<n>/merge-async \
+  -f merge_method=merge -f merge_action=direct_merge -f sha=<head-sha> --jq .details.uuid
+gh api repos/<owner>/<repo>/pulls/<n>/merge-async/<uuid> --jq .status   # wait for "merged"
 ```
+
+Merge a stack **from the bottom up**, one PR at a time. After each merge the
+next PR's base may still name the merged branch: set it to `main`
+(`gh api -X PATCH repos/<owner>/<repo>/pulls/<next> -f base=main`), and wait for
+fresh CI at its (possibly rewritten) head before merging it. If its history now
+conflicts only because the lower PR was merged with a rewritten history, rebase
+the rest of the stack onto `origin/main` with
+`git rebase --onto origin/main <old-lower-head> <top-branch> --update-refs`, then
+push each branch. The repository merges with merge commits (no squash).
+A failed browser job can be re-run with
+`gh api -X POST repos/<owner>/<repo>/actions/runs/<run-id>/rerun-failed-jobs`
+(find the run with `actions/runs?head_sha=<sha>`; pick the one named CI). The
+`ci` check can show an old failed copy next to the new passing one when a push
+or retarget cancelled a run: judge the newest.
 
 If any new commit lands after your evidence, the evidence is stale —
 re-verify first. Merging never covers the "Hard limits" in `AGENTS.md`.
