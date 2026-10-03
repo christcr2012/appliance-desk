@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getStripeClient } from "@/lib/stripe";
 import { processStripeWebhookEvent } from "@/domains/billing/webhooks";
 import { ensureSubscriptionIdentityForWebhook } from "@/domains/billing/subscription-identity";
+import { settleReferralCredits } from "@/domains/referrals";
 import { isNonProductionDeployment } from "@/lib/deployment-safety";
 
 // Stripe webhook endpoint — see docs/ARCHITECTURE.md's "Payments (Stripe)"
@@ -55,12 +56,21 @@ export async function POST(request: Request): Promise<Response> {
     // the global webhook advisory lock while still making invoice/deletion
     // events recoverable if the subscription-create response was lost locally.
     await ensureSubscriptionIdentityForWebhook(event);
-    await processStripeWebhookEvent(event);
+    const result = await processStripeWebhookEvent(event);
+
+    // Referral credits are claimed/minted atomically with the paid-invoice
+    // transaction, but provider balance writes intentionally happen only after
+    // that transaction commits. A replayed invoice.paid can surface an existing
+    // REWARDING referral here without replaying the invoice itself.
+    for (const referralId of result?.referralIdsToSettle ?? []) {
+      await settleReferralCredits(referralId);
+    }
   } catch (error) {
     // Returning a 500 tells Stripe to retry this same event later — the
     // WebhookEvent idempotency check (src/domains/billing/webhooks.ts)
     // makes a retry after a PARTIAL failure safe to reprocess, since
-    // nothing was recorded as handled until the whole thing succeeded.
+    // nothing was recorded as handled until the whole local transaction
+    // succeeded. Post-commit referral settlement is independently idempotent.
     console.error(`Error processing Stripe webhook event ${event.id} (${event.type}):`, error);
     return NextResponse.json({ error: "Internal error processing event" }, { status: 500 });
   }

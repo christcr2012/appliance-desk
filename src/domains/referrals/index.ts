@@ -1,40 +1,20 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getStripeClient } from "@/lib/stripe";
-import { getBusinessSettings } from "@/domains/settings";
 import { sendEmail } from "@/lib/email";
 import { formatCents } from "@/domains/pricing";
+import {
+  claimProviderOperation,
+  completeProviderOperation,
+  runProviderCall,
+} from "@/domains/billing/provider-ops";
 import { generateReferralCode, normalizeReferralCode } from "./code";
 
 export { generateReferralCode, normalizeReferralCode } from "./code";
 
-// ---------------------------------------------------------------------------
-// Referral program (Task #68, docs/DECISIONS.md 2026-09-28 — Chris's
-// pick: "discount for both people," i.e. give X/get X, one owner-
-// adjustable amount, same for both sides). Three moments:
-//
-// 1. Every new customer gets a referralCode (generateUniqueReferralCode,
-//    called from both src/domains/leads' convertLeadToCustomer and
-//    src/domains/customers' createCustomerDirectly — the two places a
-//    Customer row is ever created).
-// 2. A lead who typed in someone's code gets linked to that referrer
-//    the moment they convert to a customer (linkReferralIfCodeProvided,
-//    called from convertLeadToCustomer). Just a link — PENDING, no
-//    money moves yet.
-// 3. The reward only fires once the REFERRED customer actually starts
-//    paying — rewardReferralIfEligible, called from
-//    src/domains/billing/checkout.ts's startRecurringBillingForAgreement
-//    right after billingStartedAt is set. Rewarding on signup alone
-//    would pay out for someone who never actually rents.
-// ---------------------------------------------------------------------------
-
 type Tx = Prisma.TransactionClient;
+type ReferralSide = "referrer" | "referred";
 
-/** Keeps generating a random code until one isn't already taken — collisions
- * are astronomically rare at this alphabet/length, but checked for real
- * rather than assumed away. Takes a transaction client so it can run as
- * part of the same customer-creation transaction (never a separate,
- * non-atomic write). */
 export async function generateUniqueReferralCode(tx: Tx): Promise<string> {
   for (let attempt = 0; attempt < 10; attempt++) {
     const code = generateReferralCode();
@@ -49,15 +29,6 @@ export async function generateUniqueReferralCode(tx: Tx): Promise<string> {
   );
 }
 
-/**
- * Links a newly-converted customer to whoever referred them, if a valid
- * code was entered on the lead form. Silent no-op (never throws, never
- * blocks conversion) if the code is missing, doesn't match any customer,
- * or the visitor typed in their own future account's... well, that can't
- * happen at conversion time, but matching against the customer being
- * created right now is still guarded against, just in case. Called as
- * part of the same transaction that creates the Customer row.
- */
 export async function linkReferralIfCodeProvided(
   tx: Tx,
   referredCustomerId: string,
@@ -73,10 +44,6 @@ export async function linkReferralIfCodeProvided(
   });
   if (!referrer || referrer.id === referredCustomerId) return;
 
-  // referredCustomerId is @unique on Referral — if this customer
-  // somehow already has one (shouldn't happen; a customer is only
-  // created once), this just leaves the existing link alone rather
-  // than erroring the whole conversion.
   const alreadyLinked = await tx.referral.findUnique({
     where: { referredCustomerId },
     select: { id: true },
@@ -89,25 +56,25 @@ export async function linkReferralIfCodeProvided(
 }
 
 /**
- * Rewards both sides of a referral once the referred customer's
- * billing has actually started. No-op if this customer was never
- * referred, or their referral was already rewarded (checked by only
- * ever querying for a still-PENDING one, so calling this more than
- * once for the same customer — e.g. a second agreement starting
- * billing later — is safe).
- *
- * The reward is a real Stripe account-balance credit (a negative
- * balance automatically reduces that customer's next invoice) on
- * whichever side already has a Stripe customer on file; either side
- * that doesn't yet (never been billed) still gets its CustomerCredit
- * record — visible on their own customer page — for Chris to honor by
- * hand once they do. Best-effort throughout: a Stripe failure on one
- * side, or a failed confirmation email, never stops the other side
- * from being rewarded.
+ * Claim a referral reward only after the referred customer's invoice is truly
+ * PAID. The Referral row is locked first, and both local CustomerCredit rows
+ * are minted in the same transaction as PENDING -> REWARDING.
  */
-export async function rewardReferralIfEligible(referredCustomerId: string): Promise<void> {
-  const referral = await prisma.referral.findFirst({
-    where: { referredCustomerId, status: "PENDING" },
+export async function rewardReferralOnFirstPaidInvoice(
+  tx: Tx,
+  referredCustomerId: string,
+): Promise<{ creditIds: string[] } | null> {
+  const locked = await tx.$queryRaw<Array<{ id: string; status: string }>>`
+    SELECT "id", "status"
+    FROM "Referral"
+    WHERE "referredCustomerId" = ${referredCustomerId}
+    FOR UPDATE
+  `;
+  const claimed = locked[0];
+  if (!claimed || claimed.status !== "PENDING") return null;
+
+  const referral = await tx.referral.findUniqueOrThrow({
+    where: { id: claimed.id },
     include: {
       referrerCustomer: {
         include: { user: { select: { name: true, email: true } } },
@@ -117,82 +84,294 @@ export async function rewardReferralIfEligible(referredCustomerId: string): Prom
       },
     },
   });
-  if (!referral) return;
-
-  const settings = await getBusinessSettings();
+  const settings = await tx.businessSettings.findUniqueOrThrow({
+    where: { id: "singleton" },
+    select: { referralRewardCents: true },
+  });
   const rewardCents = settings.referralRewardCents;
 
-  await Promise.all([
-    grantOneReferralCredit({
-      customerId: referral.referrerCustomer.id,
-      stripeCustomerId: referral.referrerCustomer.stripeCustomerId,
-      name: referral.referrerCustomer.user.name,
-      email: referral.referrerCustomer.user.email,
-      rewardCents,
+  const referrerCredit = await tx.customerCredit.create({
+    data: {
+      customerId: referral.referrerCustomerId,
+      amountCents: rewardCents,
+      remainingCents: rewardCents,
       reason: `Referral reward — you referred ${referral.referredCustomer.user.name ?? referral.referredCustomer.user.email}`,
-    }),
-    grantOneReferralCredit({
-      customerId: referral.referredCustomer.id,
-      stripeCustomerId: referral.referredCustomer.stripeCustomerId,
-      name: referral.referredCustomer.user.name,
-      email: referral.referredCustomer.user.email,
-      rewardCents,
+      notes: "Referral reward recorded locally; provider settlement follows after the paid-invoice transaction commits.",
+      sourceType: "REFERRAL",
+      sourceId: referral.id,
+      side: "referrer",
+    },
+    select: { id: true },
+  });
+  const referredCredit = await tx.customerCredit.create({
+    data: {
+      customerId: referral.referredCustomerId,
+      amountCents: rewardCents,
+      remainingCents: rewardCents,
       reason: "Referral reward — welcome credit for being referred",
-    }),
-  ]);
+      notes: "Referral reward recorded locally; provider settlement follows after the paid-invoice transaction commits.",
+      sourceType: "REFERRAL",
+      sourceId: referral.id,
+      side: "referred",
+    },
+    select: { id: true },
+  });
 
-  await prisma.referral.update({
+  await tx.referral.update({
     where: { id: referral.id },
-    data: { status: "REWARDED", rewardCents, rewardedAt: new Date() },
+    data: { status: "REWARDING", rewardCents },
+  });
+
+  return { creditIds: [referrerCredit.id, referredCredit.id] };
+}
+
+async function markCreditAppliedViaStripe(
+  creditId: string,
+  providerObjectId: string,
+): Promise<void> {
+  await prisma.$transaction(async (tx) => {
+    const locked = await tx.$queryRaw<Array<{ id: string; appliedViaStripeAt: Date | null }>>`
+      SELECT "id", "appliedViaStripeAt"
+      FROM "CustomerCredit"
+      WHERE "id" = ${creditId}
+      FOR UPDATE
+    `;
+    const credit = locked[0];
+    if (!credit) throw new Error(`Referral credit ${creditId} no longer exists.`);
+    if (credit.appliedViaStripeAt) return;
+
+    await tx.customerCredit.update({
+      where: { id: creditId },
+      data: {
+        appliedViaStripeAt: new Date(),
+        remainingCents: 0,
+        notes: `Applied automatically as Stripe account-balance credit ${providerObjectId}.`,
+      },
+    });
   });
 }
 
-async function grantOneReferralCredit(input: {
+async function settleOneReferralCredit(input: {
+  referralId: string;
+  creditId: string;
+  side: ReferralSide;
+}): Promise<void> {
+  const latest = await prisma.customerCredit.findUniqueOrThrow({
+    where: { id: input.creditId },
+    include: { customer: { select: { stripeCustomerId: true } } },
+  });
+  if (latest.appliedViaStripeAt || !latest.customer.stripeCustomerId) return;
+
+  const claim = await prisma.$transaction(async (tx) => {
+    const locked = await tx.$queryRaw<
+      Array<{
+        id: string;
+        amountCents: number;
+        remainingCents: number;
+        appliedViaStripeAt: Date | null;
+      }>
+    >`
+      SELECT "id", "amountCents", "remainingCents", "appliedViaStripeAt"
+      FROM "CustomerCredit"
+      WHERE "id" = ${input.creditId}
+      FOR UPDATE
+    `;
+    const credit = locked[0];
+    if (!credit) throw new Error(`Referral credit ${input.creditId} no longer exists.`);
+    if (credit.appliedViaStripeAt) {
+      return { kind: "done" as const, providerObjectId: "already-applied" };
+    }
+
+    // A local application that won before this lock chooses the local path for
+    // this credit. Never send the original full amount to Stripe afterward.
+    if (credit.remainingCents < credit.amountCents) {
+      return { kind: "local" as const };
+    }
+
+    const providerClaim = await claimProviderOperation(tx, {
+      kind: "BALANCE_CREDIT",
+      subjectType: "CustomerCredit",
+      subjectId: input.creditId,
+      idempotencyKey: `referral-credit-${input.referralId}-${input.side}`,
+    });
+    return providerClaim.done
+      ? { kind: "done" as const, providerObjectId: providerClaim.providerObjectId }
+      : {
+          kind: "claimed" as const,
+          opId: providerClaim.opId,
+          idempotencyKey: providerClaim.idempotencyKey,
+        };
+  });
+
+  if (claim.kind === "local") return;
+  if (claim.kind === "done") {
+    if (claim.providerObjectId !== "already-applied") {
+      await markCreditAppliedViaStripe(input.creditId, claim.providerObjectId);
+    }
+    return;
+  }
+
+  const stripe = getStripeClient();
+  const result = await runProviderCall(() =>
+    stripe.customers.createBalanceTransaction(
+      latest.customer.stripeCustomerId!,
+      {
+        amount: -latest.amountCents,
+        currency: "usd",
+        description: latest.reason,
+        metadata: {
+          creditId: input.creditId,
+          referralId: input.referralId,
+          side: input.side,
+        },
+      },
+      { idempotencyKey: claim.idempotencyKey },
+    ),
+  );
+
+  await prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`
+      SELECT "id"
+      FROM "CustomerCredit"
+      WHERE "id" = ${input.creditId}
+      FOR UPDATE
+    `;
+
+    if (result.ok) {
+      await tx.customerCredit.update({
+        where: { id: input.creditId },
+        data: {
+          appliedViaStripeAt: new Date(),
+          remainingCents: 0,
+          notes: `Applied automatically as Stripe account-balance credit ${result.value.id}.`,
+        },
+      });
+      await completeProviderOperation(tx, claim.opId, {
+        status: "SUCCEEDED",
+        providerObjectId: result.value.id,
+      });
+      return;
+    }
+
+    await completeProviderOperation(tx, claim.opId, {
+      status: result.outcome,
+      error: result.error,
+    });
+  });
+
+  if (!result.ok) {
+    throw new Error(
+      `Referral credit provider settlement is ${result.outcome.toLowerCase()}; Stripe must retry this webhook until reconciliation succeeds.`,
+    );
+  }
+}
+
+async function sendReferralRewardNotice(input: {
+  referralId: string;
+  side: ReferralSide;
   customerId: string;
-  stripeCustomerId: string | null;
   name: string | null;
   email: string;
   rewardCents: number;
   reason: string;
+  appliedViaStripe: boolean;
 }): Promise<void> {
-  let appliedViaStripe = false;
-
-  if (input.stripeCustomerId) {
-    try {
-      const stripe = getStripeClient();
-      // A negative balance is Stripe's own mechanism for "this customer
-      // has a credit" — it's drawn down automatically against their
-      // next invoice, no separate coupon or invoice-editing needed.
-      await stripe.customers.createBalanceTransaction(input.stripeCustomerId, {
-        amount: -input.rewardCents,
-        currency: "usd",
-        description: input.reason,
-      });
-      appliedViaStripe = true;
-    } catch (error) {
-      console.error("[referrals] Failed to apply Stripe balance credit", input.customerId, error);
-    }
+  const result = await sendEmail({
+    to: input.email,
+    subject: "You've got a referral credit",
+    text: `Hi${input.name ? ` ${input.name}` : ""},\n\n${input.reason}. A ${formatCents(input.rewardCents)} credit has been added to your account${input.appliedViaStripe ? " and will automatically reduce your next payment" : ""}.\n\nThanks for being part of our referral program!`,
+    idempotencyKey: `referral-reward-email-${input.referralId}-${input.side}`,
+  });
+  if (!result.sent) {
+    console.error("[referrals] Referral credit email was not accepted", input.customerId);
   }
+}
 
-  await prisma.customerCredit.create({
-    data: {
-      customerId: input.customerId,
-      amountCents: input.rewardCents,
-      remainingCents: input.rewardCents,
-      reason: input.reason,
-      notes: appliedViaStripe
-        ? "Applied automatically as a Stripe account-balance credit — will reduce their next invoice."
-        : "Not yet applied automatically (no Stripe account on file for this customer yet) — apply by hand once they're billed, or when they have one.",
+async function finishReferralIfSettled(referralId: string): Promise<void> {
+  const credits = await prisma.customerCredit.findMany({
+    where: { sourceType: "REFERRAL", sourceId: referralId },
+    include: {
+      applications: { select: { id: true }, take: 1 },
+      customer: {
+        select: {
+          id: true,
+          stripeCustomerId: true,
+          user: { select: { name: true, email: true } },
+        },
+      },
     },
   });
+  if (credits.length !== 2) {
+    throw new Error(`Referral ${referralId} does not have exactly two local reward credits.`);
+  }
 
-  try {
-    await sendEmail({
-      to: input.email,
-      subject: "You've got a referral credit",
-      text: `Hi${input.name ? ` ${input.name}` : ""},\n\n${input.reason}. A ${formatCents(input.rewardCents)} credit has been added to your account${appliedViaStripe ? " and will automatically reduce your next payment" : ""}.\n\nThanks for being part of our referral program!`,
+  const allSettled = credits.every(
+    (credit) =>
+      credit.appliedViaStripeAt !== null ||
+      credit.customer.stripeCustomerId === null ||
+      credit.applications.length > 0,
+  );
+  if (!allSettled) return;
+
+  const marked = await prisma.referral.updateMany({
+    where: { id: referralId, status: "REWARDING" },
+    data: { status: "REWARDED", rewardedAt: new Date() },
+  });
+  if (marked.count !== 1) return;
+
+  for (const credit of credits) {
+    if (credit.side !== "referrer" && credit.side !== "referred") continue;
+    await sendReferralRewardNotice({
+      referralId,
+      side: credit.side,
+      customerId: credit.customer.id,
+      name: credit.customer.user.name,
+      email: credit.customer.user.email,
+      rewardCents: credit.amountCents,
+      reason: credit.reason,
+      appliedViaStripe: credit.appliedViaStripeAt !== null,
     });
-  } catch (error) {
-    console.error("[referrals] Failed to send referral credit email", input.customerId, error);
+  }
+}
+
+/**
+ * Deliver a claimed referral's two local credits. Stripe-backed credits keep
+ * the webhook retrying until the provider outcome is known; B9 reconciliation
+ * can later take over ambiguous operations without ever minting another local
+ * credit. A side that started spending locally stays local for the remainder.
+ */
+export async function settleReferralCredits(referralId: string): Promise<void> {
+  const referral = await prisma.referral.findUnique({
+    where: { id: referralId },
+    select: { status: true },
+  });
+  if (!referral || referral.status === "PENDING" || referral.status === "REWARDED") return;
+
+  const credits = await prisma.customerCredit.findMany({
+    where: { sourceType: "REFERRAL", sourceId: referralId },
+    select: { id: true, side: true },
+  });
+  if (credits.length !== 2) {
+    throw new Error(`Referral ${referralId} does not have exactly two local reward credits.`);
+  }
+
+  for (const credit of credits) {
+    if (credit.side !== "referrer" && credit.side !== "referred") {
+      throw new Error(`Referral credit ${credit.id} has an invalid side.`);
+    }
+    await settleOneReferralCredit({
+      referralId,
+      creditId: credit.id,
+      side: credit.side,
+    });
+  }
+
+  await finishReferralIfSettled(referralId);
+  const final = await prisma.referral.findUnique({
+    where: { id: referralId },
+    select: { status: true },
+  });
+  if (final?.status === "REWARDING") {
+    throw new Error("Referral settlement is still pending; retry this webhook.");
   }
 }

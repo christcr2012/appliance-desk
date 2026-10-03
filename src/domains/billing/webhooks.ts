@@ -2,6 +2,7 @@ import type Stripe from "stripe";
 import type { InvoiceLineItemKind, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getStripeClient } from "@/lib/stripe";
+import { rewardReferralOnFirstPaidInvoice } from "@/domains/referrals";
 import {
   attachProviderIdsToReceiptPayments,
   createReceiptWithAllocations,
@@ -546,36 +547,65 @@ async function handleCheckoutSessionAsyncPaymentFailed(
   });
 }
 
+async function rewardingReferralForCustomer(
+  db: Prisma.TransactionClient,
+  referredCustomerId: string,
+): Promise<string | null> {
+  const referral = await db.referral.findUnique({
+    where: { referredCustomerId },
+    select: { id: true, status: true },
+  });
+  return referral?.status === "REWARDING" ? referral.id : null;
+}
+
 async function handleInvoicePaid(
   db: Prisma.TransactionClient,
   webhookInvoice: Stripe.Invoice,
-): Promise<void> {
+): Promise<string | null> {
   const subscriptionId = extractSubscriptionId(webhookInvoice);
-  if (!subscriptionId) return;
+  if (!subscriptionId) return null;
 
   const agreement = await db.rentalAgreement.findUnique({
     where: { stripeSubscriptionId: subscriptionId },
     select: { id: true, customerId: true },
   });
-  if (!agreement) return;
+  if (!agreement) return null;
 
   const alreadyRecorded = await db.invoice.findUnique({
     where: { stripeInvoiceId: webhookInvoice.id },
-    select: { id: true, status: true },
+    select: { id: true, status: true, amountPaidCents: true },
   });
-  if (alreadyRecorded?.status === "PAID") return;
 
-  const stripe = getStripeClient();
-  const stripeInvoice = await stripe.invoices.retrieve(webhookInvoice.id as string, {
-    expand: ["payments"],
+  if (alreadyRecorded?.status !== "PAID") {
+    const stripe = getStripeClient();
+    const stripeInvoice = await stripe.invoices.retrieve(webhookInvoice.id as string, {
+      expand: ["payments"],
+    });
+    await recordPaidInvoice(
+      db,
+      stripeInvoice,
+      agreement.id,
+      agreement.customerId,
+      alreadyRecorded?.id,
+    );
+  }
+
+  const paidInvoice = await db.invoice.findUnique({
+    where: { stripeInvoiceId: webhookInvoice.id },
+    select: { status: true, amountPaidCents: true },
   });
-  await recordPaidInvoice(
-    db,
-    stripeInvoice,
-    agreement.id,
-    agreement.customerId,
-    alreadyRecorded?.id,
-  );
+  if (paidInvoice?.status !== "PAID" || paidInvoice.amountPaidCents <= 0) {
+    return rewardingReferralForCustomer(db, agreement.customerId);
+  }
+
+  const claimed = await rewardReferralOnFirstPaidInvoice(db, agreement.customerId);
+  if (!claimed) return rewardingReferralForCustomer(db, agreement.customerId);
+
+  const credit = await db.customerCredit.findUniqueOrThrow({
+    where: { id: claimed.creditIds[0] },
+    select: { sourceId: true },
+  });
+  return credit.sourceId;
 }
 
 async function handleInvoicePaymentFailed(
@@ -689,12 +719,32 @@ async function handleSubscriptionDeleted(
   });
 }
 
+async function referralSettlementForProcessedEvent(
+  db: Prisma.TransactionClient,
+  event: Stripe.Event,
+): Promise<string[]> {
+  if (event.type !== "invoice.paid") return [];
+  const invoice = event.data.object as Stripe.Invoice;
+  const subscriptionId = extractSubscriptionId(invoice);
+  if (!subscriptionId) return [];
+  const agreement = await db.rentalAgreement.findUnique({
+    where: { stripeSubscriptionId: subscriptionId },
+    select: { customerId: true },
+  });
+  if (!agreement) return [];
+  const referralId = await rewardingReferralForCustomer(db, agreement.customerId);
+  return referralId ? [referralId] : [];
+}
+
 async function processLockedEvent(
   db: Prisma.TransactionClient,
   event: Stripe.Event,
-): Promise<void> {
-  if (await alreadyProcessed(db, event.id)) return;
+): Promise<string[]> {
+  if (await alreadyProcessed(db, event.id)) {
+    return referralSettlementForProcessedEvent(db, event);
+  }
 
+  const referralIdsToSettle: string[] = [];
   switch (event.type) {
     case "checkout.session.completed":
       await handleCheckoutSessionCompleted(db, event.data.object as Stripe.Checkout.Session);
@@ -711,9 +761,11 @@ async function processLockedEvent(
         event.data.object as Stripe.Checkout.Session,
       );
       break;
-    case "invoice.paid":
-      await handleInvoicePaid(db, event.data.object as Stripe.Invoice);
+    case "invoice.paid": {
+      const referralId = await handleInvoicePaid(db, event.data.object as Stripe.Invoice);
+      if (referralId) referralIdsToSettle.push(referralId);
       break;
+    }
     case "invoice.payment_failed":
       await handleInvoicePaymentFailed(db, event.data.object as Stripe.Invoice);
       break;
@@ -728,19 +780,29 @@ async function processLockedEvent(
   }
 
   await markProcessed(db, event);
+  return referralIdsToSettle;
 }
+
+export type StripeWebhookProcessingResult = {
+  referralIdsToSettle: string[];
+};
 
 /**
  * One transaction-scoped advisory lock serializes Stripe event application.
  * Any handler failure rolls back both the business mutation and WebhookEvent,
- * so route.ts can return 500 and Stripe can safely retry.
+ * so route.ts can return 500 and Stripe can safely retry. Referral provider
+ * writes are returned to the route and happen only after this transaction
+ * commits, so no network call is held under the global webhook lock.
  */
-export async function processStripeWebhookEvent(event: Stripe.Event): Promise<void> {
-  await prisma.$transaction(
+export async function processStripeWebhookEvent(
+  event: Stripe.Event,
+): Promise<StripeWebhookProcessingResult> {
+  const referralIdsToSettle = await prisma.$transaction(
     async (db) => {
       await db.$queryRaw`SELECT pg_advisory_xact_lock(174831, 1)::text`;
-      await processLockedEvent(db, event);
+      return processLockedEvent(db, event);
     },
     { maxWait: 10_000, timeout: 30_000 },
   );
+  return { referralIdsToSettle };
 }

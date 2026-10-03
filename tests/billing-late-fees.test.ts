@@ -1,170 +1,262 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-
-// Automated late fees (docs/ROADMAP.md's "Deliberately deferred within
-// Phase 6B", built 2026-09-28 — see docs/DECISIONS.md). See
-// src/domains/billing/late-fees.ts for the full reasoning: no auto-retry
-// charge, fee is the larger of the agreement's flat/percent, and
-// Invoice.lateFeeCents === 0 is the idempotency guard.
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const invoiceFindMany = vi.fn();
+const invoiceFindUniqueOrThrow = vi.fn();
 const invoiceLineItemCreate = vi.fn();
 const invoiceUpdate = vi.fn();
 const auditLogCreate = vi.fn();
+const queryRaw = vi.fn();
+const transaction = vi.fn();
 const sendEmail = vi.fn();
 const getBusinessSettings = vi.fn();
 
-vi.mock("@/lib/prisma", () => ({
-  prisma: {
+vi.mock("@/lib/prisma", () => {
+  const tx = {
+    $queryRaw: (...args: unknown[]) => queryRaw(...args),
     invoice: {
       findMany: (...args: unknown[]) => invoiceFindMany(...args),
+      findUniqueOrThrow: (...args: unknown[]) => invoiceFindUniqueOrThrow(...args),
       update: (...args: unknown[]) => invoiceUpdate(...args),
     },
     invoiceLineItem: {
       create: (...args: unknown[]) => invoiceLineItemCreate(...args),
     },
-    auditLog: {
-      create: (...args: unknown[]) => auditLogCreate(...args),
+    auditLog: { create: (...args: unknown[]) => auditLogCreate(...args) },
+  };
+  return {
+    prisma: {
+      $transaction: (...args: unknown[]) => transaction(...args),
     },
-    $transaction: async (ops: Promise<unknown>[]) => Promise.all(ops),
-  },
-}));
+  };
+});
 
 vi.mock("@/lib/email", () => ({
   sendEmail: (...args: unknown[]) => sendEmail(...args),
 }));
-
 vi.mock("@/domains/settings", () => ({
   getBusinessSettings: (...args: unknown[]) => getBusinessSettings(...args),
 }));
 
-const NOW = new Date("2026-09-28T12:00:00Z");
+const NOW = new Date("2026-09-28T18:00:00Z");
+
+type Candidate = ReturnType<typeof candidateInvoice>;
+let current: Candidate | null = null;
+let lockedOverrides: Record<string, unknown> = {};
 
 function candidateInvoice(overrides: Record<string, unknown> = {}) {
   return {
     id: "inv-1",
     invoiceNumber: 1,
     status: "DELINQUENT",
-    dueDate: new Date("2026-09-01"), // 27 days before NOW
-    amountDueCents: 4000,
+    dueDate: new Date("2026-09-01T18:00:00Z"),
+    amountDueCents: 4_000,
     amountPaidCents: 0,
     lateFeeCents: 0,
     agreementId: "agr-1",
-    agreement: { lateFeeGraceDays: 5, lateFeeCents: 0, lateFeePercent: 0 },
-    customer: { user: { name: "Pat Landlord", email: "pat@example.com" } },
+    agreement: {
+      lateFeeGraceDays: 5,
+      lateFeeCents: 0,
+      lateFeePercent: 0,
+    },
+    customer: {
+      user: { name: "Pat Landlord", email: "pat@example.com" },
+    },
     ...overrides,
   };
+}
+
+function lockedRow() {
+  if (!current) return [];
+  return [
+    {
+      id: current.id,
+      invoiceNumber: current.invoiceNumber,
+      status: current.status,
+      dueDate: current.dueDate,
+      lateFeeCents: current.lateFeeCents,
+      amountDueCents: current.amountDueCents,
+      amountPaidCents: current.amountPaidCents,
+      agreementId: current.agreementId,
+      ...lockedOverrides,
+    },
+  ];
 }
 
 describe("applyLateFees", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(NOW);
-    invoiceFindMany.mockReset();
+    current = null;
+    lockedOverrides = {};
+    invoiceFindMany.mockReset().mockImplementation(async () =>
+      current ? [{ id: current.id }] : [],
+    );
+    invoiceFindUniqueOrThrow.mockReset().mockImplementation(async () => current);
     invoiceLineItemCreate.mockReset().mockResolvedValue({});
     invoiceUpdate.mockReset().mockResolvedValue({});
     auditLogCreate.mockReset().mockResolvedValue({});
+    transaction.mockReset().mockImplementation(
+      async (callback: (client: unknown) => Promise<unknown>) =>
+        callback({
+          $queryRaw: (...args: unknown[]) => queryRaw(...args),
+          invoice: {
+            findMany: (...args: unknown[]) => invoiceFindMany(...args),
+            findUniqueOrThrow: (...args: unknown[]) => invoiceFindUniqueOrThrow(...args),
+            update: (...args: unknown[]) => invoiceUpdate(...args),
+          },
+          invoiceLineItem: {
+            create: (...args: unknown[]) => invoiceLineItemCreate(...args),
+          },
+          auditLog: { create: (...args: unknown[]) => auditLogCreate(...args) },
+        }),
+    );
+    queryRaw.mockReset().mockImplementation(async (strings: TemplateStringsArray) => {
+      const sql = strings.join("?");
+      if (sql.includes("pg_advisory_xact_lock")) return [{ pg_advisory_xact_lock: "" }];
+      if (sql.includes('FROM "Invoice"')) return lockedRow();
+      throw new Error(`Unexpected query: ${sql}`);
+    });
   });
 
-  it("skips an invoice whose agreement has no late fee configured at all", async () => {
-    invoiceFindMany.mockResolvedValue([candidateInvoice({ agreement: { lateFeeGraceDays: 5, lateFeeCents: 0, lateFeePercent: 0 } })]);
+  it("takes the billing advisory lock before reading candidates", async () => {
+    const { applyLateFees } = await import("@/domains/billing/late-fees");
+    await applyLateFees();
+
+    expect(queryRaw).toHaveBeenCalledTimes(1);
+    expect(String(queryRaw.mock.calls[0]?.[0])).toContain("pg_advisory_xact_lock");
+    expect(invoiceFindMany).toHaveBeenCalledTimes(1);
+  });
+
+  it("holds one transaction and one advisory lock across multiple 100-row pages", async () => {
+    const ids = Array.from({ length: 100 }, (_, index) => ({ id: `inv-${index}` }));
+    invoiceFindMany.mockReset().mockResolvedValueOnce(ids).mockResolvedValueOnce([]);
+    queryRaw.mockReset().mockImplementation(async (strings: TemplateStringsArray, ...values: unknown[]) => {
+      const sql = strings.join("?");
+      if (sql.includes("pg_advisory_xact_lock")) return [{ pg_advisory_xact_lock: "" }];
+      if (sql.includes('FROM "Invoice"')) {
+        return [
+          {
+            id: String(values[0]),
+            invoiceNumber: 1,
+            status: "DELINQUENT",
+            dueDate: new Date("2026-09-01T18:00:00Z"),
+            lateFeeCents: 0,
+            amountDueCents: 4_000,
+            amountPaidCents: 0,
+            agreementId: "agr-1",
+          },
+        ];
+      }
+      throw new Error(`Unexpected query: ${sql}`);
+    });
+    invoiceFindUniqueOrThrow.mockReset().mockImplementation(
+      async ({ where }: { where: { id: string } }) =>
+        candidateInvoice({
+          id: where.id,
+          agreement: { lateFeeGraceDays: 5, lateFeeCents: 500, lateFeePercent: 0 },
+        }),
+    );
+
+    const { applyLateFees } = await import("@/domains/billing/late-fees");
+    const result = await applyLateFees();
+
+    expect(result).toHaveLength(100);
+    expect(transaction).toHaveBeenCalledTimes(1);
+    expect(
+      queryRaw.mock.calls.filter((call) => String(call[0]).includes("pg_advisory_xact_lock")),
+    ).toHaveLength(1);
+    expect(invoiceFindMany).toHaveBeenCalledTimes(2);
+  });
+
+  it("skips an invoice whose agreement has no late fee configured", async () => {
+    current = candidateInvoice();
     const { applyLateFees } = await import("@/domains/billing/late-fees");
 
-    const result = await applyLateFees();
-    expect(result).toHaveLength(0);
+    await expect(applyLateFees()).resolves.toEqual([]);
     expect(invoiceLineItemCreate).not.toHaveBeenCalled();
   });
 
-  it("skips an invoice still inside its grace period", async () => {
-    invoiceFindMany.mockResolvedValue([
-      candidateInvoice({
-        dueDate: new Date("2026-09-25"), // 3 days before NOW, grace is 5
-        agreement: { lateFeeGraceDays: 5, lateFeeCents: 500, lateFeePercent: 0 },
-      }),
-    ]);
+  it("skips an invoice still inside its Colorado calendar-day grace period", async () => {
+    current = candidateInvoice({
+      dueDate: new Date("2026-09-25T18:00:00Z"),
+      agreement: { lateFeeGraceDays: 5, lateFeeCents: 500, lateFeePercent: 0 },
+    });
     const { applyLateFees } = await import("@/domains/billing/late-fees");
 
-    const result = await applyLateFees();
-    expect(result).toHaveLength(0);
+    await expect(applyLateFees()).resolves.toEqual([]);
   });
 
-  it("applies a flat fee once the grace period has passed", async () => {
-    invoiceFindMany.mockResolvedValue([
-      candidateInvoice({ agreement: { lateFeeGraceDays: 5, lateFeeCents: 1000, lateFeePercent: 0 } }),
-    ]);
+  it("applies the larger disclosed flat fee after the grace period", async () => {
+    current = candidateInvoice({
+      agreement: { lateFeeGraceDays: 5, lateFeeCents: 1_000, lateFeePercent: 0 },
+    });
     const { applyLateFees } = await import("@/domains/billing/late-fees");
 
     const result = await applyLateFees();
 
     expect(result).toHaveLength(1);
-    expect(result[0].feeCents).toBe(1000);
-    expect(invoiceLineItemCreate).toHaveBeenCalledTimes(1);
-    expect(invoiceLineItemCreate.mock.calls[0][0].data).toMatchObject({
-      invoiceId: "inv-1",
-      kind: "LATE_FEE",
-      amountCents: 1000,
+    expect(result[0]?.feeCents).toBe(1_000);
+    expect(invoiceLineItemCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        invoiceId: "inv-1",
+        kind: "LATE_FEE",
+        amountCents: 1_000,
+      }),
     });
     expect(invoiceUpdate).toHaveBeenCalledWith({
       where: { id: "inv-1" },
-      data: { lateFeeCents: 1000, amountDueCents: 5000 },
+      data: { lateFeeCents: 1_000, amountDueCents: 5_000 },
     });
   });
 
-  it("uses whichever of flat or percent is larger", async () => {
-    invoiceFindMany.mockResolvedValue([
-      candidateInvoice({
-        amountDueCents: 10000,
-        agreement: { lateFeeGraceDays: 5, lateFeeCents: 500, lateFeePercent: 10 }, // 10% of 10000 = 1000 > 500
-      }),
-    ]);
+  it("uses whichever of flat or percent is larger, based on outstanding balance", async () => {
+    current = candidateInvoice({
+      amountDueCents: 10_000,
+      amountPaidCents: 8_000,
+      agreement: { lateFeeGraceDays: 5, lateFeeCents: 100, lateFeePercent: 10 },
+    });
     const { applyLateFees } = await import("@/domains/billing/late-fees");
 
     const result = await applyLateFees();
-    expect(result[0].feeCents).toBe(1000);
+    expect(result[0]?.feeCents).toBe(200);
   });
 
-  it("computes the percent fee off the outstanding balance, not the original amount due", async () => {
-    invoiceFindMany.mockResolvedValue([
-      candidateInvoice({
-        amountDueCents: 10000,
-        amountPaidCents: 8000, // only 2000 outstanding
-        agreement: { lateFeeGraceDays: 5, lateFeeCents: 0, lateFeePercent: 10 },
-      }),
-    ]);
+  it("rechecks lateFeeCents under the row lock and skips a racing prior application", async () => {
+    current = candidateInvoice({
+      agreement: { lateFeeGraceDays: 5, lateFeeCents: 500, lateFeePercent: 0 },
+    });
+    lockedOverrides = { lateFeeCents: 500 };
     const { applyLateFees } = await import("@/domains/billing/late-fees");
 
-    const result = await applyLateFees();
-    expect(result[0].feeCents).toBe(200); // 10% of 2000
+    await expect(applyLateFees()).resolves.toEqual([]);
+    expect(invoiceLineItemCreate).not.toHaveBeenCalled();
   });
 
-  it("never applies a second fee to an invoice that already has one (idempotency guard)", async () => {
-    // The query itself filters lateFeeCents: 0, but this checks the
-    // guard holds even if that filter is ever loosened by mistake.
-    invoiceFindMany.mockResolvedValue([]);
+  it("skips an invoice that became fully paid before its lock was acquired", async () => {
+    current = candidateInvoice({
+      agreement: { lateFeeGraceDays: 5, lateFeeCents: 500, lateFeePercent: 0 },
+    });
+    lockedOverrides = { amountPaidCents: 4_000 };
     const { applyLateFees } = await import("@/domains/billing/late-fees");
 
+    await expect(applyLateFees()).resolves.toEqual([]);
+  });
+
+  it("keeps lateFeeCents = 0 in the candidate query", async () => {
+    const { applyLateFees } = await import("@/domains/billing/late-fees");
     await applyLateFees();
     expect(invoiceFindMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: expect.objectContaining({ lateFeeCents: 0 }) }),
-    );
-  });
-
-  it("skips an invoice that's already fully paid", async () => {
-    invoiceFindMany.mockResolvedValue([
-      candidateInvoice({
-        amountDueCents: 4000,
-        amountPaidCents: 4000,
-        agreement: { lateFeeGraceDays: 5, lateFeeCents: 500, lateFeePercent: 0 },
+      expect.objectContaining({
+        where: expect.objectContaining({ lateFeeCents: 0 }),
       }),
-    ]);
-    const { applyLateFees } = await import("@/domains/billing/late-fees");
-
-    const result = await applyLateFees();
-    expect(result).toHaveLength(0);
+    );
   });
 });
 
 describe("sendLateFeeDigestToChris", () => {
   beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
     sendEmail.mockReset().mockResolvedValue({ sent: true });
     getBusinessSettings.mockReset().mockResolvedValue({ publicEmail: "chris@example.com" });
   });
@@ -175,14 +267,22 @@ describe("sendLateFeeDigestToChris", () => {
     expect(sendEmail).not.toHaveBeenCalled();
   });
 
-  it("emails a digest listing every applied fee", async () => {
+  it("emails one idempotent digest listing every applied fee", async () => {
     const { sendLateFeeDigestToChris } = await import("@/domains/billing/late-fees");
     await sendLateFeeDigestToChris([
-      { invoiceId: "inv-1", invoiceNumber: 1, customerName: "Pat Landlord", feeCents: 1000, newAmountDueCents: 5000 },
+      {
+        invoiceId: "inv-1",
+        invoiceNumber: 1,
+        customerName: "Pat Landlord",
+        feeCents: 1_000,
+        newAmountDueCents: 5_000,
+      },
     ]);
     expect(sendEmail).toHaveBeenCalledTimes(1);
-    const call = sendEmail.mock.calls[0][0];
-    expect(call.to).toBe("chris@example.com");
-    expect(call.text).toContain("Pat Landlord");
+    expect(sendEmail.mock.calls[0]?.[0]).toMatchObject({
+      to: "chris@example.com",
+      idempotencyKey: expect.stringMatching(/^late-fee-digest-/),
+      text: expect.stringContaining("Pat Landlord"),
+    });
   });
 });

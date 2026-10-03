@@ -5,18 +5,18 @@ const ledger = vi.hoisted(() => ({
   createReceiptWithAllocations: vi.fn(),
 }));
 const invoiceFindMany = vi.fn();
-const invoiceFindUnique = vi.fn();
 const invoiceUpdate = vi.fn();
 const auditLogCreate = vi.fn();
+const queryRaw = vi.fn();
 
 vi.mock("@/domains/billing/ledger", () => ledger);
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     $transaction: (fn: (tx: unknown) => unknown) =>
       fn({
+        $queryRaw: (...args: unknown[]) => queryRaw(...args),
         invoice: {
           findMany: (...args: unknown[]) => invoiceFindMany(...args),
-          findUnique: (...args: unknown[]) => invoiceFindUnique(...args),
           update: invoiceUpdate,
         },
         auditLog: { create: auditLogCreate },
@@ -160,18 +160,18 @@ describe("recordManualPayment", () => {
 describe("writeOffInvoice", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    ledger.lockCustomerLedger.mockResolvedValue(undefined);
+    queryRaw.mockReset();
     invoiceUpdate.mockResolvedValue({});
     auditLogCreate.mockResolvedValue({});
   });
 
   it("marks an invoice WRITTEN_OFF with a reason", async () => {
-    invoiceFindUnique
-      .mockResolvedValueOnce({ customerId: "cust-1" })
-      .mockResolvedValueOnce({ id: "inv-1", customerId: "cust-1", status: "DELINQUENT" });
+    queryRaw.mockResolvedValueOnce([
+      { id: "inv-1", status: "DELINQUENT", amountDueCents: 4000, amountPaidCents: 500 },
+    ]);
     const { writeOffInvoice } = await import("@/domains/billing/manual-payments");
     await writeOffInvoice("inv-1", "owner-1", "Tenant vacated, uncollectible");
-    expect(ledger.lockCustomerLedger).toHaveBeenCalledWith(expect.anything(), "cust-1");
+    expect(queryRaw).toHaveBeenCalledOnce();
     expect(invoiceUpdate).toHaveBeenCalledWith({
       where: { id: "inv-1" },
       data: expect.objectContaining({
@@ -182,23 +182,23 @@ describe("writeOffInvoice", () => {
   });
 
   it("refuses an invoice that's already fully paid", async () => {
-    invoiceFindUnique
-      .mockResolvedValueOnce({ customerId: "cust-1" })
-      .mockResolvedValueOnce({ id: "inv-1", status: "PAID" });
+    queryRaw.mockResolvedValueOnce([
+      { id: "inv-1", status: "PAID", amountDueCents: 4000, amountPaidCents: 4000 },
+    ]);
     const { writeOffInvoice } = await import("@/domains/billing/manual-payments");
     await expect(writeOffInvoice("inv-1", "owner-1", "reason")).rejects.toThrow(/already fully paid/i);
   });
 
   it("refuses an invoice that's already written off", async () => {
-    invoiceFindUnique
-      .mockResolvedValueOnce({ customerId: "cust-1" })
-      .mockResolvedValueOnce({ id: "inv-1", status: "WRITTEN_OFF" });
+    queryRaw.mockResolvedValueOnce([
+      { id: "inv-1", status: "WRITTEN_OFF", amountDueCents: 4000, amountPaidCents: 0 },
+    ]);
     const { writeOffInvoice } = await import("@/domains/billing/manual-payments");
     await expect(writeOffInvoice("inv-1", "owner-1", "reason")).rejects.toThrow(/already written off/i);
   });
 
   it("refuses an invoice that doesn't exist", async () => {
-    invoiceFindUnique.mockResolvedValueOnce(null);
+    queryRaw.mockResolvedValueOnce([]);
     const { writeOffInvoice } = await import("@/domains/billing/manual-payments");
     await expect(writeOffInvoice("missing", "owner-1", "reason")).rejects.toThrow(/couldn't find that invoice/i);
   });

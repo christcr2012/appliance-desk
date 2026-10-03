@@ -1,9 +1,21 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { generateReferralCode, normalizeReferralCode } from "@/domains/referrals/code";
 
-// Referral program (Task #68, docs/DECISIONS.md 2026-09-28 — Chris's
-// pick: "discount for both people"). code.ts is pure; the rest of
-// src/domains/referrals needs prisma/Stripe/email mocked.
+vi.mock("@/lib/prisma", () => ({ prisma: {} }));
+vi.mock("@/lib/stripe", () => ({ getStripeClient: vi.fn() }));
+vi.mock("@/lib/email", () => ({ sendEmail: vi.fn() }));
+vi.mock("@/domains/billing/provider-ops", () => ({
+  RetryLater: class RetryLater extends Error {},
+  claimProviderOperation: vi.fn(),
+  completeProviderOperation: vi.fn(),
+  runProviderCall: vi.fn(),
+}));
+
+import {
+  generateUniqueReferralCode,
+  linkReferralIfCodeProvided,
+  rewardReferralOnFirstPaidInvoice,
+} from "@/domains/referrals";
 
 describe("generateReferralCode", () => {
   it("is always 6 characters, uppercase, from the unambiguous alphabet", () => {
@@ -32,83 +44,50 @@ describe("normalizeReferralCode", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-
-const customerFindUnique = vi.fn();
-const referralFindUnique = vi.fn();
-const referralFindFirst = vi.fn();
-const referralCreate = vi.fn();
-const referralUpdate = vi.fn();
-const customerCreditCreate = vi.fn();
-const businessSettingsFindUnique = vi.fn();
-const sendEmail = vi.fn();
-const createBalanceTransaction = vi.fn();
-
-vi.mock("@/lib/prisma", () => ({
-  prisma: {
-    customer: { findUnique: (...args: unknown[]) => customerFindUnique(...args) },
-    referral: {
-      findUnique: (...args: unknown[]) => referralFindUnique(...args),
-      findFirst: (...args: unknown[]) => referralFindFirst(...args),
-      create: (...args: unknown[]) => referralCreate(...args),
-      update: (...args: unknown[]) => referralUpdate(...args),
-    },
-    customerCredit: { create: (...args: unknown[]) => customerCreditCreate(...args) },
-    businessSettings: { findUnique: (...args: unknown[]) => businessSettingsFindUnique(...args) },
-  },
-}));
-
-vi.mock("@/lib/stripe", () => ({
-  getStripeClient: () => ({
-    customers: { createBalanceTransaction: (...args: unknown[]) => createBalanceTransaction(...args) },
-  }),
-}));
-
-vi.mock("@/lib/email", () => ({
-  sendEmail: (...args: unknown[]) => sendEmail(...args),
-}));
-
-import {
-  generateUniqueReferralCode,
-  linkReferralIfCodeProvided,
-  rewardReferralIfEligible,
-} from "@/domains/referrals";
-
 describe("generateUniqueReferralCode", () => {
   it("returns the first generated code when it isn't already taken", async () => {
-    customerFindUnique.mockReset().mockResolvedValue(null);
-    const tx = { customer: { findUnique: customerFindUnique } } as never;
+    const findUnique = vi.fn().mockResolvedValue(null);
+    const tx = { customer: { findUnique } } as never;
 
     const code = await generateUniqueReferralCode(tx);
 
     expect(code).toHaveLength(6);
-    expect(customerFindUnique).toHaveBeenCalledTimes(1);
+    expect(findUnique).toHaveBeenCalledTimes(1);
   });
 
   it("retries when a generated code is already taken", async () => {
-    customerFindUnique
-      .mockReset()
+    const findUnique = vi
+      .fn()
       .mockResolvedValueOnce({ id: "existing" })
       .mockResolvedValueOnce(null);
-    const tx = { customer: { findUnique: customerFindUnique } } as never;
+    const tx = { customer: { findUnique } } as never;
 
     await generateUniqueReferralCode(tx);
 
-    expect(customerFindUnique).toHaveBeenCalledTimes(2);
+    expect(findUnique).toHaveBeenCalledTimes(2);
   });
 });
 
 describe("linkReferralIfCodeProvided", () => {
+  let customerFindUnique: ReturnType<typeof vi.fn>;
+  let referralFindUnique: ReturnType<typeof vi.fn>;
+  let referralCreate: ReturnType<typeof vi.fn>;
+
   beforeEach(() => {
-    customerFindUnique.mockReset();
-    referralFindUnique.mockReset();
-    referralCreate.mockReset().mockResolvedValue({});
+    customerFindUnique = vi.fn();
+    referralFindUnique = vi.fn();
+    referralCreate = vi.fn().mockResolvedValue({});
   });
 
-  it("does nothing when no code was entered", async () => {
-    const tx = { customer: { findUnique: customerFindUnique }, referral: { findUnique: referralFindUnique } } as never;
+  function tx() {
+    return {
+      customer: { findUnique: customerFindUnique },
+      referral: { findUnique: referralFindUnique, create: referralCreate },
+    } as never;
+  }
 
-    await linkReferralIfCodeProvided(tx, "new-cust", null);
+  it("does nothing when no code was entered", async () => {
+    await linkReferralIfCodeProvided(tx(), "new-cust", null);
 
     expect(customerFindUnique).not.toHaveBeenCalled();
     expect(referralCreate).not.toHaveBeenCalled();
@@ -117,9 +96,8 @@ describe("linkReferralIfCodeProvided", () => {
   it("creates a Referral when the code matches a real customer", async () => {
     customerFindUnique.mockResolvedValue({ id: "referrer-1" });
     referralFindUnique.mockResolvedValue(null);
-    const tx = { customer: { findUnique: customerFindUnique }, referral: { findUnique: referralFindUnique, create: referralCreate } } as never;
 
-    await linkReferralIfCodeProvided(tx, "new-cust", " 7k4mxq ");
+    await linkReferralIfCodeProvided(tx(), "new-cust", " 7k4mxq ");
 
     expect(customerFindUnique).toHaveBeenCalledWith({
       where: { referralCode: "7K4MXQ" },
@@ -130,132 +108,121 @@ describe("linkReferralIfCodeProvided", () => {
     });
   });
 
-  it("does nothing when the code doesn't match any customer", async () => {
-    customerFindUnique.mockResolvedValue(null);
-    const tx = { customer: { findUnique: customerFindUnique }, referral: { findUnique: referralFindUnique, create: referralCreate } } as never;
-
-    await linkReferralIfCodeProvided(tx, "new-cust", "NOMATCH");
-
+  it("does nothing for an unknown code, a self-code, or an already-linked customer", async () => {
+    customerFindUnique.mockResolvedValueOnce(null);
+    await linkReferralIfCodeProvided(tx(), "new-cust", "NOMATCH");
     expect(referralCreate).not.toHaveBeenCalled();
-  });
 
-  it("never links a customer to their own code (can't happen in practice, guarded anyway)", async () => {
-    customerFindUnique.mockResolvedValue({ id: "new-cust" });
-    const tx = { customer: { findUnique: customerFindUnique }, referral: { findUnique: referralFindUnique, create: referralCreate } } as never;
-
-    await linkReferralIfCodeProvided(tx, "new-cust", "SELFCODE");
-
+    customerFindUnique.mockResolvedValueOnce({ id: "new-cust" });
+    await linkReferralIfCodeProvided(tx(), "new-cust", "SELFCODE");
     expect(referralCreate).not.toHaveBeenCalled();
-  });
 
-  it("does nothing when this customer is already linked to a referral", async () => {
-    customerFindUnique.mockResolvedValue({ id: "referrer-1" });
-    referralFindUnique.mockResolvedValue({ id: "existing-referral" });
-    const tx = { customer: { findUnique: customerFindUnique }, referral: { findUnique: referralFindUnique, create: referralCreate } } as never;
-
-    await linkReferralIfCodeProvided(tx, "new-cust", "SOMECODE");
-
+    customerFindUnique.mockResolvedValueOnce({ id: "referrer-1" });
+    referralFindUnique.mockResolvedValueOnce({ id: "existing-referral" });
+    await linkReferralIfCodeProvided(tx(), "new-cust", "SOMECODE");
     expect(referralCreate).not.toHaveBeenCalled();
   });
 });
 
-describe("rewardReferralIfEligible", () => {
-  beforeEach(() => {
-    referralFindFirst.mockReset();
-    referralUpdate.mockReset().mockResolvedValue({});
-    customerCreditCreate.mockReset().mockResolvedValue({});
-    businessSettingsFindUnique.mockReset().mockResolvedValue({ id: "singleton", referralRewardCents: 2500 });
-    sendEmail.mockReset().mockResolvedValue({ sent: true });
-    createBalanceTransaction.mockReset().mockResolvedValue({});
-  });
+describe("rewardReferralOnFirstPaidInvoice", () => {
+  const referral = {
+    id: "referral-1",
+    referrerCustomerId: "referrer-1",
+    referredCustomerId: "referred-1",
+    referrerCustomer: {
+      id: "referrer-1",
+      user: { name: "Alice Referrer", email: "alice@example.test" },
+    },
+    referredCustomer: {
+      id: "referred-1",
+      user: { name: "Bob Referred", email: "bob@example.test" },
+    },
+  };
 
-  function referral(overrides?: { referrerStripeId?: string | null; referredStripeId?: string | null }) {
+  function makeTx(status: "PENDING" | "REWARDING" | "REWARDED" | null = "PENDING") {
+    const queryRaw = vi.fn().mockResolvedValue(
+      status ? [{ id: referral.id, status }] : [],
+    );
+    const referralFind = vi.fn().mockResolvedValue(referral);
+    const settingsFind = vi.fn().mockResolvedValue({ referralRewardCents: 2500 });
+    const creditCreate = vi
+      .fn()
+      .mockResolvedValueOnce({ id: "credit-referrer" })
+      .mockResolvedValueOnce({ id: "credit-referred" });
+    const referralUpdate = vi.fn().mockResolvedValue({});
+
     return {
-      id: "referral-1",
-      referrerCustomer: {
-        id: "referrer-1",
-        stripeCustomerId:
-          overrides && "referrerStripeId" in overrides ? overrides.referrerStripeId : "cus_referrer",
-        user: { name: "Alice Referrer", email: "alice@example.com" },
-      },
-      referredCustomer: {
-        id: "referred-1",
-        stripeCustomerId:
-          overrides && "referredStripeId" in overrides ? overrides.referredStripeId : "cus_referred",
-        user: { name: "Bob Referred", email: "bob@example.com" },
-      },
+      tx: {
+        $queryRaw: queryRaw,
+        referral: {
+          findUniqueOrThrow: referralFind,
+          update: referralUpdate,
+        },
+        businessSettings: { findUniqueOrThrow: settingsFind },
+        customerCredit: { create: creditCreate },
+      } as never,
+      queryRaw,
+      referralFind,
+      settingsFind,
+      creditCreate,
+      referralUpdate,
     };
   }
 
-  it("does nothing when this customer was never referred", async () => {
-    referralFindFirst.mockResolvedValue(null);
+  it("claims PENDING under the row lock and atomically mints one credit per side", async () => {
+    const mocks = makeTx();
 
-    await rewardReferralIfEligible("some-customer");
+    await expect(
+      rewardReferralOnFirstPaidInvoice(mocks.tx, "referred-1"),
+    ).resolves.toEqual({ creditIds: ["credit-referrer", "credit-referred"] });
 
-    expect(customerCreditCreate).not.toHaveBeenCalled();
-    expect(createBalanceTransaction).not.toHaveBeenCalled();
-  });
-
-  it("applies a Stripe balance credit and a local CustomerCredit to both sides, then marks REWARDED", async () => {
-    referralFindFirst.mockResolvedValue(referral());
-
-    await rewardReferralIfEligible("referred-1");
-
-    expect(createBalanceTransaction).toHaveBeenCalledTimes(2);
-    expect(createBalanceTransaction).toHaveBeenCalledWith("cus_referrer", {
-      amount: -2500,
-      currency: "usd",
-      description: expect.stringContaining("Bob Referred"),
-    });
-    expect(createBalanceTransaction).toHaveBeenCalledWith("cus_referred", {
-      amount: -2500,
-      currency: "usd",
-      description: expect.any(String),
-    });
-
-    expect(customerCreditCreate).toHaveBeenCalledTimes(2);
-    expect(customerCreditCreate).toHaveBeenCalledWith(
+    expect(mocks.queryRaw).toHaveBeenCalledTimes(1);
+    expect(mocks.creditCreate).toHaveBeenCalledTimes(2);
+    expect(mocks.creditCreate).toHaveBeenNthCalledWith(
+      1,
       expect.objectContaining({
         data: expect.objectContaining({
           customerId: "referrer-1",
           amountCents: 2500,
           remainingCents: 2500,
+          sourceType: "REFERRAL",
+          sourceId: "referral-1",
+          side: "referrer",
         }),
       }),
     );
-
-    expect(referralUpdate).toHaveBeenCalledWith({
-      where: { id: "referral-1" },
-      data: { status: "REWARDED", rewardCents: 2500, rewardedAt: expect.any(Date) },
-    });
-
-    expect(sendEmail).toHaveBeenCalledTimes(2);
-  });
-
-  it("still records a local credit (without a Stripe call) for a side with no Stripe customer yet", async () => {
-    referralFindFirst.mockResolvedValue(referral({ referrerStripeId: null }));
-
-    await rewardReferralIfEligible("referred-1");
-
-    // Only the referred side (which has a Stripe customer) gets a real
-    // balance transaction; the referrer still gets their credit recorded.
-    expect(createBalanceTransaction).toHaveBeenCalledTimes(1);
-    expect(customerCreditCreate).toHaveBeenCalledTimes(2);
-    const referrerCreditCall = customerCreditCreate.mock.calls.find(
-      (call) => call[0].data.customerId === "referrer-1",
+    expect(mocks.creditCreate).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        data: expect.objectContaining({
+          customerId: "referred-1",
+          amountCents: 2500,
+          remainingCents: 2500,
+          sourceType: "REFERRAL",
+          sourceId: "referral-1",
+          side: "referred",
+        }),
+      }),
     );
-    expect(referrerCreditCall?.[0].data.notes).toContain("Not yet applied automatically");
+    expect(mocks.referralUpdate).toHaveBeenCalledWith({
+      where: { id: "referral-1" },
+      data: { status: "REWARDING", rewardCents: 2500 },
+    });
   });
 
-  it("still rewards the other side when one side's Stripe call fails", async () => {
-    referralFindFirst.mockResolvedValue(referral());
-    createBalanceTransaction
-      .mockRejectedValueOnce(new Error("Stripe is down"))
-      .mockResolvedValueOnce({});
+  it.each([null, "REWARDING", "REWARDED"] as const)(
+    "does not mint credits when the locked referral status is %s",
+    async (status) => {
+      const mocks = makeTx(status);
 
-    await rewardReferralIfEligible("referred-1");
+      await expect(
+        rewardReferralOnFirstPaidInvoice(mocks.tx, "referred-1"),
+      ).resolves.toBeNull();
 
-    expect(customerCreditCreate).toHaveBeenCalledTimes(2);
-    expect(referralUpdate).toHaveBeenCalledTimes(1);
-  });
+      expect(mocks.referralFind).not.toHaveBeenCalled();
+      expect(mocks.settingsFind).not.toHaveBeenCalled();
+      expect(mocks.creditCreate).not.toHaveBeenCalled();
+      expect(mocks.referralUpdate).not.toHaveBeenCalled();
+    },
+  );
 });

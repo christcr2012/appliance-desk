@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { InvoiceStatus } from "@prisma/client";
-import { createReceiptWithAllocations } from "@/domains/billing/ledger";
+import {
+  applyCreditToInvoice,
+  createReceiptWithAllocations,
+} from "@/domains/billing/ledger";
 
 type StoredInvoice = {
   id: string;
@@ -160,7 +163,6 @@ describe("createReceiptWithAllocations", () => {
       allocations: [{ invoiceId: "inv-a", amountCents: 10_000 }],
     });
 
-    // Model the already-committed invoice state exactly as a retry would see it.
     const second = await createReceiptWithAllocations(tx(), {
       customerId: "cust-1",
       source: "STRIPE",
@@ -200,6 +202,183 @@ describe("createReceiptWithAllocations", () => {
         method: "cash",
         receivedOn: new Date("2026-10-02T06:00:00Z"),
         allocations: [{ invoiceId: "inv-a", amountCents: 1_000 }],
+      }),
+    ).rejects.toThrow(/another customer's invoice/i);
+  });
+});
+
+describe("applyCreditToInvoice", () => {
+  type CreditState = {
+    id: string;
+    customerId: string;
+    remainingCents: number;
+    appliedViaStripeAt: Date | null;
+    reason: string;
+  };
+  type InvoiceState = StoredInvoice & { version: number };
+
+  function creditTx(options?: {
+    credit?: Partial<CreditState>;
+    invoice?: Partial<InvoiceState>;
+    providerReserved?: boolean;
+  }) {
+    const credit: CreditState = {
+      id: "credit-1",
+      customerId: "cust-1",
+      remainingCents: 5_000,
+      appliedViaStripeAt: null,
+      reason: "Referral reward",
+      ...options?.credit,
+    };
+    const invoiceState: InvoiceState = {
+      ...invoice("inv-1", 10_000),
+      version: 1,
+      ...options?.invoice,
+    };
+    const applications: Array<Record<string, unknown>> = [];
+    const lineItems: Array<Record<string, unknown>> = [];
+
+    const fake = {
+      $queryRaw: async (strings: TemplateStringsArray) => {
+        const sql = strings.join("?");
+        if (sql.includes('FROM "CustomerCredit"')) return [{ ...credit }];
+        if (sql.includes('FROM "Invoice"')) return [{ ...invoiceState }];
+        throw new Error(`Unexpected query: ${sql}`);
+      },
+      providerOperation: {
+        findFirst: vi.fn(async () =>
+          options?.providerReserved ? { id: "provider-op-1", status: "PENDING" } : null,
+        ),
+      },
+      creditApplication: {
+        create: vi.fn(async ({ data }: { data: Record<string, unknown> }) => {
+          applications.push(data);
+          return {};
+        }),
+      },
+      invoiceLineItem: {
+        create: vi.fn(async ({ data }: { data: Record<string, unknown> }) => {
+          lineItems.push(data);
+          return {};
+        }),
+      },
+      customerCredit: {
+        update: vi.fn(async ({ data }: { data: { remainingCents: { decrement: number } } }) => {
+          credit.remainingCents -= data.remainingCents.decrement;
+          return { ...credit };
+        }),
+      },
+      invoice: {
+        update: vi.fn(async ({ data }: {
+          data: {
+            amountPaidCents: number;
+            status: InvoiceStatus;
+            version: { increment: number };
+          };
+        }) => {
+          invoiceState.amountPaidCents = data.amountPaidCents;
+          invoiceState.status = data.status;
+          invoiceState.version += data.version.increment;
+          return { ...invoiceState };
+        }),
+      },
+    } as never;
+
+    return { fake, credit, invoiceState, applications, lineItems };
+  }
+
+  it("applies a local credit atomically and records its provenance on the invoice", async () => {
+    const state = creditTx();
+
+    await applyCreditToInvoice(state.fake, {
+      creditId: "credit-1",
+      invoiceId: "inv-1",
+      amountCents: 5_000,
+      appliedByUserId: "owner-1",
+    });
+
+    expect(state.credit.remainingCents).toBe(0);
+    expect(state.invoiceState.amountPaidCents).toBe(5_000);
+    expect(state.invoiceState.status).toBe("PARTIALLY_PAID");
+    expect(state.invoiceState.version).toBe(2);
+    expect(state.applications).toEqual([
+      {
+        creditId: "credit-1",
+        invoiceId: "inv-1",
+        amountCents: 5_000,
+        appliedByUserId: "owner-1",
+      },
+    ]);
+    expect(state.lineItems).toEqual([
+      expect.objectContaining({
+        invoiceId: "inv-1",
+        kind: "CREDIT",
+        amountCents: -5_000,
+      }),
+    ]);
+  });
+
+  it("rejects a credit as soon as provider settlement has reserved it", async () => {
+    const state = creditTx({ providerReserved: true });
+    await expect(
+      applyCreditToInvoice(state.fake, {
+        creditId: "credit-1",
+        invoiceId: "inv-1",
+        amountCents: 1_000,
+        appliedByUserId: "owner-1",
+      }),
+    ).rejects.toThrow(/reserved for Stripe settlement/i);
+    expect(state.applications).toHaveLength(0);
+  });
+
+  it("rejects spending more than the credit has remaining", async () => {
+    const state = creditTx({ credit: { remainingCents: 1_000 } });
+    await expect(
+      applyCreditToInvoice(state.fake, {
+        creditId: "credit-1",
+        invoiceId: "inv-1",
+        amountCents: 1_001,
+        appliedByUserId: "owner-1",
+      }),
+    ).rejects.toThrow(/enough remaining balance/i);
+    expect(state.applications).toHaveLength(0);
+  });
+
+  it("rejects applying a credit to an already-paid invoice", async () => {
+    const state = creditTx({
+      invoice: { status: "PAID", amountPaidCents: 10_000 },
+    });
+    await expect(
+      applyCreditToInvoice(state.fake, {
+        creditId: "credit-1",
+        invoiceId: "inv-1",
+        amountCents: 1_000,
+        appliedByUserId: "owner-1",
+      }),
+    ).rejects.toThrow(/open invoice/i);
+  });
+
+  it("rejects a referral credit that has already been pushed to Stripe", async () => {
+    const state = creditTx({ credit: { appliedViaStripeAt: new Date() } });
+    await expect(
+      applyCreditToInvoice(state.fake, {
+        creditId: "credit-1",
+        invoiceId: "inv-1",
+        amountCents: 1_000,
+        appliedByUserId: "owner-1",
+      }),
+    ).rejects.toThrow(/already applied through Stripe/i);
+    expect(state.applications).toHaveLength(0);
+  });
+
+  it("rejects applying one customer's credit to another customer's invoice", async () => {
+    const state = creditTx({ invoice: { customerId: "cust-2" } });
+    await expect(
+      applyCreditToInvoice(state.fake, {
+        creditId: "credit-1",
+        invoiceId: "inv-1",
+        amountCents: 1_000,
+        appliedByUserId: "owner-1",
       }),
     ).rejects.toThrow(/another customer's invoice/i);
   });
