@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  billingPeriodFor,
   businessDateEnd,
   businessDateKey,
   businessDayBounds,
+  businessEndOfDay,
   businessMonthBounds,
   formatBusinessTime,
   formatTaskDate,
@@ -82,6 +84,35 @@ describe("Colorado business calendar independent of server timezone", () => {
     expect(businessDateEnd(key).toISOString()).toBe(expected);
   });
 
+  it("resolves the business end of day from an instant", () => {
+    expect(businessEndOfDay(new Date("2026-03-08T18:00:00Z")).toISOString()).toBe(
+      "2026-03-09T05:59:59.000Z",
+    );
+  });
+
+  it("keeps a March DST-transition billing anchor on the same local wall clock", () => {
+    const anchor = new Date("2026-03-08T08:30:00Z"); // 1:30 AM MST
+    const period = billingPeriodFor(anchor, 1);
+    expect(businessDateKey(period.start)).toBe("2026-04-08");
+    expect(formatBusinessTime(period.start)).toBe("1:30 AM MDT");
+    expect(period.start.toISOString()).toBe("2026-04-08T07:30:00.000Z");
+  });
+
+  it("keeps a November DST-transition billing anchor on the same local wall clock", () => {
+    const anchor = new Date("2026-11-01T07:30:00Z"); // first 1:30 AM, MDT
+    const period = billingPeriodFor(anchor, 1);
+    expect(businessDateKey(period.start)).toBe("2026-12-01");
+    expect(formatBusinessTime(period.start)).toBe("1:30 AM MST");
+    expect(period.start.toISOString()).toBe("2026-12-01T08:30:00.000Z");
+  });
+
+  it("clamps a month-end billing anchor instead of overflowing into the next month", () => {
+    const anchor = new Date("2026-01-31T19:00:00Z"); // Jan 31 noon MST
+    const period = billingPeriodFor(anchor, 1);
+    expect(businessDateKey(period.start)).toBe("2026-02-28");
+    expect(formatBusinessTime(period.start)).toBe("12:00 PM MST");
+  });
+
   it("rejects an invalid end-date key instead of guessing", () => {
     expect(() => businessDateEnd("2026-02-30")).toThrow(/invalid business date/i);
   });
@@ -98,6 +129,7 @@ describe("Colorado business calendar independent of server timezone", () => {
     );
     expect(taskDueBucket(null)).toBe("undated");
   });
+
   it("labels the repeated fall-back hour with its actual timezone", () => {
     expect(formatBusinessTime(new Date("2026-11-01T07:30:00Z"))).toBe(
       "1:30 AM MDT",
