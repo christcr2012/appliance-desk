@@ -36,6 +36,7 @@ type RecoverableOperation = {
   subjectId: string;
   idempotencyKey: string;
   status: ProviderOperationStatus;
+  attempts: number;
   requestedAt: Date;
 };
 
@@ -177,9 +178,10 @@ async function reconcileSubscriptionCancel(operation: RecoverableOperation): Pro
   }
 
   // A successful retrieve proving the subscription is still live resolves an
-  // earlier ambiguous cancel outcome. Reclaim the durable operation under its
-  // normal lease before issuing another provider write. This serializes two
-  // reconcilers that both observed the subscription as active.
+  // earlier ambiguous cancel outcome. Reclaim the durable operation only if
+  // the exact attempt observed before that provider read is still current.
+  // This prevents stale evidence from authorizing another retry after a
+  // competing worker has already issued a newer ambiguous provider attempt.
   let claim;
   try {
     claim = await prisma.$transaction((tx) =>
@@ -188,7 +190,9 @@ async function reconcileSubscriptionCancel(operation: RecoverableOperation): Pro
         subjectType: operation.subjectType,
         subjectId: operation.subjectId,
         idempotencyKey: operation.idempotencyKey,
-        reconcileUnknownAfterProviderEvidence: true,
+        reconcileUnknownAfterProviderEvidence: {
+          expectedAttempts: operation.attempts,
+        },
       }),
     );
   } catch (error) {
@@ -602,6 +606,7 @@ export async function finishPendingProviderOperations(
       subjectId: true,
       idempotencyKey: true,
       status: true,
+      attempts: true,
       requestedAt: true,
     },
     orderBy: [{ updatedAt: "asc" }, { requestedAt: "asc" }],
