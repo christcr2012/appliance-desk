@@ -17,7 +17,11 @@ Read `AGENTS.md`, `docs/designs/README.md`, `docs/designs/TEMPLATE.md`, `docs/de
 amendment and drift check at its top, then sections 1 to 5), `docs/designs/BATCH-C-UPDATE-2026-10-03.md` (binding where it
 disagrees with the old text), `docs/designs/CHANGES-SINCE-DESIGN.md`, `docs/PLAN.md` (Batch C), `docs/OWNER-INPUTS.md`
 (IN-24, IN-26, IN-27), and `docs/prompts/DESIGN-IN-24-PICKUP-BILLING.md` and
-`docs/prompts/DESIGN-BATCH-B-RENEWAL-LIFECYCLE.md` (the two billing designs this work must plug into).
+`docs/prompts/DESIGN-BATCH-B-RENEWAL-LIFECYCLE.md` (the two billing designs this work must plug into). Where that
+renewal prompt says to read `docs/DECISIONS.md`, do not read it end to end: search it for IN-19 through IN-28, "pickup"
+and "renewal", and open only those entries (AGENTS.md's reading rule). Note that the pickup/return billing rules
+themselves (IN-24 customer-caused part, IN-26 return side, IN-27) are already built — see `docs/ARCHITECTURE.md`
+"Pickup and return billing" and `docs/designs/CHANGES-SINCE-DESIGN.md` — so the design must build on them, not redo them.
 
 ## What to produce
 
