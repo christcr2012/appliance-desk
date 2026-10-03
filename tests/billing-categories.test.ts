@@ -4,6 +4,8 @@ const mocks = vi.hoisted(() => ({
   transaction: vi.fn(),
   receiptFindMany: vi.fn(),
   refundFindMany: vi.fn(),
+  depositFindMany: vi.fn(),
+  creditFindMany: vi.fn(),
 }));
 
 vi.mock("@/lib/prisma", () => ({
@@ -13,6 +15,8 @@ vi.mock("@/lib/prisma", () => ({
       return callback({
         receipt: { findMany: mocks.receiptFindMany },
         refund: { findMany: mocks.refundFindMany },
+        deposit: { findMany: mocks.depositFindMany },
+        customerCredit: { findMany: mocks.creditFindMany },
       });
     },
   },
@@ -50,20 +54,24 @@ describe("collectedBetween", () => {
       { amountCents: 1_000, method: "card" },
     ]);
     mocks.refundFindMany.mockResolvedValue([
-      { amountCents: 1_500 },
-      { amountCents: 500 },
+      { id: "refund-cash", amountCents: 1_500 },
+      { id: "refund-credit", amountCents: 500 },
+    ]);
+    mocks.depositFindMany.mockResolvedValue([{ refundedAmountCents: 750 }]);
+    mocks.creditFindMany.mockResolvedValue([
+      { sourceId: "refund-credit" },
     ]);
   });
 
-  it("reports whole receipt cash, refunds, net cash and method totals", async () => {
+  it("reports whole receipt cash minus only cash refunds, including returned deposits", async () => {
     const from = new Date("2026-09-01T06:00:00Z");
     const to = new Date("2026-10-01T06:00:00Z");
     const summary = await collectedBetween(null, from, to);
 
     expect(summary).toEqual({
       grossCents: 13_500,
-      refundedCents: 2_000,
-      netCents: 11_500,
+      refundedCents: 2_250,
+      netCents: 11_250,
       byMethod: { card: 11_000, cash: 2_500 },
     });
     expect(mocks.receiptFindMany).toHaveBeenCalledWith({
@@ -72,11 +80,18 @@ describe("collectedBetween", () => {
     });
     expect(mocks.refundFindMany).toHaveBeenCalledWith({
       where: { createdAt: { gte: from, lt: to } },
-      select: { amountCents: true },
+      select: { id: true, amountCents: true },
+    });
+    expect(mocks.creditFindMany).toHaveBeenCalledWith({
+      where: {
+        sourceType: "REFUND_TO_CREDIT",
+        sourceId: { in: ["refund-cash", "refund-credit"] },
+      },
+      select: { sourceId: true },
     });
   });
 
-  it("scopes both receipts and refunds to one customer when requested", async () => {
+  it("scopes receipts, invoice refunds and deposit refunds to one customer", async () => {
     const from = new Date("2026-09-01T06:00:00Z");
     const to = new Date("2026-10-01T06:00:00Z");
     await collectedBetween("cust-1", from, to);
@@ -89,5 +104,17 @@ describe("collectedBetween", () => {
       invoice: { customerId: "cust-1" },
       createdAt: { gte: from, lt: to },
     });
+    expect(mocks.depositFindMany.mock.calls[0][0].where).toEqual({
+      refundedAt: { gte: from, lt: to },
+      agreement: { customerId: "cust-1" },
+    });
+  });
+
+  it("does not query refund-to-credit provenance when the period has no invoice refunds", async () => {
+    mocks.refundFindMany.mockResolvedValue([]);
+    const from = new Date("2026-09-01T06:00:00Z");
+    const to = new Date("2026-10-01T06:00:00Z");
+    await collectedBetween(null, from, to);
+    expect(mocks.creditFindMany).not.toHaveBeenCalled();
   });
 });
