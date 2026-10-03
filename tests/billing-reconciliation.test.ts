@@ -183,10 +183,11 @@ describe("billing provider reconciliation", () => {
       "op-1",
       { status: "SUCCEEDED", providerObjectId: "sub_123" },
     );
+    expect(mocks.claimProviderOperation).not.toHaveBeenCalled();
     expect(mocks.subscriptionCancel).not.toHaveBeenCalled();
   });
 
-  it("retries an UNKNOWN cancellation once after Stripe proves the subscription is still live", async () => {
+  it("retries an UNKNOWN cancellation under the provider lease after Stripe proves it is still live", async () => {
     mocks.providerFindMany.mockResolvedValue([
       {
         id: "op-1",
@@ -206,15 +207,29 @@ describe("billing provider reconciliation", () => {
       completed: 1,
       stillUnknown: 0,
     });
-    expect(mocks.subscriptionCancel).toHaveBeenCalledWith("sub_123");
+    expect(mocks.claimProviderOperation).toHaveBeenCalledWith(
+      expect.anything(),
+      {
+        kind: "SUBSCRIPTION_CANCEL",
+        subjectType: "RentalAgreement",
+        subjectId: "agr-1",
+        idempotencyKey: "subscription-cancel-agr-1",
+        reconcileUnknownAfterProviderEvidence: true,
+      },
+    );
+    expect(mocks.subscriptionCancel).toHaveBeenCalledWith(
+      "sub_123",
+      undefined,
+      { idempotencyKey: "retry-key" },
+    );
     expect(mocks.completeProviderOperation).toHaveBeenCalledWith(
       expect.anything(),
-      "op-1",
+      "op-retry",
       { status: "SUCCEEDED", providerObjectId: "sub_123" },
     );
   });
 
-  it("keeps an ambiguous retry UNKNOWN when the follow-up cancel also loses its provider outcome", async () => {
+  it("keeps an ambiguous leased cancellation retry UNKNOWN when the provider outcome is lost again", async () => {
     mocks.providerFindMany.mockResolvedValue([
       {
         id: "op-1",
@@ -235,9 +250,14 @@ describe("billing provider reconciliation", () => {
       completed: 0,
       stillUnknown: 1,
     });
+    expect(mocks.subscriptionCancel).toHaveBeenCalledWith(
+      "sub_123",
+      undefined,
+      { idempotencyKey: "retry-key" },
+    );
     expect(mocks.completeProviderOperation).toHaveBeenCalledWith(
       expect.anything(),
-      "op-1",
+      "op-retry",
       { status: "UNKNOWN", error: retryError },
     );
     expect(mocks.providerUpdate).toHaveBeenCalledWith({
