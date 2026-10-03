@@ -30,7 +30,7 @@ export const SETTINGS_FIELDS = {
     "lateFeeGraceDays",
     "lateFeeFlatDollars",
     "lateFeePercent",
-    "taxRatePermille",
+    "taxRatePercent",
     "taxRateConfirmed",
     "sixMonthPrepaySetDollars",
     "sixMonthPrepaySingleDollars",
