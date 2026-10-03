@@ -552,6 +552,16 @@ async function reconcileOne(operation: RecoverableOperation): Promise<boolean> {
   }
 }
 
+async function rotateUnresolvedProviderOperation(operationId: string): Promise<void> {
+  // Preserve requestedAt because provider evidence lookback is anchored to the
+  // original provider request. Touch only updatedAt so an unresolved row moves
+  // behind work that has not yet received a reconciliation attempt.
+  await prisma.providerOperation.update({
+    where: { id: operationId },
+    data: { updatedAt: new Date() },
+  });
+}
+
 export async function finishPendingProviderOperations(
   limit = 50,
 ): Promise<{ completed: number; stillUnknown: number }> {
@@ -573,7 +583,7 @@ export async function finishPendingProviderOperations(
       status: true,
       requestedAt: true,
     },
-    orderBy: { requestedAt: "asc" },
+    orderBy: [{ updatedAt: "asc" }, { requestedAt: "asc" }],
     take: Math.max(1, Math.min(limit, 200)),
   });
 
@@ -581,14 +591,19 @@ export async function finishPendingProviderOperations(
   let stillUnknown = 0;
   for (const operation of operations) {
     try {
-      if (await reconcileOne(operation)) completed += 1;
-      else stillUnknown += 1;
+      if (await reconcileOne(operation)) {
+        completed += 1;
+      } else {
+        stillUnknown += 1;
+        await rotateUnresolvedProviderOperation(operation.id);
+      }
     } catch (error) {
       console.error(
         `[billing-reconcile] Could not reconcile ${operation.kind} ${operation.id}`,
         error instanceof Error ? error.message : "unknown error",
       );
       stillUnknown += 1;
+      await rotateUnresolvedProviderOperation(operation.id);
     }
   }
   return { completed, stillUnknown };
@@ -738,7 +753,16 @@ export async function detectDrift(limit = 200): Promise<DriftRow[]> {
   for (const customer of customers) {
     if (!customer.stripeCustomerId || rows.length >= bounded) break;
     try {
-      await stripe.customers.retrieve(customer.stripeCustomerId);
+      const remoteCustomer = await stripe.customers.retrieve(customer.stripeCustomerId);
+      if ("deleted" in remoteCustomer && remoteCustomer.deleted) {
+        rows.push({
+          kind: "STRIPE_CUSTOMER_MISSING",
+          subjectType: "Customer",
+          subjectId: customer.id,
+          detail: `Local customer points to deleted Stripe customer ${customer.stripeCustomerId}.`,
+          since: customer.updatedAt,
+        });
+      }
     } catch (error) {
       if (!missingResource(error)) throw error;
       rows.push({
