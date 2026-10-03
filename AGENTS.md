@@ -333,7 +333,7 @@ Before you stop — whether the batch is finished or not:
 1. Update `docs/STATUS.md`: what merged, what is in progress (branch, PR,
    head SHA, CI run), what is blocked and why, what is next.
 2. If you made a design decision, add a dated entry to `docs/DECISIONS.md`.
-3. If you found something out of scope, add it to `docs/ROADMAP.md`.
+3. If you found something out of scope, add it to `docs/ROADMAP.md`. If your work added a switch, key, provider account or owner decision needed before real customers, add a line to `docs/GO-LIVE-CHECKLIST.md`.
 4. Report to Chris in plain English: what changed, how it was verified, what
    he needs to decide (with `docs/OWNER-INPUTS.md` IDs), and what is next.
 
