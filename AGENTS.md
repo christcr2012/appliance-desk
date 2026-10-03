@@ -104,13 +104,36 @@ resulting behavior are verified.
   not re-decide, does not add tables/columns/libraries/patterns the design
   does not name, and stops to ask where the design is silent. No design,
   or a DRAFT one → stop and report; do not start.
-- **One agent, one batch at a time, in manageable PRs.** Chris (2026-10-03)
-  replaced the earlier "one large PR per batch" rule: do work in manageable
-  chunks, and build each PR on top of the previous one so nothing waits on a
-  merge (see `docs/DECISIONS.md`, 2026-10-03). Every PR still costs a full CI
-  run, so do not open a PR per card, page, cron, migration, test repair, or
-  documentation sentence: a PR is a coherent chunk with its own tests. Ordered
-  commits inside the PR keep it reviewable.
+- **One agent, one batch at a time, one stack per batch.** (Chris, 2026-10-03,
+  replacing every earlier PR-size rule.) Each batch is built as a *stack* of
+  PRs: an ordered chain where each PR is based on the branch below it and the
+  bottom one targets `main`. Use GitHub's stacked-PR feature (`gh stack`:
+  `init`, `add`, `submit`, `sync`) when the sandbox can install it; if it
+  cannot (network policy), build the same chain by hand — branch from the
+  previous PR's branch, set that branch as the PR base — and retarget as each
+  predecessor merges. A PR is a **reasonably sized cluster that makes sense
+  together** (for example "ledger statements and reports", "tax-rate
+  precision move", "signing-page terms and consent"): not one item per PR, and
+  not a whole batch in one PR. Size it so the work in it can be done properly,
+  with its tests and docs, and reviewed in one sitting.
+- **CI cost and time are no longer a constraint** (Chris, 2026-10-03). The
+  "CI speed budget" section below is historical; do not trade away test
+  coverage or push-once discipline for speed. Still verify locally before
+  pushing, because a red run is noise for Chris.
+- **Use the web.** Chris encourages (and expects) you to search the web for
+  current documentation, best practices and modern solutions whenever that
+  beats your training data (framework versions, Stripe, Colorado/tax rules,
+  accessibility, security). Cite what you used in the PR.
+- **Owner-configurable by default.** Chris wants to change almost everything
+  from his owner account. Anything a business might change someday — prices,
+  fees, rates, notice periods, wording, thresholds, schedules, limits, labels,
+  toggles — must be a stored setting editable in the app (with a reasonable
+  starting value), never a hard-coded constant. If something truly must stay
+  in code, say why in the PR.
+- **Do not switch models; ask for a stronger one in writing.** If a task needs
+  a heavier-reasoning model (for example writing an approved batch design),
+  stop on that task, and give Chris a complete, self-contained prompt to run
+  in a separate chat, then continue with other work.
 - **Model:** whichever model Chris has selected does the work. Older documents
   that assign cards to "Luna" or "Sol" or schedule model switches are
   historical. Do not stop to ask for a model switch.

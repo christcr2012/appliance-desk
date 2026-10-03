@@ -20,6 +20,18 @@ editing the earlier decision away.
 
 ---
 
+### 2026-10-03 (later) — One stack per batch, clustered PRs, CI budget lifted, owner-configurable by default
+
+Chris replaced the earlier PR-size rules: each batch is one stack of
+reasonably sized, coherent PRs (not single-item PRs, not one giant PR); CI
+time/cost is no longer a constraint; agents should use the web for current
+practice; and anything a business might change must be an owner-editable
+setting. Model switches are never done by the agent: it hands Chris a prompt
+for a separate chat instead. `gh stack` could not be installed in the agent
+sandbox (403 on the extension download), so stacks are chained by hand there.
+Reason: fewer, better-checked PRs with real review, and a system Chris can
+run himself. Recorded in `AGENTS.md`.
+
 ### 2026-10-03 — Stacked PRs and smaller chunks, instead of one PR per batch
 
 Chris asked (2026-10-03) for manageable chunks of work rather than one large PR
