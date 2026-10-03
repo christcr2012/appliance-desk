@@ -209,6 +209,30 @@ bonus on or off. Changing any of these numbers only affects agreements
 signed after the change — it never alters an agreement a customer has
 already signed.
 
+## Setting the rules for ending and renewing rentals
+
+Go to **Settings → Ending and renewing rentals**. Everything here is typed in
+the screen. None of it is built into the software, so you can change it any
+time and the next quote follows what you saved.
+
+- **Ending early:** a flat fee, a percent of the rent still owed (or both; the
+  customer pays whichever is larger), an optional highest fee, how many days of
+  notice the customer must give, and what happens to months a customer prepaid
+  but did not use (refund, account credit, or keep). Enter **0** if there should
+  be no fee; leaving a box empty means "not decided yet".
+- **Automatic renewal:** how many days before the term ends the customer is
+  told, and the wording they agree to.
+- The box at the top of the screen tells you in plain words whether each rule is
+  switched on yet and exactly what is still missing. A rule stays off until
+  everything it needs is filled in.
+- Changing the wording of the renewal terms starts a new version. Customers who
+  already agreed keep the wording they agreed to.
+- A 6- or 12-month term starts when the appliances are delivered (when billing
+  starts), not when the agreement is signed.
+
+These screens only save the rules for now. The screens that show a customer a
+quote for ending early, or let you renew a rental, come in a later step.
+
 ## Adding a new appliance category
 
 Also in **Settings** — add or retire an appliance type (e.g. a new

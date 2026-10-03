@@ -12,7 +12,7 @@ Last updated: 2026-10-03 · `main` = `9b5860b` (this file was stale from 2026-10
 | Batch | Status | PR / branch | Evidence | Notes |
 |---|---|---|---|---|
 | A — Critical integrity & platform safety | **MERGED** | #136 (2026-10-02) | Full CI green; real-Postgres concurrency and adversarial auth tests | Audit registers stay open; nothing in A claims a B–F item. |
-| B — Billing, provider reconciliation & financial ledger | **IN PROGRESS** | Merged: #141 (receipts), #145 (B1 ledger core), #146 (B2 reconciliation). Open: `ai/claude/batch-b-term-and-tax` (WU-B10) | Code and tests exist for WU-B1–B9 (provider ops, Stripe customer/subscription idempotency, receipts and allocations, referrals, refunds, credits, late fees, reconciliation page and cron). WU-B10 pieces in the open PR with local full-suite evidence. | Remaining: WU-B10 follow-ups (below), WU-B11 reports/statements on the ledger, WU-B12 docs for the ledger tables and rules, acceptance ledger. Blocked on owner: IN-20 (when a fixed term starts), IN-19 (termination/renewal policy values, blocks Batch D screens only). |
+| B — Billing, provider reconciliation & financial ledger | **IN PROGRESS** | Merged: #141 (receipts), #145 (B1 ledger core), #146 (B2 reconciliation). Open, stacked: #147 `ai/claude/batch-b-term-and-tax` (WU-B10), then `ai/claude/batch-b-term-start-and-policy-settings` | Code and tests exist for WU-B1–B9 (provider ops, Stripe customer/subscription idempotency, receipts and allocations, referrals, refunds, credits, late fees, reconciliation page and cron). WU-B10 pieces in the open PR with local full-suite evidence. | Remaining: WU-B10 follow-ups (below), WU-B11 reports/statements on the ledger, WU-B12 docs for the ledger tables and rules, acceptance ledger. Owner to enter: IN-19 policy values (in the app). |
 | C — Rental-to-service operations, custody, inventory & purchasing | NOT STARTED | — | — | Depends on B's ledger primitives where money is touched. |
 | D — Owner/customer control plane, website, evidence & privacy | NOT STARTED | — | — | Uses B contracts for renewal/cancel UI. |
 | E — Communications, reporting, growth, branding & accessibility | NOT STARTED | — | — | Google (O32) only if GW prerequisites are ready; otherwise one later PR. |
@@ -46,12 +46,19 @@ deny-by-default (#131), CI parallelized and sharded (#136, #137).
 - **Done in the WU-B10 PR:** Colorado billing-period helper with DST tests,
   early-termination quote/request, renewal draft, auto-renew consent, tax
   rounding helpers (thousandth-percent), policy fields exposed in settings.
-- **Not done, honestly:** (1) nothing sets a fixed-term agreement's `endDate`,
-  so the WU-B4 Stripe stop date is inert and termination/renewal refuse to run
-  on real agreements until IN-20 is answered; (2) tax rate storage, settings
-  screen, agreement snapshot and Stripe tax-rate creation still use tenths of a
-  percent (IN-17 follow-up); (3) renewal drafts carry no appliance assignments
-  and nothing acts on auto-renew consent yet; (4) WU-B11 and WU-B12.
+- **Done in the stacked term-start PR (`ai/claude/batch-b-term-start-and-policy-settings`):**
+  fixed terms start at delivery (end date saved at first billing attempt, sent
+  to Stripe as `cancel_at`), and Settings → "Ending and renewing rentals" lets
+  the owner enter every termination/renewal value in the app.
+- **Not done, honestly:** (1) Chris has not entered the policy values yet, so
+  early-termination quotes and auto-renew are unavailable until he does (IN-19);
+  (2) tax rate storage, settings screen, agreement snapshot and Stripe tax-rate
+  creation still use tenths of a percent (IN-17 follow-up); (3) renewal drafts
+  carry no appliance assignments and nothing acts on auto-renew consent yet;
+  (4) no customer- or owner-facing screen shows a termination quote or starts a
+  renewal yet (Batch D); (5) WU-B11 and WU-B12; (6) the new settings tab's
+  accessibility scan and form were verified locally by unit/component tests, but
+  the browser test of it runs first in CI.
 
 ## Open items carried across batches
 
@@ -77,6 +84,8 @@ See `docs/OWNER-INPUTS.md` for the full register. The ones Batch B needs:
   decision).
 
 ## Session log (last two batches only)
+
+- **2026-10-03 (Claude, later)** — Chris answered IN-20 (terms start at delivery) and said policy values must be settable in the app. Built both on a branch stacked on #147; local full-suite evidence in the PR.
 
 - **2026-10-03 (Claude)** — Reviewed repo state (STATUS was behind: B1/B2 had merged). Built WU-B10 mechanism on `ai/claude/batch-b-term-and-tax`: tests ran locally against a throwaway Postgres. Found the fixed-term end-date gap (IN-20). Chris asked for stacked PRs in smaller chunks (see DECISIONS).
 

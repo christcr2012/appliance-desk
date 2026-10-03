@@ -3,6 +3,7 @@ import {
   billingPeriodFor,
   businessDateEnd,
   businessEndOfDay,
+  fixedTermEndDate,
   businessDateKey,
   businessDayBounds,
   businessMonthBounds,
@@ -172,5 +173,29 @@ describe("businessEndOfDay", () => {
     expect(businessEndOfDay(new Date("2026-11-01T12:00:00Z")).toISOString()).toBe(
       "2026-11-02T06:59:59.000Z",
     );
+  });
+});
+
+describe("fixedTermEndDate (a term starts at delivery)", () => {
+  it.each([
+    ["2026-11-08T19:00:00Z", 12, "2027-11-08T06:59:59.000Z"],
+    ["2026-11-08T19:00:00Z", 6, "2027-05-08T05:59:59.000Z"],
+    // starts the 1st: the term ends on the last day of the month before
+    ["2026-10-01T18:00:00Z", 12, "2027-10-01T05:59:59.000Z"],
+    // 31st anchors clamp: six months from Jan 31 ends before Jul 31
+    ["2026-01-31T19:00:00Z", 6, "2026-07-31T05:59:59.000Z"],
+  ])("start %s for %i months ends %s", (start, months, end) => {
+    expect(fixedTermEndDate(new Date(start), months).toISOString()).toBe(end);
+  });
+
+  it("is the last second before the first day of the next term, so terms never overlap or leave a gap", () => {
+    const start = new Date("2026-03-08T19:00:00Z");
+    const end = fixedTermEndDate(start, 12);
+    expect(end.getTime() + 1000).toBe(billingPeriodFor(start, 12).start.getTime());
+  });
+
+  it("rejects a zero, negative or fractional term", () => {
+    expect(() => fixedTermEndDate(new Date(), 0)).toThrow();
+    expect(() => fixedTermEndDate(new Date(), 2.5)).toThrow();
   });
 });

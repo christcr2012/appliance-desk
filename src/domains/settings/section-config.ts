@@ -3,6 +3,7 @@ export const SETTINGS_SECTIONS = [
   { id: "service-area", label: "Service area" },
   { id: "products", label: "Products and pricing" },
   { id: "policies", label: "Rental policies" },
+  { id: "terms", label: "Ending and renewing rentals" },
   { id: "website", label: "Website" },
   { id: "notifications", label: "Notifications" },
   { id: "staff", label: "Staff" },

@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
@@ -9,6 +8,21 @@ import {
   businessEndOfDay,
 } from "@/lib/business-date";
 import { lockRentalAgreementInTx } from "./index";
+import {
+  autoRenewPolicyReady,
+  loadTerminationPolicy,
+  type TerminationPolicy,
+  type UnusedTermTreatment,
+} from "./term-policy";
+
+export {
+  autoRenewPolicyReady,
+  loadTerminationPolicy,
+  type AutoRenewPolicySettings,
+  type TerminationPolicy,
+  type TerminationPolicySettings,
+  type UnusedTermTreatment,
+} from "./term-policy";
 
 /**
  * Fixed-term mechanics: early termination quotes, renewal drafts and
@@ -21,79 +35,6 @@ import { lockRentalAgreementInTx } from "./index";
 const POLICY_ROLES = ["OWNER", "ADMIN"] as const;
 const OPEN_INVOICE_STATUSES = ["OPEN", "PARTIALLY_PAID", "DELINQUENT"] as const;
 const MAX_PERIODS = 600;
-
-export type UnusedTermTreatment = "REFUND" | "CREDIT" | "RETAIN";
-
-export type TerminationPolicy = {
-  feeCents: number | null;
-  feePercent: number | null;
-  feeCapCents: number | null;
-  noticeDays: number;
-  unusedTerm: UnusedTermTreatment;
-  /** Fingerprint of every policy value and the owner's terms text; changes whenever any of them changes. */
-  version: string;
-};
-
-export type TerminationPolicySettings = {
-  earlyTerminationFeeCents?: number | null;
-  earlyTerminationFeePercent?: number | null;
-  earlyTerminationFeeCapCents?: number | null;
-  earlyTerminationNoticeDays?: number | null;
-  unusedTermTreatment?: string | null;
-  terminationTermsText?: string | null;
-};
-
-export type AutoRenewPolicySettings = {
-  autoRenewNoticeDays?: number | null;
-  autoRenewTermsVersion?: string | null;
-  renewalTermsText?: string | null;
-};
-
-function isNonNegativeInt(value: unknown): value is number {
-  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
-}
-
-/**
- * Returns the termination policy, or null when it is not fully set or any
- * value is invalid. Required: notice days, unused-term treatment, and at least
- * one fee value (0 is a valid, deliberate "no fee"; null is "not decided").
- */
-export function loadTerminationPolicy(
-  settings: TerminationPolicySettings,
-): TerminationPolicy | null {
-  const {
-    earlyTerminationFeeCents: feeCents = null,
-    earlyTerminationFeePercent: feePercent = null,
-    earlyTerminationFeeCapCents: feeCapCents = null,
-    earlyTerminationNoticeDays: noticeDays = null,
-    unusedTermTreatment: unusedTerm = null,
-    terminationTermsText: termsText = null,
-  } = settings;
-
-  if (!isNonNegativeInt(noticeDays)) return null;
-  if (unusedTerm !== "REFUND" && unusedTerm !== "CREDIT" && unusedTerm !== "RETAIN") return null;
-  if (feeCents === null && feePercent === null) return null;
-  if (feeCents !== null && !isNonNegativeInt(feeCents)) return null;
-  if (feePercent !== null && (!isNonNegativeInt(feePercent) || feePercent > 100)) return null;
-  if (feeCapCents !== null && !isNonNegativeInt(feeCapCents)) return null;
-
-  const version = createHash("sha256")
-    .update(
-      JSON.stringify([feeCents, feePercent, feeCapCents, noticeDays, unusedTerm, termsText ?? ""]),
-    )
-    .digest("hex")
-    .slice(0, 12);
-  return { feeCents, feePercent, feeCapCents, noticeDays, unusedTerm, version };
-}
-
-/** Auto-renew needs a notice period, a published terms version and the terms text. */
-export function autoRenewPolicyReady(settings: AutoRenewPolicySettings): boolean {
-  return (
-    isNonNegativeInt(settings.autoRenewNoticeDays ?? null) &&
-    Boolean(settings.autoRenewTermsVersion?.trim()) &&
-    Boolean(settings.renewalTermsText?.trim())
-  );
-}
 
 /** What a quote needs to know about an agreement. Built from the database by `loadTermAgreement`. */
 export type TermAgreement = {

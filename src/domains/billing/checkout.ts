@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getStripeClient } from "@/lib/stripe";
-import { businessDateEnd, businessDateKey } from "@/lib/business-date";
+import { businessDateEnd, businessDateKey, fixedTermEndDate } from "@/lib/business-date";
 import {
   RetryLater,
   claimProviderOperation,
@@ -401,6 +401,22 @@ export async function startRecurringBillingForAgreement(agreementId: string): Pr
         },
       });
 
+      // A fixed term starts at delivery (owner decision IN-20): record its end
+      // date the first time billing is attempted after delivery, under this
+      // lock, and keep it on retries. Stripe's cancel_at below is derived from
+      // this stored date, so a retry always sends the same stop date.
+      let endDate = agreement.endDate;
+      if (agreement.termMonths && !endDate) {
+        endDate = fixedTermEndDate(
+          agreement.billingStartedAt ?? new Date(),
+          agreement.termMonths,
+        );
+        await tx.rentalAgreement.update({
+          where: { id: agreementId },
+          data: { endDate },
+        });
+      }
+
       if (agreement.paidInFullInAdvance) {
         if (agreement.billingBlockedReason) {
           await tx.rentalAgreement.update({
@@ -452,7 +468,7 @@ export async function startRecurringBillingForAgreement(agreementId: string): Pr
         agreement: {
           id: agreement.id,
           termMonths: agreement.termMonths,
-          endDate: agreement.endDate,
+          endDate,
           taxRatePermille: agreement.taxRatePermille,
           customer: {
             stripeCustomerId: agreement.customer.stripeCustomerId,

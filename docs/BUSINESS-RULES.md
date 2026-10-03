@@ -859,9 +859,16 @@ is never replaced by a default.
   where remaining rent is the monthly total × the whole billing periods from
   the effective date to the end of the term. Percent amounts round half up to
   the cent. Zero whole months remaining means a zero fee.
-- **Termination policy** lives in `BusinessSettings` (flat fee, percent, cap,
-  notice days, unused-term treatment REFUND / CREDIT / RETAIN, terms text). It
-  is "set" only when notice days, the treatment and at least one fee value are
+- **A fixed term starts at delivery** (owner decision IN-20, 2026-10-03). The
+  end date is saved the first time billing is started after delivery: the last
+  second, Colorado time, of the day before the anniversary that would open the
+  next term (a 12-month term starting Nov 8 ends Nov 7 of the next year). The
+  same date is sent to Stripe as the automatic stop date, and a retry never
+  changes it. Prepaid fixed terms get their end date at delivery too.
+- **Termination policy** is entered by the owner in Settings → Ending and
+  renewing rentals and lives in `BusinessSettings` (flat fee, percent, cap,
+  notice days, unused-term treatment REFUND / CREDIT / RETAIN, terms text);
+  nothing is fixed in code. It is "set" only when notice days, the treatment and at least one fee value are
   present and valid; `0` is a deliberate answer, null is not. Each quote carries
   a policy version (a fingerprint of every value and the terms text) so a
   request made against an older quote is refused.
@@ -875,8 +882,10 @@ is never replaced by a default.
   the day after the current term ends, is allowed once, never charges a deposit
   again, and does not copy appliance assignments (the appliances stay on the
   current agreement until it ends).
-- **Auto-renew** consent is recorded only for the renewal-terms version the owner
-  currently publishes, with a consent record each time it is turned on or off.
+- **Auto-renew** wording and notice days are entered by the owner in the same
+  settings screen; the terms version is generated from them (it changes when the
+  wording or notice days change). Consent is recorded only for the renewal-terms
+  version the owner currently publishes, with a consent record each time it is turned on or off.
   Turning it off never ends the agreement. Nothing yet acts on the consent: no
   job creates the renewal automatically.
 - **Sales tax rounding** (owner decision IN-17): rates are exact to 0.001

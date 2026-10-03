@@ -40,15 +40,18 @@ migration, the settings screen, the agreement snapshot and Stripe tax-rate
 creation) is a separate, later chunk because it touches money display and
 Stripe; nothing is half-migrated in the meantime.
 
-### 2026-10-03 — Fixed-term end date is not set anywhere; asked rather than guessed
+### 2026-10-03 — Fixed terms start at delivery; policy values are entered in the app
 
-Nothing in the code sets `RentalAgreement.endDate` when a fixed-term agreement is
-signed or billing starts (it is only written when an agreement ends). So the
-Stripe `cancel_at` added in WU-B4 never takes effect, and early termination and
-renewal refuse to run without an end date. Whether a 12-month term runs from
-signing or from the first billing date changes how many payments the customer
-makes, and the approved design is silent. Recorded as owner input IN-20; not
-decided by an agent.
+Chris answered IN-20: a 6- or 12-month term starts at delivery (when billing
+starts). Before this, nothing set `RentalAgreement.endDate` for a fixed term, so
+the Stripe `cancel_at` from WU-B4 never took effect. `startRecurringBillingForAgreement`
+now saves the end date under its row lock the first time billing is attempted
+after delivery and never overwrites it, so a retry sends Stripe the same stop
+date. Chris also answered IN-19's "where do these values live": they are entered
+by the owner in Settings → Ending and renewing rentals (no values in code), with
+blank meaning "not decided yet". The auto-renew terms version is generated from
+the wording and notice days rather than typed, so a wording change cannot
+silently reuse an old version. The values themselves are still for Chris to enter.
 
 ### 2026-10-03 — Retire the first decisions log and start a fresh current log
 
