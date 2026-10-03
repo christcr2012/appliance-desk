@@ -4,6 +4,7 @@ const transaction = vi.fn();
 const receiptFindMany = vi.fn();
 const refundFindMany = vi.fn();
 const depositFindMany = vi.fn();
+const creditFindMany = vi.fn();
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
@@ -43,6 +44,18 @@ function receipt(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function refund(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "refund-1",
+    amountCents: 2000,
+    reason: "GOODWILL",
+    notes: "Late delivery",
+    createdAt: new Date("2026-05-05"),
+    invoice: { invoiceNumber: 102, customer: customerRef() },
+    ...overrides,
+  };
+}
+
 describe("getAccountingTransactions", () => {
   beforeEach(() => {
     transaction.mockReset().mockImplementation((callback) =>
@@ -50,11 +63,13 @@ describe("getAccountingTransactions", () => {
         receipt: { findMany: (...args: unknown[]) => receiptFindMany(...args) },
         refund: { findMany: (...args: unknown[]) => refundFindMany(...args) },
         deposit: { findMany: (...args: unknown[]) => depositFindMany(...args) },
+        customerCredit: { findMany: (...args: unknown[]) => creditFindMany(...args) },
       }),
     );
     receiptFindMany.mockReset().mockResolvedValue([]);
     refundFindMany.mockReset().mockResolvedValue([]);
     depositFindMany.mockReset().mockResolvedValue([]);
+    creditFindMany.mockReset().mockResolvedValue([]);
   });
 
   it("exports receipts as the incoming-cash source of truth with receipt identity", async () => {
@@ -108,16 +123,8 @@ describe("getAccountingTransactions", () => {
     expect(rows[0]?.receivedOn).toEqual(new Date("2026-04-15T06:00:00Z"));
   });
 
-  it("includes a refund as a negative amount with an explicit source", async () => {
-    refundFindMany.mockResolvedValue([
-      {
-        amountCents: 2000,
-        reason: "GOODWILL",
-        notes: "Late delivery",
-        createdAt: new Date("2026-05-05"),
-        invoice: { invoiceNumber: 102, customer: customerRef() },
-      },
-    ]);
+  it("includes a cash refund as a negative amount with an explicit source", async () => {
+    refundFindMany.mockResolvedValue([refund()]);
     const rows = await getAccountingTransactions();
     expect(rows[0]).toMatchObject({
       type: "Refund",
@@ -127,6 +134,15 @@ describe("getAccountingTransactions", () => {
       methodOrReason: "GOODWILL",
       notes: "Late delivery",
     });
+  });
+
+  it("does not export a refund converted to account credit as cash leaving the business", async () => {
+    refundFindMany.mockResolvedValue([
+      refund({ id: "refund-credit", amountCents: 2500 }),
+    ]);
+    creditFindMany.mockResolvedValue([{ sourceId: "refund-credit" }]);
+    const rows = await getAccountingTransactions();
+    expect(rows).toEqual([]);
   });
 
   it("exports only the negative cash movement for a refunded deposit", async () => {
@@ -149,18 +165,18 @@ describe("getAccountingTransactions", () => {
     });
   });
 
-  it("reconciles incoming receipt and both refund kinds without counting deposit liability twice", async () => {
+  it("reconciles incoming receipt and both cash refund kinds without counting deposit liability twice", async () => {
     receiptFindMany.mockResolvedValue([
       receipt({ amountCents: 6000, payments: [{ invoice: { invoiceNumber: 1 } }] }),
     ]);
     refundFindMany.mockResolvedValue([
-      {
+      refund({
+        id: "refund-cash",
         amountCents: 2000,
         reason: "OTHER",
         notes: null,
-        createdAt: new Date("2026-05-05"),
         invoice: { invoiceNumber: 1, customer: customerRef() },
-      },
+      }),
     ]);
     depositFindMany.mockResolvedValue([
       {
@@ -187,7 +203,8 @@ describe("getAccountingTransactions", () => {
       }),
     ]);
     refundFindMany.mockResolvedValue([
-      {
+      refund({
+        id: "refund-old",
         amountCents: 1000,
         reason: "OVERPAYMENT",
         notes: null,
@@ -196,7 +213,7 @@ describe("getAccountingTransactions", () => {
           invoiceNumber: 2,
           customer: customerRef({ name: "Refund customer" }),
         },
-      },
+      }),
     ]);
     const rows = await getAccountingTransactions();
     expect(rows.map((row) => row.customerName)).toEqual([
