@@ -2,6 +2,14 @@ import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 import path from "node:path";
 
+const SHARED_SETTINGS_TESTS = [
+  "tests/agreements-term-integration.test.ts",
+  "tests/settings-integration.test.ts",
+  "tests/settings-terms-policy-integration.test.ts",
+  "tests/tax-rate-columns-sync-integration.test.ts",
+  "tests/tax-rate-storage.test.ts",
+];
+
 export default defineConfig({
   plugins: [react()],
   test: {
@@ -17,8 +25,22 @@ export default defineConfig({
           name: "node",
           environment: "node",
           include: ["tests/**/*.test.ts"],
-          exclude: ["tests/theme.test.ts"],
+          exclude: ["tests/theme.test.ts", ...SHARED_SETTINGS_TESTS],
           pool: "forks",
+        },
+      },
+      {
+        // These real-database tests all rewrite the ONE business-settings row
+        // (policy, tax rate), so they must not run at the same time or they
+        // overwrite each other's values. Which runner a file lands on in CI
+        // changes whenever tests are added, so this is enforced here, not by
+        // luck. Add a new test to this list if it writes that row.
+        test: {
+          name: "node-shared-settings",
+          environment: "node",
+          include: SHARED_SETTINGS_TESTS,
+          pool: "forks",
+          fileParallelism: false,
         },
       },
       {

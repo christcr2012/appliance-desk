@@ -399,6 +399,7 @@ Wall-clock for a full run is the slowest job (browser shards): fixed setup of ro
 3. **Reuse saved sessions.** `e2e/global-setup.ts` logs in once per role; tests use `test.use({ storageState })`.
 4. **Build cache and Playwright cache** are restored per run; keep `package-lock.json` changes deliberate because they invalidate both.
 5. **Artifacts** (the Playwright report) are uploaded only when a shard fails, kept 3 days.
+6. **Tests that write the one business-settings row** (policy, tax rate) go in `SHARED_SETTINGS_TESTS` in `vitest.config.mts`, which runs them one at a time. They share a single database row, and which runner a file lands on changes whenever tests are added, so without this they randomly overwrite each other (seen on #153, 2026-10-03).
 
 ### If a job gets slow
 
