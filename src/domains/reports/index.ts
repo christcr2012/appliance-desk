@@ -23,10 +23,12 @@ export type EarningsReport = {
 
 /**
  * One ledger-basis reconciliation row per agreement that has started billing.
- * Expected charges are the agreement's invoices recorded by `asOf`. Net
- * collections are successful Receipt allocations to those invoices minus
- * recorded Refunds by `asOf`. Unallocated overpayment remains real customer
- * cash but is not attributed to an agreement until it is allocated.
+ * Expected charges are the agreement's invoices recorded by `asOf`. Net cash
+ * attributed to those invoices is successful Receipt allocations minus only
+ * refunds that actually returned money. Refund-to-credit decisions are not
+ * cash outflows and therefore do not reduce net collected here. Unallocated
+ * overpayment remains real customer cash but is not attributed to an agreement
+ * until it is allocated.
  */
 export async function getEarningsReport(asOf: Date = new Date()): Promise<EarningsReport> {
   const agreements = await prisma.rentalAgreement.findMany({
@@ -34,7 +36,14 @@ export async function getEarningsReport(asOf: Date = new Date()): Promise<Earnin
     select: {
       id: true,
       customer: {
-        select: { id: true, user: { select: { name: true, email: true } } },
+        select: {
+          id: true,
+          user: { select: { name: true, email: true } },
+          credits: {
+            where: { sourceType: "REFUND_TO_CREDIT" },
+            select: { sourceId: true },
+          },
+        },
       },
       invoices: {
         where: { createdAt: { lte: asOf } },
@@ -50,7 +59,7 @@ export async function getEarningsReport(asOf: Date = new Date()): Promise<Earnin
           },
           refunds: {
             where: { createdAt: { lte: asOf } },
-            select: { amountCents: true },
+            select: { id: true, amountCents: true },
           },
         },
       },
@@ -58,6 +67,11 @@ export async function getEarningsReport(asOf: Date = new Date()): Promise<Earnin
   });
 
   const rows = agreements.map((agreement) => {
+    const refundToCreditIds = new Set(
+      agreement.customer.credits.flatMap((credit) =>
+        credit.sourceId ? [credit.sourceId] : [],
+      ),
+    );
     const expectedChargesCents = agreement.invoices.reduce(
       (sum, invoice) => sum + invoice.amountDueCents,
       0,
@@ -69,7 +83,12 @@ export async function getEarningsReport(asOf: Date = new Date()): Promise<Earnin
     );
     const refundedCents = agreement.invoices.reduce(
       (sum, invoice) =>
-        sum + invoice.refunds.reduce((refundSum, refund) => refundSum + refund.amountCents, 0),
+        sum +
+        invoice.refunds.reduce(
+          (refundSum, refund) =>
+            refundSum + (refundToCreditIds.has(refund.id) ? 0 : refund.amountCents),
+          0,
+        ),
       0,
     );
     const earnings = computeAgreementEarnings({
