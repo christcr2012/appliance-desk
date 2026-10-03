@@ -6,6 +6,14 @@ tells you what to re-verify because B lands first. Scope and acceptance:
 `docs/PLAN.md` → Batch C. Pattern reference for every transactional write:
 `docs/designs/BATCH-B.md` D2 (lock → claim → act) and `assertActiveTeamActor`.
 
+> **Drift check, 2026-10-03 (after Batch B completion work, before Batch C code).**
+> Checked every row of section 0 against the code on the Batch B stack.
+> - **A2, A3, A4, A5, A6, A7, A8, A9 still match** (job completion still uses `updateMany where status` inside a transaction and starts billing after commit; `applyJobCompletionToAppliances` still skips silently on `moved.count !== 1`; `startSwapForAppliance` still moves the assignment and both units at staging time; asset numbers still found by a loop outside a transaction; part usage still clamps to zero; `Job` still has no assignee/duration/version; `ApplianceInspection` and `MaintenanceRequest` unchanged).
+> - **A10 still matches**: `swapReplacementIdsFor` in `src/domains/desk-access/index.ts` still decides STAFF swap authority from audit entries.
+> - **A1**: `docs/STATUS.md` says Batch C is next once the Batch B completion stack merges.
+> - **Moved or new since the design (small, amended here):** new agreement status `SCHEDULED` (a signed renewal waiting to start) is not in force, so C4 job-scope checks and any "active agreement" test must treat it like not-active; `closeAgreement(userId | null, ...)` can now run with no staff member (audit `userId` null), so WU-C4/C5 code that calls it must not assume a user; the new exception `EARLY_ENDING_NOT_DONE` and the notice exception `NOTICE_WAITING` are on Today (add nothing, but do not break their tests); all customer-addressed email must use `sendCustomerEmail` (owner switch, off by default).
+> - **Decision-level conflict, work on it is blocked until a stronger model amends this design: IN-24 (billing stops at pickup).** The design has no rule for it, and the code works the opposite way today. `closeAgreement` (used by `endAgreement`, `cancelAgreement` and the nightly early-ending run) cancels the Stripe subscription and releases the appliances to `AWAITING_PICKUP` at the moment the agreement is ended, which is before the pickup job exists or is done. The owner's rule is that billing ends when the customer's appliance is actually picked up, that a pickup later than the agreed end date is free for the extra days when the company is at fault, and that a customer-caused delay is billed (by day or whole month, still open with Chris). That needs a money rule, a new job record of who caused the delay, and a change to when an agreement ends. The prompt for it is `docs/prompts/DESIGN-IN-24-PICKUP-BILLING.md`. Everything else in Batch C does not depend on it.
+
 ## 0. Verify before starting
 
 | # | Assumption | Check |
