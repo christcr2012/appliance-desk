@@ -131,6 +131,19 @@ export function billingPeriodFor(
   };
 }
 
+/**
+ * Last second of a fixed term that starts at `termStart` (owner decision
+ * IN-20, 2026-10-03: a term starts at delivery, when billing starts). A
+ * 12-month term starting Nov 8 ends 23:59:59 Colorado time on Nov 7 of the
+ * next year: the day before the anniversary that would open month 13.
+ */
+export function fixedTermEndDate(termStart: Date, termMonths: number): Date {
+  if (!Number.isInteger(termMonths) || termMonths < 1) {
+    throw new Error("A fixed term must be a whole number of months, one or more.");
+  }
+  return new Date(billingPeriodFor(termStart, termMonths).start.getTime() - 1000);
+}
+
 export function addBusinessDays(date: Date, days: number): Date {
   return midnight(addCalendarDays(businessDateKey(date), days));
 }
