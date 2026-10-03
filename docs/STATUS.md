@@ -77,9 +77,11 @@ a termination quote or start a renewal belong to Batch D, which owns those scree
 
 ## Owner inputs currently blocking something
 
-See `docs/OWNER-INPUTS.md` for the full register. Chris answered IN-19, IN-22 and
-IN-23 on 2026-10-03: use best practice, make it editable (IN-19, IN-22), and give
-him options in plain English for IN-23 (done; the screen lets him choose per case).
+See `docs/OWNER-INPUTS.md` for the full register. Chris gave direction on
+2026-10-03: IN-19 use best practice and keep it editable (starting values now
+installed); IN-22 use best practice for a renewal signed in advance (to be built,
+unchecked above); IN-23 per-case choice with a recommended option (screen to be
+built, unchecked above). IN-22 and IN-23 stay "awaiting" until built and shown to him.
 Still waiting on him: IN-21 (wording and approval for sending live customer
 emails; building continues with sending switched off) and IN-17's CPA check of the
 7.375% rate.

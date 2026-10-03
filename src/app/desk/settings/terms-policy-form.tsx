@@ -217,6 +217,7 @@ export function TermsPolicyForm({ defaultValues }: { defaultValues: TermsPolicyF
         </button>
         <button
           type="button"
+          disabled={saving}
           onClick={() => {
             setValues(RECOMMENDED_TERMS_POLICY);
             setMessage({
@@ -224,7 +225,7 @@ export function TermsPolicyForm({ defaultValues }: { defaultValues: TermsPolicyF
               text: "The recommended starting terms are filled in below. Nothing is saved until you press “Save this section”.",
             });
           }}
-          className="rounded-full border border-gray-400 px-5 py-2.5 text-sm font-semibold text-gray-900"
+          className="rounded-full border border-gray-400 px-5 py-2.5 text-sm font-semibold text-gray-900 disabled:opacity-60"
         >
           Restore recommended starting terms
         </button>

@@ -108,3 +108,17 @@ it("restores the recommended starting terms into the form without saving anythin
   expect(screen.getByRole("status").textContent).toMatch(/Nothing is saved until/);
   expect(m.save).not.toHaveBeenCalled();
 });
+
+it("will not let the restore button change the form while a save is in flight", async () => {
+  let finish: (v: { status: "success" }) => void = () => {};
+  m.save.mockReturnValueOnce(new Promise((resolve) => { finish = resolve; }));
+  render(<TermsPolicyForm defaultValues={termsPolicyDefaults({})} />);
+  fireEvent.click(screen.getByRole("button", { name: "Save this section" }));
+  await waitFor(() =>
+    expect((screen.getByRole("button", { name: "Restore recommended starting terms" }) as HTMLButtonElement).disabled).toBe(true),
+  );
+  finish({ status: "success" });
+  await waitFor(() =>
+    expect((screen.getByRole("button", { name: "Restore recommended starting terms" }) as HTMLButtonElement).disabled).toBe(false),
+  );
+});
