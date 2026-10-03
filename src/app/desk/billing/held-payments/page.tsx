@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { requireRole } from "@/lib/session";
 import { PageHeader } from "@/components/desk/workspace";
-import { listHeldPayments } from "@/domains/billing/held-payments";
+import { listHeldPayments, listHeldRefundsWaitingOnStripe } from "@/domains/billing/held-payments";
 import { formatCents } from "@/domains/pricing";
 import { formatBusinessDate } from "@/lib/business-date";
 import { invoiceStatusLabel } from "@/lib/status-labels";
@@ -11,7 +11,7 @@ export const metadata = { title: "Held payments" };
 
 export default async function HeldPaymentsPage() {
   await requireRole("OWNER", "ADMIN");
-  const held = await listHeldPayments();
+  const [held, waiting] = await Promise.all([listHeldPayments(), listHeldRefundsWaitingOnStripe()]);
 
   return (
     <div>
@@ -56,6 +56,29 @@ export default async function HeldPaymentsPage() {
             />
           ))}
         </ul>
+      )}
+
+      {waiting.length > 0 && (
+        <section className="mt-8" aria-labelledby="waiting-refunds">
+          <h2 id="waiting-refunds" className="text-base font-semibold text-gray-900">
+            Refunds waiting on the card processor
+          </h2>
+          <p className="mt-1 text-sm text-gray-700">
+            You decided to refund these, but the card processor has not confirmed them yet. They are retried
+            automatically. If one stays here for more than a day, check{" "}
+            <Link href="/desk/billing/reconciliation" className="font-medium text-brand hover:underline">
+              billing reconciliation
+            </Link>
+            .
+          </p>
+          <ul className="mt-3 space-y-2 text-sm text-gray-800">
+            {waiting.map((w) => (
+              <li key={w.id} className="rounded-md border border-gray-200 bg-white px-3 py-2">
+                {formatCents(w.amountCents)} to {w.customerName} (invoice #{w.invoiceNumber})
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
     </div>
   );

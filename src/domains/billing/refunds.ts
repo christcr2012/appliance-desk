@@ -36,7 +36,7 @@ async function executeStripeRefund(input: {
   amountCents: number;
   metadata: Record<string, string>;
   onSuccess: (tx: Prisma.TransactionClient, refundId: string) => Promise<void>;
-}): Promise<void> {
+}): Promise<"SUCCEEDED" | "FAILED" | "UNKNOWN"> {
   const stripe = getStripeClient();
   const result = await runProviderCall(() =>
     stripe.refunds.create(
@@ -63,6 +63,7 @@ async function executeStripeRefund(input: {
       error: result.error,
     });
   });
+  return result.ok ? "SUCCEEDED" : result.outcome;
 }
 
 /**
@@ -501,7 +502,7 @@ export async function issueInvoiceRefund(
 export async function refundHeldPayment(
   userId: string,
   paymentId: string,
-): Promise<{ refundId: string; providerOpId: string }> {
+): Promise<{ refundId: string; providerOpId: string; outcome: "SUCCEEDED" | "FAILED" | "UNKNOWN" }> {
   const prepared = await prisma.$transaction(async (tx) => {
     await assertActiveTeamActor(tx, userId, ["OWNER", "ADMIN"]);
     const identity = await tx.payment.findUnique({
@@ -564,9 +565,9 @@ export async function refundHeldPayment(
     };
   });
 
-  if (!prepared.claim) return { refundId: prepared.refundId, providerOpId: "" };
+  if (!prepared.claim) return { refundId: prepared.refundId, providerOpId: "", outcome: "SUCCEEDED" };
 
-  await executeStripeRefund({
+  const outcome = await executeStripeRefund({
     claim: prepared.claim,
     amountCents: prepared.amountCents,
     metadata: { invoiceId: prepared.invoiceId, refundId: prepared.refundId },
@@ -574,5 +575,5 @@ export async function refundHeldPayment(
       await tx.refund.update({ where: { id: prepared.refundId }, data: { stripeRefundId } });
     },
   });
-  return { refundId: prepared.refundId, providerOpId: prepared.claim.providerOpId };
+  return { refundId: prepared.refundId, providerOpId: prepared.claim.providerOpId, outcome };
 }

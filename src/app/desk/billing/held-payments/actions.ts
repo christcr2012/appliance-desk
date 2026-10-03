@@ -6,7 +6,10 @@ import { requireRole } from "@/lib/session";
 import { resolveHeldPaymentAsCredit, resolveHeldPaymentAsPaid } from "@/domains/billing/held-payments";
 import { refundHeldPayment } from "@/domains/billing/refunds";
 
-export type HeldPaymentActionState = { status: "success" } | { status: "error"; message: string };
+export type HeldPaymentActionState =
+  | { status: "success" }
+  | { status: "pending"; message: string }
+  | { status: "error"; message: string };
 
 const schema = z.object({
   paymentId: z.string().min(1),
@@ -27,7 +30,15 @@ export async function resolveHeldPaymentAction(input: {
     } else if (parsed.data.option === "CREDIT") {
       await resolveHeldPaymentAsCredit(session.user.id, parsed.data.paymentId);
     } else {
-      await refundHeldPayment(session.user.id, parsed.data.paymentId);
+      const refund = await refundHeldPayment(session.user.id, parsed.data.paymentId);
+      if (refund.outcome !== "SUCCEEDED") {
+        revalidatePath("/desk/billing/held-payments");
+        return {
+          status: "pending",
+          message:
+            "Your decision to refund was saved, but the card processor has not confirmed the refund yet. It is retried automatically and shows under “Refunds waiting on the card processor” below.",
+        };
+      }
     }
   } catch (error) {
     return {

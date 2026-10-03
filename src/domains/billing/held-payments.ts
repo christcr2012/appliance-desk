@@ -2,7 +2,7 @@ import type { InvoiceStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
 import { lockCustomerLedger } from "./ledger";
-import { HELD_PAYMENT_STATUS, HELD_TO_CREDIT_STATUS } from "./payment-status";
+import { HELD_PAYMENT_STATUS, HELD_REFUNDED_STATUS, HELD_TO_CREDIT_STATUS } from "./payment-status";
 
 /**
  * Held payments: a card payment arrived after the owner had already written
@@ -231,4 +231,33 @@ export async function resolveHeldPaymentAsCredit(userId: string, paymentId: stri
       },
     });
   });
+}
+
+/** Held payments the owner decided to refund where the card processor has not confirmed yet. */
+export async function listHeldRefundsWaitingOnStripe() {
+  const payments = await prisma.payment.findMany({
+    where: { status: HELD_REFUNDED_STATUS },
+    select: {
+      id: true,
+      amountCents: true,
+      invoiceId: true,
+      invoice: {
+        select: {
+          invoiceNumber: true,
+          customer: { select: { user: { select: { name: true, email: true } } } },
+          refunds: { select: { amountCents: true, stripeRefundId: true, createdAt: true } },
+        },
+      },
+    },
+    orderBy: { createdAt: "asc" },
+    take: 100,
+  });
+  return payments
+    .filter((p) => p.invoice.refunds.some((r) => r.stripeRefundId === null && r.amountCents === p.amountCents))
+    .map((p) => ({
+      id: p.id,
+      amountCents: p.amountCents,
+      invoiceNumber: p.invoice.invoiceNumber,
+      customerName: p.invoice.customer.user.name ?? p.invoice.customer.user.email,
+    }));
 }

@@ -24,3 +24,10 @@ export const HELD_PAYMENT_STATUS = "held";
  */
 export const HELD_TO_CREDIT_STATUS = "held_to_credit";
 export const HELD_REFUNDED_STATUS = "held_refunded";
+
+/**
+ * A held payment that was refunded in Stripe after the owner had already kept it
+ * as credit and the credit was partly spent, so it cannot be undone automatically.
+ * Listed for the owner in the billing mismatch list.
+ */
+export const HELD_CONFLICT_STATUS = "held_conflict";

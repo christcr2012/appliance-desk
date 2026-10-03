@@ -6,10 +6,14 @@ vi.mock("@/lib/stripe", () => ({
   getStripeClient: () => ({ refunds: { create: stripeMock.refund } }),
 }));
 
+import type Stripe from "stripe";
 import { prisma } from "@/lib/prisma";
+import { processStripeWebhookEvent } from "@/domains/billing/webhooks";
+import { detectDrift } from "@/domains/billing/reconciliation";
 import { holdReceiptForClosedInvoice } from "@/domains/billing/ledger";
 import {
   listHeldPayments,
+  listHeldRefundsWaitingOnStripe,
   resolveHeldPaymentAsCredit,
   resolveHeldPaymentAsPaid,
 } from "@/domains/billing/held-payments";
@@ -28,6 +32,8 @@ describe.skipIf(!enabled)("settling a held payment: mark paid, keep as credit, r
   const userId = `hp-user-${tag}`;
   const customerId = `hp-customer-${tag}`;
   const invoiceIds: string[] = [];
+  const eventIds: string[] = [];
+  const intentOf = new Map<string, string>();
 
   async function held(opts: { invoiceStatus?: "WRITTEN_OFF" | "VOID"; paidCents?: number; chargeId?: string | null } = {}) {
     const invoiceId = `hp-invoice-${randomUUID()}`;
@@ -57,7 +63,8 @@ describe.skipIf(!enabled)("settling a held payment: mark paid, keep as credit, r
       }),
     );
     const payment = await prisma.payment.findFirstOrThrow({ where: { receiptId } });
-    return { invoiceId, receiptId, paymentId: payment.id };
+    intentOf.set(payment.id, payment.stripePaymentIntentId!);
+    return { invoiceId, receiptId, paymentId: payment.id, chargeId: chargeId!, intentId: payment.stripePaymentIntentId! };
   }
 
   beforeEach(() => {
@@ -77,8 +84,11 @@ describe.skipIf(!enabled)("settling a held payment: mark paid, keep as credit, r
   });
 
   afterAll(async () => {
+    await prisma.webhookEvent.deleteMany({ where: { id: { in: eventIds } } });
     await prisma.auditLog.deleteMany({ where: { userId: { in: [ownerId, staffId] } } });
-    await prisma.providerOperation.deleteMany({ where: { subjectType: "Refund" } }).catch(() => undefined);
+    await prisma.auditLog.deleteMany({ where: { entityType: "Payment", action: "billing.held_credit_refunded_in_stripe" } });
+    const refundIds = (await prisma.refund.findMany({ where: { invoiceId: { in: invoiceIds } }, select: { id: true } })).map((r) => r.id);
+    await prisma.providerOperation.deleteMany({ where: { subjectType: "Refund", subjectId: { in: refundIds } } });
     await prisma.refund.deleteMany({ where: { invoiceId: { in: invoiceIds } } });
     await prisma.payment.deleteMany({ where: { invoiceId: { in: invoiceIds } } });
     await prisma.receipt.deleteMany({ where: { customerId } });
@@ -187,5 +197,72 @@ describe.skipIf(!enabled)("settling a held payment: mark paid, keep as credit, r
     await expect(resolveHeldPaymentAsPaid(staffId, h.paymentId)).rejects.toThrow();
     await expect(refundHeldPayment(staffId, h.paymentId)).rejects.toThrow();
     expect((await prisma.payment.findUniqueOrThrow({ where: { id: h.paymentId } })).status).toBe("held");
+  });
+
+  async function stripeRefund(h: { chargeId: string; intentId: string }, refundedCents: number) {
+    const id = `evt_${randomUUID()}`;
+    eventIds.push(id);
+    await processStripeWebhookEvent({
+      id,
+      type: "charge.refunded",
+      data: { object: { id: h.chargeId, payment_intent: h.intentId, amount_refunded: refundedCents, refunds: { data: [{ id: `re_${randomUUID()}` }] } } },
+    } as unknown as Stripe.Event);
+  }
+
+  it("a partial refund in Stripe leaves only the rest held, and every option then works on the rest", async () => {
+    const h = await held();
+    await stripeRefund(h, 4_000);
+    const rows = await prisma.payment.findMany({ where: { receiptId: h.receiptId }, orderBy: { amountCents: "asc" } });
+    expect(rows.map((r) => [r.status, r.amountCents])).toEqual([["held_refunded", 4_000], ["held", 6_000]]);
+    await resolveHeldPaymentAsCredit(ownerId, h.paymentId);
+    const credit = await prisma.customerCredit.findFirstOrThrow({ where: { sourceType: "HELD_PAYMENT", sourceId: h.paymentId } });
+    expect(credit.amountCents).toBe(6_000);
+  });
+
+  it("a full refund in Stripe settles it, and the screen stops asking about it", async () => {
+    const h = await held();
+    await stripeRefund(h, 10_000);
+    expect((await prisma.payment.findUniqueOrThrow({ where: { id: h.paymentId } })).status).toBe("held_refunded");
+    expect((await listHeldPayments()).some((x) => x.id === h.paymentId)).toBe(false);
+  });
+
+  it("a Stripe refund after the owner kept the money as unspent credit withdraws that credit", async () => {
+    const h = await held();
+    await resolveHeldPaymentAsCredit(ownerId, h.paymentId);
+    await stripeRefund(h, 10_000);
+    const credit = await prisma.customerCredit.findFirstOrThrow({ where: { sourceType: "HELD_PAYMENT", sourceId: h.paymentId } });
+    expect(credit.remainingCents).toBe(0);
+    expect((await prisma.payment.findUniqueOrThrow({ where: { id: h.paymentId } })).status).toBe("held_refunded");
+  });
+
+  it("a Stripe refund after the credit was partly used is flagged for the owner instead of hidden", async () => {
+    const h = await held();
+    await resolveHeldPaymentAsCredit(ownerId, h.paymentId);
+    await prisma.customerCredit.updateMany({ where: { sourceType: "HELD_PAYMENT", sourceId: h.paymentId }, data: { remainingCents: 7_000 } });
+    await stripeRefund(h, 10_000);
+    expect((await prisma.payment.findUniqueOrThrow({ where: { id: h.paymentId } })).status).toBe("held_conflict");
+    const drift = await detectDrift();
+    expect(drift.some((r) => r.kind === "HELD_PAYMENT" && r.subjectId === h.paymentId && /partly used/.test(r.detail))).toBe(true);
+  });
+
+  it("an owner decision and a Stripe refund at the same moment never leave both the credit and the refund standing", async () => {
+    const h = await held();
+    await Promise.allSettled([resolveHeldPaymentAsCredit(ownerId, h.paymentId), stripeRefund(h, 10_000)]);
+    const credit = await prisma.customerCredit.findFirst({ where: { sourceType: "HELD_PAYMENT", sourceId: h.paymentId } });
+    const refunds = await prisma.refund.count({ where: { invoiceId: h.invoiceId } });
+    expect(refunds).toBe(1);
+    expect(credit?.remainingCents ?? 0).toBe(0);
+  });
+
+  it("a refund the card processor has not confirmed is listed as waiting", async () => {
+    const h = await held();
+    stripeMock.refund.mockRejectedValueOnce(Object.assign(new Error("down"), { type: "StripeConnectionError" }));
+    const result = await refundHeldPayment(ownerId, h.paymentId);
+    expect(result.outcome).toBe("UNKNOWN");
+    expect((await listHeldRefundsWaitingOnStripe()).some((x) => x.id === h.paymentId)).toBe(true);
+    const ok = await held();
+    const done = await refundHeldPayment(ownerId, ok.paymentId);
+    expect(done.outcome).toBe("SUCCEEDED");
+    expect((await listHeldRefundsWaitingOnStripe()).some((x) => x.id === ok.paymentId)).toBe(false);
   });
 });

@@ -53,6 +53,7 @@ export function HeldPaymentCard(props: HeldPaymentCardProps) {
         setError(result.message);
         return;
       }
+      if (result.status === "pending") window.alert(result.message);
       router.refresh();
     });
   }
