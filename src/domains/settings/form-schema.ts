@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { parseTaxRatePercent } from "@/domains/billing/tax";
 export const businessSettingsSchema = z.object({
   publicBusinessName: z.string().trim().min(1).max(200),
   publicPhone: z.string().trim().min(1).max(30),
@@ -14,7 +15,18 @@ export const businessSettingsSchema = z.object({
   lateFeeGraceDays: z.coerce.number().int().min(0).max(90),
   lateFeeFlatDollars: z.coerce.number().min(0).max(100000),
   lateFeePercent: z.coerce.number().int().min(0).max(100),
-  taxRatePermille: z.coerce.number().int().min(0).max(1000),
+  // Owner types an ordinary percentage ("7.375"); stored exactly as thousandths of a percent.
+  taxRatePercentText: z
+    .string()
+    .trim()
+    .refine((text) => {
+      try {
+        parseTaxRatePercent(text);
+        return true;
+      } catch {
+        return false;
+      }
+    }, "Enter the tax rate as a percentage with up to three decimal places, such as 7.375."),
   taxRateConfirmed: z.boolean(),
   sixMonthPrepaySetDollars: z.coerce.number().min(0).max(1000),
   sixMonthPrepaySingleDollars: z.coerce.number().min(0).max(1000),

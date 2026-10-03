@@ -74,7 +74,7 @@ describe.skipIf(!enabled)("fixed-term termination, renewal and auto-renew in dis
         lateFeeGraceDays: 7,
         lateFeeCents: 1500,
         lateFeePercent: 2,
-        taxRatePermille: 73,
+        taxRateMilliPercent: 7300,
         lines: {
           create: [
             { label: "Washer", monthlyPriceCents: 3000, listPriceCents: 3500, prepayDiscountCentsPerMonth: 500 },
@@ -353,7 +353,7 @@ describe.skipIf(!enabled)("fixed-term termination, renewal and auto-renew in dis
       expect(renewal.lateFeeGraceDays).toBe(7);
       expect(renewal.lateFeeCents).toBe(1500);
       expect(renewal.lateFeePercent).toBe(2);
-      expect(renewal.taxRatePermille).toBe(73);
+      expect(renewal.taxRateMilliPercent).toBe(7300);
       expect(renewal.paidInFullInAdvance).toBe(false);
       expect(renewal.freeMonthGranted).toBe(false);
       expect(renewal.stripeSubscriptionId).toBeNull();

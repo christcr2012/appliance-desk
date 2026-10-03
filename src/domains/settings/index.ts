@@ -26,7 +26,7 @@ const DEFAULT_SETTINGS = {
   lateFeeGraceDays: 5,
   lateFeeFlatCents: 0,
   lateFeePercent: 0,
-  taxRatePermille: 0,
+  taxRateMilliPercent: 0,
   taxRateConfirmed: false,
   announcementBannerText: null as string | null,
   announcementBannerOn: false,
@@ -106,7 +106,7 @@ export type BusinessSettingsUpdate = Partial<{
   lateFeeGraceDays: number;
   lateFeeFlatCents: number;
   lateFeePercent: number;
-  taxRatePermille: number;
+  taxRateMilliPercent: number;
   taxRateConfirmed: boolean;
   announcementBannerText: string | null;
   announcementBannerOn: boolean;

@@ -606,7 +606,8 @@ model RentalAgreement {
   lateFeeGraceDays  Int @default(5)
   lateFeeCents      Int @default(0)
   lateFeePercent    Int @default(0)
-  taxRatePermille   Int @default(0) // tenths of a percent: 73 = 7.3% (matches BusinessSettings.taxRatePermille's own convention)
+  taxRatePermille   Int @default(0) // DEPRECATED, unused: old tenths-of-a-percent value (kept so the change is additive)
+  taxRateMilliPercent Int @default(0) // thousandths of one percent: 7375 = 7.375%
 
   // Prepaid-term discount (see docs/BUSINESS-RULES.md's Pricing section
   // and docs/DECISIONS.md's dated design decision). paidInFullInAdvance is
@@ -1359,7 +1360,8 @@ model BusinessSettings {
   lateFeeGraceDays        Int     @default(5)
   lateFeeFlatCents        Int     @default(0)
   lateFeePercent          Int     @default(0)
-  taxRatePermille         Int     @default(0)
+  taxRatePermille         Int     @default(0) // DEPRECATED, unused (see taxRateMilliPercent)
+  taxRateMilliPercent     Int     @default(0) // thousandths of one percent: 7375 = 7.375%
   taxRateConfirmed        Boolean @default(false)
 
   announcementBannerText String?

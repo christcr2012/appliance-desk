@@ -380,6 +380,18 @@ Wall-clock for a full run is the slowest job (browser shards): fixed setup of ro
 - gitleaks (`.gitleaks.toml`, default rules) scans every commit, because a secret removed in a later commit is still public.
 - **Owner-only settings GitHub requires a person to set** (agents cannot): Settings → Code security → enable *Secret scanning* and *Push protection* (free for public repos); Settings → Actions → General → *Fork pull request workflows* → require approval for all outside contributors.
 
+### Keeping CI fast — checklist (target: a full run in about 3 minutes; investigate at 5)
+
+1. **Measure before changing anything.** `gh api repos/<owner>/<repo>/actions/runs?per_page=10` gives start and finish times; per-job times are in the run's jobs list; browser shards print per-spec durations.
+2. **Never make jobs wait for each other.** The wall-clock of a run is its slowest job. New checks join the `static` or `secrets` job, or become a new parallel job; they never chain after the browser shards.
+3. **Keep the slowest job the browser shard, and keep shards even.** Rebalance `e2e/shards.json` from the printed durations whenever one group is clearly longest; add a group (one entry in `shards.json` plus one in the workflow matrix) rather than letting a shard pass about 2 minutes of test time.
+4. **Tests go to the cheapest layer.** Business rules, money, permissions and concurrency belong in vitest against real Postgres; a browser spec is for axe, real sessions, headers and one click-through per major flow.
+5. **Protect the caches.** Do not change `package-lock.json` or the Next/Playwright cache keys casually; a cold cache adds about a minute to every shard.
+6. **Add vitest shards before it hurts.** When a unit shard nears 2 minutes, raise the matrix size and the `--shard=N/M` denominator together.
+7. **No sleeps, no per-test logins, no network calls to real providers** in tests; they are the usual cause of slow or flaky suites.
+8. **Keep the gate honest.** Any new required job is added to the `ci` job's check list, and a job that is skipped for docs-only changes must still be reported as skipped, never missing.
+9. **Update this file** when the layout changes (job list, shard count, expected times).
+
 ### Rules when adding tests
 
 1. **Default to unit tests.** `tests/` (vitest, real Postgres) is split over three runners; browser tests carry the heavy fixed cost.

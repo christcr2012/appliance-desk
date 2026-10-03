@@ -148,7 +148,7 @@ async function seedTestCustomerFixture() {
       status: "ACTIVE",
       startDate: new Date(),
       depositCents: 15000,
-      taxRatePermille: 73,
+      taxRateMilliPercent: 7300,
     },
   });
 

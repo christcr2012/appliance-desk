@@ -4,6 +4,8 @@ import { getCustomers } from "@/domains/customers";
 import { getAppliances } from "@/domains/inventory";
 import { RentalWizard } from "./rental-wizard";
 import { getAgreementById } from "@/domains/agreements";
+import { getBusinessSettings } from "@/domains/settings";
+import { defaultTaxRateText } from "@/domains/billing/tax";
 import { draftRequestId } from "@/domains/agreements/draft-request";
 import { notFound, redirect } from "next/navigation";
 
@@ -21,6 +23,9 @@ export default async function NewAgreementPage({
 }) {
   const session = await requireRole("OWNER", "ADMIN");
   const query = await searchParams;
+  const settings = await getBusinessSettings();
+  // New agreements start with the owner's confirmed sales-tax rate (still editable per agreement).
+  const defaultTaxRatePercent = defaultTaxRateText(settings);
   let requestedId: string | undefined;
   let requestKey: string | undefined;
   if (query.requestKey) {
@@ -61,6 +66,7 @@ export default async function NewAgreementPage({
 
       <div className="mt-6">
         <RentalWizard
+          defaultTaxRatePercent={defaultTaxRatePercent}
           initialRequestKey={requestKey}
           initialDraft={
             draft
@@ -76,7 +82,7 @@ export default async function NewAgreementPage({
                   lateFeeGraceDays: draft.lateFeeGraceDays,
                   lateFeeCents: draft.lateFeeCents,
                   lateFeePercent: draft.lateFeePercent,
-                  taxRatePermille: draft.taxRatePermille,
+                  taxRateMilliPercent: draft.taxRateMilliPercent,
                   paidInFullInAdvance: draft.paidInFullInAdvance,
                   lines: draft.lines.map((l) => ({
                     id: l.id,

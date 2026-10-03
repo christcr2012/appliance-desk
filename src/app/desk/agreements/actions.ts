@@ -13,6 +13,7 @@ import {
   extendReservation,
 } from "@/domains/agreements";
 import { dollarsToCents } from "@/domains/pricing";
+import { parseTaxRatePercent } from "@/domains/billing/tax";
 
 export type AgreementActionState =
   | { status: "idle" }
@@ -35,7 +36,18 @@ const newAgreementSchema = z.object({
   lateFeeGraceDays: z.coerce.number().int().min(0).max(60).optional(),
   lateFeeDollars: z.coerce.number().min(0).max(1000).optional(),
   lateFeePercent: z.coerce.number().min(0).max(100).optional(),
-  taxRatePercent: z.coerce.number().min(0).max(20).optional(),
+  taxRatePercent: z
+    .string()
+    .trim()
+    .refine((text) => {
+      if (text === "") return true;
+      try {
+        return parseTaxRatePercent(text) <= 20_000;
+      } catch {
+        return false;
+      }
+    }, "Enter the tax rate as a percentage between 0 and 20 with up to three decimal places.")
+    .optional(),
   paidInFullInAdvance: z.boolean().optional(),
 });
 
@@ -75,9 +87,7 @@ export async function createDraftAgreementAction(
         ? dollarsToCents(data.lateFeeDollars)
         : 0,
       lateFeePercent: data.lateFeePercent ?? 0,
-      taxRatePermille: data.taxRatePercent
-        ? Math.round(data.taxRatePercent * 10)
-        : 0,
+      taxRateMilliPercent: data.taxRatePercent ? parseTaxRatePercent(data.taxRatePercent) : 0,
       paidInFullInAdvance: data.paidInFullInAdvance ?? false,
     });
   } catch (error) {

@@ -356,7 +356,7 @@ export async function renewAgreement(
         lateFeeGraceDays: old.lateFeeGraceDays,
         lateFeeCents: old.lateFeeCents,
         lateFeePercent: old.lateFeePercent,
-        taxRatePermille: old.taxRatePermille,
+        taxRateMilliPercent: old.taxRateMilliPercent,
         paidInFullInAdvance: false,
         freeMonthGranted: false,
         renewedFromAgreementId: old.id,

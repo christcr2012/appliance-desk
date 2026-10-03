@@ -102,12 +102,13 @@ in UTC and only converted to Mountain Time for display.
 
 - **RentalAgreement** — one signed (or in-progress) contract with a
   customer at a service address. Its money fields
-  (`depositCents`, `lateFeeCents`, `taxRatePermille`, ...) are a
+  (`depositCents`, `lateFeeCents`, `taxRateMilliPercent`, ...) are a
   **snapshot** taken at signing — changing prices later in
   `/desk/settings` never changes what an existing customer owes. Can
   optionally trace back to the Estimate that produced it — see above.
-  `taxRatePermille` (also on `BusinessSettings`) is stored as tenths
-  of a percent — `73` means 7.3% — see `docs/BUSINESS-RULES.md`'s
+  `taxRateMilliPercent` (also on `BusinessSettings`) is stored as
+  thousandths of a percent — `7375` means 7.375% (the old
+  `taxRatePermille` tenths column is deprecated and unused) — see `docs/BUSINESS-RULES.md`'s
   "Sales tax" note for why. Batch B adds nullable renewal/auto-renew and
   early-termination snapshot fields; null means the owner policy has not
   been configured and the corresponding customer action must stay off.

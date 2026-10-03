@@ -20,6 +20,7 @@ import {
   resendStaffActivationEmail,
 } from "@/domains/staff";
 import { dollarsToCents } from "@/domains/pricing";
+import { parseTaxRatePercent } from "@/domains/billing/tax";
 
 // Fee fields are entered on the form as real dollars (e.g. 45.00) — see
 // settings-form.tsx — and converted to integer cents right here, in the
@@ -60,12 +61,14 @@ export async function updateSettingsAction(
     twelveMonthPrepaySetDollars,
     twelveMonthPrepaySingleDollars,
     referralRewardDollars,
+    taxRatePercentText,
     ...rest
   } = parsed.data;
 
   try {
     await updateBusinessSettings(session.user.id, {
       ...rest,
+      taxRateMilliPercent: parseTaxRatePercent(taxRatePercentText),
       oneTimeDeliveryFeeCents: dollarsToCents(deliveryFeeDollars),
       oneTimeInstallationFeeCents: dollarsToCents(installationFeeDollars),
       oneTimeRemovalFeeCents: dollarsToCents(removalFeeDollars),

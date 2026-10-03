@@ -52,6 +52,28 @@ migration, the settings screen, the agreement snapshot and Stripe tax-rate
 creation) is a separate, later chunk because it touches money display and
 Stripe; nothing is half-migrated in the meantime.
 
+### 2026-10-03 — Local testing: cheap checks only; CI runs the full suite
+
+CI on the public repo is free and finishes in about 3 minutes, while setting up
+a throwaway Postgres and running the whole suite locally costs the agent far
+more effort than one CI round trip. Chris left the choice to the agent (he pays
+for agent usage). Decision: run typecheck, lint and the tests touching the
+change before each push; rely on CI for the full unit suite and browser specs;
+go local only for migrations/SQL, unexplained failures, or a spec being
+iterated on. On a CI failure, read the full job logs, fix everything, push
+once. Revisit if CI failures after pushing become frequent.
+
+### 2026-10-03 — Tax rate storage moved to thousandths of a percent (completes IN-17)
+
+Added `taxRateMilliPercent` to `BusinessSettings` and `RentalAgreement` (additive
+migration; existing values multiplied by 100, proven on a scratch database:
+73 became 7300). The old `taxRatePermille` columns stay, unused, so nothing is
+dropped; a later cleanup migration may remove them. Settings, the rental
+builder, the public pricing page and Stripe tax-rate creation use the exact
+value; new agreements start with the owner's rate once it is CPA-confirmed.
+Stripe's rate list is read page by page so an existing rate is reused rather
+than duplicated.
+
 ### 2026-10-03 — Fixed terms start at delivery; policy values are entered in the app
 
 Chris answered IN-20: a 6- or 12-month term starts at delivery (when billing

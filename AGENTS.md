@@ -116,10 +116,9 @@ resulting behavior are verified.
   precision move", "signing-page terms and consent"): not one item per PR, and
   not a whole batch in one PR. Size it so the work in it can be done properly,
   with its tests and docs, and reviewed in one sitting.
-- **CI cost and time are no longer a constraint** (Chris, 2026-10-03). The
-  "CI speed budget" section below is historical; do not trade away test
-  coverage or push-once discipline for speed. Still verify locally before
-  pushing, because a red run is noise for Chris.
+- **CI is free and fast, so lean on it** (Chris, 2026-10-03; details in the
+  "CI" section below). Do not drop tests to save minutes, and do keep CI fast
+  (the "Keeping CI fast" checklist in `docs/ARCHITECTURE.md`).
 - **Use the web.** Chris encourages (and expects) you to search the web for
   current documentation, best practices and modern solutions whenever that
   beats your training data (framework versions, Stripe, Colorado/tax rules,
@@ -140,10 +139,16 @@ resulting behavior are verified.
 - **Branch names:** `ai/<tool>/<topic>` (for example `ai/codex/batch-b-billing`).
   Branch from current `main`, or from the previous unmerged PR's branch when
   stacking; retarget `main` once the predecessor merges.
-- **Verify locally before you push.** CI is free and fast now (see "CI"), but
-  pushing broken work wastes everyone's time and a failing run is noise. The
-  local verification recipe is in `docs/PLAYBOOK.md`; it takes ~5 minutes to set
-  up and catches most failures.
+- **Quick local checks, then let CI do the heavy lifting** (agent's call,
+  approved by Chris 2026-10-03). Before each push run the cheap checks:
+  `npm run typecheck`, `npm run lint`, and `vitest` on the tests you touched
+  or that cover the code you changed (seconds). Do **not** build a local
+  Postgres and run the whole suite or the browser specs by default: CI runs
+  them for free in about 3 minutes, and setting them up costs far more agent
+  effort than one CI round trip. Do run more locally when it is cheaper than
+  guessing: a migration or SQL change (prove it on a scratch database), a
+  failure you cannot understand from CI output, or a browser spec you are
+  actively iterating on. The full recipe stays in `docs/PLAYBOOK.md`.
 - **Merging:** Chris has authorized agents to merge their own PRs (2026-10-01)
   when all of these are true: the `ci` check green at the exact head being
   merged (CI runs on every push; check it is the latest head),
@@ -236,11 +241,12 @@ built for **speed**, not minute-saving: every check runs in parallel on every
 push to a pull request, with a goal of results in about 3 minutes
 (`docs/ARCHITECTURE.md` → "CI layout and speed"). The rules:
 
-1. **Verify locally first, then push.** Free minutes are not a reason to push
-   broken work: run the local recipe in `docs/PLAYBOOK.md` (typecheck, lint,
-   the whole vitest suite). **If you touched `src/app/`, `src/components/`,
-   `src/lib/` or `e2e/`, also run the affected browser/accessibility specs
-   locally (PLAYBOOK 4c).** Never push to "see what CI says".
+1. **Cheap local checks, then push; CI runs the rest.** Run typecheck, lint
+   and the tests for what you changed before pushing (see "Quick local checks"
+   above). Push a PR when its cluster is coherent, not after every edit — a new
+   push cancels the running CI. When CI fails, read the **full** logs (CI's
+   summary shows only the first 10 failures per step; fetch the job log through
+   the API), fix everything you can see, and push once.
 2. **The `ci` check is the single gate.** It needs the secret scan, type-check
    and lint, all three unit-test shards and all four browser shards. It runs on
    every push to a PR and on `main`; the browser suite also runs nightly. Never

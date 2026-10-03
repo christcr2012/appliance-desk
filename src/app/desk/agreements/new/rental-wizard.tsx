@@ -10,6 +10,7 @@ import {
   sendForSignatureAction,
 } from "../actions";
 import { createCustomerAction } from "../../customers/actions";
+import { formatTaxRate } from "@/domains/billing/tax";
 
 // ---------------------------------------------------------------------------
 // Guided rental builder wizard (2026-09-28) — walks Chris through setting
@@ -79,7 +80,7 @@ type SavedDraft = {
   lateFeeGraceDays: number;
   lateFeeCents: number;
   lateFeePercent: number;
-  taxRatePermille: number;
+  taxRateMilliPercent: number;
   paidInFullInAdvance: boolean;
   lines: AddedLine[];
 };
@@ -91,6 +92,7 @@ export function RentalWizard({
   initialServiceAddressId,
   initialDraft,
   initialRequestKey,
+  defaultTaxRatePercent = "",
 }: {
   customers: CustomerOption[];
   availableAppliances: ApplianceOption[];
@@ -98,6 +100,7 @@ export function RentalWizard({
   initialServiceAddressId?: string;
   initialDraft?: SavedDraft;
   initialRequestKey?: string;
+  defaultTaxRatePercent?: string;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -229,10 +232,12 @@ export function RentalWizard({
           lateFeeGraceDays: initialDraft.lateFeeGraceDays.toString(),
           lateFeeDollars: (initialDraft.lateFeeCents / 100).toString(),
           lateFeePercent: initialDraft.lateFeePercent.toString(),
-          taxRatePercent: (initialDraft.taxRatePermille / 10).toString(),
+          taxRatePercent: initialDraft.taxRateMilliPercent
+            ? formatTaxRate(initialDraft.taxRateMilliPercent).replace("%", "")
+            : "",
           paidInFullInAdvance: initialDraft.paidInFullInAdvance,
         }
-      : EMPTY_TERM_FIELDS,
+      : { ...EMPTY_TERM_FIELDS, taxRatePercent: defaultTaxRatePercent },
   );
   const [agreementId, setAgreementId] = useState<string | null>(
     initialDraft?.id ?? null,
@@ -821,9 +826,9 @@ export function RentalWizard({
               <input
                 disabled={isPending}
                 id="taxRatePercent"
-                type="number"
-                min={0}
-                step="0.01"
+                type="text"
+                inputMode="decimal"
+                placeholder="e.g. 7.375"
                 value={termFields.taxRatePercent}
                 onChange={(e) => updateTerm("taxRatePercent", e.target.value)}
                 className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"

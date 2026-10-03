@@ -27,7 +27,7 @@ type FormValues = {
   lateFeeGraceDays: number;
   lateFeeFlatDollars: number;
   lateFeePercent: number;
-  taxRatePermille: number;
+  taxRatePercentText: string;
   taxRateConfirmed: boolean;
   sixMonthPrepaySetDollars: number;
   sixMonthPrepaySingleDollars: number;
@@ -284,11 +284,10 @@ export function SettingsForm({
             (see docs/BUSINESS-RULES.md).
           </p>
           <LabeledInput
-            label="Tax rate (permille — e.g. 29 = 2.9%)"
-            type="number"
-            min={0}
-            max={1000}
-            {...register("taxRatePermille")}
+            label="Tax rate (%, up to three decimals — e.g. 7.375)"
+            type="text"
+            inputMode="decimal"
+            {...register("taxRatePercentText")}
           />
           <label className="flex items-center gap-2 text-sm text-gray-700">
             <input
