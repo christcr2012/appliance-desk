@@ -6,12 +6,9 @@ import { forwardRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { updateSettingsAction, updateSettingsSectionAction } from "./actions";
 
-// Every "...Dollars" field here is entered and displayed in real dollars
-// and cents (e.g. 45.00), matching how Chris actually thinks about
-// pricing — not the database's internal integer-cents storage. The
-// server action is what converts dollars → cents before saving; see
-// docs/BUSINESS-RULES.md ("money is stored as integer cents, never
-// floating point") — that rule is about storage, not this form.
+// Money inputs are owner-facing dollars. Tax is owner-facing percent (for
+// example 7.375), while the server converts it to exact integer
+// thousandths-of-one-percent storage.
 type FormValues = {
   publicBusinessName: string;
   publicPhone: string;
@@ -27,7 +24,7 @@ type FormValues = {
   lateFeeGraceDays: number;
   lateFeeFlatDollars: number;
   lateFeePercent: number;
-  taxRatePermille: number;
+  taxRatePercent: number;
   taxRateConfirmed: boolean;
   sixMonthPrepaySetDollars: number;
   sixMonthPrepaySingleDollars: number;
@@ -280,15 +277,17 @@ export function SettingsForm({
             Sales tax
           </legend>
           <p className="text-sm text-gray-600">
-            Defaults to 0% until confirmed with a CPA — never guess a tax rate
-            (see docs/BUSINESS-RULES.md).
+            Enter the ordinary percentage, up to three decimal places (for
+            example 7.375). Defaults to 0% until confirmed — never guess a tax
+            rate.
           </p>
           <LabeledInput
-            label="Tax rate (permille — e.g. 29 = 2.9%)"
+            label="Tax rate (%)"
             type="number"
             min={0}
-            max={1000}
-            {...register("taxRatePermille")}
+            max={100}
+            step="0.001"
+            {...register("taxRatePercent", { valueAsNumber: true })}
           />
           <label className="flex items-center gap-2 text-sm text-gray-700">
             <input
