@@ -106,8 +106,12 @@ export async function createReceiptWithAllocations(
       ) {
         throw new Error("Stripe charge is already recorded against different receipt data.");
       }
-      const expected = [...input.allocations].sort((a, b) => a.invoiceId.localeCompare(b.invoiceId));
-      const actual = [...existing.payments].sort((a, b) => a.invoiceId.localeCompare(b.invoiceId));
+      const expected = [...input.allocations].sort((a, b) =>
+        a.invoiceId.localeCompare(b.invoiceId),
+      );
+      const actual = [...existing.payments].sort((a, b) =>
+        a.invoiceId.localeCompare(b.invoiceId),
+      );
       if (
         expected.length !== actual.length ||
         expected.some(
@@ -273,6 +277,107 @@ export async function attachProviderIdsToReceiptPayments(
     data: {
       stripePaymentIntentId: input.stripePaymentIntentId,
       stripeChargeId: input.stripeChargeId ?? null,
+    },
+  });
+}
+
+/**
+ * Apply local credit exactly once to one invoice. Lock order is always credit
+ * first, invoice second so concurrent credit applications cannot double-spend
+ * the credit or deadlock each other. A credit already delivered to Stripe is
+ * not locally spendable (D3/D7).
+ */
+export async function applyCreditToInvoice(
+  tx: Prisma.TransactionClient,
+  input: {
+    creditId: string;
+    invoiceId: string;
+    amountCents: number;
+    appliedByUserId: string;
+  },
+): Promise<void> {
+  positiveInteger(input.amountCents, "Credit amount");
+
+  const creditRows = await tx.$queryRaw<
+    Array<{
+      id: string;
+      customerId: string;
+      remainingCents: number;
+      appliedViaStripeAt: Date | null;
+      reason: string;
+    }>
+  >`
+    SELECT "id", "customerId", "remainingCents", "appliedViaStripeAt", "reason"
+    FROM "CustomerCredit"
+    WHERE "id" = ${input.creditId}
+    FOR UPDATE
+  `;
+  const credit = creditRows[0];
+  if (!credit) throw new Error("Couldn't find that customer credit.");
+  if (credit.appliedViaStripeAt) {
+    throw new Error("This credit was already applied through Stripe and cannot be spent locally.");
+  }
+  if (credit.remainingCents < input.amountCents) {
+    throw new Error("That credit does not have enough remaining balance.");
+  }
+
+  const invoiceRows = await tx.$queryRaw<
+    Array<{
+      id: string;
+      customerId: string;
+      status: InvoiceStatus;
+      amountDueCents: number;
+      amountPaidCents: number;
+    }>
+  >`
+    SELECT "id", "customerId", "status", "amountDueCents", "amountPaidCents"
+    FROM "Invoice"
+    WHERE "id" = ${input.invoiceId}
+    FOR UPDATE
+  `;
+  const invoice = invoiceRows[0];
+  if (!invoice) throw new Error("Couldn't find that invoice.");
+  if (invoice.customerId !== credit.customerId) {
+    throw new Error("A customer credit cannot be applied to another customer's invoice.");
+  }
+  if (!OPEN_INVOICE_STATUSES.has(invoice.status)) {
+    throw new Error("Credit can only be applied to an open invoice.");
+  }
+
+  const outstandingCents = Math.max(0, invoice.amountDueCents - invoice.amountPaidCents);
+  if (input.amountCents > outstandingCents) {
+    throw new Error("Credit amount exceeds the invoice's outstanding balance.");
+  }
+
+  const newAmountPaidCents = invoice.amountPaidCents + input.amountCents;
+  const status = nextInvoiceStatus(invoice.amountDueCents, newAmountPaidCents);
+
+  await tx.creditApplication.create({
+    data: {
+      creditId: credit.id,
+      invoiceId: invoice.id,
+      amountCents: input.amountCents,
+      appliedByUserId: input.appliedByUserId,
+    },
+  });
+  await tx.invoiceLineItem.create({
+    data: {
+      invoiceId: invoice.id,
+      kind: "CREDIT",
+      description: credit.reason || "Account credit",
+      amountCents: -input.amountCents,
+    },
+  });
+  await tx.customerCredit.update({
+    where: { id: credit.id },
+    data: { remainingCents: { decrement: input.amountCents } },
+  });
+  await tx.invoice.update({
+    where: { id: invoice.id },
+    data: {
+      amountPaidCents: newAmountPaidCents,
+      status,
+      version: { increment: 1 },
     },
   });
 }
