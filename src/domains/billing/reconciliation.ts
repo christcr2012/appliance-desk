@@ -39,6 +39,9 @@ type RecoverableOperation = {
   requestedAt: Date;
 };
 
+const PROVIDER_LOOKBACK_SECONDS = 300;
+const MAX_PROVIDER_PAGES = 50;
+
 function missingResource(error: unknown): boolean {
   const value = error as { type?: string; code?: string };
   return value.type === "StripeInvalidRequestError" && value.code === "resource_missing";
@@ -173,10 +176,8 @@ async function reconcileSubscriptionCancel(operation: RecoverableOperation): Pro
     throw error;
   }
 
-  // A successful retrieve that says the subscription is still live resolves
-  // the original ambiguous outcome: cancellation did not take effect. It is
-  // therefore safe to issue one more cancel request, even for UNKNOWN. Stripe
-  // cancellation is idempotent; a later resource_missing is also success.
+  // A successful retrieve proving the subscription is still live resolves an
+  // earlier ambiguous cancel outcome. One more cancel is therefore safe.
   const result = await runProviderCall(() =>
     stripe.subscriptions.cancel(subscriptionId),
   );
@@ -192,6 +193,33 @@ async function reconcileSubscriptionCancel(operation: RecoverableOperation): Pro
   return result.ok;
 }
 
+async function findBalanceCreditTransaction(
+  customerId: string,
+  creditId: string,
+  requestedAt: Date,
+) {
+  const stripe = getStripeClient();
+  const cutoff = Math.floor(requestedAt.getTime() / 1000) - PROVIDER_LOOKBACK_SECONDS;
+  let startingAfter: string | undefined;
+
+  for (let pageNumber = 0; pageNumber < MAX_PROVIDER_PAGES; pageNumber++) {
+    const page = await stripe.customers.listBalanceTransactions(customerId, {
+      limit: 100,
+      ...(startingAfter ? { starting_after: startingAfter } : {}),
+    });
+    const found = page.data.find(
+      (transaction) => transaction.metadata?.creditId === creditId,
+    );
+    if (found) return found;
+
+    const oldest = page.data.at(-1);
+    if (!page.has_more || !oldest || oldest.created < cutoff) return null;
+    startingAfter = oldest.id;
+  }
+
+  return null;
+}
+
 async function reconcileBalanceCredit(operation: RecoverableOperation): Promise<boolean> {
   const credit = await prisma.customerCredit.findUnique({
     where: { id: operation.subjectId },
@@ -200,12 +228,10 @@ async function reconcileBalanceCredit(operation: RecoverableOperation): Promise<
   if (!credit?.customer.stripeCustomerId) return false;
 
   const stripe = getStripeClient();
-  const transactions = await stripe.customers.listBalanceTransactions(
+  const found = await findBalanceCreditTransaction(
     credit.customer.stripeCustomerId,
-    { limit: 100 },
-  );
-  const found = transactions.data.find(
-    (transaction) => transaction.metadata?.creditId === credit.id,
+    credit.id,
+    operation.requestedAt,
   );
   if (found) {
     await prisma.$transaction(async (tx) => {
@@ -229,6 +255,9 @@ async function reconcileBalanceCredit(operation: RecoverableOperation): Promise<
     return true;
   }
 
+  // UNKNOWN is never guessed at or blindly replayed. Provider evidence must
+  // resolve it. Definite FAILED or stale PENDING operations can reuse the same
+  // idempotency key safely.
   if (operation.status === "UNKNOWN") return false;
 
   let claim;
@@ -283,34 +312,229 @@ async function reconcileBalanceCredit(operation: RecoverableOperation): Promise<
   return result.ok;
 }
 
-async function reconcileRefund(operation: RecoverableOperation): Promise<boolean> {
+async function findProviderRefund(operation: RecoverableOperation) {
   const stripe = getStripeClient();
-  const refunds = await stripe.refunds.list({ limit: 100 });
-  const found = refunds.data.find((refund) =>
-    operation.subjectType === "Deposit"
-      ? refund.metadata?.depositId === operation.subjectId
-      : refund.metadata?.refundId === operation.subjectId,
+  const createdGte =
+    Math.floor(operation.requestedAt.getTime() / 1000) - PROVIDER_LOOKBACK_SECONDS;
+  let startingAfter: string | undefined;
+
+  for (let pageNumber = 0; pageNumber < MAX_PROVIDER_PAGES; pageNumber++) {
+    const page = await stripe.refunds.list({
+      limit: 100,
+      created: { gte: createdGte },
+      ...(startingAfter ? { starting_after: startingAfter } : {}),
+    });
+    const found = page.data.find((refund) =>
+      operation.subjectType === "Deposit"
+        ? refund.metadata?.depositId === operation.subjectId
+        : refund.metadata?.refundId === operation.subjectId,
+    );
+    if (found) return found;
+    if (!page.has_more) return null;
+    const last = page.data.at(-1);
+    if (!last) return null;
+    startingAfter = last.id;
+  }
+
+  return null;
+}
+
+function refundChargeFromOperation(operation: RecoverableOperation): string | null {
+  if (operation.subjectType !== "Refund") return null;
+  const prefix = `invoice-refund-${operation.subjectId}-charge-`;
+  return operation.idempotencyKey.startsWith(prefix)
+    ? operation.idempotencyKey.slice(prefix.length) || null
+    : null;
+}
+
+async function resolveDepositRefundCharge(depositId: string): Promise<{
+  amountCents: number;
+  stripeChargeId: string;
+} | null> {
+  const deposit = await prisma.deposit.findUnique({
+    where: { id: depositId },
+    select: {
+      agreementId: true,
+      refundedAmountCents: true,
+      agreement: {
+        select: {
+          sourceEstimateId: true,
+          customer: { select: { stripeCustomerId: true } },
+        },
+      },
+    },
+  });
+  if (!deposit?.refundedAmountCents || deposit.refundedAmountCents <= 0) return null;
+
+  const linkedPayment = await prisma.payment.findFirst({
+    where: {
+      status: "succeeded",
+      invoice: {
+        agreementId: deposit.agreementId,
+        lineItems: { some: { kind: "DEPOSIT" } },
+      },
+      receipt: { source: "STRIPE", stripeChargeId: { not: null } },
+    },
+    select: { receipt: { select: { stripeChargeId: true } } },
+    orderBy: { createdAt: "asc" },
+  });
+  if (linkedPayment?.receipt?.stripeChargeId) {
+    return {
+      amountCents: deposit.refundedAmountCents,
+      stripeChargeId: linkedPayment.receipt.stripeChargeId,
+    };
+  }
+
+  const estimateId = deposit.agreement.sourceEstimateId;
+  const customerId = deposit.agreement.customer.stripeCustomerId;
+  if (!estimateId || !customerId) return null;
+
+  const stripe = getStripeClient();
+  let startingAfter: string | undefined;
+  for (let pageNumber = 0; pageNumber < MAX_PROVIDER_PAGES; pageNumber++) {
+    const page = await stripe.checkout.sessions.list({
+      customer: customerId,
+      limit: 100,
+      ...(startingAfter ? { starting_after: startingAfter } : {}),
+    });
+    const session = page.data.find(
+      (candidate) =>
+        candidate.metadata?.estimateId === estimateId &&
+        candidate.payment_status === "paid" &&
+        candidate.payment_intent,
+    );
+    if (session?.payment_intent) {
+      const paymentIntentId =
+        typeof session.payment_intent === "string"
+          ? session.payment_intent
+          : session.payment_intent.id;
+      const intent = await stripe.paymentIntents.retrieve(paymentIntentId, {
+        expand: ["latest_charge"],
+      });
+      const charge = intent.latest_charge;
+      if (!charge) return null;
+      return {
+        amountCents: deposit.refundedAmountCents,
+        stripeChargeId: typeof charge === "string" ? charge : charge.id,
+      };
+    }
+    if (!page.has_more) return null;
+    const last = page.data.at(-1);
+    if (!last) return null;
+    startingAfter = last.id;
+  }
+
+  return null;
+}
+
+async function retryDefiniteRefundFailure(
+  operation: RecoverableOperation,
+): Promise<boolean> {
+  if (operation.status === "UNKNOWN") return false;
+
+  let amountCents: number;
+  let stripeChargeId: string;
+  let metadata: Record<string, string>;
+
+  if (operation.subjectType === "Refund") {
+    const refund = await prisma.refund.findUnique({
+      where: { id: operation.subjectId },
+      select: { amountCents: true, invoiceId: true },
+    });
+    const chargeId = refundChargeFromOperation(operation);
+    if (!refund || !chargeId) return false;
+    amountCents = refund.amountCents;
+    stripeChargeId = chargeId;
+    metadata = { refundId: operation.subjectId, invoiceId: refund.invoiceId };
+  } else if (operation.subjectType === "Deposit") {
+    const deposit = await resolveDepositRefundCharge(operation.subjectId);
+    if (!deposit) return false;
+    amountCents = deposit.amountCents;
+    stripeChargeId = deposit.stripeChargeId;
+    metadata = { depositId: operation.subjectId };
+  } else {
+    return false;
+  }
+
+  let claim;
+  try {
+    claim = await prisma.$transaction((tx) =>
+      claimProviderOperation(tx, {
+        kind: "REFUND_CREATE",
+        subjectType: operation.subjectType,
+        subjectId: operation.subjectId,
+        idempotencyKey: operation.idempotencyKey,
+        staleAfterMs: 0,
+      }),
+    );
+  } catch (error) {
+    if (error instanceof RetryLater) return false;
+    throw error;
+  }
+  if (claim.done) {
+    await markOperationSucceeded(operation, claim.providerObjectId);
+    return true;
+  }
+
+  const stripe = getStripeClient();
+  const result = await runProviderCall(() =>
+    stripe.refunds.create(
+      { charge: stripeChargeId, amount: amountCents, metadata },
+      { idempotencyKey: claim.idempotencyKey },
+    ),
   );
-  if (!found) return false;
 
   await prisma.$transaction(async (tx) => {
-    if (operation.subjectType === "Deposit") {
-      await tx.deposit.updateMany({
-        where: { id: operation.subjectId, stripeRefundId: null },
-        data: { stripeRefundId: found.id },
+    if (result.ok) {
+      if (operation.subjectType === "Deposit") {
+        await tx.deposit.updateMany({
+          where: { id: operation.subjectId, stripeRefundId: null },
+          data: { stripeRefundId: result.value.id },
+        });
+      } else {
+        await tx.refund.updateMany({
+          where: { id: operation.subjectId, stripeRefundId: null },
+          data: { stripeRefundId: result.value.id },
+        });
+      }
+      await completeProviderOperation(tx, claim.opId, {
+        status: "SUCCEEDED",
+        providerObjectId: result.value.id,
       });
-    } else if (operation.subjectType === "Refund") {
-      await tx.refund.updateMany({
-        where: { id: operation.subjectId, stripeRefundId: null },
-        data: { stripeRefundId: found.id },
+    } else {
+      await completeProviderOperation(tx, claim.opId, {
+        status: result.outcome,
+        error: result.error,
       });
     }
-    await completeProviderOperation(tx, operation.id, {
-      status: "SUCCEEDED",
-      providerObjectId: found.id,
-    });
   });
-  return true;
+  return result.ok;
+}
+
+async function reconcileRefund(operation: RecoverableOperation): Promise<boolean> {
+  const found = await findProviderRefund(operation);
+  if (found) {
+    await prisma.$transaction(async (tx) => {
+      if (operation.subjectType === "Deposit") {
+        await tx.deposit.updateMany({
+          where: { id: operation.subjectId, stripeRefundId: null },
+          data: { stripeRefundId: found.id },
+        });
+      } else if (operation.subjectType === "Refund") {
+        await tx.refund.updateMany({
+          where: { id: operation.subjectId, stripeRefundId: null },
+          data: { stripeRefundId: found.id },
+        });
+      }
+      await completeProviderOperation(tx, operation.id, {
+        status: "SUCCEEDED",
+        providerObjectId: found.id,
+      });
+    });
+    return true;
+  }
+
+  return retryDefiniteRefundFailure(operation);
 }
 
 async function reconcileOne(operation: RecoverableOperation): Promise<boolean> {
