@@ -81,3 +81,19 @@ affected). Terms can also be customized per customer at sign-up/setup/estimate.
 Consequence: early-ending quotes read the agreement's saved terms, not the live
 settings. Sending the notice is live customer email and needs Chris's approval
 before it is turned on.
+
+### 2026-10-03 — CI is built to cost minutes, not to be fast
+
+GitHub Actions minutes ran out on day 3 of the month: ~190 runs since Oct 1
+(43 cancelled mid-run, still billed) at ~22 billed minutes per full run (five
+working jobs, three of them repeating install + build for the browser tests).
+Chris asked for a drastic efficiency improvement. Changes: CI runs when a PR is
+opened or marked ready, not on every push (re-run by hand once after local
+verification); draft PRs run nothing; type-check, lint and the unit suite share
+one job; the browser suite runs on one runner, only when the change can affect
+a browser, and nightly on `main`; a push to `main` runs the cheap checks only;
+the failure-only Playwright report is kept 3 days. This supersedes the
+2026-10-02 "5-minute wall-clock" goal, which was achieved by spending more
+minutes. Accepted trade-off: a logic-only change that breaks a screen is caught
+by the nightly run, not before merge. Not done: making the repo public (free
+Actions, but exposes the code).

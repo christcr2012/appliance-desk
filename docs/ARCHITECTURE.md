@@ -348,50 +348,52 @@ Never rely on hiding a nav link as the only protection for anything.
 
 A final `ci` job (the historical required-check name) succeeds only if every job above succeeded — for the browser shards, GitHub reports the matrix as a whole, so one failing shard fails the gate. Vercel deploys previews for every PR and production on merge to `main` independently of this workflow.
 
-## Keeping CI under 5 minutes
+## Keeping CI cheap
 
-**Target (owner, 2026-10-02): a full CI run on any PR finishes in ≤ 5 minutes; documentation-only PRs cost ~10 seconds.** Measured on merge of PR #137: 4m28s full, ~10s docs-only. This section is the maintenance guide for that number as the project grows. The short version is in `AGENTS.md` ("CI speed budget").
+**Priority (owner, 2026-10-03): fewer billed Actions minutes.** This replaces the earlier 2026-10-02 goal of a 5-minute wall-clock run, which was met by spreading the browser suite over three runners and so cost more minutes. The short version is in `AGENTS.md` ("CI cost budget").
 
-### Where the time goes
-
-The jobs run in parallel, so **the run takes as long as its slowest job** — and that is always one of the browser shards:
+### What a run is made of
 
 | Job | Typical | What it's made of |
 |---|---|---|
-| classify | 6s | diff the PR; docs-only → skip everything below |
-| static checks | ~1.5 min | npm ci 30s · typecheck 25s · lint 23s · shard-assignment check 1s |
-| database (migrations + unit/integration tests) | ~2–2.5 min | containers 18s · npm ci 28s · migrate/health/upgrade drills ~15s · seed 3s · **vitest ~60–70s** |
-| browser shard × 3 | ~3.5–4.2 min each | **fixed ~2.5–3 min**: containers 17s · npm ci 26s · migrate+health+seed 6s · `next build` ~85s · browser install ~25s · then **that shard's tests 85–130s** |
-| ci (gate) | 3s | passes only if every job above passed |
+| classify | ~6s | decides what needs to run (docs-only, browser-relevant, or neither) |
+| static checks and tests | ~3.5 min | container 20s · npm ci 25s · typecheck 25s · lint 23s · migrations/health/upgrade drills ~15s · seed 3s · **vitest ~60s** |
+| production build and browser acceptance (only when `ui_changed`) | ~7–8 min | container 15s · npm ci 30s · migrate+seed 10s · `next build` ~35s · browser deps 16s · **all browser tests ~6 min on one runner** |
+| ci (gate) | ~4s | passes only if every job that had to run succeeded |
 
-So the critical path is: *fixed browser-shard overhead (~3 min) + the slowest shard's tests*. The 5-minute target therefore means **no shard's test step may exceed ~2 minutes**. The fixed overhead cannot be parallelized away — every shard needs its own build and database — so the only levers are (a) how much browser testing there is and (b) how evenly it is spread.
+Billed time rounds each job up to a whole minute, so fewer, longer jobs cost less than many short ones. Before 2026-10-03 a full run was five working jobs (~22 billed minutes); it is now two (~13 billed minutes for a browser-relevant change, ~5 for a logic-only change, ~1 for docs).
+
+### When CI runs
+
+- **Pull request:** when opened, reopened, or marked ready for review. Not on every push, and never for drafts.
+- **Run it again by hand** after a later push (once, after local verification): `gh workflow run ci.yml --ref <branch> -f base=<base branch>` or Actions → CI → Run workflow.
+- **Push to `main`:** type-check, lint and unit/integration tests only.
+- **Nightly (03:17 Denver):** the full suite including browser tests, only if `main` changed in the last day.
+- **Browser tests on a PR** run only when a changed path matches the pattern in the `classify` job (screens, `src/lib`, `prisma/`, `e2e/`, `scripts/`, CI, `package*.json`, config). Business logic in `src/domains/` and tests in `tests/` run the unit suite only. The trade-off, accepted by the owner: a logic change that breaks a screen is caught by the nightly run (or by the next UI PR), not before merge.
 
 ### Rules when adding tests
 
-1. **Default to unit tests.** `tests/` (vitest, real Postgres) runs ~1,000 tests in about a minute; the same minute buys roughly 20 browser tests. Reserve `e2e/` for what needs a browser: axe accessibility scans, real login/session/cookie behavior, security headers, and one full click-through per major user flow. Business rules, pricing, permissions, data integrity → unit tests.
-2. **Assign every new spec file.** `scripts/e2e-shard.mjs --check` runs in the static job and fails the PR if an `e2e/*.spec.ts` is missing from `e2e/shards.json`, listed twice, or listed but deleted. Add it to the group with the most headroom.
-3. **Read the real numbers, don't guess.** After every run each shard prints one notice: `e2e shard "<group>" durations (NNs of test time): file 59.5s, file 51.7s, …`. The raw log and HTML report are often unreachable from sandboxes; the notices are not — `gh api repos/<owner>/<repo>/check-runs/<job_id>/annotations`. Job-level timings: `gh api repos/<owner>/<repo>/actions/runs/<run_id>/jobs`.
-4. **Reuse saved sessions.** `e2e/global-setup.ts` logs in once per role and saves the session; tests start signed in via `test.use({ storageState })`. A real login per test both slows the suite and times out under load (see the 2026-09-27 entry in `docs/archive/HANDOFF-2026-09-26-to-2026-10-02.md`). A test that legitimately must log in for real with expensive setup declares `test.slow()` rather than raising global timeouts.
-5. **Keep the shared prefix lean.** Anything added before the test step of the browser job runs three times per PR. New one-off checks (lint-like scripts, schema drills, migration checks) belong in `static` or `database`, which have ~2.5–3 min of headroom.
-6. **Dependencies cost on every job.** `npm ci` runs four times per PR (~30s each). A heavy new dependency shows up four times over. Prefer small, tree-shakable packages; check `npm ci` time in the job steps after adding one.
-7. **Build cache.** `.next/cache` is restored keyed on `package-lock.json`; a lockfile change invalidates it and the build step grows (~85s → longer) for that one run. That's expected — don't chase it.
+1. **Default to unit tests.** `tests/` (vitest, real Postgres) runs ~1,200 tests in about a minute; the same minute buys roughly 20 browser tests. Reserve `e2e/` for axe accessibility scans, real login/session/cookie behavior, security headers, and one full click-through per major user flow.
+2. **Assign every new spec file** in `e2e/shards.json` (the `checks` job runs `scripts/e2e-shard.mjs --check`). The groups no longer map to separate runners; `all` runs every group.
+3. **Read the real numbers.** After every browser run one notice prints per-file durations: `gh api repos/<owner>/<repo>/check-runs/<job_id>/annotations`. Job timings: `gh api repos/<owner>/<repo>/actions/runs/<run_id>/jobs`.
+4. **Reuse saved sessions.** `e2e/global-setup.ts` logs in once per role; tests use `test.use({ storageState })`.
+5. **Dependencies cost on every job** (`npm ci` runs in both). Check install time after adding one.
+6. **Build cache.** `.next/cache` is restored keyed on `package-lock.json`.
+7. **Artifacts** (the Playwright report) are uploaded only when a run fails, kept 3 days: stored artifacts are billed too.
 
-### When a shard gets too heavy
+### If the browser job gets too slow
 
-- **One group over ~2 min, others under:** move its heaviest file(s) to the lightest group in `e2e/shards.json`. That's the whole change; the static check verifies it.
-- **Every group near 2 min:** add a shard. Add a fourth group in `e2e/shards.json`, add its name to the `shard:` list in `.github/workflows/ci.yml` (`e2e` job matrix), move files into it. Cost: ~3 more billed runner-minutes per run (this is a private repo; GitHub bills by runner-minute). Playwright's own `--shard=N/M` is **not** used because it balances by test count and this suite's durations are very uneven — it put ~4× the work on one runner.
-- **A single spec file over ~60s:** it probably does too much. Split it by user flow so it can be spread across groups, or move assertions that don't need a browser into unit tests.
-- **Unit job approaching 3 min:** shard vitest first (`vitest run --shard=N/M` in a matrix, same shape as the browser job) — it has no build step so each extra shard is cheap. Watch for tests that assume they own the seeded data.
+- A single spec over ~60s: split it or move assertions into unit tests.
+- More than ~10 minutes of browser tests: first remove or convert low-value browser tests; only then consider sharding again (it costs ~1.5 extra billed minutes per shard).
 
-### Documentation-only PRs
+### Documentation-only changes
 
-The `classify` job diffs the PR against its base; if every changed file is under `docs/` or ends in `.md`, the heavy jobs are skipped and the `ci` gate passes immediately — about 10 seconds end to end. Workflow, config, script, schema, source and test changes always get the full run (fail-safe: an empty or indeterminate diff also runs everything). A PR that mixes code and docs is a code PR.
+If every changed file is under `docs/` or ends in `.md`, the heavy jobs are skipped and the `ci` gate passes immediately. A change that mixes code and docs is a code change. The small classify/gate pair is kept (rather than `paths-ignore`) so a required `ci` check can still be reported if protected branches are enabled later.
 
-The tiny classify/gate pair is kept on purpose rather than `paths-ignore`-ing the workflow entirely: when `main` is set to *require* the `ci` check (planned once the plan allows protected branches), a PR whose workflow never runs can never report that check and can never merge. Ten seconds is the price of that safety.
+### Other ways to cut cost, not done
 
-### Known floor
-
-With the current fixed overhead, ~4 min is about the floor for a full run on standard runners. Larger (paid) runners would cut the build and test steps but are not justified yet. Below that, the gains are in individual slow tests, not in more parallelism.
+- Making the repository public removes Actions charges entirely but exposes the source and business docs; not recommended.
+- Larger runners cost more per minute; not justified.
 
 ## Folder layout
 

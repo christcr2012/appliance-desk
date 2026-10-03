@@ -1,9 +1,34 @@
 name: CI
 
+# COST CONTROL (owner, 2026-10-03): GitHub Actions minutes are billed and the
+# monthly allowance was used up in three days, so this workflow is built to
+# run as rarely and as cheaply as it safely can:
+#   - A pull request runs CI when it is opened (or marked ready for review),
+#     NOT on every push to it. Verify locally, push once, then open the PR.
+#     To run CI again on a later push, start it by hand once the work is
+#     verified locally:  gh workflow run ci.yml --ref <branch>
+#     (Actions tab -> CI -> "Run workflow" does the same.)
+#   - Draft PRs never run CI. Mark ready for review when the work is verified.
+#   - Browser tests (the expensive part) run on a PR only when something that
+#     can change what a browser sees was touched (screens, shared libs, schema,
+#     browser tests, CI itself). Pure business-logic changes run the type
+#     check, lint and the full unit/real-Postgres suite instead.
+#   - A push to main runs the cheap checks only; the full browser suite runs
+#     once a night, and only if main changed that day.
+#   - Documentation-only changes run nothing heavy.
 on:
   pull_request:
+    types: [opened, reopened, ready_for_review]
   push:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      base:
+        description: "Branch to compare against when deciding what to run (the PR's base, or main)"
+        required: false
+        default: main
+  schedule:
+    - cron: "17 9 * * *" # 03:17 America/Denver (MDT); skipped when main did not change
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -12,86 +37,92 @@ concurrency:
 jobs:
   classify:
     name: classify changes
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     outputs:
       app_changed: ${{ steps.changes.outputs.app_changed }}
+      ui_changed: ${{ steps.changes.outputs.ui_changed }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       - id: changes
-        name: Detect application-impacting changes
+        name: Decide what needs to run
         env:
           EVENT_NAME: ${{ github.event_name }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          DISPATCH_BASE: ${{ inputs.base }}
         shell: bash
         run: |
           set -euo pipefail
 
-          # Pushes to main always get the full suite. Path classification is
-          # only an optimization for pull requests.
-          if [[ "$EVENT_NAME" != "pull_request" ]]; then
+          # Pushes to main: cheap checks only (the PR already ran the browser
+          # suite if it needed to; the nightly run covers the rest).
+          if [[ "$EVENT_NAME" == "push" ]]; then
             echo "app_changed=true" >> "$GITHUB_OUTPUT"
+            echo "ui_changed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          mapfile -t changed_files < <(git diff --name-only "$BASE_SHA" "$HEAD_SHA")
+          # Nightly: the full suite, but only if main changed in the last day.
+          if [[ "$EVENT_NAME" == "schedule" ]]; then
+            if [[ -z "$(git log --since='25 hours ago' -1 --format=%H)" ]]; then
+              echo "No commits on main in the last day: nothing to run."
+              echo "app_changed=false" >> "$GITHUB_OUTPUT"
+              echo "ui_changed=false" >> "$GITHUB_OUTPUT"
+            else
+              echo "app_changed=true" >> "$GITHUB_OUTPUT"
+              echo "ui_changed=true" >> "$GITHUB_OUTPUT"
+            fi
+            exit 0
+          fi
 
-          # Fail safe: an empty/indeterminate diff runs the full suite rather
-          # than accidentally treating an application change as documentation.
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            base="${DISPATCH_BASE:-main}"
+            if ! git fetch --quiet origin "$base" 2>/dev/null; then
+              echo "Could not fetch '$base': running everything to be safe."
+              echo "app_changed=true" >> "$GITHUB_OUTPUT"
+              echo "ui_changed=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            mapfile -t changed_files < <(git diff --name-only "origin/$base...HEAD")
+          else
+            mapfile -t changed_files < <(git diff --name-only "$BASE_SHA" "$HEAD_SHA")
+          fi
+
+          # Fail safe: an empty/indeterminate diff runs everything rather than
+          # accidentally treating an application change as documentation.
           if (( ${#changed_files[@]} == 0 )); then
             echo "app_changed=true" >> "$GITHUB_OUTPUT"
+            echo "ui_changed=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
           app_changed=false
+          ui_changed=false
           for file in "${changed_files[@]}"; do
             # Documentation-only means Markdown anywhere or files under docs/.
-            # Workflow/config/scripts/schema/source/test changes all remain
-            # application-impacting and receive the complete quality gates.
             if [[ "$file" != docs/* && "$file" != *.md ]]; then
               app_changed=true
-              break
+            fi
+            # Anything that can change what a browser sees or does. Business
+            # logic under src/domains/ and unit tests under tests/ are covered
+            # by the unit/real-Postgres suite instead.
+            if [[ "$file" =~ ^(src/app/|src/components/|src/lib/|src/proxy|src/middleware|e2e/|public/|prisma/|scripts/|\.github/|package(-lock)?\.json$|next\.config|playwright\.config|postcss|tsconfig|eslint) ]]; then
+              ui_changed=true
             fi
           done
 
           echo "app_changed=$app_changed" >> "$GITHUB_OUTPUT"
+          echo "ui_changed=$ui_changed" >> "$GITHUB_OUTPUT"
 
-  static:
-    name: static checks
-    needs: classify
-    if: needs.classify.outputs.app_changed == 'true'
-    runs-on: ubuntu-latest
-    env:
-      # Prisma resolves both variables during postinstall/generate even though
-      # static checks never connect to a database. These deliberately point at
-      # localhost so this job cannot reach production infrastructure.
-      DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/appliance_desk_static
-      DIRECT_URL: postgresql://ci:ci@127.0.0.1:5432/appliance_desk_static
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Type-check
-        run: npm run typecheck
-
-      - name: Lint
-        run: npm run lint
-
-      - name: Every browser spec file is assigned to exactly one CI shard
-        run: node scripts/e2e-shard.mjs --check
-
-  database:
-    name: migrations and unit/integration tests
+  checks:
+    # Type-check, lint, migrations and the whole unit/real-Postgres suite in ONE
+    # job: one install, one database container, and a type or lint error stops
+    # the run before the slower database steps spend any minutes.
+    name: static checks and tests
     needs: classify
     if: needs.classify.outputs.app_changed == 'true'
     runs-on: ubuntu-latest
@@ -133,7 +164,16 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --no-audit --no-fund
+
+      - name: Type-check
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Every browser spec file is assigned to exactly one CI group
+        run: node scripts/e2e-shard.mjs --check
 
       - name: Check for un-reviewed destructive migrations
         run: npm run check:migrations
@@ -157,25 +197,17 @@ jobs:
         run: npm test
 
   e2e:
-    # The browser suite is the slowest part of CI by a wide margin (~5 min of
-    # Playwright on top of ~3 min of install/migrate/seed/build), so it is
-    # sharded across several runners. Each shard checks out, builds and seeds
-    # its own throwaway Postgres, then runs the spec files assigned to it in
-    # e2e/shards.json (explicit groups balanced by measured duration —
-    # Playwright's built-in count-based `--shard` was badly lopsided here).
-    # scripts/e2e-shard.mjs refuses to run if any spec file is unassigned or
-    # double-assigned, so nothing can silently stop running. Every test runs
-    # exactly once, and the aggregate `ci` gate below fails if any shard fails.
-    # Trade-off: more billed runner minutes per run for less wall-clock time.
-    # To add a shard: add a group to e2e/shards.json and list it here.
-    name: production build and browser acceptance (${{ matrix.shard }})
+    # The browser suite is the most expensive part of CI. It runs on ONE runner
+    # (one install, one build, one database) instead of three: the same tests
+    # in roughly 60% of the billed minutes. It runs only when the change can
+    # affect what a browser sees (see `classify`) and nightly on main.
+    # e2e/shards.json still groups the spec files; `all` runs every group, and
+    # scripts/e2e-shard.mjs refuses to run if any spec file is unassigned, so
+    # nothing can silently stop running.
+    name: production build and browser acceptance
     needs: classify
-    if: needs.classify.outputs.app_changed == 'true'
+    if: needs.classify.outputs.ui_changed == 'true'
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        shard: [owner-flows, desk-flows, accessibility-and-security]
 
     services:
       postgres:
@@ -214,13 +246,10 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --no-audit --no-fund
 
       - name: Apply database migrations
         run: npm run db:migrate:deploy
-
-      - name: Verify schema health before the production build
-        run: npm run db:verify-schema-health
 
       - name: Seed browser-test accounts and business fixtures
         run: npm run db:seed
@@ -251,34 +280,34 @@ jobs:
         if: steps.playwright-cache.outputs.cache-hit == 'true'
         run: npx playwright install-deps chromium
 
-      - name: Accessibility, security and end-to-end tests (this shard's spec files)
-        run: node scripts/e2e-shard.mjs ${{ matrix.shard }}
+      - name: Accessibility, security and end-to-end tests
+        run: node scripts/e2e-shard.mjs all
 
+      # Only kept when something failed (artifact storage is billed too).
       - name: Upload Playwright report
-        if: always()
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report-${{ matrix.shard }}
+          name: playwright-report
           path: playwright-report/
-          retention-days: 14
+          retention-days: 3
 
-  # Preserve the historical required-check name (`ci`) as one final gate. A
-  # docs-only PR reaches this job quickly; an application PR succeeds only if
-  # every parallel quality job above succeeded. `needs.e2e.result` is GitHub's
-  # aggregate over the whole shard matrix: it is "success" only when every
-  # shard succeeded, so one failing shard fails this gate.
+  # One final gate named `ci`. It passes when every job that was supposed to run
+  # succeeded. Draft PRs get no `ci` check at all (so a draft can never look
+  # green); the browser job is required only when `classify` said the change can
+  # affect the browser.
   ci:
     name: ci
-    if: always()
-    needs: [classify, static, database, e2e]
+    if: always() && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    needs: [classify, checks, e2e]
     runs-on: ubuntu-latest
     steps:
       - name: Verify required quality jobs
         env:
           APP_CHANGED: ${{ needs.classify.outputs.app_changed }}
+          UI_CHANGED: ${{ needs.classify.outputs.ui_changed }}
           CLASSIFY_RESULT: ${{ needs.classify.result }}
-          STATIC_RESULT: ${{ needs.static.result }}
-          DATABASE_RESULT: ${{ needs.database.result }}
+          CHECKS_RESULT: ${{ needs.checks.result }}
           E2E_RESULT: ${{ needs.e2e.result }}
         shell: bash
         run: |
@@ -290,15 +319,21 @@ jobs:
           fi
 
           if [[ "$APP_CHANGED" != "true" ]]; then
-            echo "Documentation-only pull request: heavy application suites intentionally skipped."
+            echo "Nothing application-impacting to check: heavy suites intentionally skipped."
             exit 0
           fi
 
-          for result in "$STATIC_RESULT" "$DATABASE_RESULT" "$E2E_RESULT"; do
-            if [[ "$result" != "success" ]]; then
-              echo "A required quality job did not succeed: $result"
+          if [[ "$CHECKS_RESULT" != "success" ]]; then
+            echo "Static checks and tests did not succeed: $CHECKS_RESULT"
+            exit 1
+          fi
+
+          if [[ "$UI_CHANGED" == "true" ]]; then
+            if [[ "$E2E_RESULT" != "success" ]]; then
+              echo "Browser acceptance did not succeed: $E2E_RESULT"
               exit 1
             fi
-          done
-
-          echo "All application quality gates passed."
+            echo "All application quality gates passed (including browser tests)."
+          else
+            echo "Static checks and tests passed. Browser tests were skipped because nothing that affects a browser changed; the nightly run covers main."
+          fi

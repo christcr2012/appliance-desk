@@ -77,12 +77,12 @@ Rules while implementing:
   in storage, America/Denver in display.
 - No mock data, no stub returning "success", no TODO as implementation.
 - Roles filtered at the query/DTO boundary.
-- New browser spec files go into the lightest group in `e2e/shards.json`.
+- New browser spec files go into a group in `e2e/shards.json` (all groups run on one runner).
 
 ## Step 4 — Verify locally before any push
 
 Local verification takes ~5 minutes to set up and routinely catches failures
-that would cost a 5-minute CI run each (and GitHub shows only the first 10
+that would cost a billed CI run each (and GitHub shows only the first 10
 failures per step, so one CI run rarely shows them all).
 
 ### 4a. Fast checks (every time)
