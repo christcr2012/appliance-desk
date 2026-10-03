@@ -1,6 +1,5 @@
 import { draftRequestId } from "./draft-request";
 import { requireRole } from "@/lib/session";
-import Stripe from "stripe";
 import { prisma } from "@/lib/prisma";
 import type {
   Prisma,
@@ -10,6 +9,11 @@ import type {
 import { getBusinessSettings } from "@/domains/settings";
 import { getStripeClient } from "@/lib/stripe";
 import { applianceStatusOnAgreementClose } from "@/domains/inventory/lifecycle";
+import {
+  claimProviderOperation,
+  completeProviderOperation,
+  runProviderCall,
+} from "@/domains/billing/provider-ops";
 import {
   calculatePrepayDiscountCentsPerMonth,
   isFreeMonthEarned,
@@ -545,42 +549,23 @@ async function closeAgreement(
   agreementId: string,
   newStatus: "ENDED" | "CANCELLED",
 ) {
-  const initiallyObserved = await prisma.rentalAgreement.findUniqueOrThrow({
-    where: { id: agreementId },
-  });
-  const initialCheck = canTransitionAgreementStatus(
-    initiallyObserved.status,
-    newStatus,
-  );
-  if (!initialCheck.ok) {
-    throw new Error(initialCheck.reason);
-  }
-
-  // Provider reconciliation for provider-success/local-failure is handled in
-  // Batch B. Until then, retain the established fail-closed Stripe behavior;
-  // the row-lock check below ensures we at least never overwrite a concurrent
-  // local lifecycle transition after the provider call returns.
-  if (initiallyObserved.stripeSubscriptionId) {
-    const stripe = getStripeClient();
-    try {
-      await stripe.subscriptions.cancel(initiallyObserved.stripeSubscriptionId);
-    } catch (err) {
-      const alreadyGone =
-        err instanceof Stripe.errors.StripeInvalidRequestError &&
-        err.code === "resource_missing";
-      if (!alreadyGone) throw err;
-    }
-  }
-
-  return prisma.$transaction(async (tx) => {
+  const local = await prisma.$transaction(async (tx) => {
     const agreement = await lockRentalAgreementInTx(tx, agreementId);
-    if (agreement.status !== initiallyObserved.status) {
-      throw new Error(
-        "This agreement was just changed by someone else — refresh the page and try again.",
-      );
-    }
     const check = canTransitionAgreementStatus(agreement.status, newStatus);
     if (!check.ok) throw new Error(check.reason);
+
+    let providerClaim:
+      | { done: true; providerObjectId: string }
+      | { done: false; opId: string; idempotencyKey: string }
+      | null = null;
+    if (agreement.stripeSubscriptionId) {
+      providerClaim = await claimProviderOperation(tx, {
+        kind: "SUBSCRIPTION_CANCEL",
+        subjectType: "RentalAgreement",
+        subjectId: agreementId,
+        idempotencyKey: `subscription-cancel-${agreementId}`,
+      });
+    }
 
     await tx.rentalAgreement.update({
       where: { id: agreementId },
@@ -625,12 +610,66 @@ async function closeAgreement(
         entityType: "RentalAgreement",
         entityId: agreementId,
         oldValue: { status: agreement.status },
-        newValue: { status: newStatus },
+        newValue: {
+          status: newStatus,
+          providerCancelPending:
+            Boolean(agreement.stripeSubscriptionId) && providerClaim?.done === false,
+        },
       },
     });
 
-    return tx.rentalAgreement.findUniqueOrThrow({ where: { id: agreementId } });
+    const updated = await tx.rentalAgreement.findUniqueOrThrow({
+      where: { id: agreementId },
+    });
+    return {
+      updated,
+      stripeSubscriptionId: agreement.stripeSubscriptionId,
+      providerClaim,
+    };
   });
+
+  if (
+    !local.stripeSubscriptionId ||
+    !local.providerClaim ||
+    local.providerClaim.done
+  ) {
+    return local.updated;
+  }
+
+  const result = await runProviderCall(async () => {
+    try {
+      const stripe = getStripeClient();
+      await stripe.subscriptions.cancel(local.stripeSubscriptionId!);
+      return local.stripeSubscriptionId!;
+    } catch (error) {
+      const providerError = error as { type?: string; code?: string };
+      if (
+        providerError.type === "StripeInvalidRequestError" &&
+        providerError.code === "resource_missing"
+      ) {
+        return local.stripeSubscriptionId!;
+      }
+      throw error;
+    }
+  });
+
+  await prisma.$transaction(async (tx) => {
+    if (result.ok) {
+      await completeProviderOperation(tx, local.providerClaim.opId, {
+        status: "SUCCEEDED",
+        providerObjectId: result.value,
+      });
+      return;
+    }
+    await completeProviderOperation(tx, local.providerClaim.opId, {
+      status: result.outcome,
+      error: result.error,
+    });
+  });
+
+  // Provider failure never rolls back or hides the local lifecycle decision.
+  // The reconciliation pass owns PENDING/FAILED/UNKNOWN provider state.
+  return local.updated;
 }
 
 export async function endAgreement(userId: string, agreementId: string) {
