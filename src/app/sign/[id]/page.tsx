@@ -1,4 +1,5 @@
 import { getSignatureRecordForSigning } from "@/domains/agreements";
+import { describeSnapshotTerms } from "@/domains/agreements/terms-snapshot";
 import { formatCents } from "@/domains/pricing";
 import { SignForm } from "./sign-form";
 
@@ -28,6 +29,9 @@ export default async function SignPage({
   }
 
   const { agreement } = signature;
+  const lockedTerms = agreement.termMonths
+    ? describeSnapshotTerms(agreement.termsSnapshot)
+    : { ending: null, autoRenew: null };
   const monthlyTotal = agreement.lines.reduce((sum, l) => sum + l.monthlyPriceCents, 0);
 
   return (
@@ -85,6 +89,36 @@ export default async function SignPage({
           </p>
         )}
       </div>
+
+      {lockedTerms.ending && (
+        <section
+          aria-labelledby="ending-terms-heading"
+          className="mt-4 space-y-2 rounded-lg border border-gray-200 bg-white p-5 text-sm"
+        >
+          <h2 id="ending-terms-heading" className="font-medium">
+            Ending this agreement early
+          </h2>
+          <ul className="list-inside list-disc">
+            {lockedTerms.ending.lines.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+          <p className="whitespace-pre-line text-gray-700">{lockedTerms.ending.termsText}</p>
+        </section>
+      )}
+
+      {lockedTerms.autoRenew && (
+        <section
+          aria-labelledby="renew-terms-heading"
+          className="mt-4 space-y-2 rounded-lg border border-gray-200 bg-white p-5 text-sm"
+        >
+          <h2 id="renew-terms-heading" className="font-medium">
+            Automatic renewal
+          </h2>
+          <p>{lockedTerms.autoRenew.noticeLine}</p>
+          <p className="whitespace-pre-line text-gray-700">{lockedTerms.autoRenew.termsText}</p>
+        </section>
+      )}
 
       <div className="mt-6">
         <SignForm signatureRecordId={signature.id} />
