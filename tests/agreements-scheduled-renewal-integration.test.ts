@@ -1,6 +1,19 @@
 import { randomUUID } from "node:crypto";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+
+const stripeMock = vi.hoisted(() => ({
+  update: vi.fn(),
+  retrieve: vi.fn(),
+}));
+vi.mock("@/lib/stripe", () => ({
+  getStripeClient: () => ({ subscriptions: { update: stripeMock.update, retrieve: stripeMock.retrieve } }),
+}));
+
 import { prisma } from "@/lib/prisma";
+import { finishPendingProviderOperations } from "@/domains/billing/reconciliation";
+import { termSyncKey, cancelAtSecondsFor } from "@/domains/billing/subscription-term";
+
+const cancelAtFor = (endDate: Date) => cancelAtSecondsFor({ termMonths: 12, endDate });
 import { endAgreement, cancelAgreement } from "@/domains/agreements";
 import { startDueRenewals, startRenewalIfDue } from "@/domains/agreements/renewal-start";
 
@@ -25,7 +38,14 @@ describe.skipIf(!enabled)("a signed renewal starts on its start date and hands e
   const agreementIds: string[] = [];
   const applianceIds: string[] = [];
 
-  async function pair(opts: { oldStatus?: "ACTIVE" | "ENDED"; sub?: boolean; renewalLines?: "same" | "different" } = {}) {
+  async function pair(
+    opts: {
+      oldStatus?: "ACTIVE" | "ENDED";
+      sub?: boolean;
+      renewalLines?: "same" | "different" | "extra";
+      renewalTermMonths?: number | null;
+    } = {},
+  ) {
     const n = agreementIds.length;
     const old = await prisma.rentalAgreement.create({
       data: {
@@ -52,14 +72,18 @@ describe.skipIf(!enabled)("a signed renewal starts on its start date and hands e
         customerId,
         serviceAddressId: addressId,
         status: "SCHEDULED",
-        termMonths: 12,
+        termMonths: opts.renewalTermMonths === undefined ? 12 : opts.renewalTermMonths,
         startDate: renewalStart,
+        endDate: opts.renewalTermMonths === null ? null : new Date("2028-11-07T06:59:59Z"),
         renewedFromAgreementId: old.id,
         lines: {
           create:
             opts.renewalLines === "different"
               ? [{ label: "Fridge", monthlyPriceCents: 4000, listPriceCents: 4000 }]
               : [
+                  ...(opts.renewalLines === "extra"
+                    ? [{ label: "Fridge", monthlyPriceCents: 4000, listPriceCents: 4000 }]
+                    : []),
                   { label: "Washer", monthlyPriceCents: 3000, listPriceCents: 3000 },
                   { label: "Dryer", monthlyPriceCents: 3000, listPriceCents: 3000 },
                 ],
@@ -78,6 +102,12 @@ describe.skipIf(!enabled)("a signed renewal starts on its start date and hands e
   }
 
   const get = (id: string) => prisma.rentalAgreement.findUniqueOrThrow({ where: { id } });
+
+  beforeEach(() => {
+    stripeMock.update.mockReset();
+    stripeMock.retrieve.mockReset();
+    stripeMock.update.mockImplementation(async (id: string) => ({ id }));
+  });
 
   beforeAll(async () => {
     await prisma.user.createMany({
@@ -133,7 +163,7 @@ describe.skipIf(!enabled)("a signed renewal starts on its start date and hands e
     expect(r.status).toBe("ACTIVE");
     expect(r.stripeSubscriptionId).toBe(`sub_${tag}_${agreementIds.indexOf(old.id)}`);
     expect(r.nextBillingDate?.toISOString()).toBe("2027-11-08T19:00:00.000Z");
-    expect(r.billingStartedAt?.toISOString()).toBe("2026-11-09T19:00:00.000Z");
+    expect(r.billingStartedAt?.toISOString()).toBe(renewalStart.toISOString());
 
     expect((await prisma.appliance.findUniqueOrThrow({ where: { id: appliance.id } })).status).toBe("RENTED");
     const assignments = await prisma.applianceAssignment.findMany({
@@ -170,7 +200,7 @@ describe.skipIf(!enabled)("a signed renewal starts on its start date and hands e
 
   it("changes nothing at all when the renewal's lines do not match the old ones", async () => {
     const { old, renewal, appliance } = await pair({ renewalLines: "different" });
-    await expect(startRenewalIfDue(renewal.id, onStart)).rejects.toThrow(/Could not match/);
+    await expect(startRenewalIfDue(renewal.id, onStart)).rejects.toThrow(/different number of rental lines/);
     expect((await get(old.id)).status).toBe("ACTIVE");
     expect((await get(old.id)).stripeSubscriptionId).not.toBeNull();
     expect((await get(renewal.id)).status).toBe("SCHEDULED");
@@ -197,5 +227,64 @@ describe.skipIf(!enabled)("a signed renewal starts on its start date and hands e
     expect((await get(renewal.id)).status).toBe("CANCELLED");
     await endAgreement(ownerId, old.id);
     expect((await get(old.id)).status).toBe("ENDED");
+  });
+
+  it("moves the subscription's end date to the renewal's end before handing over", async () => {
+    const { renewal } = await pair();
+    await startRenewalIfDue(renewal.id, onStart);
+    expect(stripeMock.update).toHaveBeenCalledTimes(1);
+    const [subId, params] = stripeMock.update.mock.calls[0]!;
+    expect(subId).toMatch(/^sub_/);
+    expect(params.cancel_at).toBe(cancelAtFor(new Date("2028-11-07T06:59:59Z")));
+    expect(await prisma.providerOperation.count({ where: { idempotencyKey: termSyncKey(renewal.id, "extend"), status: "SUCCEEDED" } })).toBe(1);
+  });
+
+  it("a month-to-month renewal removes the subscription's end date", async () => {
+    const { renewal } = await pair({ renewalTermMonths: null });
+    await startRenewalIfDue(renewal.id, onStart);
+    expect(stripeMock.update.mock.calls[0]![1]).toEqual({ cancel_at: "" });
+  });
+
+  it("does not start while Stripe has not confirmed the new end date, then starts once it has", async () => {
+    const { old, renewal } = await pair();
+    stripeMock.update.mockRejectedValueOnce(Object.assign(new Error("card processor down"), { type: "StripeConnectionError" }));
+    const blocked = await startRenewalIfDue(renewal.id, onStart);
+    expect(blocked).toMatchObject({ started: false, reason: "BILLING_NOT_READY" });
+    expect((await get(old.id)).status).toBe("ACTIVE");
+    expect((await get(old.id)).stripeSubscriptionId).not.toBeNull();
+    expect((await get(renewal.id)).status).toBe("SCHEDULED");
+    // The reconciliation pass reads Stripe, sees the old end date, and retries the change.
+    stripeMock.retrieve.mockResolvedValue({ id: "x", cancel_at: cancelAtFor(termEnd) });
+    await finishPendingProviderOperations(200);
+    expect(
+      (await prisma.providerOperation.findUniqueOrThrow({ where: { idempotencyKey: termSyncKey(renewal.id, "extend") } })).status,
+    ).toBe("SUCCEEDED");
+    expect(await startRenewalIfDue(renewal.id, onStart)).toMatchObject({ started: true });
+  });
+
+  it("when the renewal is cancelled before it starts, the old end date goes back on the subscription", async () => {
+    const { old, renewal } = await pair();
+    await startRenewalIfDue(renewal.id, beforeStart); // signing-time extension
+    stripeMock.update.mockClear();
+    await cancelAgreement(ownerId, renewal.id);
+    expect(stripeMock.update).toHaveBeenCalledTimes(1);
+    expect(stripeMock.update.mock.calls[0]![1].cancel_at).toBe(cancelAtFor(termEnd));
+    expect((await get(old.id)).status).toBe("ACTIVE");
+    expect((await get(renewal.id)).status).toBe("CANCELLED");
+  });
+
+  it("refuses to start when the renewal has an extra line the carried-over subscription would not bill", async () => {
+    const { old, renewal } = await pair({ renewalLines: "extra" });
+    await expect(startRenewalIfDue(renewal.id, onStart)).rejects.toThrow(/different number of rental lines/);
+    expect((await get(old.id)).status).toBe("ACTIVE");
+    expect((await get(renewal.id)).status).toBe("SCHEDULED");
+  });
+
+  it("gives the renewal its own billing start and keeps its term end", async () => {
+    const { renewal } = await pair();
+    await startRenewalIfDue(renewal.id, onStart);
+    const r = await get(renewal.id);
+    expect(r.billingStartedAt?.toISOString()).toBe(renewalStart.toISOString());
+    expect(r.endDate?.toISOString()).toBe("2028-11-07T06:59:59.000Z");
   });
 });

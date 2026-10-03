@@ -8,6 +8,7 @@ import {
   RetryLater,
   runProviderCall,
 } from "./provider-ops";
+import { desiredSubscriptionTerm, parseTermSyncKey, stripeKeyForAttempt } from "./subscription-term";
 
 export type DriftRow = {
   kind:
@@ -32,6 +33,7 @@ type RecoverableOperation = {
     | "CUSTOMER_CREATE"
     | "SUBSCRIPTION_CREATE"
     | "SUBSCRIPTION_CANCEL"
+    | "SUBSCRIPTION_UPDATE"
     | "BALANCE_CREDIT"
     | "REFUND_CREATE";
   subjectType: string;
@@ -214,6 +216,64 @@ async function reconcileSubscriptionCancel(operation: RecoverableOperation): Pro
       claim.opId,
       result.ok
         ? { status: "SUCCEEDED", providerObjectId: subscriptionId }
+        : { status: result.outcome, error: result.error },
+    ),
+  );
+  return result.ok;
+}
+
+/**
+ * A renewal's end-date change on the subscription (extend at signing, revert on
+ * cancellation). The target is derived from the agreements, so this simply makes
+ * Stripe match: if it already does the operation is done, otherwise it is
+ * retried (an ambiguous earlier attempt is only retried once Stripe has been read).
+ */
+async function reconcileSubscriptionUpdate(operation: RecoverableOperation): Promise<boolean> {
+  const parsed = parseTermSyncKey(operation.idempotencyKey);
+  if (!parsed) return false;
+  const desired = await desiredSubscriptionTerm(parsed.renewalId, parsed.direction);
+  if (!desired) return false;
+  if (desired.moot) {
+    await markOperationSucceeded(operation, desired.subscriptionId);
+    return true;
+  }
+  const stripe = getStripeClient();
+  const subscription = await stripe.subscriptions.retrieve(desired.subscriptionId);
+  const current = subscription.cancel_at ?? null;
+  if (current === desired.cancelAt) {
+    await markOperationSucceeded(operation, desired.subscriptionId);
+    return true;
+  }
+  let claim;
+  try {
+    claim = await prisma.$transaction((tx) =>
+      claimProviderOperation(tx, {
+        kind: "SUBSCRIPTION_UPDATE",
+        subjectType: operation.subjectType,
+        subjectId: operation.subjectId,
+        idempotencyKey: operation.idempotencyKey,
+        reconcileUnknownAfterProviderEvidence: { expectedAttempts: operation.attempts },
+      }),
+    );
+  } catch (error) {
+    if (error instanceof RetryLater) return false;
+    throw error;
+  }
+  if (claim.done) return true;
+  const key = await stripeKeyForAttempt(claim.opId, claim.idempotencyKey);
+  const result = await runProviderCall(() =>
+    stripe.subscriptions.update(
+      desired.subscriptionId,
+      { cancel_at: desired.cancelAt ?? "" },
+      { idempotencyKey: key },
+    ),
+  );
+  await prisma.$transaction((tx) =>
+    completeProviderOperation(
+      tx,
+      claim.opId,
+      result.ok
+        ? { status: "SUCCEEDED", providerObjectId: desired.subscriptionId }
         : { status: result.outcome, error: result.error },
     ),
   );
@@ -572,6 +632,8 @@ async function reconcileOne(operation: RecoverableOperation): Promise<boolean> {
       return reconcileSubscriptionCreate(operation);
     case "SUBSCRIPTION_CANCEL":
       return reconcileSubscriptionCancel(operation);
+    case "SUBSCRIPTION_UPDATE":
+      return reconcileSubscriptionUpdate(operation);
     case "BALANCE_CREDIT":
       return reconcileBalanceCredit(operation);
     case "REFUND_CREATE":

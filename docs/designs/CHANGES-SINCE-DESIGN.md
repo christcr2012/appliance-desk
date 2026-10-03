@@ -44,7 +44,7 @@ date; `startRenewalInTx` (`src/domains/agreements/renewal-start.ts`) then moves 
 assignments, the Stripe subscription pointer, next billing date, and deposit to the
 renewal and ends the old agreement in one transaction (nightly cron
 `/api/cron/start-renewals`; also run right after signing if already due). Ending or
-cancelling a rental that has a waiting renewal is refused until the renewal is cancelled.
+cancelling a rental that has a waiting renewal is refused until the renewal is cancelled. New provider operation kind `SUBSCRIPTION_UPDATE` (renewal signed/cancelled moves the subscription end date); billing/reconciliation switch statements over provider operation kinds must handle it.
 A renewal that cannot start raises the `RENEWAL_NOT_STARTED` exception.
 
 Updated as the Batch B completion stack merges (`docs/STATUS.md`): scheduled renewals

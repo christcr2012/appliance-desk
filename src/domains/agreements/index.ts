@@ -1,6 +1,8 @@
 import { draftRequestId } from "./draft-request";
 import { buildTermsSnapshot } from "./terms-snapshot";
 import { requireRole } from "@/lib/session";
+import { fixedTermEndDate } from "@/lib/business-date";
+import { syncSubscriptionTerm } from "@/domains/billing/subscription-term";
 import { prisma } from "@/lib/prisma";
 import type {
   Prisma,
@@ -542,7 +544,10 @@ export async function signAgreement(
       // SCHEDULED: it becomes the active rental (and the rental it renews
       // ends) in one step at its start date; see renewal-start.ts.
       data: agreement.renewedFromAgreementId && agreement.startDate
-        ? { status: "SCHEDULED" }
+        ? {
+            status: "SCHEDULED",
+            endDate: agreement.termMonths ? fixedTermEndDate(agreement.startDate, agreement.termMonths) : null,
+          }
         : { status: "ACTIVE", startDate: new Date() },
     });
     await tx.auditLog.create({
@@ -653,8 +658,22 @@ async function closeAgreement(
       updated,
       stripeSubscriptionId: agreement.stripeSubscriptionId,
       providerClaim,
+      // A cancelled waiting renewal gives the subscription back its old end date.
+      revertRenewalId:
+        newStatus === "CANCELLED" && agreement.status === "SCHEDULED" && agreement.renewedFromAgreementId
+          ? agreement.id
+          : null,
     };
   });
+
+  if (local.revertRenewalId) {
+    try {
+      await syncSubscriptionTerm(local.revertRenewalId, "revert");
+    } catch (error) {
+      // The recorded provider operation is retried by the billing reconciliation pass.
+      console.error(`Cancelled renewal ${local.revertRenewalId} but could not restore the old end date yet:`, error);
+    }
+  }
 
   if (
     !local.stripeSubscriptionId ||

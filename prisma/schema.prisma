@@ -1133,6 +1133,8 @@ enum ProviderOperationKind {
   CUSTOMER_CREATE
   SUBSCRIPTION_CREATE
   SUBSCRIPTION_CANCEL
+  // Changes a live subscription's end date when a renewal is signed or cancelled.
+  SUBSCRIPTION_UPDATE
   BALANCE_CREDIT
   REFUND_CREATE
 }

@@ -1,6 +1,8 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { lockCustomerLedger } from "@/domains/billing/ledger";
+import { syncSubscriptionTerm, termSyncKey } from "@/domains/billing/subscription-term";
+import { fixedTermEndDate } from "@/lib/business-date";
 import { lockRentalAgreementInTx } from "./index";
 
 /**
@@ -16,7 +18,8 @@ import { lockRentalAgreementInTx } from "./index";
  *   - the appliances move from the old agreement's lines to the renewal's lines
  *     (they stay exactly where they are; nothing is sent for pickup),
  *   - the monthly billing carries over (same Stripe subscription, same next
- *     billing date), and any deposit carries over,
+ *     billing date; its end date was already moved to the renewal's end when the
+ *     renewal was signed), and any deposit carries over,
  *   - the old agreement is marked ENDED (its end date stays the term end) and
  *     the renewal becomes ACTIVE.
  *
@@ -27,7 +30,7 @@ import { lockRentalAgreementInTx } from "./index";
 
 export type RenewalStartResult =
   | { started: true; renewalId: string; endedAgreementId: string; appliancesMoved: number }
-  | { started: false; renewalId: string; reason: "NOT_SCHEDULED" | "NOT_YET" | "OLD_NOT_ACTIVE" | "NO_RENEWED_FROM"; message: string };
+  | { started: false; renewalId: string; reason: "NOT_SCHEDULED" | "NOT_YET" | "OLD_NOT_ACTIVE" | "NO_RENEWED_FROM" | "BILLING_NOT_READY"; message: string };
 
 const MESSAGES = {
   NOT_SCHEDULED: "This renewal is not waiting to start.",
@@ -35,6 +38,8 @@ const MESSAGES = {
   OLD_NOT_ACTIVE:
     "The rental this renews is no longer active (it was ended or cancelled), so the renewal cannot start. Review it and cancel or fix it.",
   NO_RENEWED_FROM: "This agreement is not a renewal of another agreement.",
+  BILLING_NOT_READY:
+    "Waiting for the card processor to confirm the renewal's new end date on the monthly billing. It is retried automatically; nothing was changed.",
 } as const;
 
 type Line = { id: string; label: string; monthlyPriceCents: number };
@@ -42,6 +47,11 @@ type Line = { id: string; label: string; monthlyPriceCents: number };
 /** Pair each old line with an interchangeable renewal line (same label and price), one to one. */
 function pairLines(oldLines: Line[], newLines: Line[]): Map<string, string> {
   const free = [...newLines];
+  if (newLines.length !== oldLines.length) {
+    throw new Error(
+      "The renewal has a different number of rental lines than the rental it renews. Nothing was changed; make the lines match and try again.",
+    );
+  }
   const pairs = new Map<string, string>();
   for (const line of oldLines) {
     const index = free.findIndex(
@@ -85,6 +95,15 @@ export async function startRenewalInTx(
   const old = await lockRentalAgreementInTx(tx, renewal.renewedFromAgreementId);
   if (old.status !== "ACTIVE") return fail("OLD_NOT_ACTIVE");
 
+  // The subscription keeps charging only if its end date was moved at signing.
+  if (old.stripeSubscriptionId) {
+    const confirmed = await tx.providerOperation.findUnique({
+      where: { idempotencyKey: termSyncKey(renewal.id, "extend") },
+      select: { status: true },
+    });
+    if (confirmed?.status !== "SUCCEEDED") return fail("BILLING_NOT_READY");
+  }
+
   const oldLines = await tx.rentalLine.findMany({
     where: { agreementId: old.id },
     include: { assignments: { where: { unassignedAt: null } } },
@@ -122,7 +141,10 @@ export async function startRenewalInTx(
       status: "ACTIVE",
       stripeSubscriptionId: old.stripeSubscriptionId,
       nextBillingDate: old.nextBillingDate,
-      billingStartedAt: old.billingStartedAt,
+      // The renewal's own billing history starts at its start date, so reports
+      // never count the same rental twice for the months the old one covered.
+      billingStartedAt: old.billingStartedAt ? renewal.startDate : null,
+      endDate: renewal.endDate ?? (renewal.termMonths ? fixedTermEndDate(renewal.startDate, renewal.termMonths) : null),
       billingBlockedReason: old.billingBlockedReason,
       billingReminderSentForDate: old.billingReminderSentForDate,
     },
@@ -146,6 +168,10 @@ export async function startRenewalInTx(
 }
 
 export async function startRenewalIfDue(renewalId: string, now = new Date()): Promise<RenewalStartResult> {
+  // Make sure the subscription's end date has been moved (normally done when the
+  // renewal was signed; this retries it, and is a no-op once confirmed).
+  const current = await prisma.rentalAgreement.findUnique({ where: { id: renewalId }, select: { status: true } });
+  if (current?.status === "SCHEDULED") await syncSubscriptionTerm(renewalId, "extend");
   return prisma.$transaction((tx) => startRenewalInTx(tx, renewalId, now));
 }
 
