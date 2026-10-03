@@ -12,7 +12,7 @@ vi.mock("@/domains/billing/reconciliation", () => ({
   detectDrift: (...args: unknown[]) => mocks.detectDrift(...args),
 }));
 
-import { loadBillingReconciliationPageData } from "@/app/desk/billing/reconciliation/page";
+import { loadBillingReconciliationPageData } from "@/app/desk/billing/reconciliation/data";
 
 describe("billing reconciliation page loader", () => {
   beforeEach(() => {
