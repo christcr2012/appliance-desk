@@ -1,7 +1,7 @@
 // Generic accounting export: one row per real money movement. Successful
-// incoming cash comes from Receipt, never from its per-invoice Payment
-// allocations; that prevents one combined check from appearing as several
-// independent cash receipts. Refunds remain independent outflows.
+// incoming cash comes from Receipt, never from per-invoice Payment allocations;
+// that prevents one combined check from appearing as several receipts and keeps
+// unallocated overpayment visible as cash.
 import { prisma } from "@/lib/prisma";
 
 export type AccountingTransactionType =
@@ -12,6 +12,9 @@ export type AccountingTransactionType =
 export type AccountingTransactionRow = {
   date: Date;
   type: AccountingTransactionType;
+  receiptId: string | null;
+  source: string;
+  receivedOn: Date;
   customerName: string;
   companyName: string;
   invoiceNumber: number | null;
@@ -35,6 +38,8 @@ export async function getAccountingTransactions(): Promise<
       Promise.all([
         tx.receipt.findMany({
           select: {
+            id: true,
+            source: true,
             amountCents: true,
             method: true,
             notes: true,
@@ -100,11 +105,11 @@ export async function getAccountingTransactions(): Promise<
     rows.push({
       date: receipt.receivedOn,
       type: "Payment",
+      receiptId: receipt.id,
+      source: receipt.source,
+      receivedOn: receipt.receivedOn,
       customerName: customerDisplayName(receipt.customer),
       companyName: receipt.customer.companyName ?? "",
-      // One receipt can span several invoices. Leave the single-invoice
-      // reference blank rather than falsely assigning the whole cash event to
-      // one allocation; detailed allocation remains in Payment rows.
       invoiceNumber: invoiceNumbers.length === 1 ? invoiceNumbers[0]! : null,
       amountCents: receipt.amountCents,
       methodOrReason: receipt.method,
@@ -116,6 +121,9 @@ export async function getAccountingTransactions(): Promise<
     rows.push({
       date: refund.createdAt,
       type: "Refund",
+      receiptId: null,
+      source: "REFUND",
+      receivedOn: refund.createdAt,
       customerName: customerDisplayName(refund.invoice.customer),
       companyName: refund.invoice.customer.companyName ?? "",
       invoiceNumber: refund.invoice.invoiceNumber,
@@ -130,6 +138,9 @@ export async function getAccountingTransactions(): Promise<
     rows.push({
       date: deposit.refundedAt,
       type: "Deposit refunded",
+      receiptId: null,
+      source: "DEPOSIT_REFUND",
+      receivedOn: deposit.refundedAt,
       customerName: customerDisplayName(deposit.agreement.customer),
       companyName: deposit.agreement.customer.companyName ?? "",
       invoiceNumber: null,
