@@ -7,49 +7,76 @@ export type AgreementEarningsRow = {
   agreementId: string;
   customerId: string;
   customerName: string;
-  estimatedCents: number;
-  actualCents: number;
+  expectedChargesCents: number;
+  netCollectedCents: number;
   gapCents: number;
 };
 
 export type EarningsReport = {
   rows: AgreementEarningsRow[];
-  totals: { estimatedCents: number; actualCents: number; gapCents: number };
+  totals: {
+    expectedChargesCents: number;
+    netCollectedCents: number;
+    gapCents: number;
+  };
 };
 
 /**
- * The Reports page's "actual vs. estimated" table — one row per agreement
- * that has ever started billing, worst gap first, plus fleet-wide totals.
- * See src/domains/reports/earnings.ts for what "estimated" and "actual"
- * each mean and why. Agreements that never started billing (still
- * draft/awaiting signature, or blocked — see the exception inbox for
- * those) are left out entirely rather than shown as a $0 row, since
- * there's nothing to reconcile yet.
+ * One ledger-basis reconciliation row per agreement that has started billing.
+ * Expected charges are the agreement's invoices recorded by `asOf`. Net
+ * collections are successful Receipt allocations to those invoices minus
+ * recorded Refunds by `asOf`. Unallocated overpayment remains real customer
+ * cash but is not attributed to an agreement until it is allocated.
  */
 export async function getEarningsReport(asOf: Date = new Date()): Promise<EarningsReport> {
   const agreements = await prisma.rentalAgreement.findMany({
-    where: { billingStartedAt: { not: null } },
+    where: { billingStartedAt: { not: null, lte: asOf } },
     select: {
       id: true,
-      billingStartedAt: true,
-      endDate: true,
-      customer: { select: { id: true, user: { select: { name: true, email: true } } } },
-      lines: { select: { monthlyPriceCents: true } },
-      invoices: { select: { amountPaidCents: true } },
+      customer: {
+        select: { id: true, user: { select: { name: true, email: true } } },
+      },
+      invoices: {
+        where: { createdAt: { lte: asOf } },
+        select: {
+          amountDueCents: true,
+          payments: {
+            where: {
+              status: "succeeded",
+              receiptId: { not: null },
+              receipt: { receivedOn: { lte: asOf } },
+            },
+            select: { amountCents: true },
+          },
+          refunds: {
+            where: { createdAt: { lte: asOf } },
+            select: { amountCents: true },
+          },
+        },
+      },
     },
   });
 
   const rows = agreements.map((agreement) => {
-    const invoicePaidCents = agreement.invoices.reduce((sum, inv) => sum + inv.amountPaidCents, 0);
-    const earnings = computeAgreementEarnings(
-      {
-        billingStartedAt: agreement.billingStartedAt,
-        endDate: agreement.endDate,
-        lines: agreement.lines,
-        invoicePaidCents,
-      },
-      asOf,
+    const expectedChargesCents = agreement.invoices.reduce(
+      (sum, invoice) => sum + invoice.amountDueCents,
+      0,
     );
+    const grossAllocatedCents = agreement.invoices.reduce(
+      (sum, invoice) =>
+        sum + invoice.payments.reduce((paymentSum, payment) => paymentSum + payment.amountCents, 0),
+      0,
+    );
+    const refundedCents = agreement.invoices.reduce(
+      (sum, invoice) =>
+        sum + invoice.refunds.reduce((refundSum, refund) => refundSum + refund.amountCents, 0),
+      0,
+    );
+    const earnings = computeAgreementEarnings({
+      expectedChargesCents,
+      netCollectedCents: grossAllocatedCents - refundedCents,
+    });
+
     return {
       agreementId: agreement.id,
       customerId: agreement.customer.id,
@@ -62,30 +89,27 @@ export async function getEarningsReport(asOf: Date = new Date()): Promise<Earnin
 
   const totals = rows.reduce(
     (acc, row) => ({
-      estimatedCents: acc.estimatedCents + row.estimatedCents,
-      actualCents: acc.actualCents + row.actualCents,
+      expectedChargesCents: acc.expectedChargesCents + row.expectedChargesCents,
+      netCollectedCents: acc.netCollectedCents + row.netCollectedCents,
       gapCents: acc.gapCents + row.gapCents,
     }),
-    { estimatedCents: 0, actualCents: 0, gapCents: 0 },
+    { expectedChargesCents: 0, netCollectedCents: 0, gapCents: 0 },
   );
 
   return { rows, totals };
 }
 
 /**
- * Completed repair (MAINTENANCE_VISIT) jobs with no parts/labor cost
- * entered — the same rows the exception inbox flags (see
- * src/domains/exceptions), surfaced again here as their own list since
- * the Reports page is where Chris would notice his profitability numbers
- * looking off and want to know why.
+ * Completed repair (MAINTENANCE_VISIT) jobs with missing cost inputs. Either
+ * missing side makes profitability incomplete, so the report flags a row when
+ * parts OR labor cost is null rather than only when both are absent.
  */
 export async function getJobsMissingRepairCost() {
   return prisma.job.findMany({
     where: {
       type: "MAINTENANCE_VISIT",
       status: "COMPLETED",
-      partsCostCents: null,
-      laborCostCents: null,
+      OR: [{ partsCostCents: null }, { laborCostCents: null }],
     },
     select: {
       id: true,
@@ -93,7 +117,14 @@ export async function getJobsMissingRepairCost() {
       customer: { select: { user: { select: { name: true, email: true } } } },
       appliances: {
         take: 1,
-        select: { appliance: { select: { assetNumber: true, applianceType: { select: { name: true } } } } },
+        select: {
+          appliance: {
+            select: {
+              assetNumber: true,
+              applianceType: { select: { name: true } },
+            },
+          },
+        },
       },
     },
     orderBy: [{ completedAt: "asc" }],
@@ -101,4 +132,7 @@ export async function getJobsMissingRepairCost() {
 }
 
 export { getAccountingTransactions } from "./accounting-export";
-export type { AccountingTransactionRow, AccountingTransactionType } from "./accounting-export";
+export type {
+  AccountingTransactionRow,
+  AccountingTransactionType,
+} from "./accounting-export";
