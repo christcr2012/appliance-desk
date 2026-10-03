@@ -53,6 +53,11 @@ function providerRowMatches(
  * requestedAt is the immutable evidence anchor for the original provider
  * request. updatedAt is the mutable lease/attempt timestamp used to decide
  * whether an in-flight claim has gone stale.
+ *
+ * UNKNOWN remains non-retryable by default. A reconciliation path may set
+ * reconcileUnknownAfterProviderEvidence only after a provider read has proven
+ * the ambiguous write did not take effect; the row lock then serializes that
+ * evidence-based retry against every competing worker.
  */
 export async function claimProviderOperation(
   tx: Prisma.TransactionClient,
@@ -62,6 +67,7 @@ export async function claimProviderOperation(
     subjectId: string;
     idempotencyKey: string;
     staleAfterMs?: number;
+    reconcileUnknownAfterProviderEvidence?: boolean;
   },
 ): Promise<
   | { done: true; providerObjectId: string }
@@ -125,7 +131,10 @@ export async function claimProviderOperation(
     return { done: true, providerObjectId: existing.providerObjectId };
   }
 
-  if (existing.status === "UNKNOWN") {
+  if (
+    existing.status === "UNKNOWN" &&
+    !input.reconcileUnknownAfterProviderEvidence
+  ) {
     throw new RetryLater("This provider operation has an unknown outcome and must be reconciled before retrying.");
   }
   if (existing.status === "DRIFT") {
@@ -139,9 +148,10 @@ export async function claimProviderOperation(
   }
 
   // FAILED is deliberately retryable. A stale PENDING claim is also taken
-  // over. UNKNOWN is not retried here because its provider-side outcome is
-  // ambiguous; reconciliation owns that state. requestedAt remains unchanged
-  // so later reconciliation can still search for the original provider write.
+  // over. UNKNOWN can only reach this point when reconciliation has explicit
+  // provider evidence that the earlier ambiguous write did not take effect.
+  // requestedAt remains unchanged so provider evidence searches stay anchored
+  // to the original request.
   await tx.providerOperation.update({
     where: { id: existing.id },
     data: {
