@@ -108,3 +108,43 @@ describe("reading a stored snapshot back", () => {
     expect(autoRenewTermsVersionFor(30, "A")).not.toBe(autoRenewTermsVersionFor(45, "A"));
   });
 });
+
+import { describeSnapshotTerms } from "@/domains/agreements/terms-snapshot";
+
+describe("describeSnapshotTerms (what the customer is shown before signing)", () => {
+  const snapshot = (termination: unknown, autoRenew: unknown) => ({ shape: 1, termination, autoRenew });
+
+  it("describes a flat-fee-only policy with a retain treatment and singular day wording", () => {
+    const out = describeSnapshotTerms(
+      snapshot(
+        { feeCents: 2500, feePercent: null, feeCapCents: null, noticeDays: 1, unusedTerm: "RETAIN", termsText: "Words." },
+        null,
+      ),
+    );
+    expect(out.ending?.lines).toContain("Ending early fee: $25.");
+    expect(out.ending?.lines).toContain("Notice needed to end early: 1 day.");
+    expect(out.ending?.lines).toContain("Money paid for months you no longer use is not refunded.");
+    expect(out.autoRenew).toBeNull();
+  });
+
+  it("says plainly when the owner chose no fee", () => {
+    const out = describeSnapshotTerms(
+      snapshot(
+        { feeCents: 0, feePercent: null, feeCapCents: null, noticeDays: 30, unusedTerm: "REFUND", termsText: "Words." },
+        null,
+      ),
+    );
+    expect(out.ending?.lines[0]).toBe("Ending early: no early-ending fee.");
+  });
+
+  it("shows nothing for terms that were never agreed, for missing wording, or for junk JSON", () => {
+    expect(describeSnapshotTerms(snapshot(null, null))).toEqual({ ending: null, autoRenew: null });
+    expect(describeSnapshotTerms(null)).toEqual({ ending: null, autoRenew: null });
+    expect(describeSnapshotTerms("junk")).toEqual({ ending: null, autoRenew: null });
+    expect(
+      describeSnapshotTerms(
+        snapshot({ feeCents: 100, feePercent: null, feeCapCents: null, noticeDays: 5, unusedTerm: "CREDIT", termsText: "  " }, null),
+      ).ending,
+    ).toBeNull();
+  });
+});

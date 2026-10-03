@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { formatCents } from "@/domains/pricing";
 import {
   loadTerminationPolicy,
   type AutoRenewPolicySettings,
@@ -148,4 +149,60 @@ export function snapshotAutoRenew(raw: unknown): TermsSnapshot["autoRenew"] {
     return null;
   }
   return autoRenew;
+}
+
+export type TermsDisclosure = {
+  /** Plain-English lines about ending the agreement early; empty when none were agreed. */
+  ending: { lines: string[]; termsText: string } | null;
+  /** Auto-renew wording the customer is shown; null when none were agreed. */
+  autoRenew: { noticeLine: string; termsText: string } | null;
+};
+
+const UNUSED_TERM_LINE: Record<"REFUND" | "CREDIT" | "RETAIN", string> = {
+  REFUND: "Money paid for months you no longer use is refunded.",
+  CREDIT: "Money paid for months you no longer use becomes a credit on your account.",
+  RETAIN: "Money paid for months you no longer use is not refunded.",
+};
+
+function daysLabel(days: number): string {
+  return `${days} day${days === 1 ? "" : "s"}`;
+}
+
+/**
+ * What the customer must be shown before signing: exactly the locked terms
+ * that a later termination quote or auto-renew consent will rely on. Built
+ * from the same readers those features use, so a term that is not shown here
+ * can never be relied on later.
+ */
+export function describeSnapshotTerms(raw: unknown): TermsDisclosure {
+  const policy = snapshotTerminationPolicy(raw);
+  const termsText = asSnapshot(raw)?.termination?.termsText;
+  let ending: TermsDisclosure["ending"] = null;
+  if (policy && typeof termsText === "string" && termsText.trim() !== "") {
+    const lines: string[] = [];
+    const fee: string[] = [];
+    if (policy.feeCents) fee.push(formatCents(policy.feeCents));
+    if (policy.feePercent) fee.push(`${policy.feePercent}% of the remaining rent`);
+    lines.push(
+      fee.length === 0
+        ? "Ending early: no early-ending fee."
+        : `Ending early fee: ${fee.length === 2 ? `the larger of ${fee[0]} or ${fee[1]}` : fee[0]}${
+            policy.feeCapCents !== null ? `, never more than ${formatCents(policy.feeCapCents)}` : ""
+          }.`,
+    );
+    lines.push(`Notice needed to end early: ${daysLabel(policy.noticeDays)}.`);
+    lines.push("An early ending takes effect on a monthly billing date, after the notice period.");
+    lines.push(UNUSED_TERM_LINE[policy.unusedTerm]);
+    ending = { lines, termsText };
+  }
+  const renew = snapshotAutoRenew(raw);
+  return {
+    ending,
+    autoRenew: renew
+      ? {
+          noticeLine: `You can opt out of automatic renewal with ${daysLabel(renew.noticeDays)} notice.`,
+          termsText: renew.termsText,
+        }
+      : null,
+  };
 }
