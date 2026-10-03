@@ -199,10 +199,10 @@ async function getOrCreateTaxRate(taxRatePermille: number): Promise<string | nul
   if (taxRatePermille <= 0) return null;
 
   const stripe = getStripeClient();
-  const percentage = taxRatePermille / 10;
+  const percentage = taxRatePermille / 1000;
   const existing = await stripe.taxRates.list({ limit: 100, active: true });
   const match = existing.data.find(
-    (rate) => !rate.inclusive && Math.abs(rate.percentage - percentage) < 0.0001,
+    (rate) => !rate.inclusive && Math.abs(rate.percentage - percentage) < 0.000001,
   );
   if (match) return match.id;
 
