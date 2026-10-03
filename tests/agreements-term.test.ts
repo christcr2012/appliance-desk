@@ -32,6 +32,7 @@ describe("loadTerminationPolicy: null means not available, never a default", () 
     earlyTerminationFeeCents: 5000,
     earlyTerminationNoticeDays: 30,
     unusedTermTreatment: "CREDIT",
+    terminationTermsText: "Ending early costs the fee below.",
   };
 
   it("is null when nothing is set", () => {
@@ -44,6 +45,12 @@ describe("loadTerminationPolicy: null means not available, never a default", () 
     expect(loadTerminationPolicy({ ...complete, earlyTerminationFeeCents: null })).toBeNull();
   });
 
+  it("is null while the wording customers will see is blank (nothing is offered without published terms)", () => {
+    expect(loadTerminationPolicy({ ...complete, terminationTermsText: null })).toBeNull();
+    expect(loadTerminationPolicy({ ...complete, terminationTermsText: "" })).toBeNull();
+    expect(loadTerminationPolicy({ ...complete, terminationTermsText: "   " })).toBeNull();
+  });
+
   it("is null for values that make no sense", () => {
     expect(loadTerminationPolicy({ ...complete, unusedTermTreatment: "KEEP" })).toBeNull();
     expect(loadTerminationPolicy({ ...complete, earlyTerminationFeeCents: -1 })).toBeNull();
@@ -53,6 +60,7 @@ describe("loadTerminationPolicy: null means not available, never a default", () 
         earlyTerminationFeePercent: 101,
         earlyTerminationNoticeDays: 30,
         unusedTermTreatment: "RETAIN",
+        terminationTermsText: "Terms.",
       }),
     ).toBeNull();
   });
@@ -62,6 +70,7 @@ describe("loadTerminationPolicy: null means not available, never a default", () 
       earlyTerminationFeeCents: 0,
       earlyTerminationNoticeDays: 0,
       unusedTermTreatment: "RETAIN",
+      terminationTermsText: "No fee.",
     });
     expect(policy).toMatchObject({ feeCents: 0, noticeDays: 0, unusedTerm: "RETAIN" });
   });
@@ -71,6 +80,7 @@ describe("loadTerminationPolicy: null means not available, never a default", () 
       earlyTerminationFeePercent: 50,
       earlyTerminationNoticeDays: 14,
       unusedTermTreatment: "REFUND",
+      terminationTermsText: "Half of the rest.",
     });
     expect(policy).toMatchObject({ feeCents: null, feePercent: 50, feeCapCents: null });
   });

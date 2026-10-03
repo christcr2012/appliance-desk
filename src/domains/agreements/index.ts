@@ -1,4 +1,5 @@
 import { draftRequestId } from "./draft-request";
+import { buildTermsSnapshot } from "./terms-snapshot";
 import { requireRole } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import type {
@@ -444,9 +445,19 @@ export async function sendForSignature(userId: string, agreementId: string) {
     const signature = await tx.signatureRecord.create({
       data: { agreementId, provider: "typed_signature" },
     });
+    // A fixed-term agreement is locked to the ending/renewal terms in force
+    // right now (or this customer's own override): later changes to the
+    // system-wide terms never reach it. Month-to-month follows the live terms.
+    let termsSnapshot: Prisma.InputJsonValue | undefined;
+    if (agreement.termMonths) {
+      const settings = await tx.businessSettings.findUnique({ where: { id: "singleton" } });
+      termsSnapshot = JSON.parse(
+        JSON.stringify(buildTermsSnapshot(settings ?? {}, agreement.termsOverride, new Date())),
+      );
+    }
     await tx.rentalAgreement.update({
       where: { id: agreementId },
-      data: { status: "AWAITING_SIGNATURE" },
+      data: { status: "AWAITING_SIGNATURE", ...(termsSnapshot ? { termsSnapshot } : {}) },
     });
     await tx.auditLog.create({
       data: {
@@ -526,7 +537,14 @@ export async function signAgreement(
 
     await tx.rentalAgreement.update({
       where: { id: agreement.id },
-      data: { status: "ACTIVE", startDate: new Date() },
+      // A renewal drafted ahead of time keeps the start date it was agreed with.
+      data: {
+        status: "ACTIVE",
+        startDate:
+          agreement.renewedFromAgreementId && agreement.startDate && agreement.startDate > new Date()
+            ? agreement.startDate
+            : new Date(),
+      },
     });
     await tx.auditLog.create({
       data: {

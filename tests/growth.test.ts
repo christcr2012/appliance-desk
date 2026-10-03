@@ -76,6 +76,36 @@ describe("getChurnRiskCustomers", () => {
   });
 });
 
+describe("getChurnRiskCustomers: term end comes from the saved end date", () => {
+  beforeEach(() => {
+    agreementFindMany.mockReset().mockResolvedValue([]);
+    invoiceFindMany.mockReset().mockResolvedValue([{ customerId: "c1" }, { customerId: "c1" }]);
+    paymentFindMany.mockReset().mockResolvedValue([{ invoice: { customerId: "c1" } }]);
+    maintenanceRequestFindMany.mockReset().mockResolvedValue([]);
+  });
+
+  const base = {
+    id: "agr-1",
+    customerId: "c1",
+    // Signed Jan 1 2026, delivered Feb 15: the 12 months run to Feb 14 2027, not Jan 1 2027.
+    startDate: new Date("2026-01-01T17:00:00Z"),
+    termMonths: 12,
+    customer: { user: { name: "Jane Doe", email: "jane@example.com" } },
+  };
+
+  it("does not report a term as ending early when delivery came after signing", async () => {
+    agreementFindMany.mockResolvedValue([{ ...base, endDate: new Date("2027-02-15T06:59:59Z") }]);
+    const rows = await getChurnRiskCustomers(new Date("2026-12-20T12:00:00Z"));
+    expect(rows[0].reasons.some((r) => r.startsWith("Term ends in"))).toBe(false);
+  });
+
+  it("falls back to start + term months only when no end date was ever saved", async () => {
+    agreementFindMany.mockResolvedValue([{ ...base, endDate: null }]);
+    const rows = await getChurnRiskCustomers(new Date("2026-12-20T12:00:00Z"));
+    expect(rows[0].reasons.some((r) => r.startsWith("Term ends in"))).toBe(true);
+  });
+});
+
 describe("getWinBackLeads", () => {
   beforeEach(() => {
     leadFindMany.mockReset().mockResolvedValue([]);

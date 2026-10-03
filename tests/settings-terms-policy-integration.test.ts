@@ -3,7 +3,8 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { updateBusinessSettings } from "@/domains/settings";
 import { termsPolicyUpdate } from "@/domains/settings/terms-policy";
-import { getEarlyTerminationQuote, setAutoRenew } from "@/domains/agreements/term";
+import { getEarlyTerminationQuote, setAutoRenew, type TermActor } from "@/domains/agreements/term";
+import { buildTermsSnapshot } from "@/domains/agreements/terms-snapshot";
 
 const url = new URL(process.env.DATABASE_URL ?? "postgresql://localhost/unset");
 const enabled =
@@ -43,6 +44,17 @@ describe.skipIf(!enabled)("owner-entered policy drives the quote (nothing fixed 
   const agreementId = `policy-agreement-${tag}`;
   let original: Record<string, unknown> = {};
   const requestedOn = new Date("2026-10-03T12:00:00Z");
+
+  const owner: TermActor = { userId: ownerId, kind: "team" };
+
+  /** What sending an agreement for signing does: freeze whatever the settings say right now. */
+  async function lockFromSettings() {
+    const settings = await prisma.businessSettings.findUniqueOrThrow({ where: { id: "singleton" } });
+    await prisma.rentalAgreement.update({
+      where: { id: agreementId },
+      data: { termsSnapshot: JSON.parse(JSON.stringify(buildTermsSnapshot(settings, null, new Date()))) },
+    });
+  }
 
   async function save(form: Record<string, string>) {
     const parsed = termsPolicyUpdate({ ...blank, ...form });
@@ -90,18 +102,26 @@ describe.skipIf(!enabled)("owner-entered policy drives the quote (nothing fixed 
     await prisma.user.deleteMany({ where: { id: { in: [ownerId, customerUserId] } } });
   });
 
-  it("no quote until the owner has entered the policy; then the quote uses exactly their numbers", async () => {
+  it("no quote until the owner has entered the policy; then an agreement locks exactly their numbers", async () => {
     await save({});
+    await lockFromSettings();
     expect(await getEarlyTerminationQuote(agreementId, requestedOn)).toBeNull();
 
-    await save({ feeDollars: "50", feePercent: "10", noticeDays: "30", unusedTerm: "CREDIT" });
+    await save({ feeDollars: "50", feePercent: "10", noticeDays: "30", unusedTerm: "CREDIT", terminationTermsText: "Pay the fee." });
+    await lockFromSettings();
     const first = (await getEarlyTerminationQuote(agreementId, requestedOn))!;
     expect(first.feeCents).toBe(7200); // 10% of 12 x $60 beats the $50 flat fee
     expect(first.unusedTermTreatment).toBe("CREDIT");
     expect(first.effectiveOn.toISOString()).toBe("2026-11-08T07:00:00.000Z");
 
-    // The owner changes their mind in settings: the very next quote follows.
-    await save({ feeDollars: "50", feePercent: "10", feeCapDollars: "60", noticeDays: "45", unusedTerm: "RETAIN" });
+    // The owner changes the terms: an agreement already locked does not move...
+    await save({ feeDollars: "50", feePercent: "10", feeCapDollars: "60", noticeDays: "45", unusedTerm: "RETAIN", terminationTermsText: "Pay the fee, capped." });
+    const unchanged = (await getEarlyTerminationQuote(agreementId, requestedOn))!;
+    expect(unchanged.feeCents).toBe(7200);
+    expect(unchanged.policyVersion).toBe(first.policyVersion);
+
+    // ...and the next agreement to be signed gets the new terms.
+    await lockFromSettings();
     const second = (await getEarlyTerminationQuote(agreementId, requestedOn))!;
     expect(second.feeCents).toBe(6000); // capped at $60
     expect(second.unusedTermTreatment).toBe("RETAIN");
@@ -109,10 +129,12 @@ describe.skipIf(!enabled)("owner-entered policy drives the quote (nothing fixed 
     expect(second.policyVersion).not.toBe(first.policyVersion);
   });
 
-  it("the owner can switch the rule back off by clearing the boxes", async () => {
-    await save({ feeDollars: "50", noticeDays: "30", unusedTerm: "CREDIT" });
+  it("the owner can switch the rule back off by clearing the boxes (for agreements signed afterwards)", async () => {
+    await save({ feeDollars: "50", noticeDays: "30", unusedTerm: "CREDIT", terminationTermsText: "Pay the fee." });
+    await lockFromSettings();
     expect(await getEarlyTerminationQuote(agreementId, requestedOn)).not.toBeNull();
     await save({});
+    await lockFromSettings();
     expect(await getEarlyTerminationQuote(agreementId, requestedOn)).toBeNull();
   });
 
@@ -126,24 +148,25 @@ describe.skipIf(!enabled)("owner-entered policy drives the quote (nothing fixed 
     expect((latest?.oldValue as { earlyTerminationFeeCents?: number | null }).earlyTerminationFeeCents).toBeNull();
   });
 
-  it("auto-renew follows the saved wording: consent works for the current terms and not for older ones", async () => {
+  it("auto-renew: the version follows the wording, and an agreement keeps the wording it was signed with", async () => {
     await save({ autoRenewNoticeDays: "30", renewalTermsText: "We renew monthly." });
     const v1 = (await prisma.businessSettings.findUniqueOrThrow({ where: { id: "singleton" } })).autoRenewTermsVersion!;
     expect(v1).toMatch(/^ar-/);
+    await lockFromSettings();
 
-    await setAutoRenew(ownerId, agreementId, { enabled: true, termsVersion: v1 });
+    await setAutoRenew(owner, agreementId, { enabled: true, termsVersion: v1 });
     expect((await prisma.rentalAgreement.findUniqueOrThrow({ where: { id: agreementId } })).autoRenewTermsVersion).toBe(v1);
 
-    // Same wording saved again: same version, nothing the customer agreed to goes stale.
+    // Same wording saved again: same version.
     await save({ autoRenewNoticeDays: "30", renewalTermsText: "We renew monthly." });
     expect((await prisma.businessSettings.findUniqueOrThrow({ where: { id: "singleton" } })).autoRenewTermsVersion).toBe(v1);
 
-    // New wording: a new version, so the old one can no longer be used to record consent.
+    // New wording: a new version for new agreements. This agreement is locked to v1, so v1 is still its version.
     await save({ autoRenewNoticeDays: "30", renewalTermsText: "We renew yearly." });
     const v2 = (await prisma.businessSettings.findUniqueOrThrow({ where: { id: "singleton" } })).autoRenewTermsVersion!;
     expect(v2).not.toBe(v1);
-    await expect(setAutoRenew(ownerId, agreementId, { enabled: true, termsVersion: v1 })).rejects.toThrow(/out of date/);
-    // The customer who already agreed keeps the wording they agreed to.
+    await expect(setAutoRenew(owner, agreementId, { enabled: true, termsVersion: v2 })).rejects.toThrow(/out of date/);
+    await setAutoRenew(owner, agreementId, { enabled: true, termsVersion: v1 });
     expect((await prisma.rentalAgreement.findUniqueOrThrow({ where: { id: agreementId } })).autoRenewTermsVersion).toBe(v1);
   });
 });

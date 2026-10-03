@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { cache } from "react";
+import { assertActiveTeamActor } from "@/lib/team-actor";
 
 // The single BusinessSettings row's defaults, matching prisma/schema.prisma
 // exactly. Used only if the singleton row is somehow missing (it's created
@@ -140,6 +141,11 @@ export async function updateBusinessSettings(
   update: BusinessSettingsUpdate,
 ) {
   const after = await prisma.$transaction(async (tx) => {
+    // Re-check the person inside the transaction (a deactivated owner/admin
+    // must not slip a change in after the page-level role check), then lock
+    // the settings row so two saves cannot interleave.
+    await assertActiveTeamActor(tx, userId, ["OWNER", "ADMIN"]);
+    await tx.$queryRaw`SELECT "id" FROM "BusinessSettings" WHERE "id" = 'singleton' FOR UPDATE`;
     const before =
       (await tx.businessSettings.findUnique({ where: { id: "singleton" } })) ??
       DEFAULT_SETTINGS;

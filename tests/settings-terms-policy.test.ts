@@ -160,13 +160,14 @@ describe("termsPolicyStatus: plain-English 'is it on, and what is missing'", () 
       "days of notice",
       "what happens to unused prepaid time",
       "a flat fee or a percent (enter 0 if there should be no fee)",
+      "the wording customers will see about ending early",
     ]);
     expect(status.autoRenew.available).toBe(false);
     expect(status.autoRenew.missing).toEqual(["days of renewal notice", "the auto-renew terms wording"]);
   });
 
   it("turns on exactly when the same rule the quote uses says the policy is complete", () => {
-    const saved = ok({ feePercent: "20", noticeDays: "14", unusedTerm: "REFUND" });
+    const saved = ok({ feePercent: "20", noticeDays: "14", unusedTerm: "REFUND", terminationTermsText: "Pay 20% of the rest." });
     const settings = {
       earlyTerminationFeeCents: saved.earlyTerminationFeeCents,
       earlyTerminationFeePercent: saved.earlyTerminationFeePercent,
@@ -178,14 +179,19 @@ describe("termsPolicyStatus: plain-English 'is it on, and what is missing'", () 
     expect(termsPolicyStatus(settings).earlyEnding).toEqual({ available: true, missing: [] });
     expect(loadTerminationPolicy(settings)).not.toBeNull();
     // A deliberate "no fee" (0) counts as decided.
-    const free = ok({ feeDollars: "0", noticeDays: "0", unusedTerm: "RETAIN" });
+    const free = ok({ feeDollars: "0", noticeDays: "0", unusedTerm: "RETAIN", terminationTermsText: "No fee." });
     expect(
       termsPolicyStatus({
         earlyTerminationFeeCents: free.earlyTerminationFeeCents,
         earlyTerminationNoticeDays: free.earlyTerminationNoticeDays,
         unusedTermTreatment: free.unusedTermTreatment,
+        terminationTermsText: free.terminationTermsText,
       }).earlyEnding.available,
     ).toBe(true);
+    // Without the wording customers will see, it stays off.
+    expect(
+      termsPolicyStatus({ ...settings, terminationTermsText: null }).earlyEnding,
+    ).toEqual({ available: false, missing: ["the wording customers will see about ending early"] });
   });
 
   it("auto-renew turns on once the notice days and wording exist", () => {

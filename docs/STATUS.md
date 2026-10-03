@@ -50,7 +50,20 @@ deny-by-default (#131), CI parallelized and sharded (#136, #137).
   fixed terms start at delivery (end date saved at first billing attempt, sent
   to Stripe as `cancel_at`), and Settings → "Ending and renewing rentals" lets
   the owner enter every termination/renewal value in the app.
-- **Not done, honestly:** (1) Chris has not entered the policy values yet, so
+- **Done in the locked-terms PR (stacked on the term-start PR):** agreements keep
+  their own ending/renewal terms (frozen when sent for signing; per-customer
+  override stored but no screen yet), quotes and auto-renew use those locked
+  terms, customers can act on their own agreement, the early-termination request
+  time is set by the server, renewal drafts keep their agreed start date, term-end
+  readers use the saved end date, settings writes re-check the active owner/admin,
+  and ending early needs published wording. This fixed all 5 Codex findings on
+  #147/#148 (dispositions in the PR). New process: review fixes ride the next
+  planned PR (AGENTS.md).
+- **Not done, honestly:** (0) 30-day notice to customers when terms change,
+  month-to-month terms taking effect after that notice, the notice email (live
+  customer email needs Chris's approval), and per-customer terms screens
+  (estimate/setup/sign-up) — planned for the next PR; agreements sent for
+  signing before this change have no locked terms; (1) Chris has not entered the policy values yet, so
   early-termination quotes and auto-renew are unavailable until he does (IN-19);
   (2) tax rate storage, settings screen, agreement snapshot and Stripe tax-rate
   creation still use tenths of a percent (IN-17 follow-up); (3) renewal drafts
@@ -84,6 +97,8 @@ See `docs/OWNER-INPUTS.md` for the full register. The ones Batch B needs:
   decision).
 
 ## Session log (last two batches only)
+
+- **2026-10-03 (Claude, locked terms)** — Chris: terms must be changeable system-wide without touching existing agreements, 30-day notice for month-to-month, per-customer customization; review fixes ride the next PR. Built locked terms + the 5 Codex fixes on a branch stacked on the term-start PR.
 
 - **2026-10-03 (Claude, later)** — Chris answered IN-20 (terms start at delivery) and said policy values must be settable in the app. Built both on a branch stacked on #147; local full-suite evidence in the PR.
 

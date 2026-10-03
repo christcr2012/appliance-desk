@@ -89,3 +89,9 @@ it("starts from the saved values", () => {
     "We renew monthly.",
   );
 });
+
+it("tells the owner that changes only reach agreements sent for signing afterwards", () => {
+  render(<TermsPolicyForm defaultValues={termsPolicyDefaults({})} />);
+  expect(screen.getByText(/apply only to rental agreements that are sent for signing/)).toBeTruthy();
+  expect(screen.getByText(/keeps the terms it was sent with/)).toBeTruthy();
+});

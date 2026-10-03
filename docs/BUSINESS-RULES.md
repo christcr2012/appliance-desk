@@ -868,24 +868,40 @@ is never replaced by a default.
 - **Termination policy** is entered by the owner in Settings → Ending and
   renewing rentals and lives in `BusinessSettings` (flat fee, percent, cap,
   notice days, unused-term treatment REFUND / CREDIT / RETAIN, terms text);
-  nothing is fixed in code. It is "set" only when notice days, the treatment and at least one fee value are
-  present and valid; `0` is a deliberate answer, null is not. Each quote carries
+  nothing is fixed in code. It is "set" only when notice days, the treatment,
+  at least one fee value **and the wording customers will see** are present and
+  valid; `0` is a deliberate answer, null is not. Each quote carries
   a policy version (a fingerprint of every value and the terms text) so a
   request made against an older quote is refused.
+- **Agreements keep their own terms** (owner decision, 2026-10-03). A fixed-term
+  agreement is locked, when it is sent for signing, to the ending/renewal terms
+  in force at that moment (or the per-customer terms the owner entered for it);
+  changing the system-wide terms later never reaches it. Stored in
+  `RentalAgreement.termsSnapshot` (override in `termsOverride`). A section that
+  was not fully set at that moment is stored as "never agreed", so ending early
+  or auto-renew stay unavailable for that agreement even if the owner completes
+  the settings later. Agreements sent before this existed have no snapshot, so
+  they have no early-ending quote. Month-to-month agreements follow the live
+  system-wide terms; the 30-day notice for changing those is not built yet.
 - **Requesting early termination records it; it does not end the agreement.**
-  Ending still goes through the normal close path on the effective date.
-  OWNER/ADMIN only.
+  Ending still goes through the normal close path on the effective date. The
+  owner/admin can do it for any agreement; a customer can do it only for their
+  own (another customer's id looks like a missing agreement). The request time
+  is the server's clock, never the caller's: the displayed quote is checked
+  against a fresh quote and refused if anything changed.
 - **A prepaid term needs owner review.** The quote reports the unused prepaid
   rent but does not decide how a free month or prepay discount is settled
   (flagged `prepaidReviewRequired`).
 - **Renewal** creates a linked DRAFT copy of the lines and prices. It must start
-  the day after the current term ends, is allowed once, never charges a deposit
+  the day after the current term ends (that start date is saved on the draft and
+  signing early keeps it), is allowed once, never charges a deposit
   again, and does not copy appliance assignments (the appliances stay on the
   current agreement until it ends).
 - **Auto-renew** wording and notice days are entered by the owner in the same
   settings screen; the terms version is generated from them (it changes when the
   wording or notice days change). Consent is recorded only for the renewal-terms
-  version the owner currently publishes, with a consent record each time it is turned on or off.
+  version the agreement was signed with, by the owner/admin or by the customer on
+  their own agreement, with a consent record each time it is turned on or off.
   Turning it off never ends the agreement. Nothing yet acts on the consent: no
   job creates the renewal automatically.
 - **Sales tax rounding** (owner decision IN-17): rates are exact to 0.001

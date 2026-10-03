@@ -213,7 +213,9 @@ already signed.
 
 Go to **Settings → Ending and renewing rentals**. Everything here is typed in
 the screen. None of it is built into the software, so you can change it any
-time and the next quote follows what you saved.
+time. **A change only applies to rental agreements sent for signing after you
+save.** Every agreement already sent keeps the terms it was sent with, so
+changing these never changes a customer's current 6- or 12-month rental.
 
 - **Ending early:** a flat fee, a percent of the rent still owed (or both; the
   customer pays whichever is larger), an optional highest fee, how many days of
@@ -225,8 +227,12 @@ time and the next quote follows what you saved.
 - The box at the top of the screen tells you in plain words whether each rule is
   switched on yet and exactly what is still missing. A rule stays off until
   everything it needs is filled in.
+- Ending early also needs the wording customers will see; without it that rule
+  stays off.
 - Changing the wording of the renewal terms starts a new version. Customers who
   already agreed keep the wording they agreed to.
+- Not built yet: warning customers 30 days before a change, applying changes to
+  month-to-month rentals, and setting different terms for one customer.
 - A 6- or 12-month term starts when the appliances are delivered (when billing
   starts), not when the agreement is signed.
 
