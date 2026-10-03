@@ -20,6 +20,7 @@ import { StaffAccountsSection } from "./staff-accounts-section";
 import { CustomerEmailSwitch } from "./customer-email-switch";
 import { isNonProductionDeployment } from "@/lib/deployment-safety";
 import { TermsPolicyForm } from "./terms-policy-form";
+import { AutoRenewSwitch } from "./auto-renew-switch";
 import { termsPolicyDefaults, termsPolicyStatus } from "@/domains/settings/terms-policy";
 import { formatTaxRate } from "@/domains/billing/tax";
 export const metadata = {
@@ -73,6 +74,12 @@ export default async function DeskSettingsPage({
           {line("Ending early", status.earlyEnding)}
           {line("Automatic renewal", status.autoRenew)}
         </ul>
+        <div className="mb-6">
+          <AutoRenewSwitch
+            enabled={settings.autoRenewEnabled === true}
+            canChange={(session.user as { role?: string }).role === "OWNER"}
+          />
+        </div>
         <TermsPolicyForm defaultValues={termsPolicyDefaults(settings)} />
       </SectionCard>
     );

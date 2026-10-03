@@ -387,3 +387,16 @@ export async function setCustomerEmailAction(enabled: boolean): Promise<Settings
   revalidatePath("/desk/notices");
   return { status: "success" };
 }
+
+/** The owner's master switch for automatic renewals. Owner only. */
+export async function setAutoRenewAction(enabled: boolean): Promise<SettingsActionState> {
+  const session = await requireRole("OWNER");
+  const { setAutoRenewEnabled } = await import("@/domains/settings/auto-renew-switch");
+  try {
+    await setAutoRenewEnabled(session.user.id, enabled === true);
+  } catch {
+    return { status: "error", message: "That could not be saved. Nothing was changed." };
+  }
+  revalidatePath("/desk/settings");
+  return { status: "success" };
+}

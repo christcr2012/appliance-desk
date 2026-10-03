@@ -387,12 +387,13 @@ export async function sendEstimateFollowUpReminders(): Promise<{
         actionLabel: "View & respond to estimate",
       });
       // Email switched off (or not sent): leave it unmarked so it goes out once email is on.
-      if (!result.sent) continue;
+      if (!result.sent && result.outcome !== "UNKNOWN") continue;
+      // An unknown outcome (lost response) may have been delivered: record it so it is not sent a second time.
       await prisma.estimate.update({
         where: { id: estimate.id },
         data: { followUpSentForSentAt: estimate.sentAt },
       });
-      sent += 1;
+      if (result.sent) sent += 1;
     } catch (error) {
       console.error(
         "[estimates] Failed to send follow-up reminder",

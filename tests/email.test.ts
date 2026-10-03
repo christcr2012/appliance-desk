@@ -27,7 +27,7 @@ describe("sendEmail", () => {
     const { sendEmail } = await import("@/lib/email");
     expect(
       await sendEmail({ to: "a@example.test", subject: "Hi", text: "Hello" }),
-    ).toEqual({ sent: false });
+    ).toEqual({ sent: false, outcome: "REJECTED" });
   });
 
   it("adds an escaped postal address, opt-out links and headers, and reply inbox for marketing only", async () => {
@@ -74,7 +74,7 @@ describe("sendEmail", () => {
       text: "Hello there.",
     });
 
-    expect(result).toEqual({ sent: false });
+    expect(result).toEqual({ sent: false, outcome: "NOT_ATTEMPTED" });
     expect(emailsSend).not.toHaveBeenCalled();
   });
 
@@ -89,7 +89,7 @@ describe("sendEmail", () => {
       text: "Hello there.\n\nSecond paragraph.",
     });
 
-    expect(result).toEqual({ sent: true });
+    expect(result).toEqual({ sent: true, outcome: "SENT" });
     expect(emailsSend).toHaveBeenCalledTimes(1);
     const call = emailsSend.mock.calls[0][0];
     expect(call.to).toBe("a@example.com");
@@ -151,7 +151,7 @@ describe("sendEmail", () => {
       text: "Hello.",
     });
 
-    expect(result).toEqual({ sent: false });
+    expect(result).toEqual({ sent: false, outcome: "UNKNOWN" });
     errorSpy.mockRestore();
   });
 });

@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { getStripeClient } from "@/lib/stripe";
 import { businessDateEnd, businessDateKey } from "@/lib/business-date";
+import { isAutoRenewEnabled } from "@/domains/settings/auto-renew-switch";
 import { checkReminderDelivered } from "@/domains/notices";
 import { renewalReminderKey } from "@/domains/notices/renewal-reminder";
 import {
@@ -107,6 +108,7 @@ export async function desiredSubscriptionTerm(renewalId: string, direction: Term
   if (direction === "extend" && renewal.createdByAutoRenew && renewal.status !== "CANCELLED") {
     // The customer's current choice always wins: an opt-out or an early-ending request that has been
     // saved but whose renewal has not been cancelled yet must never let billing be extended.
+    if (!(await isAutoRenewEnabled())) return null;
     if (old.renewalPreference !== "AUTO_RENEW" || old.terminationRequestedAt !== null || renewal.status !== "SCHEDULED") {
       return null;
     }
