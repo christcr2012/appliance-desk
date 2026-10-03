@@ -157,7 +157,7 @@ same external object twice or losing the local link.
   refund). The deterministic `idempotencyKey`, status, provider object id,
   attempts and sanitized failure make provider/local drift observable and
   recoverable (design D1/D2). `kind` is CUSTOMER_CREATE, SUBSCRIPTION_CREATE,
-  SUBSCRIPTION_CANCEL, BALANCE_CREDIT or REFUND_CREATE; `status` is PENDING,
+  SUBSCRIPTION_CANCEL, SUBSCRIPTION_UPDATE (moves a live subscription's end date when a renewal is signed or cancelled), BALANCE_CREDIT or REFUND_CREATE; `status` is PENDING,
   SUCCEEDED, FAILED, UNKNOWN or DRIFT; `subjectType`/`subjectId` name the local
   record it is about (for example `RentalAgreement` and its id).
 - **Receipt** — one real-world payment event, whether Stripe or manual.

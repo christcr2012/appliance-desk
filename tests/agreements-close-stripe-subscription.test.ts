@@ -31,6 +31,8 @@ function makeTx() {
         return mocks.rentalAgreementUpdate(...args);
       },
       findUniqueOrThrow: mocks.rentalAgreementFindUniqueOrThrow,
+      // closeAgreement checks for a signed renewal waiting to start: none here.
+      findFirst: async () => null,
     },
     auditLog: { create: mocks.auditLogCreate },
   };

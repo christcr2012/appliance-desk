@@ -1,6 +1,8 @@
 import { draftRequestId } from "./draft-request";
 import { buildTermsSnapshot } from "./terms-snapshot";
 import { requireRole } from "@/lib/session";
+import { fixedTermEndDate } from "@/lib/business-date";
+import { syncSubscriptionTerm } from "@/domains/billing/subscription-term";
 import { prisma } from "@/lib/prisma";
 import type {
   Prisma,
@@ -25,7 +27,8 @@ const ALLOWED_AGREEMENT_TRANSITIONS: Record<
   RentalAgreementStatus[]
 > = {
   DRAFT: ["AWAITING_SIGNATURE", "CANCELLED"],
-  AWAITING_SIGNATURE: ["ACTIVE", "CANCELLED", "DRAFT"],
+  AWAITING_SIGNATURE: ["ACTIVE", "SCHEDULED", "CANCELLED", "DRAFT"],
+  SCHEDULED: ["ACTIVE", "CANCELLED"],
   ACTIVE: ["ENDED", "CANCELLED"],
   ENDED: [],
   CANCELLED: [],
@@ -537,14 +540,15 @@ export async function signAgreement(
 
     await tx.rentalAgreement.update({
       where: { id: agreement.id },
-      // A renewal drafted ahead of time keeps the start date it was agreed with.
-      data: {
-        status: "ACTIVE",
-        startDate:
-          agreement.renewedFromAgreementId && agreement.startDate && agreement.startDate > new Date()
-            ? agreement.startDate
-            : new Date(),
-      },
+      // A renewal keeps the start date it was agreed with and is only
+      // SCHEDULED: it becomes the active rental (and the rental it renews
+      // ends) in one step at its start date; see renewal-start.ts.
+      data: agreement.renewedFromAgreementId && agreement.startDate
+        ? {
+            status: "SCHEDULED",
+            endDate: agreement.termMonths ? fixedTermEndDate(agreement.startDate, agreement.termMonths) : null,
+          }
+        : { status: "ACTIVE", startDate: new Date() },
     });
     await tx.auditLog.create({
       data: {
@@ -571,6 +575,17 @@ async function closeAgreement(
     const agreement = await lockRentalAgreementInTx(tx, agreementId);
     const check = canTransitionAgreementStatus(agreement.status, newStatus);
     if (!check.ok) throw new Error(check.reason);
+    if (agreement.status === "ACTIVE") {
+      const waiting = await tx.rentalAgreement.findFirst({
+        where: { renewedFromAgreementId: agreementId, status: "SCHEDULED" },
+        select: { id: true },
+      });
+      if (waiting) {
+        throw new Error(
+          "This rental has a signed renewal waiting to start. Cancel the renewal first, then end or cancel this rental.",
+        );
+      }
+    }
 
     let providerClaim:
       | { done: true; providerObjectId: string }
@@ -643,8 +658,22 @@ async function closeAgreement(
       updated,
       stripeSubscriptionId: agreement.stripeSubscriptionId,
       providerClaim,
+      // A cancelled waiting renewal gives the subscription back its old end date.
+      revertRenewalId:
+        newStatus === "CANCELLED" && agreement.status === "SCHEDULED" && agreement.renewedFromAgreementId
+          ? agreement.id
+          : null,
     };
   });
+
+  if (local.revertRenewalId) {
+    try {
+      await syncSubscriptionTerm(local.revertRenewalId, "revert");
+    } catch (error) {
+      // The recorded provider operation is retried by the billing reconciliation pass.
+      console.error(`Cancelled renewal ${local.revertRenewalId} but could not restore the old end date yet:`, error);
+    }
+  }
 
   if (
     !local.stripeSubscriptionId ||

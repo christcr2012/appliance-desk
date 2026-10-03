@@ -34,6 +34,7 @@ type AgreementRow = {
   depositCents: number;
   damageWaiverCents: number;
   termMonths: number | null;
+  startDate: Date | null;
   paidInFullInAdvance: boolean;
   freeMonthGranted: boolean;
   reservationExpiresAt: Date | null;
@@ -141,7 +142,12 @@ export function AgreementDetailPanel({
     <div className="space-y-6">
       <div className="rounded-lg border border-gray-200 bg-white p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="font-medium text-gray-900">Status: {agreement.status}</h2>
+          <h2 className="font-medium text-gray-900">
+            Status:{" "}
+            {agreement.status === "SCHEDULED"
+              ? `Signed, starts ${agreement.startDate ? new Date(agreement.startDate).toLocaleDateString("en-US", { timeZone: "America/Denver" }) : "later"}`
+              : agreement.status}
+          </h2>
           <div className="flex gap-2">
             {agreement.status === "DRAFT" && (
               <button
@@ -165,6 +171,7 @@ export function AgreementDetailPanel({
             )}
             {(agreement.status === "DRAFT" ||
               agreement.status === "AWAITING_SIGNATURE" ||
+              agreement.status === "SCHEDULED" ||
               agreement.status === "ACTIVE") && (
               <button
                 type="button"

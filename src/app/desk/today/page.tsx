@@ -46,6 +46,7 @@ const CATEGORIES: Record<ExceptionCategory, { label: string; action: string }> =
       label: "Maintenance due",
       action: "Review appliance",
     },
+    RENEWAL_NOT_STARTED: { label: "Renewal did not start", action: "Review renewal" },
   };
 
 export default async function TodayPage() {

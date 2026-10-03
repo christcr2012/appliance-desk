@@ -68,6 +68,12 @@ export function agreementProgress(a: ProgressInput) {
         label: "This agreement is closed. Historical milestones remain below.",
         href: null,
       }
+    : a.status === "SCHEDULED"
+      ? {
+          label:
+            "Signed renewal. It starts on its start date; until then the equipment stays on the current rental. Nothing to do now.",
+          href: null,
+        }
     : !a.lines.length
       ? { label: "Add appliance lines to this draft.", href: null }
       : !signed

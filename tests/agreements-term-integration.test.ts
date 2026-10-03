@@ -369,7 +369,7 @@ describe.skipIf(!enabled)("fixed-term termination, renewal and auto-renew in dis
       expect(after.depositCents).toBe(5000);
     });
 
-    it("signing a renewal early keeps its agreed start date instead of starting it on the signing day", async () => {
+    it("signing a renewal early schedules it for its agreed start date instead of making it active", async () => {
       await setPolicy({ ...flat5000 });
       const old = await newAgreement();
       const { newAgreementId } = await renewAgreement(ownerId, old.id, { termMonths: 12, startOn: renewalStart });
@@ -377,8 +377,9 @@ describe.skipIf(!enabled)("fixed-term termination, renewal and auto-renew in dis
       const signature = await sendForSignature(ownerId, newAgreementId);
       await signAgreement(signature.id, { signerName: "Term Customer", signerEmail: "c@example.test", ipAddress: null });
       const signed = await prisma.rentalAgreement.findUniqueOrThrow({ where: { id: newAgreementId } });
-      expect(signed.status).toBe("ACTIVE");
+      expect(signed.status).toBe("SCHEDULED");
       expect(signed.startDate?.toISOString()).toBe("2027-11-08T07:00:00.000Z");
+      expect((await prisma.rentalAgreement.findUniqueOrThrow({ where: { id: old.id } })).status).toBe("ACTIVE");
     });
 
     it("must start the day after the term ends: overlap and gaps are rejected", async () => {

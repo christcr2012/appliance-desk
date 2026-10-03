@@ -17,6 +17,7 @@ import type { StatusTone } from "@/components/status-badge";
 const RENTAL_AGREEMENT_STATUS_LABELS: Record<string, string> = {
   DRAFT: "Being set up",
   AWAITING_SIGNATURE: "Waiting on your signature",
+  SCHEDULED: "Signed, starts later",
   ACTIVE: "Active",
   ENDED: "Ended",
   CANCELLED: "Cancelled",
@@ -79,6 +80,7 @@ export const rentalAgreementStatusLabel = (status: string) =>
 const RENTAL_AGREEMENT_STATUS_TONE: Record<string, StatusTone> = {
   DRAFT: "pending",
   AWAITING_SIGNATURE: "progress",
+  SCHEDULED: "progress",
   ACTIVE: "success",
   ENDED: "stopped",
   CANCELLED: "stopped",

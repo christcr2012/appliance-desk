@@ -64,6 +64,9 @@ it("prepaid is a recorded fact, not a successful subscription", () => {
 });
 it("closed agreements never suggest scheduling a new delivery", () => {
   expect(agreementProgress({ ...base, status: "ENDED" }).next.href).toBeNull();
+  expect(agreementProgress({ ...base, status: "SCHEDULED", lines: [{ assignments: [] }], jobs: [] }).next.label).toMatch(
+    /equipment stays on the current rental/,
+  );
 });
 it("signed but unassigned equipment does not suggest a delivery before assignment", () => {
   expect(

@@ -573,6 +573,10 @@ model PurchaseOrderLineItem {
 enum RentalAgreementStatus {
   DRAFT
   AWAITING_SIGNATURE
+  // Signed renewal whose start date is still in the future. Not "in force":
+  // it is not counted as an active rental or as current revenue until its
+  // start date (see docs/DECISIONS.md, 2026-10-03, IN-22).
+  SCHEDULED
   ACTIVE
   ENDED
   CANCELLED
@@ -1129,6 +1133,8 @@ enum ProviderOperationKind {
   CUSTOMER_CREATE
   SUBSCRIPTION_CREATE
   SUBSCRIPTION_CANCEL
+  // Changes a live subscription's end date when a renewal is signed or cancelled.
+  SUBSCRIPTION_UPDATE
   BALANCE_CREDIT
   REFUND_CREATE
 }

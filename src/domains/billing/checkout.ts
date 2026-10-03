@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
+import { cancelAtSecondsFor } from "./subscription-term";
 import { getStripeClient } from "@/lib/stripe";
-import { businessDateEnd, businessDateKey, fixedTermEndDate } from "@/lib/business-date";
+import { fixedTermEndDate } from "@/lib/business-date";
 import {
   RetryLater,
   claimProviderOperation,
@@ -544,12 +545,7 @@ export async function startRecurringBillingForAgreement(agreementId: string): Pr
     return;
   }
 
-  const cancelAt =
-    claimed.agreement.termMonths && claimed.agreement.endDate
-      ? Math.floor(
-          businessDateEnd(businessDateKey(claimed.agreement.endDate)).getTime() / 1000,
-        )
-      : undefined;
+  const cancelAt = cancelAtSecondsFor(claimed.agreement) ?? undefined;
 
   const providerResult = await runProviderCall(() =>
     stripe.subscriptions.create(
