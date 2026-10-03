@@ -877,8 +877,16 @@ what was and wasn't built.
   (`HELD_PAYMENT`), on the revenue page as "held for your decision", and in an
   audit entry `billing.payment_on_closed_invoice`. If Stripe later refunds that
   charge, the refund is recorded against the closed invoice like any other.
-  Cash reports still count it as cash received, because it was. The screen that
-  lets the owner resolve a held payment is not built yet (waiting on IN-23).
+  Cash reports still count it as cash received, because it was. The owner
+  settles each held payment, one at a time, on Billing → Held payments
+  (owner and admin only), choosing: **mark the invoice paid** (reverses the
+  write-off; only for a written-off invoice; recommended when the customer did
+  owe it; any amount above what was still owed becomes credit), **keep as account
+  credit** (invoice stays written off), or **refund to the card** (through
+  Stripe, recorded as a refund on the closed invoice; recommended for a voided
+  invoice). The screen highlights the recommended choice with its reason. The
+  payment then ends as `succeeded`, `held_to_credit` or `held_refunded`; a
+  refund made directly in Stripe also settles it.
 - **Provider operations.** Every Stripe write Batch B owns (customer or
   subscription create/cancel, balance credit, refund) first records a
   `ProviderOperation` with a fixed idempotency key, then calls Stripe, then

@@ -49,7 +49,17 @@ export default async function BillingReconciliationPage() {
                     <div>{row.subjectType}</div>
                     <div className="font-mono text-xs text-gray-500">{row.subjectId}</div>
                   </td>
-                  <td className="min-w-80 px-4 py-3 text-gray-700">{row.detail}</td>
+                  <td className="min-w-80 px-4 py-3 text-gray-700">
+                    {row.detail}
+                    {row.kind === "HELD_PAYMENT" && (
+                      <>
+                        {" "}
+                        <Link href="/desk/billing/held-payments" className="font-medium text-brand hover:underline">
+                          Decide what to do with it
+                        </Link>
+                      </>
+                    )}
+                  </td>
                   <td className="whitespace-nowrap px-4 py-3 text-gray-600">
                     {formatBusinessDate(row.since)} {formatBusinessTime(row.since)}
                   </td>

@@ -11,6 +11,7 @@ import {
   recordFailedPaymentAttempt,
 } from "./ledger";
 import { resolveStripeInvoiceCashEvents } from "./stripe-invoice-payments";
+import { HELD_PAYMENT_STATUS, HELD_REFUNDED_STATUS } from "./payment-status";
 
 async function alreadyProcessed(db: Prisma.TransactionClient, eventId: string): Promise<boolean> {
   return (await db.webhookEvent.findUnique({ where: { id: eventId } })) !== null;
@@ -735,7 +736,7 @@ async function handleChargeRefunded(
 
   const payment = await db.payment.findFirst({
     where: { stripePaymentIntentId: paymentIntentId },
-    select: { invoiceId: true },
+    select: { id: true, invoiceId: true, status: true, amountCents: true },
   });
   if (!payment) return;
   const alreadyRefundedCents = await db.refund.aggregate({
@@ -757,6 +758,13 @@ async function handleChargeRefunded(
         typeof charge.refunds?.data[0]?.id === "string" ? charge.refunds.data[0].id : null,
     },
   });
+  // A held payment refunded in the Stripe dashboard is settled: it no longer waits for the owner.
+  if (payment.status === HELD_PAYMENT_STATUS && charge.amount_refunded >= payment.amountCents) {
+    await db.payment.update({
+      where: { id: payment.id },
+      data: { status: HELD_REFUNDED_STATUS, notes: "Held payment refunded in Stripe." },
+    });
+  }
 }
 
 async function handleSubscriptionDeleted(

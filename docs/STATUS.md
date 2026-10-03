@@ -52,7 +52,7 @@ second stack, `batch-b-completion-*`, in this order. Tick each when merged:
 - [x] Recommended starting terms policy (IN-19), editable by owner and admin (migration 20261003200000 writes the starting values once, only if the owner entered nothing; "Restore recommended starting terms" button in Settings; tests: recommended-terms, recommended-terms-integration, terms-policy-form)
       (this PR).
 - [x] Renewals signed ahead of time get a "signed, starts later" (SCHEDULED) state (IN-22): nightly start, one-step hand-off, reports, exceptions (PR in this stack; tests `agreements-scheduled-renewal-integration`, `scheduled-renewal-rules`).
-- [ ] Held-payment screen: owner resolves a held payment per case (IN-23).
+- [x] Held-payment screen: owner resolves a held payment per case (IN-23): Billing → Held payments, recommended choice highlighted (tests `billing-held-payments-integration`, `held-payment-card`).
 - [ ] Auto-renew and scheduled early-termination execution (nothing acts on
       auto-renew consent or on a scheduled ending yet).
 - [ ] Term-change notices (IN-21): notice record and 30-day rule; email sending
@@ -81,7 +81,7 @@ See `docs/OWNER-INPUTS.md` for the full register. Chris gave direction on
 2026-10-03: IN-19 use best practice and keep it editable (starting values now
 installed); IN-22 use best practice for a renewal signed in advance (built: see
 "Answered" below); IN-23 per-case choice with a recommended option (screen to be
-built, unchecked above). IN-22 and IN-23 stay "awaiting" until built and shown to him.
+built, unchecked above). IN-22 and IN-23 are both built.
 Still waiting on him: IN-21 (wording and approval for sending live customer
 emails; building continues with sending switched off) and IN-17's CPA check of the
 7.375% rate.

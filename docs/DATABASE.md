@@ -172,7 +172,7 @@ same external object twice or losing the local link.
   `status` is free text: `succeeded` (or the older `SUCCEEDED`) means the money
   applied, `failed` is an attempt, and `held` means a card payment that arrived
   after the invoice was written off or voided — recorded, applied to nothing,
-  and not spendable until the owner decides (IN-23). The shared rule is in
+  and not spendable until the owner decides (IN-23); once decided it becomes `succeeded` (marked paid), `held_to_credit` or `held_refunded`. The shared rule is in
   `src/domains/billing/payment-status.ts`.
 - **CreditApplication** — an auditable, locked allocation of one
   `CustomerCredit` to one invoice. It is created together with the negative

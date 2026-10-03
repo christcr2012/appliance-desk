@@ -397,6 +397,8 @@ describe.skipIf(!enabled)("credit application and paid-vs-write-off races in dis
       expect(refunds).toHaveLength(1);
       expect(refunds[0].amountCents).toBe(10_000);
       expect(await prisma.customerCredit.count({ where: { sourceId: receipts[0].id } })).toBe(0);
+      // A refund made in the Stripe dashboard settles the held payment: it stops waiting for the owner.
+      expect((await prisma.payment.findUniqueOrThrow({ where: { id: heldPayments[0].id } })).status).toBe("held_refunded");
       await prisma.refund.deleteMany({ where: { invoiceId } });
     } finally {
       m.intent.mockImplementation(async (id: string) => ({

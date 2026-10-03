@@ -35,7 +35,6 @@ the bottom is empty or accepted by Chris.**
 - Notice emails for term changes (live customer email needs Chris's approval; IN-21).
 - Per-customer terms screens (Batch D).
 - Out-of-order webhook cases listed in item 3.
-- A screen for the owner to resolve a held payment (credit it, reverse the write-off, or refund it) — waiting on IN-23.
 
 ## Review dispositions (Codex threads open on #148–#153 when this PR was opened)
 
