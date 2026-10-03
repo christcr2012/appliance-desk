@@ -44,7 +44,9 @@ describe("isolated settings writes", () => {
           ? false
           : k === "draftReservationHoldDays"
             ? 5
-            : 0,
+            : k === "taxRatePercentText"
+              ? "7.375"
+              : 0,
       ]),
     );
     values.deliveryFeeDollars = 45.55;
@@ -53,12 +55,25 @@ describe("isolated settings writes", () => {
     if (result.success) {
       expect(result.update).toMatchObject({
         oneTimeDeliveryFeeCents: 4555,
+        taxRateMilliPercent: 7375,
         taxRateConfirmed: false,
         depositEnabled: false,
         lateFeeFlatCents: 0,
       });
       expect(result.update).not.toHaveProperty("publicBusinessName");
       expect(result.update).not.toHaveProperty("deliveryFeeDollars");
+      expect(result.update).not.toHaveProperty("taxRatePercentText");
+    }
+  });
+  it("rejects a tax rate with too many decimals or text instead of saving it", () => {
+    const values = Object.fromEntries(
+      SETTINGS_FIELDS.policies.map((k) => [
+        k,
+        k.endsWith("Enabled") || k === "taxRateConfirmed" ? false : k === "draftReservationHoldDays" ? 5 : k === "taxRatePercentText" ? "7.375" : 0,
+      ]),
+    );
+    for (const bad of ["7.3751", "abc", ""]) {
+      expect(settingsSectionUpdate("policies", { ...values, taxRatePercentText: bad }).success, bad).toBe(false);
     }
   });
   it("rejects invalid/missing fields and accidental string booleans", () => {
@@ -77,7 +92,9 @@ describe("isolated settings writes", () => {
           ? false
           : k === "draftReservationHoldDays"
             ? 5
-            : 0,
+            : k === "taxRatePercentText"
+              ? "7.375"
+              : 0,
       ]),
     );
     expect(
