@@ -17,10 +17,12 @@ import { formatBusinessDate, formatBusinessTime } from "@/lib/business-date";
 import { SettingsForm } from "./settings-form";
 import { AppliancePricingTable } from "./appliance-pricing-table";
 import { StaffAccountsSection } from "./staff-accounts-section";
+
 export const metadata = {
   title: "Settings",
   robots: { index: false, follow: false },
 };
+
 export default async function DeskSettingsPage({
   searchParams,
 }: {
@@ -30,6 +32,7 @@ export default async function DeskSettingsPage({
   const section = settingsSection((await searchParams).section);
   const settings = await getBusinessSettings();
   let content: React.ReactNode;
+
   if (section === "products") {
     const applianceTypes = await getAllApplianceTypes();
     content = (
@@ -38,13 +41,13 @@ export default async function DeskSettingsPage({
         description="Signed agreements keep their existing prices. Catalog changes apply to new rentals."
       >
         <AppliancePricingTable
-          rows={applianceTypes.map((t) => ({
-            id: t.id,
-            name: t.name,
-            monthlyPriceCents: t.monthlyPriceCents,
-            showOnWebsite: t.showOnWebsite,
-            isActive: t.isActive,
-            photoUrl: t.photoUrl,
+          rows={applianceTypes.map((type) => ({
+            id: type.id,
+            name: type.name,
+            monthlyPriceCents: type.monthlyPriceCents,
+            showOnWebsite: type.showOnWebsite,
+            isActive: type.isActive,
+            photoUrl: type.photoUrl,
           }))}
         />
       </SectionCard>
@@ -54,12 +57,12 @@ export default async function DeskSettingsPage({
     content = (
       <SectionCard title="Staff accounts">
         <StaffAccountsSection
-          accounts={accounts.map((a) => ({
-            id: a.id,
-            name: a.name,
-            email: a.email,
-            createdAt: a.createdAt,
-            isActive: a.archivedAt === null,
+          accounts={accounts.map((account) => ({
+            id: account.id,
+            name: account.name,
+            email: account.email,
+            createdAt: account.createdAt,
+            isActive: account.archivedAt === null,
           }))}
         />
       </SectionCard>
@@ -123,7 +126,7 @@ export default async function DeskSettingsPage({
   } else {
     content = (
       <SectionCard
-        title={SETTINGS_SECTIONS.find((s) => s.id === section)!.label}
+        title={SETTINGS_SECTIONS.find((candidate) => candidate.id === section)!.label}
         description="Save only this section. Prices, staff accounts and other sections are preserved."
       >
         {section === "policies" && !settings.taxRateConfirmed && (
@@ -157,7 +160,7 @@ export default async function DeskSettingsPage({
             lateFeeGraceDays: settings.lateFeeGraceDays,
             lateFeeFlatDollars: settings.lateFeeFlatCents / 100,
             lateFeePercent: settings.lateFeePercent,
-            taxRatePermille: settings.taxRatePermille,
+            taxRatePercent: settings.taxRatePermille / 1000,
             taxRateConfirmed: settings.taxRateConfirmed,
             sixMonthPrepaySetDollars:
               settings.sixMonthPrepayDiscountSetCents / 100,
@@ -176,6 +179,7 @@ export default async function DeskSettingsPage({
       </SectionCard>
     );
   }
+
   return (
     <div className="max-w-5xl">
       <PageHeader
@@ -189,10 +193,10 @@ export default async function DeskSettingsPage({
       />
       <FilterBar
         label="Settings sections"
-        items={SETTINGS_SECTIONS.map((s) => ({
-          href: `/desk/settings?section=${s.id}`,
-          label: s.label,
-          active: s.id === section,
+        items={SETTINGS_SECTIONS.map((candidate) => ({
+          href: `/desk/settings?section=${candidate.id}`,
+          label: candidate.label,
+          active: candidate.id === section,
         }))}
       />
       <p className="mb-4 text-xs text-ink-soft">
