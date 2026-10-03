@@ -1,4 +1,5 @@
 import type { InvoiceDetail } from "@/domains/billing/invoice-detail";
+import { isSuccessfulPaymentStatus } from "@/domains/billing/payment-status";
 import { formatCents } from "@/domains/pricing/money";
 import { invoiceStatusLabel } from "@/lib/status-labels";
 
@@ -157,7 +158,7 @@ export function InvoiceDocument({ invoice }: { invoice: InvoiceDetail }) {
                 <li key={payment.id} className="flex items-center justify-between py-1.5">
                   <span className="text-gray-600">
                     {formatDate(payment.createdAt)} · {PAYMENT_METHOD_LABELS[payment.method ?? ""] ?? "Payment"}
-                    {payment.status !== "succeeded" ? ` (${payment.status})` : ""}
+                    {!isSuccessfulPaymentStatus(payment.status) ? ` (${payment.status})` : ""}
                   </span>
                   <span className="text-gray-900">{formatCents(payment.amountCents)}</span>
                 </li>

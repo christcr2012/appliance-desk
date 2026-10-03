@@ -36,7 +36,8 @@ Update this file in the same PR that changes a rule.
     `parseTaxRatePercent` / `formatTaxRate` in `src/domains/billing/tax.ts`,
     and `getOrCreateTaxRate` in `src/domains/billing/checkout.ts` sends
     Stripe the exact percentage. The old `taxRatePermille` columns are
-    deprecated and unused.
+    deprecated: code never reads them, and a database trigger keeps them in
+    step with the exact column so a deploy or rollback can never leave tax at zero.
 - **Prepaid-term discount** (Chris's explicit request — see
   `docs/DECISIONS.md` for the dated design decision this section
   summarizes): signing a 6- or 12-month term automatically lowers a rental
@@ -821,7 +822,9 @@ what was and wasn't built.
   - **Writing off an invoice** — for a dispute Chris isn't going to
     win or a debt he's decided to stop chasing. Sets `Invoice.status`
     to `WRITTEN_OFF` (already in the schema, unused before this) with
-    a required reason, which is never treated as "paid."
+    a required reason, which is never treated as "paid." (Batch B: the write-off locks the invoice
+    row, so it cannot overwrite a payment that is landing at the same
+    moment; see "The payments ledger" below.)
 - **Automated late fees** (docs/ROADMAP.md's "Deliberately deferred
   within Phase 6B," built now): a once-daily check
   (`src/app/api/cron/late-fees`) finds any invoice past its
@@ -837,9 +840,56 @@ what was and wasn't built.
   is sent on a quiet day. **A given invoice can only ever get one late
   fee** — the check only looks at invoices where `lateFeeCents` is
   still `0`, and that same field becomes the fee amount once applied.
+  Batch B also enforces this in the database (a partial unique index allows
+  at most one `LATE_FEE` line per invoice) and runs the job under an advisory
+  lock, so two overlapping cron runs still produce exactly one fee.
   If a customer pays down part of the balance after a fee lands, the
   invoice never gets a second, larger fee later even if it falls
   behind again.
+
+## The payments ledger (Batch B, 2026-10-03)
+
+- **One payment, one receipt.** Every real payment (a card charge or a payment
+  Chris records) is one `Receipt`, however many invoices it pays. Its
+  `Payment` rows are the per-invoice allocations. A Stripe charge id is unique
+  on receipts, so a replayed webhook cannot record the same cash twice. A
+  receipt's `receivedOn` is the day the money moved (shown and totalled in
+  Colorado time), not the day the app wrote the row.
+- **Overpayment is never lost or spendable twice.** Whatever part of a receipt is
+  not applied to an invoice becomes one `CustomerCredit` tied to that receipt
+  (`sourceType = RECEIPT_OVERPAYMENT`); the database allows only one such
+  credit per source. A refund kept as account credit is another source
+  (`REFUND_TO_CREDIT`). Spending a credit creates a `CreditApplication`, a
+  negative CREDIT invoice line and a lower remaining balance in one locked
+  step, so concurrent spending can never exceed what the credit holds.
+  A credit already pushed to Stripe, or reserved for it, cannot also be spent
+  locally.
+- **Locks.** Every money change locks the customer first, then the invoices it
+  touches (in id order). A write-off, a manual payment and a Stripe payment
+  event therefore take turns instead of interleaving.
+- **Payment on a closed invoice.** If Stripe reports money for an invoice that
+  was already written off or voided, the money is recorded as an unapplied
+  receipt (account credit), the invoice is not reopened, and an audit entry
+  `billing.payment_on_closed_invoice` asks the owner to review it. (Whether to
+  reverse the write-off instead is an owner decision, IN-23.)
+- **Provider operations.** Every Stripe write Batch B owns (customer or
+  subscription create/cancel, balance credit, refund) first records a
+  `ProviderOperation` with a fixed idempotency key, then calls Stripe, then
+  records the result. Statuses: PENDING, SUCCEEDED, FAILED, UNKNOWN (the call's
+  outcome is not known) and DRIFT (local and Stripe disagree and a person must
+  look). A crashed process is healed on the next attempt: a claim that has sat
+  PENDING for more than two minutes is taken over and the call is repeated with
+  the same key, which Stripe answers with the original object. (Stripe keeps
+  idempotency keys for about 24 hours, so a very late retry relies on the
+  reconciliation job instead.) Retries inside the two minutes are refused with
+  a visible "already being started" message.
+- **Drift workbench** (`/desk/billing/reconciliation`, owner/admin only) lists
+  mismatches between local records and Stripe: stuck or failed provider
+  operations, an active agreement with no subscription, a closed agreement
+  whose subscription is still live, an invoice whose paid amount does not
+  match its status, a payment with no receipt, and customers missing at
+  Stripe. It only reads; nothing is repaired automatically. It checks a bounded
+  number of records per run.
 
 ## Fixed terms, renewal, early termination and tax rounding (Batch B, 2026-10-03)
 

@@ -6,6 +6,7 @@ import { rewardReferralOnFirstPaidInvoice } from "@/domains/referrals";
 import {
   attachProviderIdsToReceiptPayments,
   createReceiptWithAllocations,
+  lockCustomerLedger,
   recordFailedPaymentAttempt,
 } from "./ledger";
 import { resolveStripeInvoiceCashEvents } from "./stripe-invoice-payments";
@@ -99,6 +100,53 @@ async function resolvePaymentDetails(
   };
 }
 
+/**
+ * Stripe took real money for an invoice the owner has already written off (or
+ * voided). The money is recorded as received, but it is not applied to the
+ * closed invoice and the write-off is not silently undone: it is held as
+ * account credit (an unallocated receipt) and an audit entry asks the owner to
+ * review it.
+ */
+async function holdPaymentForClosedInvoice(
+  db: Prisma.TransactionClient,
+  stripeInvoice: Stripe.Invoice,
+  customerId: string,
+  invoiceId: string,
+  status: string,
+): Promise<void> {
+  const cashEvents = await resolveStripeInvoiceCashEvents(stripeInvoice);
+  for (const cashEvent of cashEvents) {
+    const { receiptId } = await createReceiptWithAllocations(db, {
+      customerId,
+      source: "STRIPE",
+      amountCents: cashEvent.amountCents,
+      method: cashEvent.method,
+      receivedOn: cashEvent.receivedOn,
+      stripeChargeId: cashEvent.stripeChargeId ?? undefined,
+      allocations: [],
+    });
+    await attachProviderIdsToReceiptPayments(db, {
+      receiptId,
+      stripePaymentIntentId: cashEvent.paymentIntentId,
+      stripeChargeId: cashEvent.stripeChargeId,
+    });
+  }
+  await db.auditLog.create({
+    data: {
+      userId: null,
+      action: "billing.payment_on_closed_invoice",
+      entityType: "Invoice",
+      entityId: invoiceId,
+      newValue: {
+        invoiceStatus: status,
+        stripeInvoiceId: stripeInvoice.id,
+        receivedCents: cashEvents.reduce((sum, e) => sum + e.amountCents, 0),
+        handling: "Held as account credit; the invoice was not reopened. Review and decide.",
+      },
+    },
+  });
+}
+
 async function recordPaidInvoice(
   db: Prisma.TransactionClient,
   stripeInvoice: Stripe.Invoice,
@@ -115,6 +163,23 @@ async function recordPaidInvoice(
   }
   if (recorded?.status === "PAID") return;
   const targetInvoiceId = existingInvoiceId ?? recorded?.id;
+
+  // An invoice can be written off by the owner at the very moment Stripe
+  // reports it paid. Take the same locks the ledger uses (customer, then
+  // invoice) and re-read the invoice before changing it, so the two can never
+  // interleave into "paid" and "written off" at once.
+  if (targetInvoiceId) {
+    await lockCustomerLedger(db, customerId);
+    const locked = await db.$queryRaw<Array<{ status: string }>>`
+      SELECT "status" FROM "Invoice" WHERE "id" = ${targetInvoiceId} FOR UPDATE
+    `;
+    const lockedStatus = locked[0]?.status;
+    if (lockedStatus === "PAID") return;
+    if (lockedStatus === "WRITTEN_OFF" || lockedStatus === "VOID") {
+      await holdPaymentForClosedInvoice(db, stripeInvoice, customerId, targetInvoiceId, lockedStatus);
+      return;
+    }
+  }
 
   const agreementLines = await db.rentalLine.findMany({
     where: { agreementId },

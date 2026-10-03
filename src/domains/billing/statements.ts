@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { SUCCESSFUL_PAYMENT_STATUSES } from "./payment-status";
 
 // ---------------------------------------------------------------------------
 // Consolidated statements (Task #72, docs/DECISIONS.md 2026-09-28
@@ -191,7 +192,7 @@ export async function getCustomerStatement(
         include: {
           lineItems: { orderBy: [{ createdAt: "asc" }] },
           agreement: { select: { serviceAddress: true } },
-          payments: { where: { status: "succeeded" }, select: { amountCents: true } },
+          payments: { where: { status: { in: [...SUCCESSFUL_PAYMENT_STATUSES] } }, select: { amountCents: true } },
           creditApplications: { select: { amountCents: true } },
           refunds: { select: { amountCents: true } },
         },

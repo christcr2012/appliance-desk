@@ -40,7 +40,8 @@ it("shows the locked ending and renewal terms before the signature box", async (
   expect(screen.getByText(/becomes a credit on your account/)).toBeVisible();
   expect(screen.getByText("Owner wording about ending early.")).toBeVisible();
   expect(screen.getByRole("heading", { name: "Automatic renewal" })).toBeVisible();
-  expect(screen.getByText("You can opt out of automatic renewal with 45 days notice.")).toBeVisible();
+  expect(screen.getByText("Automatic renewal is optional and does not start unless it is turned on for your agreement. If it is turned on, you can turn it off with 45 days notice.")).toBeVisible();
+  expect(screen.queryByText(/opt out/i)).toBeNull();
   expect(screen.getByText("Owner wording about renewing.")).toBeVisible();
 });
 

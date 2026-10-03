@@ -67,8 +67,12 @@ once. Revisit if CI failures after pushing become frequent.
 
 Added `taxRateMilliPercent` to `BusinessSettings` and `RentalAgreement` (additive
 migration; existing values multiplied by 100, proven on a scratch database:
-73 became 7300). The old `taxRatePermille` columns stay, unused, so nothing is
-dropped; a later cleanup migration may remove them. Settings, the rental
+73 became 7300). The old `taxRatePermille` columns stay so nothing is dropped. Because
+production runs migrations before the new app takes over, a second migration
+(`20261003190000_tax_rate_columns_stay_in_step`) adds a database trigger that keeps
+the two columns in step in both directions, so the old app saving a rate mid-deploy
+(or a rollback) can never leave tax at zero (review finding on #152). A later cleanup
+migration removes the old columns and the trigger together. Settings, the rental
 builder, the public pricing page and Stripe tax-rate creation use the exact
 value; new agreements start with the owner's rate once it is CPA-confirmed.
 Stripe's rate list is read page by page so an existing rate is reused rather

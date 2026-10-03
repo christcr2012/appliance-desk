@@ -133,12 +133,17 @@ and the only automatic actions are finishing *our own* PENDING/UNKNOWN
 operations by asking Stripe (which is completing an intent we recorded, not
 guessing).
 
-**D12. Tax stays tenths-of-a-percent (`taxRatePermille`); rounding is
-half-up per line, then summed; never recomputed from totals.** Reason: B22
-asks for a documented precision policy. The schema already commits to
-permille; changing it is a migration across agreements and invoices with no
-business need stated. Document, test the edges, and surface a `IN-17` owner
-input if Chris ever needs 7.35%.
+**D12. (Amended 2026-10-03, owner decision IN-17.) Tax is stored exactly as
+thousandths of one percent (`taxRateMilliPercent`: 7375 = 7.375%); rounding is
+half-up per line, then summed; never recomputed from totals.** The owner's
+real rate is 7.375%, which tenths-of-a-percent cannot hold, so the original
+"stay on `taxRatePermille`" decision was replaced. The old `taxRatePermille`
+column stays (additive migration, never dropped here) and a database trigger
+keeps it in step with the new column during deploys and rollbacks
+(`20261003190000_tax_rate_columns_stay_in_step`); a later cleanup batch removes
+both. All code reads and writes `taxRateMilliPercent` only, through the helpers
+in `src/domains/billing/tax.ts` (`parseTaxRatePercent`, `formatTaxRate`,
+`taxCentsForLine`). Reasons are in `docs/DECISIONS.md` (2026-10-03, tax storage).
 
 ## 2. Schema changes (additive only)
 
@@ -501,7 +506,7 @@ Tests: close with Stripe UNKNOWN → agreement ENDED locally, op UNKNOWN; reconc
 
 ### WU-B10 — Fixed-term boundary, renewal, early termination, auto-renew (D9/D10)
 Closes: P2 H2 (local), B34, B35, B36, B28 (mechanism), B22 (tests).
-Files: `src/domains/agreements/term.ts` (new), `src/lib/business-date.ts` (add `billingPeriodFor(anchor: Date, monthsAhead: number): { start: Date; end: Date }` and `businessEndOfDay(date): Date`), `src/domains/billing/tax.ts` (new: `taxCentsForLine(amountCents, taxRatePermille)` half-up; `sumTax(lines)`), `src/domains/settings` (expose the new policy fields; **no UI** — Batch D), `tests/agreements-term.test.ts`, `tests/billing-tax.test.ts`, `tests/business-date.test.ts` (extend with DST cases 2026-03-08 and 2026-11-01).
+Files: `src/domains/agreements/term.ts` (new), `src/lib/business-date.ts` (add `billingPeriodFor(anchor: Date, monthsAhead: number): { start: Date; end: Date }` and `businessEndOfDay(date): Date`), `src/domains/billing/tax.ts` (new: `taxCentsForLine(amountCents, taxRateMilliPercent)` half-up (amended 2026-10-03: see D12); `sumTax(lines)`), `src/domains/settings` (expose the new policy fields; **no UI** — Batch D), `tests/agreements-term.test.ts`, `tests/billing-tax.test.ts`, `tests/business-date.test.ts` (extend with DST cases 2026-03-08 and 2026-11-01).
 Change (all pure or transactional, no UI):
 ```ts
 export type TerminationPolicy = { feeCents: number|null; feePercent: number|null; feeCapCents: number|null; noticeDays: number; unusedTerm: "REFUND"|"CREDIT"|"RETAIN"; version: string };

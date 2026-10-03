@@ -606,7 +606,7 @@ model RentalAgreement {
   lateFeeGraceDays  Int @default(5)
   lateFeeCents      Int @default(0)
   lateFeePercent    Int @default(0)
-  taxRatePermille   Int @default(0) // DEPRECATED, unused: old tenths-of-a-percent value (kept so the change is additive)
+  taxRatePermille   Int @default(0) // DEPRECATED: old tenths-of-a-percent value; a database trigger keeps it in step with taxRateMilliPercent until the cleanup batch removes both
   taxRateMilliPercent Int @default(0) // thousandths of one percent: 7375 = 7.375%
 
   // Prepaid-term discount (see docs/BUSINESS-RULES.md's Pricing section
@@ -1360,7 +1360,7 @@ model BusinessSettings {
   lateFeeGraceDays        Int     @default(5)
   lateFeeFlatCents        Int     @default(0)
   lateFeePercent          Int     @default(0)
-  taxRatePermille         Int     @default(0) // DEPRECATED, unused (see taxRateMilliPercent)
+  taxRatePermille         Int     @default(0) // DEPRECATED (see taxRateMilliPercent); kept in step by a database trigger until cleanup
   taxRateMilliPercent     Int     @default(0) // thousandths of one percent: 7375 = 7.375%
   taxRateConfirmed        Boolean @default(false)
 

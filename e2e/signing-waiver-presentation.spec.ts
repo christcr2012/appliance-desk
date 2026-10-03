@@ -29,3 +29,36 @@ test("customer signing and owner agreement show the same one-time waiver", async
     await prisma.rentalAgreement.deleteMany({ where: { id } });
   }
 });
+
+test("a fixed-term agreement shows its locked ending and renewal terms before the signature box", async ({ page }) => {
+  test.skip(!enabled || !fs.existsSync(owner), "Disposable CI database only");
+  const { prisma } = await import("../src/lib/prisma");
+  const id = `terms-${randomUUID()}`; const signatureId = `${id}-signature`;
+  try {
+    const address = await prisma.serviceAddress.findFirstOrThrow();
+    const termsSnapshot = {
+      shape: 1, source: "SYSTEM", capturedAt: "2026-10-03T00:00:00.000Z",
+      termination: { feeCents: 5000, feePercent: 10, feeCapCents: 20000, noticeDays: 30, unusedTerm: "CREDIT", termsText: "Owner wording about ending early." },
+      autoRenew: { noticeDays: 45, termsText: "Owner wording about renewing.", termsVersion: "ar-e2e" },
+    };
+    await prisma.rentalAgreement.create({ data: { id, customerId: address.customerId, serviceAddressId: address.id, status: "AWAITING_SIGNATURE", termMonths: 12, termsSnapshot, lines: { create: { label: "Terms test washer", monthlyPriceCents: 4000, listPriceCents: 4000 } }, signature: { create: { id: signatureId, provider: "internal" } } } });
+    await page.setViewportSize({ width: 360, height: 900 });
+    await page.goto(`/sign/${signatureId}`);
+    const ending = page.getByRole("heading", { name: "Ending this agreement early" });
+    const renewal = page.getByRole("heading", { name: "Automatic renewal" });
+    await expect(ending).toBeVisible();
+    await expect(renewal).toBeVisible();
+    await expect(page.getByText("Notice needed to end early: 30 days.")).toBeVisible();
+    await expect(page.getByText(/does not start unless it is turned on/)).toBeVisible();
+    await expect(page.getByText(/opt out/i)).toHaveCount(0);
+    // The disclosures come before the signing control, not after it.
+    const signButton = page.getByRole("button", { name: "Sign agreement" });
+    const [endingBox, renewalBox, signBox] = [await ending.boundingBox(), await renewal.boundingBox(), await signButton.boundingBox()];
+    expect(endingBox!.y).toBeLessThan(signBox!.y);
+    expect(renewalBox!.y).toBeLessThan(signBox!.y);
+    expect((await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze()).violations).toEqual([]);
+  } finally {
+    await prisma.signatureRecord.deleteMany({ where: { id: signatureId } });
+    await prisma.rentalAgreement.deleteMany({ where: { id } });
+  }
+});

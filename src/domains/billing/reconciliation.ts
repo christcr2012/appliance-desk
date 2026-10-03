@@ -1,5 +1,6 @@
 import type { ProviderOperationStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { SUCCESSFUL_PAYMENT_STATUSES } from "./payment-status";
 import { getStripeClient } from "@/lib/stripe";
 import {
   claimProviderOperation,
@@ -394,7 +395,7 @@ async function resolveDepositRefundCharge(depositId: string): Promise<{
 
   const linkedPayment = await prisma.payment.findFirst({
     where: {
-      status: "succeeded",
+      status: { in: [...SUCCESSFUL_PAYMENT_STATUSES] },
       invoice: {
         agreementId: deposit.agreementId,
         lineItems: { some: { kind: "DEPOSIT" } },
@@ -720,7 +721,7 @@ export async function detectDrift(limit = 200): Promise<DriftRow[]> {
   if (rows.length >= bounded) return rows.slice(0, bounded);
 
   const paymentsWithoutReceipt = await prisma.payment.findMany({
-    where: { status: "succeeded", receiptId: null },
+    where: { status: { in: [...SUCCESSFUL_PAYMENT_STATUSES] }, receiptId: null },
     select: { id: true, invoiceId: true, createdAt: true },
     take: bounded - rows.length,
   });
