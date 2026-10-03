@@ -162,6 +162,9 @@ export async function cancelWithdrawnAutoRenewals(
     },
   });
   let cancelled = 0;
+  // With the owner's master switch OFF every queued automatic renewal is withdrawn, even though the customer
+  // is still opted in: cancelling restores the billing stop date and withdraws the waiting reminder.
+  const switchOn = await isAutoRenewEnabled();
   for (const renewal of waiting) {
     const old = await prisma.rentalAgreement.findUnique({
       where: { id: renewal.renewedFromAgreementId! },
@@ -169,6 +172,7 @@ export async function cancelWithdrawnAutoRenewals(
     });
     if (!old) continue;
     const stillWanted =
+      switchOn &&
       old.status === "ACTIVE" && old.renewalPreference === "AUTO_RENEW" && !old.terminationRequestedAt;
     if (stillWanted) continue;
     try {

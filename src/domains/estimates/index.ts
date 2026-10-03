@@ -263,7 +263,7 @@ export function totalOneTimeCents(
 }
 
 /** Marks the estimate sent and emails the link. `emailed` is false when live customer email is off, so the owner can share the link by hand. */
-export async function sendEstimate(userId: string, estimateId: string): Promise<{ emailed: boolean }> {
+export async function sendEstimate(userId: string, estimateId: string): Promise<{ emailed: boolean; outcome?: string }> {
   const estimate = await prisma.estimate.findUniqueOrThrow({
     where: { id: estimateId },
     include: {
@@ -331,7 +331,7 @@ export async function sendEstimate(userId: string, estimateId: string): Promise<
     text: parts.join("\n\n"),
     actionLabel: "View & respond to estimate",
   });
-  return { emailed: result.sent };
+  return { emailed: result.sent, outcome: result.outcome };
 }
 
 export async function sendEstimateFollowUpReminders(): Promise<{

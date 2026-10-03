@@ -416,22 +416,60 @@ describe.skipIf(!enabled)("auto-renew and agreed early endings are carried out",
       await deliver(a);
       await prisma.businessSettings.update({ where: { id: "singleton" }, data: { autoRenewEnabled: false } });
       try {
-        const b = await agreement();
-        const queued = await runAutoRenewals(windowOpen);
-        expect(queued.created).toBe(0);
-        expect(await renewalsOf(b.id)).toHaveLength(0);
+        // Starting is refused first (before the nightly pass below withdraws the queued renewal).
+        const started = await startRenewalIfDue(auto.id, afterTerm);
+        expect(started.started).toBe(false);
+        if (!started.started) expect(started.reason).toBe("AUTO_RENEW_OFF");
 
         stripeMock.update.mockClear();
         expect(await extendBillingForDeliveredAutoRenewals(windowOpen)).toBe(0);
         expect(stripeMock.update).not.toHaveBeenCalled();
 
-        const started = await startRenewalIfDue(auto.id, afterTerm);
-        expect(started.started).toBe(false);
-        if (!started.started) expect(started.reason).toBe("AUTO_RENEW_OFF");
-
-        // Opting out and cancelling still work while the switch is off.
-        await setAutoRenew({ userId, kind: "customer" }, a.id, { enabled: false, termsVersion: "ar-test" });
+        // The nightly pass queues nothing new, and withdraws what was queued.
+        const b = await agreement();
+        const queued = await runAutoRenewals(windowOpen);
+        expect(queued.created).toBe(0);
+        expect(await renewalsOf(b.id)).toHaveLength(0);
         expect((await get(auto.id)).status).toBe("CANCELLED");
+
+        // Opting out still works while the switch is off.
+        await setAutoRenew({ userId, kind: "customer" }, a.id, { enabled: false, termsVersion: "ar-test" });
+        expect((await get(a.id)).renewalPreference).toBe("NONE");
+      } finally {
+        await prisma.businessSettings.update({ where: { id: "singleton" }, data: { autoRenewEnabled: true } });
+      }
+    });
+
+    it("turning the switch OFF after billing was extended restores the old end date and withdraws the reminder; a waiting reminder is never emailed while it is off", async () => {
+      const a = await agreement();
+      await runAutoRenewals(windowOpen);
+      const auto = (await renewalsOf(a.id))[0]!;
+      await deliver(a);
+      stripeMock.update.mockClear();
+      await extendBillingForDeliveredAutoRenewals(windowOpen);
+      expect(stripeMock.update).toHaveBeenCalledWith(a.stripeSubscriptionId, { cancel_at: "" }, expect.anything());
+
+      const b = await agreement();
+      await runAutoRenewals(windowOpen);
+      const waiting = (await noticeOf(b))!;
+
+      await prisma.businessSettings.update({ where: { id: "singleton" }, data: { autoRenewEnabled: false } });
+      try {
+        emailMock.send.mockReset().mockResolvedValue({ sent: true, outcome: "SENT" });
+        await sendPendingNotices(inReminderWindow);
+        expect(emailMock.send).not.toHaveBeenCalledWith(expect.objectContaining({ idempotencyKey: `customer-notice-${waiting.id}` }));
+        expect((await noticeOf(b))!.status).toBe("PENDING");
+
+        stripeMock.update.mockClear();
+        const { cancelWithdrawnAutoRenewals } = await import("@/domains/agreements/auto-renew");
+        await cancelWithdrawnAutoRenewals(null);
+        expect((await get(auto.id)).status).toBe("CANCELLED");
+        expect(stripeMock.update).toHaveBeenCalledWith(
+          a.stripeSubscriptionId,
+          { cancel_at: Math.floor(termEnd.getTime() / 1000) },
+          expect.anything(),
+        );
+        expect((await noticeOf(b))!.status).toBe("NOT_NEEDED");
       } finally {
         await prisma.businessSettings.update({ where: { id: "singleton" }, data: { autoRenewEnabled: true } });
       }

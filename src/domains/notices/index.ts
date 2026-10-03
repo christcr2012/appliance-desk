@@ -2,6 +2,7 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { sendCustomerEmail } from "@/lib/customer-email";
 import { assertActiveTeamActor } from "@/lib/team-actor";
+import { isAutoRenewEnabled } from "@/domains/settings/auto-renew-switch";
 import { businessDaysBetween } from "@/lib/business-date";
 
 /**
@@ -57,7 +58,7 @@ export type NoticeSendResult = { sent: number; stillWaiting: number };
 const CLAIM_STALE_MINUTES = 15;
 
 /** A renewal reminder is only worth sending while the automatic renewal it warns about is still waiting. */
-type NoticeNeed = "GONE" | "OUT_OF_WINDOW" | "OK";
+type NoticeNeed = "GONE" | "OUT_OF_WINDOW" | "PAUSED" | "OK";
 
 async function noticeNeed(noticeId: string, now: Date): Promise<NoticeNeed> {
   const notice = await prisma.customerNotice.findUnique({ where: { id: noticeId }, select: { kind: true, agreementId: true } });
@@ -68,6 +69,8 @@ async function noticeNeed(noticeId: string, now: Date): Promise<NoticeNeed> {
     select: { startDate: true },
   });
   if (!renewal?.startDate) return "GONE";
+  // The owner switched automatic renewals off: do not promise a renewal that will not happen.
+  if (!(await isAutoRenewEnabled())) return "PAUSED";
   // Sending a reminder that can no longer be delivered 25 to 40 days ahead would promise a renewal the
   // system will not start. It stays on the owner's list instead.
   const daysBefore = businessDaysBetween(now, renewal.startDate);
@@ -109,7 +112,7 @@ export async function sendPendingNotices(now = new Date()): Promise<NoticeSendRe
       await prisma.customerNotice.updateMany({ where: { id: notice.id, status: "SENDING" }, data: { status: "NOT_NEEDED" } });
       continue;
     }
-    if (need === "OUT_OF_WINDOW") {
+    if (need === "OUT_OF_WINDOW" || need === "PAUSED") {
       await prisma.customerNotice.updateMany({
         where: { id: notice.id, status: "SENDING" },
         data: { status: "PENDING", attempts: { decrement: 1 } },

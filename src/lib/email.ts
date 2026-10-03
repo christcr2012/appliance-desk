@@ -88,7 +88,11 @@ export async function sendEmail(input: {
         "[email] Provider did not accept the email",
         error?.name ?? "missing-id",
       );
-      return { sent: false, outcome: error ? "REJECTED" : "UNKNOWN" };
+      // Only a clear HTTP 4xx answer proves nothing was sent. A missing status (the response could not be fetched
+      // or read), a 5xx, or no error at all means we cannot know whether it was accepted.
+      const status = (error as { statusCode?: number | null } | null)?.statusCode;
+      const refused = typeof status === "number" && status >= 400 && status < 500;
+      return { sent: false, outcome: refused ? "REJECTED" : "UNKNOWN" };
     }
     return { sent: true, outcome: "SENT" };
   } catch (error) {

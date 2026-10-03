@@ -22,7 +22,7 @@ describe("sendEmail", () => {
     process.env.RESEND_API_KEY = "test";
     emailsSend.mockResolvedValueOnce({
       data: null,
-      error: { name: "validation_error" },
+      error: { name: "validation_error", statusCode: 422 },
     });
     const { sendEmail } = await import("@/lib/email");
     expect(
@@ -136,6 +136,16 @@ describe("sendEmail", () => {
     expect(html).toContain("&lt;script&gt;");
     expect(html).toContain("&amp;");
     expect(html).toContain("&quot;quoted&quot;");
+  });
+
+  it("treats a returned transport error with no status (response lost or unreadable) as UNKNOWN, not rejected", async () => {
+    process.env.RESEND_API_KEY = "test";
+    emailsSend.mockResolvedValueOnce({ data: null, error: { name: "application_error", statusCode: null } });
+    emailsSend.mockResolvedValueOnce({ data: null, error: { name: "internal_server_error", statusCode: 500 } });
+    const { sendEmail } = await import("@/lib/email");
+    const input = { to: "a@example.test", subject: "Hi", text: "Hello" };
+    expect(await sendEmail(input)).toEqual({ sent: false, outcome: "UNKNOWN" });
+    expect(await sendEmail(input)).toEqual({ sent: false, outcome: "UNKNOWN" });
   });
 
   it("logs and returns { sent: false } instead of throwing when Resend errors", async () => {
