@@ -10,7 +10,7 @@ the points where the implementer must stop and ask instead of guessing.
 | Batch | Design | Status |
 |---|---|---|
 | B — Billing, provider reconciliation & financial ledger | `BATCH-B.md` | Approved 2026-10-02 |
-| C — Rental-to-service operations, custody, inventory & purchasing | `BATCH-C.md` | Approved 2026-10-02 (verify §0 after B merges) |
+| C — Rental-to-service operations, custody, inventory & purchasing | `BATCH-C.md` + `BATCH-C-UPDATE-2026-10-03.md` | **Not approved unchanged.** Amended 2026-10-03; slices approved separately (see the table at the top of BATCH-C.md); billing-dependent parts blocked |
 | D — Owner/customer control plane, website, evidence & privacy | `BATCH-D.md` | Approved 2026-10-02 (verify §0 after C merges) |
 | E — Communications, reporting, growth, branding & accessibility | `BATCH-E.md` | Approved 2026-10-02 (verify §0 after D merges) |
 | F — Integrated verification, recovery, owner handoff & launch ledger | `BATCH-F.md` | Approved 2026-10-02 (verify §0 after E merges) |

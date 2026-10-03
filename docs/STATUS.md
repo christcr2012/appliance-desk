@@ -108,3 +108,5 @@ emails; building continues with sending switched off) and IN-17's CPA check of t
 - **2026-10-02** — Docs consolidated: new `AGENTS.md`, `START-HERE`,
   `STATUS`, `PLAN`, `PLAYBOOK`; retired plan files and old HANDOFF moved to
   `docs/archive/`. CI sharded (#137). Batch A merged (#136). Next: Batch B.
+
+**Batch C design gate (2026-10-03).** The Batch C design is not approved unchanged: a stronger-model update (`docs/designs/BATCH-C-UPDATE-2026-10-03.md`) amends it. Asset numbering, parts ledger and scheduling can be designed and approved separately; custody/completion, swaps, maintenance chain and pickup/return billing wait for the amended design and the shared billing design (PR #161 independent review R1-R4: `docs/prompts/DESIGN-BATCH-B-RENEWAL-LIFECYCLE.md`). Owner answers still needed: IN-24 (late return by day or month), IN-26, IN-27. Record the merge SHA of PR #161 here when it merges. No Batch C code has been written.

@@ -6,6 +6,15 @@ tells you what to re-verify because B lands first. Scope and acceptance:
 `docs/PLAN.md` → Batch C. Pattern reference for every transactional write:
 `docs/designs/BATCH-B.md` D2 (lock → claim → act) and `assertActiveTeamActor`.
 
+> **2026-10-03 AMENDMENT (stronger-model design update, applied by the coding agent): this document does NOT authorize implementation unchanged.**
+> Read `docs/designs/BATCH-C-UPDATE-2026-10-03.md` first. It amends C1-C11 and the work units (items C-01 to C-10 there: physical custody that survives renewals and endings, per-appliance completion results, a complete swap contract, scheduling under concurrency, atomic maintenance scheduling, asset counters, parts opening balances, inspection snapshots and permissions, the pickup/return billing unit for IN-24, and the appliance-earnings correction). Where this older text and the update disagree, the update wins.
+> **Approval state by slice** (literal schema and signatures are still to be supplied by the stronger-model pass before coding):
+> | Slice | State |
+> |---|---|
+> | Asset numbering (C8/C-06), parts ledger and archival (C9, C12/C-07), scheduling (C5/C-04) | Can be designed and approved separately; not blocked by billing. |
+> | Custody and completion (C2, C4/C-01, C-02), swaps (C-03), maintenance chain (C-05), inspection and permissions (C-08) | Need the amended design. Custody/completion must be designed together with the shared billing contract. |
+> | Pickup/return billing (IN-24, C-09) | Blocked on the shared billing design (deferred Batch B items R1-R4) and on owner answers (IN-24 late-return rule, IN-26 partial delivery, IN-27 pickup day). |
+>
 > **Drift check, 2026-10-03 (after Batch B completion work, before Batch C code).**
 > Checked every row of section 0 against the code on the Batch B stack.
 > - **A2, A3, A4, A5, A6, A7, A8, A9 still match** (job completion still uses `updateMany where status` inside a transaction and starts billing after commit; `applyJobCompletionToAppliances` still skips silently on `moved.count !== 1`; `startSwapForAppliance` still moves the assignment and both units at staging time; asset numbers still found by a loop outside a transaction; part usage still clamps to zero; `Job` still has no assignee/duration/version; `ApplianceInspection` and `MaintenanceRequest` unchanged).
