@@ -129,7 +129,15 @@ resulting behavior are verified.
 - **Automated review:** if an automated reviewer is available, request it. If
   it is not (quota, outage), Chris has waived it (2026-10-01): inspect the
   diff yourself, record "automated review unavailable — waived" in the PR,
-  and never claim a review ran that did not.
+  and never claim a review ran that did not. Codex reviews every PR
+  automatically when it is opened, so it is normally available: read its
+  comments before writing "unavailable". Never write "waived" without checking.
+- **Review fixes ride the next planned PR (Chris, 2026-10-03).** Do not open or
+  push a separate PR just to fix review comments — each push costs a CI run.
+  Collect valid findings from all open PRs, fix them (with regression tests)
+  inside the next planned PR of the stack, and record each disposition there.
+  Exception: a finding that is a security or money-correctness hole in code
+  already merged to `main` gets fixed immediately.
 
 ## Review continuity — before each PR
 

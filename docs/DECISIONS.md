@@ -63,3 +63,21 @@ the complete original history preserved unchanged behind that index.
 
 Going forward, new decisions are recorded here. Historical context is pulled
 from the archive only when a concrete question requires it.
+
+### 2026-10-03 — Code-review fixes ride the next planned PR
+
+Chris decided that review comments are fixed inside the next planned PR rather
+than in their own PRs or extra pushes, because every push costs a CI run. Each
+finding still gets a recorded disposition and a regression test. Only a
+security or money-correctness hole already on `main` is fixed immediately.
+
+### 2026-10-03 — Agreements keep their own terms; policy changes need 30 days' notice
+
+Chris decided: fixed-term leases are locked to the ending/renewal terms they
+signed; changing the system-wide terms must not affect them. Month-to-month
+agreements follow the system-wide terms, effective 30 days after the change,
+with every customer told in writing (current leases unaffected, month-to-month
+affected). Terms can also be customized per customer at sign-up/setup/estimate.
+Consequence: early-ending quotes read the agreement's saved terms, not the live
+settings. Sending the notice is live customer email and needs Chris's approval
+before it is turned on.
