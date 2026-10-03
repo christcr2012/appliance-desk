@@ -986,7 +986,7 @@ is never replaced by a default.
   wording or notice days change). Consent is recorded only for the renewal-terms
   version the agreement was signed with, by the owner/admin or by the customer on
   their own agreement, with a consent record each time it is turned on or off.
-  Turning it off never ends the agreement. **Acting on consent (nightly):** once
+  Turning it off never ends the agreement. **Owner master switch:** nothing below happens automatically unless the owner has turned "Automatic renewals" ON (Settings; OFF by default; owner only). While OFF, opt-out, early endings and cancelling a queued renewal still work. **Acting on consent (nightly):** once
   the agreement's own reminder window opens (term end minus the notice days it was
   signed with), the system queues a month-to-month renewal ("signed, starts later",
   marked as automatic, no signature record) with the same lines and prices; Stripe's

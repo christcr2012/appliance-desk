@@ -2,6 +2,7 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { sendCustomerEmail } from "@/lib/customer-email";
 import { assertActiveTeamActor } from "@/lib/team-actor";
+import { isAutoRenewEnabled } from "@/domains/settings/auto-renew-switch";
 import { businessDaysBetween } from "@/lib/business-date";
 
 /**
@@ -57,7 +58,7 @@ export type NoticeSendResult = { sent: number; stillWaiting: number };
 const CLAIM_STALE_MINUTES = 15;
 
 /** A renewal reminder is only worth sending while the automatic renewal it warns about is still waiting. */
-type NoticeNeed = "GONE" | "OUT_OF_WINDOW" | "OK";
+type NoticeNeed = "GONE" | "OUT_OF_WINDOW" | "PAUSED" | "OK";
 
 async function noticeNeed(noticeId: string, now: Date): Promise<NoticeNeed> {
   const notice = await prisma.customerNotice.findUnique({ where: { id: noticeId }, select: { kind: true, agreementId: true } });
@@ -68,6 +69,8 @@ async function noticeNeed(noticeId: string, now: Date): Promise<NoticeNeed> {
     select: { startDate: true },
   });
   if (!renewal?.startDate) return "GONE";
+  // The owner switched automatic renewals off: do not promise a renewal that will not happen.
+  if (!(await isAutoRenewEnabled())) return "PAUSED";
   // Sending a reminder that can no longer be delivered 25 to 40 days ahead would promise a renewal the
   // system will not start. It stays on the owner's list instead.
   const daysBefore = businessDaysBetween(now, renewal.startDate);
@@ -109,7 +112,7 @@ export async function sendPendingNotices(now = new Date()): Promise<NoticeSendRe
       await prisma.customerNotice.updateMany({ where: { id: notice.id, status: "SENDING" }, data: { status: "NOT_NEEDED" } });
       continue;
     }
-    if (need === "OUT_OF_WINDOW") {
+    if (need === "OUT_OF_WINDOW" || need === "PAUSED") {
       await prisma.customerNotice.updateMany({
         where: { id: notice.id, status: "SENDING" },
         data: { status: "PENDING", attempts: { decrement: 1 } },
@@ -117,24 +120,39 @@ export async function sendPendingNotices(now = new Date()): Promise<NoticeSendRe
       stillWaiting += 1;
       continue;
     }
+    let result: Awaited<ReturnType<typeof sendCustomerEmail>>;
     try {
-      const result = await sendCustomerEmail({
+      result = await sendCustomerEmail({
         to: notice.customer.user.email,
         subject: notice.subject,
         text: notice.body,
         idempotencyKey: `customer-notice-${notice.id}`,
       });
+    } catch (error) {
+      // The email service call itself never throws (it reports UNKNOWN instead), so this is a failure before any
+      // send, such as reading the owner's switch: nothing went out and it is safe to try again later.
+      stillWaiting += 1;
+      await prisma.customerNotice.updateMany({ where: { id: notice.id, status: "SENDING" }, data: { status: "PENDING" } });
+      console.error(`Could not send notice ${notice.id}:`, error);
+      continue;
+    }
+    if (result.outcome === "UNKNOWN") {
+      stillWaiting += 1; // stays "sending": shown to the owner as "may already have been sent"
+      continue;
+    }
+    try {
       await prisma.customerNotice.updateMany({
         where: { id: notice.id, status: "SENDING" },
         data: result.sent ? { status: "SENT", sentAt: new Date(), sentVia: "EMAIL" } : { status: "PENDING" },
       });
-      if (result.sent) sent += 1;
-      else stillWaiting += 1;
     } catch (error) {
-      stillWaiting += 1;
-      await prisma.customerNotice.updateMany({ where: { id: notice.id, status: "SENDING" }, data: { status: "PENDING" } });
-      console.error(`Could not send notice ${notice.id}:`, error);
+      // The provider accepted it but we could not save that: leave it "sending" (owner review), never resend.
+      console.error(`Notice ${notice.id} was sent but could not be recorded:`, error);
+      if (result.sent) sent += 1;
+      continue;
     }
+    if (result.sent) sent += 1;
+    else stillWaiting += 1;
   }
   return { sent, stillWaiting };
 }
@@ -180,10 +198,21 @@ function isInterruptedSend(updatedAt: Date): boolean {
   return Date.now() - updatedAt.getTime() > CLAIM_STALE_MINUTES * 60_000;
 }
 
+export type NoticeDeadline = "OK" | "MISSED" | "TOO_EARLY" | "UNKNOWN";
+
+/** Where a waiting renewal reminder stands against the 25 to 40 day window. */
+export function reminderDeadlineState(renewalStart: Date | null, now: Date): NoticeDeadline {
+  if (!renewalStart) return "UNKNOWN";
+  const daysBefore = businessDaysBetween(now, renewalStart);
+  if (daysBefore < REMINDER_MIN_DAYS_BEFORE) return "MISSED";
+  if (daysBefore > REMINDER_MAX_DAYS_BEFORE) return "TOO_EARLY";
+  return "OK";
+}
+
 /** Notices waiting for the owner: not yet sent, or a send that was interrupted and may already have gone out. */
-export async function listWaitingNotices() {
+export async function listWaitingNotices(now = new Date()) {
   const staleBefore = new Date(Date.now() - CLAIM_STALE_MINUTES * 60_000);
-  return prisma.customerNotice.findMany({
+  const rows = await prisma.customerNotice.findMany({
     where: { OR: [{ status: "PENDING" }, { status: "SENDING", updatedAt: { lt: staleBefore } }] },
     orderBy: { createdAt: "asc" },
     select: {
@@ -197,6 +226,19 @@ export async function listWaitingNotices() {
       customer: { select: { user: { select: { name: true, email: true } } } },
     },
   });
+  const result = [];
+  for (const row of rows) {
+    let deadline: NoticeDeadline = "UNKNOWN";
+    if (row.kind === "RENEWAL_REMINDER" && row.agreementId) {
+      const renewal = await prisma.rentalAgreement.findFirst({
+        where: { renewedFromAgreementId: row.agreementId, createdByAutoRenew: true, status: "SCHEDULED" },
+        select: { startDate: true },
+      });
+      deadline = reminderDeadlineState(renewal?.startDate ?? null, now);
+    }
+    result.push({ ...row, deadline });
+  }
+  return result;
 }
 
 /** Colorado asks for the reminder 25 to 40 days before the renewal (a statute, not a business setting). */

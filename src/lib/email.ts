@@ -17,6 +17,15 @@ import { isNonProductionDeployment } from "./deployment-safety";
  * their own code. `text` is still sent too, as Resend's (and every
  * email client's) plain-text fallback.
  */
+/**
+ * `outcome` tells callers what really happened when `sent` is false:
+ * NOT_ATTEMPTED  nothing was sent on purpose (preview, no key, or the owner's switch is off): safe to try later;
+ * REJECTED       the email service answered with an error: nothing was sent, safe to try later;
+ * UNKNOWN        no clear answer (lost response, network error): the email MAY have gone out, so never resend by itself.
+ */
+export type EmailOutcome = "SENT" | "NOT_ATTEMPTED" | "REJECTED" | "UNKNOWN";
+export type EmailResult = { sent: boolean; outcome?: EmailOutcome };
+
 export async function sendEmail(input: {
   to: string;
   subject: string;
@@ -28,10 +37,10 @@ export async function sendEmail(input: {
   replyTo?: string;
   idempotencyKey?: string;
   marketing?: { postalAddress: string; unsubscribeUrl: string };
-}): Promise<{ sent: boolean }> {
+}): Promise<EmailResult> {
   // Database isolation alone cannot prevent messages to copied contacts.
   // Do not construct a provider client or log recipients/message content.
-  if (isNonProductionDeployment()) return { sent: false };
+  if (isNonProductionDeployment()) return { sent: false, outcome: "NOT_ATTEMPTED" };
 
   const apiKey = process.env.RESEND_API_KEY;
   const from =
@@ -41,7 +50,7 @@ export async function sendEmail(input: {
     console.log(
       `[email] RESEND_API_KEY not set — skipping send. Would have emailed ${input.to}: "${input.subject}"`,
     );
-    return { sent: false };
+    return { sent: false, outcome: "NOT_ATTEMPTED" };
   }
 
   try {
@@ -79,15 +88,19 @@ export async function sendEmail(input: {
         "[email] Provider did not accept the email",
         error?.name ?? "missing-id",
       );
-      return { sent: false };
+      // Only a clear HTTP 4xx answer proves nothing was sent. A missing status (the response could not be fetched
+      // or read), a 5xx, or no error at all means we cannot know whether it was accepted.
+      const status = (error as { statusCode?: number | null } | null)?.statusCode;
+      const refused = typeof status === "number" && status >= 400 && status < 500;
+      return { sent: false, outcome: refused ? "REJECTED" : "UNKNOWN" };
     }
-    return { sent: true };
+    return { sent: true, outcome: "SENT" };
   } catch (error) {
     // A failed notification email must never break lead submission itself
     // — the lead is already saved by the time this runs. Log so it shows
     // up in Sentry/Vercel logs and can be followed up by hand.
     console.error("[email] Failed to send notification email", error);
-    return { sent: false };
+    return { sent: false, outcome: "UNKNOWN" };
   }
 }
 

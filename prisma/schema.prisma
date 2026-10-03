@@ -1388,6 +1388,9 @@ model BusinessSettings {
   // Master switch for every message sent to customers. Off until the owner turns it on; previews
   // and test copies never send even when on. Owner only.
   customerEmailEnabled Boolean @default(false)
+  // Master switch for AUTOMATIC renewals (queuing them, starting them, extending billing for them). Off until
+  // the owner turns it on, whatever the wording settings say. Opt-out and billing-stop operations are never blocked.
+  autoRenewEnabled Boolean @default(false)
   draftReservationHoldDays Int @default(7)
   inspectionChecklist Json @default("[]")
 

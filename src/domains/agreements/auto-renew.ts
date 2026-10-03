@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { isAutoRenewEnabled } from "@/domains/settings/auto-renew-switch";
 import { businessDaysBetween } from "@/lib/business-date";
 import { syncSubscriptionTerm } from "@/domains/billing/subscription-term";
 import { cancelAgreement, lockRentalAgreementInTx } from "./index";
@@ -161,6 +162,9 @@ export async function cancelWithdrawnAutoRenewals(
     },
   });
   let cancelled = 0;
+  // With the owner's master switch OFF every queued automatic renewal is withdrawn, even though the customer
+  // is still opted in: cancelling restores the billing stop date and withdraws the waiting reminder.
+  const switchOn = await isAutoRenewEnabled();
   for (const renewal of waiting) {
     const old = await prisma.rentalAgreement.findUnique({
       where: { id: renewal.renewedFromAgreementId! },
@@ -168,6 +172,7 @@ export async function cancelWithdrawnAutoRenewals(
     });
     if (!old) continue;
     const stillWanted =
+      switchOn &&
       old.status === "ACTIVE" && old.renewalPreference === "AUTO_RENEW" && !old.terminationRequestedAt;
     if (stillWanted) continue;
     try {
@@ -185,6 +190,8 @@ export async function cancelWithdrawnAutoRenewals(
 export async function runAutoRenewals(now = new Date()): Promise<AutoRenewRunResult> {
   const result: AutoRenewRunResult = { created: 0, cancelled: 0, problems: [] };
   result.cancelled = await cancelWithdrawnAutoRenewals(null);
+  // Cancelling withdrawn renewals above always runs. Queuing new ones needs the owner's master switch.
+  if (!(await isAutoRenewEnabled())) return result;
 
   const candidates = await prisma.rentalAgreement.findMany({
     where: {
@@ -215,6 +222,7 @@ export async function runAutoRenewals(now = new Date()): Promise<AutoRenewRunRes
  * start. Safe to run any number of times; also called right after an owner marks a reminder delivered.
  */
 export async function extendBillingForDeliveredAutoRenewals(now = new Date()): Promise<number> {
+  if (!(await isAutoRenewEnabled())) return 0;
   const waiting = await prisma.rentalAgreement.findMany({
     where: { status: "SCHEDULED", createdByAutoRenew: true, startDate: { gt: now } },
     select: { id: true },

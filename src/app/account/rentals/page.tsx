@@ -89,7 +89,7 @@ export default async function AccountRentalsPage() {
                 {a.status === "ACTIVE" && a.renewalPreference === "AUTO_RENEW" && (
                   <div className="mt-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
                     <p className="text-sm text-gray-900">
-                      This rental renews automatically. We&apos;ll email you a reminder before it renews.
+                      Your rental is set to renew automatically. If you would rather it ended, you can turn that off here at any time before the renewal date.
                     </p>
                     <TurnOffAutoRenew agreementId={a.id} />
                   </div>

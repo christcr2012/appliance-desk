@@ -32,7 +32,7 @@ import { lockRentalAgreementInTx } from "./index";
 
 export type RenewalStartResult =
   | { started: true; renewalId: string; endedAgreementId: string; appliancesMoved: number }
-  | { started: false; renewalId: string; reason: "NOT_SCHEDULED" | "NOT_YET" | "OLD_NOT_ACTIVE" | "NO_RENEWED_FROM" | "BILLING_NOT_READY" | "AUTO_RENEW_WITHDRAWN" | "NOTICE_NOT_SENT" | "NOTICE_OUT_OF_WINDOW"; message: string };
+  | { started: false; renewalId: string; reason: "NOT_SCHEDULED" | "NOT_YET" | "OLD_NOT_ACTIVE" | "NO_RENEWED_FROM" | "BILLING_NOT_READY" | "AUTO_RENEW_WITHDRAWN" | "AUTO_RENEW_OFF" | "NOTICE_NOT_SENT" | "NOTICE_OUT_OF_WINDOW"; message: string };
 
 const MESSAGES = {
   NOT_SCHEDULED: "This renewal is not waiting to start.",
@@ -44,6 +44,8 @@ const MESSAGES = {
     "The customer has not yet been sent the renewal reminder, so this automatic renewal is on hold. Send it (or mark it as delivered) under Notices, and the renewal will start on its own.",
   NOTICE_OUT_OF_WINDOW:
     "The renewal reminder reached the customer outside the 25 to 40 days before the renewal that Colorado asks for, so this automatic renewal will not start by itself. Cancel the renewal (the customer's rental then simply ends or you renew it by hand) or ask your attorney how to proceed.",
+  AUTO_RENEW_OFF:
+    "Automatic renewals are switched off (Settings → Ending and renewing rentals). This renewal waits until you turn them on, or you can cancel it.",
   AUTO_RENEW_WITHDRAWN:
     "The customer turned auto-renew off or asked to end the rental, so this automatic renewal will not start. It is cancelled automatically.",
   BILLING_NOT_READY:
@@ -105,6 +107,11 @@ export async function startRenewalInTx(
   // An automatic renewal exists only because the customer agreed to it: if they changed their mind, it never starts.
   if (renewal.createdByAutoRenew && (old.renewalPreference !== "AUTO_RENEW" || old.terminationRequestedAt)) {
     return fail("AUTO_RENEW_WITHDRAWN");
+  }
+
+  // The owner's master switch: with it off, no automatic renewal starts (cancelling and opting out still work).
+  if (renewal.createdByAutoRenew && !(await tx.businessSettings.findUnique({ where: { id: "singleton" }, select: { autoRenewEnabled: true } }))?.autoRenewEnabled) {
+    return fail("AUTO_RENEW_OFF");
   }
 
   // Colorado asks for a reminder 25-40 days before an automatic renewal: never renew without one.

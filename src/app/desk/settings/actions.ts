@@ -387,3 +387,27 @@ export async function setCustomerEmailAction(enabled: boolean): Promise<Settings
   revalidatePath("/desk/notices");
   return { status: "success" };
 }
+
+/** The owner's master switch for automatic renewals. Owner only. */
+export async function setAutoRenewAction(enabled: boolean): Promise<SettingsActionState> {
+  const session = await requireRole("OWNER");
+  const { setAutoRenewEnabled } = await import("@/domains/settings/auto-renew-switch");
+  try {
+    await setAutoRenewEnabled(session.user.id, enabled === true);
+  } catch {
+    return { status: "error", message: "That could not be saved. Nothing was changed." };
+  }
+  if (enabled !== true) {
+    // Turning it off withdraws every queued automatic renewal now (restoring billing stop dates and withdrawing
+    // waiting reminders); the nightly job finishes anything that could not be done right away.
+    try {
+      const { cancelWithdrawnAutoRenewals } = await import("@/domains/agreements/auto-renew");
+      await cancelWithdrawnAutoRenewals(session.user.id);
+    } catch (error) {
+      console.error("Could not withdraw queued automatic renewals right away:", error);
+    }
+  }
+  revalidatePath("/desk/settings");
+  revalidatePath("/desk/notices");
+  return { status: "success" };
+}

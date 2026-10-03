@@ -191,13 +191,15 @@ export async function removeEstimateLineItemAction(
 
 export async function sendEstimateAction(
   estimateId: string,
-): Promise<EstimateActionState & { emailed?: boolean }> {
+): Promise<EstimateActionState & { emailed?: boolean; outcome?: string }> {
   const session = await requireRole("OWNER", "ADMIN");
   let emailed = false;
+  let outcome: string | undefined;
 
   try {
     const result = await sendEstimate(session.user.id, estimateId);
     emailed = result.emailed;
+    outcome = result.outcome;
   } catch (error) {
     return {
       status: "error",
@@ -207,7 +209,7 @@ export async function sendEstimateAction(
 
   revalidatePath(`/desk/estimates/${estimateId}`);
   revalidatePath("/desk/estimates");
-  return { status: "success", emailed };
+  return { status: "success", emailed, outcome };
 }
 
 const convertSchema = z.union([

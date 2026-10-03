@@ -1,11 +1,13 @@
 import { prisma } from "@/lib/prisma";
 import { getStripeClient } from "@/lib/stripe";
 import { businessDateEnd, businessDateKey } from "@/lib/business-date";
+import { isAutoRenewEnabled } from "@/domains/settings/auto-renew-switch";
 import { checkReminderDelivered } from "@/domains/notices";
 import { renewalReminderKey } from "@/domains/notices/renewal-reminder";
 import {
   claimProviderOperation,
   completeProviderOperation,
+  RetryLater,
   runProviderCall,
 } from "./provider-ops";
 
@@ -107,6 +109,7 @@ export async function desiredSubscriptionTerm(renewalId: string, direction: Term
   if (direction === "extend" && renewal.createdByAutoRenew && renewal.status !== "CANCELLED") {
     // The customer's current choice always wins: an opt-out or an early-ending request that has been
     // saved but whose renewal has not been cancelled yet must never let billing be extended.
+    if (!(await isAutoRenewEnabled())) return null;
     if (old.renewalPreference !== "AUTO_RENEW" || old.terminationRequestedAt !== null || renewal.status !== "SCHEDULED") {
       return null;
     }
@@ -142,14 +145,21 @@ export async function syncSubscriptionTerm(
   const desired = await desiredSubscriptionTerm(renewalId, direction);
   if (!desired) return "skipped";
 
-  const claim = await prisma.$transaction((tx) =>
-    claimProviderOperation(tx, {
-      kind: "SUBSCRIPTION_UPDATE",
-      subjectType: "RentalAgreement",
-      subjectId: renewalId,
-      idempotencyKey: termSyncKey(renewalId, direction),
-    }),
-  );
+  let claim;
+  try {
+    claim = await prisma.$transaction((tx) =>
+      claimProviderOperation(tx, {
+        kind: "SUBSCRIPTION_UPDATE",
+        subjectType: "RentalAgreement",
+        subjectId: renewalId,
+        idempotencyKey: termSyncKey(renewalId, direction),
+      }),
+    );
+  } catch (error) {
+    // Another worker is already making this same change: report it as still in progress instead of failing the caller.
+    if (error instanceof RetryLater) return "pending";
+    throw error;
+  }
   if (claim.done) return "done";
 
   if (desired.moot) {

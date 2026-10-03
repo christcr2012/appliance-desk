@@ -13,6 +13,7 @@ export type NoticeCardProps = {
   subject: string;
   body: string;
   possiblySent?: boolean;
+  deadline?: "OK" | "MISSED" | "TOO_EARLY" | "UNKNOWN";
 };
 
 export function NoticeCard(props: NoticeCardProps) {
@@ -42,6 +43,19 @@ export function NoticeCard(props: NoticeCardProps) {
       <p className="mt-1 text-sm text-gray-700">
         Created {props.createdLabel}. It goes to {props.customerEmail} once live customer email is turned on.
       </p>
+      {props.deadline === "MISSED" && (
+        <p role="alert" className="mt-2 rounded border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-900">
+          <strong>Deadline missed.</strong> Fewer than 25 days remain before this renewal, so the reminder can no longer
+          be delivered in time and we will not email it. Delivering it late will <strong>not</strong> let the renewal
+          start. Before the term ends, cancel the queued renewal (open the customer&rsquo;s agreement) or have the customer
+          sign a new agreement.
+        </p>
+      )}
+      {props.deadline === "TOO_EARLY" && (
+        <p className="mt-2 rounded border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900">
+          More than 40 days remain, so this is not due yet. It will be sent when it is in the allowed window.
+        </p>
+      )}
       {props.possiblySent && (
         <p role="status" className="mt-2 rounded border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900">
           The email may already have gone out: the send was interrupted before we could record it. We will not send it again
@@ -58,8 +72,11 @@ export function NoticeCard(props: NoticeCardProps) {
           Already delivered it yourself? How?
         </label>
         <p className="mt-1 text-xs text-gray-600">
-          For example “phoned”, “mailed” or “in person”. The date defaults to today; change it if you delivered it earlier. We save who marked it and when, then the customer&rsquo;s
-          renewal can start on its date.
+          For example “mailed” or “in person”. The date defaults to today; change it if you delivered it earlier. We save
+          who marked it and when.
+          {props.deadline === "MISSED"
+            ? " A late delivery does not let the renewal start."
+            : " If it was delivered in time, the customer\u2019s renewal can start on its date."}
         </p>
         <div className="mt-2 flex flex-wrap items-center gap-3">
           <input

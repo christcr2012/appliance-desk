@@ -42,6 +42,7 @@ export default async function NoticesPage() {
               subject={n.subject}
               body={n.body}
               possiblySent={n.status === "SENDING"}
+              deadline={n.deadline}
             />
           ))}
         </ul>

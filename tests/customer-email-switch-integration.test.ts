@@ -44,7 +44,7 @@ describe.skipIf(!enabled)("the owner's master switch for emails to customers", (
     await setCustomerEmailEnabled(ownerId, false);
     send.mockReset().mockResolvedValue({ sent: true });
     expect(await isCustomerEmailEnabled()).toBe(false);
-    expect(await sendCustomerEmail({ to: "c@example.test", subject: "s", text: "t" })).toEqual({ sent: false });
+    expect(await sendCustomerEmail({ to: "c@example.test", subject: "s", text: "t" })).toEqual({ sent: false, outcome: "NOT_ATTEMPTED" });
     expect(send).not.toHaveBeenCalled();
 
     await setCustomerEmailEnabled(ownerId, true);
