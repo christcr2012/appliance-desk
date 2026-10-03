@@ -32,6 +32,7 @@ const CATEGORY_BY_KIND: Record<InvoiceLineItemKind, LedgerCategory> = {
   PREPAY_DISCOUNT: "DISCOUNT",
   CREDIT: "CREDIT",
   ADJUSTMENT: "ADJUSTMENT",
+  EARLY_TERMINATION_FEE: "FEES",
 };
 
 export function categorizeLine(kind: InvoiceLineItemKind): LedgerCategory {

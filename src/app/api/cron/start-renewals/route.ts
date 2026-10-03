@@ -1,8 +1,13 @@
 import { NextResponse } from "next/server";
 import { startDueRenewals } from "@/domains/agreements/renewal-start";
+import { runAutoRenewals } from "@/domains/agreements/auto-renew";
+import { runDueTerminations } from "@/domains/agreements/termination-execution";
 
-// Fired once a day by Vercel Cron (see vercel.json). Starts every signed
-// renewal whose start date has arrived: the renewal becomes the active rental
+// Fired once a day by Vercel Cron (see vercel.json). The nightly rental
+// lifecycle pass, in this order: (1) queue the month-to-month renewal for each
+// customer who agreed to auto-renew and cancel ones they withdrew, (2) end every
+// rental whose agreed early-ending date has arrived (fee invoiced, nothing charged
+// automatically), (3) start every signed renewal whose start date has arrived: the renewal becomes the active rental
 // and the rental it renews ends, in one step (src/domains/agreements/
 // renewal-start.ts). Safe to run twice: a renewal that already started is no
 // longer SCHEDULED. Same CRON_SECRET bearer-token check as the other cron jobs.
@@ -18,9 +23,25 @@ export async function GET(request: Request): Promise<NextResponse> {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
+  const autoRenewals = await runAutoRenewals();
+  if (autoRenewals.problems.length > 0) {
+    console.error("[cron] Automatic renewals that could not be queued:", autoRenewals.problems);
+  }
+  const terminations = await runDueTerminations();
+  if (terminations.needsReview.length > 0) {
+    console.error("[cron] Early endings that need attention:", terminations.needsReview);
+  }
   const result = await startDueRenewals();
   if (result.blocked.length > 0) {
     console.error("[cron] Renewals that could not start:", result.blocked);
   }
-  return NextResponse.json({ started: result.started, blocked: result.blocked.length });
+  return NextResponse.json({
+    started: result.started,
+    blocked: result.blocked.length,
+    autoRenewalsQueued: autoRenewals.created,
+    autoRenewalsCancelled: autoRenewals.cancelled,
+    endedEarly: terminations.ended,
+    earlyEndingFeeInvoices: terminations.feeInvoices,
+    earlyEndingsNeedingAttention: terminations.needsReview.length,
+  });
 }

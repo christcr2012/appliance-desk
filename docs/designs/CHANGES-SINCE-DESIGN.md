@@ -52,3 +52,5 @@ Updated as the Batch B completion stack merges (`docs/STATUS.md`): scheduled ren
 adds owner actions on held payments; auto-renew/early-termination execution and term
 notices (IN-21) add jobs and records. Batch C's inventory availability and Batch D's
 customer screens must read these, not assume `ACTIVE` means "currently in service".
+
+Auto-renew and early-ending execution (Batch B completion): `RentalAgreement.createdByAutoRenew`; invoice line kind `EARLY_TERMINATION_FEE` (statement group "Fees"); `ended` agreements can now be ended by the system with no staff actor (audit `userId` null); an early ending changes Stripe's `cancel_at` ahead of time; new exception `EARLY_ENDING_NOT_DONE`. Batch C pickup/return jobs must build on this (owner requirement IN-24 in `docs/PLAN.md` Batch C item 14); Batch D renewal/cancel screens read `terminationEffectiveOn` and the automatic renewal.

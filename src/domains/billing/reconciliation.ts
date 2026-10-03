@@ -8,7 +8,13 @@ import {
   RetryLater,
   runProviderCall,
 } from "./provider-ops";
-import { desiredSubscriptionTerm, parseTermSyncKey, stripeKeyForAttempt } from "./subscription-term";
+import {
+  desiredSubscriptionTerm,
+  desiredTerminationEnd,
+  parseTerminationSyncKey,
+  parseTermSyncKey,
+  stripeKeyForAttempt,
+} from "./subscription-term";
 
 export type DriftRow = {
   kind:
@@ -229,9 +235,12 @@ async function reconcileSubscriptionCancel(operation: RecoverableOperation): Pro
  * retried (an ambiguous earlier attempt is only retried once Stripe has been read).
  */
 async function reconcileSubscriptionUpdate(operation: RecoverableOperation): Promise<boolean> {
-  const parsed = parseTermSyncKey(operation.idempotencyKey);
-  if (!parsed) return false;
-  const desired = await desiredSubscriptionTerm(parsed.renewalId, parsed.direction);
+  const terminationAgreementId = parseTerminationSyncKey(operation.idempotencyKey);
+  const parsed = terminationAgreementId ? null : parseTermSyncKey(operation.idempotencyKey);
+  if (!terminationAgreementId && !parsed) return false;
+  const desired = terminationAgreementId
+    ? await desiredTerminationEnd(terminationAgreementId)
+    : await desiredSubscriptionTerm(parsed!.renewalId, parsed!.direction);
   if (!desired) return false;
   if (desired.moot) {
     await markOperationSucceeded(operation, desired.subscriptionId);

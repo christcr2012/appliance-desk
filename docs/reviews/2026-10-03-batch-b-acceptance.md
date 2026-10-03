@@ -30,7 +30,7 @@ the bottom is empty or accepted by Chris.**
 
 ## Not done (honest list)
 
-- Renewal billing and any job that acts on auto-renew consent or executes a scheduled early termination (nothing bills or ends a rental at the effective date yet).
+- ~~Auto-renew consent and scheduled early termination execution~~ **Done** in the auto-renew/early-ending PR (`agreements-auto-renew-and-termination-integration`, `auto-renew-termination-rules`). Still open inside this line: prepaid rentals are settled by the owner by hand; billing that stops at pickup/return is Batch C (IN-24).
 - Policy values are not entered yet (IN-19), so early-termination quotes are off until Chris enters them.
 - Notice emails for term changes (live customer email needs Chris's approval; IN-21).
 - Per-customer terms screens (Batch D).

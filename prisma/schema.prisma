@@ -683,6 +683,9 @@ model RentalAgreement {
   autoRenewConsentedAt     DateTime?
   autoRenewTermsVersion    String?
   renewedFromAgreementId   String?
+  // True when the system created this renewal because the customer agreed to
+  // auto-renew (never when staff or the customer signed one by hand).
+  createdByAutoRenew       Boolean   @default(false)
   terminationRequestedAt   DateTime?
   terminationEffectiveOn   DateTime?
   terminationFeeCents      Int?
@@ -1126,6 +1129,7 @@ enum InvoiceLineItemKind {
   PREPAY_DISCOUNT
   CREDIT
   ADJUSTMENT
+  EARLY_TERMINATION_FEE
 }
 
 // Batch B — provider operations (docs/designs/BATCH-B.md D1/D2)

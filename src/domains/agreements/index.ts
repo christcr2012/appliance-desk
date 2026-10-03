@@ -567,9 +567,10 @@ export async function signAgreement(
 }
 
 async function closeAgreement(
-  userId: string,
+  userId: string | null,
   agreementId: string,
   newStatus: "ENDED" | "CANCELLED",
+  options: { endedOn?: Date } = {},
 ) {
   const local = await prisma.$transaction(async (tx) => {
     const agreement = await lockRentalAgreementInTx(tx, agreementId);
@@ -604,7 +605,7 @@ async function closeAgreement(
       where: { id: agreementId },
       data: {
         status: newStatus,
-        endDate: newStatus === "ENDED" ? new Date() : agreement.endDate,
+        endDate: newStatus === "ENDED" ? (options.endedOn ?? new Date()) : agreement.endDate,
       },
     });
 
@@ -727,7 +728,15 @@ export async function endAgreement(userId: string, agreementId: string) {
   return closeAgreement(userId, agreementId, "ENDED");
 }
 
-export async function cancelAgreement(userId: string, agreementId: string) {
+/**
+ * End an agreement on the date it was agreed to end (an early ending that has come
+ * due), recorded with no staff member as the actor. Same close path as ending by hand.
+ */
+export async function endAgreementOnAgreedDate(agreementId: string, endedOn: Date) {
+  return closeAgreement(null, agreementId, "ENDED", { endedOn });
+}
+
+export async function cancelAgreement(userId: string | null, agreementId: string) {
   return closeAgreement(userId, agreementId, "CANCELLED");
 }
 

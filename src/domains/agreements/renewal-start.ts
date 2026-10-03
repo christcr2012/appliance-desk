@@ -30,7 +30,7 @@ import { lockRentalAgreementInTx } from "./index";
 
 export type RenewalStartResult =
   | { started: true; renewalId: string; endedAgreementId: string; appliancesMoved: number }
-  | { started: false; renewalId: string; reason: "NOT_SCHEDULED" | "NOT_YET" | "OLD_NOT_ACTIVE" | "NO_RENEWED_FROM" | "BILLING_NOT_READY"; message: string };
+  | { started: false; renewalId: string; reason: "NOT_SCHEDULED" | "NOT_YET" | "OLD_NOT_ACTIVE" | "NO_RENEWED_FROM" | "BILLING_NOT_READY" | "AUTO_RENEW_WITHDRAWN"; message: string };
 
 const MESSAGES = {
   NOT_SCHEDULED: "This renewal is not waiting to start.",
@@ -38,6 +38,8 @@ const MESSAGES = {
   OLD_NOT_ACTIVE:
     "The rental this renews is no longer active (it was ended or cancelled), so the renewal cannot start. Review it and cancel or fix it.",
   NO_RENEWED_FROM: "This agreement is not a renewal of another agreement.",
+  AUTO_RENEW_WITHDRAWN:
+    "The customer turned auto-renew off or asked to end the rental, so this automatic renewal will not start. It is cancelled automatically.",
   BILLING_NOT_READY:
     "Waiting for the card processor to confirm the renewal's new end date on the monthly billing. It is retried automatically; nothing was changed.",
 } as const;
@@ -94,6 +96,10 @@ export async function startRenewalInTx(
 
   const old = await lockRentalAgreementInTx(tx, renewal.renewedFromAgreementId);
   if (old.status !== "ACTIVE") return fail("OLD_NOT_ACTIVE");
+  // An automatic renewal exists only because the customer agreed to it: if they changed their mind, it never starts.
+  if (renewal.createdByAutoRenew && (old.renewalPreference !== "AUTO_RENEW" || old.terminationRequestedAt)) {
+    return fail("AUTO_RENEW_WITHDRAWN");
+  }
 
   // The subscription keeps charging only if its end date was moved at signing.
   if (old.stripeSubscriptionId) {

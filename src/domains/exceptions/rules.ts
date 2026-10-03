@@ -25,7 +25,8 @@ export type ExceptionCategory =
   | "MISSING_REPAIR_COST"
   | "AGREEMENT_TERM_EXPIRED"
   | "APPLIANCE_MAINTENANCE_DUE"
-  | "RENEWAL_NOT_STARTED";
+  | "RENEWAL_NOT_STARTED"
+  | "EARLY_ENDING_NOT_DONE";
 
 export type ExceptionSeverity = "high" | "medium";
 
@@ -86,6 +87,25 @@ export function renewalNotStartedException(agreement: {
       "The renewal is signed but could not take over from the rental it renews (that rental may have been ended or cancelled early). Open it to cancel or fix it.",
     href: `/desk/agreements/${agreement.id}`,
     since: agreement.startDate,
+  };
+}
+
+/** An agreed early-ending date passed but the rental is still active (prepaid months to settle, or the nightly job could not end it). */
+export function earlyEndingNotDoneException(agreement: {
+  id: string;
+  terminationEffectiveOn: Date;
+  customerName: string;
+  prepaid: boolean;
+}): ExceptionItem {
+  return {
+    category: "EARLY_ENDING_NOT_DONE",
+    severity: "high",
+    title: `${agreement.customerName}'s early ending has not been carried out`,
+    detail: agreement.prepaid
+      ? "This rental was paid in advance, so the unused months need your decision (refund, credit or keep) before it can end. Open it to settle that and end the rental."
+      : "The agreed ending date has passed but the rental is still active. Open it to end it.",
+    href: `/desk/agreements/${agreement.id}`,
+    since: agreement.terminationEffectiveOn,
   };
 }
 
