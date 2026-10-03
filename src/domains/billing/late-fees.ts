@@ -1,40 +1,21 @@
+import type { InvoiceStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { sendEmail } from "@/lib/email";
 import { formatCents } from "@/domains/pricing";
 import { getBusinessSettings } from "@/domains/settings";
+import { businessDateKey } from "@/lib/business-date";
 
-// ---------------------------------------------------------------------------
-// Automated late fees (docs/ROADMAP.md's "Deliberately deferred within
-// Phase 6B" — "Automated late fees / dunning beyond what Stripe's own
-// automatic payment retries already do... needs its own design: how many
-// retries, what fee, when to involve Chris." Built 2026-09-28, see
-// docs/DECISIONS.md.
-//
-// Answers those three questions deliberately conservatively:
-//   - Retries: none added here — Stripe already retries a failed card/ACH
-//     charge on its own schedule (docs/ARCHITECTURE.md), and this never
-//     attempts a new charge. It only adds a fee to what's owed.
-//   - What fee: whichever of the AGREEMENT's own lateFeeCents (flat) or
-//     lateFeePercent (of the outstanding balance) is larger, frozen at
-//     signing per agreement (sign/[id]/page.tsx already discloses both to
-//     the customer as "$X or Y%") — never BusinessSettings' current
-//     defaults, which could have changed since this customer signed.
-//   - When to involve Chris: immediately — every invoice this touches is
-//     already OPEN/PARTIALLY_PAID/DELINQUENT and past its due date, so
-//     it's already surfaced in the existing PAST_DUE_INVOICE exception
-//     (src/domains/exceptions/rules.ts) and on /desk/billing; applying the
-//     fee there just makes the amount owed reflect reality. A same-day
-//     digest email also goes to Chris (see sendLateFeeDigestToChris
-//     below) so a fee being added is never something he only discovers by
-//     happening to reopen an old invoice.
-//
-// Invoice.lateFeeCents (schema field, previously always 0 — no code wrote
-// to it before this) doubles as the idempotency guard: a fee is only ever
-// applied once per invoice, never stacked on repeated cron runs.
-// ---------------------------------------------------------------------------
+const OPEN_STATUSES = new Set<InvoiceStatus>([
+  "OPEN",
+  "PARTIALLY_PAID",
+  "DELINQUENT",
+]);
+const BATCH_SIZE = 100;
 
-function addDays(date: Date, days: number): Date {
-  return new Date(date.getTime() + days * 24 * 60 * 60 * 1000);
+function addCalendarDaysToKey(key: string, days: number): string {
+  const date = new Date(`${key}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
 }
 
 export type LateFeeApplication = {
@@ -45,106 +26,201 @@ export type LateFeeApplication = {
   newAmountDueCents: number;
 };
 
+type BatchResult = {
+  applications: LateFeeApplication[];
+  lastId: string | null;
+  candidateCount: number;
+};
+
+async function applyLateFeeBatch(
+  todayKey: string,
+  afterId: string | null,
+): Promise<BatchResult> {
+  return prisma.$transaction(
+    async (tx) => {
+      // Billing lock namespace 174831: webhook processing is slot 1, late fees
+      // are slot 2. Every batch queues here before reading candidates.
+      await tx.$queryRaw`SELECT pg_advisory_xact_lock(174831, 2)::text`;
+
+      const candidates = await tx.invoice.findMany({
+        where: {
+          status: { in: ["OPEN", "PARTIALLY_PAID", "DELINQUENT"] },
+          dueDate: { not: null },
+          lateFeeCents: 0,
+          agreementId: { not: null },
+          ...(afterId ? { id: { gt: afterId } } : {}),
+        },
+        select: { id: true },
+        orderBy: { id: "asc" },
+        take: BATCH_SIZE,
+      });
+
+      const applications: LateFeeApplication[] = [];
+      for (const candidate of candidates) {
+        const rows = await tx.$queryRaw<
+          Array<{
+            id: string;
+            invoiceNumber: number;
+            status: InvoiceStatus;
+            dueDate: Date | null;
+            lateFeeCents: number;
+            amountDueCents: number;
+            amountPaidCents: number;
+            agreementId: string | null;
+          }>
+        >`
+          SELECT "id", "invoiceNumber", "status", "dueDate", "lateFeeCents",
+                 "amountDueCents", "amountPaidCents", "agreementId"
+          FROM "Invoice"
+          WHERE "id" = ${candidate.id}
+          FOR UPDATE
+        `;
+        const locked = rows[0];
+        if (
+          !locked ||
+          !OPEN_STATUSES.has(locked.status) ||
+          !locked.dueDate ||
+          !locked.agreementId ||
+          locked.lateFeeCents !== 0
+        ) {
+          continue;
+        }
+
+        const invoice = await tx.invoice.findUniqueOrThrow({
+          where: { id: locked.id },
+          include: {
+            agreement: {
+              select: {
+                lateFeeGraceDays: true,
+                lateFeeCents: true,
+                lateFeePercent: true,
+              },
+            },
+            customer: {
+              select: { user: { select: { name: true, email: true } } },
+            },
+          },
+        });
+        if (!invoice.agreement) continue;
+
+        const {
+          lateFeeGraceDays,
+          lateFeeCents: flatFeeCents,
+          lateFeePercent,
+        } = invoice.agreement;
+        if (flatFeeCents <= 0 && lateFeePercent <= 0) continue;
+
+        const feeEligibleKey = addCalendarDaysToKey(
+          businessDateKey(locked.dueDate),
+          lateFeeGraceDays,
+        );
+        if (todayKey < feeEligibleKey) continue;
+
+        const outstandingCents = Math.max(
+          0,
+          locked.amountDueCents - locked.amountPaidCents,
+        );
+        if (outstandingCents <= 0) continue;
+
+        const percentFeeCents = Math.round(
+          (outstandingCents * lateFeePercent) / 100,
+        );
+        const feeCents = Math.max(flatFeeCents, percentFeeCents);
+        if (feeCents <= 0) continue;
+        const newAmountDueCents = locked.amountDueCents + feeCents;
+
+        await tx.invoiceLineItem.create({
+          data: {
+            invoiceId: locked.id,
+            kind: "LATE_FEE",
+            description: `Late fee — ${lateFeeGraceDays}-day grace period passed`,
+            amountCents: feeCents,
+            quantity: 1,
+          },
+        });
+        await tx.invoice.update({
+          where: { id: locked.id },
+          data: {
+            lateFeeCents: feeCents,
+            amountDueCents: newAmountDueCents,
+          },
+        });
+        await tx.auditLog.create({
+          data: {
+            action: "billing.late_fee_applied",
+            entityType: "Invoice",
+            entityId: locked.id,
+            newValue: {
+              feeCents,
+              graceDaysPassed: lateFeeGraceDays,
+              eligibleBusinessDate: feeEligibleKey,
+            },
+          },
+        });
+
+        applications.push({
+          invoiceId: locked.id,
+          invoiceNumber: locked.invoiceNumber,
+          customerName: invoice.customer.user.name ?? invoice.customer.user.email,
+          feeCents,
+          newAmountDueCents,
+        });
+      }
+
+      return {
+        applications,
+        lastId: candidates.at(-1)?.id ?? null,
+        candidateCount: candidates.length,
+      };
+    },
+    { maxWait: 10_000, timeout: 30_000 },
+  );
+}
+
 /**
- * Finds every invoice that's past its agreement's grace period with no
- * late fee applied yet, adds the fee as a new InvoiceLineItem (kind
- * LATE_FEE — already in the schema's InvoiceLineItemKind, unused before
- * this), and rolls it into the invoice's own lateFeeCents/amountDueCents
- * totals. An invoice with no agreement (shouldn't happen in practice —
- * every Invoice with billing history has one) or an agreement with
- * neither lateFeeCents nor lateFeePercent set (Chris left the fee off
- * entirely for that customer) is skipped, never charged a fee that was
- * never disclosed.
+ * Apply each invoice's disclosed late fee at most once. Candidate work is
+ * serialized with a transaction advisory lock, every invoice is locked and
+ * re-checked before mutation, and the database partial unique index on
+ * LATE_FEE line items is the final invariant against duplicate fees.
  */
 export async function applyLateFees(): Promise<LateFeeApplication[]> {
-  const now = new Date();
-
-  const candidates = await prisma.invoice.findMany({
-    where: {
-      status: { in: ["OPEN", "PARTIALLY_PAID", "DELINQUENT"] },
-      dueDate: { not: null },
-      lateFeeCents: 0,
-      agreementId: { not: null },
-    },
-    include: {
-      agreement: { select: { lateFeeGraceDays: true, lateFeeCents: true, lateFeePercent: true } },
-      customer: { select: { user: { select: { name: true, email: true } } } },
-    },
-  });
-
+  const todayKey = businessDateKey(new Date());
   const applied: LateFeeApplication[] = [];
+  let afterId: string | null = null;
 
-  for (const invoice of candidates) {
-    if (!invoice.dueDate || !invoice.agreement) continue;
-    const { lateFeeGraceDays, lateFeeCents: flatFeeCents, lateFeePercent } = invoice.agreement;
-    if (flatFeeCents <= 0 && lateFeePercent <= 0) continue;
-
-    const feeAppliesFrom = addDays(invoice.dueDate, lateFeeGraceDays);
-    if (now < feeAppliesFrom) continue;
-
-    const outstandingCents = Math.max(0, invoice.amountDueCents - invoice.amountPaidCents);
-    if (outstandingCents <= 0) continue;
-
-    const percentFeeCents = Math.round((outstandingCents * lateFeePercent) / 100);
-    const feeCents = Math.max(flatFeeCents, percentFeeCents);
-    if (feeCents <= 0) continue;
-
-    const newAmountDueCents = invoice.amountDueCents + feeCents;
-
-    await prisma.$transaction([
-      prisma.invoiceLineItem.create({
-        data: {
-          invoiceId: invoice.id,
-          kind: "LATE_FEE",
-          description: `Late fee — ${lateFeeGraceDays}-day grace period passed`,
-          amountCents: feeCents,
-          quantity: 1,
-        },
-      }),
-      prisma.invoice.update({
-        where: { id: invoice.id },
-        data: { lateFeeCents: feeCents, amountDueCents: newAmountDueCents },
-      }),
-      prisma.auditLog.create({
-        data: {
-          action: "billing.late_fee_applied",
-          entityType: "Invoice",
-          entityId: invoice.id,
-          newValue: { feeCents, graceDaysPassed: lateFeeGraceDays },
-        },
-      }),
-    ]);
-
-    applied.push({
-      invoiceId: invoice.id,
-      invoiceNumber: invoice.invoiceNumber,
-      customerName: invoice.customer.user.name ?? invoice.customer.user.email,
-      feeCents,
-      newAmountDueCents,
-    });
-  }
+  do {
+    const batch = await applyLateFeeBatch(todayKey, afterId);
+    applied.push(...batch.applications);
+    afterId = batch.lastId;
+    if (batch.candidateCount < BATCH_SIZE) break;
+  } while (afterId);
 
   return applied;
 }
 
-/** One digest email to Chris when the daily cron actually applied any
- * fees — silent (no email) on a day with nothing to report, so this
- * never becomes noise. Falls back to the public contact email, same
- * pattern as the lead/maintenance notification emails
- * (docs/ARCHITECTURE.md). */
-export async function sendLateFeeDigestToChris(applications: LateFeeApplication[]): Promise<void> {
+/** One digest email to Chris when the daily cron actually applied any fees. */
+export async function sendLateFeeDigestToChris(
+  applications: LateFeeApplication[],
+): Promise<void> {
   if (applications.length === 0) return;
 
   const settings = await getBusinessSettings();
   const notifyTo = process.env.BILLING_NOTIFICATION_EMAIL || settings.publicEmail;
 
   const lines = applications
-    .map((a) => `#${a.invoiceNumber} — ${a.customerName}: +${formatCents(a.feeCents)} (now ${formatCents(a.newAmountDueCents)} due)`)
+    .map(
+      (application) =>
+        `#${application.invoiceNumber} — ${application.customerName}: +${formatCents(application.feeCents)} (now ${formatCents(application.newAmountDueCents)} due)`,
+    )
     .join("\n");
 
-  await sendEmail({
+  const result = await sendEmail({
     to: notifyTo,
     subject: `Late fees applied to ${applications.length} invoice${applications.length === 1 ? "" : "s"}`,
     text: `The following invoices passed their grace period and had a late fee added automatically:\n\n${lines}\n\nThese already show up on /desk/billing with the updated amount due — no other action needed unless you want to follow up with the customer.`,
+    idempotencyKey: `late-fee-digest-${businessDateKey(new Date())}`,
   });
+  if (!result.sent) {
+    console.error("[billing] Late-fee digest was not accepted by the email provider.");
+  }
 }
