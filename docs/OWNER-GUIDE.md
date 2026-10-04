@@ -214,11 +214,11 @@ as "unknown" rather than $0; type 0 only for something that really was
 free.
 
 Every change to a part's count (arrivals, parts used on a repair,
-recounts, corrections) is written to a permanent history on the part;
-nothing is ever overwritten. If you try to use more than the count
+recounts, corrections) is written to a permanent history; nothing is
+ever overwritten. If you try to use more than the count
 shows, the app says so instead of quietly dropping to zero — recount
-the shelf first. Made a mistake? Use **Undo** on that history entry; it
-adds a correction and the original stays visible. A part with history
+the shelf first. Logged parts on a job by mistake? Use **Undo** next to that entry on the
+job page; it adds a correction and the original stays visible. A part with history
 can't be deleted; **Archive** it to hide it (and **Restore** it any
 time). Suppliers can be archived the same way. When you log parts used
 from a job's page, the job's parts cost is added up from those entries
