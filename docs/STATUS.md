@@ -100,6 +100,18 @@ as owner settings; built as stated. (The first push misread rule 2 as an
       `docs/prompts/DESIGN-BATCH-C-LITERAL-SPECS.md`.
 - Merge of #165 is Chris's coding agent's call, not Claude's.
 
+## Batch C design — where it stands (2026-10-03, evening)
+
+- `docs/designs/BATCH-C-LITERAL-SPEC-2026-10-03.md` (PR #166, stacked on #165) is the implementation-ready text.
+  Written by Sonnet 5.5, then reviewed and corrected by the stronger pass the same day ("Review pass" at its top):
+  every citation opened, every hand-written SQL statement executed on a scratch Postgres, a session-timezone bug in the
+  custody backfill fixed, a deadlock with the nightly termination run fixed (customer lock first), a counting rule that
+  would have broken late returns fixed, the D7 checklist-version clash resolved (Batch C creates D's table).
+- Reviewer's recommendation per slice is in the spec's section 12 and the README row. **Chris has not approved any slice
+  yet**; approval happens in `docs/designs/README.md`. Blocked regardless: C-09 pickup/return billing (shared billing
+  contract + IN-24's open part).
+- Stack: #163 → main, #164 → main, #165 (code) on #164, #166 (this spec) on #165. Merging is Chris's coding agent's job.
+
 ## Open items carried across batches
 
 - Historical review threads: ~50 remain open in
@@ -125,6 +137,8 @@ emails; building continues with sending switched off), IN-17's CPA check of the
 
 ## Session log (last two batches only)
 
+- **2026-10-03 (Claude, Batch C spec review)** — Reviewed `BATCH-C-LITERAL-SPEC-2026-10-03.md` on #166 at Chris's direction (docs only). Ran every hand-written SQL statement against a scratch Postgres built from the real migrations; found that `Job.completedAt` is `timestamptz` while newer date columns are naive `timestamp(3)`, so the custody backfill's date depended on the session time zone — fixed and the rule added to the spec's section 0. Fixed a deadlock ordering, a counting rule, a CHECK/signature contradiction, resolved the D7 conflict (one amendment in BATCH-D.md), removed hedges, added missing call sites and literal SQL, set per-slice recommendations. Also recorded Chris's missing-item subscription rule (late/swapped stays; cancelled comes off Stripe) for the Batch C design. Chris: approve slices in `docs/designs/README.md`; answer IN-24's open part when ready.
+
 - **2026-10-03 (Claude, pickup billing rules)** — Chris gave the three pickup/delivery billing rules (late return per day per item; an item missing from the first delivery billed with the whole agreement and credited per day on the next bill once delivered; pickup day never charged) as owner settings with defaults, to be built on the open PR (#164). Built as `ai/claude/pickup-billing-rules` / PR #165 stacked on #164: settings section with on-screen explanations, pure rule module, job-completion wiring (recorded work date, "not delivered" ticks, waiting-item records), Stripe balance credit, labeled lines on the mirrored bill, Today item, docs. First push misread rule 2 as an early-return credit; Chris corrected it and the same PR now carries the late-delivery version (one commit, one CI run). Full suite green locally on a throwaway Postgres. Open for Chris: the company-fault waiver (Batch C design).
 
 - **2026-10-03 (Claude, Batch B close-out + review catch-up)** — Chris asked whether I was following the review-continuity rule. I was not for #151–#153 (I had only read the #148/#149 comments). Read every open Codex thread on #148–#153 (9) and dispositioned each in the close-out PR: 3 fixed in this PR (signing wording, browser test of the signing terms, legacy `SUCCEEDED` payments in statements), 1 fixed by a safety migration (old/new tax columns kept in step during deploys), 1 design doc amended (D12), 3 already fixed (evidence in PR), 1 still open (renewal shows active before its start date, IN-22). Also fixed a real race (a Stripe payment arriving while a write-off is saved) and added real-database tests for credit, webhook race, renewals and drift. Acceptance ledger: `docs/reviews/2026-10-03-batch-b-acceptance.md`. Rule from now on: every new PR starts by reading the previous PR's review threads and fixing or dispositioning each.
@@ -149,3 +163,5 @@ emails; building continues with sending switched off), IN-17's CPA check of the
   `docs/archive/`. CI sharded (#137). Batch A merged (#136). Next: Batch B.
 
 **Batch C design gate (2026-10-03).** The Batch C design is not approved unchanged: a stronger-model update (`docs/designs/BATCH-C-UPDATE-2026-10-03.md`) amends it. Asset numbering, parts ledger and scheduling can be designed and approved separately; custody/completion, swaps, maintenance chain and pickup/return billing wait for the amended design and the shared billing design (PR #161 independent review R1-R4: `docs/prompts/DESIGN-BATCH-B-RENEWAL-LIFECYCLE.md`). Owner answers still needed: IN-24 (late return by day or month), IN-26, IN-27. PR #161 merged as `b72f05d`; this drift-check branch was brought up to date with that main (clean merge, no conflicts). Assumptions A2–A10 of the old design were re-read against the code at `b72f05d` and still match; the remaining gate is the stronger model's literal schema and signatures, plus Chris's answers above. Chris confirmed on 2026-10-03 that the Oct 3 update was the whole stronger-model review and nothing newer exists, so **no Batch C slice is approved for code yet**, including asset numbering, the parts ledger and scheduling (the update requires each to have an amended, explicit design first). The prompt that asks the stronger model for that specification, in two parts (Part 1 needs no billing decisions), is `docs/prompts/DESIGN-BATCH-C-LITERAL-SPECS.md`. No Batch C code has been written.
+
+**Batch C literal specification (2026-10-03, Claude).** Written to `docs/designs/BATCH-C-LITERAL-SPEC-2026-10-03.md` (docs only, by Claude Sonnet 5.5, not the stronger model). It covers scheduling, asset numbers, parts ledger and archival, custody, completion with per-appliance results, swaps, maintenance, inspection and permissions, the earnings correction, and Chris's missing-item subscription rule. **Waiting for Chris's approval; no Batch C code may start until he approves it in `docs/designs/README.md`.** Still blocked: C-09 pickup/return billing (shared billing contract and the IN-24 company-fault answer). No Batch C code has been written.
