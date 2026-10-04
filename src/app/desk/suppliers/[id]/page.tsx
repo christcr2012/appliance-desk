@@ -53,9 +53,10 @@ export default async function SupplierDetailPage({
         <ul className="mt-2 divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white">
           {supplier.purchaseOrders.map((po) => {
             const totalCents = po.lines.reduce(
-              (sum, l) => sum + l.unitCostCents * l.quantity,
+              (sum, l) => sum + (l.unitCostKnown ? l.unitCostCents * l.quantity : 0),
               0,
             );
+            const unpriced = po.lines.filter((l) => !l.unitCostKnown).length;
             return (
               <li key={po.id}>
                 <Link
@@ -67,7 +68,7 @@ export default async function SupplierDetailPage({
                     {po.lines.length === 1 ? "line" : "lines"}
                   </span>
                   <span className="text-sm text-gray-600">
-                    {po.status} · {formatCents(totalCents)}
+                    {po.status} · {formatCents(totalCents)}{unpriced > 0 ? ` + ${unpriced} unpriced` : ""}
                   </span>
                 </Link>
               </li>

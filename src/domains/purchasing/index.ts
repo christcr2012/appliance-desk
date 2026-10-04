@@ -17,7 +17,7 @@ export {
   jobPartsCost,
   jobPartsCosts,
 } from "./ledger";
-import { jobPartsCost } from "./ledger";
+import { jobPartsCost, PartOperationConflictError } from "./ledger";
 
 // ---------------------------------------------------------------------------
 // Purchasing & supplies (2026-09-29) — see docs/BUSINESS-RULES.md's
@@ -120,7 +120,13 @@ export async function createPurchaseOrder(userId: string, input: NewPurchaseOrde
   if (!supplier) throw new Error("Choose a supplier.");
   if (supplier.archivedAt) throw new Error("This supplier is archived. Restore it before placing a new order.");
 
-  const order = await prisma.purchaseOrder.create({
+  const order = await prisma.$transaction(async (tx) => {
+    const partIds = [...new Set(input.lines.flatMap((l) => l.partRecordId || []))];
+    await lockPartRecords(tx, partIds);
+    if (partIds.length > 0 && (await tx.partRecord.count({ where: { id: { in: partIds }, archivedAt: { not: null } } })) > 0) {
+      throw new Error("One of those parts is archived. Restore it before ordering more.");
+    }
+    return tx.purchaseOrder.create({
     data: {
       supplierId: input.supplierId,
       notes: input.notes?.trim() || null,
@@ -137,6 +143,7 @@ export async function createPurchaseOrder(userId: string, input: NewPurchaseOrde
         },
       },
     },
+    });
   });
 
   await prisma.auditLog.create({
@@ -244,6 +251,9 @@ export async function receivePurchaseOrderLines(userId: string, input: ReceiveLi
       const outstanding = row.quantity - row.receivedQuantity;
       if (line.quantity > outstanding) {
         throw new Error(`Only ${outstanding} still to arrive on “${row.description}”.`);
+      }
+      if (row.receivedQuantity > 0 && line.unitCostCents !== null && !(row.unitCostKnown && row.unitCostCents === line.unitCostCents)) {
+        throw new Error(`Part of “${row.description}” already arrived at ${row.unitCostKnown ? `${(row.unitCostCents / 100).toFixed(2)} each` : "an unknown price"}. Leave the price blank for the rest, or correct the earlier receipt first, so the order total stays true.`);
       }
     }
 
@@ -380,6 +390,18 @@ export async function updatePartStockSettings(
 
   return prisma.$transaction(async (tx) => {
     await assertActiveTeamActor(tx, userId, ["OWNER", "ADMIN"]);
+    // Serialize requests for this part so two retries with the same key cannot both pass the check below.
+    await lockPartRecords(tx, [partRecordId]);
+    // A retry (lost response) must not redo this save over a later one, and must not be reused for a different save.
+    const prior = await tx.auditLog.findFirst({
+      where: { action: "part.stock_settings.update", entityId: partRecordId, newValue: { path: ["operationKey"], equals: input.operationKey } },
+      select: { newValue: true },
+    });
+    if (prior) {
+      const was = prior.newValue as { quantityOnHand?: number; reorderThreshold?: number | null };
+      if (was.quantityOnHand !== input.quantityOnHand || (was.reorderThreshold ?? null) !== input.reorderThreshold) throw new PartOperationConflictError();
+      return tx.partRecord.findUniqueOrThrow({ where: { id: partRecordId } });
+    }
     await applyPartMovementsInTx(tx, userId, input.operationKey, [
       { partRecordId, kind: "RECOUNT", countedQuantity: input.quantityOnHand, unitCostCents: null, reason: "Counted on the shelf" },
     ]);
@@ -393,7 +415,7 @@ export async function updatePartStockSettings(
         action: "part.stock_settings.update",
         entityType: "PartRecord",
         entityId: partRecordId,
-        newValue: { quantityOnHand: input.quantityOnHand, reorderThreshold: input.reorderThreshold },
+        newValue: { operationKey: input.operationKey, quantityOnHand: input.quantityOnHand, reorderThreshold: input.reorderThreshold },
       },
     });
     return updated;

@@ -118,6 +118,7 @@ export function PurchaseOrderActionsPanel({
                   type="number"
                   min={0}
                   max={l.outstanding}
+                  aria-label={`Arrived: ${l.description}`}
                   value={quantities[l.id] ?? ""}
                   onChange={(e) => setQuantities((q) => ({ ...q, [l.id]: e.target.value }))}
                   className="w-20 rounded-md border border-gray-300 px-2 py-1"
@@ -128,6 +129,7 @@ export function PurchaseOrderActionsPanel({
                 <input
                   type="text"
                   inputMode="decimal"
+                  aria-label={`Price each $: ${l.description}`}
                   placeholder={l.unitCostKnown ? (l.unitCostCents / 100).toFixed(2) : "unknown"}
                   value={prices[l.id] ?? ""}
                   onChange={(e) => setPrices((p) => ({ ...p, [l.id]: e.target.value }))}

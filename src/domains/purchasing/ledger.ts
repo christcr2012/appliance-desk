@@ -49,7 +49,9 @@ function canonical(requests: readonly PartMovementRequest[]): string {
       kind: r.kind,
       quantityDelta: r.quantityDelta ?? null,
       countedQuantity: r.countedQuantity ?? null,
-      unitCostCents: r.unitCostCents,
+      // A usage's cost is looked up (the last purchase price) and can change between a try and its retry,
+      // so it is not part of what the caller asked for.
+      unitCostCents: r.kind === "USAGE" ? null : r.unitCostCents,
       purchaseOrderLineItemId: r.purchaseOrderLineItemId ?? null,
       jobId: r.jobId ?? null,
       reversesMovementId: r.reversesMovementId ?? null,
@@ -168,6 +170,10 @@ export async function applyPartMovementsInTx(
       const original = await tx.partStockMovement.findUnique({ where: { id: request.reversesMovementId! } });
       if (!original || original.partRecordId !== request.partRecordId) throw new Error("Couldn't find the movement to reverse.");
       if (original.kind === "REVERSAL") throw new Error("A reversal cannot itself be reversed; record a new correction instead.");
+      if (original.kind === "RECEIPT" && original.purchaseOrderLineItemId) {
+        // Undoing it here would leave the order saying the parts arrived. A wrong receipt is fixed with a recount.
+        throw new Error("A receipt from a purchase order can't be undone here. Fix the count with a recount instead.");
+      }
       const already = await tx.partStockMovement.findUnique({ where: { reversesMovementId: original.id }, select: { id: true } });
       if (already) throw new Error("That movement was already reversed.");
       delta = -original.quantityDelta;
@@ -224,8 +230,13 @@ export async function applyPartMovementsInTx(
 
 /** The most recent receipt cost known for a part, used to label a usage as an estimate. */
 export async function lastKnownPurchaseCostCents(tx: Prisma.TransactionClient, partRecordId: string): Promise<number | null> {
+  // A receipt that was undone (reversed) is not a price we paid.
+  const reversed = await tx.partStockMovement.findMany({
+    where: { partRecordId, kind: "REVERSAL", reversesMovementId: { not: null } },
+    select: { reversesMovementId: true },
+  });
   const row = await tx.partStockMovement.findFirst({
-    where: { partRecordId, kind: "RECEIPT", unitCostCents: { not: null } },
+    where: { partRecordId, kind: "RECEIPT", unitCostCents: { not: null }, id: { notIn: reversed.map((r) => r.reversesMovementId as string) } },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     select: { unitCostCents: true },
   });
