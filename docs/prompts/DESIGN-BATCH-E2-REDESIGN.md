@@ -6,7 +6,7 @@ You are writing the implementation design for **Batch E2 — Visual redesign** o
 Read first: `AGENTS.md`, `docs/START-HERE.md`, `docs/STATUS.md`, `docs/PLAN.md` (section "Batch E2" and Batch E),
 `docs/designs/README.md` (drift check), `docs/designs/BATCH-E.md`, `docs/DESIGN-SYSTEM.md`, `docs/brand/`
 (especially `03_Design_System/brand-tokens.json` and the brand handoff rules), `docs/plans/overhaul/DESIGN.md`, and the
-ROADMAP entry "Owner desk and public site visual redesign". Verify against the code at the current `main` after Batch E has merged;
+ROADMAP entry "Owner desk and public site visual redesign", and the mockup copy in `docs/design-mockups/redesign-2026-10-04/`. Verify against the code at the current `main` after Batch E has merged;
 if E has not merged, say so and write the design as DRAFT with the assumptions listed in section 0.
 
 Facts already decided (do not re-open):
