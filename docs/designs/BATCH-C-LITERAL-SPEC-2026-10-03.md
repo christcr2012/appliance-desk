@@ -912,9 +912,10 @@ export interface SharedBillingEndContract {
 }
 ```
 Batch C must not: call Stripe directly, add a second subscription-ending process (all ending goes through `closeAgreement` /
-`closeAgreementInTx`), add or repeat an early-termination fee, or decide who was at fault. `cause` is always `UNDECIDED` until
-Chris answers IN-24's open part (who records that a late pickup was the company's fault, and how waived days show on the
-statement). The customer-caused late-return charge that exists today keeps working unchanged.
+`closeAgreementInTx`), add or repeat an early-termination fee, or decide who was at fault on its own. `cause` is `CUSTOMER` unless an
+OWNER/ADMIN records `COMPANY` with a note (Chris's answer above); `UNDECIDED` is used only for rows that existed before
+the field. The waiver's display (matching "Waived – our delay" line) is built with the shared billing contract. The
+customer-caused late-return charge that exists today keeps working unchanged.
 
 ## Section 10 — named tests (real Postgres for every concurrency or rollback case)
 
@@ -956,7 +957,7 @@ Housekeeping: backup export contains every new table; `docs/DATABASE.md` lists t
    checker changed).
 2. The duplicate `JobAppliance (jobId, applianceId)` pre-check finds rows, or the custody backfill leaves more than a handful of appliances in `findCustodyGaps`.
 3. A different appliance **type** is offered for a waiting item (owner decision on price and agreement change).
-4. Anything about who is at fault for a late pickup or how waived days appear (IN-24 open part), or any early-termination fee change.
+4. Any change to the waiver rule Chris answered (section 9) — who may record it, how days are counted or how they show on the statement — or any early-termination fee change.
 5. A change that would call Stripe outside the durable provider-operation path.
 6. Production data must be rewritten (not just added to).
 7. The design is silent on a state or permission the code hits.
@@ -978,6 +979,6 @@ before that.
 | 8 | P2-E Inspection + job-scoped permissions | `…380000` | **Approved with conditions:** uses D7's `InspectionChecklistVersion` table as amended here (nullable publisher); the seed hash literal is produced by the TypeScript helper |
 | 9 | P2-F Earnings correction | none | **Approved for code** |
 | 10 | Section 8 Missing-item subscription rule | `…390000` | **Approved with conditions** (the rule itself was decided by Chris 2026-10-03): needs P2-B and `closeAgreementInTx`; the `itemsForAppliances` counting rule as corrected here; Customer lock first in `removeUndeliveredItem` |
-| — | Section 9 C-09 pickup/return billing | — | **BLOCKED**: the shared billing contract, and IN-24's open part (who records that a late pickup was the company's fault, and how waived days show on the statement) |
+| — | Section 9 C-09 pickup/return billing | — | **BLOCKED** on the shared billing contract only (Chris answered the IN-24 waiver rule 2026-10-03; section 9) |
 
 Suggested PR stack: (1) P1-A+P1-B, (2) P1-C, (3) P2-A+P2-B, (4) P2-C+P2-D, (5) P2-E+P2-F, (6) section 8.
