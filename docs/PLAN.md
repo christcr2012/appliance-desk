@@ -519,7 +519,7 @@ Give the finished product the polished, modern look Chris approved in the 2026-1
 7. **Real logo files** from `docs/brand/` used everywhere (not the mockup's drawn stand-in).
 8. **Accessibility is not lost**: contrast measured by axe and by hand for every text/background pair (the mockup's colors were never measured), visible focus, status never by color alone, reduced motion respected, forced colors checked, zoom to 200% and reflow without sideways scrolling.
 9. **Print and email**: existing printable pages and customer emails keep working and keep the brand look.
-10. **Photos**: appliance photos only if Chris supplies them; otherwise brand-color treatment (OWNER-INPUTS).
+10. **Photos**: Chris will re-use the current appliance photos already in the app (`public/appliances`); no new photography. The design decides where they appear (for example the public hero and rental cards) and keeps their alt text and sizes correct; where a photo is missing, the brand-color treatment is used.
 
 ### Acceptance checklist
 
@@ -535,7 +535,7 @@ Give the finished product the polished, modern look Chris approved in the 2026-1
 
 ### Owner inputs / gates
 
-Approval of the public home page direction; whether he supplies appliance photos. Both are recorded in `docs/OWNER-INPUTS.md` by the design.
+Approval of the public home page direction (recorded in `docs/OWNER-INPUTS.md` by the design). Photos are settled: current ones are re-used (Chris, 2026-10-04).
 
 ### Not in this batch
 
