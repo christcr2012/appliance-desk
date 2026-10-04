@@ -65,15 +65,34 @@ describe.skipIf(!enabled)("late-delivery credit safety (real Postgres)", () => {
     pendingId = pending.id;
   });
 
+  const extraApplianceIds: string[] = [];
+  const extraJobIds: string[] = [];
+
   afterAll(async () => {
+    // Clean up only this file's own rows (other integration files run in parallel on the same database).
+    const pendingIds = (await prisma.pendingDelivery.findMany({ where: { agreementId }, select: { id: true } })).map((r) => r.id);
+    const creditIds = (await prisma.customerCredit.findMany({ where: { customerId }, select: { id: true } })).map((r) => r.id);
+    const allApplianceIds = [dryerId, washerId, ...extraApplianceIds];
+    const allJobIds = [originalJobId, jobA, jobB, rentedJob, ...extraJobIds];
     await prisma.pendingDelivery.deleteMany({ where: { agreementId } });
     await prisma.customerCredit.deleteMany({ where: { customerId } });
-    await prisma.auditLog.deleteMany({ where: { OR: [{ userId: ownerId }, { entityType: "PendingDelivery" }, { entityType: "CustomerCredit" }] } });
-    await prisma.applianceAssignment.deleteMany({ where: { applianceId: { in: [dryerId, washerId] } } });
-    await prisma.job.deleteMany({ where: { id: { in: [originalJobId, jobA, jobB, rentedJob] } } });
+    await prisma.auditLog.deleteMany({
+      where: {
+        OR: [
+          { userId: ownerId },
+          { entityType: "PendingDelivery", entityId: { in: pendingIds } },
+          { entityType: "CustomerCredit", entityId: { in: creditIds } },
+          { entityType: "Appliance", entityId: { in: allApplianceIds } },
+          { entityType: "Job", entityId: { in: allJobIds } },
+        ],
+      },
+    });
+    await prisma.applianceAssignment.deleteMany({ where: { applianceId: { in: allApplianceIds } } });
+    await prisma.jobAppliance.deleteMany({ where: { jobId: { in: allJobIds } } });
+    await prisma.job.deleteMany({ where: { id: { in: allJobIds } } });
     await prisma.rentalLine.deleteMany({ where: { agreementId } });
     await prisma.rentalAgreement.deleteMany({ where: { id: agreementId } });
-    await prisma.appliance.deleteMany({ where: { id: { in: [dryerId, washerId] } } });
+    await prisma.appliance.deleteMany({ where: { id: { in: allApplianceIds } } });
     await prisma.applianceType.deleteMany({ where: { id: typeId } });
     await prisma.serviceAddress.deleteMany({ where: { id: addressId } });
     await prisma.customer.deleteMany({ where: { id: customerId } });
@@ -112,5 +131,34 @@ describe.skipIf(!enabled)("late-delivery credit safety (real Postgres)", () => {
     await expect(
       updateJobStatus(ownerId, rentedJob, "COMPLETED", null, { performedOn: "2099-01-01" }),
     ).rejects.toThrow(/cannot be in the future/);
+  });
+
+  it("a delivery and a 'not delivered' mark for the same unit never leave a waiting item on a delivered unit", async () => {
+    const line = await prisma.rentalLine.findFirstOrThrow({ where: { agreementId } });
+    for (let i = 0; i < 6; i++) {
+      const unitId = `race-x${i}-${tag}`;
+      const deliverJob = `race-xd${i}-${tag}`;
+      const missJob = `race-xm${i}-${tag}`;
+      extraApplianceIds.push(unitId);
+      extraJobIds.push(deliverJob, missJob);
+      await prisma.appliance.create({ data: { id: unitId, assetNumber: `RX${i}-${tag.slice(0, 8)}`, applianceTypeId: typeId, status: "RESERVED" } });
+      await prisma.applianceAssignment.create({ data: { rentalLineId: line.id, applianceId: unitId } });
+      for (const id of [deliverJob, missJob]) {
+        await prisma.job.create({
+          data: { id, type: "DELIVERY", status: "IN_PROGRESS", customerId, agreementId, appliances: { create: [{ applianceId: unitId }] } },
+        });
+      }
+      const results = await Promise.allSettled([
+        updateJobStatus(ownerId, deliverJob, "COMPLETED", null, { performedOn: "2026-09-12" }),
+        updateJobStatus(ownerId, missJob, "COMPLETED", null, { performedOn: "2026-09-12", notDeliveredApplianceIds: [unitId] }),
+      ]);
+      expect(results[0].status).toBe("fulfilled");
+      const unit = await prisma.appliance.findUniqueOrThrow({ where: { id: unitId } });
+      expect(unit.status).toBe("RENTED");
+      // Whichever finished first, no waiting item is left behind for a unit that is now out with the customer.
+      const waiting = await prisma.pendingDelivery.count({ where: { applianceId: unitId, deliveredOn: null, removedAt: null } });
+      expect(waiting).toBe(0);
+      if (results[1].status === "rejected") expect(String(results[1].reason)).toMatch(/not waiting for delivery/);
+    }
   });
 });

@@ -233,20 +233,21 @@ export function calculateLateDeliveryCredit(input: {
   let rawCents = proratedCents(input.itemMonthlyPriceCents, days, basisDays);
   let split = false;
   if (actual && input.billingAnchor && days > 0) {
-    rawCents = 0;
+    // Add the unrounded pieces and round once on the total (never per piece), so a delay across a
+    // billing boundary cannot drift a cent.
+    let exact = 0;
     let cursor = input.originalDeliveryDate;
     let guard = 0;
     while (businessDaysBetween(cursor, input.actualDeliveryDate) > 0 && guard++ < 600) {
       const piece = billingPeriodContaining(input.billingAnchor, cursor);
       const pieceEnd = businessDaysBetween(piece.end, input.actualDeliveryDate) < 0 ? input.actualDeliveryDate : piece.end;
-      rawCents += proratedCents(
-        input.itemMonthlyPriceCents,
-        businessDaysBetween(cursor, pieceEnd),
-        businessDaysBetween(piece.start, piece.end),
-      );
+      exact +=
+        (input.itemMonthlyPriceCents * businessDaysBetween(cursor, pieceEnd)) / businessDaysBetween(piece.start, piece.end);
       if (pieceEnd !== input.actualDeliveryDate) split = true;
       cursor = pieceEnd;
     }
+    // Trim floating-point dust before rounding so an exact half-cent total rounds the same way every time.
+    rawCents = Math.round(Math.round(exact * 1e6) / 1e6);
   }
   const amountCents = Math.min(input.maxCreditCents, rawCents);
 

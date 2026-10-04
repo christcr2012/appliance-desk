@@ -430,6 +430,15 @@ async function applyJobCompletionToAppliances(
     }
   }
 
+  // Lock every unit this job may move, sorted by id (spec lock order), and keep the locks to the end of the
+  // transaction. A second job moving the same unit at this moment then either finishes first (and the
+  // "still waiting" check below refuses) or waits until this job's "not delivered" record is committed.
+  if (applianceIds.length > 0) {
+    await tx.$queryRaw`
+      SELECT "id" FROM "Appliance" WHERE "id" = ANY(${[...applianceIds].sort()}) ORDER BY "id" FOR UPDATE
+    `;
+  }
+
   if (skipApplianceIds.length > 0) {
     const unknown = skipApplianceIds.filter((id) => !applianceIds.includes(id));
     if (unknown.length > 0) {
