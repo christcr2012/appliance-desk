@@ -327,4 +327,6 @@ Populated upgrade fixture proves old task defaults and record links survive.
   the date it takes effect (start of the next billing period), the reason and who
   did it. A database rule blocks any change or delete. `PendingDelivery` gained
   `substituteApplianceId` and `substituteJobId` (both set or neither) for a
-  same-type unit set aside for the waiting item.
+  same-type unit set aside for the waiting item, and `refundedCents` /
+  `refundByHandCents` (what went back through Stripe, and what the owner pays
+  back by hand when the item was never delivered).

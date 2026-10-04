@@ -12,6 +12,8 @@ const sim = vi.hoisted(() => {
     cancelCalls: [] as Array<{ subscriptionId: string; key: string }>,
     seenKeys: new Set<string>(),
     failUpdates: false,
+    failRefunds: false,
+    refundCalls: [] as Array<{ charge: string; amount: number; key: string }>,
     balanceCalls: 0,
   };
   const client = {
@@ -41,6 +43,13 @@ const sim = vi.hoisted(() => {
         state.cancelCalls.push({ subscriptionId: id, key: options.idempotencyKey });
         state.subscriptions.delete(id);
         return { id };
+      },
+    },
+    refunds: {
+      create: async (params: { charge: string; amount: number }, options: { idempotencyKey: string }) => {
+        state.refundCalls.push({ charge: params.charge, amount: params.amount, key: options.idempotencyKey });
+        if (state.failRefunds) throw Object.assign(new Error("Stripe refund failed"), { type: "StripeAPIError" });
+        return { id: `re_${state.refundCalls.length}_${options.idempotencyKey.slice(-6)}` };
       },
     },
     customers: {
@@ -93,6 +102,8 @@ describe.skipIf(!enabled)("a waiting item and the Stripe subscription (real Post
   const applianceIds: string[] = [];
   const jobIds: string[] = [];
   const lineIds: string[] = [];
+  const invoiceIds: string[] = [];
+  const receiptIds: string[] = [];
   let counter = 0;
 
   type Scenario = Awaited<ReturnType<typeof build>>;
@@ -202,10 +213,46 @@ describe.skipIf(!enabled)("a waiting item and the Stripe subscription (real Post
   const lineOp = (s: Scenario, pendingId: string) =>
     prisma.providerOperation.findUnique({ where: { idempotencyKey: `subscription-line-reduce-${pendingId}` } });
 
+  /** A paid monthly invoice for the agreement, paid through Stripe (a charge id) or by hand (cash). */
+  async function payInvoice(s: Scenario, input: { cents: number; periodStart: string; via: "STRIPE" | "MANUAL"; chargeId?: string }) {
+    const id = `sl-inv-${s.n}-${input.periodStart}-${tag}`;
+    invoiceIds.push(id);
+    await prisma.invoice.create({
+      data: {
+        id,
+        customerId,
+        agreementId: s.agreementId,
+        status: "PAID",
+        billingPeriodStart: businessDateFromKey(input.periodStart)!,
+        subtotalCents: input.cents,
+        amountDueCents: input.cents,
+        amountPaidCents: input.cents,
+      },
+    });
+    const receiptId = `sl-rec-${s.n}-${input.periodStart}-${tag}`;
+    receiptIds.push(receiptId);
+    await prisma.receipt.create({
+      data: {
+        id: receiptId,
+        customerId,
+        source: input.via,
+        amountCents: input.cents,
+        method: input.via === "STRIPE" ? "card" : "cash",
+        stripeChargeId: input.via === "STRIPE" ? input.chargeId! : null,
+        receivedOn: new Date(`${input.periodStart}T18:00:00Z`),
+        payments: { create: { invoiceId: id, amountCents: input.cents, method: input.via === "STRIPE" ? "card" : "cash", status: "succeeded" } },
+      },
+    });
+    return id;
+  }
+  const withTax = (s: Scenario) => prisma.rentalAgreement.update({ where: { id: s.agreementId }, data: { taxRateMilliPercent: 8000 } });
+
   beforeEach(() => {
     sim.state.updateCalls = [];
     sim.state.cancelCalls = [];
     sim.state.failUpdates = false;
+    sim.state.failRefunds = false;
+    sim.state.refundCalls = [];
     sim.state.balanceCalls = 0;
   });
 
@@ -221,12 +268,14 @@ describe.skipIf(!enabled)("a waiting item and the Stripe subscription (real Post
   afterAll(async () => {
     const pendingIds = (await prisma.pendingDelivery.findMany({ where: { agreementId: { in: agreementIds } }, select: { id: true } })).map((r) => r.id);
     const creditIds = (await prisma.customerCredit.findMany({ where: { customerId }, select: { id: true } })).map((r) => r.id);
+    const refundRowIds = (await prisma.refund.findMany({ where: { invoiceId: { in: invoiceIds } }, select: { id: true } })).map((r) => r.id);
     await prisma.providerOperation.deleteMany({
       where: {
         OR: [
           { subjectType: "RentalLine", subjectId: { in: lineIds } },
           { subjectType: "RentalAgreement", subjectId: { in: agreementIds } },
           { subjectType: "CustomerCredit", subjectId: { in: creditIds } },
+          { subjectType: "Refund", subjectId: { in: refundRowIds } },
         ],
       },
     });
@@ -235,6 +284,10 @@ describe.skipIf(!enabled)("a waiting item and the Stripe subscription (real Post
       prisma.rentalLineAmendment.deleteMany({ where: { rentalLineId: { in: lineIds } } }),
       prisma.$executeRawUnsafe('ALTER TABLE "RentalLineAmendment" ENABLE TRIGGER "RentalLineAmendment_append_only"'),
     ]);
+    await prisma.refund.deleteMany({ where: { invoiceId: { in: invoiceIds } } });
+    await prisma.payment.deleteMany({ where: { invoiceId: { in: invoiceIds } } });
+    await prisma.receipt.deleteMany({ where: { id: { in: receiptIds } } });
+    await prisma.invoice.deleteMany({ where: { id: { in: invoiceIds } } });
     await prisma.staffTask.deleteMany({ where: { jobId: { in: jobIds } } });
     await prisma.jobBillingHandoff.deleteMany({ where: { jobId: { in: jobIds } } });
     await prisma.applianceCustodyEpisode.deleteMany({ where: { applianceId: { in: applianceIds } } });
@@ -362,7 +415,7 @@ describe.skipIf(!enabled)("a waiting item and the Stripe subscription (real Post
     expect(settled.filter((r) => r.status === "fulfilled")).toHaveLength(1);
     expect(settled.filter((r) => r.status === "rejected")).toHaveLength(1);
     expect(await prisma.rentalLineAmendment.count({ where: { rentalLineId: s.lineA } })).toBe(1);
-    expect(await prisma.customerCredit.count({ where: { customerId, sourceId: s.pending.id } })).toBe(1);
+    expect(await prisma.customerCredit.count({ where: { customerId, sourceId: s.pending.id } })).toBe(0);
     expect(sim.state.updateCalls).toHaveLength(1);
     expect(itemAmount(s, s.lineA)).toBe(3000);
   });
@@ -447,6 +500,77 @@ describe.skipIf(!enabled)("a waiting item and the Stripe subscription (real Post
       [9000, 6000],
       [6000, 3000],
     ]);
+  });
+
+  it("R1 never-delivered refunds what was paid (price plus tax) to the original card, newest invoice first, and makes no account credit", async () => {
+    const s = await build({ lineB: true });
+    await withTax(s);
+    // $60 + 8% tax = $64.80 per month for the whole agreement. The item's share is $30 + $2.40 tax = $32.40 a month, two months billed.
+    await payInvoice(s, { cents: 6480, periodStart: "2026-09-01", via: "STRIPE", chargeId: `ch_sep_${s.n}` });
+    await payInvoice(s, { cents: 4000, periodStart: "2026-10-01", via: "STRIPE", chargeId: `ch_oct_${s.n}` });
+    await removeUndeliveredItem(ownerId, s.pending.id, businessDateFromKey("2026-10-03")!);
+
+    expect(sim.state.refundCalls.map((c) => [c.charge, c.amount])).toEqual([
+      [`ch_oct_${s.n}`, 4000],
+      [`ch_sep_${s.n}`, 2480],
+    ]);
+    const row = await prisma.pendingDelivery.findUniqueOrThrow({ where: { id: s.pending.id } });
+    expect(row).toMatchObject({ refundedCents: 6480, refundByHandCents: 0, creditId: null });
+    expect(await prisma.customerCredit.count({ where: { customerId, sourceId: s.pending.id } })).toBe(0);
+    expect(sim.state.balanceCalls).toBe(0);
+    const refunds = await prisma.refund.findMany({ where: { invoiceId: { in: invoiceIds.filter((id) => id.includes(`-${s.n}-`)) } } });
+    expect(refunds).toHaveLength(2);
+    expect(refunds.every((r) => r.stripeRefundId && r.reason === "BILLING_ERROR")).toBe(true);
+    const ops = await prisma.providerOperation.findMany({ where: { kind: "REFUND_CREATE", subjectId: { in: refunds.map((r) => r.id) } } });
+    expect(ops.map((o) => o.status)).toEqual(["SUCCEEDED", "SUCCEEDED"]);
+    // Future billing for the item stops: the line is lowered, so no later month charges for it.
+    expect(itemAmount(s, s.lineA)).toBe(3000);
+  });
+
+  it("R2 money paid by cash or check is not sent to Stripe: it is recorded for the owner to pay back by hand", async () => {
+    const s = await build({ lineB: true });
+    await withTax(s);
+    await payInvoice(s, { cents: 6480, periodStart: "2026-09-01", via: "MANUAL" });
+    await payInvoice(s, { cents: 6480, periodStart: "2026-10-01", via: "MANUAL" });
+    await removeUndeliveredItem(ownerId, s.pending.id, businessDateFromKey("2026-10-03")!);
+    expect(sim.state.refundCalls).toHaveLength(0);
+    const row = await prisma.pendingDelivery.findUniqueOrThrow({ where: { id: s.pending.id } });
+    expect(row).toMatchObject({ refundedCents: 0, refundByHandCents: 6480 });
+    const refund = await prisma.refund.findFirstOrThrow({ where: { invoiceId: { in: invoiceIds.filter((id) => id.includes(`-${s.n}-`)) } } });
+    expect(refund.stripeRefundId).toBeNull();
+    expect(refund.amountCents).toBe(6480);
+  });
+
+  it("R3 a failed Stripe refund stays on record as unfinished and is never counted as done", async () => {
+    const s = await build({ lineB: true });
+    await payInvoice(s, { cents: 6000, periodStart: "2026-10-01", via: "STRIPE", chargeId: `ch_fail_${s.n}` });
+    sim.state.failRefunds = true;
+    await removeUndeliveredItem(ownerId, s.pending.id, businessDateFromKey("2026-10-03")!);
+    const refund = await prisma.refund.findFirstOrThrow({ where: { invoiceId: `sl-inv-${s.n}-2026-10-01-${tag}` } });
+    expect(refund.stripeRefundId).toBeNull();
+    const op = await prisma.providerOperation.findFirstOrThrow({ where: { kind: "REFUND_CREATE", subjectId: refund.id } });
+    expect(op.status).not.toBe("SUCCEEDED");
+    expect((await prisma.pendingDelivery.findUniqueOrThrow({ where: { id: s.pending.id } })).removedAt).not.toBeNull();
+  });
+
+  it("R4 only what was actually paid is refunded; an unpaid month is left alone", async () => {
+    const s = await build({ lineB: true });
+    await payInvoice(s, { cents: 3000, periodStart: "2026-09-01", via: "STRIPE", chargeId: `ch_short_${s.n}` });
+    await removeUndeliveredItem(ownerId, s.pending.id, businessDateFromKey("2026-10-03")!);
+    // Two months at $30, no tax: $60 owed, but only $30 was ever paid.
+    expect(sim.state.refundCalls.map((c) => c.amount)).toEqual([3000]);
+    expect((await prisma.pendingDelivery.findUniqueOrThrow({ where: { id: s.pending.id } })).refundedCents).toBe(3000);
+  });
+
+  it("R5 a rental paid in advance is not refunded automatically and its price is left for the owner to settle", async () => {
+    const s = await build({ lineB: true });
+    await prisma.rentalAgreement.update({ where: { id: s.agreementId }, data: { paidInFullInAdvance: true } });
+    await payInvoice(s, { cents: 72000, periodStart: "2026-09-01", via: "STRIPE", chargeId: `ch_adv_${s.n}` });
+    await removeUndeliveredItem(ownerId, s.pending.id, businessDateFromKey("2026-10-03")!);
+    expect(sim.state.refundCalls).toHaveLength(0);
+    expect(sim.state.updateCalls).toHaveLength(0);
+    expect(await prisma.rentalLineAmendment.count({ where: { rentalLineId: s.lineA } })).toBe(0);
+    expect((await prisma.pendingDelivery.findUniqueOrThrow({ where: { id: s.pending.id } })).removedAt).not.toBeNull();
   });
 
   it("a rental line amendment can never be changed or deleted", async () => {

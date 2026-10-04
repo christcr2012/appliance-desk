@@ -513,8 +513,12 @@ visit" lists what is still missing. The customer keeps being billed for the whol
 set and gets a credit for the missing days when it arrives. If you have another
 unit of the same type, "Send a different unit of the same type instead" sets it
 aside for a later delivery visit. If the item will never arrive, "Never delivered
-— take it off the agreement and credit it" credits everything billed for it and
-lowers the customer's monthly price from the next billing period. Stripe is
+— take it off the agreement and refund it" refunds what the customer paid for it
+(its share of the monthly price plus its tax) and lowers the customer's monthly
+price from the next billing period, so it is not billed again. Payments made
+through Stripe go back to the same card or bank. If the customer paid by cash or
+check, or paid in advance, the line says how much you need to pay back by hand.
+A refund Stripe could not finish shows as unfinished on the Billing check screen. Stripe is
 updated right after; if Stripe cannot be reached the line says "Cancelled —
 Stripe update pending" and the system keeps trying. Taking off the last item
 cancels the agreement.

@@ -15,6 +15,7 @@ import {
   updateJobChecklistAction,
 } from "../actions";
 import type { JobApplianceResult, JobApplianceRole, JobOutcome, JobStatus, JobType, ApplianceStatus } from "@prisma/client";
+import { formatCents } from "@/domains/pricing/money";
 import { APPLIANCE_STATUS_LABELS } from "@/domains/inventory/lifecycle";
 import { parseChecklist, type ChecklistItem } from "@/domains/jobs/checklist";
 import { PhotoUploadField } from "@/components/photo-upload-field";
@@ -109,6 +110,10 @@ type PendingDeliveryRow = {
   removed: boolean;
   /** A customer credit exists for this item (none when billing never started or the rental was prepaid). */
   hasCredit: boolean;
+  /** Cents refunded through Stripe to the original card or bank when the item was taken off. */
+  refundedCents: number;
+  /** Cents the owner has to pay back by hand (paid by cash or check, or paid in advance). */
+  refundByHandCents: number;
   /** The monthly subscription still has to be lowered in Stripe for this cancelled item. */
   stripeUpdatePending: boolean;
   /** A same-type unit set aside to take this item's place, if any. */
@@ -297,7 +302,7 @@ export function JobDetailPanel({
     startTransition(async () => {
       const result = await removeUndeliveredItemAction(pendingDeliveryId, job.id);
       setRemoveMessage(
-        result.status === "error" ? result.message : "Taken off the agreement. The credit shows on the customer's next bill.",
+        result.status === "error" ? result.message : "Taken off the agreement. What was paid for it is refunded to the customer, and their monthly price is lowered.",
       );
       router.refresh();
     });
@@ -474,9 +479,11 @@ export function JobDetailPanel({
                       ? `; delivered ${item.deliveredOn}, credit recorded`
                       : `; delivered ${item.deliveredOn}, no automatic credit (nothing was billed to credit, or the rental was paid in advance and the owner settles it by hand)`
                     : item.removed
-                      ? item.hasCredit
-                        ? "; taken off the agreement, credit recorded"
-                        : "; taken off the agreement, no automatic credit (the owner settles it by hand)"
+                      ? `; taken off the agreement${
+                          item.refundedCents > 0 ? `, ${formatCents(item.refundedCents)} refunded to the customer's card or bank` : ""
+                        }${
+                          item.refundByHandCents > 0 ? `, ${formatCents(item.refundByHandCents)} for you to pay back by hand` : ""
+                        }${item.refundedCents === 0 && item.refundByHandCents === 0 ? ", nothing had been paid for it yet (a rental paid in advance is settled by hand)" : ""}`
                       : item.substituteLabel
                         ? `; unit ${item.substituteLabel} is set aside to take its place`
                         : "; still waiting"}
@@ -499,7 +506,7 @@ export function JobDetailPanel({
                         onClick={() => handleRemoveUndelivered(item.id)}
                         className="rounded-md border border-gray-300 px-2 py-1 text-xs text-gray-700 hover:border-gray-400 disabled:opacity-50"
                       >
-                        Never delivered — take it off the agreement and credit it
+                        Never delivered — take it off the agreement and refund it
                       </button>
                     )}
                   </span>

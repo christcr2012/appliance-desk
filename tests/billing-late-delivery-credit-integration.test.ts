@@ -142,6 +142,9 @@ describe.skipIf(!enabled)("late-delivery credits (real Postgres)", () => {
   afterAll(async () => {
     const invoices = await prisma.invoice.findMany({ where: { customerId }, select: { id: true } });
     const ids = invoices.map((row) => row.id);
+    const refundRows = await prisma.refund.findMany({ where: { invoiceId: { in: ids } }, select: { id: true } });
+    await prisma.providerOperation.deleteMany({ where: { subjectType: "Refund", subjectId: { in: refundRows.map((r) => r.id) } } });
+    await prisma.refund.deleteMany({ where: { invoiceId: { in: ids } } });
     await prisma.payment.deleteMany({ where: { invoiceId: { in: ids } } });
     await prisma.invoice.deleteMany({ where: { customerId } });
     await prisma.receipt.deleteMany({ where: { customerId } });
@@ -204,7 +207,7 @@ describe.skipIf(!enabled)("late-delivery credits (real Postgres)", () => {
     expect(next.subtotalCents).toBe(6000);
   });
 
-  it("an item never delivered and taken off the agreement is credited everything billed for it and sent to Stripe", async () => {
+  it("an item never delivered is taken off the agreement with no account credit (nothing was paid on this invoice-less fixture)", async () => {
     const pending = await prisma.pendingDelivery.create({
       data: {
         agreementId,
@@ -214,26 +217,21 @@ describe.skipIf(!enabled)("late-delivery credits (real Postgres)", () => {
         originalDeliveryDate: businessDateFromKey("2026-08-01")!,
       },
     });
-    // A $60 set of two: the dryer's share is $30. Billing started Aug 1; by Oct 3 three periods (Aug, Sep, Oct) have been billed.
     await removeUndeliveredItem(ownerId, pending.id, businessDateFromKey("2026-10-03")!);
 
     const row = await prisma.pendingDelivery.findUniqueOrThrow({ where: { id: pending.id } });
     expect(row.removedAt).not.toBeNull();
-    expect(row.creditId).not.toBeNull();
-    const credit = await prisma.customerCredit.findUniqueOrThrow({ where: { id: row.creditId! } });
-    expect(credit.amountCents).toBe(9000);
-    expect(credit.reason).toBe(`Credit – Dryer ${tag} #LD-${tag.slice(0, 8)} never delivered – 3 months billed`);
-    expect(credit.appliedViaStripeAt).not.toBeNull();
-    expect(m.balance).toHaveBeenCalledTimes(1);
-    expect(m.balance.mock.calls[0][1]).toMatchObject({ amount: -9000, description: credit.reason });
+    // Never delivered money goes back as a refund, never as account credit.
+    expect(row.creditId).toBeNull();
+    expect(await prisma.customerCredit.count({ where: { customerId, sourceId: pending.id } })).toBe(0);
+    expect(m.balance).not.toHaveBeenCalled();
 
     const appliance = await prisma.appliance.findUniqueOrThrow({ where: { id: applianceId } });
     expect(appliance.status).toBe("AVAILABLE");
     const assignment = await prisma.applianceAssignment.findFirstOrThrow({ where: { applianceId } });
     expect(assignment.unassignReason).toBe("Never delivered");
 
-    // Doing it twice is refused, and nothing doubles.
+    // Doing it twice is refused.
     await expect(removeUndeliveredItem(ownerId, pending.id)).rejects.toThrow(/already/);
-    expect(await prisma.customerCredit.count({ where: { customerId, sourceType: LATE_DELIVERY_CREDIT_SOURCE } })).toBe(2);
   });
 });

@@ -136,6 +136,8 @@ export default async function JobDetailPage({
           deliveredOn: p.deliveredOn ? businessDateKey(p.deliveredOn) : null,
           removed: p.removedAt !== null,
           hasCredit: p.creditId !== null,
+          refundedCents: p.refundedCents,
+          refundByHandCents: p.refundByHandCents,
           stripeUpdatePending: p.stripeUpdatePending,
           substituteLabel: p.substituteAppliance ? `#${p.substituteAppliance.assetNumber}` : null,
           substituteUnits: choices.get(p.id)?.units ?? [],

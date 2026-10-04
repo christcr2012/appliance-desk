@@ -1073,6 +1073,11 @@ model PendingDelivery {
   substituteJobId       String?
   substituteJob         Job?       @relation("PendingDeliverySubstituteJob", fields: [substituteJobId], references: [id])
 
+  // Never-delivered refund (Batch C section 8): cents sent back through Stripe, and cents the owner pays back by hand
+  // (cash or check payments, a rental paid in advance, or no paid invoice yet).
+  refundedCents     Int @default(0)
+  refundByHandCents Int @default(0)
+
   @@unique([originalJobId, applianceId])
   @@index([agreementId])
   @@index([applianceId])

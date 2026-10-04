@@ -1371,8 +1371,12 @@ without sending any message or recording an invented contact promise.
   owner or an admin can set aside another unit of the same type to take its
   place on a later delivery visit; when that unit is delivered the credit counts
   to that day. A unit of a different type is refused. If the item will never
-  arrive, taking it off the agreement credits everything billed for it and lowers
-  its line by the item's share (the line price split evenly over the units that
+  arrive, taking it off the agreement REFUNDS what was paid for it (the item's
+  monthly share plus its sales tax for each month billed, never more than was
+  actually paid, newest invoice first). Money paid through Stripe goes back to the
+  same card or bank. Money paid by cash or check, or a rental paid in advance, is
+  recorded for the owner to pay back by hand. No account credit is made. It also
+  lowers its line by the item's share (the line price split evenly over the units that
   count) starting with the next billing period, never retroactively. The
   Stripe subscription is updated afterwards and retried until it matches. If the
   last item is taken off, the agreement is cancelled (nothing was ever delivered)
