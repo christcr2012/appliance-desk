@@ -633,3 +633,4 @@ What the real work will need (so it is not forgotten):
   from `BusinessSettings`, the agreement terms and `docs/BUSINESS-RULES.md`, never from the mockup. The kit forbids invented claims.
 - The public home page direction is not yet approved (only the owner desk is). The hero's dark gradient and two buttons differ from the
   kit's "ivory surfaces, one dominant next action" guidance and need a decision before design.
+- **Update 2026-10-04:** this is now scheduled as **Batch E2** (after E, before F) in `docs/PLAN.md`, covering the whole redesign: desktop, phone, dark mode, owner desk, customer portal and public site. A phone mockup of Today and the home page exists in the same private canvas.
