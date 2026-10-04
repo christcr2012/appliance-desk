@@ -170,6 +170,10 @@ export async function applyPartMovementsInTx(
       const original = await tx.partStockMovement.findUnique({ where: { id: request.reversesMovementId! } });
       if (!original || original.partRecordId !== request.partRecordId) throw new Error("Couldn't find the movement to reverse.");
       if (original.kind === "REVERSAL") throw new Error("A reversal cannot itself be reversed; record a new correction instead.");
+      if (original.kind === "RECEIPT" && original.purchaseOrderLineItemId) {
+        // Undoing it here would leave the order saying the parts arrived. A wrong receipt is fixed with a recount.
+        throw new Error("A receipt from a purchase order can't be undone here. Fix the count with a recount instead.");
+      }
       const already = await tx.partStockMovement.findUnique({ where: { reversesMovementId: original.id }, select: { id: true } });
       if (already) throw new Error("That movement was already reversed.");
       delta = -original.quantityDelta;
