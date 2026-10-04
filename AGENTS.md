@@ -168,6 +168,14 @@ resulting behavior are verified.
   pass, and the review steps below are done. Merge with the expected-head SHA.
   New commits invalidate earlier evidence — re-check before merging. The
   separate approvals under "Hard limits" are never covered by a merge.
+  **Standing approval for stacks (Chris, 2026-10-03, "Option 2 approved"):** for
+  a stack of PRs (Batch C onward), the agent merges each PR bottom-up when the
+  conditions above are met. Before each merge, **retarget that PR to `main`**
+  (merging a stacked PR into its base branch leaves `main` without the work —
+  this happened to #165 and #166), wait for `ci` at the exact head, read the
+  Codex and Copilot threads, record dispositions, then merge with the head SHA.
+  Stop and tell Chris first when a review finding is a money, security or
+  data-loss problem that is not fixed in the same PR.
 - **Automated review:** if an automated reviewer is available, request it. If
   it is not (quota, outage), Chris has waived it (2026-10-01): inspect the
   diff yourself, record "automated review unavailable — waived" in the PR,
