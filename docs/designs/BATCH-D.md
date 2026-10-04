@@ -68,13 +68,13 @@ model SiteContentPointer {             // D1 — singleton, id "published"
   updatedAt           DateTime @updatedAt
 }
 
-model InspectionChecklistVersion {    // D7
+model InspectionChecklistVersion {    // D7 — CREATED BY BATCH C (literal spec P2-E, 2026-10-03), seeded as version 1; D7 builds only the editor
   id                String   @id @default(cuid())
   version           Int      @unique
   items             Json     // string[]
-  hash              String   // = Batch C checklistVersion(items)
+  hash              String   // sha256 of JSON.stringify(items)
   publishedAt       DateTime @default(now())
-  publishedByUserId String
+  publishedByUserId String?  // amended 2026-10-03: nullable, the seeded version 1 has no publisher
 }
 
 enum DocumentArtifactKind { SIGNED_AGREEMENT INVOICE STATEMENT }
@@ -194,3 +194,11 @@ Screens C needs: supplier archive, part movements, PO partial receive. B-registe
 
 ## 5. Acceptance mapping
 PLAN D lines ↔ WU-D4 (settings without code), WU-D2/3 (published-only, preview/publish/rollback), WU-D9 (evidence never rewritten; private, reproducible, downloadable, backed up), WU-D8 (A/B isolation), WU-D10 (retention), WU-D4 (secrets never visible), WU-D6 (fixtures reconcile; unknown cost never profit), existing settings tests (unrelated-field preservation, unauthorized save).
+
+## Amendments
+
+- **2026-10-03 (Batch C literal-spec review, Claude Fable 5.1):** D7's `InspectionChecklistVersion` table is created by
+  Batch C (`BATCH-C-LITERAL-SPEC-2026-10-03.md` P2-E) so that inspections can reference a version from the start; C seeds
+  version 1 from the owner's saved list or the code default. `publishedByUserId` becomes nullable for that seeded row.
+  WU-D7 therefore builds the editor and `publish` only; it must not create the table again. `ApplianceInspection`
+  stores `checklistVersionId` (FK) plus a copy of the definition, not a bare hash.

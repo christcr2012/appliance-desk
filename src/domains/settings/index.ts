@@ -50,6 +50,12 @@ const DEFAULT_SETTINGS = {
   autoRenewTermsVersion: null as string | null,
   renewalTermsText: null as string | null,
   terminationTermsText: null as string | null,
+  // Pickup and return billing (IN-24 / IN-26 / IN-27): the recommended starting values.
+  lateReturnRateMode: "MONTHLY_DIV_30",
+  lateReturnFixedDailyCents: 0,
+  lateDeliveryProrationBasis: "MONTHLY_DIV_30",
+  earlyReturnProrationBasis: "MONTHLY_DIV_30", // deprecated column, never read
+  pickupDayNotBilled: true,
   updatedAt: new Date(0),
 };
 
@@ -129,6 +135,11 @@ export type BusinessSettingsUpdate = Partial<{
   autoRenewNoticeDays: number | null;
   autoRenewTermsVersion: string | null;
   renewalTermsText: string | null;
+  // Pickup and return billing (IN-24 / IN-26 / IN-27).
+  lateReturnRateMode: string;
+  lateReturnFixedDailyCents: number;
+  lateDeliveryProrationBasis: string;
+  pickupDayNotBilled: boolean;
 }>;
 
 /**

@@ -1,10 +1,18 @@
 # Design — Batch C: Rental-to-service operations, custody, inventory & purchasing
 
-Status: **APPROVED DESIGN — implement from this document** (written
-2026-10-02 against `main` f272f51, i.e. *before* Batch B merged). Section 0
-tells you what to re-verify because B lands first. Scope and acceptance:
+Status: **NOT APPROVED — do not implement from this document yet.** The implementation-ready text is
+`BATCH-C-LITERAL-SPEC-2026-10-03.md` (reviewed 2026-10-03; approval per slice in `README.md`); this file and the
+2026-10-03 update are its background. It was
+approved on 2026-10-02 (written against `main` f272f51, *before* Batch B
+merged) and that approval was withdrawn by the 2026-10-03 amendment below:
+the literal schema, signatures and migration order are still to come from the
+stronger-model pass (`docs/prompts/DESIGN-BATCH-C-LITERAL-SPECS.md`). The
+former approval is kept here only as history. Section 0
+tells you what to re-verify because B landed first. Scope and acceptance:
 `docs/PLAN.md` → Batch C. Pattern reference for every transactional write:
 `docs/designs/BATCH-B.md` D2 (lock → claim → act) and `assertActiveTeamActor`.
+
+> **2026-10-03 (later): the literal schema, signatures, migrations, lock order, tests and stop-and-ask list now exist in `docs/designs/BATCH-C-LITERAL-SPEC-2026-10-03.md`. It wins over this file and the update where they disagree. It is specified but not yet approved by Chris; the table below is superseded by its section 12.**
 
 > **2026-10-03 AMENDMENT (stronger-model design update, applied by the coding agent): this document does NOT authorize implementation unchanged.**
 > Read `docs/designs/BATCH-C-UPDATE-2026-10-03.md` first. It amends C1-C11 and the work units (items C-01 to C-10 there: physical custody that survives renewals and endings, per-appliance completion results, a complete swap contract, scheduling under concurrency, atomic maintenance scheduling, asset counters, parts opening balances, inspection snapshots and permissions, the pickup/return billing unit for IN-24, and the appliance-earnings correction). Where this older text and the update disagree, the update wins.

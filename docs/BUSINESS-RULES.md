@@ -1031,6 +1031,59 @@ is never replaced by a default.
   invoices never do. The accounting CSV gives every row its record ID and source
   and uses the Colorado date.
 
+## Pickups and deliveries: late return, late delivery, pickup day (2026-10-03)
+
+Chris's rules (IN-24 / IN-26 / IN-27), each an owner-changeable setting on
+Desk → Settings → **Pickups and deliveries** with its recommended value
+pre-selected and explained on the screen. Nothing here is hard-coded; the
+technical layout is in `docs/ARCHITECTURE.md` ("Pickup and delivery billing").
+Every rule counts from the date staff record the work as done (or the job's
+scheduled date), never from the moment a status button is pressed.
+
+1. **Late return.** A customer who keeps an item past the end date of their
+   agreement is charged a daily rate for each day past the end date, per
+   item — whether or not the agreement has been marked ended yet. Setting:
+   the daily rate is the item's monthly price ÷ 30 (**default**) or a fixed
+   owner-set dollar amount per day. The late days appear on the next bill as
+   their own line, labeled `Late return – [item] – [N] days` (one line per
+   item), with the agreement's sales tax. The bill is an ordinary open
+   invoice: it is never charged to a card automatically, so the owner can
+   adjust or write it off (for example a late pickup that was the company's
+   fault — the automatic waiver for that is still to be built, IN-24).
+2. **Late delivery (an item missing from the first delivery).** When one or
+   more items on an agreement are not delivered as agreed on the original
+   delivery, the **whole agreement** is billed as normal from that original
+   delivery date. Staff tick the missing items when completing the delivery
+   job; they stay on the customer's attention list until a later delivery job
+   brings them. Then, on the **next** bill, the customer gets a credit for
+   each late item, prorated by the day, for each day between the original
+   delivery date and the day before it was actually delivered. Setting: the
+   per-day amount is the item's monthly price ÷ 30 (**default**) or ÷ the
+   actual number of days in that billing month. The credit is its own line,
+   `Credit – [item] delivered late – [N] days`, rounded once on the total and
+   never more than was billed for that item. An item that is never delivered
+   and is taken off the agreement is credited the full amount billed for it
+   (`Credit – [item] never delivered – [N] months billed`). A washer+dryer
+   set's price is split evenly per machine. Rentals paid in full in advance
+   get no automatic credit (owner decides, as with early endings).
+   **What happens to the monthly subscription (Chris, 2026-10-03):** an
+   item delivered late, or swapped for an alternate unit of the same type
+   delivered later, stays on the subscription — the credit is the whole
+   remedy. An item permanently cancelled (never delivered, taken off the
+   agreement) comes off the Stripe subscription from the next billing period,
+   on top of the credit. *The subscription removal is not built yet — Batch C
+   (`docs/prompts/DESIGN-BATCH-C-LITERAL-SPECS.md`); until then the audit
+   entry tells the owner to adjust the subscription in Stripe by hand.*
+3. **The pickup day is not billed.** The final chargeable day of any rental
+   is the day **before** the pickup/return date — for normal end-of-agreement
+   pickups and late returns alike. An item picked up on the 1st of the month
+   is not charged for the 1st. Setting: on/off, **default on**.
+
+Days are Colorado calendar days. Daily amounts are rounded once on the
+total, not per day. There is no "early return" rule: an item returned before
+the end date while the agreement continues is not credited (that reading was
+a misunderstanding, removed the same day — `docs/DECISIONS.md`).
+
 ## Cross-cutting desk tools (2026-09-28)
 
 Task #44 of the September 2026 build plan. Small tools shared across

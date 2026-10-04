@@ -33,6 +33,8 @@ const CATEGORY_BY_KIND: Record<InvoiceLineItemKind, LedgerCategory> = {
   CREDIT: "CREDIT",
   ADJUSTMENT: "ADJUSTMENT",
   EARLY_TERMINATION_FEE: "FEES",
+  // Extra days of rent after the agreed end date: rent, not a payment penalty.
+  LATE_RETURN: "RENT",
 };
 
 export function categorizeLine(kind: InvoiceLineItemKind): LedgerCategory {
