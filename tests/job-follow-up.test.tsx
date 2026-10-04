@@ -36,8 +36,9 @@ it("requests owner confirmation for legacy swaps without recorded replacement in
 it.each(["SWAP", "MAINTENANCE_VISIT", "DELIVERY"] as const)("routes completed %s visits to the applicable follow-up", async type => {
   render(<DriverJobCard job={{ id: "job", type, status: "IN_PROGRESS", scheduledAt: null, notes: null, customerName: null, customerPhone: null, address: null, appliances: [] }} />);
   fireEvent.click(screen.getByRole("button", { name: "Mark complete" }));
-  await waitFor(() => expect(type === "DELIVERY" ? m.refresh : m.push).toHaveBeenCalled());
-  if (type !== "DELIVERY") expect(m.push).toHaveBeenCalledWith("/desk/jobs/job");
+  await waitFor(() => expect(m.push).toHaveBeenCalledWith("/desk/jobs/job"));
+  // A delivery is never completed from the driver screen: it needs a result per item on the job page.
+  if (type === "DELIVERY") expect(m.status).not.toHaveBeenCalled();
 });
 it("does not navigate away from a failed completion", async () => {
   m.status.mockResolvedValue({ status: "error", message: "Job changed" });

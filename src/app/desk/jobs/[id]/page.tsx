@@ -67,6 +67,7 @@ export default async function JobDetailPage({
           originalDeliveryDate: businessDateKey(p.originalDeliveryDate),
           deliveredOn: p.deliveredOn ? businessDateKey(p.deliveredOn) : null,
           removed: p.removedAt !== null,
+          hasCredit: p.creditId !== null,
         }))} today={businessDateKey(new Date())} job={{
           id: job.id, type: job.type, status: job.status,
           completionNotes: job.completionNotes, checklist: job.checklist,

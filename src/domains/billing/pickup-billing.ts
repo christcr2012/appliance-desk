@@ -211,6 +211,13 @@ export function calculateLateDeliveryCredit(input: {
   originalDeliveryDate: Date;
   actualDeliveryDate: Date;
   period: { start: Date; end: Date };
+  /**
+   * The agreement's billing anchor. With "actual days in that month", a delay
+   * that crosses an anniversary is split at each billing-period boundary and
+   * every piece is divided by its own period's length. Without it the whole
+   * delay uses `period` (only correct when the delay stays inside one period).
+   */
+  billingAnchor?: Date;
   maxCreditCents: number;
   settings: Pick<PickupBillingSettings, "lateDeliveryProrationBasis">;
 }): LateDeliveryCredit {
@@ -223,7 +230,26 @@ export function calculateLateDeliveryCredit(input: {
   const actual = input.settings.lateDeliveryProrationBasis === "ACTUAL_DAYS_IN_MONTH";
   const basisDays = actual ? periodDays : 30;
   const dailyRateCents = Math.round(input.itemMonthlyPriceCents / basisDays);
-  const amountCents = Math.min(input.maxCreditCents, proratedCents(input.itemMonthlyPriceCents, days, basisDays));
+  let rawCents = proratedCents(input.itemMonthlyPriceCents, days, basisDays);
+  let split = false;
+  if (actual && input.billingAnchor && days > 0) {
+    // Add the unrounded pieces and round once on the total (never per piece), so a delay across a
+    // billing boundary cannot drift a cent.
+    let exact = 0;
+    let cursor = input.originalDeliveryDate;
+    let guard = 0;
+    while (businessDaysBetween(cursor, input.actualDeliveryDate) > 0 && guard++ < 600) {
+      const piece = billingPeriodContaining(input.billingAnchor, cursor);
+      const pieceEnd = businessDaysBetween(piece.end, input.actualDeliveryDate) < 0 ? input.actualDeliveryDate : piece.end;
+      exact +=
+        (input.itemMonthlyPriceCents * businessDaysBetween(cursor, pieceEnd)) / businessDaysBetween(piece.start, piece.end);
+      if (pieceEnd !== input.actualDeliveryDate) split = true;
+      cursor = pieceEnd;
+    }
+    // Trim floating-point dust before rounding so an exact half-cent total rounds the same way every time.
+    rawCents = Math.round(Math.round(exact * 1e6) / 1e6);
+  }
+  const amountCents = Math.min(input.maxCreditCents, rawCents);
 
   return {
     days,
@@ -231,7 +257,9 @@ export function calculateLateDeliveryCredit(input: {
     dailyRateCents,
     amountCents: days === 0 ? 0 : amountCents,
     basis: actual
-      ? `monthly price ${formatCents(input.itemMonthlyPriceCents)} ÷ ${periodDays} days in that billing month`
+      ? split
+        ? `monthly price ${formatCents(input.itemMonthlyPriceCents)} ÷ the actual days in each billing month the item was missing`
+        : `monthly price ${formatCents(input.itemMonthlyPriceCents)} ÷ ${periodDays} days in that billing month`
       : `monthly price ${formatCents(input.itemMonthlyPriceCents)} ÷ 30 per day`,
     description: `Credit – ${input.itemLabel} delivered late – ${days} ${days === 1 ? "day" : "days"}`,
     firstCreditedDayKey: days > 0 ? businessDateKey(input.originalDeliveryDate) : null,

@@ -430,10 +430,24 @@ async function applyJobCompletionToAppliances(
     }
   }
 
+  // Lock every unit this job may move, sorted by id (spec lock order), and keep the locks to the end of the
+  // transaction. A second job moving the same unit at this moment then either finishes first (and the
+  // "still waiting" check below refuses) or waits until this job's "not delivered" record is committed.
+  if (applianceIds.length > 0) {
+    await tx.$queryRaw`
+      SELECT "id" FROM "Appliance" WHERE "id" = ANY(${[...applianceIds].sort()}) ORDER BY "id" FOR UPDATE
+    `;
+  }
+
   if (skipApplianceIds.length > 0) {
     const unknown = skipApplianceIds.filter((id) => !applianceIds.includes(id));
     if (unknown.length > 0) {
       throw new Error("An item marked not delivered is not one of this job's appliances.");
+    }
+    // Only a unit still waiting for delivery can be "not delivered"; one already out with the customer cannot.
+    const notWaiting = await tx.appliance.count({ where: { id: { in: skipApplianceIds }, status: { not: "RESERVED" } } });
+    if (notWaiting > 0) {
+      throw new Error("An item marked not delivered is not waiting for delivery (it was already delivered or released).");
     }
     applianceIds = applianceIds.filter((id) => !skipApplianceIds.includes(id));
   }

@@ -70,9 +70,11 @@ function fakeTx(input: {
         return {};
       }),
     },
-    $queryRaw: vi.fn(async () => {
+    // A row lock returns the ids it was asked for (the waiting-item claim passes an id list); the customer lock returns one row.
+    $queryRaw: vi.fn(async (_strings: unknown, ...values: unknown[]) => {
       writes.locks += 1;
-      return [{ id: "cust-1" }];
+      const ids = values.find(Array.isArray) as string[] | undefined;
+      return ids ? ids.map((id) => ({ id })) : [{ id: "cust-1" }];
     }),
   };
   return { tx, writes };
@@ -105,11 +107,18 @@ describe("the date a job's work happened", () => {
   });
 
   it("parses the typed date as a Colorado date and rejects nonsense", () => {
-    expect(parsePerformedOn("2026-10-14")).toEqual({ ok: true, value: day("2026-10-14") });
+    expect(parsePerformedOn("2026-10-14", afternoon("2026-10-20"))).toEqual({ ok: true, value: day("2026-10-14") });
     expect(parsePerformedOn("")).toEqual({ ok: true, value: null });
     expect(parsePerformedOn(undefined)).toEqual({ ok: true, value: null });
     expect(parsePerformedOn("2026-02-30")).toMatchObject({ ok: false });
     expect(parsePerformedOn("yesterday")).toMatchObject({ ok: false });
+  });
+
+  it("rejects a date in the future (Denver calendar day) but accepts today", () => {
+    const now = afternoon("2026-10-14");
+    expect(parsePerformedOn("2026-10-14", now)).toEqual({ ok: true, value: day("2026-10-14") });
+    expect(parsePerformedOn("2026-10-15", now)).toEqual({ ok: false, message: "The date the work was done cannot be in the future." });
+    expect(parsePerformedOn("2027-10-14", now)).toMatchObject({ ok: false });
   });
 });
 
@@ -285,6 +294,59 @@ describe("late delivery on a 2-item agreement (rule 2)", () => {
     expect(result.creditIds).toEqual([]);
     expect(writes.credits).toHaveLength(0);
     expect(tx.rentalAgreement.findUnique).not.toHaveBeenCalled();
+  });
+
+  it("a swapped-out unit on the line does not shrink the others' share of the price", async () => {
+    // Washer w1 was swapped for w2 (the old assignment ended "Swapped out for repair"); the set is still two items.
+    const swapped = {
+      id: "line-set",
+      monthlyPriceCents: 6_000,
+      assignments: [
+        { applianceId: "w1", unassignReason: "Swapped out for repair" },
+        { applianceId: "w2", unassignReason: null },
+        { applianceId: "d1", unassignReason: null },
+      ],
+    };
+    const { tx, writes } = fakeTx({
+      agreement: active,
+      assignments: [assignment("as-d", "d1", swapped as never, "Dryer")],
+      pending: [waitingDryer],
+    });
+    await recordLateDeliveries(tx as never, {
+      userId: "staff", jobId: "job-2", agreementId: "agr-2", applianceIds: ["d1"], deliveryDate: day("2026-10-11"),
+    });
+    // $30 a month ÷ 30 × 10 days = $10.00, not $6.67 (which a three-way split would give).
+    expect(writes.credits[0]).toMatchObject({ amountCents: 1_000 });
+  });
+
+  it("never credits days before billing actually started", async () => {
+    // Recorded as delivered Oct 1, but the subscription was only created Oct 5.
+    const lateStart = { ...active, billingStartedAt: afternoon("2026-10-05") };
+    const { tx, writes } = fakeTx({
+      agreement: lateStart,
+      assignments: [assignment("as-d", "d1", setLine, "Dryer")],
+      pending: [waitingDryer],
+    });
+    await recordLateDeliveries(tx as never, {
+      userId: "staff", jobId: "job-2", agreementId: "agr-2", applianceIds: ["d1"], deliveryDate: day("2026-10-11"),
+    });
+    // Oct 5 through Oct 10 = 6 days, not 10.
+    expect(writes.credits[0]).toMatchObject({ amountCents: 600, reason: "Credit – Dryer #D1 delivered late – 6 days" });
+  });
+
+  it("does not issue a credit for a waiting item another job already delivered", async () => {
+    const { tx, writes } = fakeTx({
+      agreement: active,
+      assignments: [assignment("as-d", "d1", setLine, "Dryer")],
+      pending: [waitingDryer],
+    });
+    // The claim query finds nothing still waiting (the other job got there first).
+    tx.$queryRaw.mockImplementationOnce(async () => []);
+    const result = await recordLateDeliveries(tx as never, {
+      userId: "staff", jobId: "job-3", agreementId: "agr-2", applianceIds: ["d1"], deliveryDate: day("2026-10-11"),
+    });
+    expect(result.creditIds).toEqual([]);
+    expect(writes.credits).toHaveLength(0);
   });
 
   it("gives no automatic credit when billing never started or the rental was prepaid, but still closes the waiting item", async () => {

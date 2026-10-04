@@ -201,11 +201,12 @@ export function PickupBillingForm({ defaultValues }: { defaultValues: PickupBill
             <strong>Don&rsquo;t charge for the day an appliance is picked up or returned (recommended)</strong>
             <br />
             <span className="text-gray-600">
-              With this on, the last day a customer pays for is the day <em>before</em> the pickup or
-              return, for normal end-of-agreement pickups and late returns alike: an appliance picked up
-              on the 1st of the month is not charged for the 1st. It is on to start with because the
-              customer usually cannot use the appliance on the day it is taken away. Turn it off to
-              charge for the pickup day like any other day.
+              With this on, the pickup day is not counted as a late day: the last late day a customer
+              pays for is the day <em>before</em> the pickup or return, so an appliance picked up on the
+              1st of the month is not charged for the 1st. It is on to start with because the customer
+              usually cannot use the appliance on the day it is taken away. Turn it off to charge for the
+              pickup day like any other day. Today this applies to late-return charges only; ending the
+              monthly Stripe charge on the pickup date is a later piece of work and is not built yet.
             </span>
           </span>
         </label>

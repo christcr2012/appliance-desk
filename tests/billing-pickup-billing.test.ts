@@ -155,6 +155,39 @@ describe("late delivery on a 2-item agreement (rule 2)", () => {
     expect(dryer.lastCreditedDayKey).toBe("2026-10-10");
   });
 
+  it("splits a delay that crosses a billing month and divides each piece by that month's own length", () => {
+    // $30 item missing Jan 1 through Feb 28 (arrives Mar 1); billing anniversary is the 1st.
+    const credit = calculateLateDeliveryCredit({
+      itemLabel: "Dryer #D-7",
+      itemMonthlyPriceCents: 3_000,
+      originalDeliveryDate: day("2027-01-01"),
+      actualDeliveryDate: day("2027-03-01"),
+      period: { start: day("2027-01-01"), end: day("2027-02-01") },
+      billingAnchor: day("2027-01-01"),
+      maxCreditCents: 6_000,
+      settings: { ...settings, lateDeliveryProrationBasis: "ACTUAL_DAYS_IN_MONTH" },
+    });
+    expect(credit.days).toBe(59);
+    expect(credit.amountCents).toBe(6_000); // one full 31-day month + one full 28-day month = 2 × $30
+  });
+
+  it("rounds once on the total across a billing boundary, not once per month", () => {
+    // $35 item missing Mar 16 through Apr 2 (arrives Apr 3), billing anniversary the 1st.
+    // 3500 × 16 ÷ 31 = 1806.45… and 3500 × 2 ÷ 30 = 233.33…; the exact total is 2039.78… → 2040 (rounding each piece gives 2039).
+    const credit = calculateLateDeliveryCredit({
+      itemLabel: "Dryer #D-7",
+      itemMonthlyPriceCents: 3_500,
+      originalDeliveryDate: day("2027-03-16"),
+      actualDeliveryDate: day("2027-04-03"),
+      period: { start: day("2027-03-01"), end: day("2027-04-01") },
+      billingAnchor: day("2027-03-01"),
+      maxCreditCents: 7_000,
+      settings: { ...settings, lateDeliveryProrationBasis: "ACTUAL_DAYS_IN_MONTH" },
+    });
+    expect(credit.days).toBe(18);
+    expect(credit.amountCents).toBe(2_040);
+  });
+
   it("uses the real length of the billing month when the owner picks that basis", () => {
     const dryer = calculateLateDeliveryCredit({
       itemLabel: "Dryer #D-7",

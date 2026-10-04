@@ -1,7 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getStripeClient } from "@/lib/stripe";
-import { businessDateFromKey, businessDateKey, businessDaysBetween, formatBusinessDate } from "@/lib/business-date";
+import { businessDateFromKey, businessDateKey, businessDayBounds, businessDaysBetween, formatBusinessDate } from "@/lib/business-date";
 import { formatCents } from "@/domains/pricing/money";
 import { sumTax } from "./tax";
 import { lockCustomerLedger } from "./ledger";
@@ -60,11 +60,15 @@ export function jobServiceDate(job: {
 }
 
 /** Parse the "date the work was done" staff typed (YYYY-MM-DD) into the Colorado midnight it names. */
-export function parsePerformedOn(raw: unknown): { ok: true; value: Date | null } | { ok: false; message: string } {
+export function parsePerformedOn(raw: unknown, now: Date = new Date()): { ok: true; value: Date | null } | { ok: false; message: string } {
   if (raw === undefined || raw === null || raw === "") return { ok: true, value: null };
   if (typeof raw !== "string") return { ok: false, message: "Enter the date the work was done as a calendar date." };
   const date = businessDateFromKey(raw.trim());
   if (!date) return { ok: false, message: "Enter the date the work was done as a real calendar date." };
+  // A date in the future would create late charges or credits for days that have not happened.
+  if (businessDateKey(date) > businessDateKey(now)) {
+    return { ok: false, message: "The date the work was done cannot be in the future." };
+  }
   return { ok: true, value: date };
 }
 
@@ -111,6 +115,13 @@ type Item = {
   monthlyPriceCents: number;
 };
 
+const SUPERSEDED_UNASSIGN_PREFIXES = [NEVER_DELIVERED_UNASSIGN_REASON, "Swapped out for repair", "Swapped for", "Replaced by"];
+
+/** True when an ended assignment was replaced one-for-one (or never delivered), so it is not a priced item of its own. */
+export function isSupersededAssignment(reason: string | null): boolean {
+  return typeof reason === "string" && SUPERSEDED_UNASSIGN_PREFIXES.some((prefix) => reason.startsWith(prefix));
+}
+
 /** Which rental line each appliance is on, what it is called, and its share of the line price. */
 async function itemsForAppliances(
   tx: Prisma.TransactionClient,
@@ -129,7 +140,7 @@ async function itemsForAppliances(
         select: {
           id: true,
           monthlyPriceCents: true,
-          assignments: { select: { applianceId: true }, orderBy: { assignedAt: "asc" } },
+          assignments: { select: { applianceId: true, unassignReason: true }, orderBy: { assignedAt: "asc" } },
         },
       },
       appliance: { select: { assetNumber: true, applianceType: { select: { name: true } } } },
@@ -141,7 +152,13 @@ async function itemsForAppliances(
   for (const a of assignments) {
     if (seen.has(a.applianceId)) continue;
     seen.add(a.applianceId);
-    const onLine = [...new Set(a.rentalLine.assignments.map((x) => x.applianceId))];
+    // A unit that left the line without ever being a separate priced item (never delivered, or swapped
+    // out and replaced one-for-one) must not shrink the others' share of the line price.
+    const onLine = [
+      ...new Set(
+        a.rentalLine.assignments.filter((x) => !isSupersededAssignment(x.unassignReason)).map((x) => x.applianceId),
+      ),
+    ];
     const index = Math.max(0, onLine.indexOf(a.applianceId));
     items.push({
       assignmentId: a.id,
@@ -360,6 +377,16 @@ export async function recordLateDeliveries(
     select: { id: true, applianceId: true, rentalLineId: true, originalDeliveryDate: true },
   });
   if (waiting.length === 0) return EMPTY;
+  // Claim the waiting rows (sorted, so two jobs cannot deadlock) and re-read them: a second job that delivers the
+  // same item at the same time waits here, then finds it already delivered and issues no second credit.
+  const waitingIds = waiting.map((w) => w.id).sort();
+  const lockedRows = await tx.$queryRaw<Array<{ id: string }>>`
+    SELECT "id" FROM "PendingDelivery" WHERE "id" = ANY(${waitingIds}) AND "deliveredOn" IS NULL AND "removedAt" IS NULL
+    ORDER BY "id" FOR UPDATE
+  `;
+  const stillWaiting = new Set(lockedRows.map((r) => r.id));
+  for (let i = waiting.length - 1; i >= 0; i--) if (!stillWaiting.has(waiting[i].id)) waiting.splice(i, 1);
+  if (waiting.length === 0) return EMPTY;
 
   const agreement = await tx.rentalAgreement.findUnique({ where: { id: input.agreementId }, select: AGREEMENT_SELECT });
   if (!agreement) return EMPTY;
@@ -388,12 +415,18 @@ export async function recordLateDeliveries(
       continue;
     }
     const dayBefore = new Date(input.deliveryDate.getTime() - 1000);
+    // Stripe starts charging when the subscription is created, which can be later than a back-dated delivery date.
+    // Days before that were never billed, so they are never credited.
+    const billedFrom = businessDaysBetween(pending.originalDeliveryDate, agreement.billingStartedAt) > 0
+      ? businessDayBounds(agreement.billingStartedAt).start
+      : pending.originalDeliveryDate;
     const credit = calculateLateDeliveryCredit({
       itemLabel: item.label,
       itemMonthlyPriceCents: item.monthlyPriceCents,
-      originalDeliveryDate: pending.originalDeliveryDate,
+      originalDeliveryDate: billedFrom,
       actualDeliveryDate: input.deliveryDate,
-      period: billingPeriodContaining(agreement.billingStartedAt, pending.originalDeliveryDate),
+      period: billingPeriodContaining(agreement.billingStartedAt, billedFrom),
+      billingAnchor: agreement.billingStartedAt,
       maxCreditCents: item.monthlyPriceCents * periodsBilledThrough(agreement.billingStartedAt, dayBefore),
       settings,
     });
@@ -547,6 +580,7 @@ export async function pendingDeliveriesForJob(jobId: string) {
       originalDeliveryDate: true,
       deliveredOn: true,
       removedAt: true,
+      creditId: true,
       appliance: { select: { assetNumber: true, applianceType: { select: { name: true } } } },
     },
   });

@@ -49,6 +49,12 @@ export function DriverJobCard({ job }: { job: DriverJob }) {
 
   function handleStatusChange(status: JobStatus) {
     setError(null);
+    // A delivery needs a result for every item (what arrived and what did not), and the date the work was done:
+    // that form lives on the job page, so the driver screen never completes a delivery by itself.
+    if (status === "COMPLETED" && (job.type === "DELIVERY" || job.type === "INSTALLATION")) {
+      router.push(`/desk/jobs/${job.id}`);
+      return;
+    }
     startTransition(async () => {
       const result = await updateJobStatusAction(job.id, status);
       if (result.status === "error") {
