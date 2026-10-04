@@ -189,8 +189,10 @@ describe.skipIf(!enabled)("subscription start and renewal against disposable Pos
         customer: stripeCustomerId,
         default_payment_method: paymentMethodId,
         metadata: { agreementId: agreement.id, firstDeliveredOn: deliveredOn.toISOString() },
-        backdate_start_date: Math.floor(deliveredOn.getTime() / 1000),
       });
+      expect(params).not.toHaveProperty("backdate_start_date");
+      expect(params).not.toHaveProperty("billing_cycle_anchor");
+      expect(params).not.toHaveProperty("billing_cycle_anchor_config");
       const items = params.items as Array<{ price_data: { unit_amount: number; currency: string } }>;
       expect(items).toHaveLength(1);
       expect(items[0]!.price_data).toMatchObject({ unit_amount: 4000, currency: "usd" });
