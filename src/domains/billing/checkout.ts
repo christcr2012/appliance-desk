@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { cancelAtSecondsFor } from "./subscription-term";
 import { getStripeClient } from "@/lib/stripe";
 import { fixedTermEndDate } from "@/lib/business-date";
-import { billingPeriodContaining } from "./pickup-billing";
+import { stripeBillingCycleAnchorConfig, stripeBillingDateSeconds } from "./stripe-billing-anchor";
 import type { HandoffWorkOutcome } from "./handoff-outcome";
 import {
   RetryLater,
@@ -353,6 +353,8 @@ const DELIVERY_BLOCKER =
   "Recurring billing cannot start until at least one rental item has actually been delivered.";
 const RECONCILIATION_BLOCKER =
   "Stripe may have created this subscription, but the result is not confirmed locally. Reconcile Stripe before retrying billing.";
+const PROVIDER_CLOCK_DEFER_DETAIL =
+  "Recurring billing is waiting until Stripe's safe billing boundary for today's delivery date.";
 
 async function recordSubscriptionPreparationFailure(
   opId: string,
@@ -470,6 +472,11 @@ export async function startRecurringBillingForAgreement(
         return { done: true, outcome: { state: "BLOCKED", detail: PAYMENT_METHOD_BLOCKER } };
       }
 
+      const providerStartSeconds = stripeBillingDateSeconds(firstDeliveredOn);
+      if (providerStartSeconds >= Math.floor(Date.now() / 1000)) {
+        return { done: true, outcome: { state: "BLOCKED", detail: PROVIDER_CLOCK_DEFER_DETAIL } };
+      }
+
       const operation = await claimProviderOperation(tx, {
         kind: "SUBSCRIPTION_CREATE",
         subjectType: "RentalAgreement",
@@ -564,10 +571,8 @@ export async function startRecurringBillingForAgreement(
   }
 
   const cancelAt = cancelAtSecondsFor(claimed.agreement) ?? undefined;
-  const now = new Date();
-  const period = billingPeriodContaining(claimed.agreement.firstDeliveredOn, now);
-  const backdateStart = Math.floor(claimed.agreement.firstDeliveredOn.getTime() / 1000);
-  const billingCycleAnchor = Math.floor(period.end.getTime() / 1000);
+  const backdateStart = stripeBillingDateSeconds(claimed.agreement.firstDeliveredOn);
+  const billingCycleAnchorConfig = stripeBillingCycleAnchorConfig(claimed.agreement.firstDeliveredOn);
 
   const providerResult = await runProviderCall(() =>
     stripe.subscriptions.create(
@@ -580,8 +585,9 @@ export async function startRecurringBillingForAgreement(
           agreementId: claimed.agreement.id,
           firstDeliveredOn: claimed.agreement.firstDeliveredOn.toISOString(),
         },
+        billing_mode: { type: "flexible" },
         backdate_start_date: backdateStart,
-        billing_cycle_anchor: billingCycleAnchor,
+        billing_cycle_anchor_config: billingCycleAnchorConfig,
         ...(cancelAt ? { cancel_at: cancelAt } : {}),
       },
       { idempotencyKey: claimed.idempotencyKey },
