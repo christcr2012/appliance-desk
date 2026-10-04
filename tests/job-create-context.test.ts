@@ -16,7 +16,7 @@ function makeTx() {
     $queryRaw: async () => [{ id: "g1" }],
     user: { findUnique: m.actor },
     serviceAddress: { findUnique: m.address },
-    rentalAgreement: { findUnique: m.agreement, findFirst: m.successorAgreement },
+    rentalAgreement: { findUnique: m.agreement, findMany: m.successorAgreement },
     maintenanceRequest: { findUnique: m.request },
     job: { create: m.create },
     auditLog: { create: m.audit },
@@ -32,7 +32,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   m.address.mockResolvedValue({ customerId: "c1" });
   m.agreement.mockResolvedValue({ customerId: "c1", serviceAddressId: "a1" });
-  m.successorAgreement.mockResolvedValue(null);
+  m.successorAgreement.mockResolvedValue([]);
   m.request.mockResolvedValue({ customerId: "c1" });
   m.create.mockResolvedValue({ id: "j1" });
   m.actor.mockResolvedValue({ id: "owner", role: "OWNER", archivedAt: null });
