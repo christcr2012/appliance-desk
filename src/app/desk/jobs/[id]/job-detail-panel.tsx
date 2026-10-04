@@ -78,6 +78,8 @@ type PendingDeliveryRow = {
   originalDeliveryDate: string;
   deliveredOn: string | null;
   removed: boolean;
+  /** A customer credit exists for this item (none when billing never started or the rental was prepaid). */
+  hasCredit: boolean;
 };
 
 export function JobDetailPanel({
@@ -331,9 +333,13 @@ export function JobDetailPanel({
                 <span>
                   {item.label} — billed from {item.originalDeliveryDate}
                   {item.deliveredOn
-                    ? `; delivered ${item.deliveredOn}, credit recorded`
+                    ? item.hasCredit
+                      ? `; delivered ${item.deliveredOn}, credit recorded`
+                      : `; delivered ${item.deliveredOn}, no automatic credit (nothing was billed to credit, or the rental was paid in advance and the owner settles it by hand)`
                     : item.removed
-                      ? "; taken off the agreement, credit recorded"
+                      ? item.hasCredit
+                        ? "; taken off the agreement, credit recorded"
+                        : "; taken off the agreement, no automatic credit (the owner settles it by hand)"
                       : "; still waiting"}
                 </span>
                 {!item.deliveredOn && !item.removed && (

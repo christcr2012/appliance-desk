@@ -435,6 +435,11 @@ async function applyJobCompletionToAppliances(
     if (unknown.length > 0) {
       throw new Error("An item marked not delivered is not one of this job's appliances.");
     }
+    // Only a unit still waiting for delivery can be "not delivered"; one already out with the customer cannot.
+    const notWaiting = await tx.appliance.count({ where: { id: { in: skipApplianceIds }, status: { not: "RESERVED" } } });
+    if (notWaiting > 0) {
+      throw new Error("An item marked not delivered is not waiting for delivery (it was already delivered or released).");
+    }
     applianceIds = applianceIds.filter((id) => !skipApplianceIds.includes(id));
   }
 

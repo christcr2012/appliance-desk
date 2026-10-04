@@ -210,6 +210,9 @@ async function recordPaidInvoice(
   const appliedCreditCents = appliedBalanceCreditCents(stripeInvoice);
   let shownCredits: Array<{ id: string; cents: number; complete: boolean }> = [];
   if (appliedCreditCents > 0) {
+    // Serialize with any other bill of this customer being recorded, so two bills cannot both show (and both
+    // consume) the same credit. The lock is re-entrant: it is a no-op when the paid-invoice path already holds it.
+    await lockCustomerLedger(db, customerId);
     // Only this feature's credits, oldest first, each with what is still unshown.
     const unshown = await db.customerCredit.findMany({
       where: { customerId, sourceType: LATE_DELIVERY_CREDIT_SOURCE, appliedViaStripeAt: { not: null }, shownOnInvoiceId: null },
