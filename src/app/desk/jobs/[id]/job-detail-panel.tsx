@@ -288,7 +288,7 @@ export function JobDetailPanel({
               <fieldset>
                 <legend className="text-sm font-medium text-gray-700">What happened with each item?</legend>
                 <p className="text-xs text-gray-600">
-                  Every item on this visit needs a result before the job can be completed. The usual result is already chosen; change it for anything that did not go as planned. The customer is still billed for the whole agreement; an item that did not arrive earns a credit for the missing days once it is delivered.
+                  Every item on this visit needs a result before the job can be completed. The usual result is already chosen; change it for anything that did not go as planned. {job.type === "DELIVERY" || job.type === "INSTALLATION" ? " The customer is still billed for the whole agreement; an item that did not arrive earns a credit for the missing days once it is delivered." : ""}
                 </p>
                 <ul className="mt-2 space-y-2">
                   {completionScope.map((row) => (

@@ -14,6 +14,7 @@ describe.skipIf(!enabled)("prepaid delivery in disposable Postgres", () => {
     await prisma.jobBillingHandoff.deleteMany({ where: { jobId } });
     await prisma.applianceCustodyEpisode.deleteMany({ where: { applianceId } });
     await prisma.jobAppliance.deleteMany({ where: { jobId } });
+    await prisma.applianceAssignment.deleteMany({ where: { applianceId } });
     await prisma.job.deleteMany({ where: { id: jobId } });
     await prisma.rentalAgreement.deleteMany({ where: { id: agreementId } });
     await prisma.appliance.deleteMany({ where: { id: applianceId } });
@@ -24,6 +25,8 @@ describe.skipIf(!enabled)("prepaid delivery in disposable Postgres", () => {
     const type = await prisma.applianceType.findFirstOrThrow();
     await prisma.appliance.create({ data: { id: applianceId, assetNumber: applianceId, applianceTypeId: type.id, status: "RESERVED" } });
     await prisma.rentalAgreement.create({ data: { id: agreementId, customerId: address.customerId, serviceAddressId: address.id, status: "ACTIVE", termMonths: 12, paidInFullInAdvance: true, freeMonthGranted: true, billingBlockedReason: "Missing payment method", lines: { create: { label: "Prepaid washer", monthlyPriceCents: 4000 } } } });
+    const line = await prisma.rentalLine.findFirstOrThrow({ where: { agreementId } });
+    await prisma.applianceAssignment.create({ data: { rentalLineId: line.id, applianceId } });
     await prisma.job.create({ data: { id: jobId, type: "DELIVERY", status: "IN_PROGRESS", agreementId, appliances: { create: { applianceId } } } });
     await completeJob(owner.id, { jobId, expectedVersion: 1, completionKey: `prepaid-key-${tag}`, performedOn: null, completionNotes: null, results: [{ applianceId, result: "DELIVERED" }] });
     await startRecurringBillingForAgreement(agreementId);

@@ -242,6 +242,10 @@ export async function completeJob(userId: string, input: CompleteJobInput): Prom
           throw new JobCompletionConflictError(`${appliance.assetNumber} can't be marked delivered on a visit with no customer. Open the job, choose the customer, then complete it.`);
         }
         if (isDelivery) {
+          if (before.agreementId) {
+            const assigned = await tx.applianceAssignment.findFirst({ where: { applianceId, unassignedAt: null, rentalLine: { agreementId: before.agreementId } }, select: { id: true } });
+            if (!assigned) throw new JobCompletionConflictError(`${appliance.assetNumber} is not set aside for this customer's agreement, so it can't be marked delivered on this visit.`);
+          }
           const moved = await tx.appliance.updateMany({ where: { id: applianceId, status: "RESERVED" }, data: { status: "RENTED" } });
           if (moved.count !== 1) throw new JobCompletionConflictError(`${appliance.assetNumber} is no longer waiting for delivery, so it can't be marked delivered.`);
           await tx.auditLog.create({
@@ -251,6 +255,10 @@ export async function completeJob(userId: string, input: CompleteJobInput): Prom
         await openCustodyEpisodeInTx(tx, { applianceId, customerId, serviceAddressId: before.serviceAddressId, agreementId: before.agreementId, startedOn: serviceDate, startJobId: before.id });
         positiveIds.push(applianceId);
       } else if (result.result === "RETURNED") {
+        const holder = await getOpenCustody(tx, applianceId);
+        if (holder && holder.customerId !== customerId) {
+          throw new JobCompletionConflictError(`${appliance.assetNumber} is recorded as being with a different customer, so it can't be returned on this visit.`);
+        }
         if (before.type === "REMOVAL") {
           const moved = await tx.appliance.updateMany({ where: { id: applianceId, status: { in: ["AWAITING_PICKUP", "RENTED"] } }, data: { status: "AWAITING_INSPECTION" } });
           if (moved.count !== 1) throw new JobCompletionConflictError(`${appliance.assetNumber} isn't out with a customer, so it can't be marked returned.`);

@@ -191,10 +191,13 @@ describe.skipIf(!enabled)("completeJob", () => {
   });
 
   it("complete-move-conflict-aborts-all: one unit that cannot move cancels the whole completion", async () => {
-    const ids = [await unit("RESERVED"), await unit("AVAILABLE")].sort();
+    const waiting = await unit("RESERVED");
+    const alreadyThere = await unit("AVAILABLE");
+    const ids = [waiting, alreadyThere].sort();
     const j = await job("DELIVERY", ids);
     await expect(finish(j.id, ids.map((id) => [id, "DELIVERED"] as [string, JobApplianceResult]))).rejects.toThrow(/no longer waiting for delivery/);
-    expect(await status(ids[0])).toBe(ids[0] === ids.find(async () => false) ? "RESERVED" : await status(ids[0]));
+    expect(await status(waiting)).toBe("RESERVED");
+    expect(await status(alreadyThere)).toBe("AVAILABLE");
     for (const id of ids) expect(await prisma.applianceCustodyEpisode.count({ where: { applianceId: id } })).toBe(0);
     expect((await jobRow(j.id)).status).toBe("IN_PROGRESS");
     expect(await prisma.staffTask.count({ where: { jobId: j.id } })).toBe(0);
@@ -280,6 +283,43 @@ describe.skipIf(!enabled)("completeJob", () => {
     // With no appliance on the visit, completing needs no results.
     const none = await job("MAINTENANCE_VISIT", []);
     expect((await finish(none.id, [])).outcome).toBe("COMPLETE");
+  });
+
+  it("complete-wrong-customer-refused: a unit not assigned to the agreement, or held by someone else, cannot be delivered or returned on this visit", async () => {
+    const stranger = await unit("RESERVED", false);
+    const j = await job("DELIVERY", [stranger]);
+    await expect(finish(j.id, [[stranger, "DELIVERED"]])).rejects.toThrow(/not set aside/);
+    expect(await status(stranger)).toBe("RESERVED");
+    const otherUser = `jc-other-user-${tag}`;
+    const otherCustomer = `jc-other-cust-${tag}`;
+    await prisma.user.create({ data: { id: otherUser, email: `${tag}-x@example.test`, name: "Other", role: "CUSTOMER", emailVerified: true } });
+    await prisma.customer.create({ data: { id: otherCustomer, userId: otherUser, referralCode: `X${tag.slice(0, 18)}` } });
+    const held = await unit("RENTED", false);
+    const removal = await job("REMOVAL", [held]);
+    try {
+      await openCustodyEpisodeInTx(prisma, { applianceId: held, customerId: otherCustomer, serviceAddressId: null, agreementId: null, startedOn: businessDateFromKey("2026-09-01")!, startJobId: removal.id });
+      await expect(finish(removal.id, [[held, "RETURNED"]])).rejects.toThrow(/different customer/);
+      expect(await status(held)).toBe("RENTED");
+    } finally {
+      await prisma.applianceCustodyEpisode.deleteMany({ where: { applianceId: held } });
+      await prisma.jobAppliance.deleteMany({ where: { jobId: removal.id } });
+      await prisma.job.deleteMany({ where: { id: removal.id } });
+      jobIds.splice(jobIds.indexOf(removal.id), 1);
+      await prisma.appliance.deleteMany({ where: { id: held } });
+      applianceIds.splice(applianceIds.indexOf(held), 1);
+      await prisma.customer.deleteMany({ where: { id: otherCustomer } });
+      await prisma.user.deleteMany({ where: { id: otherUser } });
+    }
+  });
+
+  it("complete-backdated-return-refused: a return dated before the delivery changes nothing", async () => {
+    const a = await unit("RESERVED");
+    const d = await job("DELIVERY", [a]);
+    await finish(d.id, [[a, "DELIVERED"]]);
+    const r = await job("REMOVAL", [a]);
+    await expect(finish(r.id, [[a, "RETURNED"]], { performedOn: businessDateFromKey("2026-09-01") })).rejects.toThrow(/before the date/);
+    expect(await status(a)).toBe("RENTED");
+    expect(await prisma.applianceCustodyEpisode.count({ where: { applianceId: a, closedAt: null } })).toBe(1);
   });
 
   it("complete-delivery-without-customer-refused: a delivery with no customer changes nothing", async () => {

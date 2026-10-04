@@ -71,6 +71,9 @@ export async function closeCustodyEpisodeInTx(
     if (already) return { episodeId: already.id, alreadyClosedByThisJob: true };
     throw new CustodyConflictError("This appliance is not recorded as being with a customer, so there is no stay to close.");
   }
+  if (open.startedOn && input.endedOn.getTime() < open.startedOn.getTime()) {
+    throw new CustodyConflictError("The return date is before the date this appliance was delivered. Check the date the work was done.");
+  }
   const closed = await tx.applianceCustodyEpisode.updateMany({
     where: { id: open.id, closedAt: null },
     data: { closedAt: new Date(), endedOn: input.endedOn, endEvidence: "JOB", endJobId: input.endJobId, endReason: input.endReason },
