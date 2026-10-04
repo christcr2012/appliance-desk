@@ -226,8 +226,13 @@ export async function applyPartMovementsInTx(
 
 /** The most recent receipt cost known for a part, used to label a usage as an estimate. */
 export async function lastKnownPurchaseCostCents(tx: Prisma.TransactionClient, partRecordId: string): Promise<number | null> {
+  // A receipt that was undone (reversed) is not a price we paid.
+  const reversed = await tx.partStockMovement.findMany({
+    where: { partRecordId, kind: "REVERSAL", reversesMovementId: { not: null } },
+    select: { reversesMovementId: true },
+  });
   const row = await tx.partStockMovement.findFirst({
-    where: { partRecordId, kind: "RECEIPT", unitCostCents: { not: null } },
+    where: { partRecordId, kind: "RECEIPT", unitCostCents: { not: null }, id: { notIn: reversed.map((r) => r.reversesMovementId as string) } },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     select: { unitCostCents: true },
   });

@@ -390,6 +390,8 @@ export async function updatePartStockSettings(
 
   return prisma.$transaction(async (tx) => {
     await assertActiveTeamActor(tx, userId, ["OWNER", "ADMIN"]);
+    // Serialize requests for this part so two retries with the same key cannot both pass the check below.
+    await lockPartRecords(tx, [partRecordId]);
     // A retry (lost response) must not redo this save over a later one, and must not be reused for a different save.
     const prior = await tx.auditLog.findFirst({
       where: { action: "part.stock_settings.update", entityId: partRecordId, newValue: { path: ["operationKey"], equals: input.operationKey } },

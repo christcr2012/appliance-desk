@@ -113,4 +113,16 @@ describe.skipIf(!enabled)("purchasing stock concurrency", () => {
     await prisma.partRecord.update({ where: { id: partId }, data: { archivedAt: new Date() } });
     await expect(createPurchaseOrder(ownerId, { supplierId, lines: [{ partRecordId: partId, description: "x", quantity: 1 }] })).rejects.toThrow(/archived/);
   });
+
+  it("a reversed priced receipt is not used as the last known cost", async () => {
+    const { reversePartMovement } = await import("@/domains/purchasing");
+    await stockUp(5);
+    const id = await order();
+    await receivePurchaseOrder(ownerId, id);
+    const receipt = await prisma.partStockMovement.findFirstOrThrow({ where: { partRecordId: partId, kind: "RECEIPT" } });
+    await reversePartMovement(ownerId, receipt.id, key());
+    await recordPartUsage(ownerId, partId, 1, { operationKey: key() });
+    const usage = await prisma.partStockMovement.findFirst({ where: { partRecordId: partId, kind: "USAGE" } });
+    expect(usage?.unitCostCents ?? null).toBeNull();
+  });
 });
