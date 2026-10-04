@@ -622,3 +622,14 @@ What the real work will need (so it is not forgotten):
 - Real photos of the appliances would let the public hero be richer than a plain brand-color treatment. Chris to supply, or the
   hero stays brand-color only.
 - No invented content: prices, phone and address come from settings; the mockup's customers and numbers were sample data.
+
+**Sequencing and mockup rules for the redesign above (added 2026-10-04, after checking it against the brand kit).**
+- **Build it after Batch E, not before.** Batch D adds new owner and customer screens and the website; Batch E item 11 migrates every
+  screen to the Evergreen tokens and the real dark theme. Restyling first would mean restyling twice. The redesign is the visual layer on
+  top of E's token migration, and it should reuse E's tokens rather than add its own.
+- **The mockup is layout and feel only.** Its colors for dark mode, corner radii (16px cards, 8px controls) and the logo are corrected to
+  the kit in its latest version, but contrast was not measured; E's axe and manual checks are the real test. Every word in
+  [BRACKETS] on the public home page is a placeholder: prices, service promises, timing, contact details and "what's included" must come
+  from `BusinessSettings`, the agreement terms and `docs/BUSINESS-RULES.md`, never from the mockup. The kit forbids invented claims.
+- The public home page direction is not yet approved (only the owner desk is). The hero's dark gradient and two buttons differ from the
+  kit's "ivory surfaces, one dominant next action" guidance and need a decision before design.
