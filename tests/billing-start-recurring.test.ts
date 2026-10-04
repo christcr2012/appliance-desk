@@ -181,12 +181,24 @@ describe("startRecurringBillingForAgreement", () => {
       expect(mocks.claimProviderOperation).not.toHaveBeenCalled();
       expect(mocks.productsCreate).not.toHaveBeenCalled();
       expect(mocks.subscriptionsCreate).not.toHaveBeenCalled();
-      expect(mocks.rentalAgreementUpdate).toHaveBeenCalledWith({
-        where: { id: "agr-1" },
-        data: { billingBlockedReason: null, billingStartedAt: FIRST_DELIVERED },
-      });
     },
   );
+
+  it("clears a stale blocker for prepaid rent without inventing recurring-billing history", async () => {
+    mocks.rentalAgreementFindUniqueOrThrow.mockResolvedValue(
+      baseAgreement({ paidInFullInAdvance: true, billingBlockedReason: "Missing card" }),
+    );
+    const { startRecurringBillingForAgreement } = await import("@/domains/billing/checkout");
+
+    const outcome = await startRecurringBillingForAgreement("agr-1");
+
+    expect(outcome).toEqual({ state: "DONE" });
+    expect(mocks.rentalAgreementUpdate).toHaveBeenCalledWith({
+      where: { id: "agr-1" },
+      data: { billingBlockedReason: null },
+    });
+    expect(mocks.subscriptionsCreate).not.toHaveBeenCalled();
+  });
 
   it("records BLOCKED instead of pretending success when no saved payment method exists", async () => {
     mocks.rentalAgreementFindUniqueOrThrow.mockResolvedValue(
@@ -288,7 +300,7 @@ describe("startRecurringBillingForAgreement", () => {
 
       await startRecurringBillingForAgreement("agr-1");
 
-      const expectedEnd = new Date("2027-10-01T05:59:59.999Z");
+      const expectedEnd = new Date("2027-10-01T05:59:59.000Z");
       expect(mocks.rentalAgreementUpdate).toHaveBeenCalledWith({
         where: { id: "agr-1" },
         data: { endDate: expectedEnd },
@@ -305,7 +317,7 @@ describe("startRecurringBillingForAgreement", () => {
 
       expect(mocks.rentalAgreementUpdate).toHaveBeenCalledWith({
         where: { id: "agr-1" },
-        data: { endDate: new Date("2027-04-01T05:59:59.999Z") },
+        data: { endDate: new Date("2027-04-01T05:59:59.000Z") },
       });
     });
 
@@ -336,11 +348,11 @@ describe("startRecurringBillingForAgreement", () => {
 
       expect(mocks.rentalAgreementUpdate).toHaveBeenCalledWith({
         where: { id: "agr-1" },
-        data: { endDate: new Date("2027-09-12T05:59:59.999Z") },
+        data: { endDate: new Date("2027-09-12T05:59:59.000Z") },
       });
     });
 
-    it("gives a prepaid fixed term the delivery-based end date without creating a subscription", async () => {
+    it("gives a prepaid fixed term the delivery-based end date without creating a subscription or billing start", async () => {
       mocks.rentalAgreementFindUniqueOrThrow.mockResolvedValue(
         baseAgreement({ termMonths: 12, paidInFullInAdvance: true }),
       );
@@ -351,8 +363,13 @@ describe("startRecurringBillingForAgreement", () => {
       expect(outcome).toEqual({ state: "DONE" });
       expect(mocks.rentalAgreementUpdate).toHaveBeenCalledWith({
         where: { id: "agr-1" },
-        data: { endDate: new Date("2027-10-01T05:59:59.999Z") },
+        data: { endDate: new Date("2027-10-01T05:59:59.000Z") },
       });
+      expect(
+        mocks.rentalAgreementUpdate.mock.calls.some(
+          ([arg]) => (arg as { data: Record<string, unknown> }).data.billingStartedAt !== undefined,
+        ),
+      ).toBe(false);
       expect(mocks.subscriptionsCreate).not.toHaveBeenCalled();
     });
 
