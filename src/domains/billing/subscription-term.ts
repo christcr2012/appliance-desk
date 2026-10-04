@@ -4,7 +4,10 @@ import { addBusinessDays } from "@/lib/business-date";
 import { isAutoRenewEnabled } from "@/domains/settings/auto-renew-switch";
 import { checkReminderDelivered } from "@/domains/notices";
 import { renewalReminderKey } from "@/domains/notices/renewal-reminder";
-import { stripeBillingDateSeconds } from "./stripe-billing-anchor";
+import {
+  stripeBillingDateSeconds,
+  stripeBillingDateSecondsAtProviderClock,
+} from "./stripe-billing-anchor";
 import {
   claimProviderOperation,
   completeProviderOperation,
@@ -16,11 +19,12 @@ import {
  * The provider boundary Stripe is told about for a fixed-term rental.
  *
  * Appliance Desk stores the agreement end as the last real Colorado second of
- * service. Stripe, however, recurs at the DST-safe 07:00 UTC representation of
- * each Colorado billing date. `cancel_at` therefore uses the matching provider
- * boundary at the start of the following Colorado business date. Keeping these
- * clocks aligned avoids a fractional final billing period while the local
- * agreement still ends at the true Colorado end-of-day.
+ * service. New Stripe subscriptions recur at the DST-safe 07:00 UTC
+ * representation of each Colorado billing date. `cancel_at` therefore uses the
+ * matching provider boundary at the start of the following Colorado business
+ * date. Existing subscriptions can predate that contract, so term/termination
+ * writes read their actual Stripe billing-cycle anchor and preserve its UTC
+ * clock rather than crossing into a new provider period.
  *
  * A renewal CONTINUES that same subscription, so before the old term ends the
  * subscription's provider boundary has to move to the renewal's end date (or
@@ -37,10 +41,25 @@ import {
 
 export type TermSyncDirection = "extend" | "revert";
 
-export function cancelAtSecondsFor(term: { termMonths: number | null; endDate: Date | null }): number | null {
-  return term.termMonths && term.endDate
-    ? stripeBillingDateSeconds(addBusinessDays(term.endDate, 1))
-    : null;
+type NaturalTerm = { termMonths: number | null; endDate: Date | null };
+type EndingTerm = NaturalTerm & { terminationEffectiveOn: Date | null };
+
+function cancelOnFor(term: NaturalTerm): Date | null {
+  return term.termMonths && term.endDate ? addBusinessDays(term.endDate, 1) : null;
+}
+
+function cancelOnForAgreement(term: EndingTerm): Date | null {
+  const natural = cancelOnFor(term);
+  if (!term.terminationEffectiveOn) return natural;
+  if (!natural) return term.terminationEffectiveOn;
+  return stripeBillingDateSeconds(term.terminationEffectiveOn) < stripeBillingDateSeconds(natural)
+    ? term.terminationEffectiveOn
+    : natural;
+}
+
+export function cancelAtSecondsFor(term: NaturalTerm): number | null {
+  const cancelOn = cancelOnFor(term);
+  return cancelOn ? stripeBillingDateSeconds(cancelOn) : null;
 }
 
 /**
@@ -50,15 +69,23 @@ export function cancelAtSecondsFor(term: { termMonths: number | null; endDate: D
  * anniversary's provider clock. An early ending that falls on or after the
  * natural term boundary changes nothing.
  */
-export function cancelAtSecondsForAgreement(term: {
-  termMonths: number | null;
-  endDate: Date | null;
-  terminationEffectiveOn: Date | null;
-}): number | null {
-  const natural = cancelAtSecondsFor(term);
-  if (!term.terminationEffectiveOn) return natural;
-  const early = stripeBillingDateSeconds(term.terminationEffectiveOn);
-  return natural === null || early < natural ? early : natural;
+export function cancelAtSecondsForAgreement(term: EndingTerm): number | null {
+  const cancelOn = cancelOnForAgreement(term);
+  return cancelOn ? stripeBillingDateSeconds(cancelOn) : null;
+}
+
+/**
+ * Resolve a logical Colorado cancellation date onto an existing subscription's
+ * real UTC billing clock. This keeps legacy subscriptions on their actual cycle
+ * boundary while new subscriptions naturally resolve to the 07:00 UTC contract.
+ */
+export function cancelAtSecondsForProviderClock(
+  cancelOn: Date | null,
+  billingCycleAnchorSeconds: number,
+): number | null {
+  return cancelOn
+    ? stripeBillingDateSecondsAtProviderClock(cancelOn, billingCycleAnchorSeconds)
+    : null;
 }
 
 export const termSyncKey = (renewalId: string, direction: TermSyncDirection) =>
@@ -128,12 +155,13 @@ export async function desiredSubscriptionTerm(renewalId: string, direction: Term
   }
   // An extend that is overtaken by a cancellation is moot; the revert covers it.
   if (direction === "extend" && renewal.status === "CANCELLED") return { moot: true as const, subscriptionId: pair.subscriptionId };
-  const cancelAt =
+  const cancelOn =
     direction === "extend"
-      ? cancelAtSecondsFor(renewal)
+      ? cancelOnFor(renewal)
       : // Giving the old term back must not undo an early ending that was asked for meanwhile.
-        cancelAtSecondsForAgreement(old);
-  return { moot: false as const, subscriptionId: pair.subscriptionId, cancelAt };
+        cancelOnForAgreement(old);
+  const cancelAt = cancelOn ? stripeBillingDateSeconds(cancelOn) : null;
+  return { moot: false as const, subscriptionId: pair.subscriptionId, cancelOn, cancelAt };
 }
 
 /** Stripe replays the stored answer for a repeated idempotency key (including a failure), so a retry uses a new key. */
@@ -144,6 +172,19 @@ export async function stripeKeyForAttempt(opId: string, baseKey: string): Promis
 }
 
 export type TermSyncResult = "done" | "skipped" | "pending";
+
+async function actualProviderCancelAt(
+  stripe: ReturnType<typeof getStripeClient>,
+  desired: { subscriptionId: string; cancelOn: Date | null },
+): Promise<{ ok: true; cancelAt: number | null } | { ok: false; error: unknown }> {
+  if (!desired.cancelOn) return { ok: true, cancelAt: null };
+  const read = await runProviderCall(() => stripe.subscriptions.retrieve(desired.subscriptionId));
+  if (!read.ok) return { ok: false, error: read.error };
+  return {
+    ok: true,
+    cancelAt: cancelAtSecondsForProviderClock(desired.cancelOn, read.value.billing_cycle_anchor),
+  };
+}
 
 /** Make Stripe's end date match the agreements. Never throws for a provider problem: the outcome is recorded and retried by reconciliation. */
 export async function syncSubscriptionTerm(
@@ -178,11 +219,21 @@ export async function syncSubscriptionTerm(
   }
 
   const stripe = getStripeClient();
+  const actual = await actualProviderCancelAt(stripe, desired);
+  if (!actual.ok) {
+    // The provider read is safe to repeat: no Stripe mutation was attempted, so
+    // record a definite local retry rather than an ambiguous write outcome.
+    await prisma.$transaction((tx) =>
+      completeProviderOperation(tx, claim.opId, { status: "FAILED", error: actual.error }),
+    );
+    return "pending";
+  }
+
   const key = await stripeKeyForAttempt(claim.opId, claim.idempotencyKey);
   const result = await runProviderCall(() =>
     stripe.subscriptions.update(
       desired.subscriptionId,
-      { cancel_at: desired.cancelAt ?? "" },
+      { cancel_at: actual.cancelAt ?? "" },
       { idempotencyKey: key },
     ),
   );
@@ -224,10 +275,12 @@ export async function desiredTerminationEnd(agreementId: string) {
   if (agreement.status !== "ACTIVE") {
     return { moot: true as const, subscriptionId: agreement.stripeSubscriptionId };
   }
+  const cancelOn = cancelOnForAgreement(agreement);
   return {
     moot: false as const,
     subscriptionId: agreement.stripeSubscriptionId,
-    cancelAt: cancelAtSecondsForAgreement(agreement),
+    cancelOn,
+    cancelAt: cancelOn ? stripeBillingDateSeconds(cancelOn) : null,
   };
 }
 
@@ -240,14 +293,20 @@ export async function syncTerminationEnd(agreementId: string): Promise<TermSyncR
   const desired = await desiredTerminationEnd(agreementId);
   if (!desired) return "skipped";
 
-  const claim = await prisma.$transaction((tx) =>
-    claimProviderOperation(tx, {
-      kind: "SUBSCRIPTION_UPDATE",
-      subjectType: "RentalAgreement",
-      subjectId: agreementId,
-      idempotencyKey: terminationSyncKey(agreementId),
-    }),
-  );
+  let claim;
+  try {
+    claim = await prisma.$transaction((tx) =>
+      claimProviderOperation(tx, {
+        kind: "SUBSCRIPTION_UPDATE",
+        subjectType: "RentalAgreement",
+        subjectId: agreementId,
+        idempotencyKey: terminationSyncKey(agreementId),
+      }),
+    );
+  } catch (error) {
+    if (error instanceof RetryLater) return "pending";
+    throw error;
+  }
   if (claim.done) return "done";
 
   if (desired.moot) {
@@ -258,11 +317,19 @@ export async function syncTerminationEnd(agreementId: string): Promise<TermSyncR
   }
 
   const stripe = getStripeClient();
+  const actual = await actualProviderCancelAt(stripe, desired);
+  if (!actual.ok) {
+    await prisma.$transaction((tx) =>
+      completeProviderOperation(tx, claim.opId, { status: "FAILED", error: actual.error }),
+    );
+    return "pending";
+  }
+
   const key = await stripeKeyForAttempt(claim.opId, claim.idempotencyKey);
   const result = await runProviderCall(() =>
     stripe.subscriptions.update(
       desired.subscriptionId,
-      { cancel_at: desired.cancelAt ?? "" },
+      { cancel_at: actual.cancelAt ?? "" },
       { idempotencyKey: key },
     ),
   );
