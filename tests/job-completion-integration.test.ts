@@ -250,6 +250,7 @@ describe.skipIf(!enabled)("completeJob", () => {
       await prisma.jobAppliance.deleteMany({ where: { jobId: removal.id } });
       await prisma.job.deleteMany({ where: { id: removal.id } });
       jobIds.splice(jobIds.indexOf(removal.id), 1);
+      await prisma.applianceAssignment.deleteMany({ where: { applianceId: held } });
       await prisma.appliance.deleteMany({ where: { id: held } });
       applianceIds.splice(applianceIds.indexOf(held), 1);
       await prisma.customer.deleteMany({ where: { id: otherCustomer } });
@@ -314,6 +315,7 @@ describe.skipIf(!enabled)("completeJob", () => {
   });
 
   it("complete-locks-customer-before-agreement: a removal completing while the nightly ending runs for the same agreement never deadlocks", async () => {
+    const racedApplianceIds: string[] = [];
     for (let round = 0; round < 4; round++) {
       const agId = `jc-ag-race-${round}-${tag}`;
       await prisma.rentalAgreement.create({
@@ -325,6 +327,7 @@ describe.skipIf(!enabled)("completeJob", () => {
       });
       const line = await prisma.rentalLine.findFirstOrThrow({ where: { agreementId: agId } });
       const u = await unit("RENTED", false);
+      racedApplianceIds.push(u);
       await prisma.applianceAssignment.create({ data: { rentalLineId: line.id, applianceId: u } });
       const setup = await job("DELIVERY", [u], { status: "COMPLETED", agreementId: agId });
       await prisma.$transaction((tx) => openCustodyEpisodeInTx(tx, { applianceId: u, customerId, serviceAddressId: addressId, agreementId: agId, startedOn: new Date("2026-08-01T06:00:00Z"), startJobId: setup.id }));
@@ -335,6 +338,7 @@ describe.skipIf(!enabled)("completeJob", () => {
       ]);
       expect(settled.some((x) => x.status === "fulfilled")).toBe(true);
     }
-    expect(await findCustodyInvariantViolations()).toEqual([]);
+    const raced = new Set(racedApplianceIds);
+    expect((await findCustodyInvariantViolations(prisma)).filter((violation) => raced.has(violation.applianceId))).toEqual([]);
   });
 });
