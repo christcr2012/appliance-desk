@@ -74,7 +74,7 @@ export function JobSchedulingForm({ defaultValues }: { defaultValues: JobSchedul
         <button
           type="submit"
           disabled={saving}
-          className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+          className="rounded-full bg-gray-900 px-6 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
         >
           {saving ? "Saving…" : "Save"}
         </button>
