@@ -44,6 +44,13 @@ Only ask for the inputs needed by the next release. Do not ask all at once.
 
 ## Confirmed facts — do not ask again
 
+- **Items missing from the first delivery and the Stripe subscription (Chris, 2026-10-03):** an item delivered late, or
+  swapped for an alternate unit of the same type delivered later, **stays** on the customer's monthly subscription (the
+  missing-days credit is the remedy). An item that is **permanently cancelled** (never delivered and taken off the
+  agreement) must be **removed from the Stripe subscription** from the next billing period, on top of the credit for
+  everything already billed. The credit side is built; the subscription change is a Batch C work unit
+  (`docs/prompts/DESIGN-BATCH-C-LITERAL-SPECS.md`, Part 2).
+
 - Small family business, preparing to launch; Greeley and surrounding area.
 - Washers/dryers are the initial focus. Maintenance is always included.
 - Delivery and installation are offered; free service depends on the situation.

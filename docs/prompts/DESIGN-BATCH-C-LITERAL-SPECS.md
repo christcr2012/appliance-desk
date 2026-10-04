@@ -91,7 +91,34 @@ Write the literal specification for update items C-01, C-02, C-03, C-05, C-08 an
   allocation method is designed (clearly labelled estimates, customer-level cash in its own scope), and keep completed
   inspections, checklists, part movements and custody history immutable (corrections append attributable amendments).
 
-**Billing-dependent pieces (C-09 pickup/return billing, and the billing effect of partial delivery) stay blocked.** For
+- **Items missing from the first delivery — what happens to the Stripe subscription (owner rule, 2026-10-03; specify
+  this fully, it is decided).** The late-delivery credit is already built (`PendingDelivery`,
+  `src/domains/billing/pickup-billing-events.ts`; see `docs/ARCHITECTURE.md` "Pickup and delivery billing"). Build on it;
+  do not redesign it. The remaining rule is what happens to the item's line on the customer's monthly Stripe subscription:
+  1. **Delivered late** (the same appliance arrives on a later delivery job): the line **stays** on the subscription; the
+     credit for the missing days is the whole remedy (built).
+  2. **Swapped** (a different appliance of the same type is delivered in its place): the line **stays**; the replacement
+     takes the waiting item's place on the agreement (assignment moves to the replacement; the waiting record is fulfilled
+     by the replacement's delivery job, and the missing-days credit counts to that delivery date). Today `PendingDelivery`
+     is keyed by the original appliance id, so specify how a delivery job fulfils a waiting item with an alternate unit of
+     the same `ApplianceType` (and what happens if the alternate is a different type: owner decision, not automatic).
+  3. **Permanently cancelled** (never delivered and taken off the agreement — `removeUndeliveredItem`): everything billed
+     for it is credited (built) **and** the item must come off the Stripe subscription from the next billing period, so the
+     customer is not charged for it again. Specify: a durable `SUBSCRIPTION_UPDATE` provider operation (claim → call →
+     complete, reconciled like the others) that reduces the matching subscription item's recurring amount by the item's
+     monthly share — or deletes the item when the rental line has no appliances left — with Stripe proration **off** (the
+     local credit already covers the current period); how the subscription item is found (products carry
+     `rentalLineId` in metadata, see `startRecurringBillingForAgreement`); the local amendment to the rental line so
+     statements, reports and the customer portal show the reduced rent while the original signed price stays visible as
+     history (price snapshots are sacred — append an amendment, never overwrite); the audit entry; what the owner sees
+     while the Stripe change is pending or failed (the drift workbench lists it; Today keeps the item until Stripe
+     confirms); and the case where **every** item on the agreement is cancelled, which must go through the normal
+     agreement-ending path (`closeAgreement`), never a line reduction to zero. Owner/admin only, same as the removal.
+  Tests to name: late delivery leaves the subscription unchanged; swap with a same-type unit leaves it unchanged and
+  credits to the replacement's date; cancellation reduces exactly one subscription item once (retried call is a no-op,
+  Stripe failure leaves a visible pending operation, drift shows a mismatch); all-items-cancelled ends the agreement.
+
+**Billing-dependent pieces (C-09 pickup/return billing) stay blocked.** For
 those, write only the interface Batch C needs from the shared billing contract and list what it must not do (no direct
 Stripe calls, no second subscription-ending process, no duplicate early-termination fee). Do not decide the owner questions
 below.
@@ -108,10 +135,10 @@ maintenance transition, photo authorization, bounded portal reads, atomic audits
 
 ## Questions only Chris can answer (do not guess; gate only the money rules)
 
-- IN-24: for a customer-caused late return, does the extra time bill by the day or by the whole month? (Company-caused delay
-  is already decided: not billed.)
-- IN-26: if only part of an order is delivered, does billing start for the delivered items or wait for the whole order?
-- IN-27: does the day the appliance is picked up count as a billable day?
+- IN-24: only the company-caused waiver is still open (who records that a late pickup was the company's fault, and how the
+  waived days show on the statement). The customer-caused late-return charge is built (by the day, owner setting).
+- IN-26 and IN-27 are answered and built (`docs/OWNER-INPUTS.md`); do not re-ask them. The subscription rule for a
+  missing item (above) is also decided.
 
 ## Finish with
 

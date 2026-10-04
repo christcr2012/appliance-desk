@@ -273,3 +273,15 @@ Decisions made while building, and why:
 - **"Actual days in that month"** means the real length of the anniversary
   billing period that contains the original delivery date (28–31 days), the
   only exact reading for a rental billed on, say, the 8th.
+
+### 2026-10-03 addendum: the subscription after a missing item (Chris's rule, not yet built)
+
+Chris decided what happens to a customer's monthly Stripe subscription when an
+item was missing from the first delivery: delivered late → the line stays (the
+credit is the remedy); swapped for an alternate unit of the same type delivered
+later → the line stays and the replacement takes the item's place; permanently
+cancelled (never delivered, removed from the agreement) → the item comes off
+the subscription from the next period, on top of the credit for everything
+billed. Only the credit side exists today. The subscription change is written
+up as a Batch C work unit (`docs/prompts/DESIGN-BATCH-C-LITERAL-SPECS.md`), with
+the merge handled by Chris's coding agent, not by Claude in this session.

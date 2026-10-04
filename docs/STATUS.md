@@ -94,8 +94,11 @@ as owner settings; built as stated. (The first push misread rule 2 as an
       fixed rate, actual-days basis, recorded-date handling, settings parsing.
       Full suite green on a throwaway Postgres.
 - [ ] **Not built (Batch C design):** company-caused late pickup waiver (IN-24);
-      taking a never-delivered item's line off the live Stripe subscription
-      (roadmap).
+      the subscription rule for a missing item (Chris, 2026-10-03: delivered
+      late or swapped same-type → stays; permanently cancelled → removed from
+      Stripe from the next period), specified in
+      `docs/prompts/DESIGN-BATCH-C-LITERAL-SPECS.md`.
+- Merge of #165 is Chris's coding agent's call, not Claude's.
 
 ## Open items carried across batches
 

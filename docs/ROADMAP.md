@@ -8,12 +8,14 @@ section with a date.
 
 ## Deferred to a later phase (already scoped, just not yet)
 
-- **Take a never-delivered item's line off the live Stripe subscription**
-  (2026-10-03, from the late-delivery credit): when the owner removes an item
-  that never arrived, its rental line still bills every month until the
-  subscription is changed in Stripe by hand (the audit entry says so). Needs a
-  `SUBSCRIPTION_UPDATE`-style provider operation with reconciliation; Batch C
-  design.
+- **Take a permanently cancelled item off the live Stripe subscription**
+  (Chris's rule, 2026-10-03): a never-delivered item that is removed from the
+  agreement must stop billing from the next period (delivered-late and
+  swapped-same-type items stay on the subscription). Needs a
+  `SUBSCRIPTION_UPDATE`-style provider operation with reconciliation and a
+  local rental-line amendment; specified as a Batch C work unit in
+  `docs/prompts/DESIGN-BATCH-C-LITERAL-SPECS.md`. Until built, the audit entry
+  tells the owner to adjust Stripe by hand.
 - **Company-caused late pickup waiver** (IN-24): record who caused a late
   pickup and waive the late-return charge for company fault. Batch C design.
 - **Collect late-return invoices through Stripe automatically** (today they

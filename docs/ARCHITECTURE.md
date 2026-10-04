@@ -294,8 +294,12 @@ How each rule works:
    `billing.late_delivery_credit`, `billing.item_never_delivered`.
    - **Known gap, by design for now:** an item taken off the agreement as
      never delivered is still a line on the Stripe subscription. The audit
-     entry says so; the owner adjusts the subscription in Stripe or ends and
-     re-signs the agreement. Automating that is a `docs/ROADMAP.md` item.
+     entry says so; the owner adjusts the subscription in Stripe by hand.
+     Chris's rule (2026-10-03): delivered-late and swapped-same-type items
+     stay on the subscription; a permanently cancelled item must come off it
+     from the next period. That is a Batch C work unit
+     (`docs/prompts/DESIGN-BATCH-C-LITERAL-SPECS.md`, Part 2) and a
+     `docs/ROADMAP.md` item.
 3. **Pickup day not billed** (default on). The last chargeable day of any
    rental is the day before the pickup/return date, for normal end-of-
    agreement pickups and late returns alike. With the switch off, the pickup
