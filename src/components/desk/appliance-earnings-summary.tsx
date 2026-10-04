@@ -16,7 +16,7 @@ export function ApplianceEarningsSummary({
     >
       <dl className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <div>
-          <dt className="text-ink-soft">Estimated rental value</dt>
+          <dt className="text-ink-soft">Estimated rent (line price split evenly)</dt>
           <dd className="font-semibold text-ink">
             {formatCents(report.revenueCents)}
           </dd>

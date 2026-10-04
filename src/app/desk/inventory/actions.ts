@@ -439,14 +439,16 @@ export async function startSwapAction(
 }
 
 const inspectionSchema = z.object({
-  passed: z.boolean(),
-  checklist: z.array(z.object({ item: z.string(), checked: z.boolean() })),
+  expectedChecklistVersionId: z.string().trim().min(1).max(64),
+  answers: z.array(z.boolean()).max(100),
+  overrideReason: z.string().trim().max(500).optional().or(z.literal("")),
   notes: z.string().trim().max(2000).optional().or(z.literal("")),
   condition: z.string().trim().max(200).optional().or(z.literal("")),
 });
 
-/** Recording a returned appliance's inspection — passing moves it back to
- * Available, failing moves it to Maintenance. See
+/** Recording a returned appliance's inspection — all items checked moves it back to
+ * Available, anything else moves it to Maintenance (an owner or admin can pass it
+ * with a written reason). The result is worked out on the server. See
  * src/domains/inventory/guided-actions.ts's recordApplianceInspection. */
 export async function recordInspectionAction(
   applianceId: string,
@@ -464,8 +466,9 @@ export async function recordInspectionAction(
 
   try {
     await recordApplianceInspection(session.user.id, applianceId, {
-      passed: parsed.data.passed,
-      checklist: parsed.data.checklist,
+      expectedChecklistVersionId: parsed.data.expectedChecklistVersionId,
+      answers: parsed.data.answers,
+      overrideReason: parsed.data.overrideReason || undefined,
       notes: parsed.data.notes || undefined,
       condition: parsed.data.condition || undefined,
     });

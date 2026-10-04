@@ -2,11 +2,12 @@ import { prisma } from "@/lib/prisma";
 import { formatBusinessDate } from "@/lib/business-date";
 import type { Prisma } from "@prisma/client";
 import { assertStatusChangeKeepsCustody, getOpenCustody } from "./custody";
-import { assertActiveTeamActor } from "@/lib/team-actor";
+import { assertActiveTeamActor, type TeamRole } from "@/lib/team-actor";
+import { assertJobScopeInTx } from "@/domains/jobs/scope";
+import { createHash } from "node:crypto";
 import { lockCustomerLedger } from "@/domains/billing/ledger";
 import { lockRentalAgreementInTx } from "@/domains/agreements";
-import { canTransitionApplianceStatus, applianceStatusAfterInspection, DEFAULT_INSPECTION_CHECKLIST } from "./lifecycle";
-import { getBusinessSettings } from "@/domains/settings";
+import { canTransitionApplianceStatus, applianceStatusAfterInspection } from "./lifecycle";
 
 // ---------------------------------------------------------------------------
 // Appliance guided actions (2026-09-28) — the multi-step things Chris
@@ -275,51 +276,100 @@ export async function stageSwap(
   return { jobId };
 }
 
-/** This appliance's own inspection checklist — Chris's customized one
- * from /desk/settings if he's set one, otherwise the built-in default
- * (DEFAULT_INSPECTION_CHECKLIST). Used to render the "Record inspection"
- * guided action's checklist. */
-export async function getInspectionChecklist(): Promise<string[]> {
-  const settings = await getBusinessSettings();
-  const custom = Array.isArray(settings.inspectionChecklist)
-    ? (settings.inspectionChecklist as unknown[]).filter((i): i is string => typeof i === "string")
-    : [];
-  return custom.length > 0 ? custom : DEFAULT_INSPECTION_CHECKLIST;
+/** The checklist inspections are answered against right now: the highest published version
+ * (Batch C P2-E). The id is what a form must send back, so an inspection can't be recorded against
+ * a list that changed while the page was open. */
+export async function getInspectionChecklist(
+  db: Pick<Prisma.TransactionClient, "inspectionChecklistVersion"> = prisma,
+): Promise<{ versionId: string; version: number; items: string[] }> {
+  const current = await db.inspectionChecklistVersion.findFirst({ orderBy: { version: "desc" } });
+  if (!current) throw new Error("No inspection checklist has been published yet.");
+  const items = Array.isArray(current.items) ? (current.items as unknown[]).filter((i): i is string => typeof i === "string") : [];
+  return { versionId: current.id, version: current.version, items };
 }
 
+/** The same bytes the migration hashed for version 1: sha256 of the compact JSON text of the items. */
+export function checklistHash(items: readonly string[]): string {
+  return createHash("sha256").update(JSON.stringify(items)).digest("hex");
+}
+
+export class ChecklistVersionError extends Error {
+  constructor() {
+    super("The checklist changed while this page was open. Reload and answer it again.");
+    this.name = "ChecklistVersionError";
+  }
+}
+
+export type RecordInspectionInput = {
+  expectedChecklistVersionId: string;
+  /** One answer per item, in the order of the checklist version. */
+  answers: readonly boolean[];
+  notes?: string;
+  condition?: string;
+  /** Owner or admin only: pass even though some items are unchecked, and say why. */
+  overrideReason?: string;
+  /** The job this inspection is done from, when there is one. Staff must name a job they may work. */
+  jobId?: string;
+};
+
 /**
- * "Record inspection" — the guided version of moving an appliance out of
- * AWAITING_INSPECTION, which the raw status buttons already technically
- * allowed (straight to AVAILABLE or MAINTENANCE) but with no record of
- * what was actually checked. This creates the ApplianceInspection row
- * (the checklist as answered, Chris's notes, pass/fail) and moves the
- * status in the same transaction — applianceStatusAfterInspection is the
- * one place that decides which way a pass/fail goes, so this can never
- * disagree with what the appliance page itself would otherwise suggest.
+ * "Record inspection" — the guided version of moving an appliance out of AWAITING_INSPECTION.
+ * The result is worked out here, never trusted from the screen: all answers checked is a pass
+ * (back to Available), anything else is a fail (to Maintenance) unless an owner or admin passes it
+ * on purpose with a written reason. The record keeps the exact checklist it was answered against
+ * and can never be edited afterwards (a database rule blocks it); corrections are amendments.
  */
 export async function recordApplianceInspection(
   userId: string,
   applianceId: string,
-  input: { passed: boolean; checklist: { item: string; checked: boolean }[]; notes?: string; condition?: string },
-): Promise<void> {
-  const appliance = await prisma.appliance.findUniqueOrThrow({ where: { id: applianceId } });
-  if (appliance.status !== "AWAITING_INSPECTION") {
-    throw new Error("This appliance isn't currently awaiting inspection.");
-  }
+  input: RecordInspectionInput,
+): Promise<{ inspectionId: string; passed: boolean; overridden: boolean }> {
+  return prisma.$transaction(async (tx: Tx) => {
+    const actor = await assertActiveTeamActor(tx, userId);
+    if (actor.role === "STAFF") {
+      if (!input.jobId) throw new Error("Staff record an inspection from the job it belongs to.");
+      await assertJobScopeInTx(tx, { userId, role: "STAFF" }, { jobId: input.jobId, applianceId, write: "INSPECTION" });
+    } else if (input.jobId) {
+      await assertJobScopeInTx(tx, { userId, role: actor.role as TeamRole }, { jobId: input.jobId, applianceId, write: "INSPECTION" });
+    }
 
-  const nextStatus = applianceStatusAfterInspection(input.passed);
-  const check = canTransitionApplianceStatus(appliance.status, nextStatus);
-  if (!check.ok) {
-    throw new Error(check.reason);
-  }
+    const current = await getInspectionChecklist(tx);
+    if (current.versionId !== input.expectedChecklistVersionId) throw new ChecklistVersionError();
+    if (input.answers.length !== current.items.length) {
+      throw new Error("Answer every item on the checklist.");
+    }
 
-  await prisma.$transaction(async (tx: Tx) => {
+    // Lock order: the appliance row, then the custody check that also locks it.
+    await tx.$queryRaw`SELECT "id" FROM "Appliance" WHERE "id" = ${applianceId} FOR UPDATE`;
+    const appliance = await tx.appliance.findUniqueOrThrow({ where: { id: applianceId } });
+    if (appliance.status !== "AWAITING_INSPECTION") {
+      throw new Error("This appliance isn't currently awaiting inspection.");
+    }
+
+    const allChecked = input.answers.every((a) => a === true);
+    const overrideReason = input.overrideReason?.trim() || null;
+    let overridden = false;
+    if (!allChecked && overrideReason) {
+      if (actor.role === "STAFF") throw new Error("Only an owner or admin can pass an appliance with unchecked items.");
+      overridden = true;
+    }
+    const passed = allChecked || overridden;
+
+    const nextStatus = applianceStatusAfterInspection(passed);
+    const check = canTransitionApplianceStatus(appliance.status, nextStatus);
+    if (!check.ok) throw new Error(check.reason);
     await assertStatusChangeKeepsCustody(tx, applianceId, nextStatus);
-    await tx.applianceInspection.create({
+
+    const inspection = await tx.applianceInspection.create({
       data: {
         applianceId,
-        passed: input.passed,
-        checklist: input.checklist,
+        passed,
+        checklist: current.items.map((item, i) => ({ item, checked: input.answers[i] === true })),
+        checklistDefinition: current.items,
+        checklistVersionId: current.versionId,
+        jobId: input.jobId ?? null,
+        overrideReason: overridden ? overrideReason : null,
+        overriddenByUserId: overridden ? userId : null,
         notes: input.notes?.trim() || null,
         condition: input.condition?.trim() || null,
         inspectedById: userId,
@@ -341,9 +391,38 @@ export async function recordApplianceInspection(
         entityType: "Appliance",
         entityId: applianceId,
         oldValue: { status: "AWAITING_INSPECTION" },
-        newValue: { status: nextStatus, reason: input.passed ? "Inspection passed" : "Inspection failed" },
+        newValue: { status: nextStatus, reason: overridden ? "Inspection passed by override" : passed ? "Inspection passed" : "Inspection failed" },
       },
     });
+    if (overridden) {
+      await tx.auditLog.create({
+        data: {
+          userId,
+          action: "inspection.override",
+          entityType: "ApplianceInspection",
+          entityId: inspection.id,
+          newValue: { applianceId, reason: overrideReason, uncheckedItems: current.items.filter((_, i) => input.answers[i] !== true) },
+        },
+      });
+    }
+    return { inspectionId: inspection.id, passed, overridden };
+  });
+}
+
+/** A correction to a recorded inspection. The inspection stays exactly as it was; this adds a dated note. Owner or admin. */
+export async function amendApplianceInspection(userId: string, inspectionId: string, note: string): Promise<{ amendmentId: string }> {
+  const text = note.trim();
+  if (!text) throw new Error("Write what is being corrected.");
+  if (text.length > 2000) throw new Error("Keep the correction under 2000 characters.");
+  return prisma.$transaction(async (tx: Tx) => {
+    await assertActiveTeamActor(tx, userId, ["OWNER", "ADMIN"]);
+    const inspection = await tx.applianceInspection.findUnique({ where: { id: inspectionId }, select: { id: true, applianceId: true } });
+    if (!inspection) throw new Error("Couldn't find that inspection.");
+    const amendment = await tx.applianceInspectionAmendment.create({ data: { inspectionId, note: text, createdByUserId: userId } });
+    await tx.auditLog.create({
+      data: { userId, action: "inspection.amend", entityType: "ApplianceInspection", entityId: inspectionId, newValue: { amendmentId: amendment.id, applianceId: inspection.applianceId } },
+    });
+    return { amendmentId: amendment.id };
   });
 }
 

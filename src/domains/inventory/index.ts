@@ -301,6 +301,8 @@ export async function updateApplianceStatus(
   newStatus: ApplianceStatus,
 ) {
   return prisma.$transaction(async (tx) => {
+    // The plain status change is for owners and admins. Staff go through the job-scoped one.
+    await assertActiveTeamActor(tx, userId, ["OWNER", "ADMIN"]);
     const before = await tx.appliance.findUniqueOrThrow({
       where: { id: applianceId },
     });

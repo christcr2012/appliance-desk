@@ -2,7 +2,8 @@ import type { JobType, Prisma } from "@prisma/client";
 import { releaseSwapReservationsInTx } from "./swaps";
 import { lockMaintenanceRequestInTx, requestAfterVisitEndedInTx } from "@/domains/maintenance/visit-sync";
 import { prisma } from "@/lib/prisma";
-import { assertActiveTeamActor } from "@/lib/team-actor";
+import { assertActiveTeamActor, type TeamRole } from "@/lib/team-actor";
+import { assertJobScopeInTx } from "./scope";
 import { businessDateKey } from "@/lib/business-date";
 
 // ---------------------------------------------------------------------------
@@ -266,6 +267,7 @@ export async function markJobNoShow(userId: string, jobId: string, expectedVersi
   return prisma.$transaction(async (tx) => {
     await lockUsersForScheduling(tx, [userId]);
     const actor = await assertActiveTeamActor(tx, userId);
+    await assertJobScopeInTx(tx, { userId, role: actor.role as TeamRole }, { jobId, write: "STATUS" });
 
     const peeked = await tx.job.findUnique({ where: { id: jobId }, select: { maintenanceRequestId: true } });
     if (peeked?.maintenanceRequestId) await lockMaintenanceRequestInTx(tx, peeked.maintenanceRequestId);
@@ -277,9 +279,6 @@ export async function markJobNoShow(userId: string, jobId: string, expectedVersi
       where: { id: jobId },
       select: { status: true, version: true, assignedToUserId: true, type: true, maintenanceRequestId: true },
     });
-    if (actor.role === "STAFF" && job.assignedToUserId !== userId) {
-      throw new Error("Only the person assigned to this visit, or an owner or admin, can mark a no-show.");
-    }
     if (job.version !== expectedVersion) throw new JobVersionError();
     if (job.status !== "SCHEDULED" && job.status !== "IN_PROGRESS") {
       throw new Error("Only a job that is scheduled or in progress can be marked as a no-show.");

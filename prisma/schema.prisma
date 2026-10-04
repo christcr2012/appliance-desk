@@ -456,7 +456,40 @@ model ApplianceInspection {
   inspectedById String?
   createdAt   DateTime  @default(now())
 
+  // Batch C P2-E: the exact checklist this was answered against, and who overrode a pass with unchecked items.
+  checklistDefinition Json     @default("[]")
+  checklistVersionId  String?
+  checklistVersion    InspectionChecklistVersion? @relation(fields: [checklistVersionId], references: [id])
+  jobId               String?
+  overrideReason      String?
+  overriddenByUserId  String?
+  amendments          ApplianceInspectionAmendment[]
+
   @@index([applianceId])
+}
+
+// One published version of the return-inspection checklist (Batch C P2-E, the table Batch D's D7 describes).
+// The current checklist is the row with the highest version. Version 1 has no publisher.
+model InspectionChecklistVersion {
+  id                String   @id @default(cuid())
+  version           Int      @unique
+  items             Json
+  hash              String
+  publishedAt       DateTime @default(now())
+  publishedByUserId String?
+  inspections       ApplianceInspection[]
+}
+
+// A correction note added after an inspection was recorded. The inspection itself never changes.
+model ApplianceInspectionAmendment {
+  id              String   @id @default(cuid())
+  inspectionId    String
+  inspection      ApplianceInspection @relation(fields: [inspectionId], references: [id])
+  note            String
+  createdByUserId String
+  createdAt       DateTime @default(now())
+
+  @@index([inspectionId])
 }
 
 // A parts knowledge base keyed by MODEL NUMBER, not by an individual
@@ -1602,6 +1635,8 @@ model BusinessSettings {
   depositEnabled          Boolean @default(false)
   // Usual visit length in minutes (Batch C P1-A); used when a job has no length of its own.
   defaultJobDurationMinutes Int @default(120)
+  // Can staff work jobs nobody is assigned to (Batch C P2-E). On keeps the old behavior.
+  staffMayWorkUnassignedJobs Boolean @default(true)
   lateFeeGraceDays        Int     @default(5)
   lateFeeFlatCents        Int     @default(0)
   lateFeePercent          Int     @default(0)

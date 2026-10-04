@@ -27,6 +27,7 @@ function makeTx() {
     auditLog: { create: mocks.audit },
   };
 }
+vi.mock("@/domains/jobs/scope", () => ({ assertJobScopeInTx: async () => ({ status: "IN_PROGRESS" }) }));
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     $transaction: async (fn: (tx: unknown) => unknown) => fn(makeTx()),

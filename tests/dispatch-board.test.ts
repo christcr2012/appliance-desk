@@ -172,7 +172,7 @@ const jobFindMany = vi.fn();
 const jobFindUniqueOrThrow = vi.fn();
 const jobUpdate = vi.fn();
 const auditLogCreate = vi.fn();
-const assertActiveTeamActor = vi.fn();
+const assertActiveTeamActor = vi.fn().mockResolvedValue({ id: "user-1", role: "OWNER", archivedAt: null });
 
 vi.mock("@/lib/session", () => ({
   requireRole: vi.fn().mockResolvedValue({ user: { role: "OWNER" } }),
@@ -182,6 +182,7 @@ vi.mock("@/lib/team-actor", () => ({
   assertActiveTeamActor: (...args: unknown[]) => assertActiveTeamActor(...args),
 }));
 
+vi.mock("@/domains/jobs/scope", () => ({ assertJobScopeInTx: async () => ({ status: "IN_PROGRESS" }) }));
 vi.mock("@/lib/prisma", () => {
   const tx = {
     job: {
@@ -218,7 +219,7 @@ beforeEach(() => {
   jobFindUniqueOrThrow.mockReset();
   jobUpdate.mockReset();
   auditLogCreate.mockReset();
-  assertActiveTeamActor.mockReset();
+  assertActiveTeamActor.mockReset().mockResolvedValue({ id: "user-1", role: "OWNER", archivedAt: null });
 });
 
 describe("getDispatchBoardJobs", () => {

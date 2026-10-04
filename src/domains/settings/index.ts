@@ -57,6 +57,7 @@ const DEFAULT_SETTINGS = {
   earlyReturnProrationBasis: "MONTHLY_DIV_30", // deprecated column, never read
   pickupDayNotBilled: true,
   defaultJobDurationMinutes: 120,
+  staffMayWorkUnassignedJobs: true,
   updatedAt: new Date(0),
 };
 
@@ -143,6 +144,7 @@ export type BusinessSettingsUpdate = Partial<{
   pickupDayNotBilled: boolean;
   // Visits and scheduling (Batch C P1-A).
   defaultJobDurationMinutes: number;
+  staffMayWorkUnassignedJobs: boolean;
 }>;
 
 /**

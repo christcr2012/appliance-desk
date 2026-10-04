@@ -601,3 +601,5 @@ Google Tasks/Keep, Sheets-as-reporting, Contacts sync.
   decides.
 
 - **A way to end custody for a lost or written-off unit (found in Batch C review, 2026-10-04).** A hand-made status change now refuses "available", "reserved" or "retired" while a customer is recorded as holding the unit, and refuses "rented" or "awaiting pickup" with no customer recorded (deliveries and pickups go through job completion). A unit that is genuinely lost at a customer's home therefore has no way to be retired yet; it needs an owner-only "end custody (lost / written off)" action with a reason. Not built; decide when P2-E/P2-F are designed.
+
+- **A "Cash received from this customer" block on the customer page (found in Batch C, 2026-10-04).** The rule is that customer cash (`collectedBetween`) appears only on the customer's own page, never on appliance or fleet screens, and a test now guards that. No such block exists on the customer page yet. Add it when the customer money tab is designed (Batch D).
