@@ -9,9 +9,15 @@ import {
   createPurchaseOrder,
   markPurchaseOrderOrdered,
   receivePurchaseOrder,
+  receivePurchaseOrderLines,
   cancelPurchaseOrder,
   recordPartUsage,
   updatePartStockSettings,
+  archivePartRecord,
+  reversePartMovement,
+  restorePartRecord,
+  archiveSupplier,
+  restoreSupplier,
 } from "@/domains/purchasing";
 import { dollarsToCents } from "@/domains/pricing";
 
@@ -99,7 +105,8 @@ export async function createPurchaseOrderAction(raw: unknown): Promise<Purchasin
         partRecordId: line.partRecordId || null,
         description: line.description,
         quantity: line.quantity,
-        unitCostCents: line.unitCostDollars ? dollarsToCents(line.unitCostDollars) : 0,
+        // Left blank = the price is not known yet (stored as unknown, not as $0).
+        unitCostCents: line.unitCostDollars === undefined ? undefined : dollarsToCents(line.unitCostDollars),
       })),
     });
     revalidatePath("/desk/purchase-orders");
@@ -149,11 +156,17 @@ export async function cancelPurchaseOrderAction(purchaseOrderId: string): Promis
 export async function recordPartUsageAction(
   partRecordId: string,
   quantity: number,
+  operationKey: string,
+  jobId?: string,
 ): Promise<PurchasingActionState> {
   const session = await requireRole("OWNER", "ADMIN");
   try {
-    await recordPartUsage(session.user.id, partRecordId, quantity);
+    await recordPartUsage(session.user.id, partRecordId, quantity, { operationKey, jobId: jobId ?? null });
     revalidatePath("/desk/parts");
+    if (jobId) {
+      revalidatePath(`/desk/jobs/${jobId}`);
+      revalidatePath("/desk/fleet");
+    }
     return { status: "success" };
   } catch (error) {
     return { status: "error", message: error instanceof Error ? error.message : "Couldn't record that." };
@@ -164,13 +177,102 @@ export async function updatePartStockSettingsAction(
   partRecordId: string,
   quantityOnHand: number,
   reorderThreshold: number | null,
+  operationKey: string,
 ): Promise<PurchasingActionState> {
   const session = await requireRole("OWNER", "ADMIN");
   try {
-    await updatePartStockSettings(session.user.id, partRecordId, { quantityOnHand, reorderThreshold });
+    await updatePartStockSettings(session.user.id, partRecordId, { quantityOnHand, reorderThreshold, operationKey });
     revalidatePath("/desk/parts");
     return { status: "success" };
   } catch (error) {
     return { status: "error", message: error instanceof Error ? error.message : "Couldn't save those changes." };
+  }
+}
+
+const receiveLinesSchema = z.object({
+  purchaseOrderId: z.string().trim().min(1).max(64),
+  operationKey: z.string().trim().min(8).max(70),
+  lines: z
+    .array(
+      z.object({
+        lineId: z.string().trim().min(1).max(64),
+        quantity: z.number().int().min(1).max(100000),
+        unitCostDollars: z.string().trim().max(12).optional(),
+      }),
+    )
+    .min(1, "Enter how many arrived on at least one line."),
+});
+
+/** Record what actually arrived (all or part of an order). A blank price keeps the ordered price, or stays unknown. */
+export async function receivePurchaseOrderLinesAction(raw: unknown): Promise<PurchasingActionState & { replayed?: boolean }> {
+  const session = await requireRole("OWNER", "ADMIN");
+  const parsed = receiveLinesSchema.safeParse(raw);
+  if (!parsed.success) {
+    return { status: "error", message: parsed.error.issues[0]?.message ?? "Please fix the highlighted fields." };
+  }
+  const lines: { lineId: string; quantity: number; unitCostCents: number | null }[] = [];
+  for (const line of parsed.data.lines) {
+    const text = (line.unitCostDollars ?? "").replace(/^\$/, "");
+    if (text === "") {
+      lines.push({ lineId: line.lineId, quantity: line.quantity, unitCostCents: null });
+      continue;
+    }
+    const match = /^(\d{1,6})(?:\.(\d{1,2}))?$/.exec(text);
+    if (!match) return { status: "error", message: "Price per item: enter dollars and cents, like 12 or 12.50, or leave it blank." };
+    lines.push({ lineId: line.lineId, quantity: line.quantity, unitCostCents: Number(match[1]) * 100 + Number((match[2] ?? "").padEnd(2, "0")) });
+  }
+  try {
+    const result = await receivePurchaseOrderLines(session.user.id, {
+      purchaseOrderId: parsed.data.purchaseOrderId,
+      operationKey: parsed.data.operationKey,
+      lines,
+    });
+    revalidatePath(`/desk/purchase-orders/${parsed.data.purchaseOrderId}`);
+    revalidatePath("/desk/purchase-orders");
+    revalidatePath("/desk/parts");
+    return { status: "success", replayed: result.replayed };
+  } catch (error) {
+    return { status: "error", message: error instanceof Error ? error.message : "Couldn't record that delivery." };
+  }
+}
+
+/** Hide a part from lists (keeps its history), or bring it back. */
+export async function setPartArchivedAction(partRecordId: string, archived: boolean): Promise<PurchasingActionState> {
+  const session = await requireRole("OWNER", "ADMIN");
+  try {
+    await (archived ? archivePartRecord : restorePartRecord)(session.user.id, partRecordId);
+    revalidatePath("/desk/parts");
+    return { status: "success" };
+  } catch (error) {
+    return { status: "error", message: error instanceof Error ? error.message : "Couldn't change that part." };
+  }
+}
+
+/** Hide a supplier from pickers (keeps its history), or bring it back. */
+export async function setSupplierArchivedAction(supplierId: string, archived: boolean): Promise<PurchasingActionState> {
+  const session = await requireRole("OWNER", "ADMIN");
+  try {
+    await (archived ? archiveSupplier : restoreSupplier)(session.user.id, supplierId);
+    revalidatePath("/desk/suppliers");
+    revalidatePath(`/desk/suppliers/${supplierId}`);
+    return { status: "success" };
+  } catch (error) {
+    return { status: "error", message: error instanceof Error ? error.message : "Couldn't change that supplier." };
+  }
+}
+
+/** Undo a mistaken parts entry (adds a reversal; the original stays in the history). */
+export async function reversePartMovementAction(movementId: string, operationKey: string, jobId?: string): Promise<PurchasingActionState> {
+  const session = await requireRole("OWNER", "ADMIN");
+  try {
+    await reversePartMovement(session.user.id, movementId, operationKey);
+    revalidatePath("/desk/parts");
+    if (jobId) {
+      revalidatePath(`/desk/jobs/${jobId}`);
+      revalidatePath("/desk/fleet");
+    }
+    return { status: "success" };
+  } catch (error) {
+    return { status: "error", message: error instanceof Error ? error.message : "Couldn't undo that." };
   }
 }

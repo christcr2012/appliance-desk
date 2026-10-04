@@ -564,6 +564,14 @@ export async function setJobRepairCosts(
 ) {
   return prisma.$transaction(async (tx) => {
     await assertActiveTeamActor(tx, userId, ["OWNER", "ADMIN"]);
+    // When parts were itemized from the parts ledger, that list is the parts cost: a second hand-entered
+    // number would be counted twice, so it is refused.
+    if (costs.partsCostCents !== null) {
+      const itemized = await tx.partStockMovement.count({ where: { jobId, kind: "USAGE" } });
+      if (itemized > 0) {
+        throw new Error("This job's parts were itemized from your parts list, so their cost comes from there. Clear the parts cost to save labor.");
+      }
+    }
     const updated = await tx.job.update({
       where: { id: jobId },
       data: {

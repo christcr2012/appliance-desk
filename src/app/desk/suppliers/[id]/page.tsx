@@ -4,6 +4,7 @@ import { requireRole } from "@/lib/session";
 import { getSupplierById } from "@/domains/purchasing";
 import { formatCents } from "@/domains/pricing";
 import { SupplierDetailClient } from "./supplier-detail-client";
+import { SupplierArchiveButton } from "./supplier-archive-button";
 
 export const metadata = { title: "Supplier" };
 
@@ -36,6 +37,8 @@ export default async function SupplierDetailPage({
           notes: supplier.notes ?? "",
         }}
       />
+
+      <SupplierArchiveButton supplierId={supplier.id} archived={supplier.archivedAt !== null} />
 
       <h2 className="mt-8 text-sm font-medium text-gray-900">Purchase orders</h2>
       {supplier.purchaseOrders.length === 0 ? (

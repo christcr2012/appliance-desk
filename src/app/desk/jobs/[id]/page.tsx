@@ -4,6 +4,9 @@ import Link from "next/link";
 import { getDeskJobById } from "@/domains/desk-access";
 import { JobDetailPanel } from "./job-detail-panel";
 import { JobSchedulePanel } from "./job-schedule-panel";
+import { JobPartsUsed } from "./job-parts-used";
+import { getJobPartsUsed } from "@/domains/purchasing";
+import { getAllPartRecords } from "@/domains/inventory";
 import { getAssignableTeamMembers } from "@/domains/staff";
 import { formatBusinessDate, formatBusinessTime } from "@/lib/business-date";
 import { privatePhotoReadPath } from "@/lib/photo-storage";
@@ -47,8 +50,11 @@ export default async function JobDetailPage({
   if (!job) {
     notFound();
   }
-  const [teamMembers, deliveryCandidates, pendingDeliveries] = await Promise.all([
+  const showParts = canViewFinance && job.type === "MAINTENANCE_VISIT";
+  const [teamMembers, partsUsed, partOptions, deliveryCandidates, pendingDeliveries] = await Promise.all([
     canViewFinance ? getAssignableTeamMembers() : Promise.resolve([]),
+    showParts ? getJobPartsUsed(job.id) : Promise.resolve(null),
+    showParts ? getAllPartRecords() : Promise.resolve([]),
     deliveryCandidatesForJob({ id: job.id, type: job.type, status: job.status, agreementId: job.agreementId }),
     pendingDeliveriesForJob(job.id),
   ]);
@@ -102,8 +108,23 @@ export default async function JobDetailPage({
         />
       </div>
 
+      {partsUsed && (
+        <div className="mt-6">
+          <JobPartsUsed
+            jobId={job.id}
+            rows={partsUsed.rows}
+            cost={partsUsed.cost}
+            partOptions={partOptions.map((p) => ({
+              id: p.id,
+              label: `${p.modelNumber} — ${p.partNumber}${p.partName ? ` (${p.partName})` : ""}`,
+              onHand: p.quantityOnHand,
+            }))}
+          />
+        </div>
+      )}
+
       <div className="mt-6">
-        <JobDetailPanel deliveryCandidates={deliveryCandidates} pendingDeliveries={pendingDeliveries.map((p) => ({
+        <JobDetailPanel partsFromList={partsUsed?.cost.source === "ITEMIZED"} deliveryCandidates={deliveryCandidates} pendingDeliveries={pendingDeliveries.map((p) => ({
           id: p.id,
           label: `${p.appliance.applianceType.name} #${p.appliance.assetNumber}`,
           originalDeliveryDate: businessDateKey(p.originalDeliveryDate),

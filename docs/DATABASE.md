@@ -60,6 +60,16 @@ in UTC and only converted to Mountain Time for display.
   purchasing & supplies) — see `docs/BUSINESS-RULES.md`'s "Purchasing &
   supplies" section. Only moved by `receivePurchaseOrder` (up) and
   `recordPartUsage` (down) — never touched automatically elsewhere.
+- **PartStockMovement** (Batch C, 2026-10-03) — the parts ledger. Every change
+  to how many of a part Chris has on hand is one row here (opening balance,
+  received, used, adjusted, recounted, reversal), with the balance after it
+  and a cost that is blank when unknown. A database rule blocks changing or
+  deleting a row; a mistake is fixed by adding a reversal. `PartRecord.quantityOnHand`
+  is the stored total and always equals the sum of the part's rows. A retried
+  save (same `operationKey`) returns the first result and changes nothing.
+  Parts and suppliers with history are **archived** (`archivedAt`), not deleted;
+  `PurchaseOrderLineItem.receivedQuantity` supports partial receipts and
+  `unitCostKnown` says whether a line's price is real.
 - **Supplier** — a purchasing contact: name, phone, email, notes.
 - **PurchaseOrder** / **PurchaseOrderLineItem** (2026-09-29) — an order
   placed with a `Supplier`, DRAFT → ORDERED → RECEIVED/CANCELLED. A

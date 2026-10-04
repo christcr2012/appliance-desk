@@ -205,12 +205,25 @@ To place an order, go to **Purchase orders → New purchase order**,
 pick the supplier, and add line items — either linked to a part you
 already track, or just a free-text item for a one-off buy. A purchase
 order moves **Draft → Ordered → Received** (or you can cancel it any
-time before it's received). **The moment you mark it Received, the
-quantities on those lines are added to your parts' on-hand counts
-automatically** — that's the only thing that changes stock going up.
-Stock only goes down the way it already did before: when you log a
-part as used on a repair. There's no partial receiving — a purchase
-order is received all at once.
+time before it's received). When a shipment arrives, open the order and
+type how many of each line came in — you can receive an order in
+several shipments, and the order shows Received once everything has
+arrived. **Each arrival adds to your parts' on-hand counts
+automatically.** If you leave a price blank, the app records the cost
+as "unknown" rather than $0; type 0 only for something that really was
+free.
+
+Every change to a part's count (arrivals, parts used on a repair,
+recounts, corrections) is written to a permanent history on the part;
+nothing is ever overwritten. If you try to use more than the count
+shows, the app says so instead of quietly dropping to zero — recount
+the shelf first. Made a mistake? Use **Undo** on that history entry; it
+adds a correction and the original stays visible. A part with history
+can't be deleted; **Archive** it to hide it (and **Restore** it any
+time). Suppliers can be archived the same way. When you log parts used
+from a job's page, the job's parts cost is added up from those entries
+and the hand-typed "parts cost" box is switched off for that job so
+nothing is counted twice.
 
 ## Changing prices, fees, and the prepaid-term discount
 

@@ -287,3 +287,5 @@ up as a Batch C work unit (`docs/prompts/DESIGN-BATCH-C-LITERAL-SPECS.md`), with
 the merge handled by Chris's coding agent, not by Claude in this session.
 
 - **2026-10-03 (Claude, Batch C scheduling)** — Date-time boxes on job forms are Colorado clock time, converted by `businessDateTimeFromLocal`. Reason: `new Date("2026-10-05T09:00")` on the server used UTC, so a 9:00 visit showed as 3:00 or 2:00 in the Denver screens. A time that does not exist (spring-forward gap) is refused; in the repeated fall-back hour the first occurrence is used. Also: a no-show is "cancelled + `noShowAt`" and moves nothing else, as the literal spec says.
+
+- **2026-10-04 (Claude, Batch C parts ledger)** — Ledger foreign keys restrict deletion, and the test database keeps its ledger fixtures instead of deleting them (append-only on purpose). Reason: history must survive; deleting a part or job that has stock history would erase it. Free-text-only receipts are made replay-safe through the audit log because they have no stock movement to carry the key.

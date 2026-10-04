@@ -88,6 +88,7 @@ export function JobDetailPanel({
   deliveryCandidates = [],
   pendingDeliveries = [],
   today = "",
+  partsFromList = false,
 }: {
   job: JobRow;
   canViewFinance?: boolean;
@@ -97,6 +98,8 @@ export function JobDetailPanel({
   pendingDeliveries?: PendingDeliveryRow[];
   /** Today's Colorado date (YYYY-MM-DD), the default "date the work was done". */
   today?: string;
+  /** Parts were itemized from the parts list, so the parts cost comes from there and is not typed by hand. */
+  partsFromList?: boolean;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -157,7 +160,7 @@ export function JobDetailPanel({
     setCostSaved(false);
     startTransition(async () => {
       const result = await setJobRepairCostsAction(job.id, {
-        partsCostDollars,
+        partsCostDollars: partsFromList ? "" : partsCostDollars,
         laborCostDollars,
       });
       if (result.status === "error") {
@@ -459,10 +462,12 @@ export function JobDetailPanel({
                 min="0"
                 inputMode="decimal"
                 placeholder="0.00"
-                value={partsCostDollars}
+                value={partsFromList ? "" : partsCostDollars}
+                disabled={partsFromList}
                 onChange={(e) => setPartsCostDollars(e.target.value)}
-                className="mt-1 w-28 rounded-md border border-gray-300 px-3 py-2 text-sm"
+                className="mt-1 w-28 rounded-md border border-gray-300 px-3 py-2 text-sm disabled:bg-gray-100"
               />
+              {partsFromList && <p className="mt-1 max-w-48 text-xs text-gray-600">From the parts list above.</p>}
             </div>
             <div>
               <label htmlFor="laborCost" className="block text-sm font-medium text-gray-700">

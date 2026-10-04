@@ -12,6 +12,8 @@ vi.mock("@/lib/prisma", () => ({
     appliance: { findMany: m.appliances },
     applianceAssignment: { findMany: m.assignments },
     jobAppliance: { findMany: m.repairs },
+    job: { findMany: async () => [] },
+    partStockMovement: { findMany: async () => [] },
   },
 }));
 import {

@@ -2,7 +2,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 const m = vi.hoisted(() => ({ refresh: vi.fn(), push: vi.fn(), use: vi.fn(), settings: vi.fn(), create: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => m }));
-vi.mock("@/app/desk/purchasing-actions", () => ({ recordPartUsageAction: m.use, updatePartStockSettingsAction: m.settings, createPurchaseOrderAction: m.create }));
+vi.mock("@/app/desk/purchasing-actions", () => ({ recordPartUsageAction: m.use, updatePartStockSettingsAction: m.settings, createPurchaseOrderAction: m.create, setPartArchivedAction: vi.fn() }));
 import { PartStockPanel } from "@/app/desk/parts/part-stock-panel";
 import { NewPurchaseOrderForm } from "@/app/desk/purchase-orders/new/new-purchase-order-form";
 afterEach(cleanup);
@@ -23,7 +23,7 @@ it("opens stock editing with refreshed values after using parts, preserving fail
   fireEvent.click(screen.getByRole("button", { name: "Save" }));
   await screen.findByRole("alert");
   expect(screen.getByLabelText("On hand")).toHaveValue(8);
-  expect(m.settings).toHaveBeenCalledWith("p1", 8, 3);
+  expect(m.settings).toHaveBeenCalledWith("p1", 8, 3, expect.stringMatching(/^[A-Za-z0-9:_-]{8,100}$/));
 });
 it("all order-line controls have associated names after adding/removing a line", () => {
   render(<NewPurchaseOrderForm suppliers={[{ id: "s1", name: "Supplier" }]} partRecords={[]} />);

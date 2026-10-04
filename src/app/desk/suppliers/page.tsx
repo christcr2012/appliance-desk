@@ -5,9 +5,10 @@ import { PlusIcon } from "@/components/icons/status-icons";
 
 export const metadata = { title: "Suppliers" };
 
-export default async function SuppliersPage() {
+export default async function SuppliersPage({ searchParams }: { searchParams: Promise<{ archived?: string }> }) {
   await requireRole("OWNER", "ADMIN");
-  const suppliers = await getSuppliers();
+  const showArchived = (await searchParams).archived === "1";
+  const suppliers = await getSuppliers({ includeArchived: showArchived });
 
   return (
     <div>
@@ -22,7 +23,16 @@ export default async function SuppliersPage() {
         </Link>
       </div>
       <p className="mt-1 text-sm text-gray-600">
-        Who you order parts and appliances from.
+        Who you order parts and appliances from.{" "}
+        {showArchived ? (
+          <Link href="/desk/suppliers" className="text-primary underline">
+            Hide archived suppliers
+          </Link>
+        ) : (
+          <Link href="/desk/suppliers?archived=1" className="text-primary underline">
+            Show archived suppliers
+          </Link>
+        )}
       </p>
 
       {suppliers.length === 0 ? (
@@ -36,7 +46,7 @@ export default async function SuppliersPage() {
                 className="flex flex-col gap-1 px-4 py-4 hover:bg-gray-50 sm:flex-row sm:items-center sm:justify-between"
               >
                 <div>
-                  <p className="font-medium text-gray-900">{s.name}</p>
+                  <p className="font-medium text-gray-900">{s.name}{s.archivedAt ? " — archived" : ""}</p>
                   <p className="text-sm text-gray-600">
                     {s.contactName ?? ""}
                     {s.contactName && (s.phone || s.email) ? " · " : ""}

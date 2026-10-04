@@ -2,7 +2,12 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { recordPartUsageAction, updatePartStockSettingsAction } from "../purchasing-actions";
+import { recordPartUsageAction, setPartArchivedAction, updatePartStockSettingsAction } from "../purchasing-actions";
+
+/** A fresh identity for one save, created when a form opens: pressing Save twice or retrying changes nothing twice. */
+function newOperationKey(): string {
+  return `ui-${crypto.randomUUID()}`;
+}
 
 /** Small inline stock panel on a part row — shows the current count and
  * reorder threshold (if any), plus two quick actions: logging a used
@@ -16,11 +21,13 @@ export function PartStockPanel({
   quantityOnHand,
   reorderThreshold,
   lowStock,
+  archived = false,
 }: {
   partRecordId: string;
   quantityOnHand: number;
   reorderThreshold: number | null;
   lowStock: boolean;
+  archived?: boolean;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -31,13 +38,26 @@ export function PartStockPanel({
     reorderThreshold !== null ? String(reorderThreshold) : "",
   );
   const [error, setError] = useState<string | null>(null);
+  const [operationKey, setOperationKey] = useState(newOperationKey);
+
+  function handleArchive() {
+    setError(null);
+    startTransition(async () => {
+      const result = await setPartArchivedAction(partRecordId, !archived);
+      if (result.status === "error") {
+        setError(result.message);
+        return;
+      }
+      router.refresh();
+    });
+  }
 
   function handleUse(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     const quantity = Number(useQuantity);
     startTransition(async () => {
-      const result = await recordPartUsageAction(partRecordId, quantity);
+      const result = await recordPartUsageAction(partRecordId, quantity, operationKey);
       if (result.status === "error") {
         setError(result.message);
         return;
@@ -53,7 +73,7 @@ export function PartStockPanel({
     const quantity = Number(settingsQuantity);
     const threshold = settingsThreshold.trim() === "" ? null : Number(settingsThreshold);
     startTransition(async () => {
-      const result = await updatePartStockSettingsAction(partRecordId, quantity, threshold);
+      const result = await updatePartStockSettingsAction(partRecordId, quantity, threshold, operationKey);
       if (result.status === "error") {
         setError(result.message);
         return;
@@ -132,17 +152,28 @@ export function PartStockPanel({
         {reorderThreshold !== null && ` (flag at ${reorderThreshold})`}
         {lowStock && " — low stock"}
       </span>
-      <button type="button" onClick={() => setMode("use")} className="text-gray-700 underline">
-        Used some
-      </button>
+      {!archived && (
+        <button type="button" onClick={() => {
+          setOperationKey(newOperationKey());
+          setError(null);
+          setMode("use");
+        }} className="text-gray-700 underline">
+          Used some
+        </button>
+      )}
       <button type="button" onClick={() => {
         setSettingsQuantity(String(quantityOnHand));
         setSettingsThreshold(reorderThreshold !== null ? String(reorderThreshold) : "");
+        setOperationKey(newOperationKey());
         setError(null);
         setMode("settings");
       }} className="text-gray-700 underline">
         Edit stock
       </button>
+      <button type="button" disabled={isPending} onClick={handleArchive} className="text-gray-700 underline disabled:opacity-50">
+        {archived ? "Restore" : "Archive"}
+      </button>
+      {error && <span role="alert" className="text-red-700">{error}</span>}
     </div>
   );
 }

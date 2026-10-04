@@ -1,17 +1,34 @@
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
+import { assertActiveTeamActor } from "@/lib/team-actor";
+import {
+  applyPartMovementsInTx,
+  lastKnownPurchaseCostCents,
+  lockPartRecords,
+  OPERATION_KEY_PATTERN,
+  type PartMovementRequest,
+} from "./ledger";
+
+export {
+  InsufficientStockError,
+  PartOperationConflictError,
+  applyPartMovementsInTx,
+  findPartLedgerMismatches,
+  jobPartsCost,
+  jobPartsCosts,
+} from "./ledger";
+import { jobPartsCost } from "./ledger";
 
 // ---------------------------------------------------------------------------
 // Purchasing & supplies (2026-09-29) — see docs/BUSINESS-RULES.md's
 // "Purchasing & supplies" section. Deliberately minimal: a Supplier is
 // just contact info, a PurchaseOrder moves DRAFT → ORDERED → RECEIVED
-// (or CANCELLED at any point before RECEIVED), and receiving one adds
-// its lines' quantities onto PartRecord.quantityOnHand — the only thing
-// this app tracks stock for. There's no purchasing approval workflow,
-// no per-line partial receiving, and no automatic consumption tracking
-// (a part used on a repair only leaves quantityOnHand when Chris says
-// so, via recordPartUsage) — a one-person operation doesn't need more
-// process than that, and a heavier system would just be paperwork he'd
-// stop keeping current.
+// (or CANCELLED at any point before RECEIVED). Since Batch C (2026-10-03)
+// every change to a part's stock is a row in the parts ledger
+// (./ledger.ts); a purchase order can be received in several partial
+// shipments; using more than is on hand is refused. There's no purchasing
+// approval workflow and no automatic consumption tracking (a part used on
+// a repair only leaves stock when Chris says so, via recordPartUsage).
 // ---------------------------------------------------------------------------
 
 export type NewSupplierInput = {
@@ -22,8 +39,9 @@ export type NewSupplierInput = {
   notes?: string;
 };
 
-export async function getSuppliers() {
+export async function getSuppliers(options: { includeArchived?: boolean } = {}) {
   return prisma.supplier.findMany({
+    where: options.includeArchived ? {} : { archivedAt: null },
     include: { _count: { select: { purchaseOrders: true } } },
     orderBy: [{ name: "asc" }],
   });
@@ -98,6 +116,10 @@ export async function createPurchaseOrder(userId: string, input: NewPurchaseOrde
     }
   }
 
+  const supplier = await prisma.supplier.findUnique({ where: { id: input.supplierId }, select: { archivedAt: true } });
+  if (!supplier) throw new Error("Choose a supplier.");
+  if (supplier.archivedAt) throw new Error("This supplier is archived. Restore it before placing a new order.");
+
   const order = await prisma.purchaseOrder.create({
     data: {
       supplierId: input.supplierId,
@@ -110,6 +132,7 @@ export async function createPurchaseOrder(userId: string, input: NewPurchaseOrde
             description: line.description.trim(),
             quantity: line.quantity,
             unitCostCents: line.unitCostCents ?? 0,
+            unitCostKnown: line.unitCostCents !== undefined && line.unitCostCents !== null,
           })),
         },
       },
@@ -166,52 +189,132 @@ export async function markPurchaseOrderOrdered(userId: string, purchaseOrderId: 
   });
 }
 
+export type ReceiveLinesInput = {
+  purchaseOrderId: string;
+  /** A random id the screen creates when the form opens; a retry with the same id changes nothing. */
+  operationKey: string;
+  lines: { lineId: string; quantity: number; unitCostCents: number | null }[];
+};
+
 /**
- * Marks an ORDERED purchase order as received — for every line tied to
- * a real PartRecord (partRecordId set), adds that line's full quantity
- * onto PartRecord.quantityOnHand. Deliberately all-or-nothing per order
- * (no partial-quantity receiving): a smaller shipment than ordered is
- * still an honest, real event, but tracking "3 of 5 arrived, 2 more
- * still coming" is a second, more complex workflow a one-person
- * operation doesn't need on day one — if a shipment genuinely comes up
- * short, Chris can use recordPartUsage's inverse (adjust the quantity
- * by hand, or just note it) rather than this needing to model partial
- * receipts. Idempotent in effect (status must be ORDERED to run again),
- * so this can't accidentally double-add stock.
+ * Receives some or all of an ORDERED purchase order. Each line can arrive in several shipments:
+ * a quantity may not exceed what is still outstanding on the line, the order becomes RECEIVED only
+ * when every line is complete, and a cancelled order keeps the stock already received. Lines tied to
+ * a part add a RECEIPT movement to the ledger; free-text lines only count their received quantity.
+ * A retry with the same operationKey returns the first result and changes nothing; a second real
+ * partial receipt uses a new key.
  */
-export async function receivePurchaseOrder(userId: string, purchaseOrderId: string) {
-  await prisma.$transaction(async (tx) => {
-    // The status claim serializes competing receive/cancel operations before
-    // stock changes. A later failure rolls back both the claim and increments.
-    const claim = await tx.purchaseOrder.updateMany({
-      where: { id: purchaseOrderId, status: "ORDERED" },
-      data: { status: "RECEIVED", receivedAt: new Date() },
-    });
-    if (claim.count !== 1) {
-      throw new Error("Only a purchase order that's been marked as ordered can be received.");
-    }
+export async function receivePurchaseOrderLines(userId: string, input: ReceiveLinesInput): Promise<{ replayed: boolean }> {
+  if (!OPERATION_KEY_PATTERN.test(input.operationKey) || input.operationKey.length > 70) {
+    throw new Error("This request has no valid identity. Reload the page and try again.");
+  }
+  if (input.lines.length === 0) throw new Error("Enter how many arrived on at least one line.");
+  const lineIds = input.lines.map((l) => l.lineId);
+  if (new Set(lineIds).size !== lineIds.length) throw new Error("A line can appear only once in one receipt.");
+
+  return prisma.$transaction(async (tx) => {
+    await assertActiveTeamActor(tx, userId, ["OWNER", "ADMIN"]);
+    const locked = await tx.$queryRaw<Array<{ id: string }>>`
+      SELECT "id" FROM "PurchaseOrder" WHERE "id" = ${input.purchaseOrderId} FOR UPDATE
+    `;
+    if (locked.length !== 1) throw new Error("Couldn't find that purchase order.");
     const order = await tx.purchaseOrder.findUniqueOrThrow({
-      where: { id: purchaseOrderId }, include: { lines: true },
+      where: { id: input.purchaseOrderId },
+      include: { lines: { orderBy: [{ id: "asc" }] } },
     });
-    for (const line of order.lines) {
-      if (line.partRecordId) {
-        await tx.partRecord.update({
-          where: { id: line.partRecordId },
-          data: { quantityOnHand: { increment: line.quantity } },
-        });
+
+    // A retry of a receipt that already applied returns the first result, even if the order has since been completed.
+    const prior = await tx.partStockMovement.findFirst({
+      where: { purchaseOrderLineItem: { purchaseOrderId: order.id }, operationKey: { startsWith: `${input.operationKey}:` } },
+      select: { id: true },
+    });
+    const priorAny = prior ?? (await tx.auditLog.findFirst({ where: { action: "purchase_order.receive", entityId: order.id, newValue: { path: ["operationKey"], equals: input.operationKey } }, select: { id: true } }));
+    if (priorAny) {
+      await replayLineMovements(tx, userId, order.lines, input);
+      return { replayed: true };
+    }
+
+    if (order.status !== "ORDERED") throw new Error("Only a purchase order that's been marked as ordered can be received.");
+
+    const byId = new Map(order.lines.map((l) => [l.id, l]));
+    for (const line of input.lines) {
+      const row = byId.get(line.lineId);
+      if (!row) throw new Error("One of those lines is not on this purchase order.");
+      if (!Number.isSafeInteger(line.quantity) || line.quantity < 1) throw new Error("A received quantity must be at least 1.");
+      const outstanding = row.quantity - row.receivedQuantity;
+      if (line.quantity > outstanding) {
+        throw new Error(`Only ${outstanding} still to arrive on “${row.description}”.`);
       }
     }
 
+    // Lock every part this receipt touches, sorted by id, before writing anything.
+    await lockPartRecords(tx, input.lines.flatMap((l) => byId.get(l.lineId)!.partRecordId ?? []));
+
+    for (const line of input.lines) {
+      const row = byId.get(line.lineId)!;
+      const cost = line.unitCostCents ?? (row.unitCostKnown ? row.unitCostCents : null);
+      if (row.partRecordId) {
+        await applyPartMovementsInTx(tx, userId, `${input.operationKey}:${row.id}`, [
+          { partRecordId: row.partRecordId, kind: "RECEIPT", quantityDelta: line.quantity, unitCostCents: cost, purchaseOrderLineItemId: row.id },
+        ]);
+      }
+      await tx.purchaseOrderLineItem.update({
+        where: { id: row.id },
+        data: {
+          receivedQuantity: { increment: line.quantity },
+          ...(line.unitCostCents !== null ? { unitCostCents: line.unitCostCents, unitCostKnown: true } : {}),
+        },
+      });
+    }
+
+    const after = await tx.purchaseOrderLineItem.findMany({ where: { purchaseOrderId: order.id }, select: { quantity: true, receivedQuantity: true } });
+    const complete = after.every((l) => l.receivedQuantity >= l.quantity);
+    if (complete) {
+      await tx.purchaseOrder.update({ where: { id: order.id }, data: { status: "RECEIVED", receivedAt: new Date() } });
+    }
     await tx.auditLog.create({
       data: {
         userId,
         action: "purchase_order.receive",
         entityType: "PurchaseOrder",
-        entityId: purchaseOrderId,
-        newValue: { lineCount: order.lines.length },
+        entityId: order.id,
+        newValue: { operationKey: input.operationKey, lines: input.lines, completed: complete },
       },
     });
+    return { replayed: false };
   });
+}
+
+/** On a retry: re-run each line's movement under the same key so a changed payload is still refused. */
+async function replayLineMovements(
+  tx: Prisma.TransactionClient,
+  userId: string,
+  orderLines: Array<{ id: string; partRecordId: string | null; unitCostKnown: boolean; unitCostCents: number }>,
+  input: ReceiveLinesInput,
+) {
+  const byId = new Map(orderLines.map((l) => [l.id, l]));
+  for (const line of input.lines) {
+    const row = byId.get(line.lineId);
+    if (!row?.partRecordId) continue;
+    const cost = line.unitCostCents ?? (row.unitCostKnown ? row.unitCostCents : null);
+    const request: PartMovementRequest = { partRecordId: row.partRecordId, kind: "RECEIPT", quantityDelta: line.quantity, unitCostCents: cost, purchaseOrderLineItemId: row.id };
+    await applyPartMovementsInTx(tx, userId, `${input.operationKey}:${row.id}`, [request]);
+  }
+}
+
+/**
+ * Receives every quantity still outstanding on an ORDERED purchase order (the old "mark as
+ * received"). Same effect as receivePurchaseOrderLines with the remaining amount on each line.
+ */
+export async function receivePurchaseOrder(userId: string, purchaseOrderId: string) {
+  const order = await prisma.purchaseOrder.findUnique({ where: { id: purchaseOrderId }, include: { lines: true } });
+  if (!order) throw new Error("Couldn't find that purchase order.");
+  if (order.status !== "ORDERED") throw new Error("Only a purchase order that's been marked as ordered can be received.");
+  const lines = order.lines
+    .filter((l) => l.quantity > l.receivedQuantity)
+    .map((l) => ({ lineId: l.id, quantity: l.quantity - l.receivedQuantity, unitCostCents: null }));
+  if (lines.length === 0) throw new Error("Everything on this order has already arrived.");
+  await receivePurchaseOrderLines(userId, { purchaseOrderId, operationKey: `po-receive-all:${purchaseOrderId}`, lines });
 }
 
 export async function cancelPurchaseOrder(userId: string, purchaseOrderId: string) {
@@ -227,30 +330,32 @@ export async function cancelPurchaseOrder(userId: string, purchaseOrderId: strin
   });
 }
 
-/** Chris logging that he used some of a part on a real repair —
- * deliberately manual (see the file comment for why) rather than tied
- * to any job/maintenance record automatically. Clamped at 0 — this is a
- * count of physical parts on a shelf, which can never go negative, so a
- * typo (using more than's on hand) is silently floored rather than
- * producing a confusing negative count. */
-export async function recordPartUsage(userId: string, partRecordId: string, quantity: number) {
+/**
+ * Chris logging that he used some of a part on a repair. The quantity must be on hand: using more
+ * than the count is refused (never silently floored), so a wrong shelf count gets fixed with a
+ * recount instead of hiding. The movement records the part's last known purchase cost as an
+ * estimate (blank when no receipt had a price). `operationKey` makes a retry harmless.
+ */
+export async function recordPartUsage(
+  userId: string,
+  partRecordId: string,
+  quantity: number,
+  options: { operationKey: string; jobId?: string | null },
+) {
   if (!Number.isSafeInteger(quantity) || quantity < 1) {
     throw new Error("Enter how many were used.");
   }
-
-  return prisma.$transaction(async tx => {
-    // A row lock protects the read/clamp/write against simultaneous use or
-    // receiving stock. Bound parameters; no external resource or provider call.
-    await tx.$queryRaw`SELECT "id" FROM "PartRecord" WHERE "id" = ${partRecordId} FOR UPDATE`;
-    const part = await tx.partRecord.findUniqueOrThrow({ where: { id: partRecordId } });
-    const newQuantity = Math.max(0, part.quantityOnHand - quantity);
-    const updated = await tx.partRecord.update({ where: { id: partRecordId }, data: { quantityOnHand: newQuantity } });
-    await tx.auditLog.create({ data: {
-      userId, action: "part.use", entityType: "PartRecord", entityId: partRecordId,
-      oldValue: { quantityOnHand: part.quantityOnHand },
-      newValue: { quantityOnHand: newQuantity, usedQuantity: quantity },
-    } });
-    return updated;
+  return prisma.$transaction(async (tx) => {
+    await assertActiveTeamActor(tx, userId, ["OWNER", "ADMIN"]);
+    if (options.jobId) {
+      const job = await tx.job.findUnique({ where: { id: options.jobId }, select: { id: true } });
+      if (!job) throw new Error("Couldn't find that job.");
+    }
+    const cost = await lastKnownPurchaseCostCents(tx, partRecordId);
+    await applyPartMovementsInTx(tx, userId, options.operationKey, [
+      { partRecordId, kind: "USAGE", quantityDelta: -quantity, unitCostCents: cost, jobId: options.jobId ?? undefined, reason: "Used on a repair" },
+    ]);
+    return tx.partRecord.findUniqueOrThrow({ where: { id: partRecordId } });
   });
 }
 
@@ -259,42 +364,115 @@ export type PartStockSettingsInput = {
   reorderThreshold: number | null;
 };
 
-/** Lets Chris correct a part's on-hand count directly (a physical
- * recount, a correction) or set/clear its reorder threshold — separate
- * from recordPartUsage, which only ever moves the count down by a used
- * amount. */
+/** Lets Chris correct a part's on-hand count directly (a physical recount) or set/clear its
+ * reorder threshold. A changed count is written to the ledger as a RECOUNT movement. */
 export async function updatePartStockSettings(
   userId: string,
   partRecordId: string,
-  input: PartStockSettingsInput,
+  input: PartStockSettingsInput & { operationKey: string },
 ) {
-  if (input.quantityOnHand < 0) {
+  if (!Number.isSafeInteger(input.quantityOnHand) || input.quantityOnHand < 0) {
     throw new Error("Quantity on hand can't be negative.");
   }
-  if (input.reorderThreshold !== null && input.reorderThreshold < 0) {
+  if (input.reorderThreshold !== null && (!Number.isSafeInteger(input.reorderThreshold) || input.reorderThreshold < 0)) {
     throw new Error("Reorder threshold can't be negative.");
   }
 
-  const updated = await prisma.partRecord.update({
-    where: { id: partRecordId },
-    data: {
-      quantityOnHand: input.quantityOnHand,
-      reorderThreshold: input.reorderThreshold,
-    },
+  return prisma.$transaction(async (tx) => {
+    await assertActiveTeamActor(tx, userId, ["OWNER", "ADMIN"]);
+    await applyPartMovementsInTx(tx, userId, input.operationKey, [
+      { partRecordId, kind: "RECOUNT", countedQuantity: input.quantityOnHand, unitCostCents: null, reason: "Counted on the shelf" },
+    ]);
+    const updated = await tx.partRecord.update({
+      where: { id: partRecordId },
+      data: { reorderThreshold: input.reorderThreshold },
+    });
+    await tx.auditLog.create({
+      data: {
+        userId,
+        action: "part.stock_settings.update",
+        entityType: "PartRecord",
+        entityId: partRecordId,
+        newValue: { quantityOnHand: input.quantityOnHand, reorderThreshold: input.reorderThreshold },
+      },
+    });
+    return updated;
   });
-
-  await prisma.auditLog.create({
-    data: {
-      userId,
-      action: "part.stock_settings.update",
-      entityType: "PartRecord",
-      entityId: partRecordId,
-      newValue: input,
-    },
-  });
-
-  return updated;
 }
+
+/** Undo a mistaken movement: adds a REVERSAL (the original row is never changed) so the count and cost come back. */
+export async function reversePartMovement(userId: string, movementId: string, operationKey: string, reason?: string) {
+  return prisma.$transaction(async (tx) => {
+    await assertActiveTeamActor(tx, userId, ["OWNER", "ADMIN"]);
+    const original = await tx.partStockMovement.findUnique({ where: { id: movementId }, select: { partRecordId: true } });
+    if (!original) throw new Error("Couldn't find that entry.");
+    return applyPartMovementsInTx(tx, userId, operationKey, [
+      { partRecordId: original.partRecordId, kind: "REVERSAL", reversesMovementId: movementId, unitCostCents: null, reason: reason ?? "Entered by mistake" },
+    ]);
+  });
+}
+
+/** The parts logged against one job, plus what they cost (itemized, or the legacy hand-entered number). */
+export async function getJobPartsUsed(jobId: string) {
+  const [movements, cost] = await Promise.all([
+    prisma.partStockMovement.findMany({
+      where: { jobId, kind: { in: ["USAGE", "REVERSAL"] } },
+      include: { partRecord: { select: { modelNumber: true, partNumber: true, partName: true } } },
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    }),
+    jobPartsCost(prisma, jobId),
+  ]);
+  const reversed = new Set(movements.filter((m) => m.kind === "REVERSAL").map((m) => m.reversesMovementId));
+  return {
+    cost,
+    rows: movements
+      .filter((m) => m.kind === "USAGE")
+      .map((m) => ({
+        id: m.id,
+        label: `${m.partRecord.modelNumber} — ${m.partRecord.partNumber}${m.partRecord.partName ? ` (${m.partRecord.partName})` : ""}`,
+        quantity: -m.quantityDelta,
+        unitCostCents: m.unitCostCents,
+        reversed: reversed.has(m.id),
+      })),
+  };
+}
+
+async function setArchived(
+  userId: string,
+  entity: "part" | "supplier",
+  id: string,
+  archived: boolean,
+): Promise<void> {
+  await prisma.$transaction(async (tx) => {
+    await assertActiveTeamActor(tx, userId, ["OWNER", "ADMIN"]);
+    const when = archived ? new Date() : null;
+    const result =
+      entity === "part"
+        ? await tx.partRecord.updateMany({ where: { id, archivedAt: archived ? null : { not: null } }, data: { archivedAt: when } })
+        : await tx.supplier.updateMany({ where: { id, archivedAt: archived ? null : { not: null } }, data: { archivedAt: when } });
+    if (result.count === 0) {
+      const exists =
+        entity === "part"
+          ? await tx.partRecord.findUnique({ where: { id }, select: { id: true } })
+          : await tx.supplier.findUnique({ where: { id }, select: { id: true } });
+      if (!exists) throw new Error(`Couldn't find that ${entity}.`);
+      return; // already in the requested state
+    }
+    await tx.auditLog.create({
+      data: {
+        userId,
+        action: `${entity}.${archived ? "archive" : "restore"}`,
+        entityType: entity === "part" ? "PartRecord" : "Supplier",
+        entityId: id,
+      },
+    });
+  });
+}
+
+export const archivePartRecord = (userId: string, partRecordId: string) => setArchived(userId, "part", partRecordId, true);
+export const restorePartRecord = (userId: string, partRecordId: string) => setArchived(userId, "part", partRecordId, false);
+export const archiveSupplier = (userId: string, supplierId: string) => setArchived(userId, "supplier", supplierId, true);
+export const restoreSupplier = (userId: string, supplierId: string) => setArchived(userId, "supplier", supplierId, false);
 
 /** Every part with a reorder threshold set that's at or below it — the
  * "flag when a part I use often is low on hand" ask. A part with no
@@ -302,7 +480,7 @@ export async function updatePartStockSettings(
  * told the system he tracks stock of it. */
 export async function getLowStockParts() {
   const parts = await prisma.partRecord.findMany({
-    where: { reorderThreshold: { not: null } },
+    where: { reorderThreshold: { not: null }, archivedAt: null },
     include: { applianceType: true },
     orderBy: [{ modelNumber: "asc" }],
   });
