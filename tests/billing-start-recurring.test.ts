@@ -218,7 +218,7 @@ describe("startRecurringBillingForAgreement", () => {
     });
   });
 
-  it("backdates the provider subscription to first delivery while keeping the next anniversary anchor", async () => {
+  it("keeps delivery provenance in Stripe metadata without inventing a backdated provider clock", async () => {
     const { startRecurringBillingForAgreement } = await import("@/domains/billing/checkout");
 
     const outcome = await startRecurringBillingForAgreement("agr-1");
@@ -241,10 +241,11 @@ describe("startRecurringBillingForAgreement", () => {
           agreementId: "agr-1",
           firstDeliveredOn: FIRST_DELIVERED.toISOString(),
         },
-        backdate_start_date: Math.floor(FIRST_DELIVERED.getTime() / 1000),
       }),
     );
-    expect(params.billing_cycle_anchor).toBeGreaterThan(Math.floor(RETRY_TIME.getTime() / 1000));
+    expect(params).not.toHaveProperty("backdate_start_date");
+    expect(params).not.toHaveProperty("billing_cycle_anchor");
+    expect(params).not.toHaveProperty("billing_cycle_anchor_config");
     expect(params).not.toHaveProperty("cancel_at");
     expect(options).toEqual({ idempotencyKey: "subscription-create-agr-1" });
 
@@ -323,7 +324,9 @@ describe("startRecurringBillingForAgreement", () => {
 
     it("never overwrites an end date already saved by an earlier attempt", async () => {
       const saved = new Date("2027-03-01T06:59:59.000Z");
-      mocks.rentalAgreementFindUniqueOrThrow.mockResolvedValue(baseAgreement({ termMonths: 12, endDate: saved }));
+      mocks.rentalAgreementFindUniqueOrThrow.mockResolvedValue(
+        baseAgreement({ termMonths: 12, endDate: saved }),
+      );
       const { startRecurringBillingForAgreement } = await import("@/domains/billing/checkout");
 
       await startRecurringBillingForAgreement("agr-1");
@@ -341,7 +344,9 @@ describe("startRecurringBillingForAgreement", () => {
       mocks.rentalAgreementFindUniqueOrThrow.mockResolvedValue(
         baseAgreement({ firstDeliveredOn: null, billingStartedAt: historical, termMonths: 12 }),
       );
-      mocks.queryRaw.mockResolvedValue([lockRow({ firstDeliveredOn: historical, billingStartedAt: historical })]);
+      mocks.queryRaw.mockResolvedValue([
+        lockRow({ firstDeliveredOn: historical, billingStartedAt: historical }),
+      ]);
       const { startRecurringBillingForAgreement } = await import("@/domains/billing/checkout");
 
       await startRecurringBillingForAgreement("agr-1");
@@ -438,7 +443,9 @@ describe("startRecurringBillingForAgreement", () => {
 
   describe("exact tax rates sent to Stripe", () => {
     it("creates a 7.375% rate exactly when none exists", async () => {
-      mocks.rentalAgreementFindUniqueOrThrow.mockResolvedValue(baseAgreement({ taxRateMilliPercent: 7375 }));
+      mocks.rentalAgreementFindUniqueOrThrow.mockResolvedValue(
+        baseAgreement({ taxRateMilliPercent: 7375 }),
+      );
       const { startRecurringBillingForAgreement } = await import("@/domains/billing/checkout");
 
       await startRecurringBillingForAgreement("agr-1");
@@ -449,7 +456,9 @@ describe("startRecurringBillingForAgreement", () => {
     });
 
     it("reuses a matching rate found on a later page instead of creating a duplicate", async () => {
-      mocks.rentalAgreementFindUniqueOrThrow.mockResolvedValue(baseAgreement({ taxRateMilliPercent: 7375 }));
+      mocks.rentalAgreementFindUniqueOrThrow.mockResolvedValue(
+        baseAgreement({ taxRateMilliPercent: 7375 }),
+      );
       mocks.taxRatesList
         .mockResolvedValueOnce({
           data: [{ id: "txr_other", percentage: 7.3, inclusive: false }],
@@ -473,7 +482,9 @@ describe("startRecurringBillingForAgreement", () => {
     });
 
     it("does not treat 7.3% as 7.375%", async () => {
-      mocks.rentalAgreementFindUniqueOrThrow.mockResolvedValue(baseAgreement({ taxRateMilliPercent: 7375 }));
+      mocks.rentalAgreementFindUniqueOrThrow.mockResolvedValue(
+        baseAgreement({ taxRateMilliPercent: 7375 }),
+      );
       mocks.taxRatesList.mockResolvedValue({
         data: [{ id: "txr_73", percentage: 7.3, inclusive: false }],
         has_more: false,
