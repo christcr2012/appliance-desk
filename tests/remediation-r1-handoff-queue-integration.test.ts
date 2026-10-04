@@ -35,7 +35,10 @@ describe.skipIf(!enabled)("Remediation R1 handoff queue recovery (real Postgres)
     return id;
   }
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    if (jobIds.length > 0) {
+      await prisma.jobBillingHandoff.deleteMany({ where: { jobId: { in: jobIds } } });
+    }
     vi.clearAllMocks();
     handoffMocks.startBilling.mockResolvedValue(DONE);
     handoffMocks.pushCredit.mockResolvedValue(DONE);
