@@ -237,6 +237,10 @@ export async function completeJob(userId: string, input: CompleteJobInput): Prom
       }
 
       if (result.result === "DELIVERED") {
+        // Custody must be recordable before anything moves: a rented unit with no known holder is the one state we never create.
+        if (!customerId) {
+          throw new JobCompletionConflictError(`${appliance.assetNumber} can't be marked delivered on a visit with no customer. Open the job, choose the customer, then complete it.`);
+        }
         if (isDelivery) {
           const moved = await tx.appliance.updateMany({ where: { id: applianceId, status: "RESERVED" }, data: { status: "RENTED" } });
           if (moved.count !== 1) throw new JobCompletionConflictError(`${appliance.assetNumber} is no longer waiting for delivery, so it can't be marked delivered.`);
@@ -244,11 +248,7 @@ export async function completeJob(userId: string, input: CompleteJobInput): Prom
             data: { userId, action: "appliance.unit.status", entityType: "Appliance", entityId: applianceId, oldValue: { status: "RESERVED" }, newValue: { status: "RENTED", reason: `Job ${before.type.toLowerCase()} completed`, jobId: before.id } },
           });
         }
-        if (customerId) {
-          await openCustodyEpisodeInTx(tx, { applianceId, customerId, serviceAddressId: before.serviceAddressId, agreementId: before.agreementId, startedOn: serviceDate, startJobId: before.id });
-        } else {
-          notes.push(`${appliance.assetNumber}: no customer on this job, so no custody was recorded.`);
-        }
+        await openCustodyEpisodeInTx(tx, { applianceId, customerId, serviceAddressId: before.serviceAddressId, agreementId: before.agreementId, startedOn: serviceDate, startJobId: before.id });
         positiveIds.push(applianceId);
       } else if (result.result === "RETURNED") {
         if (before.type === "REMOVAL") {
@@ -456,12 +456,13 @@ async function runHandoffs(scope: { ids?: string[]; limit?: number }): Promise<{
     try {
       if (row.kind === "START_RECURRING_BILLING") await startRecurringBillingForAgreement(row.subjectId);
       else await pushLateDeliveryCreditToStripe(row.subjectId);
-      await prisma.jobBillingHandoff.update({ where: { id: row.id }, data: { status: "DONE", doneAt: new Date(), lastError: null } });
+      // Never let a slower worker undo a finished one: the provider operations are idempotent, so a rare double run is harmless, but the record must stay DONE.
+      await prisma.jobBillingHandoff.updateMany({ where: { id: row.id, status: { not: "DONE" } }, data: { status: "DONE", doneAt: new Date(), lastError: null } });
       done += 1;
     } catch (error) {
       failed += 1;
       const message = error instanceof Error ? error.message.slice(0, 500) : "Unknown error";
-      await prisma.jobBillingHandoff.update({ where: { id: row.id }, data: { status: "FAILED", lastError: message } });
+      await prisma.jobBillingHandoff.updateMany({ where: { id: row.id, status: { not: "DONE" } }, data: { status: "FAILED", lastError: message } });
       console.error(`Job billing handoff ${row.id} (${row.kind}) failed:`, error);
     }
   }

@@ -282,6 +282,15 @@ describe.skipIf(!enabled)("completeJob", () => {
     expect((await finish(none.id, [])).outcome).toBe("COMPLETE");
   });
 
+  it("complete-delivery-without-customer-refused: a delivery with no customer changes nothing", async () => {
+    const a = await unit("RESERVED", false);
+    const j = await job("DELIVERY", [a], { customerId: null, agreementId: null, serviceAddressId: null });
+    await expect(finish(j.id, [[a, "DELIVERED"]])).rejects.toThrow(/no customer/);
+    expect(await status(a)).toBe("RESERVED");
+    expect((await jobRow(j.id)).status).toBe("IN_PROGRESS");
+    expect(await prisma.applianceCustodyEpisode.count({ where: { applianceId: a } })).toBe(0);
+  });
+
   it("a swap takes a result per unit; returning the old unit without the new one being delivered is refused", async () => {
     const original = await unit("RENTED", false);
     const replacement = await unit("RESERVED", false);
