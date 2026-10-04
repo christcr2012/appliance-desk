@@ -14,7 +14,7 @@ the points where the implementer must stop and ask instead of guessing.
 | D — Owner/customer control plane, website, evidence & privacy | `BATCH-D.md` | Approved 2026-10-02 (verify §0 after C merges) |
 | E — Communications, reporting, growth, branding & accessibility | `BATCH-E.md` | Approved 2026-10-02 (verify §0 after D merges) |
 | E2 — Visual redesign: owner desk, public site, customer portal (desktop, phone, dark) | `BATCH-E2.md` | **Not written** — prompt in `docs/prompts/DESIGN-BATCH-E2-REDESIGN.md` |
-| F — Integrated verification, recovery, owner handoff & launch ledger | `BATCH-F.md` | Approved 2026-10-02 (verify §0 after E merges) |
+| F — Integrated verification, recovery, owner handoff & launch ledger | `BATCH-F.md` | Approved 2026-10-02 (verify §0 after **E2** merges; F now also waits for E2 and must be re-checked against the redesigned screens) |
 
 ## The rule
 

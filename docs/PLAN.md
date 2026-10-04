@@ -506,7 +506,7 @@ Give the finished product the polished, modern look Chris approved in the 2026-1
 
 ### Open these first
 
-`docs/ROADMAP.md` entry "Owner desk and public site visual redesign" (direction and mockup rules), `docs/DESIGN-SYSTEM.md`, `docs/brand/` (especially `03_Design_System/brand-tokens.json` and the brand handoff rules), `docs/plans/overhaul/DESIGN.md`, the finished Batch E token migration, and the private design mockup "Appliance Desk Redesign Mockup" (layout and feel only; its text is placeholders).
+`docs/ROADMAP.md` entry "Owner desk and public site visual redesign" (direction and mockup rules), `docs/DESIGN-SYSTEM.md`, `docs/brand/` (especially `03_Design_System/brand-tokens.json` and the brand handoff rules), `docs/plans/overhaul/DESIGN.md`, the finished Batch E token migration, and `docs/design-mockups/redesign-2026-10-04/` (a copy of the mockup: layout and feel only; its text is placeholders).
 
 ### Deliverables
 
