@@ -25,14 +25,29 @@ import { lockRentalAgreementInTx } from "./index";
  *   - the old agreement is marked ENDED (its end date stays the term end) and
  *     the renewal becomes ACTIVE.
  *
- * If the renewal's start date has not arrived, or the agreement it renews is no
- * longer active (ended or cancelled early), nothing changes and the reason is
- * returned so the owner can be told.
+ * If the renewal's start date has not arrived, the agreement it renews is no
+ * longer active, or old-agreement field work could still change custody, the
+ * transaction fails closed and returns the reason to the owner.
  */
 
 export type RenewalStartResult =
   | { started: true; renewalId: string; endedAgreementId: string; appliancesMoved: number }
-  | { started: false; renewalId: string; reason: "NOT_SCHEDULED" | "NOT_YET" | "OLD_NOT_ACTIVE" | "NO_RENEWED_FROM" | "BILLING_NOT_READY" | "AUTO_RENEW_WITHDRAWN" | "AUTO_RENEW_OFF" | "NOTICE_NOT_SENT" | "NOTICE_OUT_OF_WINDOW"; message: string };
+  | {
+      started: false;
+      renewalId: string;
+      reason:
+        | "NOT_SCHEDULED"
+        | "NOT_YET"
+        | "OLD_NOT_ACTIVE"
+        | "NO_RENEWED_FROM"
+        | "BILLING_NOT_READY"
+        | "AUTO_RENEW_WITHDRAWN"
+        | "AUTO_RENEW_OFF"
+        | "NOTICE_NOT_SENT"
+        | "NOTICE_OUT_OF_WINDOW"
+        | "OPEN_JOB_CONFLICT";
+      message: string;
+    };
 
 const MESSAGES = {
   NOT_SCHEDULED: "This renewal is not waiting to start.",
@@ -50,6 +65,8 @@ const MESSAGES = {
     "The customer turned auto-renew off or asked to end the rental, so this automatic renewal will not start. It is cancelled automatically.",
   BILLING_NOT_READY:
     "Waiting for the card processor to confirm the renewal's new end date on the monthly billing. It is retried automatically; nothing was changed.",
+  OPEN_JOB_CONFLICT:
+    "This rental still has an open delivery, installation, or removal visit that could change equipment custody. Complete or cancel that visit before starting the renewal.",
 } as const;
 
 type Line = { id: string; label: string; monthlyPriceCents: number };
@@ -104,6 +121,30 @@ export async function startRenewalInTx(
 
   const old = await lockRentalAgreementInTx(tx, renewal.renewedFromAgreementId);
   if (old.status !== "ACTIVE") return fail("OLD_NOT_ACTIVE");
+
+  // A delivery/installation/removal still tied to the old agreement can change
+  // physical custody after the assignments move. Fail closed instead of
+  // guessing whether old field work should act on the renewed rental. SWAP is
+  // intentionally excluded: Batch C explicitly allows a staged swap to follow
+  // the appliance's current assignment across renewal.
+  const conflictingJob = await tx.job.findFirst({
+    where: {
+      agreementId: old.id,
+      status: { in: ["SCHEDULED", "IN_PROGRESS"] },
+      type: { in: ["DELIVERY", "INSTALLATION", "REMOVAL"] },
+    },
+    select: { id: true, type: true, status: true },
+    orderBy: [{ scheduledAt: "asc" }, { id: "asc" }],
+  });
+  if (conflictingJob) {
+    return {
+      started: false,
+      renewalId,
+      reason: "OPEN_JOB_CONFLICT",
+      message: `${MESSAGES.OPEN_JOB_CONFLICT} Open ${conflictingJob.type.toLowerCase().replaceAll("_", " ")} job ${conflictingJob.id} is ${conflictingJob.status.toLowerCase().replaceAll("_", " ")}.`,
+    };
+  }
+
   // An automatic renewal exists only because the customer agreed to it: if they changed their mind, it never starts.
   if (renewal.createdByAutoRenew && (old.renewalPreference !== "AUTO_RENEW" || old.terminationRequestedAt)) {
     return fail("AUTO_RENEW_WITHDRAWN");
@@ -138,8 +179,6 @@ export async function startRenewalInTx(
     where: { agreementId: renewal.id },
     include: { assignments: { where: { unassignedAt: null } } },
   });
-  // The draft was edited with the normal editor: equipment reserved directly on
-  // the renewal would be left behind, so the owner has to sort it out first.
   if (newLines.some((line) => line.assignments.length > 0)) {
     throw new Error(
       "The renewal already has equipment assigned to its own lines. Remove those assignments (the equipment moves over from the current rental automatically) and try again. Nothing was changed.",
@@ -211,8 +250,6 @@ export async function startRenewalInTx(
 }
 
 export async function startRenewalIfDue(renewalId: string, now = new Date()): Promise<RenewalStartResult> {
-  // Make sure the subscription's end date has been moved (normally done when the
-  // renewal was signed; this retries it, and is a no-op once confirmed).
   const current = await prisma.rentalAgreement.findUnique({
     where: { id: renewalId },
     select: {
@@ -228,7 +265,6 @@ export async function startRenewalIfDue(renewalId: string, now = new Date()): Pr
           select: { renewalPreference: true, terminationRequestedAt: true },
         })
       : null;
-  // An automatic renewal the customer withdrew must not touch the subscription at all.
   const withdrawn =
     current?.createdByAutoRenew &&
     (renewed?.renewalPreference !== "AUTO_RENEW" || Boolean(renewed?.terminationRequestedAt));
