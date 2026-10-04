@@ -8,6 +8,7 @@ import {
   updateJobStatusAction,
   completeJobAction,
   removeUndeliveredItemAction,
+  substituteWaitingItemAction,
   addJobPhotoAction,
   setJobRepairCostsAction,
   updateApplianceStatusFromJobAction,
@@ -108,7 +109,60 @@ type PendingDeliveryRow = {
   removed: boolean;
   /** A customer credit exists for this item (none when billing never started or the rental was prepaid). */
   hasCredit: boolean;
+  /** The monthly subscription still has to be lowered in Stripe for this cancelled item. */
+  stripeUpdatePending: boolean;
+  /** A same-type unit set aside to take this item's place, if any. */
+  substituteLabel: string | null;
+  substituteUnits: Array<{ id: string; label: string }>;
+  substituteVisits: Array<{ id: string; label: string }>;
 };
+
+function SubstituteForm({
+  item,
+  disabled,
+  onSubmit,
+}: {
+  item: PendingDeliveryRow;
+  disabled: boolean;
+  onSubmit: (pendingDeliveryId: string, unitId: string, visitId: string) => void;
+}) {
+  const [unitId, setUnitId] = useState(item.substituteUnits[0]?.id ?? "");
+  const [visitId, setVisitId] = useState(item.substituteVisits[0]?.id ?? "");
+  return (
+    <div className="basis-full rounded-md border border-gray-200 p-3">
+      <p className="text-sm font-medium text-gray-900">Send a different unit of the same type instead</p>
+      <p className="mt-1 text-xs text-gray-600">
+        The missing unit goes back on the shelf when the replacement is delivered. The monthly price does not change, and the customer is still credited for the days without it.
+      </p>
+      <div className="mt-2 flex flex-wrap items-end gap-2">
+        <label className="text-xs text-gray-700">
+          Unit
+          <select value={unitId} onChange={(e) => setUnitId(e.target.value)} className="mt-1 block rounded-md border border-gray-300 px-2 py-1 text-sm">
+            {item.substituteUnits.map((u) => (
+              <option key={u.id} value={u.id}>{u.label}</option>
+            ))}
+          </select>
+        </label>
+        <label className="text-xs text-gray-700">
+          Delivery visit
+          <select value={visitId} onChange={(e) => setVisitId(e.target.value)} className="mt-1 block rounded-md border border-gray-300 px-2 py-1 text-sm">
+            {item.substituteVisits.map((v) => (
+              <option key={v.id} value={v.id}>{v.label}</option>
+            ))}
+          </select>
+        </label>
+        <button
+          type="button"
+          disabled={disabled || !unitId || !visitId}
+          onClick={() => onSubmit(item.id, unitId, visitId)}
+          className="rounded-md border border-gray-300 px-2 py-1 text-xs text-gray-700 hover:border-gray-400 disabled:opacity-50"
+        >
+          Set this unit aside
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export function JobDetailPanel({
   job,
@@ -244,6 +298,17 @@ export function JobDetailPanel({
       const result = await removeUndeliveredItemAction(pendingDeliveryId, job.id);
       setRemoveMessage(
         result.status === "error" ? result.message : "Taken off the agreement. The credit shows on the customer's next bill.",
+      );
+      router.refresh();
+    });
+  }
+
+  function handleSubstitute(pendingDeliveryId: string, unitId: string, visitId: string) {
+    setRemoveMessage(null);
+    startTransition(async () => {
+      const result = await substituteWaitingItemAction(pendingDeliveryId, unitId, visitId, job.id);
+      setRemoveMessage(
+        result.status === "error" ? result.message : "Unit set aside. It is delivered on that visit in place of the missing one, and the customer is credited for the days it was missing.",
       );
       router.refresh();
     });
@@ -412,8 +477,16 @@ export function JobDetailPanel({
                       ? item.hasCredit
                         ? "; taken off the agreement, credit recorded"
                         : "; taken off the agreement, no automatic credit (the owner settles it by hand)"
-                      : "; still waiting"}
+                      : item.substituteLabel
+                        ? `; unit ${item.substituteLabel} is set aside to take its place`
+                        : "; still waiting"}
+                  {item.removed && item.stripeUpdatePending && (
+                    <strong className="ml-1 font-medium text-gray-900"> Cancelled — Stripe update pending. The customer&apos;s monthly subscription has not been lowered yet; the system keeps retrying and the Billing check screen shows it until it is done.</strong>
+                  )}
                 </span>
+                {canViewFinance && !item.deliveredOn && !item.removed && !item.substituteLabel && item.substituteUnits.length > 0 && item.substituteVisits.length > 0 && (
+                  <SubstituteForm item={item} disabled={isPending} onSubmit={handleSubstitute} />
+                )}
                 {!item.deliveredOn && !item.removed && (
                   <span className="flex flex-wrap gap-2">
                     <Link href="/desk/jobs/new" className="text-primary hover:underline">

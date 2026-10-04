@@ -12,7 +12,7 @@ import type {
 import { getBusinessSettings } from "@/domains/settings";
 import { getStripeClient } from "@/lib/stripe";
 import { applianceStatusOnAgreementClose } from "@/domains/inventory/lifecycle";
-import { cancelStagedSwapsForAgreementInTx } from "@/domains/jobs/swaps";
+import { cancelStagedSwapsForAgreementInTx, releaseSubstitutesForAgreementInTx } from "@/domains/jobs/swaps";
 import {
   claimProviderOperation,
   completeProviderOperation,
@@ -567,123 +567,152 @@ export async function signAgreement(
   });
 }
 
+export type CloseAgreementResult = {
+  updated: RentalAgreement;
+  stripeSubscriptionId: string | null;
+  providerClaim:
+    | { done: true; providerObjectId: string }
+    | { done: false; opId: string; idempotencyKey: string }
+    | null;
+  revertRenewalId: string | null;
+};
+
+/**
+ * The local half of ending or cancelling an agreement, inside the caller's transaction (it takes the agreement
+ * lock itself, so a caller already holding it is fine). The Stripe half is `runCloseAgreementContinuation`,
+ * which must run after the transaction commits.
+ */
+export async function closeAgreementInTx(
+  tx: Prisma.TransactionClient,
+  userId: string | null,
+  agreementId: string,
+  newStatus: "ENDED" | "CANCELLED",
+  options: { endedOn?: Date } = {},
+): Promise<CloseAgreementResult> {
+  const agreement = await lockRentalAgreementInTx(tx, agreementId);
+  const check = canTransitionAgreementStatus(agreement.status, newStatus);
+  if (!check.ok) throw new Error(check.reason);
+  if (agreement.status === "ACTIVE") {
+    const waiting = await tx.rentalAgreement.findFirst({
+      where: { renewedFromAgreementId: agreementId, status: "SCHEDULED" },
+      select: { id: true },
+    });
+    if (waiting) {
+      throw new Error(
+        "This rental has a signed renewal waiting to start. Cancel the renewal first, then end or cancel this rental.",
+      );
+    }
+  }
+
+  let providerClaim:
+    | { done: true; providerObjectId: string }
+    | { done: false; opId: string; idempotencyKey: string }
+    | null = null;
+  if (agreement.stripeSubscriptionId) {
+    providerClaim = await claimProviderOperation(tx, {
+      kind: "SUBSCRIPTION_CANCEL",
+      subjectType: "RentalAgreement",
+      subjectId: agreementId,
+      idempotencyKey: `subscription-cancel-${agreementId}`,
+    });
+  }
+
+  await tx.rentalAgreement.update({
+    where: { id: agreementId },
+    data: {
+      status: newStatus,
+      endDate: newStatus === "ENDED" ? (options.endedOn ?? new Date()) : agreement.endDate,
+    },
+  });
+
+  // A swap still waiting for this agreement is cancelled and its reserved replacement goes back on the shelf.
+  await cancelStagedSwapsForAgreementInTx(tx, userId, agreementId);
+  // Units a delivery visit had set aside as substitutes for waiting items go back on the shelf too.
+  await releaseSubstitutesForAgreementInTx(tx, userId, agreementId, `Agreement ${newStatus.toLowerCase()}`);
+
+  const lines = await tx.rentalLine.findMany({
+    where: { agreementId },
+    include: { assignments: { where: { unassignedAt: null } } },
+  });
+  for (const line of lines) {
+    for (const assignment of line.assignments) {
+      await tx.applianceAssignment.update({
+        where: { id: assignment.id },
+        data: {
+          unassignedAt: new Date(),
+          unassignReason: `Agreement ${newStatus.toLowerCase()}`,
+        },
+      });
+      const appliance = await tx.appliance.findUniqueOrThrow({
+        where: { id: assignment.applianceId },
+        select: { status: true },
+      });
+      const next = applianceStatusOnAgreementClose(appliance.status);
+      if (next) {
+        await tx.appliance.update({
+          where: { id: assignment.applianceId },
+          data: { status: next },
+        });
+      }
+    }
+  }
+
+  // A cancelled automatic renewal's reminder no longer needs to go out: withdrawn in the same transaction.
+  if (newStatus === "CANCELLED" && agreement.createdByAutoRenew && agreement.renewedFromAgreementId) {
+    await tx.customerNotice.updateMany({
+      where: {
+        agreementId: agreement.renewedFromAgreementId,
+        kind: "RENEWAL_REMINDER",
+        // Only a notice not yet being sent: one already in flight is recorded as sent when it lands.
+        status: "PENDING",
+      },
+      data: { status: "NOT_NEEDED" },
+    });
+  }
+
+  await tx.auditLog.create({
+    data: {
+      userId,
+      action:
+        newStatus === "ENDED" ? "agreement.end" : "agreement.cancel",
+      entityType: "RentalAgreement",
+      entityId: agreementId,
+      oldValue: { status: agreement.status },
+      newValue: {
+        status: newStatus,
+        providerCancelPending:
+          Boolean(agreement.stripeSubscriptionId) && providerClaim?.done === false,
+      },
+    },
+  });
+
+  const updated = await tx.rentalAgreement.findUniqueOrThrow({
+    where: { id: agreementId },
+  });
+  return {
+    updated,
+    stripeSubscriptionId: agreement.stripeSubscriptionId,
+    providerClaim,
+    // A cancelled waiting renewal gives the subscription back its old end date.
+    revertRenewalId:
+      newStatus === "CANCELLED" && agreement.status === "SCHEDULED" && agreement.renewedFromAgreementId
+        ? agreement.id
+        : null,
+  };
+}
+
 async function closeAgreement(
   userId: string | null,
   agreementId: string,
   newStatus: "ENDED" | "CANCELLED",
   options: { endedOn?: Date } = {},
 ) {
-  const local = await prisma.$transaction(async (tx) => {
-    const agreement = await lockRentalAgreementInTx(tx, agreementId);
-    const check = canTransitionAgreementStatus(agreement.status, newStatus);
-    if (!check.ok) throw new Error(check.reason);
-    if (agreement.status === "ACTIVE") {
-      const waiting = await tx.rentalAgreement.findFirst({
-        where: { renewedFromAgreementId: agreementId, status: "SCHEDULED" },
-        select: { id: true },
-      });
-      if (waiting) {
-        throw new Error(
-          "This rental has a signed renewal waiting to start. Cancel the renewal first, then end or cancel this rental.",
-        );
-      }
-    }
+  const local = await prisma.$transaction((tx) => closeAgreementInTx(tx, userId, agreementId, newStatus, options));
+  return runCloseAgreementContinuation(local);
+}
 
-    let providerClaim:
-      | { done: true; providerObjectId: string }
-      | { done: false; opId: string; idempotencyKey: string }
-      | null = null;
-    if (agreement.stripeSubscriptionId) {
-      providerClaim = await claimProviderOperation(tx, {
-        kind: "SUBSCRIPTION_CANCEL",
-        subjectType: "RentalAgreement",
-        subjectId: agreementId,
-        idempotencyKey: `subscription-cancel-${agreementId}`,
-      });
-    }
-
-    await tx.rentalAgreement.update({
-      where: { id: agreementId },
-      data: {
-        status: newStatus,
-        endDate: newStatus === "ENDED" ? (options.endedOn ?? new Date()) : agreement.endDate,
-      },
-    });
-
-    // A swap still waiting for this agreement is cancelled and its reserved replacement goes back on the shelf.
-    await cancelStagedSwapsForAgreementInTx(tx, userId, agreementId);
-
-    const lines = await tx.rentalLine.findMany({
-      where: { agreementId },
-      include: { assignments: { where: { unassignedAt: null } } },
-    });
-    for (const line of lines) {
-      for (const assignment of line.assignments) {
-        await tx.applianceAssignment.update({
-          where: { id: assignment.id },
-          data: {
-            unassignedAt: new Date(),
-            unassignReason: `Agreement ${newStatus.toLowerCase()}`,
-          },
-        });
-        const appliance = await tx.appliance.findUniqueOrThrow({
-          where: { id: assignment.applianceId },
-          select: { status: true },
-        });
-        const next = applianceStatusOnAgreementClose(appliance.status);
-        if (next) {
-          await tx.appliance.update({
-            where: { id: assignment.applianceId },
-            data: { status: next },
-          });
-        }
-      }
-    }
-
-    // A cancelled automatic renewal's reminder no longer needs to go out: withdrawn in the same transaction.
-    if (newStatus === "CANCELLED" && agreement.createdByAutoRenew && agreement.renewedFromAgreementId) {
-      await tx.customerNotice.updateMany({
-        where: {
-          agreementId: agreement.renewedFromAgreementId,
-          kind: "RENEWAL_REMINDER",
-          // Only a notice not yet being sent: one already in flight is recorded as sent when it lands.
-          status: "PENDING",
-        },
-        data: { status: "NOT_NEEDED" },
-      });
-    }
-
-    await tx.auditLog.create({
-      data: {
-        userId,
-        action:
-          newStatus === "ENDED" ? "agreement.end" : "agreement.cancel",
-        entityType: "RentalAgreement",
-        entityId: agreementId,
-        oldValue: { status: agreement.status },
-        newValue: {
-          status: newStatus,
-          providerCancelPending:
-            Boolean(agreement.stripeSubscriptionId) && providerClaim?.done === false,
-        },
-      },
-    });
-
-    const updated = await tx.rentalAgreement.findUniqueOrThrow({
-      where: { id: agreementId },
-    });
-    return {
-      updated,
-      stripeSubscriptionId: agreement.stripeSubscriptionId,
-      providerClaim,
-      // A cancelled waiting renewal gives the subscription back its old end date.
-      revertRenewalId:
-        newStatus === "CANCELLED" && agreement.status === "SCHEDULED" && agreement.renewedFromAgreementId
-          ? agreement.id
-          : null,
-    };
-  });
-
+/** The Stripe half of closing an agreement: put back a cancelled renewal's old end date and cancel the subscription. Runs after commit. */
+export async function runCloseAgreementContinuation(local: CloseAgreementResult): Promise<RentalAgreement> {
   if (local.revertRenewalId) {
     try {
       await syncSubscriptionTerm(local.revertRenewalId, "revert");

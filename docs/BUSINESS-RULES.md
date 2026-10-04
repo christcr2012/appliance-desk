@@ -1364,3 +1364,16 @@ all effective mutations receive atomic audit entries. Links remain unchanged on
 editing/reassignment/completion/reopening. STAFF cannot create or see lead links;
 archived customer/job links are omitted. Notes may create a linked follow-up
 without sending any message or recording an invented contact promise.
+
+- **A missing item and the monthly bill** — an item left off the first delivery
+  keeps billing with the rest of its line. The customer is credited for the days
+  it was missing when it arrives, and the subscription is not touched. The
+  owner or an admin can set aside another unit of the same type to take its
+  place on a later delivery visit; when that unit is delivered the credit counts
+  to that day. A unit of a different type is refused. If the item will never
+  arrive, taking it off the agreement credits everything billed for it and lowers
+  its line by the item's share (the line price split evenly over the units that
+  count) starting with the next billing period, never retroactively. The
+  Stripe subscription is updated afterwards and retried until it matches. If the
+  last item is taken off, the agreement is cancelled (nothing was ever delivered)
+  or ended.

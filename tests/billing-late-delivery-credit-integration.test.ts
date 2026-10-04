@@ -146,6 +146,13 @@ describe.skipIf(!enabled)("late-delivery credits (real Postgres)", () => {
     await prisma.invoice.deleteMany({ where: { customerId } });
     await prisma.receipt.deleteMany({ where: { customerId } });
     await prisma.providerOperation.deleteMany({ where: { subjectType: "CustomerCredit", subjectId: { in: (await prisma.customerCredit.findMany({ where: { customerId }, select: { id: true } })).map((c) => c.id) } } });
+    // Line amendments are append-only, so cleanup switches the rule off for its own rows, in one transaction.
+    await prisma.$transaction([
+      prisma.$executeRawUnsafe('ALTER TABLE "RentalLineAmendment" DISABLE TRIGGER "RentalLineAmendment_append_only"'),
+      prisma.rentalLineAmendment.deleteMany({ where: { rentalLine: { agreementId } } }),
+      prisma.$executeRawUnsafe('ALTER TABLE "RentalLineAmendment" ENABLE TRIGGER "RentalLineAmendment_append_only"'),
+    ]);
+    await prisma.providerOperation.deleteMany({ where: { subjectType: "RentalLine", idempotencyKey: { startsWith: "subscription-line-reduce-" }, subjectId: { in: (await prisma.rentalLine.findMany({ where: { agreementId }, select: { id: true } })).map((l) => l.id) } } });
     await prisma.pendingDelivery.deleteMany({ where: { agreementId } });
     await prisma.customerCredit.deleteMany({ where: { customerId } });
     await prisma.auditLog.deleteMany({ where: { OR: [{ entityId: agreementId }, { entityType: "PendingDelivery" }, { entityType: "CustomerCredit", userId: ownerId }] } });

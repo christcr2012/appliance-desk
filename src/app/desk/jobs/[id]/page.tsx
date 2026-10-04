@@ -12,6 +12,7 @@ import { formatBusinessDate, formatBusinessTime } from "@/lib/business-date";
 import { privatePhotoReadPath } from "@/lib/photo-storage";
 import { getJobCompletionScope } from "@/domains/jobs";
 import { pendingDeliveriesForJob } from "@/domains/billing/pickup-billing-events";
+import { substituteChoices } from "@/domains/jobs/substitution";
 import { businessDateKey } from "@/lib/business-date";
 
 export const metadata = { title: "Job" };
@@ -58,6 +59,10 @@ export default async function JobDetailPage({
     getJobCompletionScope({ id: job.id, type: job.type, status: job.status, agreementId: job.agreementId }),
     pendingDeliveriesForJob(job.id),
   ]);
+
+  const choices = canViewFinance
+    ? new Map(await Promise.all(pendingDeliveries.filter((p) => !p.deliveredOn && !p.removedAt && !p.substituteJobId).map(async (p) => [p.id, await substituteChoices(p.id)] as const)))
+    : new Map<string, Awaited<ReturnType<typeof substituteChoices>>>();
 
   return (
     <div className="max-w-2xl">
@@ -131,6 +136,10 @@ export default async function JobDetailPage({
           deliveredOn: p.deliveredOn ? businessDateKey(p.deliveredOn) : null,
           removed: p.removedAt !== null,
           hasCredit: p.creditId !== null,
+          stripeUpdatePending: p.stripeUpdatePending,
+          substituteLabel: p.substituteAppliance ? `#${p.substituteAppliance.assetNumber}` : null,
+          substituteUnits: choices.get(p.id)?.units ?? [],
+          substituteVisits: choices.get(p.id)?.visits ?? [],
         }))} today={businessDateKey(new Date())} job={{
           id: job.id, type: job.type, status: job.status,
           completionNotes: job.completionNotes, checklist: job.checklist,

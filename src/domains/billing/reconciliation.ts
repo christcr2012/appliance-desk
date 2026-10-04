@@ -15,6 +15,7 @@ import {
   parseTermSyncKey,
   stripeKeyForAttempt,
 } from "./subscription-term";
+import { parseLineReduceKey, retryLineReduction } from "./subscription-line";
 
 export type DriftRow = {
   kind:
@@ -235,6 +236,9 @@ async function reconcileSubscriptionCancel(operation: RecoverableOperation): Pro
  * retried (an ambiguous earlier attempt is only retried once Stripe has been read).
  */
 async function reconcileSubscriptionUpdate(operation: RecoverableOperation): Promise<boolean> {
+  // A rental line's price lowered on the subscription (an item that was never delivered was cancelled).
+  const lineReducePendingId = parseLineReduceKey(operation.idempotencyKey);
+  if (lineReducePendingId) return retryLineReduction(operation, lineReducePendingId);
   const terminationAgreementId = parseTerminationSyncKey(operation.idempotencyKey);
   const parsed = terminationAgreementId ? null : parseTermSyncKey(operation.idempotencyKey);
   if (!terminationAgreementId && !parsed) return false;
@@ -735,7 +739,10 @@ export async function detectDrift(limit = 200): Promise<DriftRow[]> {
       kind,
       subjectType: operation.subjectType,
       subjectId: operation.subjectId,
-      detail: `${operation.kind} is ${operation.status.toLowerCase()} after ${operation.attempts} attempt${operation.attempts === 1 ? "" : "s"}.`,
+      detail:
+        `${operation.kind} is ${operation.status.toLowerCase()} after ${operation.attempts} attempt${operation.attempts === 1 ? "" : "s"}.` +
+        // A rental line's price change on the subscription says what is wrong, so the owner can fix it in Stripe.
+        (operation.subjectType === "RentalLine" && operation.lastError ? ` ${operation.lastError}` : ""),
       since: operation.requestedAt,
     });
   }

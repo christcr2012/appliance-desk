@@ -29,8 +29,29 @@ export async function releaseSwapReservationsInTx(tx: Tx, userId: string | null,
       });
     }
   }
+  // On a swap job the row stays (the job is cancelled with it). On a delivery visit that carried a substitute for a
+  // waiting item, the substitute row is dropped so the visit's list is just what it is really delivering.
+  const job = await tx.job.findUnique({ where: { id: jobId }, select: { type: true } });
+  if (job && job.type !== "SWAP") {
+    await tx.jobAppliance.deleteMany({ where: { jobId, reservationActive: true, role: "REPLACEMENT", result: null } });
+  }
   await tx.jobAppliance.updateMany({ where: { jobId, reservationActive: true }, data: { reservationActive: false } });
+  // A waiting item whose substitute just went back on the shelf is waiting for its own unit again.
+  await tx.pendingDelivery.updateMany({
+    where: { substituteJobId: jobId, deliveredOn: null, removedAt: null },
+    data: { substituteApplianceId: null, substituteJobId: null },
+  });
   return released;
+}
+
+/** Ending an agreement gives back every unit a delivery visit still has set aside as a substitute for a waiting item. */
+export async function releaseSubstitutesForAgreementInTx(tx: Tx, userId: string | null, agreementId: string, reason: string): Promise<void> {
+  const jobs = await tx.job.findMany({
+    where: { agreementId, type: { in: ["DELIVERY", "INSTALLATION"] }, status: { in: ["SCHEDULED", "IN_PROGRESS"] }, appliances: { some: { reservationActive: true } } },
+    select: { id: true },
+    orderBy: { id: "asc" },
+  });
+  for (const job of jobs) await releaseSwapReservationsInTx(tx, userId, job.id, reason);
 }
 
 /** Ending an agreement cancels a swap still waiting for it and gives its reserved replacement back. */
