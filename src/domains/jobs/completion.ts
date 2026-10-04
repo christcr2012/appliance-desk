@@ -159,7 +159,6 @@ export async function completeJob(userId: string, input: CompleteJobInput): Prom
     }
     if (before.version !== input.expectedVersion) throw new JobVersionError();
 
-    // --- scope: the appliances this visit covers -------------------------------------------------
     let scope = await tx.jobAppliance.findMany({ where: { jobId: before.id }, select: { applianceId: true, role: true } });
     let derived = false;
     if (scope.length === 0 && before.agreementId) {
@@ -181,10 +180,6 @@ export async function completeJob(userId: string, input: CompleteJobInput): Prom
     }
     const scopeIds = scope.map((s) => s.applianceId).sort();
 
-    // A SWAP is allowed to survive renewal. Resolve its outgoing unit's current
-    // rental lineage while the staged agreement is locked, then lock that current
-    // agreement before any appliance row. This preserves Agreement -> Appliance
-    // ordering against close/renewal commands and prevents a deadlock cycle.
     let prelockedSwapAgreementId: string | null = null;
     if (before.type === "SWAP") {
       const originalId = scope.find((s) => s.role === "PRIMARY")?.applianceId ?? null;
@@ -214,7 +209,6 @@ export async function completeJob(userId: string, input: CompleteJobInput): Prom
     }
     const droppedSubstituteIds = new Set<string>();
 
-    // --- every appliance in scope gets exactly one valid result ----------------------------------
     const roleOf = new Map(scope.map((s) => [s.applianceId, s.role]));
     const resultOf = new Map(input.results.map((r) => [r.applianceId, r]));
     const missing = scopeIds.filter((id) => !resultOf.has(id));
@@ -240,14 +234,11 @@ export async function completeJob(userId: string, input: CompleteJobInput): Prom
       throw new JobCompletionConflictError("Only a delivery or installation job for a rental agreement can have items marked not delivered.");
     }
 
-    // --- times ------------------------------------------------------------------------------------
     const completedAt = now;
     const performedOn = input.performedOn ?? before.performedOn ?? businessDayBounds(completedAt).start;
     const serviceDate = jobServiceDate({ performedOn, scheduledAt: before.scheduledAt, completedAt });
     const deliveredIds = scopeIds.filter((id) => resultOf.get(id)!.result === "DELIVERED");
 
-    // The first successful physical delivery is the immutable business fact that anchors billing.
-    // Zero-delivery visits deliberately leave it null and therefore cannot start recurring billing.
     if (isDelivery && before.agreementId && deliveredIds.length > 0) {
       await tx.rentalAgreement.updateMany({
         where: { id: before.agreementId, firstDeliveredOn: null },
@@ -259,7 +250,6 @@ export async function completeJob(userId: string, input: CompleteJobInput): Prom
       await tx.jobAppliance.createMany({ data: scopeIds.map((applianceId) => ({ jobId: before.id, applianceId })), skipDuplicates: true });
     }
 
-    // --- per-appliance effects, in id order ------------------------------------------------------
     const appliances = await tx.appliance.findMany({
       where: { id: { in: scopeIds } },
       select: { id: true, status: true, assetNumber: true, applianceType: { select: { name: true } } },
@@ -345,7 +335,6 @@ export async function completeJob(userId: string, input: CompleteJobInput): Prom
       });
     }
 
-    // --- swap: both units, both custody records and the assignment move together ----------------
     let swapBothNegative = false;
     if (before.type === "SWAP") {
       const originalId = scope.find((s) => s.role === "PRIMARY")?.applianceId ?? null;
@@ -441,7 +430,6 @@ export async function completeJob(userId: string, input: CompleteJobInput): Prom
       }
     }
 
-    // --- billing that completion already did (same transaction) ----------------------------------
     const billing: PickupBillingOutcome[] = [];
     const returnedIds = scopeIds.filter((id) => resultOf.get(id)!.result === "RETURNED");
     if (before.agreementId && before.type === "REMOVAL") {
@@ -471,7 +459,6 @@ export async function completeJob(userId: string, input: CompleteJobInput): Prom
       });
     }
 
-    // --- follow-up tasks for every negative result ------------------------------------------------
     const followUpTaskIds: string[] = [];
     if (swapBothNegative) {
       const { task } = await createTaskInTx(
@@ -508,7 +495,6 @@ export async function completeJob(userId: string, input: CompleteJobInput): Prom
       followUpTaskIds.push(task.id);
     }
 
-    // --- durable handoffs for the provider work that follows the commit ---------------------------
     const handoffRows: Array<{ jobId: string; kind: "START_RECURRING_BILLING" | "PUSH_CREDIT"; subjectId: string }> = [];
     if (isDelivery && before.agreementId && deliveredIds.length > 0) {
       handoffRows.push({ jobId: before.id, kind: "START_RECURRING_BILLING", subjectId: before.agreementId });
@@ -517,7 +503,6 @@ export async function completeJob(userId: string, input: CompleteJobInput): Prom
     if (handoffRows.length > 0) await tx.jobBillingHandoff.createMany({ data: handoffRows, skipDuplicates: true });
     const handoffs = await tx.jobBillingHandoff.findMany({ where: { jobId: before.id }, select: { id: true }, orderBy: { id: "asc" } });
 
-    // --- the job itself ----------------------------------------------------------------------------
     const allPositive = scopeIds.every((id) => POSITIVE.has(resultOf.get(id)!.result));
     const jobOutcome: JobOutcome = allPositive ? "COMPLETE" : "PARTIAL";
     const updated = await tx.job.updateMany({
@@ -571,11 +556,6 @@ export type CompletionScopeRow = {
   defaultResult: JobApplianceResult;
 };
 
-/**
- * The appliances a job's completion form must collect a result for, with the results each may take.
- * Same scope as `completeJob`: the appliances listed on the job, or, when none are listed, the units
- * still waiting for delivery (delivery/installation) or awaiting pickup (removal) under its agreement.
- */
 export async function getJobCompletionScope(job: {
   id: string;
   type: JobType;
@@ -620,18 +600,17 @@ export async function getJobCompletionScope(job: {
 
 const MAX_HANDOFF_ATTEMPTS = 5;
 const BLOCKED_HANDOFF_PREFIX = "BLOCKED:";
+const UNKNOWN_HANDOFF_PREFIX = "UNKNOWN:";
 
 /**
  * Runs durable post-commit provider work. A handoff has one exclusive lease at
  * a time; stale leases can be recovered, and a provider command must return an
  * explicit DONE outcome before the handoff is finalized.
  *
- * Normal retryable/recovery work always gets the first seats in a sweep. Rows
- * blocked on a customer prerequisite only fill spare capacity, so a large set
- * of old blocked rentals can never starve a newer handoff left behind by a
- * post-commit crash. A blocked retry stores its retry timestamp in lastError;
- * lexical ordering then moves that row behind blocked peers without adding a
- * schema field or consuming its retry budget.
+ * Normal retryable/recovery work always gets the first seats in a sweep. Work
+ * blocked on a prerequisite or an ambiguous provider outcome only fills spare
+ * capacity. Deferred rows store a timestamp in lastError so each retry rotates
+ * behind its peers without adding schema or consuming its retry budget.
  */
 async function runHandoffs(scope: { ids?: string[]; limit?: number }): Promise<{ done: number; failed: number }> {
   const staleBefore = new Date(Date.now() - PROVIDER_OPERATION_LEASE_MS);
@@ -648,10 +627,11 @@ async function runHandoffs(scope: { ids?: string[]; limit?: number }): Promise<{
           status: "FAILED",
           attempts: { lt: MAX_HANDOFF_ATTEMPTS },
           lastError: { not: null },
-          NOT: { lastError: { startsWith: BLOCKED_HANDOFF_PREFIX } },
+          NOT: [
+            { lastError: { startsWith: BLOCKED_HANDOFF_PREFIX } },
+            { lastError: { startsWith: UNKNOWN_HANDOFF_PREFIX } },
+          ],
         },
-        // A stale lease is recovery work, not a fresh retry. It must remain
-        // reclaimable even when the dead worker had already claimed attempt 5.
         { status: "IN_FLIGHT", claimedAt: { lte: staleBefore } },
       ],
     },
@@ -660,19 +640,22 @@ async function runHandoffs(scope: { ids?: string[]; limit?: number }): Promise<{
   });
 
   const remaining = Math.max(0, limit - priorityRows.length);
-  const blockedRows =
+  const deferredRows =
     remaining > 0
       ? await prisma.jobBillingHandoff.findMany({
           where: {
             ...idScope,
             status: "FAILED",
-            lastError: { startsWith: BLOCKED_HANDOFF_PREFIX },
+            OR: [
+              { lastError: { startsWith: BLOCKED_HANDOFF_PREFIX } },
+              { lastError: { startsWith: UNKNOWN_HANDOFF_PREFIX } },
+            ],
           },
           orderBy: [{ lastError: "asc" }, { createdAt: "asc" }, { id: "asc" }],
           take: remaining,
         })
       : [];
-  const rows = [...priorityRows, ...blockedRows];
+  const rows = [...priorityRows, ...deferredRows];
 
   let done = 0;
   let failed = 0;
@@ -710,10 +693,10 @@ async function runHandoffs(scope: { ids?: string[]; limit?: number }): Promise<{
         continue;
       }
 
-      const detail =
-        work.state === "BLOCKED"
-          ? `${BLOCKED_HANDOFF_PREFIX}${new Date().toISOString()}: ${work.detail}`.slice(0, 500)
-          : `${work.state}: ${work.detail}`.slice(0, 500);
+      const deferred = work.state === "BLOCKED" || work.state === "UNKNOWN";
+      const detail = deferred
+        ? `${work.state}:${new Date().toISOString()}: ${work.detail}`.slice(0, 500)
+        : `${work.state}: ${work.detail}`.slice(0, 500);
       const released = await prisma.jobBillingHandoff.updateMany({
         where: { id: row.id, status: "IN_FLIGHT", attempts: expectedAttempts },
         data: {
@@ -721,7 +704,7 @@ async function runHandoffs(scope: { ids?: string[]; limit?: number }): Promise<{
           claimedAt: null,
           doneAt: null,
           lastError: detail,
-          ...(work.state === "BLOCKED" ? { attempts: { decrement: 1 } } : {}),
+          ...(deferred ? { attempts: { decrement: 1 } } : {}),
         },
       });
       if (released.count === 1) failed += 1;
