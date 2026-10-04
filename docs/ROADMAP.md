@@ -619,8 +619,7 @@ What the real work will need (so it is not forgotten):
   build on `docs/plans/overhaul/DESIGN.md` rather than restart it.
 - Every rule in `docs/DESIGN-SYSTEM.md` still applies: contrast checked with axe (the mockup's muted and dark-background text
   colors must be re-verified, not trusted by eye), visible focus, status never by color alone, dark mode, phone width.
-- Real photos of the appliances would let the public hero be richer than a plain brand-color treatment. Chris to supply, or the
-  hero stays brand-color only.
+- Photos: Chris will re-use the current appliance photos (decided 2026-10-04); no new photography needed.
 - No invented content: prices, phone and address come from settings; the mockup's customers and numbers were sample data.
 
 **Sequencing and mockup rules for the redesign above (added 2026-10-04, after checking it against the brand kit).**
@@ -633,3 +632,4 @@ What the real work will need (so it is not forgotten):
   from `BusinessSettings`, the agreement terms and `docs/BUSINESS-RULES.md`, never from the mockup. The kit forbids invented claims.
 - The public home page direction is not yet approved (only the owner desk is). The hero's dark gradient and two buttons differ from the
   kit's "ivory surfaces, one dominant next action" guidance and need a decision before design.
+- **Update 2026-10-04:** this is now scheduled as **Batch E2** (after E, before F) in `docs/PLAN.md`, covering the whole redesign: desktop, phone, dark mode, owner desk, customer portal and public site. A phone mockup of Today and the home page exists in the same private canvas.

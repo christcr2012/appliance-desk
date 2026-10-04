@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Owner desk: Today (dark)</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'Manrope',system-ui,sans-serif;background:#0C1E16;color:#f7f5ec}
+a{color:inherit;text-decoration:none}
+.side a{display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;color:#dce7df;font-weight:600;font-size:15px}
+.side a:hover{background:rgba(247,245,236,.08)}
+.side a.on{background:#b9e66b;color:#123c2d;font-weight:800}
+.row:hover{background:#0C1E16}
+a:focus-visible,button:focus-visible{outline:3px solid #b9e66b;outline-offset:2px}
+.side a:focus-visible{outline-color:#b9e66b}
+</style>
+</helmet>
+
+<div style="width:100%;display:flex;flex-wrap:wrap;min-height:1060px;background:#0C1E16">
+
+  <!-- SIDEBAR -->
+  <aside class="side" style="flex:0 0 260px;max-width:100%;box-sizing:border-box;padding:26px 18px;background:#0C1E16;border-right:1px solid #789985;color:#f7f5ec;display:flex;flex-direction:column;gap:6px">
+    <a href="#" aria-label="Robinson Appliance Rentals" style="padding:4px 10px 24px;gap:12px;color:#f7f5ec">
+      <svg width="30" height="30" viewBox="0 0 100 100" aria-hidden="true"><path d="M0 0H57C83 0 98 13 98 33C98 51 87 62 65 65L100 100H64L9 45H55C63 45 67 41 67 35C67 29 63 25 55 25H0Z" fill="#b9e66b"/><path d="M0 49L49 100H0Z" fill="#b9e66b"/></svg>
+      <span style="font-weight:800;font-size:17px;line-height:1.15">Robinson<br><span style="font-weight:500;color:#B7C8BB;font-size:13px">Appliance Desk</span></span>
+    </a>
+    <nav aria-label="Desk" style="display:flex;flex-direction:column;gap:4px">
+      <a href="#" class="on" aria-current="page"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>Today</a>
+      <a href="#"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2.5"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>Schedule</a>
+      <a href="#"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.5 3.2-5.5 6.5-5.5s5.9 2 6.5 5.5M17 11a3 3 0 1 0 0-6M21.5 20c-.3-2.4-1.6-4-3.5-4.8"/></svg>Customers</a>
+      <a href="#"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2.5"/><circle cx="12" cy="13.5" r="4"/></svg>Inventory</a>
+      <a href="#"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7"/><circle cx="7" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/></svg>Jobs</a>
+      <a href="#"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3 10h18M7 15h4"/></svg>Billing</a>
+      <a href="#"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 6.5a4 4 0 0 0-5 5L4 17l3 3 5.5-5.5a4 4 0 0 0 5-5l-2.5 2.5-2-2z"/></svg>Maintenance</a>
+      <a href="#"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Reports</a>
+    </nav>
+    <div style="margin-top:auto;padding:16px;border-radius:16px;background:rgba(247,245,236,.07);border:1px solid rgba(247,245,236,.14)">
+      <div style="font-weight:800;font-size:14px">Signed in as Owner</div>
+      <div style="font-size:13px;color:#B7C8BB;margin-top:4px">Settings, staff and backups live here.</div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main style="flex:1 1 640px;min-width:0;box-sizing:border-box;padding:32px 40px 56px">
+    <div style="display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px">
+      <div>
+        <p style="margin:0;font-size:14px;font-weight:700;color:#B7C8BB">Sunday, October 4</p>
+        <h1 style="margin:4px 0 0;font-size:36px;font-weight:800;letter-spacing:-.03em">Good morning, Chris</h1>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <a href="#" style="border:1.5px solid #b9e66b;color:#b9e66b;font-weight:800;font-size:14px;padding:11px 18px;border-radius:8px;background:#152E22">New job</a>
+        <a href="#" style="background:#b9e66b;color:#123c2d;font-weight:800;font-size:14px;padding:12px 20px;border-radius:8px">New agreement</a>
+      </div>
+    </div>
+    <p style="margin:12px 0 0;font-size:13px;color:#B7C8BB">Sample data for the mockup.</p>
+
+    <!-- stat cards -->
+    <div style="margin-top:22px;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px">
+      <section aria-label="Visits today" style="background:linear-gradient(145deg,#123c2d,#0c1e16);color:#f7f5ec;border-radius:16px;padding:22px;box-shadow:0 14px 30px rgba(18,60,45,.25)">
+        <div style="font-size:13px;font-weight:700;color:#B7C8BB">Visits today</div>
+        <div style="margin-top:10px;font-size:44px;font-weight:800;letter-spacing:-.04em;line-height:1">4</div>
+        <div style="margin-top:10px;font-size:13px;color:#b9e66b;font-weight:700">2 deliveries · 1 repair · 1 pickup</div>
+      </section>
+      <section aria-label="Needs attention" style="background:#152E22;border:1px solid #789985;border-radius:16px;padding:22px">
+        <div style="font-size:13px;font-weight:700;color:#B7C8BB">Needs your attention</div>
+        <div style="margin-top:10px;font-size:44px;font-weight:800;letter-spacing:-.04em;line-height:1">3</div>
+        <div style="margin-top:10px;font-size:13px;color:#f6d58a;font-weight:700">1 refund waiting on Stripe</div>
+      </section>
+      <section aria-label="Units out" style="background:#152E22;border:1px solid #789985;border-radius:16px;padding:22px">
+        <div style="font-size:13px;font-weight:700;color:#B7C8BB">Units rented out</div>
+        <div style="margin-top:10px;font-size:44px;font-weight:800;letter-spacing:-.04em;line-height:1">18</div>
+        <div style="margin-top:10px;font-size:13px;color:#8fd19e;font-weight:700">5 available on the shelf</div>
+      </section>
+      <section aria-label="Billed this month" style="background:#152E22;border:1px solid #789985;border-radius:16px;padding:22px">
+        <div style="font-size:13px;font-weight:700;color:#B7C8BB">Billed this month</div>
+        <div style="margin-top:10px;font-size:44px;font-weight:800;letter-spacing:-.04em;line-height:1">$0,000</div>
+        <div style="margin-top:10px;font-size:13px;color:#B7C8BB;font-weight:700">Sample figure</div>
+      </section>
+    </div>
+
+    <div style="margin-top:20px;display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start">
+
+      <!-- visits -->
+      <section aria-labelledby="visits-h" style="flex:2 1 460px;min-width:0;background:#152E22;border:1px solid #789985;border-radius:16px;overflow:hidden">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:22px 26px;border-bottom:1px solid #789985">
+          <h2 id="visits-h" style="margin:0;font-size:20px;font-weight:800;letter-spacing:-.01em">Today's visits</h2>
+          <a href="#" style="font-size:14px;font-weight:800;color:#b9e66b;text-decoration:underline;text-underline-offset:3px">Open schedule</a>
+        </div>
+        <ul style="list-style:none;margin:0;padding:0">
+          <li class="row" style="display:flex;flex-wrap:wrap;align-items:center;gap:14px;padding:18px 26px;border-bottom:1px solid #789985">
+            <div style="flex:0 0 64px;font-weight:800;font-size:15px">9:00 am</div>
+            <div style="flex:1 1 200px;min-width:0"><div style="font-weight:800">Delivery · Washer and dryer set</div><div style="font-size:14px;color:#B7C8BB;margin-top:2px">Sample customer · Greeley</div></div>
+            <span style="display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:800;color:#dce7df;background:rgba(220,231,223,.14);padding:6px 12px;border-radius:99px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l2.5 2"/></svg>Scheduled</span>
+          </li>
+          <li class="row" style="display:flex;flex-wrap:wrap;align-items:center;gap:14px;padding:18px 26px;border-bottom:1px solid #789985">
+            <div style="flex:0 0 64px;font-weight:800;font-size:15px">11:00 am</div>
+            <div style="flex:1 1 200px;min-width:0"><div style="font-weight:800">Repair · Dryer won't heat</div><div style="font-size:14px;color:#B7C8BB;margin-top:2px">Sample customer · Windsor</div></div>
+            <span style="display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:800;color:#b9e66b;background:rgba(185,230,107,.16);padding:6px 12px;border-radius:99px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>In progress</span>
+          </li>
+          <li class="row" style="display:flex;flex-wrap:wrap;align-items:center;gap:14px;padding:18px 26px;border-bottom:1px solid #789985">
+            <div style="flex:0 0 64px;font-weight:800;font-size:15px">1:30 pm</div>
+            <div style="flex:1 1 200px;min-width:0"><div style="font-weight:800">Delivery · Refrigerator</div><div style="font-size:14px;color:#B7C8BB;margin-top:2px">Sample customer · Evans</div></div>
+            <span style="display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:800;color:#dce7df;background:rgba(220,231,223,.14);padding:6px 12px;border-radius:99px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l2.5 2"/></svg>Scheduled</span>
+          </li>
+          <li class="row" style="display:flex;flex-wrap:wrap;align-items:center;gap:14px;padding:18px 26px">
+            <div style="flex:0 0 64px;font-weight:800;font-size:15px">3:30 pm</div>
+            <div style="flex:1 1 200px;min-width:0"><div style="font-weight:800">Pickup · Washer</div><div style="font-size:14px;color:#B7C8BB;margin-top:2px">Sample customer · Greeley</div></div>
+            <span style="display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:800;color:#dce7df;background:rgba(220,231,223,.14);padding:6px 12px;border-radius:99px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l2.5 2"/></svg>Scheduled</span>
+          </li>
+        </ul>
+      </section>
+
+      <!-- attention -->
+      <section aria-labelledby="att-h" style="flex:1 1 300px;min-width:0;background:#152E22;border:1px solid #789985;border-radius:16px;padding:24px 26px">
+        <h2 id="att-h" style="margin:0 0 16px;font-size:20px;font-weight:800;letter-spacing:-.01em">Needs your attention</h2>
+        <ul style="list-style:none;margin:0;padding:0;display:grid;gap:12px">
+          <li style="border-radius:16px;background:#3a2a0a;padding:16px;color:#f6d58a">
+            <div style="display:flex;align-items:center;gap:8px;font-weight:800;font-size:14px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l10 18H2zM12 10v5M12 18.5h.01"/></svg>Cancelled — Stripe update pending</div>
+            <div style="margin-top:6px;font-size:14px;line-height:1.5">Washer taken off an agreement. The refund and the lower monthly price are being sent to Stripe. Retrying automatically.</div>
+          </li>
+          <li style="border-radius:16px;background:#0C1E16;padding:16px">
+            <div style="font-weight:800;font-size:14px">Item still waiting for delivery</div>
+            <div style="margin-top:6px;font-size:14px;line-height:1.5;color:#B7C8BB">Dryer missing from Tuesday's delivery. Send a unit of the same type, or take it off the agreement.</div>
+            <a href="#" style="display:inline-block;margin-top:10px;font-size:14px;font-weight:800;color:#b9e66b;text-decoration:underline;text-underline-offset:3px">Choose what to do</a>
+          </li>
+          <li style="border-radius:16px;background:#0C1E16;padding:16px">
+            <div style="font-weight:800;font-size:14px">Invoice overdue</div>
+            <div style="margin-top:6px;font-size:14px;line-height:1.5;color:#B7C8BB">One customer is past their due date. Send a reminder from their page.</div>
+          </li>
+        </ul>
+      </section>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1360,"height":1060}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Public home page</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'Manrope',system-ui,sans-serif;background:#f7f5ec;color:#17251e}
+a{color:inherit;text-decoration:none}
+.nav a:hover{color:#b9e66b}
+.card{transition:transform .2s ease, box-shadow .2s ease}
+.card:hover{transform:translateY(-4px);box-shadow:0 18px 40px rgba(12,30,22,.14)}
+.btn-fresh:hover{background:#cdf08f}
+.btn-ghost:hover{background:rgba(255,255,255,.1)}
+a:focus-visible,button:focus-visible{outline:3px solid #b9e66b;outline-offset:3px}
+@media (prefers-reduced-motion:reduce){.card{transition:none}}
+</style>
+</helmet>
+
+<div style="width:100%;background:#f7f5ec">
+
+<!-- HERO -->
+<section style="position:relative;overflow:hidden;background:radial-gradient(900px 520px at 78% 18%, rgba(185,230,107,.22), transparent 60%), radial-gradient(700px 500px at 8% 90%, rgba(78,102,88,.55), transparent 65%), linear-gradient(180deg,#0c1e16 0%,#123c2d 100%);color:#f7f5ec">
+  <header class="nav" style="max-width:1200px;margin:0 auto;padding:28px 32px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px">
+    <a href="#" aria-label="Robinson Appliance Rentals home" style="display:flex;align-items:center;gap:12px">
+      <svg width="34" height="34" viewBox="0 0 100 100" aria-hidden="true"><path d="M0 0H57C83 0 98 13 98 33C98 51 87 62 65 65L100 100H64L9 45H55C63 45 67 41 67 35C67 29 63 25 55 25H0Z" fill="#b9e66b"/><path d="M0 49L49 100H0Z" fill="#b9e66b"/></svg>
+      <span style="font-weight:800;font-size:19px;letter-spacing:-.01em">Robinson <span style="font-weight:500;color:#dce7df">Appliance Rentals</span></span>
+    </a>
+    <nav aria-label="Main" style="display:flex;flex-wrap:wrap;gap:28px;font-size:15px;font-weight:600;color:#dce7df">
+      <a href="#">What we rent</a><a href="#">How it works</a><a href="#">Pricing</a><a href="#">Questions</a>
+    </nav>
+    <a href="#" class="btn-fresh" style="background:#b9e66b;color:#123c2d;font-weight:700;font-size:15px;padding:12px 22px;border-radius:999px">Check availability</a>
+  </header>
+
+  <div style="max-width:1200px;margin:0 auto;padding:56px 32px 120px;display:flex;flex-wrap:wrap;align-items:center;gap:56px">
+    <div style="flex:1 1 480px;min-width:0">
+      <p style="margin:0 0 20px;display:inline-flex;align-items:center;gap:10px;font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#b9e66b;border:1px solid rgba(185,230,107,.4);padding:8px 14px;border-radius:999px;background:rgba(185,230,107,.08)">
+        <span style="width:8px;height:8px;border-radius:99px;background:#b9e66b"></span>Greeley and nearby, Colorado
+      </p>
+      <h1 style="margin:0;font-size:68px;line-height:1.02;font-weight:800;letter-spacing:-.035em">Make room<br>for <span style="color:#b9e66b">everyday.</span></h1>
+      <p style="margin:24px 0 0;font-size:20px;line-height:1.55;color:#dce7df;max-width:520px">[ONE-LINE DESCRIPTION OF WHAT YOU RENT AND HOW, IN YOUR WORDS]</p>
+      <div style="margin-top:36px;display:flex;flex-wrap:wrap;gap:14px">
+        <a href="#" class="btn-fresh" style="background:#b9e66b;color:#123c2d;font-weight:800;font-size:17px;padding:17px 30px;border-radius:999px">See what's available</a>
+        <a href="#" class="btn-ghost" style="border:1.5px solid rgba(247,245,236,.45);color:#f7f5ec;font-weight:700;font-size:17px;padding:16px 30px;border-radius:999px">How renting works</a>
+      </div>
+      <ul style="list-style:none;margin:40px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:12px 28px;font-size:15px;font-weight:600;color:#dce7df">
+        <li style="display:flex;align-items:center;gap:8px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#b9e66b" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg>[BENEFIT 1, FROM YOUR AGREEMENT TERMS]</li>
+        <li style="display:flex;align-items:center;gap:8px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#b9e66b" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg>[BENEFIT 2, FROM YOUR AGREEMENT TERMS]</li>
+        <li style="display:flex;align-items:center;gap:8px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#b9e66b" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg>[BENEFIT 3, FROM YOUR AGREEMENT TERMS]</li>
+      </ul>
+    </div>
+
+    <!-- floating glass card -->
+    <div style="flex:1 1 380px;min-width:0;display:flex;justify-content:center">
+      <div style="width:100%;max-width:440px;border-radius:28px;padding:26px;background:linear-gradient(160deg,rgba(247,245,236,.14),rgba(247,245,236,.04));border:1px solid rgba(247,245,236,.22);box-shadow:0 40px 80px rgba(0,0,0,.35);backdrop-filter:blur(14px)">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#a5b8ab">Your rental</span>
+          <span style="font-size:13px;font-weight:700;color:#123c2d;background:#b9e66b;padding:5px 12px;border-radius:99px">Active</span>
+        </div>
+        <div style="margin-top:18px;border-radius:20px;background:#f7f5ec;color:#17251e;padding:22px">
+          <div style="display:flex;gap:14px;align-items:center">
+            <div style="width:64px;height:64px;border-radius:16px;background:#dce7df;display:flex;align-items:center;justify-content:center">
+              <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#123c2d" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2.5"/><circle cx="12" cy="13.5" r="4"/><path d="M8 6.5h.01M11 6.5h.01"/></svg>
+            </div>
+            <div>
+              <div style="font-weight:800;font-size:18px">Washer and dryer set</div>
+              <div style="font-size:14px;color:#4e6658;margin-top:2px">[Included]</div>
+            </div>
+          </div>
+          <div style="margin-top:20px;display:flex;justify-content:space-between;font-size:14px;color:#4e6658"><span>Monthly price</span><span style="font-weight:800;color:#17251e">[YOUR PRICE]</span></div>
+          <div style="margin-top:10px;height:1px;background:#dce7df"></div>
+          <div style="margin-top:12px;display:flex;justify-content:space-between;font-size:14px;color:#4e6658"><span>Next visit</span><span style="font-weight:700;color:#17251e">[WHAT'S INCLUDED]</span></div>
+        </div>
+        <p style="margin:16px 4px 0;font-size:13px;color:#a5b8ab">Wording in [BRACKETS] is a placeholder: real text comes from your agreement terms and settings. Layout only.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- WHAT'S INCLUDED -->
+<section style="max-width:1200px;margin:0 auto;padding:104px 32px 24px">
+  <p style="margin:0;font-size:13px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#4e6658">Everything included</p>
+  <h2 style="margin:12px 0 0;font-size:46px;line-height:1.08;font-weight:800;letter-spacing:-.03em;max-width:680px">[SECTION HEADLINE, IN YOUR WORDS]</h2>
+  <div style="margin-top:48px;display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:20px">
+    <article class="card" style="background:#fff;border:1px solid #dce7df;border-radius:24px;padding:30px">
+      <div style="width:52px;height:52px;border-radius:14px;background:#eaf6d4;display:flex;align-items:center;justify-content:center"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#123c2d" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7"/><circle cx="7" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/></svg></div>
+      <h3 style="margin:22px 0 8px;font-size:22px;font-weight:800;letter-spacing:-.01em">[Benefit title]</h3>
+      <p style="margin:0;font-size:16px;line-height:1.6;color:#4e6658">[Describe delivery and setup exactly as your agreement does.]</p>
+    </article>
+    <article class="card" style="background:#fff;border:1px solid #dce7df;border-radius:24px;padding:30px">
+      <div style="width:52px;height:52px;border-radius:14px;background:#eaf6d4;display:flex;align-items:center;justify-content:center"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#123c2d" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 6.5a4 4 0 0 0-5 5L4 17l3 3 5.5-5.5a4 4 0 0 0 5-5l-2.5 2.5-2-2z"/></svg></div>
+      <h3 style="margin:22px 0 8px;font-size:22px;font-weight:800;letter-spacing:-.01em">[Benefit title]</h3>
+      <p style="margin:0;font-size:16px;line-height:1.6;color:#4e6658">[Describe repairs exactly as your agreement does.]</p>
+    </article>
+    <article class="card" style="background:#fff;border:1px solid #dce7df;border-radius:24px;padding:30px">
+      <div style="width:52px;height:52px;border-radius:14px;background:#eaf6d4;display:flex;align-items:center;justify-content:center"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#123c2d" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3 10h18M7 15h4"/></svg></div>
+      <h3 style="margin:22px 0 8px;font-size:22px;font-weight:800;letter-spacing:-.01em">[Benefit title]</h3>
+      <p style="margin:0;font-size:16px;line-height:1.6;color:#4e6658">[Describe billing and the customer portal as they really work.]</p>
+    </article>
+    <article class="card" style="background:#fff;border:1px solid #dce7df;border-radius:24px;padding:30px">
+      <div style="width:52px;height:52px;border-radius:14px;background:#eaf6d4;display:flex;align-items:center;justify-content:center"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#123c2d" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2.5"/><path d="M4 10h16M9 3v4M15 3v4"/></svg></div>
+      <h3 style="margin:22px 0 8px;font-size:22px;font-weight:800;letter-spacing:-.01em">[Benefit title]</h3>
+      <p style="margin:0;font-size:16px;line-height:1.6;color:#4e6658">[Describe ending a rental and the notice period from your settings.]</p>
+    </article>
+    <article class="card" style="background:#fff;border:1px solid #dce7df;border-radius:24px;padding:30px">
+      <div style="width:52px;height:52px;border-radius:14px;background:#eaf6d4;display:flex;align-items:center;justify-content:center"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#123c2d" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.2 7.8-8 9-4.8-1.2-8-4.5-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg></div>
+      <h3 style="margin:22px 0 8px;font-size:22px;font-weight:800;letter-spacing:-.01em">[Benefit title]</h3>
+      <p style="margin:0;font-size:16px;line-height:1.6;color:#4e6658">[Describe your inspection step as it really works.]</p>
+    </article>
+    <article class="card" style="background:#fff;border:1px solid #dce7df;border-radius:24px;padding:30px">
+      <div style="width:52px;height:52px;border-radius:14px;background:#eaf6d4;display:flex;align-items:center;justify-content:center"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#123c2d" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12a8 8 0 0 1 16 0v4a2 2 0 0 1-2 2h-1v-6h3M4 12v4a2 2 0 0 0 2 2h1v-6H4"/><path d="M12 20h3"/></svg></div>
+      <h3 style="margin:22px 0 8px;font-size:22px;font-weight:800;letter-spacing:-.01em">[Benefit title]</h3>
+      <p style="margin:0;font-size:16px;line-height:1.6;color:#4e6658">[Contact options come from your settings.]</p>
+    </article>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section style="margin-top:96px;background:linear-gradient(180deg,#0c1e16,#123c2d);color:#f7f5ec">
+  <div style="max-width:1200px;margin:0 auto;padding:96px 32px">
+    <p style="margin:0;font-size:13px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#b9e66b">How it works</p>
+    <h2 style="margin:12px 0 0;font-size:46px;line-height:1.08;font-weight:800;letter-spacing:-.03em;max-width:620px">[HOW LONG IT TAKES, FROM YOUR OPERATIONS]</h2>
+    <div style="margin-top:52px;display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px">
+      <div style="border:1px solid rgba(247,245,236,.18);border-radius:24px;padding:32px;background:rgba(247,245,236,.05)">
+        <div style="font-size:54px;font-weight:800;color:#b9e66b;letter-spacing:-.04em;line-height:1">1</div>
+        <h3 style="margin:20px 0 8px;font-size:22px;font-weight:800">[Step one]</h3>
+        <p style="margin:0;font-size:16px;line-height:1.6;color:#dce7df">[Describe step one as it really works.]</p>
+      </div>
+      <div style="border:1px solid rgba(247,245,236,.18);border-radius:24px;padding:32px;background:rgba(247,245,236,.05)">
+        <div style="font-size:54px;font-weight:800;color:#b9e66b;letter-spacing:-.04em;line-height:1">2</div>
+        <h3 style="margin:20px 0 8px;font-size:22px;font-weight:800">[Step two]</h3>
+        <p style="margin:0;font-size:16px;line-height:1.6;color:#dce7df">[Describe signing and payment setup as they really work.]</p>
+      </div>
+      <div style="border:1px solid rgba(247,245,236,.18);border-radius:24px;padding:32px;background:rgba(247,245,236,.05)">
+        <div style="font-size:54px;font-weight:800;color:#b9e66b;letter-spacing:-.04em;line-height:1">3</div>
+        <h3 style="margin:20px 0 8px;font-size:22px;font-weight:800">[Step three]</h3>
+        <p style="margin:0;font-size:16px;line-height:1.6;color:#dce7df">[Describe delivery day as it really works.]</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PRICING -->
+<section style="max-width:1200px;margin:0 auto;padding:104px 32px 32px">
+  <p style="margin:0;font-size:13px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#4e6658">Pricing</p>
+  <h2 style="margin:12px 0 0;font-size:46px;line-height:1.08;font-weight:800;letter-spacing:-.03em;max-width:680px">[PRICING HEADLINE, IN YOUR WORDS]</h2>
+  <div style="margin-top:48px;display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;align-items:stretch">
+    <article class="card" style="background:#fff;border:1px solid #dce7df;border-radius:24px;padding:34px;display:flex;flex-direction:column">
+      <h3 style="margin:0;font-size:20px;font-weight:800">Single appliance</h3>
+      <p style="margin:6px 0 0;font-size:15px;color:#4e6658">Washer, dryer or fridge</p>
+      <div style="margin:26px 0 0;font-size:44px;font-weight:800;letter-spacing:-.03em">[PRICE]<span style="font-size:17px;font-weight:600;color:#4e6658">/month</span></div>
+      <ul style="margin:24px 0 28px;padding:0;list-style:none;display:grid;gap:12px;font-size:15px;color:#17251e;flex:1">
+        <li>[INCLUDED ITEM]</li><li>[INCLUDED ITEM]</li><li>[INCLUDED ITEM]</li>
+      </ul>
+      <a href="#" style="text-align:center;border:1.5px solid #123c2d;color:#123c2d;font-weight:800;padding:14px;border-radius:999px">Choose this</a>
+    </article>
+    <article class="card" style="background:#123c2d;color:#f7f5ec;border-radius:24px;padding:34px;display:flex;flex-direction:column;position:relative;box-shadow:0 24px 50px rgba(18,60,45,.35)">
+      <span style="position:absolute;top:-14px;left:34px;background:#b9e66b;color:#123c2d;font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:6px 14px;border-radius:99px">Most popular</span>
+      <h3 style="margin:0;font-size:20px;font-weight:800">Washer and dryer set</h3>
+      <p style="margin:6px 0 0;font-size:15px;color:#dce7df">The full laundry setup</p>
+      <div style="margin:26px 0 0;font-size:44px;font-weight:800;letter-spacing:-.03em">[PRICE]<span style="font-size:17px;font-weight:600;color:#dce7df">/month</span></div>
+      <ul style="margin:24px 0 28px;padding:0;list-style:none;display:grid;gap:12px;font-size:15px;flex:1">
+        <li>[INCLUDED ITEM]</li><li>[INCLUDED ITEM]</li><li>[INCLUDED ITEM]</li>
+      </ul>
+      <a href="#" class="btn-fresh" style="text-align:center;background:#b9e66b;color:#123c2d;font-weight:800;padding:14px;border-radius:999px">Choose this</a>
+    </article>
+    <article class="card" style="background:#fff;border:1px solid #dce7df;border-radius:24px;padding:34px;display:flex;flex-direction:column">
+      <h3 style="margin:0;font-size:20px;font-weight:800">Pay in advance</h3>
+      <p style="margin:6px 0 0;font-size:15px;color:#4e6658">Prepay for a longer term</p>
+      <div style="margin:26px 0 0;font-size:44px;font-weight:800;letter-spacing:-.03em">[DISCOUNT]</div>
+      <ul style="margin:24px 0 28px;padding:0;list-style:none;display:grid;gap:12px;font-size:15px;color:#17251e;flex:1">
+        <li>[HOW PREPAY WORKS, FROM YOUR SETTINGS]</li><li>[INCLUDED ITEM]</li>
+      </ul>
+      <a href="#" style="text-align:center;border:1.5px solid #123c2d;color:#123c2d;font-weight:800;padding:14px;border-radius:999px">Ask about it</a>
+    </article>
+  </div>
+</section>
+
+<!-- CTA -->
+<section style="max-width:1200px;margin:72px auto 0;padding:0 32px">
+  <div style="border-radius:32px;padding:64px 48px;background:radial-gradient(600px 300px at 90% 0%, rgba(185,230,107,.35), transparent 60%), linear-gradient(135deg,#123c2d,#0c1e16);color:#f7f5ec;display:flex;flex-wrap:wrap;gap:24px;align-items:center;justify-content:space-between">
+    <div style="flex:1 1 420px">
+      <h2 style="margin:0;font-size:40px;line-height:1.1;font-weight:800;letter-spacing:-.03em">Ready to make room?</h2>
+      <p style="margin:12px 0 0;font-size:18px;color:#dce7df">[CALL TO ACTION, IN YOUR WORDS]</p>
+    </div>
+    <a href="#" class="btn-fresh" style="background:#b9e66b;color:#123c2d;font-weight:800;font-size:17px;padding:18px 34px;border-radius:999px">Check availability</a>
+  </div>
+</section>
+
+<footer style="max-width:1200px;margin:64px auto 0;padding:32px 32px 56px;border-top:1px solid #dce7df;display:flex;flex-wrap:wrap;gap:16px;justify-content:space-between;font-size:14px;color:#4e6658">
+  <span>Robinson Appliance Rentals · [ADDRESS AND PHONE FROM SETTINGS]</span>
+  <span style="display:flex;gap:22px"><a href="#">Accessibility</a><a href="#">Privacy</a><a href="#">Terms</a></span>
+</footer>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1360,"height":2420}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
