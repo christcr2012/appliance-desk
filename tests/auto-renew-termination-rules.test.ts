@@ -30,7 +30,8 @@ describe("Stripe end date for an early ending", () => {
     );
   });
   it("uses the provider boundary immediately after the natural last service day", () => {
-    expect(cancelAtSecondsFor(base)).toBe(Math.floor(Date.parse("2027-11-09T07:00:00.000Z") / 1000));
+    // termEnd is Nov 7 at 23:59:59 MST, so the next Colorado billing date is Nov 8.
+    expect(cancelAtSecondsFor(base)).toBe(Math.floor(Date.parse("2027-11-08T07:00:00.000Z") / 1000));
   });
   it("keeps the natural term end when the ending date is on or after it, or when nothing was requested", () => {
     const natural = cancelAtSecondsFor(base);
