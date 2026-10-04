@@ -493,13 +493,20 @@ manual database edit) process with one click:
   The reason is saved both on the appliance's own notes and in its
   history.
 - **Swap for a working unit** — only offered for a unit currently
-  `RENTED`. Unassigns the broken unit from its rental line, assigns a
-  same-appliance-type `AVAILABLE` replacement in its place, moves the
-  broken one to `MAINTENANCE` and the replacement to `RESERVED` (same
-  convention as a brand-new agreement — Chris marks it `RENTED`
-  himself once the swap job is actually completed), and creates one
-  `SWAP` job carrying both appliances. There was previously no way to
-  actually reassign an appliance mid-rental at all.
+  `RENTED` with a recorded holder (custody) and an open assignment.
+  Staging a swap moves nothing physical: it reserves only the
+  same-appliance-type `AVAILABLE` replacement (`RESERVED`, owned by the
+  swap) and creates one `SWAP` job. The broken unit stays rented to the
+  customer, with its assignment and custody untouched, until the visit is
+  completed with a result for each unit: new unit delivered and old unit
+  returned moves everything at once (new unit `RENTED` and assigned to
+  the same rental line, old unit to `AWAITING_INSPECTION`, custody
+  follows); neither moved releases the reservation and makes one HIGH
+  task "Reschedule the swap"; new unit delivered but old unit left behind
+  moves the assignment to the new unit and makes a "Collect" task (the old
+  unit stays rented with its own open custody). Taking the old unit
+  without delivering the new one is refused. Cancelling the job, a
+  no-show, or the agreement ending gives the reservation back.
 - **Record inspection** — the guided version of moving a unit out of
   `AWAITING_INSPECTION`. Saves the checklist as answered plus Chris's
   notes and condition assessment as an `ApplianceInspection` record,
@@ -1247,8 +1254,7 @@ without Chris picking it"): a separate Contacts concept (idea #13). The
 driver/technician mobile job view (ideas #1/#2) is also **done
 (2026-09-28, Task #65)**. The current route is shared and unassigned,
 explicitly showing the team's scheduled visits; individual assignment remains
-gated by O02/O13. Swap completion opens the job detail for incoming-unit follow-up,
-with owner confirmation required when legacy replacement intent is missing.
+gated by O02/O13. Completing a swap moves both units itself (see "Swap for a working unit").
 See the automation-rules entry in
 `docs/DECISIONS.md`.
 

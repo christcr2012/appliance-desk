@@ -97,23 +97,11 @@ export async function getOperationalAgreementById(id: string) {
   });
 }
 
-async function swapReplacementIdsFor(job: { id: string; type: string; appliances: { appliance: { id: string } }[] }) {
+/** The incoming unit(s) of a swap, read from the job's own appliance roles. Display only: it is not a permission. */
+async function swapReplacementIdsFor(job: { id: string; type: string }) {
   if (job.type !== "SWAP") return [];
-  // The guided swap records the incoming unit's frozen intent in its audit.
-  // Current status alone cannot distinguish it from the returned broken unit.
-  const entries = await prisma.auditLog.findMany({
-    where: {
-      action: "appliance.unit.status", entityType: "Appliance",
-      entityId: { in: job.appliances.map(item => item.appliance.id) },
-      AND: [
-        { newValue: { path: ["jobId"], equals: job.id } },
-        { newValue: { path: ["reason"], equals: "Swap started" } },
-        { newValue: { path: ["status"], equals: "RESERVED" } },
-      ],
-    },
-    select: { entityId: true },
-  });
-  return [...new Set(entries.flatMap(entry => entry.entityId ? [entry.entityId] : []))];
+  const rows = await prisma.jobAppliance.findMany({ where: { jobId: job.id, role: "REPLACEMENT" }, select: { applianceId: true }, orderBy: { applianceId: "asc" } });
+  return rows.map((row) => row.applianceId);
 }
 
 /** STAFF's client-component payload contains no costs or full agreement. */

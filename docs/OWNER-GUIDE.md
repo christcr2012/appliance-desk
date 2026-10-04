@@ -180,8 +180,15 @@ Customers submit maintenance requests themselves from their own
 account, and you get an emailed notification right away (urgent/high
 priority ones are flagged in the subject line). Go to **Maintenance**
 to see the full request — appliance, priority, and what's wrong — and
-move it through its status. "Schedule a job for this" pre-fills a new
-job with that customer, address, and appliance already selected.
+move it through its status. Mark it **Reviewing**, then "Schedule a job
+for this" pre-fills a new visit with that customer and appliance; saving
+it moves the request to **Scheduled** at the same moment. Starting the
+visit moves the request to **In progress**. When the visit is completed
+with every item repaired, the request becomes **Resolved**; if a repair
+was not finished or nobody was home, it goes back to **Reviewing** with
+a task for you, and the same happens if the visit is cancelled or
+marked a no-show. The request now remembers which property the visit is
+for.
 
 ## Inventory and parts
 

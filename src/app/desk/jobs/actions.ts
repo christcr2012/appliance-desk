@@ -22,6 +22,7 @@ import {
 import { businessDateTimeFromLocal } from "@/lib/business-date";
 import { parsePerformedOn } from "@/domains/billing/pickup-billing-events";
 import { updateApplianceStatus } from "@/domains/inventory";
+import { scheduleMaintenanceRequest } from "@/domains/maintenance";
 import { updateApplianceStatusAsTeamActor } from "@/domains/inventory/guarded-status";
 import type { JobStatus, JobType, ApplianceStatus } from "@prisma/client";
 import { ALL_APPLIANCE_STATUSES } from "@/domains/inventory/lifecycle";
@@ -109,6 +110,24 @@ export async function createJobAction(
 
   let job;
   try {
+    if (data.type === "MAINTENANCE_VISIT" && data.maintenanceRequestId) {
+      // A repair visit for a request is scheduled with the request itself, so both change together.
+      if (!scheduledAt) return { status: "error", message: "Choose a date and time for the repair visit." };
+      if (!data.serviceAddressId) return { status: "error", message: "Choose the property this visit is for." };
+      const scheduled = await scheduleMaintenanceRequest(session.user.id, {
+        requestId: data.maintenanceRequestId,
+        scheduledAt,
+        durationMinutes: data.durationMinutes ?? null,
+        assignedToUserId: data.assignedToUserId || null,
+        serviceAddressId: data.serviceAddressId,
+        confirmedConflictJobIds: data.confirmedConflictJobIds ?? [],
+      });
+      revalidatePath("/desk/jobs");
+      revalidatePath("/desk/dashboard");
+      revalidatePath("/desk/maintenance");
+      revalidatePath(`/desk/maintenance/${data.maintenanceRequestId}`);
+      return { status: "success", jobId: scheduled.jobId };
+    }
     job = await createJob(session.user.id, {
       type: data.type,
       scheduledAt,

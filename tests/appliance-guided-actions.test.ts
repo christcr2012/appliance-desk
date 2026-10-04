@@ -213,94 +213,13 @@ describe("getSwapCandidates", () => {
   });
 });
 
-describe("startSwapForAppliance", () => {
+describe("stageSwap", () => {
   it("rejects swapping a unit in for itself", async () => {
-    const { startSwapForAppliance } = await import("@/domains/inventory/guided-actions");
+    const { stageSwap } = await import("@/domains/inventory/guided-actions");
 
-    await expect(startSwapForAppliance("user-1", "app-1", "app-1")).rejects.toThrow(/different unit/i);
+    await expect(stageSwap("user-1", { originalApplianceId: "app-1", replacementApplianceId: "app-1", scheduledAt: null })).rejects.toThrow(/different unit/i);
   });
-
-  it("requires the old appliance to be on an active assignment", async () => {
-    applianceFindUniqueOrThrow
-      .mockResolvedValueOnce({ id: "app-1", status: "RENTED", applianceTypeId: "type-1" })
-      .mockResolvedValueOnce({ id: "app-2", status: "AVAILABLE", applianceTypeId: "type-1" });
-    applianceAssignmentFindFirst.mockResolvedValue(null);
-    const { startSwapForAppliance } = await import("@/domains/inventory/guided-actions");
-
-    await expect(startSwapForAppliance("user-1", "app-1", "app-2")).rejects.toThrow(/nothing to swap/i);
-  });
-
-  it("requires the replacement to be the same appliance type", async () => {
-    applianceFindUniqueOrThrow
-      .mockResolvedValueOnce({ id: "app-1", status: "RENTED", applianceTypeId: "type-1" })
-      .mockResolvedValueOnce({ id: "app-2", status: "AVAILABLE", applianceTypeId: "type-2" });
-    applianceAssignmentFindFirst.mockResolvedValue({
-      id: "assign-1",
-      rentalLineId: "line-1",
-      rentalLine: { agreementId: "agr-1", agreement: { customerId: "cust-1", serviceAddressId: "addr-1" } },
-    });
-    const { startSwapForAppliance } = await import("@/domains/inventory/guided-actions");
-
-    await expect(startSwapForAppliance("user-1", "app-1", "app-2")).rejects.toThrow(/same appliance type/i);
-  });
-
-  it("requires the replacement to be AVAILABLE", async () => {
-    applianceFindUniqueOrThrow
-      .mockResolvedValueOnce({ id: "app-1", status: "RENTED", applianceTypeId: "type-1" })
-      .mockResolvedValueOnce({ id: "app-2", status: "MAINTENANCE", applianceTypeId: "type-1" });
-    applianceAssignmentFindFirst.mockResolvedValue({
-      id: "assign-1",
-      rentalLineId: "line-1",
-      rentalLine: { agreementId: "agr-1", agreement: { customerId: "cust-1", serviceAddressId: "addr-1" } },
-    });
-    const { startSwapForAppliance } = await import("@/domains/inventory/guided-actions");
-
-    await expect(startSwapForAppliance("user-1", "app-1", "app-2")).rejects.toThrow(/isn't currently available/i);
-  });
-
-  it("unassigns the old unit, assigns the replacement, moves both statuses, and creates one SWAP job", async () => {
-    applianceFindUniqueOrThrow
-      .mockResolvedValueOnce({ id: "app-1", status: "RENTED", applianceTypeId: "type-1" })
-      .mockResolvedValueOnce({ id: "app-2", status: "AVAILABLE", applianceTypeId: "type-1" });
-    applianceAssignmentFindFirst.mockResolvedValue({
-      id: "assign-1",
-      rentalLineId: "line-1",
-      rentalLine: {
-        agreementId: "agr-1",
-        agreement: { customerId: "cust-1", serviceAddressId: "addr-1" },
-      },
-    });
-    const { startSwapForAppliance } = await import("@/domains/inventory/guided-actions");
-
-    const result = await startSwapForAppliance("user-1", "app-1", "app-2");
-
-    expect(result).toEqual({ jobId: "job-1" });
-    expect(applianceAssignmentUpdateMany).toHaveBeenCalledWith({
-      where: { id: "assign-1", unassignedAt: null },
-      data: expect.objectContaining({ unassignReason: "Swapped out for repair" }),
-    });
-    expect(applianceAssignmentCreate).toHaveBeenCalledWith({
-      data: { rentalLineId: "line-1", applianceId: "app-2" },
-    });
-    expect(applianceUpdateMany).toHaveBeenCalledWith({
-      where: { id: "app-1", status: "RENTED" },
-      data: { status: "MAINTENANCE" },
-    });
-    expect(applianceUpdateMany).toHaveBeenCalledWith({
-      where: { id: "app-2", status: "AVAILABLE" },
-      data: { status: "RESERVED" },
-    });
-    expect(jobCreate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          type: "SWAP",
-          customerId: "cust-1",
-          appliances: { create: [{ applianceId: "app-1" }, { applianceId: "app-2", role: "REPLACEMENT" }] },
-        }),
-      }),
-    );
-    expect(auditLogCreate).toHaveBeenCalledTimes(2);
-  });
+  // The real behavior (reservation only, nothing else moves, cancel gives it back) is covered against Postgres in swap-integration.test.ts.
 });
 
 describe("recordApplianceInspection", () => {

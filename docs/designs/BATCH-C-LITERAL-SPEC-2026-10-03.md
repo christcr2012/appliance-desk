@@ -62,6 +62,16 @@ Verified against the code:
 - **Production pre-check before this slice's migration is deployed** (spec): the duplicate `JobAppliance (jobId, applianceId)` query must return no rows; it is run read-only against the production database before merge and the result recorded in the PR.
 - No decision-level conflict (money, statuses, permissions, database design). Proceed as written.
 
+### Drift check — P2-C swaps and P2-D maintenance chain — 2026-10-04 (Claude Sonnet 5.5, at `main` 9c8ee25 = #169 + #170 + #171 + #172)
+
+Verified against the code:
+- `startSwapForAppliance` (`inventory/guided-actions.ts`) still moves both units, the assignment and the original's status when the swap is *staged*, and is called only by `startSwapAction` (`inventory/actions.ts`). `JobAppliance.role` and `reservationActive` already exist (slice 4 migration `20261003360000`), with the partial unique index `JobAppliance_one_active_reservation`, so P2-C needs no new migration. `completeJob` (slice 4) already refuses "old unit returned, new unit not delivered" and takes the customer-ledger then agreement locks.
+- Cancel paths that must release a staged reservation: `updateJobStatus(… "CANCELLED")` (`jobs/index.ts`), `markJobNoShow` (`jobs/scheduling.ts`) and `closeAgreement` (`agreements/index.ts`); none touches appliances today.
+- Slice 4 already changed things the original P2-C text predates: hand-made status changes now enforce the custody rules (`assertStatusChangeKeepsCustody`), guided swaps save the incoming unit as `REPLACEMENT`, and `completeJob` refuses a delivered result with no customer.
+- `swapReplacementIdsFor` (`desk-access/index.ts`) still reads the "Swap started" audit entries; P2-C makes it read `JobAppliance.role` (display only). The job page's "Mark <unit> as Rented" suggestion for completed swaps is removed, because completion now moves the statuses itself.
+- P2-D: `MaintenanceRequest` has no `serviceAddressId`; `scheduleMaintenanceRequest` does not exist yet (scheduling a request today goes through the generic job form). Latest migration is `20261003360000`, so `20261003370000_maintenance_links` is free.
+- No decision-level conflict (money, statuses, permissions, database design). Proceed as written.
+
 ## Review pass — 2026-10-03 (Claude Fable 5.1, docs only)
 
 Every file and line the spec cites was opened at head 3d71449 (branch `ai/claude/pickup-billing-rules`, which this

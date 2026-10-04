@@ -15,6 +15,7 @@ import {
 } from "@/domains/billing/pickup-billing-events";
 import { closeCustodyEpisodeInTx, getOpenCustody, openCustodyEpisodeInTx } from "@/domains/inventory/custody";
 import { createTaskInTx } from "@/domains/tasks";
+import { lockMaintenanceRequestInTx, requestAfterVisitEndedInTx } from "@/domains/maintenance/visit-sync";
 import { JobVersionError } from "./scheduling";
 
 // ---------------------------------------------------------------------------
@@ -135,7 +136,7 @@ export async function completeJob(userId: string, input: CompleteJobInput): Prom
     const actor = await assertActiveTeamActor(tx, userId);
     if (peek.agreement) await lockCustomerLedger(tx, peek.agreement.customerId);
     if (peek.agreementId) await lockRentalAgreementInTx(tx, peek.agreementId);
-    if (peek.maintenanceRequestId) await lockRows(tx, "MaintenanceRequest", peek.maintenanceRequestId);
+    if (peek.maintenanceRequestId) await lockMaintenanceRequestInTx(tx, peek.maintenanceRequestId);
     await lockRows(tx, "Job", input.jobId);
 
     const before = await tx.job.findUniqueOrThrow({
@@ -252,7 +253,10 @@ export async function completeJob(userId: string, input: CompleteJobInput): Prom
             data: { userId, action: "appliance.unit.status", entityType: "Appliance", entityId: applianceId, oldValue: { status: "RESERVED" }, newValue: { status: "RENTED", reason: `Job ${before.type.toLowerCase()} completed`, jobId: before.id } },
           });
         }
-        await openCustodyEpisodeInTx(tx, { applianceId, customerId, serviceAddressId: before.serviceAddressId, agreementId: before.agreementId, startedOn: serviceDate, startJobId: before.id });
+        // A swap's custody, status and assignment moves are done together after this loop.
+        if (before.type !== "SWAP") {
+          await openCustodyEpisodeInTx(tx, { applianceId, customerId, serviceAddressId: before.serviceAddressId, agreementId: before.agreementId, startedOn: serviceDate, startJobId: before.id });
+        }
         positiveIds.push(applianceId);
       } else if (result.result === "RETURNED") {
         const holder = await getOpenCustody(tx, applianceId);
@@ -266,9 +270,6 @@ export async function completeJob(userId: string, input: CompleteJobInput): Prom
             data: { userId, action: "appliance.unit.status", entityType: "Appliance", entityId: applianceId, oldValue: { status: appliance.status }, newValue: { status: "AWAITING_INSPECTION", reason: `Job ${before.type.toLowerCase()} completed`, jobId: before.id } },
           });
           await closeCustodyEpisodeInTx(tx, { applianceId, endedOn: serviceDate, endJobId: before.id, endReason: "Returned" });
-        } else if (await getOpenCustody(tx, applianceId)) {
-          // Swap return (the swap's own status moves are handled by the swap flow).
-          await closeCustodyEpisodeInTx(tx, { applianceId, endedOn: serviceDate, endJobId: before.id, endReason: "Swapped out" });
         }
         positiveIds.push(applianceId);
       } else if (result.result === "REPAIRED") {
@@ -284,6 +285,70 @@ export async function completeJob(userId: string, input: CompleteJobInput): Prom
           resultRecordedByUserId: userId,
         },
       });
+    }
+
+    // --- swap: both units, both custody records and the assignment move together ----------------
+    let swapBothNegative = false;
+    if (before.type === "SWAP") {
+      const originalId = scope.find((s) => s.role === "PRIMARY")?.applianceId ?? null;
+      const replacementId = scope.find((s) => s.role === "REPLACEMENT")?.applianceId ?? null;
+      const originalResult = originalId ? resultOf.get(originalId)!.result : null;
+      const replacementResult = replacementId ? resultOf.get(replacementId)!.result : null;
+      swapBothNegative = originalResult === "NOT_RETURNED" && replacementResult === "NOT_DELIVERED";
+      const reservationOwned = replacementId
+        ? (await tx.jobAppliance.findFirst({ where: { jobId: before.id, applianceId: replacementId, reservationActive: true }, select: { id: true } })) !== null
+        : false;
+      if (replacementId && replacementResult === "DELIVERED") {
+        const replacement = applianceById.get(replacementId)!;
+        const original = originalId ? applianceById.get(originalId)! : null;
+        // The original's current assignment, whichever agreement it now belongs to (a renewal may have moved it).
+        const originalAssignment = originalId
+          ? await tx.applianceAssignment.findFirst({ where: { applianceId: originalId, unassignedAt: null }, select: { id: true, rentalLineId: true, rentalLine: { select: { agreementId: true } } } })
+          : null;
+        if (originalAssignment && originalAssignment.rentalLine.agreementId !== before.agreementId) {
+          await lockRentalAgreementInTx(tx, originalAssignment.rentalLine.agreementId);
+        }
+        const replacementAssignment = await tx.applianceAssignment.findFirst({ where: { applianceId: replacementId, unassignedAt: null }, select: { id: true } });
+        const moved = await tx.appliance.updateMany({ where: { id: replacementId, status: "RESERVED" }, data: { status: "RENTED" } });
+        if (moved.count !== 1) throw new JobCompletionConflictError(`${replacement.assetNumber} is no longer waiting for delivery, so the swap can't be completed.`);
+        await tx.auditLog.create({
+          data: { userId, action: "appliance.unit.status", entityType: "Appliance", entityId: replacementId, oldValue: { status: "RESERVED" }, newValue: { status: "RENTED", reason: "Swap completed", jobId: before.id } },
+        });
+        await openCustodyEpisodeInTx(tx, { applianceId: replacementId, customerId: customerId!, serviceAddressId: before.serviceAddressId, agreementId: before.agreementId, startedOn: serviceDate, startJobId: before.id });
+        if (originalAssignment) {
+          await tx.applianceAssignment.update({
+            where: { id: originalAssignment.id },
+            data: { unassignedAt: completedAt, unassignReason: `Swapped for ${replacement.assetNumber}` },
+          });
+          if (!replacementAssignment) {
+            await tx.applianceAssignment.create({ data: { rentalLineId: originalAssignment.rentalLineId, applianceId: replacementId } });
+          }
+        }
+        if (original && originalResult === "RETURNED") {
+          if (await getOpenCustody(tx, originalId!)) {
+            await closeCustodyEpisodeInTx(tx, { applianceId: originalId!, endedOn: serviceDate, endJobId: before.id, endReason: "Swapped out" });
+          }
+          const toInspection = await tx.appliance.updateMany({ where: { id: originalId!, status: { in: ["RENTED", "AWAITING_PICKUP", "MAINTENANCE"] } }, data: { status: "AWAITING_INSPECTION" } });
+          if (toInspection.count === 1) {
+            await tx.auditLog.create({
+              data: { userId, action: "appliance.unit.status", entityType: "Appliance", entityId: originalId!, oldValue: { status: original.status }, newValue: { status: "AWAITING_INSPECTION", reason: "Swapped out", jobId: before.id } },
+            });
+          }
+        }
+        await tx.jobAppliance.updateMany({ where: { jobId: before.id, applianceId: replacementId }, data: { reservationActive: false } });
+      } else if (!replacementId && originalId && originalResult === "RETURNED" && (await getOpenCustody(tx, originalId))) {
+        // An old swap job with no recorded replacement: only the returned unit's custody can be closed.
+        await closeCustodyEpisodeInTx(tx, { applianceId: originalId, endedOn: serviceDate, endJobId: before.id, endReason: "Swapped out" });
+      } else if (replacementId && swapBothNegative && reservationOwned) {
+        // Nothing moved: the reservation goes back on the shelf.
+        const released = await tx.appliance.updateMany({ where: { id: replacementId, status: "RESERVED" }, data: { status: "AVAILABLE" } });
+        if (released.count === 1) {
+          await tx.auditLog.create({
+            data: { userId, action: "appliance.unit.status", entityType: "Appliance", entityId: replacementId, oldValue: { status: "RESERVED" }, newValue: { status: "AVAILABLE", reason: "Swap did not happen", jobId: before.id } },
+          });
+        }
+        await tx.jobAppliance.updateMany({ where: { jobId: before.id, applianceId: replacementId }, data: { reservationActive: false } });
+      }
     }
 
     // --- billing that completion already did (same transaction) ----------------------------------
@@ -319,9 +384,24 @@ export async function completeJob(userId: string, input: CompleteJobInput): Prom
 
     // --- follow-up tasks for every negative result ------------------------------------------------
     const followUpTaskIds: string[] = [];
+    if (swapBothNegative) {
+      const { task } = await createTaskInTx(
+        tx,
+        { userId: actor.id, role: actor.role as "OWNER" | "ADMIN" | "STAFF" },
+        {
+          note: `Reschedule the swap${customerName ? ` (${customerName})` : ""}: neither the new unit was delivered nor the old one collected.`,
+          priority: "HIGH",
+          jobId: before.id,
+          customerId: customerId ?? null,
+          sourceKey: `job:${before.id}:swap:reschedule`,
+        },
+      );
+      followUpTaskIds.push(task.id);
+    }
     for (const applianceId of scopeIds) {
       const given = resultOf.get(applianceId)!.result;
       if (POSITIVE.has(given)) continue;
+      if (swapBothNegative) continue;
       const appliance = applianceById.get(applianceId)!;
       const { task } = await createTaskInTx(
         tx,
@@ -361,6 +441,9 @@ export async function completeJob(userId: string, input: CompleteJobInput): Prom
       },
     });
     if (updated.count !== 1) throw new JobVersionError();
+    if (before.maintenanceRequestId && before.type === "MAINTENANCE_VISIT") {
+      await requestAfterVisitEndedInTx(tx, userId, before.maintenanceRequestId, before.id, jobOutcome === "COMPLETE" ? "REPAIRED" : "NOT_FINISHED");
+    }
 
     await tx.auditLog.create({
       data: { userId, action: "job.status", entityType: "Job", entityId: before.id, oldValue: { status: before.status }, newValue: { status: "COMPLETED", performedOn: performedOn.toISOString() } },

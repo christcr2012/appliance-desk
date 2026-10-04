@@ -4,6 +4,8 @@ import type { JobStatus, JobType, Prisma } from "@prisma/client";
 import { parseChecklist, type ChecklistItem } from "./checklist";
 import { businessDayBounds } from "@/lib/business-date";
 import { MAX_JOB_DURATION_MINUTES } from "./dispatch";
+import { releaseSwapReservationsInTx } from "./swaps";
+import { lockMaintenanceRequestInTx, requestAfterVisitEndedInTx, requestAfterVisitStartedInTx } from "@/domains/maintenance/visit-sync";
 import {
   checkConfirmedConflicts,
   lockUsersForScheduling,
@@ -279,10 +281,17 @@ export async function updateJobStatus(
   return prisma.$transaction(async (tx) => {
     await assertActiveTeamActor(tx, userId);
 
+    const peeked = await tx.job.findUniqueOrThrow({ where: { id: jobId } });
+    // Lock order: the maintenance request (if any) before the job.
+    if (peeked.maintenanceRequestId) await lockMaintenanceRequestInTx(tx, peeked.maintenanceRequestId);
     const before = await tx.job.findUniqueOrThrow({ where: { id: jobId } });
     const check = canTransitionJobStatus(before.status, newStatus);
     if (!check.ok) throw new Error(check.reason);
 
+    if (newStatus === "CANCELLED") {
+      // A cancelled swap gives back the replacement it reserved.
+      await tx.$queryRaw`SELECT "id" FROM "Job" WHERE "id" = ${jobId} FOR UPDATE`;
+    }
     const result = await tx.job.updateMany({
       where: { id: jobId, status: before.status },
       data: {
@@ -293,6 +302,12 @@ export async function updateJobStatus(
     });
     if (result.count !== 1) {
       throw new Error("This job was just changed by someone else — refresh the page and try again.");
+    }
+
+    if (newStatus === "CANCELLED") await releaseSwapReservationsInTx(tx, userId, jobId, "Swap cancelled");
+    if (before.maintenanceRequestId && before.type === "MAINTENANCE_VISIT") {
+      if (newStatus === "IN_PROGRESS") await requestAfterVisitStartedInTx(tx, userId, before.maintenanceRequestId, jobId);
+      if (newStatus === "CANCELLED") await requestAfterVisitEndedInTx(tx, userId, before.maintenanceRequestId, jobId, "CANCELLED");
     }
 
     await tx.auditLog.create({

@@ -1,7 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import { formatBusinessDate } from "@/lib/business-date";
 import type { Prisma } from "@prisma/client";
-import { assertStatusChangeKeepsCustody } from "./custody";
+import { assertStatusChangeKeepsCustody, getOpenCustody } from "./custody";
+import { assertActiveTeamActor } from "@/lib/team-actor";
+import { lockCustomerLedger } from "@/domains/billing/ledger";
+import { lockRentalAgreementInTx } from "@/domains/agreements";
 import { canTransitionApplianceStatus, applianceStatusAfterInspection, DEFAULT_INSPECTION_CHECKLIST } from "./lifecycle";
 import { getBusinessSettings } from "@/domains/settings";
 
@@ -175,123 +178,97 @@ export async function getSwapCandidates(applianceId: string) {
 export type StartSwapResult = { jobId: string };
 
 /**
- * "Swap for a working unit" — before this existed, there was no way to
- * actually carry out a swap short of editing the database by hand:
- * ApplianceAssignment had no reassignment path at all. This does the
- * whole thing atomically:
- *   1. Unassigns the broken appliance from its rental line.
- *   2. Assigns the replacement to that same line instead.
- *   3. Moves the broken one to MAINTENANCE (it's coming back broken,
- *      not for a routine inspection — see docs/BUSINESS-RULES.md's
- *      rental lifecycle for why AWAITING_INSPECTION doesn't fit here).
- *   4. Moves the replacement to RESERVED — same convention as a brand
- *      new agreement (assigned but not yet physically delivered); Chris
- *      marks it RENTED himself once the SWAP job is actually completed,
- *      same as the job page already suggests (SUGGESTED_STATUS_FOR_TYPE).
- *   5. Creates one SWAP job carrying both appliances, linked to the
- *      customer/agreement/address the broken unit was rented under.
+ * "Swap for a working unit": stages a SWAP visit. Staging moves nothing physical: it reserves only the
+ * replacement unit (marked as owned by this swap) and creates the job. The broken unit stays rented to the
+ * customer, with its assignment and custody untouched, until the visit is completed and the technician
+ * records what really happened (see `completeJob`), which then moves both units, both custody records and
+ * the assignment in one step. Cancelling the job, a no-show, or the agreement ending gives the reservation back.
  *
- * Requires the appliance actually be on an active assignment (nothing to
- * swap it out of otherwise — use "Start a repair" instead for a unit
- * that isn't currently rented) and the replacement be AVAILABLE and the
- * same appliance type.
+ * The original must have an open assignment and a recorded holder (custody) for the agreement's customer;
+ * the replacement must be AVAILABLE, the same appliance type, and not already reserved by another swap.
  */
-export async function startSwapForAppliance(
+export async function stageSwap(
   userId: string,
-  oldApplianceId: string,
-  replacementApplianceId: string,
+  input: { originalApplianceId: string; replacementApplianceId: string; scheduledAt: Date | null },
 ): Promise<StartSwapResult> {
-  if (oldApplianceId === replacementApplianceId) {
+  const { originalApplianceId, replacementApplianceId } = input;
+  if (originalApplianceId === replacementApplianceId) {
     throw new Error("Pick a different unit to swap in — not the same one.");
   }
 
-  const [oldAppliance, replacement, assignment] = await Promise.all([
-    prisma.appliance.findUniqueOrThrow({ where: { id: oldApplianceId } }),
-    prisma.appliance.findUniqueOrThrow({ where: { id: replacementApplianceId } }),
-    findCurrentAssignment(oldApplianceId),
-  ]);
-
-  if (!assignment) {
+  const peek = await findCurrentAssignment(originalApplianceId);
+  if (!peek) {
     throw new Error(
       "This appliance isn't currently on an active rental — there's nothing to swap it out of. Use \"Start a repair\" instead.",
     );
   }
-  if (replacement.applianceTypeId !== oldAppliance.applianceTypeId) {
-    throw new Error("The replacement must be the same appliance type.");
-  }
-  if (replacement.status !== "AVAILABLE") {
-    throw new Error("The replacement unit isn't currently available.");
-  }
-
-  const oldCheck = canTransitionApplianceStatus(oldAppliance.status, "MAINTENANCE");
-  if (!oldCheck.ok) {
-    throw new Error(oldCheck.reason);
-  }
-  const newCheck = canTransitionApplianceStatus(replacement.status, "RESERVED");
-  if (!newCheck.ok) {
-    throw new Error(newCheck.reason);
-  }
-
-  const agreement = assignment.rentalLine.agreement;
+  const customerId = peek.rentalLine.agreement.customerId;
+  const agreementId = peek.rentalLine.agreementId;
 
   const jobId = await prisma.$transaction(async (tx: Tx) => {
-    const unassigned = await tx.applianceAssignment.updateMany({
-      where: { id: assignment.id, unassignedAt: null },
-      data: { unassignedAt: new Date(), unassignReason: "Swapped out for repair" },
-    });
-    if (unassigned.count !== 1) {
-      throw new Error("This appliance's assignment just changed — refresh and try again.");
+    await assertActiveTeamActor(tx, userId, ["OWNER", "ADMIN"]);
+    await lockCustomerLedger(tx, customerId);
+    await lockRentalAgreementInTx(tx, agreementId);
+    await tx.$queryRaw`SELECT "id" FROM "Appliance" WHERE "id" = ANY(${[originalApplianceId, replacementApplianceId]}) ORDER BY "id" FOR UPDATE`;
+
+    const [original, replacement, assignment] = await Promise.all([
+      tx.appliance.findUniqueOrThrow({ where: { id: originalApplianceId } }),
+      tx.appliance.findUniqueOrThrow({ where: { id: replacementApplianceId } }),
+      tx.applianceAssignment.findFirst({
+        where: { applianceId: originalApplianceId, unassignedAt: null },
+        include: { rentalLine: { include: { agreement: true } } },
+      }),
+    ]);
+    if (!assignment || assignment.rentalLine.agreementId !== agreementId) {
+      throw new Error("This appliance's rental just changed — refresh and try again.");
     }
-
-    await tx.applianceAssignment.create({
-      data: { rentalLineId: assignment.rentalLineId, applianceId: replacementApplianceId },
-    });
-
-    const oldMoved = await tx.appliance.updateMany({
-      where: { id: oldApplianceId, status: oldAppliance.status },
-      data: { status: "MAINTENANCE" },
-    });
-    if (oldMoved.count !== 1) {
-      throw new Error("This appliance was just changed by someone else — refresh and try again.");
+    if (replacement.applianceTypeId !== original.applianceTypeId) {
+      throw new Error("The replacement must be the same appliance type.");
     }
-
-    const newMoved = await tx.appliance.updateMany({
-      where: { id: replacementApplianceId, status: replacement.status },
-      data: { status: "RESERVED" },
-    });
-    if (newMoved.count !== 1) {
-      throw new Error("The replacement unit was just changed by someone else — refresh and try again.");
+    if (replacement.status !== "AVAILABLE") {
+      throw new Error("The replacement unit isn't currently available.");
     }
+    const holder = await getOpenCustody(tx, originalApplianceId);
+    if (!holder || holder.customerId !== customerId) {
+      throw new Error("This appliance has no customer recorded as holding it. Record who has it on the appliance page first.");
+    }
+    const alreadyStaged = await tx.jobAppliance.findFirst({
+      where: { applianceId: originalApplianceId, role: "PRIMARY", job: { type: "SWAP", status: { in: ["SCHEDULED", "IN_PROGRESS"] } } },
+      select: { id: true },
+    });
+    if (alreadyStaged) throw new Error("A swap is already waiting for this appliance. Finish or cancel it first.");
+    const newCheck = canTransitionApplianceStatus(replacement.status, "RESERVED");
+    if (!newCheck.ok) throw new Error(newCheck.reason);
 
+    const reserved = await tx.appliance.updateMany({ where: { id: replacementApplianceId, status: "AVAILABLE" }, data: { status: "RESERVED" } });
+    if (reserved.count !== 1) throw new Error("The replacement unit was just changed by someone else — refresh and try again.");
+
+    const agreement = assignment.rentalLine.agreement;
     const job = await tx.job.create({
       data: {
         type: "SWAP",
-        scheduledAt: new Date(),
+        scheduledAt: input.scheduledAt,
         customerId: agreement.customerId,
         serviceAddressId: agreement.serviceAddressId,
         agreementId: agreement.id,
         appliances: {
-          create: [{ applianceId: oldApplianceId }, { applianceId: replacementApplianceId, role: "REPLACEMENT" }],
+          create: [
+            { applianceId: originalApplianceId },
+            { applianceId: replacementApplianceId, role: "REPLACEMENT", reservationActive: true },
+          ],
         },
       },
     });
-
-    for (const [id, before, after] of [
-      [oldApplianceId, oldAppliance.status, "MAINTENANCE"],
-      [replacementApplianceId, replacement.status, "RESERVED"],
-    ] as const) {
-      await tx.auditLog.create({
-        data: {
-          userId,
-          action: "appliance.unit.status",
-          entityType: "Appliance",
-          entityId: id,
-          oldValue: { status: before },
-          newValue: { status: after, reason: "Swap started", jobId: job.id },
-        },
-      });
-    }
-
+    await tx.auditLog.create({
+      data: {
+        userId,
+        action: "appliance.unit.status",
+        entityType: "Appliance",
+        entityId: replacementApplianceId,
+        oldValue: { status: "AVAILABLE" },
+        newValue: { status: "RESERVED", reason: "Swap staged", jobId: job.id },
+      },
+    });
     return job.id;
   });
 

@@ -34,6 +34,8 @@ function makeTx() {
       // closeAgreement checks for a signed renewal waiting to start: none here.
       findFirst: async () => null,
     },
+    // Ending an agreement also cancels a swap still waiting for it: none here.
+    job: { findMany: async () => [] },
     auditLog: { create: mocks.auditLogCreate },
   };
 }
