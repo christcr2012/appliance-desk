@@ -15,6 +15,28 @@ export function stripeBillingDateSeconds(billingDate: Date): number {
 }
 
 /**
+ * Put a Colorado billing date on the UTC clock of an existing Stripe
+ * subscription's real billing-cycle anchor. New Appliance Desk subscriptions
+ * use 07:00 UTC, but subscriptions created before that contract can still use
+ * another clock (for example 06:00 UTC). Cancellation must land on that actual
+ * provider boundary or Stripe can treat it as part of the next period.
+ */
+export function stripeBillingDateSecondsAtProviderClock(
+  billingDate: Date,
+  billingCycleAnchorSeconds: number,
+): number {
+  if (!Number.isFinite(billingCycleAnchorSeconds) || billingCycleAnchorSeconds < 0) {
+    throw new Error("Stripe billing-cycle anchor must be a non-negative finite timestamp.");
+  }
+  const key = businessDateKey(billingDate);
+  const anchor = new Date(Math.floor(billingCycleAnchorSeconds) * 1000);
+  const hour = String(anchor.getUTCHours()).padStart(2, "0");
+  const minute = String(anchor.getUTCMinutes()).padStart(2, "0");
+  const second = String(anchor.getUTCSeconds()).padStart(2, "0");
+  return Math.floor(Date.parse(`${key}T${hour}:${minute}:${second}.000Z`) / 1000);
+}
+
+/**
  * Let Stripe preserve the original delivery day-of-month instead of pinning a
  * single next-anniversary timestamp. This matters for month-end anchors: a
  * January 31 delivery must recur Feb 28/29, Mar 31, Apr 30, then May 31 rather
