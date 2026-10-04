@@ -130,14 +130,21 @@ per docs/BUSINESS-RULES.md's billing rules.
     method on the Stripe Customer (`setup_future_usage`) for later
     off-session billing.
   - **Starting the subscription** (`startRecurringBillingForAgreement`)
-    — called when a delivery/installation `Job` for the agreement is
-    marked `COMPLETED` (`src/domains/jobs/index.ts`). Creates the real
-    Stripe Subscription using the saved payment method; Stripe then
-    handles anniversary billing from there (same day-of-month every
-    month, no extra configuration). If there's no saved payment method
-    yet, nothing is charged and `RentalAgreement.billingBlockedReason`
-    is set instead of failing the delivery — surfaced to Chris (the
-    exception inbox) rather than silently never getting billed.
+    — called after a completed delivery/installation visit that actually
+    delivered at least one rental item. The first such visit writes the durable
+    `RentalAgreement.firstDeliveredOn` Colorado business-date anchor exactly
+    once. Stripe subscription creation explicitly backdates/anchors recurring
+    billing to that date, so a delayed provider retry or later reconciliation
+    can never move the customer's billing start to provider-processing time.
+    A visit where every rental item is `NOT_DELIVERED` leaves
+    `firstDeliveredOn` null and does not start recurring billing. Historical
+    already-billed agreements were backfilled by migration
+    `20261004070000_remediation_r1_billing_lineage` from their existing
+    `billingStartedAt`; agreements that had never billed remain null rather
+    than inventing a delivery date. If there's no saved payment method yet,
+    nothing is charged and `RentalAgreement.billingBlockedReason` is set
+    instead of failing the delivery — surfaced to Chris (the exception inbox)
+    rather than silently never getting billed.
 - **Webhooks** (`src/domains/billing/webhooks.ts`, exposed at
   `src/app/api/webhooks/stripe/route.ts`) — the *only* place that marks
   anything paid in our own database. Nothing in `checkout.ts` writes an
@@ -256,15 +263,17 @@ How each rule works:
    completed, staff can tick any agreement item that was **not** on the truck.
    Those appliances stay reserved for the customer and each gets a
    `PendingDelivery` row (`originalDeliveryDate` = that job's service date).
-   Billing for the **whole agreement** starts from that visit exactly as
-   before (`startRecurringBillingForAgreement` runs on every completed
-   delivery and covers every rental line, so a partial delivery and a full
-   one bill the same). Each waiting item is listed on Today ("Item not
-   delivered yet", every role) and on the original job's page, so it is never
-   forgotten. When a later delivery job that includes the item is completed,
-   the row is closed (`deliveredOn`, `deliveredJobId`) and the customer gets a
-   `CustomerCredit` (`sourceType = LATE_DELIVERY`, `sourceId` = the
-   PendingDelivery id) for every day from the original delivery date through
+   If at least one rental item was actually delivered, billing for the **whole
+   agreement** starts from that visit and `firstDeliveredOn` is fixed to that
+   business date; a partial delivery therefore bills the same recurring rental
+   lines as a full delivery, with the missing-item credit handled separately.
+   If every rental item is `NOT_DELIVERED`, recurring billing does not start
+   and `firstDeliveredOn` remains null. Each waiting item is listed on Today
+   ("Item not delivered yet", every role) and on the original job's page, so
+   it is never forgotten. When a later delivery job that includes the item is
+   completed, the row is closed (`deliveredOn`, `deliveredJobId`) and the
+   customer gets a `CustomerCredit` (`sourceType = LATE_DELIVERY`, `sourceId` =
+   the PendingDelivery id) for every day from the original delivery date through
    the day **before** it arrived: `round(itemMonthly × days ÷ basis)`, basis
    = 30 (default) or the real length of the anniversary billing period that
    contains the original date (28–31 days), rounded once, and never more than

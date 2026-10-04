@@ -158,6 +158,16 @@ in UTC and only converted to Mountain Time for display.
   "Sales tax" note for why. Batch B adds nullable renewal/auto-renew and
   early-termination snapshot fields; null means the owner policy has not
   been configured and the corresponding customer action must stay off.
+  Remediation R1 adds nullable `firstDeliveredOn`: the durable Colorado
+  business-date fact for the first completed delivery/installation visit where
+  at least one rental item was actually delivered. It is written once and is
+  the source for explicitly backdating/anchoring the recurring Stripe
+  subscription and agreement term dates, so a later provider retry or
+  reconciliation cannot move the customer's billing start. A zero-delivery
+  visit leaves it null. Migration `20261004070000_remediation_r1_billing_lineage`
+  backfills historical already-billed agreements from their existing
+  `billingStartedAt` as the best-known approximation; agreements that never
+  billed deliberately remain null rather than inventing a delivery date.
 - **RentalLine** — one priced line on that agreement (e.g. "Washer/Dryer
   set @ $60/mo").
 - **ApplianceAssignment** — which physical `Appliance` fulfills a given
