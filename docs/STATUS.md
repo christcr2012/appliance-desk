@@ -5,14 +5,14 @@
 `docs/archive/STATUS-LOG.md`. The long history before 2026-10-02 is in
 `docs/archive/HANDOFF-2026-09-26-to-2026-10-02.md`.
 
-Last updated: 2026-10-03 (evening) · `main` includes the whole Batch B stack through #154
+Last updated: 2026-10-03 (evening) · `main` includes the whole Batch B stack through #161 (merge b72f05d)
 
 ## Batch table
 
 | Batch | Status | PR / branch | Evidence | Notes |
 |---|---|---|---|---|
 | A — Critical integrity & platform safety | **MERGED** | #136 (2026-10-02) | Full CI green; real-Postgres concurrency and adversarial auth tests | Audit registers stay open; nothing in A claims a B–F item. |
-| B — Billing, provider reconciliation & financial ledger | **IN PROGRESS (core merged; follow-ups open)** | Merged to `main`: #141, #145, #146, #147, #148, #149, #151, #152, #153, #154 (2026-10-03) | Real-database tests for provider operations, receipts/allocations, credits, refunds, late fees, write-off races, renewals, drift workbench, statements and reports; acceptance ledger `docs/reviews/2026-10-03-batch-b-acceptance.md` with review dispositions; CI green at each merged head | Not done (honest list in the acceptance ledger): renewal billing and acting on auto-renew consent, scheduled early-termination execution, notice emails (IN-21), per-customer terms screens (Batch D). Do not mark B complete until that list is empty or Chris accepts it. |
+| B — Billing, provider reconciliation & financial ledger | **IN PROGRESS (core merged; follow-ups open)** | Merged to `main`: #141, #145, #146, #147, #148, #149, #151, #152, #153, #154, #159, #161 (2026-10-03) | Real-database tests for provider operations, receipts/allocations, credits, refunds, late fees, write-off races, renewals, drift workbench, statements and reports; acceptance ledger `docs/reviews/2026-10-03-batch-b-acceptance.md` with review dispositions; CI green at each merged head | Built but switched OFF (#159, #161): renewal reminders as saved notices, owner master switches for live customer email and for automatic renewals (both default OFF; see `docs/GO-LIVE-CHECKLIST.md`). Not done: the renewal lifecycle gaps R1/R2 (order of overlapping Stripe updates, billing stop after a crash), R3 (customer cancel after the first renewal), R4 (annual reminders), R6 (store provider message id), D2 (evidence rule for manual delivery); estimate follow-up claim-before-send; owner answers IN-17, IN-21, IN-24, IN-25, IN-26, IN-27. Design prompt for the stronger model: `docs/prompts/DESIGN-BATCH-B-RENEWAL-LIFECYCLE.md`. The "Automatic renewals" switch must stay OFF until that is built. Also open: scheduled early-termination execution, per-customer terms screens (Batch D). Do not mark B complete until that list is empty or Chris accepts it. |
 | C — Rental-to-service operations, custody, inventory & purchasing | NOT STARTED | — | — | Depends on B's ledger primitives where money is touched. |
 | D — Owner/customer control plane, website, evidence & privacy | NOT STARTED | — | — | Uses B contracts for renewal/cancel UI. |
 | E — Communications, reporting, growth, branding & accessibility | NOT STARTED | — | — | Google (O32) only if GW prerequisites are ready; otherwise one later PR. |
