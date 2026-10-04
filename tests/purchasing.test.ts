@@ -18,11 +18,12 @@ const partRecordFindUniqueOrThrow = vi.fn();
 const partRecordFindMany = vi.fn();
 const auditLogCreate = vi.fn();
 
+const partRecordCount = vi.fn();
 function makeTx() {
   return {
     $queryRaw: lockPart,
-    partRecord: { findUniqueOrThrow: partRecordFindUniqueOrThrow, update: (...args: unknown[]) => partRecordUpdate(...args) },
-    purchaseOrder: { findUniqueOrThrow: purchaseOrderFindUniqueOrThrow, updateMany: purchaseOrderClaim, update: (...args: unknown[]) => purchaseOrderUpdate(...args) },
+    partRecord: { findUniqueOrThrow: partRecordFindUniqueOrThrow, update: (...args: unknown[]) => partRecordUpdate(...args), count: (...args: unknown[]) => partRecordCount(...args) },
+    purchaseOrder: { create: (...args: unknown[]) => purchaseOrderCreate(...args), findUniqueOrThrow: purchaseOrderFindUniqueOrThrow, updateMany: purchaseOrderClaim, update: (...args: unknown[]) => purchaseOrderUpdate(...args) },
     auditLog: { create: (...args: unknown[]) => auditLogCreate(...args) },
   };
 }
@@ -61,6 +62,7 @@ beforeEach(() => {
   purchaseOrderFindUniqueOrThrow.mockReset();
   purchaseOrderUpdate.mockReset().mockResolvedValue({});
   partRecordUpdate.mockReset().mockResolvedValue({});
+  partRecordCount.mockReset().mockResolvedValue(0);
   partRecordFindUniqueOrThrow.mockReset();
   partRecordFindMany.mockReset();
   auditLogCreate.mockReset().mockResolvedValue({});
@@ -96,6 +98,15 @@ describe("createPurchaseOrder", () => {
     supplierFindUnique.mockResolvedValue({ archivedAt: new Date() });
     await expect(
       createPurchaseOrder("user-1", { supplierId: "sup-1", lines: [{ description: "Door seal", quantity: 1 }] }),
+    ).rejects.toThrow(/archived/);
+    expect(purchaseOrderCreate).not.toHaveBeenCalled();
+  });
+
+  it("refuses a part that has been archived, even from a stale form", async () => {
+    lockPart.mockResolvedValue([{ id: "part-1" }]);
+    partRecordCount.mockResolvedValue(1);
+    await expect(
+      createPurchaseOrder("user-1", { supplierId: "sup-1", lines: [{ partRecordId: "part-1", description: "Seal", quantity: 1 }] }),
     ).rejects.toThrow(/archived/);
     expect(purchaseOrderCreate).not.toHaveBeenCalled();
   });

@@ -45,7 +45,8 @@ export default async function PurchaseOrdersPage() {
       ) : (
         <ul className="mt-6 divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white">
           {orders.map((po) => {
-            const totalCents = po.lines.reduce((sum, l) => sum + l.unitCostCents * l.quantity, 0);
+            const totalCents = po.lines.reduce((sum, l) => sum + (l.unitCostKnown ? l.unitCostCents * l.quantity : 0), 0);
+            const unpriced = po.lines.filter((l) => !l.unitCostKnown).length;
             return (
               <li key={po.id}>
                 <Link
@@ -61,7 +62,7 @@ export default async function PurchaseOrdersPage() {
                   </div>
                   <div className="text-sm sm:text-right">
                     <StatusBadge tone={STATUS_TONE[po.status] ?? "pending"} label={po.status} />
-                    <p className="text-gray-500">{formatCents(totalCents)}</p>
+                    <p className="text-gray-500">{formatCents(totalCents)}{unpriced > 0 ? ` + ${unpriced} unpriced` : ""}</p>
                   </div>
                 </Link>
               </li>

@@ -57,7 +57,7 @@ describe.skipIf(!enabled)("purchasing stock concurrency", () => {
   it("cancellation and receiving cannot both commit", async () => {
     const id = await order();
     const results = await Promise.allSettled([receivePurchaseOrder(ownerId, id), cancelPurchaseOrder(ownerId, id)]);
-    expect(results.filter((r) => r.status === "fulfilled").length).toBeGreaterThanOrEqual(1);
+    expect(results.filter((r) => r.status === "fulfilled").length).toBe(1);
     const state = (await prisma.purchaseOrder.findUniqueOrThrow({ where: { id } })).status;
     expect(["RECEIVED", "CANCELLED"]).toContain(state);
     expect(await stock()).toBe(state === "RECEIVED" ? 4 : 0);
@@ -81,5 +81,36 @@ describe.skipIf(!enabled)("purchasing stock concurrency", () => {
     expect(refused.reason).toBeInstanceOf(InsufficientStockError);
     expect(await stock()).toBe(1);
     expect(await findPartLedgerMismatches(prisma, [partId])).toEqual([]);
+  });
+
+  it("a retried stock-settings save does not undo a later one and a reused key with different values is refused", async () => {
+    const { updatePartStockSettings } = await import("@/domains/purchasing");
+    const { PartOperationConflictError } = await import("@/domains/purchasing/ledger");
+    const first = key();
+    await updatePartStockSettings(ownerId, partId, { quantityOnHand: 5, reorderThreshold: 2, operationKey: first });
+    await updatePartStockSettings(ownerId, partId, { quantityOnHand: 5, reorderThreshold: 7, operationKey: key() });
+    await updatePartStockSettings(ownerId, partId, { quantityOnHand: 5, reorderThreshold: 2, operationKey: first });
+    expect((await prisma.partRecord.findUniqueOrThrow({ where: { id: partId } })).reorderThreshold).toBe(7);
+    await expect(updatePartStockSettings(ownerId, partId, { quantityOnHand: 5, reorderThreshold: 3, operationKey: first })).rejects.toBeInstanceOf(PartOperationConflictError);
+  });
+
+  it("a usage retry still replays after a later receipt changed the last known cost", async () => {
+    const u = key();
+    await stockUp(10);
+    const id = await order();
+    await recordPartUsage(ownerId, partId, 1, { operationKey: u });
+    await receivePurchaseOrder(ownerId, id);
+    await expect(recordPartUsage(ownerId, partId, 1, { operationKey: u })).resolves.toBeDefined();
+    expect(await stock()).toBe(13);
+  });
+
+  it("the rest of a part-way received line cannot be entered at a different price; new orders refuse archived parts", async () => {
+    const { receivePurchaseOrderLines, createPurchaseOrder } = await import("@/domains/purchasing");
+    const id = await order();
+    const line = await prisma.purchaseOrderLineItem.findFirstOrThrow({ where: { purchaseOrderId: id } });
+    await receivePurchaseOrderLines(ownerId, { purchaseOrderId: id, operationKey: key(), lines: [{ lineId: line.id, quantity: 1, unitCostCents: null }] });
+    await expect(receivePurchaseOrderLines(ownerId, { purchaseOrderId: id, operationKey: key(), lines: [{ lineId: line.id, quantity: 1, unitCostCents: 900 }] })).rejects.toThrow(/already arrived/);
+    await prisma.partRecord.update({ where: { id: partId }, data: { archivedAt: new Date() } });
+    await expect(createPurchaseOrder(ownerId, { supplierId, lines: [{ partRecordId: partId, description: "x", quantity: 1 }] })).rejects.toThrow(/archived/);
   });
 });

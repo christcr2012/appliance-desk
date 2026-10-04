@@ -49,7 +49,9 @@ function canonical(requests: readonly PartMovementRequest[]): string {
       kind: r.kind,
       quantityDelta: r.quantityDelta ?? null,
       countedQuantity: r.countedQuantity ?? null,
-      unitCostCents: r.unitCostCents,
+      // A usage's cost is looked up (the last purchase price) and can change between a try and its retry,
+      // so it is not part of what the caller asked for.
+      unitCostCents: r.kind === "USAGE" ? null : r.unitCostCents,
       purchaseOrderLineItemId: r.purchaseOrderLineItemId ?? null,
       jobId: r.jobId ?? null,
       reversesMovementId: r.reversesMovementId ?? null,
