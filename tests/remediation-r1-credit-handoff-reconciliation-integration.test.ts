@@ -30,6 +30,7 @@ describe.skipIf(!enabled)("Remediation R1 exhausted credit handoff reconciliatio
   const jobId = `r1-credit-job-${tag}`;
   const operationId = `r1-credit-op-${tag}`;
   const transactionId = `cbtxn_r1_${tag}`;
+  const oldAttemptTime = new Date("2000-01-01T00:00:00.000Z");
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -98,7 +99,8 @@ describe.skipIf(!enabled)("Remediation R1 exhausted credit handoff reconciliatio
         status: "FAILED",
         attempts: 5,
         lastError: "provider was unavailable",
-        requestedAt: new Date("2000-01-01T00:00:00.000Z"),
+        requestedAt: oldAttemptTime,
+        updatedAt: oldAttemptTime,
       },
     });
   });
