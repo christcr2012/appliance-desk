@@ -9,6 +9,7 @@ import {
   runProviderCall,
 } from "./provider-ops";
 import {
+  cancelAtSecondsForProviderClock,
   desiredSubscriptionTerm,
   desiredTerminationEnd,
   parseTerminationSyncKey,
@@ -252,8 +253,12 @@ async function reconcileSubscriptionUpdate(operation: RecoverableOperation): Pro
   }
   const stripe = getStripeClient();
   const subscription = await stripe.subscriptions.retrieve(desired.subscriptionId);
+  const cancelAt = cancelAtSecondsForProviderClock(
+    desired.cancelOn,
+    subscription.billing_cycle_anchor,
+  );
   const current = subscription.cancel_at ?? null;
-  if (current === desired.cancelAt) {
+  if (current === cancelAt) {
     await markOperationSucceeded(operation, desired.subscriptionId);
     return true;
   }
@@ -277,7 +282,7 @@ async function reconcileSubscriptionUpdate(operation: RecoverableOperation): Pro
   const result = await runProviderCall(() =>
     stripe.subscriptions.update(
       desired.subscriptionId,
-      { cancel_at: desired.cancelAt ?? "" },
+      { cancel_at: cancelAt ?? "" },
       { idempotencyKey: key },
     ),
   );
