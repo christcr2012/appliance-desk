@@ -172,8 +172,10 @@ in UTC and only converted to Mountain Time for display.
 ## Maintenance
 
 - **MaintenanceRequest** — a customer-submitted problem report, its
-  priority, and its status (submitted → reviewing → scheduled →
-  in_progress → resolved → closed).
+  priority, the property the visit is for (`serviceAddressId`, filled
+  automatically when the customer has one address), and its status
+  (submitted → reviewing → scheduled → in_progress → resolved → closed;
+  a cancelled or unfinished visit sends it back to reviewing).
 
 ## Billing
 

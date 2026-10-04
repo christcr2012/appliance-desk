@@ -21,7 +21,7 @@ import { PhotoUploadField } from "@/components/photo-upload-field";
 const SUGGESTED_STATUS_FOR_TYPE: Record<JobType, ApplianceStatus | null> = {
   DELIVERY: null,
   INSTALLATION: null,
-  SWAP: "RENTED",
+  SWAP: null, // finishing a swap moves both units itself
   REMOVAL: null,
   MAINTENANCE_VISIT: null,
 };
@@ -31,6 +31,8 @@ const AUTOMATIC_ON_COMPLETE: Partial<Record<JobType, string>> = {
   INSTALLATION: "Each item you mark Delivered becomes Rented. An item you mark Not delivered stays reserved and gets a follow-up task.",
   REMOVAL:
     "Each item you mark Returned moves to Awaiting inspection — check it over before it can be rented again. An item you mark Not picked up stays with the customer and gets a follow-up task.",
+  SWAP:
+    "When the new unit is Delivered it becomes Rented and takes over the agreement; the old unit, if Returned, moves to Awaiting inspection. If neither moved, the new unit goes back on the shelf and you get a task to reschedule. If the old unit was left behind, you get a task to collect it.",
 };
 
 const RESULT_LABELS: Record<JobApplianceResult, string> = {
@@ -469,14 +471,6 @@ export function JobDetailPanel({
         </div>
       )}
 
-      {job.status === "COMPLETED" &&
-        job.type === "SWAP" &&
-        !job.swapReplacementIds?.length && (
-          <p className="rounded-lg border border-gray-200 bg-white p-5 text-sm text-gray-700">
-            This visit has no recorded replacement appliance. Ask an owner or admin to
-            confirm the incoming unit before updating its status.
-          </p>
-        )}
 
       {appliancesNeedingUpdate.length > 0 && suggestedStatus && (
         <div className="rounded-lg border border-gray-200 bg-primary-soft p-5">

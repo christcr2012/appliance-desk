@@ -12,6 +12,7 @@ import type {
 import { getBusinessSettings } from "@/domains/settings";
 import { getStripeClient } from "@/lib/stripe";
 import { applianceStatusOnAgreementClose } from "@/domains/inventory/lifecycle";
+import { cancelStagedSwapsForAgreementInTx } from "@/domains/jobs/swaps";
 import {
   claimProviderOperation,
   completeProviderOperation,
@@ -608,6 +609,9 @@ async function closeAgreement(
         endDate: newStatus === "ENDED" ? (options.endedOn ?? new Date()) : agreement.endDate,
       },
     });
+
+    // A swap still waiting for this agreement is cancelled and its reserved replacement goes back on the shelf.
+    await cancelStagedSwapsForAgreementInTx(tx, userId, agreementId);
 
     const lines = await tx.rentalLine.findMany({
       where: { agreementId },

@@ -1,4 +1,6 @@
 import type { JobType, Prisma } from "@prisma/client";
+import { releaseSwapReservationsInTx } from "./swaps";
+import { lockMaintenanceRequestInTx, requestAfterVisitEndedInTx } from "@/domains/maintenance/visit-sync";
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
 import { businessDateKey } from "@/lib/business-date";
@@ -265,13 +267,15 @@ export async function markJobNoShow(userId: string, jobId: string, expectedVersi
     await lockUsersForScheduling(tx, [userId]);
     const actor = await assertActiveTeamActor(tx, userId);
 
+    const peeked = await tx.job.findUnique({ where: { id: jobId }, select: { maintenanceRequestId: true } });
+    if (peeked?.maintenanceRequestId) await lockMaintenanceRequestInTx(tx, peeked.maintenanceRequestId);
     const locked = await tx.$queryRaw<Array<{ id: string }>>`
       SELECT "id" FROM "Job" WHERE "id" = ${jobId} FOR UPDATE
     `;
     if (locked.length !== 1) throw new Error("Couldn't find that job.");
     const job = await tx.job.findUniqueOrThrow({
       where: { id: jobId },
-      select: { status: true, version: true, assignedToUserId: true },
+      select: { status: true, version: true, assignedToUserId: true, type: true, maintenanceRequestId: true },
     });
     if (actor.role === "STAFF" && job.assignedToUserId !== userId) {
       throw new Error("Only the person assigned to this visit, or an owner or admin, can mark a no-show.");
@@ -286,6 +290,10 @@ export async function markJobNoShow(userId: string, jobId: string, expectedVersi
       data: { status: "CANCELLED", noShowAt: new Date(), version: { increment: 1 } },
     });
     if (result.count !== 1) throw new JobVersionError();
+    await releaseSwapReservationsInTx(tx, userId, jobId, "Swap visit was a no-show");
+    if (job.maintenanceRequestId && job.type === "MAINTENANCE_VISIT") {
+      await requestAfterVisitEndedInTx(tx, userId, job.maintenanceRequestId, jobId, "CANCELLED");
+    }
 
     await tx.auditLog.create({
       data: {

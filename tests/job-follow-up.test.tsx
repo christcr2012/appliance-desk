@@ -12,26 +12,11 @@ const job = { id: "swap", type: "SWAP" as const, status: "COMPLETED" as const, c
 ] };
 beforeEach(() => { vi.clearAllMocks(); m.status.mockResolvedValue({ status: "success" }); m.appliance.mockResolvedValue({ status: "success" }); });
 afterEach(cleanup);
-it("offers only the frozen incoming swap unit and includes the originating job on save", async () => {
+it("a completed swap offers no manual status buttons, because completing it already moved both units", () => {
   render(<JobDetailPanel job={job} version={1} />);
-  expect(screen.queryByRole("button", { name: /Mark BROKEN/ })).toBeNull();
-  fireEvent.click(screen.getByRole("button", { name: "Mark INCOMING as Rented" }));
-  await waitFor(() => expect(m.appliance).toHaveBeenCalledWith("incoming", "RENTED", "swap"));
-  await waitFor(() => expect(screen.queryByRole("button", { name: /Mark INCOMING/ })).toBeNull());
-  expect(m.refresh).toHaveBeenCalled();
-});
-it("retains the suggestion and reports a failed status save", async () => {
-  m.appliance.mockResolvedValue({ status: "error", message: "Unit changed; reload" });
-  render(<JobDetailPanel job={job} version={1} />);
-  fireEvent.click(screen.getByRole("button", { name: "Mark INCOMING as Rented" }));
-  expect(await screen.findByRole("alert")).toHaveTextContent("Unit changed; reload");
-  await waitFor(() => expect(screen.getByRole("button", { name: /Mark INCOMING/ })).toBeEnabled());
-  expect(m.refresh).not.toHaveBeenCalled();
-});
-it("requests owner confirmation for legacy swaps without recorded replacement intent", () => {
-  render(<JobDetailPanel job={{ ...job, swapReplacementIds: [] }} version={1} />);
-  expect(screen.getByText(/no recorded replacement appliance/)).toBeVisible();
   expect(screen.queryByRole("button", { name: /Mark .* as Rented/ })).toBeNull();
+  expect(screen.queryByText(/no recorded replacement appliance/)).toBeNull();
+  expect(m.appliance).not.toHaveBeenCalled();
 });
 it.each(["SWAP", "MAINTENANCE_VISIT", "DELIVERY", "INSTALLATION", "REMOVAL"] as const)("sends completed %s visits to the job page, where each item gets a result", async type => {
   render(<DriverJobCard job={{ id: "job", type, status: "IN_PROGRESS", scheduledAt: null, notes: null, customerName: null, customerPhone: null, address: null, appliances: [] }} />);

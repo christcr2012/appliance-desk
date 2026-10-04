@@ -17,7 +17,7 @@ import {
   startRepairForAppliance,
   retireAppliance,
   getSwapCandidates,
-  startSwapForAppliance,
+  stageSwap,
   recordApplianceInspection,
 } from "@/domains/inventory/guided-actions";
 import { dollarsToCents } from "@/domains/pricing";
@@ -420,7 +420,7 @@ export async function startSwapAction(
   }
 
   try {
-    await startSwapForAppliance(session.user.id, applianceId, replacementApplianceId);
+    await stageSwap(session.user.id, { originalApplianceId: applianceId, replacementApplianceId, scheduledAt: new Date() });
   } catch (error) {
     return {
       status: "error",

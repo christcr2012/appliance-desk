@@ -221,6 +221,7 @@ model ServiceAddress {
   zip     String
 
   jobs     Job[]
+  maintenanceRequests MaintenanceRequest[]
   rentalAgreements RentalAgreement[]
   estimateLineItems EstimateLineItem[]
   custodyEpisodes ApplianceCustodyEpisode[]
@@ -1148,6 +1149,9 @@ model MaintenanceRequest {
   customer   Customer            @relation(fields: [customerId], references: [id])
   applianceId String?
   appliance  Appliance?          @relation(fields: [applianceId], references: [id])
+  // The property the visit is for (Batch C, P2-D); filled in when the customer has one address, else chosen when scheduling.
+  serviceAddressId String?
+  serviceAddress   ServiceAddress? @relation(fields: [serviceAddressId], references: [id], onDelete: SetNull)
 
   problem    String
   priority   MaintenancePriority @default(NORMAL)
@@ -1164,6 +1168,7 @@ model MaintenanceRequest {
 
   @@index([status])
   @@index([applianceId])
+  @@index([serviceAddressId])
 }
 
 // ---------------------------------------------------------------------------
