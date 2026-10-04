@@ -228,14 +228,29 @@ export async function createJobInTx(tx: Prisma.TransactionClient, userId: string
         throw new Error("Choose an agreement belonging to this customer and property.");
       }
       if (["DELIVERY", "INSTALLATION", "REMOVAL"].includes(input.type)) {
-        const successor = await tx.rentalAgreement.findFirst({
+        const successors = await tx.rentalAgreement.findMany({
           where: {
             renewedFromAgreementId: input.agreementId,
-            status: { in: ["ACTIVE", "ENDED"] },
+            status: { in: ["ACTIVE", "ENDED", "CANCELLED"] },
           },
-          select: { id: true },
+          select: { id: true, status: true },
         });
-        if (successor) {
+        const currentOrEndedSuccessor = successors.find((successor) => successor.status !== "CANCELLED");
+        const cancelledSuccessorIds = successors
+          .filter((successor) => successor.status === "CANCELLED")
+          .map((successor) => successor.id);
+        const startedCancelledSuccessor =
+          cancelledSuccessorIds.length > 0
+            ? await tx.auditLog.findFirst({
+                where: {
+                  action: "agreement.renewal_started",
+                  entityType: "RentalAgreement",
+                  entityId: { in: cancelledSuccessorIds },
+                },
+                select: { id: true },
+              })
+            : null;
+        if (currentOrEndedSuccessor || startedCancelledSuccessor) {
           throw new Error(
             "This rental has already renewed. Schedule delivery, installation, or removal work on the current agreement instead.",
           );
