@@ -199,7 +199,7 @@ describe.skipIf(!enabled)("custody episodes", () => {
     await expect(retireAppliance(owner, held, "Lost")).rejects.toThrow(/pickup job/);
     expect(await prisma.appliance.findUniqueOrThrow({ where: { id: held } }).then((a) => a.status)).toBe("RENTED");
     await prisma.appliance.update({ where: { id: held }, data: { status: "AWAITING_INSPECTION" } });
-    await expect(recordApplianceInspection(owner, held, { passed: true, checklist: [], notes: null })).rejects.toThrow(/pickup job/);
+    await expect(recordApplianceInspection(owner, held, { passed: true, checklist: [], notes: undefined })).rejects.toThrow(/pickup job/);
     expect(await prisma.appliance.findUniqueOrThrow({ where: { id: held } }).then((a) => a.status)).toBe("AWAITING_INSPECTION");
     expect(await prisma.applianceInspection.count({ where: { applianceId: held } })).toBe(0);
   });
