@@ -629,8 +629,9 @@ const BLOCKED_HANDOFF_PREFIX = "BLOCKED:";
  * Normal retryable/recovery work always gets the first seats in a sweep. Rows
  * blocked on a customer prerequisite only fill spare capacity, so a large set
  * of old blocked rentals can never starve a newer handoff left behind by a
- * post-commit crash. Blocked rows are ordered by updatedAt so each retry moves
- * behind its peers while preserving its retry budget.
+ * post-commit crash. A blocked retry stores its retry timestamp in lastError;
+ * lexical ordering then moves that row behind blocked peers without adding a
+ * schema field or consuming its retry budget.
  */
 async function runHandoffs(scope: { ids?: string[]; limit?: number }): Promise<{ done: number; failed: number }> {
   const staleBefore = new Date(Date.now() - PROVIDER_OPERATION_LEASE_MS);
@@ -667,7 +668,7 @@ async function runHandoffs(scope: { ids?: string[]; limit?: number }): Promise<{
             status: "FAILED",
             lastError: { startsWith: BLOCKED_HANDOFF_PREFIX },
           },
-          orderBy: [{ updatedAt: "asc" }, { createdAt: "asc" }, { id: "asc" }],
+          orderBy: [{ lastError: "asc" }, { createdAt: "asc" }, { id: "asc" }],
           take: remaining,
         })
       : [];
@@ -677,7 +678,6 @@ async function runHandoffs(scope: { ids?: string[]; limit?: number }): Promise<{
   let failed = 0;
   for (const row of rows) {
     const claimedAt = new Date();
-    const blocked = row.status === "FAILED" && row.lastError?.startsWith(BLOCKED_HANDOFF_PREFIX) === true;
     const claim = await prisma.jobBillingHandoff.updateMany({
       where: {
         id: row.id,
@@ -710,7 +710,10 @@ async function runHandoffs(scope: { ids?: string[]; limit?: number }): Promise<{
         continue;
       }
 
-      const detail = `${work.state}: ${work.detail}`.slice(0, 500);
+      const detail =
+        work.state === "BLOCKED"
+          ? `${BLOCKED_HANDOFF_PREFIX}${new Date().toISOString()}: ${work.detail}`.slice(0, 500)
+          : `${work.state}: ${work.detail}`.slice(0, 500);
       const released = await prisma.jobBillingHandoff.updateMany({
         where: { id: row.id, status: "IN_FLIGHT", attempts: expectedAttempts },
         data: {
