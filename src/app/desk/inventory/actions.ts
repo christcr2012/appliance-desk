@@ -42,7 +42,7 @@ function splitList(value: string): string[] {
 
 const newApplianceUnitSchema = z.object({
   applianceTypeId: z.string().trim().min(1, "Choose an appliance type."),
-  quantity: z.coerce.number().int().min(1).max(100),
+  quantity: z.coerce.number().int().min(1).max(50),
   manufacturer: z.string().trim().max(200).optional().or(z.literal("")),
   model: z.string().trim().max(200).optional().or(z.literal("")),
   serialNumber: z.string().trim().max(200).optional().or(z.literal("")),
