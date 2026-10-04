@@ -3,7 +3,8 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { createJobAction } from "../actions";
+import { createJobAction, type ScheduleConflictView } from "../actions";
+import { ScheduleConflictNotice } from "../schedule-conflicts";
 
 type CustomerOption = {
   id: string;
@@ -41,6 +42,7 @@ export function NewJobForm({
   maintenanceContext,
   initialCustomerId,
   initialServiceAddressId,
+  teamMembers = [],
 }: {
   customers: CustomerOption[];
   agreement: AgreementContext | null;
@@ -51,6 +53,7 @@ export function NewJobForm({
    * (for maintenanceContext) appliance options along with the customer. */
   initialCustomerId?: string;
   initialServiceAddressId?: string;
+  teamMembers?: { id: string; label: string }[];
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -77,6 +80,9 @@ export function NewJobForm({
       "",
   );
   const [scheduledAt, setScheduledAt] = useState("");
+  const [assignedToUserId, setAssignedToUserId] = useState("");
+  const [durationText, setDurationText] = useState("");
+  const [conflicts, setConflicts] = useState<ScheduleConflictView[]>([]);
   const [notes, setNotes] = useState("");
   const [selectedApplianceIds, setSelectedApplianceIds] = useState<string[]>(
     agreement?.appliances.map((a) => a.id) ??
@@ -98,9 +104,13 @@ export function NewJobForm({
     setServiceAddressId(c?.serviceAddresses[0]?.id ?? "");
   }
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  function submit(confirmedConflictJobIds: string[]) {
     setError(null);
+    const durationMinutes = durationText.trim() === "" ? null : Number(durationText.trim());
+    if (durationMinutes !== null && (!Number.isInteger(durationMinutes) || durationMinutes < 15 || durationMinutes > 720)) {
+      setError("Visit length: enter a whole number of minutes between 15 and 720, or leave it blank for the usual length.");
+      return;
+    }
     startTransition(async () => {
       const result = await createJobAction({
         type,
@@ -111,13 +121,24 @@ export function NewJobForm({
         maintenanceRequestId: maintenanceContext?.maintenanceRequestId ?? "",
         applianceIds: selectedApplianceIds,
         notes,
+        assignedToUserId,
+        durationMinutes,
+        confirmedConflictJobIds,
       });
-      if (result.status === "error") {
+      if (result.status === "conflict") {
+        setConflicts(result.conflicts);
+      } else if (result.status === "error") {
+        setConflicts([]);
         setError(result.message);
       } else {
         router.push(`/desk/jobs/${result.jobId}`);
       }
     });
+  }
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    submit([]);
   }
 
   const addresses = selectedCustomer?.serviceAddresses ?? [];
@@ -159,10 +180,57 @@ export function NewJobForm({
           id="scheduledAt"
           type="datetime-local"
           value={scheduledAt}
-          onChange={(e) => setScheduledAt(e.target.value)}
+          onChange={(e) => {
+            setScheduledAt(e.target.value);
+            setConflicts([]);
+          }}
           className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
         />
       </div>
+
+      <div>
+        <label htmlFor="assignedToUserId" className="block text-sm font-medium text-gray-700">
+          Who is doing it (optional)
+        </label>
+        <select
+          id="assignedToUserId"
+          value={assignedToUserId}
+          onChange={(e) => {
+            setAssignedToUserId(e.target.value);
+            setConflicts([]);
+          }}
+          className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+        >
+          <option value="">Nobody assigned yet</option>
+          {teamMembers.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div>
+        <label htmlFor="durationMinutes" className="block text-sm font-medium text-gray-700">
+          How long it takes, in minutes (optional)
+        </label>
+        <input
+          id="durationMinutes"
+          type="text"
+          inputMode="numeric"
+          value={durationText}
+          onChange={(e) => {
+            setDurationText(e.target.value);
+            setConflicts([]);
+          }}
+          className="mt-1 w-32 rounded-md border border-gray-300 px-3 py-2 text-sm"
+        />
+        <p className="mt-1 text-xs text-gray-500">Leave blank to use your usual visit length (Settings → Visits and scheduling).</p>
+      </div>
+
+      {conflicts.length > 0 && (
+        <ScheduleConflictNotice conflicts={conflicts} disabled={isPending} onConfirm={(ids) => submit(ids)} />
+      )}
 
       {maintenanceContext && !agreement && (
         <div className="rounded-md border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700">

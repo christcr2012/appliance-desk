@@ -22,6 +22,8 @@ import { isNonProductionDeployment } from "@/lib/deployment-safety";
 import { TermsPolicyForm } from "./terms-policy-form";
 import { AutoRenewSwitch } from "./auto-renew-switch";
 import { PickupBillingForm } from "./pickup-billing-form";
+import { JobSchedulingForm } from "./job-scheduling-form";
+import { jobSchedulingDefaults } from "@/domains/settings/job-scheduling";
 import { pickupBillingDefaults } from "@/domains/settings/pickup-billing";
 import { pickupBillingSettingsFrom } from "@/domains/billing/pickup-billing";
 import { termsPolicyDefaults, termsPolicyStatus } from "@/domains/settings/terms-policy";
@@ -93,6 +95,15 @@ export default async function DeskSettingsPage({
         description="What a customer is charged when an appliance comes back late, credited when one is delivered late, and whether the pickup day counts."
       >
         <PickupBillingForm defaultValues={pickupBillingDefaults(pickupBillingSettingsFrom(settings))} />
+      </SectionCard>
+    );
+  } else if (section === "jobs") {
+    content = (
+      <SectionCard
+        title="Visits and scheduling"
+        description="How long a visit is assumed to take when checking whether the same person is booked twice."
+      >
+        <JobSchedulingForm defaultValues={jobSchedulingDefaults(settings)} />
       </SectionCard>
     );
   } else if (section === "staff") {

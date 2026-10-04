@@ -146,6 +146,20 @@ Scheduled → In progress → Completed (with notes), or Cancelled. You can
 attach a photo by taking one with your phone's camera or choosing one
 from your device — no more pasting in a URL.
 
+**Who, when and how long.** When you schedule a visit you can pick **who is
+doing it** and **how long it takes** (leave the length blank to use your usual
+visit length, set under **Settings → Visits and scheduling**, starting at 2
+hours). If that person already has another visit that overlaps, you are shown
+exactly which visits and can choose "Book it anyway"; nothing is booked twice
+by accident. A visit that ends exactly when the next one starts is fine. You can
+change the time, length or person later from the job's **Schedule** box. If
+nobody was there, press **Nobody was there (no-show)**: the visit is cancelled
+and frees that person's time, and nothing else changes (no appliance, charge or
+credit). The times you type are Colorado time.
+
+New appliances get their asset numbers (like WASH-0001) from a counter that only
+moves forward, so a number is never used twice, even after you delete a unit.
+
 ## Dispatch board and the driver view
 
 **Dispatch** shows every scheduled job on one board for the day/week,

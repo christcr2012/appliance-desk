@@ -60,6 +60,7 @@ export const BACKUP_MODEL_POLICY = {
   LaunchSettings: "launchSettings",
   LaunchSubscriber: "launchSubscriber",
   LaunchDelivery: "launchDelivery",
+  AssetNumberCounter: "assetNumberCounter",
 } satisfies Record<Prisma.ModelName, ModelDelegate | null>;
 
 export const BACKUP_TABLES = Object.values(BACKUP_MODEL_POLICY).filter(

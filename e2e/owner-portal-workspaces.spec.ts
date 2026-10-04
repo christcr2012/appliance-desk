@@ -57,6 +57,7 @@ for (const role of ["owner", "customer"] as const) {
                   "policies",
                   "terms",
                   "pickups",
+                  "jobs",
                   "website",
                   "notifications",
                   "staff",

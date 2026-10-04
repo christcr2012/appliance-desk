@@ -285,3 +285,5 @@ the subscription from the next period, on top of the credit for everything
 billed. Only the credit side exists today. The subscription change is written
 up as a Batch C work unit (`docs/prompts/DESIGN-BATCH-C-LITERAL-SPECS.md`), with
 the merge handled by Chris's coding agent, not by Claude in this session.
+
+- **2026-10-03 (Claude, Batch C scheduling)** — Date-time boxes on job forms are Colorado clock time, converted by `businessDateTimeFromLocal`. Reason: `new Date("2026-10-05T09:00")` on the server used UTC, so a 9:00 visit showed as 3:00 or 2:00 in the Denver screens. A time that does not exist (spring-forward gap) is refused; in the repeated fall-back hour the first occurrence is used. Also: a no-show is "cancelled + `noShowAt`" and moves nothing else, as the literal spec says.

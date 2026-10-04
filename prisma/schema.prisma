@@ -57,6 +57,7 @@ model User {
   createdTasks    StaffTask[] @relation("StaffTaskCreatedBy")
   assignedTasks   StaffTask[] @relation("StaffTaskAssignedTo")
   createdPurchaseOrders PurchaseOrder[] @relation("PurchaseOrderCreatedBy")
+  assignedJobs          Job[]           @relation("JobAssignedTo")
 
   @@index([role])
 }
@@ -839,6 +840,17 @@ model Job {
   status     JobStatus @default(SCHEDULED)
   scheduledAt DateTime?
 
+  // Scheduling (Batch C, P1-A). The person doing the visit; conflicts are only
+  // checked between jobs with the same person. durationMinutes null = use
+  // BusinessSettings.defaultJobDurationMinutes. version counts domain writes
+  // so a stale screen cannot overwrite a newer change. noShowAt is set when a
+  // visit is cancelled because nobody was there (status CANCELLED, nothing else moves).
+  assignedToUserId String?
+  assignedTo       User?     @relation("JobAssignedTo", fields: [assignedToUserId], references: [id], onDelete: SetNull)
+  durationMinutes  Int?
+  version          Int       @default(1)
+  noShowAt         DateTime?
+
   customerId String?
   customer   Customer? @relation(fields: [customerId], references: [id])
   serviceAddressId String?
@@ -903,6 +915,7 @@ model Job {
   @@index([serviceAddressId])
   @@index([agreementId])
   @@index([maintenanceRequestId])
+  @@index([assignedToUserId, scheduledAt])
 }
 
 // An agreement item that was NOT delivered on the delivery visit that started
@@ -1421,6 +1434,8 @@ model BusinessSettings {
   oneTimeRemovalFeeCents      Int @default(0)
   damageWaiverEnabled     Boolean @default(false)
   depositEnabled          Boolean @default(false)
+  // Usual visit length in minutes (Batch C P1-A); used when a job has no length of its own.
+  defaultJobDurationMinutes Int @default(120)
   lateFeeGraceDays        Int     @default(5)
   lateFeeFlatCents        Int     @default(0)
   lateFeePercent          Int     @default(0)
@@ -1658,4 +1673,11 @@ model LaunchDelivery {
   finishedAt   DateTime?
 
   @@unique([subscriberId, step])
+}
+
+// Batch C P1-B: the next asset-number sequence per prefix. Numbers are never reused.
+model AssetNumberCounter {
+  prefix       String   @id
+  nextSequence Int
+  updatedAt    DateTime @updatedAt
 }

@@ -64,6 +64,46 @@ describe("findConflictingJobIds", () => {
   });
 });
 
+describe("findConflictingJobIds with people and lengths (Batch C P1-A)", () => {
+  const t = (hhmm: string) => new Date(`2026-09-28T${hhmm}:00Z`);
+
+  it("only flags jobs for the same person", () => {
+    const jobs = [
+      { id: "a", scheduledAt: t("09:00"), assignedToUserId: "u1", durationMinutes: 60 },
+      { id: "b", scheduledAt: t("09:30"), assignedToUserId: "u2", durationMinutes: 60 },
+      { id: "c", scheduledAt: t("09:30"), assignedToUserId: "u1", durationMinutes: 60 },
+    ];
+    expect(findConflictingJobIds(jobs, 120)).toEqual(new Set(["a", "c"]));
+  });
+
+  it("treats back-to-back visits as free (half-open) and a job's own length as its end", () => {
+    const jobs = [
+      { id: "a", scheduledAt: t("09:00"), assignedToUserId: "u1", durationMinutes: 60 },
+      { id: "b", scheduledAt: t("10:00"), assignedToUserId: "u1", durationMinutes: 60 },
+    ];
+    expect(findConflictingJobIds(jobs, 120)).toEqual(new Set());
+    expect(findConflictingJobIds([{ ...jobs[0], durationMinutes: 61 }, jobs[1]], 120)).toEqual(new Set(["a", "b"]));
+  });
+
+  it("uses the owner's default length when a job has none, and groups unassigned jobs together", () => {
+    const jobs = [
+      { id: "a", scheduledAt: t("09:00"), assignedToUserId: null, durationMinutes: null },
+      { id: "b", scheduledAt: t("09:45"), assignedToUserId: null, durationMinutes: null },
+    ];
+    expect(findConflictingJobIds(jobs, 30)).toEqual(new Set());
+    expect(findConflictingJobIds(jobs, 60)).toEqual(new Set(["a", "b"]));
+  });
+
+  it("a long early job still conflicts with a later short one (not only adjacent pairs)", () => {
+    const jobs = [
+      { id: "a", scheduledAt: t("08:00"), assignedToUserId: "u1", durationMinutes: 600 },
+      { id: "b", scheduledAt: t("09:00"), assignedToUserId: "u1", durationMinutes: 15 },
+      { id: "c", scheduledAt: t("12:00"), assignedToUserId: "u1", durationMinutes: 15 },
+    ];
+    expect(findConflictingJobIds(jobs, 120)).toEqual(new Set(["a", "b", "c"]));
+  });
+});
+
 describe("dayKey", () => {
   it("formats a date as YYYY-MM-DD in local time", () => {
     expect(dayKey(new Date("2026-09-06T01:00:00Z"))).toBe("2026-09-05");
@@ -152,6 +192,9 @@ vi.mock("@/lib/prisma", () => {
     auditLog: {
       create: (...args: unknown[]) => auditLogCreate(...args),
     },
+    businessSettings: {
+      findUnique: async () => ({ defaultJobDurationMinutes: 90 }),
+    },
   };
 
   return {
@@ -197,14 +240,15 @@ describe("getDispatchBoardJobs", () => {
       scheduled: [visit],
       unscheduled: [{ id: "job-2" }],
       conflictCandidates: [visit],
+      defaultJobMinutes: 90,
     });
 
     const [scheduledArgs] = jobFindMany.mock.calls[0];
     expect(scheduledArgs.where).toEqual({
       status: { in: ["SCHEDULED", "IN_PROGRESS"] },
       scheduledAt: {
-        gte: new Date(start.getTime() - 120 * 60 * 1000),
-        lt: new Date(end.getTime() + 120 * 60 * 1000),
+        gte: new Date(start.getTime() - 720 * 60 * 1000),
+        lt: new Date(end.getTime() + 720 * 60 * 1000),
       },
     });
 
@@ -239,7 +283,7 @@ describe("getJobChecklist / updateJobChecklist", () => {
     );
     expect(jobUpdate).toHaveBeenCalledWith({
       where: { id: "job-1" },
-      data: { checklist },
+      data: { checklist, version: { increment: 1 } },
     });
     expect(auditLogCreate).toHaveBeenCalledWith({
       data: {

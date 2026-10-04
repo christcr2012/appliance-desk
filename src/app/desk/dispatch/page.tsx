@@ -111,13 +111,16 @@ export default async function DispatchPage({
     rangeEnd = addDays(anchor, 14);
   }
 
-  const { scheduled, unscheduled, conflictCandidates } =
+  const { scheduled, unscheduled, conflictCandidates, defaultJobMinutes } =
     await getDispatchBoardJobs(rangeStart, rangeEnd);
   const conflicting = findConflictingJobIds(
     conflictCandidates.map((j): DispatchableJob => ({
       id: j.id,
       scheduledAt: j.scheduledAt,
+      assignedToUserId: j.assignedToUserId,
+      durationMinutes: j.durationMinutes,
     })),
+    defaultJobMinutes,
   );
 
   const jobsByDay = new Map<string, typeof scheduled>();

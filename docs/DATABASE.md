@@ -52,6 +52,10 @@ in UTC and only converted to Mountain Time for display.
   together but is always **two** separately tracked `Appliance` rows —
   never one fake combined appliance — so swapping a broken dryer never
   loses the washer's own history.
+- **AssetNumberCounter** (Batch C, 2026-10-03) — the next asset-number
+  sequence per prefix (`WASH`, `DRY`, ...). Only moves forward, so a number is
+  never handed out twice, even after a unit is deleted or renamed. Created
+  and locked inside the same transaction that creates the units.
 - **`PartRecord.quantityOnHand`/`reorderThreshold`** (2026-09-29,
   purchasing & supplies) — see `docs/BUSINESS-RULES.md`'s "Purchasing &
   supplies" section. Only moved by `receivePurchaseOrder` (up) and
@@ -131,6 +135,12 @@ in UTC and only converted to Mountain Time for display.
   before/after condition photos. Chris schedules every job by hand —
   there's no dispatch optimization. `dayOfReminderSentAt` (Task #71)
   dedupes the same-day SMS reminder.
+- **Job scheduling columns** (Batch C, 2026-10-03) — `assignedToUserId` (who
+  does the visit), `durationMinutes` (null = the owner's usual visit length in
+  `BusinessSettings.defaultJobDurationMinutes`), `version` (counts changes so a
+  stale screen cannot overwrite a newer one) and `noShowAt` (set when a visit
+  was cancelled because nobody was there). Double-booking is checked only
+  between visits for the same person.
 - **JobAppliance** — which physical appliance(s) a job involves.
 
 ## Maintenance

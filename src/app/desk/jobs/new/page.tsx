@@ -7,6 +7,7 @@ import {
 } from "@/domains/customers";
 import { getAgreementById } from "@/domains/agreements";
 import { getMaintenanceRequestById } from "@/domains/maintenance";
+import { getAssignableTeamMembers } from "@/domains/staff";
 import { NewJobForm } from "./new-job-form";
 
 export const metadata = { title: "Schedule a job" };
@@ -24,12 +25,13 @@ export default async function NewJobPage({
   await requireRole("OWNER", "ADMIN");
   const { agreementId, maintenanceRequestId, customerId, serviceAddressId } =
     await searchParams;
-  const [customers, agreement, maintenanceRequest] = await Promise.all([
+  const [customers, agreement, maintenanceRequest, team] = await Promise.all([
     getCustomers(),
     agreementId ? getAgreementById(agreementId) : Promise.resolve(null),
     maintenanceRequestId
       ? getMaintenanceRequestById(maintenanceRequestId)
       : Promise.resolve(null),
+    getAssignableTeamMembers(),
   ]);
 
   let maintenanceContext = null;
@@ -62,6 +64,7 @@ export default async function NewJobPage({
 
       <div className="mt-6">
         <NewJobForm
+          teamMembers={team.map((m) => ({ id: m.id, label: m.name ?? m.email }))}
           customers={customers.map((c) => ({
             id: c.id,
             name: c.user.name ?? c.user.email,

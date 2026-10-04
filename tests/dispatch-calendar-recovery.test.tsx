@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 const m = vi.hoisted(() => ({ jobs: vi.fn() }));
-vi.mock("@/lib/prisma", () => ({ prisma: { job: { findMany: m.jobs } } }));
+vi.mock("@/lib/prisma", () => ({
+  prisma: { job: { findMany: m.jobs }, businessSettings: { findUnique: async () => ({ defaultJobDurationMinutes: 120 }) } },
+}));
 vi.mock("@/lib/session", () => ({
   requireRole: async () => ({ user: { role: "OWNER" } }),
 }));
@@ -73,8 +75,8 @@ it("flags adjacent-day conflicts while returning only visible-day jobs", async (
     new Set(["before", "visible"]),
   );
   expect(m.jobs.mock.calls[0][0].where.scheduledAt).toEqual({
-    gte: new Date("2026-10-01T04:00:00Z"),
-    lt: new Date("2026-10-02T08:00:00Z"),
+    gte: new Date("2026-09-30T18:00:00Z"),
+    lt: new Date("2026-10-02T18:00:00Z"),
   });
 });
 it("renders Colorado day/time and a boundary conflict without leaking adjacent jobs", async () => {
