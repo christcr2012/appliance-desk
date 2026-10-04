@@ -161,10 +161,13 @@ in UTC and only converted to Mountain Time for display.
   Remediation R1 adds nullable `firstDeliveredOn`: the durable Colorado
   business-date fact for the first completed delivery/installation visit where
   at least one rental item was actually delivered. It is written once and is
-  the source for explicitly backdating/anchoring the recurring Stripe
-  subscription and agreement term dates, so a later provider retry or
-  reconciliation cannot move the customer's billing start. A zero-delivery
-  visit leaves it null. Migration `20261004070000_remediation_r1_billing_lineage`
+  the source for local agreement term dates and is recorded in Stripe metadata,
+  so a later provider retry or reconciliation cannot move the local delivery
+  fact. Remediation R1 deliberately does **not** backdate or re-anchor Stripe's
+  recurring subscription calendar; delayed provider creation retains the
+  pre-remediation charging behavior until a separately approved billing-calendar
+  design proves amount/date equivalence. A zero-delivery visit leaves
+  `firstDeliveredOn` null. Migration `20261004070000_remediation_r1_billing_lineage`
   backfills historical already-billed agreements from their existing
   `billingStartedAt` as the best-known approximation; agreements that never
   billed deliberately remain null rather than inventing a delivery date.
