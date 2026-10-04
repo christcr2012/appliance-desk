@@ -37,15 +37,14 @@ import {
  *     Nothing is charged to a card automatically.
  *
  *   • DELIVERY / INSTALLATION — late delivery. Staff can mark items "not
- *     delivered" on a visit; each becomes a PendingDelivery. Billing begins only
- *     when at least one rental item is actually delivered. On a partial delivery,
- *     the whole agreement is billed from that first real delivery date and each
- *     missing item is credited for the days it was unavailable. A zero-delivery
- *     visit records the waiting items but starts no billing. When a later visit
- *     brings an item, the customer gets an account credit for the chargeable
- *     missing days ("Credit – … delivered late – N days"). After commit the
- *     credit is sent to Stripe as customer-balance credit so it comes off a
- *     monthly charge and the mirrored bill shows the same labeled line.
+ *     delivered" on the visit that starts billing; each becomes a
+ *     PendingDelivery. The whole agreement bills as normal. When a later
+ *     delivery job brings the item, the customer gets an account credit for the
+ *     days it was missing ("Credit – … delivered late – N days"); an item that
+ *     never arrives and is taken off the agreement is credited everything
+ *     billed for it. After the transaction commits the credit is sent to Stripe
+ *     as customer-balance credit so it comes off the next monthly charge, and
+ *     the next mirrored bill shows the same labeled line (webhooks.ts).
  *
  * Dates are the job's service date (`jobServiceDate`): the date staff recorded
  * the work as done, else the scheduled date — never the moment the status
@@ -69,6 +68,7 @@ export function parsePerformedOn(raw: unknown, now: Date = new Date()): { ok: tr
   if (typeof raw !== "string") return { ok: false, message: "Enter the date the work was done as a calendar date." };
   const date = businessDateFromKey(raw.trim());
   if (!date) return { ok: false, message: "Enter the date the work was done as a real calendar date." };
+  // A date in the future would create late charges or credits for days that have not happened.
   if (businessDateKey(date) > businessDateKey(now)) {
     return { ok: false, message: "The date the work was done cannot be in the future." };
   }
@@ -78,9 +78,12 @@ export function parsePerformedOn(raw: unknown, now: Date = new Date()): { ok: tr
 export type PickupBillingOutcome = {
   lateReturnInvoiceId: string | null;
   lateReturnCents: number;
+  /** Credits created in this transaction; pushed to Stripe after commit. */
   creditIds: string[];
   creditCents: number;
+  /** Items recorded as not delivered on this visit. */
   pendingDeliveryIds: string[];
+  /** Plain-English notes for the audit trail (appliances skipped and why). */
   notes: string[];
 };
 
@@ -117,10 +120,12 @@ type Item = {
 
 const SUPERSEDED_UNASSIGN_PREFIXES = [NEVER_DELIVERED_UNASSIGN_REASON, "Swapped out for repair", "Swapped for", "Replaced by"];
 
+/** True when an ended assignment was replaced one-for-one (or never delivered), so it is not a priced item of its own. */
 export function isSupersededAssignment(reason: string | null): boolean {
   return typeof reason === "string" && SUPERSEDED_UNASSIGN_PREFIXES.some((prefix) => reason.startsWith(prefix));
 }
 
+/** Which rental line each appliance is on, what it is called, and its share of the line price. */
 async function itemsForAppliances(
   tx: Prisma.TransactionClient,
   agreementId: string,
@@ -144,11 +149,14 @@ async function itemsForAppliances(
       appliance: { select: { assetNumber: true, applianceType: { select: { name: true } } } },
     },
   });
+  // Newest assignment per appliance (an appliance can only be on one line at a time).
   const seen = new Set<string>();
   const items: Item[] = [];
   for (const a of assignments) {
     if (seen.has(a.applianceId)) continue;
     seen.add(a.applianceId);
+    // A unit that left the line without ever being a separate priced item (never delivered, or swapped
+    // out and replaced one-for-one) must not shrink the others' share of the line price.
     const onLine = [
       ...new Set(
         a.rentalLine.assignments.filter((x) => !isSupersededAssignment(x.unassignReason)).map((x) => x.applianceId),
@@ -172,12 +180,16 @@ const AGREEMENT_SELECT = {
   customerId: true,
   status: true,
   endDate: true,
-  firstDeliveredOn: true,
   billingStartedAt: true,
   paidInFullInAdvance: true,
   taxRateMilliPercent: true,
 } as const;
 
+/**
+ * Rule 1. Called when a REMOVAL job completes, with the appliances it took
+ * away. Any appliance picked up after the agreement's end date is charged for
+ * the late days — even if the agreement is still marked ACTIVE at that moment.
+ */
 export async function recordLateReturnOnRemoval(
   tx: Prisma.TransactionClient,
   input: {
@@ -185,6 +197,7 @@ export async function recordLateReturnOnRemoval(
     jobId: string;
     agreementId: string;
     applianceIds: string[];
+    /** The job's service date (see `jobServiceDate`). */
     pickupDate: Date;
   },
 ): Promise<PickupBillingOutcome> {
@@ -283,7 +296,13 @@ export async function recordLateReturnOnRemoval(
   };
 }
 
-/** Record the items that did not arrive. A zero-delivery visit records waiting work but starts no billing. */
+/**
+ * Rule 2, first half. Called when a DELIVERY/INSTALLATION job completes, with
+ * the appliances staff marked as NOT delivered on this visit. Each one is
+ * recorded so it is never forgotten (Today → "Item not delivered yet") and so
+ * its credit can be worked out when it arrives. The appliances stay reserved
+ * for this customer; billing for the whole agreement starts as normal.
+ */
 export async function recordItemsNotDelivered(
   tx: Prisma.TransactionClient,
   input: {
@@ -291,15 +310,12 @@ export async function recordItemsNotDelivered(
     jobId: string;
     agreementId: string;
     applianceIds: string[];
+    /** The job's service date: the day billing starts counting these items. */
     deliveryDate: Date;
   },
 ): Promise<PickupBillingOutcome> {
   if (input.applianceIds.length === 0) return EMPTY;
-  const [items, anchorRow] = await Promise.all([
-    itemsForAppliances(tx, input.agreementId, input.applianceIds),
-    tx.rentalAgreement.findUnique({ where: { id: input.agreementId }, select: { firstDeliveredOn: true } }),
-  ]);
-  const billingAnchor = anchorRow?.firstDeliveredOn ?? null;
+  const items = await itemsForAppliances(tx, input.agreementId, input.applianceIds);
   const ids: string[] = [];
   const notes: string[] = [];
   for (const item of items) {
@@ -322,11 +338,7 @@ export async function recordItemsNotDelivered(
       },
     });
     ids.push(row.id);
-    notes.push(
-      billingAnchor
-        ? `${item.label}: not delivered on this visit; billing is anchored to ${formatBusinessDate(billingAnchor)}, credit due when it arrives.`
-        : `${item.label}: not delivered on this visit; billing has not started because no rental item was delivered.`,
-    );
+    notes.push(`${item.label}: not delivered on this visit; billed from ${formatBusinessDate(input.deliveryDate)}, credit due when it arrives.`);
     await tx.auditLog.create({
       data: {
         userId: input.userId,
@@ -339,7 +351,6 @@ export async function recordItemsNotDelivered(
           applianceId: item.applianceId,
           item: item.label,
           originalDeliveryDate: businessDateKey(input.deliveryDate),
-          billingAnchor: billingAnchor ? businessDateKey(billingAnchor) : null,
         },
       },
     });
@@ -347,7 +358,11 @@ export async function recordItemsNotDelivered(
   return { ...EMPTY, pendingDeliveryIds: ids, notes };
 }
 
-/** Close waiting items that arrive and create the credit implied by the durable first-delivery billing anchor. */
+/**
+ * Rule 2, second half. Called when a DELIVERY/INSTALLATION job completes, with
+ * the appliances it actually delivered. Any of them that was waiting from an
+ * earlier visit is closed out and credited for the days it was missing.
+ */
 export async function recordLateDeliveries(
   tx: Prisma.TransactionClient,
   input: {
@@ -355,10 +370,12 @@ export async function recordLateDeliveries(
     jobId: string;
     agreementId: string;
     applianceIds: string[];
+    /** The job's service date: the day the item actually arrived. */
     deliveryDate: Date;
   },
 ): Promise<PickupBillingOutcome> {
   if (input.applianceIds.length === 0) return EMPTY;
+  // A waiting item is closed out when it arrives itself, or when the same-type unit set aside to replace it does.
   const waiting = await tx.pendingDelivery.findMany({
     where: {
       agreementId: input.agreementId,
@@ -369,6 +386,8 @@ export async function recordLateDeliveries(
     select: { id: true, applianceId: true, substituteApplianceId: true, rentalLineId: true, originalDeliveryDate: true },
   });
   if (waiting.length === 0) return EMPTY;
+  // Claim the waiting rows (sorted, so two jobs cannot deadlock) and re-read them: a second job that delivers the
+  // same item at the same time waits here, then finds it already delivered and issues no second credit.
   const waitingIds = waiting.map((w) => w.id).sort();
   const lockedRows = await tx.$queryRaw<Array<{ id: string }>>`
     SELECT "id" FROM "PendingDelivery" WHERE "id" = ANY(${waitingIds}) AND "deliveredOn" IS NULL AND "removedAt" IS NULL
@@ -381,13 +400,13 @@ export async function recordLateDeliveries(
   const agreement = await tx.rentalAgreement.findUnique({ where: { id: input.agreementId }, select: AGREEMENT_SELECT });
   if (!agreement) return EMPTY;
   const settings = await loadSettings(tx);
+  // The unit that actually arrived: the substitute when it was the one delivered, otherwise the waiting item itself.
   const arrivedId = (w: { applianceId: string; substituteApplianceId: string | null }) =>
     w.substituteApplianceId && input.applianceIds.includes(w.substituteApplianceId) ? w.substituteApplianceId : w.applianceId;
   const items = await itemsForAppliances(tx, agreement.id, waiting.map(arrivedId));
   const creditIds: string[] = [];
   let creditCents = 0;
   const notes: string[] = [];
-  const billingAnchor = agreement.billingStartedAt ?? agreement.firstDeliveredOn;
 
   for (const pending of waiting) {
     const item = items.find((i) => i.applianceId === arrivedId(pending));
@@ -399,8 +418,8 @@ export async function recordLateDeliveries(
       notes.push("A waiting item is no longer on this agreement; delivered without a credit.");
       continue;
     }
-    if (!billingAnchor) {
-      notes.push(`${item.label}: delivered; no credit because no real delivery ever started billing for this agreement.`);
+    if (!agreement.billingStartedAt) {
+      notes.push(`${item.label}: delivered; no credit because billing never started for this agreement.`);
       continue;
     }
     if (agreement.paidInFullInAdvance) {
@@ -408,21 +427,23 @@ export async function recordLateDeliveries(
       continue;
     }
     const dayBefore = new Date(input.deliveryDate.getTime() - 1000);
-    const billedFrom = businessDaysBetween(pending.originalDeliveryDate, billingAnchor) > 0
-      ? businessDayBounds(billingAnchor).start
+    // Stripe starts charging when the subscription is created, which can be later than a back-dated delivery date.
+    // Days before that were never billed, so they are never credited.
+    const billedFrom = businessDaysBetween(pending.originalDeliveryDate, agreement.billingStartedAt) > 0
+      ? businessDayBounds(agreement.billingStartedAt).start
       : pending.originalDeliveryDate;
     const credit = calculateLateDeliveryCredit({
       itemLabel: item.label,
       itemMonthlyPriceCents: item.monthlyPriceCents,
       originalDeliveryDate: billedFrom,
       actualDeliveryDate: input.deliveryDate,
-      period: billingPeriodContaining(billingAnchor, billedFrom),
-      billingAnchor,
-      maxCreditCents: item.monthlyPriceCents * periodsBilledThrough(billingAnchor, dayBefore),
+      period: billingPeriodContaining(agreement.billingStartedAt, billedFrom),
+      billingAnchor: agreement.billingStartedAt,
+      maxCreditCents: item.monthlyPriceCents * periodsBilledThrough(agreement.billingStartedAt, dayBefore),
       settings,
     });
     if (credit.days === 0 || credit.amountCents === 0) {
-      notes.push(`${item.label}: delivered on the billing anchor after all, nothing to credit.`);
+      notes.push(`${item.label}: delivered on the original date after all, nothing to credit.`);
       continue;
     }
     const row = await tx.customerCredit.create({
@@ -457,7 +478,6 @@ export async function recordLateDeliveries(
           periodDays: credit.periodDays,
           originalDeliveryDate: businessDateKey(pending.originalDeliveryDate),
           actualDeliveryDate: businessDateKey(input.deliveryDate),
-          billingAnchor: businessDateKey(billingAnchor),
           dailyRate: formatCents(credit.dailyRateCents),
           amount: formatCents(credit.amountCents),
           basis: credit.basis,
@@ -472,6 +492,20 @@ export async function recordLateDeliveries(
   return { ...EMPTY, creditIds, creditCents, notes };
 }
 
+/**
+ * Rule 2, never delivered. The owner or an admin takes a waiting item off the agreement: the appliance is released
+ * (available again), any substitute unit set aside for it goes back on the shelf, and the customer is REFUNDED what
+ * was paid for it (one month's price plus its tax for every billing period that has started since the original
+ * delivery date, never more than was actually paid). Stripe-paid money goes back to the original card or bank;
+ * money paid another way is recorded for the owner to pay back by hand. No account credit is created.
+ *
+ * Batch C section 8 also fixes the monthly bill: the item's share comes off its rental line from the NEXT billing
+ * period (kept as a never-edited amendment record), and the Stripe subscription is told after the transaction
+ * commits (one recorded provider operation, retried by the reconciliation pass). If that was the agreement's last
+ * item, the agreement is ended or cancelled through the normal close path instead.
+ *
+ * Lock order (spec §0): customer, agreement, appliances (sorted), the waiting row.
+ */
 export async function removeUndeliveredItem(userId: string, pendingDeliveryId: string, now = new Date()): Promise<void> {
   const peek = await prisma.pendingDelivery.findUnique({
     where: { id: pendingDeliveryId },
@@ -503,6 +537,7 @@ export async function removeUndeliveredItem(userId: string, pendingDeliveryId: s
     }
     const agreement = await tx.rentalAgreement.findUniqueOrThrow({ where: { id: pending.agreementId }, select: AGREEMENT_SELECT });
 
+    // A substitute set aside for this item goes back on the shelf, and its place on the visit's list is dropped.
     if (pending.substituteApplianceId && pending.substituteJobId) {
       await dropSubstituteInTx(tx, {
         userId,
@@ -514,6 +549,7 @@ export async function removeUndeliveredItem(userId: string, pendingDeliveryId: s
       });
     }
 
+    // The share is worked out BEFORE the unit leaves the line, while it still counts as one of the line's items.
     const [item] = await itemsForAppliances(tx, agreement.id, [pending.applianceId]);
 
     if (item && !item.unassignedAt) {
@@ -524,6 +560,9 @@ export async function removeUndeliveredItem(userId: string, pendingDeliveryId: s
     }
     await tx.appliance.updateMany({ where: { id: pending.applianceId, status: "RESERVED" }, data: { status: "AVAILABLE" } });
 
+    // Money for an item that never arrives goes BACK to the customer (a refund), not into account credit that would
+    // keep reducing future bills. Stripe-paid invoices are refunded to the original card or bank through Stripe;
+    // anything paid another way, paid in advance, or not paid yet is recorded for the owner to settle by hand.
     let refundedCents = 0;
     let refundByHandCents = 0;
     const refundRuns: Array<{ refundId: string; claim: ClaimedRefund; invoiceId: string; amountCents: number }> = [];
@@ -578,6 +617,7 @@ export async function removeUndeliveredItem(userId: string, pendingDeliveryId: s
     const creditId: string | null = null;
     await tx.pendingDelivery.update({ where: { id: pending.id }, data: { removedAt: now, creditId, refundedCents, refundByHandCents } });
 
+    // What the monthly bill does about it.
     let amendmentId: string | null = null;
     let lineClaim: LineReduceClaim | null = null;
     let closed: CloseAgreementResult | null = null;
@@ -585,6 +625,7 @@ export async function removeUndeliveredItem(userId: string, pendingDeliveryId: s
       where: { unassignedAt: null, rentalLine: { agreementId: agreement.id } },
     });
     if (agreement.status === "ACTIVE" && openLeft === 0) {
+      // Nothing left on the agreement: end it the normal way (which cancels the whole subscription).
       const everDelivered = await tx.applianceAssignment.count({
         where: {
           rentalLine: { agreementId: agreement.id },
@@ -665,6 +706,7 @@ export async function removeUndeliveredItem(userId: string, pendingDeliveryId: s
   }
 }
 
+/** Items of an agreement still waiting for delivery (for Today and the job page). */
 export async function pendingDeliveriesForJob(jobId: string) {
   const rows = await prisma.pendingDelivery.findMany({
     where: { originalJobId: jobId },
@@ -683,6 +725,7 @@ export async function pendingDeliveriesForJob(jobId: string) {
       appliance: { select: { assetNumber: true, applianceType: { select: { name: true } } } },
     },
   });
+  // A cancelled item's change to the monthly subscription is shown as pending until Stripe has the new amount.
   const removedIds = rows.filter((row) => row.removedAt).map((row) => row.id);
   const operations = removedIds.length
     ? await prisma.providerOperation.findMany({
@@ -693,10 +736,17 @@ export async function pendingDeliveriesForJob(jobId: string) {
   const statusByKey = new Map(operations.map((op) => [op.idempotencyKey, op.status]));
   return rows.map((row) => ({
     ...row,
+    // true while a recorded Stripe update for this item has not finished
     stripeUpdatePending: row.removedAt ? (statusByKey.has(lineReduceKey(row.id)) && statusByKey.get(lineReduceKey(row.id)) !== "SUCCEEDED") : false,
   }));
 }
 
+/**
+ * Send one late-delivery credit to Stripe as customer-balance credit (the same
+ * durable provider operation referral rewards use; src/domains/billing/
+ * reconciliation.ts retries it if this attempt does not finish). Runs AFTER
+ * the transaction that created the credit committed, never inside it.
+ */
 export async function pushLateDeliveryCreditToStripe(creditId: string): Promise<void> {
   const latest = await prisma.customerCredit.findUnique({
     where: { id: creditId },
@@ -720,6 +770,7 @@ export async function pushLateDeliveryCreditToStripe(creditId: string): Promise<
       `;
       const credit = locked[0];
       if (!credit || credit.appliedViaStripeAt) return { kind: "done" as const };
+      // Spent locally already (the owner applied it by hand): never also send it to Stripe.
       if (credit.remainingCents < credit.amountCents) return { kind: "local" as const };
       const providerClaim = await claimProviderOperation(tx, {
         kind: "BALANCE_CREDIT",
@@ -770,4 +821,5 @@ export async function pushLateDeliveryCreditToStripe(creditId: string): Promise<
   });
 }
 
+/** Whole Colorado days between two instants, exposed for the job page's "waiting since" text. */
 export const daysWaiting = (since: Date, now = new Date()) => Math.max(0, businessDaysBetween(since, now));
