@@ -87,9 +87,11 @@ export async function closeCustodyEpisodeInTx(
  * holder, and "available", "reserved" or "retired" can't keep one. Deliveries and pickups go through job completion,
  * which opens and closes the stay itself, so a hand change must not skip it.
  */
-export async function assertStatusChangeKeepsCustody(client: Reader, applianceId: string, newStatus: ApplianceStatus): Promise<void> {
+export async function assertStatusChangeKeepsCustody(tx: Prisma.TransactionClient, applianceId: string, newStatus: ApplianceStatus): Promise<void> {
   if (newStatus !== "RENTED" && newStatus !== "AWAITING_PICKUP" && newStatus !== "AVAILABLE" && newStatus !== "RESERVED" && newStatus !== "RETIRED") return;
-  const open = await getOpenCustody(client, applianceId);
+  // Hold the appliance row first, so a custody write cannot slip in between this check and the status write.
+  await tx.$queryRaw`SELECT "id" FROM "Appliance" WHERE "id" = ${applianceId} FOR UPDATE`;
+  const open = await getOpenCustody(tx, applianceId);
   if ((newStatus === "RENTED" || newStatus === "AWAITING_PICKUP") && !open) {
     throw new CustodyConflictError("This appliance has no customer recorded, so it can't be marked as out with a customer. Complete a delivery job for it, or record who has it on this page first.");
   }

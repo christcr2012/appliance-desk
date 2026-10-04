@@ -12,6 +12,7 @@ const auditLogCreate = vi.fn();
 vi.mock("@/domains/inventory/custody", () => ({ assertStatusChangeKeepsCustody: vi.fn() }));
 vi.mock("@/lib/prisma", () => ({
   prisma: {
+    $transaction: async (fn: (tx: unknown) => unknown) => fn((await import("@/lib/prisma")).prisma),
     appliance: {
       findUniqueOrThrow: (...args: unknown[]) => applianceFindUniqueOrThrow(...args),
       updateMany: (...args: unknown[]) => applianceUpdateMany(...args),

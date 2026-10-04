@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { formatBusinessDate } from "@/lib/business-date";
 import type { Prisma } from "@prisma/client";
+import { assertStatusChangeKeepsCustody } from "./custody";
 import { canTransitionApplianceStatus, applianceStatusAfterInspection, DEFAULT_INSPECTION_CHECKLIST } from "./lifecycle";
 import { getBusinessSettings } from "@/domains/settings";
 
@@ -132,6 +133,7 @@ export async function retireAppliance(
   }
 
   await prisma.$transaction(async (tx: Tx) => {
+    await assertStatusChangeKeepsCustody(tx, applianceId, "RETIRED");
     const moved = await tx.appliance.updateMany({
       where: { id: applianceId, status: appliance.status },
       data: {
@@ -335,6 +337,7 @@ export async function recordApplianceInspection(
   }
 
   await prisma.$transaction(async (tx: Tx) => {
+    await assertStatusChangeKeepsCustody(tx, applianceId, nextStatus);
     await tx.applianceInspection.create({
       data: {
         applianceId,

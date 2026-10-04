@@ -61,6 +61,7 @@ vi.mock("@/lib/prisma", () => ({
   },
 }));
 
+vi.mock("@/domains/inventory/custody", () => ({ assertStatusChangeKeepsCustody: vi.fn() }));
 vi.mock("@/domains/settings", () => ({
   getBusinessSettings: (...args: unknown[]) => getBusinessSettings(...args),
 }));
