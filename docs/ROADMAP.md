@@ -603,3 +603,22 @@ Google Tasks/Keep, Sheets-as-reporting, Contacts sync.
 - **A way to end custody for a lost or written-off unit (found in Batch C review, 2026-10-04).** A hand-made status change now refuses "available", "reserved" or "retired" while a customer is recorded as holding the unit, and refuses "rented" or "awaiting pickup" with no customer recorded (deliveries and pickups go through job completion). A unit that is genuinely lost at a customer's home therefore has no way to be retired yet; it needs an owner-only "end custody (lost / written off)" action with a reason. Not built; decide when P2-E/P2-F are designed.
 
 - **A "Cash received from this customer" block on the customer page (found in Batch C, 2026-10-04).** The rule is that customer cash (`collectedBetween`) appears only on the customer's own page, never on appliance or fleet screens, and a test now guards that. No such block exists on the customer page yet. Add it when the customer money tab is designed (Batch D).
+
+## 2026-10-04 — Owner desk and public site visual redesign (direction approved, not built)
+
+Chris asked for a more polished, "high-end" look, using modern component-library sites (21st.dev-style dashboards and
+atmospheric hero pages) as **inspiration only**. Nothing from those libraries is used; every piece is built fresh in the
+Evergreen brand (colors from `docs/brand/03_Design_System/brand-tokens.json`, Manrope font). A visual mockup of two screens
+was made in a private Claude Design canvas ("Appliance Desk Redesign Mockup"): the public home page and the owner desk
+"Today" screen. **Chris approved the owner desk direction** (2026-10-04): a dark evergreen sidebar with a lime-green "current
+page" pill, an ivory working area, a gradient headline stat card beside plain white stat cards, a visit list with a status
+word and icon on every row, and a "Needs your attention" panel. The public home page direction is still open.
+
+What the real work will need (so it is not forgotten):
+- It is its own batch. Per `AGENTS.md` it needs an approved design (`docs/designs/BATCH-<X>.md`) written first, and it should
+  build on `docs/plans/overhaul/DESIGN.md` rather than restart it.
+- Every rule in `docs/DESIGN-SYSTEM.md` still applies: contrast checked with axe (the mockup's muted and dark-background text
+  colors must be re-verified, not trusted by eye), visible focus, status never by color alone, dark mode, phone width.
+- Real photos of the appliances would let the public hero be richer than a plain brand-color treatment. Chris to supply, or the
+  hero stays brand-color only.
+- No invented content: prices, phone and address come from settings; the mockup's customers and numbers were sample data.
