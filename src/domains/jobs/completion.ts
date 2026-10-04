@@ -1,6 +1,7 @@
 import type { JobApplianceResult, JobApplianceRole, JobOutcome, JobType, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { assertActiveTeamActor } from "@/lib/team-actor";
+import { assertActiveTeamActor, type TeamRole } from "@/lib/team-actor";
+import { assertJobScopeInTx } from "./scope";
 import { businessDateKey, businessDayBounds } from "@/lib/business-date";
 import { lockCustomerLedger } from "@/domains/billing/ledger";
 import { lockRentalAgreementInTx } from "@/domains/agreements";
@@ -134,6 +135,7 @@ export async function completeJob(userId: string, input: CompleteJobInput): Prom
 
   const outcome = await prisma.$transaction(async (tx) => {
     const actor = await assertActiveTeamActor(tx, userId);
+    await assertJobScopeInTx(tx, { userId, role: actor.role as TeamRole }, { jobId: input.jobId, write: "COMPLETE" });
     if (peek.agreement) await lockCustomerLedger(tx, peek.agreement.customerId);
     if (peek.agreementId) await lockRentalAgreementInTx(tx, peek.agreementId);
     if (peek.maintenanceRequestId) await lockMaintenanceRequestInTx(tx, peek.maintenanceRequestId);

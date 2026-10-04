@@ -1,6 +1,7 @@
 import type { ApplianceStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { assertActiveTeamActor } from "@/lib/team-actor";
+import { assertActiveTeamActor, type TeamRole } from "@/lib/team-actor";
+import { assertJobScopeInTx } from "@/domains/jobs/scope";
 import { canTransitionApplianceStatus } from "./lifecycle";
 import { assertStatusChangeKeepsCustody } from "./custody";
 
@@ -14,9 +15,17 @@ export async function updateApplianceStatusAsTeamActor(
   userId: string,
   applianceId: string,
   newStatus: ApplianceStatus,
+  jobId?: string,
 ) {
   return prisma.$transaction(async (tx) => {
-    await assertActiveTeamActor(tx, userId);
+    const actor = await assertActiveTeamActor(tx, userId);
+    // Staff change an appliance's status only from a job they may work, and only for an appliance on that job.
+    if (actor.role === "STAFF" && !jobId) {
+      throw new Error("This appliance is not linked to the originating job.");
+    }
+    if (jobId) {
+      await assertJobScopeInTx(tx, { userId, role: actor.role as TeamRole }, { jobId, applianceId, write: "SWAP_STATUS" });
+    }
 
     const before = await tx.appliance.findUniqueOrThrow({
       where: { id: applianceId },

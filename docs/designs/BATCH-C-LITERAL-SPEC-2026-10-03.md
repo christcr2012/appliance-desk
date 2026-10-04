@@ -72,6 +72,16 @@ Verified against the code:
 - P2-D: `MaintenanceRequest` has no `serviceAddressId`; `scheduleMaintenanceRequest` does not exist yet (scheduling a request today goes through the generic job form). Latest migration is `20261003360000`, so `20261003370000_maintenance_links` is free.
 - No decision-level conflict (money, statuses, permissions, database design). Proceed as written.
 
+### Drift check — P2-E inspection and job-scoped permissions, P2-F earnings — 2026-10-04 (Claude Sonnet 5.5, at `main` 196b736 = #169 to #173)
+
+Read `CHANGES-SINCE-DESIGN.md` and checked every cited line against the code before writing any of it.
+
+- `recordApplianceInspection` (`guided-actions.ts`) takes `passed` and a list of `{item, checked}` from the screen and reads the checklist from `BusinessSettings.inspectionChecklist` (falling back to the code default). Nothing in `src/` updates or deletes an `ApplianceInspection` row (checked), so the append-only rule is safe. The only caller outside tests is `recordInspectionAction`, which is owner/admin only. Latest migration is `20261003370000`, so `20261003380000_inspection_snapshot` is free.
+- The checks the spec wants moved into the write transaction are exactly where it says: `updateJobStatus`, `addJobPhoto`, `updateJobChecklist`, `markJobNoShow` (which already limited staff to their own jobs, so unassigned jobs now follow the new setting), `completeJob`, and `updateApplianceStatusFromJobAction` (a job-link lookup done before the write, outside its transaction).
+- Differences from the text, none decision-level: (1) the bulk and plain appliance status changes had no actor check at all, only a page-level role check. They now require OWNER/ADMIN inside the transaction, so staff can only change a status through the job-scoped path. (2) "Swap cancellation" is a job status change, so it goes through the same `STATUS` scope check. (3) `updateApplianceStatusAsTeamActor` takes the job id as a fourth argument and refuses staff without one. (4) `amendApplianceInspection` (owner/admin) is added so the amendment table has its one writer. (5) The two new tables are in the backup list. (6) The migration's seed handles a missing settings row and a custom list that holds non-text items.
+- P2-F: nothing in `src/` imports `collectedBetween` (checked). The appliance and fleet screens said "Estimated rental value"; they now say "Estimated rent (line price split evenly)". There is no customer-page cash block today, so no "Cash received from this customer" label was added (recorded in ROADMAP).
+- No decision-level conflict (money, statuses, permissions, database design). Proceed as written.
+
 ## Review pass — 2026-10-03 (Claude Fable 5.1, docs only)
 
 Every file and line the spec cites was opened at head 3d71449 (branch `ai/claude/pickup-billing-rules`, which this

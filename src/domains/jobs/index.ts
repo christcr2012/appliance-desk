@@ -12,7 +12,8 @@ import {
   readDefaultJobMinutes,
   validateDurationMinutes,
 } from "./scheduling";
-import { assertActiveTeamActor } from "@/lib/team-actor";
+import { assertActiveTeamActor, type TeamRole } from "@/lib/team-actor";
+import { assertJobScopeInTx } from "./scope";
 
 export { sendJobDayOfReminders } from "./day-of-reminders";
 export {
@@ -279,7 +280,8 @@ export async function updateJobStatus(
   if (newStatus === "COMPLETED") throw new Error("Use Complete job so each appliance gets a result.");
 
   return prisma.$transaction(async (tx) => {
-    await assertActiveTeamActor(tx, userId);
+    const actor = await assertActiveTeamActor(tx, userId);
+    await assertJobScopeInTx(tx, { userId, role: actor.role as TeamRole }, { jobId, write: "STATUS" });
 
     const peeked = await tx.job.findUniqueOrThrow({ where: { id: jobId } });
     // Lock order: the maintenance request (if any) before the job.
@@ -331,8 +333,8 @@ export async function addJobPhoto(
   input: { url: string; altText?: string | null },
 ) {
   return prisma.$transaction(async (tx) => {
-    await assertActiveTeamActor(tx, userId);
-    await tx.job.findUniqueOrThrow({ where: { id: jobId }, select: { id: true } });
+    const actor = await assertActiveTeamActor(tx, userId);
+    await assertJobScopeInTx(tx, { userId, role: actor.role as TeamRole }, { jobId, write: "PHOTO" });
 
     const photo = await tx.photo.create({
       data: { jobId, url: input.url, altText: input.altText || null },
@@ -434,7 +436,12 @@ export async function updateJobChecklist(
   checklist: ChecklistItem[],
 ) {
   return prisma.$transaction(async (tx) => {
-    await assertActiveTeamActor(tx, userId);
+    const actor = await assertActiveTeamActor(tx, userId);
+    const scope = await assertJobScopeInTx(tx, { userId, role: actor.role as TeamRole }, { jobId, write: "CHECKLIST" });
+    // A finished or cancelled job's checklist is part of its record and is never edited.
+    if (scope.status === "COMPLETED" || scope.status === "CANCELLED") {
+      throw new Error("A finished or cancelled job's checklist can't be changed.");
+    }
     const before = await tx.job.findUniqueOrThrow({
       where: { id: jobId },
       select: { checklist: true },

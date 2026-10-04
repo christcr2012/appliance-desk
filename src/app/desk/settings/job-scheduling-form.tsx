@@ -4,6 +4,7 @@ import { useState } from "react";
 import { updateJobSchedulingAction } from "./actions";
 import {
   RECOMMENDED_JOB_DURATION_MINUTES,
+  RECOMMENDED_STAFF_MAY_WORK_UNASSIGNED_JOBS,
   type JobSchedulingFormValues,
 } from "@/domains/settings/job-scheduling";
 
@@ -66,9 +67,30 @@ export function JobSchedulingForm({ defaultValues }: { defaultValues: JobSchedul
             inputMode="numeric"
             className="w-32 rounded-lg border border-gray-300 px-3 py-2 text-sm"
             value={values.defaultJobDurationMinutes}
-            onChange={(e) => setValues({ defaultJobDurationMinutes: e.target.value })}
+            onChange={(e) => setValues({ ...values, defaultJobDurationMinutes: e.target.value })}
           />
         </div>
+      </fieldset>
+      <fieldset className="space-y-3">
+        <legend className="text-base font-semibold text-gray-900">Can staff work jobs nobody is assigned to?</legend>
+        <p className="text-sm text-gray-600">
+          Staff can always work the jobs assigned to them, while those jobs are scheduled or in progress. This
+          choice is about jobs with no one assigned. On: any staff member can open and finish an unassigned job,
+          which is how it works today. Off: staff can only work jobs assigned to them, and an owner or admin has
+          to assign the job first. Either way, staff can only touch the appliances that are on the job, and never
+          a job that is already finished or cancelled. Starting value: on, because it keeps the way things work
+          today. Anyone with owner or admin access can change it.
+        </p>
+        <label htmlFor="jobs-staffUnassigned" className="flex items-center gap-2 text-sm font-medium text-gray-900">
+          <input
+            id="jobs-staffUnassigned"
+            type="checkbox"
+            className="h-4 w-4 rounded border-gray-300"
+            checked={values.staffMayWorkUnassignedJobs}
+            onChange={(e) => setValues({ ...values, staffMayWorkUnassignedJobs: e.target.checked })}
+          />
+          Staff may work jobs that have no one assigned
+        </label>
       </fieldset>
       <div className="flex flex-wrap gap-3">
         <button
@@ -81,9 +103,14 @@ export function JobSchedulingForm({ defaultValues }: { defaultValues: JobSchedul
         <button
           type="button"
           className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-900"
-          onClick={() => setValues({ defaultJobDurationMinutes: String(RECOMMENDED_JOB_DURATION_MINUTES) })}
+          onClick={() =>
+            setValues({
+              defaultJobDurationMinutes: String(RECOMMENDED_JOB_DURATION_MINUTES),
+              staffMayWorkUnassignedJobs: RECOMMENDED_STAFF_MAY_WORK_UNASSIGNED_JOBS,
+            })
+          }
         >
-          Restore recommended value ({RECOMMENDED_JOB_DURATION_MINUTES} minutes)
+          Restore recommended values ({RECOMMENDED_JOB_DURATION_MINUTES} minutes, staff may work unassigned jobs)
         </button>
       </div>
     </form>

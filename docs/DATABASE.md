@@ -77,6 +77,14 @@ in UTC and only converted to Mountain Time for display.
   A database rule allows only one open row per appliance. Dates are Colorado
   business dates; an unknown date is blank, never guessed (`startEvidence` says
   whether it came from a job, an estimate or the owner).
+- **InspectionChecklistVersion / ApplianceInspectionAmendment** (Batch C, 2026-10-04)
+  — the return-inspection checklist is kept as numbered versions (the highest
+  is current). Each saved `ApplianceInspection` records the version it was
+  answered against plus a copy of the questions, who passed it with an
+  override and why, and the job it came from. A database rule blocks any
+  change or delete of an inspection. A correction is a dated amendment row.
+  `BusinessSettings.staffMayWorkUnassignedJobs` (default on) is the owner's
+  choice about staff and unassigned jobs.
 - **JobBillingHandoff** (Batch C, 2026-10-04) — provider work that must happen
   after a job's completion is saved (start the monthly Stripe billing, send a
   credit to Stripe). Written in the same transaction as the completion; a

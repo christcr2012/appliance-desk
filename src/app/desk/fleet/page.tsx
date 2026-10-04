@@ -208,7 +208,7 @@ export default async function FleetPage({
                   </Link>
                   <dl className="mt-3 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
                     <div>
-                      <dt className="text-ink-soft">Estimated rental value</dt>
+                      <dt className="text-ink-soft">Estimated rent (line price split evenly)</dt>
                       <dd>{formatCents(row.revenueCents)}</dd>
                     </div>
                     <div>
@@ -233,8 +233,8 @@ export default async function FleetPage({
                     row.incompleteRepairJobIds.length > 0
                       ? "Cost recovery unknown — costs incomplete."
                       : row.paidForItself
-                        ? "Estimated rental value covers recorded costs."
-                        : "Estimated rental value has not covered recorded costs."}
+                        ? "Estimated rent covers recorded costs."
+                        : "Estimated rent has not covered recorded costs."}
                   </p>
                   {row.incompleteRepairJobIds.length > 0 && (
                     <p className="mt-2 text-sm text-ink-soft">

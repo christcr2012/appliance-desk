@@ -14,6 +14,8 @@ vi.mock("@/lib/team-actor", () => ({
   assertActiveTeamActor: (...args: unknown[]) => assertActiveTeamActor(...args),
 }));
 
+vi.mock("@/domains/jobs/scope", () => ({ assertJobScopeInTx: async () => ({ status: "IN_PROGRESS" }) }));
+
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     job: {

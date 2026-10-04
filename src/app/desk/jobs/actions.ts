@@ -3,7 +3,6 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireRole } from "@/lib/session";
-import { prisma } from "@/lib/prisma";
 import {
   createJob,
   updateJobStatus,
@@ -364,22 +363,11 @@ export async function updateApplianceStatusFromJobAction(
 
   try {
     if (session.user.role === "STAFF") {
-      if (
-        !jobId ||
-        !(await prisma.jobAppliance.findFirst({
-          where: { jobId, applianceId },
-          select: { id: true },
-        }))
-      ) {
-        return {
-          status: "error",
-          message: "This appliance is not linked to the originating job.",
-        };
-      }
       await updateApplianceStatusAsTeamActor(
         session.user.id,
         applianceId,
         status as ApplianceStatus,
+        jobId,
       );
     } else {
       await updateApplianceStatus(

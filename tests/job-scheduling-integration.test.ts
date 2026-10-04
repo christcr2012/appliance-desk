@@ -235,7 +235,7 @@ describe.skipIf(!enabled)("job scheduling (real Postgres)", () => {
       });
       jobIds.push(job.id);
       const creditsBefore = await prisma.customerCredit.count();
-      await expect(markJobNoShow(staffB, job.id, 1)).rejects.toThrow(/assigned to this visit/);
+      await expect(markJobNoShow(staffB, job.id, 1)).rejects.toThrow(/assigned to someone else/);
       await expect(markJobNoShow(staffA, job.id, 5)).rejects.toBeInstanceOf(JobVersionError);
       await expect(markJobNoShow(staffA, job.id, 1)).resolves.toEqual({ version: 2 });
       const after = await prisma.job.findUniqueOrThrow({ where: { id: job.id } });

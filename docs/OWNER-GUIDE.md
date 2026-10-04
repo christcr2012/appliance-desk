@@ -139,6 +139,19 @@ and late fees" below.
 
 ## Scheduling delivery, installation, and other visits
 
+**Staff and unassigned jobs.** In Settings → Visits and scheduling you can choose
+whether staff may work jobs nobody is assigned to. On (the starting value) means
+any staff member can open and finish an unassigned job. Off means they can only
+work jobs assigned to them. Either way staff can only work jobs that are scheduled
+or in progress, and only the appliances on that job.
+
+**Recording an inspection.** On a returned appliance, check each item that is
+fine. If everything is checked it goes back to Available. If anything is
+unchecked it goes to Maintenance. If you are sure it is fine anyway, type a
+reason in "Pass it anyway" and it is saved with your name. A saved inspection
+cannot be edited; if something was wrong, add a correction note and the
+original stays as it was.
+
 Go to **Jobs** to schedule a delivery, install, swap, removal, or
 maintenance visit — optionally tied to a specific agreement, which
 pre-fills its customer and appliances for you. Move a job through

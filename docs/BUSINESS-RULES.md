@@ -492,6 +492,21 @@ manual database edit) process with one click:
   lot less useful than "compressor failed, not economical to repair."
   The reason is saved both on the appliance's own notes and in its
   history.
+- **Inspection result and checklist versions** — the checklist is a numbered
+  version (the highest is current). A form built on an older version is
+  refused ("The checklist changed. Reload"). The server decides the result:
+  every item checked passes (unit goes `AVAILABLE`), anything else fails
+  (`MAINTENANCE`). An owner or admin can pass a unit with unchecked items by
+  typing a reason; it is saved with their name and logged as an override.
+  Staff can never override. A saved inspection is never edited or deleted;
+  an owner or admin adds a correction note instead.
+- **What staff can do on a job** — owners and admins can work any job. Staff
+  can work a job only while it is scheduled or in progress (they can still add
+  photos after it is completed), only if it is assigned to them or to nobody
+  (the owner's setting "Can staff work jobs nobody is assigned to?", starting
+  value on), and only the appliances on that job. Setting repair costs,
+  staging a swap and scheduling stay owner/admin only. A finished or
+  cancelled job's checklist is never changed.
 - **Swap for a working unit** — only offered for a unit currently
   `RENTED` with a recorded holder (custody) and an open assignment.
   Staging a swap moves nothing physical: it reserves only the

@@ -10,6 +10,7 @@ const applianceUpdateMany = vi.fn();
 const auditLogCreate = vi.fn();
 
 vi.mock("@/domains/inventory/custody", () => ({ assertStatusChangeKeepsCustody: vi.fn() }));
+vi.mock("@/lib/team-actor", () => ({ assertActiveTeamActor: vi.fn().mockResolvedValue({ id: "user-1", role: "OWNER", archivedAt: null }) }));
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     $transaction: async (fn: (tx: unknown) => unknown) => fn((await import("@/lib/prisma")).prisma),

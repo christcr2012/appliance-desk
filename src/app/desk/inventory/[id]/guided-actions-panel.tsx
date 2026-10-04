@@ -30,7 +30,7 @@ export function GuidedActionsPanel({
 }: {
   applianceId: string;
   status: ApplianceStatus;
-  inspectionChecklist: string[];
+  inspectionChecklist: { versionId: string; items: string[] };
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -89,19 +89,13 @@ export function GuidedActionsPanel({
     // clicked, so FormData needs the submitter passed explicitly —
     // without it, a clicked submit button's own name/value isn't
     // included in the constructed FormData.
-    const submitter = (e.nativeEvent as SubmitEvent).submitter as
-      | HTMLButtonElement
-      | null;
-    const data = new FormData(e.currentTarget, submitter ?? undefined);
-    const passed = data.get("passed") === "yes";
-    const checklist = inspectionChecklist.map((item) => ({
-      item,
-      checked: data.get(`check-${item}`) === "on",
-    }));
+    const data = new FormData(e.currentTarget);
+    const answers = inspectionChecklist.items.map((_, i) => data.get(`check-${i}`) === "on");
     startTransition(async () => {
       const result = await recordInspectionAction(applianceId, {
-        passed,
-        checklist,
+        expectedChecklistVersionId: inspectionChecklist.versionId,
+        answers,
+        overrideReason: String(data.get("overrideReason") ?? ""),
         notes: String(data.get("notes") ?? ""),
         condition: String(data.get("condition") ?? ""),
       });
@@ -229,17 +223,31 @@ export function GuidedActionsPanel({
           className="mt-4 space-y-3 border-t border-gray-100 pt-4"
         >
           <p className="text-sm text-gray-600">
-            A pass sends it back to Available; a fail sends it to Maintenance — same as
-            the checklist Chris uses in the field.
+            Check every item that is OK. If every item is checked it goes back to Available.
+            If any item is left unchecked it goes to Maintenance, unless you pass it on
+            purpose below. The result is worked out for you, and a saved inspection cannot be edited.
           </p>
           <fieldset className="space-y-1">
-            {inspectionChecklist.map((item) => (
-              <label key={item} className="flex items-center gap-2 text-sm text-gray-700">
-                <input type="checkbox" name={`check-${item}`} className="rounded" />
+            <legend className="sr-only">Inspection checklist</legend>
+            {inspectionChecklist.items.map((item, i) => (
+              <label key={i} className="flex items-center gap-2 text-sm text-gray-700">
+                <input type="checkbox" name={`check-${i}`} className="rounded" />
                 {item}
               </label>
             ))}
           </fieldset>
+          <div>
+            <label htmlFor="overrideReason" className="block text-sm font-medium text-gray-700">
+              Pass it anyway: why? (optional)
+            </label>
+            <input
+              id="overrideReason"
+              name="overrideReason"
+              type="text"
+              placeholder="Only if an item is unchecked and you are sure it is fine"
+              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+            />
+          </div>
           <div>
             <label htmlFor="condition" className="block text-sm font-medium text-gray-700">
               Condition after inspection
@@ -260,21 +268,10 @@ export function GuidedActionsPanel({
           <div className="flex gap-2">
             <button
               type="submit"
-              name="passed"
-              value="yes"
               disabled={isPending}
-              className="rounded-md bg-green-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-800 disabled:opacity-50"
+              className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
             >
-              {isPending ? "Saving…" : "Passed"}
-            </button>
-            <button
-              type="submit"
-              name="passed"
-              value="no"
-              disabled={isPending}
-              className="rounded-md bg-red-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-800 disabled:opacity-50"
-            >
-              {isPending ? "Saving…" : "Failed"}
+              {isPending ? "Saving…" : "Record inspection"}
             </button>
           </div>
         </form>

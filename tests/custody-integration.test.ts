@@ -192,14 +192,20 @@ describe.skipIf(!enabled)("custody episodes", () => {
   });
 
   it("custody-status-invariants-guided: retiring or passing inspection cannot leave a customer-held unit in the shop", async () => {
-    const { retireAppliance, recordApplianceInspection } = await import("@/domains/inventory/guided-actions");
+    const { retireAppliance, recordApplianceInspection, getInspectionChecklist } = await import("@/domains/inventory/guided-actions");
     const owner = (await prisma.user.findFirstOrThrow({ where: { role: "OWNER" } })).id;
     const held = await unit("RENTED");
     await prisma.applianceCustodyEpisode.create({ data: { applianceId: held, customerId, startEvidence: "MANUAL" } });
     await expect(retireAppliance(owner, held, "Lost")).rejects.toThrow(/pickup job/);
     expect(await prisma.appliance.findUniqueOrThrow({ where: { id: held } }).then((a) => a.status)).toBe("RENTED");
     await prisma.appliance.update({ where: { id: held }, data: { status: "AWAITING_INSPECTION" } });
-    await expect(recordApplianceInspection(owner, held, { passed: true, checklist: [], notes: undefined })).rejects.toThrow(/pickup job/);
+    const checklist = await getInspectionChecklist();
+    await expect(
+      recordApplianceInspection(owner, held, {
+        expectedChecklistVersionId: checklist.versionId,
+        answers: checklist.items.map(() => true),
+      }),
+    ).rejects.toThrow(/pickup job/);
     expect(await prisma.appliance.findUniqueOrThrow({ where: { id: held } }).then((a) => a.status)).toBe("AWAITING_INSPECTION");
     expect(await prisma.applianceInspection.count({ where: { applianceId: held } })).toBe(0);
   });
