@@ -1,3 +1,4 @@
+import { allocateAssetNumbers, buildAssetNumber } from "./asset-numbers";
 import { requireRole } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import type { ApplianceStatus } from "@prisma/client";
@@ -62,11 +63,7 @@ export function assetNumberPrefix(applianceTypeName: string): string {
     .toUpperCase();
 }
 
-/** Pure — formats a prefix + sequence into an asset number, e.g.
- * ("WASH", 3) -> "WASH-0003". Exported for testing. */
-export function buildAssetNumber(prefix: string, sequence: number): string {
-  return `${prefix}-${String(sequence).padStart(4, "0")}`;
-}
+export { buildAssetNumber };
 
 export async function getApplianceCountsByStatus(): Promise<
   Record<ApplianceStatus, number>
@@ -185,55 +182,47 @@ export async function createApplianceUnits(
   });
 
   const prefix = assetNumberPrefix(applianceType.name);
-  const created = [];
 
-  for (let i = 0; i < input.quantity; i += 1) {
-    // Each unit's uniqueness check depends on the previous unit already
-    // being created, so this loop runs sequentially on purpose — quantities
-    // are small (a handful of units at a time), never a bulk-import size
-    // that would need batching.
-    let sequence = 1;
-    let assetNumber = buildAssetNumber(prefix, sequence);
-    while (await prisma.appliance.findUnique({ where: { assetNumber } })) {
-      sequence += 1;
-      assetNumber = buildAssetNumber(prefix, sequence);
-    }
-
-    const unit = await prisma.appliance.create({
-      data: {
-        assetNumber,
-        applianceTypeId: input.applianceTypeId,
-        manufacturer: input.manufacturer || null,
-        model: input.model || null,
-        serialNumber: input.quantity === 1 ? input.serialNumber || null : null,
-        color: input.color || null,
-        features:
-          input.features && input.features.length > 0 ? input.features : [],
-        condition: input.condition || null,
-        purchaseDate: input.purchaseDate ?? null,
-        acquisitionCostCents: input.acquisitionCostCents ?? null,
-        currentLocation: input.currentLocation || null,
-        notes: input.notes || null,
-      },
-    });
-
-    await prisma.auditLog.create({
-      data: {
-        userId,
-        action: "appliance.unit.create",
-        entityType: "Appliance",
-        entityId: unit.id,
-        newValue: {
-          assetNumber: unit.assetNumber,
+  // One transaction: the counter, every unit and every audit row commit or roll back together.
+  return prisma.$transaction(async (tx) => {
+    const assetNumbers = await allocateAssetNumbers(tx, prefix, input.quantity);
+    const created = [];
+    for (const assetNumber of assetNumbers) {
+      const unit = await tx.appliance.create({
+        data: {
+          assetNumber,
           applianceTypeId: input.applianceTypeId,
+          manufacturer: input.manufacturer || null,
+          model: input.model || null,
+          serialNumber: input.quantity === 1 ? input.serialNumber || null : null,
+          color: input.color || null,
+          features:
+            input.features && input.features.length > 0 ? input.features : [],
+          condition: input.condition || null,
+          purchaseDate: input.purchaseDate ?? null,
+          acquisitionCostCents: input.acquisitionCostCents ?? null,
+          currentLocation: input.currentLocation || null,
+          notes: input.notes || null,
         },
-      },
-    });
+      });
 
-    created.push(unit);
-  }
+      await tx.auditLog.create({
+        data: {
+          userId,
+          action: "appliance.unit.create",
+          entityType: "Appliance",
+          entityId: unit.id,
+          newValue: {
+            assetNumber: unit.assetNumber,
+            applianceTypeId: input.applianceTypeId,
+          },
+        },
+      });
 
-  return created;
+      created.push(unit);
+    }
+    return created;
+  });
 }
 
 export type ApplianceDetailsUpdate = Partial<{

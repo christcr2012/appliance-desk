@@ -395,6 +395,28 @@ export async function updatePickupBillingAction(
   return { status: "success" };
 }
 
+/** Visits and scheduling: the usual visit length (Batch C P1-A). Owners and admins. */
+export async function updateJobSchedulingAction(
+  raw: Record<string, unknown>,
+): Promise<SettingsActionState> {
+  const session = await requireRole("OWNER", "ADMIN");
+  const { jobSchedulingUpdate } = await import("@/domains/settings/job-scheduling");
+  const parsed = jobSchedulingUpdate(raw);
+  if (!parsed.success) return { status: "error", message: parsed.message };
+  try {
+    await updateBusinessSettings(session.user.id, parsed.update);
+  } catch {
+    return {
+      status: "error",
+      message:
+        "Settings could not be saved. Your changes are still in the form; please try again.",
+    };
+  }
+  revalidatePath("/desk/settings");
+  revalidatePath("/desk/dispatch");
+  return { status: "success" };
+}
+
 /** The owner's master switch for emails to customers. Owner only. */
 export async function setCustomerEmailAction(enabled: boolean): Promise<SettingsActionState> {
   const session = await requireRole("OWNER");

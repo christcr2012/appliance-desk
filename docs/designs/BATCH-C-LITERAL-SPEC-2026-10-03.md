@@ -10,6 +10,27 @@ Docs only: no application code was written for this document.
 The shape follows `docs/prompts/DESIGN-BATCH-C-LITERAL-SPECS.md`: Part 1 (no billing) and Part 2 (custody and
 service work), then the missing-item subscription rule, the blocked billing interface, tests and stop-and-ask list.
 
+## Drift checks (one per slice, written before that slice's code)
+
+### Drift check — P1-A scheduling and P1-B asset numbers — 2026-10-03 (Claude Sonnet 5.5, at `main` e0a448f + PR #169)
+
+Verified against the code, not assumed:
+- `ASSUMED_JOB_DURATION_MINUTES = 120` is at `src/domains/jobs/dispatch.ts:16`; `findConflictingJobIds` (same file) is called
+  from `src/app/desk/dispatch/page.tsx:116` and `getDispatchBoardJobs` pads its candidate window with the constant
+  (`src/domains/jobs/index.ts`). Tests that call it: `tests/dispatch-board.test.ts`, `dispatch-persistence-integration.test.ts`,
+  `dispatch-calendar-recovery.test.tsx`. **No difference from the spec**; the new signature is `findConflictingJobIds(jobs, defaultMinutes)`
+  and every caller is updated in the same commit.
+- `createJob` (`jobs/index.ts:187`) has one caller, `src/app/desk/jobs/actions.ts`. It already locks nothing and has no assignee. Spec fits.
+- `updateJobStatus`, `updateJobChecklist`, `setJobRepairCosts` are the other domain writes to a job; the spec's `Job.version` rule
+  means each of them increments `version` (they are listed as part of this slice's work).
+- `createApplianceUnits` (`inventory/index.ts:179`) scans from sequence 1 with a `findUnique` loop and is not one transaction;
+  one caller (`src/app/desk/inventory/actions.ts`). Spec fits. The domain function has no role check of its own (the action does);
+  the slice keeps that and does not widen scope.
+- Schema: `Job` has no `assignedToUserId`, `durationMinutes`, `version`, `noShowAt`; `BusinessSettings` has no
+  `defaultJobDurationMinutes`; no `AssetNumberCounter`. Latest migration is `20261003280000_late_delivery_credit`, so
+  `20261003290000` and `20261003300000` are free.
+- No decision-level conflict (money, statuses, permissions, database design). Proceed as written.
+
 ## Review pass — 2026-10-03 (Claude Fable 5.1, docs only)
 
 Every file and line the spec cites was opened at head 3d71449 (branch `ai/claude/pickup-billing-rules`, which this

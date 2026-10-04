@@ -129,3 +129,12 @@ export async function reactivateStaffAccount(
     });
   });
 }
+
+/** Active team members a visit can be assigned to (owner, admins and staff). */
+export async function getAssignableTeamMembers() {
+  return prisma.user.findMany({
+    where: { role: { in: ["OWNER", "ADMIN", "STAFF"] }, archivedAt: null },
+    orderBy: [{ name: "asc" }, { email: "asc" }],
+    select: { id: true, name: true, email: true },
+  });
+}

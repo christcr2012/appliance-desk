@@ -5,6 +5,7 @@ export const SETTINGS_SECTIONS = [
   { id: "policies", label: "Rental policies" },
   { id: "terms", label: "Ending and renewing rentals" },
   { id: "pickups", label: "Pickups and deliveries" },
+  { id: "jobs", label: "Visits and scheduling" },
   { id: "website", label: "Website" },
   { id: "notifications", label: "Notifications" },
   { id: "staff", label: "Staff" },

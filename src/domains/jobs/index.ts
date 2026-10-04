@@ -14,7 +14,13 @@ import {
 } from "@/domains/billing/pickup-billing-events";
 import { parseChecklist, type ChecklistItem } from "./checklist";
 import { businessDayBounds } from "@/lib/business-date";
-import { ASSUMED_JOB_DURATION_MINUTES } from "./dispatch";
+import { MAX_JOB_DURATION_MINUTES } from "./dispatch";
+import {
+  checkConfirmedConflicts,
+  lockUsersForScheduling,
+  readDefaultJobMinutes,
+  validateDurationMinutes,
+} from "./scheduling";
 import { assertActiveTeamActor } from "@/lib/team-actor";
 
 export { sendJobDayOfReminders } from "./day-of-reminders";
@@ -47,6 +53,11 @@ const JOB_OPERATIONAL_SELECT = {
   type: true,
   status: true,
   scheduledAt: true,
+  assignedToUserId: true,
+  durationMinutes: true,
+  version: true,
+  noShowAt: true,
+  assignedTo: { select: { id: true, name: true, email: true } },
   completedAt: true,
   createdAt: true,
   notes: true,
@@ -182,11 +193,40 @@ export type NewJobInput = {
   maintenanceRequestId?: string | null;
   applianceIds?: string[];
   notes?: string | null;
+  assignedToUserId?: string | null;
+  durationMinutes?: number | null;
+  /** Visits the person has already agreed to overlap; anything else that conflicts is refused. */
+  confirmedConflictJobIds?: readonly string[];
 };
 
 export async function createJob(userId: string, input: NewJobInput) {
   return prisma.$transaction(async (tx) => {
+    // Lock order (spec section 0): the people involved first, then everything else.
+    await lockUsersForScheduling(tx, [userId, input.assignedToUserId]);
     await assertActiveTeamActor(tx, userId, ["OWNER", "ADMIN"]);
+    return createJobInTx(tx, userId, input);
+  });
+}
+
+/** Everything after the actor check, for callers that already hold the user locks in a transaction. */
+export async function createJobInTx(tx: Prisma.TransactionClient, userId: string, input: NewJobInput) {
+    const durationMinutes = validateDurationMinutes(input.durationMinutes);
+    if (input.assignedToUserId) {
+      const assignee = await tx.user.findUnique({
+        where: { id: input.assignedToUserId },
+        select: { role: true, archivedAt: true },
+      });
+      if (!assignee || assignee.archivedAt || !["OWNER", "ADMIN", "STAFF"].includes(assignee.role)) {
+        throw new Error("Choose an active team member to do this visit.");
+      }
+    }
+    const overriddenConflictJobIds = await checkConfirmedConflicts(tx, {
+      assigneeUserId: input.assignedToUserId ?? null,
+      scheduledAt: input.scheduledAt ?? null,
+      durationMinutes,
+      excludeJobId: null,
+      confirmedConflictJobIds: input.confirmedConflictJobIds ?? [],
+    });
 
     if (input.serviceAddressId) {
       const address = await tx.serviceAddress.findUnique({
@@ -227,6 +267,8 @@ export async function createJob(userId: string, input: NewJobInput) {
       data: {
         type: input.type,
         scheduledAt: input.scheduledAt ?? null,
+        assignedToUserId: input.assignedToUserId || null,
+        durationMinutes,
         customerId: input.customerId || null,
         serviceAddressId: input.serviceAddressId || null,
         agreementId: input.agreementId || null,
@@ -246,12 +288,16 @@ export async function createJob(userId: string, input: NewJobInput) {
         action: "job.create",
         entityType: "Job",
         entityId: job.id,
-        newValue: { type: input.type, customerId: input.customerId },
+        newValue: {
+          type: input.type,
+          customerId: input.customerId,
+          ...(input.assignedToUserId ? { assignedToUserId: input.assignedToUserId } : {}),
+          ...(overriddenConflictJobIds.length > 0 ? { overriddenConflictJobIds } : {}),
+        },
       },
     });
 
     return job;
-  });
 }
 
 export type CompleteJobOptions = {
@@ -286,6 +332,7 @@ export async function updateJobStatus(
       where: { id: jobId, status: before.status },
       data: {
         status: newStatus,
+        version: { increment: 1 },
         completedAt,
         performedOn,
         completionNotes:
@@ -522,6 +569,7 @@ export async function setJobRepairCosts(
       data: {
         partsCostCents: costs.partsCostCents,
         laborCostCents: costs.laborCostCents,
+        version: { increment: 1 },
       },
     });
     await tx.auditLog.create({
@@ -539,8 +587,8 @@ export async function setJobRepairCosts(
 
 export async function getDispatchBoardJobs(rangeStart: Date, rangeEnd: Date) {
   await requireRole("OWNER", "ADMIN", "STAFF");
-  const padding = ASSUMED_JOB_DURATION_MINUTES * 60 * 1000;
-  const [conflictCandidates, unscheduled] = await Promise.all([
+  const padding = MAX_JOB_DURATION_MINUTES * 60 * 1000;
+  const [conflictCandidates, unscheduled, defaultJobMinutes] = await Promise.all([
     prisma.job.findMany({
       where: {
         status: { in: ["SCHEDULED", "IN_PROGRESS"] },
@@ -560,6 +608,7 @@ export async function getDispatchBoardJobs(rangeStart: Date, rangeEnd: Date) {
       select: JOB_OPERATIONAL_SELECT,
       orderBy: [{ createdAt: "asc" }, { id: "asc" }],
     }),
+    readDefaultJobMinutes(prisma),
   ]);
 
   const scheduled = conflictCandidates.filter(
@@ -568,7 +617,7 @@ export async function getDispatchBoardJobs(rangeStart: Date, rangeEnd: Date) {
       job.scheduledAt >= rangeStart &&
       job.scheduledAt < rangeEnd,
   );
-  return { scheduled, unscheduled, conflictCandidates };
+  return { scheduled, unscheduled, conflictCandidates, defaultJobMinutes };
 }
 
 export async function getJobChecklist(jobId: string): Promise<ChecklistItem[]> {
@@ -592,7 +641,7 @@ export async function updateJobChecklist(
     });
     const updated = await tx.job.update({
       where: { id: jobId },
-      data: { checklist },
+      data: { checklist, version: { increment: 1 } },
     });
     await tx.auditLog.create({
       data: {

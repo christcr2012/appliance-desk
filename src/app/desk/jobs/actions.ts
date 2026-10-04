@@ -11,6 +11,14 @@ import {
   setJobRepairCosts,
   updateJobChecklist,
 } from "@/domains/jobs";
+import {
+  JobScheduleConflictError,
+  JobVersionError,
+  markJobNoShow,
+  scheduleJob,
+  type JobConflict,
+} from "@/domains/jobs/scheduling";
+import { businessDateTimeFromLocal } from "@/lib/business-date";
 import { updateApplianceStatus } from "@/domains/inventory";
 import { updateApplianceStatusAsTeamActor } from "@/domains/inventory/guarded-status";
 import type { JobStatus, JobType, ApplianceStatus } from "@prisma/client";
@@ -44,12 +52,41 @@ const newJobSchema = z.object({
   maintenanceRequestId: z.string().trim().optional().or(z.literal("")),
   applianceIds: z.array(z.string().trim().min(1)).optional(),
   notes: z.string().trim().max(2000).optional().or(z.literal("")),
+  assignedToUserId: z.string().trim().max(64).optional().or(z.literal("")),
+  durationMinutes: z.number().int().min(15).max(720).nullable().optional(),
+  confirmedConflictJobIds: z.array(z.string().trim().min(1).max(64)).max(50).optional(),
 });
+
+/** What the screen needs to show a double-booking and let the person confirm that exact list. */
+export type ScheduleConflictView = {
+  jobId: string;
+  type: string;
+  scheduledAt: string;
+  durationMinutes: number | null;
+  customerName: string | null;
+};
+
+function conflictViews(conflicts: JobConflict[]): ScheduleConflictView[] {
+  return conflicts.map((c) => ({
+    jobId: c.jobId,
+    type: c.type,
+    scheduledAt: c.scheduledAt.toISOString(),
+    durationMinutes: c.durationMinutes,
+    customerName: c.customerName,
+  }));
+}
+
+export type ScheduleActionResult =
+  | { status: "success"; jobId?: string }
+  | { status: "conflict"; message: string; conflicts: ScheduleConflictView[] }
+  | { status: "error"; message: string };
 
 export async function createJobAction(
   raw: Record<string, unknown>,
 ): Promise<
-  { status: "success"; jobId: string } | { status: "error"; message: string }
+  | { status: "success"; jobId: string }
+  | { status: "conflict"; message: string; conflicts: ScheduleConflictView[] }
+  | { status: "error"; message: string }
 > {
   const session = await requireRole("OWNER", "ADMIN");
 
@@ -62,12 +99,20 @@ export async function createJobAction(
     };
   }
   const data = parsed.data;
+  // The date-time box is Colorado clock time, never the server's own time zone.
+  const scheduledAt = data.scheduledAt ? businessDateTimeFromLocal(data.scheduledAt) : null;
+  if (data.scheduledAt && !scheduledAt) {
+    return { status: "error", message: "Choose a valid date and time (that time may not exist on a clock-change day)." };
+  }
 
   let job;
   try {
     job = await createJob(session.user.id, {
       type: data.type,
-      scheduledAt: data.scheduledAt ? new Date(data.scheduledAt) : null,
+      scheduledAt,
+      assignedToUserId: data.assignedToUserId || null,
+      durationMinutes: data.durationMinutes ?? null,
+      confirmedConflictJobIds: data.confirmedConflictJobIds ?? [],
       customerId: data.customerId || null,
       serviceAddressId: data.serviceAddressId || null,
       agreementId: data.agreementId || null,
@@ -76,6 +121,9 @@ export async function createJobAction(
       notes: data.notes || null,
     });
   } catch (error) {
+    if (error instanceof JobScheduleConflictError) {
+      return { status: "conflict", message: error.message, conflicts: conflictViews(error.conflicts) };
+    }
     return {
       status: "error",
       message:
@@ -317,5 +365,66 @@ export async function updateJobChecklistAction(
   revalidatePath(`/desk/jobs/${jobId}`);
   revalidatePath("/desk/dispatch");
   revalidatePath("/desk/activity");
+  return { status: "success" };
+}
+
+const scheduleSchema = z.object({
+  jobId: z.string().trim().min(1).max(64),
+  expectedVersion: z.number().int().min(1),
+  scheduledAt: z.string().trim().min(1),
+  durationMinutes: z.number().int().min(15).max(720).nullable(),
+  assignedToUserId: z.string().trim().max(64).nullable(),
+  confirmedConflictJobIds: z.array(z.string().trim().min(1).max(64)).max(50),
+});
+
+/** Owner/admin: change when a visit happens, how long it takes and who does it. */
+export async function scheduleJobAction(raw: Record<string, unknown>): Promise<ScheduleActionResult> {
+  const session = await requireRole("OWNER", "ADMIN");
+  const parsed = scheduleSchema.safeParse(raw);
+  if (!parsed.success) {
+    return { status: "error", message: parsed.error.issues[0]?.message ?? "Please check the fields and try again." };
+  }
+  const when = businessDateTimeFromLocal(parsed.data.scheduledAt);
+  if (!when) {
+    return { status: "error", message: "Choose a valid date and time (that time may not exist on a clock-change day)." };
+  }
+  try {
+    await scheduleJob(session.user.id, {
+      jobId: parsed.data.jobId,
+      expectedVersion: parsed.data.expectedVersion,
+      scheduledAt: when,
+      durationMinutes: parsed.data.durationMinutes,
+      assignedToUserId: parsed.data.assignedToUserId || null,
+      confirmedConflictJobIds: parsed.data.confirmedConflictJobIds,
+    });
+  } catch (error) {
+    if (error instanceof JobScheduleConflictError) {
+      return { status: "conflict", message: error.message, conflicts: conflictViews(error.conflicts) };
+    }
+    if (error instanceof JobVersionError) return { status: "error", message: error.message };
+    return { status: "error", message: error instanceof Error ? error.message : "Couldn't reschedule that visit." };
+  }
+  revalidatePath("/desk/jobs");
+  revalidatePath(`/desk/jobs/${parsed.data.jobId}`);
+  revalidatePath("/desk/dispatch");
+  revalidatePath("/desk/today");
+  return { status: "success" };
+}
+
+/** Nobody was there: cancel the visit and mark it as a no-show. Nothing else changes. */
+export async function markJobNoShowAction(jobId: string, expectedVersion: number): Promise<JobActionState> {
+  const session = await requireRole("OWNER", "ADMIN", "STAFF");
+  if (typeof jobId !== "string" || jobId.length === 0 || jobId.length > 64 || !Number.isInteger(expectedVersion)) {
+    return { status: "error", message: "Couldn't find that job." };
+  }
+  try {
+    await markJobNoShow(session.user.id, jobId, expectedVersion);
+  } catch (error) {
+    return { status: "error", message: error instanceof Error ? error.message : "Couldn't mark that visit." };
+  }
+  revalidatePath("/desk/jobs");
+  revalidatePath(`/desk/jobs/${jobId}`);
+  revalidatePath("/desk/dispatch");
+  revalidatePath("/desk/today");
   return { status: "success" };
 }

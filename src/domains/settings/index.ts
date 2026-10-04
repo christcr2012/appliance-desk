@@ -56,6 +56,7 @@ const DEFAULT_SETTINGS = {
   lateDeliveryProrationBasis: "MONTHLY_DIV_30",
   earlyReturnProrationBasis: "MONTHLY_DIV_30", // deprecated column, never read
   pickupDayNotBilled: true,
+  defaultJobDurationMinutes: 120,
   updatedAt: new Date(0),
 };
 
@@ -140,6 +141,8 @@ export type BusinessSettingsUpdate = Partial<{
   lateReturnFixedDailyCents: number;
   lateDeliveryProrationBasis: string;
   pickupDayNotBilled: boolean;
+  // Visits and scheduling (Batch C P1-A).
+  defaultJobDurationMinutes: number;
 }>;
 
 /**

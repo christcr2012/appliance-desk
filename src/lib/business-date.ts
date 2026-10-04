@@ -73,6 +73,49 @@ export function businessDateFromKey(key: string): Date | null {
   return midnight(key);
 }
 
+const wallClock = new Intl.DateTimeFormat("en-US", {
+  timeZone: BUSINESS_TIME_ZONE,
+  hourCycle: "h23",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
+/**
+ * Turn what a person typed into a date-time box ("2026-03-08T09:30", read as Colorado clock time)
+ * into the real instant. Returns null for malformed input and for a time that does not exist
+ * (the hour skipped when clocks spring forward). For the repeated hour in fall-back it picks the
+ * first occurrence. Never uses the server's own time zone.
+ */
+export function businessDateTimeFromLocal(value: string): Date | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(value);
+  if (!match) return null;
+  const [, y, mo, d, h, mi] = match;
+  const target = Date.UTC(Number(y), Number(mo) - 1, Number(d), Number(h), Number(mi));
+  const check = new Date(target);
+  if (
+    check.getUTCFullYear() !== Number(y) || check.getUTCMonth() !== Number(mo) - 1 ||
+    check.getUTCDate() !== Number(d) || check.getUTCHours() !== Number(h) || check.getUTCMinutes() !== Number(mi)
+  ) {
+    return null;
+  }
+  const wallOf = (instant: number) => {
+    const parts = wallClock.formatToParts(new Date(instant));
+    const part = (type: string) => Number(parts.find((p) => p.type === type)!.value);
+    return Date.UTC(part("year"), part("month") - 1, part("day"), part("hour"), part("minute"));
+  };
+  // Candidate offsets: the offset in effect a day before and a day after bracket any transition.
+  const offsets = new Set<number>();
+  for (const probe of [target - 86_400_000, target + 86_400_000]) offsets.add(wallOf(probe) - probe);
+  const matches = [...offsets]
+    .map((offset) => target - offset)
+    .filter((instant) => wallOf(instant) === target)
+    .sort((a, b) => a - b);
+  return matches.length > 0 ? new Date(matches[0]) : null;
+}
+
 /**
  * Resolve the last whole second of a Colorado business date. This is safe
  * across DST transitions because the next local midnight is resolved first;

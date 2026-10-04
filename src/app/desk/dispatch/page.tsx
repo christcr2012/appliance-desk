@@ -45,7 +45,7 @@ function customerLabel(job: BoardJob): string {
     : "No customer on file";
 }
 
-function JobRow({ job, conflicted }: { job: BoardJob; conflicted: boolean }) {
+function JobRow({ job, conflicted, defaultMinutes }: { job: BoardJob; conflicted: boolean; defaultMinutes: number }) {
   const progress = checklistProgress(parseChecklist(job.checklist, job.type));
   return (
     <li>
@@ -67,11 +67,17 @@ function JobRow({ job, conflicted }: { job: BoardJob; conflicted: boolean }) {
               ? `${job.serviceAddress.line1}, ${job.serviceAddress.city}`
               : "No address on file"}
           </p>
+          <p className="text-gray-700">
+            {job.assignedTo ? `Assigned to ${job.assignedTo.name ?? job.assignedTo.email}` : "Nobody assigned"}
+            {" · "}
+            {job.durationMinutes ? `${job.durationMinutes} minutes` : `usual length (${defaultMinutes} minutes)`}
+          </p>
         </div>
         <div className="text-xs text-gray-500 sm:text-right">
           {conflicted && (
             <p className="font-medium text-amber-700">
               ⚠ Double-booked around this time
+              {job.assignedTo ? ` for ${job.assignedTo.name ?? job.assignedTo.email}` : " (no one assigned)"}
             </p>
           )}
           {progress.total > 0 && (
@@ -111,13 +117,16 @@ export default async function DispatchPage({
     rangeEnd = addDays(anchor, 14);
   }
 
-  const { scheduled, unscheduled, conflictCandidates } =
+  const { scheduled, unscheduled, conflictCandidates, defaultJobMinutes } =
     await getDispatchBoardJobs(rangeStart, rangeEnd);
   const conflicting = findConflictingJobIds(
     conflictCandidates.map((j): DispatchableJob => ({
       id: j.id,
       scheduledAt: j.scheduledAt,
+      assignedToUserId: j.assignedToUserId,
+      durationMinutes: j.durationMinutes,
     })),
+    defaultJobMinutes,
   );
 
   const jobsByDay = new Map<string, typeof scheduled>();
@@ -209,7 +218,7 @@ export default async function DispatchPage({
           </p>
           <ul className="mt-3 space-y-2">
             {unscheduled.map((job) => (
-              <JobRow key={job.id} job={job} conflicted={false} />
+              <JobRow key={job.id} job={job} conflicted={false} defaultMinutes={defaultJobMinutes} />
             ))}
           </ul>
         </div>
@@ -236,6 +245,7 @@ export default async function DispatchPage({
                   key={job.id}
                   job={job}
                   conflicted={conflicting.has(job.id)}
+                  defaultMinutes={defaultJobMinutes}
                 />
               ))}
             </ul>
@@ -322,6 +332,7 @@ export default async function DispatchPage({
                         key={job.id}
                         job={job}
                         conflicted={conflicting.has(job.id)}
+                        defaultMinutes={defaultJobMinutes}
                       />
                     ))}
                   </ul>

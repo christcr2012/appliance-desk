@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 const m = vi.hoisted(() => ({ jobs: vi.fn() }));
-vi.mock("@/lib/prisma", () => ({ prisma: { job: { findMany: m.jobs } } }));
+vi.mock("@/lib/prisma", () => ({
+  prisma: { job: { findMany: m.jobs }, businessSettings: { findUnique: async () => ({ defaultJobDurationMinutes: 120 }) } },
+}));
 vi.mock("@/lib/session", () => ({
   requireRole: async () => ({ user: { role: "OWNER" } }),
 }));
@@ -73,8 +75,8 @@ it("flags adjacent-day conflicts while returning only visible-day jobs", async (
     new Set(["before", "visible"]),
   );
   expect(m.jobs.mock.calls[0][0].where.scheduledAt).toEqual({
-    gte: new Date("2026-10-01T04:00:00Z"),
-    lt: new Date("2026-10-02T08:00:00Z"),
+    gte: new Date("2026-09-30T18:00:00Z"),
+    lt: new Date("2026-10-02T18:00:00Z"),
   });
 });
 it("renders Colorado day/time and a boundary conflict without leaking adjacent jobs", async () => {
@@ -95,6 +97,8 @@ it("renders Colorado day/time and a boundary conflict without leaking adjacent j
         ...fixture,
         id: "visible",
         scheduledAt: new Date("2026-10-01T06:30:00Z"),
+        assignedTo: { id: "u1", name: "Sam Driver", email: "sam@example.test" },
+        durationMinutes: 45,
       },
     ])
     .mockResolvedValueOnce([]);
@@ -106,6 +110,9 @@ it("renders Colorado day/time and a boundary conflict without leaking adjacent j
   expect(html).toContain("Thursday, October 1");
   expect(html).toContain("12:30 AM MDT");
   expect(html).toContain("Double-booked around this time");
+  expect(html).toContain("Assigned to Sam Driver");
+  expect(html).toContain("45 minutes");
+  expect(html).toContain("for Sam Driver");
   expect(html).toContain("/desk/jobs/visible");
   expect(html).not.toContain("/desk/jobs/before");
 });

@@ -91,7 +91,7 @@ describe("desk query permissions", () => {
     mocks.updateJob.mockResolvedValue({});
     const checklist = [{ item: "Operational check", checked: true }];
     expect(await updateJobChecklistAction("j-1", checklist)).toEqual({ status: "success" });
-    expect(mocks.updateJob).toHaveBeenCalledWith({ where: { id: "j-1" }, data: { checklist } });
+    expect(mocks.updateJob).toHaveBeenCalledWith({ where: { id: "j-1" }, data: { checklist, version: { increment: 1 } } });
     expect(mocks.audit).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ action: "job.checklist.update", userId: "staff-1" }) }),
     );

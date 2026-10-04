@@ -3,12 +3,36 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getDeskJobById } from "@/domains/desk-access";
 import { JobDetailPanel } from "./job-detail-panel";
+import { JobSchedulePanel } from "./job-schedule-panel";
+import { getAssignableTeamMembers } from "@/domains/staff";
+import { formatBusinessDate, formatBusinessTime } from "@/lib/business-date";
 import { privatePhotoReadPath } from "@/lib/photo-storage";
 import { deliveryCandidatesForJob } from "@/domains/jobs";
 import { pendingDeliveriesForJob } from "@/domains/billing/pickup-billing-events";
 import { businessDateKey } from "@/lib/business-date";
 
 export const metadata = { title: "Job" };
+
+/** An instant as the Colorado clock reading a date-time box expects (YYYY-MM-DDTHH:mm). */
+function denverLocalInput(date: Date): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Denver",
+    hourCycle: "h23",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).formatToParts(date);
+  const part = (type: string) => parts.find((p) => p.type === type)!.value;
+  return `${part("year")}-${part("month")}-${part("day")}T${part("hour")}:${part("minute")}`;
+}
+
+function assignedLabel(id: string | null, team: Array<{ id: string; name: string | null; email: string }>): string | null {
+  if (!id) return null;
+  const member = team.find((m) => m.id === id);
+  return member ? (member.name ?? member.email) : "Assigned";
+}
 
 export default async function JobDetailPage({
   params,
@@ -23,7 +47,8 @@ export default async function JobDetailPage({
   if (!job) {
     notFound();
   }
-  const [deliveryCandidates, pendingDeliveries] = await Promise.all([
+  const [teamMembers, deliveryCandidates, pendingDeliveries] = await Promise.all([
+    canViewFinance ? getAssignableTeamMembers() : Promise.resolve([]),
     deliveryCandidatesForJob({ id: job.id, type: job.type, status: job.status, agreementId: job.agreementId }),
     pendingDeliveriesForJob(job.id),
   ]);
@@ -59,6 +84,23 @@ export default async function JobDetailPage({
           </Link>
         </p>
       )}
+
+      <div className="mt-6">
+        <JobSchedulePanel
+          jobId={job.id}
+          version={job.version}
+          status={job.status}
+          scheduledAtLocal={job.scheduledAt ? denverLocalInput(job.scheduledAt) : ""}
+          scheduledLabel={job.scheduledAt ? `${formatBusinessDate(job.scheduledAt)} at ${formatBusinessTime(job.scheduledAt)}` : null}
+          durationMinutes={job.durationMinutes}
+          assignedToUserId={job.assignedToUserId}
+          assignedLabel={assignedLabel(job.assignedToUserId, teamMembers)}
+          teamMembers={teamMembers.map((m) => ({ id: m.id, label: m.name ?? m.email }))}
+          canSchedule={canViewFinance}
+          canMarkNoShow={canViewFinance || job.assignedToUserId === session.user.id}
+          noShowAt={"noShowAt" in job && job.noShowAt ? job.noShowAt.toISOString() : null}
+        />
+      </div>
 
       <div className="mt-6">
         <JobDetailPanel deliveryCandidates={deliveryCandidates} pendingDeliveries={pendingDeliveries.map((p) => ({
