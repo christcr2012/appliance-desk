@@ -10,7 +10,7 @@ import { getAllPartRecords } from "@/domains/inventory";
 import { getAssignableTeamMembers } from "@/domains/staff";
 import { formatBusinessDate, formatBusinessTime } from "@/lib/business-date";
 import { privatePhotoReadPath } from "@/lib/photo-storage";
-import { deliveryCandidatesForJob } from "@/domains/jobs";
+import { getJobCompletionScope } from "@/domains/jobs";
 import { pendingDeliveriesForJob } from "@/domains/billing/pickup-billing-events";
 import { businessDateKey } from "@/lib/business-date";
 
@@ -51,11 +51,11 @@ export default async function JobDetailPage({
     notFound();
   }
   const showParts = canViewFinance && job.type === "MAINTENANCE_VISIT";
-  const [teamMembers, partsUsed, partOptions, deliveryCandidates, pendingDeliveries] = await Promise.all([
+  const [teamMembers, partsUsed, partOptions, completionScope, pendingDeliveries] = await Promise.all([
     canViewFinance ? getAssignableTeamMembers() : Promise.resolve([]),
     showParts ? getJobPartsUsed(job.id) : Promise.resolve(null),
     showParts ? getAllPartRecords() : Promise.resolve([]),
-    deliveryCandidatesForJob({ id: job.id, type: job.type, status: job.status, agreementId: job.agreementId }),
+    getJobCompletionScope({ id: job.id, type: job.type, status: job.status, agreementId: job.agreementId }),
     pendingDeliveriesForJob(job.id),
   ]);
 
@@ -124,7 +124,7 @@ export default async function JobDetailPage({
       )}
 
       <div className="mt-6">
-        <JobDetailPanel partsFromList={partsUsed?.cost.source === "ITEMIZED"} deliveryCandidates={deliveryCandidates} pendingDeliveries={pendingDeliveries.map((p) => ({
+        <JobDetailPanel partsFromList={partsUsed?.cost.source === "ITEMIZED"} completionScope={completionScope} version={job.version} outcome={"outcome" in job ? (job.outcome ?? null) : null} pendingDeliveries={pendingDeliveries.map((p) => ({
           id: p.id,
           label: `${p.appliance.applianceType.name} #${p.appliance.assetNumber}`,
           originalDeliveryDate: businessDateKey(p.originalDeliveryDate),
@@ -135,7 +135,7 @@ export default async function JobDetailPage({
           id: job.id, type: job.type, status: job.status,
           completionNotes: job.completionNotes, checklist: job.checklist,
           swapReplacementIds: job.swapReplacementIds,
-          appliances: job.appliances.map(({ appliance }) => ({ appliance: {
+          appliances: job.appliances.map(({ appliance, result, role }) => ({ result: result ?? null, role, appliance: {
             id: appliance.id, assetNumber: appliance.assetNumber, status: appliance.status,
             applianceType: { name: appliance.applianceType.name },
           } })),

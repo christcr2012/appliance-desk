@@ -28,7 +28,8 @@ export type ExceptionCategory =
   | "RENEWAL_NOT_STARTED"
   | "EARLY_ENDING_NOT_DONE"
   | "NOTICE_WAITING"
-  | "ITEM_NOT_DELIVERED";
+  | "ITEM_NOT_DELIVERED"
+  | "CUSTODY_UNKNOWN";
 
 export type ExceptionSeverity = "high" | "medium";
 
@@ -112,6 +113,22 @@ export function itemNotDeliveredException(item: {
       "The customer is billed for it from the original delivery date. Schedule a delivery job for it; completing that job credits the customer for the days it was missing.",
     href: `/desk/jobs/${item.originalJobId}`,
     since: item.originalDeliveryDate,
+  };
+}
+
+/**
+ * An appliance is marked as out with a customer (or waiting to be picked up) but the system cannot tell
+ * which customer has it. The owner records who has it (a manual custody entry) on the appliance page.
+ */
+export function custodyUnknownException(appliance: { id: string; label: string; since: Date }): ExceptionItem {
+  return {
+    category: "CUSTODY_UNKNOWN",
+    severity: "medium",
+    title: `We don't know which customer has ${appliance.label}`,
+    detail:
+      "It is marked as rented, but no delivery record says who has it. Open it and record which customer it is with, so pickups and repairs can find it.",
+    href: `/desk/inventory/${appliance.id}`,
+    since: appliance.since,
   };
 }
 

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { formatBusinessDate } from "@/lib/business-date";
 import type { Prisma } from "@prisma/client";
 import { canTransitionApplianceStatus, applianceStatusAfterInspection, DEFAULT_INSPECTION_CHECKLIST } from "./lifecycle";
 import { getBusinessSettings } from "@/domains/settings";
@@ -368,7 +369,7 @@ export async function recordApplianceInspection(
 
 export type ApplianceHistoryEntry = {
   id: string;
-  kind: "status_change" | "job" | "inspection";
+  kind: "status_change" | "job" | "inspection" | "custody";
   summary: string;
   detail: string | null;
   createdAt: Date;
@@ -378,7 +379,7 @@ export type ApplianceHistoryEntry = {
  * change (from the audit log), every job it's been on, and every
  * recorded inspection — merged and sorted, newest first. */
 export async function getApplianceHistory(applianceId: string): Promise<ApplianceHistoryEntry[]> {
-  const [auditEntries, jobLinks, inspections] = await Promise.all([
+  const [auditEntries, jobLinks, inspections, custody] = await Promise.all([
     prisma.auditLog.findMany({
       where: { entityType: "Appliance", entityId: applianceId },
       orderBy: [{ createdAt: "desc" }],
@@ -393,7 +394,36 @@ export async function getApplianceHistory(applianceId: string): Promise<Applianc
       where: { applianceId },
       orderBy: [{ createdAt: "desc" }],
     }),
+    prisma.applianceCustodyEpisode.findMany({
+      where: { applianceId },
+      include: { customer: { select: { user: { select: { name: true, email: true } } } } },
+      orderBy: [{ createdAt: "desc" }],
+    }),
   ]);
+
+  const custodyEntries: ApplianceHistoryEntry[] = custody.flatMap((e) => {
+    const who = e.customer.user.name ?? e.customer.user.email;
+    const since = e.startedOn ? `since ${formatBusinessDate(e.startedOn)}` : "(start date unknown)";
+    const rows: ApplianceHistoryEntry[] = [
+      {
+        id: `custody-start-${e.id}`,
+        kind: "custody",
+        summary: `With ${who} ${since}`,
+        detail: e.startEvidence === "JOB" ? null : e.startEvidence === "MANUAL" ? "Recorded by hand." : "Estimated from an old record.",
+        createdAt: e.createdAt,
+      },
+    ];
+    if (e.closedAt) {
+      rows.push({
+        id: `custody-end-${e.id}`,
+        kind: "custody",
+        summary: `Back from ${who}${e.endedOn ? ` on ${formatBusinessDate(e.endedOn)}` : ""}`,
+        detail: e.endReason,
+        createdAt: e.closedAt,
+      });
+    }
+    return rows;
+  });
 
   const statusEntries: ApplianceHistoryEntry[] = auditEntries.map((entry) => {
     const newValue = (entry.newValue ?? {}) as { status?: string; reason?: string };
@@ -422,7 +452,7 @@ export async function getApplianceHistory(applianceId: string): Promise<Applianc
     createdAt: i.createdAt,
   }));
 
-  return [...statusEntries, ...jobEntries, ...inspectionEntries]
+  return [...statusEntries, ...jobEntries, ...inspectionEntries, ...custodyEntries]
     .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
     .slice(0, 100);
 }

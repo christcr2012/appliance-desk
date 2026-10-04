@@ -140,8 +140,11 @@ export async function getDeskJobById(id: string) {
       customer: { select: customerName },
       serviceAddress: { select: address },
       maintenanceRequest: { select: { id: true } },
+      outcome: true,
       appliances: {
         select: {
+          result: true,
+          role: true,
           appliance: {
             select: {
               id: true,

@@ -56,6 +56,7 @@ vi.mock("@/lib/prisma", () => ({
       findMany: (...args: unknown[]) => applianceInspectionFindMany(...args),
     },
     jobAppliance: { findMany: (...args: unknown[]) => jobApplianceFindMany(...args) },
+    applianceCustodyEpisode: { findMany: vi.fn().mockResolvedValue([]) },
     $transaction: (callback: (tx: ReturnType<typeof makeTx>) => unknown) => callback(makeTx()),
   },
 }));

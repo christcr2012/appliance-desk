@@ -147,6 +147,13 @@ export async function startRenewalInTx(
   }
   const pairs = pairLines(oldLines, newLines);
 
+  // Lock the units that change assignment (spec lock order: agreement, then appliances sorted by id), so a job
+  // completing for one of them at this moment waits. Custody is NOT touched: nothing physical moves.
+  const movingApplianceIds = [...new Set(oldLines.flatMap((line) => line.assignments.map((a) => a.applianceId)))].sort();
+  if (movingApplianceIds.length > 0) {
+    await tx.$queryRaw`SELECT "id" FROM "Appliance" WHERE "id" = ANY(${movingApplianceIds}) ORDER BY "id" FOR UPDATE`;
+  }
+
   let appliancesMoved = 0;
   for (const line of oldLines) {
     for (const assignment of line.assignments) {

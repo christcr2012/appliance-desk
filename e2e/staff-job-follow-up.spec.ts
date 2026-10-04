@@ -15,7 +15,7 @@ test("staff shared route completes a swap and follows up only its incoming unit"
   try {
     const type = await prisma.applianceType.findFirstOrThrow();
     await prisma.appliance.createMany({ data: ids.map((id, i) => ({ id, assetNumber: assets[i], applianceTypeId: type.id, status: i === 0 ? "MAINTENANCE" : "RESERVED", acquisitionCostCents: 932187 })) });
-    await prisma.job.create({ data: { id: jobId, type: "SWAP", status: "IN_PROGRESS", scheduledAt: new Date(), partsCostCents: 8675309, appliances: { create: ids.slice(0, 2).map(applianceId => ({ applianceId })) } } });
+    await prisma.job.create({ data: { id: jobId, type: "SWAP", status: "IN_PROGRESS", scheduledAt: new Date(), partsCostCents: 8675309, appliances: { create: ids.slice(0, 2).map((applianceId, i) => ({ applianceId, role: i === 1 ? "REPLACEMENT" as const : "PRIMARY" as const })) } } });
     await prisma.auditLog.create({ data: { action: "appliance.unit.status", entityType: "Appliance", entityId: ids[1], newValue: { jobId, reason: "Swap started", status: "RESERVED" } } });
     await page.setViewportSize({ width: 360, height: 900 });
     await page.goto("/desk/driver");
@@ -23,6 +23,8 @@ test("staff shared route completes a swap and follows up only its incoming unit"
     const card = page.locator("div.rounded-lg.border").filter({ has: page.getByText(assets[1], { exact: false }) }).filter({ has: page.getByRole("button", { name: "Mark complete", exact: true }) });
     await card.getByRole("button", { name: "Mark complete", exact: true }).click();
     await expect(page).toHaveURL(new RegExp(`/desk/jobs/${jobId}$`));
+    await page.getByRole("button", { name: "Complete job", exact: true }).click();
+    await expect(page.getByText("Status: COMPLETED")).toBeVisible();
     await expect(page.getByRole("button", { name: `Mark ${assets[0]} as Rented`, exact: true })).toHaveCount(0);
     await page.getByRole("button", { name: `Mark ${assets[1]} as Rented`, exact: true }).click();
     await expect.poll(async () => (await prisma.appliance.findUniqueOrThrow({ where: { id: ids[1] } })).status).toBe("RENTED");
@@ -36,6 +38,10 @@ test("staff shared route completes a swap and follows up only its incoming unit"
     await info.attach("staff-swap-follow-up-phone", { body: await page.screenshot({ fullPage: true }), contentType: "image/png" });
   } finally {
     await prisma.auditLog.deleteMany({ where: { entityId: { in: [...ids, jobId] } } });
+    await prisma.staffTask.deleteMany({ where: { jobId } });
+    await prisma.jobBillingHandoff.deleteMany({ where: { jobId } });
+    await prisma.applianceCustodyEpisode.deleteMany({ where: { applianceId: { in: ids } } });
+    await prisma.jobAppliance.deleteMany({ where: { jobId } });
     await prisma.job.deleteMany({ where: { id: jobId } });
     await prisma.appliance.deleteMany({ where: { id: { in: ids } } });
   }

@@ -5,7 +5,7 @@ import type { Prisma } from "@prisma/client";
 // Unknown/new actions are not silently exposed to STAFF. Finance/settings
 // counts obey the same boundary as the page entries.
 const STAFF_ACTIVITY_ACTIONS = [
-  "lead.status", "lead.note.add", "job.create", "job.status", "job.photo.add",
+  "lead.status", "lead.note.add", "job.create", "job.status", "job.complete", "job.photo.add",
   "job.checklist", "maintenance.request.create", "maintenance.create",
   "maintenance.status", "customer.create", "customer.address.add",
   "customer.note.add", "appliance.unit.status", "task.create", "task.complete", "task.reopen",
@@ -121,6 +121,7 @@ export function describeAuditAction(action: string): string {
     "agreement.cancel": "Cancelled a rental agreement",
     "job.create": "Scheduled a job",
     "job.status": "Changed a job's status",
+    "job.complete": "Completed a job",
     "job.photo.add": "Added a condition photo to a job",
     "maintenance.request.create": "A customer submitted a maintenance request",
     "maintenance.status": "Changed a maintenance request's status",

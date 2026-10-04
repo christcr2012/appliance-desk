@@ -1,6 +1,7 @@
 import { businessDayBounds } from "@/lib/business-date";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
+import { findCustodyGaps } from "@/domains/inventory/custody";
 import {
   APPLIANCE_MAINTENANCE_DUE_DAYS,
   UNINSPECTED_RETURN_DAYS,
@@ -8,6 +9,7 @@ import {
   agreementTermExpiredException,
   applianceMaintenanceDueException,
   billingBlockedException,
+  custodyUnknownException,
   earlyEndingNotDoneException,
   itemNotDeliveredException,
   noticeWaitingException,
@@ -73,6 +75,7 @@ export async function getExceptions(): Promise<ExceptionItem[]> {
     stuckEndings,
     waitingNotices,
     itemsNotDelivered,
+    custodyGaps,
   ] = await Promise.all([
     canViewFinance ? prisma.rentalAgreement.findMany({
       where: { billingBlockedReason: { not: null } },
@@ -222,9 +225,21 @@ export async function getExceptions(): Promise<ExceptionItem[]> {
         agreement: { select: { customer: { select: { user: { select: { name: true, email: true } } } } } },
       },
     }),
+    // Operational: an appliance that says it is with a customer but has no custody record.
+    findCustodyGaps(prisma).then(async (gaps) =>
+      gaps.length === 0
+        ? []
+        : prisma.appliance.findMany({
+            where: { id: { in: gaps.map((g) => g.applianceId) } },
+            select: { id: true, assetNumber: true, updatedAt: true, applianceType: { select: { name: true } } },
+          }),
+    ),
   ]);
 
   const items: ExceptionItem[] = [
+    ...custodyGaps.map((a) =>
+      custodyUnknownException({ id: a.id, label: `${a.applianceType.name} #${a.assetNumber}`, since: a.updatedAt }),
+    ),
     ...itemsNotDelivered.map((p) =>
       itemNotDeliveredException({
         originalJobId: p.originalJobId,

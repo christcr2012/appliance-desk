@@ -49,9 +49,9 @@ export function DriverJobCard({ job }: { job: DriverJob }) {
 
   function handleStatusChange(status: JobStatus) {
     setError(null);
-    // A delivery needs a result for every item (what arrived and what did not), and the date the work was done:
-    // that form lives on the job page, so the driver screen never completes a delivery by itself.
-    if (status === "COMPLETED" && (job.type === "DELIVERY" || job.type === "INSTALLATION")) {
+    // Completing a job needs a result for every item and the date the work was done: that form lives on the
+    // job page, so the driver screen never completes a job by itself.
+    if (status === "COMPLETED") {
       router.push(`/desk/jobs/${job.id}`);
       return;
     }
@@ -60,11 +60,7 @@ export function DriverJobCard({ job }: { job: DriverJob }) {
       if (result.status === "error") {
         setError(result.message);
       } else {
-        if (status === "COMPLETED" && (job.type === "SWAP" || job.type === "MAINTENANCE_VISIT")) {
-          router.push(`/desk/jobs/${job.id}`);
-        } else {
-          router.refresh();
-        }
+        router.refresh();
       }
     });
   }

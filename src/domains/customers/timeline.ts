@@ -42,6 +42,7 @@ export function summarizeAuditAction(action: string): string {
     "agreement.extend_reservation": "Reservation hold extended",
     "job.create": "Job scheduled",
     "job.status": "Job status changed",
+    "job.complete": "Job completed",
     "job.repairCosts": "Repair cost recorded on a job",
     "job.photo.add": "Photo added to a job",
     "maintenance.create": "Maintenance request submitted",

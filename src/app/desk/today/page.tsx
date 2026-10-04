@@ -50,6 +50,7 @@ const CATEGORIES: Record<ExceptionCategory, { label: string; action: string }> =
     NOTICE_WAITING: { label: "Renewal reminder waiting", action: "Send reminder" },
     EARLY_ENDING_NOT_DONE: { label: "Early ending not carried out", action: "Review ending" },
     ITEM_NOT_DELIVERED: { label: "Item not delivered yet", action: "Review delivery" },
+    CUSTODY_UNKNOWN: { label: "Who has this appliance?", action: "Record customer" },
   };
 
 export default async function TodayPage() {

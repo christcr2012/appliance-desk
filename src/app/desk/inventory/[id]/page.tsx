@@ -15,6 +15,11 @@ import { GuidedActionsPanel } from "./guided-actions-panel";
 import { HistoryTimeline } from "./history-timeline";
 import { ApplianceEarningsSummary } from "@/components/desk/appliance-earnings-summary";
 import { privatePhotoReadPath } from "@/lib/photo-storage";
+import { getOpenCustody } from "@/domains/inventory/custody";
+import { getCustomers } from "@/domains/customers";
+import { prisma } from "@/lib/prisma";
+import { formatBusinessDate } from "@/lib/business-date";
+import { CustodyPanel } from "./custody-panel";
 
 export const metadata = { title: "Appliance" };
 
@@ -32,12 +37,25 @@ export default async function ApplianceDetailPage({
     notFound();
   }
 
-  const [partRecords, profitability, history, inspectionChecklist] = await Promise.all([
+  const openCustody = await getOpenCustody(prisma, id);
+  const needsCustodyRecord =
+    !openCustody && (appliance.status === "RENTED" || appliance.status === "AWAITING_PICKUP");
+  const [partRecords, profitability, history, inspectionChecklist, custodyCustomer, customers] = await Promise.all([
     appliance.model ? getPartRecordsForModel(appliance.model) : Promise.resolve([]),
     getApplianceProfitability(id),
     getApplianceHistory(id),
     getInspectionChecklist(),
+    openCustody
+      ? prisma.customer.findUnique({
+          where: { id: openCustody.customerId },
+          select: { user: { select: { name: true, email: true } } },
+        })
+      : Promise.resolve(null),
+    needsCustodyRecord ? getCustomers() : Promise.resolve([]),
   ]);
+  const custodyAddress = openCustody?.serviceAddressId
+    ? await prisma.serviceAddress.findUnique({ where: { id: openCustody.serviceAddressId }, select: { line1: true, city: true } })
+    : null;
 
   return (
     <div className="max-w-2xl">
@@ -67,6 +85,26 @@ export default async function ApplianceDetailPage({
       {profitability && <ApplianceEarningsSummary report={profitability} />}
 
       <div className="mt-6 space-y-6">
+        <CustodyPanel
+          applianceId={id}
+          canRecord
+          needsRecord={needsCustodyRecord}
+          current={
+            openCustody && custodyCustomer
+              ? {
+                  customerId: openCustody.customerId,
+                  customerName: custodyCustomer.user.name ?? custodyCustomer.user.email,
+                  since: openCustody.startedOn ? formatBusinessDate(openCustody.startedOn) : null,
+                  address: custodyAddress ? `${custodyAddress.line1}, ${custodyAddress.city}` : null,
+                }
+              : null
+          }
+          customers={customers.map((c) => ({
+            id: c.id,
+            name: c.user.name ?? c.user.email,
+            serviceAddresses: c.serviceAddresses.map((a) => ({ id: a.id, label: `${a.line1}, ${a.city}` })),
+          }))}
+        />
         <GuidedActionsPanel
           applianceId={id}
           status={appliance.status}

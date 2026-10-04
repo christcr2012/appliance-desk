@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import {
   createJob,
   updateJobStatus,
+  completeJob,
   addJobPhoto,
   setJobRepairCosts,
   updateJobChecklist,
@@ -19,6 +20,7 @@ import {
   type JobConflict,
 } from "@/domains/jobs/scheduling";
 import { businessDateTimeFromLocal } from "@/lib/business-date";
+import { parsePerformedOn } from "@/domains/billing/pickup-billing-events";
 import { updateApplianceStatus } from "@/domains/inventory";
 import { updateApplianceStatusAsTeamActor } from "@/domains/inventory/guarded-status";
 import type { JobStatus, JobType, ApplianceStatus } from "@prisma/client";
@@ -140,30 +142,23 @@ export async function createJobAction(
   return { status: "success", jobId: job.id };
 }
 
+/** Start or cancel a job. Completing one is `completeJobAction`: every appliance needs its own result. */
 export async function updateJobStatusAction(
   jobId: string,
   status: string,
   completionNotes?: string,
-  completion?: { performedOn?: string; notDeliveredApplianceIds?: string[] },
 ): Promise<JobActionState> {
   const session = await requireRole("OWNER", "ADMIN", "STAFF");
 
   if (!ALL_JOB_STATUSES.includes(status as JobStatus)) {
     return { status: "error", message: "That's not a valid status." };
   }
-  const notDelivered = Array.isArray(completion?.notDeliveredApplianceIds)
-    ? completion.notDeliveredApplianceIds.filter((id): id is string => typeof id === "string" && id.length > 0 && id.length < 64)
-    : [];
-  const performedOn = typeof completion?.performedOn === "string" ? completion.performedOn : undefined;
+  if (status === "COMPLETED") {
+    return { status: "error", message: "Use Complete job so each appliance gets a result." };
+  }
 
   try {
-    await updateJobStatus(
-      session.user.id,
-      jobId,
-      status as JobStatus,
-      completionNotes,
-      status === "COMPLETED" ? { performedOn, notDeliveredApplianceIds: notDelivered } : {},
-    );
+    await updateJobStatus(session.user.id, jobId, status as JobStatus, completionNotes);
   } catch (error) {
     return {
       status: "error",
@@ -176,6 +171,63 @@ export async function updateJobStatusAction(
   revalidatePath("/desk/dashboard");
   revalidatePath("/desk/activity");
   revalidatePath("/desk/today");
+  return { status: "success" };
+}
+
+const RESULT_VALUES = ["DELIVERED", "NOT_DELIVERED", "RETURNED", "NOT_RETURNED", "REPAIRED", "NOT_REPAIRED", "NO_ACCESS"] as const;
+const completeJobSchema = z.object({
+  expectedVersion: z.number().int().min(1).max(2147483646),
+  completionKey: z.string().trim().min(8).max(100),
+  performedOn: z.string().trim().max(10).optional().or(z.literal("")),
+  completionNotes: z.string().max(2000).optional().or(z.literal("")),
+  results: z
+    .array(
+      z.object({
+        applianceId: z.string().trim().min(1).max(64),
+        result: z.enum(RESULT_VALUES),
+        note: z.string().max(500).optional().or(z.literal("")),
+      }),
+    )
+    .max(200),
+});
+
+/** Complete a job: one result for every appliance on the visit, plus the date the work was done. */
+export async function completeJobAction(jobId: string, raw: Record<string, unknown>): Promise<JobActionState> {
+  const session = await requireRole("OWNER", "ADMIN", "STAFF");
+  if (typeof jobId !== "string" || jobId.length === 0 || jobId.length > 64) {
+    return { status: "error", message: "Couldn't find that job." };
+  }
+  const parsed = completeJobSchema.safeParse(raw);
+  if (!parsed.success) {
+    return { status: "error", message: parsed.error.issues[0]?.message ?? "Check the results and try again." };
+  }
+  const data = parsed.data;
+  const performed = parsePerformedOn(data.performedOn);
+  if (!performed.ok) return { status: "error", message: performed.message };
+
+  try {
+    await completeJob(session.user.id, {
+      jobId,
+      expectedVersion: data.expectedVersion,
+      completionKey: data.completionKey,
+      performedOn: performed.value,
+      completionNotes: data.completionNotes || null,
+      results: data.results.map((r) => ({ applianceId: r.applianceId, result: r.result, note: r.note || undefined })),
+    });
+  } catch (error) {
+    if (error instanceof JobVersionError) {
+      return { status: "error", message: "This job was just changed by someone else. Reload the page and check it before completing." };
+    }
+    return { status: "error", message: error instanceof Error ? error.message : "Couldn't complete that job." };
+  }
+
+  revalidatePath("/desk/jobs");
+  revalidatePath(`/desk/jobs/${jobId}`);
+  revalidatePath("/desk/dashboard");
+  revalidatePath("/desk/activity");
+  revalidatePath("/desk/today");
+  revalidatePath("/desk/tasks");
+  revalidatePath("/desk/inventory");
   return { status: "success" };
 }
 

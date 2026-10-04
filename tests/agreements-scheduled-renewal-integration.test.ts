@@ -14,7 +14,7 @@ import { finishPendingProviderOperations } from "@/domains/billing/reconciliatio
 import { termSyncKey, cancelAtSecondsFor } from "@/domains/billing/subscription-term";
 
 const cancelAtFor = (endDate: Date) => cancelAtSecondsFor({ termMonths: 12, endDate });
-import { endAgreement, cancelAgreement } from "@/domains/agreements";
+import { endAgreement, cancelAgreement, endAgreementOnAgreedDate } from "@/domains/agreements";
 import { startDueRenewals, startRenewalIfDue } from "@/domains/agreements/renewal-start";
 
 const url = new URL(process.env.DATABASE_URL ?? "postgresql://localhost/unset");
@@ -125,6 +125,7 @@ describe.skipIf(!enabled)("a signed renewal starts on its start date and hands e
 
   afterAll(async () => {
     await prisma.auditLog.deleteMany({ where: { entityId: { in: agreementIds } } });
+    await prisma.applianceCustodyEpisode.deleteMany({ where: { applianceId: { in: applianceIds } } });
     await prisma.deposit.deleteMany({ where: { agreementId: { in: agreementIds } } });
     await prisma.applianceAssignment.deleteMany({ where: { applianceId: { in: applianceIds } } });
     await prisma.appliance.deleteMany({ where: { id: { in: applianceIds } } });
@@ -179,6 +180,36 @@ describe.skipIf(!enabled)("a signed renewal starts on its start date and hands e
     expect(await prisma.deposit.count({ where: { agreementId: renewal.id } })).toBe(1);
     expect(await prisma.deposit.count({ where: { agreementId: old.id } })).toBe(0);
     expect(await prisma.auditLog.count({ where: { entityId: renewal.id, action: "agreement.renewal_started" } })).toBe(1);
+  });
+
+  async function openEpisode(applianceId: string, agreementId: string) {
+    return prisma.applianceCustodyEpisode.create({
+      data: { applianceId, customerId, serviceAddressId: addressId, agreementId, startedOn: new Date("2026-11-08T07:00:00Z"), startEvidence: "JOB" },
+    });
+  }
+
+  it("custody-survives-renewal-start: the customer's stay is the same open record after the renewal starts", async () => {
+    const { old, renewal, appliance } = await pair();
+    const episode = await openEpisode(appliance.id, old.id);
+    expect(await startRenewalIfDue(renewal.id, onStart)).toMatchObject({ started: true });
+    const after = await prisma.applianceCustodyEpisode.findMany({ where: { applianceId: appliance.id } });
+    expect(after).toHaveLength(1);
+    expect(after[0]).toMatchObject({ id: episode.id, closedAt: null, startedOn: episode.startedOn, agreementId: old.id });
+  });
+
+  it("custody-survives-close-agreement-null-user: ending a rental (even by the system) leaves the stay open until the pickup", async () => {
+    const byOwner = await pair({ sub: false });
+    const byOwnerEpisode = await openEpisode(byOwner.appliance.id, byOwner.old.id);
+    await prisma.rentalAgreement.delete({ where: { id: byOwner.renewal.id } }).catch(() => undefined);
+    await endAgreement(ownerId, byOwner.old.id);
+    const bySystem = await pair({ sub: false });
+    const bySystemEpisode = await openEpisode(bySystem.appliance.id, bySystem.old.id);
+    await prisma.rentalAgreement.delete({ where: { id: bySystem.renewal.id } }).catch(() => undefined);
+    await endAgreementOnAgreedDate(bySystem.old.id, new Date("2027-11-08T06:59:59Z"));
+    for (const [appliance, episode] of [[byOwner.appliance, byOwnerEpisode], [bySystem.appliance, bySystemEpisode]] as const) {
+      expect((await prisma.appliance.findUniqueOrThrow({ where: { id: appliance.id } })).status).toBe("AWAITING_PICKUP");
+      expect(await prisma.applianceCustodyEpisode.findUniqueOrThrow({ where: { id: episode.id } })).toMatchObject({ closedAt: null, endEvidence: null });
+    }
   });
 
   it("two starts at the same moment hand over exactly once", async () => {

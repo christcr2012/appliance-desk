@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { finishPendingProviderOperations } from "@/domains/billing/reconciliation";
+import { runPendingHandoffs } from "@/domains/jobs/completion";
 
 /** Daily recovery pass for durable Stripe/provider intents. */
 export async function GET(request: Request): Promise<NextResponse> {
@@ -15,5 +16,7 @@ export async function GET(request: Request): Promise<NextResponse> {
   }
 
   const result = await finishPendingProviderOperations();
-  return NextResponse.json(result);
+  // Provider work that a completed job left behind (start billing, send a credit) when the process stopped after saving.
+  const handoffs = await runPendingHandoffs();
+  return NextResponse.json({ ...result, handoffs });
 }

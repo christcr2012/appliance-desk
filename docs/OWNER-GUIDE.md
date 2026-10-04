@@ -483,3 +483,7 @@ apply it to the latest task. Done moves a task to Completed, where Reopen brings
 it back. Tasks created on a customer or lead stay linked to that record. The
 Make this a task button turns the current note text into a linked follow-up;
 it does not send a message or save a separate contact-history note.
+
+## Finishing a visit (completing a job)
+
+Open the job and press **Complete job**. For every appliance on the visit, pick what happened (the usual result is already chosen). Set the **date the work was done** if you are recording it a day or two late; billing counts from that date. If something did not go as planned (an item not delivered, not picked up), a follow-up task is created for each one. The appliance page now has a **Who has it** panel showing which customer has the appliance and since when; a unit whose location we cannot work out from history shows up on Today as "Custody unknown" so you can fix it by hand. The driver screen's "Mark complete" takes the driver to the job page, since every item needs a result.
