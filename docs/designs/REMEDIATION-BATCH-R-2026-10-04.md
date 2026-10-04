@@ -7,6 +7,36 @@
 **Reviewed design baseline:** `main` `d7059a02b9618f0efce48ff8861b0ddc44317de1`; PR #175 head `c658a7dddb07b26b93c77206083102c940c19e30` was inspected for overlap.  
 **Live gates remain unchanged:** Stripe test mode; live customer email/SMS OFF; automatic renewals stay OFF until their separate lifecycle gates are satisfied. This batch does not authorize production activation, spending, destructive production writes, or live messaging.
 
+## 2026-10-04 Remediation R drift check
+
+**Implementation base:** `main` `c471905b484bc7e360ce2f202ee4ad51ac632572`. PR #175 is merged; the only later merges (#176 and #177) are documentation-only, so there is no post-#175 code drift to rebase around.
+
+**Review continuity:** all final #175 review surfaces were checked before remediation code. There are no inline review threads or submitted reviews. Codex reported its review quota exhausted, Copilot was recorded as out of review credits, and #175 recorded the repo-approved unavailable-review waiver after an independent diff check at exact head `9574373839e5f4ed8103313b53855066262fc06e`. There is therefore no late overlapping automated finding to add to R01–R17.
+
+**#174 behavior:** the job-scoped STAFF authorization fence remains in `src/domains/inventory/guarded-status.ts` and job completion still calls `assertJobScopeInTx`; this stays verification-only and is not rebuilt.
+
+**Finding drift:** all 17 findings remain actionable on this base.
+
+- **R01:** `startRecurringBillingForAgreement` still returns `Promise<void>` and returns normally for blocked, failed, unknown, and retry-later states; `runHandoffs` still treats normal return as success.
+- **R02:** `HandoffStatus` is still only `PENDING/DONE/FAILED`; `JobBillingHandoff` has no `claimedAt`; the worker only increments `attempts`, so it has no durable exclusive in-flight lease.
+- **R03:** `completeJob` still creates `START_RECURRING_BILLING` for every delivery/installation agreement even when every result is `NOT_DELIVERED`.
+- **R04:** `RentalAgreement` still has no `firstDeliveredOn`; subscription startup still derives term/billing timestamps from `billingStartedAt ?? new Date()` and provider execution time.
+- **R05:** `startRenewalInTx` still moves assignments/deposit/subscription without first rejecting open old-agreement delivery, installation, or removal jobs; the SWAP exception therefore still needs current-lineage custody verification.
+- **R06:** `Deposit` still moves `agreementId` on renewal and has no immutable `sourceReceiptId` relation.
+- **R07:** the canonical success set exists, but money-critical reads still hard-code `status: "succeeded"`, including deposit/refund source resolution and webhook payment dedupe.
+- **R08:** webhook processing still retains the broad transaction-scoped advisory serialization identified by the review; route-level provider recovery already exists outside the transaction and must be preserved while any remaining provider I/O is kept out of locked local apply work.
+- **R09:** estimate approval/change-request paths still do not enforce `validUntil` under the locked response transaction.
+- **R10:** initial estimate send still lacks a single locked claim/idempotent initial-send identity before external email work.
+- **R11:** reviewed date-only input still contains direct `new Date(data.purchaseDate)` construction.
+- **R12:** the job repair-cost parser still converts with `Number`, silently maps malformed values to null, and accepts negative/more-than-two-decimal values.
+- **R13:** owner/admin inventory commands are not yet consistently one guarded transaction containing actor validation, row/state validation, business mutation, and audit; #174's separate job-scoped STAFF path remains preserved.
+- **R14:** `createPurchaseOrder` still reads the supplier outside the transaction and writes the audit after the transaction.
+- **R15:** `recordPartUsage` still calls `lastKnownPurchaseCostCents` before `applyPartMovementsInTx` acquires the part lock, so a concurrent receipt can win after the cost read and leave usage with stale cost.
+- **R16:** PO receipt replay still infers identity from part movements/audit; free-text lines have no durable payload claim, so changed free-text payload can replay as if identical.
+- **R17:** `getExceptions`/Today still contains broad historical request-path reads and in-memory filtering/sorting without the design's per-category bounds.
+
+**Decision conflicts:** none found. #175's missing-item refund/line-reduction behavior is compatible with R03/R04: partial delivery still starts whole-agreement billing, while a true zero-delivery visit must not. The owner-confirmed tax-refund/unpaid-month rules in #177 do not change this design. Implementation may proceed. The Stripe delivery-anniversary sub-step remains subject to the explicit section 11 stop boundary if the installed Stripe API cannot preserve the delivery anchor without changing money policy.
+
 ---
 
 ## 0. Why this batch exists
