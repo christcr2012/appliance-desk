@@ -134,6 +134,31 @@ describe.skipIf(!enabled)("Remediation R1 handoff queue recovery (real Postgres)
     expect(handoffMocks.startBilling).toHaveBeenNthCalledWith(2, secondSubject);
   });
 
+  it("preserves UNKNOWN retry capacity until reconciliation can finalize the same handoff", async () => {
+    const jobId = await createCompletedJob("unknown-budget");
+    const subjectId = `unknown-budget-${tag}`;
+    const row = await prisma.jobBillingHandoff.create({
+      data: { jobId, kind: "START_RECURRING_BILLING", subjectId },
+    });
+    handoffMocks.startBilling.mockResolvedValue({ state: "UNKNOWN", detail: "provider outcome still ambiguous" });
+
+    for (let i = 0; i < 6; i += 1) {
+      await expect(runPendingHandoffs(1)).resolves.toEqual({ done: 0, failed: 1 });
+      const waiting = await prisma.jobBillingHandoff.findUniqueOrThrow({ where: { id: row.id } });
+      expect(waiting).toMatchObject({ status: "FAILED", attempts: 0, claimedAt: null });
+      expect(waiting.lastError).toMatch(/^UNKNOWN:\d{4}-\d{2}-\d{2}T/);
+    }
+
+    handoffMocks.startBilling.mockResolvedValue(DONE);
+    await expect(runPendingHandoffs(1)).resolves.toEqual({ done: 1, failed: 0 });
+    expect(await prisma.jobBillingHandoff.findUniqueOrThrow({ where: { id: row.id } })).toMatchObject({
+      status: "DONE",
+      attempts: 1,
+      claimedAt: null,
+      lastError: null,
+    });
+  });
+
   it("recovers a stale in-flight lease even when the dead worker already claimed attempt five", async () => {
     const jobId = await createCompletedJob("stale-fifth");
     const subjectId = `stale-fifth-${tag}`;
