@@ -620,18 +620,18 @@ export async function getJobCompletionScope(job: {
 
 const MAX_HANDOFF_ATTEMPTS = 5;
 const BLOCKED_HANDOFF_PREFIX = "BLOCKED:";
+const UNKNOWN_HANDOFF_PREFIX = "UNKNOWN:";
 
 /**
  * Runs durable post-commit provider work. A handoff has one exclusive lease at
  * a time; stale leases can be recovered, and a provider command must return an
  * explicit DONE outcome before the handoff is finalized.
  *
- * Normal retryable/recovery work always gets the first seats in a sweep. Rows
- * blocked on a customer prerequisite only fill spare capacity, so a large set
- * of old blocked rentals can never starve a newer handoff left behind by a
- * post-commit crash. A blocked retry stores its retry timestamp in lastError;
- * lexical ordering then moves that row behind blocked peers without adding a
- * schema field or consuming its retry budget.
+ * Normal retryable/recovery work always gets the first seats in a sweep. Work
+ * blocked on a customer prerequisite or provider reconciliation only fills
+ * spare capacity. Deferred rows store their retry timestamp in lastError so a
+ * retried row rotates behind its peers without adding schema or consuming its
+ * retry budget.
  */
 async function runHandoffs(scope: { ids?: string[]; limit?: number }): Promise<{ done: number; failed: number }> {
   const staleBefore = new Date(Date.now() - PROVIDER_OPERATION_LEASE_MS);
@@ -648,7 +648,10 @@ async function runHandoffs(scope: { ids?: string[]; limit?: number }): Promise<{
           status: "FAILED",
           attempts: { lt: MAX_HANDOFF_ATTEMPTS },
           lastError: { not: null },
-          NOT: { lastError: { startsWith: BLOCKED_HANDOFF_PREFIX } },
+          NOT: [
+            { lastError: { startsWith: BLOCKED_HANDOFF_PREFIX } },
+            { lastError: { startsWith: UNKNOWN_HANDOFF_PREFIX } },
+          ],
         },
         // A stale lease is recovery work, not a fresh retry. It must remain
         // reclaimable even when the dead worker had already claimed attempt 5.
@@ -660,19 +663,22 @@ async function runHandoffs(scope: { ids?: string[]; limit?: number }): Promise<{
   });
 
   const remaining = Math.max(0, limit - priorityRows.length);
-  const blockedRows =
+  const deferredRows =
     remaining > 0
       ? await prisma.jobBillingHandoff.findMany({
           where: {
             ...idScope,
             status: "FAILED",
-            lastError: { startsWith: BLOCKED_HANDOFF_PREFIX },
+            OR: [
+              { lastError: { startsWith: BLOCKED_HANDOFF_PREFIX } },
+              { lastError: { startsWith: UNKNOWN_HANDOFF_PREFIX } },
+            ],
           },
           orderBy: [{ lastError: "asc" }, { createdAt: "asc" }, { id: "asc" }],
           take: remaining,
         })
       : [];
-  const rows = [...priorityRows, ...blockedRows];
+  const rows = [...priorityRows, ...deferredRows];
 
   let done = 0;
   let failed = 0;
@@ -710,10 +716,10 @@ async function runHandoffs(scope: { ids?: string[]; limit?: number }): Promise<{
         continue;
       }
 
-      const detail =
-        work.state === "BLOCKED"
-          ? `${BLOCKED_HANDOFF_PREFIX}${new Date().toISOString()}: ${work.detail}`.slice(0, 500)
-          : `${work.state}: ${work.detail}`.slice(0, 500);
+      const deferred = work.state === "BLOCKED" || work.state === "UNKNOWN";
+      const detail = deferred
+        ? `${work.state}:${new Date().toISOString()}: ${work.detail}`.slice(0, 500)
+        : `${work.state}: ${work.detail}`.slice(0, 500);
       const released = await prisma.jobBillingHandoff.updateMany({
         where: { id: row.id, status: "IN_FLIGHT", attempts: expectedAttempts },
         data: {
@@ -721,7 +727,7 @@ async function runHandoffs(scope: { ids?: string[]; limit?: number }): Promise<{
           claimedAt: null,
           doneAt: null,
           lastError: detail,
-          ...(work.state === "BLOCKED" ? { attempts: { decrement: 1 } } : {}),
+          ...(deferred ? { attempts: { decrement: 1 } } : {}),
         },
       });
       if (released.count === 1) failed += 1;
