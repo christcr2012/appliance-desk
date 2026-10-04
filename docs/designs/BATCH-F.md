@@ -10,11 +10,12 @@ the owner does.
 
 | # | Assumption | Check |
 |---|---|---|
-| A1 | B–E merged; STATUS says F is NEXT; the conditional Google PR is either merged or explicitly deferred in STATUS. | `docs/STATUS.md` |
+| A1 | B–E **and E2 (visual redesign)** merged; STATUS says F is NEXT; the conditional Google PR is either merged or explicitly deferred in STATUS. | `docs/STATUS.md` |
 | A2 | `exportDatabaseBackup` in `src/domains/backup/index.ts` reads each table with an independent `findMany` (not one snapshot), writes one JSON to the private Blob store, prunes by date; there is **no restore script**. | file + `ls scripts/`. (P6 H3/H4) |
 | A3 | Private photos and D's `DocumentArtifact` bytes live only in the Vercel Blob private store; backups contain rows/URLs, not bytes. | `src/lib/photo-storage.ts`, `src/domains/documents/artifacts.ts`. (P6 H5) |
 | A4 | The real-Postgres integration pattern (`CI=true` + local throwaway DB) and the browser session reuse pattern are in place. | `tests/webhook-atomicity-integration.test.ts`, `e2e/global-setup.ts`. |
 | A5 | `docs/OWNER-GUIDE.md` describes features as of Batch A and has not been rewritten per batch. | read its headings. |
+| A7 | **Re-verify this whole design against E2 before starting.** E2 restyles every screen and adds the phone navigation (bottom tab bar), so every screen name, selector, route, screenshot and walkthrough step in this design must be checked against the redesigned UI, and the owner-guide screenshots are taken after E2. Record differences in `docs/designs/CHANGES-SINCE-DESIGN.md`. | read E2's entry there; open each screen. |
 | A6 | Perf fixtures and `docs/PERF-BASELINE.md` exist from Batch E. | ls. |
 
 ## 1. Decisions

@@ -1,4 +1,4 @@
-# PLAN — the remaining work, in six batches
+# PLAN — the remaining work, in seven batches
 
 This is the executable plan. Each batch is one substantial PR. Read your
 batch's section fully; it is written to stand on its own. The audit root
@@ -8,7 +8,7 @@ and the business audit items in `docs/reviews/2026-10-01-business-logic-audit.md
 (`B01–B36`). The original overhaul cards (O00–O32) are folded in below; their
 requirements are quoted inline so you do not need the archived card file.
 
-Order: **A (merged) → B → C → D → E → F**, plus one conditional Google PR.
+Order: **A (merged) → B → C → D → E → E2 (redesign) → F**, plus one conditional Google PR.
 `docs/STATUS.md` says which one is next.
 
 **Every batch has a design document in `docs/designs/` that says *how* to
@@ -493,6 +493,53 @@ O32 is done and leave this as the one allowed follow-up PR.
 ### Not in this batch
 
 Launch authorization and the final evidence ledger (F).
+
+---
+
+## Batch E2 — Visual redesign: owner desk, public site and customer portal (desktop, phone, light and dark)
+
+**Design: `docs/designs/BATCH-E2.md` — NOT WRITTEN YET.** Per `AGENTS.md` nothing in this batch may be built until that design exists and is approved. The prompt for the stronger model that writes it is `docs/prompts/DESIGN-BATCH-E2-REDESIGN.md`. (Added at Chris's request, 2026-10-04: the whole redesign, not just phone screens, goes after E and before F.)
+
+### Purpose
+
+Give the finished product the polished, modern look Chris approved in the 2026-10-04 mockup, on every screen and every device, without changing what any screen does. This is a visual layer on top of Batch E's Evergreen token migration: it reuses E's tokens and dark theme and adds none of its own.
+
+### Open these first
+
+`docs/ROADMAP.md` entry "Owner desk and public site visual redesign" (direction and mockup rules), `docs/DESIGN-SYSTEM.md`, `docs/brand/` (especially `03_Design_System/brand-tokens.json` and the brand handoff rules), `docs/plans/overhaul/DESIGN.md`, the finished Batch E token migration, and `docs/design-mockups/redesign-2026-10-04/` (a copy of the mockup: layout and feel only; its text is placeholders).
+
+### Deliverables
+
+1. **Owner desk shell and Today screen** in the approved direction: dark evergreen side menu with a lime "current page" pill, ivory working area, one headline stat card beside plain stat cards, visit list with a status word and icon on every row, "Needs your attention" panel. Every number and line comes from real data (no sample figures).
+2. **Phone layout for the owner desk**: bottom tab bar (Today, Schedule, Customers, Billing, More), one dominant action at the top, single-column cards, every tap target at least 44px. Checked at 360, 390 and 768 px wide.
+3. **Every other owner/staff screen** brought into the same look through shared components (cards, stat cards, status pills, lists, tables that become cards on a phone, forms), not screen-by-screen copies.
+4. **Customer portal** in the same look, phone first, since customers use it on their phones.
+5. **Public website** (home and the other public pages). Chris has approved the owner desk direction only: the design must first settle the public home page (the mockup's dark hero and two buttons differ from the brand kit's "ivory surfaces, one dominant next action"), and Chris decides before it is built (OWNER-INPUTS entry added by the design). Public text comes from `BusinessSettings`, agreement terms and `docs/BUSINESS-RULES.md`; no invented claims.
+6. **Dark mode** on every screen using the kit's dark tokens, with a visible switch and the system setting honored.
+7. **Real logo files** from `docs/brand/` used everywhere (not the mockup's drawn stand-in).
+8. **Accessibility is not lost**: contrast measured by axe and by hand for every text/background pair (the mockup's colors were never measured), visible focus, status never by color alone, reduced motion respected, forced colors checked, zoom to 200% and reflow without sideways scrolling.
+9. **Print and email**: existing printable pages and customer emails keep working and keep the brand look.
+10. **Photos**: appliance photos only if Chris supplies them; otherwise brand-color treatment (OWNER-INPUTS).
+
+### Acceptance checklist
+
+- [ ] No screen's behavior, permissions or numbers change: all existing unit and integration tests pass untouched except for markup/text selectors, each such change listed in the PR.
+- [ ] Every top-level route has light and dark, phone and desktop screenshots recorded in the PR.
+- [ ] Axe passes on every route in light, dark and phone width; contrast values recorded for each pair.
+- [ ] Keyboard, focus, zoom 200%, reflow, forced-colors and reduced-motion checks pass (same list as Batch E).
+- [ ] No hard-coded colors, radii or sizes outside the token files (lint or test guard).
+- [ ] No sample data, invented text or placeholder `[BRACKETS]` remain anywhere.
+- [ ] Browser suite stays within its CI time budget (`docs/ARCHITECTURE.md` "Keeping CI fast").
+- [ ] Chris has seen and approved the public home page and the phone owner desk before the PR that builds each merges.
+- [ ] Every item in "Rules that apply to every batch".
+
+### Owner inputs / gates
+
+Approval of the public home page direction; whether he supplies appliance photos. Both are recorded in `docs/OWNER-INPUTS.md` by the design.
+
+### Not in this batch
+
+New features, new screens or changed business rules (anything noticed goes to `docs/ROADMAP.md`); the final launch evidence ledger (F).
 
 ---
 
