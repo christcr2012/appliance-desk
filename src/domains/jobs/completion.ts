@@ -27,7 +27,7 @@ import { JobVersionError } from "./scheduling";
 // create one follow-up task. The billing work that completion already did stays in this transaction;
 // the provider calls that must follow the commit are written as JobBillingHandoff rows in the same
 // transaction and run afterwards (and again by the nightly sweep if the process died).
-// Lock order (spec section 0): actor, customer (when the job has an agreement), agreement,
+// Lock order (spec section 0): actor, customer (when the job has an agreement), agreement(s),
 // maintenance request, job, appliances sorted.
 // ---------------------------------------------------------------------------
 
@@ -180,6 +180,26 @@ export async function completeJob(userId: string, input: CompleteJobInput): Prom
       }
     }
     const scopeIds = scope.map((s) => s.applianceId).sort();
+
+    // A SWAP is allowed to survive renewal. Resolve its outgoing unit's current
+    // rental lineage while the staged agreement is locked, then lock that current
+    // agreement before any appliance row. This preserves Agreement -> Appliance
+    // ordering against close/renewal commands and prevents a deadlock cycle.
+    let prelockedSwapAgreementId: string | null = null;
+    if (before.type === "SWAP") {
+      const originalId = scope.find((s) => s.role === "PRIMARY")?.applianceId ?? null;
+      if (originalId) {
+        const currentAssignment = await tx.applianceAssignment.findFirst({
+          where: { applianceId: originalId, unassignedAt: null },
+          select: { rentalLine: { select: { agreementId: true } } },
+        });
+        prelockedSwapAgreementId = currentAssignment?.rentalLine.agreementId ?? null;
+        if (prelockedSwapAgreementId && prelockedSwapAgreementId !== before.agreementId) {
+          await lockRentalAgreementInTx(tx, prelockedSwapAgreementId);
+        }
+      }
+    }
+
     const substitutions =
       before.agreementId && (before.type === "DELIVERY" || before.type === "INSTALLATION")
         ? await tx.pendingDelivery.findMany({
@@ -357,8 +377,13 @@ export async function completeJob(userId: string, input: CompleteJobInput): Prom
         if (!originalAssignment) {
           throw new JobCompletionConflictError("The appliance being swapped no longer has a current rental assignment. Reload and resolve the agreement before completing this swap.");
         }
-        if (originalAssignment.rentalLine.agreementId !== before.agreementId) {
-          await lockRentalAgreementInTx(tx, originalAssignment.rentalLine.agreementId);
+        if (
+          originalAssignment.rentalLine.agreementId !== before.agreementId &&
+          originalAssignment.rentalLine.agreementId !== prelockedSwapAgreementId
+        ) {
+          throw new JobCompletionConflictError(
+            "The appliance's rental agreement changed while this swap was being completed. Reload the job and try again.",
+          );
         }
         const currentAgreement = originalAssignment.rentalLine.agreement;
         if (currentAgreement.customerId !== customerId || currentAgreement.serviceAddressId !== before.serviceAddressId) {
@@ -654,7 +679,13 @@ async function runHandoffs(scope: { ids?: string[]; limit?: number }): Promise<{
       const detail = `${work.state}: ${work.detail}`.slice(0, 500);
       const released = await prisma.jobBillingHandoff.updateMany({
         where: { id: row.id, status: "IN_FLIGHT", attempts: expectedAttempts },
-        data: { status: "FAILED", claimedAt: null, doneAt: null, lastError: detail },
+        data: {
+          status: "FAILED",
+          claimedAt: null,
+          doneAt: null,
+          lastError: detail,
+          ...(work.state === "BLOCKED" ? { attempts: { decrement: 1 } } : {}),
+        },
       });
       if (released.count === 1) failed += 1;
     } catch (error) {

@@ -245,6 +245,28 @@ describe.skipIf(!enabled)("Remediation R1 delivery facts and handoff leases (rea
     expect(saved.lastError).toContain(outcome.state);
   });
 
+  it("blocked billing work keeps its retry budget and can finish after the prerequisite is fixed", async () => {
+    const jobId = `r1-handoff-blocked-budget-${tag}`;
+    jobIds.push(jobId);
+    await prisma.job.create({ data: { id: jobId, type: "DELIVERY", status: "COMPLETED" } });
+    const row = await prisma.jobBillingHandoff.create({
+      data: { jobId, kind: "START_RECURRING_BILLING", subjectId: `blocked-budget-${tag}` },
+    });
+    handoffMocks.startBilling.mockResolvedValue({ state: "BLOCKED", detail: "missing payment method" });
+
+    for (let i = 0; i < 6; i += 1) {
+      await runPendingHandoffs(20);
+      const blocked = await prisma.jobBillingHandoff.findUniqueOrThrow({ where: { id: row.id } });
+      expect(blocked).toMatchObject({ status: "FAILED", attempts: 0, claimedAt: null });
+      expect(blocked.lastError).toContain("BLOCKED");
+    }
+
+    handoffMocks.startBilling.mockResolvedValue(DONE);
+    await runPendingHandoffs(20);
+    const finished = await prisma.jobBillingHandoff.findUniqueOrThrow({ where: { id: row.id } });
+    expect(finished).toMatchObject({ status: "DONE", attempts: 1, claimedAt: null });
+  });
+
   it("gives one worker the in-flight lease while an overlapping worker skips the same handoff", async () => {
     const jobId = `r1-handoff-overlap-${tag}`;
     jobIds.push(jobId);

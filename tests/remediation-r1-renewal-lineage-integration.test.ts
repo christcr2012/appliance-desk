@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { businessDateFromKey } from "@/lib/business-date";
 import { startRenewalInTx } from "@/domains/agreements/renewal-start";
+import { createJob } from "@/domains/jobs";
 import { completeJob } from "@/domains/jobs/completion";
 
 const url = new URL(process.env.DATABASE_URL ?? "postgresql://localhost/unset");
@@ -152,6 +153,57 @@ describe.skipIf(!enabled)("Remediation R1 renewal and field-work lineage (real P
     },
   );
 
+  it("serializes old-agreement field-job creation with renewal start", async () => {
+    const { old, renewal } = await fixture("job-create-race");
+    let renewalReady!: () => void;
+    let releaseRenewal!: () => void;
+    const ready = new Promise<void>((resolve) => {
+      renewalReady = resolve;
+    });
+    const gate = new Promise<void>((resolve) => {
+      releaseRenewal = resolve;
+    });
+
+    const renewalWork = prisma.$transaction(async (tx) => {
+      const result = await startRenewalInTx(tx, renewal.id, new Date("2026-10-02T18:00:00.000Z"));
+      expect(result.started).toBe(true);
+      renewalReady();
+      await gate;
+    });
+    await ready;
+
+    let settled = false;
+    const createAttempt = createJob(ownerId, {
+      type: "REMOVAL",
+      customerId,
+      serviceAddressId: addressId,
+      agreementId: old.id,
+    }).then(
+      (job) => {
+        settled = true;
+        return { ok: true as const, job };
+      },
+      (error: unknown) => {
+        settled = true;
+        return { ok: false as const, error };
+      },
+    );
+
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    expect(settled).toBe(false);
+    releaseRenewal();
+    await renewalWork;
+
+    const created = await createAttempt;
+    if (created.ok) jobIds.push(created.job.id);
+    expect(created.ok).toBe(false);
+    if (!created.ok) {
+      expect(created.error).toBeInstanceOf(Error);
+      expect((created.error as Error).message).toContain("already renewed");
+    }
+    expect(await prisma.job.count({ where: { agreementId: old.id, status: { in: ["SCHEDULED", "IN_PROGRESS"] } } })).toBe(0);
+  });
+
   it("allows a staged SWAP to remain open while renewal moves the current assignment", async () => {
     const { old, renewal, applianceId } = await fixture("swap");
     const swapJobId = `r1-ren-swap-${tag}`;
@@ -178,6 +230,86 @@ describe.skipIf(!enabled)("Remediation R1 renewal and field-work lineage (real P
       select: { rentalLine: { select: { agreementId: true } } },
     });
     expect(current.rentalLine.agreementId).toBe(renewal.id);
+  });
+
+  it("locks a renewed SWAP agreement before appliance rows so agreement-first work cannot deadlock", async () => {
+    const { old, renewal, applianceId } = await fixture("swap-lock-order");
+    const replacementId = `r1-ren-replacement-${tag}`;
+    const swapJobId = `r1-ren-swap-lock-${tag}`;
+    applianceIds.push(replacementId);
+    jobIds.push(swapJobId);
+    await prisma.appliance.create({
+      data: {
+        id: replacementId,
+        assetNumber: `R1R-REPL-${tag.slice(0, 6)}`,
+        applianceTypeId: typeId,
+        status: "RESERVED",
+      },
+    });
+    await prisma.job.create({
+      data: {
+        id: swapJobId,
+        type: "SWAP",
+        status: "IN_PROGRESS",
+        customerId,
+        serviceAddressId: addressId,
+        agreementId: old.id,
+        appliances: {
+          create: [
+            { applianceId, role: "PRIMARY" },
+            { applianceId: replacementId, role: "REPLACEMENT", reservationActive: true },
+          ],
+        },
+      },
+    });
+    const started = await prisma.$transaction((tx) =>
+      startRenewalInTx(tx, renewal.id, new Date("2026-10-02T18:00:00.000Z")),
+    );
+    expect(started.started).toBe(true);
+
+    let agreementLocked!: () => void;
+    let continueBlocker!: () => void;
+    const locked = new Promise<void>((resolve) => {
+      agreementLocked = resolve;
+    });
+    const blockerGate = new Promise<void>((resolve) => {
+      continueBlocker = resolve;
+    });
+    const applianceLockIds = [applianceId, replacementId].sort();
+    const blocker = prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT "id" FROM "RentalAgreement" WHERE "id" = ${renewal.id} FOR UPDATE`;
+      agreementLocked();
+      await blockerGate;
+      await tx.$queryRaw`SELECT "id" FROM "Appliance" WHERE "id" = ANY(${applianceLockIds}) ORDER BY "id" FOR UPDATE`;
+    });
+    await locked;
+
+    const completion = completeJob(ownerId, {
+      jobId: swapJobId,
+      expectedVersion: 1,
+      completionKey: `r1-swap-lock-${randomUUID()}`,
+      performedOn: businessDateFromKey("2026-10-03"),
+      completionNotes: null,
+      results: [
+        { applianceId, result: "RETURNED" },
+        { applianceId: replacementId, result: "DELIVERED" },
+      ],
+    });
+
+    // Give completion enough time to reach the renewed-agreement lock. With the
+    // old lock order it would already hold the appliances here, creating an
+    // Agreement -> Appliance / Appliance -> Agreement deadlock when we continue.
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    continueBlocker();
+
+    await expect(blocker).resolves.toBeUndefined();
+    await expect(completion).resolves.toMatchObject({ jobId: swapJobId, outcome: "COMPLETE" });
+    expect((await prisma.appliance.findUniqueOrThrow({ where: { id: replacementId } })).status).toBe("RENTED");
+    const replacementAssignment = await prisma.applianceAssignment.findFirstOrThrow({
+      where: { applianceId: replacementId, unassignedAt: null },
+      select: { rentalLine: { select: { agreementId: true } } },
+    });
+    expect(replacementAssignment.rentalLine.agreementId).toBe(renewal.id);
   });
 
   it("a stale old-agreement removal cannot mutate an appliance after its assignment moved to the renewal", async () => {
