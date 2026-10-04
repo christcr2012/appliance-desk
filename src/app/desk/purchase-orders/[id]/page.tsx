@@ -20,7 +20,8 @@ export default async function PurchaseOrderDetailPage({
     notFound();
   }
 
-  const totalCents = order.lines.reduce((sum, l) => sum + l.unitCostCents * l.quantity, 0);
+  const totalCents = order.lines.reduce((sum, l) => sum + (l.unitCostKnown ? l.unitCostCents * l.quantity : 0), 0);
+  const unknownPriceLines = order.lines.filter((l) => !l.unitCostKnown).length;
 
   return (
     <div className="max-w-2xl">
@@ -60,25 +61,43 @@ export default async function PurchaseOrderDetailPage({
                 </p>
               )}
             </div>
-            <p className="text-sm text-gray-600">{formatCents(line.unitCostCents * line.quantity)}</p>
+            <div className="text-right text-sm text-gray-600">
+              <p>{line.unitCostKnown ? formatCents(line.unitCostCents * line.quantity) : "price not known"}</p>
+              {order.status !== "DRAFT" && (
+                <p className="text-xs text-gray-500">
+                  {line.receivedQuantity} of {line.quantity} arrived
+                </p>
+              )}
+            </div>
           </li>
         ))}
       </ul>
 
       <div className="mt-2 flex justify-end text-sm font-medium text-gray-900">
-        {formatCents(totalCents)} total
+        {formatCents(totalCents)} total{unknownPriceLines > 0 ? ` (${unknownPriceLines} line${unknownPriceLines === 1 ? "" : "s"} without a price)` : ""}
       </div>
 
       {order.status === "RECEIVED" && order.receivedAt && (
         <p className="mt-4 text-sm text-green-700">
-          Received {new Date(order.receivedAt).toLocaleDateString()} — parts already added to stock.
+          Fully received {new Date(order.receivedAt).toLocaleDateString()} — parts already added to stock.
         </p>
       )}
       {order.status === "CANCELLED" && <p className="mt-4 text-sm text-gray-500">This order was cancelled.</p>}
 
       {(order.status === "DRAFT" || order.status === "ORDERED") && (
         <div className="mt-6">
-          <PurchaseOrderActionsPanel purchaseOrderId={order.id} status={order.status} />
+          <PurchaseOrderActionsPanel
+            purchaseOrderId={order.id}
+            status={order.status}
+            lines={order.lines.map((l) => ({
+              id: l.id,
+              description: l.description,
+              outstanding: Math.max(0, l.quantity - l.receivedQuantity),
+              unitCostKnown: l.unitCostKnown,
+              unitCostCents: l.unitCostCents,
+              hasPart: l.partRecordId !== null,
+            }))}
+          />
         </div>
       )}
     </div>

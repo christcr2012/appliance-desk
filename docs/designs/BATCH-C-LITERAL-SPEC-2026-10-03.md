@@ -31,6 +31,25 @@ Verified against the code, not assumed:
   `20261003290000` and `20261003300000` are free.
 - No decision-level conflict (money, statuses, permissions, database design). Proceed as written.
 
+### Drift check — P1-C parts ledger and archival — 2026-10-04 (Claude Sonnet 5.5, at PR #170's head, which sits on `main` e0a448f + #169)
+
+Verified against the code:
+- The only writers of `PartRecord.quantityOnHand` are `receivePurchaseOrder`, `recordPartUsage` and `updatePartStockSettings`
+  in `src/domains/purchasing/index.ts` (grep of `quantityOnHand` in `src/`: the other hits are screens that only read it).
+  `recordPartUsage` still clamps with `Math.max(0, …)` and takes no operation key; `receivePurchaseOrder` is all-or-nothing and has no
+  line-level received quantity. Matches the spec's "today".
+- Callers to change: `src/app/desk/purchasing-actions.ts` (three actions), `src/app/desk/parts/part-stock-panel.tsx`,
+  `src/app/desk/purchase-orders/[id]/purchase-order-actions-panel.tsx`; tests `purchasing.test.ts`, `purchasing-forms.test.tsx`,
+  `purchasing-races-integration.test.ts`.
+- `deletePartRecord` is at `src/domains/inventory/index.ts:465` (the spec says 476; a line-number difference only).
+- `Job.partsCostCents` is read at `src/domains/inventory/index.ts` (appliance profitability) and `src/domains/inventory/analytics.ts`
+  (`computeRepairCostCents`); `setJobRepairCosts` is in `src/domains/jobs/index.ts`. Spec decision 7's `jobPartsCost` plugs in there.
+- `Supplier` and `PartRecord` have no `archivedAt`; `PurchaseOrderLineItem` has no `receivedQuantity`/`unitCostKnown`. Latest migration
+  is `20261003300000_asset_number_counter` (slice 2), so `20261003310000`–`20261003330000` are free.
+- The sandbox cannot run `prisma migrate diff` (the schema engine download is blocked), so the structure migration is written by hand in
+  Prisma's own naming and checked on a throwaway Postgres built from the repository's migrations; CI's migration drill is the second check.
+- No decision-level conflict. Proceed as written.
+
 ## Review pass — 2026-10-03 (Claude Fable 5.1, docs only)
 
 Every file and line the spec cites was opened at head 3d71449 (branch `ai/claude/pickup-billing-rules`, which this

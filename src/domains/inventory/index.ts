@@ -1,6 +1,8 @@
 import { allocateAssetNumbers, buildAssetNumber } from "./asset-numbers";
+import { jobPartsCosts } from "@/domains/purchasing/ledger";
 import { requireRole } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
+import { assertActiveTeamActor } from "@/lib/team-actor";
 import type { ApplianceStatus } from "@prisma/client";
 import {
   ALL_APPLIANCE_STATUSES,
@@ -408,13 +410,14 @@ export async function bulkUpdateApplianceStatus(
  * capitalization is inconsistent (e.g. "wfw5620hw0" vs "WFW5620HW0"). */
 export async function getPartRecordsForModel(modelNumber: string) {
   return prisma.partRecord.findMany({
-    where: { modelNumber: { equals: modelNumber, mode: "insensitive" } },
+    where: { modelNumber: { equals: modelNumber, mode: "insensitive" }, archivedAt: null },
     orderBy: [{ createdAt: "desc" }],
   });
 }
 
-export async function getAllPartRecords() {
+export async function getAllPartRecords(options: { includeArchived?: boolean } = {}) {
   return prisma.partRecord.findMany({
+    where: options.includeArchived ? {} : { archivedAt: null },
     include: { applianceType: true },
     orderBy: [{ modelNumber: "asc" }, { createdAt: "desc" }],
   });
@@ -462,25 +465,36 @@ export async function createPartRecord(
   return record;
 }
 
+/**
+ * Deletes a part that was only a typo. A part with any stock history (a movement) or any purchase
+ * order line cannot be deleted, only archived, so its history stays readable.
+ */
 export async function deletePartRecord(userId: string, partRecordId: string) {
-  const record = await prisma.partRecord.delete({
-    where: { id: partRecordId },
-  });
-
-  await prisma.auditLog.create({
-    data: {
-      userId,
-      action: "part.delete",
-      entityType: "PartRecord",
-      entityId: partRecordId,
-      oldValue: {
-        modelNumber: record.modelNumber,
-        partNumber: record.partNumber,
+  return prisma.$transaction(async (tx) => {
+    await assertActiveTeamActor(tx, userId, ["OWNER", "ADMIN"]);
+    await tx.$queryRaw`SELECT "id" FROM "PartRecord" WHERE "id" = ${partRecordId} FOR UPDATE`;
+    const [movements, orderLines] = await Promise.all([
+      tx.partStockMovement.count({ where: { partRecordId } }),
+      tx.purchaseOrderLineItem.count({ where: { partRecordId } }),
+    ]);
+    if (movements > 0 || orderLines > 0) {
+      throw new Error("This part has stock or order history, so it can't be deleted. Archive it instead.");
+    }
+    const record = await tx.partRecord.delete({ where: { id: partRecordId } });
+    await tx.auditLog.create({
+      data: {
+        userId,
+        action: "part.delete",
+        entityType: "PartRecord",
+        entityId: partRecordId,
+        oldValue: {
+          modelNumber: record.modelNumber,
+          partNumber: record.partNumber,
+        },
       },
-    },
+    });
+    return record;
   });
-
-  return record;
 }
 
 // ---------------------------------------------------------------------------
@@ -563,17 +577,26 @@ export async function getFleetAnalytics(asOf = new Date()): Promise<{
     assignmentsByAppliance.set(a.applianceId, list);
   }
 
+  // A job with itemized parts-ledger usage uses those costs instead of the hand-entered number (never both).
+  const partsCosts = await jobPartsCosts(prisma, [...new Set(repairJobAppliances.map((ja) => ja.job.id))]);
   const repairCostByAppliance = new Map<
     string,
     {
       id: string;
       partsCostCents: number | null;
       laborCostCents: number | null;
+      partsUnknownLines: number;
     }[]
   >();
   for (const ja of repairJobAppliances) {
     const list = repairCostByAppliance.get(ja.applianceId) ?? [];
-    list.push(ja.job);
+    const parts = partsCosts.get(ja.job.id);
+    list.push({
+      id: ja.job.id,
+      partsCostCents: parts && parts.source === "ITEMIZED" ? parts.cents : ja.job.partsCostCents,
+      laborCostCents: ja.job.laborCostCents,
+      partsUnknownLines: parts?.unknownCostLines ?? 0,
+    });
     repairCostByAppliance.set(ja.applianceId, list);
   }
 
@@ -606,7 +629,7 @@ export async function getFleetAnalytics(asOf = new Date()): Promise<{
       repairCostByAppliance.get(appliance.id) ?? []
     )
       .filter(
-        (job) => job.partsCostCents === null || job.laborCostCents === null,
+        (job) => job.partsCostCents === null || job.laborCostCents === null || job.partsUnknownLines > 0,
       )
       .map((job) => job.id);
 

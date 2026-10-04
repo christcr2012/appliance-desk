@@ -172,6 +172,15 @@ describe.skipIf(!enabled)("job scheduling (real Postgres)", () => {
     expect((await prisma.job.findUniqueOrThrow({ where: { id: job.id } })).version).toBe(2);
   });
 
+  it("moving a visit to another Colorado day re-arms its day-of reminder; a same-day time change keeps it", async () => {
+    const job = await newJob({ local: "2031-11-05T09:00", minutes: 60, assignee: null });
+    await prisma.job.update({ where: { id: job.id }, data: { dayOfReminderSentAt: new Date("2031-11-05T13:00:00Z") } });
+    await moveInto(job.id, "2031-11-05T15:00", null, 60);
+    expect((await prisma.job.findUniqueOrThrow({ where: { id: job.id } })).dayOfReminderSentAt).not.toBeNull();
+    await moveInto(job.id, "2031-11-06T09:00", null, 60);
+    expect((await prisma.job.findUniqueOrThrow({ where: { id: job.id } })).dayOfReminderSentAt).toBeNull();
+  });
+
   it("schedule-null-duration-uses-owner-default", async () => {
     const before = await prisma.businessSettings.findUnique({ where: { id: "singleton" }, select: { defaultJobDurationMinutes: true } });
     await prisma.businessSettings.upsert({ where: { id: "singleton" }, create: { id: "singleton", defaultJobDurationMinutes: 30 }, update: { defaultJobDurationMinutes: 30 } });

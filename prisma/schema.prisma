@@ -484,6 +484,11 @@ model PartRecord {
   quantityOnHand   Int  @default(0)
   reorderThreshold Int?
 
+  // Batch C P1-C: a part with history is archived, never deleted. quantityOnHand is the stored
+  // total of this part's PartStockMovement rows (kept equal by applyPartMovementsInTx).
+  archivedAt DateTime?
+  movements  PartStockMovement[]
+
   purchaseOrderLines PurchaseOrderLineItem[]
 
   createdAt DateTime @default(now())
@@ -511,6 +516,9 @@ model Supplier {
   phone       String?
   email       String?
   notes       String?
+
+  // Batch C P1-C: archived suppliers are hidden from pickers and cannot take new purchase orders.
+  archivedAt DateTime?
 
   purchaseOrders PurchaseOrder[]
 
@@ -563,10 +571,53 @@ model PurchaseOrderLineItem {
   quantity        Int
   unitCostCents   Int            @default(0)
 
+  // Batch C P1-C: partial receipts. receivedQuantity counts what has actually arrived;
+  // unitCostKnown says whether unitCostCents is a real price (the old default 0 meant "unknown").
+  receivedQuantity Int           @default(0)
+  unitCostKnown    Boolean       @default(false)
+  movements        PartStockMovement[]
+
   createdAt DateTime @default(now())
 
   @@index([purchaseOrderId])
   @@index([partRecordId])
+}
+
+enum PartMovementKind {
+  OPENING_BALANCE
+  RECEIPT
+  USAGE
+  ADJUSTMENT
+  RECOUNT
+  REVERSAL
+}
+
+// Batch C P1-C: the parts ledger. Append-only (a database trigger blocks UPDATE and DELETE);
+// a mistake is fixed with a REVERSAL movement plus a new correct one. PartRecord.quantityOnHand
+// always equals the sum of a part's quantityDelta values.
+model PartStockMovement {
+  id                      String                 @id @default(cuid())
+  partRecordId            String
+  partRecord              PartRecord             @relation(fields: [partRecordId], references: [id], onDelete: Restrict)
+  kind                    PartMovementKind
+  quantityDelta           Int
+  balanceAfter            Int
+  unitCostCents           Int?
+  operationKey            String
+  payloadHash             String
+  purchaseOrderLineItemId String?
+  purchaseOrderLineItem   PurchaseOrderLineItem? @relation(fields: [purchaseOrderLineItemId], references: [id], onDelete: Restrict)
+  jobId                   String?
+  job                     Job?                   @relation(fields: [jobId], references: [id], onDelete: Restrict)
+  reversesMovementId      String?                @unique
+  reason                  String?
+  createdByUserId         String?
+  createdAt               DateTime               @default(now())
+
+  @@unique([partRecordId, operationKey])
+  @@index([partRecordId, createdAt])
+  @@index([jobId])
+  @@index([purchaseOrderLineItemId])
 }
 
 // ---------------------------------------------------------------------------
@@ -850,6 +901,7 @@ model Job {
   durationMinutes  Int?
   version          Int       @default(1)
   noShowAt         DateTime?
+  partMovements    PartStockMovement[]
 
   customerId String?
   customer   Customer? @relation(fields: [customerId], references: [id])

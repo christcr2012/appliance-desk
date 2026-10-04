@@ -14,8 +14,9 @@ export const metadata = { title: "Parts" };
  * docs/BUSINESS-RULES.md) is shown right here too, since this is where
  * Chris already looks a part up.
  */
-export default async function PartsPage() {
-  const [partRecords, lowStockParts] = await Promise.all([getAllPartRecords(), getLowStockParts()]);
+export default async function PartsPage({ searchParams }: { searchParams: Promise<{ archived?: string }> }) {
+  const showArchived = (await searchParams).archived === "1";
+  const [partRecords, lowStockParts] = await Promise.all([getAllPartRecords({ includeArchived: showArchived }), getLowStockParts()]);
   const lowStockIds = new Set(lowStockParts.map((p) => p.id));
 
   return (
@@ -25,6 +26,18 @@ export default async function PartsPage() {
         Every part you&apos;ve logged, by model number. To add a new one, go
         to an appliance of that model and use the &ldquo;Parts for this
         model&rdquo; section on its page.
+      </p>
+
+      <p className="mt-3 text-sm">
+        {showArchived ? (
+          <Link href="/desk/parts" className="text-primary underline">
+            Hide archived parts
+          </Link>
+        ) : (
+          <Link href="/desk/parts?archived=1" className="text-primary underline">
+            Show archived parts
+          </Link>
+        )}
       </p>
 
       {lowStockParts.length > 0 && (
@@ -62,6 +75,7 @@ export default async function PartsPage() {
                 {p.modelNumber}
                 {p.manufacturer ? ` (${p.manufacturer})` : ""}
                 {p.applianceType ? ` — ${p.applianceType.name}` : ""}
+                {p.archivedAt ? " — archived" : ""}
               </p>
               <p className="text-sm text-gray-700">
                 Part {p.partNumber}
@@ -73,6 +87,7 @@ export default async function PartsPage() {
                 quantityOnHand={p.quantityOnHand}
                 reorderThreshold={p.reorderThreshold}
                 lowStock={lowStockIds.has(p.id)}
+                archived={p.archivedAt !== null}
               />
             </li>
           ))}

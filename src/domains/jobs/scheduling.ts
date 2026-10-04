@@ -1,6 +1,7 @@
 import type { JobType, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
+import { businessDateKey } from "@/lib/business-date";
 
 // ---------------------------------------------------------------------------
 // Scheduling (Batch C, slice P1-A). Who does a visit, how long it takes, and
@@ -222,6 +223,10 @@ export async function scheduleJob(
         durationMinutes,
         assignedToUserId: input.assignedToUserId,
         version: { increment: 1 },
+        // A visit moved to another Colorado day needs its day-of reminder again; a time change within the same day keeps it.
+        ...(before.scheduledAt && businessDateKey(before.scheduledAt) === businessDateKey(input.scheduledAt)
+          ? {}
+          : { dayOfReminderSentAt: null }),
       },
     });
     if (updated.count !== 1) throw new JobVersionError();

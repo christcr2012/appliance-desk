@@ -5,24 +5,25 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 // tests/agreements-prepay-discount.test.ts) for the wiring and
 // guardrails that don't need a real database to prove: validation on
 // creating a purchase order, the status guards on
-// ordered/received/cancelled, receiving actually incrementing stock,
-// recordPartUsage's clamp-at-zero, and getLowStockParts' filter.
+// ordered/received/cancelled, and getLowStockParts' filter.
 
 const purchaseOrderCreate = vi.fn();
 const purchaseOrderFindUniqueOrThrow = vi.fn();
 const purchaseOrderUpdate = vi.fn();
 const purchaseOrderClaim = vi.fn();
 const lockPart = vi.fn();
+const supplierFindUnique = vi.fn();
 const partRecordUpdate = vi.fn();
 const partRecordFindUniqueOrThrow = vi.fn();
 const partRecordFindMany = vi.fn();
 const auditLogCreate = vi.fn();
 
+const partRecordCount = vi.fn();
 function makeTx() {
   return {
     $queryRaw: lockPart,
-    partRecord: { findUniqueOrThrow: partRecordFindUniqueOrThrow, update: (...args: unknown[]) => partRecordUpdate(...args) },
-    purchaseOrder: { findUniqueOrThrow: purchaseOrderFindUniqueOrThrow, updateMany: purchaseOrderClaim, update: (...args: unknown[]) => purchaseOrderUpdate(...args) },
+    partRecord: { findUniqueOrThrow: partRecordFindUniqueOrThrow, update: (...args: unknown[]) => partRecordUpdate(...args), count: (...args: unknown[]) => partRecordCount(...args) },
+    purchaseOrder: { create: (...args: unknown[]) => purchaseOrderCreate(...args), findUniqueOrThrow: purchaseOrderFindUniqueOrThrow, updateMany: purchaseOrderClaim, update: (...args: unknown[]) => purchaseOrderUpdate(...args) },
     auditLog: { create: (...args: unknown[]) => auditLogCreate(...args) },
   };
 }
@@ -40,6 +41,7 @@ vi.mock("@/lib/prisma", () => ({
       findMany: (...args: unknown[]) => partRecordFindMany(...args),
     },
     auditLog: { create: (...args: unknown[]) => auditLogCreate(...args) },
+    supplier: { findUnique: (...args: unknown[]) => supplierFindUnique(...args) },
     $transaction: async (fn: (tx: unknown) => unknown) => fn(makeTx()),
   },
 }));
@@ -47,7 +49,6 @@ vi.mock("@/lib/prisma", () => ({
 import {
   createPurchaseOrder,
   markPurchaseOrderOrdered,
-  receivePurchaseOrder,
   cancelPurchaseOrder,
   recordPartUsage,
   getLowStockParts,
@@ -56,10 +57,12 @@ import {
 beforeEach(() => {
   purchaseOrderClaim.mockReset().mockResolvedValue({ count: 1 });
   lockPart.mockReset().mockResolvedValue([]);
+  supplierFindUnique.mockReset().mockResolvedValue({ archivedAt: null });
   purchaseOrderCreate.mockReset();
   purchaseOrderFindUniqueOrThrow.mockReset();
   purchaseOrderUpdate.mockReset().mockResolvedValue({});
   partRecordUpdate.mockReset().mockResolvedValue({});
+  partRecordCount.mockReset().mockResolvedValue(0);
   partRecordFindUniqueOrThrow.mockReset();
   partRecordFindMany.mockReset();
   auditLogCreate.mockReset().mockResolvedValue({});
@@ -91,6 +94,33 @@ describe("createPurchaseOrder", () => {
     ).rejects.toThrow(/Quantity must be at least 1/);
   });
 
+  it("refuses an archived supplier", async () => {
+    supplierFindUnique.mockResolvedValue({ archivedAt: new Date() });
+    await expect(
+      createPurchaseOrder("user-1", { supplierId: "sup-1", lines: [{ description: "Door seal", quantity: 1 }] }),
+    ).rejects.toThrow(/archived/);
+    expect(purchaseOrderCreate).not.toHaveBeenCalled();
+  });
+
+  it("refuses a part that has been archived, even from a stale form", async () => {
+    lockPart.mockResolvedValue([{ id: "part-1" }]);
+    partRecordCount.mockResolvedValue(1);
+    await expect(
+      createPurchaseOrder("user-1", { supplierId: "sup-1", lines: [{ partRecordId: "part-1", description: "Seal", quantity: 1 }] }),
+    ).rejects.toThrow(/archived/);
+    expect(purchaseOrderCreate).not.toHaveBeenCalled();
+  });
+
+  it("stores a blank price as unknown, and a typed 0 as a known zero", async () => {
+    purchaseOrderCreate.mockResolvedValue({ id: "po-2" });
+    await createPurchaseOrder("user-1", {
+      supplierId: "sup-1",
+      lines: [{ description: "Unknown", quantity: 1 }, { description: "Free", quantity: 1, unitCostCents: 0 }],
+    });
+    const rows = purchaseOrderCreate.mock.calls[0][0].data.lines.createMany.data;
+    expect(rows.map((r: { unitCostKnown: boolean }) => r.unitCostKnown)).toEqual([false, true]);
+  });
+
   it("creates the order with its lines when valid", async () => {
     purchaseOrderCreate.mockResolvedValue({ id: "po-1" });
     const order = await createPurchaseOrder("user-1", {
@@ -120,37 +150,6 @@ describe("markPurchaseOrderOrdered", () => {
   });
 });
 
-describe("receivePurchaseOrder", () => {
-  it("throws if the order isn't ORDERED", async () => {
-    purchaseOrderClaim.mockResolvedValueOnce({ count: 0 });
-    purchaseOrderFindUniqueOrThrow.mockResolvedValue({ id: "po-1", status: "DRAFT", lines: [] });
-    await expect(receivePurchaseOrder("user-1", "po-1")).rejects.toThrow(/ordered/);
-    expect(partRecordUpdate).not.toHaveBeenCalled();
-  });
-
-  it("increments quantityOnHand for every line tied to a real part, skipping free-text lines", async () => {
-    purchaseOrderFindUniqueOrThrow.mockResolvedValue({
-      id: "po-1",
-      status: "ORDERED",
-      lines: [
-        { id: "line-1", partRecordId: "part-1", quantity: 5, description: "Door seal" },
-        { id: "line-2", partRecordId: null, quantity: 1, description: "Bulk mobilization fee" },
-      ],
-    });
-
-    await receivePurchaseOrder("user-1", "po-1");
-
-    expect(partRecordUpdate).toHaveBeenCalledTimes(1);
-    expect(partRecordUpdate).toHaveBeenCalledWith({
-      where: { id: "part-1" },
-      data: { quantityOnHand: { increment: 5 } },
-    });
-    expect(purchaseOrderClaim).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ status: "RECEIVED" }) }),
-    );
-  });
-});
-
 describe("cancelPurchaseOrder", () => {
   it("throws if the order is already RECEIVED", async () => {
     purchaseOrderClaim.mockResolvedValueOnce({ count: 0 });
@@ -174,27 +173,12 @@ describe("cancelPurchaseOrder", () => {
   });
 });
 
-describe("recordPartUsage", () => {
-  it("rejects a quantity below 1", async () => {
-    await expect(recordPartUsage("user-1", "part-1", 0)).rejects.toThrow(/how many/);
-  });
-
-  it("subtracts the used quantity from what's on hand", async () => {
-    partRecordFindUniqueOrThrow.mockResolvedValue({ id: "part-1", quantityOnHand: 10 });
-    await recordPartUsage("user-1", "part-1", 3);
-    expect(partRecordUpdate).toHaveBeenCalledWith({
-      where: { id: "part-1" },
-      data: { quantityOnHand: 7 },
-    });
-  });
-
-  it("clamps at 0 rather than going negative when more is used than is on hand", async () => {
-    partRecordFindUniqueOrThrow.mockResolvedValue({ id: "part-1", quantityOnHand: 2 });
-    await recordPartUsage("user-1", "part-1", 5);
-    expect(partRecordUpdate).toHaveBeenCalledWith({
-      where: { id: "part-1" },
-      data: { quantityOnHand: 0 },
-    });
+describe("recordPartUsage input checks", () => {
+  it("rejects a quantity that is not a whole number of at least 1, before touching the database", async () => {
+    for (const amount of [0, -1, 1.5, NaN, Infinity]) {
+      await expect(recordPartUsage("user-1", "part-1", amount, { operationKey: "usage-key-0001" })).rejects.toThrow(/how many/);
+    }
+    expect(partRecordUpdate).not.toHaveBeenCalled();
   });
 });
 
@@ -212,20 +196,8 @@ describe("getLowStockParts", () => {
     // The query itself should already exclude parts with no threshold —
     // proving the where clause, not just the in-memory filter.
     expect(partRecordFindMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { reorderThreshold: { not: null } } }),
+      expect.objectContaining({ where: { reorderThreshold: { not: null }, archivedAt: null } }),
     );
   });
 });
 
-it("failed receiving claims cannot increment stock or audit", async () => {
-  purchaseOrderClaim.mockResolvedValueOnce({ count: 0 });
-  await expect(receivePurchaseOrder("user-1", "po-1")).rejects.toThrow(/ordered/);
-  expect(partRecordUpdate).not.toHaveBeenCalled();
-  expect(auditLogCreate).not.toHaveBeenCalled();
-});
-it("locks part stock before reading and does not accept fractional/invalid usage", async () => {
-  partRecordFindUniqueOrThrow.mockResolvedValue({ quantityOnHand: 5 });
-  await recordPartUsage("user-1", "part-1", 2);
-  expect(lockPart.mock.invocationCallOrder[0]).toBeLessThan(partRecordFindUniqueOrThrow.mock.invocationCallOrder[0]);
-  for (const amount of [1.5, NaN, Infinity]) await expect(recordPartUsage("user-1", "part-1", amount)).rejects.toThrow();
-});
