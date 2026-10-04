@@ -1,6 +1,8 @@
 # Design — Batch C: Rental-to-service operations, custody, inventory & purchasing
 
-Status: **NOT APPROVED — do not implement from this document yet.** It was
+Status: **NOT APPROVED — do not implement from this document yet.** The implementation-ready text is
+`BATCH-C-LITERAL-SPEC-2026-10-03.md` (reviewed 2026-10-03; approval per slice in `README.md`); this file and the
+2026-10-03 update are its background. It was
 approved on 2026-10-02 (written against `main` f272f51, *before* Batch B
 merged) and that approval was withdrawn by the 2026-10-03 amendment below:
 the literal schema, signatures and migration order are still to come from the

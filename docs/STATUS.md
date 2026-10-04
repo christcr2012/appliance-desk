@@ -100,6 +100,18 @@ as owner settings; built as stated. (The first push misread rule 2 as an
       `docs/prompts/DESIGN-BATCH-C-LITERAL-SPECS.md`.
 - Merge of #165 is Chris's coding agent's call, not Claude's.
 
+## Batch C design — where it stands (2026-10-03, evening)
+
+- `docs/designs/BATCH-C-LITERAL-SPEC-2026-10-03.md` (PR #166, stacked on #165) is the implementation-ready text.
+  Written by Sonnet 5.5, then reviewed and corrected by the stronger pass the same day ("Review pass" at its top):
+  every citation opened, every hand-written SQL statement executed on a scratch Postgres, a session-timezone bug in the
+  custody backfill fixed, a deadlock with the nightly termination run fixed (customer lock first), a counting rule that
+  would have broken late returns fixed, the D7 checklist-version clash resolved (Batch C creates D's table).
+- Reviewer's recommendation per slice is in the spec's section 12 and the README row. **Chris has not approved any slice
+  yet**; approval happens in `docs/designs/README.md`. Blocked regardless: C-09 pickup/return billing (shared billing
+  contract + IN-24's open part).
+- Stack: #163 → main, #164 → main, #165 (code) on #164, #166 (this spec) on #165. Merging is Chris's coding agent's job.
+
 ## Open items carried across batches
 
 - Historical review threads: ~50 remain open in
@@ -124,6 +136,8 @@ emails; building continues with sending switched off), IN-17's CPA check of the
 7.375% rate.
 
 ## Session log (last two batches only)
+
+- **2026-10-03 (Claude, Batch C spec review)** — Reviewed `BATCH-C-LITERAL-SPEC-2026-10-03.md` on #166 at Chris's direction (docs only). Ran every hand-written SQL statement against a scratch Postgres built from the real migrations; found that `Job.completedAt` is `timestamptz` while newer date columns are naive `timestamp(3)`, so the custody backfill's date depended on the session time zone — fixed and the rule added to the spec's section 0. Fixed a deadlock ordering, a counting rule, a CHECK/signature contradiction, resolved the D7 conflict (one amendment in BATCH-D.md), removed hedges, added missing call sites and literal SQL, set per-slice recommendations. Also recorded Chris's missing-item subscription rule (late/swapped stays; cancelled comes off Stripe) for the Batch C design. Chris: approve slices in `docs/designs/README.md`; answer IN-24's open part when ready.
 
 - **2026-10-03 (Claude, pickup billing rules)** — Chris gave the three pickup/delivery billing rules (late return per day per item; an item missing from the first delivery billed with the whole agreement and credited per day on the next bill once delivered; pickup day never charged) as owner settings with defaults, to be built on the open PR (#164). Built as `ai/claude/pickup-billing-rules` / PR #165 stacked on #164: settings section with on-screen explanations, pure rule module, job-completion wiring (recorded work date, "not delivered" ticks, waiting-item records), Stripe balance credit, labeled lines on the mirrored bill, Today item, docs. First push misread rule 2 as an early-return credit; Chris corrected it and the same PR now carries the late-delivery version (one commit, one CI run). Full suite green locally on a throwaway Postgres. Open for Chris: the company-fault waiver (Batch C design).
 

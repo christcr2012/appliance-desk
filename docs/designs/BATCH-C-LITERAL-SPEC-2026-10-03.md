@@ -13,17 +13,25 @@ service work), then the missing-item subscription rule, the blocked billing inte
 ## Review pass — 2026-10-03 (Claude Fable 5.1, docs only)
 
 Every file and line the spec cites was opened at head 3d71449 (branch `ai/claude/pickup-billing-rules`, which this
-branch sits on). Every raw SQL statement was read against Postgres 16 semantics and `scripts/check-migrations.mjs`
-(it blocks `DROP TABLE/COLUMN/DATABASE`, `TRUNCATE`, `RENAME`, and `SET NOT NULL`; it does **not** block `CHECK`,
-triggers, partial indexes or `ADD COLUMN … NOT NULL DEFAULT`). The timezone expression in the custody backfill was
-run on a scratch Postgres to prove the correction. Nothing in PR #165 was redesigned.
+branch sits on). **Every hand-written SQL statement in this spec was executed** on a scratch Postgres 16 built from the
+repository's real migrations (through `20261003280000`) with fixture rows: the P1-A columns/CHECKs/FK/index and the
+conflict query; the P1-B counter table, seed and per-prefix seed; the P1-C enum, table, uniques, CHECKs, append-only
+trigger (proven to fire), opening-balance and received-quantity backfills; the P2-A table, partial unique index (proven to
+reject a second open episode), both CHECKs and both backfill queries; the P2-B columns, both unique indexes, the
+`role` backfill (proven to mark the swap replacement) and the duplicate pre-check; the P2-D column, FK, index and
+backfill; the P2-E table, columns, definition backfill and version seed; section 8's table, columns and trigger. All ran
+clean. `scripts/check-migrations.mjs` was read: it blocks `DROP TABLE/COLUMN/DATABASE`, `TRUNCATE`, `RENAME` and
+`SET NOT NULL`, and nothing else. Nothing in PR #165 was redesigned.
 
 **What was wrong and was changed**
 
-1. **Custody backfill date (P2-A) produced the wrong instant.** `date_trunc('day', j."completedAt" AT TIME ZONE
-   'America/Denver') AT TIME ZONE 'America/Denver'` treats the stored UTC `timestamp(3)` as Denver wall time and then
-   depends on the session time zone; on the scratch database it returned `2026-10-04 00:00` for an instant whose Denver
-   date is Oct 3 (correct value `2026-10-03 06:00` UTC). Replaced with an expression that names every conversion.
+1. **Custody backfill date (P2-A) depended on the server's session time zone.** A fact the spec did not know: the
+   original tables' date columns (`Job.completedAt`, `scheduledAt`, `createdAt`, from the init migration) are
+   `timestamptz`, while every column added since (`Job.performedOn`, `PendingDelivery` dates, and all new columns Prisma
+   generates) is plain `timestamp(3)` holding UTC. The spec's expression produced a `timestamptz`; storing that into the
+   naive `startedOn` column converts it using the session time zone, so the same row would get `06:00` on a UTC session
+   and `00:00` on a Denver one (both runs reproduced on the scratch database). Fixed by ending the expression with
+   `AT TIME ZONE 'UTC'`, which yields the naive UTC value Prisma expects on any session. A rule for this is now in section 0.
 2. **Custody CHECK contradicted `recordManualCustody`.** `startedOn` may be null for `MANUAL` too (the signature allows it),
    but the CHECK only allowed null with `ESTIMATED`. Now: a `JOB` episode must have a date; `ESTIMATED`/`MANUAL` may not.
 3. **Deadlock in `completeJob` and `removeUndeliveredItem` as ordered.** Both locked the agreement before the customer
@@ -101,6 +109,12 @@ transition (`agreements/index.ts:32`), so the "nothing ever delivered" case in s
   Commands that must find a row's parent before locking (a pending item's agreement, a job's maintenance request) read
   the parent id without a lock, lock in the order above, and re-verify the child under its lock.
 - Retried requests return the first result and change nothing (each slice names its identity).
+- **Two kinds of date column coexist** (checked on the real schema): the init migration's columns (`Job.completedAt`,
+  `scheduledAt`, every `createdAt`/`updatedAt` of the original tables) are `timestamptz`; every column added later —
+  including all new ones in this batch, which Prisma generates as `TIMESTAMP(3)` — is naive and holds UTC. Prisma reads
+  both correctly. Hand-written SQL that **writes** a computed instant into a naive column must end with `AT TIME ZONE
+  'UTC'` so the result does not depend on the session time zone (the custody backfill is the example); SQL that only
+  compares columns of the same kind needs nothing. Never `SET TIME ZONE` in a migration to paper over this.
 
 ## Part 1 — slices that do not touch billing
 
@@ -469,11 +483,10 @@ ALTER TABLE "ApplianceCustodyEpisode" ADD CONSTRAINT "Custody_job_evidence_has_d
 -- 1. Appliances now with a customer (RENTED / AWAITING_PICKUP) that have a COMPLETED delivery/installation or swap job.
 INSERT INTO "ApplianceCustodyEpisode" ("id","applianceId","customerId","serviceAddressId","agreementId","startedOn","startEvidence","startJobId","createdAt")
 SELECT DISTINCT ON (ja."applianceId") 'bf_' || ja."applianceId", ja."applianceId", j."customerId", j."serviceAddressId", j."agreementId",
-       -- Colorado midnight of the completion's Denver date, as a UTC instant, with every conversion named
-       -- (the column is timestamp WITHOUT time zone holding UTC; never rely on the session time zone):
+       -- Colorado midnight of the completion's Denver date, written as naive UTC (section 0: completedAt is
+       -- timestamptz, startedOn is timestamp(3)); proven session-independent on the scratch database:
        COALESCE(j."performedOn",
-                ((date_trunc('day', (j."completedAt" AT TIME ZONE 'UTC') AT TIME ZONE 'America/Denver')
-                  AT TIME ZONE 'America/Denver') AT TIME ZONE 'UTC')),
+                (date_trunc('day', j."completedAt" AT TIME ZONE 'America/Denver') AT TIME ZONE 'America/Denver') AT TIME ZONE 'UTC'),
        'JOB', j."id", NOW()
 FROM "JobAppliance" ja JOIN "Job" j ON j."id" = ja."jobId" JOIN "Appliance" a ON a."id" = ja."applianceId"
 WHERE a."status" IN ('RENTED','AWAITING_PICKUP') AND j."status" = 'COMPLETED' AND j."customerId" IS NOT NULL
@@ -915,7 +928,8 @@ Parts: `parts-usage-over-stock-refused-not-clamped`; `parts-retry-same-key-same-
 `parts-archive-keeps-history`; `parts-delete-refused-when-history`.
 Custody: `custody-one-open-per-appliance-db-rule`; `custody-survives-renewal-start`; `custody-survives-close-agreement-null-user`;
 `custody-backfill-uses-job-evidence`; `custody-backfill-date-is-denver-midnight-as-utc-instant` (real Postgres: a job
-completed 03:30 UTC Oct 4 backfills `startedOn` = Oct 3 06:00 UTC); `custody-backfill-never-copies-reservation-time`;
+completed 03:30 UTC Oct 4 backfills `startedOn` = Oct 3 06:00 UTC, with the test run once under `SET TIME ZONE 'UTC'`
+and once under `'America/Denver'`); `custody-backfill-never-copies-reservation-time`;
 `custody-backfill-swapped-out-unit-has-no-open-episode`; `custody-manual-episode-may-have-unknown-date`; `custody-status-invariants`.
 Completion: `complete-requires-result-per-appliance`; `complete-retry-same-key-no-second-task-audit-credit`; `complete-negative-result-makes-one-HIGH-task`;
 `complete-move-conflict-aborts-all`; `complete-handoff-row-written-in-same-transaction`; `complete-handoff-sweep-retries-failed-once-per-run`;
