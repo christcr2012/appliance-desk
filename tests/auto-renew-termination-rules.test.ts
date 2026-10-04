@@ -23,11 +23,14 @@ describe("auto-renew window", () => {
 
 describe("Stripe end date for an early ending", () => {
   const base = { termMonths: 12, endDate: termEnd };
-  it("is the second before the ending date when that is earlier than the term end", () => {
+  it("uses the same DST-safe provider anniversary clock as recurring billing", () => {
     const effective = new Date("2027-03-08T07:00:00Z");
     expect(cancelAtSecondsForAgreement({ ...base, terminationEffectiveOn: effective })).toBe(
-      Math.floor((effective.getTime() - 1000) / 1000),
+      Math.floor(effective.getTime() / 1000),
     );
+  });
+  it("uses the provider boundary immediately after the natural last service day", () => {
+    expect(cancelAtSecondsFor(base)).toBe(Math.floor(Date.parse("2027-11-09T07:00:00.000Z") / 1000));
   });
   it("keeps the natural term end when the ending date is on or after it, or when nothing was requested", () => {
     const natural = cancelAtSecondsFor(base);

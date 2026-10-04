@@ -218,7 +218,7 @@ describe("startRecurringBillingForAgreement", () => {
     });
   });
 
-  it("backdates the provider subscription to first delivery while keeping the next anniversary anchor", async () => {
+  it("backdates from first delivery with a DST-safe month-end-preserving Stripe cycle", async () => {
     const { startRecurringBillingForAgreement } = await import("@/domains/billing/checkout");
 
     const outcome = await startRecurringBillingForAgreement("agr-1");
@@ -241,10 +241,12 @@ describe("startRecurringBillingForAgreement", () => {
           agreementId: "agr-1",
           firstDeliveredOn: FIRST_DELIVERED.toISOString(),
         },
-        backdate_start_date: Math.floor(FIRST_DELIVERED.getTime() / 1000),
+        billing_mode: { type: "flexible" },
+        backdate_start_date: Math.floor(Date.parse("2026-10-01T07:00:00.000Z") / 1000),
+        billing_cycle_anchor_config: { day_of_month: 1, hour: 7, minute: 0, second: 0 },
       }),
     );
-    expect(params.billing_cycle_anchor).toBeGreaterThan(Math.floor(RETRY_TIME.getTime() / 1000));
+    expect(params).not.toHaveProperty("billing_cycle_anchor");
     expect(params).not.toHaveProperty("cancel_at");
     expect(options).toEqual({ idempotencyKey: "subscription-create-agr-1" });
 
@@ -290,7 +292,7 @@ describe("startRecurringBillingForAgreement", () => {
     await startRecurringBillingForAgreement("agr-1");
 
     const [params] = mocks.subscriptionsCreate.mock.calls[0]!;
-    expect(params.cancel_at).toBe(Math.floor(Date.parse("2026-11-02T06:59:59.000Z") / 1000));
+    expect(params.cancel_at).toBe(Math.floor(Date.parse("2026-11-02T07:00:00.000Z") / 1000));
   });
 
   describe("fixed terms are anchored to first delivery, never provider retry time", () => {
@@ -306,7 +308,7 @@ describe("startRecurringBillingForAgreement", () => {
         data: { endDate: expectedEnd },
       });
       const [params] = mocks.subscriptionsCreate.mock.calls[0]!;
-      expect(params.cancel_at).toBe(Math.floor(expectedEnd.getTime() / 1000));
+      expect(params.cancel_at).toBe(Math.floor(Date.parse("2027-10-01T07:00:00.000Z") / 1000));
     });
 
     it("derives a six-month end from the same delivery anchor", async () => {
@@ -333,7 +335,7 @@ describe("startRecurringBillingForAgreement", () => {
       );
       expect(writes).toHaveLength(0);
       const [params] = mocks.subscriptionsCreate.mock.calls[0]!;
-      expect(params.cancel_at).toBe(Math.floor(saved.getTime() / 1000));
+      expect(params.cancel_at).toBe(Math.floor(Date.parse("2027-03-01T07:00:00.000Z") / 1000));
     });
 
     it("uses billingStartedAt only as historical compatibility when firstDeliveredOn predates the new column", async () => {

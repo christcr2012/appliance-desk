@@ -189,7 +189,7 @@ describe.skipIf(!enabled)("subscription start and renewal against disposable Pos
         customer: stripeCustomerId,
         default_payment_method: paymentMethodId,
         metadata: { agreementId: agreement.id, firstDeliveredOn: deliveredOn.toISOString() },
-        backdate_start_date: Math.floor(deliveredOn.getTime() / 1000),
+        backdate_start_date: Math.floor(Date.parse("2026-10-01T07:00:00.000Z") / 1000),
       });
       const items = params.items as Array<{ price_data: { unit_amount: number; currency: string } }>;
       expect(items).toHaveLength(1);
