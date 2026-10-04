@@ -106,24 +106,45 @@ export async function getTaskAssignees() {
     orderBy: [{ name: "asc" }, { id: "asc" }],
   });
 }
+/**
+ * Creates a task inside a caller's transaction (a completed job's follow-up, for example). With a
+ * `sourceKey`, a retry finds the existing task and creates nothing (`created: false`).
+ */
+export async function createTaskInTx(
+  tx: Prisma.TransactionClient,
+  actor: { userId: string; role: "OWNER" | "ADMIN" | "STAFF" },
+  raw: TaskInput & { applianceId?: string | null; sourceKey?: string },
+) {
+  const { applianceId, sourceKey, ...taskRaw } = raw;
+  const data = inputData(taskRaw);
+  if (sourceKey) {
+    const existing = await tx.staffTask.findUnique({ where: { sourceKey } });
+    if (existing) return { task: existing, created: false };
+  }
+  await validateLinks(tx, data, actor.role);
+  if (applianceId && !(await tx.appliance.findUnique({ where: { id: applianceId }, select: { id: true } }))) {
+    throw new TaskError("That linked record is unavailable.");
+  }
+  const task = await tx.staffTask.create({
+    data: { ...data, applianceId: applianceId || null, sourceKey: sourceKey ?? null, createdByUserId: actor.userId },
+  });
+  await tx.auditLog.create({
+    data: {
+      userId: actor.userId,
+      action: "task.create",
+      entityType: "StaffTask",
+      entityId: task.id,
+      newValue: { ...snapshot(task), ...(sourceKey ? { sourceKey } : {}) },
+    },
+  });
+  return { task, created: true };
+}
 export async function createTask(raw: TaskInput) {
   const session = await requireRole(...roles);
-  const data = inputData(raw);
+  inputData(raw); // reject bad input before opening a transaction
   return prisma.$transaction(async (tx) => {
     const actor = await activeStaff(tx, session.user.id);
-    await validateLinks(tx, data, actor.role);
-    const task = await tx.staffTask.create({
-      data: { ...data, createdByUserId: actor.id },
-    });
-    await tx.auditLog.create({
-      data: {
-        userId: actor.id,
-        action: "task.create",
-        entityType: "StaffTask",
-        entityId: task.id,
-        newValue: snapshot(task),
-      },
-    });
+    const { task } = await createTaskInTx(tx, { userId: actor.id, role: actor.role as "OWNER" | "ADMIN" | "STAFF" }, raw);
     return task;
   });
 }

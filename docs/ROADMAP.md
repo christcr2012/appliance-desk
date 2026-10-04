@@ -599,3 +599,5 @@ Google Tasks/Keep, Sheets-as-reporting, Contacts sync.
 - Held payments (a card payment on a written-off invoice, IN-23): build the owner screen
   that resolves one (credit the account, reverse the write-off, or refund) once Chris
   decides.
+
+- **A way to end custody for a lost or written-off unit (found in Batch C review, 2026-10-04).** A hand-made status change now refuses "available", "reserved" or "retired" while a customer is recorded as holding the unit, and refuses "rented" or "awaiting pickup" with no customer recorded (deliveries and pickups go through job completion). A unit that is genuinely lost at a customer's home therefore has no way to be retired yet; it needs an owner-only "end custody (lost / written off)" action with a reason. Not built; decide when P2-E/P2-F are designed.

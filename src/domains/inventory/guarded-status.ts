@@ -2,6 +2,7 @@ import type { ApplianceStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
 import { canTransitionApplianceStatus } from "./lifecycle";
+import { assertStatusChangeKeepsCustody } from "./custody";
 
 /**
  * Team-actor version of an appliance status change for operational flows
@@ -22,6 +23,8 @@ export async function updateApplianceStatusAsTeamActor(
     });
     const check = canTransitionApplianceStatus(before.status, newStatus);
     if (!check.ok) throw new Error(check.reason);
+
+    await assertStatusChangeKeepsCustody(tx, applianceId, newStatus);
 
     const result = await tx.appliance.updateMany({
       where: { id: applianceId, updatedAt: before.updatedAt },

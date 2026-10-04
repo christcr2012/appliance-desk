@@ -1,17 +1,6 @@
 import { requireRole } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import type { JobStatus, JobType, Prisma } from "@prisma/client";
-import { applianceStatusOnJobCompleted } from "@/domains/inventory/lifecycle";
-import { startRecurringBillingForAgreement } from "@/domains/billing/checkout";
-import {
-  jobServiceDate,
-  parsePerformedOn,
-  pushLateDeliveryCreditToStripe,
-  recordItemsNotDelivered,
-  recordLateDeliveries,
-  recordLateReturnOnRemoval,
-  type PickupBillingOutcome,
-} from "@/domains/billing/pickup-billing-events";
 import { parseChecklist, type ChecklistItem } from "./checklist";
 import { businessDayBounds } from "@/lib/business-date";
 import { MAX_JOB_DURATION_MINUTES } from "./dispatch";
@@ -24,6 +13,14 @@ import {
 import { assertActiveTeamActor } from "@/lib/team-actor";
 
 export { sendJobDayOfReminders } from "./day-of-reminders";
+export {
+  completeJob,
+  runPendingHandoffs,
+  getJobCompletionScope,
+  JobCompletionConflictError,
+  type CompleteJobInput,
+  type CompleteJobResult,
+} from "./completion";
 
 const ALLOWED_JOB_TRANSITIONS: Record<JobStatus, JobStatus[]> = {
   SCHEDULED: ["IN_PROGRESS", "CANCELLED"],
@@ -151,39 +148,6 @@ export async function getJobById(id: string) {
   });
 }
 
-/**
- * The appliances a DELIVERY/INSTALLATION job will mark as delivered when it is
- * completed: the ones listed on the job, or (when none are listed) every
- * appliance still assigned to its agreement. Staff pick from this list which
- * ones were NOT on the truck.
- */
-export async function deliveryCandidatesForJob(job: {
-  id: string;
-  type: JobType;
-  status: JobStatus;
-  agreementId: string | null;
-}): Promise<Array<{ id: string; label: string }>> {
-  if ((job.type !== "DELIVERY" && job.type !== "INSTALLATION") || !job.agreementId || job.status === "COMPLETED" || job.status === "CANCELLED") {
-    return [];
-  }
-  const listed = await prisma.jobAppliance.findMany({
-    where: { jobId: job.id },
-    select: { appliance: { select: { id: true, assetNumber: true, status: true, applianceType: { select: { name: true } } } } },
-  });
-  let rows = listed.map((r) => r.appliance);
-  if (rows.length === 0) {
-    const assignments = await prisma.applianceAssignment.findMany({
-      where: { unassignedAt: null, rentalLine: { agreementId: job.agreementId } },
-      select: { appliance: { select: { id: true, assetNumber: true, status: true, applianceType: { select: { name: true } } } } },
-    });
-    rows = assignments.map((r) => r.appliance);
-  }
-  const seen = new Set<string>();
-  return rows
-    .filter((a) => a.status === "RESERVED" && !seen.has(a.id) && seen.add(a.id))
-    .map((a) => ({ id: a.id, label: `${a.applianceType.name} #${a.assetNumber}` }));
-}
-
 export type NewJobInput = {
   type: JobType;
   scheduledAt?: Date | null;
@@ -300,51 +264,35 @@ export async function createJobInTx(tx: Prisma.TransactionClient, userId: string
     return job;
 }
 
-export type CompleteJobOptions = {
-  /** The Colorado date the work was done (YYYY-MM-DD). Blank = today. Only used when completing. */
-  performedOn?: string | null;
-  /** DELIVERY/INSTALLATION only: agreement items that were NOT delivered on this visit. */
-  notDeliveredApplianceIds?: string[];
-};
-
+/**
+ * Starts or cancels a job. Completing a job is a different command, `completeJob`, because every
+ * appliance on the visit needs its own result.
+ */
 export async function updateJobStatus(
   userId: string,
   jobId: string,
   newStatus: JobStatus,
   completionNotes?: string | null,
-  options: CompleteJobOptions = {},
 ) {
-  const performed = parsePerformedOn(options.performedOn);
-  if (!performed.ok) throw new Error(performed.message);
-  const notDelivered = [...new Set(options.notDeliveredApplianceIds ?? [])];
+  if (newStatus === "COMPLETED") throw new Error("Use Complete job so each appliance gets a result.");
 
-  const { updated, before, billing } = await prisma.$transaction(async (tx) => {
+  return prisma.$transaction(async (tx) => {
     await assertActiveTeamActor(tx, userId);
 
     const before = await tx.job.findUniqueOrThrow({ where: { id: jobId } });
     const check = canTransitionJobStatus(before.status, newStatus);
     if (!check.ok) throw new Error(check.reason);
 
-    const completedAt = newStatus === "COMPLETED" ? new Date() : before.completedAt;
-    const performedOn =
-      newStatus === "COMPLETED" ? (performed.value ?? before.performedOn ?? businessDayBounds(completedAt ?? new Date()).start) : before.performedOn;
     const result = await tx.job.updateMany({
       where: { id: jobId, status: before.status },
       data: {
         status: newStatus,
         version: { increment: 1 },
-        completedAt,
-        performedOn,
-        completionNotes:
-          completionNotes !== undefined
-            ? completionNotes
-            : before.completionNotes,
+        completionNotes: completionNotes !== undefined ? completionNotes : before.completionNotes,
       },
     });
     if (result.count !== 1) {
-      throw new Error(
-        "This job was just changed by someone else — refresh the page and try again.",
-      );
+      throw new Error("This job was just changed by someone else — refresh the page and try again.");
     }
 
     await tx.auditLog.create({
@@ -354,183 +302,12 @@ export async function updateJobStatus(
         entityType: "Job",
         entityId: jobId,
         oldValue: { status: before.status },
-        newValue: { status: newStatus, ...(newStatus === "COMPLETED" && performedOn ? { performedOn: performedOn.toISOString() } : {}) },
+        newValue: { status: newStatus },
       },
     });
 
-    const billing: PickupBillingOutcome[] = [];
-    if (newStatus === "COMPLETED") {
-      const isDelivery = before.type === "DELIVERY" || before.type === "INSTALLATION";
-      if (notDelivered.length > 0 && !(isDelivery && before.agreementId)) {
-        throw new Error("Only a delivery or installation job for a rental agreement can have items marked not delivered.");
-      }
-      const moved = await applyJobCompletionToAppliances(tx, userId, before, isDelivery ? notDelivered : []);
-      const serviceDate = jobServiceDate({ performedOn, scheduledAt: before.scheduledAt, completedAt });
-
-      // A completed job settles billing for the appliances it moved, in this
-      // same transaction: late-return charges for a pickup, late-delivery
-      // credits (and "not delivered" records) for a delivery.
-      if (before.agreementId && before.type === "REMOVAL") {
-        billing.push(
-          await recordLateReturnOnRemoval(tx, { userId, jobId, agreementId: before.agreementId, applianceIds: moved, pickupDate: serviceDate }),
-        );
-      }
-      if (before.agreementId && isDelivery) {
-        billing.push(
-          await recordLateDeliveries(tx, { userId, jobId, agreementId: before.agreementId, applianceIds: moved, deliveryDate: serviceDate }),
-        );
-        billing.push(
-          await recordItemsNotDelivered(tx, { userId, jobId, agreementId: before.agreementId, applianceIds: notDelivered, deliveryDate: serviceDate }),
-        );
-      }
-      const notes = billing.flatMap((b) => b.notes);
-      if (notes.length > 0) {
-        await tx.auditLog.create({
-          data: {
-            userId,
-            action: "job.pickup_billing",
-            entityType: "Job",
-            entityId: jobId,
-            newValue: {
-              agreementId: before.agreementId,
-              serviceDate: serviceDate.toISOString(),
-              lateReturnInvoiceId: billing.map((b) => b.lateReturnInvoiceId).find(Boolean) ?? null,
-              creditIds: billing.flatMap((b) => b.creditIds),
-              pendingDeliveryIds: billing.flatMap((b) => b.pendingDeliveryIds),
-              notes,
-            },
-          },
-        });
-      }
-    }
-
-    const updated = await tx.job.findUniqueOrThrow({ where: { id: jobId } });
-    return { updated, before, billing };
+    return tx.job.findUniqueOrThrow({ where: { id: jobId } });
   });
-
-  // Credits are sent to Stripe only once the local record is committed; a
-  // failure here is retried by the billing reconciliation pass.
-  for (const creditId of billing.flatMap((b) => b.creditIds)) {
-    try {
-      await pushLateDeliveryCreditToStripe(creditId);
-    } catch (error) {
-      console.error(`Job ${jobId} completed but couldn't send late-delivery credit ${creditId} to Stripe yet:`, error);
-    }
-  }
-
-  if (
-    newStatus === "COMPLETED" &&
-    (before.type === "DELIVERY" || before.type === "INSTALLATION") &&
-    before.agreementId
-  ) {
-    try {
-      await startRecurringBillingForAgreement(before.agreementId);
-    } catch (error) {
-      console.error(
-        `Job ${jobId} completed but couldn't start billing for agreement ${before.agreementId}:`,
-        error,
-      );
-    }
-  }
-
-  return updated;
-}
-
-/**
- * Moves each of the job's appliances to its next status, skipping any the
- * staff marked as not delivered (those stay reserved for this customer).
- * Returns the ids that actually moved.
- */
-async function applyJobCompletionToAppliances(
-  tx: Prisma.TransactionClient,
-  userId: string,
-  job: { id: string; type: JobType; agreementId: string | null },
-  skipApplianceIds: string[] = [],
-): Promise<string[]> {
-  const listed = await tx.jobAppliance.findMany({
-    where: { jobId: job.id },
-    select: { applianceId: true },
-  });
-  let applianceIds = listed.map((row) => row.applianceId);
-
-  if (applianceIds.length === 0 && job.agreementId) {
-    if (job.type === "DELIVERY" || job.type === "INSTALLATION") {
-      const assignments = await tx.applianceAssignment.findMany({
-        where: {
-          unassignedAt: null,
-          rentalLine: { agreementId: job.agreementId },
-        },
-        select: { applianceId: true },
-      });
-      applianceIds = assignments.map((assignment) => assignment.applianceId);
-    } else if (job.type === "REMOVAL") {
-      const assignments = await tx.applianceAssignment.findMany({
-        where: {
-          rentalLine: { agreementId: job.agreementId },
-          appliance: { status: "AWAITING_PICKUP" },
-        },
-        select: { applianceId: true },
-      });
-      applianceIds = [
-        ...new Set(assignments.map((assignment) => assignment.applianceId)),
-      ];
-    }
-  }
-
-  // Lock every unit this job may move, sorted by id (spec lock order), and keep the locks to the end of the
-  // transaction. A second job moving the same unit at this moment then either finishes first (and the
-  // "still waiting" check below refuses) or waits until this job's "not delivered" record is committed.
-  if (applianceIds.length > 0) {
-    await tx.$queryRaw`
-      SELECT "id" FROM "Appliance" WHERE "id" = ANY(${[...applianceIds].sort()}) ORDER BY "id" FOR UPDATE
-    `;
-  }
-
-  if (skipApplianceIds.length > 0) {
-    const unknown = skipApplianceIds.filter((id) => !applianceIds.includes(id));
-    if (unknown.length > 0) {
-      throw new Error("An item marked not delivered is not one of this job's appliances.");
-    }
-    // Only a unit still waiting for delivery can be "not delivered"; one already out with the customer cannot.
-    const notWaiting = await tx.appliance.count({ where: { id: { in: skipApplianceIds }, status: { not: "RESERVED" } } });
-    if (notWaiting > 0) {
-      throw new Error("An item marked not delivered is not waiting for delivery (it was already delivered or released).");
-    }
-    applianceIds = applianceIds.filter((id) => !skipApplianceIds.includes(id));
-  }
-
-  const movedIds: string[] = [];
-  for (const applianceId of applianceIds) {
-    const appliance = await tx.appliance.findUniqueOrThrow({
-      where: { id: applianceId },
-      select: { status: true },
-    });
-    const next = applianceStatusOnJobCompleted(job.type, appliance.status);
-    if (!next) continue;
-
-    const moved = await tx.appliance.updateMany({
-      where: { id: applianceId, status: appliance.status },
-      data: { status: next },
-    });
-    if (moved.count !== 1) continue;
-    movedIds.push(applianceId);
-
-    await tx.auditLog.create({
-      data: {
-        userId,
-        action: "appliance.unit.status",
-        entityType: "Appliance",
-        entityId: applianceId,
-        oldValue: { status: appliance.status },
-        newValue: {
-          status: next,
-          reason: `Job ${job.type.toLowerCase()} completed`,
-          jobId: job.id,
-        },
-      },
-    });
-  }
-  return movedIds;
 }
 
 export async function addJobPhoto(

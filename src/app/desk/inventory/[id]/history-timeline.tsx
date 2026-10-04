@@ -4,6 +4,7 @@ const KIND_LABELS: Record<ApplianceHistoryEntry["kind"], string> = {
   status_change: "Status",
   job: "Job",
   inspection: "Inspection",
+  custody: "Custody",
 };
 
 /** This appliance's own chronological history — every status change, job,

@@ -56,10 +56,12 @@ vi.mock("@/lib/prisma", () => ({
       findMany: (...args: unknown[]) => applianceInspectionFindMany(...args),
     },
     jobAppliance: { findMany: (...args: unknown[]) => jobApplianceFindMany(...args) },
+    applianceCustodyEpisode: { findMany: vi.fn().mockResolvedValue([]) },
     $transaction: (callback: (tx: ReturnType<typeof makeTx>) => unknown) => callback(makeTx()),
   },
 }));
 
+vi.mock("@/domains/inventory/custody", () => ({ assertStatusChangeKeepsCustody: vi.fn() }));
 vi.mock("@/domains/settings", () => ({
   getBusinessSettings: (...args: unknown[]) => getBusinessSettings(...args),
 }));
@@ -293,7 +295,7 @@ describe("startSwapForAppliance", () => {
         data: expect.objectContaining({
           type: "SWAP",
           customerId: "cust-1",
-          appliances: { create: [{ applianceId: "app-1" }, { applianceId: "app-2" }] },
+          appliances: { create: [{ applianceId: "app-1" }, { applianceId: "app-2", role: "REPLACEMENT" }] },
         }),
       }),
     );

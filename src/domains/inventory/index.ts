@@ -4,6 +4,7 @@ import { requireRole } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
 import type { ApplianceStatus } from "@prisma/client";
+import { assertStatusChangeKeepsCustody } from "./custody";
 import {
   ALL_APPLIANCE_STATUSES,
   canTransitionApplianceStatus,
@@ -299,40 +300,44 @@ export async function updateApplianceStatus(
   applianceId: string,
   newStatus: ApplianceStatus,
 ) {
-  const before = await prisma.appliance.findUniqueOrThrow({
-    where: { id: applianceId },
+  return prisma.$transaction(async (tx) => {
+    const before = await tx.appliance.findUniqueOrThrow({
+      where: { id: applianceId },
+    });
+
+    const check = canTransitionApplianceStatus(before.status, newStatus);
+    if (!check.ok) {
+      throw new Error(check.reason);
+    }
+
+    await assertStatusChangeKeepsCustody(tx, applianceId, newStatus);
+
+    const result = await tx.appliance.updateMany({
+      where: { id: applianceId, updatedAt: before.updatedAt },
+      data: { status: newStatus },
+    });
+
+    if (result.count === 0) {
+      throw new ApplianceConflictError();
+    }
+
+    const updated = await tx.appliance.findUniqueOrThrow({
+      where: { id: applianceId },
+    });
+
+    await tx.auditLog.create({
+      data: {
+        userId,
+        action: "appliance.unit.status",
+        entityType: "Appliance",
+        entityId: applianceId,
+        oldValue: { status: before.status },
+        newValue: { status: newStatus },
+      },
+    });
+
+    return updated;
   });
-
-  const check = canTransitionApplianceStatus(before.status, newStatus);
-  if (!check.ok) {
-    throw new Error(check.reason);
-  }
-
-  const result = await prisma.appliance.updateMany({
-    where: { id: applianceId, updatedAt: before.updatedAt },
-    data: { status: newStatus },
-  });
-
-  if (result.count === 0) {
-    throw new ApplianceConflictError();
-  }
-
-  const updated = await prisma.appliance.findUniqueOrThrow({
-    where: { id: applianceId },
-  });
-
-  await prisma.auditLog.create({
-    data: {
-      userId,
-      action: "appliance.unit.status",
-      entityType: "Appliance",
-      entityId: applianceId,
-      oldValue: { status: before.status },
-      newValue: { status: newStatus },
-    },
-  });
-
-  return updated;
 }
 
 /** Adds a photo of this specific physical unit — e.g. an actual scratch

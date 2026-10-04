@@ -203,6 +203,9 @@ export async function applyPartMovementsInTx(
           reversesMovementId,
           reason: request.reason?.trim() ? request.reason.trim().slice(0, 500) : null,
           createdByUserId: actorUserId,
+          // Stamped after the part lock is held, so history order matches the order changes were really applied
+          // (the database default is the moment the transaction began, which can be earlier than a competing one).
+          createdAt: new Date(),
         },
       }),
     );

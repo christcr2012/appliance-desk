@@ -112,6 +112,7 @@ model Customer {
   id     String @id @default(cuid())
   userId String @unique
   user   User   @relation(fields: [userId], references: [id])
+  custodyEpisodes ApplianceCustodyEpisode[]
 
   phone           String?
   isBusiness      Boolean  @default(false)
@@ -222,6 +223,7 @@ model ServiceAddress {
   jobs     Job[]
   rentalAgreements RentalAgreement[]
   estimateLineItems EstimateLineItem[]
+  custodyEpisodes ApplianceCustodyEpisode[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -425,6 +427,8 @@ model Appliance {
   pendingDeliveries PendingDelivery[]
   maintenanceRequests MaintenanceRequest[]
   inspections ApplianceInspection[]
+  custodyEpisodes ApplianceCustodyEpisode[]
+  staffTasks  StaffTask[]
 
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
@@ -903,6 +907,15 @@ model Job {
   noShowAt         DateTime?
   partMovements    PartStockMovement[]
 
+  // Completion (Batch C, P2-B): COMPLETE when every appliance got its positive result, otherwise PARTIAL.
+  // completionKey makes a retried completion return the first result.
+  outcome        JobOutcome?
+  outcomeNotes   String?
+  completionKey  String?  @unique
+  handoffs       JobBillingHandoff[]
+  custodyStarted ApplianceCustodyEpisode[] @relation("CustodyStartJob")
+  custodyEnded   ApplianceCustodyEpisode[] @relation("CustodyEndJob")
+
   customerId String?
   customer   Customer? @relation(fields: [customerId], references: [id])
   serviceAddressId String?
@@ -1009,8 +1022,104 @@ model JobAppliance {
   applianceId String
   appliance   Appliance @relation(fields: [applianceId], references: [id])
 
+  // Completion result (Batch C, P2-B): every appliance in a job's scope gets exactly one result when the job
+  // is completed. Old completed jobs keep result NULL (history is not invented). role marks the incoming unit
+  // of a swap; reservationActive marks a unit whose RESERVED status is owned by this staged swap/substitution.
+  role                   JobApplianceRole   @default(PRIMARY)
+  result                 JobApplianceResult?
+  resultNote             String?
+  resultRecordedAt       DateTime?
+  resultRecordedByUserId String?
+  reservationActive      Boolean            @default(false)
+
+  @@unique([jobId, applianceId])
   @@index([jobId])
   @@index([applianceId])
+}
+
+enum JobApplianceResult {
+  DELIVERED
+  NOT_DELIVERED
+  RETURNED
+  NOT_RETURNED
+  REPAIRED
+  NOT_REPAIRED
+  NO_ACCESS
+}
+
+enum JobApplianceRole {
+  PRIMARY
+  REPLACEMENT
+}
+
+enum JobOutcome {
+  COMPLETE
+  PARTIAL
+}
+
+enum HandoffKind {
+  START_RECURRING_BILLING
+  PUSH_CREDIT
+}
+
+enum HandoffStatus {
+  PENDING
+  DONE
+  FAILED
+}
+
+// Provider work that must happen after a job's completion commits (start the monthly Stripe billing, send a
+// credit to Stripe). Written in the same transaction as the completion, so a crash after commit cannot lose it.
+model JobBillingHandoff {
+  id        String        @id @default(cuid())
+  jobId     String
+  job       Job           @relation(fields: [jobId], references: [id])
+  kind      HandoffKind
+  subjectId String
+  status    HandoffStatus @default(PENDING)
+  attempts  Int           @default(0)
+  lastError String?
+  doneAt    DateTime?
+  createdAt DateTime      @default(now())
+
+  @@unique([jobId, kind, subjectId])
+  @@index([status])
+}
+
+enum CustodyEvidence {
+  JOB
+  ESTIMATED
+  MANUAL
+}
+
+// Who physically has an appliance (Batch C, P2-A). Opened only by a completed delivery/installation (or swap
+// replacement), closed only by a completed removal (or swap return). Renewals, agreement endings and
+// assignment changes never touch it. At most one open episode per appliance (partial unique index).
+model ApplianceCustodyEpisode {
+  id               String          @id @default(cuid())
+  applianceId      String
+  appliance        Appliance       @relation(fields: [applianceId], references: [id])
+  customerId       String
+  customer         Customer        @relation(fields: [customerId], references: [id])
+  serviceAddressId String?
+  serviceAddress   ServiceAddress? @relation(fields: [serviceAddressId], references: [id])
+  agreementId      String?
+  startedOn        DateTime?
+  startEvidence    CustodyEvidence
+  startJobId       String?
+  startJob         Job?            @relation("CustodyStartJob", fields: [startJobId], references: [id])
+  closedAt         DateTime?
+  endedOn          DateTime?
+  endEvidence      CustodyEvidence?
+  endJobId         String?
+  endJob           Job?            @relation("CustodyEndJob", fields: [endJobId], references: [id])
+  endReason        String?
+  createdAt        DateTime        @default(now())
+
+  @@unique([startJobId, applianceId])
+  @@unique([endJobId, applianceId])
+  @@index([applianceId, closedAt])
+  @@index([customerId])
 }
 
 // ---------------------------------------------------------------------------
@@ -1653,6 +1762,10 @@ model StaffTask {
   customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
   jobId      String?
   job        Job?      @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  applianceId String?
+  appliance   Appliance? @relation(fields: [applianceId], references: [id], onDelete: SetNull)
+  // A task a command creates for itself (for example a completion's follow-up): a retry finds the same key and makes no second task.
+  sourceKey   String?   @unique
 
   createdByUserId String
   createdBy       User   @relation("StaffTaskCreatedBy", fields: [createdByUserId], references: [id])
@@ -1666,6 +1779,7 @@ model StaffTask {
   @@index([leadId])
   @@index([customerId])
   @@index([jobId])
+  @@index([applianceId])
 }
 
 model AuditLog {

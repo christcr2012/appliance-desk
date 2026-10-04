@@ -70,6 +70,22 @@ in UTC and only converted to Mountain Time for display.
   Parts and suppliers with history are **archived** (`archivedAt`), not deleted;
   `PurchaseOrderLineItem.receivedQuantity` supports partial receipts and
   `unitCostKnown` says whether a line's price is real.
+- **ApplianceCustodyEpisode** (Batch C, 2026-10-04) — who physically has an
+  appliance. One row per stay at a customer: opened only by a completed
+  delivery/installation (or a swap's new unit), closed only by a completed
+  removal (or a swap's old unit). Renewals and agreement endings never touch it.
+  A database rule allows only one open row per appliance. Dates are Colorado
+  business dates; an unknown date is blank, never guessed (`startEvidence` says
+  whether it came from a job, an estimate or the owner).
+- **JobBillingHandoff** (Batch C, 2026-10-04) — provider work that must happen
+  after a job's completion is saved (start the monthly Stripe billing, send a
+  credit to Stripe). Written in the same transaction as the completion; a
+  nightly sweep finishes any that did not complete (`PENDING`/`FAILED`, under 5 attempts).
+- **JobAppliance** also records the completion result (`result`, one per
+  appliance), the swap role, and `reservationActive` (a staged swap owns the
+  unit's reserved status; one per appliance). `Job.outcome` is COMPLETE or
+  PARTIAL; `Job.completionKey` makes a retried completion harmless.
+  `StaffTask` gains `applianceId` and `sourceKey` (a task a command creates for itself is made once).
 - **Supplier** — a purchasing contact: name, phone, email, notes.
 - **PurchaseOrder** / **PurchaseOrderLineItem** (2026-09-29) — an order
   placed with a `Supplier`, DRAFT → ORDERED → RECEIVED/CANCELLED. A

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { businessDateFromKey } from "@/lib/business-date";
 import { requireRole } from "@/lib/session";
 import {
   createApplianceUnits,
@@ -519,4 +520,38 @@ export async function bulkUpdateApplianceStatusAction(
     updated: result.updated,
     skipped: result.skipped,
   };
+}
+
+const manualCustodySchema = z.object({
+  customerId: z.string().trim().min(1, "Choose a customer.").max(64),
+  serviceAddressId: z.string().trim().max(64).optional().or(z.literal("")),
+  startedOn: z.string().trim().max(10).optional().or(z.literal("")),
+  reason: z.string().trim().min(1, "Say how you know this customer has it.").max(300),
+});
+
+/** Owner/admin: record which customer has an appliance when the system could not work it out. */
+export async function recordManualCustodyAction(
+  applianceId: string,
+  raw: Record<string, unknown>,
+): Promise<InventoryActionState> {
+  const session = await requireRole("OWNER", "ADMIN");
+  const parsed = manualCustodySchema.safeParse(raw);
+  if (!parsed.success) return { status: "error", message: parsed.error.issues[0]?.message ?? "Check the fields." };
+  const startedOn = parsed.data.startedOn ? businessDateFromKey(parsed.data.startedOn) : null;
+  if (parsed.data.startedOn && !startedOn) return { status: "error", message: "Enter a real date, or leave it blank." };
+  try {
+    const { recordManualCustody } = await import("@/domains/inventory/custody");
+    await recordManualCustody(session.user.id, {
+      applianceId,
+      customerId: parsed.data.customerId,
+      serviceAddressId: parsed.data.serviceAddressId || null,
+      startedOn,
+      reason: parsed.data.reason,
+    });
+  } catch (error) {
+    return { status: "error", message: error instanceof Error ? error.message : "Couldn't record that." };
+  }
+  revalidatePath(`/desk/inventory/${applianceId}`);
+  revalidatePath("/desk/today");
+  return { status: "success" };
 }

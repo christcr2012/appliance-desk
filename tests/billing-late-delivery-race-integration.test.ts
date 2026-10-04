@@ -5,7 +5,8 @@ vi.mock("@/lib/stripe", () => ({ getStripeClient: () => ({}) }));
 
 import { prisma } from "@/lib/prisma";
 import { recordLateDeliveries } from "@/domains/billing/pickup-billing-events";
-import { updateJobStatus } from "@/domains/jobs";
+import { completeJob } from "@/domains/jobs";
+import type { JobApplianceResult } from "@prisma/client";
 import { businessDateFromKey } from "@/lib/business-date";
 
 const url = new URL(process.env.DATABASE_URL ?? "postgresql://localhost/unset");
@@ -31,6 +32,15 @@ describe.skipIf(!enabled)("late-delivery credit safety (real Postgres)", () => {
   const jobB = `race-jobB-${tag}`;
   const rentedJob = `race-job3-${tag}`;
   let pendingId = "";
+  const finish = (jobId: string, results: Array<{ applianceId: string; result: JobApplianceResult }>, performedOn: string | null = null) =>
+    completeJob(ownerId, {
+      jobId,
+      expectedVersion: 1,
+      completionKey: `race-key-${randomUUID()}`,
+      performedOn: performedOn ? businessDateFromKey(performedOn) : null,
+      completionNotes: null,
+      results,
+    });
 
   beforeAll(async () => {
     await prisma.user.create({ data: { id: ownerId, email: `${tag}-o@example.test`, name: "Owner fixture", role: "OWNER" } });
@@ -74,6 +84,9 @@ describe.skipIf(!enabled)("late-delivery credit safety (real Postgres)", () => {
     const creditIds = (await prisma.customerCredit.findMany({ where: { customerId }, select: { id: true } })).map((r) => r.id);
     const allApplianceIds = [dryerId, washerId, ...extraApplianceIds];
     const allJobIds = [originalJobId, jobA, jobB, rentedJob, ...extraJobIds];
+    await prisma.staffTask.deleteMany({ where: { jobId: { in: allJobIds } } });
+    await prisma.jobBillingHandoff.deleteMany({ where: { jobId: { in: allJobIds } } });
+    await prisma.applianceCustodyEpisode.deleteMany({ where: { applianceId: { in: allApplianceIds } } });
     await prisma.pendingDelivery.deleteMany({ where: { agreementId } });
     await prisma.customerCredit.deleteMany({ where: { customerId } });
     await prisma.auditLog.deleteMany({
@@ -120,7 +133,7 @@ describe.skipIf(!enabled)("late-delivery credit safety (real Postgres)", () => {
 
   it("a unit already out with the customer cannot be marked not delivered", async () => {
     await expect(
-      updateJobStatus(ownerId, rentedJob, "COMPLETED", null, { notDeliveredApplianceIds: [washerId] }),
+      finish(rentedJob, [{ applianceId: washerId, result: "NOT_DELIVERED" }]),
     ).rejects.toThrow(/not waiting for delivery/);
     const washer = await prisma.appliance.findUniqueOrThrow({ where: { id: washerId } });
     expect(washer.status).toBe("RENTED");
@@ -129,7 +142,7 @@ describe.skipIf(!enabled)("late-delivery credit safety (real Postgres)", () => {
 
   it("a delivery cannot be recorded as done in the future", async () => {
     await expect(
-      updateJobStatus(ownerId, rentedJob, "COMPLETED", null, { performedOn: "2099-01-01" }),
+      finish(rentedJob, [{ applianceId: washerId, result: "DELIVERED" }], "2099-01-01"),
     ).rejects.toThrow(/cannot be in the future/);
   });
 
@@ -149,8 +162,8 @@ describe.skipIf(!enabled)("late-delivery credit safety (real Postgres)", () => {
         });
       }
       const results = await Promise.allSettled([
-        updateJobStatus(ownerId, deliverJob, "COMPLETED", null, { performedOn: "2026-09-12" }),
-        updateJobStatus(ownerId, missJob, "COMPLETED", null, { performedOn: "2026-09-12", notDeliveredApplianceIds: [unitId] }),
+        finish(deliverJob, [{ applianceId: unitId, result: "DELIVERED" }], "2026-09-12"),
+        finish(missJob, [{ applianceId: unitId, result: "NOT_DELIVERED" }], "2026-09-12"),
       ]);
       expect(results[0].status).toBe("fulfilled");
       const unit = await prisma.appliance.findUniqueOrThrow({ where: { id: unitId } });

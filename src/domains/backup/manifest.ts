@@ -28,6 +28,8 @@ export const BACKUP_MODEL_POLICY = {
   PurchaseOrder: "purchaseOrder",
   PurchaseOrderLineItem: "purchaseOrderLineItem",
   PartStockMovement: "partStockMovement",
+  ApplianceCustodyEpisode: "applianceCustodyEpisode",
+  JobBillingHandoff: "jobBillingHandoff",
   RentalAgreement: "rentalAgreement",
   RentalLine: "rentalLine",
   ApplianceAssignment: "applianceAssignment",

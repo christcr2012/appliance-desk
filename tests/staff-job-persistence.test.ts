@@ -13,6 +13,7 @@ describe.skipIf(!enabled)("staff job provenance and writes in disposable Postgre
   const ids = ["original", "replacement", "unrelated"].map(kind => `staff-${tag}-${kind}`);
   afterAll(async () => {
     await prisma.auditLog.deleteMany({ where: { entityId: { in: [...ids, jobId] } } });
+    await prisma.applianceCustodyEpisode.deleteMany({ where: { applianceId: { in: ids } } });
     await prisma.job.deleteMany({ where: { id: jobId } });
     await prisma.appliance.deleteMany({ where: { id: { in: ids } } });
   });
@@ -20,6 +21,8 @@ describe.skipIf(!enabled)("staff job provenance and writes in disposable Postgre
     actor.id = (await prisma.user.findFirstOrThrow({ where: { role: "STAFF" } })).id;
     const type = await prisma.applianceType.findFirstOrThrow();
     await prisma.appliance.createMany({ data: ids.map(id => ({ id, assetNumber: id, applianceTypeId: type.id, status: "RESERVED", acquisitionCostCents: 932187 })) });
+    // The incoming unit was delivered by the completed swap, so it has a recorded holder.
+    await prisma.applianceCustodyEpisode.create({ data: { applianceId: ids[1], customerId: (await prisma.customer.findFirstOrThrow()).id, startEvidence: "MANUAL" } });
     await prisma.job.create({ data: { id: jobId, type: "SWAP", status: "COMPLETED", partsCostCents: 8675309, appliances: { create: ids.slice(0, 2).map(applianceId => ({ applianceId })) } } });
     await prisma.auditLog.createMany({ data: [
       { action: "appliance.unit.status", entityType: "Appliance", entityId: ids[1], newValue: { jobId, reason: "Swap started", status: "RESERVED" } },
