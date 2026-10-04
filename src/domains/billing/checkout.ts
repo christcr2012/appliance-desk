@@ -438,10 +438,10 @@ export async function startRecurringBillingForAgreement(
       }
 
       if (agreement.paidInFullInAdvance) {
-        if (agreement.billingBlockedReason || !agreement.billingStartedAt) {
+        if (agreement.billingBlockedReason) {
           await tx.rentalAgreement.update({
             where: { id: agreementId },
-            data: { billingBlockedReason: null, billingStartedAt: agreement.billingStartedAt ?? firstDeliveredOn },
+            data: { billingBlockedReason: null },
           });
         }
         return { done: true, outcome: { state: "DONE" } };
