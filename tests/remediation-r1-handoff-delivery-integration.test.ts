@@ -121,7 +121,12 @@ describe.skipIf(!enabled)("Remediation R1 delivery facts and handoff leases (rea
     });
   });
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    // The sweep is intentionally global. Remove this suite's handoffs from prior
+    // cases so each lease assertion measures only the row created by that case.
+    if (jobIds.length > 0) {
+      await prisma.jobBillingHandoff.deleteMany({ where: { jobId: { in: jobIds } } });
+    }
     vi.clearAllMocks();
     handoffMocks.startBilling.mockResolvedValue(DONE);
     handoffMocks.pushCredit.mockResolvedValue(DONE);
