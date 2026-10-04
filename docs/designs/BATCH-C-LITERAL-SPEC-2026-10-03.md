@@ -1,13 +1,73 @@
 # Batch C — literal specification (amendment to `BATCH-C.md`, 2026-10-03)
 
 Written by Claude (Sonnet 5.5, not the stronger model) at Chris's direction, after reading the code at `main` b72f05d
-plus PR #164/#165 (`pb165`, head 3d71449). **Status: SPECIFIED, WAITING FOR CHRIS'S APPROVAL.** Nothing here is
-approved for code until Chris approves it in `docs/designs/README.md`. Where this file and the older
+plus PR #164/#165 (`pb165`, head 3d71449). **Reviewed and corrected 2026-10-03 by Claude (Fable 5.1, the stronger
+pass) — see "Review pass" below. Status: REVIEWED, WAITING FOR CHRIS'S APPROVAL.** Nothing here is approved for code
+until Chris approves it in `docs/designs/README.md`. Where this file and the older
 `BATCH-C.md` / `BATCH-C-UPDATE-2026-10-03.md` disagree, this file wins; where it is silent, the update wins.
 Docs only: no application code was written for this document.
 
 The shape follows `docs/prompts/DESIGN-BATCH-C-LITERAL-SPECS.md`: Part 1 (no billing) and Part 2 (custody and
 service work), then the missing-item subscription rule, the blocked billing interface, tests and stop-and-ask list.
+
+## Review pass — 2026-10-03 (Claude Fable 5.1, docs only)
+
+Every file and line the spec cites was opened at head 3d71449 (branch `ai/claude/pickup-billing-rules`, which this
+branch sits on). Every raw SQL statement was read against Postgres 16 semantics and `scripts/check-migrations.mjs`
+(it blocks `DROP TABLE/COLUMN/DATABASE`, `TRUNCATE`, `RENAME`, and `SET NOT NULL`; it does **not** block `CHECK`,
+triggers, partial indexes or `ADD COLUMN … NOT NULL DEFAULT`). The timezone expression in the custody backfill was
+run on a scratch Postgres to prove the correction. Nothing in PR #165 was redesigned.
+
+**What was wrong and was changed**
+
+1. **Custody backfill date (P2-A) produced the wrong instant.** `date_trunc('day', j."completedAt" AT TIME ZONE
+   'America/Denver') AT TIME ZONE 'America/Denver'` treats the stored UTC `timestamp(3)` as Denver wall time and then
+   depends on the session time zone; on the scratch database it returned `2026-10-04 00:00` for an instant whose Denver
+   date is Oct 3 (correct value `2026-10-03 06:00` UTC). Replaced with an expression that names every conversion.
+2. **Custody CHECK contradicted `recordManualCustody`.** `startedOn` may be null for `MANUAL` too (the signature allows it),
+   but the CHECK only allowed null with `ESTIMATED`. Now: a `JOB` episode must have a date; `ESTIMATED`/`MANUAL` may not.
+3. **Deadlock in `completeJob` and `removeUndeliveredItem` as ordered.** Both locked the agreement before the customer
+   ledger, while `createFeeInvoiceIfNeeded` (`src/domains/agreements/termination-execution.ts:45-46`) holds the
+   customer and then takes the agreement: a REMOVAL completed during the nightly termination run could deadlock. Section 0
+   now says: any command that may write a credit, invoice or provider operation takes the Customer lock **before** the
+   agreement lock, and both orders of operations were rewritten.
+4. **The proposed `itemsForAppliances` change broke late returns.** "Count only appliances with an open assignment" gives a
+   count of zero on an ended agreement (`closeAgreement` has already ended every assignment), and `itemMonthlyPriceCents`
+   throws for a line with no items. Replaced with: count every appliance ever assigned to the line **except** ones ended
+   as `Never delivered` or `Replaced by …` (a substitute replaces one-for-one, so the count holds).
+5. **Two sources of truth for a substitute** (`JobAppliance.fulfilsPendingDeliveryId` and
+   `PendingDelivery.substituteApplianceId`). Kept the `PendingDelivery` columns only (`substituteApplianceId`,
+   `substituteJobId`); dropped the `JobAppliance` column.
+6. **D7 conflict resolved** (brief item 5): Batch C creates Batch D's `InspectionChecklistVersion` table exactly as D7
+   defines it and seeds version 1; `BusinessSettings.inspectionChecklistVersion` is dropped from this spec; each inspection
+   stores both the version id and a copy of the definition. One amendment to `BATCH-D.md` (noted there): `publishedByUserId`
+   is nullable, because the seeded version 1 has no publisher.
+7. **Custody invariant was too strong.** "RENTED or AWAITING_PICKUP iff open episode" fails for a unit in `MAINTENANCE`
+   that is being repaired in the customer's home. Restated as two one-way rules (section P2-A, decision 4).
+8. **Hedges removed** (template: no "consider"/"either/or"): the archival migration is folded into
+   `20261003310000`; the NOT-NULL-DEFAULT doubt is settled (not blocked); the handoff sweep is decided (in scope).
+9. **Missing call sites and tests added to P2-B:** the driver card (`src/app/desk/driver/driver-job-card.tsx:53-57`) and
+   the job panel both complete jobs today; the tests that call `updateJobStatus(…, "COMPLETED")` are listed.
+10. **Literal SQL supplied** where the spec said "create enum + table" or "backfill": `JobAppliance.role` backfill,
+    `MaintenanceRequest.serviceAddressId` FK, inspection definition backfill, checklist-version seed, the duplicate
+    `JobAppliance` pre-check, and the Stripe retrieve/update calls for section 8.
+11. **Citation fixes:** `recordLateDeliveries` is at `pickup-billing-events.ts:346` (was :352); `itemsForAppliances` is
+    `:115-156`; migration range for P1-C is `…310000`–`…330000` (was "…333000"); `closeAgreement`'s assignment loop is
+    `:611-634`.
+12. **Price identity after an amendment (section 8):** `prisma/schema.prisma` documents `monthlyPriceCents = max(0,
+    listPriceCents − prepayDiscountCentsPerMonth)`. No code recomputes it (grep: only display of the discount), so the
+    amendment reduces `monthlyPriceCents` only and the schema comment is updated to say an amended line no longer satisfies
+    the identity. Stated explicitly so the implementer does not "fix" the discount.
+
+**What was checked and left alone:** section 0's lock order (`assertActiveTeamActor` really does `FOR SHARE`,
+`src/lib/team-actor.ts:6-10`); P1-A's scheduling SQL and version rule; P1-B's counter seed SQL (`CAST … AS INTEGER` is safe
+for ≤ 9 digits; `substring(x from pattern)` returns the parenthesised group); P1-C's identity/replay rule, opening-balance
+and received-quantity backfills (valid `UPDATE … FROM` form; `PurchaseOrderStatus` has `RECEIVED`; `receivedAt` exists);
+P2-C's result pairs; P2-D's `HAVING COUNT(*) = 1` backfill; `ALLOWED_TRANSITIONS` additions (`maintenance/index.ts:4-11`
+today has no `→ REVIEWING` from SCHEDULED/IN_PROGRESS); section 8's Stripe mechanics (product metadata carries
+`rentalLineId`, `billing/checkout.ts:521-529`; `stripeKeyForAttempt` exists, `subscription-term.ts:132`); section 9 as an
+interface only; every migration timestamp sorts after `20261003280000`. `ACTIVE → CANCELLED` is an allowed agreement
+transition (`agreements/index.ts:32`), so the "nothing ever delivered" case in section 8 is valid.
 
 ## 0. Rules that apply to every slice
 
@@ -25,7 +85,12 @@ service work), then the missing-item subscription rule, the blocked billing inte
   1. `User` rows, sorted by id (`FOR UPDATE` when scheduling, `FOR SHARE` through `assertActiveTeamActor` otherwise; if
      the actor is also in the scheduling set, lock it `FOR UPDATE` first and then call `assertActiveTeamActor`, so two
      transactions never both hold SHARE and wait to upgrade)
-  2. `Customer` (`lockCustomerLedger`, `src/domains/billing/ledger.ts:27`) — only when money is touched
+  2. `Customer` (`lockCustomerLedger`, `src/domains/billing/ledger.ts:27`) — taken **up front** by every command that
+     *may* write a credit, invoice line or provider operation before it knows whether it will (`completeJob` for any
+     job with an `agreementId`, `removeUndeliveredItem`, `substituteWaitingItem`'s completion path), because
+     `createFeeInvoiceIfNeeded` (`termination-execution.ts:45-46`) already holds Customer → Agreement and a command
+     holding Agreement → Customer would deadlock with the nightly termination run. Commands that never touch money
+     (`scheduleJob`, `stageSwap`, `scheduleMaintenanceRequest`, `closeAgreement` itself) skip it.
   3. `RentalAgreement` (`lockRentalAgreementInTx`, `src/domains/agreements/index.ts:59`)
   4. `MaintenanceRequest`
   5. `Job` rows, sorted by id
@@ -99,7 +164,7 @@ CREATE INDEX "Job_assignedToUserId_scheduledAt_idx" ON "Job"("assignedToUserId",
 ALTER TABLE "Job" ADD CONSTRAINT "Job_assignedToUserId_fkey" FOREIGN KEY ("assignedToUserId")
   REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 ```
-(The `ADD COLUMN ... NOT NULL DEFAULT` form is not flagged by the migration checker; if it is, stop and ask.)
+(Checked: `scripts/check-migrations.mjs` matches only `SET NOT NULL`, so `ADD COLUMN … NOT NULL DEFAULT` passes.)
 
 **Signatures (literal, `src/domains/jobs/scheduling.ts`, new file)**
 ```ts
@@ -269,7 +334,10 @@ model PartStockMovement {
 // add to Job: partMovements PartStockMovement[]
 ```
 **Migrations (this order)**
-1. `20261003310000_parts_ledger_structure`: create the enum and table; add the three columns; `ALTER TABLE "PartRecord" ADD CONSTRAINT "PartRecord_quantityOnHand_nonneg" CHECK ("quantityOnHand" >= 0);`
+1. `20261003310000_parts_ledger_structure`: the enum, table, indexes and FKs generated from the Prisma text above with
+   `npx prisma migrate diff --from-migrations prisma/migrations --to-schema-datamodel prisma/schema.prisma --script`
+   (plus `PartRecord.archivedAt`, `Supplier.archivedAt`, `PurchaseOrderLineItem.receivedQuantity`/`unitCostKnown`), then
+   `ALTER TABLE "PartRecord" ADD CONSTRAINT "PartRecord_quantityOnHand_nonneg" CHECK ("quantityOnHand" >= 0);`
    `ALTER TABLE "PartStockMovement" ADD CONSTRAINT "PartStockMovement_delta_nonzero" CHECK ("quantityDelta" <> 0 AND "balanceAfter" >= 0);`
    the append-only trigger:
    ```sql
@@ -291,7 +359,7 @@ model PartStockMovement {
    FROM "PurchaseOrder" p WHERE p."id" = l."purchaseOrderId" AND p."status" = 'RECEIVED';
    UPDATE "PurchaseOrderLineItem" SET "unitCostKnown" = true WHERE "unitCostCents" > 0;
    ```
-4. `20261003335000_supplier_part_archival` can be folded into step 1 (columns only).
+4. (There is no separate archival migration: the `archivedAt` columns are part of step 1.)
 
 **Signatures (`src/domains/purchasing/ledger.ts`, new)**
 ```ts
@@ -343,13 +411,15 @@ sets the order `RECEIVED` + `receivedAt` only when every line is complete. A can
 **Decisions**
 1. Custody is its own table. It is **not** tied to `ApplianceAssignment` (which `startRenewalInTx` ends and recreates at
    `src/domains/agreements/renewal-start.ts:151-162` without any equipment moving, and which `closeAgreement`
-   ends at `src/domains/agreements/index.ts:608-640` before any pickup) and **not** to an ACTIVE agreement.
+   ends at `src/domains/agreements/index.ts:611-634` before any pickup) and **not** to an ACTIVE agreement.
 2. An episode **opens** when a completed delivery/installation (or swap replacement) job records `DELIVERED` for the
    appliance, and **closes** when a completed removal (or swap return) job records `RETURNED`. Nothing else opens or closes it.
    Renewal start, agreement ending and assignment changes never touch it.
 3. Database rule: at most one open episode per appliance (partial unique index). A second open episode is a unique
    violation, never a silent overwrite.
-4. Invariant (tested): an appliance is `RENTED` or `AWAITING_PICKUP` **iff** it has an open episode.
+4. Invariants (tested, two one-way rules): an appliance that is `RENTED` or `AWAITING_PICKUP` always has an open episode;
+   an appliance that is `AVAILABLE`, `RESERVED` or `RETIRED` never has one. `MAINTENANCE` and `AWAITING_INSPECTION` are
+   not constrained (a unit can be repaired in the customer's home with its episode open, or sit in the shop with it closed).
 5. Dates are Colorado business dates (the `jobServiceDate` value, `src/domains/billing/pickup-billing-events.ts:54`), stored as the
    Colorado-midnight instant like `Job.performedOn`. An unknown date is `NULL`, never a guess. A reservation time
    (`ApplianceAssignment.assignedAt`) is never copied as a delivery date.
@@ -367,7 +437,7 @@ model ApplianceCustodyEpisode {
   serviceAddressId String?
   serviceAddress   ServiceAddress? @relation(fields: [serviceAddressId], references: [id])
   agreementId      String?         // the agreement it started under, for context only
-  startedOn        DateTime?       // null = unknown (only with ESTIMATED)
+  startedOn        DateTime?       // null = unknown (only with ESTIMATED or MANUAL; a JOB episode always has one)
   startEvidence    CustodyEvidence
   startJobId       String?
   startJob         Job?            @relation("CustodyStartJob", fields: [startJobId], references: [id])
@@ -391,15 +461,19 @@ model ApplianceCustodyEpisode {
 CREATE UNIQUE INDEX "ApplianceCustodyEpisode_one_open_per_appliance" ON "ApplianceCustodyEpisode"("applianceId") WHERE "closedAt" IS NULL;
 ALTER TABLE "ApplianceCustodyEpisode" ADD CONSTRAINT "Custody_closed_consistent"
   CHECK (("closedAt" IS NULL) = ("endEvidence" IS NULL));
-ALTER TABLE "ApplianceCustodyEpisode" ADD CONSTRAINT "Custody_estimated_date_ok"
-  CHECK ("startEvidence" = 'ESTIMATED' OR "startedOn" IS NOT NULL);
+ALTER TABLE "ApplianceCustodyEpisode" ADD CONSTRAINT "Custody_job_evidence_has_date"
+  CHECK ("startEvidence" <> 'JOB' OR "startedOn" IS NOT NULL);
 ```
 **Migration `20261003350000_custody_backfill`** (data, runs after the structure; honest evidence only):
 ```sql
 -- 1. Appliances now with a customer (RENTED / AWAITING_PICKUP) that have a COMPLETED delivery/installation or swap job.
 INSERT INTO "ApplianceCustodyEpisode" ("id","applianceId","customerId","serviceAddressId","agreementId","startedOn","startEvidence","startJobId","createdAt")
 SELECT DISTINCT ON (ja."applianceId") 'bf_' || ja."applianceId", ja."applianceId", j."customerId", j."serviceAddressId", j."agreementId",
-       COALESCE(j."performedOn", date_trunc('day', j."completedAt" AT TIME ZONE 'America/Denver') AT TIME ZONE 'America/Denver'),
+       -- Colorado midnight of the completion's Denver date, as a UTC instant, with every conversion named
+       -- (the column is timestamp WITHOUT time zone holding UTC; never rely on the session time zone):
+       COALESCE(j."performedOn",
+                ((date_trunc('day', (j."completedAt" AT TIME ZONE 'UTC') AT TIME ZONE 'America/Denver')
+                  AT TIME ZONE 'America/Denver') AT TIME ZONE 'UTC')),
        'JOB', j."id", NOW()
 FROM "JobAppliance" ja JOIN "Job" j ON j."id" = ja."jobId" JOIN "Appliance" a ON a."id" = ja."applianceId"
 WHERE a."status" IN ('RENTED','AWAITING_PICKUP') AND j."status" = 'COMPLETED' AND j."customerId" IS NOT NULL
@@ -449,9 +523,16 @@ export async function recordManualCustody(userId: string, input: { applianceId: 
 ### P2-B. Completion with per-appliance results (update item C-02)
 
 **Decisions**
-1. Completing a job takes a result for **every appliance in the job's confirmed scope**, exactly once. Bulk "mark completed"
-   and the guided single-status path stop being able to complete a job; `updateJobStatus` keeps `SCHEDULED → IN_PROGRESS`
-   and `→ CANCELLED`, and a request for `COMPLETED` throws "Use Complete job so each appliance gets a result."
+1. Completing a job takes a result for **every appliance in the job's confirmed scope**, exactly once. `updateJobStatus`
+   keeps `SCHEDULED → IN_PROGRESS` and `→ CANCELLED`, and a request for `COMPLETED` throws "Use Complete job so each
+   appliance gets a result." The three screens that complete jobs today all move to `completeJob`: the job page panel
+   (`src/app/desk/jobs/[id]/job-detail-panel.tsx`, "Mark Completed" plus its "date the work was done" and "not delivered"
+   fields), the driver card (`src/app/desk/driver/driver-job-card.tsx:53-57`), and `updateJobStatusAction`
+   (`src/app/desk/jobs/actions.ts:95`, which gains a `completeJobAction`). The per-appliance result form shows one row per
+   appliance in scope with the positive result pre-selected. Tests that call `updateJobStatus(…, "COMPLETED")` and must
+   move to `completeJob`: `tests/jobs-status-concurrency.test.ts`, `tests/staff-job-persistence.test.ts`,
+   `tests/prepaid-delivery-persistence.test.ts`, `tests/billing-pickup-billing-events.test.ts` (unchanged: it tests the
+   billing functions directly), `e2e/staff-job-follow-up.spec.ts`, `e2e/fleet-report.spec.ts`.
 2. Results by job type: `DELIVERY`/`INSTALLATION`: `DELIVERED` | `NOT_DELIVERED`. `REMOVAL`: `RETURNED` | `NOT_RETURNED`.
    `MAINTENANCE_VISIT`: `REPAIRED` | `NOT_REPAIRED` | `NO_ACCESS`. `SWAP`: the original unit `RETURNED` | `NOT_RETURNED`, the
    replacement `DELIVERED` | `NOT_DELIVERED` (swap rules in P2-C).
@@ -466,10 +547,12 @@ export async function recordManualCustody(userId: string, input: { applianceId: 
    task, audit row, credit, invoice line, custody change or handoff. A different key against a completed job is an error.
 7. The billing work that completion already does inside the transaction (late-return charge, late-delivery credits, "not
    delivered" records, `src/domains/jobs/index.ts:314-358`) stays exactly where it is. Post-commit provider work
-   (`pushLateDeliveryCreditToStripe`, `startRecurringBillingForAgreement`, `jobs/index.ts:366-386`) is today lost if the process
-   dies after commit; it gets a durable record, `JobBillingHandoff`, written in the same transaction. This is an interface
-   only: the shared Batch B billing contract (blocked) decides what executes it; until then the existing post-commit
-   calls keep running and mark the handoff `DONE` or `FAILED`.
+   (`pushLateDeliveryCreditToStripe`, `startRecurringBillingForAgreement`, `jobs/index.ts:364-386`) is today lost if the process
+   dies after commit; it gets a durable record, `JobBillingHandoff`, written in the same transaction. **Decided:** the two
+   handoff kinds are executed by the existing functions (both are already idempotent durable provider operations), first
+   post-commit and then by `runPendingHandoffs` from the nightly billing cron for rows still `PENDING`/`FAILED` (attempts
+   < 5). That sweep is in scope for this slice. What stays **blocked** is only C-09 (section 9): no new handoff kind is
+   added for returns until the shared contract exists.
 
 **Schema**
 ```prisma
@@ -486,8 +569,6 @@ enum HandoffStatus      { PENDING DONE FAILED }
   resultRecordedAt          DateTime?
   resultRecordedByUserId    String?
   reservationActive         Boolean            @default(false)   // a staged swap/substitution owns this unit's RESERVED status
-  fulfilsPendingDeliveryId  String?
-  fulfilsPendingDelivery    PendingDelivery?   @relation("PendingSubstitute", fields: [fulfilsPendingDeliveryId], references: [id])
   @@unique([jobId, applianceId])
 
 // add to model Job:
@@ -517,11 +598,19 @@ model JobBillingHandoff {
   @@index([status])
 }
 ```
-**Migration `20261003360000_job_results_and_handoff`:** create enums/table/columns; `CREATE UNIQUE INDEX "JobAppliance_one_active_reservation" ON "JobAppliance"("applianceId") WHERE "reservationActive";`
-backfill `JobAppliance.role = 'REPLACEMENT'` for the rows `swapReplacementIdsFor` finds today (audit rows with
-`reason = 'Swap started'`, `status = 'RESERVED'`, `jobId` = the job; `src/domains/desk-access/index.ts:100-117`); the rest
-stay `PRIMARY`. `JobAppliance` rows that already duplicate `(jobId, applianceId)` (if any) are listed by a pre-check query
-in the migration notes and de-duplicated by keeping the lowest `id` — if the pre-check finds any, stop and ask.
+**Migration `20261003360000_job_results_and_handoff`:** enums/table/columns from the Prisma text, then:
+```sql
+CREATE UNIQUE INDEX "JobAppliance_one_active_reservation" ON "JobAppliance"("applianceId") WHERE "reservationActive";
+-- Replacement units of staged swaps, found the way swapReplacementIdsFor finds them today
+-- (src/domains/desk-access/index.ts:100-117): the audit row written when the swap reserved the unit.
+UPDATE "JobAppliance" ja SET "role" = 'REPLACEMENT'
+FROM "AuditLog" l
+WHERE l."entityType" = 'Appliance' AND l."action" = 'appliance.unit.status' AND l."entityId" = ja."applianceId"
+  AND l."newValue"->>'jobId' = ja."jobId" AND l."newValue"->>'reason' = 'Swap started' AND l."newValue"->>'status' = 'RESERVED';
+```
+**Pre-check, run by hand against production before the migration is deployed** (the unique `(jobId, applianceId)` index
+fails if it returns rows; if it does, stop and ask — do not de-duplicate silently):
+`SELECT "jobId", "applianceId", COUNT(*) FROM "JobAppliance" GROUP BY 1, 2 HAVING COUNT(*) > 1;`
 Existing completed jobs keep `result = NULL` (history is not invented).
 
 **Signatures**
@@ -545,9 +634,11 @@ export class JobCompletionConflictError extends Error {}
 export async function completeJob(userId: string, input: CompleteJobInput): Promise<CompleteJobResult>;
 export async function runPendingHandoffs(limit?: number): Promise<{ done: number; failed: number }>;  // post-commit and nightly sweep
 ```
-**Order inside `completeJob`:** read the job's `agreementId` / `maintenanceRequestId` (no lock) → `assertJobScopeInTx` (P2-E)
-→ lock agreement → maintenance request → job (compare `version`, replay check on `completionKey`) → lock the scope's
-appliances sorted → validate results cover the scope exactly → for each appliance: status move (conditional), custody
+**Order inside `completeJob`:** read the job's `agreementId`, its agreement's `customerId`, and `maintenanceRequestId`
+(no lock) → `assertJobScopeInTx` (P2-E; locks the actor `FOR SHARE`, lock-order step 1) → **`lockCustomerLedger` when the
+job has an agreement** (step 2; see section 0 — this is what keeps a REMOVAL completed during the nightly termination run
+from deadlocking with `createFeeInvoiceIfNeeded`) → lock agreement → maintenance request → job (compare `version`, replay
+check on `completionKey`) → lock the scope's appliances sorted → validate results cover the scope exactly → for each appliance: status move (conditional), custody
 open/close (P2-A), assignment effects → existing in-transaction billing calls with the **positive** ids as `moved` and the
 `NOT_DELIVERED` ids as `notDelivered` → follow-up tasks → maintenance resolution (P2-D) → handoff rows → audit
 `job.complete` with the results → `Job` update (`status`, `completedAt`, `performedOn`, `outcome`, `completionKey`,
@@ -605,27 +696,53 @@ export async function scheduleMaintenanceRequest(userId: string, input: {
   serviceAddressId: string; confirmedConflictJobIds: readonly string[];
 }): Promise<{ jobId: string }>;
 ```
-**Migration `20261003370000_maintenance_links`:** `ALTER TABLE "MaintenanceRequest" ADD COLUMN "serviceAddressId" TEXT` + FK + backfill
-`UPDATE ... SET "serviceAddressId" = (SELECT MIN(a."id") FROM "ServiceAddress" a WHERE a."customerId" = "MaintenanceRequest"."customerId" HAVING COUNT(*) = 1)`.
+**Migration `20261003370000_maintenance_links`:**
+```sql
+ALTER TABLE "MaintenanceRequest" ADD COLUMN "serviceAddressId" TEXT;
+ALTER TABLE "MaintenanceRequest" ADD CONSTRAINT "MaintenanceRequest_serviceAddressId_fkey"
+  FOREIGN KEY ("serviceAddressId") REFERENCES "ServiceAddress"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+CREATE INDEX "MaintenanceRequest_serviceAddressId_idx" ON "MaintenanceRequest"("serviceAddressId");
+UPDATE "MaintenanceRequest" SET "serviceAddressId" =
+  (SELECT MIN(a."id") FROM "ServiceAddress" a WHERE a."customerId" = "MaintenanceRequest"."customerId" HAVING COUNT(*) = 1);
+```
+(A scalar subquery whose `HAVING` yields no row is NULL, so customers with several addresses stay unset.)
 
 ### P2-E. Inspection and job-scoped permissions (update item C-08)
 
 **Decisions: inspection**
-1. Each inspection stores the checklist **definition** it was answered against: `checklistDefinition` (array of item texts in
-   order) and `checklistVersion`. `BusinessSettings.inspectionChecklistVersion` (new, starts 1) increments whenever the owner
-   saves the list (`inspectionChecklist`, schema line 1448). The record can always be rebuilt.
-2. `recordApplianceInspection` (`guided-actions.ts:320`) takes `expectedChecklistVersion` and `answers: boolean[]`
-   (one per definition item). A stale version throws `ChecklistVersionError` ("The checklist changed; reload"). `passed` is
-   **derived on the server**: all answers true. Anything else is a fail → `MAINTENANCE`.
+1. **Checklist versions are Batch D's `InspectionChecklistVersion` table, created here** (resolving the conflict with
+   `BATCH-D.md` D7, which had the same idea as a table while this spec first proposed a counter on `BusinessSettings`; one
+   source of truth wins). Batch C creates the table exactly as D7 defines it, with one amendment recorded in `BATCH-D.md`:
+   `publishedByUserId` is nullable, because the seeded version 1 has no publisher. The seed migration publishes version 1
+   from `BusinessSettings.inspectionChecklist` (schema line 1448) when it is a non-empty array, otherwise from
+   `DEFAULT_INSPECTION_CHECKLIST` (`src/domains/inventory/lifecycle.ts:123`). From then on the current checklist is the
+   highest `version` row; `BusinessSettings.inspectionChecklist` is read by nothing (D2 marks it deprecated) and the editor
+   that publishes new versions is D7's work, not C's. Each inspection stores **both** the version it was answered against
+   (`checklistVersionId`, FK) and a copy of the definition (`checklistDefinition`, array of item texts in order), so the
+   record stands even if a version row were ever lost. Legacy inspections get `checklistVersionId = NULL` and their own
+   `checklist` item texts as the definition.
+2. `recordApplianceInspection` (`guided-actions.ts:320`) takes `expectedChecklistVersionId` and `answers: boolean[]`
+   (one per definition item). A version id that is not the current highest version throws `ChecklistVersionError` ("The
+   checklist changed; reload"). `passed` is **derived on the server**: all answers true. Anything else is a fail → `MAINTENANCE`.
 3. A pass with unchecked items is an **override**: OWNER/ADMIN only, requires `overrideReason`, stores
    `overriddenByUserId` and `overrideReason`, and writes audit `inspection.override`. STAFF cannot override.
 4. Completed inspections, job checklists and part movements are immutable: no update/delete functions exist, a trigger blocks
    UPDATE/DELETE on `ApplianceInspection`, and `updateJobChecklist` rejects a job that is `COMPLETED` or `CANCELLED`.
    Corrections append an `ApplianceInspectionAmendment` (note + author) and never change the original.
 ```prisma
+model InspectionChecklistVersion {    // Batch D's D7 table, created in Batch C (publishedByUserId nullable: amendment to D7)
+  id                String   @id @default(cuid())
+  version           Int      @unique
+  items             Json     // string[]
+  hash              String   // sha256 of JSON.stringify(items)
+  publishedAt       DateTime @default(now())
+  publishedByUserId String?
+  inspections       ApplianceInspection[]
+}
 // add to ApplianceInspection:
   checklistDefinition Json     @default("[]")
-  checklistVersion    Int      @default(0)
+  checklistVersionId  String?
+  checklistVersion    InspectionChecklistVersion? @relation(fields: [checklistVersionId], references: [id])
   jobId               String?
   overrideReason      String?
   overriddenByUserId  String?
@@ -635,10 +752,30 @@ model ApplianceInspectionAmendment {
   note String; createdByUserId String; createdAt DateTime @default(now())
   @@index([inspectionId])
 }
-// add to BusinessSettings:  inspectionChecklistVersion Int @default(1)
 ```
-**Migration `20261003380000_inspection_snapshot`:** columns + table; backfill existing rows' `checklistDefinition` from their own
-`checklist` item texts (`jsonb_agg(elem->>'item')`), `checklistVersion = 0`; then add the append-only trigger as for parts.
+**Migration `20261003380000_inspection_snapshot`:** the two tables/columns from the Prisma text, then:
+```sql
+-- Legacy inspections: the definition is their own answered item texts, in order; no version row.
+UPDATE "ApplianceInspection" i SET "checklistDefinition" = COALESCE(
+  (SELECT jsonb_agg(t.e->>'item' ORDER BY t.ord) FROM jsonb_array_elements(i."checklist") WITH ORDINALITY AS t(e, ord)),
+  '[]'::jsonb);
+-- Version 1 = the owner's saved list if there is one, else the code default (written literally by the migration author
+-- from DEFAULT_INSPECTION_CHECKLIST at the time; it is 'items' below).
+INSERT INTO "InspectionChecklistVersion" ("id","version","items","hash","publishedAt","publishedByUserId")
+SELECT 'seed_v1', 1,
+       CASE WHEN jsonb_typeof(s."inspectionChecklist") = 'array' AND jsonb_array_length(s."inspectionChecklist") > 0
+            THEN s."inspectionChecklist" ELSE '["<DEFAULT_INSPECTION_CHECKLIST items, verbatim>"]'::jsonb END,
+       encode(sha256(convert_to(CASE WHEN jsonb_typeof(s."inspectionChecklist") = 'array' AND jsonb_array_length(s."inspectionChecklist") > 0
+            THEN s."inspectionChecklist"::text ELSE '["<same items>"]' END, 'UTF8')), 'hex'),
+       NOW(), NULL
+FROM "BusinessSettings" s WHERE s."id" = 'singleton'
+ON CONFLICT ("version") DO NOTHING;
+```
+then the append-only trigger on `ApplianceInspection` as for parts (checked: nothing in `src/` updates or deletes an
+inspection today). The hash the code computes must be the same bytes the SQL hashes: `sha256(JSON.stringify(items))`
+with no whitespace — `jsonb::text` prints `["a", "b"]` with a space after commas, so the migration author writes the
+seed's `hash` from the TypeScript helper and pastes the literal, rather than trusting the SQL expression above (the
+expression is shown so the intent is clear; the pasted literal is authoritative).
 
 **Decisions: job-scoped STAFF authority.** One helper, called inside each domain write's own transaction after the actor check:
 ```ts
@@ -676,30 +813,56 @@ Built already (PR #165): `PendingDelivery`, the late-delivery credit, the never-
    OWNER/ADMIN) validates: item still waiting (`deliveredOn` and `removedAt` null), replacement `AVAILABLE`, **same
    `ApplianceTypeId` as the waiting appliance** (a different type is refused with "Different type: ask the owner", never
    automatic), job is a `SCHEDULED`/`IN_PROGRESS` delivery for the same agreement. It reserves the replacement
-   (`reservationActive`) and sets `JobAppliance.fulfilsPendingDeliveryId` and `PendingDelivery.substituteApplianceId`.
+   (`JobAppliance.reservationActive`, role `REPLACEMENT`) and records the substitution on the waiting row only —
+   `PendingDelivery.substituteApplianceId` and `substituteJobId` are the single source of truth (no column on `JobAppliance`).
    On completion with the replacement `DELIVERED`: the original's assignment ends ("Replaced by <asset>"), the original goes
    `RESERVED → AVAILABLE`, the replacement gets an assignment on the same line, custody opens for the replacement, and
-   `recordLateDeliveries` (`pickup-billing-events.ts:352`) matches waiting rows by `applianceId IN delivered OR
+   `recordLateDeliveries` (`pickup-billing-events.ts:346`) matches waiting rows by `applianceId IN delivered OR
    substituteApplianceId IN delivered`, so the credit counts to the **replacement's delivery date** exactly as for a late delivery.
    Cancelling or a `NOT_DELIVERED` result releases only the reservation this job owns and clears `substituteApplianceId`.
 3. **Permanently cancelled** (`removeUndeliveredItem`): everything billed is credited (built) **and** the item comes off Stripe.
    - New table `RentalLineAmendment` (append-only; trigger as for parts): `id, rentalLineId, pendingDeliveryId @unique,
      previousMonthlyPriceCents, newMonthlyPriceCents, effectiveFrom (first day of the next billing period, `billingPeriodFor`), reason, createdByUserId, createdAt`.
    - In the same transaction as the credit: append the amendment and set `RentalLine.monthlyPriceCents` to the new price. The
-     signed price stays visible as `previousMonthlyPriceCents` and in the signature snapshot; the 40 files that read
-     `monthlyPriceCents` therefore show the reduced rent with no change. `itemsForAppliances`
-     (`pickup-billing-events.ts:114-152`) must count only appliances with an **open assignment** when it splits a line price
-     (today it counts every appliance ever assigned, which would shrink the remaining items' shares after a removal) — required change with a test.
+     signed price stays visible as `previousMonthlyPriceCents` and in the signature snapshot; the ~40 files that read
+     `monthlyPriceCents` therefore show the reduced rent with no change. `listPriceCents` and `prepayDiscountCentsPerMonth`
+     are **not** touched: no code recomputes `monthlyPriceCents` from them (checked by grep; they are only displayed), so the
+     schema comment "monthlyPriceCents = max(0, listPriceCents − prepayDiscountCentsPerMonth)" is amended to add "except
+     on a line with a `RentalLineAmendment`". `itemsForAppliances` (`pickup-billing-events.ts:115-156`) splits a line price by
+     the number of distinct appliances ever assigned to the line; after a removal that would shrink the remaining items'
+     shares. Required change (with test S7): count distinct appliances on the line **excluding** assignments ended with
+     `unassignReason = 'Never delivered'` or starting with `'Replaced by '` (a substitute replaces one-for-one, so the
+     count holds). Do **not** count only open assignments — on an ended agreement every assignment is already closed by
+     `closeAgreement`, and a late return would then divide by zero.
    - The monthly share removed is `itemMonthlyPriceCents(linePrice, applianceCount, index)` computed before the unassign.
    - Durable `SUBSCRIPTION_UPDATE` provider operation, key `subscription-line-reduce-<pendingDeliveryId>`, `subjectType =
      "RentalLine"`, `subjectId = rentalLineId`, claimed in the same transaction; called after commit; completed with SUCCEEDED/FAILED/UNKNOWN like `syncTerminationEnd` (`subscription-term.ts`). The call finds the subscription item by listing the
-     subscription's items and matching `price.product.metadata.rentalLineId` (set at `billing/checkout.ts:521-529`), then
-     `subscriptions.update(subscriptionId, { proration_behavior: "none", items: [{ id, price_data: { currency: "usd", product, unit_amount: newAmount, recurring: { interval: "month" } } }] })`
-     keeping the item's tax rates; if the line has no appliances left, `items: [{ id, deleted: true }]`. Retries use `stripeKeyForAttempt`.
+     subscription's items and matching `price.product.metadata.rentalLineId` (set at `billing/checkout.ts:521-529`):
+     `stripe.subscriptions.retrieve(subscriptionId, { expand: ["items.data.price.product"] })`, then
+     `stripe.subscriptions.update(subscriptionId, { proration_behavior: "none", items: [{ id: item.id, price_data: { currency: "usd", product: item.price.product.id, unit_amount: newAmount, recurring: { interval: "month" } }, tax_rates: item.tax_rates.map(r => r.id) }] }, { idempotencyKey })`;
+     if the line has no appliances left, `items: [{ id: item.id, deleted: true }]` (Stripe refuses to delete the last item of
+     a subscription, which cannot happen here because "every item cancelled" ends the agreement instead). No matching item
+     (the subscription was built before products carried metadata, or the line was never billed) → the operation completes
+     `DRIFT` with a note and the drift workbench shows it; nothing is guessed. Retries use `stripeKeyForAttempt`.
    - Reconciliation: `reconcileSubscriptionUpdate` (`billing/reconciliation.ts:237`) gains `parseLineReduceKey` and a
      `desiredLineAmount` that reads the line's current local price; if Stripe's item already matches, the operation is marked SUCCEEDED, otherwise it retries; a failure stays visible in the drift workbench as a mismatch.
    - Owner view while pending/failed: the item shows as "Cancelled — Stripe update pending" on Today until the operation is SUCCEEDED; the audit entry `agreement.item_cancelled` records the amendment id and operation id.
-   - **Every item cancelled:** if no appliance on the agreement has an open assignment after the removal, no reduction is made; the same transaction ends the agreement through `closeAgreementInTx` (a required extraction from `closeAgreement`, `agreements/index.ts:569`, returning the post-commit Stripe continuation). It is `CANCELLED` when nothing on it was ever delivered, `ENDED` otherwise. `removeUndeliveredItem` is reordered to the shared lock order (read pending → lock agreement → pending → appliances).
+   - **Every item cancelled:** if no appliance on the agreement has an open assignment after the removal, no reduction is
+     made; the same transaction ends the agreement through `closeAgreementInTx`:
+     ```ts
+     // src/domains/agreements/index.ts — extracted from closeAgreement (:569); closeAgreement becomes
+     // prisma.$transaction(tx => closeAgreementInTx(...)) followed by runCloseAgreementContinuation(result).
+     export async function closeAgreementInTx(tx: Prisma.TransactionClient, userId: string | null, agreementId: string,
+       newStatus: "ENDED" | "CANCELLED", options?: { endedOn?: Date }): Promise<CloseAgreementResult>;
+     export type CloseAgreementResult = { updated: RentalAgreement; stripeSubscriptionId: string | null;
+       providerClaim: ProviderClaim | null; revertRenewalId: string | null };
+     export async function runCloseAgreementContinuation(result: CloseAgreementResult): Promise<RentalAgreement>; // the Stripe cancel + term revert, post-commit
+     ```
+     It is `CANCELLED` when nothing on it was ever delivered, `ENDED` otherwise (both allowed from ACTIVE,
+     `agreements/index.ts:32`). `closeAgreementInTx` also cancels a staged swap job for the agreement (P2-C.5) and takes the
+     agreement lock itself, so a caller already holding it is fine. `removeUndeliveredItem` is reordered to the shared lock
+     order: read the pending row's agreement and customer ids (no lock) → **`lockCustomerLedger`** → lock agreement →
+     pending row → appliances sorted → re-verify the pending row is still waiting.
    - Owner/admin only, as today.
 ```prisma
 model RentalLineAmendment {
@@ -715,10 +878,11 @@ model RentalLineAmendment {
   createdAt                 DateTime   @default(now())
   @@index([rentalLineId])
 }
-// add to PendingDelivery: substituteApplianceId String?
+// add to PendingDelivery: substituteApplianceId String?;  substituteJobId String?
 // add to RentalLine: amendments RentalLineAmendment[]
 ```
-Migration `20261003390000_line_amendments_and_substitution` (structure + the `substituteApplianceId` column + append-only trigger).
+Migration `20261003390000_line_amendments_and_substitution` (structure + the two `PendingDelivery` columns + the append-only
+trigger on `RentalLineAmendment`, same function as parts).
 Tests to add: see section 10 (S1–S6).
 
 ## Section 9 — C-09 pickup/return billing: interface only (BLOCKED)
@@ -750,9 +914,13 @@ Parts: `parts-usage-over-stock-refused-not-clamped`; `parts-retry-same-key-same-
 `parts-stored-total-equals-movement-sum`; `parts-null-vs-zero-cost`; `parts-itemized-and-legacy-cost-not-double-counted`; `parts-movement-update-delete-blocked-by-trigger`;
 `parts-archive-keeps-history`; `parts-delete-refused-when-history`.
 Custody: `custody-one-open-per-appliance-db-rule`; `custody-survives-renewal-start`; `custody-survives-close-agreement-null-user`;
-`custody-backfill-uses-job-evidence`; `custody-backfill-never-copies-reservation-time`; `custody-backfill-swapped-out-unit-has-no-open-episode`; `custody-status-invariant`.
+`custody-backfill-uses-job-evidence`; `custody-backfill-date-is-denver-midnight-as-utc-instant` (real Postgres: a job
+completed 03:30 UTC Oct 4 backfills `startedOn` = Oct 3 06:00 UTC); `custody-backfill-never-copies-reservation-time`;
+`custody-backfill-swapped-out-unit-has-no-open-episode`; `custody-manual-episode-may-have-unknown-date`; `custody-status-invariants`.
 Completion: `complete-requires-result-per-appliance`; `complete-retry-same-key-no-second-task-audit-credit`; `complete-negative-result-makes-one-HIGH-task`;
-`complete-move-conflict-aborts-all`; `complete-handoff-row-written-in-same-transaction`; `bulk-complete-refused`; `complete-rolls-back-on-billing-error`.
+`complete-move-conflict-aborts-all`; `complete-handoff-row-written-in-same-transaction`; `complete-handoff-sweep-retries-failed-once-per-run`;
+`update-job-status-completed-refused`; `complete-rolls-back-on-billing-error`; `complete-locks-customer-before-agreement`
+(real Postgres: a REMOVAL completion and `createFeeInvoiceIfNeeded` for the same agreement run concurrently and both finish).
 Swaps: `swap-stage-moves-nothing-but-reserves-replacement`; `swap-complete-atomic-custody-and-assignment`; `swap-original-returned-replacement-not-delivered-refused`;
 `swap-replacement-delivered-original-not-returned-keeps-open-episode-and-task`; `swap-cancel-releases-only-own-reservation`; `swap-renewal-start-agreement-end-completion-three-way-race`.
 Maintenance: `maintenance-schedule-atomic-rolls-back-together`; `maintenance-resolves-only-on-complete-outcome`; `maintenance-partial-noshow-cancel-never-resolve`.
@@ -761,12 +929,15 @@ Inspection and permissions: `inspection-stale-checklist-version-rejected`; `insp
 Earnings: `appliance-modules-never-import-collectedBetween`; `appliance-estimate-labelled`.
 Subscription rule: S1 `late-delivery-leaves-subscription-unchanged`; S2 `same-type-swap-leaves-subscription-unchanged-and-credits-to-replacement-date`; S2b `different-type-substitute-refused`;
 S3 `cancel-reduces-exactly-one-subscription-item-once-and-retry-is-noop`; S4 `stripe-failure-leaves-visible-pending-operation`; S5 `drift-shows-mismatch-until-stripe-matches`;
-S6 `all-items-cancelled-ends-agreement-through-closeAgreement`; S7 `remaining-item-share-after-removal-uses-open-assignments-only`; S8 `amendment-preserves-signed-price-history`.
+S6 `all-items-cancelled-ends-agreement-through-closeAgreement`; S7 `remaining-item-share-after-removal-excludes-never-delivered-and-replaced-only`
+(and a late return on an ENDED agreement still splits correctly); S8 `amendment-preserves-signed-price-history`; S9 `no-matching-stripe-item-completes-as-drift`.
+Inspection versions: `inspection-seed-version-1-from-settings-or-default`; `inspection-legacy-rows-keep-own-definition`.
 Housekeeping: backup export contains every new table; `docs/DATABASE.md` lists them; `check-migrations.mjs` passes; every new setting appears on its screen.
 
 ## Section 11 — stop-and-ask list (the implementer stops and writes to Chris; do not guess)
 
-1. The migration checker flags any statement here (CHECK, trigger, partial index, `NOT NULL DEFAULT`).
+1. The migration checker flags any statement here (it should not — its four patterns were read — so a flag means the
+   checker changed).
 2. The duplicate `JobAppliance (jobId, applianceId)` pre-check finds rows, or the custody backfill leaves more than a handful of appliances in `findCustodyGaps`.
 3. A different appliance **type** is offered for a waiting item (owner decision on price and agreement change).
 4. Anything about who is at fault for a late pickup or how waived days appear (IN-24 open part), or any early-termination fee change.
@@ -776,18 +947,21 @@ Housekeeping: backup export contains every new table; `docs/DATABASE.md` lists t
 
 ## Section 12 — work order and approval status per slice
 
-| Order | Slice | Migrations | Recommended state |
+Reviewer's recommendation per slice (Fable 5.1, 2026-10-03). Chris approves in `docs/designs/README.md`; nothing is coded
+before that.
+
+| Order | Slice | Migrations | Reviewer's recommendation |
 |---|---|---|---|
-| 1 | P1-A Scheduling | `…290000` | Ready for Chris's approval (no billing) |
-| 2 | P1-B Asset numbers | `…300000` | Ready for Chris's approval (no billing) |
-| 3 | P1-C Parts ledger + archival | `…310000`–`…333000` | Ready for Chris's approval (no billing) |
-| 4 | P2-A Custody | `…340000`, `…350000` | Ready for Chris's approval (reads no billing) |
-| 5 | P2-B Completion, results, tasks, handoff rows | `…360000` | Ready except executing handoffs through the shared billing contract (blocked; the existing post-commit calls stay) |
-| 6 | P2-C Swaps | (in `…360000`/`…390000`) | Ready for Chris's approval after P2-A and P2-B |
-| 7 | P2-D Maintenance chain | `…370000` | Ready for Chris's approval after P1-A |
-| 8 | P2-E Inspection + job-scoped permissions | `…380000` | Ready for Chris's approval |
-| 9 | P2-F Earnings correction | none | Ready for Chris's approval |
-| 10 | Section 8 Missing-item subscription rule | `…390000` | Ready for Chris's approval (decided by Chris 2026-10-03); needs P2-B and `closeAgreementInTx` |
-| — | Section 9 C-09 pickup/return billing | — | **BLOCKED**: shared billing contract + IN-24 company-fault answer |
+| 1 | P1-A Scheduling | `…290000` | **Approved for code** (no billing) |
+| 2 | P1-B Asset numbers | `…300000` | **Approved for code** (no billing) |
+| 3 | P1-C Parts ledger + archival | `…310000`–`…330000` | **Approved for code** (no billing) |
+| 4 | P2-A Custody | `…340000`, `…350000` | **Approved with conditions:** the corrected backfill date expression and CHECK in this review; the `CUSTODY_UNKNOWN` count after the backfill is reported in the PR |
+| 5 | P2-B Completion, results, tasks, handoff rows | `…360000` | **Approved with conditions:** Customer lock before Agreement in `completeJob`; the production duplicate pre-check returns no rows; all three completion screens and the listed tests move to `completeJob` |
+| 6 | P2-C Swaps | (in `…360000`/`…390000`) | **Approved for code** after P2-A and P2-B |
+| 7 | P2-D Maintenance chain | `…370000` | **Approved for code** after P1-A |
+| 8 | P2-E Inspection + job-scoped permissions | `…380000` | **Approved with conditions:** uses D7's `InspectionChecklistVersion` table as amended here (nullable publisher); the seed hash literal is produced by the TypeScript helper |
+| 9 | P2-F Earnings correction | none | **Approved for code** |
+| 10 | Section 8 Missing-item subscription rule | `…390000` | **Approved with conditions** (the rule itself was decided by Chris 2026-10-03): needs P2-B and `closeAgreementInTx`; the `itemsForAppliances` counting rule as corrected here; Customer lock first in `removeUndeliveredItem` |
+| — | Section 9 C-09 pickup/return billing | — | **BLOCKED**: the shared billing contract, and IN-24's open part (who records that a late pickup was the company's fault, and how waived days show on the statement) |
 
 Suggested PR stack: (1) P1-A+P1-B, (2) P1-C, (3) P2-A+P2-B, (4) P2-C+P2-D, (5) P2-E+P2-F, (6) section 8.
