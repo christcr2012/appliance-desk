@@ -2,7 +2,6 @@ import { prisma } from "@/lib/prisma";
 import { cancelAtSecondsFor } from "./subscription-term";
 import { getStripeClient } from "@/lib/stripe";
 import { fixedTermEndDate } from "@/lib/business-date";
-import { billingPeriodContaining } from "./pickup-billing";
 import type { HandoffWorkOutcome } from "./handoff-outcome";
 import {
   RetryLater,
@@ -372,8 +371,12 @@ async function recordSubscriptionPreparationFailure(
 /**
  * Start recurring billing exactly once after the first real delivery. Provider
  * work runs outside transactions. The immutable firstDeliveredOn business date
- * anchors the local term and Stripe subscription even when provider work is
- * retried later.
+ * is the authoritative local billing/term fact even when provider work is
+ * retried later. Stripe's provider-cycle timestamp is deliberately not
+ * backdated or re-anchored here: the current Stripe API cannot preserve a
+ * Denver calendar anniversary across DST while also backdating without
+ * introducing time-based proration. The remediation design says to stop that
+ * narrow provider sub-step rather than silently change money policy.
  */
 export async function startRecurringBillingForAgreement(
   agreementId: string,
@@ -450,7 +453,10 @@ export async function startRecurringBillingForAgreement(
         if (!agreement.billingStartedAt || agreement.billingBlockedReason) {
           await tx.rentalAgreement.update({
             where: { id: agreementId },
-            data: { billingStartedAt: agreement.billingStartedAt ?? firstDeliveredOn, billingBlockedReason: null },
+            data: {
+              billingStartedAt: agreement.billingStartedAt ?? firstDeliveredOn,
+              billingBlockedReason: null,
+            },
           });
         }
         return { done: true, outcome: { state: "DONE" } };
@@ -516,10 +522,12 @@ export async function startRecurringBillingForAgreement(
           ? RECONCILIATION_BLOCKER
           : "Recurring billing is already being started by another request. Try again after it finishes."
         : `Couldn't start recurring billing: ${error instanceof Error ? error.message : "Unexpected error."}`;
-    await prisma.rentalAgreement.update({
-      where: { id: agreementId },
-      data: { billingBlockedReason: detail },
-    }).catch(() => undefined);
+    await prisma.rentalAgreement
+      .update({
+        where: { id: agreementId },
+        data: { billingBlockedReason: detail },
+      })
+      .catch(() => undefined);
     return { state: unknown ? "UNKNOWN" : "RETRY", detail };
   }
 
@@ -564,10 +572,6 @@ export async function startRecurringBillingForAgreement(
   }
 
   const cancelAt = cancelAtSecondsFor(claimed.agreement) ?? undefined;
-  const now = new Date();
-  const period = billingPeriodContaining(claimed.agreement.firstDeliveredOn, now);
-  const backdateStart = Math.floor(claimed.agreement.firstDeliveredOn.getTime() / 1000);
-  const billingCycleAnchor = Math.floor(period.end.getTime() / 1000);
 
   const providerResult = await runProviderCall(() =>
     stripe.subscriptions.create(
@@ -580,8 +584,6 @@ export async function startRecurringBillingForAgreement(
           agreementId: claimed.agreement.id,
           firstDeliveredOn: claimed.agreement.firstDeliveredOn.toISOString(),
         },
-        backdate_start_date: backdateStart,
-        billing_cycle_anchor: billingCycleAnchor,
         ...(cancelAt ? { cancel_at: cancelAt } : {}),
       },
       { idempotencyKey: claimed.idempotencyKey },
@@ -640,7 +642,10 @@ export async function startRecurringBillingForAgreement(
         providerObjectId: stripeSubscriptionId,
         note: `Stripe subscription ${stripeSubscriptionId} was created after local agreement ${agreementId} disappeared.`,
       });
-      return { state: "UNKNOWN", detail: "Stripe created the subscription after the local agreement disappeared." };
+      return {
+        state: "UNKNOWN",
+        detail: "Stripe created the subscription after the local agreement disappeared.",
+      };
     }
     if (!agreement.firstDeliveredOn) {
       await completeProviderOperation(tx, claimed.opId, {
@@ -648,7 +653,10 @@ export async function startRecurringBillingForAgreement(
         providerObjectId: stripeSubscriptionId,
         note: `Agreement ${agreementId} lost its first-delivery fact while Stripe subscription ${stripeSubscriptionId} was being created.`,
       });
-      await tx.rentalAgreement.update({ where: { id: agreementId }, data: { billingBlockedReason: RECONCILIATION_BLOCKER } });
+      await tx.rentalAgreement.update({
+        where: { id: agreementId },
+        data: { billingBlockedReason: RECONCILIATION_BLOCKER },
+      });
       return { state: "UNKNOWN", detail: RECONCILIATION_BLOCKER };
     }
 
