@@ -4,6 +4,7 @@ import { requireRole } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
 import type { ApplianceStatus } from "@prisma/client";
+import { assertStatusChangeKeepsCustody } from "./custody";
 import {
   ALL_APPLIANCE_STATUSES,
   canTransitionApplianceStatus,
@@ -307,6 +308,8 @@ export async function updateApplianceStatus(
   if (!check.ok) {
     throw new Error(check.reason);
   }
+
+  await assertStatusChangeKeepsCustody(prisma, applianceId, newStatus);
 
   const result = await prisma.appliance.updateMany({
     where: { id: applianceId, updatedAt: before.updatedAt },

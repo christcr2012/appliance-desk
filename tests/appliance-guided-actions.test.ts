@@ -294,7 +294,7 @@ describe("startSwapForAppliance", () => {
         data: expect.objectContaining({
           type: "SWAP",
           customerId: "cust-1",
-          appliances: { create: [{ applianceId: "app-1" }, { applianceId: "app-2" }] },
+          appliances: { create: [{ applianceId: "app-1" }, { applianceId: "app-2", role: "REPLACEMENT" }] },
         }),
       }),
     );

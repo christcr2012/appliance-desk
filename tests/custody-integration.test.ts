@@ -177,4 +177,17 @@ describe.skipIf(!enabled)("custody episodes", () => {
     await runBackfill([id]);
     expect(await prisma.applianceCustodyEpisode.count({ where: { applianceId: id } })).toBe(0);
   });
+
+  it("custody-status-invariants: a hand-made status change cannot skip or strand custody", async () => {
+    const { updateApplianceStatus } = await import("@/domains/inventory");
+    const owner = (await prisma.user.findFirstOrThrow({ where: { role: "OWNER" } })).id;
+    const shop = await unit("AVAILABLE");
+    await expect(updateApplianceStatus(owner, shop, "RENTED")).rejects.toThrow(/no customer recorded/);
+    expect(await prisma.appliance.findUniqueOrThrow({ where: { id: shop } }).then((a) => a.status)).toBe("AVAILABLE");
+    const out = await unit("RENTED");
+    await prisma.applianceCustodyEpisode.create({ data: { applianceId: out, customerId, startEvidence: "MANUAL" } });
+    await expect(updateApplianceStatus(owner, out, "RETIRED")).rejects.toThrow(/pickup job/);
+    await updateApplianceStatus(owner, out, "AWAITING_PICKUP");
+    expect(await prisma.appliance.findUniqueOrThrow({ where: { id: out } }).then((a) => a.status)).toBe("AWAITING_PICKUP");
+  });
 });

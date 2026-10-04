@@ -10,6 +10,7 @@ const applianceFindUniqueOrThrow = vi.fn();
 const applianceUpdateMany = vi.fn();
 const auditLogCreate = vi.fn();
 
+vi.mock("@/domains/inventory/custody", () => ({ assertStatusChangeKeepsCustody: vi.fn() }));
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     appliance: {

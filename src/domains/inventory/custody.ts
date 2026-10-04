@@ -82,6 +82,22 @@ export async function closeCustodyEpisodeInTx(
   return { episodeId: open.id, alreadyClosedByThisJob: false };
 }
 
+/**
+ * The two one-way custody rules for a hand-made status change: "rented" or "awaiting pickup" needs a recorded
+ * holder, and "available", "reserved" or "retired" can't keep one. Deliveries and pickups go through job completion,
+ * which opens and closes the stay itself, so a hand change must not skip it.
+ */
+export async function assertStatusChangeKeepsCustody(client: Reader, applianceId: string, newStatus: ApplianceStatus): Promise<void> {
+  if (newStatus !== "RENTED" && newStatus !== "AWAITING_PICKUP" && newStatus !== "AVAILABLE" && newStatus !== "RESERVED" && newStatus !== "RETIRED") return;
+  const open = await getOpenCustody(client, applianceId);
+  if ((newStatus === "RENTED" || newStatus === "AWAITING_PICKUP") && !open) {
+    throw new CustodyConflictError("This appliance has no customer recorded, so it can't be marked as out with a customer. Complete a delivery job for it, or record who has it on this page first.");
+  }
+  if ((newStatus === "AVAILABLE" || newStatus === "RESERVED" || newStatus === "RETIRED") && open) {
+    throw new CustodyConflictError("This appliance is recorded as being with a customer. Complete a pickup job for it before changing it to this status.");
+  }
+}
+
 /** Appliances whose status says "with a customer" but that have no open episode. Should be empty after the owner fills any gaps. */
 export async function findCustodyGaps(client: Reader): Promise<Array<{ applianceId: string; status: ApplianceStatus }>> {
   const rows = await client.appliance.findMany({

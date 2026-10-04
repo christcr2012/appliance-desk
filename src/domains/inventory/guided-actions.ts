@@ -269,7 +269,7 @@ export async function startSwapForAppliance(
         serviceAddressId: agreement.serviceAddressId,
         agreementId: agreement.id,
         appliances: {
-          create: [{ applianceId: oldApplianceId }, { applianceId: replacementApplianceId }],
+          create: [{ applianceId: oldApplianceId }, { applianceId: replacementApplianceId, role: "REPLACEMENT" }],
         },
       },
     });
