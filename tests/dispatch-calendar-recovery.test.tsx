@@ -97,6 +97,8 @@ it("renders Colorado day/time and a boundary conflict without leaking adjacent j
         ...fixture,
         id: "visible",
         scheduledAt: new Date("2026-10-01T06:30:00Z"),
+        assignedTo: { id: "u1", name: "Sam Driver", email: "sam@example.test" },
+        durationMinutes: 45,
       },
     ])
     .mockResolvedValueOnce([]);
@@ -108,6 +110,9 @@ it("renders Colorado day/time and a boundary conflict without leaking adjacent j
   expect(html).toContain("Thursday, October 1");
   expect(html).toContain("12:30 AM MDT");
   expect(html).toContain("Double-booked around this time");
+  expect(html).toContain("Assigned to Sam Driver");
+  expect(html).toContain("45 minutes");
+  expect(html).toContain("for Sam Driver");
   expect(html).toContain("/desk/jobs/visible");
   expect(html).not.toContain("/desk/jobs/before");
 });
