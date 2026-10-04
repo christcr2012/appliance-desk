@@ -3,6 +3,7 @@ import { businessDateKey } from "@/lib/business-date";
 import {
   stripeBillingCycleAnchorConfig,
   stripeBillingDateSeconds,
+  stripeBillingDateSecondsAtProviderClock,
 } from "@/domains/billing/stripe-billing-anchor";
 
 function recurOneUtcMonth(anchorSeconds: number): Date {
@@ -41,5 +42,14 @@ describe("Stripe billing timestamps preserve the Colorado billing date", () => {
       minute: 0,
       second: 0,
     });
+  });
+
+  it("uses a legacy subscription's actual UTC cycle clock for a later cancellation date", () => {
+    const legacyAnchor = Math.floor(Date.parse("2026-10-08T06:00:00.000Z") / 1000);
+    const targetColoradoDate = new Date("2027-03-08T07:00:00.000Z");
+
+    expect(stripeBillingDateSecondsAtProviderClock(targetColoradoDate, legacyAnchor)).toBe(
+      Math.floor(Date.parse("2027-03-08T06:00:00.000Z") / 1000),
+    );
   });
 });
