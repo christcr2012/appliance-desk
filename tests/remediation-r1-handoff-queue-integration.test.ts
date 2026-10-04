@@ -59,7 +59,7 @@ describe.skipIf(!enabled)("Remediation R1 handoff queue recovery (real Postgres)
         subjectId: blockedSubject,
         status: "FAILED",
         attempts: 0,
-        lastError: "BLOCKED: missing payment method",
+        lastError: "BLOCKED:2026-01-01T00:00:00.000Z: missing payment method",
         createdAt: new Date("2026-01-01T00:00:00.000Z"),
       },
     });
@@ -92,8 +92,43 @@ describe.skipIf(!enabled)("Remediation R1 handoff queue recovery (real Postgres)
     expect(await prisma.jobBillingHandoff.findUniqueOrThrow({ where: { id: blocked.id } })).toMatchObject({
       status: "FAILED",
       attempts: 0,
-      lastError: "BLOCKED: missing payment method",
+      lastError: "BLOCKED:2026-01-01T00:00:00.000Z: missing payment method",
     });
+  });
+
+  it("rotates blocked handoffs so one missing prerequisite cannot monopolize spare capacity", async () => {
+    const firstJobId = await createCompletedJob("blocked-rotate-a");
+    const secondJobId = await createCompletedJob("blocked-rotate-b");
+    const firstSubject = `blocked-rotate-a-${tag}`;
+    const secondSubject = `blocked-rotate-b-${tag}`;
+
+    await prisma.jobBillingHandoff.create({
+      data: {
+        jobId: firstJobId,
+        kind: "START_RECURRING_BILLING",
+        subjectId: firstSubject,
+        status: "FAILED",
+        attempts: 0,
+        lastError: "BLOCKED:2026-01-01T00:00:00.000Z: missing payment method",
+      },
+    });
+    await prisma.jobBillingHandoff.create({
+      data: {
+        jobId: secondJobId,
+        kind: "START_RECURRING_BILLING",
+        subjectId: secondSubject,
+        status: "FAILED",
+        attempts: 0,
+        lastError: "BLOCKED:2026-01-02T00:00:00.000Z: missing payment method",
+      },
+    });
+    handoffMocks.startBilling.mockResolvedValue({ state: "BLOCKED", detail: "missing payment method" });
+
+    await expect(runPendingHandoffs(1)).resolves.toEqual({ done: 0, failed: 1 });
+    await expect(runPendingHandoffs(1)).resolves.toEqual({ done: 0, failed: 1 });
+
+    expect(handoffMocks.startBilling).toHaveBeenNthCalledWith(1, firstSubject);
+    expect(handoffMocks.startBilling).toHaveBeenNthCalledWith(2, secondSubject);
   });
 
   it("recovers a stale in-flight lease even when the dead worker already claimed attempt five", async () => {
