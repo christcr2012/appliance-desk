@@ -1,9 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import { getStripeClient } from "@/lib/stripe";
-import { businessDateEnd, businessDateKey } from "@/lib/business-date";
+import { addBusinessDays } from "@/lib/business-date";
 import { isAutoRenewEnabled } from "@/domains/settings/auto-renew-switch";
 import { checkReminderDelivered } from "@/domains/notices";
 import { renewalReminderKey } from "@/domains/notices/renewal-reminder";
+import { stripeBillingDateSeconds } from "./stripe-billing-anchor";
 import {
   claimProviderOperation,
   completeProviderOperation,
@@ -12,14 +13,20 @@ import {
 } from "./provider-ops";
 
 /**
- * The end date Stripe is told about for a fixed-term rental ("cancel_at").
+ * The provider boundary Stripe is told about for a fixed-term rental.
  *
- * A fixed-term rental's subscription is created with cancel_at = the end of the
- * last day of the term, so Stripe stops billing by itself. A renewal CONTINUES
- * that same subscription, so before the old term ends the subscription's end
- * date has to move to the renewal's end date (or be removed for month-to-month).
- * It must happen while the subscription is still live (at signing), not at the
- * start date, because Stripe has already ended it by then.
+ * Appliance Desk stores the agreement end as the last real Colorado second of
+ * service. Stripe, however, recurs at the DST-safe 07:00 UTC representation of
+ * each Colorado billing date. `cancel_at` therefore uses the matching provider
+ * boundary at the start of the following Colorado business date. Keeping these
+ * clocks aligned avoids a fractional final billing period while the local
+ * agreement still ends at the true Colorado end-of-day.
+ *
+ * A renewal CONTINUES that same subscription, so before the old term ends the
+ * subscription's provider boundary has to move to the renewal's end date (or
+ * be removed for month-to-month). It must happen while the subscription is
+ * still live (at signing), not at the start date, because Stripe has already
+ * ended it by then.
  *
  * Every change is a durable provider operation (idempotent, recoverable by the
  * billing reconciliation pass), and the target is always derived from the
@@ -32,15 +39,16 @@ export type TermSyncDirection = "extend" | "revert";
 
 export function cancelAtSecondsFor(term: { termMonths: number | null; endDate: Date | null }): number | null {
   return term.termMonths && term.endDate
-    ? Math.floor(businessDateEnd(businessDateKey(term.endDate)).getTime() / 1000)
+    ? stripeBillingDateSeconds(addBusinessDays(term.endDate, 1))
     : null;
 }
 
 /**
- * The end date for an agreement whose owner/customer asked to end it early: the
- * subscription must stop BEFORE the billing anniversary the agreement ends on, or
- * Stripe would bill one more month. An early ending that falls on or after the
- * natural term end changes nothing.
+ * The provider end boundary for an agreement whose owner/customer asked to end
+ * it early. `terminationEffectiveOn` is the Colorado billing anniversary on
+ * which the next period must not begin, so Stripe cancels exactly at that
+ * anniversary's provider clock. An early ending that falls on or after the
+ * natural term boundary changes nothing.
  */
 export function cancelAtSecondsForAgreement(term: {
   termMonths: number | null;
@@ -49,7 +57,7 @@ export function cancelAtSecondsForAgreement(term: {
 }): number | null {
   const natural = cancelAtSecondsFor(term);
   if (!term.terminationEffectiveOn) return natural;
-  const early = Math.floor((term.terminationEffectiveOn.getTime() - 1000) / 1000);
+  const early = stripeBillingDateSeconds(term.terminationEffectiveOn);
   return natural === null || early < natural ? early : natural;
 }
 
