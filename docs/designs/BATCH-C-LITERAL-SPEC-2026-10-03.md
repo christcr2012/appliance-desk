@@ -50,6 +50,18 @@ Verified against the code:
   Prisma's own naming and checked on a throwaway Postgres built from the repository's migrations; CI's migration drill is the second check.
 - No decision-level conflict. Proceed as written.
 
+### Drift check — P2-A custody and P2-B completion — 2026-10-04 (Claude Sonnet 5.5, at `main` 335b2ef = #169 + #170, with the P1-C branch below it)
+
+Verified against the code:
+- `updateJobStatus` (`src/domains/jobs/index.ts`) is the only place a job becomes `COMPLETED`; it calls `applyJobCompletionToAppliances`, then the three in-transaction billing calls (`recordLateReturnOnRemoval`, `recordLateDeliveries`, `recordItemsNotDelivered`), and after commit `pushLateDeliveryCreditToStripe` and `startRecurringBillingForAgreement` (each failure only logged). Matches the spec's "today".
+- Callers that complete a job: `updateJobStatusAction` (`src/app/desk/jobs/actions.ts`), the job page panel (`jobs/[id]/job-detail-panel.tsx`) and the driver card (`driver/driver-job-card.tsx`; it already sends deliveries/installations/swaps/maintenance to the job page and only completes a **removal** itself). Tests that complete through it: `billing-late-delivery-race-integration` (3 calls), `prepaid-delivery-persistence` (1). `jobs-status-concurrency`, `staff-offboarding-concurrency-integration` only start jobs, so they stay. `staff-job-persistence` and the two e2e specs named in the spec are checked when the screens change.
+- Every team member (STAFF included) can complete any job today; job-scoped permission is slice P2-E, so `completeJob` keeps today's rule (`assertActiveTeamActor`, any team role) and P2-E tightens it.
+- `startRenewalInTx` and `closeAgreement` write no custody (there is no custody table). `StaffTask` has `note`, `HIGH` priority, a `jobId` link and no appliance link; `createTask` takes the session itself and is a single function (spec's `createTaskInTx` wrapper is as described).
+- Latest migration is `20261003330000_parts_ledger…` (this branch), so `…340000`, `…350000`, `…360000` are free. `JobAppliance` has no unique `(jobId, applianceId)` today.
+- **Sequencing note (not a decision conflict):** swaps are re-designed in P2-C, which lands in the next PR. Until then the existing guided swap still moves both units when it is *staged*. So in this slice `completeJob` for a `SWAP` job records each unit's result, opens custody for a delivered replacement and closes the original's custody **if one is open**, creates follow-up tasks for negative results, but moves no appliance status (exactly what completion does for swaps today). P2-C then makes the status/assignment moves atomic.
+- **Production pre-check before this slice's migration is deployed** (spec): the duplicate `JobAppliance (jobId, applianceId)` query must return no rows; it is run read-only against the production database before merge and the result recorded in the PR.
+- No decision-level conflict (money, statuses, permissions, database design). Proceed as written.
+
 ## Review pass — 2026-10-03 (Claude Fable 5.1, docs only)
 
 Every file and line the spec cites was opened at head 3d71449 (branch `ai/claude/pickup-billing-rules`, which this
