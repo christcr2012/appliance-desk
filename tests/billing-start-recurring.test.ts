@@ -1,5 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+const FIRST_DELIVERED = new Date("2026-10-01T06:00:00.000Z");
+const RETRY_TIME = new Date("2026-11-15T18:00:00.000Z");
+
 const mocks = vi.hoisted(() => {
   class RetryLater extends Error {
     constructor(message = "This provider operation is already in progress.") {
@@ -29,8 +32,7 @@ vi.mock("@/lib/prisma", () => ({
       callback({
         $queryRaw: (...args: unknown[]) => mocks.queryRaw(...args),
         rentalAgreement: {
-          findUniqueOrThrow: (...args: unknown[]) =>
-            mocks.rentalAgreementFindUniqueOrThrow(...args),
+          findUniqueOrThrow: (...args: unknown[]) => mocks.rentalAgreementFindUniqueOrThrow(...args),
           update: (...args: unknown[]) => mocks.rentalAgreementUpdate(...args),
         },
       }),
@@ -63,6 +65,7 @@ function baseAgreement(overrides: Record<string, unknown> = {}) {
     id: "agr-1",
     customerId: "customer-1",
     stripeSubscriptionId: null,
+    firstDeliveredOn: FIRST_DELIVERED,
     billingStartedAt: null,
     billingBlockedReason: null,
     termMonths: null,
@@ -80,13 +83,23 @@ function baseAgreement(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function lockRow(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "agr-1",
+    stripeSubscriptionId: null,
+    billingStartedAt: null,
+    firstDeliveredOn: FIRST_DELIVERED,
+    ...overrides,
+  };
+}
+
 describe("startRecurringBillingForAgreement", () => {
   beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(RETRY_TIME);
     vi.clearAllMocks();
 
-    mocks.queryRaw.mockResolvedValue([
-      { id: "agr-1", stripeSubscriptionId: null, billingStartedAt: null },
-    ]);
+    mocks.queryRaw.mockResolvedValue([lockRow()]);
     mocks.rentalAgreementFindUniqueOrThrow.mockResolvedValue(baseAgreement());
     mocks.rentalAgreementUpdate.mockResolvedValue({});
     mocks.claimProviderOperation.mockResolvedValue({
@@ -95,7 +108,7 @@ describe("startRecurringBillingForAgreement", () => {
       idempotencyKey: "subscription-create-agr-1",
     });
     mocks.completeProviderOperation.mockResolvedValue(undefined);
-    mocks.taxRatesList.mockResolvedValue({ data: [] });
+    mocks.taxRatesList.mockResolvedValue({ data: [], has_more: false });
     mocks.taxRatesCreate.mockResolvedValue({ id: "txr_fake_1" });
     mocks.productsCreate.mockImplementation(async ({ name }: { name: string }) => ({
       id: `prod_${name.replace(/\s+/g, "_")}`,
@@ -110,17 +123,43 @@ describe("startRecurringBillingForAgreement", () => {
     });
   });
 
-  it("does nothing when the agreement already has a subscription id", async () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("blocks recurring billing when there is no durable first-delivery fact", async () => {
+    mocks.rentalAgreementFindUniqueOrThrow.mockResolvedValue(
+      baseAgreement({ firstDeliveredOn: null, billingStartedAt: null }),
+    );
+    const { startRecurringBillingForAgreement } = await import("@/domains/billing/checkout");
+
+    const outcome = await startRecurringBillingForAgreement("agr-1");
+
+    expect(outcome).toMatchObject({ state: "BLOCKED" });
+    expect(mocks.claimProviderOperation).not.toHaveBeenCalled();
+    expect(mocks.subscriptionsCreate).not.toHaveBeenCalled();
+    expect(mocks.rentalAgreementUpdate).toHaveBeenCalledWith({
+      where: { id: "agr-1" },
+      data: { billingBlockedReason: expect.stringMatching(/actually been delivered/i) },
+    });
+  });
+
+  it("does no provider work when the agreement already has a subscription id", async () => {
     mocks.rentalAgreementFindUniqueOrThrow.mockResolvedValue(
       baseAgreement({ stripeSubscriptionId: "sub_already" }),
     );
     const { startRecurringBillingForAgreement } = await import("@/domains/billing/checkout");
 
-    await startRecurringBillingForAgreement("agr-1");
+    const outcome = await startRecurringBillingForAgreement("agr-1");
 
+    expect(outcome).toEqual({ state: "DONE" });
     expect(mocks.claimProviderOperation).not.toHaveBeenCalled();
     expect(mocks.productsCreate).not.toHaveBeenCalled();
     expect(mocks.subscriptionsCreate).not.toHaveBeenCalled();
+    expect(mocks.rentalAgreementUpdate).toHaveBeenCalledWith({
+      where: { id: "agr-1" },
+      data: { billingStartedAt: FIRST_DELIVERED, billingBlockedReason: null },
+    });
   });
 
   it.each([true, false])(
@@ -136,30 +175,20 @@ describe("startRecurringBillingForAgreement", () => {
       );
       const { startRecurringBillingForAgreement } = await import("@/domains/billing/checkout");
 
-      await startRecurringBillingForAgreement("agr-1");
+      const outcome = await startRecurringBillingForAgreement("agr-1");
 
+      expect(outcome).toEqual({ state: "DONE" });
       expect(mocks.claimProviderOperation).not.toHaveBeenCalled();
       expect(mocks.productsCreate).not.toHaveBeenCalled();
       expect(mocks.subscriptionsCreate).not.toHaveBeenCalled();
+      expect(mocks.rentalAgreementUpdate).toHaveBeenCalledWith({
+        where: { id: "agr-1" },
+        data: { billingBlockedReason: null, billingStartedAt: FIRST_DELIVERED },
+      });
     },
   );
 
-  it("clears a stale recurring-billing blocker for a prepaid agreement", async () => {
-    mocks.rentalAgreementFindUniqueOrThrow.mockResolvedValue(
-      baseAgreement({ paidInFullInAdvance: true, billingBlockedReason: "Missing card" }),
-    );
-    const { startRecurringBillingForAgreement } = await import("@/domains/billing/checkout");
-
-    await startRecurringBillingForAgreement("agr-1");
-
-    expect(mocks.rentalAgreementUpdate).toHaveBeenCalledWith({
-      where: { id: "agr-1" },
-      data: { billingBlockedReason: null },
-    });
-    expect(mocks.subscriptionsCreate).not.toHaveBeenCalled();
-  });
-
-  it("records a blocker instead of throwing when no saved payment method exists", async () => {
+  it("records BLOCKED instead of pretending success when no saved payment method exists", async () => {
     mocks.rentalAgreementFindUniqueOrThrow.mockResolvedValue(
       baseAgreement({
         customer: { stripeCustomerId: "cus_fake_1", stripeDefaultPaymentMethodId: null },
@@ -167,8 +196,9 @@ describe("startRecurringBillingForAgreement", () => {
     );
     const { startRecurringBillingForAgreement } = await import("@/domains/billing/checkout");
 
-    await expect(startRecurringBillingForAgreement("agr-1")).resolves.not.toThrow();
+    const outcome = await startRecurringBillingForAgreement("agr-1");
 
+    expect(outcome).toMatchObject({ state: "BLOCKED" });
     expect(mocks.subscriptionsCreate).not.toHaveBeenCalled();
     expect(mocks.rentalAgreementUpdate).toHaveBeenCalledWith({
       where: { id: "agr-1" },
@@ -176,11 +206,12 @@ describe("startRecurringBillingForAgreement", () => {
     });
   });
 
-  it("persists the Stripe subscription id after a successful provider write", async () => {
+  it("backdates the provider subscription to first delivery while keeping the next anniversary anchor", async () => {
     const { startRecurringBillingForAgreement } = await import("@/domains/billing/checkout");
 
-    await startRecurringBillingForAgreement("agr-1");
+    const outcome = await startRecurringBillingForAgreement("agr-1");
 
+    expect(outcome).toEqual({ state: "DONE" });
     expect(mocks.productsCreate).toHaveBeenCalledWith(
       expect.objectContaining({
         name: "Washer",
@@ -194,9 +225,14 @@ describe("startRecurringBillingForAgreement", () => {
       expect.objectContaining({
         customer: "cus_fake_1",
         default_payment_method: "pm_fake_1",
-        metadata: { agreementId: "agr-1" },
+        metadata: {
+          agreementId: "agr-1",
+          firstDeliveredOn: FIRST_DELIVERED.toISOString(),
+        },
+        backdate_start_date: Math.floor(FIRST_DELIVERED.getTime() / 1000),
       }),
     );
+    expect(params.billing_cycle_anchor).toBeGreaterThan(Math.floor(RETRY_TIME.getTime() / 1000));
     expect(params).not.toHaveProperty("cancel_at");
     expect(options).toEqual({ idempotencyKey: "subscription-create-agr-1" });
 
@@ -204,7 +240,7 @@ describe("startRecurringBillingForAgreement", () => {
       where: { id: "agr-1" },
       data: {
         stripeSubscriptionId: "sub_fake_1",
-        billingStartedAt: expect.any(Date),
+        billingStartedAt: FIRST_DELIVERED,
         billingBlockedReason: null,
       },
     });
@@ -215,32 +251,27 @@ describe("startRecurringBillingForAgreement", () => {
     );
   });
 
-  it("heals the local subscription id from an already-succeeded provider operation", async () => {
-    mocks.claimProviderOperation.mockResolvedValue({
-      done: true,
-      providerObjectId: "sub_recovered",
-    });
+  it("heals the local subscription id from an already-succeeded provider operation using the delivery anchor", async () => {
+    mocks.claimProviderOperation.mockResolvedValue({ done: true, providerObjectId: "sub_recovered" });
     const { startRecurringBillingForAgreement } = await import("@/domains/billing/checkout");
 
-    await startRecurringBillingForAgreement("agr-1");
+    const outcome = await startRecurringBillingForAgreement("agr-1");
 
+    expect(outcome).toEqual({ state: "DONE" });
     expect(mocks.subscriptionsCreate).not.toHaveBeenCalled();
     expect(mocks.rentalAgreementUpdate).toHaveBeenCalledWith({
       where: { id: "agr-1" },
       data: {
         stripeSubscriptionId: "sub_recovered",
-        billingStartedAt: expect.any(Date),
+        billingStartedAt: FIRST_DELIVERED,
         billingBlockedReason: null,
       },
     });
   });
 
-  it("sets cancel_at to the last second of the Colorado end date for a fixed term", async () => {
+  it("sets cancel_at from a fixed term's already-saved Colorado end date", async () => {
     mocks.rentalAgreementFindUniqueOrThrow.mockResolvedValue(
-      baseAgreement({
-        termMonths: 12,
-        endDate: new Date("2026-11-01T12:00:00.000Z"),
-      }),
+      baseAgreement({ termMonths: 12, endDate: new Date("2026-11-01T12:00:00.000Z") }),
     );
     const { startRecurringBillingForAgreement } = await import("@/domains/billing/checkout");
 
@@ -250,25 +281,14 @@ describe("startRecurringBillingForAgreement", () => {
     expect(params.cancel_at).toBe(Math.floor(Date.parse("2026-11-02T06:59:59.000Z") / 1000));
   });
 
-  describe("a fixed term starts at delivery (owner decision IN-20)", () => {
-    const deliveredAt = new Date("2026-11-08T19:00:00.000Z");
-    const expectedEnd = new Date("2027-11-08T06:59:59.000Z");
-
-    beforeEach(() => {
-      vi.useFakeTimers({ toFake: ["Date"] });
-      vi.setSystemTime(deliveredAt);
-    });
-
-    afterEach(() => {
-      vi.useRealTimers();
-    });
-
-    it("saves the end date from the delivery date and sends it to Stripe as cancel_at", async () => {
+  describe("fixed terms are anchored to first delivery, never provider retry time", () => {
+    it("derives a 12-month end from first delivery even when Stripe is retried six weeks later", async () => {
       mocks.rentalAgreementFindUniqueOrThrow.mockResolvedValue(baseAgreement({ termMonths: 12 }));
       const { startRecurringBillingForAgreement } = await import("@/domains/billing/checkout");
 
       await startRecurringBillingForAgreement("agr-1");
 
+      const expectedEnd = new Date("2027-10-01T05:59:59.999Z");
       expect(mocks.rentalAgreementUpdate).toHaveBeenCalledWith({
         where: { id: "agr-1" },
         data: { endDate: expectedEnd },
@@ -277,7 +297,7 @@ describe("startRecurringBillingForAgreement", () => {
       expect(params.cancel_at).toBe(Math.floor(expectedEnd.getTime() / 1000));
     });
 
-    it("counts a six-month term from delivery too", async () => {
+    it("derives a six-month end from the same delivery anchor", async () => {
       mocks.rentalAgreementFindUniqueOrThrow.mockResolvedValue(baseAgreement({ termMonths: 6 }));
       const { startRecurringBillingForAgreement } = await import("@/domains/billing/checkout");
 
@@ -285,15 +305,13 @@ describe("startRecurringBillingForAgreement", () => {
 
       expect(mocks.rentalAgreementUpdate).toHaveBeenCalledWith({
         where: { id: "agr-1" },
-        data: { endDate: new Date("2027-05-08T05:59:59.000Z") },
+        data: { endDate: new Date("2027-04-01T05:59:59.999Z") },
       });
     });
 
-    it("never overwrites an end date that is already saved (a retry keeps the same stop date)", async () => {
+    it("never overwrites an end date already saved by an earlier attempt", async () => {
       const saved = new Date("2027-03-01T06:59:59.000Z");
-      mocks.rentalAgreementFindUniqueOrThrow.mockResolvedValue(
-        baseAgreement({ termMonths: 12, endDate: saved }),
-      );
+      mocks.rentalAgreementFindUniqueOrThrow.mockResolvedValue(baseAgreement({ termMonths: 12, endDate: saved }));
       const { startRecurringBillingForAgreement } = await import("@/domains/billing/checkout");
 
       await startRecurringBillingForAgreement("agr-1");
@@ -306,31 +324,34 @@ describe("startRecurringBillingForAgreement", () => {
       expect(params.cancel_at).toBe(Math.floor(saved.getTime() / 1000));
     });
 
-    it("counts from the recorded billing start when billing had already begun", async () => {
+    it("uses billingStartedAt only as historical compatibility when firstDeliveredOn predates the new column", async () => {
+      const historical = new Date("2026-09-12T06:00:00.000Z");
       mocks.rentalAgreementFindUniqueOrThrow.mockResolvedValue(
-        baseAgreement({ termMonths: 12, billingStartedAt: new Date("2026-10-01T18:00:00.000Z") }),
+        baseAgreement({ firstDeliveredOn: null, billingStartedAt: historical, termMonths: 12 }),
       );
+      mocks.queryRaw.mockResolvedValue([lockRow({ firstDeliveredOn: historical, billingStartedAt: historical })]);
       const { startRecurringBillingForAgreement } = await import("@/domains/billing/checkout");
 
       await startRecurringBillingForAgreement("agr-1");
 
       expect(mocks.rentalAgreementUpdate).toHaveBeenCalledWith({
         where: { id: "agr-1" },
-        data: { endDate: new Date("2027-10-01T05:59:59.000Z") },
+        data: { endDate: new Date("2027-09-12T05:59:59.999Z") },
       });
     });
 
-    it("gives a prepaid fixed term its end date at delivery as well, with no subscription", async () => {
+    it("gives a prepaid fixed term the delivery-based end date without creating a subscription", async () => {
       mocks.rentalAgreementFindUniqueOrThrow.mockResolvedValue(
         baseAgreement({ termMonths: 12, paidInFullInAdvance: true }),
       );
       const { startRecurringBillingForAgreement } = await import("@/domains/billing/checkout");
 
-      await startRecurringBillingForAgreement("agr-1");
+      const outcome = await startRecurringBillingForAgreement("agr-1");
 
+      expect(outcome).toEqual({ state: "DONE" });
       expect(mocks.rentalAgreementUpdate).toHaveBeenCalledWith({
         where: { id: "agr-1" },
-        data: { endDate: expectedEnd },
+        data: { endDate: new Date("2027-10-01T05:59:59.999Z") },
       });
       expect(mocks.subscriptionsCreate).not.toHaveBeenCalled();
     });
@@ -349,13 +370,14 @@ describe("startRecurringBillingForAgreement", () => {
     });
   });
 
-  it("marks an ambiguous Stripe result UNKNOWN and blocks automatic retry", async () => {
+  it("returns UNKNOWN for an ambiguous Stripe result and leaves reconciliation visible", async () => {
     const timeout = Object.assign(new Error("socket reset"), { code: "ECONNRESET" });
     mocks.runProviderCall.mockResolvedValue({ ok: false, outcome: "UNKNOWN", error: timeout });
     const { startRecurringBillingForAgreement } = await import("@/domains/billing/checkout");
 
-    await expect(startRecurringBillingForAgreement("agr-1")).resolves.not.toThrow();
+    const outcome = await startRecurringBillingForAgreement("agr-1");
 
+    expect(outcome).toMatchObject({ state: "UNKNOWN" });
     expect(mocks.completeProviderOperation).toHaveBeenCalledWith(
       expect.anything(),
       "provider-op-1",
@@ -367,25 +389,29 @@ describe("startRecurringBillingForAgreement", () => {
     });
   });
 
-  it("never overwrites a different subscription id that appears during reconciliation", async () => {
-    mocks.queryRaw
-      .mockResolvedValueOnce([
-        { id: "agr-1", stripeSubscriptionId: null, billingStartedAt: null },
-      ])
-      .mockResolvedValueOnce([
-        { id: "agr-1", stripeSubscriptionId: "sub_other", billingStartedAt: null },
-      ]);
+  it("returns RETRY for a fresh competing provider claim rather than false success", async () => {
+    mocks.claimProviderOperation.mockRejectedValue(new mocks.RetryLater());
     const { startRecurringBillingForAgreement } = await import("@/domains/billing/checkout");
 
-    await startRecurringBillingForAgreement("agr-1");
+    const outcome = await startRecurringBillingForAgreement("agr-1");
 
+    expect(outcome).toMatchObject({ state: "RETRY" });
+    expect(mocks.subscriptionsCreate).not.toHaveBeenCalled();
+  });
+
+  it("never overwrites a different subscription id that appears during reconciliation", async () => {
+    mocks.queryRaw
+      .mockResolvedValueOnce([lockRow()])
+      .mockResolvedValueOnce([lockRow({ stripeSubscriptionId: "sub_other" })]);
+    const { startRecurringBillingForAgreement } = await import("@/domains/billing/checkout");
+
+    const outcome = await startRecurringBillingForAgreement("agr-1");
+
+    expect(outcome).toMatchObject({ state: "UNKNOWN" });
     expect(mocks.completeProviderOperation).toHaveBeenCalledWith(
       expect.anything(),
       "provider-op-1",
-      expect.objectContaining({
-        status: "DRIFT",
-        providerObjectId: "sub_fake_1",
-      }),
+      expect.objectContaining({ status: "DRIFT", providerObjectId: "sub_fake_1" }),
     );
     expect(mocks.rentalAgreementUpdate).toHaveBeenCalledWith({
       where: { id: "agr-1" },
@@ -395,9 +421,7 @@ describe("startRecurringBillingForAgreement", () => {
 
   describe("exact tax rates sent to Stripe", () => {
     it("creates a 7.375% rate exactly when none exists", async () => {
-      mocks.rentalAgreementFindUniqueOrThrow.mockResolvedValue(
-        baseAgreement({ taxRateMilliPercent: 7375 }),
-      );
+      mocks.rentalAgreementFindUniqueOrThrow.mockResolvedValue(baseAgreement({ taxRateMilliPercent: 7375 }));
       const { startRecurringBillingForAgreement } = await import("@/domains/billing/checkout");
 
       await startRecurringBillingForAgreement("agr-1");
@@ -408,9 +432,7 @@ describe("startRecurringBillingForAgreement", () => {
     });
 
     it("reuses a matching rate found on a later page instead of creating a duplicate", async () => {
-      mocks.rentalAgreementFindUniqueOrThrow.mockResolvedValue(
-        baseAgreement({ taxRateMilliPercent: 7375 }),
-      );
+      mocks.rentalAgreementFindUniqueOrThrow.mockResolvedValue(baseAgreement({ taxRateMilliPercent: 7375 }));
       mocks.taxRatesList
         .mockResolvedValueOnce({
           data: [{ id: "txr_other", percentage: 7.3, inclusive: false }],
@@ -434,9 +456,7 @@ describe("startRecurringBillingForAgreement", () => {
     });
 
     it("does not treat 7.3% as 7.375%", async () => {
-      mocks.rentalAgreementFindUniqueOrThrow.mockResolvedValue(
-        baseAgreement({ taxRateMilliPercent: 7375 }),
-      );
+      mocks.rentalAgreementFindUniqueOrThrow.mockResolvedValue(baseAgreement({ taxRateMilliPercent: 7375 }));
       mocks.taxRatesList.mockResolvedValue({
         data: [{ id: "txr_73", percentage: 7.3, inclusive: false }],
         has_more: false,
