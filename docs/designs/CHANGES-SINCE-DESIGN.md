@@ -7,7 +7,7 @@ a name, a status value or a table that a later design relies on. This file is th
 running answer to "does the design still match the code?"; the design drift check
 (`docs/designs/README.md`) starts here.
 
-Last updated: 2026-10-03 (after Batch B core merged, #147–#155).
+Last updated: 2026-10-03 (after Batch B core merged, #147–#155; pickup/return billing added the same evening).
 
 ## Rules a later batch must follow
 
@@ -24,6 +24,7 @@ Last updated: 2026-10-03 (after Batch B core merged, #147–#155).
 | **Provider writes go through `ProviderOperation`** (idempotency key, statuses PENDING/SUCCEEDED/FAILED/UNKNOWN/DRIFT). Read-only drift workbench at `/desk/billing/reconciliation`. | New Stripe writes use `runProviderCall`; new mismatch kinds are added to `detectDrift`. |
 | **Tests that write the single business-settings row** must be listed in `SHARED_SETTINGS_TESTS` in `vitest.config.mts`. | Add new such tests to that list. |
 | **CI:** 3 unit shards, 4 browser shards, one `ci` gate, secret scan; every new `e2e/*.spec.ts` needs a group in `e2e/shards.json`. | See `docs/ARCHITECTURE.md`. |
+| **Pickup and delivery billing is built (2026-10-03, ahead of the Batch C design, at the owner's direction).** A completed REMOVAL job charges late-return days (`LATE_RETURN` line kind) for any pickup after the agreement's end date, whatever the status. A completed DELIVERY/INSTALLATION job records items staff tick as not delivered (`PendingDelivery`), and a later one credits the missing days (`CustomerCredit.sourceType = LATE_DELIVERY`, pushed to Stripe balance); "never delivered" removal credits every month billed (`unassignReason = "Never delivered"`). Jobs carry `performedOn` (the recorded work date). Settings in `BusinessSettings` (`lateReturnRateMode`, `lateReturnFixedDailyCents`, `lateDeliveryProrationBasis`, `pickupDayNotBilled`; `earlyReturnProrationBasis` is a dead column). `CustomerCredit.shownCents`/`shownOnInvoiceId` mark what a mirrored bill has shown. Rules in `src/domains/billing/pickup-billing.ts`. | Batch C's pickup/delivery design must build on this, not redesign it: the IN-24 company-fault waiver and the subscription rule for a missing item (delivered late or swapped same-type: line stays; permanently cancelled: line comes off from the next period — Chris, 2026-10-03) are the open pieces, both specified in `docs/prompts/DESIGN-BATCH-C-LITERAL-SPECS.md`. Item 14 of Batch C should treat these settings as the source of the daily rate, and `jobServiceDate` as the date any custody change happened. |
 
 ## Known name or location differences from the designs
 

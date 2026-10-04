@@ -8,6 +8,19 @@ section with a date.
 
 ## Deferred to a later phase (already scoped, just not yet)
 
+- **Take a permanently cancelled item off the live Stripe subscription**
+  (Chris's rule, 2026-10-03): a never-delivered item that is removed from the
+  agreement must stop billing from the next period (delivered-late and
+  swapped-same-type items stay on the subscription). Needs a
+  `SUBSCRIPTION_UPDATE`-style provider operation with reconciliation and a
+  local rental-line amendment; specified as a Batch C work unit in
+  `docs/prompts/DESIGN-BATCH-C-LITERAL-SPECS.md`. Until built, the audit entry
+  tells the owner to adjust Stripe by hand.
+- **Company-caused late pickup waiver** (IN-24): record who caused a late
+  pickup and waive the late-return charge for company fault. Batch C design.
+- **Collect late-return invoices through Stripe automatically** (today they
+  are ordinary open invoices, like the early-ending fee).
+
 - Lead scoring UI (browsing/filtering leads in the desk, not just the
   score itself — that's done) — **done, Phase 3 (2026-09-26).**
   Lead → customer conversion — **done, Phase 3.** Owner dashboard

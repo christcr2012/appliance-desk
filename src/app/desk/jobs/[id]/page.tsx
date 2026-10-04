@@ -4,6 +4,9 @@ import Link from "next/link";
 import { getDeskJobById } from "@/domains/desk-access";
 import { JobDetailPanel } from "./job-detail-panel";
 import { privatePhotoReadPath } from "@/lib/photo-storage";
+import { deliveryCandidatesForJob } from "@/domains/jobs";
+import { pendingDeliveriesForJob } from "@/domains/billing/pickup-billing-events";
+import { businessDateKey } from "@/lib/business-date";
 
 export const metadata = { title: "Job" };
 
@@ -20,6 +23,10 @@ export default async function JobDetailPage({
   if (!job) {
     notFound();
   }
+  const [deliveryCandidates, pendingDeliveries] = await Promise.all([
+    deliveryCandidatesForJob({ id: job.id, type: job.type, status: job.status, agreementId: job.agreementId }),
+    pendingDeliveriesForJob(job.id),
+  ]);
 
   return (
     <div className="max-w-2xl">
@@ -54,7 +61,13 @@ export default async function JobDetailPage({
       )}
 
       <div className="mt-6">
-        <JobDetailPanel job={{
+        <JobDetailPanel deliveryCandidates={deliveryCandidates} pendingDeliveries={pendingDeliveries.map((p) => ({
+          id: p.id,
+          label: `${p.appliance.applianceType.name} #${p.appliance.assetNumber}`,
+          originalDeliveryDate: businessDateKey(p.originalDeliveryDate),
+          deliveredOn: p.deliveredOn ? businessDateKey(p.deliveredOn) : null,
+          removed: p.removedAt !== null,
+        }))} today={businessDateKey(new Date())} job={{
           id: job.id, type: job.type, status: job.status,
           completionNotes: job.completionNotes, checklist: job.checklist,
           swapReplacementIds: job.swapReplacementIds,

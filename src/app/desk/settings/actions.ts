@@ -374,6 +374,27 @@ export async function updateTermsPolicyAction(
   return { status: "success" };
 }
 
+/** Pickup and return billing rules (IN-24 / IN-26 / IN-27). Owners and admins. */
+export async function updatePickupBillingAction(
+  raw: Record<string, unknown>,
+): Promise<SettingsActionState> {
+  const session = await requireRole("OWNER", "ADMIN");
+  const { pickupBillingUpdate } = await import("@/domains/settings/pickup-billing");
+  const parsed = pickupBillingUpdate(raw);
+  if (!parsed.success) return { status: "error", message: parsed.message };
+  try {
+    await updateBusinessSettings(session.user.id, parsed.update);
+  } catch {
+    return {
+      status: "error",
+      message:
+        "Settings could not be saved. Your changes are still in the form; please try again.",
+    };
+  }
+  revalidatePath("/desk/settings");
+  return { status: "success" };
+}
+
 /** The owner's master switch for emails to customers. Owner only. */
 export async function setCustomerEmailAction(enabled: boolean): Promise<SettingsActionState> {
   const session = await requireRole("OWNER");

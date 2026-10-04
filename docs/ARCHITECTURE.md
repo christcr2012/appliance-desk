@@ -202,6 +202,113 @@ unsigned request claiming to be Stripe — that's now resolved.
 deferred — see "Automation rules" below. Dunning beyond Stripe's own
 built-in retry logic is still not built.
 
+### Pickup and delivery billing (owner decisions IN-24 / IN-26 / IN-27, 2026-10-03)
+
+Three owner-changeable rules decide what a customer is charged when an
+appliance comes back late, credited when an appliance is delivered late, and
+whether the pickup day itself counts. Nothing is hard-coded: the settings live
+in `BusinessSettings` (`lateReturnRateMode`, `lateReturnFixedDailyCents`,
+`lateDeliveryProrationBasis`, `pickupDayNotBilled`; the column
+`earlyReturnProrationBasis` is a deprecated leftover of a misread rule, copied
+into `lateDeliveryProrationBasis` by migration `20261003280000` and never read),
+are edited on `/desk/settings?section=pickups` ("Pickups and deliveries", owner
+and admin, with every choice explained on the screen and a "Restore recommended
+values" button), and are read by exactly one module.
+
+| Piece | Where |
+|---|---|
+| The rules themselves (pure, no database): day counting, daily rates, labels | `src/domains/billing/pickup-billing.ts` |
+| What a completed job does to billing (invoice, credit, waiting items, audit) | `src/domains/billing/pickup-billing-events.ts` |
+| Where it is triggered | `updateJobStatus` in `src/domains/jobs/index.ts`, when a job is marked Completed |
+| Items waiting for delivery | `PendingDelivery` table; shown on the original delivery job's page and on Today ("Item not delivered yet") |
+| Settings parsing and form defaults | `src/domains/settings/pickup-billing.ts`, `src/app/desk/settings/pickup-billing-form.tsx` |
+| Credit shown on the next bill | `src/domains/billing/applied-credit-lines.ts`, used by `recordPaidInvoice` in `webhooks.ts` |
+| Tests | `tests/billing-pickup-billing.test.ts`, `tests/billing-pickup-billing-events.test.ts`, `tests/billing-late-delivery-credit-integration.test.ts` (real Postgres), `tests/settings-pickup-billing.test.ts` |
+
+**Which day counts.** Every rule reads the job's *service date*
+(`jobServiceDate`): the "date the work was done" staff enter when they mark
+the job completed (defaults to that day; stored as `Job.performedOn`), else
+the job's scheduled date, else the completion time. Never the moment the
+status button was pressed. Dates are Colorado calendar dates
+(`businessDateKey`), so a pickup at 11:30 pm is on that day, and
+daylight-saving changes count as whole days.
+
+How each rule works:
+
+1. **Late return.** The agreement's `endDate` is its last paid-for day (fixed
+   terms store it as the last second of that Colorado date; Stripe's
+   `cancel_at` uses the same instant). When a REMOVAL job completes, each
+   appliance it took away whose pickup date is after that end date is charged
+   for every day from the day after the end date through the last chargeable
+   day (rule 3) — **whatever the agreement's status says at that moment**: an
+   agreement still marked ACTIVE with a pickup after its end date is a late
+   return, not anything else. Daily rate: the item's monthly price ÷ 30
+   (default) or the owner's fixed amount per day. The total is rounded once
+   (`round(price × days ÷ 30)`), never per day. The charges become one
+   ordinary `OPEN` invoice with one `LATE_RETURN` line per appliance, labeled
+   `Late return – [item] – [N] days`, plus the agreement's own sales tax
+   (`taxRateMilliPercent`, the same rate its rent carries) — the same way the
+   early-ending fee is billed. Nothing is charged to a card automatically: the
+   customer pays it like any other invoice, and the owner can see, adjust or
+   write it off (which is also how a company-caused late pickup is handled
+   until the IN-24 waiver is designed). Audit: `billing.late_return_invoiced`.
+2. **Late delivery.** When a DELIVERY/INSTALLATION job for an agreement is
+   completed, staff can tick any agreement item that was **not** on the truck.
+   Those appliances stay reserved for the customer and each gets a
+   `PendingDelivery` row (`originalDeliveryDate` = that job's service date).
+   Billing for the **whole agreement** starts from that visit exactly as
+   before (`startRecurringBillingForAgreement` runs on every completed
+   delivery and covers every rental line, so a partial delivery and a full
+   one bill the same). Each waiting item is listed on Today ("Item not
+   delivered yet", every role) and on the original job's page, so it is never
+   forgotten. When a later delivery job that includes the item is completed,
+   the row is closed (`deliveredOn`, `deliveredJobId`) and the customer gets a
+   `CustomerCredit` (`sourceType = LATE_DELIVERY`, `sourceId` = the
+   PendingDelivery id) for every day from the original delivery date through
+   the day **before** it arrived: `round(itemMonthly × days ÷ basis)`, basis
+   = 30 (default) or the real length of the anniversary billing period that
+   contains the original date (28–31 days), rounded once, and never more than
+   was billed for the item so far (its monthly share × the number of billing
+   periods that have started). A "set" (two appliances on one rental line)
+   splits its line price evenly per item. If the item never arrives, the
+   owner or an admin presses "Never delivered — take it off the agreement and
+   credit it" on the job page: the appliance is released (`unassignReason =
+   "Never delivered"`, status back to AVAILABLE), `removedAt` is set, and the
+   credit is one month's share for every billing period that has started
+   since the original date (`Credit – [item] never delivered – [N] months
+   billed`). After the transaction commits the credit is sent to Stripe as
+   customer-balance credit (`BALANCE_CREDIT` provider operation, idempotency
+   key `late-delivery-credit-<creditId>`, retried by the reconciliation pass
+   like referral credits), so it comes off the customer's **next** monthly
+   charge. When that next Stripe invoice is mirrored, the applied balance is
+   shown as its own `CREDIT` line per credit — `Credit – [item] delivered late
+   – [N] days` — oldest first, **only credits of this source type** (an old
+   referral credit is never relabeled; migration `20261003280000` marks every
+   pre-existing credit as fully shown), each credit's unshown part only
+   (`CustomerCredit.shownCents` tracks what has been shown, so a credit Stripe
+   used across two bills appears in two parts), with `shownOnInvoiceId` set
+   once the whole amount has been shown and any unmatched remainder shown as
+   "Account credit applied". Rentals paid in full in advance, and agreements
+   whose billing never started, get no automatic credit (noted in the audit
+   entry for the owner). Audits: `billing.item_not_delivered`,
+   `billing.late_delivery_credit`, `billing.item_never_delivered`.
+   - **Known gap, by design for now:** an item taken off the agreement as
+     never delivered is still a line on the Stripe subscription. The audit
+     entry says so; the owner adjusts the subscription in Stripe by hand.
+     Chris's rule (2026-10-03): delivered-late and swapped-same-type items
+     stay on the subscription; a permanently cancelled item must come off it
+     from the next period. That is a Batch C work unit
+     (`docs/prompts/DESIGN-BATCH-C-LITERAL-SPECS.md`, Part 2) and a
+     `docs/ROADMAP.md` item.
+3. **Pickup day not billed** (default on). The last chargeable day of any
+   rental is the day before the pickup/return date, for normal end-of-
+   agreement pickups and late returns alike. With the switch off, the pickup
+   day is charged like any other day.
+
+Every rule's outcome is written to the job's audit trail
+(`job.pickup_billing`) in plain words, including why an appliance got no
+charge or credit.
+
 ## Automation rules (scheduled jobs)
 
 **As of 2026-09-28**, later extended 2026-09-29. Checks that used to

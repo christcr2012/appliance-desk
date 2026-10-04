@@ -21,6 +21,9 @@ import { CustomerEmailSwitch } from "./customer-email-switch";
 import { isNonProductionDeployment } from "@/lib/deployment-safety";
 import { TermsPolicyForm } from "./terms-policy-form";
 import { AutoRenewSwitch } from "./auto-renew-switch";
+import { PickupBillingForm } from "./pickup-billing-form";
+import { pickupBillingDefaults } from "@/domains/settings/pickup-billing";
+import { pickupBillingSettingsFrom } from "@/domains/billing/pickup-billing";
 import { termsPolicyDefaults, termsPolicyStatus } from "@/domains/settings/terms-policy";
 import { formatTaxRate } from "@/domains/billing/tax";
 export const metadata = {
@@ -81,6 +84,15 @@ export default async function DeskSettingsPage({
           />
         </div>
         <TermsPolicyForm defaultValues={termsPolicyDefaults(settings)} />
+      </SectionCard>
+    );
+  } else if (section === "pickups") {
+    content = (
+      <SectionCard
+        title="Pickups and deliveries"
+        description="What a customer is charged when an appliance comes back late, credited when one is delivered late, and whether the pickup day counts."
+      >
+        <PickupBillingForm defaultValues={pickupBillingDefaults(pickupBillingSettingsFrom(settings))} />
       </SectionCard>
     );
   } else if (section === "staff") {

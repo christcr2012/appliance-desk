@@ -12,7 +12,7 @@ Last updated: 2026-10-03 (evening) · `main` includes the whole Batch B stack th
 | Batch | Status | PR / branch | Evidence | Notes |
 |---|---|---|---|---|
 | A — Critical integrity & platform safety | **MERGED** | #136 (2026-10-02) | Full CI green; real-Postgres concurrency and adversarial auth tests | Audit registers stay open; nothing in A claims a B–F item. |
-| B — Billing, provider reconciliation & financial ledger | **IN PROGRESS (core merged; follow-ups open)** | Merged to `main`: #141, #145, #146, #147, #148, #149, #151, #152, #153, #154, #159, #161 (2026-10-03) | Real-database tests for provider operations, receipts/allocations, credits, refunds, late fees, write-off races, renewals, drift workbench, statements and reports; acceptance ledger `docs/reviews/2026-10-03-batch-b-acceptance.md` with review dispositions; CI green at each merged head | Built but switched OFF (#159, #161): renewal reminders as saved notices, owner master switches for live customer email and for automatic renewals (both default OFF; see `docs/GO-LIVE-CHECKLIST.md`). Not done: the renewal lifecycle gaps R1/R2 (order of overlapping Stripe updates, billing stop after a crash), R3 (customer cancel after the first renewal), R4 (annual reminders), R6 (store provider message id), D2 (evidence rule for manual delivery); estimate follow-up claim-before-send. Owner answers still open (all in `docs/OWNER-INPUTS.md`): IN-17 (only the CPA's check of the 7.375% rate; the exact-rate work itself is done), IN-21 (month-to-month notice wording and approval to send live customer email), IN-24 (for a customer-caused late return, bill by the day or by the month), IN-25 (is the early-ending fee taxable), and IN-26 (partial-delivery billing) and IN-27 (does the pickup day bill), which the Batch C drift-check PR #164 adds to the register. Design prompt for the stronger model: `docs/prompts/DESIGN-BATCH-B-RENEWAL-LIFECYCLE.md`. The "Automatic renewals" switch must stay OFF until that is built. Scheduled early-termination execution is done (#159, ledger line 'Auto-renew consent and scheduled early termination execution'); what remains around it is that prepaid rentals ended early are settled by the owner by hand, billing that stops at pickup/return (Batch C, IN-24), and the per-customer terms screens (Batch D). Do not mark B complete until that list is empty or Chris accepts it. |
+| B — Billing, provider reconciliation & financial ledger | **IN PROGRESS (core merged; follow-ups open)** | Merged to `main`: #141, #145, #146, #147, #148, #149, #151, #152, #153, #154, #159, #161 (2026-10-03) | Real-database tests for provider operations, receipts/allocations, credits, refunds, late fees, write-off races, renewals, drift workbench, statements and reports; acceptance ledger `docs/reviews/2026-10-03-batch-b-acceptance.md` with review dispositions; CI green at each merged head | Built but switched OFF (#159, #161): renewal reminders as saved notices, owner master switches for live customer email and for automatic renewals (both default OFF; see `docs/GO-LIVE-CHECKLIST.md`). Not done: the renewal lifecycle gaps R1/R2 (order of overlapping Stripe updates, billing stop after a crash), R3 (customer cancel after the first renewal), R4 (annual reminders), R6 (store provider message id), D2 (evidence rule for manual delivery); estimate follow-up claim-before-send. Owner answers still open (all in `docs/OWNER-INPUTS.md`): IN-17 (only the CPA's check of the 7.375% rate; the exact-rate work itself is done), IN-21 (month-to-month notice wording and approval to send live customer email), IN-24 (only the company-caused waiver now; the customer-caused late-return charge is built, see "Pickup and delivery billing" below), IN-25 (is the early-ending fee taxable). IN-26 and IN-27 are answered and built. Design prompt for the stronger model: `docs/prompts/DESIGN-BATCH-B-RENEWAL-LIFECYCLE.md`. The "Automatic renewals" switch must stay OFF until that is built. Scheduled early-termination execution is done (#159, ledger line 'Auto-renew consent and scheduled early termination execution'); what remains around it is that prepaid rentals ended early are settled by the owner by hand, the company-caused late-pickup waiver (Batch C, IN-24), and the per-customer terms screens (Batch D). #161 (merge b72f05d) is in `main`; #163 and #164 are docs-only and still open. Do not mark B complete until that list is empty or Chris accepts it. |
 | C — Rental-to-service operations, custody, inventory & purchasing | NOT STARTED | — | — | Depends on B's ledger primitives where money is touched. |
 | D — Owner/customer control plane, website, evidence & privacy | NOT STARTED | — | — | Uses B contracts for renewal/cancel UI. |
 | E — Communications, reporting, growth, branding & accessibility | NOT STARTED | — | — | Google (O32) only if GW prerequisites are ready; otherwise one later PR. |
@@ -63,6 +63,43 @@ Moved to a later batch on purpose (not forgotten): per-customer terms screens
 (estimate / setup / sign-up) and the customer- and owner-facing screens that show
 a termination quote or start a renewal belong to Batch D, which owns those screens.
 
+## Pickup and delivery billing (2026-10-03, built ahead of the Batch C design at Chris's direction)
+
+Branch `ai/claude/pickup-billing-rules`, PR #165, stacked on #164. Chris answered
+IN-24 (customer-caused part), IN-26 and IN-27 with three rules and asked for them
+as owner settings; built as stated. (The first push misread rule 2 as an
+"early return" credit; corrected in the same PR — `docs/DECISIONS.md`.)
+
+- [x] Settings: Desk → Settings → Pickups and deliveries (late-return daily
+      rate: monthly ÷ 30 or fixed; late-delivery credit basis: ÷ 30 or actual
+      days; pickup day not billed, on by default), explained on the screen, with
+      "Restore recommended values". Migrations `20261003270000_pickup_billing_rules`
+      and `20261003280000_late_delivery_credit`.
+- [x] Late return: one open invoice with a `Late return – [item] – [N] days`
+      line per item (+ the agreement's tax) when a REMOVAL job completes with a
+      pickup date after the end date, whatever the agreement's status. Never
+      auto-charged. Dates come from the job's recorded/scheduled date.
+- [x] Late delivery: staff tick items not delivered when completing a delivery
+      job; the whole agreement bills as normal; Today lists "Item not delivered
+      yet"; a later delivery job credits the missing days
+      (`Credit – [item] delivered late – [N] days`) via Stripe balance credit,
+      shown on the next mirrored bill; "never delivered" removal credits every
+      month billed.
+- [x] Pickup day not billed.
+- [x] Tests: 3-day late return; pickup after the end date while still ACTIVE is
+      late, no credit; one item delivered 10 days late on a 2-item agreement
+      (whole agreement billed, 10-day credit); never delivered and removed →
+      full credit (real Postgres); an old referral credit is not shown on a
+      new bill (real Postgres); pickup on the 1st not charged; DST, rounding,
+      fixed rate, actual-days basis, recorded-date handling, settings parsing.
+      Full suite green on a throwaway Postgres.
+- [ ] **Not built (Batch C design):** company-caused late pickup waiver (IN-24);
+      the subscription rule for a missing item (Chris, 2026-10-03: delivered
+      late or swapped same-type → stays; permanently cancelled → removed from
+      Stripe from the next period), specified in
+      `docs/prompts/DESIGN-BATCH-C-LITERAL-SPECS.md`.
+- Merge of #165 is Chris's coding agent's call, not Claude's.
+
 ## Open items carried across batches
 
 - Historical review threads: ~50 remain open in
@@ -83,10 +120,12 @@ installed); IN-22 use best practice for a renewal signed in advance (built: see
 "Answered" in OWNER-INPUTS); IN-23 per-case choice with a recommended option.
 IN-22 and IN-23 are both built.
 Still waiting on him: IN-21 (wording and approval for sending live customer
-emails; building continues with sending switched off) and IN-17's CPA check of the
+emails; building continues with sending switched off), IN-17's CPA check of the
 7.375% rate.
 
 ## Session log (last two batches only)
+
+- **2026-10-03 (Claude, pickup billing rules)** — Chris gave the three pickup/delivery billing rules (late return per day per item; an item missing from the first delivery billed with the whole agreement and credited per day on the next bill once delivered; pickup day never charged) as owner settings with defaults, to be built on the open PR (#164). Built as `ai/claude/pickup-billing-rules` / PR #165 stacked on #164: settings section with on-screen explanations, pure rule module, job-completion wiring (recorded work date, "not delivered" ticks, waiting-item records), Stripe balance credit, labeled lines on the mirrored bill, Today item, docs. First push misread rule 2 as an early-return credit; Chris corrected it and the same PR now carries the late-delivery version (one commit, one CI run). Full suite green locally on a throwaway Postgres. Open for Chris: the company-fault waiver (Batch C design).
 
 - **2026-10-03 (Claude, Batch B close-out + review catch-up)** — Chris asked whether I was following the review-continuity rule. I was not for #151–#153 (I had only read the #148/#149 comments). Read every open Codex thread on #148–#153 (9) and dispositioned each in the close-out PR: 3 fixed in this PR (signing wording, browser test of the signing terms, legacy `SUCCEEDED` payments in statements), 1 fixed by a safety migration (old/new tax columns kept in step during deploys), 1 design doc amended (D12), 3 already fixed (evidence in PR), 1 still open (renewal shows active before its start date, IN-22). Also fixed a real race (a Stripe payment arriving while a write-off is saved) and added real-database tests for credit, webhook race, renewals and drift. Acceptance ledger: `docs/reviews/2026-10-03-batch-b-acceptance.md`. Rule from now on: every new PR starts by reading the previous PR's review threads and fixing or dispositioning each.
 

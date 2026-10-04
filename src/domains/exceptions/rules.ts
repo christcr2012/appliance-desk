@@ -27,7 +27,8 @@ export type ExceptionCategory =
   | "APPLIANCE_MAINTENANCE_DUE"
   | "RENEWAL_NOT_STARTED"
   | "EARLY_ENDING_NOT_DONE"
-  | "NOTICE_WAITING";
+  | "NOTICE_WAITING"
+  | "ITEM_NOT_DELIVERED";
 
 export type ExceptionSeverity = "high" | "medium";
 
@@ -88,6 +89,29 @@ export function renewalNotStartedException(agreement: {
       "The renewal is signed but could not take over from the rental it renews (that rental may have been ended or cancelled early). Open it to cancel or fix it.",
     href: `/desk/agreements/${agreement.id}`,
     since: agreement.startDate,
+  };
+}
+
+/**
+ * An agreement item was not on the delivery visit that started billing and is
+ * still waiting (owner decision IN-26). The customer is being billed for it, so
+ * it must never be forgotten: schedule a delivery job for it, and when that job
+ * is completed the credit for the missing days is worked out automatically.
+ */
+export function itemNotDeliveredException(item: {
+  originalJobId: string;
+  itemLabel: string;
+  originalDeliveryDate: Date;
+  customerName: string;
+}): ExceptionItem {
+  return {
+    category: "ITEM_NOT_DELIVERED",
+    severity: "high",
+    title: `${item.itemLabel} has not been delivered to ${item.customerName} yet`,
+    detail:
+      "The customer is billed for it from the original delivery date. Schedule a delivery job for it; completing that job credits the customer for the days it was missing.",
+    href: `/desk/jobs/${item.originalJobId}`,
+    since: item.originalDeliveryDate,
   };
 }
 

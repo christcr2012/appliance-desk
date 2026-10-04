@@ -1,8 +1,12 @@
 # Design — Batch C: Rental-to-service operations, custody, inventory & purchasing
 
-Status: **APPROVED DESIGN — implement from this document** (written
-2026-10-02 against `main` f272f51, i.e. *before* Batch B merged). Section 0
-tells you what to re-verify because B lands first. Scope and acceptance:
+Status: **NOT APPROVED — do not implement from this document yet.** It was
+approved on 2026-10-02 (written against `main` f272f51, *before* Batch B
+merged) and that approval was withdrawn by the 2026-10-03 amendment below:
+the literal schema, signatures and migration order are still to come from the
+stronger-model pass (`docs/prompts/DESIGN-BATCH-C-LITERAL-SPECS.md`). The
+former approval is kept here only as history. Section 0
+tells you what to re-verify because B landed first. Scope and acceptance:
 `docs/PLAN.md` → Batch C. Pattern reference for every transactional write:
 `docs/designs/BATCH-B.md` D2 (lock → claim → act) and `assertActiveTeamActor`.
 
