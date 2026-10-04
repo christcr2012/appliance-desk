@@ -908,6 +908,9 @@ export interface SharedBillingEndContract {
   recordPhysicalReturnInTx(tx: Prisma.TransactionClient, input: {
     agreementId: string; applianceIds: readonly string[]; returnedOn: Date; jobId: string;
     cause: "CUSTOMER" | "COMPANY" | "UNDECIDED";
+    waivedDays: number | null;     // COMPANY only: null = every late day; a number = the owner-entered part
+    causeNote: string | null;       // required when cause is COMPANY
+    causeRecordedByUserId: string | null;
   }): Promise<{ billingEndsOn: Date | null; handoffId: string | null }>;
 }
 ```
