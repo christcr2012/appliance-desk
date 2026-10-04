@@ -622,6 +622,28 @@ const MAX_HANDOFF_ATTEMPTS = 5;
 const BLOCKED_HANDOFF_PREFIX = "BLOCKED:";
 const UNKNOWN_HANDOFF_PREFIX = "UNKNOWN:";
 
+type HandoffQueueRow = {
+  id: string;
+  kind: "START_RECURRING_BILLING" | "PUSH_CREDIT";
+  subjectId: string;
+  status: "PENDING" | "IN_FLIGHT" | "DONE" | "FAILED";
+  attempts: number;
+  claimedAt: Date | null;
+  lastError: string | null;
+  createdAt: Date;
+};
+
+function deferredHandoffTime(row: Pick<HandoffQueueRow, "lastError" | "createdAt">): number {
+  if (
+    row.lastError?.startsWith(BLOCKED_HANDOFF_PREFIX) ||
+    row.lastError?.startsWith(UNKNOWN_HANDOFF_PREFIX)
+  ) {
+    const parsed = Date.parse(row.lastError.slice(BLOCKED_HANDOFF_PREFIX.length, BLOCKED_HANDOFF_PREFIX.length + 24));
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return row.createdAt.getTime();
+}
+
 /**
  * Runs durable post-commit provider work. A handoff has one exclusive lease at
  * a time; stale leases can be recovered, and a provider command must return an
@@ -629,16 +651,21 @@ const UNKNOWN_HANDOFF_PREFIX = "UNKNOWN:";
  *
  * Normal retryable/recovery work always gets the first seats in a sweep. Work
  * blocked on a customer prerequisite or provider reconciliation only fills
- * spare capacity. Deferred rows store their retry timestamp in lastError so a
- * retried row rotates behind its peers without adding schema or consuming its
- * retry budget.
+ * spare capacity. Deferred BLOCKED and UNKNOWN families are merged by their
+ * embedded retry timestamp so neither state prefix can starve the other.
+ *
+ * A recurring-billing RETRY that exhausted the normal attempt ceiling gets one
+ * more low-priority finalization opportunity only after reconciliation has
+ * linked a Stripe subscription to the agreement. The billing command then
+ * follows its local-only recovery path and cannot issue another subscription
+ * create, repairing the delivery-based billing anchor without provider hammering.
  */
 async function runHandoffs(scope: { ids?: string[]; limit?: number }): Promise<{ done: number; failed: number }> {
   const staleBefore = new Date(Date.now() - PROVIDER_OPERATION_LEASE_MS);
   const limit = scope.limit ?? 50;
   const idScope = scope.ids ? { id: { in: scope.ids } } : {};
 
-  const priorityRows = await prisma.jobBillingHandoff.findMany({
+  const priorityRows: HandoffQueueRow[] = await prisma.jobBillingHandoff.findMany({
     where: {
       ...idScope,
       OR: [
@@ -658,26 +685,89 @@ async function runHandoffs(scope: { ids?: string[]; limit?: number }): Promise<{
         { status: "IN_FLIGHT", claimedAt: { lte: staleBefore } },
       ],
     },
+    select: {
+      id: true,
+      kind: true,
+      subjectId: true,
+      status: true,
+      attempts: true,
+      claimedAt: true,
+      lastError: true,
+      createdAt: true,
+    },
     orderBy: [{ createdAt: "asc" }, { id: "asc" }],
     take: limit,
   });
 
   const remaining = Math.max(0, limit - priorityRows.length);
-  const deferredRows =
-    remaining > 0
-      ? await prisma.jobBillingHandoff.findMany({
-          where: {
-            ...idScope,
-            status: "FAILED",
-            OR: [
-              { lastError: { startsWith: BLOCKED_HANDOFF_PREFIX } },
-              { lastError: { startsWith: UNKNOWN_HANDOFF_PREFIX } },
-            ],
-          },
-          orderBy: [{ lastError: "asc" }, { createdAt: "asc" }, { id: "asc" }],
-          take: remaining,
-        })
-      : [];
+  let deferredRows: HandoffQueueRow[] = [];
+  if (remaining > 0) {
+    const deferredSelect = {
+      id: true,
+      kind: true,
+      subjectId: true,
+      status: true,
+      attempts: true,
+      claimedAt: true,
+      lastError: true,
+      createdAt: true,
+    } as const;
+    const [blockedRows, unknownRows, recoveredRetryRows] = await Promise.all([
+      prisma.jobBillingHandoff.findMany({
+        where: {
+          ...idScope,
+          status: "FAILED",
+          lastError: { startsWith: BLOCKED_HANDOFF_PREFIX },
+        },
+        select: deferredSelect,
+        orderBy: [{ lastError: "asc" }, { createdAt: "asc" }, { id: "asc" }],
+        take: remaining,
+      }),
+      prisma.jobBillingHandoff.findMany({
+        where: {
+          ...idScope,
+          status: "FAILED",
+          lastError: { startsWith: UNKNOWN_HANDOFF_PREFIX },
+        },
+        select: deferredSelect,
+        orderBy: [{ lastError: "asc" }, { createdAt: "asc" }, { id: "asc" }],
+        take: remaining,
+      }),
+      scope.ids
+        ? Promise.resolve([] as HandoffQueueRow[])
+        : prisma.$queryRaw<HandoffQueueRow[]>`
+            SELECT
+              h."id",
+              h."kind",
+              h."subjectId",
+              h."status",
+              h."attempts",
+              h."claimedAt",
+              h."lastError",
+              h."createdAt"
+            FROM "JobBillingHandoff" h
+            INNER JOIN "RentalAgreement" a ON a."id" = h."subjectId"
+            WHERE h."status" = 'FAILED'
+              AND h."kind" = 'START_RECURRING_BILLING'
+              AND h."attempts" >= ${MAX_HANDOFF_ATTEMPTS}
+              AND a."stripeSubscriptionId" IS NOT NULL
+            ORDER BY h."createdAt" ASC, h."id" ASC
+            LIMIT ${remaining}
+          `,
+    ]);
+
+    const byId = new Map<string, HandoffQueueRow>();
+    for (const row of [...blockedRows, ...unknownRows, ...recoveredRetryRows]) byId.set(row.id, row);
+    deferredRows = [...byId.values()]
+      .sort((a, b) => {
+        const time = deferredHandoffTime(a) - deferredHandoffTime(b);
+        if (time !== 0) return time;
+        const created = a.createdAt.getTime() - b.createdAt.getTime();
+        if (created !== 0) return created;
+        return a.id.localeCompare(b.id);
+      })
+      .slice(0, remaining);
+  }
   const rows = [...priorityRows, ...deferredRows];
 
   let done = 0;
