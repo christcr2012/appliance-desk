@@ -41,8 +41,10 @@ model User {
   role          Role      @default(CUSTOMER)
   image         String?
 
+  // Better Auth's own tables (sessions, accounts, verification tokens)
   sessions Session[]
   accounts Account[]
+
   customer Customer?
 
   createdAt DateTime @default(now())
@@ -96,11 +98,15 @@ model Verification {
   identifier String
   value      String
   expiresAt  DateTime
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   @@index([identifier])
 }
+
+// ---------------------------------------------------------------------------
+// Customers & service addresses
+// ---------------------------------------------------------------------------
 
 model Customer {
   id     String @id @default(cuid())
@@ -108,14 +114,40 @@ model Customer {
   user   User   @relation(fields: [userId], references: [id])
   custodyEpisodes ApplianceCustodyEpisode[]
 
-  phone             String?
-  isBusiness        Boolean @default(false)
+  phone           String?
+  isBusiness      Boolean  @default(false)
   isPropertyManager Boolean @default(false)
-  companyName       String?
-  stripeCustomerId  String? @unique
+  companyName     String?
+
+  // Set the first time this customer is billed through Stripe (Phase 6B)
+  // — one Stripe Customer per Appliance Desk customer, never recreated.
+  stripeCustomerId String? @unique
+
+  // Billing-starts-at-delivery (2026-09-28, Chris's explicit decision —
+  // see docs/BUSINESS-RULES.md's Billing rules). Captured at signing (a
+  // one-time Checkout Session collects the deposit/damage waiver, if any,
+  // and always saves a payment method for later off-session use) so the
+  // real recurring Subscription can be created later, with no further
+  // customer action, once a delivery/installation job for the agreement
+  // is actually marked completed.
   stripeDefaultPaymentMethodId String?
-  referralCode      String @unique
-  smsOptInAt        DateTime?
+
+  // Referral program (Task #68, docs/DECISIONS.md 2026-09-28) — a
+  // short, shareable code every customer gets automatically, generated
+  // once at creation (src/domains/referrals). Given out to friends;
+  // whoever enters it on the public lead form links their eventual
+  // account back to this one via the Referral row below.
+  referralCode String @unique
+
+  // SMS notifications (Task #71, docs/DECISIONS.md 2026-09-28) — TCPA
+  // requires real, recorded opt-in before texting anyone (see
+  // docs/BUSINESS-RULES.md's privacy baseline), so this is never
+  // assumed from having a phone number on file. Null = not opted in
+  // (or opted back out — same meaning, "don't text this customer"). Set
+  // = opted in at this moment; a matching ConsentRecord (kind
+  // "sms_opt_in") is written alongside every change, opt-in or
+  // opt-out, as the audit trail of consent actually given/withdrawn.
+  smsOptInAt DateTime?
 
   serviceAddresses ServiceAddress[]
   rentalAgreements RentalAgreement[]
@@ -131,6 +163,8 @@ model Customer {
   jobs             Job[]
   estimates        Estimate[]
   referralsMade    Referral[] @relation("ReferralsMade")
+  // A customer can only ever have been referred by one person — the
+  // first (and only) code entered when they came in as a lead.
   referredBy       Referral?  @relation("ReferralsReceived")
 
   createdAt  DateTime  @default(now())
@@ -139,6 +173,15 @@ model Customer {
 
   @@index([isPropertyManager])
 }
+
+// ---------------------------------------------------------------------------
+// Referral program (Task #68, docs/DECISIONS.md 2026-09-28 — Chris's
+// pick: "discount for both people," i.e. give X/get X). A referral is
+// created the moment a referred lead converts to a customer (linking
+// referrer -> new customer) and stays PENDING until that new customer
+// actually starts paying. Batch B adds REWARDING as the claimed/in-flight
+// state before provider credit delivery is complete.
+// ---------------------------------------------------------------------------
 
 enum ReferralStatus {
   PENDING
@@ -150,12 +193,18 @@ model Referral {
   id                 String         @id @default(cuid())
   referrerCustomerId String
   referrerCustomer   Customer       @relation("ReferralsMade", fields: [referrerCustomerId], references: [id])
+  // One-to-one: a customer can only ever be the *referred* party once, ever.
   referredCustomerId String         @unique
   referredCustomer   Customer       @relation("ReferralsReceived", fields: [referredCustomerId], references: [id])
   status             ReferralStatus @default(PENDING)
+  // Snapshot of BusinessSettings.referralRewardCents at reward time —
+  // same "frozen at the moment it happened" rule every other price
+  // snapshot in this schema follows, so a later settings change never
+  // rewrites what a past referral actually paid out.
   rewardCents        Int?
   rewardedAt         DateTime?
-  createdAt          DateTime       @default(now())
+
+  createdAt DateTime @default(now())
 
   @@index([status])
 }
@@ -164,17 +213,18 @@ model ServiceAddress {
   id         String   @id @default(cuid())
   customerId String
   customer   Customer @relation(fields: [customerId], references: [id])
-  line1      String
-  line2      String?
-  city       String
-  state      String @default("CO")
-  zip        String
 
-  jobs                Job[]
+  line1   String
+  line2   String?
+  city    String
+  state   String @default("CO")
+  zip     String
+
+  jobs     Job[]
   maintenanceRequests MaintenanceRequest[]
-  rentalAgreements    RentalAgreement[]
-  estimateLineItems   EstimateLineItem[]
-  custodyEpisodes     ApplianceCustodyEpisode[]
+  rentalAgreements RentalAgreement[]
+  estimateLineItems EstimateLineItem[]
+  custodyEpisodes ApplianceCustodyEpisode[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -182,6 +232,10 @@ model ServiceAddress {
   @@index([customerId])
   @@index([zip])
 }
+
+// ---------------------------------------------------------------------------
+// Leads
+// ---------------------------------------------------------------------------
 
 enum LeadStatus {
   NEW
@@ -194,6 +248,7 @@ model Lead {
   id     String     @id @default(cuid())
   status LeadStatus @default(NEW)
 
+  // Who's asking
   isBusiness        Boolean @default(false)
   isPropertyManager Boolean @default(false)
   companyName       String?
@@ -202,33 +257,73 @@ model Lead {
   email             String?
   bestTimeToContact String?
   howHeard          String?
+  // A referral code the visitor typed in (Task #68) — matched against
+  // an existing customer's Customer.referralCode when this lead
+  // converts (src/domains/leads' convertLeadToCustomer). Stored
+  // exactly as entered; matching is case-insensitive at lookup time,
+  // never normalized here so what the visitor actually typed is kept.
   referredByCode    String?
-  desiredTerm       String?
-  desiredStartDate  DateTime?
-  quantity          Int @default(1)
-  notes             String?
-  addressLine1      String?
-  city              String?
-  zip               String?
-  inServiceArea     Boolean?
-  consentedAt       DateTime?
-  score              Int @default(0)
-  scoreReasons       Json @default("[]")
-  isHighValue        Boolean @default(false)
-  applianceRequests  LeadApplianceRequest[]
-  estimates          Estimate[]
+
+  // What they want
+  desiredTerm     String? // month-to-month | 6-month | 12-month
+  desiredStartDate DateTime?
+  quantity        Int      @default(1)
+  notes           String?
+
+  // Where
+  addressLine1 String?
+  city         String?
+  zip          String?
+  inServiceArea Boolean?
+
+  // Legal
+  consentedAt DateTime?
+
+  // Scoring (computed server-side; see docs/BUSINESS-RULES.md)
+  score   Int      @default(0)
+  scoreReasons Json @default("[]")
+  isHighValue Boolean @default(false)
+
+  applianceRequests LeadApplianceRequest[]
+  estimates         Estimate[]
+
   convertedCustomerId String?
-  createdByUserId    String?
-  lostReason         String?
-  notesLog           LeadNote[]
-  tasks              StaffTask[]
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+
+  // Null = came in through the public website contact form (the
+  // ordinary case). Set = a staff member typed this lead in directly
+  // (a phone call, a walk-in, or the "start an estimate for someone
+  // new" flow on /desk/estimates/new) — see
+  // src/domains/leads' createLeadManually. Purely provenance; nothing
+  // in scoring or conversion treats the two differently.
+  createdByUserId String?
+
+  // Why a lead was marked LOST (2026-09-29, part of Chris's CRM
+  // brainstorm — docs/DECISIONS.md). Required whenever status is set to
+  // LOST (enforced in src/domains/leads' updateLeadStatus, not here —
+  // Postgres CHECK constraints can't easily express "required only for
+  // one enum value"), null otherwise. Free text; the UI offers a short
+  // pick-list plus "other" but nothing constrains the stored value to
+  // it, so a future new reason never needs a migration.
+  lostReason String?
+
+  notesLog LeadNote[]
+  tasks    StaffTask[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([status])
   @@index([score])
 }
 
+// A per-entry contact/communication log for a lead — "called Tuesday, no
+// answer," "emailed the estimate again" — separate from the single flat
+// Lead.notes field (which is what the lead themself told us, captured at
+// submission). Mirrors CustomerNote below; kept as its own model rather
+// than widening CustomerNote to an optional leadId/customerId pair
+// because a lead and a customer are different entities with different
+// pages, and this keeps both simple. See docs/DECISIONS.md's 2026-09-29
+// CRM-buildout entry.
 model LeadNote {
   id       String @id @default(cuid())
   leadId   String
@@ -236,37 +331,62 @@ model LeadNote {
   authorId String?
   author   User?  @relation(fields: [authorId], references: [id])
   body     String
+
   createdAt DateTime @default(now())
 
   @@index([leadId])
 }
 
 model LeadApplianceRequest {
-  id              String        @id @default(cuid())
-  leadId          String
-  lead            Lead          @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  id            String       @id @default(cuid())
+  leadId        String
+  lead          Lead         @relation(fields: [leadId], references: [id], onDelete: Cascade)
   applianceTypeId String
-  applianceType   ApplianceType @relation(fields: [applianceTypeId], references: [id])
-  quantity        Int @default(1)
+  applianceType ApplianceType @relation(fields: [applianceTypeId], references: [id])
+  quantity      Int          @default(1)
 }
+
+// ---------------------------------------------------------------------------
+// Inventory
+// ---------------------------------------------------------------------------
 
 model ApplianceType {
-  id                String @id @default(cuid())
-  name              String @unique
-  slug              String @unique
-  monthlyPriceCents Int @default(0)
+  id   String @id @default(cuid())
+  name String @unique // "Refrigerator", "Washer", "Dryer", ...
+  slug String @unique
+
+  // Pricing lives here so it's data, not code. History is preserved via
+  // PricingRule, this is just the *current* published price shown on the site.
+  monthlyPriceCents Int     @default(0)
   showOnWebsite     Boolean @default(false)
-  sortOrder         Int @default(0)
-  photoUrl          String?
-  isActive          Boolean @default(true)
-  appliances        Appliance[]
-  pricingRules      PricingRule[]
-  leadRequests      LeadApplianceRequest[]
-  partRecords       PartRecord[]
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  sortOrder         Int     @default(0)
+
+  // A real photo of a basic/representative model for this category, shown
+  // on the public site next to the generic "may vary" disclaimer. Null
+  // until Chris supplies one — the site falls back to a generic icon.
+  photoUrl String?
+
+  // Soft-delete: an appliance type is never hard-deleted once it's been
+  // referenced by a Lead/PricingRule/Appliance (that would break history).
+  // Retiring a category sets isActive=false instead, which hides it from
+  // /desk/settings' active list and forces showOnWebsite off. See
+  // docs/BUSINESS-RULES.md.
+  isActive Boolean @default(true)
+
+  appliances   Appliance[]
+  pricingRules PricingRule[]
+  leadRequests LeadApplianceRequest[]
+  partRecords  PartRecord[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
+// Rental lifecycle (2026-09-28) — see docs/BUSINESS-RULES.md "Rental
+// lifecycle" and src/domains/inventory/lifecycle.ts for the allowed moves.
+// AWAITING_PICKUP: the agreement ended but the machine is still at the
+// customer's property. AWAITING_INSPECTION: it's back in the shop and
+// must be checked before it can be rented again.
 enum ApplianceStatus {
   AVAILABLE
   RESERVED
@@ -278,62 +398,82 @@ enum ApplianceStatus {
 }
 
 model Appliance {
-  id                   String          @id @default(cuid())
-  assetNumber          String          @unique
-  applianceTypeId      String
-  applianceType        ApplianceType   @relation(fields: [applianceTypeId], references: [id])
-  manufacturer         String?
-  model                String?
-  serialNumber         String?
-  color                String?
-  condition            String?
-  purchaseDate         DateTime?
+  id              String          @id @default(cuid())
+  assetNumber     String          @unique
+  applianceTypeId String
+  applianceType   ApplianceType   @relation(fields: [applianceTypeId], references: [id])
+  manufacturer    String?
+  model           String?
+  serialNumber    String?
+  color           String?
+  condition       String?
+  purchaseDate    DateTime?
   acquisitionCostCents Int?
-  status               ApplianceStatus @default(AVAILABLE)
-  currentLocation      String?
-  notes                String?
-  features             Json @default("[]")
-  assignments          ApplianceAssignment[]
-  photos               Photo[]
-  jobs                 JobAppliance[]
-  pendingDeliveries    PendingDelivery[] @relation("PendingDeliveryAppliance")
-  substitutedFor       PendingDelivery[] @relation("PendingDeliverySubstitute")
-  maintenanceRequests  MaintenanceRequest[]
-  inspections          ApplianceInspection[]
-  custodyEpisodes      ApplianceCustodyEpisode[]
-  staffTasks           StaffTask[]
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
-  archivedAt           DateTime?
+  status          ApplianceStatus @default(AVAILABLE)
+  currentLocation String?
+  notes           String?
+
+  // Free-form descriptive tags, e.g. ["front-load", "agitator"] for a
+  // washer, ["ice-maker"] for a fridge. Deliberately not an enum or a
+  // fixed per-category field list — features vary by appliance type and
+  // a new category (or a new feature nobody thought of yet) should never
+  // need a code change, per docs/BUSINESS-RULES.md ("new appliance
+  // categories are added as data"). Stored as a JSON string array, same
+  // pattern as Lead.scoreReasons.
+  features Json @default("[]")
+
+  assignments ApplianceAssignment[]
+  photos      Photo[]
+  jobs        JobAppliance[]
+  pendingDeliveries PendingDelivery[] @relation("PendingDeliveryAppliance")
+  substitutedFor PendingDelivery[] @relation("PendingDeliverySubstitute")
+  maintenanceRequests MaintenanceRequest[]
+  inspections ApplianceInspection[]
+  custodyEpisodes ApplianceCustodyEpisode[]
+  staffTasks  StaffTask[]
+
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  archivedAt DateTime?
 
   @@index([status])
   @@index([applianceTypeId])
 }
 
+// One return inspection of a physical appliance (2026-09-28, rental
+// lifecycle). Recorded when a machine comes back from a customer
+// (AWAITING_INSPECTION): passed → AVAILABLE, failed → MAINTENANCE.
+// checklist snapshots exactly which items were on the list and which
+// were ticked, as [{ "item": "No leaks", "checked": true }, ...], so a
+// later edit to the owner's checklist never rewrites an old inspection.
 model ApplianceInspection {
-  id                   String @id @default(cuid())
-  applianceId          String
-  appliance            Appliance @relation(fields: [applianceId], references: [id])
-  passed               Boolean
-  checklist            Json @default("[]")
-  notes                String?
-  condition            String?
-  inspectedById        String?
-  createdAt            DateTime @default(now())
-  checklistDefinition  Json @default("[]")
-  checklistVersionId   String?
-  checklistVersion     InspectionChecklistVersion? @relation(fields: [checklistVersionId], references: [id])
-  jobId                String?
-  overrideReason       String?
-  overriddenByUserId   String?
-  amendments           ApplianceInspectionAmendment[]
+  id          String    @id @default(cuid())
+  applianceId String
+  appliance   Appliance @relation(fields: [applianceId], references: [id])
+  passed      Boolean
+  checklist   Json      @default("[]")
+  notes       String?
+  condition   String?
+  inspectedById String?
+  createdAt   DateTime  @default(now())
+
+  // Batch C P2-E: the exact checklist this was answered against, and who overrode a pass with unchecked items.
+  checklistDefinition Json     @default("[]")
+  checklistVersionId  String?
+  checklistVersion    InspectionChecklistVersion? @relation(fields: [checklistVersionId], references: [id])
+  jobId               String?
+  overrideReason      String?
+  overriddenByUserId  String?
+  amendments          ApplianceInspectionAmendment[]
 
   @@index([applianceId])
 }
 
+// One published version of the return-inspection checklist (Batch C P2-E, the table Batch D's D7 describes).
+// The current checklist is the row with the highest version. Version 1 has no publisher.
 model InspectionChecklistVersion {
-  id                String @id @default(cuid())
-  version           Int @unique
+  id                String   @id @default(cuid())
+  version           Int      @unique
   items             Json
   hash              String
   publishedAt       DateTime @default(now())
@@ -341,8 +481,9 @@ model InspectionChecklistVersion {
   inspections       ApplianceInspection[]
 }
 
+// A correction note added after an inspection was recorded. The inspection itself never changes.
 model ApplianceInspectionAmendment {
-  id              String @id @default(cuid())
+  id              String   @id @default(cuid())
   inspectionId    String
   inspection      ApplianceInspection @relation(fields: [inspectionId], references: [id])
   note            String
@@ -352,22 +493,45 @@ model ApplianceInspectionAmendment {
   @@index([inspectionId])
 }
 
+// A parts knowledge base keyed by MODEL NUMBER, not by an individual
+// physical Appliance — the point is that once Chris looks up (or is
+// told) the part number for, say, a door seal on model "WM3900HWA", that
+// knowledge is reusable for every unit of that same model he ever owns,
+// not just the one he was repairing when he found it. See
+// docs/BUSINESS-RULES.md ("Parts knowledge base").
 model PartRecord {
-  id                  String @id @default(cuid())
-  modelNumber         String
-  manufacturer        String?
-  applianceTypeId     String?
-  applianceType       ApplianceType? @relation(fields: [applianceTypeId], references: [id])
-  partNumber          String
-  partName            String?
-  notes               String?
-  quantityOnHand      Int @default(0)
-  reorderThreshold    Int?
-  archivedAt          DateTime?
-  movements           PartStockMovement[]
-  purchaseOrderLines  PurchaseOrderLineItem[]
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  id String @id @default(cuid())
+
+  modelNumber     String
+  manufacturer    String?
+  applianceTypeId String?
+  applianceType   ApplianceType? @relation(fields: [applianceTypeId], references: [id])
+
+  partNumber String
+  partName   String?
+  notes      String?
+
+  // Purchasing & supplies (2026-09-29) — see docs/BUSINESS-RULES.md's
+  // "Purchasing & supplies" section. quantityOnHand only ever moves two
+  // ways: up, when a PurchaseOrder that lines this part is marked
+  // received (receivePurchaseOrder, src/domains/purchasing), or down,
+  // when Chris logs using some on a repair (recordPartUsage) — there's
+  // no automatic per-job consumption tracking, so this is only as
+  // accurate as Chris keeps it. reorderThreshold is null by default
+  // (never flagged) until Chris sets one for a part he actually keeps
+  // stock of.
+  quantityOnHand   Int  @default(0)
+  reorderThreshold Int?
+
+  // Batch C P1-C: a part with history is archived, never deleted. quantityOnHand is the stored
+  // total of this part's PartStockMovement rows (kept equal by applyPartMovementsInTx).
+  archivedAt DateTime?
+  movements  PartStockMovement[]
+
+  purchaseOrderLines PurchaseOrderLineItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([modelNumber])
 }
@@ -379,50 +543,80 @@ enum PurchaseOrderStatus {
   CANCELLED
 }
 
+// Purchasing & supplies (2026-09-29) — see
+// docs/BUSINESS-RULES.md's "Purchasing & supplies" section and
+// src/domains/purchasing. A supplier Chris orders parts/appliances
+// from — deliberately minimal (name + how to reach them), not a full
+// vendor-management system.
 model Supplier {
-  id             String @id @default(cuid())
-  name           String
-  contactName    String?
-  phone          String?
-  email          String?
-  notes          String?
-  archivedAt     DateTime?
+  id          String @id @default(cuid())
+  name        String
+  contactName String?
+  phone       String?
+  email       String?
+  notes       String?
+
+  // Batch C P1-C: archived suppliers are hidden from pickers and cannot take new purchase orders.
+  archivedAt DateTime?
+
   purchaseOrders PurchaseOrder[]
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
+// One order placed with a supplier. DRAFT while Chris is still putting
+// it together, ORDERED once he's actually placed it, RECEIVED once the
+// goods arrive (receivePurchaseOrder adds every line's quantity onto
+// its PartRecord.quantityOnHand, when the line is tied to one),
+// CANCELLED if it never went through. Deliberately no partial-receive
+// tracking (a line is either part of a received order or it isn't) —
+// see receivePurchaseOrder's own comment for why that's an honest
+// simplification for a one-person operation, not a shortcut that loses
+// real information.
 model PurchaseOrder {
-  id              String @id @default(cuid())
-  supplierId      String
-  supplier        Supplier @relation(fields: [supplierId], references: [id])
-  status          PurchaseOrderStatus @default(DRAFT)
-  notes           String?
-  orderedAt       DateTime?
-  receivedAt      DateTime?
+  id         String              @id @default(cuid())
+  supplierId String
+  supplier   Supplier            @relation(fields: [supplierId], references: [id])
+  status     PurchaseOrderStatus @default(DRAFT)
+  notes      String?
+
+  orderedAt  DateTime?
+  receivedAt DateTime?
+
   createdByUserId String
-  createdBy       User @relation("PurchaseOrderCreatedBy", fields: [createdByUserId], references: [id])
-  lines           PurchaseOrderLineItem[]
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdBy       User   @relation("PurchaseOrderCreatedBy", fields: [createdByUserId], references: [id])
+
+  lines PurchaseOrderLineItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([supplierId])
   @@index([status])
 }
 
+// One line on a purchase order. partRecordId is optional — Chris can
+// order something that isn't (yet) in the parts catalog (a whole
+// appliance, a bulk supply) as free text via `description`; only lines
+// tied to a real PartRecord affect quantityOnHand when received.
 model PurchaseOrderLineItem {
-  id                 String @id @default(cuid())
-  purchaseOrderId    String
-  purchaseOrder      PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
-  partRecordId       String?
-  partRecord         PartRecord? @relation(fields: [partRecordId], references: [id])
-  description        String
-  quantity           Int
-  unitCostCents      Int @default(0)
-  receivedQuantity   Int @default(0)
-  unitCostKnown      Boolean @default(false)
-  movements          PartStockMovement[]
-  createdAt          DateTime @default(now())
+  id              String         @id @default(cuid())
+  purchaseOrderId String
+  purchaseOrder   PurchaseOrder  @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  partRecordId    String?
+  partRecord      PartRecord?    @relation(fields: [partRecordId], references: [id])
+  description     String
+  quantity        Int
+  unitCostCents   Int            @default(0)
+
+  // Batch C P1-C: partial receipts. receivedQuantity counts what has actually arrived;
+  // unitCostKnown says whether unitCostCents is a real price (the old default 0 meant "unknown").
+  receivedQuantity Int           @default(0)
+  unitCostKnown    Boolean       @default(false)
+  movements        PartStockMovement[]
+
+  createdAt DateTime @default(now())
 
   @@index([purchaseOrderId])
   @@index([partRecordId])
@@ -437,10 +631,13 @@ enum PartMovementKind {
   REVERSAL
 }
 
+// Batch C P1-C: the parts ledger. Append-only (a database trigger blocks UPDATE and DELETE);
+// a mistake is fixed with a REVERSAL movement plus a new correct one. PartRecord.quantityOnHand
+// always equals the sum of a part's quantityDelta values.
 model PartStockMovement {
-  id                      String @id @default(cuid())
+  id                      String                 @id @default(cuid())
   partRecordId            String
-  partRecord              PartRecord @relation(fields: [partRecordId], references: [id], onDelete: Restrict)
+  partRecord              PartRecord             @relation(fields: [partRecordId], references: [id], onDelete: Restrict)
   kind                    PartMovementKind
   quantityDelta           Int
   balanceAfter            Int
@@ -450,11 +647,11 @@ model PartStockMovement {
   purchaseOrderLineItemId String?
   purchaseOrderLineItem   PurchaseOrderLineItem? @relation(fields: [purchaseOrderLineItemId], references: [id], onDelete: Restrict)
   jobId                   String?
-  job                     Job? @relation(fields: [jobId], references: [id], onDelete: Restrict)
-  reversesMovementId      String? @unique
+  job                     Job?                   @relation(fields: [jobId], references: [id], onDelete: Restrict)
+  reversesMovementId      String?                @unique
   reason                  String?
   createdByUserId         String?
-  createdAt               DateTime @default(now())
+  createdAt               DateTime               @default(now())
 
   @@unique([partRecordId, operationKey])
   @@index([partRecordId, createdAt])
@@ -462,9 +659,16 @@ model PartStockMovement {
   @@index([purchaseOrderLineItemId])
 }
 
+// ---------------------------------------------------------------------------
+// Rentals & pricing
+// ---------------------------------------------------------------------------
+
 enum RentalAgreementStatus {
   DRAFT
   AWAITING_SIGNATURE
+  // Signed renewal whose start date is still in the future. Not "in force":
+  // it is not counted as an active rental or as current revenue until its
+  // start date (see docs/DECISIONS.md, 2026-10-03, IN-22).
   SCHEDULED
   ACTIVE
   ENDED
@@ -472,96 +676,200 @@ enum RentalAgreementStatus {
 }
 
 model RentalAgreement {
-  id                       String @id @default(cuid())
-  customerId               String
-  customer                 Customer @relation(fields: [customerId], references: [id])
-  serviceAddressId         String
-  serviceAddress           ServiceAddress @relation(fields: [serviceAddressId], references: [id])
-  status                   RentalAgreementStatus @default(DRAFT)
-  sourceEstimateId         String?
-  sourceEstimate           Estimate? @relation(fields: [sourceEstimateId], references: [id])
-  termMonths               Int?
-  startDate                DateTime?
-  endDate                  DateTime?
-  depositCents             Int @default(0)
-  damageWaiverCents        Int @default(0)
-  lateFeeGraceDays         Int @default(5)
-  lateFeeCents             Int @default(0)
-  lateFeePercent           Int @default(0)
-  taxRatePermille          Int @default(0)
-  taxRateMilliPercent      Int @default(0)
-  paidInFullInAdvance      Boolean @default(false)
-  freeMonthGranted         Boolean @default(false)
-  reservationExpiresAt     DateTime?
-  stripeSubscriptionId     String? @unique
-  nextBillingDate          DateTime?
+  id         String                 @id @default(cuid())
+  customerId String
+  customer   Customer               @relation(fields: [customerId], references: [id])
+  serviceAddressId String
+  serviceAddress   ServiceAddress   @relation(fields: [serviceAddressId], references: [id])
+  status     RentalAgreementStatus  @default(DRAFT)
+
+  // Set when this agreement was created by converting an approved
+  // Estimate (src/domains/estimates's convertEstimateToAgreements) —
+  // null for every agreement created the ordinary way. Purely
+  // informational (so this agreement's own page can show "created from
+  // Estimate #123" and staff can trace either direction); never read by
+  // pricing or billing logic.
+  sourceEstimateId String?
+  sourceEstimate   Estimate? @relation(fields: [sourceEstimateId], references: [id])
+
+  termMonths Int? // null = month-to-month
+  startDate  DateTime?
+  endDate    DateTime?
+
+  // Price snapshot — what THIS customer agreed to, frozen at signing.
+  // Changing PricingRule / ApplianceType later never touches these.
+  depositCents      Int @default(0)
+  damageWaiverCents Int @default(0)
+  lateFeeGraceDays  Int @default(5)
+  lateFeeCents      Int @default(0)
+  lateFeePercent    Int @default(0)
+  taxRatePermille   Int @default(0) // DEPRECATED: old tenths-of-a-percent value; a database trigger keeps it in step with taxRateMilliPercent until the cleanup batch removes both
+  taxRateMilliPercent Int @default(0) // thousandths of one percent: 7375 = 7.375%
+
+  // Prepaid-term discount (see docs/BUSINESS-RULES.md's Pricing section
+  // and docs/DECISIONS.md's dated design decision). paidInFullInAdvance is
+  // set by Chris himself at agreement creation — there's no automated
+  // billing yet (Phase 6B) to detect an actual lump-sum payment, so this
+  // is his own record of it, the same way depositCents above already is.
+  // Only meaningful for a 12-month term. freeMonthGranted snapshots
+  // whether the bonus actually applied (term + payment fact + the
+  // BusinessSettings toggle, all as of THIS agreement's creation) so
+  // later flipping that toggle off can never retroactively take the
+  // bonus away from an agreement that already earned it.
+  paidInFullInAdvance Boolean @default(false)
+  freeMonthGranted    Boolean @default(false)
+
+  // Reservation aging (Phase 6A item 6, docs/DECISIONS.md has the dated
+  // design decision). Set when the agreement is created (now +
+  // BusinessSettings.draftReservationHoldDays) and only meaningful
+  // while the agreement is still DRAFT or AWAITING_SIGNATURE — once
+  // it's signed the appliances are reserved for that customer (not
+  // available to anyone else), so staleness no longer applies even
+  // though (as of the rental-lifecycle change, 2026-09-28) they aren't
+  // physically delivered yet. Chris can push this back out manually
+  // ("extend reservation") for a legitimate deal that's just taking a
+  // while, without that being confused with when the agreement was
+  // actually created.
+  reservationExpiresAt DateTime?
+
+  // Billing (Phase 6B, docs/BUSINESS-RULES.md's billing rules). One
+  // Stripe Subscription per active agreement, when recurring billing
+  // applies to it. nextBillingDate drives anniversary billing: it's set
+  // once, when the agreement first goes ACTIVE, to that same date each
+  // following month — never a single fixed date shared across every
+  // customer — and advances by one billing cycle each time an invoice
+  // is actually generated for this agreement.
+  stripeSubscriptionId String? @unique
+  nextBillingDate      DateTime?
+  // Which nextBillingDate value the last "your payment is coming up"
+  // reminder email was sent for (Task #67, docs/DECISIONS.md 2026-09-28
+  // "Automation rules") — compared against the CURRENT nextBillingDate
+  // rather than a plain "already sent" boolean or a days-ago timestamp,
+  // so a reminder fires exactly once per billing cycle even though the
+  // daily cron job's "1-2 days out" window can see the same upcoming
+  // date on two different days, and automatically re-arms itself once
+  // nextBillingDate advances to the following cycle.
   billingReminderSentForDate DateTime?
-  firstDeliveredOn         DateTime?
-  billingStartedAt         DateTime?
-  billingBlockedReason     String?
-  renewalPreference        String?
+
+  // Remediation Batch R1 (R01): immutable Colorado business date of the first
+  // successful physical delivery/installation. Provider retries and billing
+  // recovery anchor to this fact rather than retry time.
+  firstDeliveredOn DateTime?
+
+  // Billing-starts-at-delivery (2026-09-28): recurring billing no longer
+  // starts at signing — it starts once a delivery/installation job for
+  // this agreement completes (src/domains/billing/checkout.ts's
+  // startRecurringBillingForAgreement). billingStartedAt is set the
+  // moment that actually succeeds, and stays null before then — this is
+  // what the MRR/ARR revenue trend (src/domains/billing/revenue.ts)
+  // reconstructs history from now, instead of the signing date, so a
+  // rental that sat signed-but-undelivered for weeks doesn't get counted
+  // as revenue for weeks it never actually billed.
+  billingStartedAt DateTime?
+
+  // Billing-starts-at-delivery (2026-09-28): set only if recurring
+  // billing was actually DUE to start (a delivery/installation job for
+  // this agreement was completed) but couldn't — almost always because
+  // the customer has no saved payment method yet. Null the rest of the
+  // time, including before delivery (nothing to report yet) and once
+  // billing has actually started. Surfaced to Chris so a stuck rental
+  // never goes silently unbilled — see the exception inbox.
+  billingBlockedReason String?
+
+  // Batch B (D9/D10). All nullable; null = feature/policy not configured.
+  renewalPreference        String?   // "NONE" | "AUTO_RENEW"; null = never asked
   autoRenewConsentedAt     DateTime?
   autoRenewTermsVersion    String?
   renewedFromAgreementId   String?
-  createdByAutoRenew       Boolean @default(false)
+  // True when the system created this renewal because the customer agreed to
+  // auto-renew (never when staff or the customer signed one by hand).
+  createdByAutoRenew       Boolean   @default(false)
   terminationRequestedAt   DateTime?
   terminationEffectiveOn   DateTime?
   terminationFeeCents      Int?
   terminationPolicyVersion String?
-  termsSnapshot            Json?
-  termsOverride            Json?
-  lines                    RentalLine[]
-  signature                SignatureRecord?
-  jobs                     Job[]
-  invoices                 Invoice[]
-  deposits                 Deposit[]
-  pendingDeliveries        PendingDelivery[]
-  createdAt                DateTime @default(now())
-  updatedAt                DateTime @updatedAt
-  fromLeadId               String?
+
+  // Terms this agreement is locked to (2026-10-03 decision). Frozen when the
+  // agreement is sent for signing, from termsOverride when the owner
+  // customized it for this customer, otherwise from the system-wide settings.
+  // Null = no terms were agreed (agreements sent before this existed, or no
+  // policy configured at the time), so ending early / auto-renew stay
+  // unavailable for it. Shape: see src/domains/agreements/terms-snapshot.ts.
+  termsSnapshot Json?
+  // Per-customer terms the owner entered before sending for signing.
+  // Same shape as the policy fields in BusinessSettings; null = use system-wide.
+  termsOverride Json?
+
+  lines RentalLine[]
+
+  signature   SignatureRecord?
+  jobs        Job[]
+  invoices    Invoice[]
+  deposits    Deposit[]
+  pendingDeliveries PendingDelivery[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  fromLeadId String?
 
   @@index([customerId])
   @@index([status])
 }
 
 model RentalLine {
-  id                           String @id @default(cuid())
-  agreementId                  String
-  agreement                    RentalAgreement @relation(fields: [agreementId], references: [id], onDelete: Cascade)
-  label                        String
-  monthlyPriceCents            Int
-  listPriceCents               Int @default(0)
-  prepayDiscountCentsPerMonth  Int @default(0)
-  assignments                  ApplianceAssignment[]
-  amendments                   RentalLineAmendment[]
-  createdAt                    DateTime @default(now())
+  id         String   @id @default(cuid())
+  agreementId String
+  agreement  RentalAgreement @relation(fields: [agreementId], references: [id], onDelete: Cascade)
+  label      String   // "Washer/Dryer set @ $60/mo"
+  // The amount actually charged per month, after any prepaid-term
+  // discount — every other page in the app (agreement totals, the
+  // customer portal, the dashboard) sums THIS field, unchanged from
+  // before the discount feature existed. listPriceCents is what Chris
+  // typed in as the line's normal rate before any discount, and
+  // prepayDiscountCentsPerMonth is what got subtracted to reach
+  // monthlyPriceCents — both kept so the discount is visible/transparent
+  // rather than a mysteriously lower number (docs/BUSINESS-RULES.md).
+  // monthlyPriceCents = max(0, listPriceCents - prepayDiscountCentsPerMonth), except on a line with a
+  // RentalLineAmendment (an item on it was permanently cancelled): then it is the reduced price.
+  monthlyPriceCents Int
+  listPriceCents Int @default(0)
+  prepayDiscountCentsPerMonth Int @default(0)
+
+  assignments ApplianceAssignment[]
+  amendments  RentalLineAmendment[]
+
+  createdAt DateTime @default(now())
 
   @@index([agreementId])
 }
 
+// A permanent price reduction on a rental line because one of its items was never delivered and was taken off
+// the agreement (Batch C section 8). Never changed or deleted (database rule). The signed price stays here as
+// previousMonthlyPriceCents. effectiveFrom is the first day of the next billing period.
 model RentalLineAmendment {
-  id                        String @id @default(cuid())
+  id                        String     @id @default(cuid())
   rentalLineId              String
   rentalLine                RentalLine @relation(fields: [rentalLineId], references: [id])
-  pendingDeliveryId         String @unique
+  pendingDeliveryId         String     @unique
   previousMonthlyPriceCents Int
   newMonthlyPriceCents      Int
   effectiveFrom             DateTime
   reason                    String
   createdByUserId           String
-  createdAt                 DateTime @default(now())
+  createdAt                 DateTime   @default(now())
 
   @@index([rentalLineId])
 }
 
 model ApplianceAssignment {
-  id             String @id @default(cuid())
-  rentalLineId   String
-  rentalLine     RentalLine @relation(fields: [rentalLineId], references: [id])
-  applianceId    String
-  appliance      Appliance @relation(fields: [applianceId], references: [id])
-  assignedAt     DateTime @default(now())
-  unassignedAt   DateTime?
+  id           String     @id @default(cuid())
+  rentalLineId String
+  rentalLine   RentalLine @relation(fields: [rentalLineId], references: [id])
+  applianceId  String
+  appliance    Appliance  @relation(fields: [applianceId], references: [id])
+
+  assignedAt DateTime  @default(now())
+  unassignedAt DateTime?
   unassignReason String?
 
   @@index([rentalLineId])
@@ -569,49 +877,62 @@ model ApplianceAssignment {
 }
 
 model PricingRule {
-  id                 String @id @default(cuid())
-  applianceTypeId    String?
-  applianceType      ApplianceType? @relation(fields: [applianceTypeId], references: [id])
-  label              String
-  monthlyPriceCents  Int?
-  oneTimePriceCents  Int?
-  changedBy          String?
-  oldValueCents      Int?
-  newValueCents      Int?
-  createdAt          DateTime @default(now())
+  id              String        @id @default(cuid())
+  applianceTypeId String?
+  applianceType   ApplianceType? @relation(fields: [applianceTypeId], references: [id])
+  label           String        // e.g. "Washer + Dryer set", "Delivery fee"
+  monthlyPriceCents Int?
+  oneTimePriceCents Int?
+
+  changedBy   String?
+  oldValueCents Int?
+  newValueCents Int?
+
+  createdAt DateTime @default(now())
 
   @@index([applianceTypeId])
 }
 
 model SignatureRecord {
-  id           String @id @default(cuid())
-  agreementId  String @unique
-  agreement    RentalAgreement @relation(fields: [agreementId], references: [id])
-  provider     String
-  externalId   String?
+  id          String   @id @default(cuid())
+  agreementId String   @unique
+  agreement   RentalAgreement @relation(fields: [agreementId], references: [id])
+  provider    String   // e.g. "signwell"
+  externalId  String?
   signedPdfUrl String?
-  signedAt     DateTime?
-  signerName   String?
-  signerEmail  String?
-  ipAddress    String?
-  createdAt    DateTime @default(now())
+  signedAt    DateTime?
+  signerName  String?
+  signerEmail String?
+  ipAddress   String?
+
+  createdAt DateTime @default(now())
 }
 
 model Deposit {
-  id                   String @id @default(cuid())
-  agreementId          String
-  agreement            RentalAgreement @relation(fields: [agreementId], references: [id])
-  amountCents          Int
-  refundable           Boolean @default(true)
-  refundedAt           DateTime?
-  refundedAmountCents  Int?
-  deductionReason      String?
-  refundedByUserId     String?
-  stripeRefundId       String?
-  createdAt            DateTime @default(now())
+  id          String   @id @default(cuid())
+  agreementId String
+  agreement   RentalAgreement @relation(fields: [agreementId], references: [id])
+  amountCents Int
+  refundable  Boolean  @default(true)
+  refundedAt  DateTime?
+  refundedAmountCents Int?
+  // Why the refunded amount is less than amountCents (a damage
+  // deduction, say) — required in practice whenever a partial refund is
+  // recorded, enforced by the domain layer rather than the database.
+  deductionReason String?
+  // The OWNER/ADMIN who processed the refund — a deposit is never
+  // refunded automatically.
+  refundedByUserId String?
+  stripeRefundId String?
+
+  createdAt DateTime @default(now())
 
   @@index([agreementId])
 }
+
+// ---------------------------------------------------------------------------
+// Jobs (delivery / install / swap / removal / maintenance visit)
+// ---------------------------------------------------------------------------
 
 enum JobType {
   DELIVERY
@@ -629,46 +950,90 @@ enum JobStatus {
 }
 
 model Job {
-  id                     String @id @default(cuid())
-  type                   JobType
-  status                 JobStatus @default(SCHEDULED)
-  scheduledAt            DateTime?
-  assignedToUserId       String?
-  assignedTo             User? @relation("JobAssignedTo", fields: [assignedToUserId], references: [id], onDelete: SetNull)
-  durationMinutes        Int?
-  version                Int @default(1)
-  noShowAt               DateTime?
-  partMovements          PartStockMovement[]
-  outcome                JobOutcome?
-  outcomeNotes           String?
-  completionKey          String? @unique
-  handoffs               JobBillingHandoff[]
-  custodyStarted         ApplianceCustodyEpisode[] @relation("CustodyStartJob")
-  custodyEnded           ApplianceCustodyEpisode[] @relation("CustodyEndJob")
-  customerId             String?
-  customer               Customer? @relation(fields: [customerId], references: [id])
-  serviceAddressId       String?
-  serviceAddress         ServiceAddress? @relation(fields: [serviceAddressId], references: [id])
-  agreementId            String?
-  agreement              RentalAgreement? @relation(fields: [agreementId], references: [id])
-  maintenanceRequestId   String?
-  maintenanceRequest     MaintenanceRequest? @relation(fields: [maintenanceRequestId], references: [id])
-  tasks                  StaffTask[]
-  notes                  String?
-  completedAt            DateTime?
-  completionNotes        String?
-  checklist              Json @default("[]")
-  partsCostCents         Int?
-  laborCostCents         Int?
-  performedOn            DateTime?
-  dayOfReminderSentAt    DateTime?
-  appliances             JobAppliance[]
-  photos                 Photo[]
-  pendingDeliveries      PendingDelivery[] @relation("PendingDeliveryOriginalJob")
-  completedDeliveries    PendingDelivery[] @relation("PendingDeliveryDeliveredJob")
-  substituteDeliveries   PendingDelivery[] @relation("PendingDeliverySubstituteJob")
-  createdAt              DateTime @default(now())
-  updatedAt              DateTime @updatedAt
+  id         String    @id @default(cuid())
+  type       JobType
+  status     JobStatus @default(SCHEDULED)
+  scheduledAt DateTime?
+
+  // Scheduling (Batch C, P1-A). The person doing the visit; conflicts are only
+  // checked between jobs with the same person. durationMinutes null = use
+  // BusinessSettings.defaultJobDurationMinutes. version counts domain writes
+  // so a stale screen cannot overwrite a newer change. noShowAt is set when a
+  // visit is cancelled because nobody was there (status CANCELLED, nothing else moves).
+  assignedToUserId String?
+  assignedTo       User?     @relation("JobAssignedTo", fields: [assignedToUserId], references: [id], onDelete: SetNull)
+  durationMinutes  Int?
+  version          Int       @default(1)
+  noShowAt         DateTime?
+  partMovements    PartStockMovement[]
+
+  // Completion (Batch C, P2-B): COMPLETE when every appliance got its positive result, otherwise PARTIAL.
+  // completionKey makes a retried completion return the first result.
+  outcome        JobOutcome?
+  outcomeNotes   String?
+  completionKey  String?  @unique
+  handoffs       JobBillingHandoff[]
+  custodyStarted ApplianceCustodyEpisode[] @relation("CustodyStartJob")
+  custodyEnded   ApplianceCustodyEpisode[] @relation("CustodyEndJob")
+
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id])
+  serviceAddressId String?
+  serviceAddress ServiceAddress? @relation(fields: [serviceAddressId], references: [id])
+  agreementId String?
+  agreement   RentalAgreement? @relation(fields: [agreementId], references: [id])
+  maintenanceRequestId String?
+  maintenanceRequest   MaintenanceRequest? @relation(fields: [maintenanceRequestId], references: [id])
+  tasks StaffTask[]
+
+  notes       String?
+  completedAt DateTime?
+  completionNotes String?
+
+  // A per-job-type checklist Chris works through before marking the job
+  // Completed (e.g. delivery: "Delivered appliance", "Installed and
+  // tested", "Customer walkthrough done") — [{item, checked}], same
+  // shape as ApplianceInspection.checklist. Defaults come from
+  // DEFAULT_JOB_CHECKLISTS in src/domains/jobs (a pure lookup by
+  // JobType, no database import) the first time the job's own page is
+  // opened; saved back here so his progress persists between visits to
+  // the same job. Purely a field-work aid — the dispatch board shows how
+  // many items are still unchecked so he can tell at a glance which
+  // scheduled jobs still need attention, but nothing here blocks
+  // actually completing the job (see docs/BUSINESS-RULES.md).
+  checklist Json @default("[]")
+
+  // What a repair actually cost, entered by Chris when he completes a
+  // MAINTENANCE_VISIT job — the raw numbers appliance profitability/ROI
+  // (src/domains/inventory/analytics.ts) rolls up per appliance. Nullable
+  // and meaningless for non-repair job types (delivery, installation,
+  // swap, removal don't have a "repair cost"); left blank on an old job
+  // simply contributes $0 to that appliance's lifetime repair cost, never
+  // a fake number.
+  partsCostCents Int?
+  laborCostCents Int?
+
+  // The Colorado date the work was actually done, entered by staff when the
+  // job is marked completed (defaults to that day). Billing that depends on
+  // WHEN an appliance changed hands (late-return charges, late-delivery
+  // credits) reads this first, then scheduledAt, never the moment the status
+  // button was pressed. Stored as the Colorado midnight of that date.
+  performedOn DateTime?
+
+  // SMS notifications (Task #71) — set once a "your visit is today" text
+  // has gone out for this job, same dedup shape as RentalAgreement.
+  // billingReminderSentForDate: stops the daily cron from texting twice
+  // for a job that's still scheduled the next time it runs the same day.
+  dayOfReminderSentAt DateTime?
+
+  appliances JobAppliance[]
+  photos     Photo[]
+  pendingDeliveries  PendingDelivery[] @relation("PendingDeliveryOriginalJob")
+  completedDeliveries PendingDelivery[] @relation("PendingDeliveryDeliveredJob")
+  substituteDeliveries PendingDelivery[] @relation("PendingDeliverySubstituteJob")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([status])
   @@index([scheduledAt])
@@ -679,29 +1044,44 @@ model Job {
   @@index([assignedToUserId, scheduledAt])
 }
 
+// An agreement item that was NOT delivered on the delivery visit that started
+// billing (owner decision IN-26, 2026-10-03). The whole agreement is billed from
+// that visit as normal; when the item finally arrives the customer is credited
+// for the days it was missing, and if it never arrives and is taken off the
+// agreement, for everything billed for it. One row per item per original job.
 model PendingDelivery {
-  id                     String @id @default(cuid())
-  agreementId            String
-  agreement              RentalAgreement @relation(fields: [agreementId], references: [id])
-  rentalLineId           String
-  applianceId            String
-  appliance              Appliance @relation("PendingDeliveryAppliance", fields: [applianceId], references: [id])
-  originalJobId          String
-  originalJob            Job @relation("PendingDeliveryOriginalJob", fields: [originalJobId], references: [id])
-  originalDeliveryDate   DateTime
-  deliveredOn            DateTime?
-  deliveredJobId         String?
-  deliveredJob           Job? @relation("PendingDeliveryDeliveredJob", fields: [deliveredJobId], references: [id])
-  removedAt              DateTime?
-  creditId               String? @unique
-  createdByUserId        String?
-  createdAt              DateTime @default(now())
-  substituteApplianceId  String?
-  substituteAppliance    Appliance? @relation("PendingDeliverySubstitute", fields: [substituteApplianceId], references: [id])
-  substituteJobId        String?
-  substituteJob          Job? @relation("PendingDeliverySubstituteJob", fields: [substituteJobId], references: [id])
-  refundedCents          Int @default(0)
-  refundByHandCents      Int @default(0)
+  id            String   @id @default(cuid())
+  agreementId   String
+  agreement     RentalAgreement @relation(fields: [agreementId], references: [id])
+  rentalLineId  String
+  applianceId   String
+  appliance     Appliance @relation("PendingDeliveryAppliance", fields: [applianceId], references: [id])
+  originalJobId String
+  originalJob   Job      @relation("PendingDeliveryOriginalJob", fields: [originalJobId], references: [id])
+  // The Colorado date billing started counting this item (the original visit's service date).
+  originalDeliveryDate DateTime
+  // Set when a later delivery job brought the item (its service date), or when
+  // the item was taken off the agreement because it never arrived.
+  deliveredOn    DateTime?
+  deliveredJobId String?
+  deliveredJob   Job?     @relation("PendingDeliveryDeliveredJob", fields: [deliveredJobId], references: [id])
+  removedAt      DateTime?
+  // The credit this row produced, if any (one at most).
+  creditId       String?  @unique
+  createdByUserId String?
+  createdAt DateTime @default(now())
+
+  // A same-type unit set aside to take this item's place on a later delivery visit (Batch C section 8).
+  // Both are set together or neither. This row is the single record of the substitution.
+  substituteApplianceId String?
+  substituteAppliance   Appliance? @relation("PendingDeliverySubstitute", fields: [substituteApplianceId], references: [id])
+  substituteJobId       String?
+  substituteJob         Job?       @relation("PendingDeliverySubstituteJob", fields: [substituteJobId], references: [id])
+
+  // Never-delivered refund (Batch C section 8): cents sent back through Stripe, and cents the owner pays back by hand
+  // (cash or check payments, a rental paid in advance, or no paid invoice yet).
+  refundedCents     Int @default(0)
+  refundByHandCents Int @default(0)
 
   @@unique([originalJobId, applianceId])
   @@index([agreementId])
@@ -710,17 +1090,21 @@ model PendingDelivery {
 }
 
 model JobAppliance {
-  id                     String @id @default(cuid())
-  jobId                  String
-  job                    Job @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  applianceId            String
-  appliance              Appliance @relation(fields: [applianceId], references: [id])
-  role                   JobApplianceRole @default(PRIMARY)
+  id          String    @id @default(cuid())
+  jobId       String
+  job         Job       @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  applianceId String
+  appliance   Appliance @relation(fields: [applianceId], references: [id])
+
+  // Completion result (Batch C, P2-B): every appliance in a job's scope gets exactly one result when the job
+  // is completed. Old completed jobs keep result NULL (history is not invented). role marks the incoming unit
+  // of a swap; reservationActive marks a unit whose RESERVED status is owned by this staged swap/substitution.
+  role                   JobApplianceRole   @default(PRIMARY)
   result                 JobApplianceResult?
   resultNote             String?
   resultRecordedAt       DateTime?
   resultRecordedByUserId String?
-  reservationActive      Boolean @default(false)
+  reservationActive      Boolean            @default(false)
 
   @@unique([jobId, applianceId])
   @@index([jobId])
@@ -759,18 +1143,21 @@ enum HandoffStatus {
   FAILED
 }
 
+// Provider work that must happen after a job's completion commits (start the monthly Stripe billing, send a
+// credit to Stripe). Written in the same transaction as the completion, so a crash after commit cannot lose it.
 model JobBillingHandoff {
-  id        String @id @default(cuid())
+  id        String        @id @default(cuid())
   jobId     String
-  job       Job @relation(fields: [jobId], references: [id])
+  job       Job           @relation(fields: [jobId], references: [id])
   kind      HandoffKind
   subjectId String
   status    HandoffStatus @default(PENDING)
-  attempts  Int @default(0)
+  attempts  Int           @default(0)
+  // Set only while a worker owns this handoff lease; stale claims are recoverable.
   claimedAt DateTime?
   lastError String?
   doneAt    DateTime?
-  createdAt DateTime @default(now())
+  createdAt DateTime      @default(now())
 
   @@unique([jobId, kind, subjectId])
   @@index([status])
@@ -782,32 +1169,39 @@ enum CustodyEvidence {
   MANUAL
 }
 
+// Who physically has an appliance (Batch C, P2-A). Opened only by a completed delivery/installation (or swap
+// replacement), closed only by a completed removal (or swap return). Renewals, agreement endings and
+// assignment changes never touch it. At most one open episode per appliance (partial unique index).
 model ApplianceCustodyEpisode {
-  id               String @id @default(cuid())
+  id               String          @id @default(cuid())
   applianceId      String
-  appliance        Appliance @relation(fields: [applianceId], references: [id])
+  appliance        Appliance       @relation(fields: [applianceId], references: [id])
   customerId       String
-  customer         Customer @relation(fields: [customerId], references: [id])
+  customer         Customer        @relation(fields: [customerId], references: [id])
   serviceAddressId String?
   serviceAddress   ServiceAddress? @relation(fields: [serviceAddressId], references: [id])
   agreementId      String?
   startedOn        DateTime?
   startEvidence    CustodyEvidence
   startJobId       String?
-  startJob         Job? @relation("CustodyStartJob", fields: [startJobId], references: [id])
+  startJob         Job?            @relation("CustodyStartJob", fields: [startJobId], references: [id])
   closedAt         DateTime?
   endedOn          DateTime?
   endEvidence      CustodyEvidence?
   endJobId         String?
-  endJob           Job? @relation("CustodyEndJob", fields: [endJobId], references: [id])
+  endJob           Job?            @relation("CustodyEndJob", fields: [endJobId], references: [id])
   endReason        String?
-  createdAt        DateTime @default(now())
+  createdAt        DateTime        @default(now())
 
   @@unique([startJobId, applianceId])
   @@unique([endJobId, applianceId])
   @@index([applianceId, closedAt])
   @@index([customerId])
 }
+
+// ---------------------------------------------------------------------------
+// Maintenance
+// ---------------------------------------------------------------------------
 
 enum MaintenanceStatus {
   SUBMITTED
@@ -826,27 +1220,58 @@ enum MaintenancePriority {
 }
 
 model MaintenanceRequest {
-  id               String @id @default(cuid())
-  customerId       String
-  customer         Customer @relation(fields: [customerId], references: [id])
-  applianceId      String?
-  appliance        Appliance? @relation(fields: [applianceId], references: [id])
+  id         String              @id @default(cuid())
+  customerId String
+  customer   Customer            @relation(fields: [customerId], references: [id])
+  applianceId String?
+  appliance  Appliance?          @relation(fields: [applianceId], references: [id])
+  // The property the visit is for (Batch C, P2-D); filled in when the customer has one address, else chosen when scheduling.
   serviceAddressId String?
   serviceAddress   ServiceAddress? @relation(fields: [serviceAddressId], references: [id], onDelete: SetNull)
-  problem          String
-  priority         MaintenancePriority @default(NORMAL)
-  status           MaintenanceStatus @default(SUBMITTED)
-  photos           Photo[]
-  jobs             Job[]
-  openedAt         DateTime @default(now())
-  completedAt      DateTime?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+
+  problem    String
+  priority   MaintenancePriority @default(NORMAL)
+  status     MaintenanceStatus   @default(SUBMITTED)
+
+  photos     Photo[]
+  jobs       Job[]
+
+  openedAt    DateTime  @default(now())
+  completedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([status])
   @@index([applianceId])
   @@index([serviceAddressId])
 }
+
+// ---------------------------------------------------------------------------
+// Estimates (2026-09-29, docs/DECISIONS.md has the full writeup) — for
+// deals that don't fit standard self-serve pricing: a property manager
+// or landlord ordering for several units/an entire building, where
+// delivery/installation fees and per-unit pricing need to be worked out
+// by hand rather than applied automatically. Deliberately staff-created
+// only (Chris/ADMIN, from an existing Customer) — never auto-generated
+// from a Lead's answers, so a "property manager" checkbox alone never
+// silently changes anyone's price.
+//
+// An Estimate is a pricing PROPOSAL, not yet a commitment — it never
+// reserves real inventory. Once APPROVED, converting it
+// (src/domains/estimates's convertEstimateToAgreements) creates one or
+// more DRAFT RentalAgreement(s) using its line items as a starting
+// point; Chris still adds real RentalLine(s) with actual physical
+// appliances the same way he already does for any agreement (see
+// src/domains/agreements's addRentalLine) — this only sets up the
+// paperwork shell with the agreed pricing/terms, it never bypasses the
+// existing appliance-reservation safeguards.
+//
+// The public approval link reuses the exact same pattern as
+// SignatureRecord/the /sign/[id] page below: the record's own
+// unguessable cuid `id` IS the link (no separate token field), gated by
+// possession of that link, not a login.
+// ---------------------------------------------------------------------------
 
 enum EstimateStatus {
   DRAFT
@@ -860,34 +1285,86 @@ enum EstimateStatus {
 }
 
 model Estimate {
-  id                      String @id @default(cuid())
-  estimateNumber          Int @unique @default(autoincrement())
-  customerId              String?
-  customer                Customer? @relation(fields: [customerId], references: [id])
-  leadId                  String?
-  lead                    Lead? @relation(fields: [leadId], references: [id])
-  status                  EstimateStatus @default(DRAFT)
-  title                   String
-  clientMessage           String?
-  internalNotes           String?
-  depositCents            Int @default(0)
-  depositPaidAt           DateTime?
-  followUpSentForSentAt   DateTime?
-  validUntil              DateTime?
+  id             String         @id @default(cuid())
+  // Sequential, human-facing number (what shows on the document) —
+  // separate from `id`, same pattern as Invoice.invoiceNumber.
+  estimateNumber Int            @unique @default(autoincrement())
+  // Exactly one of customerId/leadId is set when this estimate is
+  // created (see src/domains/estimates — createEstimateDraft requires
+  // an existing customer; createEstimateDraftForNewLead creates a Lead
+  // first and sets leadId instead, for someone who isn't a customer
+  // yet). If it started from a lead, customerId gets filled in the
+  // moment the customer actually approves it online (approveEstimate
+  // converts the lead to a real customer right then — see that
+  // function's comment for why approval, not sending or delivery, is
+  // the trigger) — leadId stays set afterward too, purely as a
+  // trace-back ("this customer started as a lead on this estimate").
+  customerId     String?
+  customer       Customer?      @relation(fields: [customerId], references: [id])
+  leadId         String?
+  lead           Lead?          @relation(fields: [leadId], references: [id])
+  status         EstimateStatus @default(DRAFT)
+
+  // Internal reference only, e.g. "Sunset Apartments — 12 units" — never
+  // shown to the customer (the document just says "Estimate #123").
+  title         String
+  // Shown to the customer, on the estimate document itself.
+  clientMessage String?
+  // Never shown to the customer.
+  internalNotes String?
+
+  depositCents Int       @default(0)
+  // Set the moment Stripe confirms this estimate's own deposit checkout
+  // (2026-09-29 — see src/domains/billing/checkout.ts's
+  // createDepositCheckoutSessionForEstimate and docs/ROADMAP.md's "A
+  // deposit collected at the moment a quote/estimate is approved"
+  // entry). Null means either there's no deposit on this estimate
+  // (depositCents is 0) or one is required but hasn't been paid yet —
+  // the public estimate page tells those two apart itself. Recorded
+  // only by the Stripe webhook, same rule as every other "paid" fact in
+  // this app (src/domains/billing/webhooks.ts) — approving an estimate
+  // never marks this by itself.
+  depositPaidAt DateTime?
+  // Set once a "you still haven't responded" follow-up email has gone
+  // out for the estimate's *current* sentAt (2026-09-29 — see
+  // sendEstimateFollowUpReminders in src/domains/estimates and
+  // docs/ROADMAP.md's matching entry). Compared for equality against
+  // sentAt itself, same pattern as
+  // RentalAgreement.billingReminderSentForDate: if Chris revises and
+  // re-sends this estimate (a new sentAt), the old value no longer
+  // matches, so a fresh follow-up cycle can fire for the re-sent one
+  // without a manual reset.
+  followUpSentForSentAt DateTime?
+  validUntil   DateTime?
+
   sentAt                  DateTime?
   viewedAt                DateTime?
   respondedAt             DateTime?
+  // Whoever actually clicked "approve" on the public link — a real,
+  // timestamped record of who said yes, same spirit as
+  // SignatureRecord.signerName/signerEmail below, not just "someone with
+  // the link approved it."
   approverName            String?
   approverEmail           String?
   approverIpAddress       String?
   changesRequestedMessage String?
   declineReason           String?
   convertedAt             DateTime?
-  createdByUserId         String
-  lineItems               EstimateLineItem[]
-  createdAgreements       RentalAgreement[]
-  createdAt               DateTime @default(now())
-  updatedAt               DateTime @updatedAt
+
+  // The OWNER/ADMIN who created this — every Estimate is staff-created,
+  // never self-service.
+  createdByUserId String
+
+  lineItems         EstimateLineItem[]
+  // Agreement(s) created by converting this estimate (a converted
+  // estimate can produce more than one — see the "per property" mode
+  // in src/domains/estimates) — so a draft agreement's own page can
+  // show "created from Estimate #123" and staff can trace either
+  // direction.
+  createdAgreements RentalAgreement[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([customerId])
   @@index([leadId])
@@ -895,19 +1372,37 @@ model Estimate {
 }
 
 model EstimateLineItem {
-  id                 String @id @default(cuid())
-  estimateId         String
-  estimate           Estimate @relation(fields: [estimateId], references: [id], onDelete: Cascade)
-  serviceAddressId   String?
-  serviceAddress     ServiceAddress? @relation(fields: [serviceAddressId], references: [id])
-  description        String
-  quantity           Int @default(1)
-  monthlyPriceCents  Int @default(0)
-  oneTimeFeeCents    Int @default(0)
-  createdAt          DateTime @default(now())
+  id         String   @id @default(cuid())
+  estimateId String
+  estimate   Estimate @relation(fields: [estimateId], references: [id], onDelete: Cascade)
+
+  // Which property this line belongs to, when the deal already has one
+  // on file (e.g. one line per unit at a named property) — null for a
+  // line that isn't property-specific (a flat "bulk mobilization fee"
+  // covering the whole deal, say). Whether converting this estimate
+  // makes ONE combined agreement or one PER distinct property named
+  // here is a choice made at conversion time (src/domains/estimates),
+  // not stored here — Chris picks per deal, per his own instruction.
+  serviceAddressId String?
+  serviceAddress   ServiceAddress? @relation(fields: [serviceAddressId], references: [id])
+
+  description String
+  quantity    Int    @default(1)
+  // Recurring monthly amount for this line (e.g. "3x washer/dryer set
+  // @ $50/mo") — 0 if this line is a one-time charge only.
+  monthlyPriceCents Int @default(0)
+  // One-time charge for this line (e.g. a custom bulk delivery fee) — 0
+  // if this line is purely recurring.
+  oneTimeFeeCents Int @default(0)
+
+  createdAt DateTime @default(now())
 
   @@index([estimateId])
 }
+
+// ---------------------------------------------------------------------------
+// Billing
+// ---------------------------------------------------------------------------
 
 enum InvoiceStatus {
   DRAFT
@@ -934,13 +1429,17 @@ enum InvoiceLineItemKind {
   CREDIT
   ADJUSTMENT
   EARLY_TERMINATION_FEE
+  // Rent for days an item was kept past the agreement's end date
+  // ("Late return – [item] – [N] days"). Not a late-PAYMENT fee.
   LATE_RETURN
 }
 
+// Batch B — provider operations (docs/designs/BATCH-B.md D1/D2)
 enum ProviderOperationKind {
   CUSTOMER_CREATE
   SUBSCRIPTION_CREATE
   SUBSCRIPTION_CANCEL
+  // Changes a live subscription's end date when a renewal is signed or cancelled.
   SUBSCRIPTION_UPDATE
   BALANCE_CREDIT
   REFUND_CREATE
@@ -955,87 +1454,94 @@ enum ProviderOperationStatus {
 }
 
 model ProviderOperation {
-  id               String @id @default(cuid())
+  id               String                  @id @default(cuid())
   kind             ProviderOperationKind
   subjectType      String
   subjectId        String
-  idempotencyKey   String @unique
+  idempotencyKey   String                  @unique
   status           ProviderOperationStatus @default(PENDING)
   providerObjectId String?
-  attempts         Int @default(0)
+  attempts         Int                     @default(0)
   lastError        String?
-  requestedAt      DateTime @default(now())
+  requestedAt      DateTime                @default(now())
   completedAt      DateTime?
-  updatedAt        DateTime @updatedAt
+  updatedAt        DateTime                @updatedAt
 
   @@index([subjectType, subjectId])
   @@index([status, requestedAt])
 }
 
+// Batch B — receipts, allocations, credit applications (D6/D7)
 enum ReceiptSource {
   STRIPE
   MANUAL
 }
 
 model Receipt {
-  id               String @id @default(cuid())
+  id               String        @id @default(cuid())
   customerId       String
-  customer         Customer @relation(fields: [customerId], references: [id])
+  customer         Customer      @relation(fields: [customerId], references: [id])
   source           ReceiptSource
   amountCents      Int
   method           String
-  stripeChargeId   String? @unique
+  stripeChargeId   String?       @unique
   receivedOn       DateTime
   recordedByUserId String?
   notes            String?
   payments         Payment[]
-  createdAt        DateTime @default(now())
+  createdAt        DateTime      @default(now())
 
   @@index([customerId, receivedOn])
 }
 
 model CreditApplication {
-  id              String @id @default(cuid())
+  id              String         @id @default(cuid())
   creditId        String
   credit          CustomerCredit @relation(fields: [creditId], references: [id])
   invoiceId       String
-  invoice         Invoice @relation(fields: [invoiceId], references: [id])
+  invoice         Invoice        @relation(fields: [invoiceId], references: [id])
   amountCents     Int
   appliedByUserId String?
-  createdAt       DateTime @default(now())
+  createdAt       DateTime       @default(now())
 
   @@index([creditId])
   @@index([invoiceId])
 }
 
 model Invoice {
-  id                 String @id @default(cuid())
-  invoiceNumber      Int @unique @default(autoincrement())
-  customerId         String
-  customer           Customer @relation(fields: [customerId], references: [id])
-  agreementId        String?
-  agreement          RentalAgreement? @relation(fields: [agreementId], references: [id])
-  status             InvoiceStatus @default(DRAFT)
-  version            Int @default(1)
+  id          String        @id @default(cuid())
+  invoiceNumber Int         @unique @default(autoincrement())
+  customerId  String
+  customer    Customer      @relation(fields: [customerId], references: [id])
+  agreementId String?
+  agreement   RentalAgreement? @relation(fields: [agreementId], references: [id])
+
+  status      InvoiceStatus @default(DRAFT)
+  version     Int           @default(1)
+
   billingPeriodStart DateTime?
   billingPeriodEnd   DateTime?
-  subtotalCents      Int @default(0)
-  discountCents      Int @default(0)
-  taxCents           Int @default(0)
-  lateFeeCents       Int @default(0)
-  amountDueCents     Int
-  amountPaidCents    Int @default(0)
-  dueDate            DateTime?
-  cancelledAt        DateTime?
-  writtenOffAt       DateTime?
-  writtenOffReason   String?
+
+  subtotalCents   Int @default(0)
+  discountCents   Int @default(0)
+  taxCents        Int @default(0)
+  lateFeeCents    Int @default(0)
+  amountDueCents  Int
+  amountPaidCents Int @default(0)
+  dueDate         DateTime?
+
+  cancelledAt      DateTime?
+  writtenOffAt     DateTime?
+  writtenOffReason String?
+
   stripeInvoiceId    String? @unique
-  lineItems          InvoiceLineItem[]
-  payments           Payment[]
-  refunds            Refund[]
-  creditApplications CreditApplication[]
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  lineItems           InvoiceLineItem[]
+  payments            Payment[]
+  refunds             Refund[]
+  creditApplications  CreditApplication[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([status])
   @@index([customerId])
@@ -1043,35 +1549,43 @@ model Invoice {
 }
 
 model InvoiceLineItem {
-  id            String @id @default(cuid())
-  invoiceId     String
-  invoice       Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  kind          InvoiceLineItemKind
-  description   String
-  amountCents   Int
-  quantity      Int @default(1)
-  rentalLineId  String?
-  createdAt     DateTime @default(now())
+  id          String   @id @default(cuid())
+  invoiceId   String
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  kind        InvoiceLineItemKind
+  description String
+  // Negative for a discount, credit, or downward adjustment — every
+  // other total on the invoice is a plain sum of these.
+  amountCents Int
+  quantity    Int      @default(1)
+  rentalLineId String?
+
+  createdAt DateTime @default(now())
 
   @@index([invoiceId])
 }
 
 model Payment {
-  id                    String @id @default(cuid())
-  invoiceId             String
-  invoice               Invoice @relation(fields: [invoiceId], references: [id])
-  amountCents           Int
-  method                String?
-  status                String
-  attemptNumber         Int @default(1)
-  stripeChargeId        String?
+  id          String   @id @default(cuid())
+  invoiceId   String
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id])
+  amountCents Int
+  method      String?
+  status      String
+  attemptNumber Int    @default(1)
+  stripeChargeId String?
   stripePaymentIntentId String?
-  failureReason         String?
-  notes                 String?
-  recordedByUserId      String?
-  receiptId             String?
-  receipt               Receipt? @relation(fields: [receiptId], references: [id])
-  createdAt             DateTime @default(now())
+  failureReason String?
+  notes String?
+  recordedByUserId String?
+
+  // Batch B D6: one real-world payment event can allocate to many invoices.
+  // Nullable for pre-Batch-B rows until WU-B5's idempotent backfill links them.
+  receiptId String?
+  receipt   Receipt? @relation(fields: [receiptId], references: [id])
+
+  createdAt DateTime @default(now())
 
   @@index([invoiceId])
   @@index([receiptId])
@@ -1086,137 +1600,186 @@ enum RefundReason {
 }
 
 model Refund {
-  id                 String @id @default(cuid())
-  invoiceId          String
-  invoice            Invoice @relation(fields: [invoiceId], references: [id])
-  amountCents        Int
-  reason             RefundReason
-  notes              String?
+  id          String       @id @default(cuid())
+  invoiceId   String
+  invoice     Invoice      @relation(fields: [invoiceId], references: [id])
+  amountCents Int
+  reason      RefundReason
+  notes       String?
   authorizedByUserId String?
-  stripeRefundId     String?
-  createdAt          DateTime @default(now())
+  stripeRefundId String?
+
+  createdAt DateTime @default(now())
 
   @@index([invoiceId])
 }
 
 model CustomerCredit {
-  id                   String @id @default(cuid())
-  customerId           String
-  customer             Customer @relation(fields: [customerId], references: [id])
-  amountCents          Int
-  remainingCents       Int
-  reason               String
-  notes                String?
-  authorizedByUserId   String?
-  sourceType           String?
-  sourceId             String?
-  side                 String?
-  appliedViaStripeAt   DateTime?
-  shownCents           Int @default(0)
-  shownOnInvoiceId     String?
-  applications         CreditApplication[]
-  createdAt            DateTime @default(now())
+  id             String   @id @default(cuid())
+  customerId     String
+  customer       Customer @relation(fields: [customerId], references: [id])
+  amountCents    Int
+  remainingCents Int
+  reason         String
+  notes          String?
+  authorizedByUserId String?
+
+  // Batch B D3/D4/D7: immutable provenance and provider-delivery state.
+  sourceType String?
+  sourceId   String?
+  side       String?
+  appliedViaStripeAt DateTime?
+  // Stripe-applied credits from the late-delivery rule are shown on the local
+  // mirror of the bill that used them, as their own labeled line
+  // (src/domains/billing/webhooks.ts). shownCents is how much has been shown so
+  // far (Stripe may use a credit across two bills); shownOnInvoiceId is set
+  // once the whole amount has been shown. Local applications use CreditApplication.
+  shownCents       Int     @default(0)
+  shownOnInvoiceId String?
+  applications CreditApplication[]
+
+  createdAt DateTime @default(now())
 
   @@index([customerId])
   @@unique([sourceType, sourceId, side])
 }
 
+// Every Stripe webhook event this app has ever processed, keyed by
+// Stripe's own event id — webhook delivery is at-least-once, so Stripe
+// (or a retried delivery after a timeout) can send the same event twice.
 model WebhookEvent {
-  id          String @id
+  id          String   @id
   type        String
   processedAt DateTime @default(now())
 }
 
+// ---------------------------------------------------------------------------
+// Settings, site content, and everything else Chris edits himself
+// ---------------------------------------------------------------------------
+
 model BusinessSettings {
-  id                                  String @id @default("singleton")
-  publicBusinessName                  String @default("[Company Name]")
-  publicPhone                         String @default("[Phone Number]")
-  publicEmail                         String @default("[Email Address]")
-  publicAddress                       String @default("[Business Address]")
-  serviceAreaCities                   Json @default("[]")
-  serviceAreaZips                     Json @default("[]")
-  hours                               Json @default("{}")
-  holidayClosures                     Json @default("[]")
-  socialLinks                         Json @default("{}")
-  logoUrl                             String?
-  oneTimeDeliveryFeeCents             Int @default(0)
-  oneTimeInstallationFeeCents         Int @default(0)
-  oneTimeRemovalFeeCents              Int @default(0)
-  damageWaiverEnabled                 Boolean @default(false)
-  depositEnabled                      Boolean @default(false)
-  defaultJobDurationMinutes           Int @default(120)
-  staffMayWorkUnassignedJobs          Boolean @default(true)
-  lateFeeGraceDays                    Int @default(5)
-  lateFeeFlatCents                    Int @default(0)
-  lateFeePercent                      Int @default(0)
-  taxRatePermille                     Int @default(0)
-  taxRateMilliPercent                 Int @default(0)
-  taxRateConfirmed                    Boolean @default(false)
-  announcementBannerText              String?
-  announcementBannerOn                Boolean @default(false)
-  sixMonthPrepayDiscountSetCents      Int @default(500)
-  sixMonthPrepayDiscountSingleCents   Int @default(250)
-  twelveMonthPrepayDiscountSetCents   Int @default(1000)
-  twelveMonthPrepayDiscountSingleCents Int @default(500)
-  twelveMonthPrepayFreeMonthEnabled   Boolean @default(true)
-  referralRewardCents                 Int @default(2500)
-  customerEmailEnabled                Boolean @default(false)
-  autoRenewEnabled                    Boolean @default(false)
-  draftReservationHoldDays            Int @default(7)
-  inspectionChecklist                 Json @default("[]")
-  earlyTerminationFeeCents            Int?
-  earlyTerminationFeePercent          Int?
-  earlyTerminationFeeCapCents         Int?
-  earlyTerminationNoticeDays          Int?
-  unusedTermTreatment                 String?
-  autoRenewNoticeDays                 Int?
-  autoRenewTermsVersion               String?
-  renewalTermsText                    String?
-  terminationTermsText                String?
-  lateReturnRateMode                  String @default("MONTHLY_DIV_30")
-  lateReturnFixedDailyCents           Int @default(0)
-  lateDeliveryProrationBasis          String @default("MONTHLY_DIV_30")
-  earlyReturnProrationBasis           String @default("MONTHLY_DIV_30")
-  pickupDayNotBilled                  Boolean @default(true)
-  updatedAt                           DateTime @updatedAt
+  id    String @id @default("singleton")
+
+  publicBusinessName String @default("[Company Name]")
+  publicPhone        String @default("[Phone Number]")
+  publicEmail        String @default("[Email Address]")
+  publicAddress      String @default("[Business Address]")
+  serviceAreaCities  Json   @default("[]")
+  serviceAreaZips    Json   @default("[]")
+  hours              Json   @default("{}")
+  holidayClosures    Json   @default("[]")
+  socialLinks        Json   @default("{}")
+  logoUrl            String?
+
+  oneTimeDeliveryFeeCents     Int @default(0)
+  oneTimeInstallationFeeCents Int @default(0)
+  oneTimeRemovalFeeCents      Int @default(0)
+  damageWaiverEnabled     Boolean @default(false)
+  depositEnabled          Boolean @default(false)
+  // Usual visit length in minutes (Batch C P1-A); used when a job has no length of its own.
+  defaultJobDurationMinutes Int @default(120)
+  // Can staff work jobs nobody is assigned to (Batch C P2-E). On keeps the old behavior.
+  staffMayWorkUnassignedJobs Boolean @default(true)
+  lateFeeGraceDays        Int     @default(5)
+  lateFeeFlatCents        Int     @default(0)
+  lateFeePercent          Int     @default(0)
+  taxRatePermille         Int     @default(0) // DEPRECATED (see taxRateMilliPercent); kept in step by a database trigger until cleanup
+  taxRateMilliPercent     Int     @default(0) // thousandths of one percent: 7375 = 7.375%
+  taxRateConfirmed        Boolean @default(false)
+
+  announcementBannerText String?
+  announcementBannerOn   Boolean @default(false)
+
+  sixMonthPrepayDiscountSetCents       Int     @default(500)
+  sixMonthPrepayDiscountSingleCents    Int     @default(250)
+  twelveMonthPrepayDiscountSetCents    Int     @default(1000)
+  twelveMonthPrepayDiscountSingleCents Int     @default(500)
+  twelveMonthPrepayFreeMonthEnabled    Boolean @default(true)
+
+  referralRewardCents Int @default(2500)
+  // Master switch for every message sent to customers. Off until the owner turns it on; previews
+  // and test copies never send even when on. Owner only.
+  customerEmailEnabled Boolean @default(false)
+  // Master switch for AUTOMATIC renewals (queuing them, starting them, extending billing for them). Off until
+  // the owner turns it on, whatever the wording settings say. Opt-out and billing-stop operations are never blocked.
+  autoRenewEnabled Boolean @default(false)
+  draftReservationHoldDays Int @default(7)
+  inspectionChecklist Json @default("[]")
+
+  // Batch B D10: null means policy not set; dependent actions stay unavailable.
+  earlyTerminationFeeCents    Int?
+  earlyTerminationFeePercent  Int?
+  earlyTerminationFeeCapCents Int?
+  earlyTerminationNoticeDays  Int?
+  unusedTermTreatment         String?
+  autoRenewNoticeDays         Int?
+  autoRenewTermsVersion       String?
+  renewalTermsText            String?
+  terminationTermsText        String?
+
+  // Pickup and return billing (owner decisions IN-24 / IN-26 / IN-27, 2026-10-03;
+  // src/domains/billing/pickup-billing.ts is the only reader).
+  // How the daily rate for a LATE return is found: "MONTHLY_DIV_30" = that item's
+  // monthly price divided by 30; "FIXED" = the dollar amount below, per day.
+  lateReturnRateMode        String  @default("MONTHLY_DIV_30")
+  lateReturnFixedDailyCents Int     @default(0)
+  // How the per-day credit for an item delivered LATE is found: "MONTHLY_DIV_30"
+  // or "ACTUAL_DAYS_IN_MONTH" (the real length of that billing month, 28 to 31 days).
+  lateDeliveryProrationBasis String @default("MONTHLY_DIV_30")
+  // DEPRECATED (2026-10-03, same day it was added): the setting was first built
+  // for a misread "early return" rule. Copied into lateDeliveryProrationBasis
+  // by migration 20261003280000 and never read again; removed in a later cleanup.
+  earlyReturnProrationBasis String  @default("MONTHLY_DIV_30")
+  // ON (default): the pickup/return day itself is never charged; the last charged
+  // day is the day before. OFF: the pickup day is charged like any other day.
+  pickupDayNotBilled        Boolean @default(true)
+
+  updatedAt DateTime @updatedAt
 }
 
 model SiteContent {
-  id        String @id @default(cuid())
-  key       String @unique
-  value     String
+  id    String @id @default(cuid())
+  key   String @unique
+  value String
   updatedAt DateTime @updatedAt
 }
 
 model Photo {
-  id                   String @id @default(cuid())
-  url                  String
-  altText              String?
-  applianceId          String?
-  appliance            Appliance? @relation(fields: [applianceId], references: [id])
-  jobId                String?
-  job                  Job? @relation(fields: [jobId], references: [id])
+  id      String   @id @default(cuid())
+  url     String
+  altText String?
+
+  applianceId String?
+  appliance   Appliance? @relation(fields: [applianceId], references: [id])
+  jobId       String?
+  job         Job?       @relation(fields: [jobId], references: [id])
   maintenanceRequestId String?
   maintenanceRequest   MaintenanceRequest? @relation(fields: [maintenanceRequestId], references: [id])
-  createdAt            DateTime @default(now())
+
+  createdAt DateTime @default(now())
 }
 
+// A message the customer is owed (for now: the renewal reminder Colorado's automatic-renewal
+// law requires 25-40 days before a renewal). The text is saved exactly as it was written, so
+// what was said can always be shown later. PENDING = not delivered yet (email is off until the
+// owner approves live email, or the owner has not marked it sent); SENT = delivered by email or
+// marked sent by hand; NOT_NEEDED = withdrawn before it mattered (e.g. auto-renew turned off).
 model CustomerNotice {
-  id           String @id @default(cuid())
-  customerId   String
-  customer     Customer @relation(fields: [customerId], references: [id])
-  agreementId  String?
-  kind         String
-  dedupeKey    String @unique
-  subject      String
-  body         String
-  status       String @default("PENDING")
-  sentAt       DateTime?
-  sentVia      String?
+  id          String    @id @default(cuid())
+  customerId  String
+  customer    Customer  @relation(fields: [customerId], references: [id])
+  agreementId String?
+  kind        String
+  dedupeKey   String    @unique
+  subject     String
+  body        String
+  status      String    @default("PENDING")
+  sentAt      DateTime?
+  sentVia     String?
   sentByUserId String?
-  attempts     Int @default(0)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  attempts    Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   @@index([status])
   @@index([customerId])
@@ -1224,7 +1787,7 @@ model CustomerNotice {
 }
 
 model ConsentRecord {
-  id         String @id @default(cuid())
+  id         String   @id @default(cuid())
   customerId String?
   customer   Customer? @relation(fields: [customerId], references: [id])
   kind       String
@@ -1233,27 +1796,30 @@ model ConsentRecord {
 }
 
 model CustomerNote {
-  id         String @id @default(cuid())
+  id         String   @id @default(cuid())
   customerId String
   customer   Customer @relation(fields: [customerId], references: [id])
   authorId   String?
-  author     User? @relation(fields: [authorId], references: [id])
+  author     User?    @relation(fields: [authorId], references: [id])
   body       String
-  createdAt  DateTime @default(now())
+
+  createdAt DateTime @default(now())
 
   @@index([customerId])
 }
 
 model CustomerContact {
-  id         String @id @default(cuid())
+  id         String   @id @default(cuid())
   customerId String
   customer   Customer @relation(fields: [customerId], references: [id])
-  name       String
-  role       String?
-  phone      String?
-  email      String?
-  notes      String?
-  createdAt  DateTime @default(now())
+
+  name  String
+  role  String?
+  phone String?
+  email String?
+  notes String?
+
+  createdAt DateTime @default(now())
 
   @@index([customerId])
 }
@@ -1265,26 +1831,31 @@ enum TaskPriority {
 }
 
 model StaffTask {
-  id              String @id @default(cuid())
-  note            String
-  dueDate         DateTime?
-  priority        TaskPriority @default(NORMAL)
-  version         Int @default(1)
-  assigneeUserId  String?
-  assignee        User? @relation("StaffTaskAssignedTo", fields: [assigneeUserId], references: [id], onDelete: SetNull)
-  leadId          String?
-  lead            Lead? @relation(fields: [leadId], references: [id], onDelete: SetNull)
-  customerId      String?
-  customer        Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
-  jobId           String?
-  job             Job? @relation(fields: [jobId], references: [id], onDelete: SetNull)
-  applianceId     String?
-  appliance       Appliance? @relation(fields: [applianceId], references: [id], onDelete: SetNull)
-  sourceKey       String? @unique
+  id      String @id @default(cuid())
+  note    String
+  dueDate DateTime?
+  priority TaskPriority @default(NORMAL)
+  version Int @default(1)
+  assigneeUserId String?
+  assignee User? @relation("StaffTaskAssignedTo", fields: [assigneeUserId], references: [id], onDelete: SetNull)
+
+  leadId     String?
+  lead       Lead?     @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  jobId      String?
+  job        Job?      @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  applianceId String?
+  appliance   Appliance? @relation(fields: [applianceId], references: [id], onDelete: SetNull)
+  // A task a command creates for itself (for example a completion's follow-up): a retry finds the same key and makes no second task.
+  sourceKey   String?   @unique
+
   createdByUserId String
-  createdBy       User @relation("StaffTaskCreatedBy", fields: [createdByUserId], references: [id])
-  completedAt     DateTime?
-  createdAt       DateTime @default(now())
+  createdBy       User   @relation("StaffTaskCreatedBy", fields: [createdByUserId], references: [id])
+
+  completedAt DateTime?
+
+  createdAt DateTime @default(now())
 
   @@index([completedAt, dueDate])
   @@index([assigneeUserId, completedAt])
@@ -1295,10 +1866,10 @@ model StaffTask {
 }
 
 model AuditLog {
-  id         String @id @default(cuid())
-  userId     String?
-  user       User? @relation(fields: [userId], references: [id])
-  action     String
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  action    String
   entityType String
   entityId   String?
   oldValue   Json?
@@ -1309,32 +1880,33 @@ model AuditLog {
   @@index([createdAt])
 }
 
+// Prelaunch interest is not a quote, customer, reservation, or SMS consent.
 model LaunchSettings {
-  id            String @id @default("singleton")
+  id            String  @id @default("singleton")
   prelaunchMode Boolean @default(true)
   emailEnabled  Boolean @default(false)
-  postalAddress String @default("")
-  replyToEmail  String @default("")
+  postalAddress String  @default("")
+  replyToEmail  String  @default("")
   updatedAt     DateTime @updatedAt
 }
 
 model LaunchSubscriber {
-  id               String @id @default(cuid())
-  name             String
-  email            String @unique
-  city             String
-  interest         String
-  source           String @default("website")
-  consentVersion   String
-  consentText      String
-  consentedAt      DateTime @default(now())
-  unsubscribeToken String @unique
-  unsubscribedAt   DateTime?
-  nextStep         Int @default(0)
-  nextSendAt       DateTime @default(now())
-  deliveryBlocked  Boolean @default(false)
-  createdAt        DateTime @default(now())
-  deliveries       LaunchDelivery[]
+  id                String @id @default(cuid())
+  name              String
+  email             String @unique
+  city              String
+  interest          String
+  source            String @default("website")
+  consentVersion    String
+  consentText       String
+  consentedAt       DateTime @default(now())
+  unsubscribeToken  String @unique
+  unsubscribedAt    DateTime?
+  nextStep          Int @default(0)
+  nextSendAt        DateTime @default(now())
+  deliveryBlocked   Boolean @default(false)
+  createdAt         DateTime @default(now())
+  deliveries        LaunchDelivery[]
 
   @@index([unsubscribedAt, deliveryBlocked, nextSendAt])
 }
@@ -1344,6 +1916,7 @@ model LaunchDelivery {
   subscriberId String
   subscriber   LaunchSubscriber @relation(fields: [subscriberId], references: [id], onDelete: Cascade)
   step         Int
+  // SENDING is an uncertain outcome after a crash; never retried blindly.
   status       String @default("SENDING")
   startedAt    DateTime @default(now())
   finishedAt   DateTime?
@@ -1351,8 +1924,9 @@ model LaunchDelivery {
   @@unique([subscriberId, step])
 }
 
+// Batch C P1-B: the next asset-number sequence per prefix. Numbers are never reused.
 model AssetNumberCounter {
-  prefix       String @id
+  prefix       String   @id
   nextSequence Int
   updatedAt    DateTime @updatedAt
 }
