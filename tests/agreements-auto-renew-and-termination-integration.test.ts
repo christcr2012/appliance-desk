@@ -22,7 +22,11 @@ import { renewalReminderKey } from "@/domains/notices/renewal-reminder";
 
 const emailMock = vi.hoisted(() => ({ send: vi.fn() }));
 vi.mock("@/lib/customer-email", () => ({ sendCustomerEmail: emailMock.send }));
-import { syncTerminationEnd } from "@/domains/billing/subscription-term";
+import {
+  cancelAtSecondsFor,
+  cancelAtSecondsForAgreement,
+  syncTerminationEnd,
+} from "@/domains/billing/subscription-term";
 
 const url = new URL(process.env.DATABASE_URL ?? "postgresql://localhost/unset");
 const enabled =
@@ -119,7 +123,6 @@ describe.skipIf(!enabled)("auto-renew and agreed early endings are carried out",
 
   let switchBefore = false;
   beforeAll(async () => {
-    // Automatic renewals are off by default; these tests exercise them, so the owner's master switch is on.
     switchBefore =
       (await prisma.businessSettings.findUnique({ where: { id: "singleton" }, select: { autoRenewEnabled: true } }))
         ?.autoRenewEnabled === true;
@@ -177,11 +180,9 @@ describe.skipIf(!enabled)("auto-renew and agreed early endings are carried out",
       expect(renewal.startDate?.toISOString()).toBe(renewalStart.toISOString());
       expect(renewal.depositCents).toBe(0);
       expect(renewal.lines.map((l) => `${l.label}:${l.monthlyPriceCents}`).sort()).toEqual(["Dryer:3000", "Washer:3000"]);
-      // Billing's end date is NOT moved while the reminder has not been delivered...
       expect(stripeMock.update).not.toHaveBeenCalled();
       await extendBillingForDeliveredAutoRenewals(windowOpen);
       expect(stripeMock.update).not.toHaveBeenCalled();
-      // ...and once it was delivered in the 25 to 40 day window, billing carries on: cancel_at is cleared.
       await deliver(a);
       await extendBillingForDeliveredAutoRenewals(windowOpen);
       expect(stripeMock.update).toHaveBeenCalledWith(a.stripeSubscriptionId, { cancel_at: "" }, expect.anything());
@@ -340,7 +341,7 @@ describe.skipIf(!enabled)("auto-renew and agreed early endings are carried out",
       const a = await agreement();
       await runAutoRenewals(windowOpen);
       emailMock.send.mockReset().mockResolvedValue({ sent: true });
-      const tooLate = new Date("2027-11-02T18:00:00Z"); // 6 days before the renewal
+      const tooLate = new Date("2027-11-02T18:00:00Z");
       const result = await sendPendingNotices(tooLate);
       expect(result.sent).toBe(0);
       expect(emailMock.send).not.toHaveBeenCalled();
@@ -385,7 +386,6 @@ describe.skipIf(!enabled)("auto-renew and agreed early endings are carried out",
       const a = await agreement();
       await runAutoRenewals(windowOpen);
       await deliver(a);
-      // The customer's choice is saved first; the renewal's cancellation follows a moment later.
       await prisma.rentalAgreement.update({ where: { id: a.id }, data: { renewalPreference: "NONE" } });
       stripeMock.update.mockClear();
       await extendBillingForDeliveredAutoRenewals(windowOpen);
@@ -416,7 +416,6 @@ describe.skipIf(!enabled)("auto-renew and agreed early endings are carried out",
       await deliver(a);
       await prisma.businessSettings.update({ where: { id: "singleton" }, data: { autoRenewEnabled: false } });
       try {
-        // Starting is refused first (before the nightly pass below withdraws the queued renewal).
         const started = await startRenewalIfDue(auto.id, afterTerm);
         expect(started.started).toBe(false);
         if (!started.started) expect(started.reason).toBe("AUTO_RENEW_OFF");
@@ -425,14 +424,12 @@ describe.skipIf(!enabled)("auto-renew and agreed early endings are carried out",
         expect(await extendBillingForDeliveredAutoRenewals(windowOpen)).toBe(0);
         expect(stripeMock.update).not.toHaveBeenCalled();
 
-        // The nightly pass queues nothing new, and withdraws what was queued.
         const b = await agreement();
         const queued = await runAutoRenewals(windowOpen);
         expect(queued.created).toBe(0);
         expect(await renewalsOf(b.id)).toHaveLength(0);
         expect((await get(auto.id)).status).toBe("CANCELLED");
 
-        // Opting out still works while the switch is off.
         await setAutoRenew({ userId, kind: "customer" }, a.id, { enabled: false, termsVersion: "ar-test" });
         expect((await get(a.id)).renewalPreference).toBe("NONE");
       } finally {
@@ -466,7 +463,7 @@ describe.skipIf(!enabled)("auto-renew and agreed early endings are carried out",
         expect((await get(auto.id)).status).toBe("CANCELLED");
         expect(stripeMock.update).toHaveBeenCalledWith(
           a.stripeSubscriptionId,
-          { cancel_at: Math.floor(termEnd.getTime() / 1000) },
+          { cancel_at: cancelAtSecondsFor({ termMonths: 12, endDate: termEnd }) },
           expect.anything(),
         );
         expect((await noticeOf(b))!.status).toBe("NOT_NEEDED");
@@ -561,13 +558,12 @@ describe.skipIf(!enabled)("auto-renew and agreed early endings are carried out",
           endDate: new Date("2028-11-07T06:59:59Z"),
         },
       });
-      // Only one live renewal is allowed per agreement in practice; cancel the auto one first to make room for the manual check.
       await setAutoRenew({ userId, kind: "customer" }, a.id, { enabled: false, termsVersion: "ar-test" });
       expect((await get(auto.id)).status).toBe("CANCELLED");
       expect((await get(signed.id)).status).toBe("SCHEDULED");
       expect(stripeMock.update).toHaveBeenLastCalledWith(
         a.stripeSubscriptionId,
-        { cancel_at: Math.floor(termEnd.getTime() / 1000) },
+        { cancel_at: cancelAtSecondsFor({ termMonths: 12, endDate: termEnd }) },
         expect.anything(),
       );
       await prisma.rentalAgreement.update({ where: { id: signed.id }, data: { status: "CANCELLED" } });
@@ -580,7 +576,6 @@ describe.skipIf(!enabled)("auto-renew and agreed early endings are carried out",
       await prisma.rentalAgreement.update({ where: { id: a.id }, data: { renewalPreference: "NONE" } });
       stripeMock.update.mockClear();
       const result = await startRenewalIfDue(auto.id, afterTerm);
-      // The withdrawn renewal must not touch the customer's subscription at all.
       expect(stripeMock.update).not.toHaveBeenCalled();
       expect(result.started).toBe(false);
       if (!result.started) expect(result.reason).toBe("AUTO_RENEW_WITHDRAWN");
@@ -614,12 +609,18 @@ describe.skipIf(!enabled)("auto-renew and agreed early endings are carried out",
         ...extra,
       });
 
-    it("tells Stripe to stop billing just before the anniversary the rental ends on", async () => {
+    it("tells Stripe to stop billing at the provider anniversary boundary", async () => {
       const a = await ending();
       expect(await syncTerminationEnd(a.id)).toBe("done");
       expect(stripeMock.update).toHaveBeenCalledWith(
         a.stripeSubscriptionId,
-        { cancel_at: Math.floor((effectiveOn.getTime() - 1000) / 1000) },
+        {
+          cancel_at: cancelAtSecondsForAgreement({
+            termMonths: 12,
+            endDate: termEnd,
+            terminationEffectiveOn: effectiveOn,
+          }),
+        },
         expect.anything(),
       );
     });
