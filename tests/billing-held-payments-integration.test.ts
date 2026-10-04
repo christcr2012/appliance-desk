@@ -3,7 +3,13 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 
 const stripeMock = vi.hoisted(() => ({ refund: vi.fn() }));
 vi.mock("@/lib/stripe", () => ({
-  getStripeClient: () => ({ refunds: { create: stripeMock.refund } }),
+  // The drift scan also looks at every customer that has a Stripe id, including ones another test file has in the
+  // shared database at that moment, so the fake answers customer and subscription lookups with "all fine".
+  getStripeClient: () => ({
+    refunds: { create: stripeMock.refund },
+    customers: { retrieve: async (id: string) => ({ id }) },
+    subscriptions: { retrieve: async (id: string) => ({ id, status: "active" }) },
+  }),
 }));
 
 import type Stripe from "stripe";

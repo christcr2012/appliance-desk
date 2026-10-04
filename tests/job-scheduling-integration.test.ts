@@ -234,7 +234,6 @@ describe.skipIf(!enabled)("job scheduling (real Postgres)", () => {
         },
       });
       jobIds.push(job.id);
-      const creditsBefore = await prisma.customerCredit.count();
       await expect(markJobNoShow(staffB, job.id, 1)).rejects.toThrow(/assigned to someone else/);
       await expect(markJobNoShow(staffA, job.id, 5)).rejects.toBeInstanceOf(JobVersionError);
       await expect(markJobNoShow(staffA, job.id, 1)).resolves.toEqual({ version: 2 });
@@ -243,7 +242,8 @@ describe.skipIf(!enabled)("job scheduling (real Postgres)", () => {
       expect(after.noShowAt).not.toBeNull();
       expect((await prisma.appliance.findUniqueOrThrow({ where: { id: applianceId } })).status).toBe("RESERVED");
       expect(await prisma.pendingDelivery.count({ where: { applianceId } })).toBe(0);
-      expect(await prisma.customerCredit.count()).toBe(creditsBefore);
+      // Other test files create credits at the same time, so look only for credits tied to this visit or unit.
+      expect(await prisma.customerCredit.count({ where: { sourceId: { in: [job.id, applianceId] } } })).toBe(0);
       // A second no-show, or one on a finished visit, is refused.
       await expect(markJobNoShow(ownerId, job.id, 2)).rejects.toThrow(/scheduled or in progress/);
       // The person's time is free again.

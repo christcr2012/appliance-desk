@@ -321,3 +321,12 @@ StaffTask remains included in BACKUP_MODEL_POLICY; scalar exports include all
 new columns. Generated schema-health checks read every scalar even for empty
 tables; disposable CI's negative check now removes version and proves rejection.
 Populated upgrade fixture proves old task defaults and record links survive.
+
+- **RentalLineAmendment** (Batch C, 2026-10-04) — one row per permanently
+  cancelled item: the line, the waiting item, previous and new monthly price,
+  the date it takes effect (start of the next billing period), the reason and who
+  did it. A database rule blocks any change or delete. `PendingDelivery` gained
+  `substituteApplianceId` and `substituteJobId` (both set or neither) for a
+  same-type unit set aside for the waiting item, and `refundedCents` /
+  `refundByHandCents` (what went back through Stripe, and what the owner pays
+  back by hand when the item was never delivered).

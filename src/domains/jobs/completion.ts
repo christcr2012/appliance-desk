@@ -2,6 +2,7 @@ import type { JobApplianceResult, JobApplianceRole, JobOutcome, JobType, Prisma 
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor, type TeamRole } from "@/lib/team-actor";
 import { assertJobScopeInTx } from "./scope";
+import { dropSubstituteInTx, takeSubstituteIntoLineInTx } from "./substitution";
 import { businessDateKey, businessDayBounds } from "@/lib/business-date";
 import { lockCustomerLedger } from "@/domains/billing/ledger";
 import { lockRentalAgreementInTx } from "@/domains/agreements";
@@ -178,9 +179,22 @@ export async function completeJob(userId: string, input: CompleteJobInput): Prom
       }
     }
     const scopeIds = scope.map((s) => s.applianceId).sort();
-    if (scopeIds.length > 0) {
-      await tx.$queryRaw`SELECT "id" FROM "Appliance" WHERE "id" = ANY(${scopeIds}) ORDER BY "id" FOR UPDATE`;
+    // A delivery visit can carry a substitute for an item that was missing from the first delivery. The waiting
+    // unit it replaces is locked together with the scope (one sorted pass), so two commands never lock them in
+    // opposite orders.
+    const substitutions =
+      before.agreementId && (before.type === "DELIVERY" || before.type === "INSTALLATION")
+        ? await tx.pendingDelivery.findMany({
+            where: { substituteJobId: before.id, deliveredOn: null, removedAt: null },
+            select: { id: true, applianceId: true, substituteApplianceId: true },
+          })
+        : [];
+    const substituteIds = new Set(substitutions.map((s) => s.substituteApplianceId).filter((id): id is string => id !== null));
+    const lockIds = [...new Set([...scopeIds, ...substitutions.map((s) => s.applianceId)])].sort();
+    if (lockIds.length > 0) {
+      await tx.$queryRaw`SELECT "id" FROM "Appliance" WHERE "id" = ANY(${lockIds}) ORDER BY "id" FOR UPDATE`;
     }
+    const droppedSubstituteIds = new Set<string>();
 
     // --- every appliance in scope gets exactly one valid result ----------------------------------
     const roleOf = new Map(scope.map((s) => [s.applianceId, s.role]));
@@ -237,6 +251,10 @@ export async function completeJob(userId: string, input: CompleteJobInput): Prom
         if (appliance.status !== "RESERVED") {
           throw new JobCompletionConflictError("An item marked not delivered is not waiting for delivery (it was already delivered or released).");
         }
+        // A substitute that did not arrive goes back on the shelf. The item it was meant to replace keeps waiting.
+        if (substituteIds.has(applianceId) && (await dropSubstituteInTx(tx, { userId, jobId: before.id, substituteApplianceId: applianceId }))) {
+          droppedSubstituteIds.add(applianceId);
+        }
       }
 
       if (result.result === "DELIVERED") {
@@ -246,6 +264,10 @@ export async function completeJob(userId: string, input: CompleteJobInput): Prom
         }
         if (isDelivery) {
           if (before.agreementId) {
+            // A substitute takes over the waiting item's place on its rental line first, so it counts as assigned.
+            if (substituteIds.has(applianceId)) {
+              await takeSubstituteIntoLineInTx(tx, { userId, jobId: before.id, substituteApplianceId: applianceId, substituteAssetNumber: appliance.assetNumber, at: completedAt });
+            }
             const assigned = await tx.applianceAssignment.findFirst({ where: { applianceId, unassignedAt: null, rentalLine: { agreementId: before.agreementId } }, select: { id: true } });
             if (!assigned) throw new JobCompletionConflictError(`${appliance.assetNumber} is not set aside for this customer's agreement, so it can't be marked delivered on this visit.`);
           }
@@ -404,6 +426,8 @@ export async function completeJob(userId: string, input: CompleteJobInput): Prom
       const given = resultOf.get(applianceId)!.result;
       if (POSITIVE.has(given)) continue;
       if (swapBothNegative) continue;
+      // A substitute that stayed on the shelf needs no follow-up: the waiting item it stood in for is still tracked.
+      if (droppedSubstituteIds.has(applianceId)) continue;
       const appliance = applianceById.get(applianceId)!;
       const { task } = await createTaskInTx(
         tx,

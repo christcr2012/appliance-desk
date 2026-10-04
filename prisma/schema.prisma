@@ -425,7 +425,8 @@ model Appliance {
   assignments ApplianceAssignment[]
   photos      Photo[]
   jobs        JobAppliance[]
-  pendingDeliveries PendingDelivery[]
+  pendingDeliveries PendingDelivery[] @relation("PendingDeliveryAppliance")
+  substitutedFor PendingDelivery[] @relation("PendingDeliverySubstitute")
   maintenanceRequests MaintenanceRequest[]
   inspections ApplianceInspection[]
   custodyEpisodes ApplianceCustodyEpisode[]
@@ -823,16 +824,36 @@ model RentalLine {
   // prepayDiscountCentsPerMonth is what got subtracted to reach
   // monthlyPriceCents — both kept so the discount is visible/transparent
   // rather than a mysteriously lower number (docs/BUSINESS-RULES.md).
-  // monthlyPriceCents = max(0, listPriceCents - prepayDiscountCentsPerMonth).
+  // monthlyPriceCents = max(0, listPriceCents - prepayDiscountCentsPerMonth), except on a line with a
+  // RentalLineAmendment (an item on it was permanently cancelled): then it is the reduced price.
   monthlyPriceCents Int
   listPriceCents Int @default(0)
   prepayDiscountCentsPerMonth Int @default(0)
 
   assignments ApplianceAssignment[]
+  amendments  RentalLineAmendment[]
 
   createdAt DateTime @default(now())
 
   @@index([agreementId])
+}
+
+// A permanent price reduction on a rental line because one of its items was never delivered and was taken off
+// the agreement (Batch C section 8). Never changed or deleted (database rule). The signed price stays here as
+// previousMonthlyPriceCents. effectiveFrom is the first day of the next billing period.
+model RentalLineAmendment {
+  id                        String     @id @default(cuid())
+  rentalLineId              String
+  rentalLine                RentalLine @relation(fields: [rentalLineId], references: [id])
+  pendingDeliveryId         String     @unique
+  previousMonthlyPriceCents Int
+  newMonthlyPriceCents      Int
+  effectiveFrom             DateTime
+  reason                    String
+  createdByUserId           String
+  createdAt                 DateTime   @default(now())
+
+  @@index([rentalLineId])
 }
 
 model ApplianceAssignment {
@@ -1004,6 +1025,7 @@ model Job {
   photos     Photo[]
   pendingDeliveries  PendingDelivery[] @relation("PendingDeliveryOriginalJob")
   completedDeliveries PendingDelivery[] @relation("PendingDeliveryDeliveredJob")
+  substituteDeliveries PendingDelivery[] @relation("PendingDeliverySubstituteJob")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1028,7 +1050,7 @@ model PendingDelivery {
   agreement     RentalAgreement @relation(fields: [agreementId], references: [id])
   rentalLineId  String
   applianceId   String
-  appliance     Appliance @relation(fields: [applianceId], references: [id])
+  appliance     Appliance @relation("PendingDeliveryAppliance", fields: [applianceId], references: [id])
   originalJobId String
   originalJob   Job      @relation("PendingDeliveryOriginalJob", fields: [originalJobId], references: [id])
   // The Colorado date billing started counting this item (the original visit's service date).
@@ -1044,9 +1066,22 @@ model PendingDelivery {
   createdByUserId String?
   createdAt DateTime @default(now())
 
+  // A same-type unit set aside to take this item's place on a later delivery visit (Batch C section 8).
+  // Both are set together or neither. This row is the single record of the substitution.
+  substituteApplianceId String?
+  substituteAppliance   Appliance? @relation("PendingDeliverySubstitute", fields: [substituteApplianceId], references: [id])
+  substituteJobId       String?
+  substituteJob         Job?       @relation("PendingDeliverySubstituteJob", fields: [substituteJobId], references: [id])
+
+  // Never-delivered refund (Batch C section 8): cents sent back through Stripe, and cents the owner pays back by hand
+  // (cash or check payments, a rental paid in advance, or no paid invoice yet).
+  refundedCents     Int @default(0)
+  refundByHandCents Int @default(0)
+
   @@unique([originalJobId, applianceId])
   @@index([agreementId])
   @@index([applianceId])
+  @@index([substituteApplianceId])
 }
 
 model JobAppliance {

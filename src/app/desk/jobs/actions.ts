@@ -267,6 +267,37 @@ export async function removeUndeliveredItemAction(pendingDeliveryId: string, job
   return { status: "success" };
 }
 
+/** Owner/admin: set aside a same-type unit to take a waiting item's place on a later delivery visit. */
+export async function substituteWaitingItemAction(
+  pendingDeliveryId: string,
+  replacementApplianceId: string,
+  deliveryJobId: string,
+  jobId: string,
+): Promise<JobActionState> {
+  const session = await requireRole("OWNER", "ADMIN");
+  for (const value of [pendingDeliveryId, replacementApplianceId, deliveryJobId]) {
+    if (typeof value !== "string" || value.length === 0 || value.length > 64) {
+      return { status: "error", message: "Choose a unit and a visit first." };
+    }
+  }
+  try {
+    const { substituteWaitingItem, SubstituteError } = await import("@/domains/jobs/substitution");
+    try {
+      await substituteWaitingItem(session.user.id, { pendingDeliveryId, replacementApplianceId, deliveryJobId });
+    } catch (error) {
+      if (error instanceof SubstituteError) return { status: "error", message: error.message };
+      throw error;
+    }
+  } catch {
+    return { status: "error", message: "Couldn't set that unit aside. Reload the page and try again." };
+  }
+  revalidatePath(`/desk/jobs/${jobId}`);
+  revalidatePath(`/desk/jobs/${deliveryJobId}`);
+  revalidatePath("/desk/today");
+  revalidatePath("/desk/inventory");
+  return { status: "success" };
+}
+
 const photoSchema = z.object({
   url: z.string().trim().url("Enter a valid photo URL.").max(2000),
   altText: z.string().trim().max(300).optional().or(z.literal("")),

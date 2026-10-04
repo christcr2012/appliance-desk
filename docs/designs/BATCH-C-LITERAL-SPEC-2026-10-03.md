@@ -1057,3 +1057,13 @@ before that.
 | — | Section 9 C-09 pickup/return billing | — | **BLOCKED** on the shared billing contract only (Chris answered the IN-24 waiver rule 2026-10-03; section 9) |
 
 Suggested PR stack: (1) P1-A+P1-B, (2) P1-C, (3) P2-A+P2-B, (4) P2-C+P2-D, (5) P2-E+P2-F, (6) section 8.
+
+### Drift check — section 8 missing-item and subscription rule — 2026-10-04 (Claude Sonnet 5.5, at `main` d7059a0 = #169 to #174)
+
+Read `CHANGES-SINCE-DESIGN.md` and checked the section against the code first.
+
+- Lowering a subscription item follows the same durable-operation pattern the end-date changes already use (`claimProviderOperation` in the same transaction as the local decision, Stripe called after commit, outcome recorded, retried by the reconciliation pass). The new code lives in `src/domains/billing/subscription-line.ts`. Stripe is read first on every retry, so a change that already landed is simply marked done.
+- Differences from the text, none decision-level: (1) Lock order. The spec lists the waiting row first; the code takes customer, agreement, appliances (sorted), then the waiting row, so it agrees with the lock order in section 0 and with `completeJob`. The row's own id is read without a lock first, then re-verified under the lock. (2) An item with no matching Stripe subscription item is recorded as a FAILED operation with a plain note (not DRIFT), because DRIFT never leaves the drift list and this clears itself once Stripe matches. It still shows on the billing drift screen. (3) `closeAgreement` was split into `closeAgreementInTx` plus `runCloseAgreementContinuation` so the last cancelled item can end or cancel the agreement inside the same transaction, through the normal close path. Closing also gives back any unit held as a substitute. (4) The share of the line price that comes off is the one `itemsForAppliances` already computes, which does not count units that left as "Never delivered", "Replaced by", "Swapped for" or "Swapped out for repair". (5) `substituteChoices` (owner-only, for the screen) was added beside `substituteWaitingItem`.
+- Nothing is sent to Stripe when an item is only late or swapped one-for-one: the line price does not change. Stripe stays in test mode; no live calls.
+- No decision-level conflict (money, statuses, permissions, database design). Proceed as written.
+- Owner change after this drift check (Chris, PR #175, 2026-10-04): a cancelled never-delivered item is refunded (Stripe to the original method, by-hand record for other payments), not credited. Late-delivery credits are unchanged. See DECISIONS.

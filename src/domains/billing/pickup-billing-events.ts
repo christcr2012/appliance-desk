@@ -3,9 +3,13 @@ import { prisma } from "@/lib/prisma";
 import { getStripeClient } from "@/lib/stripe";
 import { businessDateFromKey, businessDateKey, businessDayBounds, businessDaysBetween, formatBusinessDate } from "@/lib/business-date";
 import { formatCents } from "@/domains/pricing/money";
-import { sumTax } from "./tax";
+import { sumTax, taxCentsForLine } from "./tax";
+import { prepareInvoiceRefundInTx, runPreparedInvoiceRefund, type ClaimedRefund } from "./refunds";
 import { lockCustomerLedger } from "./ledger";
 import { assertActiveTeamActor } from "@/lib/team-actor";
+import { closeAgreementInTx, lockRentalAgreementInTx, runCloseAgreementContinuation, type CloseAgreementResult } from "@/domains/agreements";
+import { dropSubstituteInTx } from "@/domains/jobs/substitution";
+import { claimLineReductionInTx, lineReduceKey, runLineReduction, type LineReduceClaim } from "./subscription-line";
 import { claimProviderOperation, completeProviderOperation, RetryLater, runProviderCall } from "./provider-ops";
 import {
   LATE_DELIVERY_CREDIT_SOURCE,
@@ -13,7 +17,6 @@ import {
   billingPeriodContaining,
   calculateLateDeliveryCredit,
   calculateLateReturnCharge,
-  calculateNeverDeliveredCredit,
   itemMonthlyPriceCents,
   periodsBilledThrough,
   pickupBillingSettingsFrom,
@@ -372,9 +375,15 @@ export async function recordLateDeliveries(
   },
 ): Promise<PickupBillingOutcome> {
   if (input.applianceIds.length === 0) return EMPTY;
+  // A waiting item is closed out when it arrives itself, or when the same-type unit set aside to replace it does.
   const waiting = await tx.pendingDelivery.findMany({
-    where: { agreementId: input.agreementId, applianceId: { in: input.applianceIds }, deliveredOn: null, removedAt: null },
-    select: { id: true, applianceId: true, rentalLineId: true, originalDeliveryDate: true },
+    where: {
+      agreementId: input.agreementId,
+      deliveredOn: null,
+      removedAt: null,
+      OR: [{ applianceId: { in: input.applianceIds } }, { substituteApplianceId: { in: input.applianceIds } }],
+    },
+    select: { id: true, applianceId: true, substituteApplianceId: true, rentalLineId: true, originalDeliveryDate: true },
   });
   if (waiting.length === 0) return EMPTY;
   // Claim the waiting rows (sorted, so two jobs cannot deadlock) and re-read them: a second job that delivers the
@@ -391,13 +400,16 @@ export async function recordLateDeliveries(
   const agreement = await tx.rentalAgreement.findUnique({ where: { id: input.agreementId }, select: AGREEMENT_SELECT });
   if (!agreement) return EMPTY;
   const settings = await loadSettings(tx);
-  const items = await itemsForAppliances(tx, agreement.id, waiting.map((w) => w.applianceId));
+  // The unit that actually arrived: the substitute when it was the one delivered, otherwise the waiting item itself.
+  const arrivedId = (w: { applianceId: string; substituteApplianceId: string | null }) =>
+    w.substituteApplianceId && input.applianceIds.includes(w.substituteApplianceId) ? w.substituteApplianceId : w.applianceId;
+  const items = await itemsForAppliances(tx, agreement.id, waiting.map(arrivedId));
   const creditIds: string[] = [];
   let creditCents = 0;
   const notes: string[] = [];
 
   for (const pending of waiting) {
-    const item = items.find((i) => i.applianceId === pending.applianceId);
+    const item = items.find((i) => i.applianceId === arrivedId(pending));
     await tx.pendingDelivery.update({
       where: { id: pending.id },
       data: { deliveredOn: input.deliveryDate, deliveredJobId: input.jobId },
@@ -481,14 +493,37 @@ export async function recordLateDeliveries(
 }
 
 /**
- * Rule 2, never delivered. The owner or an admin takes a waiting item off the
- * agreement: the appliance is released (available again), and the customer is
- * credited one month's price for every billing period that has started since
- * the original delivery date. The credit is then sent to Stripe.
+ * Rule 2, never delivered. The owner or an admin takes a waiting item off the agreement: the appliance is released
+ * (available again), any substitute unit set aside for it goes back on the shelf, and the customer is REFUNDED what
+ * was paid for it (one month's price plus its tax for every billing period that has started since the original
+ * delivery date, never more than was actually paid). Stripe-paid money goes back to the original card or bank;
+ * money paid another way is recorded for the owner to pay back by hand. No account credit is created.
+ *
+ * Batch C section 8 also fixes the monthly bill: the item's share comes off its rental line from the NEXT billing
+ * period (kept as a never-edited amendment record), and the Stripe subscription is told after the transaction
+ * commits (one recorded provider operation, retried by the reconciliation pass). If that was the agreement's last
+ * item, the agreement is ended or cancelled through the normal close path instead.
+ *
+ * Lock order (spec §0): customer, agreement, appliances (sorted), the waiting row.
  */
 export async function removeUndeliveredItem(userId: string, pendingDeliveryId: string, now = new Date()): Promise<void> {
+  const peek = await prisma.pendingDelivery.findUnique({
+    where: { id: pendingDeliveryId },
+    select: { agreementId: true, applianceId: true, agreement: { select: { customerId: true } } },
+  });
+  if (!peek) throw new Error("Couldn't find that waiting item.");
+
   const outcome = await prisma.$transaction(async (tx) => {
     await assertActiveTeamActor(tx, userId, ["OWNER", "ADMIN"]);
+    await lockCustomerLedger(tx, peek.agreement.customerId);
+    await lockRentalAgreementInTx(tx, peek.agreementId);
+    const first = await tx.pendingDelivery.findUnique({
+      where: { id: pendingDeliveryId },
+      select: { applianceId: true, substituteApplianceId: true },
+    });
+    if (!first) throw new Error("Couldn't find that waiting item.");
+    const applianceIds = [...new Set([first.applianceId, first.substituteApplianceId].filter((id): id is string => Boolean(id)))].sort();
+    await tx.$queryRaw`SELECT "id" FROM "Appliance" WHERE "id" = ANY(${applianceIds}) ORDER BY "id" FOR UPDATE`;
     const locked = await tx.$queryRaw<Array<{ id: string }>>`
       SELECT "id" FROM "PendingDelivery" WHERE "id" = ${pendingDeliveryId} FOR UPDATE
     `;
@@ -497,7 +532,24 @@ export async function removeUndeliveredItem(userId: string, pendingDeliveryId: s
     if (pending.deliveredOn || pending.removedAt) {
       throw new Error("That item was already delivered or already taken off the agreement.");
     }
+    if (pending.substituteApplianceId !== first.substituteApplianceId) {
+      throw new Error("A substitute was just set or removed for this item. Reload and try again.");
+    }
     const agreement = await tx.rentalAgreement.findUniqueOrThrow({ where: { id: pending.agreementId }, select: AGREEMENT_SELECT });
+
+    // A substitute set aside for this item goes back on the shelf, and its place on the visit's list is dropped.
+    if (pending.substituteApplianceId && pending.substituteJobId) {
+      await dropSubstituteInTx(tx, {
+        userId,
+        jobId: pending.substituteJobId,
+        substituteApplianceId: pending.substituteApplianceId,
+      });
+      await tx.jobAppliance.deleteMany({
+        where: { jobId: pending.substituteJobId, applianceId: pending.substituteApplianceId, role: "REPLACEMENT", result: null },
+      });
+    }
+
+    // The share is worked out BEFORE the unit leaves the line, while it still counts as one of the line's items.
     const [item] = await itemsForAppliances(tx, agreement.id, [pending.applianceId]);
 
     if (item && !item.unassignedAt) {
@@ -508,41 +560,103 @@ export async function removeUndeliveredItem(userId: string, pendingDeliveryId: s
     }
     await tx.appliance.updateMany({ where: { id: pending.applianceId, status: "RESERVED" }, data: { status: "AVAILABLE" } });
 
-    let creditId: string | null = null;
+    // Money for an item that never arrives goes BACK to the customer (a refund), not into account credit that would
+    // keep reducing future bills. Stripe-paid invoices are refunded to the original card or bank through Stripe;
+    // anything paid another way, paid in advance, or not paid yet is recorded for the owner to settle by hand.
+    let refundedCents = 0;
+    let refundByHandCents = 0;
+    const refundRuns: Array<{ refundId: string; claim: ClaimedRefund; invoiceId: string; amountCents: number }> = [];
+    const refundIds: string[] = [];
     let note = "";
     if (!item) {
-      note = "The item was no longer on the agreement; nothing to credit.";
+      note = "The item was no longer on the agreement; nothing to refund.";
     } else if (!agreement.billingStartedAt) {
-      note = `${item.label}: billing never started, nothing to credit.`;
+      note = `${item.label}: billing never started, nothing to refund.`;
     } else if (agreement.paidInFullInAdvance) {
-      note = `${item.label}: paid in full in advance, the owner settles the credit by hand.`;
+      note = `${item.label}: paid in full in advance, the owner settles the refund by hand.`;
     } else {
-      const credit = calculateNeverDeliveredCredit({
-        itemLabel: item.label,
-        itemMonthlyPriceCents: item.monthlyPriceCents,
-        periodsBilled: periodsBilledThrough(agreement.billingStartedAt, now),
-      });
-      if (credit.amountCents > 0) {
-        const row = await tx.customerCredit.create({
-          data: {
-            customerId: agreement.customerId,
-            amountCents: credit.amountCents,
-            remainingCents: credit.amountCents,
-            reason: credit.description,
-            notes: `Never delivered; everything billed for it since ${formatBusinessDate(pending.originalDeliveryDate)} is credited.`,
-            authorizedByUserId: userId,
-            sourceType: LATE_DELIVERY_CREDIT_SOURCE,
-            sourceId: pending.id,
-            side: "CUSTOMER",
-          },
+      const periods = periodsBilledThrough(agreement.billingStartedAt, now);
+      const owedCents = (item.monthlyPriceCents + taxCentsForLine(item.monthlyPriceCents, agreement.taxRateMilliPercent)) * periods;
+      let remaining = owedCents;
+      const invoices = remaining > 0
+        ? await tx.invoice.findMany({
+            where: { agreementId: agreement.id, amountPaidCents: { gt: 0 }, status: { notIn: ["VOID", "DRAFT"] } },
+            orderBy: [{ billingPeriodStart: "desc" }, { createdAt: "desc" }],
+            select: { id: true, amountPaidCents: true, refunds: { select: { amountCents: true } } },
+          })
+        : [];
+      for (const invoice of invoices) {
+        if (remaining <= 0) break;
+        const refundable = invoice.amountPaidCents - invoice.refunds.reduce((sum, r) => sum + r.amountCents, 0);
+        const chunk = Math.min(remaining, refundable);
+        if (chunk <= 0) continue;
+        const prepared = await prepareInvoiceRefundInTx(tx, userId, {
+          invoiceId: invoice.id,
+          amountCents: chunk,
+          reason: "BILLING_ERROR",
+          notes: `Never delivered: ${item.label} taken off the agreement.`,
         });
-        creditId = row.id;
-        note = `${item.label}: taken off the agreement, credit ${formatCents(credit.amountCents)} for ${credit.months} billed month(s).`;
-      } else {
+        refundIds.push(prepared.refundId);
+        if (prepared.claim) {
+          refundRuns.push({ refundId: prepared.refundId, claim: prepared.claim, invoiceId: invoice.id, amountCents: chunk });
+          refundedCents += chunk;
+        } else {
+          refundByHandCents += chunk;
+        }
+        remaining -= chunk;
+      }
+      if (owedCents === 0) {
         note = `${item.label}: taken off the agreement before anything was billed for it.`;
+      } else {
+        note = `${item.label}: taken off the agreement. Billed for ${periods} month(s), ${formatCents(owedCents)} with tax.`;
+        if (refundedCents > 0) note += ` ${formatCents(refundedCents)} is being refunded to the card or bank it was paid with.`;
+        if (refundByHandCents > 0) note += ` ${formatCents(refundByHandCents)} was paid another way, so you pay that back by hand.`;
+        if (remaining > 0) note += ` ${formatCents(remaining)} was billed but never paid, so there is nothing to refund for it.`;
       }
     }
-    await tx.pendingDelivery.update({ where: { id: pending.id }, data: { removedAt: now, creditId } });
+    const creditId: string | null = null;
+    await tx.pendingDelivery.update({ where: { id: pending.id }, data: { removedAt: now, creditId, refundedCents, refundByHandCents } });
+
+    // What the monthly bill does about it.
+    let amendmentId: string | null = null;
+    let lineClaim: LineReduceClaim | null = null;
+    let closed: CloseAgreementResult | null = null;
+    const openLeft = await tx.applianceAssignment.count({
+      where: { unassignedAt: null, rentalLine: { agreementId: agreement.id } },
+    });
+    if (agreement.status === "ACTIVE" && openLeft === 0) {
+      // Nothing left on the agreement: end it the normal way (which cancels the whole subscription).
+      const everDelivered = await tx.applianceAssignment.count({
+        where: {
+          rentalLine: { agreementId: agreement.id },
+          NOT: [{ unassignReason: { startsWith: NEVER_DELIVERED_UNASSIGN_REASON } }, { unassignReason: { startsWith: "Replaced by" } }],
+        },
+      });
+      closed = await closeAgreementInTx(tx, userId, agreement.id, everDelivered > 0 ? "ENDED" : "CANCELLED", { endedOn: now });
+      note += " That was the last item, so the agreement was closed.";
+    } else if (item && !agreement.paidInFullInAdvance) {
+      const line = await tx.rentalLine.findUniqueOrThrow({ where: { id: item.rentalLineId }, select: { id: true, monthlyPriceCents: true } });
+      const newPrice = Math.max(0, line.monthlyPriceCents - item.monthlyPriceCents);
+      const effectiveFrom = agreement.billingStartedAt ? billingPeriodContaining(agreement.billingStartedAt, now).end : now;
+      const amendment = await tx.rentalLineAmendment.create({
+        data: {
+          rentalLineId: line.id,
+          pendingDeliveryId: pending.id,
+          previousMonthlyPriceCents: line.monthlyPriceCents,
+          newMonthlyPriceCents: newPrice,
+          effectiveFrom,
+          reason: `${item.label} was never delivered and was taken off the agreement.`,
+          createdByUserId: userId,
+        },
+      });
+      amendmentId = amendment.id;
+      await tx.rentalLine.update({ where: { id: line.id }, data: { monthlyPriceCents: newPrice } });
+      const withSubscription = await tx.rentalAgreement.findUniqueOrThrow({ where: { id: agreement.id }, select: { stripeSubscriptionId: true } });
+      if (withSubscription.stripeSubscriptionId) {
+        lineClaim = await claimLineReductionInTx(tx, { pendingDeliveryId: pending.id, rentalLineId: line.id });
+      }
+      note += ` Monthly price of its line goes from ${formatCents(line.monthlyPriceCents)} to ${formatCents(newPrice)} starting ${formatBusinessDate(effectiveFrom)}.`;
+    }
     await tx.auditLog.create({
       data: {
         userId,
@@ -552,38 +666,79 @@ export async function removeUndeliveredItem(userId: string, pendingDeliveryId: s
         newValue: {
           agreementId: agreement.id,
           applianceId: pending.applianceId,
-          creditId,
+          refundIds,
+          refundedCents,
+          refundByHandCents,
+          amendmentId,
+          lineReductionOperationId: lineClaim && !lineClaim.done ? lineClaim.opId : null,
+          agreementClosed: closed ? closed.updated.status : null,
           note,
-          followUp:
-            "The item's rental line is still on the monthly subscription: adjust the subscription in Stripe or end and re-sign the agreement.",
         },
       },
     });
-    return { creditId };
+    if (amendmentId) {
+      await tx.auditLog.create({
+        data: { userId, action: "agreement.item_cancelled", entityType: "RentalAgreement", entityId: agreement.id, newValue: { pendingDeliveryId: pending.id, amendmentId } },
+      });
+    }
+    return { refundRuns, lineClaim, closed, pendingId: pending.id };
   });
-  if (outcome.creditId) {
+
+  if (outcome.closed) {
     try {
-      await pushLateDeliveryCreditToStripe(outcome.creditId);
+      await runCloseAgreementContinuation(outcome.closed);
     } catch (error) {
-      console.error(`Could not send never-delivered credit ${outcome.creditId} to Stripe yet:`, error);
+      console.error(`Closed agreement after the last item was cancelled but could not finish the Stripe side yet:`, error);
+    }
+  } else if (outcome.lineClaim) {
+    try {
+      await runLineReduction(outcome.pendingId, outcome.lineClaim);
+    } catch (error) {
+      console.error(`Could not lower the subscription line for waiting item ${outcome.pendingId} yet:`, error);
+    }
+  }
+  for (const run of outcome.refundRuns) {
+    try {
+      await runPreparedInvoiceRefund(run);
+    } catch (error) {
+      console.error(`Could not send never-delivered refund ${run.refundId} to Stripe yet:`, error);
     }
   }
 }
 
 /** Items of an agreement still waiting for delivery (for Today and the job page). */
 export async function pendingDeliveriesForJob(jobId: string) {
-  return prisma.pendingDelivery.findMany({
+  const rows = await prisma.pendingDelivery.findMany({
     where: { originalJobId: jobId },
     orderBy: { createdAt: "asc" },
     select: {
       id: true,
+      agreementId: true,
       originalDeliveryDate: true,
       deliveredOn: true,
       removedAt: true,
       creditId: true,
+      refundedCents: true,
+      refundByHandCents: true,
+      substituteJobId: true,
+      substituteAppliance: { select: { assetNumber: true } },
       appliance: { select: { assetNumber: true, applianceType: { select: { name: true } } } },
     },
   });
+  // A cancelled item's change to the monthly subscription is shown as pending until Stripe has the new amount.
+  const removedIds = rows.filter((row) => row.removedAt).map((row) => row.id);
+  const operations = removedIds.length
+    ? await prisma.providerOperation.findMany({
+        where: { idempotencyKey: { in: removedIds.map(lineReduceKey) } },
+        select: { idempotencyKey: true, status: true },
+      })
+    : [];
+  const statusByKey = new Map(operations.map((op) => [op.idempotencyKey, op.status]));
+  return rows.map((row) => ({
+    ...row,
+    // true while a recorded Stripe update for this item has not finished
+    stripeUpdatePending: row.removedAt ? (statusByKey.has(lineReduceKey(row.id)) && statusByKey.get(lineReduceKey(row.id)) !== "SUCCEEDED") : false,
+  }));
 }
 
 /**

@@ -16,7 +16,7 @@ function positiveCents(value: number, label: string): void {
   }
 }
 
-type ClaimedRefund = {
+export type ClaimedRefund = {
   providerOpId: string;
   idempotencyKey: string;
   stripeChargeId: string;
@@ -246,189 +246,63 @@ export async function decideDepositRefund(
   return { providerOpId: prepared.claim.providerOpId };
 }
 
+type RefundInput = {
+  invoiceId: string;
+  amountCents: number;
+  reason: RefundReason;
+  notes?: string;
+  toCredit?: boolean;
+};
+
 /**
- * Record an invoice refund decision. Stripe cash refunds reserve one concrete
- * source charge in the durable provider-operation key. Earlier refund
- * reservations are subtracted from that charge before another refund can use
- * it, so repeated partial refunds cannot overdraw one charge while ignoring
- * another.
+ * The local half of an invoice refund, inside the caller's transaction (the caller has checked who is acting).
+ * Writes the Refund record and, for a Stripe-paid invoice, the durable provider operation. The Stripe call itself is
+ * `runPreparedInvoiceRefund`, which must run after the transaction commits.
  */
-export async function issueInvoiceRefund(
+export async function prepareInvoiceRefundInTx(
+  tx: Prisma.TransactionClient,
   userId: string,
-  input: {
-    invoiceId: string;
-    amountCents: number;
-    reason: RefundReason;
-    notes?: string;
-    toCredit?: boolean;
-  },
-): Promise<{ refundId: string; providerOpId: string | null }> {
-  positiveCents(input.amountCents, "Refund amount");
+  input: RefundInput,
+): Promise<{ refundId: string; claim: ClaimedRefund | null }> {
+  const identity = await tx.invoice.findUnique({
+    where: { id: input.invoiceId },
+    select: { customerId: true },
+  });
+  if (!identity) throw new Error("Couldn't find that invoice.");
 
-  const prepared = await prisma.$transaction(async (tx) => {
-    await assertActiveTeamActor(tx, userId, ["OWNER", "ADMIN"]);
+  await lockCustomerLedger(tx, identity.customerId);
+  const rows = await tx.$queryRaw<
+    Array<{
+      id: string;
+      customerId: string;
+      amountPaidCents: number;
+    }>
+  >`
+    SELECT "id", "customerId", "amountPaidCents"
+    FROM "Invoice"
+    WHERE "id" = ${input.invoiceId}
+    FOR UPDATE
+  `;
+  const invoice = rows[0];
+  if (!invoice || invoice.customerId !== identity.customerId) {
+    throw new Error("Couldn't find that invoice.");
+  }
 
-    const identity = await tx.invoice.findUnique({
-      where: { id: input.invoiceId },
-      select: { customerId: true },
-    });
-    if (!identity) throw new Error("Couldn't find that invoice.");
+  const priorRefunds = await tx.refund.findMany({
+    where: { invoiceId: invoice.id },
+    select: { id: true, amountCents: true, stripeRefundId: true },
+    orderBy: { createdAt: "asc" },
+  });
+  const alreadyRefundedCents = priorRefunds.reduce(
+    (sum, refund) => sum + refund.amountCents,
+    0,
+  );
+  const refundableCents = invoice.amountPaidCents - alreadyRefundedCents;
+  if (input.amountCents > refundableCents) {
+    throw new Error("Refund amount exceeds the invoice amount still eligible for refund.");
+  }
 
-    await lockCustomerLedger(tx, identity.customerId);
-    const rows = await tx.$queryRaw<
-      Array<{
-        id: string;
-        customerId: string;
-        amountPaidCents: number;
-      }>
-    >`
-      SELECT "id", "customerId", "amountPaidCents"
-      FROM "Invoice"
-      WHERE "id" = ${input.invoiceId}
-      FOR UPDATE
-    `;
-    const invoice = rows[0];
-    if (!invoice || invoice.customerId !== identity.customerId) {
-      throw new Error("Couldn't find that invoice.");
-    }
-
-    const priorRefunds = await tx.refund.findMany({
-      where: { invoiceId: invoice.id },
-      select: { id: true, amountCents: true, stripeRefundId: true },
-      orderBy: { createdAt: "asc" },
-    });
-    const alreadyRefundedCents = priorRefunds.reduce(
-      (sum, refund) => sum + refund.amountCents,
-      0,
-    );
-    const refundableCents = invoice.amountPaidCents - alreadyRefundedCents;
-    if (input.amountCents > refundableCents) {
-      throw new Error("Refund amount exceeds the invoice amount still eligible for refund.");
-    }
-
-    if (input.toCredit) {
-      const refund = await tx.refund.create({
-        data: {
-          invoiceId: invoice.id,
-          amountCents: input.amountCents,
-          reason: input.reason,
-          notes: input.notes?.trim() || null,
-          authorizedByUserId: userId,
-        },
-        select: { id: true },
-      });
-      await tx.customerCredit.create({
-        data: {
-          customerId: invoice.customerId,
-          amountCents: input.amountCents,
-          remainingCents: input.amountCents,
-          reason: `Invoice refund — ${input.reason.toLowerCase().replaceAll("_", " ")}`,
-          notes: input.notes?.trim() || null,
-          authorizedByUserId: userId,
-          sourceType: "REFUND_TO_CREDIT",
-          sourceId: refund.id,
-          side: null,
-        },
-      });
-      return { refundId: refund.id, claim: null as ClaimedRefund | null };
-    }
-
-    const stripeAllocations = await tx.payment.findMany({
-      where: {
-        invoiceId: invoice.id,
-        status: "succeeded",
-        receipt: {
-          source: "STRIPE",
-          stripeChargeId: { not: null },
-        },
-      },
-      select: {
-        amountCents: true,
-        receipt: { select: { stripeChargeId: true } },
-      },
-      orderBy: { createdAt: "asc" },
-    });
-
-    let selectedStripeChargeId: string | null = null;
-    if (stripeAllocations.length > 0) {
-      const capacityByCharge = new Map<string, number>();
-      for (const allocation of stripeAllocations) {
-        const chargeId = allocation.receipt?.stripeChargeId;
-        if (!chargeId) continue;
-        capacityByCharge.set(
-          chargeId,
-          (capacityByCharge.get(chargeId) ?? 0) + allocation.amountCents,
-        );
-      }
-
-      const priorIds = priorRefunds.map((refund) => refund.id);
-      const creditBacked = priorIds.length
-        ? await tx.customerCredit.findMany({
-            where: {
-              sourceType: "REFUND_TO_CREDIT",
-              sourceId: { in: priorIds },
-            },
-            select: { sourceId: true },
-          })
-        : [];
-      const creditRefundIds = new Set(
-        creditBacked.map((credit) => credit.sourceId).filter((id): id is string => Boolean(id)),
-      );
-      const cashRefunds = priorRefunds.filter((refund) => !creditRefundIds.has(refund.id));
-
-      const operations = cashRefunds.length
-        ? await tx.providerOperation.findMany({
-            where: {
-              kind: "REFUND_CREATE",
-              subjectType: "Refund",
-              subjectId: { in: cashRefunds.map((refund) => refund.id) },
-            },
-            select: { subjectId: true, idempotencyKey: true },
-          })
-        : [];
-      const operationByRefund = new Map(
-        operations.map((operation) => [operation.subjectId, operation.idempotencyKey]),
-      );
-      const reservedByCharge = new Map<string, number>();
-      const chargeIds = [...capacityByCharge.keys()];
-
-      for (const refund of cashRefunds) {
-        const key = operationByRefund.get(refund.id);
-        const mappedCharge = key
-          ? chargeFromInvoiceRefundProviderKey(refund.id, key)
-          : null;
-        if (mappedCharge) {
-          reservedByCharge.set(
-            mappedCharge,
-            (reservedByCharge.get(mappedCharge) ?? 0) + refund.amountCents,
-          );
-          continue;
-        }
-        if (chargeIds.length === 1) {
-          reservedByCharge.set(
-            chargeIds[0]!,
-            (reservedByCharge.get(chargeIds[0]!) ?? 0) + refund.amountCents,
-          );
-          continue;
-        }
-        throw new Error(
-          "Earlier refunds on this multi-charge invoice do not identify their source charge. Reconcile them before issuing another automatic Stripe refund.",
-        );
-      }
-
-      selectedStripeChargeId = chargeIds.find((chargeId) => {
-        const capacity = capacityByCharge.get(chargeId) ?? 0;
-        const reserved = reservedByCharge.get(chargeId) ?? 0;
-        return capacity - reserved >= input.amountCents;
-      }) ?? null;
-
-      if (!selectedStripeChargeId) {
-        throw new Error(
-          "No single Stripe charge has enough unreserved refundable amount for this refund.",
-        );
-      }
-    }
-
+  if (input.toCredit) {
     const refund = await tx.refund.create({
       data: {
         invoiceId: invoice.id,
@@ -439,49 +313,201 @@ export async function issueInvoiceRefund(
       },
       select: { id: true },
     });
+    await tx.customerCredit.create({
+      data: {
+        customerId: invoice.customerId,
+        amountCents: input.amountCents,
+        remainingCents: input.amountCents,
+        reason: `Invoice refund — ${input.reason.toLowerCase().replaceAll("_", " ")}`,
+        notes: input.notes?.trim() || null,
+        authorizedByUserId: userId,
+        sourceType: "REFUND_TO_CREDIT",
+        sourceId: refund.id,
+        side: null,
+      },
+    });
+    return { refundId: refund.id, claim: null as ClaimedRefund | null };
+  }
+
+  const stripeAllocations = await tx.payment.findMany({
+    where: {
+      invoiceId: invoice.id,
+      status: "succeeded",
+      receipt: {
+        source: "STRIPE",
+        stripeChargeId: { not: null },
+      },
+    },
+    select: {
+      amountCents: true,
+      receipt: { select: { stripeChargeId: true } },
+    },
+    orderBy: { createdAt: "asc" },
+  });
+
+  let selectedStripeChargeId: string | null = null;
+  if (stripeAllocations.length > 0) {
+    const capacityByCharge = new Map<string, number>();
+    for (const allocation of stripeAllocations) {
+      const chargeId = allocation.receipt?.stripeChargeId;
+      if (!chargeId) continue;
+      capacityByCharge.set(
+        chargeId,
+        (capacityByCharge.get(chargeId) ?? 0) + allocation.amountCents,
+      );
+    }
+
+    const priorIds = priorRefunds.map((refund) => refund.id);
+    const creditBacked = priorIds.length
+      ? await tx.customerCredit.findMany({
+          where: {
+            sourceType: "REFUND_TO_CREDIT",
+            sourceId: { in: priorIds },
+          },
+          select: { sourceId: true },
+        })
+      : [];
+    const creditRefundIds = new Set(
+      creditBacked.map((credit) => credit.sourceId).filter((id): id is string => Boolean(id)),
+    );
+    const cashRefunds = priorRefunds.filter((refund) => !creditRefundIds.has(refund.id));
+
+    const operations = cashRefunds.length
+      ? await tx.providerOperation.findMany({
+          where: {
+            kind: "REFUND_CREATE",
+            subjectType: "Refund",
+            subjectId: { in: cashRefunds.map((refund) => refund.id) },
+          },
+          select: { subjectId: true, idempotencyKey: true },
+        })
+      : [];
+    const operationByRefund = new Map(
+      operations.map((operation) => [operation.subjectId, operation.idempotencyKey]),
+    );
+    const reservedByCharge = new Map<string, number>();
+    const chargeIds = [...capacityByCharge.keys()];
+
+    for (const refund of cashRefunds) {
+      const key = operationByRefund.get(refund.id);
+      const mappedCharge = key
+        ? chargeFromInvoiceRefundProviderKey(refund.id, key)
+        : null;
+      if (mappedCharge) {
+        reservedByCharge.set(
+          mappedCharge,
+          (reservedByCharge.get(mappedCharge) ?? 0) + refund.amountCents,
+        );
+        continue;
+      }
+      if (chargeIds.length === 1) {
+        reservedByCharge.set(
+          chargeIds[0]!,
+          (reservedByCharge.get(chargeIds[0]!) ?? 0) + refund.amountCents,
+        );
+        continue;
+      }
+      throw new Error(
+        "Earlier refunds on this multi-charge invoice do not identify their source charge. Reconcile them before issuing another automatic Stripe refund.",
+      );
+    }
+
+    selectedStripeChargeId = chargeIds.find((chargeId) => {
+      const capacity = capacityByCharge.get(chargeId) ?? 0;
+      const reserved = reservedByCharge.get(chargeId) ?? 0;
+      return capacity - reserved >= input.amountCents;
+    }) ?? null;
 
     if (!selectedStripeChargeId) {
-      return { refundId: refund.id, claim: null as ClaimedRefund | null };
+      throw new Error(
+        "No single Stripe charge has enough unreserved refundable amount for this refund.",
+      );
     }
+  }
 
-    const claim = await claimProviderOperation(tx, {
-      kind: "REFUND_CREATE",
-      subjectType: "Refund",
-      subjectId: refund.id,
-      idempotencyKey: invoiceRefundProviderKey(refund.id, selectedStripeChargeId),
+  const refund = await tx.refund.create({
+    data: {
+      invoiceId: invoice.id,
+      amountCents: input.amountCents,
+      reason: input.reason,
+      notes: input.notes?.trim() || null,
+      authorizedByUserId: userId,
+    },
+    select: { id: true },
+  });
+
+  if (!selectedStripeChargeId) {
+    return { refundId: refund.id, claim: null as ClaimedRefund | null };
+  }
+
+  const claim = await claimProviderOperation(tx, {
+    kind: "REFUND_CREATE",
+    subjectType: "Refund",
+    subjectId: refund.id,
+    idempotencyKey: invoiceRefundProviderKey(refund.id, selectedStripeChargeId),
+  });
+  if (claim.done) {
+    await tx.refund.update({
+      where: { id: refund.id },
+      data: { stripeRefundId: claim.providerObjectId },
     });
-    if (claim.done) {
-      await tx.refund.update({
-        where: { id: refund.id },
-        data: { stripeRefundId: claim.providerObjectId },
-      });
-      return { refundId: refund.id, claim: null as ClaimedRefund | null };
-    }
+    return { refundId: refund.id, claim: null as ClaimedRefund | null };
+  }
 
-    return {
-      refundId: refund.id,
-      claim: {
-        providerOpId: claim.opId,
-        idempotencyKey: claim.idempotencyKey,
-        stripeChargeId: selectedStripeChargeId,
-      },
-    };
+  return {
+    refundId: refund.id,
+    claim: {
+      providerOpId: claim.opId,
+      idempotencyKey: claim.idempotencyKey,
+      stripeChargeId: selectedStripeChargeId,
+    },
+  };
+}
+
+/** The Stripe half of a prepared refund. Never throws for a provider problem: the outcome is recorded and retried. */
+export async function runPreparedInvoiceRefund(prepared: {
+  refundId: string;
+  claim: ClaimedRefund;
+  invoiceId: string;
+  amountCents: number;
+}): Promise<void> {
+  await executeStripeRefund({
+    claim: prepared.claim,
+    amountCents: prepared.amountCents,
+    metadata: { invoiceId: prepared.invoiceId, refundId: prepared.refundId },
+    onSuccess: async (tx, stripeRefundId) => {
+      await tx.refund.update({ where: { id: prepared.refundId }, data: { stripeRefundId } });
+    },
+  });
+}
+
+/**
+ * Record an invoice refund decision. Stripe cash refunds reserve one concrete
+ * source charge in the durable provider-operation key. Earlier refund
+ * reservations are subtracted from that charge before another refund can use
+ * it, so repeated partial refunds cannot overdraw one charge while ignoring
+ * another.
+ */
+export async function issueInvoiceRefund(
+  userId: string,
+  input: RefundInput,
+): Promise<{ refundId: string; providerOpId: string | null }> {
+  positiveCents(input.amountCents, "Refund amount");
+
+  const prepared = await prisma.$transaction(async (tx) => {
+    await assertActiveTeamActor(tx, userId, ["OWNER", "ADMIN"]);
+    return prepareInvoiceRefundInTx(tx, userId, input);
   });
 
   if (!prepared.claim) {
     return { refundId: prepared.refundId, providerOpId: null };
   }
 
-  await executeStripeRefund({
+  await runPreparedInvoiceRefund({
+    refundId: prepared.refundId,
     claim: prepared.claim,
+    invoiceId: input.invoiceId,
     amountCents: input.amountCents,
-    metadata: { invoiceId: input.invoiceId, refundId: prepared.refundId },
-    onSuccess: async (tx, stripeRefundId) => {
-      await tx.refund.update({
-        where: { id: prepared.refundId },
-        data: { stripeRefundId },
-      });
-    },
   });
 
   return {
