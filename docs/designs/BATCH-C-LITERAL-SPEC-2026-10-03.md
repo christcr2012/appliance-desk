@@ -900,6 +900,8 @@ Tests to add: see section 10 (S1–S6).
 
 ## Section 9 — C-09 pickup/return billing: interface only (BLOCKED)
 
+**Owner answer (Chris, 2026-10-03, IN-24 waiver):** the pickup job records a reason, `CUSTOMER` (default) or `COMPANY`. Only OWNER/ADMIN may record `COMPANY`, with a required note. Waived days run from the agreed pickup date to the actual pickup date; an owner may enter fewer days when only part of the delay was the company's. The statement keeps the late-return line and adds a matching "Waived – our delay" line, with an audit record. This fills the `cause` input below (`COMPANY` is now a real value instead of always `UNDECIDED`); it is still **built only after the shared billing contract exists**.
+
 Batch C needs one function from the shared billing contract and may not decide anything else:
 ```ts
 export interface SharedBillingEndContract {
