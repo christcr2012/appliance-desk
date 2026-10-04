@@ -619,38 +619,72 @@ export async function getJobCompletionScope(job: {
 }
 
 const MAX_HANDOFF_ATTEMPTS = 5;
+const BLOCKED_HANDOFF_PREFIX = "BLOCKED:";
 
 /**
  * Runs durable post-commit provider work. A handoff has one exclusive lease at
  * a time; stale leases can be recovered, and a provider command must return an
  * explicit DONE outcome before the handoff is finalized.
+ *
+ * Normal retryable/recovery work always gets the first seats in a sweep. Rows
+ * blocked on a customer prerequisite only fill spare capacity, so a large set
+ * of old blocked rentals can never starve a newer handoff left behind by a
+ * post-commit crash. Blocked rows are ordered by updatedAt so each retry moves
+ * behind its peers while preserving its retry budget.
  */
 async function runHandoffs(scope: { ids?: string[]; limit?: number }): Promise<{ done: number; failed: number }> {
   const staleBefore = new Date(Date.now() - PROVIDER_OPERATION_LEASE_MS);
-  const rows = await prisma.jobBillingHandoff.findMany({
+  const limit = scope.limit ?? 50;
+  const idScope = scope.ids ? { id: { in: scope.ids } } : {};
+
+  const priorityRows = await prisma.jobBillingHandoff.findMany({
     where: {
-      ...(scope.ids ? { id: { in: scope.ids } } : {}),
-      attempts: { lt: MAX_HANDOFF_ATTEMPTS },
+      ...idScope,
       OR: [
-        { status: { in: ["PENDING", "FAILED"] } },
+        { status: "PENDING", attempts: { lt: MAX_HANDOFF_ATTEMPTS } },
+        { status: "FAILED", attempts: { lt: MAX_HANDOFF_ATTEMPTS }, lastError: null },
+        {
+          status: "FAILED",
+          attempts: { lt: MAX_HANDOFF_ATTEMPTS },
+          lastError: { not: null },
+          NOT: { lastError: { startsWith: BLOCKED_HANDOFF_PREFIX } },
+        },
+        // A stale lease is recovery work, not a fresh retry. It must remain
+        // reclaimable even when the dead worker had already claimed attempt 5.
         { status: "IN_FLIGHT", claimedAt: { lte: staleBefore } },
       ],
     },
     orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-    take: scope.limit ?? 50,
+    take: limit,
   });
+
+  const remaining = Math.max(0, limit - priorityRows.length);
+  const blockedRows =
+    remaining > 0
+      ? await prisma.jobBillingHandoff.findMany({
+          where: {
+            ...idScope,
+            status: "FAILED",
+            lastError: { startsWith: BLOCKED_HANDOFF_PREFIX },
+          },
+          orderBy: [{ updatedAt: "asc" }, { createdAt: "asc" }, { id: "asc" }],
+          take: remaining,
+        })
+      : [];
+  const rows = [...priorityRows, ...blockedRows];
+
   let done = 0;
   let failed = 0;
   for (const row of rows) {
     const claimedAt = new Date();
+    const blocked = row.status === "FAILED" && row.lastError?.startsWith(BLOCKED_HANDOFF_PREFIX) === true;
     const claim = await prisma.jobBillingHandoff.updateMany({
       where: {
         id: row.id,
         attempts: row.attempts,
-        OR: [
-          { status: { in: ["PENDING", "FAILED"] } },
-          { status: "IN_FLIGHT", claimedAt: { lte: staleBefore } },
-        ],
+        status: row.status,
+        ...(row.status === "IN_FLIGHT" ? { claimedAt: { lte: staleBefore } } : {}),
+        ...(row.status === "FAILED" ? { lastError: row.lastError } : {}),
       },
       data: {
         status: "IN_FLIGHT",
