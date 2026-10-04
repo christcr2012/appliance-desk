@@ -14,8 +14,10 @@ test("staff shared route completes a swap and follows up only its incoming unit"
   const assets = ["BROKEN", "INCOMING", "OTHER"].map(kind => `${kind}-${tag}`);
   try {
     const type = await prisma.applianceType.findFirstOrThrow();
+    await prisma.user.create({ data: { id: `fu-user-${tag}`, email: `fu-${tag}@example.test`, name: "Follow Up Customer", role: "CUSTOMER", emailVerified: true } });
+    await prisma.customer.create({ data: { id: `fu-customer-${tag}`, userId: `fu-user-${tag}`, referralCode: `F${tag.replaceAll("-", "").slice(0, 18)}` } });
     await prisma.appliance.createMany({ data: ids.map((id, i) => ({ id, assetNumber: assets[i], applianceTypeId: type.id, status: i === 0 ? "MAINTENANCE" : "RESERVED", acquisitionCostCents: 932187 })) });
-    await prisma.job.create({ data: { id: jobId, type: "SWAP", status: "IN_PROGRESS", scheduledAt: new Date(), partsCostCents: 8675309, appliances: { create: ids.slice(0, 2).map((applianceId, i) => ({ applianceId, role: i === 1 ? "REPLACEMENT" as const : "PRIMARY" as const })) } } });
+    await prisma.job.create({ data: { id: jobId, type: "SWAP", status: "IN_PROGRESS", customerId: `fu-customer-${tag}`, scheduledAt: new Date(), partsCostCents: 8675309, appliances: { create: ids.slice(0, 2).map((applianceId, i) => ({ applianceId, role: i === 1 ? "REPLACEMENT" as const : "PRIMARY" as const })) } } });
     await prisma.auditLog.create({ data: { action: "appliance.unit.status", entityType: "Appliance", entityId: ids[1], newValue: { jobId, reason: "Swap started", status: "RESERVED" } } });
     await page.setViewportSize({ width: 360, height: 900 });
     await page.goto("/desk/driver");
@@ -44,5 +46,7 @@ test("staff shared route completes a swap and follows up only its incoming unit"
     await prisma.jobAppliance.deleteMany({ where: { jobId } });
     await prisma.job.deleteMany({ where: { id: jobId } });
     await prisma.appliance.deleteMany({ where: { id: { in: ids } } });
+    await prisma.customer.deleteMany({ where: { id: `fu-customer-${tag}` } });
+    await prisma.user.deleteMany({ where: { id: `fu-user-${tag}` } });
   }
 });
