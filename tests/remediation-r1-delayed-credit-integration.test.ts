@@ -103,7 +103,7 @@ describe.skipIf(!enabled)("Remediation R1 delayed-provider late-delivery credit 
     await prisma.user.deleteMany({ where: { id: { in: [ownerId, userId] } } });
   });
 
-  it("credits missing days from first delivery even before Stripe subscription recovery populates billingStartedAt", async () => {
+  it("does not credit days that Stripe never billed while preserving the immutable first-delivery fact", async () => {
     const outcome = await prisma.$transaction((tx) =>
       recordLateDeliveries(tx, {
         userId: ownerId,
@@ -114,13 +114,16 @@ describe.skipIf(!enabled)("Remediation R1 delayed-provider late-delivery credit 
       }),
     );
 
-    expect(outcome.creditIds).toHaveLength(1);
-    expect(outcome.creditCents).toBeGreaterThan(0);
+    // The clean R1 recovery deliberately does not backdate Stripe subscriptions.
+    // Until provider billing has actually started, these missing days were not charged,
+    // so issuing a customer credit here would over-credit the account.
+    expect(outcome.creditIds).toHaveLength(0);
+    expect(outcome.creditCents).toBe(0);
     const agreement = await prisma.rentalAgreement.findUniqueOrThrow({ where: { id: agreementId } });
     expect(agreement.billingStartedAt).toBeNull();
     expect(agreement.firstDeliveredOn?.getTime()).toBe(businessDateFromKey("2026-10-01")!.getTime());
     const pending = await prisma.pendingDelivery.findUniqueOrThrow({ where: { id: pendingId } });
     expect(pending.deliveredOn?.getTime()).toBe(businessDateFromKey("2026-10-11")!.getTime());
-    expect(pending.creditId).toBe(outcome.creditIds[0]);
+    expect(pending.creditId).toBeNull();
   });
 });
