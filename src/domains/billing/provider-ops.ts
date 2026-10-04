@@ -172,6 +172,32 @@ export async function claimProviderOperation(
   return { done: false, opId: existing.id, idempotencyKey: input.idempotencyKey };
 }
 
+async function finalizeExhaustedBalanceCreditHandoff(
+  tx: Prisma.TransactionClient,
+  operation: Pick<ProviderOperationRow, "kind" | "subjectType" | "subjectId">,
+  completedAt: Date,
+): Promise<void> {
+  if (operation.kind !== "BALANCE_CREDIT" || operation.subjectType !== "CustomerCredit") return;
+
+  // A normal handoff worker owns IN_FLIGHT and finalizes itself. This recovery
+  // path only closes rows that already exhausted their five ordinary RETRY
+  // attempts and were later proven successful by provider reconciliation.
+  await tx.jobBillingHandoff.updateMany({
+    where: {
+      kind: "PUSH_CREDIT",
+      subjectId: operation.subjectId,
+      status: "FAILED",
+      attempts: { gte: 5 },
+    },
+    data: {
+      status: "DONE",
+      claimedAt: null,
+      lastError: null,
+      doneAt: completedAt,
+    },
+  });
+}
+
 export async function completeProviderOperation(
   tx: Prisma.TransactionClient,
   opId: string,
@@ -181,8 +207,16 @@ export async function completeProviderOperation(
     | { status: "UNKNOWN"; error?: unknown }
     | { status: "DRIFT"; providerObjectId: string; note: string },
 ): Promise<void> {
-  const locked = await tx.$queryRaw<Array<{ status: ProviderOpStatus; providerObjectId: string | null }>>`
-    SELECT "status", "providerObjectId"
+  const locked = await tx.$queryRaw<
+    Array<{
+      status: ProviderOpStatus;
+      providerObjectId: string | null;
+      kind: ProviderOpKind;
+      subjectType: string;
+      subjectId: string;
+    }>
+  >`
+    SELECT "status", "providerObjectId", "kind", "subjectType", "subjectId"
     FROM "ProviderOperation"
     WHERE "id" = ${opId}
     FOR UPDATE
@@ -194,7 +228,10 @@ export async function completeProviderOperation(
 
   if (current.status === "DRIFT") return;
   if (current.status === "SUCCEEDED") {
-    if (result.status === "SUCCEEDED" && current.providerObjectId === result.providerObjectId) return;
+    if (result.status === "SUCCEEDED" && current.providerObjectId === result.providerObjectId) {
+      await finalizeExhaustedBalanceCreditHandoff(tx, current, new Date());
+      return;
+    }
     if (result.status !== "DRIFT" && result.status !== "SUCCEEDED") return;
     if (result.status === "SUCCEEDED") {
       await tx.providerOperation.update({
@@ -222,6 +259,7 @@ export async function completeProviderOperation(
         completedAt,
       },
     });
+    await finalizeExhaustedBalanceCreditHandoff(tx, current, completedAt);
     return;
   }
 
