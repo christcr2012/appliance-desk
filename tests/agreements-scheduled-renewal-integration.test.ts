@@ -13,7 +13,7 @@ vi.mock("@/lib/stripe", () => ({
 
 import { prisma } from "@/lib/prisma";
 import { finishPendingProviderOperations } from "@/domains/billing/reconciliation";
-import { termSyncKey, cancelAtSecondsFor } from "@/domains/billing/subscription-term";
+import { cancelAtSecondsFor } from "@/domains/billing/subscription-term";
 
 const cancelAtFor = (endDate: Date) => cancelAtSecondsFor({ termMonths: 12, endDate });
 import { endAgreement, cancelAgreement, endAgreementOnAgreedDate } from "@/domains/agreements";
@@ -93,6 +93,7 @@ describe.skipIf(!enabled)("a signed renewal starts on its start date and hands e
       },
     });
     agreementIds.push(old.id, renewal.id);
+    if (old.stripeSubscriptionId) stripeMock.state.set(old.stripeSubscriptionId, cancelAtFor(termEnd));
     const washerLine = old.lines.find((l) => l.label === "Washer")!;
     const appliance = await prisma.appliance.create({
       data: { assetNumber: `RS-${tag}-${n}`, applianceTypeId: typeId, status: "RENTED" },
@@ -279,7 +280,7 @@ describe.skipIf(!enabled)("a signed renewal starts on its start date and hands e
     const [subId, params] = stripeMock.update.mock.calls[0]!;
     expect(subId).toMatch(/^sub_/);
     expect(params.cancel_at).toBe(cancelAtFor(new Date("2028-11-07T06:59:59Z")));
-    expect(await prisma.providerOperation.count({ where: { idempotencyKey: termSyncKey(renewal.id, "extend"), status: "SUCCEEDED" } })).toBe(1);
+    expect(await prisma.providerOperation.count({ where: { subjectType: "StripeSubscription", subjectId: subId, status: "SUCCEEDED" } })).toBe(1);
   });
 
   it("a month-to-month renewal removes the subscription's end date", async () => {
@@ -297,11 +298,12 @@ describe.skipIf(!enabled)("a signed renewal starts on its start date and hands e
     expect((await get(old.id)).stripeSubscriptionId).not.toBeNull();
     expect((await get(renewal.id)).status).toBe("SCHEDULED");
     // The reconciliation pass reads Stripe, sees the old end date, and retries the change.
-    stripeMock.retrieve.mockResolvedValue({ id: "x", cancel_at: cancelAtFor(termEnd) });
     await finishPendingProviderOperations(200);
     expect(
-      (await prisma.providerOperation.findUniqueOrThrow({ where: { idempotencyKey: termSyncKey(renewal.id, "extend") } })).status,
-    ).toBe("SUCCEEDED");
+      await prisma.providerOperation.count({
+        where: { subjectType: "StripeSubscription", subjectId: (await get(old.id)).stripeSubscriptionId!, status: "SUCCEEDED" },
+      }),
+    ).toBe(1);
     expect(await startRenewalIfDue(renewal.id, onStart)).toMatchObject({ started: true });
   });
 
