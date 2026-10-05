@@ -48,6 +48,7 @@ const DESK_PAGES = [
   "/desk/reports",
   "/desk/growth",
   "/desk/settings",
+  "/desk/settings/policies",
 ];
 
 const ACCOUNT_PAGES = [
