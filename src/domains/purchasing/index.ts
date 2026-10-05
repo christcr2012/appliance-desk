@@ -365,6 +365,9 @@ export async function recordPartUsage(
       const job = await tx.job.findUnique({ where: { id: options.jobId }, select: { id: true } });
       if (!job) throw new Error("Couldn't find that job.");
     }
+    // R15: take the part lock BEFORE reading the last known cost and keep it through the ledger write.
+    // A receipt that committed first is then visible to this cost; one that arrives later waits.
+    await lockPartRecords(tx, [partRecordId]);
     const cost = await lastKnownPurchaseCostCents(tx, partRecordId);
     await applyPartMovementsInTx(tx, userId, options.operationKey, [
       { partRecordId, kind: "USAGE", quantityDelta: -quantity, unitCostCents: cost, jobId: options.jobId ?? undefined, reason: "Used on a repair" },
