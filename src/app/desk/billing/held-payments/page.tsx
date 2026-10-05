@@ -25,8 +25,8 @@ export default async function HeldPaymentsPage() {
         </Link>
       </p>
 
-      <div className="mb-6 rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-800">
-        <p className="font-medium text-gray-900">How this works</p>
+      <div className="mb-6 rounded-lg border border-line-strong bg-white px-4 py-3 text-sm text-ink">
+        <p className="font-medium text-ink">How this works</p>
         <p className="mt-1">
           Each payment below is real money that is not counted toward anything yet. For each one, pick what should
           happen: mark the invoice paid (the customer did owe it), keep it as credit for their next bills, or refund
@@ -36,7 +36,7 @@ export default async function HeldPaymentsPage() {
       </div>
 
       {held.length === 0 ? (
-        <div className="rounded-lg border border-gray-200 bg-white p-6 text-sm text-gray-700">
+        <div className="rounded-lg border border-line bg-white p-6 text-sm text-ink-soft">
           No payments are waiting for a decision.
         </div>
       ) : (
@@ -60,10 +60,10 @@ export default async function HeldPaymentsPage() {
 
       {waiting.length > 0 && (
         <section className="mt-8" aria-labelledby="waiting-refunds">
-          <h2 id="waiting-refunds" className="text-base font-semibold text-gray-900">
+          <h2 id="waiting-refunds" className="text-base font-semibold text-ink">
             Refunds waiting on the card processor
           </h2>
-          <p className="mt-1 text-sm text-gray-700">
+          <p className="mt-1 text-sm text-ink-soft">
             You decided to refund these, but the card processor has not confirmed them yet. They are retried
             automatically. If one stays here for more than a day, check{" "}
             <Link href="/desk/billing/reconciliation" className="font-medium text-brand hover:underline">
@@ -71,9 +71,9 @@ export default async function HeldPaymentsPage() {
             </Link>
             .
           </p>
-          <ul className="mt-3 space-y-2 text-sm text-gray-800">
+          <ul className="mt-3 space-y-2 text-sm text-ink">
             {waiting.map((w) => (
-              <li key={w.id} className="rounded-md border border-gray-200 bg-white px-3 py-2">
+              <li key={w.id} className="rounded-md border border-line bg-white px-3 py-2">
                 {formatCents(w.amountCents)} to {w.customerName} (invoice #{w.invoiceNumber})
               </li>
             ))}
