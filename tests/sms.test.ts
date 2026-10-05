@@ -1,14 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-
-// src/lib/sms.ts — guarded exactly like src/lib/email.ts's sendEmail:
-// no-ops safely (never throws, never hangs on a network call) when
-// Twilio isn't fully configured, which is the real state right now —
-// Chris has an account (TWILIO_ACCOUNT_SID/TWILIO_AUTH_TOKEN are set in
-// Vercel) but can't buy a phone number (TWILIO_PHONE_NUMBER) until his
-// LLC's business-texting registration is done.
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const messagesCreate = vi.fn();
-
 vi.mock("twilio", () => ({
   default: vi.fn(() => ({ messages: { create: (...args: unknown[]) => messagesCreate(...args) } })),
 }));
@@ -19,44 +11,48 @@ describe("sendSms", () => {
   beforeEach(() => {
     messagesCreate.mockReset().mockResolvedValue({ sid: "SM123" });
     process.env = { ...ORIGINAL_ENV };
+    delete process.env.VERCEL;
+    delete process.env.VERCEL_ENV;
+    delete process.env.NEXT_PUBLIC_APP_URL;
   });
 
-  it("no-ops and returns { sent: false } when Twilio isn't fully configured", async () => {
+  it("returns NOT_ATTEMPTED when Twilio is not fully configured", async () => {
     delete process.env.TWILIO_ACCOUNT_SID;
     delete process.env.TWILIO_AUTH_TOKEN;
     delete process.env.TWILIO_PHONE_NUMBER;
     vi.resetModules();
     const { sendSms } = await import("@/lib/sms");
-
-    const result = await sendSms({ to: "+13035550100", body: "hello" });
-
-    expect(result).toEqual({ sent: false });
+    expect(await sendSms({ to: "+13035550100", body: "hello" })).toEqual({
+      sent: false,
+      outcome: "NOT_ATTEMPTED",
+    });
     expect(messagesCreate).not.toHaveBeenCalled();
   });
 
-  it("no-ops when the account/token are set but there's no phone number yet (today's real state)", async () => {
+  it("returns NOT_ATTEMPTED when a sending number is still missing", async () => {
     process.env.TWILIO_ACCOUNT_SID = "ACxxx";
     process.env.TWILIO_AUTH_TOKEN = "tokenxxx";
     delete process.env.TWILIO_PHONE_NUMBER;
     vi.resetModules();
     const { sendSms } = await import("@/lib/sms");
-
-    const result = await sendSms({ to: "+13035550100", body: "hello" });
-
-    expect(result).toEqual({ sent: false });
+    expect(await sendSms({ to: "+13035550100", body: "hello" })).toEqual({
+      sent: false,
+      outcome: "NOT_ATTEMPTED",
+    });
     expect(messagesCreate).not.toHaveBeenCalled();
   });
 
-  it("sends via Twilio once fully configured", async () => {
+  it("returns the Twilio SID when accepted", async () => {
     process.env.TWILIO_ACCOUNT_SID = "ACxxx";
     process.env.TWILIO_AUTH_TOKEN = "tokenxxx";
     process.env.TWILIO_PHONE_NUMBER = "+13035550199";
     vi.resetModules();
     const { sendSms } = await import("@/lib/sms");
-
-    const result = await sendSms({ to: "+13035550100", body: "hello" });
-
-    expect(result).toEqual({ sent: true });
+    expect(await sendSms({ to: "+13035550100", body: "hello" })).toEqual({
+      sent: true,
+      outcome: "SENT",
+      providerMessageId: "SM123",
+    });
     expect(messagesCreate).toHaveBeenCalledWith({
       to: "+13035550100",
       from: "+13035550199",
@@ -64,16 +60,42 @@ describe("sendSms", () => {
     });
   });
 
-  it("logs and returns { sent: false } rather than throwing when Twilio itself fails", async () => {
+  it("registers the verified status-callback route when the public URL is configured", async () => {
     process.env.TWILIO_ACCOUNT_SID = "ACxxx";
     process.env.TWILIO_AUTH_TOKEN = "tokenxxx";
     process.env.TWILIO_PHONE_NUMBER = "+13035550199";
-    messagesCreate.mockRejectedValue(new Error("Twilio is down"));
+    process.env.NEXT_PUBLIC_APP_URL = "https://example.test/";
     vi.resetModules();
     const { sendSms } = await import("@/lib/sms");
+    await sendSms({ to: "+13035550100", body: "hello" });
+    expect(messagesCreate).toHaveBeenCalledWith(expect.objectContaining({
+      statusCallback: "https://example.test/api/webhooks/twilio",
+    }));
+  });
 
-    const result = await sendSms({ to: "+13035550100", body: "hello" });
+  it("classifies clear provider 4xx errors as REJECTED", async () => {
+    process.env.TWILIO_ACCOUNT_SID = "ACxxx";
+    process.env.TWILIO_AUTH_TOKEN = "tokenxxx";
+    process.env.TWILIO_PHONE_NUMBER = "+13035550199";
+    messagesCreate.mockRejectedValue(Object.assign(new Error("bad recipient"), { status: 400 }));
+    vi.resetModules();
+    const { sendSms } = await import("@/lib/sms");
+    expect(await sendSms({ to: "+13035550100", body: "hello" })).toEqual({
+      sent: false,
+      outcome: "REJECTED",
+    });
+  });
 
-    expect(result).toEqual({ sent: false });
+  it("classifies timeout/network/provider-server ambiguity as UNKNOWN", async () => {
+    process.env.TWILIO_ACCOUNT_SID = "ACxxx";
+    process.env.TWILIO_AUTH_TOKEN = "tokenxxx";
+    process.env.TWILIO_PHONE_NUMBER = "+13035550199";
+    messagesCreate.mockRejectedValue(new Error("connection reset"));
+    vi.resetModules();
+    const { sendSms } = await import("@/lib/sms");
+    expect(await sendSms({ to: "+13035550100", body: "hello" })).toEqual({
+      sent: false,
+      outcome: "UNKNOWN",
+    });
   });
 });

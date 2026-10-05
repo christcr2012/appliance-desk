@@ -42,24 +42,35 @@ describe("updateSmsPreference", () => {
     consentRecordCreate.mockReset().mockResolvedValue({});
   });
 
-  it("opts in using the phone number already on file, and records consent", async () => {
+  it("opts in using the phone number already on file, canonicalizes it, and records consent", async () => {
     const result = await updateSmsPreference("user-1", { optedIn: true, phone: null });
 
-    expect(result.phone).toBe("3035550100");
+    expect(result.phone).toBe("+13035550100");
     expect(result.smsOptInAt).toBeInstanceOf(Date);
+    expect(customerUpdate).toHaveBeenCalledWith({
+      where: { id: "cust-1" },
+      data: { phone: "+13035550100", smsOptInAt: expect.any(Date) },
+    });
     expect(consentRecordCreate).toHaveBeenCalledWith({
-      data: { customerId: "cust-1", kind: "sms_opt_in", details: { optedIn: true } },
+      data: {
+        customerId: "cust-1",
+        kind: "sms_opt_in",
+        details: { optedIn: true, phone: "+13035550100" },
+      },
     });
   });
 
-  it("opts in using a freshly-entered phone number, overriding the one on file", async () => {
-    const result = await updateSmsPreference("user-1", { optedIn: true, phone: "7205551234" });
+  it("opts in using a freshly-entered formatted phone number and stores E.164", async () => {
+    const result = await updateSmsPreference("user-1", {
+      optedIn: true,
+      phone: "(720) 555-1234",
+    });
 
     expect(customerUpdate).toHaveBeenCalledWith({
       where: { id: "cust-1" },
-      data: { phone: "7205551234", smsOptInAt: expect.any(Date) },
+      data: { phone: "+17205551234", smsOptInAt: expect.any(Date) },
     });
-    expect(result.phone).toBe("7205551234");
+    expect(result.phone).toBe("+17205551234");
   });
 
   it("refuses to opt in with no phone number on file and none given", async () => {
@@ -71,12 +82,23 @@ describe("updateSmsPreference", () => {
     expect(customerUpdate).not.toHaveBeenCalled();
   });
 
+  it("refuses an invalid phone before recording opt-in", async () => {
+    await expect(
+      updateSmsPreference("user-1", { optedIn: true, phone: "555" }),
+    ).rejects.toThrow(/valid.*phone/i);
+    expect(customerUpdate).not.toHaveBeenCalled();
+  });
+
   it("opting out clears smsOptInAt and still records the consent change", async () => {
     const result = await updateSmsPreference("user-1", { optedIn: false, phone: null });
 
     expect(result.smsOptInAt).toBeNull();
     expect(consentRecordCreate).toHaveBeenCalledWith({
-      data: { customerId: "cust-1", kind: "sms_opt_in", details: { optedIn: false } },
+      data: {
+        customerId: "cust-1",
+        kind: "sms_opt_in",
+        details: { optedIn: false, phone: "3035550100" },
+      },
     });
   });
 
@@ -86,5 +108,8 @@ describe("updateSmsPreference", () => {
     await expect(
       updateSmsPreference("user-1", { optedIn: false, phone: null }),
     ).resolves.not.toThrow();
+    expect(consentRecordCreate).toHaveBeenCalledWith({
+      data: { customerId: "cust-1", kind: "sms_opt_in", details: { optedIn: false } },
+    });
   });
 });

@@ -1,21 +1,6 @@
 import { prisma } from "@/lib/prisma";
-import { sendSms } from "@/lib/sms";
-
-// ---------------------------------------------------------------------------
-// SMS day-of job reminders (Task #71, docs/DECISIONS.md 2026-09-28 —
-// the growth brainstorm's own example of what SMS is actually good for:
-// "your delivery window is today"). Runs from a daily Vercel Cron job
-// (src/app/api/cron/job-reminders, vercel.json).
-//
-// Only reaches an opted-in customer with a phone number on file
-// (Customer.smsOptInAt — see src/domains/portal's updateSmsPreference)
-// — and, until Chris has a real Twilio phone number (waiting on his
-// LLC's business texting registration), sendSms no-ops safely
-// regardless, so this is fully wired up and dormant rather than half-
-// built. Job.dayOfReminderSentAt stops the same job from being texted
-// twice if the cron runs more than once while it's still scheduled
-// today.
-// ---------------------------------------------------------------------------
+import { businessDateKey, businessDayBounds } from "@/lib/business-date";
+import { deliverMessage } from "@/domains/messaging/deliver";
 
 const JOB_TYPE_LABELS: Record<string, string> = {
   DELIVERY: "a delivery",
@@ -25,19 +10,12 @@ const JOB_TYPE_LABELS: Record<string, string> = {
   MAINTENANCE_VISIT: "a maintenance visit",
 };
 
-function startAndEndOfToday(now: Date): { start: Date; end: Date } {
-  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
-  return { start, end };
-}
-
-/** Texts every opted-in customer with a job scheduled for today that
- * hasn't already been texted about. Best-effort per job — one failed
- * text never stops the rest from going out; returns a summary for the
- * cron route to log. */
+/** Claim first, then send. FAILED/NOT_SENT releases the claim; UNKNOWN keeps it
+ * because the provider may already have accepted the text. */
 export async function sendJobDayOfReminders(): Promise<{ sent: number; failed: number }> {
   const now = new Date();
-  const { start, end } = startAndEndOfToday(now);
+  const { start, end } = businessDayBounds(now);
+  const slot = businessDateKey(now);
 
   const jobs = await prisma.job.findMany({
     where: {
@@ -56,31 +34,58 @@ export async function sendJobDayOfReminders(): Promise<{ sent: number; failed: n
   let failed = 0;
 
   for (const job of jobs) {
-    if (!job.customer?.phone) continue; // narrows the type; the query above already guarantees this
+    if (!job.customer?.phone) continue;
+
+    const claimed = await prisma.job.updateMany({
+      where: {
+        id: job.id,
+        status: { in: ["SCHEDULED", "IN_PROGRESS"] },
+        dayOfReminderSentAt: null,
+      },
+      data: { dayOfReminderSentAt: now },
+    });
+    if (claimed.count === 0) continue;
+
+    const release = () =>
+      prisma.job.updateMany({
+        where: { id: job.id, dayOfReminderSentAt: now },
+        data: { dayOfReminderSentAt: null },
+      });
 
     const what = JOB_TYPE_LABELS[job.type] ?? "a visit";
     const where = job.serviceAddress ? ` at ${job.serviceAddress.line1}` : "";
 
     try {
-      // sendSms itself never throws (see its own doc comment) — it
-      // returns { sent: false } for both "not configured yet" and a
-      // real Twilio failure, so that's what's checked here, not a
-      // caught exception.
-      const result = await sendSms({
-        to: job.customer.phone,
-        body: `Reminder: we have ${what} scheduled for you today${where}. Reply STOP to opt out of texts.`,
+      const delivery = await deliverMessage({
+        idempotencyKey: `job-day-reminder-${job.id}-${slot}`,
+        channel: "SMS",
+        purpose: "TRANSACTIONAL",
+        templateKey: "job-day-reminder",
+        customerFacing: true,
+        recipient: {
+          type: "Customer",
+          id: job.customer.id,
+          address: job.customer.phone,
+        },
+        subject: { type: "Job", id: job.id },
+        render: () => ({
+          text: `Reminder: we have ${what} scheduled for you today${where}. Reply STOP to opt out of texts.`,
+        }),
       });
-      if (!result.sent) {
-        failed += 1;
+
+      if (delivery.state === "FAILED" || delivery.state === "NOT_SENT") {
+        await release();
+        if (delivery.state === "FAILED") failed += 1;
         continue;
       }
-      await prisma.job.update({
-        where: { id: job.id },
-        data: { dayOfReminderSentAt: now },
-      });
-      sent += 1;
+      if (delivery.state === "ACCEPTED" || delivery.state === "DELIVERED") {
+        sent += 1;
+      } else if (delivery.state === "UNKNOWN") {
+        failed += 1;
+      }
     } catch (error) {
-      console.error("[sms] Failed to send day-of job reminder", job.id, error);
+      await release().catch(() => undefined);
+      console.error("[sms] Failed to record day-of job reminder", job.id, error);
       failed += 1;
     }
   }

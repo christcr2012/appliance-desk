@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import type { EstimateStatus, Prisma } from "@prisma/client";
-import { sendCustomerEmail } from "@/lib/customer-email";
+import { deliverMessage } from "@/domains/messaging/deliver";
 import { getBusinessSettings } from "@/domains/settings";
 import { createDraftAgreementInTx } from "@/domains/agreements";
 import {
@@ -366,27 +366,43 @@ export async function sendEstimate(userId: string, estimateId: string): Promise<
   parts.push("Review the full details and let us know if it works for you:");
   parts.push(`${appUrl}/estimate/${estimate.id}`);
 
-  const result = await sendCustomerEmail({
-    to: recipientEmail,
-    subject: `Estimate #${estimate.estimateNumber} from ${settings.publicBusinessName}`,
-    text: parts.join("\n\n"),
-    actionLabel: "View & respond to estimate",
+  const delivery = await deliverMessage({
     idempotencyKey: `estimate-send-${estimate.id}-${sentAt.getTime()}`,
+    channel: "EMAIL",
+    purpose: "TRANSACTIONAL",
+    templateKey: "estimate-send",
+    customerFacing: true,
+    recipient: {
+      type: estimate.customer ? "Customer" : "Lead",
+      address: recipientEmail,
+    },
+    subject: { type: "Estimate", id: estimate.id },
+    render: () => ({
+      subject: `Estimate #${estimate.estimateNumber} from ${settings.publicBusinessName}`,
+      text: parts.join("\n\n"),
+      actionLabel: "View & respond to estimate",
+    }),
   });
-  if (!result.sent && result.outcome && result.outcome !== "NOT_ATTEMPTED") {
-    // REJECTED or UNKNOWN: delivery is not confirmed. Leave owner-visible evidence and
-    // never replay automatically (an unknown outcome may already have been delivered).
+  const emailed = delivery.state === "ACCEPTED" || delivery.state === "DELIVERED";
+  const outcome = emailed
+    ? "SENT"
+    : delivery.state === "NOT_SENT"
+      ? "NOT_ATTEMPTED"
+      : delivery.state === "FAILED"
+        ? "REJECTED"
+        : delivery.state;
+  if (!emailed && outcome !== "NOT_ATTEMPTED") {
     await prisma.auditLog.create({
       data: {
         userId,
         action: "estimate.send_email_unconfirmed",
         entityType: "Estimate",
         entityId: estimate.id,
-        newValue: { outcome: result.outcome, sentAt: sentAt.toISOString() },
+        newValue: { outcome, deliveryId: delivery.deliveryId, sentAt: sentAt.toISOString() },
       },
     });
   }
-  return { emailed: result.sent, outcome: result.outcome };
+  return { emailed, outcome };
 }
 
 export async function sendEstimateFollowUpReminders(): Promise<{
@@ -449,27 +465,36 @@ export async function sendEstimateFollowUpReminders(): Promise<{
       });
 
     try {
-      const result = await sendCustomerEmail({
-        to: recipientEmail,
-        subject: `Following up on estimate #${estimate.estimateNumber}`,
-        text: [
-          `Hi${recipientName ? ` ${recipientName}` : ""},`,
-          `Just checking in — ${settings.publicBusinessName} sent you estimate #${estimate.estimateNumber}${estimate.title ? ` (${estimate.title})` : ""} a few days ago and wanted to make sure it didn't get lost.`,
-          "Still interested? You can review and respond right here — no login needed:",
-          `${appUrl}/estimate/${estimate.id}`,
-          "If your plans have changed or you have questions, just reply to this email.",
-        ].join("\n\n"),
-        actionLabel: "View & respond to estimate",
-        // Same key for the same estimate send, so a retry within the provider's 24-hour window cannot email twice.
+      const delivery = await deliverMessage({
         idempotencyKey: `estimate-follow-up-${estimate.id}-${estimate.sentAt.getTime()}`,
+        channel: "EMAIL",
+        purpose: "TRANSACTIONAL",
+        templateKey: "estimate-follow-up",
+        customerFacing: true,
+        recipient: {
+          type: estimate.customer ? "Customer" : "Lead",
+          address: recipientEmail,
+        },
+        subject: { type: "Estimate", id: estimate.id },
+        render: () => ({
+          subject: `Following up on estimate #${estimate.estimateNumber}`,
+          text: [
+            `Hi${recipientName ? ` ${recipientName}` : ""},`,
+            `Just checking in — ${settings.publicBusinessName} sent you estimate #${estimate.estimateNumber}${estimate.title ? ` (${estimate.title})` : ""} a few days ago and wanted to make sure it didn't get lost.`,
+            "Still interested? You can review and respond right here — no login needed:",
+            `${appUrl}/estimate/${estimate.id}`,
+            "If your plans have changed or you have questions, just reply to this email.",
+          ].join("\n\n"),
+          actionLabel: "View & respond to estimate",
+        }),
       });
-      // Email switched off or definitely not sent: give the claim back so it goes out once email is on.
-      // An unknown outcome (lost response) may have been delivered, so the claim stays and it is not sent again.
-      if (!result.sent && result.outcome !== "UNKNOWN") {
+      if (delivery.state === "FAILED" || delivery.state === "NOT_SENT") {
         await release();
+        if (delivery.state === "FAILED") failed += 1;
         continue;
       }
-      if (result.sent) sent += 1;
+      if (delivery.state === "ACCEPTED" || delivery.state === "DELIVERED") sent += 1;
+      else if (delivery.state === "UNKNOWN") failed += 1;
     } catch (error) {
       await release().catch(() => undefined);
       console.error(

@@ -7,7 +7,7 @@ const invoiceUpdate = vi.fn();
 const auditLogCreate = vi.fn();
 const queryRaw = vi.fn();
 const transaction = vi.fn();
-const sendEmail = vi.fn();
+const deliverMessage = vi.fn();
 const getBusinessSettings = vi.fn();
 
 vi.mock("@/lib/prisma", () => {
@@ -30,8 +30,8 @@ vi.mock("@/lib/prisma", () => {
   };
 });
 
-vi.mock("@/lib/email", () => ({
-  sendEmail: (...args: unknown[]) => sendEmail(...args),
+vi.mock("@/domains/messaging/deliver", () => ({
+  deliverMessage: (...args: unknown[]) => deliverMessage(...args),
 }));
 vi.mock("@/domains/settings", () => ({
   getBusinessSettings: (...args: unknown[]) => getBusinessSettings(...args),
@@ -257,17 +257,17 @@ describe("sendLateFeeDigestToChris", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(NOW);
-    sendEmail.mockReset().mockResolvedValue({ sent: true });
+    deliverMessage.mockReset().mockResolvedValue({ state: "ACCEPTED", deliveryId: "late-fee-digest", providerMessageId: "msg-1" });
     getBusinessSettings.mockReset().mockResolvedValue({ publicEmail: "chris@example.com" });
   });
 
   it("sends nothing when no fees were applied", async () => {
     const { sendLateFeeDigestToChris } = await import("@/domains/billing/late-fees");
     await sendLateFeeDigestToChris([]);
-    expect(sendEmail).not.toHaveBeenCalled();
+    expect(deliverMessage).not.toHaveBeenCalled();
   });
 
-  it("emails one idempotent digest listing every applied fee", async () => {
+  it("records one idempotent digest listing every applied fee", async () => {
     const { sendLateFeeDigestToChris } = await import("@/domains/billing/late-fees");
     await sendLateFeeDigestToChris([
       {
@@ -278,11 +278,15 @@ describe("sendLateFeeDigestToChris", () => {
         newAmountDueCents: 5_000,
       },
     ]);
-    expect(sendEmail).toHaveBeenCalledTimes(1);
-    expect(sendEmail.mock.calls[0]?.[0]).toMatchObject({
-      to: "chris@example.com",
+    expect(deliverMessage).toHaveBeenCalledTimes(1);
+    const message = deliverMessage.mock.calls[0]?.[0];
+    expect(message).toMatchObject({
       idempotencyKey: expect.stringMatching(/^late-fee-digest-/),
-      text: expect.stringContaining("Pat Landlord"),
+      channel: "EMAIL",
+      purpose: "TRANSACTIONAL",
+      templateKey: "late-fee-digest",
+      recipient: { type: "Staff", address: "chris@example.com" },
     });
+    expect(message.render().text).toContain("Pat Landlord");
   });
 });

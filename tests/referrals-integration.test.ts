@@ -15,8 +15,8 @@ vi.mock("@/lib/stripe", () => ({
   }),
 }));
 
-vi.mock("@/lib/customer-email", () => ({
-  sendCustomerEmail: (...args: unknown[]) => mocks.sendEmail(...args),
+vi.mock("@/domains/messaging/deliver", () => ({
+  deliverMessage: (...args: unknown[]) => mocks.sendEmail(...args),
 }));
 
 import { prisma } from "@/lib/prisma";
@@ -143,7 +143,11 @@ function deferred() {
 describe.skipIf(!enabled)("referral reward ledger in disposable Postgres", () => {
   beforeEach(async () => {
     mocks.createBalanceTransaction.mockReset();
-    mocks.sendEmail.mockReset().mockResolvedValue({ sent: true });
+    mocks.sendEmail.mockReset().mockResolvedValue({
+      state: "ACCEPTED",
+      deliveryId: "test-referral-message",
+      providerMessageId: null,
+    });
     const settings = await prisma.businessSettings.findUnique({
       where: { id: "singleton" },
       select: { id: true },

@@ -34,8 +34,10 @@ const prismaMock = makePrismaMock();
 
 vi.mock("@/lib/prisma", () => ({ prisma: prismaMock }));
 
-const sendEmailMock = vi.fn();
-vi.mock("@/lib/email", () => ({ sendEmail: (...args: unknown[]) => sendEmailMock(...args) }));
+const deliverMessageMock = vi.fn();
+vi.mock("@/domains/messaging/deliver", () => ({
+  deliverMessage: (...args: unknown[]) => deliverMessageMock(...args),
+}));
 
 const getBusinessSettingsMock = vi.fn().mockResolvedValue({ publicEmail: "chris@example.com" });
 vi.mock("@/domains/settings", () => ({ getBusinessSettings: () => getBusinessSettingsMock() }));
@@ -48,6 +50,7 @@ beforeEach(() => {
       .mockResolvedValue([{ id: table === "customer" ? "cust-1" : `${table}-1` }]);
   }
   getBusinessSettingsMock.mockResolvedValue({ publicEmail: "chris@example.com" });
+  deliverMessageMock.mockResolvedValue({ state: "ACCEPTED", deliveryId: "backup-alert", providerMessageId: "msg-1" });
   listMock.mockResolvedValue({ blobs: [] });
   putMock.mockResolvedValue({ url: "https://blob.example.com/backups/2026-09-29-123.json" });
 });
@@ -130,22 +133,29 @@ describe("exportDatabaseBackup", () => {
 });
 
 describe("sendBackupFailureAlertToChris", () => {
-  it("emails Chris when the backup failed", async () => {
+  it("records one staff alert when the backup failed", async () => {
     const { sendBackupFailureAlertToChris } = await import("@/domains/backup");
     await sendBackupFailureAlertToChris({ ok: false, error: "connection reset" });
 
-    expect(sendEmailMock).toHaveBeenCalledTimes(1);
-    const [args] = sendEmailMock.mock.calls[0] as [{ to: string; subject: string; text: string }];
-    expect(args.to).toBe("chris@example.com");
-    expect(args.subject).toMatch(/backup failed/i);
-    expect(args.text).toContain("connection reset");
+    expect(deliverMessageMock).toHaveBeenCalledTimes(1);
+    const [input] = deliverMessageMock.mock.calls[0] as [{
+      idempotencyKey: string;
+      recipient: { address: string };
+      templateKey: string;
+      render: () => { subject?: string; text: string };
+    }];
+    expect(input.recipient.address).toBe("chris@example.com");
+    expect(input.templateKey).toBe("backup-failure");
+    expect(input.idempotencyKey).toMatch(/^backup-failure-/);
+    expect(input.render().subject).toMatch(/backup failed/i);
+    expect(input.render().text).toContain("connection reset");
   });
 
   it("stays silent when the backup succeeded", async () => {
     const { sendBackupFailureAlertToChris } = await import("@/domains/backup");
     await sendBackupFailureAlertToChris({ ok: true, url: "https://blob.example.com/x.json" });
 
-    expect(sendEmailMock).not.toHaveBeenCalled();
+    expect(deliverMessageMock).not.toHaveBeenCalled();
   });
 });
 

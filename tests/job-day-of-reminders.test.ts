@@ -1,23 +1,19 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-// sendJobDayOfReminders (src/domains/jobs/day-of-reminders.ts, Task
-// #71) — texts opted-in customers about a job scheduled today.
-
-const jobFindMany = vi.fn();
-const jobUpdate = vi.fn();
-const sendSms = vi.fn();
+const findMany = vi.fn();
+const updateMany = vi.fn();
+const deliver = vi.fn();
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     job: {
-      findMany: (...args: unknown[]) => jobFindMany(...args),
-      update: (...args: unknown[]) => jobUpdate(...args),
+      findMany: (...args: unknown[]) => findMany(...args),
+      updateMany: (...args: unknown[]) => updateMany(...args),
     },
   },
 }));
-
-vi.mock("@/lib/sms", () => ({
-  sendSms: (...args: unknown[]) => sendSms(...args),
+vi.mock("@/domains/messaging/deliver", () => ({
+  deliverMessage: (...args: unknown[]) => deliver(...args),
 }));
 
 import { sendJobDayOfReminders } from "@/domains/jobs/day-of-reminders";
@@ -31,77 +27,74 @@ function job(overrides: {
   return {
     id: overrides.id,
     type: overrides.type ?? "DELIVERY",
-    customer: { id: `cust-${overrides.id}`, phone: overrides.phone ?? "3035550100" },
+    customer: { id: `cust-${overrides.id}`, phone: overrides.phone ?? "+13035550100" },
     serviceAddress: overrides.addressLine1 ? { line1: overrides.addressLine1 } : null,
   };
 }
 
 describe("sendJobDayOfReminders", () => {
   beforeEach(() => {
-    jobFindMany.mockReset();
-    jobUpdate.mockReset().mockResolvedValue({});
-    sendSms.mockReset().mockResolvedValue({ sent: true });
+    findMany.mockReset();
+    updateMany.mockReset().mockResolvedValue({ count: 1 });
+    deliver.mockReset().mockResolvedValue({ state: "ACCEPTED", deliveryId: "delivery", providerMessageId: "SM1" });
   });
 
-  it("texts every eligible job and marks it reminded", async () => {
-    jobFindMany.mockResolvedValue([job({ id: "job-1", addressLine1: "100 Test St" })]);
-
-    const result = await sendJobDayOfReminders();
-
-    expect(result).toEqual({ sent: 1, failed: 0 });
-    expect(sendSms).toHaveBeenCalledWith({
-      to: "3035550100",
-      body: expect.stringContaining("100 Test St"),
+  it("claims the job first and records the SMS delivery", async () => {
+    findMany.mockResolvedValue([job({ id: "job-1", addressLine1: "100 Test St" })]);
+    expect(await sendJobDayOfReminders()).toEqual({ sent: 1, failed: 0 });
+    expect(updateMany).toHaveBeenCalledTimes(1);
+    expect(deliver).toHaveBeenCalledTimes(1);
+    const message = deliver.mock.calls[0][0];
+    expect(message).toMatchObject({
+      channel: "SMS",
+      templateKey: "job-day-reminder",
+      recipient: { type: "Customer", id: "cust-job-1", address: "+13035550100" },
+      subject: { type: "Job", id: "job-1" },
     });
-    expect(jobUpdate).toHaveBeenCalledWith({
-      where: { id: "job-1" },
-      data: { dayOfReminderSentAt: expect.any(Date) },
-    });
+    expect(message.render().text).toContain("100 Test St");
   });
 
-  it("reads naturally for a job type without a mapped label and no address", async () => {
-    jobFindMany.mockResolvedValue([job({ id: "job-2", type: "MYSTERY_TYPE" })]);
-
+  it("reads naturally for an unmapped job type with no address", async () => {
+    findMany.mockResolvedValue([job({ id: "job-2", type: "MYSTERY_TYPE" })]);
     await sendJobDayOfReminders();
-
-    const body = sendSms.mock.calls[0][0].body;
+    const body = deliver.mock.calls[0][0].render().text;
     expect(body).toContain("a visit");
     expect(body).not.toContain("undefined");
     expect(body).not.toContain("null");
   });
 
-  it("only queries opted-in customers with a phone number, jobs due today, not already reminded", async () => {
-    jobFindMany.mockResolvedValue([]);
-
+  it("queries opted-in customers using Colorado business-day bounds", async () => {
+    findMany.mockResolvedValue([]);
     await sendJobDayOfReminders();
-
-    const query = jobFindMany.mock.calls[0][0];
+    const query = findMany.mock.calls[0][0];
     expect(query.where.status).toEqual({ in: ["SCHEDULED", "IN_PROGRESS"] });
     expect(query.where.dayOfReminderSentAt).toBeNull();
-    expect(query.where.customer).toEqual({
-      smsOptInAt: { not: null },
-      phone: { not: null },
-    });
+    expect(query.where.customer).toEqual({ smsOptInAt: { not: null }, phone: { not: null } });
     expect(query.where.scheduledAt.gte).toBeInstanceOf(Date);
     expect(query.where.scheduledAt.lt).toBeInstanceOf(Date);
   });
 
-  it("counts a dormant/unconfigured Twilio send (sent: false) as failed, and never marks the job reminded", async () => {
-    jobFindMany.mockResolvedValue([job({ id: "job-3" })]);
-    sendSms.mockResolvedValue({ sent: false });
-
-    const result = await sendJobDayOfReminders();
-
-    expect(result).toEqual({ sent: 0, failed: 1 });
-    expect(jobUpdate).not.toHaveBeenCalled();
+  it("NOT_SENT releases the claim without reporting a provider failure", async () => {
+    findMany.mockResolvedValue([job({ id: "job-3" })]);
+    deliver.mockResolvedValue({ state: "NOT_SENT", deliveryId: "delivery", providerMessageId: null });
+    expect(await sendJobDayOfReminders()).toEqual({ sent: 0, failed: 0 });
+    expect(updateMany).toHaveBeenCalledTimes(2);
+    expect(updateMany.mock.calls[1][0]).toMatchObject({
+      where: { id: "job-3", dayOfReminderSentAt: expect.any(Date) },
+      data: { dayOfReminderSentAt: null },
+    });
   });
 
-  it("keeps going for the rest of the batch when one job's send throws", async () => {
-    jobFindMany.mockResolvedValue([job({ id: "job-4" }), job({ id: "job-5" })]);
-    sendSms.mockRejectedValueOnce(new Error("boom")).mockResolvedValueOnce({ sent: true });
+  it("FAILED releases the claim while UNKNOWN keeps it", async () => {
+    findMany.mockResolvedValue([job({ id: "failed" })]);
+    deliver.mockResolvedValue({ state: "FAILED", deliveryId: "d1", providerMessageId: null });
+    expect(await sendJobDayOfReminders()).toEqual({ sent: 0, failed: 1 });
+    expect(updateMany).toHaveBeenCalledTimes(2);
 
-    const result = await sendJobDayOfReminders();
-
-    expect(result).toEqual({ sent: 1, failed: 1 });
+    updateMany.mockClear().mockResolvedValue({ count: 1 });
+    findMany.mockResolvedValue([job({ id: "unknown" })]);
+    deliver.mockResolvedValue({ state: "UNKNOWN", deliveryId: "d2", providerMessageId: null });
+    expect(await sendJobDayOfReminders()).toEqual({ sent: 0, failed: 1 });
+    expect(updateMany).toHaveBeenCalledTimes(1);
   });
 });
