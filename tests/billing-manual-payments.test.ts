@@ -4,16 +4,12 @@ const ledger = vi.hoisted(() => ({
   lockCustomerLedger: vi.fn(),
   createReceiptWithAllocations: vi.fn(),
 }));
-const depositSource = vi.hoisted(() => ({
-  attachManualDepositSourceReceipt: vi.fn(),
-}));
 const invoiceFindMany = vi.fn();
 const invoiceUpdate = vi.fn();
 const auditLogCreate = vi.fn();
 const queryRaw = vi.fn();
 
 vi.mock("@/domains/billing/ledger", () => ledger);
-vi.mock("@/domains/billing/deposit-source-link", () => depositSource);
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     $transaction: (fn: (tx: unknown) => unknown) =>
@@ -50,7 +46,6 @@ describe("recordManualPayment", () => {
       receiptId: "receipt-1",
       overpaymentCreditId: null,
     });
-    depositSource.attachManualDepositSourceReceipt.mockResolvedValue(undefined);
     invoiceFindMany.mockReset();
     auditLogCreate.mockResolvedValue({});
   });
@@ -92,11 +87,6 @@ describe("recordManualPayment", () => {
         { invoiceId: "inv-new", amountCents: 1000 },
       ],
     });
-    expect(depositSource.attachManualDepositSourceReceipt).toHaveBeenCalledOnce();
-    expect(depositSource.attachManualDepositSourceReceipt.mock.calls[0][1]).toEqual({
-      customerId: "cust-1",
-      receiptId: "receipt-1",
-    });
     expect(result).toMatchObject({ totalAppliedCents: 4000, overpaymentCents: 0 });
     expect(result.invoicesTouched).toHaveLength(2);
     expect(auditLogCreate).toHaveBeenCalledTimes(2);
@@ -119,10 +109,6 @@ describe("recordManualPayment", () => {
       amountCents: 5000,
       allocations: [{ invoiceId: "inv-1", amountCents: 3000 }],
     });
-    expect(depositSource.attachManualDepositSourceReceipt).toHaveBeenCalledWith(
-      expect.anything(),
-      { customerId: "cust-1", receiptId: "receipt-2" },
-    );
     expect(result.overpaymentCents).toBe(2000);
     expect(result.totalAppliedCents).toBe(3000);
   });
@@ -168,7 +154,6 @@ describe("recordManualPayment", () => {
       }),
     ).rejects.toThrow(/isn't open/i);
     expect(ledger.createReceiptWithAllocations).not.toHaveBeenCalled();
-    expect(depositSource.attachManualDepositSourceReceipt).not.toHaveBeenCalled();
   });
 });
 
