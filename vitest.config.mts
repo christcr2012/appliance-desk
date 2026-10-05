@@ -17,6 +17,7 @@ const SHARED_SETTINGS_TESTS = [
   "tests/early-return-integration.test.ts",
   "tests/tax-rate-columns-sync-integration.test.ts",
   "tests/tax-rate-storage.test.ts",
+  "tests/documents-artifacts.test.ts",
 ];
 
 export default defineConfig({

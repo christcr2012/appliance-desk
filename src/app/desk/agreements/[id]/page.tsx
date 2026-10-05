@@ -9,6 +9,7 @@ import { AgreementDetailPanel } from "./agreement-detail-panel";
 import { MonthToMonthEndForm } from "./month-to-month-end-form";
 import { getMonthToMonthEndQuote } from "@/domains/agreements/month-to-month";
 import { billingPeriodFor } from "@/lib/business-date";
+import { latestArtifactId } from "@/domains/documents/artifacts";
 
 export const metadata = { title: "Agreement" };
 
@@ -29,8 +30,10 @@ export default async function AgreementDetailPage({
     notFound();
   }
 
-  const endQuote =
-    agreement.status === "ACTIVE" && agreement.termMonths === null ? await getMonthToMonthEndQuote(agreement.id) : null;
+  const [endQuote, signedArtifactId] = await Promise.all([
+    agreement.status === "ACTIVE" && agreement.termMonths === null ? getMonthToMonthEndQuote(agreement.id) : null,
+    agreement.signature?.signedAt ? latestArtifactId("SIGNED_AGREEMENT", agreement.id) : null,
+  ]);
   const earlierOptions: Date[] = [];
   if (endQuote && agreement.nextBillingDate) {
     for (let k = 0; k < 600; k += 1) {
@@ -62,6 +65,14 @@ export default async function AgreementDetailPage({
         {agreement.serviceAddress.line1}, {agreement.serviceAddress.city},{" "}
         {agreement.serviceAddress.state} {agreement.serviceAddress.zip}
       </p>
+      {signedArtifactId && (
+        <p className="mt-3 text-sm">
+          <Link className="font-medium text-primary underline" href={`/api/documents/${signedArtifactId}`} target="_blank">
+            View frozen signed agreement record
+          </Link>
+          <span className="ml-2 text-ink-soft">This is the exact stored evidence from signing.</span>
+        </p>
+      )}
 
       <div className="mt-6">
         <AgreementProgress agreement={agreement} />
