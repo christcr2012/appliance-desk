@@ -23,7 +23,7 @@ export default async function AccountBillingPage() {
     return (
       <div>
         <h1 className="text-xl font-semibold">Billing</h1>
-        <p className="mt-2 text-gray-600">
+        <p className="mt-2 text-ink-soft">
           There&apos;s no rental account attached to this login yet.
         </p>
       </div>
@@ -37,7 +37,7 @@ export default async function AccountBillingPage() {
   return (
     <div>
       <h1 className="text-xl font-semibold">Billing</h1>
-      <p className="mt-1 text-sm text-gray-600">
+      <p className="mt-1 text-sm text-ink-soft">
         Update your card or bank account, and download past invoices, through
         Stripe&apos;s secure billing page.
       </p>
@@ -74,7 +74,7 @@ export default async function AccountBillingPage() {
           accounts"). A single-property customer just sees one section,
           no different from the old flat list. */}
       {!statement || statement.properties.length === 0 ? (
-        <p className="mt-8 text-sm text-gray-600">
+        <p className="mt-8 text-sm text-ink-soft">
           No invoices yet — one is created automatically each time you&apos;re
           billed.
         </p>
@@ -83,11 +83,11 @@ export default async function AccountBillingPage() {
           {statement.properties.map((property) => (
             <div key={property.serviceAddressId ?? "no-property"}>
               {hasMultipleProperties && (
-                <h2 className="text-sm font-medium text-gray-700">
+                <h2 className="text-sm font-medium text-ink-soft">
                   {property.addressLabel}
                 </h2>
               )}
-              <ul className="mt-2 divide-y divide-gray-100 rounded-lg border border-gray-200 bg-white">
+              <ul className="mt-2 divide-y divide-line rounded-lg border border-line bg-surface">
                 {property.invoices.map((invoice) => (
                   <li
                     key={invoice.id}
@@ -96,11 +96,11 @@ export default async function AccountBillingPage() {
                     <div>
                       <Link
                         href={`/account/billing/invoice/${invoice.id}`}
-                        className="font-medium text-gray-900 hover:underline"
+                        className="font-medium text-ink hover:underline"
                       >
                         Invoice #{invoice.invoiceNumber}
                       </Link>
-                      <p className="text-gray-600">
+                      <p className="text-ink-soft">
                         {invoice.billingPeriodStart
                           ? formatBusinessDate(invoice.billingPeriodStart)
                           : "—"}{" "}
@@ -108,7 +108,7 @@ export default async function AccountBillingPage() {
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="font-medium text-gray-900">
+                      <p className="font-medium text-ink">
                         {formatCents(invoice.amountPaidCents)} paid
                       </p>
                       {invoice.balanceCents > 0 && (

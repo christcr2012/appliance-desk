@@ -27,7 +27,7 @@ export default async function AccountLayout({
   await requireSession();
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-canvas">
       <AuthedHeader title="My Account" areaLabel="My account" links={ACCOUNT_LINKS} />
       <main id="main-content" className="p-6">
         {children}
