@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import type { RentalAgreement } from "@prisma/client";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { recordManualPayment } from "@/domains/billing/manual-payments";
@@ -104,7 +105,7 @@ describe.skipIf(!enabled)("R06 deposit funding provenance in disposable Postgres
     async (chainLength) => {
       const tag = randomUUID().replaceAll("-", "");
       const { customer, address } = await createCustomerFixture(tag);
-      const agreements = [];
+      const agreements: RentalAgreement[] = [];
 
       for (let index = 0; index < chainLength; index += 1) {
         const prior = agreements[index - 1];
