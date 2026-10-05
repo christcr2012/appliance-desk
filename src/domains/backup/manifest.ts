@@ -75,6 +75,10 @@ export const BACKUP_MODEL_POLICY = {
   LaunchSettings: "launchSettings",
   LaunchSubscriber: "launchSubscriber",
   LaunchDelivery: "launchDelivery",
+  AutomationRun: "automationRun",
+  MessageDelivery: "messageDelivery",
+  ProviderEvent: "providerEvent",
+  MarketingSuppression: "marketingSuppression",
   AssetNumberCounter: "assetNumberCounter",
 } satisfies Record<Prisma.ModelName, ModelDelegate | null>;
 
