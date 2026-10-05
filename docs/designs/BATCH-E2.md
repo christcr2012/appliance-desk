@@ -1,6 +1,6 @@
 # Design — Batch E2: Visual redesign of the owner desk, customer portal and public site (desktop, phone, light, dark)
 
-Status: **WAITING FOR CHRIS'S APPROVAL** in `docs/designs/README.md`. The owner-desk direction is approved
+Status: **APPROVED DESIGN — implement from this document** (Chris, 2026-10-05: "I approve e2 and b2"). The owner-desk direction is approved
 (Chris, 2026-10-04) and the public home page direction is decided (IN-32, Chris 2026-10-04: ivory in light mode,
 evergreen in dark mode). Written
 2026-10-05 by Claude Opus 5.5 against `main` 47bd833, before Batch E is built, so section 0 lists the facts E must

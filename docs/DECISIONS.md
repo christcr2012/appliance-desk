@@ -355,3 +355,7 @@ delivery. Owner questions with built defaults: IN-29 to IN-32. B2 and E2 wait fo
 - **IN-31:** deferred by Chris; stays documented and blocks turning on automatic renewals / live customer email.
 - **IN-32 home page:** ivory in light mode, evergreen in dark mode, one dominant action in both — consistent with the
   brand kit's light and dark tokens, so no contrast exception and no extra preview step. (`BATCH-E2.md` E2-7.)
+
+## 2026-10-05 — Batch B2 and Batch E2 designs approved
+Chris: "I approve e2 and b2." `docs/designs/BATCH-B2.md` and `docs/designs/BATCH-E2.md` are approved for
+implementation (including the IN-29/IN-30/IN-32 answers folded in the night before). Next batch to build: B2.
