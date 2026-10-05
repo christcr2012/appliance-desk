@@ -161,6 +161,7 @@ async function deliverClaimedNotice(
   notice: Pick<NoticeRow, "id" | "subject" | "body" | "attempts">,
   to: string,
   token: string,
+  now: Date,
 ): Promise<DeliverOutcome> {
   const owned = { id: notice.id, status: "SENDING", claimToken: token } as const;
   const send = () =>
@@ -231,7 +232,7 @@ async function deliverClaimedNotice(
         status: failed ? "FAILED" : "PENDING",
         attempts: rejections,
         claimToken: null,
-        nextAttemptAt: failed ? null : new Date(Date.now() + ONE_DAY_MS),
+        nextAttemptAt: failed ? null : new Date(now.getTime() + ONE_DAY_MS),
         lastError: "The email service refused this email.",
       },
     });
@@ -278,7 +279,7 @@ async function sweepStaleClaims(now: Date, tally: NoticeSendResult): Promise<voi
       data: { claimToken: token },
     });
     if (taken.count !== 1) continue;
-    const outcome = await deliverClaimedNotice(notice, notice.sentToAddress ?? notice.customer.user.email, token);
+    const outcome = await deliverClaimedNotice(notice, notice.sentToAddress ?? notice.customer.user.email, token, now);
     if (outcome === "SENT") tally.sent += 1;
     else if (outcome === "UNCERTAIN") tally.uncertain += 1;
     else if (outcome === "FAILED") tally.failed += 1;
@@ -342,7 +343,7 @@ export async function sendPendingNotices(now = new Date()): Promise<NoticeSendRe
     });
     if (claimed.count !== 1) continue; // someone else (or the owner) got there first
 
-    const outcome = await deliverClaimedNotice(notice, address, token);
+    const outcome = await deliverClaimedNotice(notice, address, token, now);
     if (outcome === "SENT") tally.sent += 1;
     else if (outcome === "UNCERTAIN") tally.uncertain += 1;
     else if (outcome === "FAILED") tally.failed += 1;

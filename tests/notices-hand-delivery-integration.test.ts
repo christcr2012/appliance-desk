@@ -261,7 +261,7 @@ describe.skipIf(!enabled)("recording a delivered reminder and fixing a missed on
       await resolve(notice.id, notice.updatedAt, { kind: "KEEP_WAITING", remindOn });
       const tasks = await prisma.staffTask.findMany({ where: { customerId: fx.customerId, sourceKey: { startsWith: `notice-keep-waiting-${notice.id}` } } });
       expect(tasks).toHaveLength(1);
-      expect(businessDateKey(tasks[0]!.dueDate!)).toBe(remindOn);
+      expect(tasks[0]!.dueDate!.toISOString().slice(0, 10)).toBe(remindOn);
       const row = await fx.noticeOf(a);
       expect(row.status).toBe("MISSED");
       expect(await prisma.rentalAgreement.count({ where: { renewedFromAgreementId: a.id, status: "SCHEDULED" } })).toBe(1);

@@ -100,7 +100,11 @@ describe.skipIf(!enabled)("renewal reminders: states, windows, retries and evide
   it("notice-evidence-date-is-provider-acceptance-time", async () => {
     const { notice } = await reminder();
     const accepted = new Date("2027-10-12T17:59:00Z");
-    emailMock.send.mockResolvedValue({ sent: true, outcome: "SENT", providerMessageId: `msg_${notice.id}` });
+    emailMock.send.mockImplementation(async (input: { idempotencyKey?: string }) =>
+      input.idempotencyKey === `customer-notice-${notice.id}`
+        ? { sent: true, outcome: "SENT", providerMessageId: `msg_${notice.id}` }
+        : { sent: false, outcome: "NOT_ATTEMPTED" },
+    );
     emailMock.acceptedAt.mockResolvedValue(accepted);
     await sendPendingNotices(inReminderWindow);
     const after = await prisma.customerNotice.findUniqueOrThrow({ where: { id: notice.id } });
@@ -218,7 +222,7 @@ describe.skipIf(!enabled)("renewal reminders: states, windows, retries and evide
     await sendPendingNotices(inReminderWindow);
     let row = await prisma.customerNotice.findUniqueOrThrow({ where: { id: notice.id } });
     expect([row.status, row.attempts]).toEqual(["PENDING", 1]);
-    expect(row.nextAttemptAt!.getTime()).toBeGreaterThan(Date.now() + 20 * HOUR);
+    expect(row.nextAttemptAt!.getTime()).toBe(inReminderWindow.getTime() + 24 * HOUR);
     // Not due again until its retry time.
     emailMock.send.mockClear();
     await sendPendingNotices(inReminderWindow);
