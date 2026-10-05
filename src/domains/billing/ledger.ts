@@ -45,9 +45,24 @@ async function attachUnambiguousDepositSource(
   const [depositId, existingSourceReceiptId] = [...candidates.entries()][0]!;
   if (existingSourceReceiptId) {
     if (existingSourceReceiptId !== receiptId) {
-      throw new Error(
-        "Deposit funding provenance is already linked to a different receipt; reconcile it before recording another source.",
-      );
+      // Real money has already been recorded by the base ledger at this point.
+      // Never roll that cash record back merely because this later receipt is
+      // not the deposit's original funding source. Preserve the immutable link
+      // and leave durable owner-visible evidence of the conflict instead.
+      await tx.auditLog.create({
+        data: {
+          userId: null,
+          action: "billing.deposit_source_conflict",
+          entityType: "Deposit",
+          entityId: depositId,
+          newValue: {
+            existingSourceReceiptId,
+            candidateReceiptId: receiptId,
+            handling:
+              "Original deposit funding provenance was preserved; the later receipt remains recorded and requires owner review if it represents duplicate deposit money.",
+          },
+        },
+      });
     }
     return;
   }
