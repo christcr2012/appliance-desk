@@ -1,5 +1,6 @@
 import type { InvoiceStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { attachManualDepositSourceReceipt } from "./deposit-source-link";
 import {
   createReceiptWithAllocations,
   lockCustomerLedger,
@@ -110,7 +111,7 @@ export async function recordManualPayment(
       .filter(Boolean)
       .join(" — ") || undefined;
 
-    await createReceiptWithAllocations(tx, {
+    const { receiptId } = await createReceiptWithAllocations(tx, {
       customerId,
       source: "MANUAL",
       amountCents: input.amountCents,
@@ -120,6 +121,7 @@ export async function recordManualPayment(
       notes: receiptNotes,
       allocations,
     });
+    await attachManualDepositSourceReceipt(tx, { customerId, receiptId });
 
     // Keep the existing per-invoice audit trail even though the receipt is now
     // the cash source of truth.
@@ -191,10 +193,9 @@ export async function writeOffInvoice(
         status: "WRITTEN_OFF",
         writtenOffAt: new Date(),
         writtenOffReason: reason,
-        version: { increment: 1 },
+        refundedByUserId: userId,
       },
     });
-
     await tx.auditLog.create({
       data: {
         userId: actingUserId,
