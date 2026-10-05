@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import type { Receipt } from "@prisma/client";
 import {
   afterAll,
   afterEach,
@@ -142,13 +143,8 @@ async function createDepositWithFailedRefund(
     },
   });
 
-  let olderReceipt: { stripeChargeId: string | null } = {
-    stripeChargeId: null,
-  };
-  let sourceReceipt: { id: string | null; stripeChargeId: string | null } = {
-    id: null,
-    stripeChargeId: null,
-  };
+  let olderReceipt: Receipt | null = null;
+  let sourceReceipt: Receipt | null = null;
   if (withReceipts) {
     // An OLDER, SMALLER successful receipt on the very same deposit invoice. The
     // retired "oldest successful payment" lookup would have picked this charge.
@@ -201,7 +197,7 @@ async function createDepositWithFailedRefund(
     data: {
       id: `r2-rec-deposit-${tag}`,
       agreementId: agreement.id,
-      sourceReceiptId: options.linkSource ? sourceReceipt.id : null,
+      sourceReceiptId: options.linkSource ? (sourceReceipt?.id ?? null) : null,
       amountCents: 5_000,
       refundable: true,
       refundedAmountCents: 5_000,
@@ -257,8 +253,8 @@ describe.skipIf(!enabled)(
         { charge: string; amount: number; metadata: Record<string, string> },
         { idempotencyKey: string },
       ];
-      expect(params.charge).toBe(sourceReceipt.stripeChargeId);
-      expect(params.charge).not.toBe(olderReceipt.stripeChargeId);
+      expect(params.charge).toBe(sourceReceipt!.stripeChargeId);
+      expect(params.charge).not.toBe(olderReceipt!.stripeChargeId);
       expect(params.amount).toBe(5_000);
       expect(params.metadata).toEqual({ depositId: deposit.id });
       expect(options.idempotencyKey).toBe(operation.idempotencyKey);
