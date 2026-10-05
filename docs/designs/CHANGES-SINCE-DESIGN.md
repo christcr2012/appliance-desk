@@ -7,7 +7,7 @@ a name, a status value or a table that a later design relies on. This file is th
 running answer to "does the design still match the code?"; the design drift check
 (`docs/designs/README.md`) starts here.
 
-Last updated: 2026-10-03 (after Batch B core merged, #147–#155; pickup/return billing added the same evening).
+Last updated: 2026-10-04 (after Remediation Batch R, #185–#197).
 
 ## Rules a later batch must follow
 
@@ -27,6 +27,21 @@ Last updated: 2026-10-03 (after Batch B core merged, #147–#155; pickup/return 
 | **Pickup and delivery billing is built (2026-10-03, ahead of the Batch C design, at the owner's direction).** A completed REMOVAL job charges late-return days (`LATE_RETURN` line kind) for any pickup after the agreement's end date, whatever the status. A completed DELIVERY/INSTALLATION job records items staff tick as not delivered (`PendingDelivery`), and a later one credits the missing days (`CustomerCredit.sourceType = LATE_DELIVERY`, pushed to Stripe balance); "never delivered" removal credits every month billed (`unassignReason = "Never delivered"`). Jobs carry `performedOn` (the recorded work date). Settings in `BusinessSettings` (`lateReturnRateMode`, `lateReturnFixedDailyCents`, `lateDeliveryProrationBasis`, `pickupDayNotBilled`; `earlyReturnProrationBasis` is a dead column). `CustomerCredit.shownCents`/`shownOnInvoiceId` mark what a mirrored bill has shown. Rules in `src/domains/billing/pickup-billing.ts`. | Batch C's pickup/delivery design must build on this, not redesign it: the IN-24 company-fault waiver and the subscription rule for a missing item (delivered late or swapped same-type: line stays; permanently cancelled: line comes off from the next period — Chris, 2026-10-03) are the open pieces, both specified in `docs/prompts/DESIGN-BATCH-C-LITERAL-SPECS.md`. Item 14 of Batch C should treat these settings as the source of the daily rate, and `jobServiceDate` as the date any custody change happened. |
 
 | **`InspectionChecklistVersion` (Batch D's D7 table) will be created by Batch C** (literal spec P2-E, review 2026-10-03), seeded as version 1 from the owner's saved checklist or the code default, with `publishedByUserId` nullable. | WU-D7 builds the editor and `publish` only; it must not add the table or a `BusinessSettings` version counter. Inspections carry `checklistVersionId` + a definition copy. |
+
+## Remediation Batch R (merged 2026-10-04, #185–#197): contract changes Batch D and later must follow
+
+Evidence for each is in `docs/reviews/2026-10-04-remediation-batch-r-acceptance.md`.
+
+| Change | What a later design must do about it |
+|---|---|
+| **`RentalAgreement.firstDeliveredOn`** is the immutable Colorado date of the first real delivery, set once. A visit where nothing was delivered sets nothing and starts no billing. Stripe's own billing calendar is **not** moved to it (open owner question IN-28). | Read fixed-term dates and "first delivered" from it, never from a retry time. Do not promise customers that Stripe bills from the delivery date. |
+| **Deposit refunds resolve through the immutable `Deposit.sourceReceiptId`** (the receipt that funded it), not through the agreement or the oldest payment. Manual deposits link a manual receipt and never create a Stripe refund. Ambiguous history stays unlinked and is not guessed. | Customer/owner deposit screens and any new refund path must call `resolveDepositRefundRail` (`src/domains/billing/deposit-provenance.ts`). Do not look up "the payment for this agreement". |
+| **Webhook and provider calls never run under a database lock.** Stripe is read first (`src/domains/billing/webhook-evidence.ts`), then a short local transaction under the one global lock applies it; missing evidence is fetched outside the lock and replayed. | New webhook handlers must read provider facts from `WebhookEvidence`, not call Stripe inside the transaction. |
+| **Estimate "valid until" = good through that Colorado day** (`src/domains/estimates/validity.ts`). Approve and request-changes refuse an expired estimate and mark it Expired. Input is strict `YYYY-MM-DD`. Sending is one locked claim with a saved `sentAt`; the email key is `estimate-send-<id>-<sentAt>`. | Batch D/E estimate screens and the communication ledger must use the same rule and treat `estimate.send_email_unconfirmed` (audit) as "delivery not confirmed". |
+| **Owner/admin inventory commands are guarded transactions** (actor re-check, lock, validate, mutate, audit, all together): add units, edit details, add photo, start repair, retire, manual status, inspection. Staff keep only the job-scoped paths. | New inventory commands follow the same pattern; do not read the appliance or check the actor before opening the transaction. |
+| **`PurchaseOrderReceiptOperation`** is the receipt idempotency source (key plus SHA-256 of every submitted line, free-text included). Creating an order and using parts follow the supplier-then-parts and part-before-cost lock orders. | Anything that receives or re-submits order lines goes through `receivePurchaseOrderLines`; the table is in `BACKUP_MODEL_POLICY`. |
+| **Today reads are capped at 50 per category, oldest first with an id tie-break** (`getExceptionOverview` returns `truncated` totals; `getExceptions` returns the items). Term-ended and maintenance-due are computed in SQL. | New Today categories must be bounded the same way and report their true total. |
+| **Appliance purchase date is stored as the start of its Colorado day** (`parseOptionalBusinessDate`). Repair costs are strict cents (`parseRepairCostDollars`, 0 to $100,000). | Reuse these helpers for any new date-only or repair-money input. |
 
 ## Known name or location differences from the designs
 
