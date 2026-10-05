@@ -283,6 +283,9 @@ model Lead {
   score   Int      @default(0)
   scoreReasons Json @default("[]")
   isHighValue Boolean @default(false)
+  // Batch E: policy version that produced the frozen score/reasons, plus the latest real human/message contact.
+  scoringPolicyVersion Int @default(1)
+  lastRealContactAt DateTime?
 
   applianceRequests LeadApplianceRequest[]
   estimates         Estimate[]
@@ -1802,6 +1805,9 @@ model BusinessSettings {
   // Master switch for AUTOMATIC renewals (queuing them, starting them, extending billing for them). Off until
   // the owner turns it on, whatever the wording settings say. Opt-out and billing-stop operations are never blocked.
   autoRenewEnabled Boolean @default(false)
+  // Batch E: durable automation pause state and versioned, owner-editable lead scoring policy.
+  pausedAutomations Json @default("[]")
+  leadScoringPolicy Json @default("{\"version\":1,\"termPoints\":{\"month-to-month\":0,\"6-month\":10,\"12-month\":20},\"additionalUnitPoints\":5,\"businessAccountPoints\":10,\"multiUnitPropertyManagerPoints\":25,\"highValueThreshold\":30}")
   draftReservationHoldDays Int @default(7)
   inspectionChecklist Json @default("[]")
 
@@ -2126,6 +2132,9 @@ model LaunchSubscriber {
   nextStep          Int @default(0)
   nextSendAt        DateTime @default(now())
   deliveryBlocked   Boolean @default(false)
+  confirmedAt          DateTime?
+  confirmTokenHash     String?
+  confirmExpiresAt     DateTime?
   createdAt         DateTime @default(now())
   deliveries        LaunchDelivery[]
 
@@ -2143,6 +2152,105 @@ model LaunchDelivery {
   finishedAt   DateTime?
 
   @@unique([subscriberId, step])
+}
+
+
+// ---------------------------------------------------------------------------
+// Batch E — durable automation and communications evidence
+// ---------------------------------------------------------------------------
+
+enum AutomationRunState {
+  RUNNING
+  SUCCEEDED
+  FAILED
+  UNKNOWN
+  SKIPPED
+}
+
+model AutomationRun {
+  id            String             @id @default(cuid())
+  ruleKey       String
+  runKey        String
+  state         AutomationRunState @default(RUNNING)
+  environment   String
+  startedAt     DateTime           @default(now())
+  finishedAt    DateTime?
+  budgetSeconds Int                @default(300)
+  counts        Json?
+  error         String?
+
+  @@unique([ruleKey, runKey])
+  @@index([ruleKey, startedAt])
+}
+
+enum MessageChannel {
+  EMAIL
+  SMS
+}
+
+enum MessagePurpose {
+  TRANSACTIONAL
+  MARKETING
+}
+
+enum MessageState {
+  PENDING
+  ACCEPTED
+  FAILED
+  UNKNOWN
+  NOT_SENT
+  DELIVERED
+  BOUNCED
+  COMPLAINED
+  SUPPRESSED
+}
+
+model MessageDelivery {
+  id                String         @id @default(cuid())
+  idempotencyKey    String         @unique
+  channel           MessageChannel
+  purpose           MessagePurpose
+  templateKey       String
+  recipientType     String
+  recipientId       String?
+  recipientAddress  String
+  subjectType       String?
+  subjectId         String?
+  state             MessageState   @default(PENDING)
+  providerMessageId String?        @unique
+  attempts          Int            @default(1)
+  lastError         String?
+  requestedAt       DateTime       @default(now())
+  acceptedAt        DateTime?
+  deliveredAt       DateTime?
+  updatedAt         DateTime       @updatedAt
+
+  @@index([recipientType, recipientId, requestedAt])
+  @@index([subjectType, subjectId])
+  @@index([state, requestedAt])
+}
+
+model ProviderEvent {
+  id          String   @id @default(cuid())
+  provider    String
+  eventId     String
+  type        String
+  receivedAt  DateTime @default(now())
+  processedAt DateTime?
+  summary     Json?
+
+  @@unique([provider, eventId])
+}
+
+model MarketingSuppression {
+  id        String         @id @default(cuid())
+  channel   MessageChannel
+  address   String
+  reason    String
+  source    String
+  createdAt DateTime       @default(now())
+
+  @@unique([channel, address])
 }
 
 // Batch C P1-B: the next asset-number sequence per prefix. Numbers are never reused.
