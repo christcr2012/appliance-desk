@@ -126,9 +126,9 @@ describe.skipIf(!enabled)("atomic webhook processing in disposable Postgres", ()
     await prisma.refund.deleteMany({ where: { invoiceId: { in: invoiceIds } } });
     await prisma.payment.deleteMany({ where: { invoiceId: { in: invoiceIds } } });
     await prisma.invoice.deleteMany({ where: { customerId } });
-    await prisma.receipt.deleteMany({ where: { customerId } });
     await prisma.customerCredit.deleteMany({ where: { customerId } });
     await prisma.deposit.deleteMany({ where: { agreementId: { in: agreements } } });
+    await prisma.receipt.deleteMany({ where: { customerId } });
     await prisma.auditLog.deleteMany({ where: { entityId: { in: agreements } } });
     await prisma.rentalAgreement.deleteMany({ where: { id: { in: agreements } } });
     await prisma.serviceAddress.deleteMany({ where: { id: addressId } });
