@@ -3,8 +3,8 @@ import type { MessageDelivery, MessageState } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { isNonProductionDeployment } from "@/lib/deployment-safety";
 import { sendEmail } from "@/lib/email";
+import { sendCustomerEmail } from "@/lib/customer-email";
 import { getSmsProviderState, sendSms } from "@/lib/sms";
-import { isCustomerEmailEnabled } from "@/domains/settings/customer-email-switch";
 import {
   getMarketingSuppression,
   normalizeMessageAddress,
@@ -40,12 +40,21 @@ type LowLevelResult = {
 
 type DeliveryClaim = { row: MessageDelivery; ownsSend: boolean };
 
-function asResult(row: Pick<MessageDelivery, "id" | "state" | "providerMessageId">): DeliverMessageResult {
-  return { state: row.state, deliveryId: row.id, providerMessageId: row.providerMessageId };
+function asResult(
+  row: Pick<MessageDelivery, "id" | "state" | "providerMessageId">,
+): DeliverMessageResult {
+  return {
+    state: row.state,
+    deliveryId: row.id,
+    providerMessageId: row.providerMessageId,
+  };
 }
 
 async function claimDelivery(input: DeliverMessageInput): Promise<DeliveryClaim> {
-  const recipientAddress = normalizeMessageAddress(input.channel, input.recipient.address);
+  const recipientAddress = normalizeMessageAddress(
+    input.channel,
+    input.recipient.address,
+  );
   try {
     const row = await prisma.messageDelivery.create({
       data: {
@@ -71,7 +80,10 @@ async function claimDelivery(input: DeliverMessageInput): Promise<DeliveryClaim>
     }
 
     const reclaimed = await prisma.messageDelivery.updateMany({
-      where: { id: existing.id, state: { in: ["FAILED", "NOT_SENT"] } },
+      where: {
+        id: existing.id,
+        state: { in: ["FAILED", "NOT_SENT"] },
+      },
       data: {
         state: "PENDING",
         attempts: { increment: 1 },
@@ -81,7 +93,9 @@ async function claimDelivery(input: DeliverMessageInput): Promise<DeliveryClaim>
         deliveredAt: null,
       },
     });
-    const row = await prisma.messageDelivery.findUniqueOrThrow({ where: { id: existing.id } });
+    const row = await prisma.messageDelivery.findUniqueOrThrow({
+      where: { id: existing.id },
+    });
     return { row, ownsSend: reclaimed.count === 1 };
   }
 }
@@ -89,7 +103,12 @@ async function claimDelivery(input: DeliverMessageInput): Promise<DeliveryClaim>
 async function finish(
   id: string,
   state: MessageState,
-  input?: { providerMessageId?: string; lastError?: string; acceptedAt?: Date; deliveredAt?: Date },
+  input?: {
+    providerMessageId?: string;
+    lastError?: string;
+    acceptedAt?: Date;
+    deliveredAt?: Date;
+  },
 ) {
   return prisma.messageDelivery.update({
     where: { id },
@@ -103,37 +122,68 @@ async function finish(
   });
 }
 
-function mapOutcome(result: LowLevelResult): Exclude<MessageState, "PENDING" | "DELIVERED" | "BOUNCED" | "COMPLAINED" | "SUPPRESSED"> {
+function mapOutcome(
+  result: LowLevelResult,
+): Exclude<
+  MessageState,
+  "PENDING" | "DELIVERED" | "BOUNCED" | "COMPLAINED" | "SUPPRESSED"
+> {
   switch (result.outcome) {
-    case "SENT": return "ACCEPTED";
-    case "REJECTED": return "FAILED";
-    case "NOT_ATTEMPTED": return "NOT_SENT";
+    case "SENT":
+      return "ACCEPTED";
+    case "REJECTED":
+      return "FAILED";
+    case "NOT_ATTEMPTED":
+      return "NOT_SENT";
     case "UNKNOWN":
-    default: return result.sent ? "ACCEPTED" : "UNKNOWN";
+    default:
+      return result.sent ? "ACCEPTED" : "UNKNOWN";
   }
 }
 
-export async function deliverMessage(input: DeliverMessageInput): Promise<DeliverMessageResult> {
-  if (!input.idempotencyKey.trim()) throw new Error("A message idempotency key is required.");
-  if (!input.recipient.address.trim()) throw new Error("A message recipient is required.");
+export async function deliverMessage(
+  input: DeliverMessageInput,
+): Promise<DeliverMessageResult> {
+  if (!input.idempotencyKey.trim()) {
+    throw new Error("A message idempotency key is required.");
+  }
+  if (!input.recipient.address.trim()) {
+    throw new Error("A message recipient is required.");
+  }
 
   const claim = await claimDelivery(input);
   if (!claim.ownsSend) return asResult(claim.row);
   const delivery = claim.row;
 
-  const suppression = await getMarketingSuppression(input.channel, input.recipient.address);
+  const suppression = await getMarketingSuppression(
+    input.channel,
+    input.recipient.address,
+  );
   if (input.purpose === "MARKETING" && suppression) {
-    return asResult(await finish(delivery.id, "SUPPRESSED", { lastError: `suppressed: ${suppression.reason}` }));
+    return asResult(
+      await finish(delivery.id, "SUPPRESSED", {
+        lastError: `suppressed: ${suppression.reason}`,
+      }),
+    );
   }
-  if (input.channel === "EMAIL" && input.purpose === "TRANSACTIONAL" && suppression?.reason === "bounce") {
-    return asResult(await finish(delivery.id, "FAILED", { lastError: "hard bounce on file" }));
+  if (
+    input.channel === "EMAIL" &&
+    input.purpose === "TRANSACTIONAL" &&
+    suppression?.reason === "bounce"
+  ) {
+    return asResult(
+      await finish(delivery.id, "FAILED", {
+        lastError: "hard bounce on file",
+      }),
+    );
   }
 
   if (isNonProductionDeployment()) {
-    return asResult(await finish(delivery.id, "NOT_SENT", { lastError: "previews never send" }));
-  }
-  if (input.channel === "EMAIL" && input.customerFacing && !(await isCustomerEmailEnabled())) {
-    return asResult(await finish(delivery.id, "NOT_SENT", { lastError: "customer email switch is off" }));
+    return asResult(
+      await finish(delivery.id, "NOT_SENT", {
+        lastError: "previews never send",
+      }),
+    );
   }
 
   const rendered = input.render();
@@ -145,7 +195,8 @@ export async function deliverMessage(input: DeliverMessageInput): Promise<Delive
         idempotencyKey: input.idempotencyKey,
       });
     }
-    return sendEmail({
+    const sender = input.customerFacing ? sendCustomerEmail : sendEmail;
+    return sender({
       to: input.recipient.address,
       subject: rendered.subject ?? "",
       text: rendered.text,
@@ -190,33 +241,53 @@ export async function deliverMessage(input: DeliverMessageInput): Promise<Delive
   return asResult(completed);
 }
 
-type ReconciledState = "ACCEPTED" | "DELIVERED" | "FAILED" | "BOUNCED" | "COMPLAINED" | "UNKNOWN";
+type ReconciledState =
+  | "ACCEPTED"
+  | "DELIVERED"
+  | "FAILED"
+  | "BOUNCED"
+  | "COMPLAINED"
+  | "UNKNOWN";
 
-async function getEmailProviderState(messageId: string): Promise<ReconciledState> {
-  if (isNonProductionDeployment() || !process.env.RESEND_API_KEY) return "UNKNOWN";
+async function getEmailProviderState(
+  messageId: string,
+): Promise<ReconciledState> {
+  if (isNonProductionDeployment() || !process.env.RESEND_API_KEY) {
+    return "UNKNOWN";
+  }
   try {
-    const { data, error } = await new Resend(process.env.RESEND_API_KEY).emails.get(messageId);
+    const { data, error } = await new Resend(
+      process.env.RESEND_API_KEY,
+    ).emails.get(messageId);
     if (error || !data) return "UNKNOWN";
     const lastEvent = (data as { last_event?: string | null }).last_event;
     switch (lastEvent) {
       case "delivered":
       case "opened":
-      case "clicked": return "DELIVERED";
-      case "bounced": return "BOUNCED";
-      case "complained": return "COMPLAINED";
+      case "clicked":
+        return "DELIVERED";
+      case "bounced":
+        return "BOUNCED";
+      case "complained":
+        return "COMPLAINED";
       case "failed":
-      case "suppressed": return "FAILED";
+      case "suppressed":
+        return "FAILED";
       case "sent":
       case "delivery_delayed":
-      case "scheduled": return "ACCEPTED";
-      default: return "UNKNOWN";
+      case "scheduled":
+        return "ACCEPTED";
+      default:
+        return "UNKNOWN";
     }
   } catch {
     return "UNKNOWN";
   }
 }
 
-export async function reconcileUnknownDeliveries(limit = 50): Promise<{ resolved: number }> {
+export async function reconcileUnknownDeliveries(
+  limit = 50,
+): Promise<{ resolved: number }> {
   const rows = await prisma.messageDelivery.findMany({
     where: { state: "UNKNOWN", providerMessageId: { not: null } },
     orderBy: [{ requestedAt: "asc" }, { id: "asc" }],
@@ -225,9 +296,10 @@ export async function reconcileUnknownDeliveries(limit = 50): Promise<{ resolved
 
   let resolved = 0;
   for (const row of rows) {
-    const state = row.channel === "EMAIL"
-      ? await getEmailProviderState(row.providerMessageId!)
-      : await getSmsProviderState(row.providerMessageId!);
+    const state =
+      row.channel === "EMAIL"
+        ? await getEmailProviderState(row.providerMessageId!)
+        : await getSmsProviderState(row.providerMessageId!);
     if (state === "UNKNOWN") continue;
 
     const updated = await prisma.messageDelivery.updateMany({
