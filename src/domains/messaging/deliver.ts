@@ -136,8 +136,12 @@ function mapOutcome(
     case "NOT_ATTEMPTED":
       return "NOT_SENT";
     case "UNKNOWN":
+      return "UNKNOWN";
     default:
-      return result.sent ? "ACCEPTED" : "UNKNOWN";
+      // Current production senders always provide outcome. This fallback keeps
+      // older tests/callers with the historic { sent: boolean } contract safe:
+      // false is a definite legacy failure, not permission for an extra retry.
+      return result.sent ? "ACCEPTED" : "FAILED";
   }
 }
 
