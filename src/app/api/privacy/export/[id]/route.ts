@@ -11,7 +11,7 @@ export async function GET(
   try {
     const body = await buildPrivacyExport(session.user.id, id);
     await markPrivacyExportFulfilled(session.user.id, id);
-    return new Response(body, {
+    return new Response(body.toString("utf8"), {
       headers: {
         "Content-Type": "application/json; charset=utf-8",
         "Content-Disposition": `attachment; filename="privacy-export-${id}.json"`,
