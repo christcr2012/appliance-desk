@@ -305,6 +305,11 @@ describe.skipIf(!enabled)("Batch B2 subscription-end convergence (real Postgres)
       where: { stripeSubscriptionId: subscriptionId },
       data: { leaseUntil: new Date(Date.now() - 1_000) },
     });
+    // Two minutes passing also makes the first worker's recorded Stripe attempt stale.
+    await prisma.providerOperation.updateMany({
+      where: { subjectType: "StripeSubscription", subjectId: subscriptionId, status: "PENDING" },
+      data: { updatedAt: new Date(Date.now() - 5 * 60_000) },
+    });
     expect(await applySubscriptionEnd(subscriptionId)).toBe("APPLIED");
     release.resolve();
     expect(await first).toBe("TAKEN_OVER");

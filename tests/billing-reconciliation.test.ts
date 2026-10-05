@@ -34,6 +34,8 @@ const mocks = vi.hoisted(() => ({
   refundCreate: vi.fn(),
   checkoutSessionsList: vi.fn(),
   paymentIntentRetrieve: vi.fn(),
+  // Rows of the subscription end-date table that detectDrift reads (none by default).
+  endIntentRows: vi.fn(),
 }));
 
 function makeTx() {
@@ -50,6 +52,7 @@ function makeTx() {
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
+    $queryRaw: (...args: unknown[]) => mocks.endIntentRows(...args),
     providerOperation: {
       findMany: (...args: unknown[]) => mocks.providerFindMany(...args),
       update: (...args: unknown[]) => mocks.providerUpdate(...args),
@@ -140,6 +143,7 @@ describe("billing provider reconciliation", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.providerFindMany.mockResolvedValue([]);
+    mocks.endIntentRows.mockResolvedValue([]);
     mocks.rentalFindMany.mockResolvedValue([]);
     mocks.invoiceFindMany.mockResolvedValue([]);
     mocks.paymentFindMany.mockResolvedValue([]);
