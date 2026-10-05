@@ -8,7 +8,7 @@ and the business audit items in `docs/reviews/2026-10-01-business-logic-audit.md
 (`B01–B36`). The original overhaul cards (O00–O32) are folded in below; their
 requirements are quoted inline so you do not need the archived card file.
 
-Order: **A (merged) → B → C → D → E → E2 (redesign) → F**, plus one conditional Google PR.
+Order: **A, B, C, R (merged) → B2 (finishes B and C) → D → E → E2 (redesign) → F**, plus one conditional Google PR.
 `docs/STATUS.md` says which one is next.
 
 **Every batch has a design document in `docs/designs/` that says *how* to
@@ -91,7 +91,7 @@ outcome.
 
 ---
 
-## Batch B — Billing, provider reconciliation & financial ledger — NEXT
+## Batch B — Billing, provider reconciliation & financial ledger — MERGED (leftovers in B2)
 
 **Design: `docs/designs/BATCH-B.md`** — read it in full before Step 2 of the playbook; its work units are the commit order.
 
@@ -180,7 +180,7 @@ for billing reminders (E), live payment activation (owner gate).
 
 ---
 
-## Batch C — Rental-to-service operations, custody, inventory & purchasing
+## Batch C — Rental-to-service operations, custody, inventory & purchasing — MERGED (item 14 in B2)
 
 **Design: `docs/designs/BATCH-C.md`** — read it in full before Step 2 of the playbook; its work units are the commit order.
 
@@ -244,7 +244,7 @@ appliance screens), `docs/audits/Package-8-*.md`, `docs/audits/Package-1-*.md`
     for parts cost.
 13. **Business-audit items** B02, B04, B05, B10, B14, B16, B17, B25, B29,
     B32, B33; capture the demand inputs B26 will need later.
-14. **Billing stops at pickup/return (owner requirement IN-24, 2026-10-03; design work unit C-09 in `docs/designs/BATCH-C-UPDATE-2026-10-03.md`; blocked on the shared billing design and IN-26/IN-27).** Completing the pickup or return job ends billing on that date. If the pickup happens after the agreed end date, the job records whether the delay was the customer's or the company's; company-caused delay means the days after the agreed end date are not billed (waived, with an audit record and a plain-English line on the statement). Build on the early-ending/auto-renew execution already merged (`src/domains/agreements/termination-execution.ts` ends the rental and sets Stripe's end date on the agreed date); customer-caused lateness is built (by the day, owner setting; PR #165), as is the late-delivery credit (IN-26) — the remaining pieces are the company-fault waiver and the subscription rule for a missing item (delivered late or swapped same-type: stays; permanently cancelled: comes off Stripe from the next period; Chris 2026-10-03, specified in `docs/prompts/DESIGN-BATCH-C-LITERAL-SPECS.md`). Tests: late by company waives, late by customer bills per the chosen rule, DST day boundaries.
+14. **(Moved to Batch B2, 2026-10-05: `docs/designs/BATCH-B2.md` WU-B2-9.)** **Billing stops at pickup/return (owner requirement IN-24, 2026-10-03; design work unit C-09 in `docs/designs/BATCH-C-UPDATE-2026-10-03.md`; blocked on the shared billing design and IN-26/IN-27).** Completing the pickup or return job ends billing on that date. If the pickup happens after the agreed end date, the job records whether the delay was the customer's or the company's; company-caused delay means the days after the agreed end date are not billed (waived, with an audit record and a plain-English line on the statement). Build on the early-ending/auto-renew execution already merged (`src/domains/agreements/termination-execution.ts` ends the rental and sets Stripe's end date on the agreed date); customer-caused lateness is built (by the day, owner setting; PR #165), as is the late-delivery credit (IN-26) — the remaining pieces are the company-fault waiver and the subscription rule for a missing item (delivered late or swapped same-type: stays; permanently cancelled: comes off Stripe from the next period; Chris 2026-10-03, specified in `docs/prompts/DESIGN-BATCH-C-LITERAL-SPECS.md`). Tests: late by company waives, late by customer bills per the chosen rule, DST day boundaries.
 
 ### Acceptance checklist
 
@@ -271,6 +271,45 @@ Three owner answers gate the money rules in item 14 (pickup/return billing) and 
 ### Not in this batch
 
 Owner decision UI for deposits/refunds (D); automation run history (E).
+
+---
+
+## Batch B2 — Renewal lifecycle, month-to-month rentals and pickup billing end (finishes Batches B and C)
+
+**Design: `docs/designs/BATCH-B2.md`** (written 2026-10-05; waiting for Chris's approval in `docs/designs/README.md`).
+
+### Purpose
+
+Close the last open pieces of Batches B and C so automatic renewals *can* safely be switched on later: the independent
+review of PR #161 (`docs/reviews/2026-10-03-pr161-independent-review.md`, findings R1–R7, D1, D2), the month-to-month
+30-day terms-change notice mechanism (IN-21), and Batch C item 14 / work unit C-09 (stop billing at return; company-delay
+waiver, IN-24). Nothing is switched on by this batch.
+
+### Deliverables
+
+1. One stored, versioned "when should Stripe stop billing" answer per subscription, saved with every decision that
+   changes it and applied to Stripe by one worker at a time, newest decision wins (R1, R2).
+2. Customers can end a month-to-month rental online, including after a fixed term rolls over (R3).
+3. Annual reminders for continuing month-to-month rentals, tracked across replacement agreements (R4).
+4. Notice states with fenced evidence, no stale promises, safe handling of uncertain email, fair retries (R5–R7);
+   hand-delivery evidence rules (D2).
+5. Month-to-month terms versions and the 30-day change notice (IN-21 mechanism; wording still Chris's to approve).
+6. Company-delay waiver on late-return bills; agreements closed once everything is back and the agreed end has passed;
+   an owner task when equipment comes back with no ending recorded (C-09).
+
+### Acceptance checklist
+
+- [ ] Every named test in `BATCH-B2.md` passes (real Postgres for each ordering, crash and race case).
+- [ ] `grep -rn "syncSubscriptionTerm\|syncTerminationEnd" src` returns nothing.
+- [ ] Customer rollover-and-end flow checked in the browser (My rentals).
+- [ ] Each review finding R1–R7, D1, D2 has a disposition with test evidence in the PR.
+- [ ] Every item in "Rules that apply to every batch".
+
+### Owner inputs / gates
+
+IN-21 (wording of the change notice and annual reminder), IN-29 (no refund for early return — default built),
+IN-30 (missed renewal reminder handling — default built), IN-31 (counsel: hand-delivery channels, annual reminder),
+the "Automatic renewals" switch stays OFF until counsel has read the wording (`docs/GO-LIVE-CHECKLIST.md`).
 
 ---
 
@@ -498,7 +537,7 @@ Launch authorization and the final evidence ledger (F).
 
 ## Batch E2 — Visual redesign: owner desk, public site and customer portal (desktop, phone, light and dark)
 
-**Design: `docs/designs/BATCH-E2.md` — NOT WRITTEN YET.** Per `AGENTS.md` nothing in this batch may be built until that design exists and is approved. The prompt for the stronger model that writes it is `docs/prompts/DESIGN-BATCH-E2-REDESIGN.md`. (Added at Chris's request, 2026-10-04: the whole redesign, not just phone screens, goes after E and before F.)
+**Design: `docs/designs/BATCH-E2.md`** (written 2026-10-05; waiting for Chris's approval; its public-home-page step also waits for IN-32). (Added at Chris's request, 2026-10-04: the whole redesign, not just phone screens, goes after E and before F.)
 
 ### Purpose
 

@@ -7,7 +7,7 @@ a name, a status value or a table that a later design relies on. This file is th
 running answer to "does the design still match the code?"; the design drift check
 (`docs/designs/README.md`) starts here.
 
-Last updated: 2026-10-04 (after Remediation Batch R, #185–#197).
+Last updated: 2026-10-05. **The D, E and F designs were rewritten on 2026-10-05 against `main` 47bd833 with everything below already folded in**, and B2/E2 were written fresh against the same code. From now on, add a dated entry here when a batch merges (B2's section 8 lists what to add for it).
 
 ## Rules a later batch must follow
 
