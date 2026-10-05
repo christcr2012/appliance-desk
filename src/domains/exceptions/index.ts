@@ -14,6 +14,7 @@ import {
   itemNotDeliveredException,
   subscriptionUpdatePendingException,
   noticeWaitingException,
+  noticeProblemException,
   missingRepairCostException,
   overdueJobException,
   pastDueInvoiceException,
@@ -123,13 +124,20 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     startDate: { lt: addDays(now, -RENEWAL_START_GRACE_DAYS) },
   } satisfies Prisma.RentalAgreementWhereInput;
   const endingWhere = { status: "ACTIVE", terminationEffectiveOn: { lt: now } } satisfies Prisma.RentalAgreementWhereInput;
-  const noticeWhere = {
-    OR: [
-      { status: "PENDING" },
-      // A send that was interrupted may already have gone out: a person has to check.
-      { status: "SENDING", updatedAt: { lt: new Date(now.getTime() - 15 * 60_000) } },
-    ],
-  } satisfies Prisma.CustomerNoticeWhereInput;
+  // Waiting to be sent. (A send interrupted mid-way is retried by the nightly job, or becomes UNCERTAIN.)
+  const noticeWhere = { status: "PENDING" } satisfies Prisma.CustomerNoticeWhereInput;
+  const noticeProblemWhere = (status: "MISSED" | "UNCERTAIN" | "FAILED") =>
+    ({ status }) satisfies Prisma.CustomerNoticeWhereInput;
+  const cappedNotices = (status: "MISSED" | "UNCERTAIN" | "FAILED") =>
+    capped(
+      (take) => prisma.customerNotice.findMany({
+        where: noticeProblemWhere(status),
+        select: { id: true, createdAt: true, ...customerSelect },
+        orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+        take,
+      }),
+      () => prisma.customerNotice.count({ where: noticeProblemWhere(status) }),
+    );
   const undeliveredWhere = { deliveredOn: null, removedAt: null } satisfies Prisma.PendingDeliveryWhereInput;
   // Operational: an appliance that says it is with a customer but has no custody record.
   const pendingReductionWhere = {
@@ -157,6 +165,9 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     stuckRenewals,
     stuckEndings,
     waitingNotices,
+    missedNotices,
+    uncertainNotices,
+    failedNotices,
     itemsNotDelivered,
     custodyGaps,
     pendingLineReductions,
@@ -278,6 +289,9 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
           () => prisma.customerNotice.count({ where: noticeWhere }),
         )
       : empty<never>(),
+    canViewFinance ? cappedNotices("MISSED") : empty<never>(),
+    canViewFinance ? cappedNotices("UNCERTAIN") : empty<never>(),
+    canViewFinance ? cappedNotices("FAILED") : empty<never>(),
     // Operational, not money: every role sees an item that still has to be delivered.
     capped(
       (take) => prisma.pendingDelivery.findMany({
@@ -357,6 +371,15 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     ),
     ...waitingNotices.rows.map((n) =>
       noticeWaitingException({ id: n.id, createdAt: n.createdAt, customerName: customerDisplayName(n.customer) }),
+    ),
+    ...missedNotices.rows.map((n) =>
+      noticeProblemException("MISSED", { id: n.id, createdAt: n.createdAt, customerName: customerDisplayName(n.customer) }),
+    ),
+    ...uncertainNotices.rows.map((n) =>
+      noticeProblemException("UNCERTAIN", { id: n.id, createdAt: n.createdAt, customerName: customerDisplayName(n.customer) }),
+    ),
+    ...failedNotices.rows.map((n) =>
+      noticeProblemException("FAILED", { id: n.id, createdAt: n.createdAt, customerName: customerDisplayName(n.customer) }),
     ),
     ...stuckEndings.rows
       .filter((a) => a.terminationEffectiveOn !== null)
@@ -476,6 +499,9 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
       ["RENEWAL_NOT_STARTED", stuckRenewals],
       ["EARLY_ENDING_NOT_DONE", stuckEndings],
       ["NOTICE_WAITING", waitingNotices],
+      ["NOTICE_MISSED", missedNotices],
+      ["NOTICE_UNCERTAIN", uncertainNotices],
+      ["NOTICE_FAILED", failedNotices],
       ["ITEM_NOT_DELIVERED", itemsNotDelivered],
       ["CUSTODY_UNKNOWN", custodyGaps],
       ["SUBSCRIPTION_UPDATE_PENDING", pendingLineReductions],

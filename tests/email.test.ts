@@ -89,7 +89,7 @@ describe("sendEmail", () => {
       text: "Hello there.\n\nSecond paragraph.",
     });
 
-    expect(result).toEqual({ sent: true, outcome: "SENT" });
+    expect(result).toEqual({ sent: true, outcome: "SENT", providerMessageId: "abc" });
     expect(emailsSend).toHaveBeenCalledTimes(1);
     const call = emailsSend.mock.calls[0][0];
     expect(call.to).toBe("a@example.com");

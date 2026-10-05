@@ -19,7 +19,8 @@ import { runAutoRenewals, extendBillingForDeliveredAutoRenewals } from "@/domain
 import { runDueTerminations } from "@/domains/agreements/termination-execution";
 import { startRenewalIfDue } from "@/domains/agreements/renewal-start";
 import { setAutoRenew } from "@/domains/agreements/term";
-import { listWaitingNotices, markNoticeDeliveredByHand, sendPendingNotices } from "@/domains/notices";
+import { listWaitingNotices, recordNoticeDelivery, sendPendingNotices } from "@/domains/notices";
+import { businessDateKey } from "@/lib/business-date";
 import { renewalReminderKey } from "@/domains/notices/renewal-reminder";
 
 const emailMock = vi.hoisted(() => ({ send: vi.fn() }));
@@ -238,7 +239,8 @@ describe.skipIf(!enabled)("auto-renew and agreed early endings are carried out",
       const off = await sendPendingNotices(inReminderWindow);
       expect(off.stillWaiting).toBeGreaterThanOrEqual(1);
       expect((await noticeOf(a))!.status).toBe("PENDING");
-      expect((await noticeOf(a))!.attempts).toBeGreaterThanOrEqual(1);
+      // Nothing was attempted (live email is off), so it has not used up any of its three tries.
+      expect((await noticeOf(a))!.attempts).toBe(0);
 
       emailMock.send.mockResolvedValue({ sent: true });
       await sendPendingNotices(inReminderWindow);
@@ -252,16 +254,18 @@ describe.skipIf(!enabled)("auto-renew and agreed early endings are carried out",
       await prisma.user.create({ data: { id: ownerId, email: `${tag}-o@example.test`, name: "AR Owner", role: "OWNER", emailVerified: true } });
       try {
         const pending = (await noticeOf(b))!;
-        await expect(markNoticeDeliveredByHand(userId, pending.id, "phoned")).rejects.toThrow();
+        const today = businessDateKey(new Date());
+        const input = { channel: "IN_PERSON_WRITTEN", date: today, sentTo: "at the door", note: "handed a printed copy" } as const;
+        await expect(recordNoticeDelivery(userId, pending.id, input)).rejects.toThrow();
         await expect(
-          markNoticeDeliveredByHand(ownerId, pending.id, "phoned", new Date(Date.now() + 3 * 86_400_000)),
+          recordNoticeDelivery(ownerId, pending.id, { ...input, date: businessDateKey(new Date(Date.now() + 3 * 86_400_000)) }),
         ).rejects.toThrow(/future/);
-        await markNoticeDeliveredByHand(ownerId, pending.id, "phoned");
+        await recordNoticeDelivery(ownerId, pending.id, input);
         const done = (await noticeOf(b))!;
         expect(done.status).toBe("SENT");
-        expect(done.sentVia).toBe("HAND: phoned");
+        expect(done.sentVia).toBe("HAND: IN_PERSON_WRITTEN");
         expect(done.sentByUserId).toBe(ownerId);
-        await expect(markNoticeDeliveredByHand(ownerId, pending.id, "phoned")).rejects.toThrow(/not waiting/);
+        await expect(recordNoticeDelivery(ownerId, pending.id, input)).rejects.toThrow(/not waiting/);
       } finally {
         await prisma.customerNotice.updateMany({ where: { sentByUserId: ownerId }, data: { sentByUserId: null } });
         await prisma.auditLog.deleteMany({ where: { userId: ownerId } });
@@ -297,7 +301,8 @@ describe.skipIf(!enabled)("auto-renew and agreed early endings are carried out",
       const mine = (await noticeOf(a))!;
       expect(mine.status).toBe("SENT");
       expect(mine.sentVia).toBe("EMAIL");
-      expect(mine.attempts).toBe(1);
+      expect(mine.attempts).toBe(0);
+      expect(mine.claimToken).toBeNull();
     });
 
     it("a notice whose send failed goes back to waiting (never stuck as 'sending')", async () => {
@@ -340,9 +345,11 @@ describe.skipIf(!enabled)("auto-renew and agreed early endings are carried out",
       await prisma.user.create({ data: { id: ownerId, email: `${tag}-o2@example.test`, name: "AR Owner 2", role: "OWNER", emailVerified: true } });
       try {
         const pending = (await noticeOf(a))!;
-        const earlier = new Date(Date.now() - 2 * 86_400_000);
-        await markNoticeDeliveredByHand(ownerId, pending.id, "mailed", earlier);
-        expect((await noticeOf(a))!.sentAt?.toISOString()).toBe(earlier.toISOString());
+        const earlierKey = businessDateKey(new Date(Date.now() - 10 * 86_400_000));
+        await recordNoticeDelivery(ownerId, pending.id, { channel: "BUSINESS_MAILBOX", date: earlierKey, sentTo: "customer@example.test", note: "sent from the business mailbox" });
+        const saved = (await noticeOf(a))!;
+        expect(businessDateKey(saved.sentAt!)).toBe(earlierKey);
+        expect(businessDateKey(saved.evidenceDate!)).toBe(earlierKey);
       } finally {
         await prisma.customerNotice.updateMany({ where: { sentByUserId: ownerId }, data: { sentByUserId: null } });
         await prisma.auditLog.deleteMany({ where: { userId: ownerId } });
@@ -358,41 +365,41 @@ describe.skipIf(!enabled)("auto-renew and agreed early endings are carried out",
       const result = await sendPendingNotices(tooLate);
       expect(result.sent).toBe(0);
       expect(emailMock.send).not.toHaveBeenCalled();
+      // Its last allowed day passed: it is MISSED (never sent late) and stays on the owner's list.
       const waiting = (await noticeOf(a))!;
-      expect(waiting.status).toBe("PENDING");
+      expect(waiting.status).toBe("MISSED");
       expect(waiting.attempts).toBe(0);
       expect((await listWaitingNotices()).some((n) => n.id === waiting.id)).toBe(true);
     });
 
-    it("an interrupted send is never retried by itself (the provider may have sent it); the owner sees it and settles it by hand", async () => {
+    it("an interrupted send is retried with the same key while it is under 23 hours old, and needs a person after that", async () => {
       const a = await agreement();
       await runAutoRenewals(windowOpen);
       const key = renewalReminderKey(a.id, a.endDate!);
+      const stuck = (await noticeOf(a))!;
       await prisma.customerNotice.update({
         where: { dedupeKey: key },
-        data: { status: "SENDING", updatedAt: new Date(Date.now() - 3 * 60 * 60_000) },
+        data: { status: "SENDING", claimToken: "old-run", sentToAddress: "frozen@example.test", lastAttemptAt: new Date(inReminderWindow.getTime() - 3 * 3_600_000) },
       });
-      emailMock.send.mockReset().mockResolvedValue({ sent: true });
+      emailMock.send.mockReset().mockResolvedValue({ sent: true, outcome: "SENT" });
       await sendPendingNotices(inReminderWindow);
-      const stuck = (await noticeOf(a))!;
-      expect(emailMock.send).not.toHaveBeenCalledWith(expect.objectContaining({ idempotencyKey: `customer-notice-${stuck.id}` }));
-      expect(stuck.status).toBe("SENDING");
-      const listed = (await listWaitingNotices()).find((n) => n.id === stuck.id);
-      expect(listed?.status).toBe("SENDING");
+      expect(emailMock.send).toHaveBeenCalledWith(
+        expect.objectContaining({ to: "frozen@example.test", idempotencyKey: `customer-notice-${stuck.id}` }),
+      );
+      expect((await noticeOf(a))!.status).toBe("SENT");
 
-      const ownerId = `ar-owner3-${tag}`;
-      await prisma.user.create({ data: { id: ownerId, email: `${tag}-o3@example.test`, name: "AR Owner 3", role: "OWNER", emailVerified: true } });
-      try {
-        const when = new Date(Date.now() - 86_400_000);
-        await markNoticeDeliveredByHand(ownerId, stuck.id, "checked provider log", when);
-        const done = (await noticeOf(a))!;
-        expect(done.status).toBe("SENT");
-        expect(done.sentAt?.toISOString()).toBe(when.toISOString());
-      } finally {
-        await prisma.customerNotice.updateMany({ where: { sentByUserId: ownerId }, data: { sentByUserId: null } });
-        await prisma.auditLog.deleteMany({ where: { userId: ownerId } });
-        await prisma.user.delete({ where: { id: ownerId } });
-      }
+      const b = await agreement();
+      await runAutoRenewals(windowOpen);
+      const old = (await noticeOf(b))!;
+      await prisma.customerNotice.update({
+        where: { id: old.id },
+        data: { status: "SENDING", claimToken: "old-run", lastAttemptAt: new Date(inReminderWindow.getTime() - 25 * 3_600_000) },
+      });
+      emailMock.send.mockClear();
+      await sendPendingNotices(inReminderWindow);
+      expect(emailMock.send).not.toHaveBeenCalledWith(expect.objectContaining({ idempotencyKey: `customer-notice-${old.id}` }));
+      const listed = (await listWaitingNotices(inReminderWindow)).find((n) => n.id === old.id);
+      expect(listed?.status).toBe("UNCERTAIN");
     });
 
     it("an opt-out that is saved but whose renewal is not cancelled yet can never let billing be extended", async () => {
@@ -499,7 +506,8 @@ describe.skipIf(!enabled)("auto-renew and agreed early endings are carried out",
         input.idempotencyKey === `customer-notice-${first.id}` ? { sent: false, outcome: "UNKNOWN" } : { sent: false },
       );
       await sendPendingNotices(inReminderWindow);
-      expect((await noticeOf(a))!.status).toBe("SENDING");
+      // Unclear twice in a row: it may have gone out, so a person must look (and it is never sent again by itself).
+      expect((await noticeOf(a))!.status).toBe("UNCERTAIN");
 
       const b = await agreement();
       await runAutoRenewals(windowOpen);

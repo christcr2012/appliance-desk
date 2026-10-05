@@ -9,6 +9,7 @@ import { cancelAgreement, lockRentalAgreementInTx } from "./index";
 import { renewalCreateData } from "./renewal-data";
 import { snapshotAutoRenew } from "./terms-snapshot";
 import { createNoticeInTx } from "@/domains/notices";
+import { windowForRenewalStart } from "@/domains/notices/state";
 import { composeRenewalReminder, renewalReminderKey } from "@/domains/notices/renewal-reminder";
 
 /**
@@ -117,6 +118,8 @@ async function createAutoRenewal(agreementId: string, now: Date): Promise<Create
       dedupeKey: renewalReminderKey(old.id, old.endDate),
       subject: reminder.subject,
       body: reminder.body,
+      // Colorado: the reminder must reach the customer 25 to 40 days before the renewal starts.
+      ...windowForRenewalStart(created.startDate ?? old.endDate),
     });
     await tx.auditLog.create({
       data: {

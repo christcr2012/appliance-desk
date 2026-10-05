@@ -417,6 +417,23 @@ export async function updateJobSchedulingAction(
   return { status: "success" };
 }
 
+/** Who may record a hand delivery of a notice, and mail transit days. Owner only. */
+export async function updateNoticeDeliveryAction(raw: Record<string, unknown>): Promise<SettingsActionState> {
+  const session = await requireRole("OWNER");
+  const { parseNoticeDelivery } = await import("@/domains/settings/notice-delivery");
+  const { setNoticeDeliverySettings } = await import("@/domains/settings/notice-delivery-save");
+  const parsed = parseNoticeDelivery(raw);
+  if (!parsed.success) return { status: "error", message: parsed.message };
+  try {
+    await setNoticeDeliverySettings(session.user.id, parsed.roles, parsed.days);
+  } catch {
+    return { status: "error", message: "Settings could not be saved. Your changes are still in the form; please try again." };
+  }
+  revalidatePath("/desk/settings");
+  revalidatePath("/desk/notices");
+  return { status: "success" };
+}
+
 /** The owner's master switch for emails to customers. Owner only. */
 export async function setCustomerEmailAction(enabled: boolean): Promise<SettingsActionState> {
   const session = await requireRole("OWNER");

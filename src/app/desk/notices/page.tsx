@@ -21,9 +21,14 @@ export default async function NoticesPage() {
         <p className="mt-1">
           Colorado asks that a customer is reminded 25 to 40 days before an automatic renewal. The reminder is written
           for you the moment the renewal is set up, using the renewal wording the customer agreed to. It is emailed
-          automatically once live customer email is on (that switch is yours to approve; it is off today). Until it has
-          been delivered, the customer&rsquo;s renewal will not start. If you contact the customer another way, mark it
-          as delivered below.
+          automatically, inside those days only, once live customer email is on (that switch is yours to approve; it is off
+          today). If its last day passes it is never sent late. Until it has been delivered, the customer&rsquo;s renewal
+          will not start.
+        </p>
+        <p className="mt-2">
+          If you deliver it yourself, record how (mail, your business mailbox, a printed copy, or a text the customer agreed
+          to). A phone call is not a delivery: the law lists mail, email, or another easily accessible form the customer
+          authorized.
         </p>
       </div>
       {waiting.length === 0 ? (
@@ -36,13 +41,16 @@ export default async function NoticesPage() {
             <NoticeCard
               key={n.id}
               noticeId={n.id}
+              status={n.status}
               customerName={n.customer.user.name ?? n.customer.user.email}
               customerEmail={n.customer.user.email}
               createdLabel={formatBusinessDate(n.createdAt)}
               subject={n.subject}
               body={n.body}
-              possiblySent={n.status === "SENDING"}
               deadline={n.deadline}
+              firstDayLabel={n.earliestAt ? formatBusinessDate(n.earliestAt) : null}
+              lastDayLabel={n.deadlineAt ? formatBusinessDate(n.deadlineAt) : null}
+              lastError={n.lastError}
             />
           ))}
         </ul>

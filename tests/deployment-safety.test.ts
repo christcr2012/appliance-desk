@@ -75,7 +75,7 @@ describe("configured messaging providers", () => {
   });
   it("continues to deliver through configured production providers", async () => {
     vi.stubEnv("VERCEL_ENV", "production");
-    expect(await sendEmail({ to: "customer@example.test", subject: "Hi", text: "Hello" })).toEqual({ sent: true, outcome: "SENT" });
+    expect(await sendEmail({ to: "customer@example.test", subject: "Hi", text: "Hello" })).toEqual({ sent: true, outcome: "SENT", providerMessageId: "email-1" });
     expect(await sendSms({ to: "+13035550100", body: "Hello" })).toEqual({ sent: true });
     expect(mocks.email).toHaveBeenCalledOnce();
     expect(mocks.sms).toHaveBeenCalledOnce();

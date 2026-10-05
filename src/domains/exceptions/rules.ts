@@ -28,6 +28,9 @@ export type ExceptionCategory =
   | "RENEWAL_NOT_STARTED"
   | "EARLY_ENDING_NOT_DONE"
   | "NOTICE_WAITING"
+  | "NOTICE_MISSED"
+  | "NOTICE_UNCERTAIN"
+  | "NOTICE_FAILED"
   | "ITEM_NOT_DELIVERED"
   | "SUBSCRIPTION_UPDATE_PENDING"
   | "CUSTODY_UNKNOWN";
@@ -186,6 +189,44 @@ export function noticeWaitingException(notice: {
     detail:
       "Their automatic renewal will not start until this reminder is delivered. Send it yourself and mark it as delivered, or turn on live customer email.",
     href: "/desk/notices",
+    since: notice.createdAt,
+  };
+}
+
+/**
+ * A reminder that did not reach the customer cleanly. All three open the same "Fix a missed reminder" screen,
+ * which offers every option (docs/designs/BATCH-B2.md B2-18).
+ */
+export function noticeProblemException(
+  status: "MISSED" | "UNCERTAIN" | "FAILED",
+  notice: { id: string; customerName: string; createdAt: Date },
+): ExceptionItem {
+  const copy = {
+    MISSED: {
+      category: "NOTICE_MISSED" as const,
+      title: `${notice.customerName}'s renewal reminder was not delivered in time`,
+      detail:
+        "The last day to send it passed. It will never be sent now (it would promise a renewal that cannot start), the automatic renewal will not start on its own, and billing ends on the current end date. Open it to choose what happens next.",
+    },
+    UNCERTAIN: {
+      category: "NOTICE_UNCERTAIN" as const,
+      title: `${notice.customerName}'s renewal reminder may or may not have gone out`,
+      detail:
+        "The email service did not give a clear answer. Check whether it was delivered, then say so on the next screen. Nothing is sent again by itself.",
+    },
+    FAILED: {
+      category: "NOTICE_FAILED" as const,
+      title: `${notice.customerName}'s renewal reminder was refused three times`,
+      detail:
+        "The email service refused it every time (often a wrong email address). Fix the address and try again, or deliver it another way.",
+    },
+  }[status];
+  return {
+    category: copy.category,
+    severity: "high",
+    title: copy.title,
+    detail: copy.detail,
+    href: `/desk/notices/${notice.id}/resolve`,
     since: notice.createdAt,
   };
 }
