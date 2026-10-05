@@ -21,7 +21,12 @@ const auditLogCreate = vi.fn();
 const partRecordCount = vi.fn();
 function makeTx() {
   return {
-    $queryRaw: lockPart,
+    user: { findUnique: async () => ({ id: "user-1", role: "OWNER", archivedAt: null }) },
+    // R14: the order locks its supplier row first (the fake answers from supplierFindUnique), then the parts.
+    $queryRaw: async (strings: TemplateStringsArray, ...values: unknown[]) =>
+      strings.join("").includes('"Supplier"')
+        ? [await supplierFindUnique()].filter(Boolean)
+        : lockPart(strings, ...values),
     partRecord: { findUniqueOrThrow: partRecordFindUniqueOrThrow, update: (...args: unknown[]) => partRecordUpdate(...args), count: (...args: unknown[]) => partRecordCount(...args) },
     purchaseOrder: { create: (...args: unknown[]) => purchaseOrderCreate(...args), findUniqueOrThrow: purchaseOrderFindUniqueOrThrow, updateMany: purchaseOrderClaim, update: (...args: unknown[]) => purchaseOrderUpdate(...args) },
     auditLog: { create: (...args: unknown[]) => auditLogCreate(...args) },
