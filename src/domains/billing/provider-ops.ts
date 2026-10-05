@@ -9,7 +9,13 @@ export type ProviderOpKind =
   | "BALANCE_CREDIT"
   | "REFUND_CREATE";
 
-type ProviderOpStatus = "PENDING" | "SUCCEEDED" | "FAILED" | "UNKNOWN" | "DRIFT";
+type ProviderOpStatus =
+  | "PENDING"
+  | "SUCCEEDED"
+  | "FAILED"
+  | "UNKNOWN"
+  | "DRIFT"
+  | "SUPERSEDED";
 
 type ProviderOperationRow = {
   id: string;
@@ -51,16 +57,6 @@ function providerRowMatches(
  * network call. A fresh idempotency key is inserted atomically. If the key
  * already exists, its row is locked before deciding whether the operation is
  * finished, actively owned, stale/retryable, or awaiting reconciliation.
- *
- * requestedAt is the immutable evidence anchor for the original provider
- * request. updatedAt is the mutable lease/attempt timestamp used to decide
- * whether an in-flight claim has gone stale.
- *
- * UNKNOWN remains non-retryable by default. Reconciliation may provide the
- * attempt number it observed before a provider read proved the ambiguous write
- * did not take effect. The row lock then requires that attempt to still match,
- * preventing stale provider evidence from authorizing a later retry after a
- * competing worker has already changed the provider outcome.
  */
 export async function claimProviderOperation(
   tx: Prisma.TransactionClient,
@@ -138,6 +134,9 @@ export async function claimProviderOperation(
     }
     return { done: true, providerObjectId: existing.providerObjectId };
   }
+  if (existing.status === "SUPERSEDED") {
+    throw new RetryLater("This provider operation was superseded by a newer durable decision.");
+  }
 
   if (existing.status === "UNKNOWN") {
     if (
@@ -179,9 +178,6 @@ async function finalizeExhaustedBalanceCreditHandoff(
 ): Promise<void> {
   if (operation.kind !== "BALANCE_CREDIT" || operation.subjectType !== "CustomerCredit") return;
 
-  // A normal handoff worker owns IN_FLIGHT and finalizes itself. This recovery
-  // path only closes rows that already exhausted their five ordinary RETRY
-  // attempts and were later proven successful by provider reconciliation.
   await tx.jobBillingHandoff.updateMany({
     where: {
       kind: "PUSH_CREDIT",
@@ -226,7 +222,9 @@ export async function completeProviderOperation(
     throw new Error(`Provider operation ${opId} does not exist.`);
   }
 
-  if (current.status === "DRIFT") return;
+  // A superseded provider result is deliberately ignored even if an old worker
+  // returns late. The newer durable intent owns the provider state now.
+  if (current.status === "SUPERSEDED" || current.status === "DRIFT") return;
   if (current.status === "SUCCEEDED") {
     if (result.status === "SUCCEEDED" && current.providerObjectId === result.providerObjectId) {
       await finalizeExhaustedBalanceCreditHandoff(tx, current, new Date());

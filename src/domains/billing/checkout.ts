@@ -1,5 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import { cancelAtSecondsFor, subscriptionStartSecondsFor } from "./subscription-term";
+import {
+  applySubscriptionEnds,
+  recomputeSubscriptionEndInTx,
+} from "./subscription-end";
 import { getStripeClient } from "@/lib/stripe";
 import { fixedTermEndDate } from "@/lib/business-date";
 import type { HandoffWorkOutcome } from "./handoff-outcome";
@@ -380,7 +384,7 @@ export async function startRecurringBillingForAgreement(
   agreementId: string,
 ): Promise<HandoffWorkOutcome> {
   type Claimed =
-    | { done: true; outcome: HandoffWorkOutcome }
+    | { done: true; outcome: HandoffWorkOutcome; subscriptionEndIds: string[] }
     | {
         done: false;
         opId: string;
@@ -426,7 +430,7 @@ export async function startRecurringBillingForAgreement(
           where: { id: agreementId },
           data: { billingBlockedReason: DELIVERY_BLOCKER },
         });
-        return { done: true, outcome: { state: "BLOCKED", detail: DELIVERY_BLOCKER } };
+        return { done: true, outcome: { state: "BLOCKED", detail: DELIVERY_BLOCKER }, subscriptionEndIds: [] };
       }
 
       let endDate = agreement.endDate;
@@ -445,7 +449,7 @@ export async function startRecurringBillingForAgreement(
             data: { billingBlockedReason: null },
           });
         }
-        return { done: true, outcome: { state: "DONE" } };
+        return { done: true, outcome: { state: "DONE" }, subscriptionEndIds: [] };
       }
       if (agreement.stripeSubscriptionId) {
         if (!agreement.billingStartedAt || agreement.billingBlockedReason) {
@@ -457,11 +461,11 @@ export async function startRecurringBillingForAgreement(
             },
           });
         }
-        return { done: true, outcome: { state: "DONE" } };
+        return { done: true, outcome: { state: "DONE" }, subscriptionEndIds: [] };
       }
 
       const plan = buildCheckoutLinePlan(agreement).filter((item) => item.recurring);
-      if (plan.length === 0) return { done: true, outcome: { state: "DONE" } };
+      if (plan.length === 0) return { done: true, outcome: { state: "DONE" }, subscriptionEndIds: [] };
 
       if (
         !agreement.customer.stripeCustomerId ||
@@ -471,7 +475,7 @@ export async function startRecurringBillingForAgreement(
           where: { id: agreementId },
           data: { billingBlockedReason: PAYMENT_METHOD_BLOCKER },
         });
-        return { done: true, outcome: { state: "BLOCKED", detail: PAYMENT_METHOD_BLOCKER } };
+        return { done: true, outcome: { state: "BLOCKED", detail: PAYMENT_METHOD_BLOCKER }, subscriptionEndIds: [] };
       }
 
       const operation = await claimProviderOperation(tx, {
@@ -490,7 +494,8 @@ export async function startRecurringBillingForAgreement(
             billingBlockedReason: null,
           },
         });
-        return { done: true, outcome: { state: "DONE" } };
+        await recomputeSubscriptionEndInTx(tx, operation.providerObjectId);
+        return { done: true, outcome: { state: "DONE" }, subscriptionEndIds: [operation.providerObjectId] };
       }
 
       return {
@@ -529,7 +534,10 @@ export async function startRecurringBillingForAgreement(
     return { state: unknown ? "UNKNOWN" : "RETRY", detail };
   }
 
-  if (claimed.done) return claimed.outcome;
+  if (claimed.done) {
+    await applySubscriptionEnds(claimed.subscriptionEndIds);
+    return claimed.outcome;
+  }
 
   const stripe = getStripeClient();
   let taxRateId: string | null;
@@ -624,7 +632,7 @@ export async function startRecurringBillingForAgreement(
   }
 
   const stripeSubscriptionId = providerResult.value.id;
-  return prisma.$transaction(async (tx): Promise<HandoffWorkOutcome> => {
+  const finalized = await prisma.$transaction(async (tx): Promise<{ outcome: HandoffWorkOutcome; subscriptionEndIds: string[] }> => {
     const locked = await tx.$queryRaw<
       Array<{
         id: string;
@@ -646,8 +654,8 @@ export async function startRecurringBillingForAgreement(
         note: `Stripe subscription ${stripeSubscriptionId} was created after local agreement ${agreementId} disappeared.`,
       });
       return {
-        state: "UNKNOWN",
-        detail: "Stripe created the subscription after the local agreement disappeared.",
+        outcome: { state: "UNKNOWN", detail: "Stripe created the subscription after the local agreement disappeared." },
+        subscriptionEndIds: [],
       };
     }
     if (!agreement.firstDeliveredOn) {
@@ -660,7 +668,7 @@ export async function startRecurringBillingForAgreement(
         where: { id: agreementId },
         data: { billingBlockedReason: RECONCILIATION_BLOCKER },
       });
-      return { state: "UNKNOWN", detail: RECONCILIATION_BLOCKER };
+      return { outcome: { state: "UNKNOWN", detail: RECONCILIATION_BLOCKER }, subscriptionEndIds: [] };
     }
 
     if (!agreement.stripeSubscriptionId) {
@@ -676,7 +684,8 @@ export async function startRecurringBillingForAgreement(
         status: "SUCCEEDED",
         providerObjectId: stripeSubscriptionId,
       });
-      return { state: "DONE" };
+      await recomputeSubscriptionEndInTx(tx, stripeSubscriptionId);
+      return { outcome: { state: "DONE" }, subscriptionEndIds: [stripeSubscriptionId] };
     }
 
     if (agreement.stripeSubscriptionId === stripeSubscriptionId) {
@@ -691,7 +700,8 @@ export async function startRecurringBillingForAgreement(
         status: "SUCCEEDED",
         providerObjectId: stripeSubscriptionId,
       });
-      return { state: "DONE" };
+      await recomputeSubscriptionEndInTx(tx, stripeSubscriptionId);
+      return { outcome: { state: "DONE" }, subscriptionEndIds: [stripeSubscriptionId] };
     }
 
     await completeProviderOperation(tx, claimed.opId, {
@@ -703,6 +713,8 @@ export async function startRecurringBillingForAgreement(
       where: { id: agreementId },
       data: { billingBlockedReason: RECONCILIATION_BLOCKER },
     });
-    return { state: "UNKNOWN", detail: RECONCILIATION_BLOCKER };
+    return { outcome: { state: "UNKNOWN", detail: RECONCILIATION_BLOCKER }, subscriptionEndIds: [] };
   });
+  await applySubscriptionEnds(finalized.subscriptionEndIds);
+  return finalized.outcome;
 }
