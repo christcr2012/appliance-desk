@@ -1,8 +1,10 @@
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
+import { del } from "@vercel/blob";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { isRateLimited } from "@/lib/rate-limit";
 import { sendCustomerEmail } from "@/lib/customer-email";
+import { getPrivatePhotoStore } from "@/lib/photo-storage";
 
 const TOKEN_TTL_MS = 48 * 60 * 60 * 1000;
 const PRIVACY_RATE_LIMIT = { max: 5, windowMs: 60 * 60 * 1000 } as const;
@@ -21,6 +23,14 @@ function publicOrigin(): string {
     process.env.BETTER_AUTH_URL ??
     (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000")
   ).replace(/\/$/, "");
+}
+
+function isVercelBlobUrl(value: string): boolean {
+  try {
+    return new URL(value).hostname.toLowerCase().endsWith(".blob.vercel-storage.com");
+  } catch {
+    return false;
+  }
 }
 
 async function requireOwner(userId: string): Promise<void> {
@@ -361,8 +371,16 @@ export async function fulfillPrivacyDeletion(
         jobId: null,
         maintenanceRequest: { customerId: customer.id },
       },
-      select: { id: true },
+      select: { id: true, url: true },
     });
+    const blobUrls = privateRequestPhotos.map((row) => row.url).filter(isVercelBlobUrl);
+    if (blobUrls.length > 0) {
+      const privateStore = getPrivatePhotoStore();
+      if (!privateStore) {
+        throw new Error("Private photo storage is unavailable; privacy deletion was not fulfilled.");
+      }
+      await del(blobUrls, { token: privateStore.token });
+    }
     if (privateRequestPhotos.length > 0) {
       await tx.photo.deleteMany({ where: { id: { in: privateRequestPhotos.map((row) => row.id) } } });
     }
