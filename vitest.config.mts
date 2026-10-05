@@ -11,6 +11,7 @@ const SHARED_SETTINGS_TESTS = [
   "tests/agreements-auto-renew-and-termination-integration.test.ts",
   "tests/notices-state-integration.test.ts",
   "tests/notices-hand-delivery-integration.test.ts",
+  "tests/month-to-month-end-integration.test.ts",
   "tests/tax-rate-columns-sync-integration.test.ts",
   "tests/tax-rate-storage.test.ts",
 ];

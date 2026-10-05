@@ -19,7 +19,9 @@ import {
   applySubscriptionEnds,
   recomputeForAgreementInTx,
 } from "@/domains/billing/subscription-end";
+import { newestMonthToMonthVersionInTx } from "./month-to-month";
 import { renewalCreateData } from "./renewal-data";
+import { lockAgreementForActor, type TermActor } from "./actor";
 import { snapshotAutoRenew, snapshotTerminationPolicy } from "./terms-snapshot";
 
 export {
@@ -39,43 +41,10 @@ export {
  * local decision transaction commits, through Batch B2's subscription-end intent.
  */
 
+export type { TermActor } from "./actor";
+
 const POLICY_ROLES = ["OWNER", "ADMIN"] as const;
 
-/**
- * Who is acting. Staff (owner/admin) can act on any agreement; a customer can
- * act only on their own. Both are re-checked inside the same transaction as
- * the change, so a deactivated account cannot slip an action in.
- */
-export type TermActor = { userId: string; kind: "team" | "customer" };
-
-async function lockAgreementForActor(
-  tx: Prisma.TransactionClient,
-  actor: TermActor,
-  agreementId: string,
-) {
-  if (actor.kind === "team") {
-    await assertActiveTeamActor(tx, actor.userId, POLICY_ROLES);
-    return lockRentalAgreementInTx(tx, agreementId);
-  }
-  await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${actor.userId} FOR SHARE`;
-  const user = await tx.user.findUnique({
-    where: { id: actor.userId },
-    select: { role: true, archivedAt: true },
-  });
-  if (!user || user.archivedAt || user.role !== "CUSTOMER") {
-    throw new Error("This account no longer has access to make that change.");
-  }
-  const agreement = await lockRentalAgreementInTx(tx, agreementId);
-  const customer = await tx.customer.findUnique({
-    where: { userId: actor.userId },
-    select: { id: true },
-  });
-  // Same message as a missing agreement, so another customer's id reveals nothing.
-  if (!customer || customer.id !== agreement.customerId) {
-    throw new Error("Couldn't find that rental agreement.");
-  }
-  return agreement;
-}
 const OPEN_INVOICE_STATUSES = ["OPEN", "PARTIALLY_PAID", "DELINQUENT"] as const;
 const MAX_PERIODS = 600;
 
@@ -380,6 +349,7 @@ export async function renewAgreement(
       data: renewalCreateData(old, lines, {
         termMonths: input.termMonths,
         reservationExpiresAt: addBusinessDays(new Date(), holdDays),
+        monthToMonthTermsVersion: await newestMonthToMonthVersionInTx(tx),
       }),
     });
     await tx.auditLog.create({

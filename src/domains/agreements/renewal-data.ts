@@ -21,6 +21,9 @@ export function renewalCreateData(
     | "taxRateMilliPercent"
     | "endDate"
     | "id"
+    | "continuityRootId"
+    | "continuousSince"
+    | "firstDeliveredOn"
   >,
   lines: ReadonlyArray<
     Pick<RentalLine, "label" | "monthlyPriceCents" | "listPriceCents" | "prepayDiscountCentsPerMonth">
@@ -30,6 +33,8 @@ export function renewalCreateData(
     reservationExpiresAt?: Date | null;
     status?: "DRAFT" | "SCHEDULED";
     createdByAutoRenew?: boolean;
+    /** Newest published month-to-month terms; used only when the renewal is month-to-month (termMonths null). */
+    monthToMonthTermsVersion?: number | null;
   },
 ): Prisma.RentalAgreementUncheckedCreateInput {
   if (!old.endDate) throw new Error("Only a fixed-term agreement with a recorded end date can be renewed.");
@@ -46,6 +51,12 @@ export function renewalCreateData(
     paidInFullInAdvance: false,
     freeMonthGranted: false,
     renewedFromAgreementId: old.id,
+    // One unbroken rental history, for the yearly reminder count.
+    continuityRootId: old.continuityRootId ?? old.id,
+    continuousSince: old.continuousSince ?? old.firstDeliveredOn,
+    ...(options.termMonths === null && options.monthToMonthTermsVersion
+      ? { monthToMonthTermsVersion: options.monthToMonthTermsVersion }
+      : {}),
     // The agreed start: signing the renewal early must not start it early.
     startDate: new Date(businessEndOfDay(old.endDate).getTime() + 1000),
     ...(options.status ? { status: options.status } : {}),

@@ -249,6 +249,11 @@ export async function completeJob(userId: string, input: CompleteJobInput): Prom
     // The first successful physical delivery is the immutable business fact that anchors billing.
     // Zero-delivery visits deliberately leave it null and therefore cannot start recurring billing.
     if (isDelivery && before.agreementId && deliveredIds.length > 0) {
+      // A brand-new rental (not a renewal) starts its continuous history on its first delivery.
+      await tx.rentalAgreement.updateMany({
+        where: { id: before.agreementId, firstDeliveredOn: null, renewedFromAgreementId: null, continuityRootId: null },
+        data: { continuityRootId: before.agreementId, continuousSince: serviceDate },
+      });
       await tx.rentalAgreement.updateMany({
         where: { id: before.agreementId, firstDeliveredOn: null },
         data: { firstDeliveredOn: serviceDate },
