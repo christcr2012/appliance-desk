@@ -79,7 +79,7 @@ export default async function ApplianceDetailPage({
         {appliance.acquisitionCostCents !== null &&
           ` · cost ${formatCents(appliance.acquisitionCostCents)}`}
         {appliance.purchaseDate &&
-          ` · purchased ${new Date(appliance.purchaseDate).toLocaleDateString()}`}
+          ` · purchased ${formatBusinessDate(appliance.purchaseDate)}`}
       </p>
 
       {profitability && <ApplianceEarningsSummary report={profitability} />}
