@@ -12,6 +12,8 @@ import { formatCents } from "@/domains/pricing";
 
 export const metadata = { title: "Invoice" };
 
+const FINAL_INVOICE_STATUSES = new Set(["PAID", "VOID", "WRITTEN_OFF", "REFUNDED"]);
+
 /** One invoice, on its own — the "Jobber-style" document Chris asked
  * for (2026-09-29, brand kit v2.0 phase 3, see docs/DECISIONS.md),
  * reached from a line on /desk/billing/customer/[id]'s statement.
@@ -41,11 +43,22 @@ export default async function DeskInvoicePage({
 
   return (
     <div className="max-w-3xl">
-      <div className="flex items-center justify-between print:hidden">
+      <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
         <Link href={`/desk/billing/customer/${id}`} className="text-sm text-gray-600 hover:underline">
           &larr; Back to statement
         </Link>
-        <PrintDocumentButton />
+        <div className="flex flex-wrap items-center gap-3">
+          {FINAL_INVOICE_STATUSES.has(invoice.status) && (
+            <Link
+              className="text-sm font-medium text-primary underline"
+              href={`/api/documents/invoice/${invoiceId}`}
+              target="_blank"
+            >
+              View frozen invoice record
+            </Link>
+          )}
+          <PrintDocumentButton />
+        </div>
       </div>
 
       <div className="mt-4 print:mt-0">

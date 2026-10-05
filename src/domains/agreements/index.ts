@@ -6,6 +6,7 @@ import {
   applySubscriptionEnds,
   recomputeForAgreementInTx,
 } from "@/domains/billing/subscription-end";
+import { createSignedAgreementArtifactInTx } from "@/domains/documents/artifacts";
 import { prisma } from "@/lib/prisma";
 import type {
   Prisma,
@@ -564,6 +565,9 @@ export async function signAgreement(
               : {}),
           },
     });
+    // The signed artifact is part of signing's atomic evidence. If rendering
+    // or storage fails, the signature/status changes above roll back too.
+    await createSignedAgreementArtifactInTx(tx, agreement.id);
     await tx.auditLog.create({
       data: {
         userId: null,

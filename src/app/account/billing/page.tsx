@@ -1,4 +1,4 @@
-import { formatBusinessDate } from "@/lib/business-date";
+import { businessDateKey, formatBusinessDate } from "@/lib/business-date";
 import Link from "next/link";
 import { getServerSession } from "@/lib/session";
 import { getPortalData } from "@/domains/portal";
@@ -8,6 +8,12 @@ import { invoiceStatusLabel } from "@/lib/status-labels";
 import { ManageBillingButton } from "./manage-billing-button";
 
 export const metadata = { title: "Billing" };
+
+function previousBusinessMonth(): string {
+  const current = businessDateKey(new Date()).slice(0, 7);
+  const [year, month] = current.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 2, 1)).toISOString().slice(0, 7);
+}
 
 export default async function AccountBillingPage() {
   const session = await getServerSession();
@@ -26,6 +32,7 @@ export default async function AccountBillingPage() {
 
   const statement = await getCustomerStatement(customer.id);
   const hasMultipleProperties = (statement?.properties.length ?? 0) > 1;
+  const statementMonth = previousBusinessMonth();
 
   return (
     <div>
@@ -34,8 +41,15 @@ export default async function AccountBillingPage() {
         Update your card or bank account, and download past invoices, through
         Stripe&apos;s secure billing page.
       </p>
-      <div className="mt-4">
+      <div className="mt-4 flex flex-wrap items-center gap-3">
         <ManageBillingButton />
+        <Link
+          className="inline-flex min-h-11 items-center rounded-lg border border-control px-4 py-2 text-sm font-medium text-primary hover:bg-subtle"
+          href={`/api/documents/statement/${statementMonth}`}
+          target="_blank"
+        >
+          View {statementMonth} frozen statement
+        </Link>
       </div>
 
       {statement && statement.totalBalanceCents > 0 && (
