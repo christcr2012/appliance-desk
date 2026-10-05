@@ -123,6 +123,14 @@ vi.mock("@/domains/billing/provider-ops", () => ({
   runProviderCall: (...args: unknown[]) => mocks.runProviderCall(...args),
 }));
 
+// The subscription end-date sweeps read their own tables; they are proved against a real database in
+// tests/subscription-end-integration.test.ts, so this fake-database unit test stubs them out.
+vi.mock("@/domains/billing/subscription-end", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/domains/billing/subscription-end")>()),
+  applyDueSubscriptionEnds: vi.fn(async () => ({ applied: 0, waiting: 0 })),
+  auditSubscriptionEnds: vi.fn(async () => ({ checked: 0, stale: 0 })),
+}));
+
 import {
   detectDrift,
   finishPendingProviderOperations,

@@ -4,6 +4,8 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 const stripeMock = vi.hoisted(() => ({
   update: vi.fn(),
   retrieve: vi.fn(),
+  // What the fake Stripe currently holds as each subscription's cancel_at (null = none).
+  state: new Map<string, number | null>(),
 }));
 vi.mock("@/lib/stripe", () => ({
   getStripeClient: () => ({ subscriptions: { update: stripeMock.update, retrieve: stripeMock.retrieve } }),
@@ -104,9 +106,16 @@ describe.skipIf(!enabled)("a signed renewal starts on its start date and hands e
   const get = (id: string) => prisma.rentalAgreement.findUniqueOrThrow({ where: { id } });
 
   beforeEach(() => {
-    stripeMock.update.mockReset();
-    stripeMock.retrieve.mockReset();
-    stripeMock.update.mockImplementation(async (id: string) => ({ id }));
+    stripeMock.state.clear();
+    stripeMock.update.mockReset().mockImplementation(async (id: string, params?: { cancel_at?: number | "" }) => {
+      if (params && params.cancel_at !== undefined) stripeMock.state.set(id, params.cancel_at === "" ? null : params.cancel_at);
+      return { id };
+    });
+    stripeMock.retrieve.mockReset().mockImplementation(async (id: string) => ({
+      id,
+      status: "active",
+      cancel_at: stripeMock.state.get(id) ?? null,
+    }));
   });
 
   beforeAll(async () => {

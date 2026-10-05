@@ -12,6 +12,7 @@ import { parseTerminationSyncKey, parseTermSyncKey } from "./subscription-term";
 import {
   applyDueSubscriptionEnds,
   applySubscriptionEnd,
+  applySubscriptionEnds,
   auditSubscriptionEnds,
   recomputeForAgreementInTx,
   recomputeSubscriptionEndInTx,

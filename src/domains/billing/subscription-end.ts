@@ -313,7 +313,9 @@ export async function recomputeForAgreementInTx(
 }
 
 type LeaseClaim =
-  | { kind: "NO_INTENT" | "APPLIED" | "BUSY" }
+  | { kind: "NO_INTENT" }
+  | { kind: "APPLIED" }
+  | { kind: "BUSY" }
   | { kind: "CLAIMED"; token: string; version: number; answer: SubscriptionEnd };
 
 async function claimIntentLease(stripeSubscriptionId: string): Promise<LeaseClaim> {
