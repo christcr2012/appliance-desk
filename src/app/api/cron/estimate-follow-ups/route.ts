@@ -1,14 +1,11 @@
 import { NextResponse } from "next/server";
+import { runAutomation } from "@/domains/automation/runs";
 import { sendEstimateFollowUpReminders } from "@/domains/estimates";
 
-// Fired once a day by Vercel Cron (see vercel.json's schedule) — sends a
-// single "still interested?" follow-up on any estimate that's been sent
-// but not responded to for a few days (2026-09-29, see
-// docs/ROADMAP.md's "Automatic follow-up on a sent-but-unanswered
-// estimate" entry). Same secret-bearer-token guard as this app's other
-// cron routes (src/app/api/cron/billing-reminders is the model this
-// copies) — harmless to run twice in a day since the domain layer
-// already dedupes per send-cycle, but no reason to leave it open.
+// Fired once a day by Vercel Cron (see vercel.json). The automation ledger
+// claims the Colorado business-day slot before work starts, so two invocations
+// cannot silently run the same pass twice. The estimate domain keeps its own
+// per-estimate send-cycle claim as a second, business-level dedupe boundary.
 export async function GET(request: Request): Promise<NextResponse> {
   const authHeader = request.headers.get("authorization");
   const expected = process.env.CRON_SECRET;
@@ -21,6 +18,9 @@ export async function GET(request: Request): Promise<NextResponse> {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
-  const result = await sendEstimateFollowUpReminders();
+  const result = await runAutomation({
+    ruleKey: "estimate-follow-ups",
+    work: async () => ({ counts: await sendEstimateFollowUpReminders() }),
+  });
   return NextResponse.json(result);
 }
