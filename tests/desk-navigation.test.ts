@@ -5,7 +5,7 @@ it.each([
   ["OWNER", 24],
   ["ADMIN", 23],
 ] as const)(
-  "keeps all %i role-appropriate destinations discoverable for %s",
+  "keeps %s role-appropriate destinations discoverable with count %i",
   (role, expectedCount) => {
     const groups = deskNavigation(role);
     const links = groups.flatMap((g) => g.links);
