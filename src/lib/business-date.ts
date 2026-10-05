@@ -237,3 +237,18 @@ export function formatTaskDate(date: Date) {
     year: "numeric",
   }).format(new Date(date));
 }
+
+/**
+ * Read a date-only form box. Blank means "not given". Anything that is not a real
+ * calendar date is rejected, never guessed at or rolled over. The result is the
+ * start (Colorado midnight) of that business date, for fields that mean "on this
+ * day" such as a purchase date. Deadlines use `businessDateEnd` instead.
+ */
+export function parseOptionalBusinessDate(
+  value: string | null | undefined,
+): { ok: true; value: Date | null } | { ok: false } {
+  const text = (value ?? "").trim();
+  if (!text) return { ok: true, value: null };
+  const date = businessDateFromKey(text);
+  return date ? { ok: true, value: date } : { ok: false };
+}

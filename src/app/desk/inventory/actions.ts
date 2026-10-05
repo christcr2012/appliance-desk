@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { businessDateFromKey } from "@/lib/business-date";
+import { businessDateFromKey, parseOptionalBusinessDate } from "@/lib/business-date";
 import { requireRole } from "@/lib/session";
 import {
   createApplianceUnits,
@@ -70,6 +70,13 @@ export async function createApplianceUnitsAction(
   }
 
   const data = parsed.data;
+  const purchaseDate = parseOptionalBusinessDate(data.purchaseDate);
+  if (!purchaseDate.ok) {
+    return {
+      status: "error",
+      message: "Enter the purchase date as a real calendar date, or leave it blank.",
+    };
+  }
 
   try {
     await createApplianceUnits(session.user.id, {
@@ -81,7 +88,7 @@ export async function createApplianceUnitsAction(
       color: data.color || null,
       features: data.features ? splitList(data.features) : [],
       condition: data.condition || null,
-      purchaseDate: data.purchaseDate ? new Date(data.purchaseDate) : null,
+      purchaseDate: purchaseDate.value,
       acquisitionCostCents:
         data.acquisitionCostDollars !== undefined
           ? dollarsToCents(data.acquisitionCostDollars)
