@@ -70,6 +70,18 @@ in UTC and only converted to Mountain Time for display.
   Parts and suppliers with history are **archived** (`archivedAt`), not deleted;
   `PurchaseOrderLineItem.receivedQuantity` supports partial receipts and
   `unitCostKnown` says whether a line's price is real.
+- **PurchaseOrderReceiptOperation** (Remediation R16, 2026-10-04) — one row per
+  "these items arrived" request on a purchase order: the request's key (unique),
+  the order, and a SHA-256 fingerprint of the order plus every submitted line
+  (line, quantity, price or "unknown"). The row is created inside the same
+  database step as the receipt, so a receipt that fails leaves no row. Sending
+  the same key with the same lines again changes nothing; the same key with
+  different lines, or on another order, is refused. This covers free-text lines
+  that have no part (and so no stock movement) exactly like stocked lines.
+  Receipts made before this table existed are still recognised by their stock
+  movements or history entry. Deleting an order removes its rows. The table is in
+  `BACKUP_MODEL_POLICY` (exported as `purchaseOrderReceiptOperation`); the
+  migration is additive and does not read or change any existing row.
 - **ApplianceCustodyEpisode** (Batch C, 2026-10-04) — who physically has an
   appliance. One row per stay at a customer: opened only by a completed
   delivery/installation (or a swap's new unit), closed only by a completed

@@ -27,6 +27,7 @@ export const BACKUP_MODEL_POLICY = {
   Supplier: "supplier",
   PurchaseOrder: "purchaseOrder",
   PurchaseOrderLineItem: "purchaseOrderLineItem",
+  PurchaseOrderReceiptOperation: "purchaseOrderReceiptOperation",
   PartStockMovement: "partStockMovement",
   ApplianceCustodyEpisode: "applianceCustodyEpisode",
   RentalLineAmendment: "rentalLineAmendment",
