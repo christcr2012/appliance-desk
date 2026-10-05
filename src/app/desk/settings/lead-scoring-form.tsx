@@ -5,7 +5,7 @@ import {
   DEFAULT_LEAD_SCORING_POLICY,
   type LeadScoringPolicy,
   type LeadScoringPolicyInput,
-} from "@/domains/leads/scoring-policy";
+} from "@/domains/leads/scoring-policy-config";
 import { updateLeadScoringPolicyAction } from "./lead-scoring-actions";
 
 const FIELDS: Array<{
