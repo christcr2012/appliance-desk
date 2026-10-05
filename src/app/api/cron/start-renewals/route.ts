@@ -4,6 +4,7 @@ import { runAutoRenewals, extendBillingForDeliveredAutoRenewals } from "@/domain
 import { sendPendingNotices } from "@/domains/notices";
 import { queueAnnualReminders } from "@/domains/notices/annual-reminder";
 import { runDueTerminations } from "@/domains/agreements/termination-execution";
+import { closeFullyReturnedAgreements } from "@/domains/agreements/returns";
 
 // Fired once a day by Vercel Cron (see vercel.json). The nightly rental
 // lifecycle pass, in this order: (1) queue the month-to-month renewal for each
@@ -40,6 +41,8 @@ export async function GET(request: Request): Promise<NextResponse> {
   if (terminations.needsReview.length > 0) {
     console.error("[cron] Early endings that need attention:", terminations.needsReview);
   }
+  // Rentals whose equipment is all back and whose agreed ending has arrived are closed, so billing stops with them.
+  const returned = await closeFullyReturnedAgreements();
   const result = await startDueRenewals();
   if (result.blocked.length > 0) {
     console.error("[cron] Renewals that could not start:", result.blocked);
@@ -57,5 +60,6 @@ export async function GET(request: Request): Promise<NextResponse> {
     endedEarly: terminations.ended,
     earlyEndingFeeInvoices: terminations.feeInvoices,
     earlyEndingsNeedingAttention: terminations.needsReview.length,
+    closedAfterFullReturn: returned.closed,
   });
 }

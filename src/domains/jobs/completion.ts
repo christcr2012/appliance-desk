@@ -5,7 +5,8 @@ import { assertJobScopeInTx } from "./scope";
 import { dropSubstituteInTx, takeSubstituteIntoLineInTx } from "./substitution";
 import { businessDateKey, businessDayBounds } from "@/lib/business-date";
 import { lockCustomerLedger } from "@/domains/billing/ledger";
-import { lockRentalAgreementInTx } from "@/domains/agreements";
+import { lockRentalAgreementInTx, runCloseAgreementContinuation } from "@/domains/agreements";
+import { closeIfFullyReturnedInTx, type ReturnCloseOutcome } from "@/domains/agreements/returns";
 import { startRecurringBillingForAgreement } from "@/domains/billing/checkout";
 import { pushLateDeliveryCreditForHandoff } from "@/domains/billing/handoff-adapters";
 import { PROVIDER_OPERATION_LEASE_MS } from "@/domains/billing/provider-ops";
@@ -57,6 +58,8 @@ export type CompleteJobResult = {
   replayed: boolean;
   followUpTaskIds: string[];
   handoffIds: string[];
+  /** Set when this completion decided what to do about a fully returned rental (not stored; replays leave it empty). */
+  returnClose?: ReturnCloseOutcome | null;
 };
 
 const COMPLETION_KEY_PATTERN = /^[A-Za-z0-9:_-]{8,100}$/;
@@ -456,6 +459,16 @@ export async function completeJob(userId: string, input: CompleteJobInput): Prom
       billing.push(await recordLateDeliveries(tx, { userId, jobId: before.id, agreementId: before.agreementId, applianceIds: deliveredIds, deliveryDate: serviceDate }));
       billing.push(await recordItemsNotDelivered(tx, { userId, jobId: before.id, agreementId: before.agreementId, applianceIds: notDeliveredIds, deliveryDate: serviceDate }));
     }
+    // Everything is back and the agreed ending has arrived: close the rental now, so billing stops with it.
+    let returnClose: ReturnCloseOutcome | null = null;
+    if (before.agreementId && before.type === "REMOVAL" && returnedIds.length > 0) {
+      returnClose = await closeIfFullyReturnedInTx(tx, userId, {
+        agreementId: before.agreementId,
+        jobId: before.id,
+        pickupDate: serviceDate,
+        taskActor: { userId: actor.id, role: actor.role as "OWNER" | "ADMIN" | "STAFF" },
+      });
+    }
     const billingNotes = billing.flatMap((b) => b.notes);
     if (billingNotes.length > 0) {
       await tx.auditLog.create({
@@ -561,11 +574,15 @@ export async function completeJob(userId: string, input: CompleteJobInput): Prom
       },
     });
 
-    return { jobId: before.id, outcome: jobOutcome, replayed: false, followUpTaskIds, handoffIds: handoffs.map((h) => h.id) };
+    return { jobId: before.id, outcome: jobOutcome, replayed: false, followUpTaskIds, handoffIds: handoffs.map((h) => h.id), returnClose };
   });
 
+  // The Stripe half of closing the rental runs only after the transaction commits.
+  if (outcome.returnClose?.outcome === "CLOSED") await runCloseAgreementContinuation(outcome.returnClose.close);
   if (!outcome.replayed && outcome.handoffIds.length > 0) await runHandoffs({ ids: outcome.handoffIds });
-  return outcome;
+  const { returnClose: _returnClose, ...result } = outcome;
+  void _returnClose;
+  return result;
 }
 
 export type CompletionScopeRow = {

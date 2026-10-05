@@ -517,3 +517,17 @@ export async function markJobNoShowAction(jobId: string, expectedVersion: number
   revalidatePath("/desk/today");
   return { status: "success" };
 }
+
+/** "Our delay": the owner or an admin waives the late-return days on a completed pickup. */
+export async function waiveLateReturnAction(formData: FormData): Promise<void> {
+  const session = await requireRole("OWNER", "ADMIN");
+  const jobId = String(formData.get("jobId") ?? "");
+  const daysText = String(formData.get("waivedDays") ?? "").trim();
+  const { recordLateReturnWaiver } = await import("@/domains/billing/late-return-waiver");
+  await recordLateReturnWaiver(session.user.id, jobId, {
+    waivedDays: daysText === "" ? null : Number(daysText),
+    note: String(formData.get("note") ?? ""),
+  });
+  revalidatePath(`/desk/jobs/${jobId}`);
+  revalidatePath("/desk/invoices");
+}

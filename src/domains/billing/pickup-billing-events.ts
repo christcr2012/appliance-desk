@@ -180,10 +180,21 @@ const AGREEMENT_SELECT = {
   customerId: true,
   status: true,
   endDate: true,
+  terminationEffectiveOn: true,
   billingStartedAt: true,
   paidInFullInAdvance: true,
   taxRateMilliPercent: true,
 } as const;
+
+/**
+ * The last day the customer has paid for: the earliest of the term's end date and the day before an agreed early
+ * ending takes effect. Null when the rental has neither (nothing can be late). docs/designs/BATCH-B2.md B2-7.
+ */
+export function agreedEndFor(agreement: { endDate: Date | null; terminationEffectiveOn?: Date | null }): Date | null {
+  const ending = agreement.terminationEffectiveOn ? new Date(agreement.terminationEffectiveOn.getTime() - 1000) : null;
+  if (agreement.endDate && ending) return agreement.endDate.getTime() <= ending.getTime() ? agreement.endDate : ending;
+  return agreement.endDate ?? ending;
+}
 
 /**
  * Rule 1. Called when a REMOVAL job completes, with the appliances it took
@@ -204,7 +215,8 @@ export async function recordLateReturnOnRemoval(
   if (input.applianceIds.length === 0) return EMPTY;
   const agreement = await tx.rentalAgreement.findUnique({ where: { id: input.agreementId }, select: AGREEMENT_SELECT });
   if (!agreement) return EMPTY;
-  if (!agreement.endDate) {
+  const agreedEnd = agreedEndFor(agreement);
+  if (!agreedEnd) {
     return { ...EMPTY, notes: ["The agreement has no end date yet, so nothing was late."] };
   }
   const settings = await loadSettings(tx);
@@ -217,7 +229,7 @@ export async function recordLateReturnOnRemoval(
       charge: calculateLateReturnCharge({
         itemLabel: item.label,
         itemMonthlyPriceCents: item.monthlyPriceCents,
-        agreedEndDate: agreement.endDate as Date,
+        agreedEndDate: agreedEnd,
         pickupDate: input.pickupDate,
         settings,
       }),
@@ -242,7 +254,7 @@ export async function recordLateReturnOnRemoval(
       customerId: agreement.customerId,
       agreementId: agreement.id,
       status: "OPEN",
-      billingPeriodStart: agreement.endDate,
+      billingPeriodStart: agreedEnd,
       billingPeriodEnd: input.pickupDate,
       subtotalCents,
       taxCents,
@@ -271,7 +283,7 @@ export async function recordLateReturnOnRemoval(
         agreementId: agreement.id,
         agreementStatus: agreement.status,
         jobId: input.jobId,
-        agreedEndDate: businessDateKey(agreement.endDate),
+        agreedEndDate: businessDateKey(agreedEnd),
         pickupDate: businessDateKey(input.pickupDate),
         pickupDayNotBilled: settings.pickupDayNotBilled,
         items: charges.map(({ charge }) => ({
