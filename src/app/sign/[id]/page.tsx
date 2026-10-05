@@ -20,7 +20,7 @@ export default async function SignPage({
     return (
       <main className="mx-auto max-w-lg px-6 py-16 text-center">
         <h1 className="text-xl font-semibold">This link isn&apos;t available</h1>
-        <p className="mt-3 text-gray-600">
+        <p className="mt-3 text-ink-soft">
           This agreement may already be signed, or the link may no longer be
           valid. If you think this is a mistake, contact us directly.
         </p>
@@ -37,11 +37,11 @@ export default async function SignPage({
   return (
     <main className="mx-auto max-w-lg px-6 py-16">
       <h1 className="text-xl font-semibold">Review &amp; sign your rental agreement</h1>
-      <p className="mt-2 text-sm text-gray-600">
+      <p className="mt-2 text-sm text-ink-soft">
         Prepared for {agreement.customer.user.name ?? agreement.customer.user.email}
       </p>
 
-      <div className="mt-6 space-y-3 rounded-lg border border-gray-200 bg-white p-5 text-sm">
+      <div className="mt-6 space-y-3 rounded-lg border border-line bg-surface p-5 text-sm">
         <p>
           <span className="font-medium">Service address:</span>{" "}
           {agreement.serviceAddress.line1}, {agreement.serviceAddress.city},{" "}
@@ -58,7 +58,7 @@ export default async function SignPage({
               <li key={l.id}>
                 {l.label} — {formatCents(l.monthlyPriceCents)}/month
                 {l.prepayDiscountCentsPerMonth > 0 && (
-                  <span className="text-gray-600">
+                  <span className="text-ink-soft">
                     {" "}
                     (list price {formatCents(l.listPriceCents)}/month, less a{" "}
                     {formatCents(l.prepayDiscountCentsPerMonth)}/month term discount)
@@ -93,7 +93,7 @@ export default async function SignPage({
       {lockedTerms.ending && (
         <section
           aria-labelledby="ending-terms-heading"
-          className="mt-4 space-y-2 rounded-lg border border-gray-200 bg-white p-5 text-sm"
+          className="mt-4 space-y-2 rounded-lg border border-line bg-surface p-5 text-sm"
         >
           <h2 id="ending-terms-heading" className="font-medium">
             Ending this agreement early
@@ -103,20 +103,20 @@ export default async function SignPage({
               <li key={line}>{line}</li>
             ))}
           </ul>
-          <p className="whitespace-pre-line text-gray-700">{lockedTerms.ending.termsText}</p>
+          <p className="whitespace-pre-line text-ink-soft">{lockedTerms.ending.termsText}</p>
         </section>
       )}
 
       {lockedTerms.autoRenew && (
         <section
           aria-labelledby="renew-terms-heading"
-          className="mt-4 space-y-2 rounded-lg border border-gray-200 bg-white p-5 text-sm"
+          className="mt-4 space-y-2 rounded-lg border border-line bg-surface p-5 text-sm"
         >
           <h2 id="renew-terms-heading" className="font-medium">
             Automatic renewal
           </h2>
           <p>{lockedTerms.autoRenew.noticeLine}</p>
-          <p className="whitespace-pre-line text-gray-700">{lockedTerms.autoRenew.termsText}</p>
+          <p className="whitespace-pre-line text-ink-soft">{lockedTerms.autoRenew.termsText}</p>
         </section>
       )}
 

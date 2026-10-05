@@ -15,12 +15,12 @@ export default function ForgotPasswordPage() {
       <h1 className="mb-2 text-2xl font-semibold text-ink">
         Forgot your password?
       </h1>
-      <p className="mb-6 text-sm text-gray-600">
+      <p className="mb-6 text-sm text-ink-soft">
         Enter the email you use to log in and we&apos;ll send you a link to
         set a new password.
       </p>
       <ForgotPasswordForm />
-      <p className="mt-6 text-sm text-gray-600">
+      <p className="mt-6 text-sm text-ink-soft">
         <Link href="/login" className="text-primary hover:underline">
           Back to log in
         </Link>

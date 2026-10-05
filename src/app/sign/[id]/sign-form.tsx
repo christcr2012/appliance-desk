@@ -49,10 +49,10 @@ export function SignForm({ signatureRecordId }: { signatureRecordId: string }) {
   return (
     <form
       onSubmit={handleSubmit}
-      className="space-y-4 rounded-lg border border-gray-200 bg-white p-5"
+      className="space-y-4 rounded-lg border border-line bg-surface p-5"
     >
       <div>
-        <label htmlFor="signerName" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="signerName" className="block text-sm font-medium text-ink-soft">
           Your full legal name
         </label>
         <input
@@ -61,11 +61,11 @@ export function SignForm({ signatureRecordId }: { signatureRecordId: string }) {
           required
           value={signerName}
           onChange={(e) => setSignerName(e.target.value)}
-          className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+          className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
         />
       </div>
       <div>
-        <label htmlFor="signerEmail" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="signerEmail" className="block text-sm font-medium text-ink-soft">
           Your email
         </label>
         <input
@@ -74,10 +74,10 @@ export function SignForm({ signatureRecordId }: { signatureRecordId: string }) {
           required
           value={signerEmail}
           onChange={(e) => setSignerEmail(e.target.value)}
-          className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+          className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
         />
       </div>
-      <label className="flex items-start gap-2 text-sm text-gray-700">
+      <label className="flex items-start gap-2 text-sm text-ink-soft">
         <input
           type="checkbox"
           className="mt-0.5"
@@ -91,7 +91,7 @@ export function SignForm({ signatureRecordId }: { signatureRecordId: string }) {
       <button
         type="submit"
         disabled={isPending}
-        className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+        className="rounded-md bg-action px-4 py-2 text-sm font-medium text-on-action hover:bg-action disabled:opacity-50"
       >
         {isPending ? "Submitting…" : "Sign agreement"}
       </button>
