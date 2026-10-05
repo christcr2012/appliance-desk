@@ -1,7 +1,7 @@
 import { businessDayBounds } from "@/lib/business-date";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
-import { findCustodyGaps } from "@/domains/inventory/custody";
+import type { Prisma } from "@prisma/client";
 import {
   APPLIANCE_MAINTENANCE_DUE_DAYS,
   UNINSPECTED_RETURN_DAYS,
@@ -22,6 +22,7 @@ import {
   staleReservationException,
   uninspectedReturnException,
   unreviewedMaintenanceRequestException,
+  type ExceptionCategory,
   type ExceptionItem,
 } from "./rules";
 
@@ -31,15 +32,34 @@ function addDays(date: Date, days: number): Date {
   return new Date(date.getTime() + days * 24 * 60 * 60 * 1000);
 }
 
-function addMonths(date: Date, months: number): Date {
-  const result = new Date(date);
-  result.setMonth(result.getMonth() + months);
-  return result;
-}
-
 function customerDisplayName(customer: { user: { name: string | null; email: string } }): string {
   return customer.user.name ?? customer.user.email;
 }
+
+/**
+ * R17: technical safety cap, not owner policy. Each category loads at most this many of its OLDEST
+ * items (the ones that have waited longest), in a stable order (oldest first, then id). If a category
+ * has more, its true total is counted separately so the screen can say so.
+ */
+export const EXCEPTION_CATEGORY_CAP = 50;
+
+export type ExceptionTruncation = { category: ExceptionCategory; total: number; shown: number };
+export type ExceptionOverview = { items: ExceptionItem[]; truncated: ExceptionTruncation[] };
+
+type Capped<T> = { rows: T[]; total: number };
+
+/** One bounded read: `find` is limited to the cap; the total is only counted when the cap was reached. */
+async function capped<T>(find: (take: number) => Promise<T[]>, count: () => Promise<number>): Promise<Capped<T>> {
+  const rows = await find(EXCEPTION_CATEGORY_CAP);
+  if (rows.length < EXCEPTION_CATEGORY_CAP) return { rows, total: rows.length };
+  return { rows, total: await count() };
+}
+
+const empty = <T,>(): Promise<Capped<T>> => Promise.resolve({ rows: [], total: 0 });
+
+// A timestamp-without-time-zone column holds UTC. Passing the instant as text and casting it keeps the
+// comparison in UTC whatever the database session's time zone is.
+const utc = (date: Date) => date.toISOString();
 
 /**
  * Everything currently needing Chris's attention — the "Needs your
@@ -49,6 +69,10 @@ function customerDisplayName(customer: { user: { name: string | null; email: str
  * just gathers them into one flat, sortable, linkable list instead of
  * leaving them as separate counts on separate pages.
  *
+ * R17: every category is bounded (see EXCEPTION_CATEGORY_CAP) and ordered in the database, so this
+ * never reads a whole historical table. The overall order is unchanged: high severity first, then
+ * longest waiting.
+ *
  * uninspectedReturnException's "how long" (Appliance.updatedAt) is an
  * approximation, not exact: updatedAt changes on any edit to that
  * appliance row, not only a status change. Good enough to flag "this has
@@ -56,10 +80,58 @@ function customerDisplayName(customer: { user: { name: string | null; email: str
  * approximations (see computeMrrTrend's own doc comment) — not worth a
  * dedicated timestamp column for a secondary sort key.
  */
-export async function getExceptions(): Promise<ExceptionItem[]> {
+export async function getExceptionOverview(): Promise<ExceptionOverview> {
   const session = await requireRole("OWNER", "ADMIN", "STAFF");
   const canViewFinance = ["OWNER", "ADMIN"].includes((session.user as { role?: string }).role ?? "");
   const now = new Date();
+  const customerSelect = { customer: { select: { user: { select: { name: true, email: true } } } } } as const;
+
+  const billingBlockedWhere = { billingBlockedReason: { not: null } } satisfies Prisma.RentalAgreementWhereInput;
+  const staleWhere = {
+    status: { in: ["DRAFT", "AWAITING_SIGNATURE"] },
+    reservationExpiresAt: { lt: now },
+  } satisfies Prisma.RentalAgreementWhereInput;
+  const pastDueWhere = {
+    status: { in: ["DELINQUENT", "OPEN"] },
+    dueDate: { lt: now },
+  } satisfies Prisma.InvoiceWhereInput;
+  const overdueJobWhere = { status: "SCHEDULED", scheduledAt: { lt: now } } satisfies Prisma.JobWhereInput;
+  const unreviewedWhere = {
+    status: "SUBMITTED",
+    openedAt: { lt: addDays(now, -UNREVIEWED_MAINTENANCE_REQUEST_DAYS) },
+  } satisfies Prisma.MaintenanceRequestWhereInput;
+  const uninspectedWhere = {
+    status: "AWAITING_INSPECTION",
+    updatedAt: { lt: addDays(now, -UNINSPECTED_RETURN_DAYS) },
+  } satisfies Prisma.ApplianceWhereInput;
+  const missingCostWhere = {
+    type: "MAINTENANCE_VISIT",
+    status: "COMPLETED",
+    partsCostCents: null,
+    laborCostCents: null,
+    completedAt: { not: null },
+  } satisfies Prisma.JobWhereInput;
+  const renewalWhere = {
+    status: "SCHEDULED",
+    startDate: { lt: addDays(now, -RENEWAL_START_GRACE_DAYS) },
+  } satisfies Prisma.RentalAgreementWhereInput;
+  const endingWhere = { status: "ACTIVE", terminationEffectiveOn: { lt: now } } satisfies Prisma.RentalAgreementWhereInput;
+  const noticeWhere = {
+    OR: [
+      { status: "PENDING" },
+      // A send that was interrupted may already have gone out: a person has to check.
+      { status: "SENDING", updatedAt: { lt: new Date(now.getTime() - 15 * 60_000) } },
+    ],
+  } satisfies Prisma.CustomerNoticeWhereInput;
+  const undeliveredWhere = { deliveredOn: null, removedAt: null } satisfies Prisma.PendingDeliveryWhereInput;
+  // Operational: an appliance that says it is with a customer but has no custody record.
+  const custodyGapWhere = {
+    status: { in: ["RENTED", "AWAITING_PICKUP"] },
+    archivedAt: null,
+    custodyEpisodes: { none: { closedAt: null } },
+  } satisfies Prisma.ApplianceWhereInput;
+
+  const maintenanceCutoff = utc(addDays(now, -APPLIANCE_MAINTENANCE_DUE_DAYS));
 
   const [
     billingBlockedAgreements,
@@ -69,178 +141,163 @@ export async function getExceptions(): Promise<ExceptionItem[]> {
     unreviewedRequests,
     uninspectedAppliances,
     missingRepairCostJobs,
-    activeTermAgreements,
-    rentedAppliances,
+    termExpired,
+    maintenanceDue,
     stuckRenewals,
     stuckEndings,
     waitingNotices,
     itemsNotDelivered,
     custodyGaps,
   ] = await Promise.all([
-    canViewFinance ? prisma.rentalAgreement.findMany({
-      where: { billingBlockedReason: { not: null } },
-      select: {
-        id: true,
-        billingBlockedReason: true,
-        updatedAt: true,
-        customer: { select: { user: { select: { name: true, email: true } } } },
-      },
-    }) : Promise.resolve([]),
-    prisma.rentalAgreement.findMany({
-      where: {
-        status: { in: ["DRAFT", "AWAITING_SIGNATURE"] },
-        reservationExpiresAt: { lt: now },
-      },
-      select: {
-        id: true,
-        reservationExpiresAt: true,
-        customer: { select: { user: { select: { name: true, email: true } } } },
-      },
-    }),
-    canViewFinance ? prisma.invoice.findMany({
-      where: { status: { in: ["DELINQUENT", "OPEN"] }, dueDate: { lt: now } },
-      select: {
-        id: true,
-        customerId: true,
-        dueDate: true,
-        amountDueCents: true,
-        amountPaidCents: true,
-        customer: { select: { user: { select: { name: true, email: true } } } },
-      },
-    }) : Promise.resolve([]),
-    prisma.job.findMany({
-      where: { status: "SCHEDULED", scheduledAt: { lt: now } },
-      select: {
-        id: true,
-        type: true,
-        scheduledAt: true,
-        customer: { select: { user: { select: { name: true, email: true } } } },
-      },
-    }),
-    prisma.maintenanceRequest.findMany({
-      where: {
-        status: "SUBMITTED",
-        openedAt: { lt: addDays(now, -UNREVIEWED_MAINTENANCE_REQUEST_DAYS) },
-      },
-      select: {
-        id: true,
-        openedAt: true,
-        problem: true,
-        customer: { select: { user: { select: { name: true, email: true } } } },
-      },
-    }),
-    prisma.appliance.findMany({
-      where: {
-        status: "AWAITING_INSPECTION",
-        updatedAt: { lt: addDays(now, -UNINSPECTED_RETURN_DAYS) },
-      },
-      select: { id: true, assetNumber: true, updatedAt: true, applianceType: { select: { name: true } } },
-    }),
-    canViewFinance ? prisma.job.findMany({
-      where: {
-        type: "MAINTENANCE_VISIT",
-        status: "COMPLETED",
-        partsCostCents: null,
-        laborCostCents: null,
-      },
-      select: {
-        id: true,
-        completedAt: true,
-        appliances: {
-          take: 1,
-          select: { appliance: { select: { assetNumber: true, applianceType: { select: { name: true } } } } },
-        },
-      },
-    }) : Promise.resolve([]),
-    prisma.rentalAgreement.findMany({
-      where: { status: "ACTIVE", termMonths: { not: null }, startDate: { not: null } },
-      select: {
-        id: true,
-        termMonths: true,
-        startDate: true,
-        endDate: true,
-        customer: { select: { user: { select: { name: true, email: true } } } },
-      },
-    }),
-    prisma.appliance.findMany({
-      where: { status: "RENTED", archivedAt: null },
-      select: {
-        id: true,
-        assetNumber: true,
-        purchaseDate: true,
-        createdAt: true,
-        applianceType: { select: { name: true } },
-        jobs: {
-          where: { job: { type: "MAINTENANCE_VISIT", status: "COMPLETED" } },
-          select: { job: { select: { completedAt: true } } },
-        },
-      },
-    }),
-    prisma.rentalAgreement.findMany({
-      where: {
-        status: "SCHEDULED",
-        startDate: { lt: addDays(now, -RENEWAL_START_GRACE_DAYS) },
-      },
-      select: {
-        id: true,
-        startDate: true,
-        customer: { select: { user: { select: { name: true, email: true } } } },
-      },
-    }),
-    canViewFinance ? prisma.rentalAgreement.findMany({
-      where: {
-        status: "ACTIVE",
-        terminationEffectiveOn: { lt: now },
-      },
-      select: {
-        id: true,
-        terminationEffectiveOn: true,
-        paidInFullInAdvance: true,
-        customer: { select: { user: { select: { name: true, email: true } } } },
-      },
-    }) : Promise.resolve([]),
     canViewFinance
-      ? prisma.customerNotice.findMany({
-          where: {
-            OR: [
-              { status: "PENDING" },
-              // A send that was interrupted may already have gone out: a person has to check.
-              { status: "SENDING", updatedAt: { lt: new Date(now.getTime() - 15 * 60_000) } },
-            ],
-          },
-          select: {
-            id: true,
-            createdAt: true,
-            customer: { select: { user: { select: { name: true, email: true } } } },
-          },
-        })
-      : Promise.resolve([]),
-    // Operational, not money: every role sees an item that still has to be delivered.
-    prisma.pendingDelivery.findMany({
-      where: { deliveredOn: null, removedAt: null },
-      select: {
-        originalJobId: true,
-        originalDeliveryDate: true,
-        appliance: { select: { assetNumber: true, applianceType: { select: { name: true } } } },
-        agreement: { select: { customer: { select: { user: { select: { name: true, email: true } } } } } },
-      },
-    }),
-    // Operational: an appliance that says it is with a customer but has no custody record.
-    findCustodyGaps(prisma).then(async (gaps) =>
-      gaps.length === 0
-        ? []
-        : prisma.appliance.findMany({
-            where: { id: { in: gaps.map((g) => g.applianceId) } },
-            select: { id: true, assetNumber: true, updatedAt: true, applianceType: { select: { name: true } } },
+      ? capped(
+          (take) => prisma.rentalAgreement.findMany({
+            where: billingBlockedWhere,
+            select: { id: true, billingBlockedReason: true, updatedAt: true, ...customerSelect },
+            orderBy: [{ updatedAt: "asc" }, { id: "asc" }],
+            take,
           }),
+          () => prisma.rentalAgreement.count({ where: billingBlockedWhere }),
+        )
+      : empty<never>(),
+    capped(
+      (take) => prisma.rentalAgreement.findMany({
+        where: staleWhere,
+        select: { id: true, reservationExpiresAt: true, ...customerSelect },
+        orderBy: [{ reservationExpiresAt: "asc" }, { id: "asc" }],
+        take,
+      }),
+      () => prisma.rentalAgreement.count({ where: staleWhere }),
+    ),
+    canViewFinance
+      ? capped(
+          (take) => prisma.invoice.findMany({
+            where: pastDueWhere,
+            select: {
+              id: true,
+              customerId: true,
+              dueDate: true,
+              amountDueCents: true,
+              amountPaidCents: true,
+              ...customerSelect,
+            },
+            orderBy: [{ dueDate: "asc" }, { id: "asc" }],
+            take,
+          }),
+          () => prisma.invoice.count({ where: pastDueWhere }),
+        )
+      : empty<never>(),
+    capped(
+      (take) => prisma.job.findMany({
+        where: overdueJobWhere,
+        select: { id: true, type: true, scheduledAt: true, ...customerSelect },
+        orderBy: [{ scheduledAt: "asc" }, { id: "asc" }],
+        take,
+      }),
+      () => prisma.job.count({ where: overdueJobWhere }),
+    ),
+    capped(
+      (take) => prisma.maintenanceRequest.findMany({
+        where: unreviewedWhere,
+        select: { id: true, openedAt: true, problem: true, ...customerSelect },
+        orderBy: [{ openedAt: "asc" }, { id: "asc" }],
+        take,
+      }),
+      () => prisma.maintenanceRequest.count({ where: unreviewedWhere }),
+    ),
+    capped(
+      (take) => prisma.appliance.findMany({
+        where: uninspectedWhere,
+        select: { id: true, assetNumber: true, updatedAt: true, applianceType: { select: { name: true } } },
+        orderBy: [{ updatedAt: "asc" }, { id: "asc" }],
+        take,
+      }),
+      () => prisma.appliance.count({ where: uninspectedWhere }),
+    ),
+    canViewFinance
+      ? capped(
+          (take) => prisma.job.findMany({
+            where: missingCostWhere,
+            select: {
+              id: true,
+              completedAt: true,
+              appliances: {
+                take: 1,
+                orderBy: [{ id: "asc" }],
+                select: { appliance: { select: { assetNumber: true, applianceType: { select: { name: true } } } } },
+              },
+            },
+            orderBy: [{ completedAt: "asc" }, { id: "asc" }],
+            take,
+          }),
+          () => prisma.job.count({ where: missingCostWhere }),
+        )
+      : empty<never>(),
+    termExpiredAgreements(now),
+    maintenanceDueAppliances(maintenanceCutoff),
+    capped(
+      (take) => prisma.rentalAgreement.findMany({
+        where: renewalWhere,
+        select: { id: true, startDate: true, ...customerSelect },
+        orderBy: [{ startDate: "asc" }, { id: "asc" }],
+        take,
+      }),
+      () => prisma.rentalAgreement.count({ where: renewalWhere }),
+    ),
+    canViewFinance
+      ? capped(
+          (take) => prisma.rentalAgreement.findMany({
+            where: endingWhere,
+            select: { id: true, terminationEffectiveOn: true, paidInFullInAdvance: true, ...customerSelect },
+            orderBy: [{ terminationEffectiveOn: "asc" }, { id: "asc" }],
+            take,
+          }),
+          () => prisma.rentalAgreement.count({ where: endingWhere }),
+        )
+      : empty<never>(),
+    canViewFinance
+      ? capped(
+          (take) => prisma.customerNotice.findMany({
+            where: noticeWhere,
+            select: { id: true, createdAt: true, ...customerSelect },
+            orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+            take,
+          }),
+          () => prisma.customerNotice.count({ where: noticeWhere }),
+        )
+      : empty<never>(),
+    // Operational, not money: every role sees an item that still has to be delivered.
+    capped(
+      (take) => prisma.pendingDelivery.findMany({
+        where: undeliveredWhere,
+        select: {
+          id: true,
+          originalJobId: true,
+          originalDeliveryDate: true,
+          appliance: { select: { assetNumber: true, applianceType: { select: { name: true } } } },
+          agreement: { select: { customer: { select: { user: { select: { name: true, email: true } } } } } },
+        },
+        orderBy: [{ originalDeliveryDate: "asc" }, { id: "asc" }],
+        take,
+      }),
+      () => prisma.pendingDelivery.count({ where: undeliveredWhere }),
+    ),
+    capped(
+      (take) => prisma.appliance.findMany({
+        where: custodyGapWhere,
+        select: { id: true, assetNumber: true, updatedAt: true, applianceType: { select: { name: true } } },
+        orderBy: [{ updatedAt: "asc" }, { id: "asc" }],
+        take,
+      }),
+      () => prisma.appliance.count({ where: custodyGapWhere }),
     ),
   ]);
 
   const items: ExceptionItem[] = [
-    ...custodyGaps.map((a) =>
+    ...custodyGaps.rows.map((a) =>
       custodyUnknownException({ id: a.id, label: `${a.applianceType.name} #${a.assetNumber}`, since: a.updatedAt }),
     ),
-    ...itemsNotDelivered.map((p) =>
+    ...itemsNotDelivered.rows.map((p) =>
       itemNotDeliveredException({
         originalJobId: p.originalJobId,
         itemLabel: `${p.appliance.applianceType.name} #${p.appliance.assetNumber}`,
@@ -248,10 +305,10 @@ export async function getExceptions(): Promise<ExceptionItem[]> {
         customerName: customerDisplayName(p.agreement.customer),
       }),
     ),
-    ...waitingNotices.map((n) =>
+    ...waitingNotices.rows.map((n) =>
       noticeWaitingException({ id: n.id, createdAt: n.createdAt, customerName: customerDisplayName(n.customer) }),
     ),
-    ...stuckEndings
+    ...stuckEndings.rows
       .filter((a) => a.terminationEffectiveOn !== null)
       .map((a) =>
         earlyEndingNotDoneException({
@@ -261,7 +318,7 @@ export async function getExceptions(): Promise<ExceptionItem[]> {
           customerName: customerDisplayName(a.customer),
         }),
       ),
-    ...stuckRenewals
+    ...stuckRenewals.rows
       .filter((a): a is typeof a & { startDate: Date } => a.startDate !== null)
       .map((a) =>
         renewalNotStartedException({
@@ -270,7 +327,7 @@ export async function getExceptions(): Promise<ExceptionItem[]> {
           customerName: customerDisplayName(a.customer),
         }),
       ),
-    ...billingBlockedAgreements
+    ...billingBlockedAgreements.rows
       .filter((a): a is typeof a & { billingBlockedReason: string } => a.billingBlockedReason !== null)
       .map((a) =>
         billingBlockedException({
@@ -280,7 +337,7 @@ export async function getExceptions(): Promise<ExceptionItem[]> {
           customerName: customerDisplayName(a.customer),
         }),
       ),
-    ...staleReservations
+    ...staleReservations.rows
       .filter((a): a is typeof a & { reservationExpiresAt: Date } => a.reservationExpiresAt !== null)
       .map((a) =>
         staleReservationException({
@@ -289,7 +346,7 @@ export async function getExceptions(): Promise<ExceptionItem[]> {
           customerName: customerDisplayName(a.customer),
         }),
       ),
-    ...pastDueInvoices
+    ...pastDueInvoices.rows
       .filter((inv): inv is typeof inv & { dueDate: Date } => inv.dueDate !== null)
       .map((inv) =>
         pastDueInvoiceException({
@@ -301,7 +358,7 @@ export async function getExceptions(): Promise<ExceptionItem[]> {
           amountPaidCents: inv.amountPaidCents,
         }),
       ),
-    ...overdueJobs
+    ...overdueJobs.rows
       .filter((j): j is typeof j & { scheduledAt: Date } => j.scheduledAt !== null)
       .map((j) =>
         overdueJobException({
@@ -311,7 +368,7 @@ export async function getExceptions(): Promise<ExceptionItem[]> {
           customerName: j.customer ? customerDisplayName(j.customer) : null,
         }),
       ),
-    ...unreviewedRequests.map((r) =>
+    ...unreviewedRequests.rows.map((r) =>
       unreviewedMaintenanceRequestException({
         id: r.id,
         openedAt: r.openedAt,
@@ -319,7 +376,7 @@ export async function getExceptions(): Promise<ExceptionItem[]> {
         problem: r.problem,
       }),
     ),
-    ...uninspectedAppliances.map((a) =>
+    ...uninspectedAppliances.rows.map((a) =>
       uninspectedReturnException({
         id: a.id,
         assetNumber: a.assetNumber,
@@ -327,7 +384,7 @@ export async function getExceptions(): Promise<ExceptionItem[]> {
         updatedAt: a.updatedAt,
       }),
     ),
-    ...missingRepairCostJobs
+    ...missingRepairCostJobs.rows
       .filter((j): j is typeof j & { completedAt: Date } => j.completedAt !== null)
       .map((j) => {
         const first = j.appliances[0]?.appliance;
@@ -337,42 +394,139 @@ export async function getExceptions(): Promise<ExceptionItem[]> {
           applianceLabel: first ? `${first.applianceType.name} ${first.assetNumber}` : null,
         });
       }),
-    ...activeTermAgreements
-      .filter(
-        (a): a is typeof a & { termMonths: number; startDate: Date } =>
-          a.termMonths !== null && a.startDate !== null,
-      )
-      .map((a) => ({ ...a, termEndDate: a.endDate ?? addMonths(a.startDate, a.termMonths) }))
-      .filter((a) => a.termEndDate < now)
-      .map((a) =>
-        agreementTermExpiredException({
-          id: a.id,
-          customerName: customerDisplayName(a.customer),
-          termMonths: a.termMonths,
-          termEndDate: a.termEndDate,
-        }),
-      ),
-    ...rentedAppliances
-      .map((a) => {
-        const lastMaintenance = a.jobs
-          .map((j) => j.job.completedAt)
-          .filter((d): d is Date => d !== null)
-          .sort((x, y) => y.getTime() - x.getTime())[0];
-        const sinceDate = lastMaintenance ?? a.purchaseDate ?? a.createdAt;
-        return { ...a, sinceDate };
-      })
-      .filter((a) => a.sinceDate < addDays(now, -APPLIANCE_MAINTENANCE_DUE_DAYS))
-      .map((a) =>
-        applianceMaintenanceDueException({
-          id: a.id,
-          assetNumber: a.assetNumber,
-          applianceTypeName: a.applianceType.name,
-          sinceDate: a.sinceDate,
-        }),
-      ),
+    ...termExpired.rows.map((a) =>
+      agreementTermExpiredException({
+        id: a.id,
+        customerName: a.customerName,
+        termMonths: a.termMonths,
+        termEndDate: a.termEnd,
+      }),
+    ),
+    ...maintenanceDue.rows.map((a) =>
+      applianceMaintenanceDueException({
+        id: a.id,
+        assetNumber: a.assetNumber,
+        applianceTypeName: a.typeName,
+        sinceDate: a.since,
+      }),
+    ),
   ];
 
-  return sortExceptions(items);
+  const truncated: ExceptionTruncation[] = (
+    [
+      ["BILLING_BLOCKED", billingBlockedAgreements],
+      ["STALE_RESERVATION", staleReservations],
+      ["PAST_DUE_INVOICE", pastDueInvoices],
+      ["OVERDUE_JOB", overdueJobs],
+      ["UNREVIEWED_MAINTENANCE_REQUEST", unreviewedRequests],
+      ["UNINSPECTED_RETURN", uninspectedAppliances],
+      ["MISSING_REPAIR_COST", missingRepairCostJobs],
+      ["AGREEMENT_TERM_EXPIRED", termExpired],
+      ["APPLIANCE_MAINTENANCE_DUE", maintenanceDue],
+      ["RENEWAL_NOT_STARTED", stuckRenewals],
+      ["EARLY_ENDING_NOT_DONE", stuckEndings],
+      ["NOTICE_WAITING", waitingNotices],
+      ["ITEM_NOT_DELIVERED", itemsNotDelivered],
+      ["CUSTODY_UNKNOWN", custodyGaps],
+    ] as Array<[ExceptionCategory, Capped<unknown>]>
+  )
+    .filter(([, c]) => c.total > c.rows.length)
+    .map(([category, c]) => ({ category, total: c.total, shown: c.rows.length }));
+
+  return { items: sortExceptions(items), truncated };
+}
+
+export async function getExceptions(): Promise<ExceptionItem[]> {
+  return (await getExceptionOverview()).items;
+}
+
+type TermExpiredRow = { id: string; termMonths: number; termEnd: Date; customerName: string };
+
+/**
+ * Active term agreements whose term has ended, oldest first, found in the database. The term end is the
+ * agreement's own end date, or its start plus its term in calendar months (a month-end start clamps to
+ * the last day of the shorter month, so 31 Jan + 1 month is 28 Feb).
+ */
+async function termExpiredAgreements(now: Date): Promise<Capped<TermExpiredRow>> {
+  const nowText = utc(now);
+  const rows = await prisma.$queryRaw<Array<{ id: string; termMonths: number; termEnd: Date }>>`
+    SELECT a."id", a."termMonths",
+           COALESCE(a."endDate", a."startDate" + (a."termMonths" * INTERVAL '1 month')) AS "termEnd"
+    FROM "RentalAgreement" a
+    WHERE a."status" = 'ACTIVE' AND a."termMonths" IS NOT NULL AND a."startDate" IS NOT NULL
+      AND COALESCE(a."endDate", a."startDate" + (a."termMonths" * INTERVAL '1 month')) < CAST(${nowText} AS timestamp)
+    ORDER BY "termEnd" ASC, a."id" ASC
+    LIMIT ${EXCEPTION_CATEGORY_CAP}
+  `;
+  let total = rows.length;
+  if (rows.length >= EXCEPTION_CATEGORY_CAP) {
+    const [{ n }] = await prisma.$queryRaw<Array<{ n: number }>>`
+      SELECT COUNT(*)::int AS "n"
+      FROM "RentalAgreement" a
+      WHERE a."status" = 'ACTIVE' AND a."termMonths" IS NOT NULL AND a."startDate" IS NOT NULL
+        AND COALESCE(a."endDate", a."startDate" + (a."termMonths" * INTERVAL '1 month')) < CAST(${nowText} AS timestamp)
+    `;
+    total = n;
+  }
+  if (rows.length === 0) return { rows: [], total };
+  const names = await prisma.rentalAgreement.findMany({
+    where: { id: { in: rows.map((r) => r.id) } },
+    select: { id: true, customer: { select: { user: { select: { name: true, email: true } } } } },
+  });
+  const nameById = new Map(names.map((n) => [n.id, customerDisplayName(n.customer)]));
+  return {
+    rows: rows.map((r) => ({
+      id: r.id,
+      termMonths: r.termMonths,
+      termEnd: r.termEnd,
+      customerName: nameById.get(r.id) ?? "A customer",
+    })),
+    total,
+  };
+}
+
+type MaintenanceDueRow = { id: string; assetNumber: string; typeName: string; since: Date };
+
+/**
+ * Rented appliances with no completed maintenance visit (or none since they went into service) for
+ * longer than APPLIANCE_MAINTENANCE_DUE_DAYS, oldest first. The last visit is found in the database
+ * (latest completed maintenance visit, else purchase date, else the day it was added), not by loading
+ * every visit of every rented appliance.
+ */
+async function maintenanceDueAppliances(cutoffText: string): Promise<Capped<MaintenanceDueRow>> {
+  const rows = await prisma.$queryRaw<MaintenanceDueRow[]>`
+    SELECT a."id", a."assetNumber", t."name" AS "typeName",
+           COALESCE(m."lastDone", a."purchaseDate", a."createdAt") AS "since"
+    FROM "Appliance" a
+    JOIN "ApplianceType" t ON t."id" = a."applianceTypeId"
+    LEFT JOIN LATERAL (
+      SELECT MAX(j."completedAt") AS "lastDone"
+      FROM "JobAppliance" ja
+      JOIN "Job" j ON j."id" = ja."jobId"
+      WHERE ja."applianceId" = a."id" AND j."type" = 'MAINTENANCE_VISIT' AND j."status" = 'COMPLETED'
+    ) m ON TRUE
+    WHERE a."status" = 'RENTED' AND a."archivedAt" IS NULL
+      AND COALESCE(m."lastDone", a."purchaseDate", a."createdAt") < CAST(${cutoffText} AS timestamp)
+    ORDER BY "since" ASC, a."id" ASC
+    LIMIT ${EXCEPTION_CATEGORY_CAP}
+  `;
+  let total = rows.length;
+  if (rows.length >= EXCEPTION_CATEGORY_CAP) {
+    const [{ n }] = await prisma.$queryRaw<Array<{ n: number }>>`
+      SELECT COUNT(*)::int AS "n"
+      FROM "Appliance" a
+      LEFT JOIN LATERAL (
+        SELECT MAX(j."completedAt") AS "lastDone"
+        FROM "JobAppliance" ja
+        JOIN "Job" j ON j."id" = ja."jobId"
+        WHERE ja."applianceId" = a."id" AND j."type" = 'MAINTENANCE_VISIT' AND j."status" = 'COMPLETED'
+      ) m ON TRUE
+      WHERE a."status" = 'RENTED' AND a."archivedAt" IS NULL
+        AND COALESCE(m."lastDone", a."purchaseDate", a."createdAt") < CAST(${cutoffText} AS timestamp)
+    `;
+    total = n;
+  }
+  return { rows, total };
 }
 
 /** Today's schedule — every job (of any status) due today, earliest

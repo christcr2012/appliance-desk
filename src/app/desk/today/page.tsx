@@ -1,6 +1,6 @@
 import Link from "next/link";
 import {
-  getExceptions,
+  getExceptionOverview,
   getTodaysJobs,
   type ExceptionCategory,
 } from "@/domains/exceptions";
@@ -59,8 +59,8 @@ export default async function TodayPage() {
     (session.user as { role?: string }).role ?? "",
   );
   const now = new Date();
-  const [exceptions, jobs, followUps, openRequests] = await Promise.all([
-    getExceptions(),
+  const [{ items: exceptions, truncated }, jobs, followUps, openRequests] = await Promise.all([
+    getExceptionOverview(),
     getTodaysJobs(now),
     getDueTaskSummary(now),
     prisma.maintenanceRequest.count({
@@ -119,7 +119,7 @@ export default async function TodayPage() {
             title="Needs your attention"
             description={
               exceptions.length
-                ? `${exceptions.length} items, most urgent first`
+                ? `${exceptions.length} items, most urgent first${truncated.length ? " (the longest-waiting ones in each group)" : ""}`
                 : undefined
             }
           >
@@ -160,6 +160,15 @@ export default async function TodayPage() {
                         {CATEGORIES[item.category].action}
                       </Link>
                     </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {truncated.length > 0 && (
+              <ul className="mt-3 space-y-1 text-sm text-ink-soft">
+                {truncated.map((t) => (
+                  <li key={t.category}>
+                    {CATEGORIES[t.category].label}: showing the {t.shown} that have waited longest, {t.total - t.shown} more not shown.
                   </li>
                 ))}
               </ul>
