@@ -323,6 +323,22 @@ Settings → Business profile now also holds your **opening hours** (each day: n
 your **Facebook, Instagram, Google and Nextdoor** pages, and your **logo** (printed on invoices and work orders).
 Hours, closures and links appear in the website footer; hours and closures also appear on the contact page.
 
+## Deposits, refunds and credits (Billing)
+
+Billing now has two more tabs. **Deposits** lists every deposit you are holding and have not yet decided on, grouped by
+how long ago the rental ended (still renting, 0–30, 31–90, over 90 days). Over-90-day deposits are highlighted. Press
+**Decide** to give a deposit back (all of it, or part with a written reason). **Waiting for Stripe** shows requests sent
+to Stripe that are not finished, each in plain words. There is nothing to press there: the system retries every night.
+
+On any invoice (Billing → a customer → the invoice) the **Money decisions** section lets you refund money the customer
+paid on it, or pay it with the customer's account credit. Every decision asks you to tick a box that repeats the amount in
+dollars and in words before it goes through. Only you and admins can see or use these screens. If a refund is paid back
+through Stripe, the page tells you whether Stripe has confirmed it yet.
+
+Reports, Revenue, Fleet and Growth: every number now has a **How this is counted** note (what dates it uses, how it is
+worked out, whether it is a recorded fact or an estimate, and a link to the records behind it). A cost you never entered
+shows as "unknown", never as zero and never as profit.
+
 ## Adding a new appliance category
 
 Also in **Settings** — add or retire an appliance type (e.g. a new

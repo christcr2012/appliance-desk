@@ -4,6 +4,7 @@ import { getLeadSourceBreakdown } from "@/domains/leads";
 import { formatCents } from "@/domains/pricing";
 import { requireRole } from "@/lib/session";
 import { ExportCsvLink } from "@/components/export-csv-link";
+import { MetricStat } from "@/components/desk/metric-stat";
 
 export const metadata = { title: "Reports" };
 
@@ -46,30 +47,13 @@ export default async function ReportsPage() {
       </p>
 
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div className="rounded-lg border border-gray-200 bg-white p-5">
-          <p className="text-sm text-gray-600">Estimated earnings (all billing agreements)</p>
-          <p className="mt-1 text-2xl font-semibold text-gray-900">
-            {formatCents(earnings.totals.estimatedCents)}
-          </p>
-        </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-5">
-          <p className="text-sm text-gray-600">Collected, net of refunds</p>
-          <p className="mt-1 text-2xl font-semibold text-gray-900">
-            {formatCents(earnings.totals.actualCents)}
-          </p>
-        </div>
-        <div
-          className={`rounded-lg border p-5 ${
-            earnings.totals.gapCents > NOTABLE_GAP_CENTS
-              ? "border-amber-300 bg-amber-50"
-              : "border-gray-200 bg-white"
-          }`}
-        >
-          <p className="text-sm text-gray-600">Gap (estimated minus collected)</p>
-          <p className="mt-1 text-2xl font-semibold text-gray-900">
-            {formatCents(earnings.totals.gapCents)}
-          </p>
-        </div>
+        <MetricStat metric="reports.estimatedEarnings" value={formatCents(earnings.totals.estimatedCents)} />
+        <MetricStat metric="reports.collected" value={formatCents(earnings.totals.actualCents)} />
+        <MetricStat
+          metric="reports.gap"
+          value={formatCents(earnings.totals.gapCents)}
+          tone={earnings.totals.gapCents > NOTABLE_GAP_CENTS ? "warning" : "default"}
+        />
       </div>
 
       <section className="mt-8">

@@ -6,36 +6,13 @@ import {
   FilterBar,
 } from "@/components/desk/workspace";
 import { Pagination } from "@/components/pagination";
+import { MetricStat } from "@/components/desk/metric-stat";
 import { formatBusinessDate, formatBusinessTime } from "@/lib/business-date";
 import { getRevenueDashboard } from "@/domains/billing";
 import { formatCents } from "@/domains/pricing";
 import { requireRole } from "@/lib/session";
 
 export const metadata = { title: "Revenue" };
-
-function Stat({
-  label,
-  value,
-  tone = "default",
-}: {
-  label: string;
-  value: string;
-  tone?: "default" | "warning" | "good";
-}) {
-  const toneClass =
-    tone === "warning"
-      ? "border-amber-300 bg-amber-50"
-      : tone === "good"
-        ? "border-gray-200 bg-primary-soft"
-        : "border-gray-200 bg-white";
-  const valueClass = tone === "good" ? "text-primary-dark" : "text-gray-900";
-  return (
-    <div className={`rounded-lg border p-5 ${toneClass}`}>
-      <p className="text-sm text-gray-600">{label}</p>
-      <p className={`mt-1 text-2xl font-semibold ${valueClass}`}>{value}</p>
-    </div>
-  );
-}
 
 export default async function RevenuePage({
   searchParams,
@@ -88,52 +65,41 @@ export default async function RevenuePage({
       </p>
 
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat
-          label="Estimated monthly rate (MRR)"
+        <MetricStat metric="revenue.mrr"
           value={formatCents(stats.mrrCents)}
           tone="good"
         />
-        <Stat
-          label="Estimated annual rate (ARR)"
+        <MetricStat metric="revenue.arr"
           value={formatCents(stats.arrCents)}
           tone="good"
         />
-        <Stat
-          label="Gross cash received this month"
+        <MetricStat metric="revenue.cashMonth"
           value={formatCents(stats.collectedThisMonthCents)}
         />
-        <Stat
-          label="Gross cash received all-time"
+        <MetricStat metric="revenue.cashAllTime"
           value={formatCents(stats.collectedAllTimeCents)}
         />
-        <Stat
-          label="Rentals currently billing"
+        <MetricStat metric="revenue.activeRentals"
           value={String(stats.activeRentalCount)}
         />
-        <Stat
-          label="Customers currently billing"
+        <MetricStat metric="revenue.activeCustomers"
           value={String(stats.activeCustomerCount)}
         />
-        <Stat
-          label="Rental starts dated this month"
+        <MetricStat metric="revenue.newRentals"
           value={String(stats.newRentalsThisMonth)}
         />
-        <Stat
-          label="Closed rentals updated this month"
+        <MetricStat metric="revenue.closedRentals"
           value={String(stats.endedOrCancelledThisMonth)}
         />
-        <Stat
-          label="Past-due amount"
+        <MetricStat metric="revenue.pastDueAmount"
           value={formatCents(stats.pastDueCents)}
           tone={stats.pastDueCents > 0 ? "warning" : "default"}
         />
-        <Stat
-          label="Past-due invoices"
+        <MetricStat metric="revenue.pastDueCount"
           value={String(stats.pastDueInvoiceCount)}
           tone={stats.pastDueInvoiceCount > 0 ? "warning" : "default"}
         />
-        <Stat
-          label="Failed payments this month"
+        <MetricStat metric="revenue.failedPayments"
           value={String(stats.failedPaymentsThisMonth)}
           tone={stats.failedPaymentsThisMonth > 0 ? "warning" : "default"}
         />

@@ -12,6 +12,8 @@ import { StatusBadge } from "@/components/status-badge";
 import { formatBusinessDate } from "@/lib/business-date";
 import { PageHeader, FilterBar } from "@/components/desk/workspace";
 import { invoiceStatusTone } from "@/lib/status-labels";
+import { DepositsTab } from "./deposits-tab";
+import { WaitingTab } from "./waiting-tab";
 
 export const metadata = { title: "Billing" };
 
@@ -26,12 +28,15 @@ export default async function BillingPage({
   const { filter, page: rawPage } = await searchParams;
   const delinquentOnly = filter === "delinquent";
   const showStatements = filter === "statements";
+  const showDeposits = filter === "deposits";
+  const showWaiting = filter === "waiting";
+  const otherTab = showDeposits || showWaiting;
   const invoiceFilter = { delinquentOnly };
 
-  const totalCount = showStatements ? 0 : await getInvoicesCount(invoiceFilter);
+  const totalCount = showStatements || otherTab ? 0 : await getInvoicesCount(invoiceFilter);
   const meta = paginationMeta(totalCount, parsePage(rawPage));
   const [invoices, customerBalances] = await Promise.all([
-    showStatements
+    showStatements || otherTab
       ? Promise.resolve([])
       : getInvoicesPage(invoiceFilter, meta.skip, meta.pageSize),
     showStatements ? getCustomersWithOpenBalances() : Promise.resolve([]),
@@ -60,7 +65,7 @@ export default async function BillingPage({
           {
             href: billingHref(1, null),
             label: "All invoices",
-            active: !delinquentOnly && !showStatements,
+            active: !delinquentOnly && !showStatements && !otherTab,
           },
           {
             href: billingHref(1, "delinquent"),
@@ -71,6 +76,16 @@ export default async function BillingPage({
             href: billingHref(1, "statements"),
             label: "By customer (statements)",
             active: showStatements,
+          },
+          {
+            href: billingHref(1, "deposits"),
+            label: "Deposits",
+            active: showDeposits,
+          },
+          {
+            href: billingHref(1, "waiting"),
+            label: "Waiting for Stripe",
+            active: showWaiting,
           },
           {
             href: "/desk/billing/held-payments",
@@ -90,7 +105,11 @@ export default async function BillingPage({
         payment.
       </p>
 
-      {showStatements ? (
+      {showDeposits ? (
+        <DepositsTab />
+      ) : showWaiting ? (
+        <WaitingTab />
+      ) : showStatements ? (
         customerBalances.length === 0 ? (
           <p className="mt-6 text-sm text-gray-600">
             No customer currently has an open balance.

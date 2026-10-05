@@ -66,6 +66,8 @@ for (const role of ["owner", "customer"] as const) {
                   .map((section) => `/desk/settings?section=${section}`)
                   .concat("/desk/billing?filter=delinquent")
                   .concat("/desk/settings/website")
+                  .concat("/desk/billing?filter=deposits")
+                  .concat("/desk/billing?filter=waiting")
               : [
                   "/account",
                   "/account/rentals",
