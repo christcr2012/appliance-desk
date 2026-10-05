@@ -2,8 +2,8 @@ import { expect, it } from "vitest";
 import { activeDeskHref, deskNavigation } from "@/lib/desk-navigation";
 
 it.each([
-  ["OWNER", 24],
-  ["ADMIN", 23],
+  ["OWNER", 25],
+  ["ADMIN", 24],
 ] as const)(
   "keeps %s role-appropriate destinations discoverable with count %i",
   (role, expectedCount) => {
@@ -14,6 +14,10 @@ it.each([
     expect(groups.find((g) => g.label === "Money")?.links).toContainEqual({
       href: "/desk/dashboard",
       label: "Business overview",
+    });
+    expect(links).toContainEqual({
+      href: "/desk/automations",
+      label: "Automations",
     });
     if (role === "OWNER") {
       expect(links).toContainEqual({
@@ -29,11 +33,11 @@ it.each([
   },
 );
 
-it("never serializes finance, settings, privacy or purchasing destinations to staff", () => {
+it("never serializes finance, settings, privacy, automations or purchasing destinations to staff", () => {
   const groups = deskNavigation("STAFF");
   expect(groups.flatMap((g) => g.links)).toHaveLength(12);
   expect(JSON.stringify(groups)).not.toMatch(
-    /billing|revenue|reports|dashboard|fleet|estimates|purchase-orders|suppliers|launch|\/settings|\/privacy|\/growth/,
+    /billing|revenue|reports|dashboard|fleet|estimates|purchase-orders|suppliers|launch|\/settings|\/privacy|\/automations|\/growth/,
   );
   expect(groups.flatMap((g) => g.links)).toContainEqual({
     href: "/desk/driver",
