@@ -173,10 +173,10 @@ async function cleanupFixture(fixture: Fixture): Promise<void> {
   }
   await prisma.refund.deleteMany({ where: { invoiceId: fixture.invoiceId } });
   await prisma.payment.deleteMany({ where: { invoiceId: fixture.invoiceId } });
+  await prisma.deposit.deleteMany({ where: { id: fixture.depositId } });
   await prisma.receipt.deleteMany({ where: { customerId: fixture.customerId } });
   await prisma.invoiceLineItem.deleteMany({ where: { invoiceId: fixture.invoiceId } });
   await prisma.invoice.deleteMany({ where: { id: fixture.invoiceId } });
-  await prisma.deposit.deleteMany({ where: { id: fixture.depositId } });
   await prisma.rentalAgreement.deleteMany({ where: { id: fixture.agreementId } });
   if (fixture.estimateId) {
     await prisma.estimate.deleteMany({ where: { id: fixture.estimateId } });
@@ -321,6 +321,14 @@ describe.skipIf(!enabled)("refund decisions in disposable Postgres", () => {
     await prisma.invoice.update({
       where: { id: fixture.invoiceId },
       data: { agreementId: null },
+    });
+    await prisma.receipt.update({
+      where: { id: fixture.receiptId },
+      data: { stripeChargeId: "ch_estimate_deposit" },
+    });
+    await prisma.payment.updateMany({
+      where: { invoiceId: fixture.invoiceId },
+      data: { stripePaymentIntentId: "pi_estimate_deposit" },
     });
     mocks.checkoutSessionsList.mockResolvedValue({
       data: [

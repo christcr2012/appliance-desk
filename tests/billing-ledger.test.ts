@@ -31,6 +31,7 @@ function tx() {
         const invoice = invoices.get(id);
         return invoice ? [{ ...invoice }] : [];
       }
+      if (sql.includes('FROM "Deposit"')) return [];
       throw new Error(`Unexpected query: ${sql}`);
     },
     receipt: {

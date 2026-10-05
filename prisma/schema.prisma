@@ -97,9 +97,9 @@ model Verification {
   id         String   @id @default(cuid())
   identifier String
   value      String
-  expiresAt  DateTime
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([identifier])
 }
@@ -912,6 +912,10 @@ model Deposit {
   id          String   @id @default(cuid())
   agreementId String
   agreement   RentalAgreement @relation(fields: [agreementId], references: [id])
+  // Immutable receipt containing the money that originally funded this deposit.
+  // Renewal may move agreementId; this provenance link never moves.
+  sourceReceiptId String? @unique
+  sourceReceipt   Receipt? @relation(fields: [sourceReceiptId], references: [id], onDelete: Restrict)
   amountCents Int
   refundable  Boolean  @default(true)
   refundedAt  DateTime?
@@ -1489,6 +1493,7 @@ model Receipt {
   recordedByUserId String?
   notes            String?
   payments         Payment[]
+  fundedDeposit    Deposit?
   createdAt        DateTime      @default(now())
 
   @@index([customerId, receivedOn])

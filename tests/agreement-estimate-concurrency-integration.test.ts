@@ -100,6 +100,7 @@ describe.skipIf(!enabled)("agreement + estimate lifecycle concurrency", () => {
     await prisma.deposit.deleteMany({
       where: { agreementId: { in: linkedAgreementIds } },
     });
+    await prisma.receipt.deleteMany({ where: { customerId } });
     const lineIds = (
       await prisma.rentalLine.findMany({
         where: { agreementId: { in: linkedAgreementIds } },
@@ -154,6 +155,32 @@ describe.skipIf(!enabled)("agreement + estimate lifecycle concurrency", () => {
       },
     });
     estimateIds.push(estimate.id);
+
+    if (status === "APPROVED") {
+      const receipt = await prisma.receipt.create({
+        data: {
+          customerId,
+          source: "STRIPE",
+          amountCents: 2500,
+          method: "card",
+          stripeChargeId: `ch_estimate_concurrency_${estimate.id}`,
+          receivedOn: new Date(),
+        },
+      });
+      await prisma.auditLog.create({
+        data: {
+          userId: null,
+          action: "estimate.deposit_source_receipt",
+          entityType: "Estimate",
+          entityId: estimate.id,
+          newValue: {
+            receiptId: receipt.id,
+            paymentIntentId: `pi_estimate_concurrency_${estimate.id}`,
+          },
+        },
+      });
+    }
+
     return estimate.id;
   }
 
@@ -208,11 +235,10 @@ describe.skipIf(!enabled)("agreement + estimate lifecycle concurrency", () => {
       where: { sourceEstimateId: estimateId },
     });
     expect(agreements).toHaveLength(1);
-    expect(
-      await prisma.deposit.count({
-        where: { agreementId: agreements[0]!.id, amountCents: 2500 },
-      }),
-    ).toBe(1);
+    const deposit = await prisma.deposit.findFirstOrThrow({
+      where: { agreementId: agreements[0]!.id, amountCents: 2500 },
+    });
+    expect(deposit.sourceReceiptId).not.toBeNull();
     expect(
       await prisma.auditLog.count({
         where: { entityId: estimateId, action: "estimate.convert" },
