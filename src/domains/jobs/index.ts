@@ -1,4 +1,5 @@
 import { requireRole } from "@/lib/session";
+import { assertValidRepairCostCents } from "./repair-costs";
 import { prisma } from "@/lib/prisma";
 import type { JobStatus, JobType, Prisma } from "@prisma/client";
 import { parseChecklist, type ChecklistItem } from "./checklist";
@@ -394,6 +395,8 @@ export async function setJobRepairCosts(
   jobId: string,
   costs: { partsCostCents: number | null; laborCostCents: number | null },
 ) {
+  assertValidRepairCostCents(costs.partsCostCents, "Parts cost");
+  assertValidRepairCostCents(costs.laborCostCents, "Labor cost");
   return prisma.$transaction(async (tx) => {
     await assertActiveTeamActor(tx, userId, ["OWNER", "ADMIN"]);
     // When parts were itemized from the parts ledger, that list is the parts cost: a second hand-entered

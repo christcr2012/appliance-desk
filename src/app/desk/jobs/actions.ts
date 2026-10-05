@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireRole } from "@/lib/session";
+import { parseRepairCostDollars } from "@/domains/jobs/repair-costs";
 import {
   createJob,
   updateJobStatus,
@@ -340,13 +341,6 @@ const repairCostSchema = z.object({
   laborCostDollars: z.string().trim().optional().or(z.literal("")),
 });
 
-function dollarsToCentsOrNull(raw: string | undefined): number | null {
-  if (!raw || raw.trim() === "") return null;
-  const dollars = Number(raw);
-  if (!Number.isFinite(dollars)) return null;
-  return Math.round(dollars * 100);
-}
-
 export async function setJobRepairCostsAction(
   jobId: string,
   raw: Record<string, unknown>,
@@ -362,10 +356,15 @@ export async function setJobRepairCostsAction(
     };
   }
 
+  const parts = parseRepairCostDollars(parsed.data.partsCostDollars, "Parts cost");
+  if (!parts.ok) return { status: "error", message: parts.message };
+  const labor = parseRepairCostDollars(parsed.data.laborCostDollars, "Labor cost");
+  if (!labor.ok) return { status: "error", message: labor.message };
+
   try {
     await setJobRepairCosts(session.user.id, jobId, {
-      partsCostCents: dollarsToCentsOrNull(parsed.data.partsCostDollars),
-      laborCostCents: dollarsToCentsOrNull(parsed.data.laborCostDollars),
+      partsCostCents: parts.cents,
+      laborCostCents: labor.cents,
     });
   } catch (error) {
     return {
