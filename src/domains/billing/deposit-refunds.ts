@@ -1,5 +1,3 @@
-import type { Prisma } from "@prisma/client";
-
 import { prisma } from "@/lib/prisma";
 import { getStripeClient } from "@/lib/stripe";
 import { assertActiveTeamActor } from "@/lib/team-actor";
@@ -60,11 +58,11 @@ async function executeStripeDepositRefund(input: {
 }
 
 /**
- * Owner/admin deposit-refund decision. The funding rail is resolved before the
- * deposit row is locked, so provider reads never happen under a money row lock.
- * A missing/ambiguous source throws before any refund decision is recorded;
- * card-funded money can therefore never silently fall through to a manual
- * refund just because a renewal moved the Deposit to a newer agreement.
+ * Owner/admin deposit-refund decision. Authorization is checked before legacy
+ * provenance recovery because recovery can persist durable financial facts.
+ * The funding rail is then resolved before the deposit row is locked, so
+ * provider reads never happen under a money row lock. The actor is checked
+ * again inside the locked decision transaction before any refund mutation.
  */
 export async function decideDepositRefund(
   userId: string,
@@ -83,6 +81,9 @@ export async function decideDepositRefund(
     );
   }
 
+  await prisma.$transaction((tx) =>
+    assertActiveTeamActor(tx, userId, ["OWNER", "ADMIN"]),
+  );
   const rail = await resolveDepositRefundRail(input.depositId);
 
   const prepared = await prisma.$transaction(async (tx) => {
