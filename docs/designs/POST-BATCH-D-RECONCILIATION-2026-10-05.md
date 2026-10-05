@@ -63,6 +63,21 @@ D already has `METRICS` and growth cards. E must **replace the affected definiti
 
 Tests must prove there is one authoritative definition per metric and that assignment-only changes cannot alter custody-based utilization.
 
+### E owns residual B08 — configurable, versioned lead scoring
+
+The post-D inspection found that the B08 audit outcome was not actually implemented: `src/domains/leads/scoring.ts` still contains the original fixed weights. Rather than add a one-off late D migration, **B08 is explicitly reassigned to E**, which already changes both `Lead` and `BusinessSettings` and owns lead/growth behavior.
+
+Add to E's existing schema/migration work:
+
+- `BusinessSettings.leadScoringPolicy Json` with version 1 defaults matching today's behavior exactly: month-to-month `0`, 6-month `10`, 12-month `20`, each additional unit `5`, business account `10`, multi-unit property-manager/landlord/operator `25`, high-value threshold `30`;
+- `Lead.scoringPolicyVersion Int @default(1)` so a lead records which policy produced its saved score/reasons.
+
+Add a validated OWNER/ADMIN control at `Desk → Settings → Lead scoring` (or an equivalent Settings subsection; do not hide it in code). Saving a changed policy increments its version and writes the ordinary settings/audit evidence. Existing leads are **not silently rescored** when the policy changes; their saved score/reasons/version remain historical. New leads, and any future explicit qualification/rescore command, use the current policy. Do not add an automatic bulk-rescore job in E.
+
+Refactor `scoreLead` so the pure function receives/uses the validated policy instead of module constants. Preserve the approved multi-unit property-manager condition (`isPropertyManager && quantity > 1`). Tests must prove: v1 defaults reproduce every existing scoring test; custom weights/threshold alter a new score; a save increments policy version; existing leads do not change on save; a new public/manual lead stores the current `scoringPolicyVersion`; invalid/unknown policy shapes fail closed to validated defaults or are rejected at the writer as appropriate.
+
+This is a deliberate post-D scope correction, not a hidden deferment: E's acceptance/disposition table must close B08 explicitly.
+
 ### E distributed rate limiting — migrate D privacy intake
 
 D already applies best-effort in-memory limiting to **public** privacy intake and deliberately does not subject a signed-in customer request to that public-IP limiter. E's distributed limiter work must preserve that semantic boundary while replacing the implementation. Do not double-limit the signed-in portal path.
@@ -132,25 +147,12 @@ The generic schema-wide restore already covers D's tables, but the acceptance sc
 
 ---
 
-## 5. One Batch D completion gap found during this reconciliation
+## 5. Implementation order after this reconciliation
 
-The D work-unit disposition requires B03, B06, **B08**, B09, B13, B19, B21, B23, B24, B28, B30, B34–B36 to be mapped to implemented work. Most are covered by D/B foundations, but **B08 is not yet satisfied in the inspected post-D branch**:
+1. Finish D10–D12 verification/disposition and merge the final D branch cleanly onto current `main`; full CI green, Vercel READY, reviews resolved.
+2. Update the final D merge SHA in the E drift-check note.
+3. Implement **E** using `BATCH-E.md` + this reconciliation, including the explicit B08 lead-scoring amendment above.
+4. Implement **E2** using `BATCH-E2.md` + this reconciliation.
+5. Implement **F** using `BATCH-F.md` + this reconciliation.
 
-- `src/domains/leads/scoring.ts` still contains fixed weights/threshold in code;
-- there is no owner-configurable scoring-settings surface or stored scoring version/rescore policy;
-- the current E design does not add that configuration either.
-
-Therefore **do not call Batch D merge-complete and do not start E until B08 receives a valid final disposition**. The preferred closure, consistent with the original B08 audit and D ownership, is to finish it in the final D slice using today's scoring numbers as the default behavior, with explicit versioning and an explicit policy for existing leads (no silent historical rewrite). If implementation would require a new decision not already determined by the audit/design, amend D with the stronger-model rule rather than silently pushing the gap into E.
-
----
-
-## 6. Implementation order after this reconciliation
-
-1. Finish the remaining D completion/disposition work, including B08.
-2. Rebase/merge the final D branch cleanly onto current `main`; full CI green, Vercel READY, reviews resolved.
-3. Update the final D merge SHA in the E drift-check note.
-4. Implement **E** using `BATCH-E.md` + this reconciliation.
-5. Implement **E2** using `BATCH-E2.md` + this reconciliation.
-6. Implement **F** using `BATCH-F.md` + this reconciliation.
-
-No Batch E production code should be written before step 2 is complete.
+No Batch E production code should be written before step 1 is complete.
