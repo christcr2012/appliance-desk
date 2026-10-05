@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { getServerSession } from "@/lib/session";
 import { getPortalData } from "@/domains/portal";
 import { SmsPreferenceForm } from "./sms-preference-form";
@@ -27,6 +28,16 @@ export default async function AccountSettingsPage() {
             initialPhone={customer.phone ?? ""}
           />
         </div>
+      </div>
+
+      <div className="mt-4 rounded-lg border border-gray-200 bg-white p-5">
+        <h2 className="font-medium text-gray-900">Privacy requests</h2>
+        <p className="mt-1 text-sm text-gray-600">
+          Request a copy of your account information or ask us to delete personal information we are allowed to remove.
+        </p>
+        <Link href="/account/settings/privacy" className="mt-3 inline-flex min-h-11 items-center text-sm font-medium text-primary underline">
+          Manage privacy requests
+        </Link>
       </div>
     </div>
   );

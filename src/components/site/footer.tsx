@@ -13,6 +13,8 @@ export function Footer({
   hours,
   holidayClosures,
   socialLinks,
+  privacyApproved = false,
+  termsApproved = false,
 }: {
   businessName: string;
   phone: string;
@@ -21,6 +23,8 @@ export function Footer({
   hours?: unknown;
   holidayClosures?: unknown;
   socialLinks?: unknown;
+  privacyApproved?: boolean;
+  termsApproved?: boolean;
 }) {
   const social = socialLinkList(socialLinks);
   const year = new Date().getFullYear();
@@ -106,12 +110,16 @@ export function Footer({
             &copy; {year} {businessName}. All rights reserved.
           </p>
           <nav aria-label="Legal" className="flex gap-4">
-            <Link href="/privacy" className="hover:text-primary">
-              Privacy Policy
-            </Link>
-            <Link href="/terms" className="hover:text-primary">
-              Terms
-            </Link>
+            {privacyApproved && (
+              <Link href="/privacy" className="hover:text-primary">
+                Privacy Policy
+              </Link>
+            )}
+            {termsApproved && (
+              <Link href="/terms" className="hover:text-primary">
+                Terms
+              </Link>
+            )}
             <Link href="/accessibility" className="hover:text-primary">
               Accessibility
             </Link>
