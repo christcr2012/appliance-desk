@@ -286,49 +286,66 @@ export function totalOneTimeCents(
   );
 }
 
-/** Marks the estimate sent and emails the link. `emailed` is false when live customer email is off, so the owner can share the link by hand. */
+/**
+ * Marks the estimate sent and emails the link. `emailed` is false when live customer email is off, so the owner can share the link by hand.
+ *
+ * R10: the status change IS the claim. One transaction locks the estimate, checks
+ * it is still sendable, and stores the new `sentAt` before any email work. A second
+ * overlapping click waits on the lock, then finds the estimate already SENT and is
+ * refused, so only the winner emails. The email's idempotency key comes from the
+ * estimate id plus that stored `sentAt`, so a retry of the same send can never mail
+ * twice; a deliberate re-send of a revised estimate gets a new `sentAt` and so a new
+ * identity. No email is sent inside the transaction.
+ */
 export async function sendEstimate(userId: string, estimateId: string): Promise<{ emailed: boolean; outcome?: string }> {
-  const estimate = await prisma.estimate.findUniqueOrThrow({
-    where: { id: estimateId },
-    include: {
-      lineItems: true,
-      customer: {
-        select: { user: { select: { name: true, email: true } } },
-      },
-      lead: { select: { contactName: true, email: true } },
-    },
-  });
-  if (!EDITABLE_STATUSES.includes(estimate.status)) {
-    throw new Error("This estimate has already been sent.");
-  }
-  if (estimate.lineItems.length === 0) {
-    throw new Error("Add at least one line item before sending this estimate.");
-  }
-
-  const recipientEmail = estimate.customer?.user.email ?? estimate.lead?.email;
-  const recipientName = estimate.customer
-    ? (estimate.customer.user.name ?? estimate.customer.user.email)
-    : estimate.lead?.contactName;
-  if (!recipientEmail) {
-    throw new Error(
-      "This lead has no email address on file — add one before sending this estimate.",
-    );
-  }
-
-  await prisma.$transaction([
-    prisma.estimate.update({
+  const claimed = await prisma.$transaction(async (tx) => {
+    const locked = await lockEstimateInTx(tx, estimateId);
+    if (!EDITABLE_STATUSES.includes(locked.status)) {
+      throw new Error("This estimate has already been sent.");
+    }
+    const estimate = await tx.estimate.findUniqueOrThrow({
       where: { id: estimateId },
-      data: { status: "SENT", sentAt: new Date() },
-    }),
-    prisma.auditLog.create({
+      include: {
+        lineItems: true,
+        customer: {
+          select: { user: { select: { name: true, email: true } } },
+        },
+        lead: { select: { contactName: true, email: true } },
+      },
+    });
+    if (estimate.lineItems.length === 0) {
+      throw new Error("Add at least one line item before sending this estimate.");
+    }
+
+    const recipientEmail = estimate.customer?.user.email ?? estimate.lead?.email;
+    const recipientName = estimate.customer
+      ? (estimate.customer.user.name ?? estimate.customer.user.email)
+      : estimate.lead?.contactName;
+    if (!recipientEmail) {
+      throw new Error(
+        "This lead has no email address on file — add one before sending this estimate.",
+      );
+    }
+
+    // A re-send must never reuse an earlier send's identity, even within the same millisecond.
+    const previous = estimate.sentAt?.getTime() ?? 0;
+    const sentAt = new Date(Math.max(Date.now(), previous + 1));
+    await tx.estimate.update({
+      where: { id: estimateId },
+      data: { status: "SENT", sentAt },
+    });
+    await tx.auditLog.create({
       data: {
         userId,
         action: "estimate.send",
         entityType: "Estimate",
         entityId: estimateId,
+        newValue: { sentAt: sentAt.toISOString() },
       },
-    }),
-  ]);
+    });
+    return { estimate, recipientEmail, recipientName, sentAt };
+  });
+  const { estimate, recipientEmail, recipientName, sentAt } = claimed;
 
   const settings = await getBusinessSettings();
   const appUrl =
@@ -354,7 +371,21 @@ export async function sendEstimate(userId: string, estimateId: string): Promise<
     subject: `Estimate #${estimate.estimateNumber} from ${settings.publicBusinessName}`,
     text: parts.join("\n\n"),
     actionLabel: "View & respond to estimate",
+    idempotencyKey: `estimate-send-${estimate.id}-${sentAt.getTime()}`,
   });
+  if (!result.sent && result.outcome && result.outcome !== "NOT_ATTEMPTED") {
+    // REJECTED or UNKNOWN: delivery is not confirmed. Leave owner-visible evidence and
+    // never replay automatically (an unknown outcome may already have been delivered).
+    await prisma.auditLog.create({
+      data: {
+        userId,
+        action: "estimate.send_email_unconfirmed",
+        entityType: "Estimate",
+        entityId: estimate.id,
+        newValue: { outcome: result.outcome, sentAt: sentAt.toISOString() },
+      },
+    });
+  }
   return { emailed: result.sent, outcome: result.outcome };
 }
 
