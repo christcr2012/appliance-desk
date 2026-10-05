@@ -39,6 +39,15 @@ type AgreementLineageLookup = {
   customer: { stripeCustomerId: string | null };
 };
 
+type DepositInvoiceEvidence = {
+  agreementId: string | null;
+  lineItems: Array<{ amountCents: number }>;
+  payments: Array<{
+    amountCents: number;
+    receipt: SourceReceipt | null;
+  }>;
+};
+
 export type DepositRefundRail =
   | { kind: "STRIPE"; receiptId: string; stripeChargeId: string }
   | { kind: "MANUAL"; receiptId: string };
@@ -136,31 +145,94 @@ async function loadAgreementLineage(
   return newestToOldest.reverse();
 }
 
-async function findEarliestDepositReceiptForAgreement(
+function unambiguousReceiptFromInvoice(
+  invoice: DepositInvoiceEvidence,
+  context: string,
+): SourceReceipt | null {
+  const depositCents = invoice.lineItems.reduce(
+    (sum, line) => sum + Math.max(0, line.amountCents),
+    0,
+  );
+  if (depositCents <= 0) return null;
+
+  const allocatedByReceipt = new Map<
+    string,
+    { receipt: SourceReceipt; allocatedCents: number }
+  >();
+  for (const payment of invoice.payments) {
+    if (!payment.receipt) continue;
+    const existing = allocatedByReceipt.get(payment.receipt.id);
+    if (existing) {
+      existing.allocatedCents += payment.amountCents;
+    } else {
+      allocatedByReceipt.set(payment.receipt.id, {
+        receipt: payment.receipt,
+        allocatedCents: payment.amountCents,
+      });
+    }
+  }
+  if (allocatedByReceipt.size === 0) return null;
+
+  const qualifying = [...allocatedByReceipt.values()].filter(
+    (candidate) => candidate.allocatedCents >= depositCents,
+  );
+  if (qualifying.length === 1) return qualifying[0]!.receipt;
+
+  throw reconciliationError(
+    `${context} has ${allocatedByReceipt.size} successful receipt source(s), but ${qualifying.length} can individually prove funding of the ${depositCents}-cent deposit.`,
+  );
+}
+
+async function findUnambiguousDepositReceiptForAgreement(
   agreementId: string,
 ): Promise<SourceReceipt | null> {
-  const payment = await prisma.payment.findFirst({
+  const invoices: DepositInvoiceEvidence[] = await prisma.invoice.findMany({
     where: {
-      status: { in: [...SUCCESSFUL_PAYMENT_STATUSES] },
-      receiptId: { not: null },
-      invoice: {
-        agreementId,
-        lineItems: { some: { kind: "DEPOSIT" } },
-      },
+      agreementId,
+      lineItems: { some: { kind: "DEPOSIT" } },
     },
     select: {
-      receipt: {
+      agreementId: true,
+      lineItems: {
+        where: { kind: "DEPOSIT" },
+        select: { amountCents: true },
+      },
+      payments: {
+        where: {
+          status: { in: [...SUCCESSFUL_PAYMENT_STATUSES] },
+          receiptId: { not: null },
+        },
         select: {
-          id: true,
-          customerId: true,
-          source: true,
-          stripeChargeId: true,
+          amountCents: true,
+          receipt: {
+            select: {
+              id: true,
+              customerId: true,
+              source: true,
+              stripeChargeId: true,
+            },
+          },
         },
       },
     },
     orderBy: [{ createdAt: "asc" }, { id: "asc" }],
   });
-  return payment?.receipt ?? null;
+
+  const candidates = new Map<string, SourceReceipt>();
+  for (const invoice of invoices) {
+    const receipt = unambiguousReceiptFromInvoice(
+      invoice,
+      `Agreement ${agreementId}'s deposit invoice`,
+    );
+    if (receipt) candidates.set(receipt.id, receipt);
+  }
+  if (candidates.size === 0) return null;
+  if (candidates.size > 1) {
+    throw reconciliationError(
+      `Agreement ${agreementId} has multiple independently plausible deposit source receipts.`,
+    );
+  }
+  return [...candidates.values()][0]!;
 }
 
 async function persistSourceReceipt(
@@ -425,7 +497,7 @@ export async function resolveDepositRefundRail(
     deposit.customerId,
   );
   for (const agreement of lineage) {
-    const receipt = await findEarliestDepositReceiptForAgreement(agreement.id);
+    const receipt = await findUnambiguousDepositReceiptForAgreement(agreement.id);
     if (!receipt) continue;
     if (receipt.customerId !== deposit.customerId) {
       throw reconciliationError("A legacy deposit payment in the renewal chain belongs to a different customer.");
@@ -561,37 +633,48 @@ async function captureCheckoutDeposit(
 async function capturePaidSubscriptionInvoice(
   stripeInvoice: Stripe.Invoice,
 ): Promise<void> {
-  const payment = await prisma.payment.findFirst({
-    where: {
-      status: { in: [...SUCCESSFUL_PAYMENT_STATUSES] },
-      receiptId: { not: null },
-      invoice: {
-        stripeInvoiceId: stripeInvoice.id,
-        agreementId: { not: null },
-        lineItems: { some: { kind: "DEPOSIT" } },
-      },
-    },
+  const invoice: DepositInvoiceEvidence | null = await prisma.invoice.findUnique({
+    where: { stripeInvoiceId: stripeInvoice.id },
     select: {
-      invoice: { select: { agreementId: true } },
-      receipt: {
+      agreementId: true,
+      lineItems: {
+        where: { kind: "DEPOSIT" },
+        select: { amountCents: true },
+      },
+      payments: {
+        where: {
+          status: { in: [...SUCCESSFUL_PAYMENT_STATUSES] },
+          receiptId: { not: null },
+        },
         select: {
-          id: true,
-          customerId: true,
-          source: true,
-          stripeChargeId: true,
+          amountCents: true,
+          receipt: {
+            select: {
+              id: true,
+              customerId: true,
+              source: true,
+              stripeChargeId: true,
+            },
+          },
         },
       },
     },
-    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
   });
-  if (!payment?.receipt || !payment.invoice.agreementId) return;
-  const depositId = await depositIdForAgreement(payment.invoice.agreementId);
+  if (!invoice?.agreementId || invoice.lineItems.length === 0) return;
+
+  const receipt = unambiguousReceiptFromInvoice(
+    invoice,
+    `Stripe invoice ${stripeInvoice.id}`,
+  );
+  if (!receipt) return;
+
+  const depositId = await depositIdForAgreement(invoice.agreementId);
   if (!depositId) {
     throw reconciliationError(
       `Paid Stripe invoice ${stripeInvoice.id} contains a deposit but no Deposit row exists.`,
     );
   }
-  await persistSourceReceipt(depositId, payment.receipt);
+  await persistSourceReceipt(depositId, receipt);
 }
 
 /**
