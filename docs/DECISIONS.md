@@ -340,3 +340,18 @@ month-to-month rental can be ended online with no fee at the first billing date 
 terms are versioned and reach a customer 30 days after their notice is delivered; annual reminders follow
 `continuousSince`; notices gain UNCERTAIN/MISSED/FAILED states with fenced evidence; a phone call is not a notice
 delivery. Owner questions with built defaults: IN-29 to IN-32. B2 and E2 wait for Chris's approval.
+
+## 2026-10-04 (late) — Chris's answers to IN-29 to IN-32, folded into the B2 and E2 designs
+- **IN-29 early returns:** configurable, not one fixed rule. Owner settings for billing (continue to the agreed end, or
+  stop at pickup), unused paid days (keep, credit, refund), the early-ending fee (the agreement's own terms, none, or a
+  custom amount with a reason; fixed terms only), and whether the system asks each time or applies the defaults; a
+  per-rental screen can change any of them before anything is charged or refunded. Recommended starting values keep
+  today's approved behaviour (keep billing to the agreed end, keep unused days, agreed-terms fee, ask me). The dead
+  column `earlyReturnProrationBasis` is read again for the day count. (`BATCH-B2.md` B2-19, WU-B2-9b.)
+- **IN-30 missed reminders:** one "Fix a missed reminder" screen with every option (cancel the automatic renewal and
+  optionally schedule pickup; send a new renewal to sign; move the renewal later with a fresh reminder — still needs a
+  signature; record delivery another way; keep waiting with a reminder date; end the rental now). Nothing extends
+  billing without a delivered reminder or a signature. (B2-18, WU-B2-5.)
+- **IN-31:** deferred by Chris; stays documented and blocks turning on automatic renewals / live customer email.
+- **IN-32 home page:** ivory in light mode, evergreen in dark mode, one dominant action in both — consistent with the
+  brand kit's light and dark tokens, so no contrast exception and no extra preview step. (`BATCH-E2.md` E2-7.)

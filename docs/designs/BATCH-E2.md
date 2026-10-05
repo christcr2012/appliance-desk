@@ -1,7 +1,8 @@
 # Design — Batch E2: Visual redesign of the owner desk, customer portal and public site (desktop, phone, light, dark)
 
-Status: **WAITING FOR CHRIS'S APPROVAL** in `docs/designs/README.md`. The owner-desk direction is already approved
-(Chris, 2026-10-04); **WU-E2-7 (public home page) stays blocked until Chris picks a home-page option (IN-32)**. Written
+Status: **WAITING FOR CHRIS'S APPROVAL** in `docs/designs/README.md`. The owner-desk direction is approved
+(Chris, 2026-10-04) and the public home page direction is decided (IN-32, Chris 2026-10-04: ivory in light mode,
+evergreen in dark mode). Written
 2026-10-05 by Claude Opus 5.5 against `main` 47bd833, before Batch E is built, so section 0 lists the facts E must
 leave behind; re-check them when E merges. Replaces the prompt `docs/archive/prompts/DESIGN-BATCH-E2-REDESIGN.md`.
 
@@ -76,13 +77,15 @@ caller's, unchanged.
 with Home, Rentals, Maintenance, Billing, Account. The portal home keeps its four questions (what do I rent, what's
 next, do I owe anything, how do I get help) as cards in that order, with "Report a problem" as the dominant action.
 
-**E2-7. Public site: the home page needs Chris's choice first.** Two options are built as static previews
-(WU-E2-7a) and Chris picks one (IN-32): **Option A — "Ivory"** (kit-faithful): ivory hero, evergreen headline, one
-dominant "Check your address" button, the `hero-lineup.jpg` photo, secondary "See prices" as a text link. **Option B —
-"Evergreen hero"** (mockup): dark evergreen hero with the photo, fresh-green primary button and an outlined secondary
-button. Recommendation: **Option A** — it follows the kit's "ivory surfaces, one dominant next action" rule and needs
-no new contrast exceptions. All text comes from D's site-content fields and Settings; prices from the catalog. The
-other public pages take the shared components without a layout change.
+**E2-7. Public site: ivory in light mode, evergreen in dark mode (Chris, 2026-10-04, IN-32).** One home page that
+follows the visitor's theme (the same `.dark` switch and theme toggle as the rest of the app; the device setting is
+the default). **Light:** ivory hero (`bg-canvas`), evergreen headline, the `hero-lineup.jpg` photo beside it on desktop
+(below on phones), one dominant "Check your address" button in evergreen with ivory text, and "See prices" as a text
+link. **Dark:** the same layout on night/evergreen (`bg-canvas` and `bg-surface` in dark are the kit's night and dark
+surface), ivory text, the fresh-green button with evergreen text, the photo framed by a `border-line` edge so it does
+not float. Both keep exactly one dominant action — the kit's rule — so neither mode needs a contrast exception, and
+no second gradient is introduced. All text comes from D's site-content fields and Settings; prices from the catalog.
+The other public pages use the same light/dark treatment through the shared components without a layout change.
 
 **E2-8. Real assets only.** Logos from `public/brand/` (light/dark variants switched with the theme); appliance photos
 from `public/appliances/` with existing alt text (D's site-content alt fields on public pages) and explicit
@@ -144,12 +147,10 @@ or action change. Each PR lists every browser-test selector or text it changed.
 ### WU-E2-6 — Customer portal (PR 6)
 Files: `src/app/account/**`, portal bottom bar. Browser: extend `e2e/accessibility-authenticated.spec.ts`.
 
-### WU-E2-7 — Public site (PR 7) — **blocked on IN-32 for the home page only**
-7a (can merge before the choice): both home options as `src/app/(public)/home-preview/a/page.tsx` and `…/home-preview/b/page.tsx` (not `_preview`: folders starting with `_` are private in the App Router and never become pages),
-reachable only for an OWNER/ADMIN session (404 otherwise), with `robots: noindex`. Chris opens both on the preview and
-answers IN-32.
-7b (after the answer): build the chosen option as the real home page; delete both preview routes; move the other public
-pages to the shared components. **Chris sees the real home page on the preview before this PR merges.**
+### WU-E2-7 — Public site (PR 7)
+Build the home page per E2-7 in both modes, then move the other public pages to the shared components. Screenshots of
+the home page in light and dark at 390 and 1440 go in the PR. **Chris sees the real home page on the preview, in both
+modes, before this PR merges.**
 
 ### WU-E2-8 — Print, email, cleanup, docs (PR 8)
 Print styles (E2-10); delete `primaryActionClass`/`secondaryActionClass` aliases and the old `DeskSidebar` once unused
@@ -163,7 +164,7 @@ The extra widths in E2-9 apply to three routes only.
 1. Any section 0 row is false (especially A1/A2: E not merged).
 2. A screen needs a number, list or action that no existing function provides (would be a behaviour change).
 3. A colour pair fails contrast and no existing token fixes it.
-4. Anything about the public home page before IN-32 is answered.
+4. A change to the home-page direction in E2-7 (light ivory, dark evergreen, one dominant action).
 5. A browser test would need a change beyond selectors/visible text.
 
 ## 6. Acceptance mapping
@@ -176,7 +177,7 @@ The extra widths in E2-9 apply to three routes only.
 | No hard-coded colours/radii/sizes | E2-2 lint guard |
 | No sample data or `[BRACKETS]` | `grep -rn "\[[A-Z][A-Za-z ]*\]" src` returns nothing user-facing |
 | CI within budget | no new group; durations in the CI notice |
-| Chris approved home page and phone desk before their PRs merged | IN-32 answer; PR comments |
+| Chris saw the home page (both modes) and the phone desk before their PRs merged | PR comments |
 
 ## Amendments
 (Dated entries only.)

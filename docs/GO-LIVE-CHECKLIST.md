@@ -18,6 +18,7 @@ Legend: **Owner** = only Chris can do it · **Agent** = Claude can do it once yo
 | [ ] | Prices, deposit, late fees, prepay discounts reviewed | Desk → Settings (Owner) | Starting values | You have read every number on the settings screens |
 | [ ] | Held-payment and refund rules understood | Desk → Billing → Held payments (Owner) | Built | Walkthrough done |
 | [ ] | Pickup and delivery billing rules reviewed (late-return rate, late-delivery credit basis, pickup day not charged) | Desk → Settings → Pickups and deliveries (Owner) | Recommended values | You have read the three rules and saved them |
+| [ ] | Early-return choices reviewed: keep billing or stop at pickup, unused days (keep/credit/refund), early-ending fee, ask me or apply automatically (IN-29) | Desk → Settings → Ending and renewing rentals (Owner; built by Batch B2) | Not built yet | You have read each choice and saved your defaults |
 
 ## 2. Customer email
 | Done | Item | Where / how | Today | How you know it worked |

@@ -612,7 +612,8 @@ Evergreen brand (colors from `docs/brand/03_Design_System/brand-tokens.json`, Ma
 was made in a private Claude Design canvas ("Appliance Desk Redesign Mockup"): the public home page and the owner desk
 "Today" screen. **Chris approved the owner desk direction** (2026-10-04): a dark evergreen sidebar with a lime-green "current
 page" pill, an ivory working area, a gradient headline stat card beside plain white stat cards, a visit list with a status
-word and icon on every row, and a "Needs your attention" panel. The public home page direction is still open.
+word and icon on every row, and a "Needs your attention" panel. Public home page decided the same day (IN-32): ivory in
+light mode, evergreen in dark mode. **Now designed as Batch E2 (`docs/designs/BATCH-E2.md`).**
 
 What the real work will need (so it is not forgotten):
 - It is its own batch. Per `AGENTS.md` it needs an approved design (`docs/designs/BATCH-<X>.md`) written first, and it should

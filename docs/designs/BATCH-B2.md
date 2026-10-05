@@ -2,7 +2,7 @@
 
 Status: **WAITING FOR CHRIS'S ONE-LINE APPROVAL** in `docs/designs/README.md` (it settles money and notice rules).
 Written 2026-10-05 by Claude Opus 5.5 against `main` 47bd833 (#200), after reading every function this document
-names. It replaces two open prompts: `docs/archive/prompts/DESIGN-BATCH-B-RENEWAL-LIFECYCLE.md` (findings R1–R7, D1, D2 of
+names; updated the same night with Chris's answers to IN-29 (B2-19, WU-B2-9b) and IN-30 (B2-18, WU-B2-5). It replaces two open prompts: `docs/archive/prompts/DESIGN-BATCH-B-RENEWAL-LIFECYCLE.md` (findings R1–R7, D1, D2 of
 `docs/reviews/2026-10-03-pr161-independent-review.md`) and the blocked C-09 section of
 `docs/designs/BATCH-C-LITERAL-SPEC-2026-10-03.md`. Scope and acceptance: `docs/PLAN.md` → Batch B2.
 
@@ -72,14 +72,11 @@ version is applied.
 "nothing to send". Line-price reductions (`subscription-line.ts`) are untouched. An end date that is already in the
 past is never sent to Stripe (Stripe refuses it); the closing step cancels instead.
 
-**B2-7. Returning equipment never changes billing by itself.** (C-09, IN-24.) Billing ends only on an *agreed*
-ending: the fixed term's end, an early ending, or a month-to-month ending (B2-9). A pickup after that date is
-charged by the day (built, PR #165); a pickup before it does not shorten billing (no refund of unused days; owner
-question IN-29 records this default). When the last appliance of an agreement comes back and its agreed ending has
-passed, the agreement is ended on that agreed date through `closeAgreementInTx`. When equipment comes back and **no**
-ending is recorded, the owner gets a HIGH task and a Today item ("Returned, still billing") — the system never
-guesses a fee, a notice period or who was at fault. Reason: this keeps every money rule Chris already approved and
-adds no new one.
+**B2-7. Returning equipment never changes billing silently.** (C-09, IN-24.) Billing ends on an *agreed* ending: the
+fixed term's end, an early ending, or a month-to-month ending (B2-9). A pickup after that date is charged by the day
+(built, PR #165). When the last appliance of an agreement comes back and its agreed ending has passed, the agreement
+is ended on that agreed date through `closeAgreementInTx`. When everything comes back **before** the agreed ending, or
+with **no** ending recorded, that is an *early return* and B2-19 decides what happens — never a guess in code.
 
 **B2-8. Company-caused late pickup is a waiver recorded against the late-return bill.** (Chris, 2026-10-03, IN-24.)
 Only OWNER/ADMIN may record it, with a required note. Waived days default to every charged day; the owner may enter
@@ -121,6 +118,34 @@ twelve-month period. For every ACTIVE month-to-month rental with no ending reque
 boundary already covered by a delivered fixed-term `RENEWAL_REMINDER` for a renewal starting that same Colorado day
 gets none. A missed annual reminder never stops billing (counsel to confirm, IN-31); it shows on Today as HIGH.
 
+**B2-19. Early returns: the owner chooses, with defaults he sets.** (Chris, 2026-10-04, IN-29: "configurable options,
+possible money return, possible early termination fee — I need options here".) An early return is a full return
+before the agreed ending, or a full return with no ending recorded. Three owner settings (Settings → Ending and
+renewing rentals → "When equipment comes back early") give the defaults; each is explained on screen with the
+recommended starting value and a restore button:
+- `earlyReturnBilling` — what happens to billing:
+  `KEEP_TO_AGREED_END` (recommended starting value: billing continues to the agreed ending or, when none is recorded,
+  the ending is recorded with the agreement's own notice rules as if requested on the pickup day) ·
+  `END_AT_PICKUP` (billing stops: no further monthly charge; the agreement ends on the pickup day).
+- `earlyReturnUnusedDays` — only with `END_AT_PICKUP`: the days already paid for after the pickup day:
+  `KEEP` (recommended) · `CREDIT` (account credit) · `REFUND` (back to the card/bank for Stripe-paid money; recorded
+  for the owner to pay by hand for other payments — the same split the never-delivered refund uses). Days are counted
+  with `earlyReturnProrationBasis` (`MONTHLY_DIV_30` recommended, or `ACTUAL_DAYS_IN_MONTH`) — this revives the existing
+  column of that name, which was never read.
+- `earlyReturnFee` — only for a **fixed term** returned early: `AGREED_TERMS_FEE` (recommended: the early-ending fee
+  from the agreement's own frozen terms, the same quote the customer would get) · `NO_FEE`. Month-to-month rentals
+  never get a fee.
+- `earlyReturnHandling` — `ASK_ME` (recommended: Today shows "Returned early — choose what to do", with the defaults
+  pre-selected) · `APPLY_DEFAULTS` (the defaults are applied automatically when the pickup is completed, and Today
+  shows what was done so it can still be changed while nothing has been charged or refunded).
+On the early-return screen the owner can change any choice for that one rental (billing, unused days, fee amount from
+$0 up to the agreement's quoted fee, or a different amount with a written reason) before confirming. The screen shows
+the numbers before confirming: last billed day, unused days and their amount, fee, and what goes back to the customer.
+A fee is always an OPEN invoice line (`EARLY_TERMINATION_FEE`), never charged automatically. A rental paid in full in
+advance always goes to `ASK_ME` (the unused prepaid months need the owner, as today). Partial returns are not early
+returns: the agreement keeps billing; a removed item that should come off the bill uses the existing waiting-item /
+line-reduction paths, not this screen.
+
 ### Notices (closes R5, R6, R7, D2)
 
 **B2-13. A notice has one of these states:** `PENDING` (waiting for its window or a retry time), `SENDING` (claimed),
@@ -151,10 +176,30 @@ when the customer has opted in to texts). A phone call is **not** a delivery (th
 another easily accessible form the customer authorized). Required: channel, date, the address/number used, and a
 note. Who may record it is an owner setting, starting value "Owner only". Counsel confirms the list (IN-31).
 
-**B2-18. A missed renewal reminder never sends a stale promise.** It becomes `MISSED`, the automatic renewal can
-never start (existing gate), billing ends on the old date (B2-2 already gives that answer, because extension needs a
-delivered reminder), and Today shows two choices: cancel the automatic renewal now, or keep it waiting while the
-owner gets a renewal signed by hand. Doing nothing leaves the renewal blocked (owner question IN-30 records this).
+**B2-18. A missed renewal reminder never sends a stale promise, and the owner can do anything from one screen.**
+(Chris, 2026-10-04, IN-30: "make this robust, so I can do anything from there".) The notice becomes `MISSED`, the
+automatic renewal can never start on its own (existing gate), and billing ends on the old date (B2-2 gives that
+answer, because extension needs a delivered reminder). Today links to a **"Fix a missed reminder"** screen for that
+rental that offers every option, each explained in one plain sentence with what happens to billing and equipment:
+1. **Cancel the automatic renewal** — the rental ends at the end of its term; optionally create the pickup visit for
+   the day after the term ends in the same step.
+2. **Send a new renewal for the customer to sign** — choose month-to-month, 6 or 12 months; it cancels the automatic
+   renewal and creates and sends a hand renewal (`renewAgreement` + `sendForSignature`) in one step; once the customer
+   signs, billing continues through the normal renewal path.
+3. **Move the renewal later and send a fresh reminder** — only when a later start still leaves 25–40 days for a new
+   reminder: the automatic renewal is cancelled and a new one is queued to start on the next billing date that is at
+   least 25 days away, with a new reminder; the current term is extended month by month to that date only with the
+   customer's signed agreement, so this option creates the extension as a hand renewal for signature (same as 2,
+   month-to-month, with that start date) — it is never applied without a signature.
+4. **I delivered it another way** — record hand delivery (B2-17); if the evidence date is inside the window the
+   renewal can start normally, otherwise the screen says it still cannot and offers 1–3.
+5. **Keep it waiting** — with a note and a "remind me on" date (creates a task due that day).
+6. **End the rental now** — opens the early-return / ending screen (B2-19) for this rental.
+Doing nothing leaves the renewal blocked and the rental ending on its term date; Today keeps showing it (HIGH) until
+one option is chosen. Every option is OWNER/ADMIN, re-checked inside its transaction, audited
+(`notice.missed_resolved` with the option and note), and refused if the situation changed since the screen loaded
+(the screen sends the notice's `updatedAt`). The same screen also opens for `UNCERTAIN` and `FAILED` notices (with
+options 1, 2, 4, 5 plus "the email did go out (date)" / "it did not go out").
 
 ---
 
@@ -266,6 +311,34 @@ model BusinessSettings {
   monthToMonthChangeNoticeDays Int     @default(30)       // B2-10
   termsChangeNoticeText        String?                    // B2-10 wording; starting draft below
   annualReminderText           String?                    // B2-12 wording; starting draft below
+  earlyReturnBilling           String  @default("KEEP_TO_AGREED_END")  // B2-19: "KEEP_TO_AGREED_END" | "END_AT_PICKUP"
+  earlyReturnUnusedDays        String  @default("KEEP")                // B2-19: "KEEP" | "CREDIT" | "REFUND"
+  earlyReturnFee               String  @default("AGREED_TERMS_FEE")    // B2-19: "AGREED_TERMS_FEE" | "NO_FEE"
+  earlyReturnHandling          String  @default("ASK_ME")              // B2-19: "ASK_ME" | "APPLY_DEFAULTS"
+  // earlyReturnProrationBasis (existing column, default "MONTHLY_DIV_30") is read again by B2-19
+}
+
+// B2-19: one row per early return, the owner's (or the defaults') decision and what it did
+model EarlyReturnResolution {
+  id                 String   @id @default(cuid())
+  agreementId        String   @unique
+  jobId              String
+  pickupDate         DateTime
+  billing            String   // KEEP_TO_AGREED_END | END_AT_PICKUP
+  unusedDays         String   // KEEP | CREDIT | REFUND
+  unusedDaysCount    Int
+  unusedCents        Int      // before tax
+  unusedTaxCents     Int
+  feeCents           Int
+  feeReason          String?  // required when feeCents differs from the agreement's quoted fee
+  feeInvoiceId       String?
+  creditId           String?
+  refundedCents      Int      @default(0)
+  refundByHandCents  Int      @default(0)
+  appliedBy          String   // "OWNER" | "DEFAULTS"
+  decidedByUserId    String?
+  createdAt          DateTime @default(now())
+  @@index([jobId])
 }
 ```
 
@@ -562,19 +635,43 @@ export async function recordNoticeDelivery(userId: string, noticeId: string, inp
 }): Promise<void>;
 export async function confirmEmailOutcome(userId: string, noticeId: string, input:
   { sent: true; acceptedOn: string /* YYYY-MM-DD from the email service */ } | { sent: false }): Promise<void>;
-export async function resolveMissedRenewalReminder(userId: string, noticeId: string,
-  choice: "CANCEL_AUTOMATIC_RENEWAL" | "KEEP_WAITING", note: string): Promise<void>;
+export type MissedNoticeChoice =
+  | { kind: "CANCEL_AUTOMATIC_RENEWAL"; schedulePickup: boolean }
+  | { kind: "SEND_NEW_RENEWAL"; termMonths: null | 6 | 12 }
+  | { kind: "MOVE_RENEWAL_LATER" }                       // offered only when getMissedNoticeOptions says it fits
+  | { kind: "KEEP_WAITING"; remindOn: string /* YYYY-MM-DD */ }
+  | { kind: "END_RENTAL" };                              // returns a link to the B2-19 screen; changes nothing itself
+export async function getMissedNoticeOptions(noticeId: string, now?: Date): Promise<{
+  notice: { id: string; status: string; updatedAt: Date; deadlineAt: Date | null };
+  options: Array<{ kind: MissedNoticeChoice["kind"] | "RECORD_DELIVERY" | "CONFIRM_EMAIL"; available: boolean; why: string; effect: string }>;
+  laterStartOn: Date | null;                            // for MOVE_RENEWAL_LATER
+}>;
+export async function resolveMissedNotice(userId: string, noticeId: string, expectedUpdatedAt: Date,
+  choice: MissedNoticeChoice, note: string): Promise<{ redirectTo: string }>;
 ```
 Rules: actor re-checked inside the transaction with `assertActiveTeamActor` against `noticeCertifierRoles`;
 `TEXT_OR_APP` refused unless `Customer.smsOptInAt` is set; `evidenceDate = evidenceDateFor(…)`; an evidence date
 outside the notice window is saved as SENT but the renewal gate still refuses it (out of window) — the screen says so
-before saving; `CANCEL_AUTOMATIC_RENEWAL` calls `closeAgreementInTx(…, "CANCELLED")` on the renewal in the same
-transaction (which withdraws and recomputes). Settings → Ending and renewing rentals gains `noticeCertifierRoles`
+before saving. `resolveMissedNotice` (B2-18): `CANCEL_AUTOMATIC_RENEWAL` calls `closeAgreementInTx(…, "CANCELLED")`
+on the renewal in the same transaction (which withdraws and recomputes) and, with `schedulePickup`, creates a REMOVAL
+job through `createJobInTx` for the day after the term ends (unassigned, the agreement's address and appliances);
+`SEND_NEW_RENEWAL` cancels the automatic renewal, then (after commit) `renewAgreement` + `sendForSignature` — if either
+fails the screen says which step failed and the automatic renewal stays cancelled (billing ends on the old date, which
+is the safe side); `MOVE_RENEWAL_LATER` is the same as `SEND_NEW_RENEWAL` month-to-month with the later start date (a
+hand renewal needs the customer's signature; nothing extends billing before that); `KEEP_WAITING` creates a task due
+on `remindOn`; every choice writes the note and the option to `CustomerNotice.resolution`/`resolvedByUserId`/`resolvedAt`
+and the audit log. A changed `updatedAt` → "This changed since you opened it. Reload."
+Screen: `src/app/desk/notices/[id]/resolve/page.tsx` (new), linked from Today and Desk → Notices; each option shows
+`why` (available or not, and why not) and `effect` (what happens to billing and equipment). Settings → Ending and renewing rentals gains `noticeCertifierRoles`
 (OWNER only can change it) and `mailNoticeTransitDays` (0–14), each explained on screen with "Restore recommended
 value". Desk → Notices explains, in one sentence, why a phone call is not a delivery.
 Tests: `tests/notices-hand-delivery-integration.test.ts`: admin refused when setting is OWNER; admin allowed when
 OWNER_AND_ADMIN; text refused without opt-in; mail date + 3 transit days is the evidence date; future date refused;
-missed → cancel renewal closes it, withdraws nothing else, recomputes the billing end (old end restored).
+missed → cancel renewal closes it, withdraws nothing else, recomputes the billing end (old end restored);
+cancel with pickup creates exactly one REMOVAL job on the right day (DST: term ending 2026-11-01); send-new-renewal
+creates one draft and one signature request and the automatic renewal is CANCELLED; send-new-renewal with signing
+failing leaves the automatic renewal cancelled and reports the failed step; move-later refused when no later start
+leaves 25 days; keep-waiting creates one task due that day; stale `expectedUpdatedAt` refused; STAFF refused.
 
 **PR 3 — month-to-month (WU-B2-6 … B2-8)**
 
@@ -638,7 +735,7 @@ Tests (named in the review): `annual-six-month-to-monthly-through-month-13`, `an
 (month 13 covered by the fixed-term reminder), `annual-monthly-from-the-outset`, `annual-replacement-agreement-does-not-reset`,
 `annual-missed-is-high-on-today-and-billing-continues`.
 
-**PR 4 — pickup billing end (WU-B2-9, B2-10)**
+**PR 4 — pickup billing end and early returns (WU-B2-9, B2-9b, B2-10)**
 
 ### WU-B2-9 — Agreed-end fix, waiver, closing after full return (B2-7, B2-8; C-09)
 Files: `src/domains/billing/pickup-billing-events.ts` (`agreedEndFor(agreement)` = earliest of `endDate` and
@@ -647,7 +744,7 @@ Files: `src/domains/billing/pickup-billing-events.ts` (`agreedEndFor(agreement)`
 after custody closes, call `closeIfFullyReturnedInTx`; run the close continuation after commit), job completion screen
 and job page (owner/admin: "Who caused the delay?" with "Customer (default)" / "Us — waive the late days", note,
 optional fewer days), `src/domains/agreements/returns.ts` (new), nightly `closeFullyReturnedAgreements` in the
-start-renewals cron, exceptions category `RETURNED_STILL_BILLING` (HIGH, owner/admin, bounded).
+start-renewals cron, Today category `RETURNED_EARLY` is added by WU-B2-9b.
 ```ts
 export async function recordLateReturnWaiverInTx(tx: Prisma.TransactionClient, actor: { userId: string },
   input: { jobId: string; waivedDays: number | null; note: string }): Promise<{ waiverId: string; waivedCents: number; waivedTaxCents: number }>;
@@ -657,7 +754,7 @@ export function lateReturnWaiverCents(charge: { days: number; amountCents: numbe
   // waivedDays >= charge.days → charge.amountCents exactly; else round half up (amountCents * waivedDays / days)
 export async function closeIfFullyReturnedInTx(tx: Prisma.TransactionClient, userId: string | null,
   input: { agreementId: string; jobId: string; pickupDate: Date }): Promise<
-  { outcome: "CLOSED"; close: CloseAgreementResult } | { outcome: "WAITS_FOR_AGREED_END" | "NO_ENDING_RECORDED" | "RENEWAL_WAITING" | "NOT_FULLY_RETURNED" }>;
+  { outcome: "CLOSED"; close: CloseAgreementResult } | { outcome: "EARLY_RETURN" | "RENEWAL_WAITING" | "NOT_FULLY_RETURNED" }>;
 export async function closeFullyReturnedAgreements(now?: Date): Promise<{ closed: number }>;
 ```
 Waiver rules: actor OWNER/ADMIN (`assertActiveTeamActor` inside the transaction); note 5–500 chars; the job's
@@ -669,26 +766,80 @@ subtotal/tax/amount due; amount due 0 → status PAID; one `LateReturnWaiver` ro
 A second waiver for the same job is refused (unique `jobId`).
 Close rules: "fully returned" = no open `ApplianceAssignment` on the agreement's lines whose appliance has an open
 `ApplianceCustodyEpisode`. Agreed end ≤ end of the pickup's Colorado day → `closeAgreementInTx(tx, userId, id, "ENDED",
-{ endedOn: agreedEnd })`; agreed end later → `WAITS_FOR_AGREED_END` (the nightly sweep closes it when the date passes;
-agreements with an early ending are already closed by `runDueTerminations`); none → a HIGH task
-(`createTaskInTx`, sourceKey `job:<jobId>:returned-no-ending`, note "Everything was picked up but no ending is
-recorded, so billing continues. Record the ending (month-to-month ending or early-ending quote)."); a SCHEDULED renewal
+{ endedOn: agreedEnd })`; agreed end later than the pickup day, or no agreed end at all → `EARLY_RETURN` (WU-B2-9b
+decides what happens; `closeFullyReturnedAgreements` still closes, on its agreed date, any rental whose early return was
+resolved as "keep billing to the agreed end"); a SCHEDULED renewal
 → HIGH task `job:<jobId>:returned-renewal-waiting` ("cancel the renewal or bring the equipment back"). Never closes
 an agreement that is not ACTIVE.
 Tests (`tests/pickup-billing-end-integration.test.ts`, real Postgres): `late-by-company-waives-all-days-invoice-zero-paid`,
 `late-by-company-partial-days`, `late-by-customer-bills-daily-unchanged`, `waiver-refused-for-staff`,
 `waiver-refused-after-payment`, `waiver-twice-refused`, `early-ending-pickup-after-effective-date-charged-from-effective-date`
-(the A6 fix), `full-return-after-term-end-closes-agreement-on-term-end`, `full-return-before-agreed-end-waits-and-nightly-closes`,
-`full-return-month-to-month-without-ending-makes-one-task`, `partial-return-leaves-agreement-open`,
+(the A6 fix), `full-return-after-term-end-closes-agreement-on-term-end`, `full-return-before-agreed-end-is-early-return`,
+`full-return-month-to-month-without-ending-is-early-return`, `partial-return-leaves-agreement-open`,
 `removal-completion-and-fee-invoice-race-both-finish` (existing lock-order case still green), DST: pickup on
 2026-11-01 for an agreement ending 2026-10-31.
+
+### WU-B2-9b — Early returns (B2-19)
+Files: `src/domains/agreements/early-return.ts` (new), `src/domains/billing/refund-across-invoices.ts` (new: move the
+"refund newest paid invoices first, Stripe-paid through `prepareInvoiceRefundInTx`, the rest recorded by hand" loop out
+of `removeUndeliveredItem` into `refundAcrossPaidInvoicesInTx(tx, userId, { agreementId, amountCents, reason, notes })`
+returning `{ refundedCents, refundByHandCents, runs }`; `removeUndeliveredItem` calls it with unchanged behaviour —
+its existing tests must pass untouched), `closeIfFullyReturnedInTx` (on `EARLY_RETURN`:
+with `earlyReturnHandling = APPLY_DEFAULTS` it
+calls `applyEarlyReturnInTx` with the defaults; otherwise it creates the HIGH task
+`job:<jobId>:returned-early` and the Today category `RETURNED_EARLY`), settings screen section "When equipment comes
+back early", screen `src/app/desk/agreements/[id]/early-return/page.tsx` (new).
+```ts
+export type EarlyReturnChoice = {
+  billing: "KEEP_TO_AGREED_END" | "END_AT_PICKUP";
+  unusedDays: "KEEP" | "CREDIT" | "REFUND";            // ignored unless END_AT_PICKUP
+  feeCents: number | "AGREED_TERMS" | 0;               // fixed term only; month-to-month always 0
+  feeReason?: string;                                  // required when feeCents is a number other than the quoted fee
+};
+export type EarlyReturnPreview = {
+  agreedEndOn: Date | null; lastBilledDay: Date; unusedDaysCount: number; unusedCents: number; unusedTaxCents: number;
+  quotedFeeCents: number; feeCents: number; refundOrCreditCents: number; prepaidNeedsOwner: boolean;
+};
+export async function previewEarlyReturn(agreementId: string, choice: EarlyReturnChoice): Promise<EarlyReturnPreview>;
+export async function applyEarlyReturnInTx(tx: Prisma.TransactionClient, actor: { userId: string | null; by: "OWNER" | "DEFAULTS" },
+  input: { agreementId: string; jobId: string; pickupDate: Date; choice: EarlyReturnChoice; expectedPreview: EarlyReturnPreview }):
+  Promise<{ resolutionId: string; close: CloseAgreementResult | null; refundRuns: ClaimedRefund[]; creditId: string | null }>;
+export async function applyEarlyReturn(userId: string, agreementId: string, choice: EarlyReturnChoice, expectedPreview: EarlyReturnPreview): Promise<void>;
+```
+Rules (lock order customer ledger → agreement → invoices):
+- `KEEP_TO_AGREED_END` with an ending already recorded → no money change; the agreement closes on the agreed date
+  (nightly). With no ending recorded → fixed term: `requestEarlyTermination` semantics with the pickup day as the
+  request date and the fee per choice (`AGREED_TERMS` = the quote's fee; a number = that fee with the reason);
+  month-to-month: `requestMonthToMonthEnd` semantics with the pickup day as the request date. Either way the billing end
+  is recomputed in the same transaction.
+- `END_AT_PICKUP` → fee (fixed term only) as an OPEN invoice with one `EARLY_TERMINATION_FEE` line when > 0 (reuse
+  `createFeeInvoiceIfNeeded`'s line text); `closeAgreementInTx(…, "ENDED", { endedOn: last billed day })` which cancels
+  the subscription after commit; unused days = days from the day after the last billed day (respecting
+  `pickupDayNotBilled`) through the day before the current paid period ends, priced per item with
+  `earlyReturnProrationBasis` using the existing per-item daily helpers in `pickup-billing.ts`, plus tax per line with
+  `sumTax`; `CREDIT` → one `CustomerCredit` (new `sourceType` value `EARLY_RETURN`) left on the account (not pushed to
+  Stripe, since billing has ended — the owner can apply it to an open bill or refund it later); `REFUND` →
+  `refundAcrossPaidInvoicesInTx`; `KEEP` → nothing.
+- Prepaid (`paidInFullInAdvance`) → refused with "This rental was paid in advance: settle it from the agreement page"
+  (the owner uses the existing prepaid path); `APPLY_DEFAULTS` never applies to it.
+- One `EarlyReturnResolution` per agreement (unique); audit `agreement.early_return_resolved` with the full preview.
+- The preview the owner saw must equal a fresh preview, otherwise "The numbers changed. Review them again."
+- Changing an automatic (`DEFAULTS`) resolution later is allowed only while no refund ran and the fee invoice is unpaid:
+  `applyEarlyReturn` voids the fee invoice and deletes nothing else; if money already moved it refuses and points to
+  the refund/credit forms.
+Tests (`tests/early-return-integration.test.ts`, real Postgres, fake Stripe): `keep-billing-fixed-term-records-agreed-terms-ending-with-quote-fee`,
+`keep-billing-month-to-month-records-notice-ending-no-fee`, `end-at-pickup-fixed-term-fee-invoice-open-not-charged`,
+`end-at-pickup-refund-splits-stripe-and-by-hand`, `end-at-pickup-credit-creates-account-credit`, `end-at-pickup-keep-no-money`,
+`custom-fee-needs-reason`, `fee-above-quote-needs-reason`, `prepaid-refused`, `apply-defaults-on-pickup-completion`,
+`ask-me-creates-one-task-and-today-item`, `stale-preview-refused`, `defaults-changed-before-money-moved`,
+`defaults-change-refused-after-refund`, `never-delivered-refund-unchanged` (the extracted helper), DST: pickup on
+2026-03-08 with `ACTUAL_DAYS_IN_MONTH`.
 
 ### WU-B2-10 — Docs and PR
 `docs/BUSINESS-RULES.md` (the billing-end answer, month-to-month ending, terms versions, annual reminders, notice
 states and evidence, waiver, closing after return), `docs/DATABASE.md`, `docs/ARCHITECTURE.md` (nightly passes and
 their order), `docs/OWNER-GUIDE.md` (Desk → Notices, ending a month-to-month rental, recording "our delay"),
-`docs/GO-LIVE-CHECKLIST.md` (lines in section 7 below), `docs/OWNER-INPUTS.md` (IN-21 mechanism built; IN-29, IN-30,
-IN-31), `docs/designs/CHANGES-SINCE-DESIGN.md` (what D/E/F must now assume, section 8), `docs/DECISIONS.md` (one
+`docs/GO-LIVE-CHECKLIST.md` (lines in section 7 below), `docs/OWNER-INPUTS.md` (IN-21 mechanism built; IN-29 and IN-30 built as answered; IN-31 still open), `docs/designs/CHANGES-SINCE-DESIGN.md` (what D/E/F must now assume, section 8), `docs/DECISIONS.md` (one
 dated entry), `docs/STATUS.md` (B and C marked complete only when every item above is merged with evidence; the
 review findings R1–R7, D1, D2 each get a disposition line pointing at its tests).
 
@@ -710,6 +861,7 @@ review findings R1–R7, D1, D2 each get a disposition line pointing at its test
 - `[ ] | Batch B2 merged (billing end dates, notices, month-to-month endings, pickup waiver) | Agent | Built in code | docs/STATUS.md shows B2 merged with CI evidence`
 - `[ ] | Attorney reads: renewal reminder, annual reminder, month-to-month change notice wording, and the list of hand-delivery channels (IN-21, IN-31) | Owner | Starting drafts | Approval recorded in docs/OWNER-INPUTS.md`
 - `[ ] | "Automatic renewals" may be turned ON only after the two lines above are done | Owner | Off | Desk → Settings → Ending and renewing rentals`
+- `[ ] | Early-return choices reviewed (IN-29) | Owner | Recommended starting values | Desk → Settings → Ending and renewing rentals → When equipment comes back early`
 
 ## 8. What later batches must assume (copy into `CHANGES-SINCE-DESIGN.md` when B2 merges)
 
@@ -733,6 +885,8 @@ columns identify one continuous rental across agreements.
 | D1 approved design exists | this document, approved in `docs/designs/README.md` |
 | D2 evidence rule | WU-B2-5 tests; counsel line in GO-LIVE |
 | C-09 / IN-24 company-fault waiver and billing stop at return | WU-B2-9 tests |
+| IN-29 early-return options | WU-B2-9b tests |
+| IN-30 missed-reminder options | WU-B2-5 tests |
 
 ## Amendments
 

@@ -294,8 +294,12 @@ waiver, IN-24). Nothing is switched on by this batch.
 4. Notice states with fenced evidence, no stale promises, safe handling of uncertain email, fair retries (R5–R7);
    hand-delivery evidence rules (D2).
 5. Month-to-month terms versions and the 30-day change notice (IN-21 mechanism; wording still Chris's to approve).
-6. Company-delay waiver on late-return bills; agreements closed once everything is back and the agreed end has passed;
-   an owner task when equipment comes back with no ending recorded (C-09).
+6. Company-delay waiver on late-return bills; agreements closed once everything is back and the agreed end has passed
+   (C-09).
+7. Early returns (IN-29): owner settings for billing (continue to the agreed end or stop at pickup), unused paid days
+   (keep, credit or refund), the early-ending fee (agreed terms, none or custom), and ask-me vs apply-defaults, with a
+   per-rental override screen.
+8. A "Fix a missed reminder" screen with every option (IN-30).
 
 ### Acceptance checklist
 
@@ -307,8 +311,9 @@ waiver, IN-24). Nothing is switched on by this batch.
 
 ### Owner inputs / gates
 
-IN-21 (wording of the change notice and annual reminder), IN-29 (no refund for early return — default built),
-IN-30 (missed renewal reminder handling — default built), IN-31 (counsel: hand-delivery channels, annual reminder),
+IN-21 (wording of the change notice and annual reminder); IN-29 and IN-30 are answered (early-return options and the
+missed-reminder screen are part of this batch); IN-31 (counsel: hand-delivery channels, annual reminder) is deferred by
+Chris and stays documented;
 the "Automatic renewals" switch stays OFF until counsel has read the wording (`docs/GO-LIVE-CHECKLIST.md`).
 
 ---
@@ -537,7 +542,7 @@ Launch authorization and the final evidence ledger (F).
 
 ## Batch E2 — Visual redesign: owner desk, public site and customer portal (desktop, phone, light and dark)
 
-**Design: `docs/designs/BATCH-E2.md`** (written 2026-10-05; waiting for Chris's approval; its public-home-page step also waits for IN-32). (Added at Chris's request, 2026-10-04: the whole redesign, not just phone screens, goes after E and before F.)
+**Design: `docs/designs/BATCH-E2.md`** (written 2026-10-05; waiting for Chris's approval; home page decided — IN-32). (Added at Chris's request, 2026-10-04: the whole redesign, not just phone screens, goes after E and before F.)
 
 ### Purpose
 
@@ -553,7 +558,7 @@ Give the finished product the polished, modern look Chris approved in the 2026-1
 2. **Phone layout for the owner desk**: bottom tab bar (Today, Schedule, Customers, Billing, More), one dominant action at the top, single-column cards, every tap target at least 44px. Checked at 360, 390 and 768 px wide.
 3. **Every other owner/staff screen** brought into the same look through shared components (cards, stat cards, status pills, lists, tables that become cards on a phone, forms), not screen-by-screen copies.
 4. **Customer portal** in the same look, phone first, since customers use it on their phones.
-5. **Public website** (home and the other public pages). Chris has approved the owner desk direction only: the design must first settle the public home page (the mockup's dark hero and two buttons differ from the brand kit's "ivory surfaces, one dominant next action"), and Chris decides before it is built (OWNER-INPUTS entry added by the design). Public text comes from `BusinessSettings`, agreement terms and `docs/BUSINESS-RULES.md`; no invented claims.
+5. **Public website** (home and the other public pages). Home page decided (IN-32, 2026-10-04): ivory in light mode, evergreen in dark mode, one dominant action in both. Public text comes from `BusinessSettings`, agreement terms and `docs/BUSINESS-RULES.md`; no invented claims.
 6. **Dark mode** on every screen using the kit's dark tokens, with a visible switch and the system setting honored.
 7. **Real logo files** from `docs/brand/` used everywhere (not the mockup's drawn stand-in).
 8. **Accessibility is not lost**: contrast measured by axe and by hand for every text/background pair (the mockup's colors were never measured), visible focus, status never by color alone, reduced motion respected, forced colors checked, zoom to 200% and reflow without sideways scrolling.
@@ -574,7 +579,7 @@ Give the finished product the polished, modern look Chris approved in the 2026-1
 
 ### Owner inputs / gates
 
-Approval of the public home page direction (recorded in `docs/OWNER-INPUTS.md` by the design). Photos are settled: current ones are re-used (Chris, 2026-10-04).
+Home page direction answered (IN-32: ivory light, evergreen dark). Chris sees the home page and the phone desk on the preview before those PRs merge. Photos are settled: current ones are re-used (Chris, 2026-10-04).
 
 ### Not in this batch
 

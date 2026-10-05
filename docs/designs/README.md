@@ -12,10 +12,10 @@ the points where the implementer must stop and ask instead of guessing.
 | B — Billing, provider reconciliation & financial ledger | `BATCH-B.md` | Built and merged (#141–#161); its leftovers moved to B2 |
 | C — Rental-to-service operations, custody, inventory & purchasing | `BATCH-C.md` + `BATCH-C-UPDATE-2026-10-03.md` + `BATCH-C-LITERAL-SPEC-2026-10-03.md` | Built and merged (#169–#175); its only leftover (C-09 pickup billing end) moved to B2 |
 | R — Remediation Batch R | `REMEDIATION-BATCH-R-2026-10-04.md` (+ amendment, recovery) | Built and merged (#185–#200) |
-| **B2 — Renewal lifecycle, month-to-month rentals, pickup billing end** (finishes B and C) | `BATCH-B2.md` | **Written 2026-10-05 (Claude Opus 5.5, against `main` 47bd833). Waiting for Chris's approval** — reply "I approve B2" and this row becomes Approved. |
+| **B2 — Renewal lifecycle, month-to-month rentals, pickup billing end** (finishes B and C) | `BATCH-B2.md` | **Written 2026-10-05 (Claude Opus 5.5, against `main` 47bd833); updated the same night with Chris's answers to IN-29 (early-return options) and IN-30 (missed-reminder screen). Waiting for Chris's approval** — reply "I approve B2" and this row becomes Approved. |
 | D — Owner/customer control plane, website, evidence & privacy | `BATCH-D.md` | **Approved** (2026-10-02); **rewritten and drift-checked 2026-10-05** against 47bd833. Starts after B2. |
 | E — Communications, automation history, search, brand tokens & accessibility | `BATCH-E.md` | **Approved** (2026-10-02); **rewritten and drift-checked 2026-10-05**. Starts after D. |
-| E2 — Visual redesign (owner desk, portal, public site; phone, desktop, dark) | `BATCH-E2.md` | **Written 2026-10-05. Waiting for Chris's approval**; its public-home-page step also waits for his home-page choice (IN-32). Starts after E. |
+| E2 — Visual redesign (owner desk, portal, public site; phone, desktop, dark) | `BATCH-E2.md` | **Written 2026-10-05. Waiting for Chris's approval.** Home page decided (IN-32: ivory in light mode, evergreen in dark mode). Starts after E. |
 | F — Integrated verification, recovery, owner handoff & launch ledger | `BATCH-F.md` | **Approved** (2026-10-02); **rewritten and drift-checked 2026-10-05**. Starts after E2. |
 
 **2026-10-05 rewrite (Chris asked for all remaining work to be written so Claude Sonnet 5.5 or ChatGPT Sol 5.6 can build

@@ -57,7 +57,7 @@ only for an OWNER/ADMIN session.
 lists every column as `editable (section)`, `shown read-only (where)` or `deprecated (no reader; dropped in a later
 cleanup)`. This batch makes `hours`, `holidayClosures`, `socialLinks` and `logoUrl` editable (profile section) and
 rendered (footer; contact page; printed documents for `logoUrl`). `announcementBannerText/On`, `inspectionChecklist`,
-`taxRatePermille`, `earlyReturnProrationBasis` are `deprecated`. Nothing is dropped from the schema here.
+`taxRatePermille` are `deprecated` (`earlyReturnProrationBasis` is read again by Batch B2's early-return rule, so it is `editable (terms)`). Nothing is dropped from the schema here.
 
 **D3. The money workspace and reports are read-only views of the ledger. No new money math.** (O18/O19.) Every
 report number is declared once as a `MetricDefinition` and the screen prints its definition beside it: date basis
