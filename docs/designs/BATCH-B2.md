@@ -1,6 +1,6 @@
 # Design — Batch B2: Renewal lifecycle, month-to-month rentals and pickup billing (finishes Batches B and C)
 
-Status: **WAITING FOR CHRIS'S ONE-LINE APPROVAL** in `docs/designs/README.md` (it settles money and notice rules).
+Status: **APPROVED DESIGN — implement from this document** (Chris, 2026-10-05: "I approve e2 and b2").
 Written 2026-10-05 by Claude Opus 5.5 against `main` 47bd833 (#200), after reading every function this document
 names; updated the same night with Chris's answers to IN-29 (B2-19, WU-B2-9b) and IN-30 (B2-18, WU-B2-5). It replaces two open prompts: `docs/archive/prompts/DESIGN-BATCH-B-RENEWAL-LIFECYCLE.md` (findings R1–R7, D1, D2 of
 `docs/reviews/2026-10-03-pr161-independent-review.md`) and the blocked C-09 section of

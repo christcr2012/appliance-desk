@@ -276,7 +276,7 @@ Owner decision UI for deposits/refunds (D); automation run history (E).
 
 ## Batch B2 — Renewal lifecycle, month-to-month rentals and pickup billing end (finishes Batches B and C)
 
-**Design: `docs/designs/BATCH-B2.md`** (written 2026-10-05; waiting for Chris's approval in `docs/designs/README.md`).
+**Design: `docs/designs/BATCH-B2.md`** (written 2026-10-05; approved by Chris 2026-10-05).
 
 ### Purpose
 
@@ -542,7 +542,7 @@ Launch authorization and the final evidence ledger (F).
 
 ## Batch E2 — Visual redesign: owner desk, public site and customer portal (desktop, phone, light and dark)
 
-**Design: `docs/designs/BATCH-E2.md`** (written 2026-10-05; waiting for Chris's approval; home page decided — IN-32). (Added at Chris's request, 2026-10-04: the whole redesign, not just phone screens, goes after E and before F.)
+**Design: `docs/designs/BATCH-E2.md`** (written 2026-10-05; approved by Chris 2026-10-05; home page decided — IN-32). (Added at Chris's request, 2026-10-04: the whole redesign, not just phone screens, goes after E and before F.)
 
 ### Purpose
 
