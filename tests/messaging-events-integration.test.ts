@@ -92,6 +92,21 @@ describe.skipIf(!enabled)("provider message events (real Postgres)", () => {
     expect(await prisma.providerEvent.count({ where: { provider: "resend", eventId: `replay-${tag}` } })).toBe(1);
   });
 
+  it("stores a verified event for an unknown provider message id without inventing delivery state", async () => {
+    const eventId = `unknown-${tag}`;
+    const result = await processVerifiedResendEvent(eventId, {
+      type: "email.delivered",
+      data: { email_id: `missing-${tag}`, to: [email] },
+    });
+    expect(result).toEqual({ duplicate: false, matched: false });
+    expect(await prisma.providerEvent.findUnique({
+      where: { provider_eventId: { provider: "resend", eventId } },
+    })).toMatchObject({ provider: "resend", eventId, type: "email.delivered" });
+    expect(await prisma.messageDelivery.count({
+      where: { providerMessageId: `missing-${tag}` },
+    })).toBe(0);
+  });
+
   it("hard bounce creates suppression and returns a linked legal notice to human review", async () => {
     const providerMessageId = `resend-bounce-${tag}`;
     const delivery = await prisma.messageDelivery.create({
