@@ -6,6 +6,9 @@ import Link from "next/link";
 import { getAgreementById } from "@/domains/agreements";
 import { getAppliances } from "@/domains/inventory";
 import { AgreementDetailPanel } from "./agreement-detail-panel";
+import { MonthToMonthEndForm } from "./month-to-month-end-form";
+import { getMonthToMonthEndQuote } from "@/domains/agreements/month-to-month";
+import { billingPeriodFor } from "@/lib/business-date";
 
 export const metadata = { title: "Agreement" };
 
@@ -24,6 +27,17 @@ export default async function AgreementDetailPage({
 
   if (!agreement) {
     notFound();
+  }
+
+  const endQuote =
+    agreement.status === "ACTIVE" && agreement.termMonths === null ? await getMonthToMonthEndQuote(agreement.id) : null;
+  const earlierOptions: Date[] = [];
+  if (endQuote && agreement.nextBillingDate) {
+    for (let k = 0; k < 600; k += 1) {
+      const start = billingPeriodFor(agreement.nextBillingDate, k).start;
+      if (start >= endQuote.effectiveOn) break;
+      earlierOptions.push(start);
+    }
   }
 
   return (
@@ -62,6 +76,14 @@ export default async function AgreementDetailPage({
           }))}
         />
       </div>
+      {endQuote && (
+        <MonthToMonthEndForm
+          agreementId={agreement.id}
+          noticeDays={endQuote.noticeDays}
+          effectiveOn={endQuote.effectiveOn}
+          earlierOptions={earlierOptions}
+        />
+      )}
     </div>
   );
 }

@@ -27,7 +27,9 @@ export type MissedNoticeChoice =
   | { kind: "SEND_NEW_RENEWAL"; termMonths: null | 6 | 12 }
   | { kind: "MOVE_RENEWAL_LATER" }
   | { kind: "KEEP_WAITING"; remindOn: string }
-  | { kind: "END_RENTAL" };
+  | { kind: "END_RENTAL" }
+  // Yearly reminders and terms-change notices only: billing carries on and the owner records that this was seen.
+  | { kind: "ACKNOWLEDGE" };
 
 type OptionKind = MissedNoticeChoice["kind"] | "RECORD_DELIVERY" | "CONFIRM_EMAIL";
 
@@ -111,6 +113,16 @@ export async function getMissedNoticeOptions(noticeId: string, now = new Date())
       available: resolvable,
       why: "You are not ready to decide.",
       effect: "Nothing changes. A follow-up task is created for the day you pick; this stays on Today until you choose.",
+    },
+    {
+      kind: "ACKNOWLEDGE",
+      available: resolvable && notice.kind !== "RENEWAL_REMINDER",
+      why:
+        notice.kind === "RENEWAL_REMINDER"
+          ? "A renewal reminder has to be fixed with one of the options above."
+          : "This notice does not stop billing; the rental carries on.",
+      effect:
+        "Records that you saw it and chose to leave it. Billing is not affected. Colorado's law asks for these reminders, so consider recording a delivery by another route first.",
     },
     {
       kind: "END_RENTAL",
@@ -239,6 +251,11 @@ export async function resolveMissedNotice(
           },
         );
         await recordResolution(tx, userId, noticeId, choice, note, null);
+        return "/desk/notices";
+      }
+      case "ACKNOWLEDGE": {
+        if (notice.kind === "RENEWAL_REMINDER") throw new Error("A renewal reminder has to be fixed with one of the other options.");
+        await recordResolution(tx, userId, noticeId, choice, note, "NOT_NEEDED");
         return "/desk/notices";
       }
       case "END_RENTAL": {

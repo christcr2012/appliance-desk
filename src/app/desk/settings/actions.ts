@@ -471,3 +471,19 @@ export async function setAutoRenewAction(enabled: boolean): Promise<SettingsActi
   revalidatePath("/desk/notices");
   return { status: "success" };
 }
+
+/** Month-to-month notice settings: how long a terms change waits, and the notice wording. Owners and admins. */
+export async function updateMonthToMonthSettingsAction(raw: Record<string, unknown>): Promise<SettingsActionState> {
+  const session = await requireRole("OWNER", "ADMIN");
+  const { parseMonthToMonthSettings } = await import("@/domains/settings/month-to-month");
+  const { setMonthToMonthSettings } = await import("@/domains/settings/month-to-month-save");
+  const parsed = parseMonthToMonthSettings(raw);
+  if (!parsed.success) return { status: "error", message: parsed.message };
+  try {
+    await setMonthToMonthSettings(session.user.id, parsed);
+  } catch {
+    return { status: "error", message: "Settings could not be saved. Your changes are still in the form; please try again." };
+  }
+  revalidatePath("/desk/settings");
+  return { status: "success" };
+}

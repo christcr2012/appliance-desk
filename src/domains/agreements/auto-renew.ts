@@ -6,6 +6,7 @@ import {
   recomputeForAgreementInTx,
 } from "@/domains/billing/subscription-end";
 import { cancelAgreement, lockRentalAgreementInTx } from "./index";
+import { newestMonthToMonthVersionInTx } from "./month-to-month";
 import { renewalCreateData } from "./renewal-data";
 import { snapshotAutoRenew } from "./terms-snapshot";
 import { createNoticeInTx } from "@/domains/notices";
@@ -86,6 +87,7 @@ async function createAutoRenewal(agreementId: string, now: Date): Promise<Create
         termMonths: null,
         status: "SCHEDULED",
         createdByAutoRenew: true,
+        monthToMonthTermsVersion: await newestMonthToMonthVersionInTx(tx),
       }),
     });
     // The reminder is created with the renewal, in the same transaction: no renewal without its reminder.

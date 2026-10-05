@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { TurnOffAutoRenew } from "./turn-off-auto-renew";
+import { EndRental } from "./end-rental";
+import { getMonthToMonthEndQuote } from "@/domains/agreements/month-to-month";
 import { formatBusinessDate, formatBusinessTime } from "@/lib/business-date";
 import { getServerSession } from "@/lib/session";
 import { getPortalData } from "@/domains/portal";
@@ -18,6 +20,11 @@ export default async function AccountRentalsPage() {
 
   if (!customer) {
     return <p className="text-gray-600">No rental account found.</p>;
+  }
+
+  const endQuotes = new Map<string, Awaited<ReturnType<typeof getMonthToMonthEndQuote>>>();
+  for (const a of customer.rentalAgreements) {
+    if (a.status === "ACTIVE" && a.termMonths === null) endQuotes.set(a.id, await getMonthToMonthEndQuote(a.id));
   }
 
   return (
@@ -94,6 +101,34 @@ export default async function AccountRentalsPage() {
                     <TurnOffAutoRenew agreementId={a.id} />
                   </div>
                 )}
+                {a.status === "ACTIVE" && a.termMonths === null && a.terminationRequestedAt && a.terminationEffectiveOn && (
+                  <p className="mt-3 rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-900">
+                    Your rental is set to end on {formatBusinessDate(a.terminationEffectiveOn)}. There is no fee. We will
+                    contact you to arrange picking up the appliances.
+                  </p>
+                )}
+                {(() => {
+                  const q = endQuotes.get(a.id);
+                  if (!q) return null;
+                  return (
+                    <div className="mt-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
+                      <p className="text-sm text-gray-900">
+                        You can end this rental at any time, with no fee. With {q.noticeDays} days&apos; notice it would end on{" "}
+                        {formatBusinessDate(q.effectiveOn)}; your last monthly charge would cover the period through{" "}
+                        {formatBusinessDate(q.lastBilledDay)}.
+                      </p>
+                      <EndRental
+                        agreementId={a.id}
+                        effectiveOn={q.effectiveOn.toISOString()}
+                        lastBilledDay={q.lastBilledDay.toISOString()}
+                        noticeDays={q.noticeDays}
+                        termsVersion={q.termsVersion}
+                        effectiveLabel={formatBusinessDate(q.effectiveOn)}
+                        lastBilledLabel={formatBusinessDate(q.lastBilledDay)}
+                      />
+                    </div>
+                  );
+                })()}
                 {a.depositCents > 0 && (
                   <p className="text-sm text-gray-600">
                     Deposit required: {formatCents(a.depositCents)}

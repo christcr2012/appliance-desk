@@ -498,6 +498,8 @@ export async function getSignatureRecordForSigning(id: string) {
   return signature;
 }
 
+import { newestMonthToMonthVersionInTx } from "./month-to-month";
+
 export type SignAgreementInput = {
   signerName: string;
   signerEmail: string;
@@ -553,7 +555,14 @@ export async function signAgreement(
             status: "SCHEDULED",
             endDate: agreement.termMonths ? fixedTermEndDate(agreement.startDate!, agreement.termMonths) : null,
           }
-        : { status: "ACTIVE", startDate: new Date() },
+        : {
+            status: "ACTIVE",
+            startDate: new Date(),
+            // A new month-to-month rental starts on the newest published terms.
+            ...(agreement.termMonths === null && agreement.monthToMonthTermsVersion === null
+              ? { monthToMonthTermsVersion: await newestMonthToMonthVersionInTx(tx) }
+              : {}),
+          },
     });
     await tx.auditLog.create({
       data: {

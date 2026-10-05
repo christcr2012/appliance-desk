@@ -173,6 +173,19 @@ export async function updateBusinessSettings(
       update,
     });
 
+    // The ending notice days and wording ARE the month-to-month terms: changing them publishes the next version.
+    if (
+      ("earlyTerminationNoticeDays" in update || "terminationTermsText" in update) &&
+      after.earlyTerminationNoticeDays !== null &&
+      after.terminationTermsText?.trim()
+    ) {
+      const { publishMonthToMonthTermsInTx } = await import("@/domains/agreements/month-to-month");
+      await publishMonthToMonthTermsInTx(tx, userId, {
+        noticeDays: after.earlyTerminationNoticeDays,
+        termsText: after.terminationTermsText,
+      });
+    }
+
     await tx.auditLog.create({
       data: {
         userId,

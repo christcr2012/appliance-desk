@@ -13,6 +13,7 @@ import {
   extendReservation,
 } from "@/domains/agreements";
 import { dollarsToCents } from "@/domains/pricing";
+import { getMonthToMonthEndQuote, requestMonthToMonthEnd } from "@/domains/agreements/month-to-month";
 import { parseTaxRatePercent } from "@/domains/billing/tax";
 
 export type AgreementActionState =
@@ -267,4 +268,19 @@ export async function extendReservationAction(
   revalidatePath(`/desk/agreements/${agreementId}`);
   revalidatePath("/desk/agreements");
   return { status: "success" };
+}
+
+/** The owner or an admin ends a month-to-month rental for a customer, optionally on an earlier billing date. */
+export async function endMonthToMonthForCustomerAction(formData: FormData): Promise<void> {
+  const session = await requireRole("OWNER", "ADMIN");
+  const agreementId = String(formData.get("agreementId") ?? "");
+  const earlier = String(formData.get("earlierEffectiveOn") ?? "");
+  const reason = String(formData.get("reason") ?? "");
+  const quote = await getMonthToMonthEndQuote(agreementId);
+  if (!quote) throw new Error("This rental can't be ended this way right now.");
+  await requestMonthToMonthEnd({ userId: session.user.id, kind: "team" }, agreementId, quote, {
+    ...(earlier ? { earlierEffectiveOn: new Date(earlier), reason } : {}),
+  });
+  revalidatePath(`/desk/agreements/${agreementId}`);
+  revalidatePath("/desk/dashboard");
 }

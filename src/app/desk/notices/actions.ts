@@ -68,6 +68,7 @@ const choiceSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("MOVE_RENEWAL_LATER") }),
   z.object({ kind: z.literal("KEEP_WAITING"), remindOn: z.string().min(1) }),
   z.object({ kind: z.literal("END_RENTAL") }),
+  z.object({ kind: z.literal("ACKNOWLEDGE") }),
 ]);
 
 /** One decision from the "Fix a missed reminder" screen. Owner and admin only; refused if it changed since it was opened. */
