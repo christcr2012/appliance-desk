@@ -9,7 +9,14 @@ import {
   getPortalData,
   getPortalApplianceOptions,
   createMaintenanceRequestForUser,
+  getPortalRentals,
+  getPortalRequests,
+  PORTAL_AGREEMENT_KEYS,
+  PORTAL_JOB_KEYS,
+  PORTAL_REQUEST_KEYS,
 } from "@/domains/portal";
+import { setAutoRenew } from "@/domains/agreements/term";
+import { requestMonthToMonthEnd } from "@/domains/agreements/month-to-month";
 import { getInvoiceDetail } from "@/domains/billing/invoice-detail";
 
 // ---------------------------------------------------------------------------
@@ -398,5 +405,63 @@ describe("customer data isolation (Phase 6A item 3)", () => {
     const invoice = await getInvoiceDetail(customerB.invoiceId);
     expect(invoice?.id).toBe(customerB.invoiceId);
     expect(invoice?.customer.id).toBe(customerB.customerId);
+  });
+});
+
+describe("portal views and actions (WU-D8)", () => {
+  it("rentals view holds only the customer's own agreements, with exactly the whitelisted keys and no staff text", async () => {
+    const job = await prisma.job.create({
+      data: {
+        type: "MAINTENANCE", status: "SCHEDULED", scheduledAt: new Date(Date.now() + 86_400_000),
+        customerId: customerA.customerId, agreementId: customerA.agreementId,
+        notes: "STAFF-ONLY-NOTE", completionNotes: "STAFF-ONLY-COMPLETION",
+      },
+    });
+    try {
+      const a = await getPortalRentals(customerA.userId);
+      const b = await getPortalRentals(customerB.userId);
+      expect(a?.agreements.map((x) => x.id)).toEqual([customerA.agreementId]);
+      expect(b?.agreements.map((x) => x.id)).toEqual([customerB.agreementId]);
+      expect(Object.keys(a!.agreements[0]!).sort()).toEqual([...PORTAL_AGREEMENT_KEYS].sort());
+      expect(Object.keys(a!.jobs[0]!).sort()).toEqual([...PORTAL_JOB_KEYS].sort());
+      expect(a!.agreements[0]!.nextVisit?.type).toBe("MAINTENANCE");
+      expect(JSON.stringify(a)).not.toContain("STAFF-ONLY");
+      expect(b!.jobs).toEqual([]);
+    } finally {
+      await prisma.job.delete({ where: { id: job.id } });
+    }
+  });
+
+  it("requests view is bounded, own-only, and has exactly the whitelisted keys", async () => {
+    const own = await prisma.maintenanceRequest.createMany({
+      data: Array.from({ length: 3 }, (_, i) => ({ customerId: customerA.customerId, problem: `Leak ${i}` })),
+    });
+    expect(own.count).toBe(3);
+    const a = await getPortalRequests(customerA.userId, { limit: 2 });
+    const b = await getPortalRequests(customerB.userId, { limit: 2 });
+    expect(a!.requests).toHaveLength(2);
+    expect(a!.hasMore).toBe(true);
+    expect(Object.keys(a!.requests[0]!).sort()).toEqual([...PORTAL_REQUEST_KEYS].sort());
+    expect(b!.requests).toEqual([]);
+    expect(await getPortalRequests(`nobody-${RUN_ID}`)).toBeNull();
+  });
+
+  it("a customer cannot turn off auto-renew on, or end, another customer's agreement", async () => {
+    await expect(
+      setAutoRenew({ userId: customerA.userId, kind: "customer" }, customerB.agreementId, { enabled: false, termsVersion: "" }),
+    ).rejects.toThrow();
+    const now = new Date();
+    await expect(
+      requestMonthToMonthEnd(
+        { userId: customerA.userId, kind: "customer" },
+        customerB.agreementId,
+        { requestedOn: now, effectiveOn: now, lastBilledDay: now, noticeDays: 0, termsVersion: 1, feeCents: 0 },
+      ),
+    ).rejects.toThrow();
+    const stillThere = await prisma.rentalAgreement.findUniqueOrThrow({
+      where: { id: customerB.agreementId },
+      select: { terminationRequestedAt: true },
+    });
+    expect(stillThere.terminationRequestedAt).toBeNull();
   });
 });

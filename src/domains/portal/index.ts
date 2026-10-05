@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/prisma";
+import type { JobStatus, JobType, MaintenanceStatus, RentalAgreementStatus } from "@prisma/client";
+import { describeSnapshotTerms, snapshotAutoRenew, type TermsDisclosure } from "@/domains/agreements/terms-snapshot";
 import { sendEmail } from "@/lib/email";
 import { getBusinessSettings } from "@/domains/settings";
 import {
@@ -13,6 +15,8 @@ import {
 // caller supplies — per docs/BUSINESS-RULES.md's security-critical rule:
 // "a customer must never be able to see another customer's records."
 // ---------------------------------------------------------------------------
+
+export const PORTAL_PAGE_SIZE = 20;
 
 /** Everything /account needs, or null if this signed-in user has no
  * Customer record (e.g. an OWNER/ADMIN account visiting their own
@@ -46,10 +50,12 @@ export async function getPortalData(userId: string) {
       jobs: {
         include: { serviceAddress: true },
         orderBy: [{ scheduledAt: "desc" }],
+        take: PORTAL_PAGE_SIZE,
       },
       maintenanceRequests: {
         include: { appliance: { include: { applianceType: true } } },
         orderBy: [{ createdAt: "desc" }],
+        take: PORTAL_PAGE_SIZE,
       },
     },
   });
@@ -197,4 +203,179 @@ export async function updateSmsPreference(
   });
 
   return { phone: updated.phone, smsOptInAt: updated.smsOptInAt };
+}
+
+// ---------------------------------------------------------------------------
+// Whitelisted views for the portal pages (WU-D8). Each field is named here on
+// purpose: staff notes, completion notes, outcome notes, assigned staff, cost
+// and internal task text are never selected, so no page can leak them by
+// accident. Identity always comes from the session's user id.
+// ---------------------------------------------------------------------------
+
+export type PortalAgreementView = {
+  id: string;
+  status: RentalAgreementStatus;
+  termMonths: number | null;
+  startDate: Date | null;
+  endDate: Date | null;
+  depositCents: number;
+  freeMonthGranted: boolean;
+  renewalPreference: string | null;
+  terminationRequestedAt: Date | null;
+  terminationEffectiveOn: Date | null;
+  nextBillingDate: Date | null;
+  serviceAddress: { line1: string; city: string };
+  lines: {
+    id: string;
+    label: string;
+    monthlyPriceCents: number;
+    listPriceCents: number;
+    prepayDiscountCentsPerMonth: number;
+    appliances: string[];
+  }[];
+  monthlyTotalCents: number;
+  terms: TermsDisclosure;
+  /** The agreement's own saved terms include an auto-renew section. */
+  autoRenewAgreed: boolean;
+  /** A follow-on agreement already scheduled to start after this one. */
+  renewalStartsOn: Date | null;
+  /** The customer's next scheduled visit for this agreement, if any. */
+  nextVisit: { type: JobType; scheduledAt: Date } | null;
+};
+
+export type PortalJobView = {
+  id: string;
+  type: JobType;
+  status: JobStatus;
+  scheduledAt: Date | null;
+};
+
+export type PortalRequestView = {
+  id: string;
+  problem: string;
+  status: MaintenanceStatus;
+  openedAt: Date;
+  appliance: { typeName: string; assetNumber: string } | null;
+};
+
+export const PORTAL_AGREEMENT_KEYS = [
+  "autoRenewAgreed", "depositCents", "endDate", "freeMonthGranted", "id", "lines", "monthlyTotalCents",
+  "nextBillingDate", "nextVisit", "renewalPreference", "renewalStartsOn", "serviceAddress", "startDate", "status",
+  "termMonths", "terminationEffectiveOn", "terminationRequestedAt", "terms",
+] as const;
+export const PORTAL_JOB_KEYS = ["id", "scheduledAt", "status", "type"] as const;
+export const PORTAL_REQUEST_KEYS = ["appliance", "id", "openedAt", "problem", "status"] as const;
+
+/** The signed-in customer's agreements (all of them, newest first) and their latest visits, as safe views. */
+export async function getPortalRentals(userId: string, opts: { jobLimit?: number } = {}) {
+  const jobLimit = Math.min(Math.max(opts.jobLimit ?? PORTAL_PAGE_SIZE, 1), 200);
+  const customer = await prisma.customer.findUnique({
+    where: { userId },
+    select: {
+      id: true,
+      rentalAgreements: {
+        take: 50,
+        orderBy: [{ createdAt: "desc" }],
+        select: {
+          id: true, status: true, termMonths: true, startDate: true, endDate: true, depositCents: true,
+          freeMonthGranted: true, renewalPreference: true, terminationRequestedAt: true,
+          terminationEffectiveOn: true, nextBillingDate: true, termsSnapshot: true,
+          serviceAddress: { select: { line1: true, city: true } },
+          lines: {
+            orderBy: { createdAt: "asc" },
+            select: {
+              id: true, label: true, monthlyPriceCents: true, listPriceCents: true, prepayDiscountCentsPerMonth: true,
+              assignments: {
+                where: ACTIVE_ASSIGNMENT_WHERE,
+                select: { appliance: { select: { assetNumber: true, applianceType: { select: { name: true } } } } },
+              },
+            },
+          },
+        },
+      },
+      jobs: {
+        take: jobLimit + 1,
+        orderBy: [{ scheduledAt: "desc" }],
+        select: { id: true, type: true, status: true, scheduledAt: true, agreementId: true },
+      },
+    },
+  });
+  if (!customer) return null;
+
+  const ids = customer.rentalAgreements.map((a) => a.id);
+  const followOns = ids.length
+    ? await prisma.rentalAgreement.findMany({
+        where: { renewedFromAgreementId: { in: ids }, customerId: customer.id, status: { not: "CANCELLED" } },
+        select: { renewedFromAgreementId: true, startDate: true },
+      })
+    : [];
+  const now = new Date();
+  const nextVisitFor = (agreementId: string) =>
+    customer.jobs
+      .filter((j) => j.agreementId === agreementId && j.status === "SCHEDULED" && j.scheduledAt && j.scheduledAt >= now)
+      .sort((x, y) => x.scheduledAt!.getTime() - y.scheduledAt!.getTime())[0];
+
+  const agreements: PortalAgreementView[] = customer.rentalAgreements.map((a) => {
+    const lines = a.lines.map((l) => ({
+      id: l.id,
+      label: l.label,
+      monthlyPriceCents: l.monthlyPriceCents,
+      listPriceCents: l.listPriceCents,
+      prepayDiscountCentsPerMonth: l.prepayDiscountCentsPerMonth,
+      appliances: l.assignments.map((asn) => `${asn.appliance.applianceType.name} ${asn.appliance.assetNumber}`),
+    }));
+    const visit = nextVisitFor(a.id);
+    const followOn = followOns
+      .filter((f) => f.renewedFromAgreementId === a.id && f.startDate && f.startDate > now)
+      .sort((x, y) => x.startDate!.getTime() - y.startDate!.getTime())[0];
+    return {
+      id: a.id,
+      status: a.status,
+      termMonths: a.termMonths,
+      startDate: a.startDate,
+      endDate: a.endDate,
+      depositCents: a.depositCents,
+      freeMonthGranted: a.freeMonthGranted,
+      renewalPreference: a.renewalPreference,
+      terminationRequestedAt: a.terminationRequestedAt,
+      terminationEffectiveOn: a.terminationEffectiveOn,
+      nextBillingDate: a.nextBillingDate,
+      serviceAddress: a.serviceAddress,
+      lines,
+      monthlyTotalCents: lines.reduce((sum, l) => sum + l.monthlyPriceCents, 0),
+      terms: describeSnapshotTerms(a.termsSnapshot),
+      autoRenewAgreed: snapshotAutoRenew(a.termsSnapshot) !== null,
+      renewalStartsOn: followOn?.startDate ?? null,
+      nextVisit: visit ? { type: visit.type, scheduledAt: visit.scheduledAt! } : null,
+    };
+  });
+
+  const jobs: PortalJobView[] = customer.jobs.slice(0, jobLimit).map((j) => ({
+    id: j.id, type: j.type, status: j.status, scheduledAt: j.scheduledAt,
+  }));
+  return { customerId: customer.id, agreements, jobs, hasMoreJobs: customer.jobs.length > jobLimit };
+}
+
+/** One page of the signed-in customer's own maintenance requests (newest first). */
+export async function getPortalRequests(userId: string, opts: { limit?: number } = {}) {
+  const limit = Math.min(Math.max(opts.limit ?? PORTAL_PAGE_SIZE, 1), 200);
+  const customer = await prisma.customer.findUnique({ where: { userId }, select: { id: true } });
+  if (!customer) return null;
+  const rows = await prisma.maintenanceRequest.findMany({
+    where: { customerId: customer.id },
+    orderBy: [{ createdAt: "desc" }],
+    take: limit + 1,
+    select: {
+      id: true, problem: true, status: true, openedAt: true,
+      appliance: { select: { assetNumber: true, applianceType: { select: { name: true } } } },
+    },
+  });
+  const requests: PortalRequestView[] = rows.slice(0, limit).map((r) => ({
+    id: r.id,
+    problem: r.problem,
+    status: r.status,
+    openedAt: r.openedAt,
+    appliance: r.appliance ? { typeName: r.appliance.applianceType.name, assetNumber: r.appliance.assetNumber } : null,
+  }));
+  return { customerId: customer.id, requests, hasMore: rows.length > limit };
 }

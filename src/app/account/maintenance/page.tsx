@@ -1,5 +1,6 @@
 import { getServerSession } from "@/lib/session";
-import { getPortalData, getPortalApplianceOptions } from "@/domains/portal";
+import Link from "next/link";
+import { getPortalRequests, getPortalApplianceOptions, PORTAL_PAGE_SIZE } from "@/domains/portal";
 import { maintenanceStatusLabel } from "@/lib/status-labels";
 import { NewRequestForm } from "./new-request-form";
 import { formatBusinessDate } from "@/lib/business-date";
@@ -9,13 +10,14 @@ export const metadata = { title: "Maintenance" };
 export default async function AccountMaintenancePage({
   searchParams,
 }: {
-  searchParams: Promise<{ applianceId?: string; request?: string }>;
+  searchParams: Promise<{ applianceId?: string; request?: string; show?: string }>;
 }) {
-  const { applianceId, request } = await searchParams;
+  const { applianceId, request, show } = await searchParams;
+  const limit = Math.min(Math.max(Number.parseInt(show ?? "", 10) || PORTAL_PAGE_SIZE, PORTAL_PAGE_SIZE), 200);
   const session = await getServerSession();
   const [customer, applianceOptions] = session
     ? await Promise.all([
-        getPortalData(session.user.id),
+        getPortalRequests(session.user.id, { limit }),
         getPortalApplianceOptions(session.user.id),
       ])
     : [null, []];
@@ -50,7 +52,7 @@ export default async function AccountMaintenancePage({
       )}
       <div className="mt-6">
         <NewRequestForm
-          customerId={customer.id}
+          customerId={customer.customerId}
           appliances={applianceOptions}
           initialApplianceId={initialApplianceId}
           requestKind={request === "pickup" ? "pickup" : "maintenance"}
@@ -62,15 +64,15 @@ export default async function AccountMaintenancePage({
 
       <div className="mt-8">
         <h2 className="font-medium text-gray-900">Your requests</h2>
-        {customer.maintenanceRequests.length === 0 ? (
+        {customer.requests.length === 0 ? (
           <p className="mt-2 text-sm text-gray-600">No requests yet.</p>
         ) : (
           <ul className="mt-2 divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white">
-            {customer.maintenanceRequests.map((r) => (
+            {customer.requests.map((r) => (
               <li key={r.id} className="px-4 py-3 text-sm">
                 <p className="font-medium text-gray-900">
                   {r.appliance
-                    ? `${r.appliance.applianceType.name} (${r.appliance.assetNumber})`
+                    ? `${r.appliance.typeName} (${r.appliance.assetNumber})`
                     : "General"}{" "}
                   — {maintenanceStatusLabel(r.status)}
                 </p>
@@ -81,6 +83,14 @@ export default async function AccountMaintenancePage({
               </li>
             ))}
           </ul>
+        )}
+        {customer.hasMore && (
+          <Link
+            href={`/account/maintenance?show=${limit + PORTAL_PAGE_SIZE}`}
+            className="mt-3 inline-flex min-h-11 items-center text-sm text-primary underline"
+          >
+            Show older requests
+          </Link>
         )}
       </div>
     </div>
