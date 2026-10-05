@@ -36,3 +36,14 @@ Write a dated amendment to `docs/designs/BATCH-B.md` (a new section, same format
 
 Output: the amendment text ready to paste into `docs/designs/BATCH-B.md`, a list of risks and unknowns, the owner's questions in plain
 words, and a short plain-English summary. Do not change code and do not run anything against production.
+
+---
+
+**Added 2026-10-04 — what changed in the code after this prompt was written (read before designing).** Read
+`docs/designs/CHANGES-SINCE-DESIGN.md` (sections "IN-28" and "Remediation Batch R") and
+`docs/reviews/2026-10-04-remediation-batch-r-acceptance.md`. In short: a deposit now keeps the receipt that paid it across
+renewals (`Deposit.sourceReceiptId`); the real first-delivery date is stored once (`RentalAgreement.firstDeliveredOn`) and Stripe
+subscriptions are created backdated to that Colorado day with flexible billing (owner decision IN-28: billing begins on delivery);
+payment-status reads use one canonical list; the webhook does its Stripe lookups outside the global lock; renewal now cleans up
+stale jobs, custody and billing lineage. Your design must fit these, and C-09 (pickup billing) is blocked on the shared contract you
+write here.
