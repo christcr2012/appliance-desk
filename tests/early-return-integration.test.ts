@@ -206,7 +206,12 @@ describe.skipIf(!enabled)("early returns (real Postgres)", () => {
     await prisma.receipt.deleteMany({ where: { customerId } });
     await prisma.earlyReturnResolution.deleteMany({ where: { agreementId: { in: agreementIds } } });
     await prisma.pendingDelivery.deleteMany({ where: { agreementId: { in: agreementIds } } });
-    await prisma.rentalLineAmendment.deleteMany({ where: { rentalLine: { agreementId: { in: agreementIds } } } });
+    const lineIds = (await prisma.rentalLine.findMany({ where: { agreementId: { in: agreementIds } }, select: { id: true } })).map((l) => l.id);
+    await prisma.$transaction([
+      prisma.$executeRawUnsafe('ALTER TABLE "RentalLineAmendment" DISABLE TRIGGER "RentalLineAmendment_append_only"'),
+      prisma.rentalLineAmendment.deleteMany({ where: { rentalLineId: { in: lineIds } } }),
+      prisma.$executeRawUnsafe('ALTER TABLE "RentalLineAmendment" ENABLE TRIGGER "RentalLineAmendment_append_only"'),
+    ]);
     await prisma.customerCredit.deleteMany({ where: { customerId } });
     await prisma.staffTask.deleteMany({ where: { jobId: { in: jobIds } } });
     await prisma.jobBillingHandoff.deleteMany({ where: { jobId: { in: jobIds } } });
