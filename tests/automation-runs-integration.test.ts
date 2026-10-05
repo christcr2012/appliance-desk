@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import type { Prisma } from "@prisma/client";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { runAutomation } from "@/domains/automation/runs";
 import { prisma } from "@/lib/prisma";
@@ -13,7 +14,7 @@ describe.skipIf(!enabled)("automation runs (real Postgres)", () => {
   const tag = randomUUID().replaceAll("-", "");
   const prefix = `automation-${tag}`;
   const fixedNow = new Date("2026-10-05T18:00:00.000Z");
-  let priorPaused: unknown = [];
+  let priorPaused: Prisma.JsonValue = [];
 
   beforeAll(async () => {
     const settings = await prisma.businessSettings.upsert({
@@ -34,7 +35,7 @@ describe.skipIf(!enabled)("automation runs (real Postgres)", () => {
     await prisma.automationRun.deleteMany({ where: { ruleKey: { startsWith: prefix } } });
     await prisma.businessSettings.update({
       where: { id: "singleton" },
-      data: { pausedAutomations: priorPaused as never },
+      data: { pausedAutomations: priorPaused as Prisma.InputJsonValue },
     });
   });
 
