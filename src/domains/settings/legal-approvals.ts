@@ -35,9 +35,11 @@ function approval(value: unknown): LegalApproval | undefined {
 export function parseLegalApprovals(value: unknown): LegalApprovals {
   if (!value || typeof value !== "object" || Array.isArray(value)) return {};
   const source = value as Record<string, unknown>;
+  const privacy = approval(source.privacy);
+  const terms = approval(source.terms);
   return {
-    ...(approval(source.privacy) ? { privacy: approval(source.privacy) } : {}),
-    ...(approval(source.terms) ? { terms: approval(source.terms) } : {}),
+    ...(privacy ? { privacy } : {}),
+    ...(terms ? { terms } : {}),
   };
 }
 
@@ -51,7 +53,11 @@ export function isLegalPageApproved(
 
 export async function approveLegalPage(userId: string, page: LegalPage): Promise<LegalApproval> {
   return prisma.$transaction(async (tx) => {
-    const actor = await assertActiveTeamActor(tx, userId, ["OWNER"]);
+    await assertActiveTeamActor(tx, userId, ["OWNER"]);
+    const actor = await tx.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: { name: true, email: true },
+    });
     await tx.$queryRaw`SELECT "id" FROM "BusinessSettings" WHERE "id" = 'singleton' FOR UPDATE`;
     const settings = await tx.businessSettings.findUniqueOrThrow({
       where: { id: "singleton" },
