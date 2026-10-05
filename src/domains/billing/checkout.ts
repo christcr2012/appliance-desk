@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { cancelAtSecondsFor } from "./subscription-term";
 import { getStripeClient } from "@/lib/stripe";
 import { fixedTermEndDate } from "@/lib/business-date";
+import type { HandoffWorkOutcome } from "./handoff-outcome";
 import {
   RetryLater,
   claimProviderOperation,
@@ -200,9 +201,7 @@ async function getOrCreateTaxRate(taxRateMilliPercent: number): Promise<string |
   if (taxRateMilliPercent <= 0) return null;
 
   const stripe = getStripeClient();
-  // Thousandths of a percent -> Stripe percentage (Stripe accepts up to 4 decimals).
   const percentage = taxRateMilliPercent / 1000;
-  // Walk every page so a rate that already exists is reused, not duplicated.
   let match: { id: string } | undefined;
   let startingAfter: string | undefined;
   for (let pageNumber = 0; pageNumber < 100 && !match; pageNumber += 1) {
@@ -349,6 +348,8 @@ export async function createDepositCheckoutSessionForEstimate(
 
 const PAYMENT_METHOD_BLOCKER =
   "This customer hasn't completed checkout yet, so there's no saved payment method to bill — send them the checkout link again, or start billing manually once they have one on file.";
+const DELIVERY_BLOCKER =
+  "Recurring billing cannot start until at least one rental item has actually been delivered.";
 const RECONCILIATION_BLOCKER =
   "Stripe may have created this subscription, but the result is not confirmed locally. Reconcile Stripe before retrying billing.";
 
@@ -368,20 +369,27 @@ async function recordSubscriptionPreparationFailure(
 }
 
 /**
- * Start recurring billing exactly once after delivery. The provider write is
- * claimed durably, performed outside any database transaction, then reconciled
- * back under a row lock. A conflicting local/provider subscription id is never
- * overwritten silently.
+ * Start recurring billing exactly once after the first real delivery. Provider
+ * work runs outside transactions. The immutable firstDeliveredOn business date
+ * is the authoritative local billing/term fact even when provider work is
+ * retried later. Stripe's provider-cycle timestamp is deliberately not
+ * backdated or re-anchored here: the current Stripe API cannot preserve a
+ * Denver calendar anniversary across DST while also backdating without
+ * introducing time-based proration. The remediation design says to stop that
+ * narrow provider sub-step rather than silently change money policy.
  */
-export async function startRecurringBillingForAgreement(agreementId: string): Promise<void> {
+export async function startRecurringBillingForAgreement(
+  agreementId: string,
+): Promise<HandoffWorkOutcome> {
   type Claimed =
-    | { done: true }
+    | { done: true; outcome: HandoffWorkOutcome }
     | {
         done: false;
         opId: string;
         idempotencyKey: string;
         agreement: {
           id: string;
+          firstDeliveredOn: Date;
           termMonths: number | null;
           endDate: Date | null;
           taxRateMilliPercent: number;
@@ -414,16 +422,18 @@ export async function startRecurringBillingForAgreement(agreementId: string): Pr
         },
       });
 
-      // A fixed term starts at delivery (owner decision IN-20): record its end
-      // date the first time billing is attempted after delivery, under this
-      // lock, and keep it on retries. Stripe's cancel_at below is derived from
-      // this stored date, so a retry always sends the same stop date.
+      const firstDeliveredOn = agreement.firstDeliveredOn ?? agreement.billingStartedAt;
+      if (!firstDeliveredOn) {
+        await tx.rentalAgreement.update({
+          where: { id: agreementId },
+          data: { billingBlockedReason: DELIVERY_BLOCKER },
+        });
+        return { done: true, outcome: { state: "BLOCKED", detail: DELIVERY_BLOCKER } };
+      }
+
       let endDate = agreement.endDate;
       if (agreement.termMonths && !endDate) {
-        endDate = fixedTermEndDate(
-          agreement.billingStartedAt ?? new Date(),
-          agreement.termMonths,
-        );
+        endDate = fixedTermEndDate(firstDeliveredOn, agreement.termMonths);
         await tx.rentalAgreement.update({
           where: { id: agreementId },
           data: { endDate },
@@ -437,12 +447,23 @@ export async function startRecurringBillingForAgreement(agreementId: string): Pr
             data: { billingBlockedReason: null },
           });
         }
-        return { done: true };
+        return { done: true, outcome: { state: "DONE" } };
       }
-      if (agreement.stripeSubscriptionId) return { done: true };
+      if (agreement.stripeSubscriptionId) {
+        if (!agreement.billingStartedAt || agreement.billingBlockedReason) {
+          await tx.rentalAgreement.update({
+            where: { id: agreementId },
+            data: {
+              billingStartedAt: agreement.billingStartedAt ?? firstDeliveredOn,
+              billingBlockedReason: null,
+            },
+          });
+        }
+        return { done: true, outcome: { state: "DONE" } };
+      }
 
       const plan = buildCheckoutLinePlan(agreement).filter((item) => item.recurring);
-      if (plan.length === 0) return { done: true };
+      if (plan.length === 0) return { done: true, outcome: { state: "DONE" } };
 
       if (
         !agreement.customer.stripeCustomerId ||
@@ -452,7 +473,7 @@ export async function startRecurringBillingForAgreement(agreementId: string): Pr
           where: { id: agreementId },
           data: { billingBlockedReason: PAYMENT_METHOD_BLOCKER },
         });
-        return { done: true };
+        return { done: true, outcome: { state: "BLOCKED", detail: PAYMENT_METHOD_BLOCKER } };
       }
 
       const operation = await claimProviderOperation(tx, {
@@ -467,11 +488,11 @@ export async function startRecurringBillingForAgreement(agreementId: string): Pr
           where: { id: agreementId },
           data: {
             stripeSubscriptionId: operation.providerObjectId,
-            billingStartedAt: agreement.billingStartedAt ?? new Date(),
+            billingStartedAt: agreement.billingStartedAt ?? firstDeliveredOn,
             billingBlockedReason: null,
           },
         });
-        return { done: true };
+        return { done: true, outcome: { state: "DONE" } };
       }
 
       return {
@@ -480,6 +501,7 @@ export async function startRecurringBillingForAgreement(agreementId: string): Pr
         idempotencyKey: operation.idempotencyKey,
         agreement: {
           id: agreement.id,
+          firstDeliveredOn,
           termMonths: agreement.termMonths,
           endDate,
           taxRateMilliPercent: agreement.taxRateMilliPercent,
@@ -493,20 +515,23 @@ export async function startRecurringBillingForAgreement(agreementId: string): Pr
       };
     });
   } catch (error) {
-    const blocker =
+    const unknown = error instanceof RetryLater && /unknown|drift|reconcil/i.test(error.message);
+    const detail =
       error instanceof RetryLater
-        ? /unknown|drift|reconcil/i.test(error.message)
+        ? unknown
           ? RECONCILIATION_BLOCKER
           : "Recurring billing is already being started by another request. Try again after it finishes."
         : `Couldn't start recurring billing: ${error instanceof Error ? error.message : "Unexpected error."}`;
-    await prisma.rentalAgreement.update({
-      where: { id: agreementId },
-      data: { billingBlockedReason: blocker },
-    });
-    return;
+    await prisma.rentalAgreement
+      .update({
+        where: { id: agreementId },
+        data: { billingBlockedReason: detail },
+      })
+      .catch(() => undefined);
+    return { state: unknown ? "UNKNOWN" : "RETRY", detail };
   }
 
-  if (claimed.done) return;
+  if (claimed.done) return claimed.outcome;
 
   const stripe = getStripeClient();
   let taxRateId: string | null;
@@ -539,10 +564,11 @@ export async function startRecurringBillingForAgreement(agreementId: string): Pr
       }),
     );
   } catch (error) {
-    // The Subscription itself was not attempted. Product creation is safe to
-    // retry because every line has its own deterministic Stripe key.
     await recordSubscriptionPreparationFailure(claimed.opId, agreementId, error);
-    return;
+    return {
+      state: "RETRY",
+      detail: error instanceof Error ? error.message : "Stripe subscription preparation failed.",
+    };
   }
 
   const cancelAt = cancelAtSecondsFor(claimed.agreement) ?? undefined;
@@ -554,7 +580,10 @@ export async function startRecurringBillingForAgreement(agreementId: string): Pr
         default_payment_method:
           claimed.agreement.customer.stripeDefaultPaymentMethodId,
         items,
-        metadata: { agreementId: claimed.agreement.id },
+        metadata: {
+          agreementId: claimed.agreement.id,
+          firstDeliveredOn: claimed.agreement.firstDeliveredOn.toISOString(),
+        },
         ...(cancelAt ? { cancel_at: cancelAt } : {}),
       },
       { idempotencyKey: claimed.idempotencyKey },
@@ -580,19 +609,28 @@ export async function startRecurringBillingForAgreement(agreementId: string): Pr
         },
       });
     });
-    return;
+    return {
+      state: providerResult.outcome === "UNKNOWN" ? "UNKNOWN" : "RETRY",
+      detail:
+        providerResult.outcome === "UNKNOWN"
+          ? RECONCILIATION_BLOCKER
+          : providerResult.error instanceof Error
+            ? providerResult.error.message
+            : "Stripe rejected the subscription.",
+    };
   }
 
   const stripeSubscriptionId = providerResult.value.id;
-  await prisma.$transaction(async (tx) => {
+  return prisma.$transaction(async (tx): Promise<HandoffWorkOutcome> => {
     const locked = await tx.$queryRaw<
       Array<{
         id: string;
         stripeSubscriptionId: string | null;
         billingStartedAt: Date | null;
+        firstDeliveredOn: Date | null;
       }>
     >`
-      SELECT "id", "stripeSubscriptionId", "billingStartedAt"
+      SELECT "id", "stripeSubscriptionId", "billingStartedAt", "firstDeliveredOn"
       FROM "RentalAgreement"
       WHERE "id" = ${agreementId}
       FOR UPDATE
@@ -604,7 +642,22 @@ export async function startRecurringBillingForAgreement(agreementId: string): Pr
         providerObjectId: stripeSubscriptionId,
         note: `Stripe subscription ${stripeSubscriptionId} was created after local agreement ${agreementId} disappeared.`,
       });
-      return;
+      return {
+        state: "UNKNOWN",
+        detail: "Stripe created the subscription after the local agreement disappeared.",
+      };
+    }
+    if (!agreement.firstDeliveredOn) {
+      await completeProviderOperation(tx, claimed.opId, {
+        status: "DRIFT",
+        providerObjectId: stripeSubscriptionId,
+        note: `Agreement ${agreementId} lost its first-delivery fact while Stripe subscription ${stripeSubscriptionId} was being created.`,
+      });
+      await tx.rentalAgreement.update({
+        where: { id: agreementId },
+        data: { billingBlockedReason: RECONCILIATION_BLOCKER },
+      });
+      return { state: "UNKNOWN", detail: RECONCILIATION_BLOCKER };
     }
 
     if (!agreement.stripeSubscriptionId) {
@@ -612,7 +665,7 @@ export async function startRecurringBillingForAgreement(agreementId: string): Pr
         where: { id: agreementId },
         data: {
           stripeSubscriptionId,
-          billingStartedAt: agreement.billingStartedAt ?? new Date(),
+          billingStartedAt: agreement.billingStartedAt ?? agreement.firstDeliveredOn,
           billingBlockedReason: null,
         },
       });
@@ -620,14 +673,14 @@ export async function startRecurringBillingForAgreement(agreementId: string): Pr
         status: "SUCCEEDED",
         providerObjectId: stripeSubscriptionId,
       });
-      return;
+      return { state: "DONE" };
     }
 
     if (agreement.stripeSubscriptionId === stripeSubscriptionId) {
       await tx.rentalAgreement.update({
         where: { id: agreementId },
         data: {
-          billingStartedAt: agreement.billingStartedAt ?? new Date(),
+          billingStartedAt: agreement.billingStartedAt ?? agreement.firstDeliveredOn,
           billingBlockedReason: null,
         },
       });
@@ -635,7 +688,7 @@ export async function startRecurringBillingForAgreement(agreementId: string): Pr
         status: "SUCCEEDED",
         providerObjectId: stripeSubscriptionId,
       });
-      return;
+      return { state: "DONE" };
     }
 
     await completeProviderOperation(tx, claimed.opId, {
@@ -647,5 +700,6 @@ export async function startRecurringBillingForAgreement(agreementId: string): Pr
       where: { id: agreementId },
       data: { billingBlockedReason: RECONCILIATION_BLOCKER },
     });
+    return { state: "UNKNOWN", detail: RECONCILIATION_BLOCKER };
   });
 }

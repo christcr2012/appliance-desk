@@ -771,7 +771,8 @@ deposit and/or damage waiver (if either applies) and — always — a
 saved payment method for later. The real recurring monthly billing
 only begins once Chris marks the delivery/installation job
 **Completed**, i.e. once the machine has actually reached the
-customer.
+customer. A completed visit where every rental item is marked not delivered
+does not count as delivery and starts no recurring billing.
 
 - When Chris has recorded `paidInFullInAdvance`, delivery never starts a
   recurring rent subscription, with or without the free-month bonus. This flag
@@ -1072,22 +1073,25 @@ scheduled date), never from the moment a status button is pressed.
    invoice: it is never charged to a card automatically, so the owner can
    adjust or write it off (for example a late pickup that was the company's
    fault — the automatic waiver for that is still to be built, IN-24).
-2. **Late delivery (an item missing from the first delivery).** When one or
-   more items on an agreement are not delivered as agreed on the original
-   delivery, the **whole agreement** is billed as normal from that original
-   delivery date. Staff tick the missing items when completing the delivery
-   job; they stay on the customer's attention list until a later delivery job
-   brings them. Then, on the **next** bill, the customer gets a credit for
-   each late item, prorated by the day, for each day between the original
-   delivery date and the day before it was actually delivered. Setting: the
-   per-day amount is the item's monthly price ÷ 30 (**default**) or ÷ the
-   actual number of days in that billing month. The credit is its own line,
-   `Credit – [item] delivered late – [N] days`, rounded once on the total and
-   never more than was billed for that item. An item that is never delivered
-   and is taken off the agreement is credited the full amount billed for it
-   (`Credit – [item] never delivered – [N] months billed`). A washer+dryer
-   set's price is split evenly per machine. Rentals paid in full in advance
-   get no automatic credit (owner decides, as with early endings).
+2. **Late delivery (an item missing from the first delivery).** Billing starts
+   only on a delivery/installation visit where at least one rental item is
+   actually delivered. If every item is marked not delivered, that visit starts
+   no recurring billing; the first later visit that actually delivers an item
+   becomes the agreement's billing/delivery anchor. When at least one item is
+   delivered but one or more others are missing, the **whole agreement** is
+   billed as normal from that first real delivery date. Staff tick the missing
+   items when completing the delivery job; they stay on the customer's attention
+   list until a later delivery job brings them. Then, on the **next** bill, the
+   customer gets a credit for each late item, prorated by the day, for each day
+   between the first real delivery date and the day before it was actually
+   delivered. Setting: the per-day amount is the item's monthly price ÷ 30
+   (**default**) or ÷ the actual number of days in that billing month. The
+   credit is its own line, `Credit – [item] delivered late – [N] days`, rounded
+   once on the total and never more than was billed for that item. An item that
+   is never delivered and is taken off the agreement is credited the full amount
+   billed for it (`Credit – [item] never delivered – [N] months billed`). A
+   washer+dryer set's price is split evenly per machine. Rentals paid in full in
+   advance get no automatic credit (owner decides, as with early endings).
    **What happens to the monthly subscription (Chris, 2026-10-03):** an
    item delivered late, or swapped for an alternate unit of the same type
    delivered later, stays on the subscription — the credit is the whole
@@ -1365,19 +1369,21 @@ editing/reassignment/completion/reopening. STAFF cannot create or see lead links
 archived customer/job links are omitted. Notes may create a linked follow-up
 without sending any message or recording an invented contact promise.
 
-- **A missing item and the monthly bill** — an item left off the first delivery
-  keeps billing with the rest of its line. The customer is credited for the days
-  it was missing when it arrives, and the subscription is not touched. The
-  owner or an admin can set aside another unit of the same type to take its
-  place on a later delivery visit; when that unit is delivered the credit counts
-  to that day. A unit of a different type is refused. If the item will never
-  arrive, taking it off the agreement REFUNDS what was paid for it (the item's
-  monthly share plus its sales tax for each month billed, never more than was
-  actually paid, newest invoice first). Money paid through Stripe goes back to the
-  same card or bank. Money paid by cash or check, or a rental paid in advance, is
-  recorded for the owner to pay back by hand. No account credit is made. It also
-  lowers its line by the item's share (the line price split evenly over the units that
-  count) starting with the next billing period, never retroactively. The
-  Stripe subscription is updated afterwards and retried until it matches. If the
-  last item is taken off, the agreement is cancelled (nothing was ever delivered)
-  or ended.
+- **A missing item and the monthly bill** — once at least one rental item was
+  actually delivered and billing started, an item left off that first real
+  delivery keeps billing with the rest of its line. A visit where every rental
+  item is not delivered starts no billing at all. The customer is credited for
+  the days the missing item was absent when it arrives, and the subscription is
+  not touched. The owner or an admin can set aside another unit of the same type
+  to take its place on a later delivery visit; when that unit is delivered the
+  credit counts to that day. A unit of a different type is refused. If the item
+  will never arrive, taking it off the agreement REFUNDS what was paid for it
+  (the item's monthly share plus its sales tax for each month billed, never more
+  than was actually paid, newest invoice first). Money paid through Stripe goes
+  back to the same card or bank. Money paid by cash or check, or a rental paid in
+  advance, is recorded for the owner to pay back by hand. No account credit is
+  made. It also lowers its line by the item's share (the line price split evenly
+  over the units that count) starting with the next billing period, never
+  retroactively. The Stripe subscription is updated afterwards and retried until
+  it matches. If the last item is taken off, the agreement is cancelled (nothing
+  was ever delivered) or ended.

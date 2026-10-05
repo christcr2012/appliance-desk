@@ -206,6 +206,15 @@ export async function createJobInTx(tx: Prisma.TransactionClient, userId: string
     }
 
     if (input.agreementId) {
+      // Renewal start and field-job creation share this row lock. Whichever wins
+      // is visible to the other before it decides whether old-agreement work is
+      // still valid, so a job cannot slip in after the renewal conflict check.
+      const locked = await tx.$queryRaw<Array<{ id: string }>>`
+        SELECT "id" FROM "RentalAgreement" WHERE "id" = ${input.agreementId} FOR UPDATE
+      `;
+      if (locked.length !== 1) {
+        throw new Error("Choose an agreement belonging to this customer and property.");
+      }
       const agreement = await tx.rentalAgreement.findUnique({
         where: { id: input.agreementId },
         select: { customerId: true, serviceAddressId: true },
@@ -217,6 +226,35 @@ export async function createJobInTx(tx: Prisma.TransactionClient, userId: string
         (input.serviceAddressId && agreement.serviceAddressId !== input.serviceAddressId)
       ) {
         throw new Error("Choose an agreement belonging to this customer and property.");
+      }
+      if (["DELIVERY", "INSTALLATION", "REMOVAL"].includes(input.type)) {
+        const successors = await tx.rentalAgreement.findMany({
+          where: {
+            renewedFromAgreementId: input.agreementId,
+            status: { in: ["ACTIVE", "ENDED", "CANCELLED"] },
+          },
+          select: { id: true, status: true },
+        });
+        const currentOrEndedSuccessor = successors.find((successor) => successor.status !== "CANCELLED");
+        const cancelledSuccessorIds = successors
+          .filter((successor) => successor.status === "CANCELLED")
+          .map((successor) => successor.id);
+        const startedCancelledSuccessor =
+          cancelledSuccessorIds.length > 0
+            ? await tx.auditLog.findFirst({
+                where: {
+                  action: "agreement.renewal_started",
+                  entityType: "RentalAgreement",
+                  entityId: { in: cancelledSuccessorIds },
+                },
+                select: { id: true },
+              })
+            : null;
+        if (currentOrEndedSuccessor || startedCancelledSuccessor) {
+          throw new Error(
+            "This rental has already renewed. Schedule delivery, installation, or removal work on the current agreement instead.",
+          );
+        }
       }
     }
 

@@ -193,7 +193,7 @@ model Referral {
   id                 String         @id @default(cuid())
   referrerCustomerId String
   referrerCustomer   Customer       @relation("ReferralsMade", fields: [referrerCustomerId], references: [id])
-  // One-to-one: a customer can only be the *referred* party once, ever.
+  // One-to-one: a customer can only ever be the *referred* party once, ever.
   referredCustomerId String         @unique
   referredCustomer   Customer       @relation("ReferralsReceived", fields: [referredCustomerId], references: [id])
   status             ReferralStatus @default(PENDING)
@@ -751,6 +751,11 @@ model RentalAgreement {
   // nextBillingDate advances to the following cycle.
   billingReminderSentForDate DateTime?
 
+  // Remediation Batch R1 (R01): immutable Colorado business date of the first
+  // successful physical delivery/installation. Provider retries and billing
+  // recovery anchor to this fact rather than retry time.
+  firstDeliveredOn DateTime?
+
   // Billing-starts-at-delivery (2026-09-28): recurring billing no longer
   // starts at signing — it starts once a delivery/installation job for
   // this agreement completes (src/domains/billing/checkout.ts's
@@ -1133,6 +1138,7 @@ enum HandoffKind {
 
 enum HandoffStatus {
   PENDING
+  IN_FLIGHT
   DONE
   FAILED
 }
@@ -1147,6 +1153,8 @@ model JobBillingHandoff {
   subjectId String
   status    HandoffStatus @default(PENDING)
   attempts  Int           @default(0)
+  // Set only while a worker owns this handoff lease; stale claims are recoverable.
+  claimedAt DateTime?
   lastError String?
   doneAt    DateTime?
   createdAt DateTime      @default(now())

@@ -24,7 +24,8 @@ type ProviderOperationRow = {
   updatedAt: Date;
 };
 
-const DEFAULT_STALE_AFTER_MS = 120_000;
+/** Shared lease window for durable provider work and job billing handoffs. */
+export const PROVIDER_OPERATION_LEASE_MS = 120_000;
 
 export class RetryLater extends Error {
   constructor(message = "This provider operation is already in progress. Try again shortly.") {
@@ -75,7 +76,7 @@ export async function claimProviderOperation(
   | { done: true; providerObjectId: string }
   | { done: false; opId: string; idempotencyKey: string }
 > {
-  const staleAfterMs = input.staleAfterMs ?? DEFAULT_STALE_AFTER_MS;
+  const staleAfterMs = input.staleAfterMs ?? PROVIDER_OPERATION_LEASE_MS;
   if (!Number.isFinite(staleAfterMs) || staleAfterMs < 0) {
     throw new Error("staleAfterMs must be a non-negative finite number.");
   }
@@ -95,10 +96,6 @@ export async function claimProviderOperation(
   const now = new Date();
   const newId = `provider-op-${randomUUID()}`;
 
-  // Raw INSERT is intentional: Prisma create/upsert cannot tell the winning
-  // claimant from a concurrent ON CONFLICT loser without another token field.
-  // PostgreSQL serializes the unique-key conflict and RETURNING gives ownership
-  // to exactly one transaction.
   const inserted = await tx.$queryRaw<ProviderOperationRow[]>`
     INSERT INTO "ProviderOperation" (
       "id", "kind", "subjectType", "subjectId", "idempotencyKey",
@@ -162,11 +159,6 @@ export async function claimProviderOperation(
     throw new RetryLater();
   }
 
-  // FAILED is deliberately retryable. A stale PENDING claim is also taken
-  // over. UNKNOWN can only reach this point when reconciliation has provider
-  // evidence tied to the exact attempt still stored under this row lock.
-  // requestedAt remains unchanged so provider evidence searches stay anchored
-  // to the original request.
   await tx.providerOperation.update({
     where: { id: existing.id },
     data: {
@@ -180,6 +172,32 @@ export async function claimProviderOperation(
   return { done: false, opId: existing.id, idempotencyKey: input.idempotencyKey };
 }
 
+async function finalizeExhaustedBalanceCreditHandoff(
+  tx: Prisma.TransactionClient,
+  operation: Pick<ProviderOperationRow, "kind" | "subjectType" | "subjectId">,
+  completedAt: Date,
+): Promise<void> {
+  if (operation.kind !== "BALANCE_CREDIT" || operation.subjectType !== "CustomerCredit") return;
+
+  // A normal handoff worker owns IN_FLIGHT and finalizes itself. This recovery
+  // path only closes rows that already exhausted their five ordinary RETRY
+  // attempts and were later proven successful by provider reconciliation.
+  await tx.jobBillingHandoff.updateMany({
+    where: {
+      kind: "PUSH_CREDIT",
+      subjectId: operation.subjectId,
+      status: "FAILED",
+      attempts: { gte: 5 },
+    },
+    data: {
+      status: "DONE",
+      claimedAt: null,
+      lastError: null,
+      doneAt: completedAt,
+    },
+  });
+}
+
 export async function completeProviderOperation(
   tx: Prisma.TransactionClient,
   opId: string,
@@ -189,8 +207,16 @@ export async function completeProviderOperation(
     | { status: "UNKNOWN"; error?: unknown }
     | { status: "DRIFT"; providerObjectId: string; note: string },
 ): Promise<void> {
-  const locked = await tx.$queryRaw<Array<{ status: ProviderOpStatus; providerObjectId: string | null }>>`
-    SELECT "status", "providerObjectId"
+  const locked = await tx.$queryRaw<
+    Array<{
+      status: ProviderOpStatus;
+      providerObjectId: string | null;
+      kind: ProviderOpKind;
+      subjectType: string;
+      subjectId: string;
+    }>
+  >`
+    SELECT "status", "providerObjectId", "kind", "subjectType", "subjectId"
     FROM "ProviderOperation"
     WHERE "id" = ${opId}
     FOR UPDATE
@@ -200,11 +226,12 @@ export async function completeProviderOperation(
     throw new Error(`Provider operation ${opId} does not exist.`);
   }
 
-  // Never let a late timeout/failure from an older worker downgrade a known
-  // success. A conflicting second success is real drift and is surfaced.
   if (current.status === "DRIFT") return;
   if (current.status === "SUCCEEDED") {
-    if (result.status === "SUCCEEDED" && current.providerObjectId === result.providerObjectId) return;
+    if (result.status === "SUCCEEDED" && current.providerObjectId === result.providerObjectId) {
+      await finalizeExhaustedBalanceCreditHandoff(tx, current, new Date());
+      return;
+    }
     if (result.status !== "DRIFT" && result.status !== "SUCCEEDED") return;
     if (result.status === "SUCCEEDED") {
       await tx.providerOperation.update({
@@ -232,6 +259,7 @@ export async function completeProviderOperation(
         completedAt,
       },
     });
+    await finalizeExhaustedBalanceCreditHandoff(tx, current, completedAt);
     return;
   }
 
@@ -270,11 +298,6 @@ export async function completeProviderOperation(
   });
 }
 
-/**
- * Calls Stripe outside a transaction and classifies whether the provider
- * definitely rejected the request or whether the result is ambiguous and must
- * be reconciled. Connection/server failures are UNKNOWN by design.
- */
 export async function runProviderCall<T>(
   call: () => Promise<T>,
 ): Promise<
@@ -304,7 +327,6 @@ export async function runProviderCall<T>(
   }
 }
 
-/** Keep provider diagnostics useful without ever persisting obvious secrets or PANs. */
 export function sanitizeProviderError(error: unknown): string {
   const raw =
     error instanceof Error

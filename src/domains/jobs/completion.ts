@@ -7,9 +7,10 @@ import { businessDateKey, businessDayBounds } from "@/lib/business-date";
 import { lockCustomerLedger } from "@/domains/billing/ledger";
 import { lockRentalAgreementInTx } from "@/domains/agreements";
 import { startRecurringBillingForAgreement } from "@/domains/billing/checkout";
+import { pushLateDeliveryCreditForHandoff } from "@/domains/billing/handoff-adapters";
+import { PROVIDER_OPERATION_LEASE_MS } from "@/domains/billing/provider-ops";
 import {
   jobServiceDate,
-  pushLateDeliveryCreditToStripe,
   recordItemsNotDelivered,
   recordLateDeliveries,
   recordLateReturnOnRemoval,
@@ -26,7 +27,7 @@ import { JobVersionError } from "./scheduling";
 // create one follow-up task. The billing work that completion already did stays in this transaction;
 // the provider calls that must follow the commit are written as JobBillingHandoff rows in the same
 // transaction and run afterwards (and again by the nightly sweep if the process died).
-// Lock order (spec section 0): actor, customer (when the job has an agreement), agreement,
+// Lock order (spec section 0): actor, customer (when the job has an agreement), agreement(s),
 // maintenance request, job, appliances sorted.
 // ---------------------------------------------------------------------------
 
@@ -179,9 +180,26 @@ export async function completeJob(userId: string, input: CompleteJobInput): Prom
       }
     }
     const scopeIds = scope.map((s) => s.applianceId).sort();
-    // A delivery visit can carry a substitute for an item that was missing from the first delivery. The waiting
-    // unit it replaces is locked together with the scope (one sorted pass), so two commands never lock them in
-    // opposite orders.
+
+    // A SWAP is allowed to survive renewal. Resolve its outgoing unit's current
+    // rental lineage while the staged agreement is locked, then lock that current
+    // agreement before any appliance row. This preserves Agreement -> Appliance
+    // ordering against close/renewal commands and prevents a deadlock cycle.
+    let prelockedSwapAgreementId: string | null = null;
+    if (before.type === "SWAP") {
+      const originalId = scope.find((s) => s.role === "PRIMARY")?.applianceId ?? null;
+      if (originalId) {
+        const currentAssignment = await tx.applianceAssignment.findFirst({
+          where: { applianceId: originalId, unassignedAt: null },
+          select: { rentalLine: { select: { agreementId: true } } },
+        });
+        prelockedSwapAgreementId = currentAssignment?.rentalLine.agreementId ?? null;
+        if (prelockedSwapAgreementId && prelockedSwapAgreementId !== before.agreementId) {
+          await lockRentalAgreementInTx(tx, prelockedSwapAgreementId);
+        }
+      }
+    }
+
     const substitutions =
       before.agreementId && (before.type === "DELIVERY" || before.type === "INSTALLATION")
         ? await tx.pendingDelivery.findMany({
@@ -226,6 +244,16 @@ export async function completeJob(userId: string, input: CompleteJobInput): Prom
     const completedAt = now;
     const performedOn = input.performedOn ?? before.performedOn ?? businessDayBounds(completedAt).start;
     const serviceDate = jobServiceDate({ performedOn, scheduledAt: before.scheduledAt, completedAt });
+    const deliveredIds = scopeIds.filter((id) => resultOf.get(id)!.result === "DELIVERED");
+
+    // The first successful physical delivery is the immutable business fact that anchors billing.
+    // Zero-delivery visits deliberately leave it null and therefore cannot start recurring billing.
+    if (isDelivery && before.agreementId && deliveredIds.length > 0) {
+      await tx.rentalAgreement.updateMany({
+        where: { id: before.agreementId, firstDeliveredOn: null },
+        data: { firstDeliveredOn: serviceDate },
+      });
+    }
 
     if (derived) {
       await tx.jobAppliance.createMany({ data: scopeIds.map((applianceId) => ({ jobId: before.id, applianceId })), skipDuplicates: true });
@@ -247,24 +275,20 @@ export async function completeJob(userId: string, input: CompleteJobInput): Prom
       const result = resultOf.get(applianceId)!;
 
       if (result.result === "NOT_DELIVERED" && isDelivery) {
-        // Only a unit still waiting for delivery can be "not delivered".
         if (appliance.status !== "RESERVED") {
           throw new JobCompletionConflictError("An item marked not delivered is not waiting for delivery (it was already delivered or released).");
         }
-        // A substitute that did not arrive goes back on the shelf. The item it was meant to replace keeps waiting.
         if (substituteIds.has(applianceId) && (await dropSubstituteInTx(tx, { userId, jobId: before.id, substituteApplianceId: applianceId }))) {
           droppedSubstituteIds.add(applianceId);
         }
       }
 
       if (result.result === "DELIVERED") {
-        // Custody must be recordable before anything moves: a rented unit with no known holder is the one state we never create.
         if (!customerId) {
           throw new JobCompletionConflictError(`${appliance.assetNumber} can't be marked delivered on a visit with no customer. Open the job, choose the customer, then complete it.`);
         }
         if (isDelivery) {
           if (before.agreementId) {
-            // A substitute takes over the waiting item's place on its rental line first, so it counts as assigned.
             if (substituteIds.has(applianceId)) {
               await takeSubstituteIntoLineInTx(tx, { userId, jobId: before.id, substituteApplianceId: applianceId, substituteAssetNumber: appliance.assetNumber, at: completedAt });
             }
@@ -277,7 +301,6 @@ export async function completeJob(userId: string, input: CompleteJobInput): Prom
             data: { userId, action: "appliance.unit.status", entityType: "Appliance", entityId: applianceId, oldValue: { status: "RESERVED" }, newValue: { status: "RENTED", reason: `Job ${before.type.toLowerCase()} completed`, jobId: before.id } },
           });
         }
-        // A swap's custody, status and assignment moves are done together after this loop.
         if (before.type !== "SWAP") {
           await openCustodyEpisodeInTx(tx, { applianceId, customerId, serviceAddressId: before.serviceAddressId, agreementId: before.agreementId, startedOn: serviceDate, startJobId: before.id });
         }
@@ -288,6 +311,17 @@ export async function completeJob(userId: string, input: CompleteJobInput): Prom
           throw new JobCompletionConflictError(`${appliance.assetNumber} is recorded as being with a different customer, so it can't be returned on this visit.`);
         }
         if (before.type === "REMOVAL") {
+          if (before.agreementId) {
+            const currentAssignment = await tx.applianceAssignment.findFirst({
+              where: { applianceId, unassignedAt: null },
+              select: { rentalLine: { select: { agreementId: true } } },
+            });
+            if (currentAssignment && currentAssignment.rentalLine.agreementId !== before.agreementId) {
+              throw new JobCompletionConflictError(
+                `${appliance.assetNumber} now belongs to a newer rental agreement. Resolve this old removal job before changing custody.`,
+              );
+            }
+          }
           const moved = await tx.appliance.updateMany({ where: { id: applianceId, status: { in: ["AWAITING_PICKUP", "RENTED"] } }, data: { status: "AWAITING_INSPECTION" } });
           if (moved.count !== 1) throw new JobCompletionConflictError(`${appliance.assetNumber} isn't out with a customer, so it can't be marked returned.`);
           await tx.auditLog.create({
@@ -325,28 +359,62 @@ export async function completeJob(userId: string, input: CompleteJobInput): Prom
       if (replacementId && replacementResult === "DELIVERED") {
         const replacement = applianceById.get(replacementId)!;
         const original = originalId ? applianceById.get(originalId)! : null;
-        // The original's current assignment, whichever agreement it now belongs to (a renewal may have moved it).
         const originalAssignment = originalId
-          ? await tx.applianceAssignment.findFirst({ where: { applianceId: originalId, unassignedAt: null }, select: { id: true, rentalLineId: true, rentalLine: { select: { agreementId: true } } } })
+          ? await tx.applianceAssignment.findFirst({
+              where: { applianceId: originalId, unassignedAt: null },
+              select: {
+                id: true,
+                rentalLineId: true,
+                rentalLine: {
+                  select: {
+                    agreementId: true,
+                    agreement: { select: { customerId: true, serviceAddressId: true } },
+                  },
+                },
+              },
+            })
           : null;
-        if (originalAssignment && originalAssignment.rentalLine.agreementId !== before.agreementId) {
-          await lockRentalAgreementInTx(tx, originalAssignment.rentalLine.agreementId);
+        if (!originalAssignment) {
+          throw new JobCompletionConflictError("The appliance being swapped no longer has a current rental assignment. Reload and resolve the agreement before completing this swap.");
         }
-        const replacementAssignment = await tx.applianceAssignment.findFirst({ where: { applianceId: replacementId, unassignedAt: null }, select: { id: true } });
+        if (
+          originalAssignment.rentalLine.agreementId !== before.agreementId &&
+          originalAssignment.rentalLine.agreementId !== prelockedSwapAgreementId
+        ) {
+          throw new JobCompletionConflictError(
+            "The appliance's rental agreement changed while this swap was being completed. Reload the job and try again.",
+          );
+        }
+        const currentAgreement = originalAssignment.rentalLine.agreement;
+        if (currentAgreement.customerId !== customerId || currentAgreement.serviceAddressId !== before.serviceAddressId) {
+          throw new JobCompletionConflictError("This swap's current rental agreement no longer matches the customer and property on the staged visit.");
+        }
+        const replacementAssignment = await tx.applianceAssignment.findFirst({
+          where: { applianceId: replacementId, unassignedAt: null },
+          select: { id: true, rentalLineId: true },
+        });
+        if (replacementAssignment && replacementAssignment.rentalLineId !== originalAssignment.rentalLineId) {
+          throw new JobCompletionConflictError(`${replacement.assetNumber} is already assigned to a different rental line, so the swap can't be completed.`);
+        }
         const moved = await tx.appliance.updateMany({ where: { id: replacementId, status: "RESERVED" }, data: { status: "RENTED" } });
         if (moved.count !== 1) throw new JobCompletionConflictError(`${replacement.assetNumber} is no longer waiting for delivery, so the swap can't be completed.`);
         await tx.auditLog.create({
           data: { userId, action: "appliance.unit.status", entityType: "Appliance", entityId: replacementId, oldValue: { status: "RESERVED" }, newValue: { status: "RENTED", reason: "Swap completed", jobId: before.id } },
         });
-        await openCustodyEpisodeInTx(tx, { applianceId: replacementId, customerId: customerId!, serviceAddressId: before.serviceAddressId, agreementId: before.agreementId, startedOn: serviceDate, startJobId: before.id });
-        if (originalAssignment) {
-          await tx.applianceAssignment.update({
-            where: { id: originalAssignment.id },
-            data: { unassignedAt: completedAt, unassignReason: `Swapped for ${replacement.assetNumber}` },
-          });
-          if (!replacementAssignment) {
-            await tx.applianceAssignment.create({ data: { rentalLineId: originalAssignment.rentalLineId, applianceId: replacementId } });
-          }
+        await openCustodyEpisodeInTx(tx, {
+          applianceId: replacementId,
+          customerId: currentAgreement.customerId,
+          serviceAddressId: currentAgreement.serviceAddressId,
+          agreementId: originalAssignment.rentalLine.agreementId,
+          startedOn: serviceDate,
+          startJobId: before.id,
+        });
+        await tx.applianceAssignment.update({
+          where: { id: originalAssignment.id },
+          data: { unassignedAt: completedAt, unassignReason: `Swapped for ${replacement.assetNumber}` },
+        });
+        if (!replacementAssignment) {
+          await tx.applianceAssignment.create({ data: { rentalLineId: originalAssignment.rentalLineId, applianceId: replacementId } });
         }
         if (original && originalResult === "RETURNED") {
           if (await getOpenCustody(tx, originalId!)) {
@@ -361,10 +429,8 @@ export async function completeJob(userId: string, input: CompleteJobInput): Prom
         }
         await tx.jobAppliance.updateMany({ where: { jobId: before.id, applianceId: replacementId }, data: { reservationActive: false } });
       } else if (!replacementId && originalId && originalResult === "RETURNED" && (await getOpenCustody(tx, originalId))) {
-        // An old swap job with no recorded replacement: only the returned unit's custody can be closed.
         await closeCustodyEpisodeInTx(tx, { applianceId: originalId, endedOn: serviceDate, endJobId: before.id, endReason: "Swapped out" });
       } else if (replacementId && swapBothNegative && reservationOwned) {
-        // Nothing moved: the reservation goes back on the shelf.
         const released = await tx.appliance.updateMany({ where: { id: replacementId, status: "RESERVED" }, data: { status: "AVAILABLE" } });
         if (released.count === 1) {
           await tx.auditLog.create({
@@ -378,7 +444,6 @@ export async function completeJob(userId: string, input: CompleteJobInput): Prom
     // --- billing that completion already did (same transaction) ----------------------------------
     const billing: PickupBillingOutcome[] = [];
     const returnedIds = scopeIds.filter((id) => resultOf.get(id)!.result === "RETURNED");
-    const deliveredIds = scopeIds.filter((id) => resultOf.get(id)!.result === "DELIVERED");
     if (before.agreementId && before.type === "REMOVAL") {
       billing.push(await recordLateReturnOnRemoval(tx, { userId, jobId: before.id, agreementId: before.agreementId, applianceIds: returnedIds, pickupDate: serviceDate }));
     }
@@ -426,7 +491,6 @@ export async function completeJob(userId: string, input: CompleteJobInput): Prom
       const given = resultOf.get(applianceId)!.result;
       if (POSITIVE.has(given)) continue;
       if (swapBothNegative) continue;
-      // A substitute that stayed on the shelf needs no follow-up: the waiting item it stood in for is still tracked.
       if (droppedSubstituteIds.has(applianceId)) continue;
       const appliance = applianceById.get(applianceId)!;
       const { task } = await createTaskInTx(
@@ -446,7 +510,9 @@ export async function completeJob(userId: string, input: CompleteJobInput): Prom
 
     // --- durable handoffs for the provider work that follows the commit ---------------------------
     const handoffRows: Array<{ jobId: string; kind: "START_RECURRING_BILLING" | "PUSH_CREDIT"; subjectId: string }> = [];
-    if (isDelivery && before.agreementId) handoffRows.push({ jobId: before.id, kind: "START_RECURRING_BILLING", subjectId: before.agreementId });
+    if (isDelivery && before.agreementId && deliveredIds.length > 0) {
+      handoffRows.push({ jobId: before.id, kind: "START_RECURRING_BILLING", subjectId: before.agreementId });
+    }
     for (const creditId of billing.flatMap((b) => b.creditIds)) handoffRows.push({ jobId: before.id, kind: "PUSH_CREDIT", subjectId: creditId });
     if (handoffRows.length > 0) await tx.jobBillingHandoff.createMany({ data: handoffRows, skipDuplicates: true });
     const handoffs = await tx.jobBillingHandoff.findMany({ where: { jobId: before.id }, select: { id: true }, orderBy: { id: "asc" } });
@@ -553,40 +619,222 @@ export async function getJobCompletionScope(job: {
 }
 
 const MAX_HANDOFF_ATTEMPTS = 5;
+const BLOCKED_HANDOFF_PREFIX = "BLOCKED:";
+const UNKNOWN_HANDOFF_PREFIX = "UNKNOWN:";
 
-/** Runs the post-commit provider work for handoff rows. Each existing function is already an idempotent durable operation. */
+type HandoffQueueRow = {
+  id: string;
+  kind: "START_RECURRING_BILLING" | "PUSH_CREDIT";
+  subjectId: string;
+  status: "PENDING" | "IN_FLIGHT" | "DONE" | "FAILED";
+  attempts: number;
+  claimedAt: Date | null;
+  lastError: string | null;
+  createdAt: Date;
+};
+
+function deferredHandoffTime(row: Pick<HandoffQueueRow, "lastError" | "createdAt">): number {
+  if (
+    row.lastError?.startsWith(BLOCKED_HANDOFF_PREFIX) ||
+    row.lastError?.startsWith(UNKNOWN_HANDOFF_PREFIX)
+  ) {
+    const parsed = Date.parse(row.lastError.slice(BLOCKED_HANDOFF_PREFIX.length, BLOCKED_HANDOFF_PREFIX.length + 24));
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return row.createdAt.getTime();
+}
+
+/**
+ * Runs durable post-commit provider work. A handoff has one exclusive lease at
+ * a time; stale leases can be recovered, and a provider command must return an
+ * explicit DONE outcome before the handoff is finalized.
+ *
+ * Normal retryable/recovery work always gets the first seats in a sweep. Work
+ * blocked on a customer prerequisite or provider reconciliation only fills
+ * spare capacity. Deferred BLOCKED and UNKNOWN families are merged by their
+ * embedded retry timestamp so neither state prefix can starve the other.
+ *
+ * A recurring-billing RETRY that exhausted the normal attempt ceiling gets one
+ * more low-priority finalization opportunity only after reconciliation has
+ * linked a Stripe subscription to the agreement. The billing command then
+ * follows its local-only recovery path and cannot issue another subscription
+ * create, repairing the delivery-based billing anchor without provider hammering.
+ */
 async function runHandoffs(scope: { ids?: string[]; limit?: number }): Promise<{ done: number; failed: number }> {
-  const rows = await prisma.jobBillingHandoff.findMany({
-    where: { ...(scope.ids ? { id: { in: scope.ids } } : {}), status: { in: ["PENDING", "FAILED"] }, attempts: { lt: MAX_HANDOFF_ATTEMPTS } },
+  const staleBefore = new Date(Date.now() - PROVIDER_OPERATION_LEASE_MS);
+  const limit = scope.limit ?? 50;
+  const idScope = scope.ids ? { id: { in: scope.ids } } : {};
+
+  const priorityRows: HandoffQueueRow[] = await prisma.jobBillingHandoff.findMany({
+    where: {
+      ...idScope,
+      OR: [
+        { status: "PENDING", attempts: { lt: MAX_HANDOFF_ATTEMPTS } },
+        { status: "FAILED", attempts: { lt: MAX_HANDOFF_ATTEMPTS }, lastError: null },
+        {
+          status: "FAILED",
+          attempts: { lt: MAX_HANDOFF_ATTEMPTS },
+          lastError: { not: null },
+          NOT: [
+            { lastError: { startsWith: BLOCKED_HANDOFF_PREFIX } },
+            { lastError: { startsWith: UNKNOWN_HANDOFF_PREFIX } },
+          ],
+        },
+        // A stale lease is recovery work, not a fresh retry. It must remain
+        // reclaimable even when the dead worker had already claimed attempt 5.
+        { status: "IN_FLIGHT", claimedAt: { lte: staleBefore } },
+      ],
+    },
+    select: {
+      id: true,
+      kind: true,
+      subjectId: true,
+      status: true,
+      attempts: true,
+      claimedAt: true,
+      lastError: true,
+      createdAt: true,
+    },
     orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-    take: scope.limit ?? 50,
+    take: limit,
   });
+
+  const remaining = Math.max(0, limit - priorityRows.length);
+  let deferredRows: HandoffQueueRow[] = [];
+  if (remaining > 0) {
+    const deferredSelect = {
+      id: true,
+      kind: true,
+      subjectId: true,
+      status: true,
+      attempts: true,
+      claimedAt: true,
+      lastError: true,
+      createdAt: true,
+    } as const;
+    const [blockedRows, unknownRows, recoveredRetryRows] = await Promise.all([
+      prisma.jobBillingHandoff.findMany({
+        where: {
+          ...idScope,
+          status: "FAILED",
+          lastError: { startsWith: BLOCKED_HANDOFF_PREFIX },
+        },
+        select: deferredSelect,
+        orderBy: [{ lastError: "asc" }, { createdAt: "asc" }, { id: "asc" }],
+        take: remaining,
+      }),
+      prisma.jobBillingHandoff.findMany({
+        where: {
+          ...idScope,
+          status: "FAILED",
+          lastError: { startsWith: UNKNOWN_HANDOFF_PREFIX },
+        },
+        select: deferredSelect,
+        orderBy: [{ lastError: "asc" }, { createdAt: "asc" }, { id: "asc" }],
+        take: remaining,
+      }),
+      scope.ids
+        ? Promise.resolve([] as HandoffQueueRow[])
+        : prisma.$queryRaw<HandoffQueueRow[]>`
+            SELECT
+              h."id",
+              h."kind",
+              h."subjectId",
+              h."status",
+              h."attempts",
+              h."claimedAt",
+              h."lastError",
+              h."createdAt"
+            FROM "JobBillingHandoff" h
+            INNER JOIN "RentalAgreement" a ON a."id" = h."subjectId"
+            WHERE h."status" = 'FAILED'
+              AND h."kind" = 'START_RECURRING_BILLING'
+              AND h."attempts" >= ${MAX_HANDOFF_ATTEMPTS}
+              AND a."stripeSubscriptionId" IS NOT NULL
+            ORDER BY h."createdAt" ASC, h."id" ASC
+            LIMIT ${remaining}
+          `,
+    ]);
+
+    const byId = new Map<string, HandoffQueueRow>();
+    for (const row of [...blockedRows, ...unknownRows, ...recoveredRetryRows]) byId.set(row.id, row);
+    deferredRows = [...byId.values()]
+      .sort((a, b) => {
+        const time = deferredHandoffTime(a) - deferredHandoffTime(b);
+        if (time !== 0) return time;
+        const created = a.createdAt.getTime() - b.createdAt.getTime();
+        if (created !== 0) return created;
+        return a.id.localeCompare(b.id);
+      })
+      .slice(0, remaining);
+  }
+  const rows = [...priorityRows, ...deferredRows];
+
   let done = 0;
   let failed = 0;
   for (const row of rows) {
-    // Claim by attempt count so two sweeps do not run the same row twice at once.
+    const claimedAt = new Date();
     const claim = await prisma.jobBillingHandoff.updateMany({
-      where: { id: row.id, status: { in: ["PENDING", "FAILED"] }, attempts: row.attempts },
-      data: { attempts: { increment: 1 } },
+      where: {
+        id: row.id,
+        attempts: row.attempts,
+        status: row.status,
+        ...(row.status === "IN_FLIGHT" ? { claimedAt: { lte: staleBefore } } : {}),
+        ...(row.status === "FAILED" ? { lastError: row.lastError } : {}),
+      },
+      data: {
+        status: "IN_FLIGHT",
+        claimedAt,
+        attempts: { increment: 1 },
+        doneAt: null,
+        lastError: null,
+      },
     });
     if (claim.count !== 1) continue;
+    const expectedAttempts = row.attempts + 1;
     try {
-      if (row.kind === "START_RECURRING_BILLING") await startRecurringBillingForAgreement(row.subjectId);
-      else await pushLateDeliveryCreditToStripe(row.subjectId);
-      // Never let a slower worker undo a finished one: the provider operations are idempotent, so a rare double run is harmless, but the record must stay DONE.
-      await prisma.jobBillingHandoff.updateMany({ where: { id: row.id, status: { not: "DONE" } }, data: { status: "DONE", doneAt: new Date(), lastError: null } });
-      done += 1;
+      const work =
+        row.kind === "START_RECURRING_BILLING"
+          ? await startRecurringBillingForAgreement(row.subjectId)
+          : await pushLateDeliveryCreditForHandoff(row.subjectId);
+      if (work.state === "DONE") {
+        const finalized = await prisma.jobBillingHandoff.updateMany({
+          where: { id: row.id, status: "IN_FLIGHT", attempts: expectedAttempts },
+          data: { status: "DONE", claimedAt: null, doneAt: new Date(), lastError: null },
+        });
+        if (finalized.count === 1) done += 1;
+        continue;
+      }
+
+      const deferred = work.state === "BLOCKED" || work.state === "UNKNOWN";
+      const detail = deferred
+        ? `${work.state}:${new Date().toISOString()}: ${work.detail}`.slice(0, 500)
+        : `${work.state}: ${work.detail}`.slice(0, 500);
+      const released = await prisma.jobBillingHandoff.updateMany({
+        where: { id: row.id, status: "IN_FLIGHT", attempts: expectedAttempts },
+        data: {
+          status: "FAILED",
+          claimedAt: null,
+          doneAt: null,
+          lastError: detail,
+          ...(deferred ? { attempts: { decrement: 1 } } : {}),
+        },
+      });
+      if (released.count === 1) failed += 1;
     } catch (error) {
-      failed += 1;
       const message = error instanceof Error ? error.message.slice(0, 500) : "Unknown error";
-      await prisma.jobBillingHandoff.updateMany({ where: { id: row.id, status: { not: "DONE" } }, data: { status: "FAILED", lastError: message } });
+      const released = await prisma.jobBillingHandoff.updateMany({
+        where: { id: row.id, status: "IN_FLIGHT", attempts: expectedAttempts },
+        data: { status: "FAILED", claimedAt: null, doneAt: null, lastError: message },
+      });
+      if (released.count === 1) failed += 1;
       console.error(`Job billing handoff ${row.id} (${row.kind}) failed:`, error);
     }
   }
   return { done, failed };
 }
 
-/** Nightly sweep: finish handoffs that are still pending or failed (fewer than 5 attempts). */
+/** Nightly sweep: finish handoffs that are still pending, failed, or abandoned in flight. */
 export async function runPendingHandoffs(limit = 50): Promise<{ done: number; failed: number }> {
   return runHandoffs({ limit });
 }

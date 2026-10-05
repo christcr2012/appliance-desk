@@ -101,6 +101,7 @@ describe.skipIf(!enabled)("subscription start and renewal against disposable Pos
   const addressId = `subren-address-${tag}`;
   const stripeCustomerId = `cus_sim_${tag}`;
   const paymentMethodId = `pm_sim_${tag}`;
+  const deliveredOn = new Date("2026-10-01T06:00:00Z");
   const agreementIds: string[] = [];
   const opKeys: string[] = [];
 
@@ -113,6 +114,7 @@ describe.skipIf(!enabled)("subscription start and renewal against disposable Pos
         termMonths: null,
         startDate: new Date("2026-10-08T19:00:00Z"),
         nextBillingDate: new Date("2026-11-08T19:00:00Z"),
+        firstDeliveredOn: deliveredOn,
         depositCents: 0,
         damageWaiverCents: 0,
         taxRateMilliPercent: 0,
@@ -186,8 +188,11 @@ describe.skipIf(!enabled)("subscription start and renewal against disposable Pos
       expect(params).toMatchObject({
         customer: stripeCustomerId,
         default_payment_method: paymentMethodId,
-        metadata: { agreementId: agreement.id },
+        metadata: { agreementId: agreement.id, firstDeliveredOn: deliveredOn.toISOString() },
       });
+      expect(params).not.toHaveProperty("backdate_start_date");
+      expect(params).not.toHaveProperty("billing_cycle_anchor");
+      expect(params).not.toHaveProperty("billing_cycle_anchor_config");
       const items = params.items as Array<{ price_data: { unit_amount: number; currency: string } }>;
       expect(items).toHaveLength(1);
       expect(items[0]!.price_data).toMatchObject({ unit_amount: 4000, currency: "usd" });
@@ -196,7 +201,7 @@ describe.skipIf(!enabled)("subscription start and renewal against disposable Pos
       const createdId = [...stripeSim.state.subscriptionsByKey.values()][0]!.id;
       const saved = await prisma.rentalAgreement.findUniqueOrThrow({ where: { id: agreement.id } });
       expect(saved.stripeSubscriptionId).toBe(createdId);
-      expect(saved.billingStartedAt).not.toBeNull();
+      expect(saved.billingStartedAt?.getTime()).toBe(deliveredOn.getTime());
       expect(saved.billingBlockedReason).toBeNull();
 
       const ops = await prisma.providerOperation.findMany({
@@ -269,6 +274,7 @@ describe.skipIf(!enabled)("subscription start and renewal against disposable Pos
 
       saved = await prisma.rentalAgreement.findUniqueOrThrow({ where: { id: agreement.id } });
       expect(saved.stripeSubscriptionId).toBe(stripeSideId);
+      expect(saved.billingStartedAt?.getTime()).toBe(deliveredOn.getTime());
       expect(saved.billingBlockedReason).toBeNull();
       op = await prisma.providerOperation.findUniqueOrThrow({ where: { idempotencyKey: key } });
       expect(op).toMatchObject({ status: "SUCCEEDED", attempts: 2, providerObjectId: stripeSideId });
@@ -289,7 +295,7 @@ describe.skipIf(!enabled)("subscription start and renewal against disposable Pos
         damageWaiverCents: 300,
         taxRateMilliPercent: 7300,
         stripeSubscriptionId: `sub_sim_existing_${tag}`,
-        billingStartedAt: new Date("2026-10-08T19:00:00Z"),
+        billingStartedAt: deliveredOn,
       });
       await prisma.deposit.create({ data: { agreementId: old.id, amountCents: 5000 } });
 

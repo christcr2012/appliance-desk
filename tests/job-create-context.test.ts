@@ -2,6 +2,7 @@ import { beforeEach, expect, it, vi } from "vitest";
 const m = vi.hoisted(() => ({
   address: vi.fn(),
   agreement: vi.fn(),
+  successorAgreement: vi.fn(),
   request: vi.fn(),
   create: vi.fn(),
   audit: vi.fn(),
@@ -12,10 +13,10 @@ const m = vi.hoisted(() => ({
 // validates the customer links and writes the job and audit entry.
 function makeTx() {
   return {
-    $queryRaw: async () => [],
+    $queryRaw: async () => [{ id: "g1" }],
     user: { findUnique: m.actor },
     serviceAddress: { findUnique: m.address },
-    rentalAgreement: { findUnique: m.agreement },
+    rentalAgreement: { findUnique: m.agreement, findMany: m.successorAgreement },
     maintenanceRequest: { findUnique: m.request },
     job: { create: m.create },
     auditLog: { create: m.audit },
@@ -31,6 +32,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   m.address.mockResolvedValue({ customerId: "c1" });
   m.agreement.mockResolvedValue({ customerId: "c1", serviceAddressId: "a1" });
+  m.successorAgreement.mockResolvedValue([]);
   m.request.mockResolvedValue({ customerId: "c1" });
   m.create.mockResolvedValue({ id: "j1" });
   m.actor.mockResolvedValue({ id: "owner", role: "OWNER", archivedAt: null });

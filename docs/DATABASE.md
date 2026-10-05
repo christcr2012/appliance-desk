@@ -85,10 +85,18 @@ in UTC and only converted to Mountain Time for display.
   change or delete of an inspection. A correction is a dated amendment row.
   `BusinessSettings.staffMayWorkUnassignedJobs` (default on) is the owner's
   choice about staff and unassigned jobs.
-- **JobBillingHandoff** (Batch C, 2026-10-04) — provider work that must happen
-  after a job's completion is saved (start the monthly Stripe billing, send a
-  credit to Stripe). Written in the same transaction as the completion; a
-  nightly sweep finishes any that did not complete (`PENDING`/`FAILED`, under 5 attempts).
+- **JobBillingHandoff** (Batch C + Remediation R1, 2026-10-04) — durable provider
+  work written in the same transaction as job completion (start recurring
+  Stripe billing or push a credit). A worker must first claim the row by moving
+  it to `IN_FLIGHT` with `claimedAt`; only that lease owner may finalize it.
+  Normal `PENDING`/retryable `FAILED` work gets up to five fresh attempts, but
+  that ceiling is not a dead-letter rule: stale `IN_FLIGHT` leases are always
+  recoverable, `BLOCKED`/`UNKNOWN` prerequisite or reconciliation waits use
+  spare-capacity deferred rotation without consuming retry budget, and exhausted
+  recurring-billing/credit handoffs may still finalize after a matching
+  `ProviderOperation` proves the external Stripe write succeeded. `DONE` means
+  both the provider/local reconciliation work and the durable handoff are
+  finalized; no provider success is inferred merely because a function returned.
 - **JobAppliance** also records the completion result (`result`, one per
   appliance), the swap role, and `reservationActive` (a staged swap owns the
   unit's reserved status; one per appliance). `Job.outcome` is COMPLETE or
@@ -150,6 +158,19 @@ in UTC and only converted to Mountain Time for display.
   "Sales tax" note for why. Batch B adds nullable renewal/auto-renew and
   early-termination snapshot fields; null means the owner policy has not
   been configured and the corresponding customer action must stay off.
+  Remediation R1 adds nullable `firstDeliveredOn`: the durable Colorado
+  business-date fact for the first completed delivery/installation visit where
+  at least one rental item was actually delivered. It is written once and is
+  the source for local agreement term dates and is recorded in Stripe metadata,
+  so a later provider retry or reconciliation cannot move the local delivery
+  fact. Remediation R1 deliberately does **not** backdate or re-anchor Stripe's
+  recurring subscription calendar; delayed provider creation retains the
+  pre-remediation charging behavior until a separately approved billing-calendar
+  design proves amount/date equivalence. A zero-delivery visit leaves
+  `firstDeliveredOn` null. Migration `20261004070000_remediation_r1_billing_lineage`
+  backfills historical already-billed agreements from their existing
+  `billingStartedAt` as the best-known approximation; agreements that never
+  billed deliberately remain null rather than inventing a delivery date.
 - **RentalLine** — one priced line on that agreement (e.g. "Washer/Dryer
   set @ $60/mo").
 - **ApplianceAssignment** — which physical `Appliance` fulfills a given
