@@ -135,15 +135,28 @@ describe.skipIf(!enabled)("provider message events (real Postgres)", () => {
     expect((await prisma.customerNotice.findUniqueOrThrow({ where: { id: notice.id } })).status).toBe("UNCERTAIN");
   });
 
-  it("STOP changes consent, writes evidence and suppresses SMS in one durable operation", async () => {
+  it("STOP matches a legacy formatted phone, changes consent, writes evidence and suppresses canonical SMS", async () => {
+    const ten = phone.slice(2);
+    const formatted = `(${ten.slice(0, 3)}) ${ten.slice(3, 6)}-${ten.slice(6)}`;
+    await prisma.customer.update({
+      where: { id: customerId },
+      data: { phone: formatted, smsOptInAt: new Date() },
+    });
+
     const result = await processVerifiedTwilioStop({
       eventId: `stop-${tag}`,
       from: phone,
       keyword: "STOP",
     });
     expect(result.customerId).toBe(customerId);
-    expect((await prisma.customer.findUniqueOrThrow({ where: { id: customerId } })).smsOptInAt).toBeNull();
-    expect(await prisma.consentRecord.count({ where: { customerId, kind: "sms_opt_out" } })).toBe(1);
+    const customer = await prisma.customer.findUniqueOrThrow({ where: { id: customerId } });
+    expect(customer.phone).toBe(formatted);
+    expect(customer.smsOptInAt).toBeNull();
+    const consent = await prisma.consentRecord.findFirstOrThrow({
+      where: { customerId, kind: "sms_opt_out" },
+      orderBy: { createdAt: "desc" },
+    });
+    expect(consent.details).toMatchObject({ source: "twilio_stop", phone });
     expect(await prisma.marketingSuppression.findUnique({
       where: { channel_address: { channel: "SMS", address: phone } },
     })).toMatchObject({ reason: "stop" });
