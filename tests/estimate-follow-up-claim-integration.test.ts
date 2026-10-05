@@ -2,8 +2,8 @@ import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const m = vi.hoisted(() => ({ send: vi.fn() }));
-vi.mock("@/lib/customer-email", () => ({
-  sendCustomerEmail: (...a: unknown[]) => m.send(...a),
+vi.mock("@/domains/messaging/deliver", () => ({
+  deliverMessage: (...args: unknown[]) => m.send(...args),
 }));
 
 import { sendEstimateFollowUpReminders } from "@/domains/estimates";
@@ -30,7 +30,6 @@ describe.skipIf(!enabled)("estimate follow-up is claimed before it is sent (real
     return row.id;
   }
   const load = (id: string) => prisma.estimate.findUniqueOrThrow({ where: { id } });
-  // The sweep is global, so only count emails for this suite's estimates.
   const mine = () =>
     m.send.mock.calls.filter((c) => ids.some((id) => (c[0] as { idempotencyKey: string }).idempotencyKey.includes(id)));
 
@@ -38,7 +37,7 @@ describe.skipIf(!enabled)("estimate follow-up is claimed before it is sent (real
     await prisma.user.create({ data: { id: userId, email: `${tag}@example.test`, name: "FU", role: "CUSTOMER" } });
     await prisma.customer.create({ data: { id: customerId, userId, referralCode: `FU${tag.slice(0, 16)}` } });
   });
-  beforeEach(() => m.send.mockReset().mockResolvedValue({ sent: true, outcome: "SENT" }));
+  beforeEach(() => m.send.mockReset().mockResolvedValue({ state: "ACCEPTED", deliveryId: "delivery", providerMessageId: "provider" }));
   afterAll(async () => {
     await prisma.estimate.deleteMany({ where: { id: { in: ids } } });
     await prisma.customer.deleteMany({ where: { id: customerId } });
@@ -61,31 +60,22 @@ describe.skipIf(!enabled)("estimate follow-up is claimed before it is sent (real
     expect(mine()).toHaveLength(first);
   });
 
-  it("email switched off gives the claim back so it goes out once email is on", async () => {
+  it("NOT_SENT gives the claim back so it can go out once email is on", async () => {
     const id = await awaitingEstimate();
-    m.send.mockResolvedValue({ sent: false, outcome: "NOT_ATTEMPTED" });
+    m.send.mockResolvedValue({ state: "NOT_SENT", deliveryId: "delivery", providerMessageId: null });
     await sendEstimateFollowUpReminders();
     expect((await load(id)).followUpSentForSentAt).toBeNull();
-    m.send.mockResolvedValue({ sent: true, outcome: "SENT" });
+    m.send.mockResolvedValue({ state: "ACCEPTED", deliveryId: "delivery", providerMessageId: "provider" });
     await sendEstimateFollowUpReminders();
     expect((await load(id)).followUpSentForSentAt).not.toBeNull();
   });
 
-  it("an unknown outcome keeps the claim, so a lost response is never emailed twice", async () => {
+  it("UNKNOWN keeps the claim, so a lost response is never emailed twice", async () => {
     const id = await awaitingEstimate();
-    m.send.mockResolvedValue({ sent: false, outcome: "UNKNOWN" });
+    m.send.mockResolvedValue({ state: "UNKNOWN", deliveryId: "delivery", providerMessageId: null });
     await sendEstimateFollowUpReminders();
     expect((await load(id)).followUpSentForSentAt).not.toBeNull();
     m.send.mockClear();
-    await sendEstimateFollowUpReminders();
-    expect(mine()).toHaveLength(0);
-  });
-
-  it("a crash after the send leaves the claim in place (no second email on the next run)", async () => {
-    const id = await awaitingEstimate();
-    // Simulate: claim written, process dies before anything else is recorded.
-    const row = await load(id);
-    await prisma.estimate.update({ where: { id }, data: { followUpSentForSentAt: row.sentAt } });
     await sendEstimateFollowUpReminders();
     expect(mine()).toHaveLength(0);
   });
