@@ -105,7 +105,7 @@ describe.skipIf(!enabled)("Batch D privacy requests (real Postgres)", () => {
     expect(JSON.stringify(json)).not.toContain(`111 A ${tag}`);
   });
 
-  it("pseudonymizes personal data, deletes private bytes, revokes sessions, and retains evidence", async () => {
+  it("recovers from Blob failure, then pseudonymizes personal data and retains evidence", async () => {
     blobDelete.mockClear();
     const before = {
       invoice: await prisma.invoice.count({ where: { customerId: customerA } }),
@@ -116,15 +116,25 @@ describe.skipIf(!enabled)("Batch D privacy requests (real Postgres)", () => {
       notice: await prisma.customerNotice.count({ where: { customerId: customerA } }),
       audit: await prisma.auditLog.count({ where: { entityId: customerA } }),
     };
+
+    blobDelete.mockRejectedValueOnce(new Error("private blob unavailable"));
+    await expect(fulfillPrivacyDeletion(ownerId, deletionRequest, "DELETE")).rejects.toThrow(/blob unavailable/i);
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: userA } })).email).toBe(`${tag}-a@example.test`);
+    expect(await prisma.photo.count({ where: { maintenanceRequestId: maintenanceA } })).toBe(1);
+    expect(await prisma.session.count({ where: { userId: userA } })).toBe(0);
+    expect(await prisma.privacyRequest.findUniqueOrThrow({ where: { id: deletionRequest } })).toMatchObject({
+      status: "VERIFIED",
+      fulfilledByUserId: ownerId,
+    });
+
     const result = await fulfillPrivacyDeletion(ownerId, deletionRequest, "DELETE");
     expect(result.retained).toContain("Invoice");
-    expect(blobDelete).toHaveBeenCalledWith([privatePhotoUrl], { token: "private-test-token" });
+    expect(blobDelete).toHaveBeenLastCalledWith([privatePhotoUrl], { token: "private-test-token" });
     expect((await prisma.user.findUniqueOrThrow({ where: { id: userA } })).email).toBe(`deleted-${userA}@invalid`);
     expect((await prisma.customer.findUniqueOrThrow({ where: { id: customerA } })).phone).toBeNull();
     expect((await prisma.serviceAddress.findUniqueOrThrow({ where: { id: addressA } })).line1).toBe("Deleted address");
     expect((await prisma.customerContact.findFirstOrThrow({ where: { customerId: customerA } })).name).toBe("Deleted customer");
     expect((await prisma.lead.findFirstOrThrow({ where: { convertedCustomerId: customerA } })).contactName).toBe("Deleted customer");
-    expect(await prisma.session.count({ where: { userId: userA } })).toBe(0);
     expect(await prisma.photo.count({ where: { maintenanceRequestId: maintenanceA } })).toBe(0);
     expect(await prisma.invoice.count({ where: { customerId: customerA } })).toBe(before.invoice);
     expect(await prisma.payment.count({ where: { invoice: { customerId: customerA } } })).toBe(before.payment);
@@ -134,7 +144,7 @@ describe.skipIf(!enabled)("Batch D privacy requests (real Postgres)", () => {
     expect(await prisma.customerNotice.count({ where: { customerId: customerA } })).toBe(before.notice);
     expect(await prisma.auditLog.count({ where: { entityId: customerA } })).toBe(before.audit);
     await expect(fulfillPrivacyDeletion(ownerId, deletionRequest, "DELETE")).resolves.toEqual(result);
-    expect(blobDelete).toHaveBeenCalledTimes(1);
+    expect(blobDelete).toHaveBeenCalledTimes(2);
   });
 
   it("refuses expired and reused verification tokens", async () => {
