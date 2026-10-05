@@ -412,7 +412,7 @@ describe("portal views and actions (WU-D8)", () => {
   it("rentals view holds only the customer's own agreements, with exactly the whitelisted keys and no staff text", async () => {
     const job = await prisma.job.create({
       data: {
-        type: "MAINTENANCE", status: "SCHEDULED", scheduledAt: new Date(Date.now() + 86_400_000),
+        type: "MAINTENANCE_VISIT", status: "SCHEDULED", scheduledAt: new Date(Date.now() + 86_400_000),
         customerId: customerA.customerId, agreementId: customerA.agreementId,
         notes: "STAFF-ONLY-NOTE", completionNotes: "STAFF-ONLY-COMPLETION",
       },
@@ -424,7 +424,7 @@ describe("portal views and actions (WU-D8)", () => {
       expect(b?.agreements.map((x) => x.id)).toEqual([customerB.agreementId]);
       expect(Object.keys(a!.agreements[0]!).sort()).toEqual([...PORTAL_AGREEMENT_KEYS].sort());
       expect(Object.keys(a!.jobs[0]!).sort()).toEqual([...PORTAL_JOB_KEYS].sort());
-      expect(a!.agreements[0]!.nextVisit?.type).toBe("MAINTENANCE");
+      expect(a!.agreements[0]!.nextVisit?.type).toBe("MAINTENANCE_VISIT");
       expect(JSON.stringify(a)).not.toContain("STAFF-ONLY");
       expect(b!.jobs).toEqual([]);
     } finally {
