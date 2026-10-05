@@ -47,7 +47,7 @@ export default async function AgreementDetailPage({
     <div className="max-w-3xl">
       <Link
         href="/desk/agreements"
-        className="text-sm text-gray-600 hover:underline"
+        className="text-sm text-ink-soft hover:underline"
       >
         &larr; Back to agreements
       </Link>
@@ -61,7 +61,7 @@ export default async function AgreementDetailPage({
           {agreement.customer.user.name ?? agreement.customer.user.email}
         </Link>
       </h1>
-      <p className="mt-1 text-sm text-gray-600">
+      <p className="mt-1 text-sm text-ink-soft">
         {agreement.serviceAddress.line1}, {agreement.serviceAddress.city},{" "}
         {agreement.serviceAddress.state} {agreement.serviceAddress.zip}
       </p>
@@ -88,7 +88,7 @@ export default async function AgreementDetailPage({
         />
       </div>
       {agreement.status === "ACTIVE" && (
-        <p className="mt-6 text-sm text-gray-700">
+        <p className="mt-6 text-sm text-ink-soft">
           Did all of the equipment come back early?{" "}
           <Link href={`/desk/agreements/${agreement.id}/early-return`} className="font-medium text-primary underline">
             Choose what happens to billing, refunds and fees

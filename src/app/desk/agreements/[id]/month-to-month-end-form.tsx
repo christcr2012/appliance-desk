@@ -9,16 +9,16 @@ export function MonthToMonthEndForm(props: {
   earlierOptions: Date[];
 }) {
   return (
-    <form action={endMonthToMonthForCustomerAction} className="mt-6 rounded-lg border border-gray-200 bg-white p-5">
-      <h2 className="font-medium text-gray-900">End this month-to-month rental</h2>
-      <p className="mt-1 text-sm text-gray-700">
+    <form action={endMonthToMonthForCustomerAction} className="mt-6 rounded-lg border border-line bg-white p-5">
+      <h2 className="font-medium text-ink">End this month-to-month rental</h2>
+      <p className="mt-1 text-sm text-ink-soft">
         There is no fee. With {props.noticeDays} days&apos; notice the rental ends on {formatBusinessDate(props.effectiveOn)}, the
         next billing date after that. The nightly job ends it on that day and billing stops with it.
       </p>
       <input type="hidden" name="agreementId" value={props.agreementId} />
       {props.earlierOptions.length > 0 && (
         <div className="mt-3">
-          <label htmlFor="earlierEffectiveOn" className="block text-sm font-medium text-gray-900">
+          <label htmlFor="earlierEffectiveOn" className="block text-sm font-medium text-ink">
             End earlier (optional)
           </label>
           <select id="earlierEffectiveOn" name="earlierEffectiveOn" defaultValue="" className="mt-1 min-h-11 rounded-lg border border-control px-3">
@@ -29,7 +29,7 @@ export function MonthToMonthEndForm(props: {
               </option>
             ))}
           </select>
-          <label htmlFor="reason" className="mt-3 block text-sm font-medium text-gray-900">
+          <label htmlFor="reason" className="mt-3 block text-sm font-medium text-ink">
             Reason for ending earlier (required if you pick a date above)
           </label>
           <input id="reason" name="reason" maxLength={500} className="mt-1 min-h-11 w-full rounded-lg border border-control px-3" />
