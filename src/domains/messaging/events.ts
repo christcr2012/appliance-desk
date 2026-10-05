@@ -1,6 +1,10 @@
 import type { MessageState, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { normalizeMessageAddress, upsertMarketingSuppressionInTx } from "./suppression";
+import {
+  normalizeMessageAddress,
+  smsAddressAliases,
+  upsertMarketingSuppressionInTx,
+} from "./suppression";
 
 type ResendEvent = {
   type: string;
@@ -232,6 +236,7 @@ export async function processVerifiedTwilioStop(
   input: TwilioStopEvent,
 ): Promise<{ duplicate: boolean; customerId: string | null }> {
   const address = normalizeMessageAddress("SMS", input.from);
+  const aliases = smsAddressAliases(input.from);
   return prisma.$transaction(async (tx) => {
     const inserted = await recordProviderEvent(tx, {
       provider: "twilio",
@@ -241,8 +246,10 @@ export async function processVerifiedTwilioStop(
     });
     if (!inserted) return { duplicate: true, customerId: null };
 
+    // New opt-ins are stored as E.164. Aliases keep STOP effective for customers
+    // who opted in before E4 while their phone was stored in a human-formatted form.
     const customer = await tx.customer.findFirst({
-      where: { phone: address },
+      where: { phone: { in: aliases } },
       select: { id: true },
     });
 
@@ -262,7 +269,7 @@ export async function processVerifiedTwilioStop(
         data: {
           customerId: customer.id,
           kind: "sms_opt_out",
-          details: { source: "twilio_stop", eventId: input.eventId },
+          details: { source: "twilio_stop", eventId: input.eventId, phone: address },
         },
       });
     }
