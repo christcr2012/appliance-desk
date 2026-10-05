@@ -367,6 +367,60 @@ describe.skipIf(!enabled)("refund decisions in disposable Postgres", () => {
     ).toBe("re_estimate_deposit");
   });
 
+  // R07: older rows were saved as "SUCCEEDED", newer ones as "succeeded". Money
+  // behavior must be identical for both spellings.
+  it.each(["succeeded", "SUCCEEDED"])(
+    "refunds an invoice paid by a %s Stripe payment through that payment's charge",
+    async (status) => {
+      const fixture = await createFixture("STRIPE");
+      await prisma.payment.updateMany({
+        where: { invoiceId: fixture.invoiceId },
+        data: { status },
+      });
+      const receipt = await prisma.receipt.findUniqueOrThrow({
+        where: { id: fixture.receiptId },
+      });
+
+      await issueInvoiceRefund(ownerId, {
+        invoiceId: fixture.invoiceId,
+        amountCents: 2_500,
+        reason: "GOODWILL",
+        notes: "Paired status spelling check",
+      });
+
+      expect(mocks.refundCreate).toHaveBeenCalledTimes(1);
+      expect(mocks.refundCreate).toHaveBeenCalledWith(
+        expect.objectContaining({ charge: receipt.stripeChargeId, amount: 2_500 }),
+        expect.any(Object),
+      );
+    },
+  );
+
+  it.each(["succeeded", "SUCCEEDED"])(
+    "refunds a deposit funded by a %s Stripe payment through the original charge",
+    async (status) => {
+      const fixture = await createFixture("STRIPE");
+      await prisma.payment.updateMany({
+        where: { invoiceId: fixture.invoiceId },
+        data: { status },
+      });
+      const receipt = await prisma.receipt.findUniqueOrThrow({
+        where: { id: fixture.receiptId },
+      });
+
+      await decideDepositRefund(ownerId, {
+        depositId: fixture.depositId,
+        refundCents: 5_000,
+      });
+
+      expect(mocks.refundCreate).toHaveBeenCalledTimes(1);
+      expect(mocks.refundCreate).toHaveBeenCalledWith(
+        expect.objectContaining({ charge: receipt.stripeChargeId, amount: 5_000 }),
+        expect.any(Object),
+      );
+    },
+  );
+
   it("turns an invoice refund into exactly one local credit when requested", async () => {
     const fixture = await createFixture();
 
