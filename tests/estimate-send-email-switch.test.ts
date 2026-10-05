@@ -5,6 +5,11 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const estimateFindUniqueOrThrow = vi.fn();
 const transaction = vi.fn();
+const tx = {
+  $queryRaw: vi.fn(),
+  estimate: { findUniqueOrThrow: (...a: unknown[]) => estimateFindUniqueOrThrow(...a), update: vi.fn() },
+  auditLog: { create: vi.fn() },
+};
 const sendEmail = vi.fn();
 
 vi.mock("@/lib/prisma", () => ({
@@ -26,7 +31,8 @@ import { sendEstimate } from "@/domains/estimates";
 
 describe("sendEstimate and the customer email switch", () => {
   beforeEach(() => {
-    transaction.mockReset().mockResolvedValue([]);
+    tx.$queryRaw.mockReset().mockResolvedValue([{ id: "est-1" }]);
+    transaction.mockReset().mockImplementation(async (fn: (t: typeof tx) => unknown) => fn(tx));
     sendEmail.mockReset();
     estimateFindUniqueOrThrow.mockReset().mockResolvedValue({
       id: "est-1",
