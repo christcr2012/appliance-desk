@@ -1,10 +1,10 @@
 import { Resend } from "resend";
-import type { MessageChannel, MessageState } from "@prisma/client";
+import type { MessageState } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { isNonProductionDeployment } from "@/lib/deployment-safety";
 import { sendEmail } from "@/lib/email";
-import { sendCustomerEmail } from "@/lib/customer-email";
 import { getSmsProviderState, sendSms } from "@/lib/sms";
+import { isCustomerEmailEnabled } from "@/domains/settings/customer-email-switch";
 import {
   getMarketingSuppression,
   normalizeMessageAddress,
@@ -71,15 +71,10 @@ async function claimDelivery(input: DeliverMessageInput) {
       where: { idempotencyKey: input.idempotencyKey },
     });
     if (!existing) throw cause;
-    if (existing.state !== "FAILED" && existing.state !== "NOT_SENT") {
-      return existing;
-    }
+    if (existing.state !== "FAILED" && existing.state !== "NOT_SENT") return existing;
 
     const reclaimed = await prisma.messageDelivery.updateMany({
-      where: {
-        id: existing.id,
-        state: { in: ["FAILED", "NOT_SENT"] },
-      },
+      where: { id: existing.id, state: { in: ["FAILED", "NOT_SENT"] } },
       data: {
         state: "PENDING",
         attempts: { increment: 1 },
@@ -115,21 +110,15 @@ async function finish(
 
 function mapOutcome(result: LowLevelResult): Exclude<MessageState, "PENDING" | "DELIVERED" | "BOUNCED" | "COMPLAINED" | "SUPPRESSED"> {
   switch (result.outcome) {
-    case "SENT":
-      return "ACCEPTED";
-    case "REJECTED":
-      return "FAILED";
-    case "NOT_ATTEMPTED":
-      return "NOT_SENT";
+    case "SENT": return "ACCEPTED";
+    case "REJECTED": return "FAILED";
+    case "NOT_ATTEMPTED": return "NOT_SENT";
     case "UNKNOWN":
-    default:
-      return result.sent ? "ACCEPTED" : "UNKNOWN";
+    default: return result.sent ? "ACCEPTED" : "UNKNOWN";
   }
 }
 
-export async function deliverMessage(
-  input: DeliverMessageInput,
-): Promise<DeliverMessageResult> {
+export async function deliverMessage(input: DeliverMessageInput): Promise<DeliverMessageResult> {
   if (!input.idempotencyKey.trim()) throw new Error("A message idempotency key is required.");
   if (!input.recipient.address.trim()) throw new Error("A message recipient is required.");
 
@@ -138,22 +127,17 @@ export async function deliverMessage(
 
   const suppression = await getMarketingSuppression(input.channel, input.recipient.address);
   if (input.purpose === "MARKETING" && suppression) {
-    return asResult(
-      await finish(delivery.id, "SUPPRESSED", {
-        lastError: `suppressed: ${suppression.reason}`,
-      }),
-    );
+    return asResult(await finish(delivery.id, "SUPPRESSED", { lastError: `suppressed: ${suppression.reason}` }));
   }
   if (input.channel === "EMAIL" && input.purpose === "TRANSACTIONAL" && suppression?.reason === "bounce") {
-    return asResult(
-      await finish(delivery.id, "FAILED", { lastError: "hard bounce on file" }),
-    );
+    return asResult(await finish(delivery.id, "FAILED", { lastError: "hard bounce on file" }));
   }
 
   if (isNonProductionDeployment()) {
-    return asResult(
-      await finish(delivery.id, "NOT_SENT", { lastError: "previews never send" }),
-    );
+    return asResult(await finish(delivery.id, "NOT_SENT", { lastError: "previews never send" }));
+  }
+  if (input.channel === "EMAIL" && input.customerFacing && !(await isCustomerEmailEnabled())) {
+    return asResult(await finish(delivery.id, "NOT_SENT", { lastError: "customer email switch is off" }));
   }
 
   const rendered = input.render();
@@ -165,8 +149,7 @@ export async function deliverMessage(
         idempotencyKey: input.idempotencyKey,
       });
     }
-    const sender = input.customerFacing ? sendCustomerEmail : sendEmail;
-    return sender({
+    return sendEmail({
       to: input.recipient.address,
       subject: rendered.subject ?? "",
       text: rendered.text,
@@ -222,30 +205,22 @@ async function getEmailProviderState(messageId: string): Promise<ReconciledState
     switch (lastEvent) {
       case "delivered":
       case "opened":
-      case "clicked":
-        return "DELIVERED";
-      case "bounced":
-        return "BOUNCED";
-      case "complained":
-        return "COMPLAINED";
+      case "clicked": return "DELIVERED";
+      case "bounced": return "BOUNCED";
+      case "complained": return "COMPLAINED";
       case "failed":
-      case "suppressed":
-        return "FAILED";
+      case "suppressed": return "FAILED";
       case "sent":
       case "delivery_delayed":
-      case "scheduled":
-        return "ACCEPTED";
-      default:
-        return "UNKNOWN";
+      case "scheduled": return "ACCEPTED";
+      default: return "UNKNOWN";
     }
   } catch {
     return "UNKNOWN";
   }
 }
 
-export async function reconcileUnknownDeliveries(
-  limit = 50,
-): Promise<{ resolved: number }> {
+export async function reconcileUnknownDeliveries(limit = 50): Promise<{ resolved: number }> {
   const rows = await prisma.messageDelivery.findMany({
     where: { state: "UNKNOWN", providerMessageId: { not: null } },
     orderBy: [{ requestedAt: "asc" }, { id: "asc" }],
