@@ -23,8 +23,15 @@ const getBusinessSettings = vi.fn();
 
 function makeTx() {
   return {
-    appliance: { updateMany: (...args: unknown[]) => applianceUpdateMany(...args) },
+    // The commands now check the acting team member and lock the appliance inside the transaction (R13).
+    $queryRaw: vi.fn().mockResolvedValue([]),
+    user: { findUnique: vi.fn().mockResolvedValue({ id: "user-1", role: "OWNER", archivedAt: null }) },
+    appliance: {
+      updateMany: (...args: unknown[]) => applianceUpdateMany(...args),
+      findUniqueOrThrow: (...args: unknown[]) => applianceFindUniqueOrThrow(...args),
+    },
     applianceAssignment: {
+      findFirst: (...args: unknown[]) => applianceAssignmentFindFirst(...args),
       updateMany: (...args: unknown[]) => applianceAssignmentUpdateMany(...args),
       create: (...args: unknown[]) => applianceAssignmentCreate(...args),
     },

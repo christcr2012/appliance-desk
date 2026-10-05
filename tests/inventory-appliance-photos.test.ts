@@ -8,11 +8,17 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 const photoCreate = vi.fn();
 const auditLogCreate = vi.fn();
 
+// The command now runs in one transaction: it re-checks the acting team member, locks the
+// appliance row, then writes the photo and the audit entry together (R13).
+const tx = {
+  $queryRaw: vi.fn().mockResolvedValue([]),
+  user: { findUnique: vi.fn().mockResolvedValue({ id: "user-1", role: "OWNER", archivedAt: null }) },
+  appliance: { findUniqueOrThrow: vi.fn().mockResolvedValue({ id: "app-1" }) },
+  photo: { create: (...args: unknown[]) => photoCreate(...args) },
+  auditLog: { create: (...args: unknown[]) => auditLogCreate(...args) },
+};
 vi.mock("@/lib/prisma", () => ({
-  prisma: {
-    photo: { create: (...args: unknown[]) => photoCreate(...args) },
-    auditLog: { create: (...args: unknown[]) => auditLogCreate(...args) },
-  },
+  prisma: { $transaction: (fn: (t: typeof tx) => unknown) => fn(tx) },
 }));
 
 import { addAppliancePhoto } from "@/domains/inventory";

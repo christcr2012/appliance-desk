@@ -28,8 +28,8 @@ type Tx = Prisma.TransactionClient;
  * and required for a swap (an appliance with nothing to swap it out of
  * can't be swapped). Returns null for an appliance that isn't currently
  * on an active assignment (e.g. still sitting AVAILABLE). */
-async function findCurrentAssignment(applianceId: string) {
-  return prisma.applianceAssignment.findFirst({
+async function findCurrentAssignment(applianceId: string, db: Prisma.TransactionClient | typeof prisma = prisma) {
+  return db.applianceAssignment.findFirst({
     where: { applianceId, unassignedAt: null },
     include: {
       rentalLine: {
@@ -63,16 +63,18 @@ export async function startRepairForAppliance(
   applianceId: string,
   notes?: string,
 ): Promise<StartRepairResult> {
-  const appliance = await prisma.appliance.findUniqueOrThrow({ where: { id: applianceId } });
-
-  const check = canTransitionApplianceStatus(appliance.status, "MAINTENANCE");
-  if (!check.ok) {
-    throw new Error(check.reason);
-  }
-
-  const assignment = await findCurrentAssignment(applianceId);
-
   const jobId = await prisma.$transaction(async (tx: Tx) => {
+    await assertActiveTeamActor(tx, userId, ["OWNER", "ADMIN"]);
+    await tx.$queryRaw`SELECT "id" FROM "Appliance" WHERE "id" = ${applianceId} FOR UPDATE`;
+    const appliance = await tx.appliance.findUniqueOrThrow({ where: { id: applianceId } });
+
+    const check = canTransitionApplianceStatus(appliance.status, "MAINTENANCE");
+    if (!check.ok) {
+      throw new Error(check.reason);
+    }
+
+    const assignment = await findCurrentAssignment(applianceId, tx);
+
     const job = await tx.job.create({
       data: {
         type: "MAINTENANCE_VISIT",
@@ -129,14 +131,16 @@ export async function retireAppliance(
     throw new Error("A reason is required to retire an appliance.");
   }
 
-  const appliance = await prisma.appliance.findUniqueOrThrow({ where: { id: applianceId } });
-
-  const check = canTransitionApplianceStatus(appliance.status, "RETIRED");
-  if (!check.ok) {
-    throw new Error(check.reason);
-  }
-
   await prisma.$transaction(async (tx: Tx) => {
+    await assertActiveTeamActor(tx, userId, ["OWNER", "ADMIN"]);
+    await tx.$queryRaw`SELECT "id" FROM "Appliance" WHERE "id" = ${applianceId} FOR UPDATE`;
+    const appliance = await tx.appliance.findUniqueOrThrow({ where: { id: applianceId } });
+
+    const check = canTransitionApplianceStatus(appliance.status, "RETIRED");
+    if (!check.ok) {
+      throw new Error(check.reason);
+    }
+
     await assertStatusChangeKeepsCustody(tx, applianceId, "RETIRED");
     const moved = await tx.appliance.updateMany({
       where: { id: applianceId, status: appliance.status },
