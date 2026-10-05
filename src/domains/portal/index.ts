@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { deliverMessage } from "@/domains/messaging/deliver";
+import { normalizeSmsAddress } from "@/domains/messaging/suppression";
 import { getBusinessSettings } from "@/domains/settings";
 import {
   ACTIVE_ASSIGNMENT_WHERE,
@@ -268,8 +269,15 @@ export async function updateSmsPreference(
   input: { optedIn: boolean; phone: string | null },
 ): Promise<{ phone: string | null; smsOptInAt: Date | null }> {
   const customer = await prisma.customer.findUniqueOrThrow({ where: { userId } });
-  const phone = input.phone?.trim() || customer.phone;
-  if (input.optedIn && !phone) throw new Error("Add a phone number before turning on text notifications.");
+  const rawPhone = input.phone?.trim() || customer.phone;
+  if (input.optedIn && !rawPhone) {
+    throw new Error("Add a phone number before turning on text notifications.");
+  }
+
+  // Twilio and STOP callbacks use E.164. Canonicalize at the moment consent
+  // becomes active so future outbound messages, provider events and suppression
+  // rows all refer to the same address. Opting out never requires a valid number.
+  const phone = input.optedIn && rawPhone ? normalizeSmsAddress(rawPhone) : rawPhone?.trim() || null;
 
   const updated = await prisma.$transaction(async (tx) => {
     const row = await tx.customer.update({
@@ -280,7 +288,7 @@ export async function updateSmsPreference(
       data: {
         customerId: customer.id,
         kind: "sms_opt_in",
-        details: { optedIn: input.optedIn },
+        details: { optedIn: input.optedIn, ...(phone ? { phone } : {}) },
       },
     });
     return row;
