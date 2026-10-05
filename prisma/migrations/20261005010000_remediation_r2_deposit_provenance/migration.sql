@@ -4,13 +4,15 @@
 ALTER TABLE "Deposit"
   ADD COLUMN "sourceReceiptId" TEXT;
 
--- Historical backfill is deliberately conservative. Link only deposits whose
--- current agreement has exactly one distinct successful deposit receipt, whose
--- receipt belongs to the same customer, and whose receipt cannot be claimed by
--- another deposit in this same backfill. Ambiguous rows remain NULL for the
--- runtime reconciliation path rather than guessing a refund rail.
+-- Historical backfill is deliberately conservative. A receipt is a candidate
+-- only when its successful allocation to a deposit invoice can by itself cover
+-- that invoice's deposit line amount. Then link only deposits with exactly one
+-- distinct candidate receipt, owned by the same customer, and whose receipt is
+-- not also claimed by another deposit in this backfill. Credit-assisted,
+-- split-payment, duplicate-deposit-invoice, and otherwise ambiguous history
+-- remains NULL for runtime/owner reconciliation rather than guessing a rail.
 WITH "depositReceiptCandidates" AS (
-  SELECT DISTINCT
+  SELECT
     d."id" AS "depositId",
     p."receiptId" AS "receiptId"
   FROM "Deposit" d
@@ -26,8 +28,15 @@ WITH "depositReceiptCandidates" AS (
   JOIN "Receipt" r
     ON r."id" = p."receiptId"
    AND r."customerId" = a."customerId"
-  WHERE EXISTS (
-    SELECT 1
+  GROUP BY d."id", p."receiptId", i."id"
+  HAVING (
+    SELECT COALESCE(SUM(li."amountCents"), 0)
+    FROM "InvoiceLineItem" li
+    WHERE li."invoiceId" = i."id"
+      AND li."kind" = 'DEPOSIT'
+  ) > 0
+  AND SUM(p."amountCents") >= (
+    SELECT COALESCE(SUM(li."amountCents"), 0)
     FROM "InvoiceLineItem" li
     WHERE li."invoiceId" = i."id"
       AND li."kind" = 'DEPOSIT'
@@ -39,7 +48,7 @@ WITH "depositReceiptCandidates" AS (
     MIN("receiptId") AS "receiptId"
   FROM "depositReceiptCandidates"
   GROUP BY "depositId"
-  HAVING COUNT(*) = 1
+  HAVING COUNT(DISTINCT "receiptId") = 1
 ),
 "safeLinks" AS (
   SELECT s."depositId", s."receiptId"
