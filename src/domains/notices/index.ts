@@ -1,7 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { randomUUID } from "node:crypto";
-import { sendCustomerEmail } from "@/lib/customer-email";
+import { deliverMessage } from "@/domains/messaging/deliver";
 import { getEmailAcceptedAt } from "@/lib/email";
 import { assertActiveTeamActor } from "@/lib/team-actor";
 import { isAutoRenewEnabled } from "@/domains/settings/auto-renew-switch";
@@ -163,8 +163,8 @@ type DeliverOutcome = "SENT" | "WAITING" | "REJECTED" | "FAILED" | "UNCERTAIN" |
 
 /**
  * Send one claimed notice and record what really happened, only if this attempt's token still owns the claim.
- * An unclear answer is retried once, immediately, with the identical request and key (the email service returns the
- * original answer for a repeated key, so a second email cannot go out).
+ * The message ledger performs the one allowed immediate retry with the exact same idempotency key. Any still-unclear
+ * result, or an older PENDING ledger row left by an interrupted worker, goes to owner review instead of being resent.
  */
 async function deliverClaimedNotice(
   notice: Pick<NoticeRow, "id" | "subject" | "body" | "attempts">,
@@ -173,40 +173,51 @@ async function deliverClaimedNotice(
   now: Date,
 ): Promise<DeliverOutcome> {
   const owned = { id: notice.id, status: "SENDING", claimToken: token } as const;
-  const send = () =>
-    sendCustomerEmail({
-      to,
-      subject: notice.subject,
-      text: notice.body,
-      idempotencyKey: `customer-notice-${notice.id}`,
-    });
 
-  let result: Awaited<ReturnType<typeof sendCustomerEmail>>;
+  let result: Awaited<ReturnType<typeof deliverMessage>>;
   try {
-    result = await send();
-    if (result.outcome === "UNKNOWN") result = await send();
+    result = await deliverMessage({
+      idempotencyKey: `customer-notice-${notice.id}`,
+      channel: "EMAIL",
+      purpose: "TRANSACTIONAL",
+      templateKey: "customer-notice",
+      customerFacing: true,
+      recipient: { type: "Customer", address: to },
+      subject: { type: "CustomerNotice", id: notice.id },
+      render: () => ({ subject: notice.subject, text: notice.body }),
+    });
   } catch (error) {
-    // The email service call itself never throws (it reports UNKNOWN instead), so this is a failure before any
-    // send, such as reading the owner's switch: nothing went out and it is safe to try again later.
+    // A database/configuration failure before a durable provider outcome is available gives the notice claim back.
+    // If the ledger was already created, its PENDING row prevents any blind second provider call on the next pass.
     await prisma.customerNotice.updateMany({ where: owned, data: { status: "PENDING", claimToken: null } });
     console.error(`Could not send notice ${notice.id}:`, error);
     return "WAITING";
   }
 
-  if (result.outcome === "UNKNOWN") {
+  if (
+    result.state === "UNKNOWN" ||
+    result.state === "PENDING" ||
+    result.state === "BOUNCED" ||
+    result.state === "COMPLAINED"
+  ) {
     const marked = await prisma.customerNotice.updateMany({
       where: owned,
       data: {
         status: "UNCERTAIN",
         claimToken: null,
-        lastError: "The email service gave no clear answer twice. It may already have been sent.",
+        lastError:
+          result.state === "BOUNCED"
+            ? "The email provider reported that this notice bounced. Review delivery evidence and contact the customer another way."
+            : result.state === "COMPLAINED"
+              ? "The recipient reported this notice email as spam. Review delivery evidence and contact the customer another way."
+              : "The message ledger cannot prove whether this notice was sent. It will not be retried automatically.",
       },
     });
     return marked.count === 1 ? "UNCERTAIN" : "TAKEN_OVER";
   }
 
-  if (result.sent) {
-    const providerMessageId = result.providerMessageId ?? null;
+  if (result.state === "ACCEPTED" || result.state === "DELIVERED") {
+    const providerMessageId = result.providerMessageId;
     const accepted = (providerMessageId ? await getEmailAcceptedAt(providerMessageId) : null) ?? new Date();
     try {
       const done = await prisma.customerNotice.updateMany({
@@ -225,14 +236,14 @@ async function deliverClaimedNotice(
       });
       return done.count === 1 ? "SENT" : "TAKEN_OVER";
     } catch (error) {
-      // The provider accepted it but we could not save that: leave it "sending". The nightly pass retries the same
-      // key, the email service answers with the original acceptance, and no second email goes out.
-      console.error(`Notice ${notice.id} was sent but could not be recorded:`, error);
+      // Provider acceptance is durable in MessageDelivery. Leave this notice claim alone so reconciliation can
+      // recover without issuing a second provider call.
+      console.error(`Notice ${notice.id} was accepted but could not be recorded:`, error);
       return "SENT";
     }
   }
 
-  if (result.outcome === "REJECTED") {
+  if (result.state === "FAILED") {
     const rejections = notice.attempts + 1;
     const failed = rejections >= NOTICE_MAX_REJECTIONS;
     const done = await prisma.customerNotice.updateMany({
@@ -249,7 +260,8 @@ async function deliverClaimedNotice(
     return failed ? "FAILED" : "REJECTED";
   }
 
-  // NOT_ATTEMPTED: live customer email is off (or this is a preview). Nothing was sent; it keeps waiting.
+  // NOT_SENT (owner switch, preview, or provider not configured) and the impossible-for-transactional SUPPRESSED
+  // outcome mean no provider send should be attempted from this notice claim.
   await prisma.customerNotice.updateMany({ where: owned, data: { status: "PENDING", claimToken: null } });
   return "WAITING";
 }
