@@ -226,7 +226,7 @@ Chris asked for a dashboard switch for live customer email. Built: `BusinessSett
 - A reminder is never emailed once it can no longer be delivered 25 to 40 days before the renewal; it stays on the owner's Notices list.
 - An interrupted email send is never retried by itself (the provider may already have sent it): the owner sees "may already have been sent" and records the real delivery date by hand.
 - A saved opt-out or early-ending request blocks any billing extension at once, before the renewal's cancellation has run. Notices that keep failing go to the back of the line.
-- An independent review (`docs/reviews/2026-10-03-pr161-independent-review.md`) found larger gaps that need a design, not a patch: overlapping Stripe updates (R1), a lost billing-stop restoration after a crash (R2), no customer cancel after the first renewal (R3), annual reminders (R4), uncertain-send recovery (R6), manual-delivery evidence (D2). Automatic renewal is held by a new owner-only master switch, "Automatic renewals", OFF by default (blank wording settings were NOT a real off switch: a migration fills in recommended starting wording). It stays off until `docs/prompts/DESIGN-BATCH-B-RENEWAL-LIFECYCLE.md` has been run and built. Recorded as a blocker in `docs/GO-LIVE-CHECKLIST.md`.
+- An independent review (`docs/reviews/2026-10-03-pr161-independent-review.md`) found larger gaps that need a design, not a patch: overlapping Stripe updates (R1), a lost billing-stop restoration after a crash (R2), no customer cancel after the first renewal (R3), annual reminders (R4), uncertain-send recovery (R6), manual-delivery evidence (D2). Automatic renewal is held by a new owner-only master switch, "Automatic renewals", OFF by default (blank wording settings were NOT a real off switch: a migration fills in recommended starting wording). It stays off until `docs/archive/prompts/DESIGN-BATCH-B-RENEWAL-LIFECYCLE.md` has been run and built. Recorded as a blocker in `docs/GO-LIVE-CHECKLIST.md`.
 - Email results now say what happened (`NOT_ATTEMPTED`, `REJECTED`, `UNKNOWN`). An unknown outcome or a failed "sent" save leaves a notice as "may already have been sent" for the owner; it is never resent by itself. A reminder that missed its 25-40 day deadline shows a red "Deadline missed" warning on Notices and says a late delivery will not let the renewal start.
 
 ## 2026-10-03 — Pickup and delivery billing rules (IN-24 / IN-26 / IN-27), built from Chris's own spec
@@ -328,3 +328,30 @@ the merge handled by Chris's coding agent, not by Claude in this session.
 - **2026-10-04 (Claude, Remediation R15)** — When parts are used on a repair, the part is locked first and only then is its last known purchase cost looked up, and the lock is held until the usage is written. Before, the cost was looked up first, so a delivery recorded at the same instant could finish in between and the usage would be saved with the older, wrong cost. Now a delivery that finished first is the cost used, and a usage that finished first honestly uses the earlier cost. The movement history is still the only record of stock.
 - **2026-10-04 (Claude, Remediation R16)** — Each "these items arrived" request on a purchase order now leaves a small permanent record of exactly what was submitted (the order, each line, how many, and the price or "unknown"). Sending the same request again (a double-click or a retry) changes nothing; sending the same request number with different numbers is refused with a message. Before, only items tied to a stocked part were compared, so a repeated request with a changed quantity on a free-text line (for example, a whole appliance or a bulk supply with no part record) could be treated as a harmless repeat. The record is saved in the same step as the receipt, so a receipt that fails leaves no record and can be retried. This adds one small table, included in the nightly backup; nothing existing is changed.
 - **2026-10-04 (Claude, Remediation R17)** — The "Needs your attention" list on Today now reads each group (past-due invoices, overdue jobs, term-ended agreements, and so on) with a limit of 50 items, oldest first, ties broken by a fixed id order, instead of loading every matching record from history and sorting in memory. When a group has more than 50, the screen says so ("showing the 50 that have waited longest, N more not shown") using the real total. The overall order is unchanged: high priority first, then longest waiting. Two groups needed real database queries instead of memory work: "term ended" (the agreement's end date, or its start plus its term in calendar months, so a 31 January start with a one-month term ends 29 February, not 2 March) and "maintenance due" (latest completed maintenance visit, else purchase date, else the day the unit was added). The limit of 50 is a safety setting for speed, not a business rule, so it is a fixed constant rather than an owner setting.
+
+## 2026-10-05 — Remaining work rewritten for lower-cost implementing models (Claude Opus 5.5)
+Chris asked for every remaining piece of work to be written the way the D–F designs are (decisions made, exact schema,
+function signatures, named tests, stop-and-ask), updated for what is now built, so Claude Sonnet 5.5 or ChatGPT Sol 5.6
+can implement it. Done against `main` 47bd833: new `docs/designs/BATCH-B2.md` (renewal lifecycle R1–R7, D1, D2; IN-21
+mechanism; C-09) and `docs/designs/BATCH-E2.md`; drift-checked rewrites of D, E and F. Key B2 decisions: one stored,
+versioned billing-end answer per Stripe subscription, saved in the same transaction as the decision and applied by one
+leased worker (newest version wins); returning equipment never changes billing by itself — only agreed endings do; a
+month-to-month rental can be ended online with no fee at the first billing date after the notice days; month-to-month
+terms are versioned and reach a customer 30 days after their notice is delivered; annual reminders follow
+`continuousSince`; notices gain UNCERTAIN/MISSED/FAILED states with fenced evidence; a phone call is not a notice
+delivery. Owner questions with built defaults: IN-29 to IN-32. B2 and E2 wait for Chris's approval.
+
+## 2026-10-04 (late) — Chris's answers to IN-29 to IN-32, folded into the B2 and E2 designs
+- **IN-29 early returns:** configurable, not one fixed rule. Owner settings for billing (continue to the agreed end, or
+  stop at pickup), unused paid days (keep, credit, refund), the early-ending fee (the agreement's own terms, none, or a
+  custom amount with a reason; fixed terms only), and whether the system asks each time or applies the defaults; a
+  per-rental screen can change any of them before anything is charged or refunded. Recommended starting values keep
+  today's approved behaviour (keep billing to the agreed end, keep unused days, agreed-terms fee, ask me). The dead
+  column `earlyReturnProrationBasis` is read again for the day count. (`BATCH-B2.md` B2-19, WU-B2-9b.)
+- **IN-30 missed reminders:** one "Fix a missed reminder" screen with every option (cancel the automatic renewal and
+  optionally schedule pickup; send a new renewal to sign; move the renewal later with a fresh reminder — still needs a
+  signature; record delivery another way; keep waiting with a reminder date; end the rental now). Nothing extends
+  billing without a delivered reminder or a signature. (B2-18, WU-B2-5.)
+- **IN-31:** deferred by Chris; stays documented and blocks turning on automatic renewals / live customer email.
+- **IN-32 home page:** ivory in light mode, evergreen in dark mode, one dominant action in both — consistent with the
+  brand kit's light and dark tokens, so no contrast exception and no extra preview step. (`BATCH-E2.md` E2-7.)

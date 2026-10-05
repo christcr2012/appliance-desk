@@ -56,7 +56,7 @@ docs/               everything below
 | `AGENTS.md` | The rules. |
 | `docs/START-HERE.md` | This file. |
 | `docs/STATUS.md` | Where work stands: batch table, blockers, what is next. Updated every session. |
-| `docs/PLAN.md` | The six remaining batches (A–F) with full acceptance criteria, and the launch gates. |
+| `docs/PLAN.md` | The batches (A–F plus B2 and E2) with full acceptance criteria, and the launch gates. |
 | `docs/designs/BATCH-<X>.md` | The approved design for each batch — the *how*: decisions, exact schema, signatures, work units, tests, stop-and-ask. `docs/designs/README.md` has the rule and the template. |
 | `docs/PLAYBOOK.md` | Step-by-step procedure for a batch, including local verification. |
 | `docs/OWNER-INPUTS.md` | Decisions only Chris can make, with stable IDs. |
@@ -90,7 +90,7 @@ file wins.
 
 ## Vocabulary you will meet
 
-- **Batch A–F** — the six remaining PR-sized units of work (`docs/PLAN.md`).
+- **Batch A–F, B2, E2, R** — the units of work (`docs/PLAN.md`). A, B, C and R are merged; B2 finishes B and C; then D, E, E2, F.
 - **O-cards (O00–O32)** — the original overhaul roadmap items. They are now
   folded into the batches; the plan quotes their requirements inline.
 - **B01–B36** — Chris's business audit items (`docs/reviews/2026-10-01-business-logic-audit.md`).

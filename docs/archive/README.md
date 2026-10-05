@@ -19,6 +19,8 @@ current `docs/DECISIONS.md`, the working file wins.
 | `plans-overhaul/COMPLETION-PLAN.md` | The 2026-09-30/10-01 completion plan with its evidence ledger (CI run IDs, test counts per PR). | Exact CI run / head SHA evidence for PRs #96–#133. |
 | `plans-overhaul/EXECUTION-STATE.md` | The resume checkpoint used before `docs/STATUS.md` existed. | Same as above. |
 | `plans-overhaul/MODEL-BATCHES.md`, `IMPLEMENTER.md`, `PR-STACK.md` | Model-switch schedule, paste-ready prompts, stacked-PR rules from the first plan. All superseded (single model, larger PRs, agent merges). | Historical only. |
+| `designs-2026-10-02/BATCH-{D,E,F}.md` | The first D, E and F designs (written 2026-10-02, before B was built). Replaced 2026-10-05 by drift-checked rewrites in `docs/designs/`. | Seeing what changed in a decision and why (the rewrites mark changes "(changed 2026-10-05)"). |
+| `prompts/DESIGN-BATCH-B-RENEWAL-LIFECYCLE.md`, `prompts/DESIGN-BATCH-E2-REDESIGN.md` | Prompts asking a stronger model for the renewal-lifecycle design and the E2 design. Both answered 2026-10-05 (`docs/designs/BATCH-B2.md`, `BATCH-E2.md`). | History only. |
 | `plans-overhaul/BASELINE.md`, `WORKSPACE-IMPLEMENTATION.md`, `ROLE-AUDIT.md` | O00 baseline reconciliation, workspace implementation notes, role audit. | Evidence behind early decisions. |
 
 Files that are still current stayed where they were:

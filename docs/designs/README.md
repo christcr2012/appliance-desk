@@ -9,12 +9,23 @@ the points where the implementer must stop and ask instead of guessing.
 
 | Batch | Design | Status |
 |---|---|---|
-| B — Billing, provider reconciliation & financial ledger | `BATCH-B.md` | Approved 2026-10-02 |
-| C — Rental-to-service operations, custody, inventory & purchasing | `BATCH-C.md` + `BATCH-C-UPDATE-2026-10-03.md` + `BATCH-C-LITERAL-SPEC-2026-10-03.md` | **Owner approval recorded 2026-10-03 (Chris: "I APPROVE", on the reviewer's recommendations in spec section 12); each slice is cleared for code only after its dated drift check is written at the top of the spec (done so far: P1-A scheduling and P1-B asset numbers, 2026-10-03; see "Drift checks" in the spec)**: Scheduling, Asset numbers, Parts ledger/archival, Swaps, Maintenance chain, Earnings correction — approved for code; Custody, Completion, Inspection/permissions and the missing-item subscription rule — approved **with the named conditions in section 12**. Each slice still starts with the drift check. **Blocked:** C-09 pickup/return billing (needs the shared billing contract; the IN-24 company-fault rule is now answered, see below). |
-| D — Owner/customer control plane, website, evidence & privacy | `BATCH-D.md` | Approved 2026-10-02 (verify §0 after C merges) |
-| E — Communications, reporting, growth, branding & accessibility | `BATCH-E.md` | Approved 2026-10-02 (verify §0 after D merges) |
-| E2 — Visual redesign: owner desk, public site, customer portal (desktop, phone, dark) | `BATCH-E2.md` | **Not written** — prompt in `docs/prompts/DESIGN-BATCH-E2-REDESIGN.md` |
-| F — Integrated verification, recovery, owner handoff & launch ledger | `BATCH-F.md` | Approved 2026-10-02 (verify §0 after **E2** merges; F now also waits for E2 and must be re-checked against the redesigned screens) |
+| B — Billing, provider reconciliation & financial ledger | `BATCH-B.md` | Built and merged (#141–#161); its leftovers moved to B2 |
+| C — Rental-to-service operations, custody, inventory & purchasing | `BATCH-C.md` + `BATCH-C-UPDATE-2026-10-03.md` + `BATCH-C-LITERAL-SPEC-2026-10-03.md` | Built and merged (#169–#175); its only leftover (C-09 pickup billing end) moved to B2 |
+| R — Remediation Batch R | `REMEDIATION-BATCH-R-2026-10-04.md` (+ amendment, recovery) | Built and merged (#185–#200) |
+| **B2 — Renewal lifecycle, month-to-month rentals, pickup billing end** (finishes B and C) | `BATCH-B2.md` | **Written 2026-10-05 (Claude Opus 5.5, against `main` 47bd833); updated the same night with Chris's answers to IN-29 (early-return options) and IN-30 (missed-reminder screen). Waiting for Chris's approval** — reply "I approve B2" and this row becomes Approved. |
+| D — Owner/customer control plane, website, evidence & privacy | `BATCH-D.md` | **Approved** (2026-10-02); **rewritten and drift-checked 2026-10-05** against 47bd833. Starts after B2. |
+| E — Communications, automation history, search, brand tokens & accessibility | `BATCH-E.md` | **Approved** (2026-10-02); **rewritten and drift-checked 2026-10-05**. Starts after D. |
+| E2 — Visual redesign (owner desk, portal, public site; phone, desktop, dark) | `BATCH-E2.md` | **Written 2026-10-05. Waiting for Chris's approval.** Home page decided (IN-32: ivory in light mode, evergreen in dark mode). Starts after E. |
+| F — Integrated verification, recovery, owner handoff & launch ledger | `BATCH-F.md` | **Approved** (2026-10-02); **rewritten and drift-checked 2026-10-05**. Starts after E2. |
+
+**2026-10-05 rewrite (Chris asked for all remaining work to be written so Claude Sonnet 5.5 or ChatGPT Sol 5.6 can build
+it).** Every remaining design was re-checked against the code at 47bd833 by reading the functions it names. The drift
+check for D, E and F is therefore already done and written into each design's section 0 (with "(changed 2026-10-05)"
+marks where the code proved an old assumption wrong). The implementing model still does the short check below at the
+start of each batch, but only for files that changed after 47bd833 (`git log 47bd833..main -- <path>`). The 2026-10-02
+versions of D, E and F are in `docs/archive/designs-2026-10-02/` for history; they are not instructions.
+
+**Order:** B2 → D → E → E2 → F. One batch at a time, one stack of PRs per batch (`AGENTS.md`).
 
 ## The rule
 
