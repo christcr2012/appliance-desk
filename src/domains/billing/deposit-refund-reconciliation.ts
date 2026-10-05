@@ -22,6 +22,11 @@ type DepositRefundOperation = {
   requestedAt: Date;
 };
 
+type DepositReceiptOrigin =
+  | { kind: "AGREEMENT"; agreementId: string }
+  | { kind: "AGREEMENTLESS_DEPOSIT" }
+  | null;
+
 async function findProviderRefund(operation: DepositRefundOperation) {
   const stripe = getStripeClient();
   const createdGte =
@@ -46,24 +51,31 @@ async function findProviderRefund(operation: DepositRefundOperation) {
   return null;
 }
 
-async function sourceAgreementForReceipt(receiptId: string): Promise<string | null> {
+async function sourceOriginForReceipt(
+  receiptId: string,
+): Promise<DepositReceiptOrigin> {
   const payment = await prisma.payment.findFirst({
     where: {
       receiptId,
       status: { in: [...SUCCESSFUL_PAYMENT_STATUSES] },
-      invoice: { agreementId: { not: null } },
+      invoice: { lineItems: { some: { kind: "DEPOSIT" } } },
     },
     select: { invoice: { select: { agreementId: true } } },
     orderBy: [{ createdAt: "asc" }, { id: "asc" }],
   });
-  return payment?.invoice.agreementId ?? null;
+  if (!payment) return null;
+  return payment.invoice.agreementId
+    ? { kind: "AGREEMENT", agreementId: payment.invoice.agreementId }
+    : { kind: "AGREEMENTLESS_DEPOSIT" };
 }
 
 /**
- * R06 recovery for the one case the legacy reconciler cannot safely resolve:
- * a deposit moved to renewal B/C while its immutable funding receipt remains
- * on agreement A. Provider evidence is checked before every UNKNOWN retry, and
- * the provider call uses the charge on the immutable source receipt.
+ * R06 recovery for deposit refunds whose immutable funding receipt no longer
+ * belongs to the agreement that currently owns the liability. That includes
+ * ordinary A -> B/C renewals and estimate-funded deposits, whose original
+ * receipt is attached to an agreement-less estimate invoice. Provider evidence
+ * is checked before every UNKNOWN retry, and the retry always uses the charge
+ * on the immutable source receipt.
  */
 export async function reconcileMovedDepositRefundOperations(
   limit = 50,
@@ -124,10 +136,17 @@ export async function reconcileMovedDepositRefundOperations(
     }
     if (rail.kind !== "STRIPE") continue;
 
-    const sourceAgreementId = await sourceAgreementForReceipt(rail.receiptId);
-    // The legacy reconciler already handles same-agreement and estimate-funded
-    // deposits. R06 only takes ownership after renewal moved the liability row.
-    if (!sourceAgreementId || sourceAgreementId === deposit.agreementId) continue;
+    const sourceOrigin = await sourceOriginForReceipt(rail.receiptId);
+    if (!sourceOrigin) continue;
+    // Same-agreement refunds remain owned by the legacy reconciler. An
+    // agreement-less deposit receipt is estimate-funded and must be handled
+    // here because renewal does not copy sourceEstimateId forward.
+    if (
+      sourceOrigin.kind === "AGREEMENT" &&
+      sourceOrigin.agreementId === deposit.agreementId
+    ) {
+      continue;
+    }
 
     const providerRefund = await findProviderRefund(operation);
     if (providerRefund) {
