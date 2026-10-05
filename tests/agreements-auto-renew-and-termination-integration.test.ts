@@ -129,7 +129,7 @@ describe.skipIf(!enabled)("auto-renew and agreed early endings are carried out",
       cancel_at: stripeMock.state.get(id) ?? null,
     }));
     stripeMock.cancel.mockReset().mockImplementation(async (id: string) => ({ id }));
-    emailMock.send.mockReset().mockResolvedValue({ sent: false });
+    emailMock.send.mockReset().mockResolvedValue({ sent: false, outcome: "NOT_ATTEMPTED" });
   });
 
   let switchBefore = false;
@@ -305,12 +305,12 @@ describe.skipIf(!enabled)("auto-renew and agreed early endings are carried out",
       expect(mine.claimToken).toBeNull();
     });
 
-    it("a notice whose send failed goes back to waiting (never stuck as 'sending')", async () => {
+    it("an uncertain provider outcome goes to owner review instead of being retried blindly", async () => {
       const a = await agreement();
       await runAutoRenewals(windowOpen);
       emailMock.send.mockReset().mockRejectedValue(new Error("provider down"));
       await sendPendingNotices(inReminderWindow);
-      expect((await noticeOf(a))!.status).toBe("PENDING");
+      expect((await noticeOf(a))!.status).toBe("UNCERTAIN");
     });
 
     it("turning auto-renew off withdraws the waiting reminder", async () => {
@@ -413,7 +413,7 @@ describe.skipIf(!enabled)("auto-renew and agreed early endings are carried out",
       expect(stripeMock.update).not.toHaveBeenCalled();
     });
 
-    it("a notice that keeps failing goes to the back of the line, so it cannot starve newer notices", async () => {
+    it("an uncertain notice cannot starve newer notices and is not retried blindly", async () => {
       const a = await agreement();
       const b = await agreement();
       await runAutoRenewals(windowOpen);
@@ -426,7 +426,7 @@ describe.skipIf(!enabled)("auto-renew and agreed early endings are carried out",
       await sendPendingNotices(inReminderWindow);
       await sendPendingNotices(inReminderWindow);
       expect((await noticeOf(b))!.status).toBe("SENT");
-      expect((await noticeOf(a))!.status).toBe("PENDING");
+      expect((await noticeOf(a))!.status).toBe("UNCERTAIN");
       expect(second.id).not.toBe(first.id);
     });
 

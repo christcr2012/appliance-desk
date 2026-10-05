@@ -67,7 +67,7 @@ describe("configured messaging providers", () => {
     const log = vi.spyOn(console, "log").mockImplementation(() => {});
     try {
       expect(await sendEmail({ to: "copied-customer@example.test", subject: "Private", text: "Private content" })).toEqual({ sent: false, outcome: "NOT_ATTEMPTED" });
-      expect(await sendSms({ to: "+13035550100", body: "Private content" })).toEqual({ sent: false });
+      expect(await sendSms({ to: "+13035550100", body: "Private content" })).toEqual({ sent: false, outcome: "NOT_ATTEMPTED" });
       expect(mocks.email).not.toHaveBeenCalled();
       expect(mocks.sms).not.toHaveBeenCalled();
       expect(log).not.toHaveBeenCalled();
@@ -76,7 +76,7 @@ describe("configured messaging providers", () => {
   it("continues to deliver through configured production providers", async () => {
     vi.stubEnv("VERCEL_ENV", "production");
     expect(await sendEmail({ to: "customer@example.test", subject: "Hi", text: "Hello" })).toEqual({ sent: true, outcome: "SENT", providerMessageId: "email-1" });
-    expect(await sendSms({ to: "+13035550100", body: "Hello" })).toEqual({ sent: true });
+    expect(await sendSms({ to: "+13035550100", body: "Hello" })).toEqual({ sent: true, outcome: "SENT", providerMessageId: "sms-1" });
     expect(mocks.email).toHaveBeenCalledOnce();
     expect(mocks.sms).toHaveBeenCalledOnce();
   });

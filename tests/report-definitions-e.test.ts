@@ -17,7 +17,8 @@ describe("Batch E report contracts", () => {
     const utilization = METRICS["fleet.utilization"];
     expect(utilization.sources.join(" ").toLowerCase()).toContain("custody");
     expect(utilization.calculation.toLowerCase()).toContain("rolling");
-    expect(`${utilization.sources.join(" ")} ${utilization.calculation}`.toLowerCase()).not.toContain("assignment");
+    expect(utilization.sources.join(" ").toLowerCase()).not.toContain("assignment");
+    expect(utilization.calculation.toLowerCase()).toContain("assignment rows do not change this metric");
   });
 
   it("defines win-back from real contact evidence and growth fleet flags from recent custody", () => {
