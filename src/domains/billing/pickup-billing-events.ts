@@ -4,8 +4,9 @@ import { getStripeClient } from "@/lib/stripe";
 import { businessDateFromKey, businessDateKey, businessDayBounds, businessDaysBetween, formatBusinessDate } from "@/lib/business-date";
 import { formatCents } from "@/domains/pricing/money";
 import { sumTax, taxCentsForLine } from "./tax";
-import { prepareInvoiceRefundInTx, runPreparedInvoiceRefund, type ClaimedRefund } from "./refunds";
+import { runPreparedInvoiceRefund, type ClaimedRefund } from "./refunds";
 import { lockCustomerLedger } from "./ledger";
+import { refundAcrossPaidInvoicesInTx } from "./refund-across-invoices";
 import { assertActiveTeamActor } from "@/lib/team-actor";
 import { closeAgreementInTx, lockRentalAgreementInTx, runCloseAgreementContinuation, type CloseAgreementResult } from "@/domains/agreements";
 import { dropSubstituteInTx } from "@/domains/jobs/substitution";
@@ -109,7 +110,7 @@ async function loadSettings(tx: Prisma.TransactionClient): Promise<PickupBilling
   return pickupBillingSettingsFrom(row ?? {});
 }
 
-type Item = {
+export type Item = {
   assignmentId: string;
   applianceId: string;
   unassignedAt: Date | null;
@@ -126,7 +127,7 @@ export function isSupersededAssignment(reason: string | null): boolean {
 }
 
 /** Which rental line each appliance is on, what it is called, and its share of the line price. */
-async function itemsForAppliances(
+export async function itemsForAppliances(
   tx: Prisma.TransactionClient,
   agreementId: string,
   applianceIds: string[],
@@ -590,34 +591,17 @@ export async function removeUndeliveredItem(userId: string, pendingDeliveryId: s
     } else {
       const periods = periodsBilledThrough(agreement.billingStartedAt, now);
       const owedCents = (item.monthlyPriceCents + taxCentsForLine(item.monthlyPriceCents, agreement.taxRateMilliPercent)) * periods;
-      let remaining = owedCents;
-      const invoices = remaining > 0
-        ? await tx.invoice.findMany({
-            where: { agreementId: agreement.id, amountPaidCents: { gt: 0 }, status: { notIn: ["VOID", "DRAFT"] } },
-            orderBy: [{ billingPeriodStart: "desc" }, { createdAt: "desc" }],
-            select: { id: true, amountPaidCents: true, refunds: { select: { amountCents: true } } },
-          })
-        : [];
-      for (const invoice of invoices) {
-        if (remaining <= 0) break;
-        const refundable = invoice.amountPaidCents - invoice.refunds.reduce((sum, r) => sum + r.amountCents, 0);
-        const chunk = Math.min(remaining, refundable);
-        if (chunk <= 0) continue;
-        const prepared = await prepareInvoiceRefundInTx(tx, userId, {
-          invoiceId: invoice.id,
-          amountCents: chunk,
-          reason: "BILLING_ERROR",
-          notes: `Never delivered: ${item.label} taken off the agreement.`,
-        });
-        refundIds.push(prepared.refundId);
-        if (prepared.claim) {
-          refundRuns.push({ refundId: prepared.refundId, claim: prepared.claim, invoiceId: invoice.id, amountCents: chunk });
-          refundedCents += chunk;
-        } else {
-          refundByHandCents += chunk;
-        }
-        remaining -= chunk;
-      }
+      const refunded = await refundAcrossPaidInvoicesInTx(tx, userId, {
+        agreementId: agreement.id,
+        amountCents: owedCents,
+        reason: "BILLING_ERROR",
+        notes: `Never delivered: ${item.label} taken off the agreement.`,
+      });
+      refundedCents = refunded.refundedCents;
+      refundByHandCents = refunded.refundByHandCents;
+      refundRuns.push(...refunded.runs);
+      refundIds.push(...refunded.refundIds);
+      const remaining = refunded.unpaidCents;
       if (owedCents === 0) {
         note = `${item.label}: taken off the agreement before anything was billed for it.`;
       } else {

@@ -7,6 +7,7 @@ import { businessDateKey, businessDayBounds } from "@/lib/business-date";
 import { lockCustomerLedger } from "@/domains/billing/ledger";
 import { lockRentalAgreementInTx, runCloseAgreementContinuation } from "@/domains/agreements";
 import { closeIfFullyReturnedInTx, type ReturnCloseOutcome } from "@/domains/agreements/returns";
+import { runEarlyReturnContinuation } from "@/domains/agreements/early-return";
 import { startRecurringBillingForAgreement } from "@/domains/billing/checkout";
 import { pushLateDeliveryCreditForHandoff } from "@/domains/billing/handoff-adapters";
 import { PROVIDER_OPERATION_LEASE_MS } from "@/domains/billing/provider-ops";
@@ -579,6 +580,9 @@ export async function completeJob(userId: string, input: CompleteJobInput): Prom
 
   // The Stripe half of closing the rental runs only after the transaction commits.
   if (outcome.returnClose?.outcome === "CLOSED") await runCloseAgreementContinuation(outcome.returnClose.close);
+  if (outcome.returnClose?.outcome === "EARLY_RETURN" && outcome.returnClose.applied) {
+    await runEarlyReturnContinuation(userId, outcome.returnClose.applied);
+  }
   if (!outcome.replayed && outcome.handoffIds.length > 0) await runHandoffs({ ids: outcome.handoffIds });
   const { returnClose: _returnClose, ...result } = outcome;
   void _returnClose;

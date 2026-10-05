@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { businessEndOfDay } from "@/lib/business-date";
 import { agreedEndFor } from "@/domains/billing/pickup-billing-events";
 import { createTaskInTx } from "@/domains/tasks";
+import { earlyReturnSettingsFrom } from "@/domains/settings/early-return";
+import { applyEarlyReturnInTx, choiceFromSettings, previewEarlyReturnInTx, type EarlyReturnApplied } from "./early-return";
 import { closeAgreementInTx, lockRentalAgreementInTx, runCloseAgreementContinuation, type CloseAgreementResult } from "./index";
 
 /**
@@ -12,7 +14,8 @@ import { closeAgreementInTx, lockRentalAgreementInTx, runCloseAgreementContinuat
 
 export type ReturnCloseOutcome =
   | { outcome: "CLOSED"; close: CloseAgreementResult }
-  | { outcome: "EARLY_RETURN" | "RENEWAL_WAITING" | "NOT_FULLY_RETURNED" };
+  | { outcome: "EARLY_RETURN"; applied: EarlyReturnApplied | null }
+  | { outcome: "RENEWAL_WAITING" | "NOT_FULLY_RETURNED" };
 
 type TaskActor = { userId: string; role: "OWNER" | "ADMIN" | "STAFF" };
 
@@ -64,8 +67,30 @@ export async function closeIfFullyReturnedInTx(
     const close = await closeAgreementInTx(tx, userId, agreement.id, "ENDED", { endedOn: agreedEnd });
     return { outcome: "CLOSED", close };
   }
-  // Returned before the agreed ending, or with no ending recorded: the owner's early-return choice decides (WU-B2-9b).
-  return { outcome: "EARLY_RETURN" };
+  // Returned before the agreed ending, or with no ending recorded: the owner's early-return choice decides (B2-19).
+  const settled = await tx.earlyReturnResolution.findUnique({ where: { agreementId: agreement.id }, select: { id: true } });
+  if (settled || !input.jobId) return { outcome: "EARLY_RETURN", applied: null };
+  const settings = earlyReturnSettingsFrom(await tx.businessSettings.findUnique({ where: { id: "singleton" } }));
+  if (settings.handling === "APPLY_DEFAULTS" && !agreement.paidInFullInAdvance) {
+    const choice = choiceFromSettings(settings);
+    const expectedPreview = await previewEarlyReturnInTx(tx, agreement.id, { jobId: input.jobId, pickupDate: input.pickupDate }, choice);
+    const applied = await applyEarlyReturnInTx(
+      tx,
+      { userId, by: "DEFAULTS" },
+      { agreementId: agreement.id, jobId: input.jobId, pickupDate: input.pickupDate, choice, expectedPreview },
+    );
+    return { outcome: "EARLY_RETURN", applied };
+  }
+  if (input.taskActor) {
+    await createTaskInTx(tx, input.taskActor, {
+      note: "Everything was picked up before the rental's agreed ending. Choose what happens to the monthly bill, the days already paid for, and any early-ending fee.",
+      priority: "HIGH",
+      jobId: input.jobId,
+      customerId: agreement.customerId,
+      sourceKey: `job:${input.jobId}:returned-early`,
+    });
+  }
+  return { outcome: "EARLY_RETURN", applied: null };
 }
 
 /**

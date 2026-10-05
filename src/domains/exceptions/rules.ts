@@ -32,6 +32,7 @@ export type ExceptionCategory =
   | "NOTICE_UNCERTAIN"
   | "NOTICE_FAILED"
   | "ITEM_NOT_DELIVERED"
+  | "RETURNED_EARLY"
   | "SUBSCRIPTION_UPDATE_PENDING"
   | "CUSTODY_UNKNOWN";
 
@@ -55,6 +56,8 @@ export type ExceptionItem = {
 // customer-facing policy like lateFeeGraceDays.
 export const UNREVIEWED_MAINTENANCE_REQUEST_DAYS = 2;
 export const UNINSPECTED_RETURN_DAYS = 3;
+// How long a rental whose early return was settled by the owner's standard choices stays on Today for a second look.
+export const EARLY_RETURN_DEFAULTS_REVIEW_DAYS = 14;
 // Automation rules (Task #67, docs/DECISIONS.md 2026-09-28, Chris's pick
 // of the three most useful checks to run automatically). 180 days (~6
 // months) is a simple, explainable "it's been a while" bar for a rented
@@ -117,6 +120,30 @@ export function itemNotDeliveredException(item: {
       "The customer is billed for it from the original delivery date. Schedule a delivery job for it; completing that job credits the customer for the days it was missing.",
     href: `/desk/jobs/${item.originalJobId}`,
     since: item.originalDeliveryDate,
+  };
+}
+
+/**
+ * Everything came back before the agreed ending (docs/designs/BATCH-B2.md B2-19). Until the owner chooses, billing
+ * carries on; with "apply my defaults" the choice was already made and can still be changed for a short while.
+ */
+export function returnedEarlyException(item: {
+  agreementId: string;
+  customerName: string;
+  since: Date;
+  settled: boolean;
+}): ExceptionItem {
+  return {
+    category: "RETURNED_EARLY",
+    severity: item.settled ? "medium" : "high",
+    title: item.settled
+      ? `${item.customerName}'s equipment came back early — your standard choices were applied`
+      : `${item.customerName}'s equipment came back early — choose what to do`,
+    detail: item.settled
+      ? "Check what was done. You can still change it while no money has been refunded or credited and no fee has been paid."
+      : "Billing continues until you decide. Choose whether billing stops now or runs to the agreed ending, what happens to days already paid for, and whether an early-ending fee applies.",
+    href: `/desk/agreements/${item.agreementId}/early-return`,
+    since: item.since,
   };
 }
 
