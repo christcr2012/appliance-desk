@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   appliance: vi.fn(),
   notice: vi.fn(),
   pendingDelivery: vi.fn(),
+  raw: vi.fn(),
 }));
 vi.mock("@/lib/session", () => ({ requireRole: mocks.requireRole }));
 vi.mock("@/lib/prisma", () => ({
@@ -20,6 +21,8 @@ vi.mock("@/lib/prisma", () => ({
     appliance: { findMany: mocks.appliance },
     customerNotice: { findMany: mocks.notice },
     pendingDelivery: { findMany: mocks.pendingDelivery },
+    // R17: term-ended agreements and maintenance-due appliances are found with set-based SQL.
+    $queryRaw: mocks.raw,
   },
 }));
 
@@ -36,6 +39,7 @@ beforeEach(() => {
     mocks.appliance,
     mocks.notice,
     mocks.pendingDelivery,
+    mocks.raw,
   ]) {
     fn.mockResolvedValue([]);
   }
@@ -57,7 +61,8 @@ describe("Today server-side visibility", () => {
     expect(mocks.notice).not.toHaveBeenCalled();
     // An item still waiting for delivery is operational: STAFF see it too.
     expect(mocks.pendingDelivery).toHaveBeenCalledTimes(1);
-    expect(mocks.agreement).toHaveBeenCalledTimes(3);
+    // stale reservations and renewals that did not start (term-ended agreements come from SQL)
+    expect(mocks.agreement).toHaveBeenCalledTimes(2);
     expect(
       mocks.agreement.mock.calls.every(
         ([query]) => !query.where.billingBlockedReason,
@@ -106,6 +111,19 @@ describe("Today server-side visibility", () => {
       }
     },
   );
+
+  it("R17: every category read is capped at 50 and ordered oldest-first with an id tie-breaker", async () => {
+    mocks.requireRole.mockResolvedValue({ user: { role: "OWNER" } });
+    await getExceptions();
+    const calls = [mocks.agreement, mocks.invoice, mocks.job, mocks.request, mocks.appliance, mocks.notice, mocks.pendingDelivery].flatMap(
+      (fn) => fn.mock.calls.map(([query]) => query),
+    );
+    expect(calls.length).toBe(12);
+    for (const query of calls) {
+      expect(query.take).toBe(50);
+      expect(query.orderBy.at(-1)).toEqual({ id: "asc" });
+    }
+  });
 
   it("selects a bounded schedule DTO without job costs or customer finance", async () => {
     await getTodaysJobs();

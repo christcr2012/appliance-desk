@@ -9,7 +9,7 @@ const m = vi.hoisted(() => ({
 }));
 vi.mock("@/lib/session", () => ({ requireRole: m.role }));
 vi.mock("@/domains/exceptions", () => ({
-  getExceptions: m.exceptions,
+  getExceptionOverview: m.exceptions,
   getTodaysJobs: m.jobs,
 }));
 vi.mock("@/domains/tasks/workspace", () => ({ getDueTaskSummary: m.tasks }));
@@ -22,7 +22,7 @@ beforeEach(() => {
   cleanup();
   vi.resetAllMocks();
   m.role.mockResolvedValue({ user: { role: "STAFF" } });
-  m.exceptions.mockResolvedValue([]);
+  m.exceptions.mockResolvedValue({ items: [], truncated: [] });
   m.jobs.mockResolvedValue([]);
   m.tasks.mockResolvedValue({ tasks: [], totalCount: 0, overdueCount: 0 });
   m.requests.mockResolvedValue(3);
@@ -67,4 +67,22 @@ it("offers owners a rental action, prioritizes work in progress and excludes can
   ).toHaveTextContent("2");
   expect(screen.queryByText("Customer 1")).toBeNull();
   expect(screen.getByText("Completed today (1)")).toBeVisible();
+});
+
+it("says plainly when a group has more items than are shown", async () => {
+  m.exceptions.mockResolvedValue({
+    items: [
+      {
+        category: "OVERDUE_JOB",
+        severity: "high",
+        title: "Delivery is overdue",
+        detail: "Scheduled and not done.",
+        href: "/desk/jobs/j1",
+        since: new Date("2026-09-01T12:00:00Z"),
+      },
+    ],
+    truncated: [{ category: "OVERDUE_JOB", total: 73, shown: 50 }],
+  });
+  render(await TodayPage());
+  expect(screen.getByText(/showing the 50 that have waited longest, 23 more not shown/i)).toBeTruthy();
 });
