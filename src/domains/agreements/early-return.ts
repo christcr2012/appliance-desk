@@ -535,7 +535,7 @@ export async function applyEarlyReturnInTx(
         },
       });
     }
-    if (!existing) {
+    if (agreement.status === "ACTIVE") {
       close = await closeAgreementInTx(tx, actor.userId, input.agreementId, "ENDED", { endedOn: plan.lastBilledEnd });
     }
   }
