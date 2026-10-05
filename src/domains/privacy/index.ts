@@ -3,7 +3,7 @@ import { del } from "@vercel/blob";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { isRateLimited } from "@/lib/rate-limit";
-import { sendCustomerEmail } from "@/lib/customer-email";
+import { deliverMessage } from "@/domains/messaging/deliver";
 import { getPrivatePhotoStore } from "@/lib/photo-storage";
 
 const TOKEN_TTL_MS = 48 * 60 * 60 * 1000;
@@ -105,15 +105,35 @@ export async function openPrivacyRequest(input: {
   }
 
   const verifyUrl = `${publicOrigin()}/privacy/verify?request=${encodeURIComponent(request.id)}&token=${encodeURIComponent(token)}`;
-  const delivery = await sendCustomerEmail({
-    to: email,
-    subject: "Verify your privacy request",
-    text: `We received a request about your personal information. Use the link below within 48 hours to verify that request.\n\n${verifyUrl}\n\nIf you did not make this request, you can ignore this message.`,
-    actionLabel: "Verify privacy request",
+  const delivery = await deliverMessage({
+    idempotencyKey: `privacy-verification-${request.id}`,
+    channel: "EMAIL",
+    purpose: "TRANSACTIONAL",
+    templateKey: "privacy-verification",
+    customerFacing: true,
+    recipient: { type: "Customer", id: customer.id, address: email },
+    subject: { type: "PrivacyRequest", id: request.id },
+    render: () => ({
+      subject: "Verify your privacy request",
+      text: `We received a request about your personal information. Use the link below within 48 hours to verify that request.\n\n${verifyUrl}\n\nIf you did not make this request, you can ignore this message.`,
+      actionLabel: "Verify privacy request",
+    }),
   });
 
-  if (delivery.sent) {
+  if (delivery.state === "ACCEPTED" || delivery.state === "DELIVERED") {
     return { requestId: request.id, verification: "EMAIL_SENT" };
+  }
+
+  if (delivery.state === "UNKNOWN" || delivery.state === "PENDING") {
+    // The email may already contain the only copy of this token. Keep it valid so a customer who did receive the
+    // message can still verify, but route the request to owner review instead of claiming the email was sent.
+    await prisma.privacyRequest.update({
+      where: { id: request.id },
+      data: {
+        notes: "Verification email outcome is uncertain; the link remains valid if it arrived. Owner should verify by phone if the customer cannot use it.",
+      },
+    });
+    return { requestId: request.id, verification: "OWNER_WILL_CALL" };
   }
 
   await prisma.privacyRequest.update({
