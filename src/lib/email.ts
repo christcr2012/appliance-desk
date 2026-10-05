@@ -24,7 +24,7 @@ import { isNonProductionDeployment } from "./deployment-safety";
  * UNKNOWN        no clear answer (lost response, network error): the email MAY have gone out, so never resend by itself.
  */
 export type EmailOutcome = "SENT" | "NOT_ATTEMPTED" | "REJECTED" | "UNKNOWN";
-export type EmailResult = { sent: boolean; outcome?: EmailOutcome };
+export type EmailResult = { sent: boolean; outcome?: EmailOutcome; /** The email service's id for an accepted message. */ providerMessageId?: string };
 
 export async function sendEmail(input: {
   to: string;
@@ -94,13 +94,32 @@ export async function sendEmail(input: {
       const refused = typeof status === "number" && status >= 400 && status < 500;
       return { sent: false, outcome: refused ? "REJECTED" : "UNKNOWN" };
     }
-    return { sent: true, outcome: "SENT" };
+    return { sent: true, outcome: "SENT", providerMessageId: data.id };
   } catch (error) {
     // A failed notification email must never break lead submission itself
     // — the lead is already saved by the time this runs. Log so it shows
     // up in Sentry/Vercel logs and can be followed up by hand.
     console.error("[email] Failed to send notification email", error);
     return { sent: false, outcome: "UNKNOWN" };
+  }
+}
+
+/**
+ * When the email service says it accepted a message (its own timestamp, which is the date that counts as the
+ * delivery date for legal notices). Returns null on any error, in previews, or when no key is set: the caller then
+ * falls back to the local time right after the service answered.
+ */
+export async function getEmailAcceptedAt(messageId: string): Promise<Date | null> {
+  if (isNonProductionDeployment()) return null;
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) return null;
+  try {
+    const { data, error } = await new Resend(apiKey).emails.get(messageId);
+    if (error || !data?.created_at) return null;
+    const accepted = new Date(data.created_at);
+    return Number.isFinite(accepted.getTime()) ? accepted : null;
+  } catch {
+    return null;
   }
 }
 

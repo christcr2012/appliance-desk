@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { NoticeDeliveryForm } from "./notice-delivery-form";
+import { noticeDeliveryDefaults } from "@/domains/settings/notice-delivery";
 import { getBusinessSettings, getAllApplianceTypes } from "@/domains/settings";
 import { getStaffAccounts } from "@/domains/staff";
 import { requireRole } from "@/lib/session";
@@ -86,6 +88,10 @@ export default async function DeskSettingsPage({
           />
         </div>
         <TermsPolicyForm defaultValues={termsPolicyDefaults(settings)} />
+        <NoticeDeliveryForm
+          defaultValues={noticeDeliveryDefaults(settings as { noticeCertifierRoles?: string; mailNoticeTransitDays?: number })}
+          canChange={(session.user as { role?: string }).role === "OWNER"}
+        />
       </SectionCard>
     );
   } else if (section === "pickups") {
