@@ -6,8 +6,8 @@ export * from "./ledger-base";
 /**
  * R06: if one receipt unambiguously and completely funds one deposit invoice,
  * persist that receipt as the deposit's immutable funding source. Ambiguous
- * multi-receipt or multi-deposit payments deliberately remain unlinked for
- * reconciliation rather than inventing provenance.
+ * multi-receipt or partially funded deposit payments deliberately remain
+ * unlinked for reconciliation rather than inventing provenance.
  */
 async function attachUnambiguousDepositSource(
   tx: Prisma.TransactionClient,
@@ -18,11 +18,21 @@ async function attachUnambiguousDepositSource(
 
   for (const allocation of allocations) {
     const rows = await tx.$queryRaw<
-      Array<{ depositId: string; sourceReceiptId: string | null }>
+      Array<{
+        depositId: string;
+        sourceReceiptId: string | null;
+        depositCents: number;
+      }>
     >`
       SELECT DISTINCT
         d."id" AS "depositId",
-        d."sourceReceiptId" AS "sourceReceiptId"
+        d."sourceReceiptId" AS "sourceReceiptId",
+        (
+          SELECT COALESCE(SUM(li2."amountCents"), 0)::integer
+          FROM "InvoiceLineItem" li2
+          WHERE li2."invoiceId" = i."id"
+            AND li2."kind" = 'DEPOSIT'::"InvoiceLineItemKind"
+        ) AS "depositCents"
       FROM "Deposit" d
       JOIN "Invoice" i ON i."agreementId" = d."agreementId"
       JOIN "InvoiceLineItem" li ON li."invoiceId" = i."id"
@@ -38,7 +48,12 @@ async function attachUnambiguousDepositSource(
             AND p."receiptId" <> ${receiptId}
         )
     `;
-    for (const row of rows) candidates.set(row.depositId, row.sourceReceiptId);
+    for (const row of rows) {
+      if (row.depositCents <= 0 || allocation.amountCents < row.depositCents) {
+        continue;
+      }
+      candidates.set(row.depositId, row.sourceReceiptId);
+    }
   }
 
   if (candidates.size !== 1) return;
