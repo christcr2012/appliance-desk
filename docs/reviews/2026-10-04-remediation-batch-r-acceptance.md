@@ -61,9 +61,16 @@ First-review item P1-2 (historical staff `JobAppliance` provenance): verified fi
 2. **No preview (browser) check of the touched owner and customer screens** was done by me: the
    public estimate page, the add-appliances form, the job repair-cost form and Today. Automated
    tests and the CI browser suite passed, which is not the same as someone looking at them.
-3. **The migration upgrade drill on a populated database** was not run by me. CI's migration check and
-   schema-health checks passed for both new migrations (`20261005010000`, `20261005020000`), and both are
-   additive.
+3. **(Done 2026-10-04) The migration upgrade drill on a populated database.** A scratch Postgres was built by
+   applying every earlier migration in order (56), then filled with old-style data: 8 agreements each with a deposit,
+   invoice, deposit line and payments; 7 receipts; a supplier and a purchase order. Cases: one clean payment, a payment
+   split across two receipts, an uppercase `SUCCEEDED` status, no payment, two deposits sharing one receipt, a receipt
+   belonging to another customer, and a failed payment. Then `20261005010000` and `20261005020000` were applied.
+   Result: row counts identical before and after (8/8/7/8/1/8); every existing Deposit column byte-identical; only the
+   clean payment (D1) and the uppercase-status payment (D3) were linked to their receipt, and the six ambiguous or
+   unsafe cases stayed empty (no guessing); the unique index refused a second deposit claiming a linked receipt; deleting
+   a linked receipt was refused; the new `PurchaseOrderReceiptOperation` table started empty, refused a duplicate
+   operation key, and was removed with its purchase order. Scratch database only; nothing was run against production.
 4. **Unrelated open work stays open and is not claimed by this batch:** Batch B renewal-lifecycle items
    R1/R2/R3/R4/R6/D2 (the old, different "R" numbers in `docs/STATUS.md`), the month-to-month notice
    (IN-21), and C-09. Re-assess C-09 and Batch D against the contract changes in
