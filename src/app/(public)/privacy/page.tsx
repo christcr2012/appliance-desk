@@ -2,13 +2,27 @@ import type { Metadata } from "next";
 import { Container } from "@/components/site/container";
 import { DraftNotice } from "@/components/site/draft-notice";
 import { getBusinessSettings } from "@/domains/settings";
+import {
+  isLegalPageApproved,
+  LEGAL_PAGE_VERSIONS,
+} from "@/domains/settings/legal-approvals";
 import { PrivacyRequestForm } from "./privacy-request-form";
 
-export const metadata: Metadata = {
-  title: "Privacy Policy",
-  description: "How we collect, use, and protect your personal information.",
-  robots: { index: true, follow: true },
-};
+export const LEGAL_PAGE_VERSION = LEGAL_PAGE_VERSIONS.privacy;
+
+export async function generateMetadata(): Promise<Metadata> {
+  const settings = await getBusinessSettings();
+  const approved = isLegalPageApproved(
+    (settings as { legalApprovals?: unknown }).legalApprovals,
+    "privacy",
+    LEGAL_PAGE_VERSION,
+  );
+  return {
+    title: "Privacy Policy",
+    description: "How we collect, use, and protect your personal information.",
+    robots: { index: approved, follow: approved },
+  };
+}
 
 export default async function PrivacyPage({
   searchParams,
@@ -17,13 +31,18 @@ export default async function PrivacyPage({
 }) {
   const settings = await getBusinessSettings();
   const params = await searchParams;
+  const approved = isLegalPageApproved(
+    (settings as { legalApprovals?: unknown }).legalApprovals,
+    "privacy",
+    LEGAL_PAGE_VERSION,
+  );
 
   return (
     <Container className="max-w-3xl py-16 md:py-20">
       <h1 className="font-display text-4xl font-semibold text-ink">Privacy Policy</h1>
       <p className="mt-2 text-sm text-ink-faint">Last updated: 2026-09-29</p>
 
-      <div className="mt-6"><DraftNotice /></div>
+      {!approved && <div className="mt-6"><DraftNotice /></div>}
 
       {params.verified === "yes" && (
         <p role="status" className="mt-6 rounded-lg border border-line bg-subtle p-3 text-sm text-ink">
