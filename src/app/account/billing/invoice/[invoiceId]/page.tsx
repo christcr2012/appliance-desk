@@ -8,6 +8,8 @@ import { PrintDocumentButton } from "@/components/print-document-button";
 
 export const metadata = { title: "Invoice" };
 
+const FINAL = ["PAID", "VOID", "WRITTEN_OFF", "REFUNDED"];
+
 /** A customer's own invoice, laid out as a real document (2026-09-29,
  * brand kit v2.0 phase 3 — see docs/DECISIONS.md), reached from a line
  * on /account/billing. getInvoiceDetail is called with this customer's
@@ -39,7 +41,14 @@ export default async function AccountInvoicePage({
         <Link href="/account/billing" className="text-sm text-gray-600 hover:underline">
           &larr; Back to billing
         </Link>
-        <PrintDocumentButton />
+        <div className="flex items-center gap-4">
+          {FINAL.includes(invoice.status) && (
+            <a className="text-sm text-primary underline" href={`/api/documents/find?kind=invoice&id=${invoice.id}`}>
+              Saved copy
+            </a>
+          )}
+          <PrintDocumentButton />
+        </div>
       </div>
 
       <div className="mt-4 print:mt-0">

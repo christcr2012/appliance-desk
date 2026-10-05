@@ -172,6 +172,14 @@ export default async function AccountRentalsPage({
                     </div>
                   );
                 })()}
+                {a.hasSignedCopy && (
+                  <p className="mt-3 text-sm">
+                    <a className="text-primary underline" href={`/api/documents/find?kind=agreement&id=${a.id}`}>
+                      Open the saved copy of your signed agreement
+                    </a>{" "}
+                    <span className="text-gray-600">(use your browser&apos;s Print to save it as a PDF)</span>
+                  </p>
+                )}
                 {a.depositCents > 0 && (
                   <p className="text-sm text-gray-600">
                     Deposit required: {formatCents(a.depositCents)}

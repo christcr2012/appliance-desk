@@ -11,7 +11,7 @@ it.each(["DRAFT", "AWAITING_SIGNATURE", "ACTIVE"])("does not report configured d
     serviceAddress: { line1: "100 Test St", city: "Denver" }, termMonths: 12,
     freeMonthGranted: false, depositCents: 15000, monthlyTotalCents: 4000,
     renewalPreference: null, terminationRequestedAt: null, terminationEffectiveOn: null, nextBillingDate: null,
-    terms: { ending: null, autoRenew: null }, autoRenewAgreed: false, renewalStartsOn: null, nextVisit: null,
+    terms: { ending: null, autoRenew: null }, autoRenewAgreed: false, renewalStartsOn: null, nextVisit: null, hasSignedCopy: false,
     lines: [{ id: "line", label: "Washer", monthlyPriceCents: 4000, listPriceCents: 4000,
       prepayDiscountCentsPerMonth: 0, appliances: [] }],
   }] });

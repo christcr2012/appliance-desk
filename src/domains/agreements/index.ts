@@ -499,6 +499,7 @@ export async function getSignatureRecordForSigning(id: string) {
 }
 
 import { newestMonthToMonthVersionInTx } from "./month-to-month";
+import { createSignedAgreementArtifactInTx } from "@/domains/documents/artifacts";
 
 export type SignAgreementInput = {
   signerName: string;
@@ -564,6 +565,8 @@ export async function signAgreement(
               : {}),
           },
     });
+    // The saved copy of exactly what was signed; if it cannot be written, signing fails with it.
+    await createSignedAgreementArtifactInTx(tx, agreement.id);
     await tx.auditLog.create({
       data: {
         userId: null,

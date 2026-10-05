@@ -45,7 +45,14 @@ export default async function DeskInvoicePage({
         <Link href={`/desk/billing/customer/${id}`} className="text-sm text-gray-600 hover:underline">
           &larr; Back to statement
         </Link>
-        <PrintDocumentButton />
+        <div className="flex items-center gap-4">
+          {["PAID", "VOID", "WRITTEN_OFF", "REFUNDED"].includes(invoice.status) && (
+            <a className="text-sm text-primary underline" href={`/api/documents/find?kind=invoice&id=${invoice.id}`}>
+              Saved copy
+            </a>
+          )}
+          <PrintDocumentButton />
+        </div>
       </div>
 
       <div className="mt-4 print:mt-0">

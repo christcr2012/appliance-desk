@@ -239,6 +239,8 @@ export type PortalAgreementView = {
   autoRenewAgreed: boolean;
   /** A follow-on agreement already scheduled to start after this one. */
   renewalStartsOn: Date | null;
+  /** A saved copy of what was signed exists to download. */
+  hasSignedCopy: boolean;
   /** The customer's next scheduled visit for this agreement, if any. */
   nextVisit: { type: JobType; scheduledAt: Date } | null;
 };
@@ -259,7 +261,7 @@ export type PortalRequestView = {
 };
 
 export const PORTAL_AGREEMENT_KEYS = [
-  "autoRenewAgreed", "depositCents", "endDate", "freeMonthGranted", "id", "lines", "monthlyTotalCents",
+  "autoRenewAgreed", "depositCents", "endDate", "freeMonthGranted", "hasSignedCopy", "id", "lines", "monthlyTotalCents",
   "nextBillingDate", "nextVisit", "renewalPreference", "renewalStartsOn", "serviceAddress", "startDate", "status",
   "termMonths", "terminationEffectiveOn", "terminationRequestedAt", "terms",
 ] as const;
@@ -309,6 +311,13 @@ export async function getPortalRentals(userId: string, opts: { jobLimit?: number
         select: { renewedFromAgreementId: true, startDate: true },
       })
     : [];
+  const signedCopies = ids.length
+    ? await prisma.documentArtifact.findMany({
+        where: { kind: "SIGNED_AGREEMENT", subjectType: "RentalAgreement", subjectId: { in: ids }, customerId: customer.id },
+        select: { subjectId: true },
+      })
+    : [];
+  const signedCopyIds = new Set(signedCopies.map((c) => c.subjectId));
   const now = new Date();
   const nextVisitFor = (agreementId: string) =>
     customer.jobs
@@ -346,6 +355,7 @@ export async function getPortalRentals(userId: string, opts: { jobLimit?: number
       terms: describeSnapshotTerms(a.termsSnapshot),
       autoRenewAgreed: snapshotAutoRenew(a.termsSnapshot) !== null,
       renewalStartsOn: followOn?.startDate ?? null,
+      hasSignedCopy: signedCopyIds.has(a.id),
       nextVisit: visit ? { type: visit.type, scheduledAt: visit.scheduledAt! } : null,
     };
   });

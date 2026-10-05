@@ -76,6 +76,14 @@ export default async function AgreementDetailPage({
           }))}
         />
       </div>
+      {["ACTIVE", "SCHEDULED", "ENDED"].includes(agreement.status) && (
+        <p className="mt-6 text-sm text-gray-700">
+          <a href={`/api/documents/find?kind=agreement&id=${agreement.id}`} className="font-medium text-primary underline">
+            Open the saved copy of the signed agreement
+          </a>{" "}
+          (agreements signed before saved copies existed have none).
+        </p>
+      )}
       {agreement.status === "ACTIVE" && (
         <p className="mt-6 text-sm text-gray-700">
           Did all of the equipment come back early?{" "}

@@ -43,6 +43,8 @@ vi.mock("@/lib/prisma", () => ({
   },
 }));
 
+vi.mock("@/domains/documents/artifacts", () => ({ createSignedAgreementArtifactInTx: vi.fn().mockResolvedValue("artifact-1") }));
+
 describe("signAgreement — atomic conditional update", () => {
   beforeEach(() => {
     signatureRecordUpdateMany.mockReset();
