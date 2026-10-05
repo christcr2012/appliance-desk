@@ -1,0 +1,31 @@
+name: Apply Batch E documentation reconciliation
+
+on:
+  push:
+    branches: [ai/sol/batch-e-automation]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: ${{ !contains(github.event.head_commit.message, '[batch-e-docs-applied]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ai/sol/batch-e-automation
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Reconcile Batch E docs against merged D
+        run: node scripts/apply-batch-e-doc-reconciliation.mjs
+      - name: Commit reconciled docs and remove bootstrap files
+        shell: bash
+        run: |
+          rm scripts/apply-batch-e-doc-reconciliation.mjs .github/workflows/batch-e-doc-reconciliation.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/STATUS.md docs/DATABASE.md docs/designs/BATCH-E.md docs/designs/POST-BATCH-D-RECONCILIATION-2026-10-05.md scripts/apply-batch-e-doc-reconciliation.mjs .github/workflows/batch-e-doc-reconciliation.yml
+          git commit -m "docs: reconcile Batch E with merged D [batch-e-docs-applied]"
+          git push origin HEAD:ai/sol/batch-e-automation
