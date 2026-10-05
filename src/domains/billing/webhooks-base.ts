@@ -1,7 +1,6 @@
 import type Stripe from "stripe";
 import type { InvoiceLineItemKind, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { getStripeClient } from "@/lib/stripe";
 import { rewardReferralOnFirstPaidInvoice } from "@/domains/referrals";
 import {
   attachProviderIdsToReceiptPayments,
@@ -10,7 +9,13 @@ import {
   holdReceiptForClosedInvoice,
   recordFailedPaymentAttempt,
 } from "./ledger";
-import { resolveStripeInvoiceCashEvents } from "./stripe-invoice-payments";
+import {
+  extractSubscriptionId,
+  gatherWebhookEvidence,
+  idOf,
+  MissingWebhookEvidenceError,
+  type WebhookEvidence,
+} from "./webhook-evidence";
 import { appliedBalanceCreditCents, creditLinesForAppliedBalance } from "./applied-credit-lines";
 import { LATE_DELIVERY_CREDIT_SOURCE } from "./pickup-billing";
 import {
@@ -45,12 +50,6 @@ function matchRentalLineId(
   return lines.find((line) => line.label === description)?.id ?? null;
 }
 
-function extractSubscriptionId(invoice: Stripe.Invoice): string | null {
-  const subscription = invoice.parent?.subscription_details?.subscription;
-  if (!subscription) return null;
-  return typeof subscription === "string" ? subscription : subscription.id;
-}
-
 function extractPaymentIntentId(invoice: Stripe.Invoice): string | null {
   const payment = invoice.payments?.data[0]?.payment;
   const paymentIntent = payment?.payment_intent;
@@ -60,56 +59,6 @@ function extractPaymentIntentId(invoice: Stripe.Invoice): string | null {
 
 function extractTaxCents(invoice: Stripe.Invoice): number {
   return (invoice.total_taxes ?? []).reduce((sum, entry) => sum + entry.amount, 0);
-}
-
-type PaymentDetails = {
-  method: string | null;
-  stripeChargeId: string | null;
-  receivedOn: Date;
-};
-
-/**
- * Resolve the provider facts for one successful PaymentIntent. Receipt dates
- * use the Stripe charge's creation instant when available, not our webhook
- * processing time. That gives reports the provider-effective date basis.
- */
-async function resolvePaymentDetails(
-  paymentIntentId: string | null,
-  fallbackReceivedOn = new Date(),
-): Promise<PaymentDetails> {
-  if (!paymentIntentId) {
-    return { method: null, stripeChargeId: null, receivedOn: fallbackReceivedOn };
-  }
-  const stripe = getStripeClient();
-  const intent = await stripe.paymentIntents.retrieve(paymentIntentId, {
-    expand: ["payment_method", "latest_charge"],
-  });
-
-  const paymentMethod = intent.payment_method;
-  let method: string | null = null;
-  if (paymentMethod && typeof paymentMethod !== "string") {
-    method =
-      paymentMethod.type === "us_bank_account"
-        ? "ach"
-        : paymentMethod.type === "card"
-          ? "card"
-          : paymentMethod.type;
-  }
-
-  const latestCharge = intent.latest_charge;
-  let charge: Stripe.Charge | null = null;
-  if (latestCharge) {
-    charge =
-      typeof latestCharge === "string"
-        ? await stripe.charges.retrieve(latestCharge)
-        : latestCharge;
-  }
-
-  return {
-    method,
-    stripeChargeId: charge?.id ?? null,
-    receivedOn: charge?.created ? new Date(charge.created * 1000) : fallbackReceivedOn,
-  };
 }
 
 /**
@@ -123,12 +72,13 @@ async function resolvePaymentDetails(
  */
 async function holdPaymentForClosedInvoice(
   db: Prisma.TransactionClient,
+  evidence: WebhookEvidence,
   stripeInvoice: Stripe.Invoice,
   customerId: string,
   invoiceId: string,
   status: string,
 ): Promise<void> {
-  const cashEvents = await resolveStripeInvoiceCashEvents(stripeInvoice);
+  const cashEvents = evidence.cashEvents(stripeInvoice.id as string);
   for (const cashEvent of cashEvents) {
     await holdReceiptForClosedInvoice(db, {
       customerId,
@@ -159,6 +109,7 @@ async function holdPaymentForClosedInvoice(
 
 async function recordPaidInvoice(
   db: Prisma.TransactionClient,
+  evidence: WebhookEvidence,
   stripeInvoice: Stripe.Invoice,
   agreementId: string,
   customerId: string,
@@ -186,7 +137,14 @@ async function recordPaidInvoice(
     const lockedStatus = locked[0]?.status;
     if (lockedStatus === "PAID") return;
     if (lockedStatus === "WRITTEN_OFF" || lockedStatus === "VOID") {
-      await holdPaymentForClosedInvoice(db, stripeInvoice, customerId, targetInvoiceId, lockedStatus);
+      await holdPaymentForClosedInvoice(
+        db,
+        evidence,
+        stripeInvoice,
+        customerId,
+        targetInvoiceId,
+        lockedStatus,
+      );
       return;
     }
   }
@@ -236,7 +194,7 @@ async function recordPaidInvoice(
     .filter((item) => item.kind !== "TAX")
     .reduce((sum, item) => sum + item.amountCents, 0);
 
-  const cashEvents = await resolveStripeInvoiceCashEvents(stripeInvoice);
+  const cashEvents = evidence.cashEvents(stripeInvoice.id as string);
   const nextBillingDate = stripeInvoice.period_end
     ? new Date(stripeInvoice.period_end * 1000)
     : null;
@@ -347,6 +305,7 @@ async function recordSigningPaymentMethod(
 
 async function recordOneTimeSigningCharge(
   db: Prisma.TransactionClient,
+  evidence: WebhookEvidence,
   agreementId: string,
   customerId: string,
   paymentIntentId: string,
@@ -397,7 +356,7 @@ async function recordOneTimeSigningCharge(
   if (lineItemsData.length === 0) return;
 
   const amountCents = lineItemsData.reduce((sum, item) => sum + item.amountCents, 0);
-  const paymentDetails = await resolvePaymentDetails(paymentIntentId);
+  const paymentDetails = evidence.paymentDetails(paymentIntentId);
   const invoice = await db.invoice.create({
     data: {
       customerId,
@@ -438,6 +397,7 @@ async function recordOneTimeSigningCharge(
 
 async function recordEstimateDepositPayment(
   db: Prisma.TransactionClient,
+  evidence: WebhookEvidence,
   estimateId: string,
   customerId: string,
   paymentIntentId: string,
@@ -448,7 +408,7 @@ async function recordEstimateDepositPayment(
   });
   if (estimate.depositPaidAt || estimate.depositCents <= 0) return;
 
-  const paymentDetails = await resolvePaymentDetails(paymentIntentId);
+  const paymentDetails = evidence.paymentDetails(paymentIntentId);
   const invoice = await db.invoice.create({
     data: {
       customerId,
@@ -495,6 +455,7 @@ async function recordEstimateDepositPayment(
 
 async function handleEstimateDepositCheckoutCompleted(
   db: Prisma.TransactionClient,
+  evidence: WebhookEvidence,
   session: Stripe.Checkout.Session,
   estimateId: string,
 ): Promise<void> {
@@ -510,26 +471,27 @@ async function handleEstimateDepositCheckoutCompleted(
       : session.payment_intent?.id;
   if (!paymentIntentId) return;
 
-  const stripe = getStripeClient();
-  const intent = await stripe.paymentIntents.retrieve(paymentIntentId, {
-    expand: ["payment_method"],
-  });
-  const methodId =
-    typeof intent.payment_method === "string"
-      ? intent.payment_method
-      : intent.payment_method?.id ?? null;
+  const intent = evidence.paymentIntentWithMethod(paymentIntentId);
+  const methodId = idOf(intent.payment_method);
   await recordSigningPaymentMethod(db, estimate.customerId, methodId);
   if (session.payment_status !== "paid") return;
-  await recordEstimateDepositPayment(db, estimateId, estimate.customerId, paymentIntentId);
+  await recordEstimateDepositPayment(
+    db,
+    evidence,
+    estimateId,
+    estimate.customerId,
+    paymentIntentId,
+  );
 }
 
 async function handleCheckoutSessionCompleted(
   db: Prisma.TransactionClient,
+  evidence: WebhookEvidence,
   session: Stripe.Checkout.Session,
 ): Promise<void> {
   const estimateId = session.metadata?.estimateId;
   if (estimateId) {
-    await handleEstimateDepositCheckoutCompleted(db, session, estimateId);
+    await handleEstimateDepositCheckoutCompleted(db, evidence, session, estimateId);
     return;
   }
 
@@ -538,16 +500,14 @@ async function handleCheckoutSessionCompleted(
 
   if (session.mode === "subscription") {
     if (!session.invoice) return;
-    const stripe = getStripeClient();
-    const invoiceId =
-      typeof session.invoice === "string" ? session.invoice : session.invoice.id;
-    const stripeInvoice = await stripe.invoices.retrieve(invoiceId, { expand: ["payments"] });
+    const invoiceId = idOf(session.invoice) as string;
+    const stripeInvoice = evidence.invoice(invoiceId);
     if (stripeInvoice.status !== "paid") return;
     const agreement = await db.rentalAgreement.findUniqueOrThrow({
       where: { id: agreementId },
       select: { customerId: true },
     });
-    await recordPaidInvoice(db, stripeInvoice, agreementId, agreement.customerId);
+    await recordPaidInvoice(db, evidence, stripeInvoice, agreementId, agreement.customerId);
     return;
   }
 
@@ -557,15 +517,10 @@ async function handleCheckoutSessionCompleted(
   });
 
   if (session.mode === "setup") {
-    const stripe = getStripeClient();
-    const setupIntentId =
-      typeof session.setup_intent === "string" ? session.setup_intent : session.setup_intent?.id;
+    const setupIntentId = idOf(session.setup_intent);
     if (!setupIntentId) return;
-    const intent = await stripe.setupIntents.retrieve(setupIntentId);
-    const methodId =
-      typeof intent.payment_method === "string"
-        ? intent.payment_method
-        : intent.payment_method?.id ?? null;
+    const intent = evidence.setupIntent(setupIntentId);
+    const methodId = idOf(intent.payment_method);
     await recordSigningPaymentMethod(db, agreement.customerId, methodId);
     return;
   }
@@ -577,22 +532,23 @@ async function handleCheckoutSessionCompleted(
         : session.payment_intent?.id;
     if (!paymentIntentId) return;
 
-    const stripe = getStripeClient();
-    const intent = await stripe.paymentIntents.retrieve(paymentIntentId, {
-      expand: ["payment_method"],
-    });
-    const methodId =
-      typeof intent.payment_method === "string"
-        ? intent.payment_method
-        : intent.payment_method?.id ?? null;
+    const intent = evidence.paymentIntentWithMethod(paymentIntentId);
+    const methodId = idOf(intent.payment_method);
     await recordSigningPaymentMethod(db, agreement.customerId, methodId);
     if (session.payment_status !== "paid") return;
-    await recordOneTimeSigningCharge(db, agreementId, agreement.customerId, paymentIntentId);
+    await recordOneTimeSigningCharge(
+      db,
+      evidence,
+      agreementId,
+      agreement.customerId,
+      paymentIntentId,
+    );
   }
 }
 
 async function handleCheckoutSessionAsyncPaymentSucceeded(
   db: Prisma.TransactionClient,
+  evidence: WebhookEvidence,
   session: Stripe.Checkout.Session,
 ): Promise<void> {
   const paymentIntentId =
@@ -608,7 +564,13 @@ async function handleCheckoutSessionAsyncPaymentSucceeded(
       select: { customerId: true },
     });
     if (!estimate.customerId) return;
-    await recordEstimateDepositPayment(db, estimateId, estimate.customerId, paymentIntentId);
+    await recordEstimateDepositPayment(
+      db,
+      evidence,
+      estimateId,
+      estimate.customerId,
+      paymentIntentId,
+    );
     return;
   }
 
@@ -618,7 +580,13 @@ async function handleCheckoutSessionAsyncPaymentSucceeded(
     where: { id: agreementId },
     select: { customerId: true },
   });
-  await recordOneTimeSigningCharge(db, agreementId, agreement.customerId, paymentIntentId);
+  await recordOneTimeSigningCharge(
+    db,
+    evidence,
+    agreementId,
+    agreement.customerId,
+    paymentIntentId,
+  );
 }
 
 async function handleCheckoutSessionAsyncPaymentFailed(
@@ -669,6 +637,7 @@ async function rewardingReferralForCustomer(
 
 async function handleInvoicePaid(
   db: Prisma.TransactionClient,
+  evidence: WebhookEvidence,
   webhookInvoice: Stripe.Invoice,
 ): Promise<string | null> {
   const subscriptionId = extractSubscriptionId(webhookInvoice);
@@ -686,12 +655,10 @@ async function handleInvoicePaid(
   });
 
   if (alreadyRecorded?.status !== "PAID") {
-    const stripe = getStripeClient();
-    const stripeInvoice = await stripe.invoices.retrieve(webhookInvoice.id as string, {
-      expand: ["payments"],
-    });
+    const stripeInvoice = evidence.invoice(webhookInvoice.id as string);
     await recordPaidInvoice(
       db,
+      evidence,
       stripeInvoice,
       agreement.id,
       agreement.customerId,
@@ -719,6 +686,7 @@ async function handleInvoicePaid(
 
 async function handleInvoicePaymentFailed(
   db: Prisma.TransactionClient,
+  evidence: WebhookEvidence,
   webhookInvoice: Stripe.Invoice,
 ): Promise<void> {
   const subscriptionId = extractSubscriptionId(webhookInvoice);
@@ -736,10 +704,7 @@ async function handleInvoicePaymentFailed(
   });
   if (existing) return;
 
-  const stripe = getStripeClient();
-  const stripeInvoice = await stripe.invoices.retrieve(webhookInvoice.id as string, {
-    expand: ["payments"],
-  });
+  const stripeInvoice = evidence.invoice(webhookInvoice.id as string);
   const invoice = await db.invoice.create({
     data: {
       customerId: agreement.customerId,
@@ -916,6 +881,7 @@ async function referralSettlementForProcessedEvent(
 
 async function processLockedEvent(
   db: Prisma.TransactionClient,
+  evidence: WebhookEvidence,
   event: Stripe.Event,
 ): Promise<string[]> {
   if (await alreadyProcessed(db, event.id)) {
@@ -925,11 +891,16 @@ async function processLockedEvent(
   const referralIdsToSettle: string[] = [];
   switch (event.type) {
     case "checkout.session.completed":
-      await handleCheckoutSessionCompleted(db, event.data.object as Stripe.Checkout.Session);
+      await handleCheckoutSessionCompleted(
+        db,
+        evidence,
+        event.data.object as Stripe.Checkout.Session,
+      );
       break;
     case "checkout.session.async_payment_succeeded":
       await handleCheckoutSessionAsyncPaymentSucceeded(
         db,
+        evidence,
         event.data.object as Stripe.Checkout.Session,
       );
       break;
@@ -940,12 +911,16 @@ async function processLockedEvent(
       );
       break;
     case "invoice.paid": {
-      const referralId = await handleInvoicePaid(db, event.data.object as Stripe.Invoice);
+      const referralId = await handleInvoicePaid(
+        db,
+        evidence,
+        event.data.object as Stripe.Invoice,
+      );
       if (referralId) referralIdsToSettle.push(referralId);
       break;
     }
     case "invoice.payment_failed":
-      await handleInvoicePaymentFailed(db, event.data.object as Stripe.Invoice);
+      await handleInvoicePaymentFailed(db, evidence, event.data.object as Stripe.Invoice);
       break;
     case "charge.refunded":
       await handleChargeRefunded(db, event.data.object as Stripe.Charge);
@@ -966,21 +941,45 @@ export type StripeWebhookProcessingResult = {
 };
 
 /**
- * One transaction-scoped advisory lock serializes Stripe event application.
- * Any handler failure rolls back both the business mutation and WebhookEvent,
- * so route.ts can return 500 and Stripe can safely retry. Referral provider
- * writes are returned to the route and happen only after this transaction
- * commits, so no network call is held under the global webhook lock.
+ * R08: how many times one delivery may re-fetch a Stripe fact that the locked
+ * transaction found missing (local state changed between the early check and
+ * the lock). Each retry adds exactly the missing item, so this terminates.
+ */
+const MAX_EVIDENCE_REFILLS = 5;
+
+/**
+ * Apply one Stripe event.
+ *
+ * 1. All Stripe reads happen first, with no transaction open (`gatherWebhookEvidence`).
+ * 2. A short local transaction then takes ONE transaction-scoped advisory lock
+ *    (the cross-customer serialization the ledger still needs), re-checks local
+ *    rows, applies the event and inserts the WebhookEvent marker together. No
+ *    network call happens while that lock or any row lock is held.
+ * 3. Any handler failure rolls back both the business mutation and the marker,
+ *    so route.ts can return 500 and Stripe can safely retry. Referral provider
+ *    writes are returned to the route and happen only after the commit.
  */
 export async function processStripeWebhookEvent(
   event: Stripe.Event,
 ): Promise<StripeWebhookProcessingResult> {
-  const referralIdsToSettle = await prisma.$transaction(
-    async (db) => {
-      await db.$queryRaw`SELECT pg_advisory_xact_lock(174831, 1)::text`;
-      return processLockedEvent(db, event);
-    },
-    { maxWait: 10_000, timeout: 30_000 },
-  );
-  return { referralIdsToSettle };
+  const evidence = await gatherWebhookEvidence(event);
+  for (let refill = 0; ; refill += 1) {
+    try {
+      const referralIdsToSettle = await prisma.$transaction(
+        async (db) => {
+          await db.$queryRaw`SELECT pg_advisory_xact_lock(174831, 1)::text`;
+          return processLockedEvent(db, evidence, event);
+        },
+        { maxWait: 10_000, timeout: 30_000 },
+      );
+      return { referralIdsToSettle };
+    } catch (error) {
+      if (!(error instanceof MissingWebhookEvidenceError) || refill >= MAX_EVIDENCE_REFILLS) {
+        throw error;
+      }
+      // The transaction rolled back (nothing was recorded). Fetch exactly the
+      // missing item with no lock held, then replay the local transaction.
+      await evidence.fill(error.key);
+    }
+  }
 }

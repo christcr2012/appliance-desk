@@ -149,6 +149,22 @@ per docs/BUSINESS-RULES.md's billing rules.
   `customer.subscription.deleted`. Every event is deduplicated by
   Stripe's own event id (the `WebhookEvent` table) so a retried
   delivery is never double-counted.
+  - **No Stripe call under a database lock (R08, 2026-10-04).** For each
+    event, `processStripeWebhookEvent` first gathers every Stripe fact the
+    handler needs (`src/domains/billing/webhook-evidence.ts`: invoice,
+    payment intent, charge, setup intent, paid-invoice cash events) with no
+    transaction open. Only then does a short local transaction take the one
+    advisory lock, re-check the local rows, apply the event and insert the
+    `WebhookEvent` marker together. Handlers read Stripe facts from the
+    evidence object and never call Stripe themselves. The early checks that
+    decide what to fetch only avoid pointless calls (for example a replayed
+    event fetches nothing); they decide nothing. If the locked transaction
+    needs a fact that was not fetched, it rolls back, the missing item is
+    fetched outside any lock, and the transaction is replayed. Evidence is a
+    snapshot, never authority. Test:
+    `tests/remediation-r2-webhook-evidence-integration.test.ts` tries to take
+    the same advisory lock from a second connection while each fake Stripe
+    call is in flight.
   - **Action needed from Chris, next time he's in the Stripe
     dashboard**: two new event types were added to this list on
     2026-09-28 (`checkout.session.async_payment_succeeded` and
