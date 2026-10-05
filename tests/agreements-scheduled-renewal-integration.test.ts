@@ -107,7 +107,6 @@ describe.skipIf(!enabled)("a signed renewal starts on its start date and hands e
   const get = (id: string) => prisma.rentalAgreement.findUniqueOrThrow({ where: { id } });
 
   beforeEach(() => {
-    stripeMock.state.clear();
     stripeMock.update.mockReset().mockImplementation(async (id: string, params?: { cancel_at?: number | "" }) => {
       if (params && params.cancel_at !== undefined) stripeMock.state.set(id, params.cancel_at === "" ? null : params.cancel_at);
       return { id };

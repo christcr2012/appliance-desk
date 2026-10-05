@@ -118,7 +118,6 @@ describe.skipIf(!enabled)("auto-renew and agreed early endings are carried out",
     prisma.rentalAgreement.findMany({ where: { renewedFromAgreementId: id }, include: { lines: true } });
 
   beforeEach(() => {
-    stripeMock.state.clear();
     stripeMock.update.mockReset().mockImplementation(async (id: string, params?: { cancel_at?: number | "" }) => {
       if (params && params.cancel_at !== undefined) stripeMock.state.set(id, params.cancel_at === "" ? null : params.cancel_at);
       return { id };
