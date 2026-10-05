@@ -58,7 +58,7 @@ export function ForgotPasswordForm() {
           onChange={(e) => setEmail(e.target.value)}
           aria-invalid={error ? true : undefined}
           aria-describedby={error ? "forgot-password-error" : undefined}
-          className="rounded border border-gray-300 px-3 py-2"
+          className="rounded border border-line-strong px-3 py-2"
         />
       </div>
 
