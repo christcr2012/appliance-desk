@@ -4,8 +4,9 @@ import { automationCounts } from "@/domains/automation/counts";
 import { finishPendingProviderOperations } from "@/domains/billing/reconciliation";
 import { runPendingHandoffs } from "@/domains/jobs/completion";
 import { freezeFinalInvoiceArtifacts } from "@/domains/documents/artifacts";
+import { reconcileUnknownDeliveries } from "@/domains/messaging/deliver";
 
-/** Daily recovery pass for durable Stripe/provider intents. */
+/** Daily recovery pass for durable provider intents. */
 export async function GET(request: Request): Promise<NextResponse> {
   const authHeader = request.headers.get("authorization");
   const expected = process.env.CRON_SECRET;
@@ -18,8 +19,6 @@ export async function GET(request: Request): Promise<NextResponse> {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
-  // Post-D drift check: these are the three real passes in this route. Do not
-  // recreate the obsolete design-only `subscription-ends` pass.
   const providerOps = await runAutomation({
     ruleKey: "billing-reconcile:provider-ops",
     work: async () => ({ counts: automationCounts(await finishPendingProviderOperations()) }),
@@ -32,6 +31,12 @@ export async function GET(request: Request): Promise<NextResponse> {
     ruleKey: "billing-reconcile:invoice-artifacts",
     work: async () => ({ counts: automationCounts(await freezeFinalInvoiceArtifacts(200)) }),
   });
+  // Batch E adds one genuinely new pass: UNKNOWN email/SMS outcomes that have
+  // a provider id can be reconciled without blindly re-sending the message.
+  const messageDeliveries = await runAutomation({
+    ruleKey: "billing-reconcile:message-deliveries",
+    work: async () => ({ counts: automationCounts(await reconcileUnknownDeliveries(50)) }),
+  });
 
-  return NextResponse.json({ providerOps, handoffs, invoiceArtifacts });
+  return NextResponse.json({ providerOps, handoffs, invoiceArtifacts, messageDeliveries });
 }
