@@ -1,7 +1,6 @@
 import type { ProviderOperationStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getStripeClient } from "@/lib/stripe";
-import { SUCCESSFUL_PAYMENT_STATUSES } from "./payment-status";
 import { resolveDepositRefundRail } from "./deposit-provenance";
 import {
   claimProviderOperation,
@@ -21,11 +20,6 @@ type DepositRefundOperation = {
   attempts: number;
   requestedAt: Date;
 };
-
-type DepositReceiptOrigin =
-  | { kind: "AGREEMENT"; agreementId: string }
-  | { kind: "AGREEMENTLESS_DEPOSIT" }
-  | null;
 
 async function findProviderRefund(operation: DepositRefundOperation) {
   const stripe = getStripeClient();
@@ -51,31 +45,12 @@ async function findProviderRefund(operation: DepositRefundOperation) {
   return null;
 }
 
-async function sourceOriginForReceipt(
-  receiptId: string,
-): Promise<DepositReceiptOrigin> {
-  const payment = await prisma.payment.findFirst({
-    where: {
-      receiptId,
-      status: { in: [...SUCCESSFUL_PAYMENT_STATUSES] },
-      invoice: { lineItems: { some: { kind: "DEPOSIT" } } },
-    },
-    select: { invoice: { select: { agreementId: true } } },
-    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-  });
-  if (!payment) return null;
-  return payment.invoice.agreementId
-    ? { kind: "AGREEMENT", agreementId: payment.invoice.agreementId }
-    : { kind: "AGREEMENTLESS_DEPOSIT" };
-}
-
 /**
- * R06 recovery for deposit refunds whose immutable funding receipt no longer
- * belongs to the agreement that currently owns the liability. That includes
- * ordinary A -> B/C renewals and estimate-funded deposits, whose original
- * receipt is attached to an agreement-less estimate invoice. Provider evidence
- * is checked before every UNKNOWN retry, and the retry always uses the charge
- * on the immutable source receipt.
+ * R06 recovery for EVERY deposit refund operation (same-agreement, renewed and
+ * estimate-funded alike). Provider evidence is checked before every UNKNOWN
+ * retry, and any retry always uses the charge on the deposit's immutable source
+ * receipt. A deposit whose source cannot be proven is left unresolved and
+ * visible; it is never retried against a guessed charge.
  */
 export async function reconcileMovedDepositRefundOperations(
   limit = 50,
@@ -109,7 +84,6 @@ export async function reconcileMovedDepositRefundOperations(
     const deposit = await prisma.deposit.findUnique({
       where: { id: operation.subjectId },
       select: {
-        agreementId: true,
         refundedAmountCents: true,
         stripeRefundId: true,
       },
@@ -135,18 +109,6 @@ export async function reconcileMovedDepositRefundOperations(
       continue;
     }
     if (rail.kind !== "STRIPE") continue;
-
-    const sourceOrigin = await sourceOriginForReceipt(rail.receiptId);
-    if (!sourceOrigin) continue;
-    // Same-agreement refunds remain owned by the legacy reconciler. An
-    // agreement-less deposit receipt is estimate-funded and must be handled
-    // here because renewal does not copy sourceEstimateId forward.
-    if (
-      sourceOrigin.kind === "AGREEMENT" &&
-      sourceOrigin.agreementId === deposit.agreementId
-    ) {
-      continue;
-    }
 
     const providerRefund = await findProviderRefund(operation);
     if (providerRefund) {

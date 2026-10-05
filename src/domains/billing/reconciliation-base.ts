@@ -448,86 +448,6 @@ function refundChargeFromOperation(operation: RecoverableOperation): string | nu
     : null;
 }
 
-async function resolveDepositRefundCharge(depositId: string): Promise<{
-  amountCents: number;
-  stripeChargeId: string;
-} | null> {
-  const deposit = await prisma.deposit.findUnique({
-    where: { id: depositId },
-    select: {
-      agreementId: true,
-      refundedAmountCents: true,
-      agreement: {
-        select: {
-          sourceEstimateId: true,
-          customer: { select: { stripeCustomerId: true } },
-        },
-      },
-    },
-  });
-  if (!deposit?.refundedAmountCents || deposit.refundedAmountCents <= 0) return null;
-
-  const linkedPayment = await prisma.payment.findFirst({
-    where: {
-      status: { in: [...SUCCESSFUL_PAYMENT_STATUSES] },
-      invoice: {
-        agreementId: deposit.agreementId,
-        lineItems: { some: { kind: "DEPOSIT" } },
-      },
-      receipt: { source: "STRIPE", stripeChargeId: { not: null } },
-    },
-    select: { receipt: { select: { stripeChargeId: true } } },
-    orderBy: { createdAt: "asc" },
-  });
-  if (linkedPayment?.receipt?.stripeChargeId) {
-    return {
-      amountCents: deposit.refundedAmountCents,
-      stripeChargeId: linkedPayment.receipt.stripeChargeId,
-    };
-  }
-
-  const estimateId = deposit.agreement.sourceEstimateId;
-  const customerId = deposit.agreement.customer.stripeCustomerId;
-  if (!estimateId || !customerId) return null;
-
-  const stripe = getStripeClient();
-  let startingAfter: string | undefined;
-  for (let pageNumber = 0; pageNumber < MAX_PROVIDER_PAGES; pageNumber++) {
-    const page = await stripe.checkout.sessions.list({
-      customer: customerId,
-      limit: 100,
-      ...(startingAfter ? { starting_after: startingAfter } : {}),
-    });
-    const session = page.data.find(
-      (candidate) =>
-        candidate.metadata?.estimateId === estimateId &&
-        candidate.payment_status === "paid" &&
-        candidate.payment_intent,
-    );
-    if (session?.payment_intent) {
-      const paymentIntentId =
-        typeof session.payment_intent === "string"
-          ? session.payment_intent
-          : session.payment_intent.id;
-      const intent = await stripe.paymentIntents.retrieve(paymentIntentId, {
-        expand: ["latest_charge"],
-      });
-      const charge = intent.latest_charge;
-      if (!charge) return null;
-      return {
-        amountCents: deposit.refundedAmountCents,
-        stripeChargeId: typeof charge === "string" ? charge : charge.id,
-      };
-    }
-    if (!page.has_more) return null;
-    const last = page.data.at(-1);
-    if (!last) return null;
-    startingAfter = last.id;
-  }
-
-  return null;
-}
-
 async function retryDefiniteRefundFailure(
   operation: RecoverableOperation,
 ): Promise<boolean> {
@@ -548,11 +468,12 @@ async function retryDefiniteRefundFailure(
     stripeChargeId = chargeId;
     metadata = { refundId: operation.subjectId, invoiceId: refund.invoiceId };
   } else if (operation.subjectType === "Deposit") {
-    const deposit = await resolveDepositRefundCharge(operation.subjectId);
-    if (!deposit) return false;
-    amountCents = deposit.amountCents;
-    stripeChargeId = deposit.stripeChargeId;
-    metadata = { depositId: operation.subjectId };
+    // R06: deposit refunds are retried only by
+    // `reconcileMovedDepositRefundOperations`, which always uses the charge on
+    // the deposit's immutable source receipt. This pass never guesses a charge
+    // (for example "the oldest successful payment"), so it leaves the operation
+    // visible instead of refunding against a smaller or unrelated charge.
+    return false;
   } else {
     return false;
   }
