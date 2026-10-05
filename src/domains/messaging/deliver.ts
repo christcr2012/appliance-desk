@@ -194,7 +194,8 @@ export async function deliverMessage(
   const invoke = async (): Promise<LowLevelResult> => {
     if (input.channel === "SMS") {
       return sendSms({
-        to: input.recipient.address,
+        // claimDelivery canonicalizes SMS recipients before this provider call.
+        to: delivery.recipientAddress,
         body: rendered.text,
         idempotencyKey: input.idempotencyKey,
       });
