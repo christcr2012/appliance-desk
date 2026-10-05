@@ -116,47 +116,51 @@ export async function createPurchaseOrder(userId: string, input: NewPurchaseOrde
     }
   }
 
-  const supplier = await prisma.supplier.findUnique({ where: { id: input.supplierId }, select: { archivedAt: true } });
-  if (!supplier) throw new Error("Choose a supplier.");
-  if (supplier.archivedAt) throw new Error("This supplier is archived. Restore it before placing a new order.");
+  // R14: the actor check, supplier check, part checks, the order and its audit entry are one
+  // transaction. Lock order is supplier, then parts (sorted by id); archiving a supplier updates
+  // its row, which waits on the shared lock taken here, so an archive and an order cannot interleave.
+  return prisma.$transaction(async (tx) => {
+    await assertActiveTeamActor(tx, userId, ["OWNER", "ADMIN"]);
+    const locked = await tx.$queryRaw<Array<{ archivedAt: Date | null }>>`
+      SELECT "archivedAt" FROM "Supplier" WHERE "id" = ${input.supplierId} FOR SHARE
+    `;
+    if (locked.length !== 1) throw new Error("Choose a supplier.");
+    if (locked[0]!.archivedAt) throw new Error("This supplier is archived. Restore it before placing a new order.");
 
-  const order = await prisma.$transaction(async (tx) => {
     const partIds = [...new Set(input.lines.flatMap((l) => l.partRecordId || []))];
     await lockPartRecords(tx, partIds);
     if (partIds.length > 0 && (await tx.partRecord.count({ where: { id: { in: partIds }, archivedAt: { not: null } } })) > 0) {
       throw new Error("One of those parts is archived. Restore it before ordering more.");
     }
-    return tx.purchaseOrder.create({
-    data: {
-      supplierId: input.supplierId,
-      notes: input.notes?.trim() || null,
-      createdByUserId: userId,
-      lines: {
-        createMany: {
-          data: input.lines.map((line) => ({
-            partRecordId: line.partRecordId || null,
-            description: line.description.trim(),
-            quantity: line.quantity,
-            unitCostCents: line.unitCostCents ?? 0,
-            unitCostKnown: line.unitCostCents !== undefined && line.unitCostCents !== null,
-          })),
+    const order = await tx.purchaseOrder.create({
+      data: {
+        supplierId: input.supplierId,
+        notes: input.notes?.trim() || null,
+        createdByUserId: userId,
+        lines: {
+          createMany: {
+            data: input.lines.map((line) => ({
+              partRecordId: line.partRecordId || null,
+              description: line.description.trim(),
+              quantity: line.quantity,
+              unitCostCents: line.unitCostCents ?? 0,
+              unitCostKnown: line.unitCostCents !== undefined && line.unitCostCents !== null,
+            })),
+          },
         },
       },
-    },
     });
+    await tx.auditLog.create({
+      data: {
+        userId,
+        action: "purchase_order.create",
+        entityType: "PurchaseOrder",
+        entityId: order.id,
+        newValue: { supplierId: input.supplierId, lineCount: input.lines.length },
+      },
+    });
+    return order;
   });
-
-  await prisma.auditLog.create({
-    data: {
-      userId,
-      action: "purchase_order.create",
-      entityType: "PurchaseOrder",
-      entityId: order.id,
-      newValue: { supplierId: input.supplierId, lineCount: input.lines.length },
-    },
-  });
-
-  return order;
 }
 
 export async function getPurchaseOrders() {
