@@ -58,6 +58,7 @@ const groups = [
     label: "Settings & activity",
     links: [
       ["settings", "Settings", "finance"],
+      ["automations", "Automations", "finance"],
       ["privacy", "Privacy requests", "owner"],
       ["activity", "Activity"],
     ],
