@@ -123,7 +123,7 @@ describe("Today server-side visibility", () => {
     const calls = [mocks.agreement, mocks.invoice, mocks.job, mocks.request, mocks.appliance, mocks.notice, mocks.pendingDelivery, mocks.providerOp].flatMap(
       (fn) => fn.mock.calls.map(([query]) => query),
     );
-    expect(calls.length).toBe(13);
+    expect(calls.length).toBe(16); // the three notice-problem categories (missed, uncertain, failed) each have their own capped read
     for (const query of calls) {
       expect(query.take).toBe(50);
       expect(query.orderBy.at(-1)).toEqual({ id: "asc" });

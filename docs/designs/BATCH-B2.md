@@ -891,3 +891,23 @@ columns identify one continuous rental across agreements.
 ## Amendments
 
 (Dated entries only. Never edit a decision silently.)
+
+- **2026-10-05 (Claude, implementing PR 1, merged as #205).** Design rule 6 ("a renewal the customer signed by hand
+  extends billing") is now what the code does; three older tests had expected the opposite and were updated to the
+  rule. `LATE_RETURN_WAIVER` was added to the ledger categories (rent) so the invoice-line enum stays exhaustive.
+- **2026-10-05 (Claude, implementing PR 2: WU-B2-4/5).** Five deliberate differences from the text above, none
+  changing a decision:
+  1. The resolve-screen operations (`getMissedNoticeOptions`, `resolveMissedNotice`) live in
+     `src/domains/notices/resolution.ts`, not `index.ts`: they call the agreements code, which already imports
+     `notices/index.ts`, so keeping them there would create an import loop. `recordNoticeDelivery` and
+     `confirmEmailOutcome` stay in `index.ts`.
+  2. `MOVE_RENEWAL_LATER` cannot differ from "send a new month-to-month renewal": `renewAgreement` only allows a
+     start on the day after the term ends, and every hand renewal needs the customer's signature. The screen lists it
+     as not available (with that reason), and choosing it through the API behaves as month-to-month.
+  3. In the sender, "renewal gone" (the reminder has no waiting automatic renewal) is checked before the window, so a
+     reminder for a cancelled renewal becomes NOT_NEEDED instead of showing as MISSED.
+  4. `CustomerNotice.attempts` counts only refusals (the third makes the notice FAILED); a claim or a "not attempted"
+     answer does not use up a try. A refusal's retry time counts from the run's clock (`now + 1 day`).
+  5. Test `notice-201-with-200-failing-last-one-attempted` asserts "within 5 runs", not 3: at 50 notices per run,
+     200 failing notices take four runs before the 201st is reached. The point (a good notice is never starved,
+     because refusals back off for a day) is what the test proves.
