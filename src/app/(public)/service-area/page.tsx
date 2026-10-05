@@ -3,15 +3,16 @@ import Link from "next/link";
 import { Container } from "@/components/site/container";
 import { ButtonLink } from "@/components/site/button-link";
 import { getBusinessSettings, parseServiceArea } from "@/domains/settings";
+import { getPublishedContent } from "@/domains/site-content";
 
 function slugifyCity(city: string): string {
   return city.trim().toLowerCase().replace(/\s+/g, "-");
 }
 
-export const metadata: Metadata = {
-  title: "Service Area",
-  description: "Where we currently deliver and service appliance rentals in Colorado.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const content = await getPublishedContent();
+  return { title: content["seo.service-area.title"], description: content["seo.service-area.description"] };
+}
 
 export default async function ServiceAreaPage() {
   const settings = await getBusinessSettings();

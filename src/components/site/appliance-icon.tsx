@@ -42,11 +42,14 @@ export function ApplianceIcon({ className = "" }: { className?: string }) {
 export function ApplianceMedia({
   photoUrl,
   name,
+  alt,
   className = "",
   iconClassName = "",
 }: {
   photoUrl: string | null | undefined;
   name: string;
+  /** Picture description; the standard sentence is used when omitted. */
+  alt?: string;
   className?: string;
   iconClassName?: string;
 }) {
@@ -55,7 +58,7 @@ export function ApplianceMedia({
       <div className={`relative overflow-hidden ${className}`}>
         <Image
           src={photoUrl}
-          alt={`A basic ${name.toLowerCase()} — the unit you receive may vary in brand, model, and color`}
+          alt={alt ?? `A basic ${name.toLowerCase()} — the unit you receive may vary in brand, model, and color`}
           fill
           sizes="(min-width: 1024px) 320px, (min-width: 640px) 45vw, 90vw"
           className="object-cover"
