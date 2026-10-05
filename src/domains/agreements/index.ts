@@ -2,7 +2,10 @@ import { draftRequestId } from "./draft-request";
 import { buildTermsSnapshot } from "./terms-snapshot";
 import { requireRole } from "@/lib/session";
 import { fixedTermEndDate } from "@/lib/business-date";
-import { syncSubscriptionTerm } from "@/domains/billing/subscription-term";
+import {
+  applySubscriptionEnds,
+  recomputeForAgreementInTx,
+} from "@/domains/billing/subscription-end";
 import { prisma } from "@/lib/prisma";
 import type {
   Prisma,
@@ -513,7 +516,7 @@ export async function signAgreement(
     throw new Error("This agreement isn't available to sign right now.");
   }
 
-  return prisma.$transaction(async (tx) => {
+  const local = await prisma.$transaction(async (tx) => {
     const agreement = await lockRentalAgreementInTx(
       tx,
       signatureRef.agreementId,
@@ -539,15 +542,16 @@ export async function signAgreement(
       throw new Error("This agreement was already signed.");
     }
 
+    const scheduledRenewal = Boolean(agreement.renewedFromAgreementId && agreement.startDate);
     await tx.rentalAgreement.update({
       where: { id: agreement.id },
       // A renewal keeps the start date it was agreed with and is only
       // SCHEDULED: it becomes the active rental (and the rental it renews
       // ends) in one step at its start date; see renewal-start.ts.
-      data: agreement.renewedFromAgreementId && agreement.startDate
+      data: scheduledRenewal
         ? {
             status: "SCHEDULED",
-            endDate: agreement.termMonths ? fixedTermEndDate(agreement.startDate, agreement.termMonths) : null,
+            endDate: agreement.termMonths ? fixedTermEndDate(agreement.startDate!, agreement.termMonths) : null,
           }
         : { status: "ACTIVE", startDate: new Date() },
     });
@@ -563,8 +567,14 @@ export async function signAgreement(
         },
       },
     });
-    return agreement.id;
+    const subscriptionEndIds =
+      scheduledRenewal && agreement.renewedFromAgreementId
+        ? await recomputeForAgreementInTx(tx, agreement.renewedFromAgreementId)
+        : [];
+    return { agreementId: agreement.id, subscriptionEndIds };
   });
+  await applySubscriptionEnds(local.subscriptionEndIds);
+  return local.agreementId;
 }
 
 export type CloseAgreementResult = {
@@ -574,7 +584,7 @@ export type CloseAgreementResult = {
     | { done: true; providerObjectId: string }
     | { done: false; opId: string; idempotencyKey: string }
     | null;
-  revertRenewalId: string | null;
+  subscriptionEndIds: string[];
 };
 
 /**
@@ -689,15 +699,23 @@ export async function closeAgreementInTx(
   const updated = await tx.rentalAgreement.findUniqueOrThrow({
     where: { id: agreementId },
   });
+
+  // Persist the newest billing answer LAST, after every lifecycle mutation.
+  // For a cancelled SCHEDULED renewal the helper resolves through its source
+  // agreement and restores the old term end. For a closed ACTIVE holder it
+  // records CLOSED; the separate cancellation operation below still ends Stripe.
+  const touched = await recomputeForAgreementInTx(tx, agreementId);
+  const sourceTouched =
+    agreement.status === "SCHEDULED" && agreement.renewedFromAgreementId
+      ? await recomputeForAgreementInTx(tx, agreement.renewedFromAgreementId)
+      : [];
+  const subscriptionEndIds = [...new Set([...touched, ...sourceTouched])];
+
   return {
     updated,
     stripeSubscriptionId: agreement.stripeSubscriptionId,
     providerClaim,
-    // A cancelled waiting renewal gives the subscription back its old end date.
-    revertRenewalId:
-      newStatus === "CANCELLED" && agreement.status === "SCHEDULED" && agreement.renewedFromAgreementId
-        ? agreement.id
-        : null,
+    subscriptionEndIds,
   };
 }
 
@@ -711,16 +729,9 @@ async function closeAgreement(
   return runCloseAgreementContinuation(local);
 }
 
-/** The Stripe half of closing an agreement: put back a cancelled renewal's old end date and cancel the subscription. Runs after commit. */
+/** The provider half of closing an agreement. Runs after commit; the newest end intent is applied before cancellation. */
 export async function runCloseAgreementContinuation(local: CloseAgreementResult): Promise<RentalAgreement> {
-  if (local.revertRenewalId) {
-    try {
-      await syncSubscriptionTerm(local.revertRenewalId, "revert");
-    } catch (error) {
-      // The recorded provider operation is retried by the billing reconciliation pass.
-      console.error(`Cancelled renewal ${local.revertRenewalId} but could not restore the old end date yet:`, error);
-    }
-  }
+  await applySubscriptionEnds(local.subscriptionEndIds);
 
   if (
     !local.stripeSubscriptionId ||

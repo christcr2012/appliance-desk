@@ -1,7 +1,13 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { lockCustomerLedger } from "@/domains/billing/ledger";
-import { syncSubscriptionTerm, termSyncKey } from "@/domains/billing/subscription-term";
+import {
+  applySubscriptionEnd,
+  applySubscriptionEnds,
+  recomputeForAgreementInTx,
+  recomputeSubscriptionEndInTx,
+  subscriptionEndCoversRenewal,
+} from "@/domains/billing/subscription-end";
 import { fixedTermEndDate } from "@/lib/business-date";
 import { checkReminderDelivered } from "@/domains/notices";
 import { renewalReminderKey } from "@/domains/notices/renewal-reminder";
@@ -20,8 +26,8 @@ import { lockRentalAgreementInTx } from "./index";
  *   - the appliances move from the old agreement's lines to the renewal's lines
  *     (they stay exactly where they are; nothing is sent for pickup),
  *   - the monthly billing carries over (same Stripe subscription, same next
- *     billing date; its end date was already moved to the renewal's end when the
- *     renewal was signed), and any deposit carries over,
+ *     billing date; Batch B2's persisted end intent was already confirmed),
+ *     and any deposit carries over,
  *   - the old agreement is marked ENDED (its end date stays the term end) and
  *     the renewal becomes ACTIVE.
  *
@@ -64,7 +70,7 @@ const MESSAGES = {
   AUTO_RENEW_WITHDRAWN:
     "The customer turned auto-renew off or asked to end the rental, so this automatic renewal will not start. It is cancelled automatically.",
   BILLING_NOT_READY:
-    "Waiting for the card processor to confirm the renewal's new end date on the monthly billing. It is retried automatically; nothing was changed.",
+    "Waiting for the card processor to confirm the renewal's billing end date. It is retried automatically; nothing was changed.",
   OPEN_JOB_CONFLICT:
     "This rental still has an open delivery, installation, or removal visit that could change equipment custody. Complete or cancel that visit before starting the renewal.",
 } as const;
@@ -151,7 +157,13 @@ export async function startRenewalInTx(
   }
 
   // The owner's master switch: with it off, no automatic renewal starts (cancelling and opting out still work).
-  if (renewal.createdByAutoRenew && !(await tx.businessSettings.findUnique({ where: { id: "singleton" }, select: { autoRenewEnabled: true } }))?.autoRenewEnabled) {
+  if (
+    renewal.createdByAutoRenew &&
+    !(await tx.businessSettings.findUnique({
+      where: { id: "singleton" },
+      select: { autoRenewEnabled: true },
+    }))?.autoRenewEnabled
+  ) {
     return fail("AUTO_RENEW_OFF");
   }
 
@@ -162,13 +174,14 @@ export async function startRenewalInTx(
     if (check === "OUT_OF_WINDOW") return fail("NOTICE_OUT_OF_WINDOW");
   }
 
-  // The subscription keeps charging only if its end date was moved at signing.
-  if (old.stripeSubscriptionId) {
-    const confirmed = await tx.providerOperation.findUnique({
-      where: { idempotencyKey: termSyncKey(renewal.id, "extend") },
-      select: { status: true },
-    });
-    if (confirmed?.status !== "SUCCEEDED") return fail("BILLING_NOT_READY");
+  // The persisted answer must already be the one this renewal needs. This replaces
+  // the old per-renewal provider-operation key check and cannot be fooled by a
+  // stale extend/revert operation finishing out of order.
+  if (
+    old.stripeSubscriptionId &&
+    !(await subscriptionEndCoversRenewal(tx, old.stripeSubscriptionId, renewal))
+  ) {
+    return fail("BILLING_NOT_READY");
   }
 
   const oldLines = await tx.rentalLine.findMany({
@@ -233,6 +246,13 @@ export async function startRenewalInTx(
   });
   await tx.deposit.updateMany({ where: { agreementId: old.id }, data: { agreementId: renewal.id } });
 
+  // The holder changed, so persist the newly derived answer in the same hand-off
+  // transaction. The date normally stays identical; after commit the fenced worker
+  // confirms the new version without sending an unnecessary Stripe update.
+  if (old.stripeSubscriptionId) {
+    await recomputeSubscriptionEndInTx(tx, old.stripeSubscriptionId);
+  }
+
   await tx.auditLog.create({
     data: {
       userId: null,
@@ -258,18 +278,26 @@ export async function startRenewalIfDue(renewalId: string, now = new Date()): Pr
       renewedFromAgreementId: true,
     },
   });
-  const renewed =
-    current?.createdByAutoRenew && current.renewedFromAgreementId
-      ? await prisma.rentalAgreement.findUnique({
-          where: { id: current.renewedFromAgreementId },
-          select: { renewalPreference: true, terminationRequestedAt: true },
-        })
-      : null;
-  const withdrawn =
-    current?.createdByAutoRenew &&
-    (renewed?.renewalPreference !== "AUTO_RENEW" || Boolean(renewed?.terminationRequestedAt));
-  if (current?.status === "SCHEDULED" && !withdrawn) await syncSubscriptionTerm(renewalId, "extend");
-  return prisma.$transaction((tx) => startRenewalInTx(tx, renewalId, now));
+
+  // Re-derive and converge before attempting the hand-off. This is safe even
+  // for a withdrawn automatic renewal: the answer becomes the old term end,
+  // never an extension.
+  if (current?.status === "SCHEDULED" && current.renewedFromAgreementId) {
+    const ids = await prisma.$transaction((tx) =>
+      recomputeForAgreementInTx(tx, current.renewedFromAgreementId!),
+    );
+    await applySubscriptionEnds(ids);
+  }
+
+  const result = await prisma.$transaction((tx) => startRenewalInTx(tx, renewalId, now));
+  if (result.started) {
+    const moved = await prisma.rentalAgreement.findUnique({
+      where: { id: renewalId },
+      select: { stripeSubscriptionId: true },
+    });
+    if (moved?.stripeSubscriptionId) await applySubscriptionEnd(moved.stripeSubscriptionId);
+  }
+  return result;
 }
 
 /** Nightly job: start every signed renewal whose start date has arrived. One failure never blocks the others. */

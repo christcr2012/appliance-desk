@@ -1,7 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import { isAutoRenewEnabled } from "@/domains/settings/auto-renew-switch";
 import { businessDaysBetween } from "@/lib/business-date";
-import { syncSubscriptionTerm } from "@/domains/billing/subscription-term";
+import {
+  applySubscriptionEnds,
+  recomputeForAgreementInTx,
+} from "@/domains/billing/subscription-end";
 import { cancelAgreement, lockRentalAgreementInTx } from "./index";
 import { renewalCreateData } from "./renewal-data";
 import { snapshotAutoRenew } from "./terms-snapshot";
@@ -19,9 +22,9 @@ import { composeRenewalReminder, renewalReminderKey } from "@/domains/notices/re
  * signed with), so the renewal is already waiting if nobody does anything, and it
  * can be cancelled right up to its start date by turning auto-renew off.
  *
- * Nothing here charges a card or sends an email: the monthly billing simply
- * carries on (its end date is moved by the same one-step process as any signed
- * renewal), and notices are a separate piece (docs/OWNER-INPUTS.md IN-21).
+ * Nothing here charges a card. Batch B2 persists the subscription's derived end
+ * answer in the same transaction as the renewal/notice, then converges Stripe
+ * after commit through the shared subscription-end worker.
  */
 
 export type AutoRenewRunResult = {
@@ -44,7 +47,9 @@ export function autoRenewWindowOpen(
   return businessDaysBetween(now, renewalStart) <= agreement.noticeDays;
 }
 
-type CreateOutcome = { created: true; renewalId: string } | { created: false };
+type CreateOutcome =
+  | { created: true; renewalId: string; subscriptionEndIds: string[] }
+  | { created: false };
 
 async function createAutoRenewal(agreementId: string, now: Date): Promise<CreateOutcome> {
   const outcome = await prisma.$transaction(async (tx) => {
@@ -128,15 +133,11 @@ async function createAutoRenewal(agreementId: string, now: Date): Promise<Create
         },
       },
     });
-    return { created: true, renewalId: created.id } as const;
+    const subscriptionEndIds = await recomputeForAgreementInTx(tx, old.id);
+    return { created: true, renewalId: created.id, subscriptionEndIds } as const;
   });
   if (outcome.created) {
-    try {
-      // Moves the subscription's end date now; the nightly start retries it if Stripe is down.
-      await syncSubscriptionTerm(outcome.renewalId, "extend");
-    } catch (error) {
-      console.error(`Auto-renewal ${outcome.renewalId} created but its billing end date could not be moved yet:`, error);
-    }
+    await applySubscriptionEnds(outcome.subscriptionEndIds);
   }
   return outcome;
 }
@@ -217,23 +218,28 @@ export async function runAutoRenewals(now = new Date()): Promise<AutoRenewRunRes
 }
 
 /**
- * Keep the subscription's end date until the reminder is delivered on time, THEN extend it
- * (before the term ends): billing must never run past the old term for a renewal that cannot
- * start. Safe to run any number of times; also called right after an owner marks a reminder delivered.
+ * Recompute every waiting automatic renewal and make Stripe match the newest
+ * answer. The master switch is deliberately NOT an early return: when it is off
+ * the derived answer restores the old term end instead of leaving an extension
+ * behind.
  */
 export async function extendBillingForDeliveredAutoRenewals(now = new Date()): Promise<number> {
-  if (!(await isAutoRenewEnabled())) return 0;
   const waiting = await prisma.rentalAgreement.findMany({
     where: { status: "SCHEDULED", createdByAutoRenew: true, startDate: { gt: now } },
-    select: { id: true },
+    select: { id: true, renewedFromAgreementId: true },
   });
-  let extended = 0;
-  for (const { id } of waiting) {
+  let handled = 0;
+  for (const renewal of waiting) {
+    if (!renewal.renewedFromAgreementId) continue;
     try {
-      if ((await syncSubscriptionTerm(id, "extend")) === "done") extended += 1;
+      const ids = await prisma.$transaction((tx) =>
+        recomputeForAgreementInTx(tx, renewal.renewedFromAgreementId!),
+      );
+      await applySubscriptionEnds(ids);
+      if (ids.length > 0) handled += 1;
     } catch (error) {
-      console.error(`Could not move the billing end date for automatic renewal ${id} yet:`, error);
+      console.error(`Could not reconcile the billing end for automatic renewal ${renewal.id} yet:`, error);
     }
   }
-  return extended;
+  return handled;
 }

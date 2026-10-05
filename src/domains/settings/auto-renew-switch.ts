@@ -39,4 +39,16 @@ export async function setAutoRenewEnabled(userId: string, enabled: boolean): Pro
       },
     });
   });
+
+  // The setting is already durable. Reconcile waiting renewals immediately so
+  // Stripe cannot retain the answer from the previous switch state. A nightly
+  // pass retries any provider problem; never roll the owner's setting back.
+  try {
+    const { cancelWithdrawnAutoRenewals, extendBillingForDeliveredAutoRenewals } =
+      await import("@/domains/agreements/auto-renew");
+    if (enabled) await extendBillingForDeliveredAutoRenewals();
+    else await cancelWithdrawnAutoRenewals(userId);
+  } catch (error) {
+    console.error("Automatic-renewal setting was saved, but waiting renewals still need reconciliation:", error);
+  }
 }
