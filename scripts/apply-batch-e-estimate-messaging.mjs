@@ -106,3 +106,4 @@ section(
 );
 
 fs.writeFileSync(path, text);
+// This branch-only transform is intentionally self-deleting in its workflow.
