@@ -2,7 +2,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { requestInvitationEmail } from "@/lib/password-email";
-import { sendEmail } from "@/lib/email";
+import { deliverMessage } from "@/domains/messaging/deliver";
 import {
   createTrustedCredentialUserInTx,
   generateUnusedAccountPassword,
@@ -97,28 +97,36 @@ export async function createLead(input: LeadFormInput) {
     .map((r) => `${r.quantity}x ${r.applianceType.name}`)
     .join(", ");
 
-  await sendEmail({
-    to: notifyTo,
-    subject: isHighValue
-      ? `New HIGH-VALUE lead: ${lead.contactName}`
-      : `New lead: ${lead.contactName}`,
-    text: [
-      `A new lead came in from the website${isHighValue ? " (flagged HIGH VALUE)" : ""}.`,
-      "",
-      `Name: ${lead.contactName}${lead.companyName ? ` (${lead.companyName})` : ""}`,
-      `Phone: ${lead.phone}`,
-      `Email: ${lead.email ?? "(not given)"}`,
-      `Best time to contact: ${lead.bestTimeToContact ?? "(not given)"}`,
-      `Wants: ${applianceSummary}`,
-      `Term: ${lead.desiredTerm ?? "(not given)"}`,
-      `Location: ${[lead.city, lead.zip].filter(Boolean).join(", ") || "(not given)"}${inServiceArea === false ? " — OUTSIDE configured service area" : ""}`,
-      `How they heard about us: ${lead.howHeard ?? "(not given)"}`,
-      `Notes: ${lead.notes ?? "(none)"}`,
-      "",
-      `Score: ${score} — ${reasons.join("; ")}`,
-      "",
-      "Review it in the Owner Desk under Leads.",
-    ].join("\n"),
+  await deliverMessage({
+    idempotencyKey: `lead-notification-${lead.id}`,
+    channel: "EMAIL",
+    purpose: "TRANSACTIONAL",
+    templateKey: "lead-notification",
+    customerFacing: false,
+    recipient: { type: "Staff", address: notifyTo },
+    subject: { type: "Lead", id: lead.id },
+    render: () => ({
+      subject: isHighValue
+        ? `New HIGH-VALUE lead: ${lead.contactName}`
+        : `New lead: ${lead.contactName}`,
+      text: [
+        `A new lead came in from the website${isHighValue ? " (flagged HIGH VALUE)" : ""}.`,
+        "",
+        `Name: ${lead.contactName}${lead.companyName ? ` (${lead.companyName})` : ""}`,
+        `Phone: ${lead.phone}`,
+        `Email: ${lead.email ?? "(not given)"}`,
+        `Best time to contact: ${lead.bestTimeToContact ?? "(not given)"}`,
+        `Wants: ${applianceSummary}`,
+        `Term: ${lead.desiredTerm ?? "(not given)"}`,
+        `Location: ${[lead.city, lead.zip].filter(Boolean).join(", ") || "(not given)"}${inServiceArea === false ? " — OUTSIDE configured service area" : ""}`,
+        `How they heard about us: ${lead.howHeard ?? "(not given)"}`,
+        `Notes: ${lead.notes ?? "(none)"}`,
+        "",
+        `Score: ${score} — ${reasons.join("; ")}`,
+        "",
+        "Review it in the Owner Desk under Leads.",
+      ].join("\n"),
+    }),
   });
 
   return lead;
