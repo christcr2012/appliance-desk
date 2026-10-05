@@ -8,6 +8,7 @@ import {
 } from "@/domains/growth";
 import { formatCents } from "@/domains/pricing";
 import { requireRole } from "@/lib/session";
+import { MetricHelp } from "@/components/desk/metric-stat";
 
 export const metadata = { title: "Growth" };
 
@@ -44,6 +45,7 @@ export default async function GrowthPage() {
           recent failed payment, a term ending soon with no renewal, or
           repeat repair requests.
         </p>
+        <MetricHelp metric="growth.churnRisk" />
         {churnRisk.length === 0 ? (
           <p className="mt-4 text-sm text-gray-600">Nothing flagged right now.</p>
         ) : (
@@ -73,6 +75,7 @@ export default async function GrowthPage() {
           Gone quiet, or marked lost long enough ago that it&apos;s worth
           another try.
         </p>
+        <MetricHelp metric="growth.winBack" />
         {winBackLeads.length === 0 ? (
           <p className="mt-4 text-sm text-gray-600">Nothing flagged right now.</p>
         ) : (
@@ -103,6 +106,7 @@ export default async function GrowthPage() {
           Active for a year or more at the same agreed price. A reminder
           only — nothing changes a customer&apos;s price automatically.
         </p>
+        <MetricHelp metric="growth.priceReview" />
         {priceReview.length === 0 ? (
           <p className="mt-4 text-sm text-gray-600">Nothing flagged right now.</p>
         ) : (
@@ -133,6 +137,7 @@ export default async function GrowthPage() {
           you rentals to no availability; one sitting mostly idle may be
           overpriced or overstocked.
         </p>
+        <MetricHelp metric="growth.fleetFlags" />
         {utilizationFlags.length === 0 ? (
           <p className="mt-4 text-sm text-gray-600">Nothing flagged right now.</p>
         ) : (

@@ -12,18 +12,10 @@ import {
   EmptyState,
 } from "@/components/desk/workspace";
 import { Pagination } from "@/components/pagination";
+import { MetricStat } from "@/components/desk/metric-stat";
 import { formatBusinessDate, formatBusinessTime } from "@/lib/business-date";
 
 export const metadata = { title: "Fleet" };
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg border border-gray-200 bg-white p-5">
-      <p className="text-sm text-gray-600">{label}</p>
-      <p className="mt-1 text-2xl font-semibold text-gray-900">{value}</p>
-    </div>
-  );
-}
 
 export default async function FleetPage({
   searchParams,
@@ -88,39 +80,31 @@ export default async function FleetPage({
       </SectionCard>
 
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat label="Total appliances" value={String(totals.applianceCount)} />
-        <Stat
-          label="Average utilization"
+        <MetricStat metric="fleet.applianceCount" value={String(totals.applianceCount)} />
+        <MetricStat metric="fleet.utilization"
           value={`${Math.round(totals.averageUtilizationFraction * 100)}%`}
         />
-        <Stat label="Currently rented" value={String(statusCounts.RENTED)} />
-        <Stat
-          label="Currently available"
+        <MetricStat metric="fleet.rented" value={String(statusCounts.RENTED)} />
+        <MetricStat metric="fleet.available"
           value={String(statusCounts.AVAILABLE)}
         />
-        <Stat label="In maintenance" value={String(statusCounts.MAINTENANCE)} />
-        <Stat
-          label="Recorded acquisition costs"
+        <MetricStat metric="fleet.maintenance" value={String(statusCounts.MAINTENANCE)} />
+        <MetricStat metric="fleet.acquisitionCost"
           value={formatCents(totals.totalInvestedCents)}
         />
-        <Stat
-          label="Estimated lifetime rental value"
+        <MetricStat metric="fleet.rentalValue"
           value={formatCents(totals.totalRevenueCents)}
         />
-        <Stat
-          label="Recorded repair costs"
+        <MetricStat metric="fleet.repairCost"
           value={formatCents(totals.totalRepairCostCents)}
         />
-        <Stat
-          label="Estimated contribution from recorded costs"
+        <MetricStat metric="fleet.contribution"
           value={formatCents(totals.totalNetContributionCents)}
         />
-        <Stat
-          label="Estimated cost recovery with complete records"
+        <MetricStat metric="fleet.costRecovery"
           value={`${totals.paidForItselfCount} of ${totals.applianceCount}`}
         />
-        <Stat
-          label="Units with incomplete costs"
+        <MetricStat metric="fleet.incompleteCosts"
           value={String(totals.incompleteCostCount)}
         />
       </div>
