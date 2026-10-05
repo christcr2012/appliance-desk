@@ -236,7 +236,16 @@ export async function extendBillingForDeliveredAutoRenewals(now = new Date()): P
         recomputeForAgreementInTx(tx, renewal.renewedFromAgreementId!),
       );
       await applySubscriptionEnds(ids);
-      if (ids.length > 0) handled += 1;
+      // Count only renewals whose billing really carries on past the old end date (reminder delivered,
+      // switch on, consent given) and that Stripe has confirmed; a renewal still waiting does not count.
+      const extended = await prisma.subscriptionEndIntent.count({
+        where: {
+          stripeSubscriptionId: { in: ids },
+          reason: { startsWith: "RENEWAL_EXTENDS" },
+          appliedVersion: { gt: 0 },
+        },
+      });
+      if (extended > 0) handled += 1;
     } catch (error) {
       console.error(`Could not reconcile the billing end for automatic renewal ${renewal.id} yet:`, error);
     }
