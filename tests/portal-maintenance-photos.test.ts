@@ -11,6 +11,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 const customerFindUnique = vi.fn();
 const maintenanceRequestCreate = vi.fn();
 const auditLogCreate = vi.fn();
+const deliverMessage = vi.fn();
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
@@ -20,8 +21,8 @@ vi.mock("@/lib/prisma", () => ({
   },
 }));
 
-vi.mock("@/lib/email", () => ({
-  sendEmail: vi.fn().mockResolvedValue(undefined),
+vi.mock("@/domains/messaging/deliver", () => ({
+  deliverMessage: (...args: unknown[]) => deliverMessage(...args),
 }));
 
 vi.mock("@/domains/settings", () => ({
@@ -42,9 +43,14 @@ describe("createMaintenanceRequestForUser photo handling", () => {
       user: { name: "Jane Doe", email: "jane@example.com" },
     });
     maintenanceRequestCreate.mockReset().mockImplementation(({ data }) =>
-      Promise.resolve({ id: "req-1", ...data }),
+      Promise.resolve({ id: "req-1", priority: data.priority ?? "NORMAL", ...data }),
     );
     auditLogCreate.mockReset().mockResolvedValue({});
+    deliverMessage.mockReset().mockResolvedValue({
+      state: "ACCEPTED",
+      deliveryId: "maintenance-alert",
+      providerMessageId: "msg-1",
+    });
   });
 
   it("nests photoUrls as a Photo create when photos are given", async () => {
