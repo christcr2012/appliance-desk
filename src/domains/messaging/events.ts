@@ -1,5 +1,6 @@
 import type { MessageState, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { recordLeadMessageContactInTx } from "@/domains/leads/contact";
 import {
   normalizeMessageAddress,
   smsAddressAliases,
@@ -118,15 +119,26 @@ export async function processVerifiedResendEvent(
 
     const state = nextState(delivery.state, requested);
     if (state !== delivery.state) {
-      await tx.messageDelivery.update({
+      const changedAt = new Date();
+      const completed = await tx.messageDelivery.update({
         where: { id: delivery.id },
         data: {
           state,
-          ...(state === "DELIVERED" ? { deliveredAt: new Date(), lastError: null } : {}),
+          ...(state === "ACCEPTED" && !delivery.acceptedAt
+            ? { acceptedAt: changedAt, lastError: null }
+            : {}),
+          ...(state === "DELIVERED" ? { deliveredAt: changedAt, lastError: null } : {}),
           ...(state === "BOUNCED" ? { lastError: "provider reported a hard bounce" } : {}),
           ...(state === "COMPLAINED" ? { lastError: "recipient reported this message as spam" } : {}),
         },
       });
+      if (state === "ACCEPTED" || state === "DELIVERED") {
+        await recordLeadMessageContactInTx(
+          tx,
+          completed,
+          delivery.acceptedAt ?? changedAt,
+        );
+      }
     }
 
     if ((requested === "BOUNCED" || requested === "COMPLAINED") && delivery.channel === "EMAIL") {
@@ -214,14 +226,31 @@ export async function processVerifiedTwilioStatusEvent(
 
     const state = nextState(delivery.state, requested);
     if (state !== delivery.state) {
-      await tx.messageDelivery.update({
+      const changedAt = new Date();
+      const completed = await tx.messageDelivery.update({
         where: { id: delivery.id },
         data: {
           state,
-          ...(state === "DELIVERED" ? { deliveredAt: new Date(), lastError: null } : {}),
-          ...(state === "FAILED" ? { lastError: input.errorCode ? `Twilio delivery failure ${input.errorCode}` : "Twilio reported delivery failure" } : {}),
+          ...(state === "ACCEPTED" && !delivery.acceptedAt
+            ? { acceptedAt: changedAt, lastError: null }
+            : {}),
+          ...(state === "DELIVERED" ? { deliveredAt: changedAt, lastError: null } : {}),
+          ...(state === "FAILED"
+            ? {
+                lastError: input.errorCode
+                  ? `Twilio delivery failure ${input.errorCode}`
+                  : "Twilio reported delivery failure",
+              }
+            : {}),
         },
       });
+      if (state === "ACCEPTED" || state === "DELIVERED") {
+        await recordLeadMessageContactInTx(
+          tx,
+          completed,
+          delivery.acceptedAt ?? changedAt,
+        );
+      }
     }
     await tx.providerEvent.updateMany({
       where: { provider: "twilio", eventId: input.eventId },
@@ -246,8 +275,6 @@ export async function processVerifiedTwilioStop(
     });
     if (!inserted) return { duplicate: true, customerId: null };
 
-    // New opt-ins are stored as E.164. Aliases keep STOP effective for customers
-    // who opted in before E4 while their phone was stored in a human-formatted form.
     const customer = await tx.customer.findFirst({
       where: { phone: { in: aliases } },
       select: { id: true },
