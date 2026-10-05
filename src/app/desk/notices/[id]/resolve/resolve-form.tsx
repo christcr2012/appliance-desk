@@ -14,6 +14,7 @@ const TITLES: Record<string, string> = {
   RECORD_DELIVERY: "I delivered it another way",
   CONFIRM_EMAIL: "Check whether the email went out",
   KEEP_WAITING: "Keep it waiting",
+  ACKNOWLEDGE: "Leave it; billing carries on",
   END_RENTAL: "End the rental now",
 };
 
@@ -69,7 +70,7 @@ export function ResolveForm({
               ? ({ kind, termMonths: termMonths === "" ? null : (Number(termMonths) as 6 | 12) } as const)
               : kind === "KEEP_WAITING"
                 ? ({ kind, remindOn } as const)
-                : ({ kind } as { kind: "MOVE_RENEWAL_LATER" | "END_RENTAL" });
+                : ({ kind } as { kind: "MOVE_RENEWAL_LATER" | "END_RENTAL" | "ACKNOWLEDGE" });
         result = await resolveMissedNoticeAction({ noticeId, expectedUpdatedAt, choice, note });
       }
       if (result.status === "error") {

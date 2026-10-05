@@ -2,6 +2,8 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { addBusinessDays, billingPeriodFor, businessDaysBetween } from "@/lib/business-date";
 import { applySubscriptionEnds, recomputeForAgreementInTx } from "@/domains/billing/subscription-end";
+import { createNoticeInTx } from "@/domains/notices";
+import { composeTermsChangeNotice } from "@/domains/notices/terms-change";
 import { lockAgreementForActor, type TermActor } from "./actor";
 
 /**
@@ -232,6 +234,79 @@ export async function requestMonthToMonthEnd(
 
   // The decision and its billing answer are already durable together; Stripe catches up after commit.
   await applySubscriptionEnds(subscriptionEndIds);
+}
+
+/**
+ * Publish the month-to-month terms as the next version when they differ from the newest one, and tell every active
+ * month-to-month customer (one TERMS_CHANGE notice each, no sending window). A newer version withdraws an earlier
+ * notice that was never sent. Fixed-term rentals are never touched. Runs inside the settings save transaction.
+ */
+export async function publishMonthToMonthTermsInTx(
+  tx: Prisma.TransactionClient,
+  userId: string | null,
+  terms: { noticeDays: number; termsText: string },
+): Promise<{ version: number; notices: number } | null> {
+  const newest = await tx.monthToMonthTermsVersion.findFirst({ orderBy: { version: "desc" } });
+  if (newest && newest.noticeDays === terms.noticeDays && newest.termsText === terms.termsText) return null;
+  const version = (newest?.version ?? 0) + 1;
+  await tx.monthToMonthTermsVersion.create({
+    data: { version, noticeDays: terms.noticeDays, termsText: terms.termsText, publishedByUserId: userId },
+  });
+  const [settings, agreements] = await Promise.all([
+    tx.businessSettings.findUnique({
+      where: { id: "singleton" },
+      select: {
+        publicBusinessName: true,
+        publicPhone: true,
+        publicEmail: true,
+        monthToMonthChangeNoticeDays: true,
+        termsChangeNoticeText: true,
+      },
+    }),
+    tx.rentalAgreement.findMany({
+      where: { status: "ACTIVE", termMonths: null, terminationRequestedAt: null },
+      select: { id: true, customerId: true, customer: { select: { user: { select: { name: true, email: true } } } } },
+    }),
+  ]);
+  let notices = 0;
+  for (const agreement of agreements) {
+    const key = termsChangeKey(version, agreement.id);
+    await tx.customerNotice.updateMany({
+      where: { agreementId: agreement.id, kind: "TERMS_CHANGE", status: "PENDING", dedupeKey: { not: key } },
+      data: { status: "NOT_NEEDED" },
+    });
+    const composed = composeTermsChangeNotice({
+      customerName: agreement.customer.user.name ?? agreement.customer.user.email,
+      noticeDays: terms.noticeDays,
+      termsText: terms.termsText,
+      changeDays: settings?.monthToMonthChangeNoticeDays ?? 30,
+      businessName: settings?.publicBusinessName ?? "Robinson Appliance Rentals",
+      businessPhone: settings?.publicPhone ?? "",
+      businessEmail: settings?.publicEmail ?? "",
+      template: settings?.termsChangeNoticeText,
+    });
+    const result = await createNoticeInTx(tx, {
+      customerId: agreement.customerId,
+      agreementId: agreement.id,
+      kind: "TERMS_CHANGE",
+      dedupeKey: key,
+      subject: composed.subject,
+      body: composed.body,
+      earliestAt: null,
+      deadlineAt: null,
+    });
+    if (result.created) notices += 1;
+  }
+  await tx.auditLog.create({
+    data: {
+      userId,
+      action: "settings.month_to_month_terms_published",
+      entityType: "MonthToMonthTermsVersion",
+      entityId: String(version),
+      newValue: { version, noticeDays: terms.noticeDays, notices },
+    },
+  });
+  return { version, notices };
 }
 
 /** Days between two instants rounded to whole business days (shown on the screens). */

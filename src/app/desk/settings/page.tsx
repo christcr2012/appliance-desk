@@ -1,5 +1,8 @@
 import Link from "next/link";
 import { NoticeDeliveryForm } from "./notice-delivery-form";
+import { MonthToMonthForm } from "./month-to-month-form";
+import { MONTH_TO_MONTH_STARTING_DRAFTS, monthToMonthSettingsDefaults } from "@/domains/settings/month-to-month";
+import { prisma } from "@/lib/prisma";
 import { noticeDeliveryDefaults } from "@/domains/settings/notice-delivery";
 import { getBusinessSettings, getAllApplianceTypes } from "@/domains/settings";
 import { getStaffAccounts } from "@/domains/staff";
@@ -88,6 +91,11 @@ export default async function DeskSettingsPage({
           />
         </div>
         <TermsPolicyForm defaultValues={termsPolicyDefaults(settings)} />
+        <MonthToMonthForm
+          defaultValues={monthToMonthSettingsDefaults(settings as { monthToMonthChangeNoticeDays?: number; termsChangeNoticeText?: string | null; annualReminderText?: string | null })}
+          currentVersion={(await prisma.monthToMonthTermsVersion.findFirst({ orderBy: { version: "desc" }, select: { version: true } }))?.version ?? null}
+          startingDrafts={MONTH_TO_MONTH_STARTING_DRAFTS}
+        />
         <NoticeDeliveryForm
           defaultValues={noticeDeliveryDefaults(settings as { noticeCertifierRoles?: string; mailNoticeTransitDays?: number })}
           canChange={(session.user as { role?: string }).role === "OWNER"}

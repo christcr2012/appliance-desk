@@ -181,7 +181,19 @@ export function noticeWaitingException(notice: {
   id: string;
   customerName: string;
   createdAt: Date;
+  kind?: string;
 }): ExceptionItem {
+  if (notice.kind === "ANNUAL_REMINDER" || notice.kind === "TERMS_CHANGE") {
+    return {
+      category: "NOTICE_WAITING",
+      severity: "high",
+      title: `${notice.customerName} has ${notice.kind === "ANNUAL_REMINDER" ? "a yearly reminder" : "a notice about changed terms"} waiting to be sent`,
+      detail:
+        "Billing is not affected. Send it yourself and mark it as delivered, or turn on live customer email.",
+      href: "/desk/notices",
+      since: notice.createdAt,
+    };
+  }
   return {
     category: "NOTICE_WAITING",
     severity: "high",
@@ -199,24 +211,28 @@ export function noticeWaitingException(notice: {
  */
 export function noticeProblemException(
   status: "MISSED" | "UNCERTAIN" | "FAILED",
-  notice: { id: string; customerName: string; createdAt: Date },
+  notice: { id: string; customerName: string; createdAt: Date; kind?: string },
 ): ExceptionItem {
+  const label =
+    notice.kind === "ANNUAL_REMINDER" ? "yearly reminder" : notice.kind === "TERMS_CHANGE" ? "notice about changed terms" : "renewal reminder";
   const copy = {
     MISSED: {
       category: "NOTICE_MISSED" as const,
-      title: `${notice.customerName}'s renewal reminder was not delivered in time`,
+      title: `${notice.customerName}'s ${label} was not delivered in time`,
       detail:
-        "The last day to send it passed. It will never be sent now (it would promise a renewal that cannot start), the automatic renewal will not start on its own, and billing ends on the current end date. Open it to choose what happens next.",
+        notice.kind === "ANNUAL_REMINDER" || notice.kind === "TERMS_CHANGE"
+          ? "The last day to send it passed, so it will not be sent now. Billing carries on as normal. Open it to record that you delivered it another way, or to leave it."
+          : "The last day to send it passed. It will never be sent now (it would promise a renewal that cannot start), the automatic renewal will not start on its own, and billing ends on the current end date. Open it to choose what happens next.",
     },
     UNCERTAIN: {
       category: "NOTICE_UNCERTAIN" as const,
-      title: `${notice.customerName}'s renewal reminder may or may not have gone out`,
+      title: `${notice.customerName}'s ${label} may or may not have gone out`,
       detail:
         "The email service did not give a clear answer. Check whether it was delivered, then say so on the next screen. Nothing is sent again by itself.",
     },
     FAILED: {
       category: "NOTICE_FAILED" as const,
-      title: `${notice.customerName}'s renewal reminder was refused three times`,
+      title: `${notice.customerName}'s ${label} was refused three times`,
       detail:
         "The email service refused it every time (often a wrong email address). Fix the address and try again, or deliver it another way.",
     },

@@ -132,7 +132,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     capped(
       (take) => prisma.customerNotice.findMany({
         where: noticeProblemWhere(status),
-        select: { id: true, createdAt: true, ...customerSelect },
+        select: { id: true, kind: true, createdAt: true, ...customerSelect },
         orderBy: [{ createdAt: "asc" }, { id: "asc" }],
         take,
       }),
@@ -282,7 +282,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
       ? capped(
           (take) => prisma.customerNotice.findMany({
             where: noticeWhere,
-            select: { id: true, createdAt: true, ...customerSelect },
+            select: { id: true, kind: true, createdAt: true, ...customerSelect },
             orderBy: [{ createdAt: "asc" }, { id: "asc" }],
             take,
           }),
@@ -370,16 +370,16 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
       }),
     ),
     ...waitingNotices.rows.map((n) =>
-      noticeWaitingException({ id: n.id, createdAt: n.createdAt, customerName: customerDisplayName(n.customer) }),
+      noticeWaitingException({ id: n.id, createdAt: n.createdAt, kind: n.kind, customerName: customerDisplayName(n.customer) }),
     ),
     ...missedNotices.rows.map((n) =>
-      noticeProblemException("MISSED", { id: n.id, createdAt: n.createdAt, customerName: customerDisplayName(n.customer) }),
+      noticeProblemException("MISSED", { id: n.id, createdAt: n.createdAt, kind: n.kind, customerName: customerDisplayName(n.customer) }),
     ),
     ...uncertainNotices.rows.map((n) =>
-      noticeProblemException("UNCERTAIN", { id: n.id, createdAt: n.createdAt, customerName: customerDisplayName(n.customer) }),
+      noticeProblemException("UNCERTAIN", { id: n.id, createdAt: n.createdAt, kind: n.kind, customerName: customerDisplayName(n.customer) }),
     ),
     ...failedNotices.rows.map((n) =>
-      noticeProblemException("FAILED", { id: n.id, createdAt: n.createdAt, customerName: customerDisplayName(n.customer) }),
+      noticeProblemException("FAILED", { id: n.id, createdAt: n.createdAt, kind: n.kind, customerName: customerDisplayName(n.customer) }),
     ),
     ...stuckEndings.rows
       .filter((a) => a.terminationEffectiveOn !== null)

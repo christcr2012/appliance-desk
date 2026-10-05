@@ -138,6 +138,15 @@ async function noticeNeedAndWindow(
   notice: Pick<NoticeRow, "kind" | "agreementId" | "earliestAt" | "deadlineAt">,
 ): Promise<{ need: NoticeNeed; window: { earliestAt: Date | null; deadlineAt: Date | null } }> {
   const stored = { earliestAt: notice.earliestAt, deadlineAt: notice.deadlineAt };
+  // A yearly reminder or terms-change notice only matters while the month-to-month rental is still running.
+  if ((notice.kind === "ANNUAL_REMINDER" || notice.kind === "TERMS_CHANGE") && notice.agreementId) {
+    const rental = await prisma.rentalAgreement.findUnique({
+      where: { id: notice.agreementId },
+      select: { status: true, terminationRequestedAt: true },
+    });
+    const running = rental?.status === "ACTIVE" && !rental.terminationRequestedAt;
+    return { need: running ? "OK" : "GONE", window: stored };
+  }
   if (notice.kind !== "RENEWAL_REMINDER" || !notice.agreementId) return { need: "OK", window: stored };
   const renewal = await prisma.rentalAgreement.findFirst({
     where: { renewedFromAgreementId: notice.agreementId, createdByAutoRenew: true, status: "SCHEDULED" },
