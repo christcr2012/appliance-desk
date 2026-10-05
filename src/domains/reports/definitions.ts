@@ -10,12 +10,9 @@ export type MetricKind = "ACTUAL" | "ESTIMATE";
 export type MetricDefinition = {
   key: string;
   label: string;
-  /** Which dates decide what is included, in plain words. */
   dateBasis: string;
-  /** How the number is worked out, in plain words. */
   calculation: string;
   kind: MetricKind;
-  /** The records it comes from. */
   sources: string[];
   drillHref: (params: Record<string, string>) => string;
 };
@@ -28,7 +25,6 @@ function define(d: Omit<MetricDefinition, "drillHref"> & { drill: string | ((p: 
 }
 
 export const METRICS = {
-  // ---- Reports ----
   "reports.estimatedEarnings": define({
     key: "reports.estimatedEarnings",
     label: "Estimated earnings (all billing agreements)",
@@ -56,7 +52,6 @@ export const METRICS = {
     sources: ["Estimated earnings", "Collected, net of refunds"],
     drill: "/desk/reports",
   }),
-  // ---- Revenue ----
   "revenue.mrr": define({
     key: "revenue.mrr",
     label: "Estimated monthly rate (MRR)",
@@ -156,7 +151,6 @@ export const METRICS = {
     sources: ["Payments"],
     drill: "/desk/billing",
   }),
-  // ---- Fleet ----
   "fleet.applianceCount": define({
     key: "fleet.applianceCount",
     label: "Total appliances",
@@ -168,11 +162,11 @@ export const METRICS = {
   }),
   "fleet.utilization": define({
     key: "fleet.utilization",
-    label: "Average utilization",
-    dateBasis: "From the day each unit was added to today.",
-    calculation: "The share of that time each unit was assigned to a rental, averaged over all units. It is not the share of units rented today.",
+    label: "Physical custody utilization",
+    dateBasis: "Current custody and the rolling 30 days through today.",
+    calculation: "Current utilization is the share of units physically recorded with customers now. Rolling utilization is occupied custody days divided by observable unit-days in the last 30 days. Assignment rows do not change this metric.",
     kind: "ESTIMATE",
-    sources: ["Rental assignments", "Appliance records"],
+    sources: ["Appliance custody episodes", "Appliance records"],
     drill: "/desk/fleet",
   }),
   "fleet.rented": define({
@@ -256,7 +250,6 @@ export const METRICS = {
     sources: ["Appliance purchase costs", "Repair jobs"],
     drill: () => "/desk/fleet?costs=missing",
   }),
-  // ---- Growth ----
   "growth.churnRisk": define({
     key: "growth.churnRisk",
     label: "Customers worth a proactive call",
@@ -269,10 +262,10 @@ export const METRICS = {
   "growth.winBack": define({
     key: "growth.winBack",
     label: "Leads worth a follow-up",
-    dateBasis: "Days since the lead's last activity or since it was marked lost.",
-    calculation: "Leads that went quiet or were lost long enough ago to be worth another try.",
+    dateBasis: "Days since the last recorded real contact, or since a lead was marked lost.",
+    calculation: "NEW or CONTACTED leads use the canonical last-real-contact timestamp from inbound contact, manual notes/calls and accepted/delivered messages. LOST leads also respect when they were marked lost. Generic row edits do not reset the clock.",
     kind: "ESTIMATE",
-    sources: ["Leads"],
+    sources: ["Leads", "Lead contact evidence", "Message delivery evidence"],
     drill: "/desk/leads",
   }),
   "growth.priceReview": define({
@@ -287,10 +280,10 @@ export const METRICS = {
   "growth.fleetFlags": define({
     key: "growth.fleetFlags",
     label: "Fleet flags",
-    dateBasis: "Same as average utilization.",
-    calculation: "Appliance types that are nearly always rented (may be costing you rentals) or mostly idle (may be overpriced or overstocked).",
+    dateBasis: "Current physical custody plus rolling 30-day custody evidence.",
+    calculation: "Flags a type only when current and rolling custody tell the same story and there is enough recent observation. This avoids calling old demand a current shortage or brand-new inventory immediately underused.",
     kind: "ESTIMATE",
-    sources: ["Rental assignments", "Appliance records"],
+    sources: ["Appliance custody episodes", "Appliance records"],
     drill: "/desk/fleet",
   }),
 } as const;
@@ -301,7 +294,6 @@ export function metricDefinition(key: MetricKey): MetricDefinition {
   return METRICS[key];
 }
 
-/** Cost that was never entered is "unknown", never zero and never profit. Pure. */
 export function costOrUnknown(cents: number | null | undefined, formatter: (cents: number) => string): string {
   return cents === null || cents === undefined ? "unknown" : formatter(cents);
 }
