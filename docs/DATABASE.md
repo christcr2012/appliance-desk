@@ -363,3 +363,48 @@ Populated upgrade fixture proves old task defaults and record links survive.
   same-type unit set aside for the waiting item, and `refundedCents` /
   `refundByHandCents` (what went back through Stripe, and what the owner pays
   back by hand when the item was never delivered).
+
+## Batch B2 lifecycle foundation — October 5, 2026
+
+Migration `20261006010000_batch_b2_lifecycle` is additive. It introduces the
+persisted facts the approved Batch B2 lifecycle design needs before behavior is
+moved onto them:
+
+- **SubscriptionEndIntent** — one versioned answer per Stripe subscription for
+  whether billing should continue, end at a specific instant, or is already
+  closed. The row also records the last version confirmed in Stripe, a short
+  worker lease, retry scheduling and the last sanitized error. A later decision
+  increments `version`; provider operations for an older answer can then be
+  marked `SUPERSEDED` instead of winning a race after a newer decision.
+- **RentalAgreement continuity fields** — `continuityRootId` identifies the
+  first agreement in one uninterrupted rental and `continuousSince` preserves
+  its first real delivery date. `monthToMonthTermsVersion` records which
+  versioned month-to-month rules an agreement began on. The migration backfills
+  a renewal chain from its root without inventing a delivery date.
+- **MonthToMonthTermsVersion** — immutable numbered snapshots of the two
+  month-to-month terms that can change after notice: how many days' notice is
+  needed to end the rental and the customer-facing wording. Version 1 is seeded
+  only when the existing settings contain both values.
+- **CustomerNotice evidence columns** — legal delivery windows, the frozen
+  recipient, provider message id and acceptance time, evidence date/channel,
+  attempt fencing, retry/error fields and owner resolution facts. `status`
+  intentionally remains a string because Batch B2's notice state machine is
+  enforced in the domain layer.
+- **LateReturnWaiver** plus `LATE_RETURN_WAIVER` invoice lines — the durable
+  audit fact for a company-caused late pickup waiver. The original late-return
+  charge stays visible and the waiver is represented as a matching negative
+  rent adjustment rather than rewriting history.
+- **EarlyReturnResolution** — one stored decision for a full return before an
+  agreed ending (or before any ending was recorded): what happened to billing,
+  unused paid days and any fixed-term fee, plus the resulting credit/refund
+  references. This makes automatic/default handling reviewable rather than
+  implicit.
+- **BusinessSettings Batch B2 columns** — who may certify notice delivery,
+  mail-transit days, the month-to-month change-notice period and starting
+  customer wording, plus the four owner defaults for early returns. The live
+  email and automatic-renew master switches remain unchanged and OFF.
+
+All four new Batch B2 tables are explicitly included in `BACKUP_MODEL_POLICY`;
+`verifySchemaHealth` automatically checks them because it enumerates generated
+Prisma models. The migration's data steps are idempotent and are exercised on
+real Postgres by `tests/batch-b2-migration-integration.test.ts`.
