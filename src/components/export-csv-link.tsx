@@ -5,7 +5,7 @@ export function ExportCsvLink({ href, label = "Export CSV" }: { href: string; la
   return (
     <a
       href={href}
-      className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:border-gray-400"
+      className="rounded-md border border-line-strong px-3 py-1.5 text-sm text-ink-soft hover:border-line-strong"
     >
       {label}
     </a>
