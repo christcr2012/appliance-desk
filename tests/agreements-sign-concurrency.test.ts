@@ -13,6 +13,7 @@ const signatureRecordUpdateMany = vi.fn();
 const rentalAgreementUpdate = vi.fn();
 const rentalLineFindMany = vi.fn();
 const auditLogCreate = vi.fn();
+const createSignedAgreementArtifactInTx = vi.fn();
 
 function makeTx() {
   return {
@@ -28,6 +29,10 @@ function makeTx() {
     auditLog: { create: auditLogCreate },
   };
 }
+
+vi.mock("@/domains/documents/artifacts", () => ({
+  createSignedAgreementArtifactInTx,
+}));
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
@@ -49,6 +54,7 @@ describe("signAgreement — atomic conditional update", () => {
     rentalAgreementUpdate.mockReset().mockResolvedValue({});
     rentalLineFindMany.mockReset().mockResolvedValue([]);
     auditLogCreate.mockReset().mockResolvedValue({});
+    createSignedAgreementArtifactInTx.mockReset().mockResolvedValue("artifact-1");
   });
 
   it("signs via a conditional updateMany requiring signedAt still be null, not a plain update", async () => {
@@ -66,6 +72,7 @@ describe("signAgreement — atomic conditional update", () => {
       data: expect.objectContaining({ signerName: "Jane Doe" }),
     });
     expect(rentalAgreementUpdate).toHaveBeenCalled();
+    expect(createSignedAgreementArtifactInTx).toHaveBeenCalledWith(expect.any(Object), "agr-1");
   });
 
   it("aborts — and never activates the agreement — when the conditional update loses the race (count 0)", async () => {
@@ -82,5 +89,6 @@ describe("signAgreement — atomic conditional update", () => {
 
     expect(rentalAgreementUpdate).not.toHaveBeenCalled();
     expect(auditLogCreate).not.toHaveBeenCalled();
+    expect(createSignedAgreementArtifactInTx).not.toHaveBeenCalled();
   });
 });
