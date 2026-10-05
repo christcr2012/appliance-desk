@@ -1,5 +1,5 @@
 import { Resend } from "resend";
-import type { MessageState } from "@prisma/client";
+import type { MessageDelivery, MessageState } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { isNonProductionDeployment } from "@/lib/deployment-safety";
 import { sendEmail } from "@/lib/email";
@@ -38,22 +38,16 @@ type LowLevelResult = {
   providerMessageId?: string;
 };
 
-function asResult(row: {
-  id: string;
-  state: MessageState;
-  providerMessageId: string | null;
-}): DeliverMessageResult {
-  return {
-    state: row.state,
-    deliveryId: row.id,
-    providerMessageId: row.providerMessageId,
-  };
+type DeliveryClaim = { row: MessageDelivery; ownsSend: boolean };
+
+function asResult(row: Pick<MessageDelivery, "id" | "state" | "providerMessageId">): DeliverMessageResult {
+  return { state: row.state, deliveryId: row.id, providerMessageId: row.providerMessageId };
 }
 
-async function claimDelivery(input: DeliverMessageInput) {
+async function claimDelivery(input: DeliverMessageInput): Promise<DeliveryClaim> {
   const recipientAddress = normalizeMessageAddress(input.channel, input.recipient.address);
   try {
-    return await prisma.messageDelivery.create({
+    const row = await prisma.messageDelivery.create({
       data: {
         idempotencyKey: input.idempotencyKey,
         channel: input.channel,
@@ -66,12 +60,15 @@ async function claimDelivery(input: DeliverMessageInput) {
         subjectId: input.subject?.id,
       },
     });
+    return { row, ownsSend: true };
   } catch (cause) {
     const existing = await prisma.messageDelivery.findUnique({
       where: { idempotencyKey: input.idempotencyKey },
     });
     if (!existing) throw cause;
-    if (existing.state !== "FAILED" && existing.state !== "NOT_SENT") return existing;
+    if (existing.state !== "FAILED" && existing.state !== "NOT_SENT") {
+      return { row: existing, ownsSend: false };
+    }
 
     const reclaimed = await prisma.messageDelivery.updateMany({
       where: { id: existing.id, state: { in: ["FAILED", "NOT_SENT"] } },
@@ -84,10 +81,8 @@ async function claimDelivery(input: DeliverMessageInput) {
         deliveredAt: null,
       },
     });
-    if (reclaimed.count === 0) {
-      return prisma.messageDelivery.findUniqueOrThrow({ where: { id: existing.id } });
-    }
-    return prisma.messageDelivery.findUniqueOrThrow({ where: { id: existing.id } });
+    const row = await prisma.messageDelivery.findUniqueOrThrow({ where: { id: existing.id } });
+    return { row, ownsSend: reclaimed.count === 1 };
   }
 }
 
@@ -122,8 +117,9 @@ export async function deliverMessage(input: DeliverMessageInput): Promise<Delive
   if (!input.idempotencyKey.trim()) throw new Error("A message idempotency key is required.");
   if (!input.recipient.address.trim()) throw new Error("A message recipient is required.");
 
-  const delivery = await claimDelivery(input);
-  if (delivery.state !== "PENDING") return asResult(delivery);
+  const claim = await claimDelivery(input);
+  if (!claim.ownsSend) return asResult(claim.row);
+  const delivery = claim.row;
 
   const suppression = await getMarketingSuppression(input.channel, input.recipient.address);
   if (input.purpose === "MARKETING" && suppression) {
