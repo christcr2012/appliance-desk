@@ -65,6 +65,7 @@ for (const role of ["owner", "customer"] as const) {
                 ]
                   .map((section) => `/desk/settings?section=${section}`)
                   .concat("/desk/billing?filter=delinquent")
+                  .concat("/desk/settings/website")
               : [
                   "/account",
                   "/account/rentals",
@@ -122,6 +123,61 @@ for (const role of ["owner", "customer"] as const) {
           await page.getByRole("button", { name: "Save this section" }).click();
           await expect(page.getByRole("status")).toHaveText("Settings saved.");
         }
+      });
+      test("website text: draft is private, preview shows it, publish updates the public page", async ({
+        page,
+        browser,
+      }) => {
+        test.setTimeout(120_000);
+        const intro = page.locator('[id="f-how.intro"]');
+        const original = "No app to download, no self-checkout — a real person reviews and handles every step.";
+        const edited = "CI draft intro text for the website editor";
+        const publicSeen = async () => {
+          const visitor = await browser.newContext();
+          try {
+            const visitorPage = await visitor.newPage();
+            await visitorPage.goto("/how-it-works");
+            return await visitorPage.locator("main").innerText();
+          } finally {
+            await visitor.close();
+          }
+        };
+        try {
+          await page.goto("/desk/settings/website");
+          await expect(intro).toHaveValue(original);
+          await intro.fill(edited);
+          await page.getByRole("button", { name: "Save draft" }).click();
+          await expect(page.getByRole("status")).toContainText("Draft saved");
+          // The preview shows the draft...
+          const previewHref = await page
+            .getByRole("link", { name: /Preview how it works/i })
+            .getAttribute("href");
+          await page.goto(previewHref!);
+          await expect(page.locator("main")).toContainText(edited);
+          // ...but a visitor still sees the old text.
+          expect(await publicSeen()).toContain(original);
+          expect(await publicSeen()).not.toContain(edited);
+          // Publish with confirmation.
+          await page.goto("/desk/settings/website");
+          await page.getByRole("button", { name: "Publish…" }).click();
+          await expect(page.getByRole("group", { name: "Confirm publishing" })).toContainText("How it works");
+          await page.getByRole("button", { name: "Publish now" }).click();
+          await expect(page.getByRole("status")).toContainText("Published");
+          expect(await publicSeen()).toContain(edited);
+        } finally {
+          // Put the starting text back and publish it, so later tests see the original page.
+          await page.goto("/desk/settings/website");
+          const field = page.locator('[id="f-how.intro"]');
+          if ((await field.inputValue()) !== original) {
+            await field.fill(original);
+            await page.getByRole("button", { name: "Save draft" }).click();
+            await expect(page.getByRole("status")).toContainText("Draft saved");
+            await page.getByRole("button", { name: "Publish…" }).click();
+            await page.getByRole("button", { name: "Publish now" }).click();
+            await expect(page.getByRole("status")).toContainText("Published");
+          }
+        }
+        expect(await publicSeen()).toContain(original);
       });
       test("All invoices clears filter and invoice opens exact record", async ({
         page,

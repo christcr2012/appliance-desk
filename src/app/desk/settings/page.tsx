@@ -145,6 +145,9 @@ export default async function DeskSettingsPage({
         description="The public site uses your saved business profile, service area and catalog pricing."
       >
         <div className="flex flex-wrap gap-2">
+          <Link className={secondaryActionClass} href="/desk/settings/website">
+            Edit website text
+          </Link>
           <Link className={secondaryActionClass} href="/desk/launch">
             Launch signup and announcement controls
           </Link>
@@ -158,8 +161,9 @@ export default async function DeskSettingsPage({
           </Link>
         </div>
         <p className="mt-4 text-sm text-ink-soft">
-          Use Business profile, Service area, and Products and pricing to update
-          the information customers see on the public website.
+          Use Edit website text for the wording on your pages. Use Business
+          profile, Service area, and Products and pricing for contact details,
+          where you work and prices.
         </p>
       </SectionCard>
     );
