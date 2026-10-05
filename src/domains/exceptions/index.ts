@@ -12,6 +12,7 @@ import {
   custodyUnknownException,
   earlyEndingNotDoneException,
   itemNotDeliveredException,
+  subscriptionUpdatePendingException,
   noticeWaitingException,
   missingRepairCostException,
   overdueJobException,
@@ -54,6 +55,12 @@ async function capped<T>(find: (take: number) => Promise<T[]>, count: () => Prom
   if (rows.length < EXCEPTION_CATEGORY_CAP) return { rows, total: rows.length };
   return { rows, total: await count() };
 }
+
+// Same key format as lineReduceKey in domains/billing/subscription-line (a test keeps the two in step);
+// repeated here so Today does not load the billing code.
+export const LINE_REDUCE_KEY_PREFIX = "subscription-line-reduce-";
+const parseLineReduceKey = (key: string): string | null =>
+  key.startsWith(LINE_REDUCE_KEY_PREFIX) ? key.slice(LINE_REDUCE_KEY_PREFIX.length) : null;
 
 const empty = <T,>(): Promise<Capped<T>> => Promise.resolve({ rows: [], total: 0 });
 
@@ -125,6 +132,10 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
   } satisfies Prisma.CustomerNoticeWhereInput;
   const undeliveredWhere = { deliveredOn: null, removedAt: null } satisfies Prisma.PendingDeliveryWhereInput;
   // Operational: an appliance that says it is with a customer but has no custody record.
+  const pendingReductionWhere = {
+    idempotencyKey: { startsWith: LINE_REDUCE_KEY_PREFIX },
+    status: { not: "SUCCEEDED" },
+  } satisfies Prisma.ProviderOperationWhereInput;
   const custodyGapWhere = {
     status: { in: ["RENTED", "AWAITING_PICKUP"] },
     archivedAt: null,
@@ -148,6 +159,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     waitingNotices,
     itemsNotDelivered,
     custodyGaps,
+    pendingLineReductions,
   ] = await Promise.all([
     canViewFinance
       ? capped(
@@ -291,9 +303,47 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
       }),
       () => prisma.appliance.count({ where: custodyGapWhere }),
     ),
+    // Money: a cancelled item whose recorded Stripe change is not finished yet (same rule as the job page).
+    canViewFinance
+      ? capped(
+          (take) => prisma.providerOperation.findMany({
+            where: pendingReductionWhere,
+            select: { idempotencyKey: true, requestedAt: true },
+            orderBy: [{ requestedAt: "asc" }, { id: "asc" }],
+            take,
+          }),
+          () => prisma.providerOperation.count({ where: pendingReductionWhere }),
+        )
+      : empty<never>(),
   ]);
+  const pendingItems = pendingLineReductions.rows.length
+    ? await prisma.pendingDelivery.findMany({
+        where: {
+          id: { in: pendingLineReductions.rows.flatMap((op) => parseLineReduceKey(op.idempotencyKey) ?? []) },
+          removedAt: { not: null },
+        },
+        select: {
+          id: true,
+          originalJobId: true,
+          appliance: { select: { assetNumber: true, applianceType: { select: { name: true } } } },
+          agreement: { select: { customer: { select: { user: { select: { name: true, email: true } } } } } },
+        },
+      })
+    : [];
+  const pendingItemById = new Map(pendingItems.map((p) => [p.id, p]));
 
   const items: ExceptionItem[] = [
+    ...pendingLineReductions.rows.flatMap((op) => {
+      const pd = pendingItemById.get(parseLineReduceKey(op.idempotencyKey) ?? "");
+      return pd
+        ? [subscriptionUpdatePendingException({
+            originalJobId: pd.originalJobId,
+            itemLabel: `${pd.appliance.applianceType.name} #${pd.appliance.assetNumber}`,
+            customerName: customerDisplayName(pd.agreement.customer),
+            since: op.requestedAt,
+          })]
+        : [];
+    }),
     ...custodyGaps.rows.map((a) =>
       custodyUnknownException({ id: a.id, label: `${a.applianceType.name} #${a.assetNumber}`, since: a.updatedAt }),
     ),
@@ -428,6 +478,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
       ["NOTICE_WAITING", waitingNotices],
       ["ITEM_NOT_DELIVERED", itemsNotDelivered],
       ["CUSTODY_UNKNOWN", custodyGaps],
+      ["SUBSCRIPTION_UPDATE_PENDING", pendingLineReductions],
     ] as Array<[ExceptionCategory, Capped<unknown>]>
   )
     .filter(([, c]) => c.total > c.rows.length)

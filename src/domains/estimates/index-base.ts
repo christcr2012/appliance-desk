@@ -428,6 +428,26 @@ export async function sendEstimateFollowUpReminders(): Promise<{
       : estimate.lead?.contactName;
     if (!recipientEmail) continue;
 
+    // Claim first: the "follow-up sent for this send" mark is written before the email goes out, by a
+    // single conditional update, so two overlapping runs (or a crash between sending and recording) can
+    // never email the same estimate twice. Only a definite "not sent" gives the claim back.
+    const previousMark = estimate.followUpSentForSentAt;
+    const claimed = await prisma.estimate.updateMany({
+      where: {
+        id: estimate.id,
+        sentAt: estimate.sentAt,
+        status: { in: AWAITING_RESPONSE_STATUSES },
+        OR: [{ followUpSentForSentAt: null }, { followUpSentForSentAt: { not: estimate.sentAt } }],
+      },
+      data: { followUpSentForSentAt: estimate.sentAt },
+    });
+    if (claimed.count === 0) continue;
+    const release = () =>
+      prisma.estimate.updateMany({
+        where: { id: estimate.id, followUpSentForSentAt: estimate.sentAt },
+        data: { followUpSentForSentAt: previousMark },
+      });
+
     try {
       const result = await sendCustomerEmail({
         to: recipientEmail,
@@ -443,15 +463,15 @@ export async function sendEstimateFollowUpReminders(): Promise<{
         // Same key for the same estimate send, so a retry within the provider's 24-hour window cannot email twice.
         idempotencyKey: `estimate-follow-up-${estimate.id}-${estimate.sentAt.getTime()}`,
       });
-      // Email switched off (or not sent): leave it unmarked so it goes out once email is on.
-      if (!result.sent && result.outcome !== "UNKNOWN") continue;
-      // An unknown outcome (lost response) may have been delivered: record it so it is not sent a second time.
-      await prisma.estimate.update({
-        where: { id: estimate.id },
-        data: { followUpSentForSentAt: estimate.sentAt },
-      });
+      // Email switched off or definitely not sent: give the claim back so it goes out once email is on.
+      // An unknown outcome (lost response) may have been delivered, so the claim stays and it is not sent again.
+      if (!result.sent && result.outcome !== "UNKNOWN") {
+        await release();
+        continue;
+      }
       if (result.sent) sent += 1;
     } catch (error) {
+      await release().catch(() => undefined);
       console.error(
         "[estimates] Failed to send follow-up reminder",
         estimate.id,

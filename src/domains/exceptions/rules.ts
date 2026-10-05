@@ -29,6 +29,7 @@ export type ExceptionCategory =
   | "EARLY_ENDING_NOT_DONE"
   | "NOTICE_WAITING"
   | "ITEM_NOT_DELIVERED"
+  | "SUBSCRIPTION_UPDATE_PENDING"
   | "CUSTODY_UNKNOWN";
 
 export type ExceptionSeverity = "high" | "medium";
@@ -113,6 +114,27 @@ export function itemNotDeliveredException(item: {
       "The customer is billed for it from the original delivery date. Schedule a delivery job for it; completing that job credits the customer for the days it was missing.",
     href: `/desk/jobs/${item.originalJobId}`,
     since: item.originalDeliveryDate,
+  };
+}
+
+/**
+ * An item was cancelled (never delivered, taken off the agreement) but Stripe has not yet lowered the
+ * customer's monthly subscription. The system keeps retrying; this keeps the owner aware until it is done.
+ */
+export function subscriptionUpdatePendingException(item: {
+  originalJobId: string;
+  itemLabel: string;
+  customerName: string;
+  since: Date;
+}): ExceptionItem {
+  return {
+    category: "SUBSCRIPTION_UPDATE_PENDING",
+    severity: "high",
+    title: `${item.customerName}'s monthly bill has not been lowered yet for cancelled ${item.itemLabel}`,
+    detail:
+      "The item was cancelled and the customer was credited, but Stripe still has the old monthly amount. The system keeps retrying and the Billing check screen shows it until it is done.",
+    href: `/desk/jobs/${item.originalJobId}`,
+    since: item.since,
   };
 }
 

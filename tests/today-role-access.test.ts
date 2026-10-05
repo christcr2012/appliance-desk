@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   appliance: vi.fn(),
   notice: vi.fn(),
   pendingDelivery: vi.fn(),
+  providerOp: vi.fn(),
   raw: vi.fn(),
 }));
 vi.mock("@/lib/session", () => ({ requireRole: mocks.requireRole }));
@@ -21,6 +22,7 @@ vi.mock("@/lib/prisma", () => ({
     appliance: { findMany: mocks.appliance },
     customerNotice: { findMany: mocks.notice },
     pendingDelivery: { findMany: mocks.pendingDelivery },
+    providerOperation: { findMany: mocks.providerOp, count: vi.fn().mockResolvedValue(0) },
     // R17: term-ended agreements and maintenance-due appliances are found with set-based SQL.
     $queryRaw: mocks.raw,
   },
@@ -39,6 +41,7 @@ beforeEach(() => {
     mocks.appliance,
     mocks.notice,
     mocks.pendingDelivery,
+    mocks.providerOp,
     mocks.raw,
   ]) {
     fn.mockResolvedValue([]);
@@ -59,6 +62,8 @@ describe("Today server-side visibility", () => {
     expect(result.map((x) => x.category)).toEqual(["OVERDUE_JOB"]);
     expect(mocks.invoice).not.toHaveBeenCalled();
     expect(mocks.notice).not.toHaveBeenCalled();
+    // The Stripe-update-pending read is money: STAFF never trigger it.
+    expect(mocks.providerOp).not.toHaveBeenCalled();
     // An item still waiting for delivery is operational: STAFF see it too.
     expect(mocks.pendingDelivery).toHaveBeenCalledTimes(1);
     // stale reservations and renewals that did not start (term-ended agreements come from SQL)
@@ -115,10 +120,10 @@ describe("Today server-side visibility", () => {
   it("R17: every category read is capped at 50 and ordered oldest-first with an id tie-breaker", async () => {
     mocks.requireRole.mockResolvedValue({ user: { role: "OWNER" } });
     await getExceptions();
-    const calls = [mocks.agreement, mocks.invoice, mocks.job, mocks.request, mocks.appliance, mocks.notice, mocks.pendingDelivery].flatMap(
+    const calls = [mocks.agreement, mocks.invoice, mocks.job, mocks.request, mocks.appliance, mocks.notice, mocks.pendingDelivery, mocks.providerOp].flatMap(
       (fn) => fn.mock.calls.map(([query]) => query),
     );
-    expect(calls.length).toBe(12);
+    expect(calls.length).toBe(13);
     for (const query of calls) {
       expect(query.take).toBe(50);
       expect(query.orderBy.at(-1)).toEqual({ id: "asc" });

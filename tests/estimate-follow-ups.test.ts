@@ -8,7 +8,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 // need faking.
 
 const estimateFindMany = vi.fn();
-const estimateUpdate = vi.fn();
+const estimateUpdateMany = vi.fn();
 const sendEmail = vi.fn();
 const getBusinessSettings = vi.fn();
 
@@ -16,7 +16,7 @@ vi.mock("@/lib/prisma", () => ({
   prisma: {
     estimate: {
       findMany: (...args: unknown[]) => estimateFindMany(...args),
-      update: (...args: unknown[]) => estimateUpdate(...args),
+      updateMany: (...args: unknown[]) => estimateUpdateMany(...args),
     },
   },
 }));
@@ -57,7 +57,7 @@ function estimate(overrides: {
 describe("sendEstimateFollowUpReminders", () => {
   beforeEach(() => {
     estimateFindMany.mockReset();
-    estimateUpdate.mockReset().mockResolvedValue({});
+    estimateUpdateMany.mockReset().mockResolvedValue({ count: 1 });
     sendEmail.mockReset().mockResolvedValue({ sent: true });
     getBusinessSettings.mockReset().mockResolvedValue({ publicBusinessName: "Robinson Appliance Rentals" });
   });
@@ -73,8 +73,10 @@ describe("sendEstimateFollowUpReminders", () => {
     expect(result).toEqual({ sent: 1, failed: 0 });
     expect(sendEmail).toHaveBeenCalledTimes(1);
     expect(sendEmail.mock.calls[0][0].to).toBe("jane@example.com");
-    expect(estimateUpdate).toHaveBeenCalledWith({
-      where: { id: "est-1" },
+    // The mark is claimed (one conditional update) and stays after a successful send.
+    expect(estimateUpdateMany).toHaveBeenCalledTimes(1);
+    expect(estimateUpdateMany.mock.calls[0]![0]).toMatchObject({
+      where: { id: "est-1", sentAt },
       data: { followUpSentForSentAt: sentAt },
     });
   });
@@ -135,7 +137,8 @@ describe("sendEstimateFollowUpReminders", () => {
     const result = await sendEstimateFollowUpReminders();
 
     expect(result).toEqual({ sent: 1, failed: 1 });
-    expect(estimateUpdate).toHaveBeenCalledTimes(1);
+    // est-1: claim + give-back after the throw; est-2: claim only.
+    expect(estimateUpdateMany).toHaveBeenCalledTimes(3);
   });
 
   it("does not mark or count a follow-up when customer email is switched off, so it goes out once email is on", async () => {
@@ -146,6 +149,32 @@ describe("sendEstimateFollowUpReminders", () => {
     const result = await sendEstimateFollowUpReminders();
 
     expect(result).toEqual({ sent: 0, failed: 0 });
-    expect(estimateUpdate).not.toHaveBeenCalled();
+    // Claimed, then given back (restored to the previous mark) because nothing was sent.
+    expect(estimateUpdateMany).toHaveBeenCalledTimes(2);
+    expect(estimateUpdateMany.mock.calls[1]![0]).toEqual({
+      where: { id: "est-1", followUpSentForSentAt: sentAt },
+      data: { followUpSentForSentAt: null },
+    });
+  });
+
+  it("does not email when another run already claimed this estimate", async () => {
+    const sentAt = new Date("2026-09-20T00:00:00Z");
+    estimateFindMany.mockResolvedValue([estimate({ id: "est-1", sentAt, customerEmail: "jane@example.com" })]);
+    estimateUpdateMany.mockResolvedValue({ count: 0 });
+
+    const result = await sendEstimateFollowUpReminders();
+
+    expect(result).toEqual({ sent: 0, failed: 0 });
+    expect(sendEmail).not.toHaveBeenCalled();
+  });
+
+  it("keeps the claim after an unknown outcome so a lost response is never emailed twice", async () => {
+    const sentAt = new Date("2026-09-20T00:00:00Z");
+    estimateFindMany.mockResolvedValue([estimate({ id: "est-1", sentAt, customerEmail: "jane@example.com" })]);
+    sendEmail.mockResolvedValue({ sent: false, outcome: "UNKNOWN" });
+
+    await sendEstimateFollowUpReminders();
+
+    expect(estimateUpdateMany).toHaveBeenCalledTimes(1);
   });
 });
