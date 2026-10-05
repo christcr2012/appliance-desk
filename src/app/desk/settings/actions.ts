@@ -420,7 +420,8 @@ export async function updateJobSchedulingAction(
 /** Who may record a hand delivery of a notice, and mail transit days. Owner only. */
 export async function updateNoticeDeliveryAction(raw: Record<string, unknown>): Promise<SettingsActionState> {
   const session = await requireRole("OWNER");
-  const { parseNoticeDelivery, setNoticeDeliverySettings } = await import("@/domains/settings/notice-delivery");
+  const { parseNoticeDelivery } = await import("@/domains/settings/notice-delivery");
+  const { setNoticeDeliverySettings } = await import("@/domains/settings/notice-delivery-save");
   const parsed = parseNoticeDelivery(raw);
   if (!parsed.success) return { status: "error", message: parsed.message };
   try {

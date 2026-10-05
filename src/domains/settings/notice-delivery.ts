@@ -1,6 +1,3 @@
-import { prisma } from "@/lib/prisma";
-import { assertActiveTeamActor } from "@/lib/team-actor";
-
 /**
  * Who may record that a customer notice was delivered by hand, and how many days to add for mail in transit
  * (Batch B2, B2-17). Only the OWNER can change these; the person is re-checked inside the transaction and every
@@ -35,30 +32,4 @@ export function parseNoticeDelivery(
     return { success: false, message: `Days for mail to arrive: enter a whole number from 0 to ${MAIL_NOTICE_TRANSIT_DAYS_MAX}.` };
   }
   return { success: true, roles, days };
-}
-
-export async function setNoticeDeliverySettings(userId: string, roles: NoticeCertifierChoice, days: number): Promise<void> {
-  await prisma.$transaction(async (tx) => {
-    await assertActiveTeamActor(tx, userId, ["OWNER"]);
-    await tx.$queryRaw`SELECT "id" FROM "BusinessSettings" WHERE "id" = 'singleton' FOR UPDATE`;
-    const before = await tx.businessSettings.findUnique({
-      where: { id: "singleton" },
-      select: { noticeCertifierRoles: true, mailNoticeTransitDays: true },
-    });
-    await tx.businessSettings.upsert({
-      where: { id: "singleton" },
-      create: { id: "singleton", noticeCertifierRoles: roles, mailNoticeTransitDays: days },
-      update: { noticeCertifierRoles: roles, mailNoticeTransitDays: days },
-    });
-    await tx.auditLog.create({
-      data: {
-        userId,
-        action: "settings.notice_delivery",
-        entityType: "BusinessSettings",
-        entityId: "singleton",
-        oldValue: before ?? {},
-        newValue: { noticeCertifierRoles: roles, mailNoticeTransitDays: days },
-      },
-    });
-  });
 }
