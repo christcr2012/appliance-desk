@@ -40,6 +40,15 @@ function makeTx() {
   };
 }
 
+// The billing-end answer is stored and applied by tests/subscription-end-integration.test.ts against a real
+// database; this fake-database test only checks the surrounding order of events, so it stubs those calls out.
+vi.mock("@/domains/billing/subscription-end", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/domains/billing/subscription-end")>()),
+  recomputeForAgreementInTx: vi.fn(async () => [] as string[]),
+  recomputeSubscriptionEndInTx: vi.fn(async () => ({ version: 1, changed: false })),
+  applySubscriptionEnds: vi.fn(async () => undefined),
+}));
+
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     $transaction: async (fn: (tx: unknown) => unknown) => fn(makeTx()),

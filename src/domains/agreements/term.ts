@@ -15,7 +15,10 @@ import {
   type UnusedTermTreatment,
 } from "./term-policy";
 import { cancelWithdrawnAutoRenewals } from "./auto-renew";
-import { syncTerminationEnd } from "@/domains/billing/subscription-term";
+import {
+  applySubscriptionEnds,
+  recomputeForAgreementInTx,
+} from "@/domains/billing/subscription-end";
 import { renewalCreateData } from "./renewal-data";
 import { snapshotAutoRenew, snapshotTerminationPolicy } from "./terms-snapshot";
 
@@ -32,8 +35,8 @@ export {
  * Fixed-term mechanics: early termination quotes, renewal drafts and
  * auto-renew consent (Batch B, D9/D10). Every policy number comes from the
  * owner's BusinessSettings; a null policy means "feature not available" and is
- * never replaced by a default. No UI and no Stripe calls live here: ending an
- * agreement still goes through the existing close path.
+ * never replaced by a default. Provider writes are performed only after the
+ * local decision transaction commits, through Batch B2's subscription-end intent.
  */
 
 const POLICY_ROLES = ["OWNER", "ADMIN"] as const;
@@ -256,7 +259,7 @@ export async function requestEarlyTermination(
   options: { now?: Date } = {},
 ): Promise<void> {
   const now = options.now ?? new Date();
-  await prisma.$transaction(async (tx) => {
+  const subscriptionEndIds = await prisma.$transaction(async (tx) => {
     const agreement = await lockAgreementForActor(tx, actor, agreementId);
     if (agreement.status !== "ACTIVE") {
       throw new Error("Only an active agreement can be terminated early.");
@@ -315,18 +318,16 @@ export async function requestEarlyTermination(
         },
       },
     });
+    return recomputeForAgreementInTx(tx, agreementId);
   });
-  // After the request is saved: stop an automatic renewal, and tell the card processor to
-  // stop billing before the ending date. Failures are retried by the nightly passes.
+
+  // The decision and its billing answer are already durable together. Provider
+  // convergence and automatic-renewal cleanup happen only after commit.
+  await applySubscriptionEnds(subscriptionEndIds);
   try {
     await cancelWithdrawnAutoRenewals(actor.userId, agreementId);
   } catch (error) {
     console.error(`Could not cancel the automatic renewal of ${agreementId} yet:`, error);
-  }
-  try {
-    await syncTerminationEnd(agreementId);
-  } catch (error) {
-    console.error(`Could not move the billing end date of ${agreementId} yet:`, error);
   }
 }
 
@@ -410,7 +411,7 @@ export async function setAutoRenew(
   agreementId: string,
   input: { enabled: boolean; termsVersion: string },
 ): Promise<void> {
-  await prisma.$transaction(async (tx) => {
+  const subscriptionEndIds = await prisma.$transaction(async (tx) => {
     const agreement = await lockAgreementForActor(tx, actor, agreementId);
     if (agreement.status !== "ACTIVE") {
       throw new Error("Auto-renew can only be changed on an active agreement.");
@@ -457,10 +458,14 @@ export async function setAutoRenew(
         newValue: { termsVersion: input.termsVersion, by: actor.kind },
       },
     });
+    return recomputeForAgreementInTx(tx, agreementId);
   });
+
+  // An opt-out must restore the old term end even if the process dies before the
+  // queued renewal can be cancelled. Enabling is harmless when no renewal exists,
+  // and converges immediately if one does.
+  await applySubscriptionEnds(subscriptionEndIds);
   if (!input.enabled) {
-    // Turning it off also cancels a renewal the system already queued. If this fails, the
-    // nightly pass cancels it, and the renewal can never start while auto-renew is off.
     try {
       await cancelWithdrawnAutoRenewals(actor.userId, agreementId);
     } catch (error) {

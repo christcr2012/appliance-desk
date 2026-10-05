@@ -34,6 +34,8 @@ const mocks = vi.hoisted(() => ({
   refundCreate: vi.fn(),
   checkoutSessionsList: vi.fn(),
   paymentIntentRetrieve: vi.fn(),
+  // Rows of the subscription end-date table that detectDrift reads (none by default).
+  endIntentRows: vi.fn(),
 }));
 
 function makeTx() {
@@ -50,6 +52,7 @@ function makeTx() {
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
+    $queryRaw: (...args: unknown[]) => mocks.endIntentRows(...args),
     providerOperation: {
       findMany: (...args: unknown[]) => mocks.providerFindMany(...args),
       update: (...args: unknown[]) => mocks.providerUpdate(...args),
@@ -123,6 +126,14 @@ vi.mock("@/domains/billing/provider-ops", () => ({
   runProviderCall: (...args: unknown[]) => mocks.runProviderCall(...args),
 }));
 
+// The subscription end-date sweeps read their own tables; they are proved against a real database in
+// tests/subscription-end-integration.test.ts, so this fake-database unit test stubs them out.
+vi.mock("@/domains/billing/subscription-end", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/domains/billing/subscription-end")>()),
+  applyDueSubscriptionEnds: vi.fn(async () => ({ applied: 0, waiting: 0 })),
+  auditSubscriptionEnds: vi.fn(async () => ({ checked: 0, stale: 0 })),
+}));
+
 import {
   detectDrift,
   finishPendingProviderOperations,
@@ -132,6 +143,7 @@ describe("billing provider reconciliation", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.providerFindMany.mockResolvedValue([]);
+    mocks.endIntentRows.mockResolvedValue([]);
     mocks.rentalFindMany.mockResolvedValue([]);
     mocks.invoiceFindMany.mockResolvedValue([]);
     mocks.paymentFindMany.mockResolvedValue([]);

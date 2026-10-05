@@ -1,6 +1,5 @@
 import { prisma } from "@/lib/prisma";
 import { lockCustomerLedger } from "@/domains/billing/ledger";
-import { syncTerminationEnd } from "@/domains/billing/subscription-term";
 import { formatBusinessDate } from "@/lib/business-date";
 import { formatCents } from "@/domains/pricing";
 import { endAgreementOnAgreedDate, lockRentalAgreementInTx } from "./index";
@@ -8,8 +7,10 @@ import { endAgreementOnAgreedDate, lockRentalAgreementInTx } from "./index";
 /**
  * Carrying out an early ending that was agreed to.
  *
- * `requestEarlyTermination` records the ending date and the fee. This is what makes
- * the date happen, once a night, with nobody having to remember:
+ * `requestEarlyTermination` records the ending date and fee and, in Batch B2,
+ * persists the subscription-end answer in that same transaction. This nightly
+ * executor therefore never tries to write a stale end date again; if the date
+ * has arrived, the normal close path cancels billing.
  *
  *   1. the agreement's fee (if any) becomes an ordinary OPEN invoice with one
  *      "Early ending fee" line. Nothing is charged automatically: the customer pays
@@ -112,15 +113,6 @@ export async function executeAgreedTermination(
     return { ended: false, feeInvoiced: false, needsReview: PREPAID_MESSAGE };
   }
 
-  // Normally confirmed days ago when the ending was requested; this just retries it.
-  // Once the date has passed Stripe will not take an end date in the past, and the
-  // normal ending below cancels the subscription anyway.
-  try {
-    await syncTerminationEnd(agreementId);
-  } catch (error) {
-    console.error(`Could not confirm the billing end date for ${agreementId} yet:`, error);
-  }
-
   const feeInvoiced = await createFeeInvoiceIfNeeded(agreementId);
   // The rental's last day is the day before the ending date (it ends at the start of that day).
   const lastSecond = new Date(agreement.terminationEffectiveOn.getTime() - 1000);
@@ -128,8 +120,8 @@ export async function executeAgreedTermination(
     await endAgreementOnAgreedDate(agreementId, lastSecond);
   } catch (error) {
     // Another run (or the owner) ended it a moment ago: nothing left to do.
-    const now = await prisma.rentalAgreement.findUnique({ where: { id: agreementId }, select: { status: true } });
-    if (now && now.status !== "ACTIVE") return { ended: false, feeInvoiced };
+    const current = await prisma.rentalAgreement.findUnique({ where: { id: agreementId }, select: { status: true } });
+    if (current && current.status !== "ACTIVE") return { ended: false, feeInvoiced };
     throw error;
   }
   return { ended: true, feeInvoiced };

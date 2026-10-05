@@ -5,6 +5,8 @@ const stripeMock = vi.hoisted(() => ({
   update: vi.fn(),
   retrieve: vi.fn(),
   cancel: vi.fn(),
+  // What the fake Stripe currently holds as each subscription's cancel_at (null = none).
+  state: new Map<string, number | null>(),
 }));
 vi.mock("@/lib/stripe", () => ({
   getStripeClient: () => ({
@@ -22,7 +24,8 @@ import { renewalReminderKey } from "@/domains/notices/renewal-reminder";
 
 const emailMock = vi.hoisted(() => ({ send: vi.fn() }));
 vi.mock("@/lib/customer-email", () => ({ sendCustomerEmail: emailMock.send }));
-import { syncTerminationEnd } from "@/domains/billing/subscription-term";
+import { applySubscriptionEnd, recomputeSubscriptionEndInTx } from "@/domains/billing/subscription-end";
+import { cancelAtSecondsFor } from "@/domains/billing/subscription-term";
 
 const url = new URL(process.env.DATABASE_URL ?? "postgresql://localhost/unset");
 const enabled =
@@ -96,6 +99,10 @@ describe.skipIf(!enabled)("auto-renew and agreed early endings are carried out",
       },
     });
     ids.push(created.id);
+    // A fixed-term subscription is created in Stripe already carrying its end date.
+    if (created.stripeSubscriptionId && created.termMonths && created.endDate) {
+      stripeMock.state.set(created.stripeSubscriptionId, cancelAtSecondsFor(created));
+    }
     return created;
   }
 
@@ -111,8 +118,15 @@ describe.skipIf(!enabled)("auto-renew and agreed early endings are carried out",
     prisma.rentalAgreement.findMany({ where: { renewedFromAgreementId: id }, include: { lines: true } });
 
   beforeEach(() => {
-    stripeMock.update.mockReset().mockImplementation(async (id: string) => ({ id }));
-    stripeMock.retrieve.mockReset();
+    stripeMock.update.mockReset().mockImplementation(async (id: string, params?: { cancel_at?: number | "" }) => {
+      if (params && params.cancel_at !== undefined) stripeMock.state.set(id, params.cancel_at === "" ? null : params.cancel_at);
+      return { id };
+    });
+    stripeMock.retrieve.mockReset().mockImplementation(async (id: string) => ({
+      id,
+      status: "active",
+      cancel_at: stripeMock.state.get(id) ?? null,
+    }));
     stripeMock.cancel.mockReset().mockImplementation(async (id: string) => ({ id }));
     emailMock.send.mockReset().mockResolvedValue({ sent: false });
   });
@@ -423,7 +437,9 @@ describe.skipIf(!enabled)("auto-renew and agreed early endings are carried out",
 
         stripeMock.update.mockClear();
         expect(await extendBillingForDeliveredAutoRenewals(windowOpen)).toBe(0);
-        expect(stripeMock.update).not.toHaveBeenCalled();
+        // Nothing is extended: whatever Stripe is told is the plain end of the current term, never a cleared end date.
+        expect(stripeMock.update).not.toHaveBeenCalledWith(a.stripeSubscriptionId, { cancel_at: "" }, expect.anything());
+        expect(stripeMock.state.get(a.stripeSubscriptionId!)).not.toBeNull();
 
         // The nightly pass queues nothing new, and withdraws what was queued.
         const b = await agreement();
@@ -525,10 +541,13 @@ describe.skipIf(!enabled)("auto-renew and agreed early endings are carried out",
       expect(
         await prisma.auditLog.count({ where: { entityId: renewals[0]!.id, action: "agreement.auto_renewal_scheduled" } }),
       ).toBe(1);
-      expect(await prisma.providerOperation.count({ where: { subjectId: renewals[0]!.id } })).toBe(0);
+      const subscriptionOps = () =>
+        prisma.providerOperation.count({ where: { subjectType: "StripeSubscription", subjectId: a.stripeSubscriptionId! } });
+      expect(await subscriptionOps()).toBe(0);
       await deliver(a);
       await Promise.all([extendBillingForDeliveredAutoRenewals(windowOpen), extendBillingForDeliveredAutoRenewals(windowOpen)]);
-      expect(await prisma.providerOperation.count({ where: { subjectId: renewals[0]!.id } })).toBe(1);
+      // One worker holds the lease at a time, so the two runs make exactly one change at Stripe.
+      expect(await subscriptionOps()).toBe(1);
     });
 
     it("never auto-renews a rental that was paid in advance (no monthly billing to carry on)", async () => {
@@ -565,9 +584,11 @@ describe.skipIf(!enabled)("auto-renew and agreed early endings are carried out",
       await setAutoRenew({ userId, kind: "customer" }, a.id, { enabled: false, termsVersion: "ar-test" });
       expect((await get(auto.id)).status).toBe("CANCELLED");
       expect((await get(signed.id)).status).toBe("SCHEDULED");
+      // With the automatic renewal gone, the answer comes from what is left: the hand-signed renewal
+      // (rule 6 of the billing-end contract), so billing carries on to the end of that renewal, not the old term.
       expect(stripeMock.update).toHaveBeenLastCalledWith(
         a.stripeSubscriptionId,
-        { cancel_at: Math.floor(termEnd.getTime() / 1000) },
+        { cancel_at: cancelAtSecondsFor({ termMonths: 12, endDate: new Date("2028-11-07T06:59:59Z") }) },
         expect.anything(),
       );
       await prisma.rentalAgreement.update({ where: { id: signed.id }, data: { status: "CANCELLED" } });
@@ -616,7 +637,8 @@ describe.skipIf(!enabled)("auto-renew and agreed early endings are carried out",
 
     it("tells Stripe to stop billing just before the anniversary the rental ends on", async () => {
       const a = await ending();
-      expect(await syncTerminationEnd(a.id)).toBe("done");
+      await prisma.$transaction((tx) => recomputeSubscriptionEndInTx(tx, a.stripeSubscriptionId!));
+      expect(await applySubscriptionEnd(a.stripeSubscriptionId!)).toBe("APPLIED");
       expect(stripeMock.update).toHaveBeenCalledWith(
         a.stripeSubscriptionId,
         { cancel_at: Math.floor((effectiveOn.getTime() - 1000) / 1000) },

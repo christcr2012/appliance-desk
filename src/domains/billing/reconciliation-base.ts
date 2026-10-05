@@ -8,13 +8,15 @@ import {
   RetryLater,
   runProviderCall,
 } from "./provider-ops";
+import { parseTerminationSyncKey, parseTermSyncKey } from "./subscription-term";
 import {
-  desiredSubscriptionTerm,
-  desiredTerminationEnd,
-  parseTerminationSyncKey,
-  parseTermSyncKey,
-  stripeKeyForAttempt,
-} from "./subscription-term";
+  applyDueSubscriptionEnds,
+  applySubscriptionEnd,
+  applySubscriptionEnds,
+  auditSubscriptionEnds,
+  recomputeForAgreementInTx,
+  recomputeSubscriptionEndInTx,
+} from "./subscription-end";
 import { parseLineReduceKey, retryLineReduction } from "./subscription-line";
 
 export type DriftRow = {
@@ -22,6 +24,8 @@ export type DriftRow = {
     | "PENDING_OP"
     | "UNKNOWN_OP"
     | "FAILED_OP"
+    | "SUBSCRIPTION_END_PENDING"
+    | "SUBSCRIPTION_END_STALE"
     | "SUB_LIVE_BUT_LOCAL_CLOSED"
     | "LOCAL_ACTIVE_NO_SUB"
     | "STRIPE_CUSTOMER_MISSING"
@@ -69,6 +73,13 @@ async function markOperationSucceeded(
       providerObjectId,
     }),
   );
+}
+
+async function markOperationSuperseded(operationId: string): Promise<void> {
+  await prisma.providerOperation.updateMany({
+    where: { id: operationId, status: { in: ["PENDING", "FAILED", "UNKNOWN"] } },
+    data: { status: "SUPERSEDED", completedAt: new Date(), lastError: null },
+  });
 }
 
 async function reconcileCustomerCreate(operation: RecoverableOperation): Promise<boolean> {
@@ -127,7 +138,7 @@ async function reconcileSubscriptionCreate(operation: RecoverableOperation): Pro
   const subscription = found.data[0];
   if (!subscription) return false;
 
-  await prisma.$transaction(async (tx) => {
+  const shouldApply = await prisma.$transaction(async (tx) => {
     const rows = await tx.$queryRaw<Array<{ stripeSubscriptionId: string | null }>>`
       SELECT "stripeSubscriptionId"
       FROM "RentalAgreement"
@@ -141,7 +152,7 @@ async function reconcileSubscriptionCreate(operation: RecoverableOperation): Pro
         providerObjectId: subscription.id,
         note: "Stripe subscription exists but the local agreement is missing.",
       });
-      return;
+      return false;
     }
     if (local.stripeSubscriptionId && local.stripeSubscriptionId !== subscription.id) {
       await completeProviderOperation(tx, operation.id, {
@@ -149,7 +160,7 @@ async function reconcileSubscriptionCreate(operation: RecoverableOperation): Pro
         providerObjectId: subscription.id,
         note: `Local agreement is linked to ${local.stripeSubscriptionId}, not recovered ${subscription.id}.`,
       });
-      return;
+      return false;
     }
     if (!local.stripeSubscriptionId) {
       await tx.rentalAgreement.update({
@@ -161,7 +172,10 @@ async function reconcileSubscriptionCreate(operation: RecoverableOperation): Pro
       status: "SUCCEEDED",
       providerObjectId: subscription.id,
     });
+    await recomputeSubscriptionEndInTx(tx, subscription.id);
+    return true;
   });
+  if (shouldApply) await applySubscriptionEnd(subscription.id);
   return true;
 }
 
@@ -188,11 +202,6 @@ async function reconcileSubscriptionCancel(operation: RecoverableOperation): Pro
     throw error;
   }
 
-  // A successful retrieve proving the subscription is still live resolves an
-  // earlier ambiguous cancel outcome. Reclaim the durable operation only if
-  // the exact attempt observed before that provider read is still current.
-  // This prevents stale evidence from authorizing another retry after a
-  // competing worker has already issued a newer ambiguous provider attempt.
   let claim;
   try {
     claim = await prisma.$transaction((tx) =>
@@ -229,68 +238,34 @@ async function reconcileSubscriptionCancel(operation: RecoverableOperation): Pro
   return result.ok;
 }
 
+function parseSubscriptionEndKey(key: string): string | null {
+  const match = /^subscription-end-(.+)-v\d+$/.exec(key);
+  return match?.[1] ?? null;
+}
+
 /**
- * A renewal's end-date change on the subscription (extend at signing, revert on
- * cancellation). The target is derived from the agreements, so this simply makes
- * Stripe match: if it already does the operation is done, otherwise it is
- * retried (an ambiguous earlier attempt is only retried once Stripe has been read).
+ * Subscription end-date reconciliation is now convergent: every operation asks
+ * the shared intent worker for today's answer. Legacy extend/revert/termination
+ * keys are never replayed; they are converted to the new intent and superseded.
  */
 async function reconcileSubscriptionUpdate(operation: RecoverableOperation): Promise<boolean> {
-  // A rental line's price lowered on the subscription (an item that was never delivered was cancelled).
   const lineReducePendingId = parseLineReduceKey(operation.idempotencyKey);
   if (lineReducePendingId) return retryLineReduction(operation, lineReducePendingId);
+
+  const subscriptionId = parseSubscriptionEndKey(operation.idempotencyKey);
+  if (subscriptionId) {
+    const result = await applySubscriptionEnd(subscriptionId);
+    return result === "APPLIED";
+  }
+
   const terminationAgreementId = parseTerminationSyncKey(operation.idempotencyKey);
   const parsed = terminationAgreementId ? null : parseTermSyncKey(operation.idempotencyKey);
   if (!terminationAgreementId && !parsed) return false;
-  const desired = terminationAgreementId
-    ? await desiredTerminationEnd(terminationAgreementId)
-    : await desiredSubscriptionTerm(parsed!.renewalId, parsed!.direction);
-  if (!desired) return false;
-  if (desired.moot) {
-    await markOperationSucceeded(operation, desired.subscriptionId);
-    return true;
-  }
-  const stripe = getStripeClient();
-  const subscription = await stripe.subscriptions.retrieve(desired.subscriptionId);
-  const current = subscription.cancel_at ?? null;
-  if (current === desired.cancelAt) {
-    await markOperationSucceeded(operation, desired.subscriptionId);
-    return true;
-  }
-  let claim;
-  try {
-    claim = await prisma.$transaction((tx) =>
-      claimProviderOperation(tx, {
-        kind: "SUBSCRIPTION_UPDATE",
-        subjectType: operation.subjectType,
-        subjectId: operation.subjectId,
-        idempotencyKey: operation.idempotencyKey,
-        reconcileUnknownAfterProviderEvidence: { expectedAttempts: operation.attempts },
-      }),
-    );
-  } catch (error) {
-    if (error instanceof RetryLater) return false;
-    throw error;
-  }
-  if (claim.done) return true;
-  const key = await stripeKeyForAttempt(claim.opId, claim.idempotencyKey);
-  const result = await runProviderCall(() =>
-    stripe.subscriptions.update(
-      desired.subscriptionId,
-      { cancel_at: desired.cancelAt ?? "" },
-      { idempotencyKey: key },
-    ),
-  );
-  await prisma.$transaction((tx) =>
-    completeProviderOperation(
-      tx,
-      claim.opId,
-      result.ok
-        ? { status: "SUCCEEDED", providerObjectId: desired.subscriptionId }
-        : { status: result.outcome, error: result.error },
-    ),
-  );
-  return result.ok;
+  const agreementId = terminationAgreementId ?? parsed!.renewalId;
+  const ids = await prisma.$transaction((tx) => recomputeForAgreementInTx(tx, agreementId));
+  await applySubscriptionEnds(ids);
+  await markOperationSuperseded(operation.id);
+  return true;
 }
 
 async function findBalanceCreditTransaction(
@@ -355,11 +330,6 @@ async function reconcileBalanceCredit(operation: RecoverableOperation): Promise<
     return true;
   }
 
-  // UNKNOWN is never guessed at or blindly replayed. Provider evidence must
-  // resolve it. Definite FAILED or stale PENDING operations can reuse the same
-  // idempotency key safely. claimProviderOperation enforces the normal lease
-  // before a PENDING takeover so overlapping reconcilers cannot steal a fresh
-  // retry from one another.
   if (operation.status === "UNKNOWN") return false;
 
   let claim;
@@ -468,11 +438,8 @@ async function retryDefiniteRefundFailure(
     stripeChargeId = chargeId;
     metadata = { refundId: operation.subjectId, invoiceId: refund.invoiceId };
   } else if (operation.subjectType === "Deposit") {
-    // R06: deposit refunds are retried only by
-    // `reconcileMovedDepositRefundOperations`, which always uses the charge on
-    // the deposit's immutable source receipt. This pass never guesses a charge
-    // (for example "the oldest successful payment"), so it leaves the operation
-    // visible instead of refunding against a smaller or unrelated charge.
+    // Deposit refunds are retried only by reconcileMovedDepositRefundOperations,
+    // which has the immutable source receipt and therefore never guesses a charge.
     return false;
   } else {
     return false;
@@ -576,9 +543,6 @@ async function reconcileOne(operation: RecoverableOperation): Promise<boolean> {
 }
 
 async function rotateUnresolvedProviderOperation(operationId: string): Promise<void> {
-  // Preserve requestedAt because provider evidence lookback is anchored to the
-  // original provider request. Touch only updatedAt so an unresolved row moves
-  // behind work that has not yet received a reconciliation attempt.
   await prisma.providerOperation.update({
     where: { id: operationId },
     data: { updatedAt: new Date() },
@@ -630,6 +594,12 @@ export async function finishPendingProviderOperations(
       await rotateUnresolvedProviderOperation(operation.id);
     }
   }
+
+  // Subscription-end intent is a separate convergent queue. Run it after the
+  // legacy/general provider operations so recovered subscription-create rows are
+  // already linked locally before the intent audit looks at them.
+  await applyDueSubscriptionEnds(50);
+  await auditSubscriptionEnds(50);
   return { completed, stillUnknown };
 }
 
@@ -640,10 +610,7 @@ function providerStatusKind(status: ProviderOperationStatus): DriftRow["kind"] |
   return null;
 }
 
-/**
- * Bounded, read-only drift inspection. No create/update/delete is performed;
- * provider reads are used only to compare external state with local truth.
- */
+/** Bounded, read-only drift inspection. */
 export async function detectDrift(limit = 200): Promise<DriftRow[]> {
   const bounded = Math.max(1, Math.min(limit, 500));
   const rows: DriftRow[] = [];
@@ -662,11 +629,39 @@ export async function detectDrift(limit = 200): Promise<DriftRow[]> {
       subjectId: operation.subjectId,
       detail:
         `${operation.kind} is ${operation.status.toLowerCase()} after ${operation.attempts} attempt${operation.attempts === 1 ? "" : "s"}.` +
-        // A rental line's price change on the subscription says what is wrong, so the owner can fix it in Stripe.
         (operation.subjectType === "RentalLine" && operation.lastError ? ` ${operation.lastError}` : ""),
       since: operation.requestedAt,
     });
   }
+  if (rows.length >= bounded) return rows.slice(0, bounded);
+
+  const staleIntentBefore = new Date(Date.now() - 24 * 60 * 60_000);
+  const pendingEnds = await prisma.$queryRaw<
+    Array<{
+      stripeSubscriptionId: string;
+      version: number;
+      appliedVersion: number;
+      reason: string;
+      lastError: string | null;
+      updatedAt: Date;
+    }>
+  >`
+    SELECT "stripeSubscriptionId", "version", "appliedVersion", "reason", "lastError", "updatedAt"
+    FROM "SubscriptionEndIntent"
+    WHERE "appliedVersion" < "version"
+      AND ("updatedAt" <= ${staleIntentBefore} OR "lastError" IS NOT NULL)
+    ORDER BY "updatedAt" ASC
+    LIMIT ${bounded - rows.length}
+  `;
+  rows.push(
+    ...pendingEnds.map((intent) => ({
+      kind: "SUBSCRIPTION_END_PENDING" as const,
+      subjectType: "StripeSubscription",
+      subjectId: intent.stripeSubscriptionId,
+      detail: `Billing end intent v${intent.version} (${intent.reason}) has not been confirmed in Stripe; applied v${intent.appliedVersion}.${intent.lastError ? ` ${intent.lastError}` : ""}`,
+      since: intent.updatedAt,
+    })),
+  );
   if (rows.length >= bounded) return rows.slice(0, bounded);
 
   const activeNoSub = await prisma.rentalAgreement.findMany({
@@ -736,7 +731,6 @@ export async function detectDrift(limit = 200): Promise<DriftRow[]> {
   );
   if (rows.length >= bounded) return rows.slice(0, bounded);
 
-  // Card payments that arrived after an invoice was closed: real money waiting for the owner's decision (IN-23).
   const heldPayments = await prisma.payment.findMany({
     where: { status: { in: [HELD_PAYMENT_STATUS, HELD_CONFLICT_STATUS] } },
     select: { id: true, invoiceId: true, amountCents: true, createdAt: true, status: true },

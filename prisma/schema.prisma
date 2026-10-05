@@ -97,9 +97,9 @@ model Verification {
   id         String   @id @default(cuid())
   identifier String
   value      String
-  expiresAt DateTime
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   @@index([identifier])
 }
@@ -193,7 +193,7 @@ model Referral {
   id                 String         @id @default(cuid())
   referrerCustomerId String
   referrerCustomer   Customer       @relation("ReferralsMade", fields: [referrerCustomerId], references: [id])
-  // One-to-one: a customer can only ever be the *referred* party once, ever.
+  // One-to-one: a customer can only ever have been the *referred* party once, ever.
   referredCustomerId String         @unique
   referredCustomer   Customer       @relation("ReferralsReceived", fields: [referredCustomerId], references: [id])
   status             ReferralStatus @default(PENDING)
@@ -338,12 +338,12 @@ model LeadNote {
 }
 
 model LeadApplianceRequest {
-  id            String       @id @default(cuid())
+  id            String        @id @default(cuid())
   leadId        String
-  lead          Lead         @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  lead          Lead          @relation(fields: [leadId], references: [id], onDelete: Cascade)
   applianceTypeId String
   applianceType ApplianceType @relation(fields: [applianceTypeId], references: [id])
-  quantity      Int          @default(1)
+  quantity      Int           @default(1)
 }
 
 // ---------------------------------------------------------------------------
@@ -405,13 +405,13 @@ model Appliance {
   manufacturer    String?
   model           String?
   serialNumber    String?
-  color           String?
-  condition       String?
-  purchaseDate    DateTime?
+  color            String?
+  condition        String?
+  purchaseDate     DateTime?
   acquisitionCostCents Int?
-  status          ApplianceStatus @default(AVAILABLE)
-  currentLocation String?
-  notes           String?
+  status           ApplianceStatus @default(AVAILABLE)
+  currentLocation  String?
+  notes            String?
 
   // Free-form descriptive tags, e.g. ["front-load", "agitator"] for a
   // washer, ["ice-maker"] for a fridge. Deliberately not an enum or a
@@ -806,6 +806,12 @@ model RentalAgreement {
   terminationFeeCents      Int?
   terminationPolicyVersion String?
 
+  // Batch B2: immutable continuity metadata lets reminders and month-to-month
+  // policy follow the same continuous rental across replacement agreements.
+  continuityRootId         String?
+  continuousSince          DateTime?
+  monthToMonthTermsVersion Int?
+
   // Terms this agreement is locked to (2026-10-03 decision). Frozen when the
   // agreement is sent for signing, from termsOverride when the owner
   // customized it for this customer, otherwise from the system-wide settings.
@@ -831,6 +837,30 @@ model RentalAgreement {
 
   @@index([customerId])
   @@index([status])
+  @@index([continuityRootId])
+}
+
+model EarlyReturnResolution {
+  id                 String   @id @default(cuid())
+  agreementId        String   @unique
+  jobId              String
+  pickupDate         DateTime
+  billing            String
+  unusedDays         String
+  unusedDaysCount    Int
+  unusedCents        Int
+  unusedTaxCents     Int
+  feeCents           Int
+  feeReason          String?
+  feeInvoiceId       String?
+  creditId           String?
+  refundedCents      Int      @default(0)
+  refundByHandCents  Int      @default(0)
+  appliedBy          String
+  decidedByUserId    String?
+  createdAt          DateTime @default(now())
+
+  @@index([jobId])
 }
 
 model RentalLine {
@@ -1453,6 +1483,9 @@ enum InvoiceLineItemKind {
   // Rent for days an item was kept past the agreement's end date
   // ("Late return – [item] – [N] days"). Not a late-PAYMENT fee.
   LATE_RETURN
+  // Negative rent adjustment when the business, not the customer, caused
+  // a late pickup. The original charge stays visible; this line waives it.
+  LATE_RETURN_WAIVER
 }
 
 // Batch B — provider operations (docs/designs/BATCH-B.md D1/D2)
@@ -1472,6 +1505,13 @@ enum ProviderOperationStatus {
   FAILED
   UNKNOWN
   DRIFT
+  SUPERSEDED
+}
+
+enum SubscriptionEndMode {
+  NO_END
+  END_AT
+  CLOSED
 }
 
 model ProviderOperation {
@@ -1490,6 +1530,43 @@ model ProviderOperation {
 
   @@index([subjectType, subjectId])
   @@index([status, requestedAt])
+}
+
+model SubscriptionEndIntent {
+  stripeSubscriptionId String              @id
+  version              Int                 @default(1)
+  mode                 SubscriptionEndMode
+  cancelAt             DateTime?
+  reason               String
+  holderAgreementId    String
+  appliedVersion       Int                 @default(0)
+  appliedMode          SubscriptionEndMode?
+  appliedCancelAt      DateTime?
+  appliedAt            DateTime?
+  leaseToken           String?
+  leaseUntil           DateTime?
+  attempts             Int                 @default(0)
+  nextAttemptAt        DateTime?
+  lastError            String?
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+
+  @@index([nextAttemptAt])
+  @@index([holderAgreementId])
+}
+
+model LateReturnWaiver {
+  id               String   @id @default(cuid())
+  jobId            String   @unique
+  invoiceId        String
+  waivedDays       Int
+  waivedCents      Int
+  waivedTaxCents   Int
+  note             String
+  recordedByUserId String
+  createdAt        DateTime @default(now())
+
+  @@index([invoiceId])
 }
 
 // Batch B — receipts, allocations, credit applications (D6/D7)
@@ -1739,6 +1816,17 @@ model BusinessSettings {
   renewalTermsText            String?
   terminationTermsText        String?
 
+  // Batch B2 notice evidence, month-to-month change policy and early-return defaults.
+  noticeCertifierRoles         String @default("OWNER")
+  mailNoticeTransitDays        Int    @default(3)
+  monthToMonthChangeNoticeDays Int    @default(30)
+  termsChangeNoticeText        String?
+  annualReminderText           String?
+  earlyReturnBilling           String @default("KEEP_TO_AGREED_END")
+  earlyReturnUnusedDays        String @default("KEEP")
+  earlyReturnFee               String @default("AGREED_TERMS_FEE")
+  earlyReturnHandling          String @default("ASK_ME")
+
   // Pickup and return billing (owner decisions IN-24 / IN-26 / IN-27, 2026-10-03;
   // src/domains/billing/pickup-billing.ts is the only reader).
   // How the daily rate for a LATE return is found: "MONTHLY_DIV_30" = that item's
@@ -1750,13 +1838,23 @@ model BusinessSettings {
   lateDeliveryProrationBasis String @default("MONTHLY_DIV_30")
   // DEPRECATED (2026-10-03, same day it was added): the setting was first built
   // for a misread "early return" rule. Copied into lateDeliveryProrationBasis
-  // by migration 20261003280000 and never read again; removed in a later cleanup.
+  // by migration 20261003280000 and revived by Batch B2 as the owner's choice
+  // for unused-day calculations on early returns.
   earlyReturnProrationBasis String  @default("MONTHLY_DIV_30")
   // ON (default): the pickup/return day itself is never charged; the last charged
   // day is the day before. OFF: the pickup day is charged like any other day.
   pickupDayNotBilled        Boolean @default(true)
 
   updatedAt DateTime @updatedAt
+}
+
+model MonthToMonthTermsVersion {
+  id                String   @id @default(cuid())
+  version           Int      @unique
+  noticeDays        Int
+  termsText         String
+  publishedAt       DateTime @default(now())
+  publishedByUserId String?
 }
 
 model SiteContent {
@@ -1781,11 +1879,8 @@ model Photo {
   createdAt DateTime @default(now())
 }
 
-// A message the customer is owed (for now: the renewal reminder Colorado's automatic-renewal
-// law requires 25-40 days before a renewal). The text is saved exactly as it was written, so
-// what was said can always be shown later. PENDING = not delivered yet (email is off until the
-// owner approves live email, or the owner has not marked it sent); SENT = delivered by email or
-// marked sent by hand; NOT_NEEDED = withdrawn before it mattered (e.g. auto-renew turned off).
+// A message the customer is owed. Batch B2 makes delivery state explicit and
+// stores immutable evidence for the attempt that actually delivered it.
 model CustomerNotice {
   id          String    @id @default(cuid())
   customerId  String
@@ -1800,10 +1895,26 @@ model CustomerNotice {
   sentVia     String?
   sentByUserId String?
   attempts    Int       @default(0)
+  earliestAt        DateTime?
+  deadlineAt        DateTime?
+  sentToAddress     String?
+  providerMessageId String?    @unique
+  acceptedAt        DateTime?
+  evidenceDate      DateTime?
+  deliveryChannel   String?
+  deliveryEvidence  Json?
+  claimToken        String?
+  lastAttemptAt     DateTime?
+  nextAttemptAt     DateTime?
+  lastError         String?
+  resolvedByUserId  String?
+  resolvedAt        DateTime?
+  resolution        String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
   @@index([status])
+  @@index([status, nextAttemptAt])
   @@index([customerId])
   @@index([agreementId])
 }
