@@ -3,7 +3,11 @@ import { prisma } from "@/lib/prisma";
 import { getStripeClient } from "@/lib/stripe";
 import { assertActiveTeamActor } from "@/lib/team-actor";
 import { lockCustomerLedger } from "./ledger";
-import { HELD_PAYMENT_STATUS, HELD_REFUNDED_STATUS } from "./payment-status";
+import {
+  HELD_PAYMENT_STATUS,
+  HELD_REFUNDED_STATUS,
+  SUCCESSFUL_PAYMENT_STATUSES,
+} from "./payment-status";
 import {
   claimProviderOperation,
   completeProviderOperation,
@@ -90,7 +94,7 @@ async function resolveDepositStripeCharge(depositId: string): Promise<string | n
 
   const linkedPayment = await prisma.payment.findFirst({
     where: {
-      status: "succeeded",
+      status: { in: [...SUCCESSFUL_PAYMENT_STATUSES] },
       invoice: {
         agreementId: deposit.agreementId,
         lineItems: { some: { kind: "DEPOSIT" } },
@@ -332,7 +336,7 @@ export async function prepareInvoiceRefundInTx(
   const stripeAllocations = await tx.payment.findMany({
     where: {
       invoiceId: invoice.id,
-      status: "succeeded",
+      status: { in: [...SUCCESSFUL_PAYMENT_STATUSES] },
       receipt: {
         source: "STRIPE",
         stripeChargeId: { not: null },

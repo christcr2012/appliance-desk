@@ -13,7 +13,13 @@ import {
 import { resolveStripeInvoiceCashEvents } from "./stripe-invoice-payments";
 import { appliedBalanceCreditCents, creditLinesForAppliedBalance } from "./applied-credit-lines";
 import { LATE_DELIVERY_CREDIT_SOURCE } from "./pickup-billing";
-import { HELD_CONFLICT_STATUS, HELD_PAYMENT_STATUS, HELD_REFUNDED_STATUS, HELD_TO_CREDIT_STATUS } from "./payment-status";
+import {
+  HELD_CONFLICT_STATUS,
+  HELD_PAYMENT_STATUS,
+  HELD_REFUNDED_STATUS,
+  HELD_TO_CREDIT_STATUS,
+  SUCCESSFUL_PAYMENT_STATUSES,
+} from "./payment-status";
 
 async function alreadyProcessed(db: Prisma.TransactionClient, eventId: string): Promise<boolean> {
   return (await db.webhookEvent.findUnique({ where: { id: eventId } })) !== null;
@@ -346,7 +352,10 @@ async function recordOneTimeSigningCharge(
   paymentIntentId: string,
 ): Promise<void> {
   const existingPayment = await db.payment.findFirst({
-    where: { stripePaymentIntentId: paymentIntentId, status: "succeeded" },
+    where: {
+      stripePaymentIntentId: paymentIntentId,
+      status: { in: [...SUCCESSFUL_PAYMENT_STATUSES] },
+    },
     select: { invoice: { select: { agreementId: true, customerId: true } } },
   });
   if (existingPayment) {
