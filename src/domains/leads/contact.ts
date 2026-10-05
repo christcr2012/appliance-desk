@@ -1,4 +1,4 @@
-import type { Prisma } from "@prisma/client";
+import type { MessageDelivery, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 /**
@@ -30,4 +30,15 @@ export async function recordRealContact(
   contactedAt: Date = new Date(),
 ): Promise<boolean> {
   return prisma.$transaction((tx) => recordRealContactInTx(tx, leadId, contactedAt));
+}
+
+/** Accepted or delivered messages addressed to a Lead are real outbound
+ * contact. Staff/internal messages merely ABOUT a lead are deliberately not. */
+export async function recordLeadMessageContactInTx(
+  tx: Prisma.TransactionClient,
+  delivery: Pick<MessageDelivery, "recipientType" | "recipientId">,
+  contactedAt: Date,
+): Promise<boolean> {
+  if (delivery.recipientType !== "Lead" || !delivery.recipientId) return false;
+  return recordRealContactInTx(tx, delivery.recipientId, contactedAt);
 }
