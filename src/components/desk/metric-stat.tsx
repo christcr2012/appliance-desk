@@ -5,7 +5,7 @@ import { METRICS, type MetricKey } from "@/domains/reports/definitions";
 export function MetricHelp({ metric, params = {} }: { metric: MetricKey; params?: Record<string, string> }) {
   const def = METRICS[metric];
   return (
-    <details className="mt-2 text-xs text-gray-600">
+    <details className="mt-2 text-xs text-ink-soft">
       <summary className="cursor-pointer font-medium text-primary underline">How this is counted</summary>
       <dl className="mt-2 space-y-1">
         <div>
@@ -46,14 +46,14 @@ export function MetricStat({
 }) {
   const def = METRICS[metric];
   const toneClass =
-    tone === "warning" ? "border-amber-300 bg-amber-50" : tone === "good" ? "border-gray-200 bg-primary-soft" : "border-gray-200 bg-white";
+    tone === "warning" ? "border-amber-300 bg-amber-50" : tone === "good" ? "border-line bg-primary-soft" : "border-line bg-white";
   return (
     <div className={`rounded-lg border p-5 ${toneClass}`}>
-      <p className="text-sm text-gray-600">
+      <p className="text-sm text-ink-soft">
         {def.label}
-        {def.kind === "ESTIMATE" && <span className="ml-2 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-700">Estimate</span>}
+        {def.kind === "ESTIMATE" && <span className="ml-2 rounded-full bg-canvas-alt px-2 py-0.5 text-xs text-ink-soft">Estimate</span>}
       </p>
-      <p className={`mt-1 text-2xl font-semibold ${tone === "good" ? "text-primary-dark" : "text-gray-900"}`}>{value}</p>
+      <p className={`mt-1 text-2xl font-semibold ${tone === "good" ? "text-primary-dark" : "text-ink"}`}>{value}</p>
       <MetricHelp metric={metric} params={params} />
     </div>
   );

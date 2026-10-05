@@ -186,7 +186,7 @@ export function AuthedHeader({
                   className={
                     active
                       ? "font-semibold text-primary"
-                      : "text-gray-600 hover:text-gray-900"
+                      : "text-ink-soft hover:text-ink"
                   }
                 >
                   {link.label}
@@ -197,7 +197,7 @@ export function AuthedHeader({
               type="button"
               onClick={handleSignOut}
               disabled={signingOut}
-              className="text-gray-600 hover:text-gray-900 disabled:opacity-60"
+              className="text-ink-soft hover:text-ink disabled:opacity-60"
             >
               {signingOut ? "Signing out…" : "Sign out"}
             </button>
@@ -210,7 +210,7 @@ export function AuthedHeader({
           <ThemeToggle />
           <button
             type="button"
-            className="inline-flex items-center justify-center rounded-md p-2 text-gray-700"
+            className="inline-flex items-center justify-center rounded-md p-2 text-ink-soft"
             aria-expanded={menuOpen}
             aria-controls="authed-mobile-menu"
             aria-label={menuOpen ? "Close menu" : "Open menu"}
@@ -264,7 +264,7 @@ export function AuthedHeader({
         <nav
           id="authed-mobile-menu"
           aria-label={areaLabel}
-          className="max-h-[70dvh] overflow-y-auto overscroll-contain border-t bg-gray-50 md:hidden"
+          className="max-h-[70dvh] overflow-y-auto overscroll-contain border-t bg-canvas md:hidden"
         >
           <div className="flex flex-col gap-1 px-4 py-3">
             {links.map((link) => {
@@ -277,7 +277,7 @@ export function AuthedHeader({
                   className={`rounded-md px-2 py-3 text-base font-medium ${
                     active
                       ? "bg-primary-soft text-primary-dark"
-                      : "text-gray-900 hover:bg-gray-100"
+                      : "text-ink hover:bg-canvas-alt"
                   }`}
                 >
                   {link.label}
@@ -288,7 +288,7 @@ export function AuthedHeader({
               type="button"
               onClick={handleSignOut}
               disabled={signingOut}
-              className="rounded-md px-2 py-3 text-left text-base font-medium text-gray-900 hover:bg-gray-100 disabled:opacity-60"
+              className="rounded-md px-2 py-3 text-left text-base font-medium text-ink hover:bg-canvas-alt disabled:opacity-60"
             >
               {signingOut ? "Signing out…" : "Sign out"}
             </button>
