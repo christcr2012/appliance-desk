@@ -42,13 +42,11 @@ async function recordProviderEvent(
   tx: Prisma.TransactionClient,
   input: { provider: string; eventId: string; type: string; summary: Prisma.InputJsonValue },
 ): Promise<boolean> {
-  const existing = await tx.providerEvent.findUnique({
-    where: { provider_eventId: { provider: input.provider, eventId: input.eventId } },
-    select: { id: true },
+  const inserted = await tx.providerEvent.createMany({
+    data: [input],
+    skipDuplicates: true,
   });
-  if (existing) return false;
-  await tx.providerEvent.create({ data: input });
-  return true;
+  return inserted.count === 1;
 }
 
 function resendRequestedState(type: string): MessageState | null {
@@ -137,7 +135,7 @@ export async function processVerifiedResendEvent(
 
       const notice = await tx.customerNotice.findUnique({
         where: { providerMessageId },
-        select: { id: true, status: true },
+        select: { id: true },
       });
       if (notice) {
         await tx.customerNotice.update({
