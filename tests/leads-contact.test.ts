@@ -2,11 +2,13 @@ import { describe, expect, it, vi } from "vitest";
 
 const leadUpdateMany = vi.fn();
 const transaction = vi.fn(async (callback: (tx: unknown) => Promise<unknown>) =>
-  callback({ lead: { updateMany: (...args: unknown[]) => leadUpdateMany(...args) } }),
+  callback({ lead: { updateMany: (args: unknown) => leadUpdateMany(args) } }),
 );
 
 vi.mock("@/lib/prisma", () => ({
-  prisma: { $transaction: (...args: unknown[]) => transaction(...args) },
+  prisma: {
+    $transaction: (callback: (tx: unknown) => Promise<unknown>) => transaction(callback),
+  },
 }));
 
 import {
@@ -30,7 +32,7 @@ describe("lead real-contact evidence", () => {
   });
 
   it("counts only messages whose recipient is the lead", async () => {
-    const tx = { lead: { updateMany: leadUpdateMany } } as never;
+    const tx = { lead: { updateMany: (args: unknown) => leadUpdateMany(args) } } as never;
     leadUpdateMany.mockClear().mockResolvedValue({ count: 1 });
     const when = new Date("2026-10-05T19:00:00Z");
 
@@ -54,7 +56,7 @@ describe("lead real-contact evidence", () => {
   });
 
   it("returns false when an older replay cannot advance the timestamp", async () => {
-    const tx = { lead: { updateMany: leadUpdateMany } } as never;
+    const tx = { lead: { updateMany: (args: unknown) => leadUpdateMany(args) } } as never;
     leadUpdateMany.mockResolvedValueOnce({ count: 0 });
     expect(await recordRealContactInTx(tx, "lead-1", new Date("2026-09-01"))).toBe(false);
   });
