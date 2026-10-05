@@ -2,7 +2,7 @@
 
 **Date:** 2026-10-05  
 **Purpose:** mandatory implementation amendment for the remaining batches after Batch D was actually built.  
-**Review baseline:** `main` at `f6cfe0b568c9e59b0345b381da63781360c4b1ff` plus the final Batch D branch `ai/sol/batch-d-d10-privacy` through `0d08ac5c60a4dc747b386b61ec2a744d0a56ee13`.
+**Review baseline:** final Batch D merge on `main` at `a6c9c9acd2f1d673b6020e1819f60c34d9d9c576` (PR #214). The pre-merge branch references below are historical only; later batches drift-check from this merge SHA.
 
 This file exists because `BATCH-E.md`, `BATCH-E2.md`, and `BATCH-F.md` were written/reworked while Batch D was still a design. The remaining implementation must follow the **implemented D contracts below**, not the older assumptions in those guides. Where this file conflicts with E/E2/F text, **this file wins** until the applicable design is folded forward.
 
@@ -149,8 +149,8 @@ The generic schema-wide restore already covers D's tables, but the acceptance sc
 
 ## 5. Implementation order after this reconciliation
 
-1. Finish D10–D12 verification/disposition and merge the final D branch cleanly onto current `main`; full CI green, Vercel READY, reviews resolved.
-2. Update the final D merge SHA in the E drift-check note.
+1. **DONE 2026-10-05:** D10–D12 verified and PR #214 merged; exact-head CI green, Vercel READY, zero unresolved review threads.
+2. **DONE 2026-10-05:** E drift baseline updated to final D merge `a6c9c9acd2f1d673b6020e1819f60c34d9d9c576` in `BATCH-E-DRIFT-2026-10-05.md`.
 3. Implement **E** using `BATCH-E.md` + this reconciliation, including the explicit B08 lead-scoring amendment above.
 4. Implement **E2** using `BATCH-E2.md` + this reconciliation.
 5. Implement **F** using `BATCH-F.md` + this reconciliation.

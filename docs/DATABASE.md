@@ -421,3 +421,10 @@ Migration `20261007010000_batch_d_control_plane` (additive):
 - `PrivacyRequest` — customer data export / deletion requests (later Batch D step).
 - `BusinessSettings.legalApprovals` — which legal-page version the owner has approved (later Batch D step).
 All four tables are in `BACKUP_MODEL_POLICY`; `verifySchemaHealth` checks them because it enumerates the models. `docs/SETTINGS-COVERAGE.md` records what happens to every `BusinessSettings` column. Profile extras are stored in the existing columns: `hours` `{mon:{open,close}|{closed:true}}`, `holidayClosures` `[{date,label}]`, `socialLinks` `{facebook,instagram,google,nextdoor}`, `logoUrl`.
+
+
+## Batch E durable automation and messaging evidence
+
+Migration `20261008010000_batch_e_messaging` adds four additive evidence tables. `AutomationRun` records one named automation pass per Colorado business-day slot (including stale/unknown recovery and owner pauses). `MessageDelivery` is the future E sender ledger: idempotency key, channel/purpose/template/recipient/subject, explicit provider outcome, provider id and timestamps. `ProviderEvent` deduplicates verified Resend/Twilio webhook events. `MarketingSuppression` stores one normalized address/channel suppression and its source. All four are included in `BACKUP_MODEL_POLICY`; generated schema health automatically queries every Prisma model.
+
+The same migration adds launch-confirmation timestamps/token hash fields, `Lead.lastRealContactAt`, and the lead-scoring evidence contract: `Lead.scoringPolicyVersion` freezes which policy produced a saved score while `BusinessSettings.leadScoringPolicy` starts at version 1 with the exact pre-E weights. Saving a future policy must not silently rescore historical leads. `BusinessSettings.pausedAutomations` is the owner-controlled list used by the automation runner; pause/resume changes are audited and never delete run history.

@@ -5,7 +5,7 @@
 `docs/archive/STATUS-LOG.md`. The long history before 2026-10-02 is in
 `docs/archive/HANDOFF-2026-09-26-to-2026-10-02.md`.
 
-Last updated: 2026-10-05 · `main` 243e21e includes Batch B2 PRs 1–3. **In progress: Batch B2 PR 4**, then D → E → E2 → F.
+Last updated: 2026-10-05 · `main` a6c9c9a includes completed Batch D PR #214. **In progress: Batch E PR 1 (E1–E3 automation foundation)** on `ai/sol/batch-e-automation`; then E4–E11 → E2 → F.
 
 ## Batch table
 
@@ -17,8 +17,8 @@ Last updated: 2026-10-05 · `main` 243e21e includes Batch B2 PRs 1–3. **In pro
 | R — Remediation Batch R (17 review findings R01–R17) | **MERGED** (all 17 fixed; three items below are not done or not proven) | #185 (R01–R05), #186 (R06), #187 (R07), #188 (R08), #189 (R09, R11 estimate part), #190 (R10), #191 (R11), #192 (R12), #193 (R13), #194 (R14), #195 (R15), #196 (R16), #197 (R17) | Real-Postgres tests per finding; exact-head `ci` green on every PR; ledger `docs/reviews/2026-10-04-remediation-batch-r-acceptance.md` | **Not done / not proven:** (1) Stripe's billing calendar is not moved to the real first-delivery date (owner question IN-28); (2) no human preview check of the touched estimate page, add-appliance form, repair-cost form and Today; (3) the upgrade drill on a populated database was not run (CI migration and schema checks passed for both additive migrations). Codex was out of quota on #187–#197 (waived, recorded on each PR); no Copilot review posted. Batch D contract changes are in `docs/designs/CHANGES-SINCE-DESIGN.md`. Re-assess C-09 and Batch D against them before starting. |
 | Follow-ups after Batch R (Chris's answers, 2026-10-04) | **DONE except two items waiting on a design / on Chris** | #199 (IN-28 billing begins on delivery; browser check; upgrade drill; phone dropdown fix), next PR (estimate follow-up claimed before send; Today shows an unfinished Stripe item change) | IN-28 proved in Stripe test mode (three whole months for an Aug 1 delivery set up Oct 5) and unit-tested; browser check and migration drill recorded in `docs/reviews/2026-10-04-remediation-batch-r-acceptance.md`; real-Postgres tests for the new Today item and the follow-up claim | **Still open, not buildable yet:** Batch B renewal-lifecycle items (R1/R2 order and crash recovery of Stripe end-date changes, R3 customer cancel after the first renewal, R4 annual reminders, R6 provider message id, D2 manual-delivery evidence) and C-09 need the stronger-model design amendment (prompt ready: `docs/archive/prompts/DESIGN-BATCH-B-RENEWAL-LIFECYCLE.md`, refreshed 2026-10-04); IN-21 (month-to-month notice) needs Chris's wording and approval for live customer email, which stays OFF. The "Automatic renewals" switch stays OFF. A never-delivered refund against an invoice paid across several Stripe charges is still refused and done by hand. |
 | B2 — Renewal lifecycle, month-to-month rentals, pickup billing end (finishes B and C) | **PR 4 OPEN** — PRs 1–3 merged (#205, #206, #207); PR 4 (late-return fix, our-delay waiver, closing after full return, early returns) on `ai/claude/batch-b2-pickup-returns` | `ai/claude/batch-b2-pickup-returns` | Full suite 1804/1804 against real Postgres (sandbox) | `docs/designs/BATCH-B2.md` (Amendments + review dispositions R1–R7, D1, D2). Covers C-09, IN-29, IN-30. Automatic renewals and live customer email stay OFF.
-| D — Owner/customer control plane, website, evidence & privacy | NOT STARTED (design rewritten 2026-10-05) | — | — | Uses B and B2 contracts for renewal/ending screens. |
-| E — Communications, reporting, growth, branding & accessibility | NOT STARTED | — | — | Google (O32) only if GW prerequisites are ready; otherwise one later PR. |
+| D — Owner/customer control plane, website, evidence & privacy | **MERGED** | #214, merge `a6c9c9a` (2026-10-05) | Exact-head CI green; Vercel preview READY; zero unresolved review threads | Final D implementation contracts and the mandatory E/E2/F reconciliation live in `docs/designs/POST-BATCH-D-RECONCILIATION-2026-10-05.md`. |
+| E — Communications, reporting, growth, branding & accessibility | **IN PROGRESS** | `ai/sol/batch-e-automation` (E1–E3 first slice) | Post-D drift check: `docs/designs/BATCH-E-DRIFT-2026-10-05.md` | Implementation uses the merged D contracts. Public rate limiting is already Postgres-backed and is not being rebuilt. Live customer email/SMS/marketing stay OFF. |
 | E2 — Visual redesign (owner desk, public site, customer portal; desktop, phone, dark) | NOT STARTED — design approved 2026-10-05 | — | — | `docs/designs/BATCH-E2.md`. Starts after E merges; F waits for it. Home page decided (IN-32: ivory light, evergreen dark). |
 | F — Integrated verification, recovery, owner handoff & launch ledger | NOT STARTED | — | — | Human/owner gates stay explicit. |
 
@@ -34,7 +34,7 @@ deny-by-default (#131), CI parallelized and sharded (#136, #137).
 
 ## Infrastructure facts that affect work
 
-- CI: ~4.5 min per full run, 3 browser shards (`e2e/shards.json`). Budget ≤ 5 min.
+- CI: parallel full run with 4 browser groups (`browser-a`…`browser-d` in `e2e/shards.json`). Budget ≤ 5 min.
 - Preview deployments use an isolated Neon branch and a Preview-only private
   file store; preview photo-upload and backup APIs are deliberately disabled.
   Evidence: `docs/plans/overhaul/PREVIEW-ISOLATION-PROOF.md`.
