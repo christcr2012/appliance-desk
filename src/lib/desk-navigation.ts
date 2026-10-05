@@ -58,6 +58,7 @@ const groups = [
     label: "Settings & activity",
     links: [
       ["settings", "Settings", "finance"],
+      ["privacy", "Privacy requests", "owner"],
       ["activity", "Activity"],
     ],
   },
@@ -71,7 +72,10 @@ export function deskNavigation(role?: string): DeskNavGroup[] {
     .map((group) => ({
       label: group.label,
       links: group.links
-        .filter((link) => !link[2] || finance)
+        .filter((link) => {
+          const restriction = link[2];
+          return !restriction || (restriction === "finance" && finance) || (restriction === "owner" && role === "OWNER");
+        })
         .map(([path, label]) => ({ href: `/desk/${path}`, label })),
     }))
     .filter((group) => group.links.length > 0);
