@@ -180,14 +180,14 @@ export async function createApplianceUnits(
   userId: string,
   input: NewApplianceUnitInput,
 ) {
-  const applianceType = await prisma.applianceType.findUniqueOrThrow({
-    where: { id: input.applianceTypeId },
-  });
-
-  const prefix = assetNumberPrefix(applianceType.name);
-
-  // One transaction: the counter, every unit and every audit row commit or roll back together.
+  // One transaction: the actor check, the type read, the counter, every unit and every audit row
+  // commit or roll back together (R13).
   return prisma.$transaction(async (tx) => {
+    await assertActiveTeamActor(tx, userId, ["OWNER", "ADMIN"]);
+    const applianceType = await tx.applianceType.findUniqueOrThrow({
+      where: { id: input.applianceTypeId },
+    });
+    const prefix = assetNumberPrefix(applianceType.name);
     const assetNumbers = await allocateAssetNumbers(tx, prefix, input.quantity);
     const created = [];
     for (const assetNumber of assetNumbers) {
@@ -256,30 +256,33 @@ export async function updateApplianceDetails(
   update: ApplianceDetailsUpdate,
   expectedUpdatedAt: Date,
 ) {
-  const result = await prisma.appliance.updateMany({
-    where: { id: applianceId, updatedAt: expectedUpdatedAt },
-    data: update,
+  return prisma.$transaction(async (tx) => {
+    await assertActiveTeamActor(tx, userId, ["OWNER", "ADMIN"]);
+    const result = await tx.appliance.updateMany({
+      where: { id: applianceId, updatedAt: expectedUpdatedAt },
+      data: update,
+    });
+
+    if (result.count === 0) {
+      throw new ApplianceConflictError();
+    }
+
+    const updated = await tx.appliance.findUniqueOrThrow({
+      where: { id: applianceId },
+    });
+
+    await tx.auditLog.create({
+      data: {
+        userId,
+        action: "appliance.unit.update",
+        entityType: "Appliance",
+        entityId: applianceId,
+        newValue: update,
+      },
+    });
+
+    return updated;
   });
-
-  if (result.count === 0) {
-    throw new ApplianceConflictError();
-  }
-
-  const updated = await prisma.appliance.findUniqueOrThrow({
-    where: { id: applianceId },
-  });
-
-  await prisma.auditLog.create({
-    data: {
-      userId,
-      action: "appliance.unit.update",
-      entityType: "Appliance",
-      entityId: applianceId,
-      newValue: update,
-    },
-  });
-
-  return updated;
 }
 
 /** Changes one appliance unit's status, enforcing the allowed-transition
@@ -351,20 +354,23 @@ export async function addAppliancePhoto(
   applianceId: string,
   input: { url: string; altText?: string | null },
 ) {
-  const photo = await prisma.photo.create({
-    data: { applianceId, url: input.url, altText: input.altText || null },
+  return prisma.$transaction(async (tx) => {
+    await assertActiveTeamActor(tx, userId, ["OWNER", "ADMIN"]);
+    await tx.$queryRaw`SELECT "id" FROM "Appliance" WHERE "id" = ${applianceId} FOR UPDATE`;
+    await tx.appliance.findUniqueOrThrow({ where: { id: applianceId }, select: { id: true } });
+    const photo = await tx.photo.create({
+      data: { applianceId, url: input.url, altText: input.altText || null },
+    });
+    await tx.auditLog.create({
+      data: {
+        userId,
+        action: "appliance.unit.photo.add",
+        entityType: "Appliance",
+        entityId: applianceId,
+      },
+    });
+    return photo;
   });
-
-  await prisma.auditLog.create({
-    data: {
-      userId,
-      action: "appliance.unit.photo.add",
-      entityType: "Appliance",
-      entityId: applianceId,
-    },
-  });
-
-  return photo;
 }
 
 export type BulkStatusResult = {
