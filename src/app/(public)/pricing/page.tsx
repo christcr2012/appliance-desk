@@ -5,18 +5,25 @@ import { ButtonLink } from "@/components/site/button-link";
 import { ApplianceMedia } from "@/components/site/appliance-icon";
 import { getBusinessSettings } from "@/domains/settings";
 import { getPublishedApplianceTypes, formatCents } from "@/domains/pricing";
+import { getPublishedContent } from "@/domains/site-content";
+import { getContentForRequest } from "@/domains/site-content/request";
+import { catalogAlt } from "@/domains/site-content/fields";
 import { formatTaxRate } from "@/domains/billing/tax";
 
-export const metadata: Metadata = {
-  title: "Pricing",
-  description:
-    "Simple, published monthly pricing for washer and dryer rentals in Colorado — no hidden fees.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const content = await getPublishedContent();
+  return { title: content["seo.pricing.title"], description: content["seo.pricing.description"] };
+}
 
-export default async function PricingPage() {
-  const [settings, applianceTypes] = await Promise.all([
+export default async function PricingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ revision?: string | string[] }>;
+}) {
+  const [settings, applianceTypes, content] = await Promise.all([
     getBusinessSettings(),
     getPublishedApplianceTypes(),
+    searchParams.then(getContentForRequest),
   ]);
 
   const fees = [
@@ -54,6 +61,7 @@ export default async function PricingPage() {
                 <ApplianceMedia
                   photoUrl={type.photoUrl}
                   name={type.name}
+                  alt={catalogAlt(content, type.slug, type.name)}
                   className="h-40 w-full rounded-lg object-cover"
                   iconClassName="h-16 w-auto text-primary"
                 />

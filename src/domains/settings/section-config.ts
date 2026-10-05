@@ -22,6 +22,14 @@ export const SETTINGS_FIELDS = {
     "publicPhone",
     "publicEmail",
     "publicAddress",
+    // Opening hours, holiday closures, social links and the logo (Batch D, D2); checked by profile-extras.ts.
+    "hours",
+    "holidayClosuresText",
+    "facebookUrl",
+    "instagramUrl",
+    "googleUrl",
+    "nextdoorUrl",
+    "logoUrl",
   ],
   "service-area": ["serviceAreaCities", "serviceAreaZips"],
   policies: [

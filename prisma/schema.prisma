@@ -1822,6 +1822,8 @@ model BusinessSettings {
   monthToMonthChangeNoticeDays Int    @default(30)
   termsChangeNoticeText        String?
   annualReminderText           String?
+  // Batch D (D9): which version of each legal page the owner approved, as { privacy?: {...}, terms?: {...} }.
+  legalApprovals               Json   @default("{}")
   earlyReturnBilling           String @default("KEEP_TO_AGREED_END")
   earlyReturnUnusedDays        String @default("KEEP")
   earlyReturnFee               String @default("AGREED_TERMS_FEE")
@@ -1855,6 +1857,92 @@ model MonthToMonthTermsVersion {
   termsText         String
   publishedAt       DateTime @default(now())
   publishedByUserId String?
+}
+
+enum RevisionStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+// Batch D (D1): website text in linear revisions; the public site reads exactly one published revision.
+model SiteContentRevision {
+  id                String         @id @default(cuid())
+  status            RevisionStatus @default(DRAFT)
+  version           Int            @unique
+  fields            Json
+  note              String?
+  createdByUserId   String
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  publishedAt       DateTime?
+  publishedByUserId String?
+  restoredFromId    String?
+
+  @@index([status, publishedAt])
+}
+
+model SiteContentPointer {
+  id                  String   @id @default("published")
+  publishedRevisionId String?
+  updatedAt           DateTime @updatedAt
+}
+
+enum DocumentArtifactKind {
+  SIGNED_AGREEMENT
+  INVOICE
+  STATEMENT
+}
+
+// Batch D (D6): frozen render input + frozen HTML for a signed agreement, a final invoice or a month's statement.
+model DocumentArtifact {
+  id                String               @id @default(cuid())
+  kind              DocumentArtifactKind
+  subjectType       String
+  subjectId         String
+  customerId        String
+  version           Int                  @default(1)
+  payload           Json
+  html              String
+  sha256            String
+  rendererVersion   Int
+  generatedAt       DateTime             @default(now())
+  generatedByUserId String?
+
+  @@unique([kind, subjectType, subjectId, version])
+  @@index([customerId])
+}
+
+enum PrivacyRequestKind {
+  EXPORT
+  DELETE
+}
+
+enum PrivacyRequestStatus {
+  RECEIVED
+  VERIFIED
+  FULFILLED
+  REJECTED
+}
+
+// Batch D (D8): a tracked privacy export/deletion request that never destroys required evidence.
+model PrivacyRequest {
+  id                    String               @id @default(cuid())
+  kind                  PrivacyRequestKind
+  status                PrivacyRequestStatus @default(RECEIVED)
+  customerId            String?
+  requesterEmail        String
+  verificationTokenHash String?
+  verificationExpiresAt DateTime?
+  verifiedAt            DateTime?
+  fulfilledAt           DateTime?
+  fulfilledByUserId     String?
+  rejectedReason        String?
+  notes                 String?
+  createdAt             DateTime             @default(now())
+
+  @@index([status, createdAt])
+  @@index([customerId])
 }
 
 model SiteContent {

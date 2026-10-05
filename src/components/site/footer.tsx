@@ -2,18 +2,27 @@ import Link from "next/link";
 import Image from "next/image";
 import { Container } from "./container";
 import { NAV_LINKS } from "./nav-links";
+import { BusinessHours } from "./business-hours";
+import { socialLinkList } from "@/domains/settings/profile-extras";
 
 export function Footer({
   businessName,
   phone,
   email,
   address,
+  hours,
+  holidayClosures,
+  socialLinks,
 }: {
   businessName: string;
   phone: string;
   email: string;
   address: string;
+  hours?: unknown;
+  holidayClosures?: unknown;
+  socialLinks?: unknown;
 }) {
+  const social = socialLinkList(socialLinks);
   const year = new Date().getFullYear();
 
   return (
@@ -76,6 +85,18 @@ export function Footer({
             </li>
             <li>{address}</li>
           </ul>
+          <BusinessHours hours={hours} holidayClosures={holidayClosures} className="mt-4" />
+          {social.length > 0 && (
+            <ul aria-label="Find us online" className="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-sm">
+              {social.map((l) => (
+                <li key={l.id}>
+                  <a href={l.url} target="_blank" rel="noopener noreferrer" className="text-ink-soft underline hover:text-primary">
+                    {l.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </Container>
 

@@ -5,11 +5,29 @@ import {
   settingsSection,
 } from "@/domains/settings/section-config";
 import { providerStatus } from "@/domains/settings/provider-status";
-const profile = {
+const base = {
   publicBusinessName: "Robinson Rentals",
   publicPhone: "9705550100",
   publicEmail: "support@example.test",
   publicAddress: "Approved business address",
+};
+const none = { mode: "none", open: "09:00", close: "17:00" };
+const extras = {
+  hours: { mon: none, tue: none, wed: none, thu: none, fri: none, sat: none, sun: none },
+  holidayClosuresText: "",
+  facebookUrl: "",
+  instagramUrl: "",
+  googleUrl: "",
+  nextdoorUrl: "",
+  logoUrl: "",
+};
+const profile = { ...base, ...extras };
+const profileUpdate = {
+  ...base,
+  hours: {},
+  holidayClosures: [],
+  socialLinks: {},
+  logoUrl: null,
 };
 describe("isolated settings writes", () => {
   it("profile updates exclude stale prices, policies, staff and injected fields", () => {
@@ -21,7 +39,41 @@ describe("isolated settings writes", () => {
         referralRewardDollars: 999,
         role: "OWNER",
       }),
-    ).toEqual({ success: true, update: profile });
+    ).toEqual({ success: true, update: profileUpdate });
+  });
+  it("profile saves the new hours, closures, social links and logo, and nothing else", () => {
+    const result = settingsSectionUpdate("profile", {
+      ...profile,
+      hours: {
+        ...extras.hours,
+        mon: { mode: "open", open: "08:00", close: "17:30" },
+        sun: { mode: "closed", open: "09:00", close: "17:00" },
+      },
+      holidayClosuresText: "2026-12-25 Christmas Day\n2026-11-26 Thanksgiving",
+      facebookUrl: " https://facebook.com/robinson ",
+      logoUrl: "/brand/logo-light.svg",
+      deliveryFeeDollars: 999,
+    });
+    expect(result).toEqual({
+      success: true,
+      update: {
+        ...base,
+        hours: { mon: { open: "08:00", close: "17:30" }, sun: { closed: true } },
+        holidayClosures: [
+          { date: "2026-11-26", label: "Thanksgiving" },
+          { date: "2026-12-25", label: "Christmas Day" },
+        ],
+        socialLinks: { facebook: "https://facebook.com/robinson" },
+        logoUrl: "/brand/logo-light.svg",
+      },
+    });
+  });
+  it("other sections never carry the profile extras", () => {
+    const r = settingsSectionUpdate("service-area", { serviceAreaCities: "A", serviceAreaZips: "", ...extras });
+    expect(r).toEqual({ success: true, update: { serviceAreaCities: ["A"], serviceAreaZips: [] } });
+  });
+  it("profile refuses an old screen that does not send the new fields", () => {
+    expect(settingsSectionUpdate("profile", base).success).toBe(false);
   });
   it("service area saves preserve profile and money settings, including intentional empty lists", () => {
     expect(

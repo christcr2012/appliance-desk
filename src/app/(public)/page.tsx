@@ -6,13 +6,25 @@ import { ApplianceMedia } from "@/components/site/appliance-icon";
 import { getBusinessSettings, parseServiceArea } from "@/domains/settings";
 import { getPublishedApplianceTypes, formatCents } from "@/domains/pricing";
 import { getLaunchSettings } from "@/domains/launch";
+import { getContentForRequest } from "@/domains/site-content/request";
+import { catalogAlt, fillSiteText } from "@/domains/site-content/fields";
 
-export default async function HomePage() {
-  const [settings, applianceTypes, launch] = await Promise.all([
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ revision?: string | string[] }>;
+}) {
+  const [settings, applianceTypes, launch, content] = await Promise.all([
     getBusinessSettings(),
     getPublishedApplianceTypes(),
     getLaunchSettings(),
+    searchParams.then(getContentForRequest),
   ]);
+  const businessName = settings.publicBusinessName;
+  const faq = Array.from({ length: 8 }, (_, i) => ({
+    q: content[`faq.${i + 1}.q`] ?? "",
+    a: content[`faq.${i + 1}.a`] ?? "",
+  })).filter((item) => item.q && item.a);
   const serviceArea = parseServiceArea(settings);
 
   if (launch.prelaunchMode)
@@ -25,12 +37,10 @@ export default async function HomePage() {
                 Preparing to launch · Greeley, Colorado
               </p>
               <h1 className="mt-6 font-display text-4xl font-semibold leading-tight md:text-5xl">
-                Make room for everyday.
+                {fillSiteText(content["home.prelaunch.heading"], { businessName })}
               </h1>
               <p className="mt-5 text-lg text-ink-soft">
-                Family-owned washer and dryer rentals for Greeley and the
-                surrounding area. A local option for households and property
-                managers, with maintenance always included.
+                {fillSiteText(content["home.prelaunch.body"], { businessName })}
               </p>
               <div className="mt-8 flex flex-wrap gap-4">
                 <ButtonLink href="/launch" variant="primary">
@@ -114,13 +124,10 @@ export default async function HomePage() {
               Now renting in {serviceArea.cities[0] ?? "Colorado"}
             </p>
             <h1 className="mt-6 font-display text-4xl font-semibold leading-tight text-ink md:text-5xl">
-              A clean washer &amp; dryer, delivered — without the down payment.
+              {fillSiteText(content["home.hero.heading"], { businessName })}
             </h1>
             <p className="mt-5 max-w-lg text-lg text-ink-soft">
-              {settings.publicBusinessName} rents washers and dryers to Colorado
-              homes, renters, and property managers on simple month-to-month
-              terms. No big upfront cost, no surprise fees, and real people to
-              call when something needs attention.
+              {fillSiteText(content["home.hero.body"], { businessName })}
             </p>
             <div className="mt-8 flex flex-wrap gap-4">
               <ButtonLink href="/contact" variant="primary">
@@ -136,7 +143,7 @@ export default async function HomePage() {
             <div className="w-full max-w-md overflow-hidden rounded-3xl bg-surface p-2 shadow-xl shadow-ink/5 ring-1 ring-line sm:p-3">
               <Image
                 src="/appliances/hero-lineup.jpg"
-                alt="A washer, dryer, range, and refrigerator — the kinds of appliances we rent"
+                alt={fillSiteText(content["image.hero.alt"], { businessName })}
                 width={1408}
                 height={768}
                 className="h-auto w-full rounded-2xl object-cover"
@@ -204,6 +211,28 @@ export default async function HomePage() {
         </Container>
       </section>
 
+      {/* Who we rent to (hidden until the owner writes it) */}
+      {(content["home.household"] || content["home.propertyManager"]) && (
+        <section>
+          <Container className="grid gap-8 py-12 md:grid-cols-2">
+            {content["home.household"] && (
+              <div>
+                <h2 className="font-display text-2xl font-semibold text-ink">For households</h2>
+                <p className="mt-3 text-ink-soft">{fillSiteText(content["home.household"], { businessName })}</p>
+              </div>
+            )}
+            {content["home.propertyManager"] && (
+              <div>
+                <h2 className="font-display text-2xl font-semibold text-ink">For property managers</h2>
+                <p className="mt-3 text-ink-soft">
+                  {fillSiteText(content["home.propertyManager"], { businessName })}
+                </p>
+              </div>
+            )}
+          </Container>
+        </section>
+      )}
+
       {/* Pricing preview */}
       <section className="border-y border-line bg-canvas-alt">
         <Container className="py-16 md:py-20">
@@ -235,6 +264,7 @@ export default async function HomePage() {
                     <ApplianceMedia
                       photoUrl={type.photoUrl}
                       name={type.name}
+                      alt={catalogAlt(content, type.slug, type.name)}
                       className="h-40 w-full rounded-lg object-cover"
                       iconClassName="h-16 w-auto text-primary"
                     />
@@ -264,6 +294,23 @@ export default async function HomePage() {
           )}
         </Container>
       </section>
+
+      {/* Common questions (hidden until the owner writes some) */}
+      {faq.length > 0 && (
+        <section>
+          <Container className="max-w-3xl py-16 md:py-20">
+            <h2 className="font-display text-3xl font-semibold text-ink">Common questions</h2>
+            <dl className="mt-8 space-y-6">
+              {faq.map((item, i) => (
+                <div key={i}>
+                  <dt className="font-medium text-ink">{fillSiteText(item.q, { businessName })}</dt>
+                  <dd className="mt-2 text-ink-soft">{fillSiteText(item.a, { businessName })}</dd>
+                </div>
+              ))}
+            </dl>
+          </Container>
+        </section>
+      )}
 
       {/* Final CTA */}
       <section>

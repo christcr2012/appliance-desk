@@ -1,16 +1,27 @@
 import type { Metadata } from "next";
 import { Container } from "@/components/site/container";
 import { getPublishedApplianceTypes } from "@/domains/pricing";
+import { getBusinessSettings } from "@/domains/settings";
+import { BusinessHours } from "@/components/site/business-hours";
+import { getPublishedContent } from "@/domains/site-content";
+import { getContentForRequest } from "@/domains/site-content/request";
 import { ContactForm } from "./contact-form";
 
-export const metadata: Metadata = {
-  title: "Get a Quote",
-  description:
-    "Request a washer or dryer rental quote in Colorado — we follow up personally, usually the same day.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const content = await getPublishedContent();
+  return { title: content["seo.contact.title"], description: content["seo.contact.description"] };
+}
 
-export default async function ContactPage() {
-  const applianceTypes = await getPublishedApplianceTypes();
+export default async function ContactPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ revision?: string | string[] }>;
+}) {
+  const [applianceTypes, content, settings] = await Promise.all([
+    getPublishedApplianceTypes(),
+    searchParams.then(getContentForRequest),
+    getBusinessSettings(),
+  ]);
 
   return (
     <section className="py-16 md:py-20">
@@ -19,10 +30,15 @@ export default async function ContactPage() {
           Get a free quote
         </h1>
         <p className="mt-4 text-ink-soft">
-          Tell us a bit about what you need. There&apos;s no obligation, and
-          we never charge anything until you&apos;ve signed a rental
-          agreement.
+          {content["contact.intro"]}
         </p>
+
+        <BusinessHours
+          hours={settings.hours}
+          holidayClosures={settings.holidayClosures}
+          headingLevel="h2"
+          className="mt-6 rounded-xl border border-line bg-surface p-4"
+        />
 
         <div className="mt-10">
           <ContactForm

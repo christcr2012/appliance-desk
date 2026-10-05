@@ -6,6 +6,7 @@ import {
 } from "./section-config";
 import { dollarsToCents } from "@/domains/pricing/money";
 import { parseTaxRatePercent } from "@/domains/billing/tax";
+import { profileExtrasUpdate } from "./profile-extras";
 export function settingsSectionUpdate(
   section: string,
   raw: Record<string, unknown>,
@@ -54,6 +55,11 @@ export function settingsSectionUpdate(
     ...rest
   } = parsed.data;
   const update: BusinessSettingsUpdate = { ...rest };
+  if (section === "profile") {
+    const extras = profileExtrasUpdate(raw);
+    if (!extras.success) return { success: false, message: extras.message };
+    Object.assign(update, extras.update);
+  }
   const list = (s: string) =>
     s
       .split(",")
