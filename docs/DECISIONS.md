@@ -359,3 +359,6 @@ delivery. Owner questions with built defaults: IN-29 to IN-32. B2 and E2 wait fo
 ## 2026-10-05 — Batch B2 and Batch E2 designs approved
 Chris: "I approve e2 and b2." `docs/designs/BATCH-B2.md` and `docs/designs/BATCH-E2.md` are approved for
 implementation (including the IN-29/IN-30/IN-32 answers folded in the night before). Next batch to build: B2.
+
+## 2026-10-05 — Batch B2 built (PRs #205–#207 and PR 4)
+Built as designed. Deliberate differences are in `docs/designs/BATCH-B2.md` → Amendments. Early-return changes of an automatic decision are limited to "no refund, no credit, fee unpaid", and an automatic keep-billing decision is changed by first taking back the ending it recorded.

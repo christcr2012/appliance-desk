@@ -286,6 +286,20 @@ changing these never changes a customer's current 6- or 12-month rental.
 These screens only save the rules for now. The screens that show a customer a
 quote for ending early, or let you renew a rental, come in a later step.
 
+### When equipment comes back early
+
+If a customer returns **everything** before the rental's agreed ending, Today shows "Returned early — choose what to do"
+(you can also reach it from the agreement page). Choose what happens to the monthly bill (keep billing to the agreed
+ending, or stop now), whether days already paid for after pickup are kept, credited or refunded, and, for fixed terms, the
+early-ending fee (the one in the customer's signed terms, none, or another amount with a written reason). Press "Show the
+numbers", check them, then "Confirm these choices". A fee becomes an open bill; it is never charged to a card by itself. In
+Settings → Ending and renewing rentals → "When equipment comes back early" you set your standard choices and whether the
+system asks you each time or applies them automatically (you can still change an automatic choice until a refund or credit
+is given or the fee is paid). A rental paid in full in advance is always settled by you from the agreement page.
+
+Also new: ending a month-to-month rental for a customer (agreement page), recording that a late pickup was our delay (job
+page, waives the late days), and Desk → Notices for reminders that could not be delivered.
+
 ## Adding a new appliance category
 
 Also in **Settings** — add or retire an appliance type (e.g. a new

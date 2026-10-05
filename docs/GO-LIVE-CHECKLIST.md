@@ -62,6 +62,9 @@ Previews and test copies never send email, even with the key and the switch on (
 | [ ] | Photo storage (private) set for production | Vercel Blob tokens (`PRIVATE_PHOTO_BLOB_*`, `BLOB_READ_WRITE_TOKEN`) | Set per environment | Photo upload works in production only |
 | [ ] | Public sign-up stays disabled | Already enforced in code | Disabled | Nothing to do |
 
+| [ ] | Decide your standard "When equipment comes back early" choices (Settings → Ending and renewing rentals) and whether to apply them automatically | Chris (Owner) | Ask me each time | Today shows "Returned early" items after a test pickup |
+| [ ] | Counsel confirms the month-to-month wording, the yearly reminder and what counts as delivering a notice (IN-31) | Chris + attorney | Deferred | Written approval before automatic renewals or live customer email are turned on |
+
 ## 7. Final launch day (in this order)
 1. Every box above is ticked or has an explicit "skip for now" you chose.
 2. Full automated checks green on the exact version going live; Batch F verification report read by you.

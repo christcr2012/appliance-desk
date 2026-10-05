@@ -408,3 +408,8 @@ All four new Batch B2 tables are explicitly included in `BACKUP_MODEL_POLICY`;
 `verifySchemaHealth` automatically checks them because it enumerates generated
 Prisma models. The migration's data steps are idempotent and are exercised on
 real Postgres by `tests/batch-b2-migration-integration.test.ts`.
+
+**Early returns (B2-19):** `EarlyReturnResolution` is one row per rental (unique `agreementId`) holding the decision and what
+it did. Credits it creates have `CustomerCredit.sourceType = "EARLY_RETURN"`, `sourceId` = the resolution id. The audit row
+`agreement.early_return_resolved` carries the full numbers and whether it recorded a new ending (`endingRecorded`), which a
+later change of an automatic decision uses to take that ending back. `BusinessSettings.earlyReturnProrationBasis` is read again.

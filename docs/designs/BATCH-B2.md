@@ -911,3 +911,16 @@ columns identify one continuous rental across agreements.
   5. Test `notice-201-with-200-failing-last-one-attempted` asserts "within 5 runs", not 3: at 50 notices per run,
      200 failing notices take four runs before the 201st is reached. The point (a good notice is never starved,
      because refusals back off for a day) is what the test proves.
+
+- **2026-10-05 (Claude, implementing PR 3: month-to-month).** (1) Wording uses `{{placeholder}}` syntax; the starting
+  drafts are the exact migration-seeded texts; `effectiveDate` is shown as "N days after this notice reaches you".
+  (2) The resolve screen gained an `ACKNOWLEDGE` choice for yearly-reminder and changed-terms notices. (3) The settings
+  form for month-to-month notices sits under "Ending and renewing rentals".
+- **2026-10-05 (Claude, implementing PR 4).** (1) The pickup day and job come from the last closed custody episode
+  (`loadReturnPickup`). (2) A fee that is a number other than 0 or the quoted fee needs a reason (the type's rule, stricter
+  than the prose "$0 up to the quote"). (3) A change of an automatic decision keeps the one resolution row (updated in
+  place, `appliedBy` becomes OWNER); a keep-billing decision is changed by removing the ending it recorded first; a stop-at-pickup
+  decision cannot go back to keep-billing. (4) "Credit" credits the full unused value even if that month's bill is unpaid.
+  (5) Today also shows, for 14 days, rentals settled automatically so they can be reviewed.
+- **Review dispositions (R1–R7, D1, D2):** R1/R2 → billing-end contract tests (PR 1); R3 → customer end screen tests (PR 3);
+  R4 → `annual-reminders-integration`; R5–R7 → notice state and fairness tests (PR 2); D1 → this design; D2 → evidence tests (PR 2).

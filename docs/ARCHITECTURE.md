@@ -601,3 +601,11 @@ No credentials, tables, paid services or activation added. This does not verify
 DATABASE_URL/DIRECT_URL target identities. The separate Neon preview branch is
 recorded in `docs/archive/HANDOFF-2026-09-26-to-2026-10-02.md`; the O02 isolation proof later landed in `docs/plans/overhaul/PREVIEW-ISOLATION-PROOF.md` (#134).
 Historical shared-preview-DB statements above refer to earlier sessions.
+
+### Nightly rental pass, order (Batch B2, 2026-10-05)
+
+`src/app/api/cron/start-renewals/route.ts` runs, in this order: auto-renewals, `queueAnnualReminders`, `sendPendingNotices`,
+`runDueTerminations` (agreed endings: fee invoice, then close), `closeFullyReturnedAgreements` (fully returned rentals whose
+agreed end arrived; it must run after the terminations so the fee invoice is made first), then `startDueRenewals`.
+Early returns are decided at pickup completion (`closeIfFullyReturnedInTx` in `src/domains/agreements/returns.ts` →
+`early-return.ts`), not by the nightly pass. Stripe work from any of these always runs after the database commit.

@@ -1404,3 +1404,34 @@ without sending any message or recording an invented contact promise.
   retroactively. The Stripe subscription is updated afterwards and retried until
   it matches. If the last item is taken off, the agreement is cancelled (nothing
   was ever delivered) or ended.
+
+## Ending, month-to-month rentals, notices and early returns (Batch B2, 2026-10-05)
+
+- **Billing stops on the last day the customer is entitled to.** The agreed end is the earlier of the term's end date
+  and the day before an agreed early ending takes effect. A late-return charge counts only days after that date (the
+  old code used the term end even when an earlier ending had been agreed). Billing never runs past an agreed end.
+- **Ending a month-to-month rental.** The customer (Account → Rentals) or the owner/admin ends it with no fee. The
+  ending date is the first billing date on or after "today + the ending notice days"; the owner may choose an earlier
+  billing date with a written reason. The nightly job ends it on that date and billing stops with it.
+- **Month-to-month terms are versioned.** The ending notice days and wording are published as a new version whenever the
+  owner changes them. A rental keeps the version it started with until a change has reached it: the change takes effect
+  once its notice has been delivered and `monthToMonthChangeNoticeDays` days have passed.
+- **Yearly reminder.** Colorado asks for a reminder before each additional twelve months of a continuous rental. The
+  nightly job queues one 25–40 days before each twelve-month boundary of `continuousSince` (skipped when a delivered
+  fixed-term renewal reminder already covered that day). A missed one never stops billing; it shows on Today as high priority.
+- **Notices have seven states** (waiting, sending, sent, uncertain, missed, failed, not needed). Evidence is fixed at
+  the first claim; the date that counts is the email provider's acceptance time, the mailing date plus the owner's
+  transit days, or the hand-over date. A missed notice is never sent late; the owner resolves it on one screen.
+- **Our delay.** When a late pickup was our fault, the owner/admin can waive some or all of the late days (note of 5–500
+  characters). It adds negative lines to the late-return bill (never edits the original), only while the bill is unpaid.
+- **Closing after a full return.** When the last item is picked up and the agreed end has arrived, the rental ends that
+  day. A signed renewal waiting to start creates a high-priority task instead.
+- **Early returns (everything back before the agreed end, or with no ending recorded).** The owner chooses, with
+  defaults he sets (Settings → Ending and renewing rentals → "When equipment comes back early"):
+  billing keeps going to the agreed ending (recording one with the rental's own notice rules if none) or stops at pickup;
+  with stopping, days already paid for after the last billed day are kept, credited (account credit, source
+  `EARLY_RETURN`) or refunded (card refunds through Stripe, the rest listed for hand payment); an early-ending fee for fixed
+  terms only: the agreed-terms fee, none, or another amount with a written reason (never charged automatically, always an
+  open bill). Days are priced per item with the monthly price ÷ 30 or ÷ the real days in that billing month. A prepaid
+  rental is always settled by the owner. One decision per rental; an automatic decision can be changed only until money
+  moves (a refund or credit given, or the fee paid). Defaults: keep billing, keep unused days, agreed-terms fee, ask me.
