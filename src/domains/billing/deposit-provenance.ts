@@ -31,6 +31,14 @@ type AgreementLineageRow = {
   stripeCustomerId: string | null;
 };
 
+type AgreementLineageLookup = {
+  id: string;
+  customerId: string;
+  sourceEstimateId: string | null;
+  renewedFromAgreementId: string | null;
+  customer: { stripeCustomerId: string | null };
+};
+
 export type DepositRefundRail =
   | { kind: "STRIPE"; receiptId: string; stripeChargeId: string }
   | { kind: "MANUAL"; receiptId: string };
@@ -97,16 +105,17 @@ async function loadAgreementLineage(
     }
     seen.add(cursor);
 
-    const agreement = await prisma.rentalAgreement.findUnique({
-      where: { id: cursor },
-      select: {
-        id: true,
-        customerId: true,
-        sourceEstimateId: true,
-        renewedFromAgreementId: true,
-        customer: { select: { stripeCustomerId: true } },
-      },
-    });
+    const agreement: AgreementLineageLookup | null =
+      await prisma.rentalAgreement.findUnique({
+        where: { id: cursor },
+        select: {
+          id: true,
+          customerId: true,
+          sourceEstimateId: true,
+          renewedFromAgreementId: true,
+          customer: { select: { stripeCustomerId: true } },
+        },
+      });
     if (!agreement) {
       throw reconciliationError(`Agreement ${cursor} in the renewal chain no longer exists.`);
     }
