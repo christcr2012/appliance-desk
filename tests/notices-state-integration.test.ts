@@ -165,17 +165,18 @@ describe.skipIf(!enabled)("renewal reminders: states, windows, retries and evide
     }
     expect((await prisma.customerNotice.findUniqueOrThrow({ where: { id: notice.id } })).status).toBe("SENDING");
 
-    // The customer's email changes after the claim: the frozen address is still the one used.
+    // The customer's email changes after the claim: the frozen address remains the legal delivery target.
     await prisma.user.update({ where: { id: fx.userId }, data: { email: `changed-${fx.tag}@example.test` } });
     try {
       emailMock.send.mockClear();
       await sendPendingNotices(new Date(inReminderWindow.getTime() + 20 * 60_000));
       const calls = emailMock.send.mock.calls.map((c) => c[0]).filter((c) => c.idempotencyKey === `customer-notice-${notice.id}`);
-      expect(calls).toHaveLength(1);
-      expect(calls[0].to).toBe(frozen);
+      // MessageDelivery already durably recorded provider acceptance. Recovery repairs the notice evidence row without contacting the provider again.
+      expect(calls).toHaveLength(0);
       const after = await prisma.customerNotice.findUniqueOrThrow({ where: { id: notice.id } });
       expect(after.status).toBe("SENT");
       expect(after.providerMessageId).toBe("msg_a");
+      expect(after.sentToAddress).toBe(frozen);
     } finally {
       await prisma.user.update({ where: { id: fx.userId }, data: { email: frozen } });
     }
