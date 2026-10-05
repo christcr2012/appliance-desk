@@ -82,6 +82,11 @@ export default async function PartsPage({ searchParams }: { searchParams: Promis
                 {p.partName ? ` — ${p.partName}` : ""}
               </p>
               {p.notes && <p className="text-sm text-gray-600">{p.notes}</p>}
+              <p className="mt-2 text-sm">
+                <Link href={`/desk/parts/${p.id}`} className="text-primary underline">
+                  View stock movement history
+                </Link>
+              </p>
               <PartStockPanel
                 partRecordId={p.id}
                 quantityOnHand={p.quantityOnHand}
