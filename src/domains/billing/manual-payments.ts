@@ -193,9 +193,10 @@ export async function writeOffInvoice(
         status: "WRITTEN_OFF",
         writtenOffAt: new Date(),
         writtenOffReason: reason,
-        refundedByUserId: userId,
+        version: { increment: 1 },
       },
     });
+
     await tx.auditLog.create({
       data: {
         userId: actingUserId,
