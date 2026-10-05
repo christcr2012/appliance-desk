@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
+import { CHECKLIST_STALE_MESSAGE, publishChecklistVersion } from "@/domains/inventory/checklist-versions";
 import {
   amendApplianceInspection,
   checklistHash,
@@ -154,4 +155,58 @@ describe.skipIf(!enabled)("inspections", () => {
     expect(await prisma.applianceInspectionAmendment.findUniqueOrThrow({ where: { id: amendmentId } })).toMatchObject({ inspectionId, createdByUserId: ownerId });
     expect((await prisma.applianceInspection.findUniqueOrThrow({ where: { id: inspectionId } })).passed).toBe(true);
   });
+  it("checklist-editor: publishing adds a version, an earlier inspection keeps its own version, and an old screen is refused", async () => {
+    const before = await getInspectionChecklist();
+    const unit = await waiting();
+    const first = await recordApplianceInspection(ownerId, unit, { expectedChecklistVersionId: before.versionId, answers: before.items.map(() => true) });
+    const created: string[] = [];
+    try {
+      const newItems = [...before.items.slice(0, 2), "Door seal is clean"];
+      const published = await publishChecklistVersion(adminId, [`  ${newItems[0]}  `, ...newItems.slice(1), newItems[2].toUpperCase()], { expectedCurrentVersion: before.version });
+      created.push(published.versionId);
+      expect(published.version).toBe(before.version + 1);
+      const row = await prisma.inspectionChecklistVersion.findUniqueOrThrow({ where: { id: published.versionId } });
+      expect(row.items).toEqual(newItems); // trimmed, repeated line (other capitals) dropped
+      expect(row.hash).toBe(checklistHash(newItems));
+      expect(row.publishedByUserId).toBe(adminId);
+      expect(await prisma.auditLog.count({ where: { action: "inspection.checklist_published", entityId: published.versionId, userId: adminId } })).toBe(1);
+      expect((await getInspectionChecklist()).version).toBe(before.version + 1);
+      // The inspection recorded before still points at, and shows, the old questions.
+      const saved = await prisma.applianceInspection.findUniqueOrThrow({ where: { id: first.inspectionId } });
+      expect(saved.checklistVersionId).toBe(before.versionId);
+      expect(saved.checklistDefinition).toEqual(before.items);
+      // A screen opened on the old checklist is refused and nothing is saved.
+      const unit2 = await waiting();
+      await expect(
+        recordApplianceInspection(ownerId, unit2, { expectedChecklistVersionId: before.versionId, answers: before.items.map(() => true) }),
+      ).rejects.toBeInstanceOf(ChecklistVersionError);
+      expect(await prisma.applianceInspection.count({ where: { applianceId: unit2 } })).toBe(0);
+      // Publishing from an out-of-date editor, publishing the same list again, and publishing as staff are refused.
+      await expect(publishChecklistVersion(ownerId, ["Something else entirely"], { expectedCurrentVersion: before.version })).rejects.toThrow(CHECKLIST_STALE_MESSAGE);
+      await expect(publishChecklistVersion(ownerId, newItems)).rejects.toThrow(/same checklist/);
+      await expect(publishChecklistVersion(staffId, ["Staff should not publish this"])).rejects.toThrow(/no longer has access/);
+      expect((await getInspectionChecklist()).version).toBe(before.version + 1);
+    } finally {
+      await prisma.inspectionChecklistVersion.deleteMany({ where: { id: { in: created } } });
+    }
+    expect((await getInspectionChecklist()).version).toBe(before.version);
+  });
+
+  it("checklist-editor: two publishes at the same moment get different, consecutive version numbers", async () => {
+    const before = await getInspectionChecklist();
+    const created: string[] = [];
+    try {
+      const results = await Promise.allSettled([
+        publishChecklistVersion(ownerId, ["Concurrent list A item"]),
+        publishChecklistVersion(adminId, ["Concurrent list B item"]),
+      ]);
+      expect(results.every((r) => r.status === "fulfilled")).toBe(true);
+      for (const r of results) if (r.status === "fulfilled") created.push(r.value.versionId);
+      const versions = results.map((r) => (r as PromiseFulfilledResult<{ version: number }>).value.version).sort();
+      expect(versions).toEqual([before.version + 1, before.version + 2]);
+    } finally {
+      await prisma.inspectionChecklistVersion.deleteMany({ where: { id: { in: created } } });
+    }
+  });
+
 });

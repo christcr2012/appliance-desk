@@ -223,6 +223,15 @@ export default async function DeskSettingsPage({
             using a rate with customers.
           </p>
         )}
+        {section === "policies" && (
+          <p className="mb-4 text-sm text-ink-soft">
+            The questions asked when equipment comes back are kept separately:{" "}
+            <Link className="text-primary underline" href="/desk/settings/policies/inspection-checklist">
+              Edit the return inspection checklist
+            </Link>
+            .
+          </p>
+        )}
         <SettingsForm
           key={section}
           section={section}
