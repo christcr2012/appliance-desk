@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { signAgreement } from "@/domains/agreements";
@@ -177,11 +177,20 @@ describe("saved copies against a real database", () => {
   });
 
   it("signing rolls back completely when the copy cannot be saved", async () => {
-    const spy = vi.spyOn(prisma.documentArtifact, "create").mockRejectedValueOnce(new Error("disk full"));
-    await expect(
-      signAgreement(b.sigId, { signerName: "Bo B", signerEmail: "bo@example.test", ipAddress: null }),
-    ).rejects.toThrow("disk full");
-    spy.mockRestore();
+    // A temporary database rule makes the copy's insert fail for this customer only.
+    await prisma.$executeRawUnsafe(`CREATE OR REPLACE FUNCTION doc_test_fail_${RUN}() RETURNS trigger AS $$
+      BEGIN IF NEW."customerId" = '${b.customerId}' THEN RAISE EXCEPTION 'disk full'; END IF; RETURN NEW; END; $$ LANGUAGE plpgsql`);
+    await prisma.$executeRawUnsafe(
+      `CREATE TRIGGER doc_test_fail_${RUN} BEFORE INSERT ON "DocumentArtifact" FOR EACH ROW EXECUTE FUNCTION doc_test_fail_${RUN}()`,
+    );
+    try {
+      await expect(
+        signAgreement(b.sigId, { signerName: "Bo B", signerEmail: "bo@example.test", ipAddress: null }),
+      ).rejects.toThrow(/disk full/);
+    } finally {
+      await prisma.$executeRawUnsafe(`DROP TRIGGER doc_test_fail_${RUN} ON "DocumentArtifact"`);
+      await prisma.$executeRawUnsafe(`DROP FUNCTION doc_test_fail_${RUN}()`);
+    }
     const sig = await prisma.signatureRecord.findUniqueOrThrow({ where: { id: b.sigId } });
     const ag = await prisma.rentalAgreement.findUniqueOrThrow({ where: { id: b.agreementId } });
     expect(sig.signedAt).toBeNull();
