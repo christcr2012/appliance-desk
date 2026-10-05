@@ -55,9 +55,9 @@ export function RecordPaymentForm({
   }
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-5">
+    <div className="rounded-lg border border-line bg-white p-5">
       <div className="flex items-center justify-between">
-        <h2 className="font-medium text-gray-900">Record a payment</h2>
+        <h2 className="font-medium text-ink">Record a payment</h2>
         <button
           type="button"
           onClick={() => setShowForm((v) => !v)}
@@ -66,7 +66,7 @@ export function RecordPaymentForm({
           {showForm ? "Cancel" : "+ Record payment"}
         </button>
       </div>
-      <p className="mt-1 text-sm text-gray-600">
+      <p className="mt-1 text-sm text-ink-soft">
         For money that came in outside Stripe — a check, cash, or a bank
         transfer you confirmed yourself.
       </p>
@@ -81,7 +81,7 @@ export function RecordPaymentForm({
         <form ref={formRef} onSubmit={handleSubmit} className="mt-4 space-y-3">
           <div className="grid gap-2 sm:grid-cols-3">
             <div>
-              <label htmlFor="amountDollars" className="block text-xs font-medium text-gray-700">
+              <label htmlFor="amountDollars" className="block text-xs font-medium text-ink-soft">
                 Amount ($)
               </label>
               <input
@@ -91,18 +91,18 @@ export function RecordPaymentForm({
                 step="0.01"
                 min="0.01"
                 required
-                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+                className="mt-1 w-full rounded-md border border-line-strong px-3 py-1.5 text-sm"
               />
             </div>
             <div>
-              <label htmlFor="method" className="block text-xs font-medium text-gray-700">
+              <label htmlFor="method" className="block text-xs font-medium text-ink-soft">
                 Method
               </label>
               <select
                 id="method"
                 name="method"
                 defaultValue="check"
-                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+                className="mt-1 w-full rounded-md border border-line-strong px-3 py-1.5 text-sm"
               >
                 <option value="check">Check</option>
                 <option value="cash">Cash</option>
@@ -111,7 +111,7 @@ export function RecordPaymentForm({
               </select>
             </div>
             <div>
-              <label htmlFor="receivedOn" className="block text-xs font-medium text-gray-700">
+              <label htmlFor="receivedOn" className="block text-xs font-medium text-ink-soft">
                 Date received
               </label>
               <input
@@ -120,20 +120,20 @@ export function RecordPaymentForm({
                 type="date"
                 required
                 defaultValue={businessDateKey(new Date())}
-                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+                className="mt-1 w-full rounded-md border border-line-strong px-3 py-1.5 text-sm"
               />
             </div>
           </div>
 
           <div>
-            <label htmlFor="invoiceId" className="block text-xs font-medium text-gray-700">
+            <label htmlFor="invoiceId" className="block text-xs font-medium text-ink-soft">
               Apply to
             </label>
             <select
               id="invoiceId"
               name="invoiceId"
               defaultValue=""
-              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+              className="mt-1 w-full rounded-md border border-line-strong px-3 py-1.5 text-sm"
             >
               <option value="">All open invoices, oldest first</option>
               {openInvoices.map((inv) => (
@@ -147,13 +147,13 @@ export function RecordPaymentForm({
           <input
             name="reference"
             placeholder="Check # / reference (optional)"
-            className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+            className="w-full rounded-md border border-line-strong px-3 py-1.5 text-sm"
           />
           <textarea
             name="notes"
             rows={2}
             placeholder="Notes (optional)"
-            className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+            className="w-full rounded-md border border-line-strong px-3 py-1.5 text-sm"
           />
 
           {error && (
@@ -165,7 +165,7 @@ export function RecordPaymentForm({
           <button
             type="submit"
             disabled={isPending}
-            className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+            className="rounded-md bg-action px-3 py-1.5 text-sm font-medium text-on-action hover:bg-action disabled:opacity-50"
           >
             {isPending ? "Recording…" : "Record payment"}
           </button>
