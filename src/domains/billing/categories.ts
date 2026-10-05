@@ -35,6 +35,8 @@ const CATEGORY_BY_KIND: Record<InvoiceLineItemKind, LedgerCategory> = {
   EARLY_TERMINATION_FEE: "FEES",
   // Extra days of rent after the agreed end date: rent, not a payment penalty.
   LATE_RETURN: "RENT",
+  // A company-caused pickup-delay waiver reverses rent; it stays in the rent category.
+  LATE_RETURN_WAIVER: "RENT",
 };
 
 export function categorizeLine(kind: InvoiceLineItemKind): LedgerCategory {
