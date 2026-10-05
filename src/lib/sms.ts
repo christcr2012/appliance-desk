@@ -1,46 +1,88 @@
 import twilio from "twilio";
 import { isNonProductionDeployment } from "./deployment-safety";
 
+export type SmsOutcome = "SENT" | "NOT_ATTEMPTED" | "REJECTED" | "UNKNOWN";
+export type SmsResult = {
+  sent: boolean;
+  outcome: SmsOutcome;
+  providerMessageId?: string;
+};
+
 /**
- * Thin wrapper around Twilio (Task #71, docs/DECISIONS.md — SMS
- * notifications). Guarded exactly like src/lib/email.ts's sendEmail:
- * missing configuration logs and returns { sent: false } instead of
- * crashing or hanging on a network call, so the app, CI, and every
- * preview deployment stay safe with nothing configured.
- *
- * TWILIO_ACCOUNT_SID/TWILIO_AUTH_TOKEN are set in Vercel already, but
- * TWILIO_PHONE_NUMBER deliberately isn't yet — Chris can't buy a real
- * Twilio number until his LLC's A2P 10DLC business registration is
- * done (a carrier requirement for business texting, not a bug here).
- * Every SMS-sending code path is fully built and wired up now; it
- * simply stays dormant (this no-ops) until that one env var is added,
- * at which point sending turns on with no code change — same pattern
- * BLOB_READ_WRITE_TOKEN and STRIPE_WEBHOOK_SECRET followed before they
- * were set.
+ * Low-level Twilio sender. Domain code records durable intent in MessageDelivery
+ * before calling this function. Missing configuration and preview deployments are
+ * deliberate NOT_ATTEMPTED outcomes; a clear provider 4xx is REJECTED; network,
+ * timeout and server failures are UNKNOWN because Twilio may have accepted the
+ * message before the response was lost.
  */
-export async function sendSms(input: { to: string; body: string }): Promise<{ sent: boolean }> {
-  if (isNonProductionDeployment()) return { sent: false };
+export async function sendSms(input: {
+  to: string;
+  body: string;
+  idempotencyKey?: string;
+}): Promise<SmsResult> {
+  if (isNonProductionDeployment()) {
+    return { sent: false, outcome: "NOT_ATTEMPTED" };
+  }
 
   const accountSid = process.env.TWILIO_ACCOUNT_SID;
   const authToken = process.env.TWILIO_AUTH_TOKEN;
   const from = process.env.TWILIO_PHONE_NUMBER;
 
   if (!accountSid || !authToken || !from) {
-    console.log(
-      `[sms] Twilio isn't fully configured yet (needs TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_PHONE_NUMBER) — skipping send. Would have texted ${input.to}: "${input.body}"`,
-    );
-    return { sent: false };
+    console.log("[sms] Twilio is not fully configured — skipping send.");
+    return { sent: false, outcome: "NOT_ATTEMPTED" };
   }
 
   try {
-    const client = twilio(accountSid, authToken);
-    await client.messages.create({ to: input.to, from, body: input.body });
-    return { sent: true };
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "");
+    const message = await twilio(accountSid, authToken).messages.create({
+      to: input.to,
+      from,
+      body: input.body,
+      ...(appUrl ? { statusCallback: `${appUrl}/api/webhooks/twilio` } : {}),
+    });
+    return {
+      sent: true,
+      outcome: "SENT",
+      providerMessageId: message.sid,
+    };
   } catch (error) {
-    // Same reasoning as sendEmail: a failed text must never break
-    // whatever real work already happened (the job was still
-    // scheduled, the reminder logic already ran) — logged, not thrown.
-    console.error("[sms] Failed to send text message", error);
-    return { sent: false };
+    console.error("[sms] Provider send failed", error instanceof Error ? error.name : "unknown");
+    const status = (error as { status?: number | null } | null)?.status;
+    const rejected = typeof status === "number" && status >= 400 && status < 500;
+    return { sent: false, outcome: rejected ? "REJECTED" : "UNKNOWN" };
+  }
+}
+
+export type SmsProviderState = "ACCEPTED" | "DELIVERED" | "FAILED" | "UNKNOWN";
+
+/** Small-volume reconciliation fallback for UNKNOWN MessageDelivery rows. */
+export async function getSmsProviderState(messageSid: string): Promise<SmsProviderState> {
+  if (isNonProductionDeployment()) return "UNKNOWN";
+  const accountSid = process.env.TWILIO_ACCOUNT_SID;
+  const authToken = process.env.TWILIO_AUTH_TOKEN;
+  if (!accountSid || !authToken) return "UNKNOWN";
+
+  try {
+    const message = await twilio(accountSid, authToken).messages(messageSid).fetch();
+    switch (message.status) {
+      case "delivered":
+      case "read":
+        return "DELIVERED";
+      case "failed":
+      case "undelivered":
+      case "canceled":
+        return "FAILED";
+      case "accepted":
+      case "scheduled":
+      case "queued":
+      case "sending":
+      case "sent":
+        return "ACCEPTED";
+      default:
+        return "UNKNOWN";
+    }
+  } catch {
+    return "UNKNOWN";
   }
 }
