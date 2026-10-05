@@ -114,6 +114,7 @@
   --color-warning-bg: var(--color-warning-bg);
   --color-warning-ink: var(--color-warning-ink);
   --color-danger: var(--color-danger);
+  --color-focus-ring: var(--color-focus-ring);
 
   --font-display: var(--font-display);
   --font-sans: var(--font-sans);
@@ -411,6 +412,35 @@ html {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+@media (forced-colors: active) {
+  button,
+  input,
+  textarea,
+  select,
+  [role="button"] {
+    border: 1px solid CanvasText;
+  }
+
+  :focus-visible {
+    outline-color: Highlight;
+  }
+}
+
+@media (prefers-contrast: more) {
+  button,
+  input,
+  textarea,
+  select,
+  [role="button"] {
+    border-color: var(--color-line-strong);
+    border-width: 2px;
+  }
+
+  :focus-visible {
+    outline-width: 4px;
   }
 }
 
