@@ -10,6 +10,7 @@ import {
   createLeadManually,
   addLeadNote,
 } from "@/domains/leads";
+import { recordRealContact } from "@/domains/leads/contact";
 import type { LeadStatus } from "@prisma/client";
 
 export type LeadActionState =
@@ -155,6 +156,7 @@ export async function addLeadNoteAction(
 
   try {
     await addLeadNote(leadId, session.user.id, body);
+    await recordRealContact(leadId);
   } catch (error) {
     return {
       status: "error",
@@ -163,6 +165,7 @@ export async function addLeadNoteAction(
   }
 
   revalidatePath(`/desk/leads/${leadId}`);
+  revalidatePath("/desk/growth");
   return { status: "success" };
 }
 
