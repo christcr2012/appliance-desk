@@ -152,6 +152,13 @@ reason in "Pass it anyway" and it is saved with your name. A saved inspection
 cannot be edited; if something was wrong, add a correction note and the
 original stays as it was.
 
+**Saved copies of documents.** When a customer signs, the exact agreement
+they saw is saved and can never change, even if you later edit prices or
+wording. Open it from the agreement's page ("Open the saved copy of the signed
+agreement"). Final invoices (paid, void, written off, refunded) have a "Saved
+copy" link too; if an invoice changes afterwards a new version is saved beside
+the old one. To make a PDF, open the copy and use your browser's Print → Save as PDF.
+
 **Changing the inspection checklist.** Go to **Settings → Policies →
 Inspection checklist**. Edit the list (one item per line, up to 40), then
 publish. Inspections already saved keep the checklist they were done with;
