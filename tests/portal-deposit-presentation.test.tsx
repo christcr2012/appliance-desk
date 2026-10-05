@@ -7,13 +7,15 @@ import AccountRentalsPage from "@/app/account/rentals/page";
 afterEach(cleanup);
 
 it.each(["DRAFT", "AWAITING_SIGNATURE", "ACTIVE"])("does not report configured deposit terms as paid for a %s agreement", async (status) => {
-  m.portal.mockResolvedValue({ jobs: [], rentalAgreements: [{ id: "agreement", status,
+  m.portal.mockResolvedValue({ jobs: [], jobsHasMore: false, rentalAgreements: [{ id: "agreement", status,
     serviceAddress: { line1: "100 Test St", city: "Denver" }, termMonths: 12,
+    startDate: null, terminationRequestedAt: null, terminationEffectiveOn: null,
+    termsSnapshot: null, renewalPreference: null, jobs: [],
     freeMonthGranted: false, depositCents: 15000,
-    lines: [{ id: "line", label: "Washer", monthlyPriceCents: 4000,
+    lines: [{ id: "line", label: "Washer", monthlyPriceCents: 4000, listPriceCents: 4000,
       prepayDiscountCentsPerMonth: 0, assignments: [] }],
   }] });
-  render(await AccountRentalsPage());
+  render(await AccountRentalsPage({ searchParams: Promise.resolve({}) }));
   expect(screen.getByText("Deposit required: $150")).toBeVisible();
   expect(screen.queryByText(/deposit.*paid/i)).toBeNull();
   expect(m.portal).toHaveBeenCalledWith("customer-user");

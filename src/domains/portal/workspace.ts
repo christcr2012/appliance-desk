@@ -32,6 +32,7 @@ export async function getPortalHome(rawAddressId?: string) {
     },
     ...(addressId ? { serviceAddressId: addressId } : {}),
   };
+  const now = new Date();
   const [
     activeRentalCount,
     upcomingVisitCount,
@@ -43,7 +44,7 @@ export async function getPortalHome(rawAddressId?: string) {
     prisma.rentalAgreement.count({ where: rentalWhere }),
     prisma.job.count({ where: jobWhere }),
     prisma.job.findFirst({
-      where: { ...jobWhere, scheduledAt: { not: null } },
+      where: { ...jobWhere, scheduledAt: { gte: now } },
       orderBy: [{ scheduledAt: "asc" }, { id: "asc" }],
       select: {
         type: true,
