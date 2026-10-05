@@ -13,6 +13,10 @@ import {
   convertEstimateToAgreements,
 } from "@/domains/estimates";
 import { dollarsToCents } from "@/domains/pricing";
+import {
+  INVALID_VALID_UNTIL_MESSAGE,
+  parseEstimateValidUntil,
+} from "@/domains/estimates/validity";
 
 export type EstimateActionState =
   | { status: "idle" }
@@ -41,6 +45,10 @@ export async function createEstimateAction(
     };
   }
   const data = parsed.data;
+  const validUntil = parseEstimateValidUntil(data.validUntil);
+  if (!validUntil.ok) {
+    return { status: "error", message: INVALID_VALID_UNTIL_MESSAGE };
+  }
 
   let estimate;
   try {
@@ -50,7 +58,7 @@ export async function createEstimateAction(
       clientMessage: data.clientMessage || undefined,
       internalNotes: data.internalNotes || undefined,
       depositCents: data.depositDollars ? dollarsToCents(data.depositDollars) : 0,
-      validUntil: data.validUntil ? new Date(data.validUntil) : null,
+      validUntil: validUntil.value,
     });
   } catch (error) {
     return {
@@ -95,6 +103,10 @@ export async function createEstimateForNewLeadAction(
     };
   }
   const data = parsed.data;
+  const validUntil = parseEstimateValidUntil(data.validUntil);
+  if (!validUntil.ok) {
+    return { status: "error", message: INVALID_VALID_UNTIL_MESSAGE };
+  }
 
   let estimate;
   try {
@@ -113,7 +125,7 @@ export async function createEstimateForNewLeadAction(
         clientMessage: data.clientMessage || undefined,
         internalNotes: data.internalNotes || undefined,
         depositCents: data.depositDollars ? dollarsToCents(data.depositDollars) : 0,
-        validUntil: data.validUntil ? new Date(data.validUntil) : null,
+        validUntil: validUntil.value,
       },
     );
   } catch (error) {

@@ -1,4 +1,6 @@
 import { getEstimateForApproval } from "@/domains/estimates";
+import { estimateValidThroughKey } from "@/domains/estimates/validity";
+import { businessDateFromKey, formatBusinessDate } from "@/lib/business-date";
 import { formatCents } from "@/domains/pricing";
 import { EstimateResponseForm } from "./estimate-response-form";
 import { PayDepositButton } from "./pay-deposit-button";
@@ -78,7 +80,7 @@ export default async function PublicEstimatePage({
         {estimate.depositCents > 0 && <p>Deposit: {formatCents(estimate.depositCents)}</p>}
         {estimate.validUntil && (
           <p className="text-xs text-gray-500">
-            Valid until {new Date(estimate.validUntil).toLocaleDateString()}
+            Valid through {formatBusinessDate(businessDateFromKey(estimateValidThroughKey(estimate.validUntil))!)}
           </p>
         )}
       </div>
