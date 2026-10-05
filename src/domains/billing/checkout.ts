@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { cancelAtSecondsFor } from "./subscription-term";
+import { cancelAtSecondsFor, subscriptionStartSecondsFor } from "./subscription-term";
 import { getStripeClient } from "@/lib/stripe";
 import { fixedTermEndDate } from "@/lib/business-date";
 import type { HandoffWorkOutcome } from "./handoff-outcome";
@@ -372,11 +372,9 @@ async function recordSubscriptionPreparationFailure(
  * Start recurring billing exactly once after the first real delivery. Provider
  * work runs outside transactions. The immutable firstDeliveredOn business date
  * is the authoritative local billing/term fact even when provider work is
- * retried later. Stripe's provider-cycle timestamp is deliberately not
- * backdated or re-anchored here: the current Stripe API cannot preserve a
- * Denver calendar anniversary across DST while also backdating without
- * introducing time-based proration. The remediation design says to stop that
- * narrow provider sub-step rather than silently change money policy.
+ * retried later. Stripe is told the subscription started at Colorado midnight of that
+ * day (owner decision IN-28), so a late set-up bills from the real delivery day, not
+ * the day the set-up ran.
  */
 export async function startRecurringBillingForAgreement(
   agreementId: string,
@@ -584,6 +582,11 @@ export async function startRecurringBillingForAgreement(
           agreementId: claimed.agreement.id,
           firstDeliveredOn: claimed.agreement.firstDeliveredOn.toISOString(),
         },
+        // Billing begins on the real delivery day (IN-28). Flexible mode bills each whole month from
+        // that day (one line per month when set up late) and keeps the delivery-day cycle; it is named
+        // here so a change in Stripe's account default can never change what customers are charged.
+        billing_mode: { type: "flexible" },
+        backdate_start_date: subscriptionStartSecondsFor(claimed.agreement.firstDeliveredOn),
         ...(cancelAt ? { cancel_at: cancelAt } : {}),
       },
       { idempotencyKey: claimed.idempotencyKey },

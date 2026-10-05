@@ -427,8 +427,9 @@ export async function recordLateDeliveries(
       continue;
     }
     const dayBefore = new Date(input.deliveryDate.getTime() - 1000);
-    // Stripe starts charging when the subscription is created, which can be later than a back-dated delivery date.
-    // Days before that were never billed, so they are never credited.
+    // Stripe bills from the real first-delivery day (IN-28), so billingStartedAt is the billing start. An older
+    // agreement whose subscription was created before that rule can have started later than a back-dated
+    // delivery date; days before billingStartedAt were never billed, so they are never credited.
     const billedFrom = businessDaysBetween(pending.originalDeliveryDate, agreement.billingStartedAt) > 0
       ? businessDayBounds(agreement.billingStartedAt).start
       : pending.originalDeliveryDate;

@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getStripeClient } from "@/lib/stripe";
-import { businessDateEnd, businessDateKey } from "@/lib/business-date";
+import { businessDateEnd, businessDateFromKey, businessDateKey } from "@/lib/business-date";
 import { isAutoRenewEnabled } from "@/domains/settings/auto-renew-switch";
 import { checkReminderDelivered } from "@/domains/notices";
 import { renewalReminderKey } from "@/domains/notices/renewal-reminder";
@@ -34,6 +34,20 @@ export function cancelAtSecondsFor(term: { termMonths: number | null; endDate: D
   return term.termMonths && term.endDate
     ? Math.floor(businessDateEnd(businessDateKey(term.endDate)).getTime() / 1000)
     : null;
+}
+
+/**
+ * The instant Stripe is told a new subscription started (owner decision IN-28,
+ * 2026-10-04: billing begins on delivery). It is always Colorado midnight at the
+ * start of the real first-delivery day, whether the subscription is created that
+ * day or weeks later, so Stripe bills from delivery and keeps that delivery-day
+ * rhythm. Deriving it from the delivery date alone (never from "today") keeps the
+ * request identical on every retry, which Stripe requires for a reused idempotency key.
+ */
+export function subscriptionStartSecondsFor(firstDeliveredOn: Date): number {
+  const start = businessDateFromKey(businessDateKey(firstDeliveredOn));
+  if (!start) throw new Error("The first-delivery date is not a valid calendar date.");
+  return Math.floor(start.getTime() / 1000);
 }
 
 /**

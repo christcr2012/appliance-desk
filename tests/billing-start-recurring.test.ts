@@ -218,7 +218,37 @@ describe("startRecurringBillingForAgreement", () => {
     });
   });
 
-  it("keeps delivery provenance in Stripe metadata without inventing a backdated provider clock", async () => {
+  it("tells Stripe the same start on a same-day run and on a run six weeks later (a retry must not change the request)", async () => {
+    const { startRecurringBillingForAgreement } = await import("@/domains/billing/checkout");
+    await startRecurringBillingForAgreement("agr-1");
+    vi.setSystemTime(FIRST_DELIVERED);
+    mocks.subscriptionsCreate.mockClear();
+    await startRecurringBillingForAgreement("agr-1");
+    const [early] = mocks.subscriptionsCreate.mock.calls[0]!;
+    expect(early.backdate_start_date).toBe(1790834400);
+    expect(early.billing_mode).toEqual({ type: "flexible" });
+  });
+
+  it("starts a winter delivery at the Colorado midnight of that day (07:00 UTC) and a late-evening delivery on its own day", async () => {
+    const { startRecurringBillingForAgreement } = await import("@/domains/billing/checkout");
+    // 2026-12-01 00:00 in Denver is 07:00 UTC (standard time).
+    mocks.rentalAgreementFindUniqueOrThrow.mockResolvedValue(
+      baseAgreement({ firstDeliveredOn: new Date("2026-12-01T07:00:00.000Z") }),
+    );
+    await startRecurringBillingForAgreement("agr-1");
+    expect(mocks.subscriptionsCreate.mock.calls[0]![0].backdate_start_date).toBe(
+      Date.parse("2026-12-01T07:00:00.000Z") / 1000,
+    );
+    mocks.subscriptionsCreate.mockClear();
+    // 2026-10-01 23:30 Denver (05:30 UTC on the 2nd) is still the 1st in Colorado.
+    mocks.rentalAgreementFindUniqueOrThrow.mockResolvedValue(
+      baseAgreement({ firstDeliveredOn: new Date("2026-10-02T05:30:00.000Z") }),
+    );
+    await startRecurringBillingForAgreement("agr-1");
+    expect(mocks.subscriptionsCreate.mock.calls[0]![0].backdate_start_date).toBe(1790834400);
+  });
+
+  it("keeps delivery provenance in Stripe metadata and bills from the delivery day (IN-28)", async () => {
     const { startRecurringBillingForAgreement } = await import("@/domains/billing/checkout");
 
     const outcome = await startRecurringBillingForAgreement("agr-1");
@@ -243,7 +273,9 @@ describe("startRecurringBillingForAgreement", () => {
         },
       }),
     );
-    expect(params).not.toHaveProperty("backdate_start_date");
+    // IN-28: billing begins on the real delivery day (Colorado midnight, 2026-10-01 = 06:00 UTC).
+    expect(params).toHaveProperty("backdate_start_date", 1790834400);
+    expect(params).toHaveProperty("billing_mode", { type: "flexible" });
     expect(params).not.toHaveProperty("billing_cycle_anchor");
     expect(params).not.toHaveProperty("billing_cycle_anchor_config");
     expect(params).not.toHaveProperty("cancel_at");

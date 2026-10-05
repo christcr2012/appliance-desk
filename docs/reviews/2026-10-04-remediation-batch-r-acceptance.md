@@ -51,7 +51,7 @@ First-review item P1-2 (historical staff `JobAppliance` provenance): verified fi
 
 ## Not done, or not proven here (read this before calling Batch R closed)
 
-1. **Stripe-side billing anchor for a late first delivery (second review P2-1) is not changed.**
+1. **(Superseded 2026-10-04: built after Chris answered IN-28, see `docs/DECISIONS.md`.) Stripe-side billing anchor for a late first delivery (second review P2-1) was not changed in Batch R.**
    #185 stores the real delivery date locally and derives local dates from it, but deliberately does
    not move or backdate Stripe's billing calendar, because the current Stripe behavior could change
    amounts or dates through proration. The design lists this as a stop-and-ask boundary. A Stripe
