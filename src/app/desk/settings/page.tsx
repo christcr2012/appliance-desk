@@ -214,6 +214,17 @@ export default async function DeskSettingsPage({
         title={SETTINGS_SECTIONS.find((s) => s.id === section)!.label}
         description="Save only this section. Prices, staff accounts and other sections are preserved."
       >
+        {section === "policies" && (
+          <div className="mb-4 rounded-lg border border-line bg-subtle p-4">
+            <p className="text-sm text-ink-soft">
+              The return inspection checklist is versioned separately so changing it never rewrites an inspection that
+              already happened.
+            </p>
+            <Link className={`${secondaryActionClass} mt-3`} href="/desk/settings/policies">
+              Edit return inspection checklist
+            </Link>
+          </div>
+        )}
         {section === "policies" && !settings.taxRateConfirmed && (
           <p
             role="status"

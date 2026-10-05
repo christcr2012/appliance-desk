@@ -8,6 +8,7 @@ import {
   getInspectionChecklist,
   recordApplianceInspection,
 } from "@/domains/inventory/guided-actions";
+import { publishChecklistVersion } from "@/domains/inventory/checklist-versions";
 
 // Inspections (Batch C, P2-E), real Postgres: the checklist is versioned and stored with each inspection,
 // the result is worked out on the server, an override is owner/admin only, and records cannot be changed.
@@ -61,6 +62,36 @@ describe.skipIf(!enabled)("inspections", () => {
     expect(v1.hash).toBe(checklistHash(v1.items as string[]));
     const current = await getInspectionChecklist();
     expect(current.items.length).toBeGreaterThan(0);
+  });
+
+  it("inspection-published-version: publishing affects future inspections only and a stale form is refused", async () => {
+    const before = await getInspectionChecklist();
+    const inspectedUnit = await waiting();
+    const completed = await recordApplianceInspection(ownerId, inspectedUnit, {
+      expectedChecklistVersionId: before.versionId,
+      answers: before.items.map(() => true),
+    });
+
+    const nextItems = before.items.map((item, index) => index === 0 ? `${item} — current policy` : item);
+    const published = await publishChecklistVersion(ownerId, nextItems);
+    const after = await getInspectionChecklist();
+    expect(after.versionId).toBe(published.versionId);
+    expect(after.version).toBe(published.version);
+    expect(after.items).toEqual(nextItems);
+
+    const saved = await prisma.applianceInspection.findUniqueOrThrow({ where: { id: completed.inspectionId } });
+    expect(saved.checklistVersionId).toBe(before.versionId);
+    expect(saved.checklistDefinition).toEqual(before.items);
+
+    const staleUnit = await waiting();
+    await expect(recordApplianceInspection(ownerId, staleUnit, {
+      expectedChecklistVersionId: before.versionId,
+      answers: before.items.map(() => true),
+    })).rejects.toBeInstanceOf(ChecklistVersionError);
+    expect(await prisma.applianceInspection.count({ where: { applianceId: staleUnit } })).toBe(0);
+
+    await expect(publishChecklistVersion(staffId, nextItems.map((item) => `${item} staff`))).rejects.toThrow();
+    await expect(publishChecklistVersion(ownerId, ["Duplicate item", "Duplicate item"])).rejects.toThrow(/unique/);
   });
 
   it("inspection-pass: every item checked passes, goes to Available and stores the checklist it was answered against", async () => {
