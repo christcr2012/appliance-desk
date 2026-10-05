@@ -1,4 +1,8 @@
 import { getBusinessSettings, parseServiceArea } from "@/domains/settings";
+import {
+  isLegalPageApproved,
+  LEGAL_PAGE_VERSIONS,
+} from "@/domains/settings/legal-approvals";
 import { Header } from "@/components/site/header";
 import { Footer } from "@/components/site/footer";
 import Link from "next/link";
@@ -20,6 +24,17 @@ export default async function PublicLayout({
   ]);
   const serviceArea = parseServiceArea(settings);
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const legalApprovals = (settings as { legalApprovals?: unknown }).legalApprovals;
+  const privacyApproved = isLegalPageApproved(
+    legalApprovals,
+    "privacy",
+    LEGAL_PAGE_VERSIONS.privacy,
+  );
+  const termsApproved = isLegalPageApproved(
+    legalApprovals,
+    "terms",
+    LEGAL_PAGE_VERSIONS.terms,
+  );
 
   // Local SEO structured data (schema.org LocalBusiness) — helps search
   // engines and map/voice-assistant results show accurate name, contact
@@ -72,6 +87,8 @@ export default async function PublicLayout({
         hours={settings.hours}
         holidayClosures={settings.holidayClosures}
         socialLinks={settings.socialLinks}
+        privacyApproved={privacyApproved}
+        termsApproved={termsApproved}
       />
     </>
   );
