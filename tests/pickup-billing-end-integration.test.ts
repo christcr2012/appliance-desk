@@ -251,7 +251,8 @@ describe.skipIf(!enabled)("pickup billing end: late returns, waiver and closing 
     const { agreementId, units } = await rental({ endDate: new Date("2027-03-01T06:59:59Z") });
     await pickup(agreementId, units, "2025-11-05");
     expect((await agreementOf(agreementId)).status).toBe("ACTIVE");
-    expect((await closeFullyReturnedAgreements(new Date("2027-02-01T12:00:00Z"))).closed).toBe(0);
+    await closeFullyReturnedAgreements(new Date("2027-02-01T12:00:00Z")); // other rentals in a shared test database may close; this one must not
+    expect((await agreementOf(agreementId)).status).toBe("ACTIVE");
     const result = await closeFullyReturnedAgreements(new Date("2027-03-02T12:00:00Z"));
     expect(result.closed).toBeGreaterThanOrEqual(1);
     const after = await agreementOf(agreementId);
