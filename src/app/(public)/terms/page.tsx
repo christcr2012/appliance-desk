@@ -2,15 +2,34 @@ import type { Metadata } from "next";
 import { Container } from "@/components/site/container";
 import { DraftNotice } from "@/components/site/draft-notice";
 import { getBusinessSettings } from "@/domains/settings";
+import {
+  isLegalPageApproved,
+  LEGAL_PAGE_VERSIONS,
+} from "@/domains/settings/legal-approvals";
 
-export const metadata: Metadata = {
-  title: "Terms of Use",
-  description: "Terms for using this website and requesting an appliance rental quote.",
-  robots: { index: true, follow: true },
-};
+export const LEGAL_PAGE_VERSION = LEGAL_PAGE_VERSIONS.terms;
+
+export async function generateMetadata(): Promise<Metadata> {
+  const settings = await getBusinessSettings();
+  const approved = isLegalPageApproved(
+    (settings as { legalApprovals?: unknown }).legalApprovals,
+    "terms",
+    LEGAL_PAGE_VERSION,
+  );
+  return {
+    title: "Terms of Use",
+    description: "Terms for using this website and requesting an appliance rental quote.",
+    robots: { index: approved, follow: approved },
+  };
+}
 
 export default async function TermsPage() {
   const settings = await getBusinessSettings();
+  const approved = isLegalPageApproved(
+    (settings as { legalApprovals?: unknown }).legalApprovals,
+    "terms",
+    LEGAL_PAGE_VERSION,
+  );
 
   return (
     <Container className="max-w-3xl py-16 md:py-20">
@@ -19,9 +38,11 @@ export default async function TermsPage() {
       </h1>
       <p className="mt-2 text-sm text-ink-faint">Last updated: 2026-09-26</p>
 
-      <div className="mt-6">
-        <DraftNotice />
-      </div>
+      {!approved && (
+        <div className="mt-6">
+          <DraftNotice />
+        </div>
+      )}
 
       <div className="mt-10 space-y-8 text-ink-soft">
         <section>
