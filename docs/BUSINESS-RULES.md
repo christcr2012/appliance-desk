@@ -285,6 +285,16 @@ priced proposal, but only for the deals that actually need it. So:
   (`/estimate/[id]`), the same "unguessable link" security model the
   e-signature flow already uses — approving it records a real,
   timestamped name/email/IP, same spirit as a signature.
+- **"Valid until" means good through the end of that Colorado day** (Remediation R09).
+  From the next Colorado midnight an estimate that is still waiting for an answer can
+  no longer be approved or sent back for changes: the attempt is refused, the estimate
+  is marked Expired in the same step, and nothing else happens (no approval, no new
+  customer from a lead, no email). The date box accepts only a real calendar date (or
+  blank for "no deadline"). Estimates saved before this rule stored the date as midnight
+  UTC; those are read as the date that was typed. Sending is one locked step (R10): the
+  estimate is marked Sent with its send time saved before any email is tried, only the
+  winning click emails, and the email's retry key comes from that send time. A rejected or
+  unknown email result is noted in the estimate's history and never re-sent automatically.
 - **An estimate never reserves real inventory on its own.** Converting
   an approved one only creates DRAFT `RentalAgreement` shell(s) with
   the agreed high-level terms (deposit, which propert(y/ies)) — Chris
@@ -1294,6 +1304,13 @@ system:
   line is complete. A cancelled order keeps the stock already received. Once
   part of a line has arrived, the rest cannot be entered at a different price
   (so the order total stays true); leave the price blank for the rest.
+- **Receipts are remembered exactly** (Remediation R16): each "these items arrived"
+  request saves its key and a fingerprint of every submitted line (including free-text lines).
+  The same request again changes nothing; the same key with different quantities or prices,
+  or on another order, is refused. Creating an order (R14) locks the supplier and parts,
+  checks neither is archived, and saves the order with its history in one step. Using parts
+  (R15) locks the part first and then reads its last purchase cost, so a delivery that finished
+  first is the cost used.
 - **A line can be tied to a real part on file** (`PartRecord`) or be
   free text (a whole appliance, a bulk supply not in the parts
   catalog). Only lines tied to a real part affect its stock count.
