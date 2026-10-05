@@ -26,7 +26,7 @@ export async function getCustomers() {
       serviceAddresses: true,
       _count: { select: { rentalAgreements: true } },
     },
-    orderBy: [{ createdAt: "desc" }],
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
   });
 }
 
@@ -45,7 +45,7 @@ export async function getCustomersPage(skip: number, pageSize: number) {
       serviceAddresses: true,
       _count: { select: { rentalAgreements: true } },
     },
-    orderBy: [{ createdAt: "desc" }],
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     skip,
     take: pageSize,
   });
@@ -60,11 +60,11 @@ export async function getCustomerById(id: string) {
       serviceAddresses: true,
       rentalAgreements: {
         include: { serviceAddress: true, lines: true },
-        orderBy: [{ createdAt: "desc" }],
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       },
       jobs: {
         include: { serviceAddress: true },
-        orderBy: [{ scheduledAt: "desc" }],
+        orderBy: [{ scheduledAt: "desc" }, { id: "desc" }],
       },
       referredBy: {
         include: {
@@ -79,10 +79,10 @@ export async function getCustomerById(id: string) {
             include: { user: { select: { name: true, email: true } } },
           },
         },
-        orderBy: [{ createdAt: "desc" }],
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       },
       credits: {
-        orderBy: [{ createdAt: "desc" }],
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       },
     },
   });
