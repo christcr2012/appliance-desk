@@ -1,4 +1,4 @@
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { deliverMessage } from "@/domains/messaging/deliver";
 import {
@@ -8,6 +8,17 @@ import {
   type LaunchSignup,
 } from "./schema";
 import { LAUNCH_STEPS, launchMessage } from "./messages";
+
+const CONFIRM_TOKEN_BYTES = 32;
+const CONFIRM_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
+
+function hashConfirmToken(token: string): string {
+  return createHash("sha256").update(token).digest("hex");
+}
+
+function canonicalAppUrl(): string {
+  return process.env.NEXT_PUBLIC_APP_URL ?? "https://robinsonappliancerentals.com";
+}
 
 export async function getLaunchSettings() {
   return prisma.launchSettings.findUniqueOrThrow({ where: { id: "singleton" } });
@@ -28,13 +39,32 @@ export function launchEmailBlockReason(settings: {
   return null;
 }
 
-/** Interest is separate from a quote/Lead: no fake phone, customer, or reservation. */
+function launchConfirmationBlockReason(settings: {
+  prelaunchMode: boolean;
+  emailEnabled: boolean;
+}): string | null {
+  if (!settings.prelaunchMode) return "Prelaunch mode is off.";
+  if (!settings.emailEnabled) return "Launch emails are paused.";
+  if (process.env.VERCEL_ENV !== "production") return "Launch confirmation emails only send from production.";
+  if (!process.env.RESEND_API_KEY || !process.env.RESEND_FROM_EMAIL) return "The sending email service is not configured.";
+  if (process.env.NEXT_PUBLIC_APP_URL !== "https://robinsonappliancerentals.com") return "The production website URL is not configured.";
+  return null;
+}
+
+/** Interest is separate from a quote/Lead: no fake phone, customer, or reservation.
+ * The form consent is saved immediately, but marketing remains pending until the
+ * mailbox owner opens the single-use confirmation link. Existing subscribers are
+ * never reactivated or auto-confirmed by a repeat public signup. */
 export async function joinLaunchList(raw: LaunchSignup) {
   const input = launchSignupSchema.parse(raw);
   if (input.website) return;
   const settings = await getLaunchSettings();
   if (!settings.prelaunchMode) throw new Error("Please use our contact form now that prelaunch signup is closed.");
-  await prisma.launchSubscriber.createMany({
+
+  const token = randomBytes(CONFIRM_TOKEN_BYTES).toString("hex");
+  const tokenHash = hashConfirmToken(token);
+  const expiresAt = new Date(Date.now() + CONFIRM_TOKEN_TTL_MS);
+  const created = await prisma.launchSubscriber.createMany({
     data: [{
       name: input.name,
       email: input.email,
@@ -44,8 +74,72 @@ export async function joinLaunchList(raw: LaunchSignup) {
       consentVersion: LAUNCH_CONSENT_VERSION,
       consentText: LAUNCH_CONSENT,
       unsubscribeToken: randomBytes(32).toString("hex"),
+      confirmTokenHash: tokenHash,
+      confirmExpiresAt: expiresAt,
     }],
     skipDuplicates: true,
+  });
+
+  // A concurrent/repeat signup cannot send another confirmation and, crucially,
+  // cannot clear an existing unsubscribe or confirmation state.
+  if (created.count !== 1) return;
+  const subscriber = await prisma.launchSubscriber.findUniqueOrThrow({
+    where: { email: input.email },
+    select: { id: true, email: true, name: true },
+  });
+
+  if (launchConfirmationBlockReason(settings)) return;
+  const confirmUrl = `${canonicalAppUrl()}/launch/confirm/${token}`;
+  await deliverMessage({
+    idempotencyKey: `launch-confirm-${subscriber.id}`,
+    channel: "EMAIL",
+    purpose: "TRANSACTIONAL",
+    templateKey: "launch-confirm",
+    customerFacing: false,
+    recipient: { type: "LaunchSubscriber", id: subscriber.id, address: subscriber.email },
+    subject: { type: "LaunchSubscriber", id: subscriber.id },
+    render: () => ({
+      subject: "Confirm your Robinson Appliance Rentals launch emails",
+      text: `Hi ${subscriber.name},\n\nPlease confirm that this email address belongs to you before we send launch updates.\n\nConfirm: ${confirmUrl}\n\nIf you didn't request this, you can ignore this message and you won't receive the launch sequence.`,
+      actionLabel: "Confirm launch emails",
+    }),
+  });
+}
+
+/** Single-use mailbox confirmation. Concurrent/replayed confirmations can only
+ * win the compare-and-set once, so they cannot cause duplicate welcome sends. */
+export async function confirmLaunchSubscription(
+  token: string,
+  now: Date = new Date(),
+): Promise<boolean> {
+  if (!/^[a-f0-9]{64}$/i.test(token)) return false;
+  const tokenHash = hashConfirmToken(token.toLowerCase());
+  return prisma.$transaction(async (tx) => {
+    const subscriber = await tx.launchSubscriber.findFirst({
+      where: {
+        confirmTokenHash: tokenHash,
+        confirmExpiresAt: { gt: now },
+        confirmedAt: null,
+        unsubscribedAt: null,
+      },
+      select: { id: true },
+    });
+    if (!subscriber) return false;
+    const changed = await tx.launchSubscriber.updateMany({
+      where: {
+        id: subscriber.id,
+        confirmTokenHash: tokenHash,
+        confirmedAt: null,
+        unsubscribedAt: null,
+      },
+      data: {
+        confirmedAt: now,
+        confirmTokenHash: null,
+        confirmExpiresAt: null,
+        nextSendAt: now,
+      },
+    });
+    return changed.count === 1;
   });
 }
 
@@ -69,6 +163,7 @@ export async function sendLaunchSequence() {
   const now = new Date();
   const due = await prisma.launchSubscriber.findMany({
     where: {
+      confirmedAt: { not: null },
       unsubscribedAt: null,
       nextStep: { lt: LAUNCH_STEPS.length },
       nextSendAt: { lte: now },
@@ -85,6 +180,7 @@ export async function sendLaunchSequence() {
       where: {
         id: subscriber.id,
         nextStep: subscriber.nextStep,
+        confirmedAt: { not: null },
         deliveryBlocked: false,
         unsubscribedAt: null,
       },
@@ -99,7 +195,7 @@ export async function sendLaunchSequence() {
       prisma.launchSubscriber.findUnique({ where: { id: subscriber.id } }),
       getLaunchSettings(),
     ]);
-    if (!current || current.unsubscribedAt || launchEmailBlockReason(currentSettings)) {
+    if (!current || !current.confirmedAt || current.unsubscribedAt || launchEmailBlockReason(currentSettings)) {
       await prisma.$transaction([
         prisma.launchDelivery.delete({ where: { id: delivery.id } }),
         prisma.launchSubscriber.update({ where: { id: subscriber.id }, data: { deliveryBlocked: false } }),
@@ -107,7 +203,7 @@ export async function sendLaunchSequence() {
       continue;
     }
 
-    const unsubscribeUrl = `https://robinsonappliancerentals.com/launch/unsubscribe?token=${subscriber.unsubscribeToken}`;
+    const unsubscribeUrl = `${canonicalAppUrl()}/launch/unsubscribe?token=${subscriber.unsubscribeToken}`;
     const message = launchMessage(subscriber.nextStep, subscriber.name);
     const result = await deliverMessage({
       idempotencyKey: `launch-${subscriber.id}-${subscriber.nextStep}`,
@@ -143,8 +239,6 @@ export async function sendLaunchSequence() {
       ]);
       sent += 1;
     } else if (result.state === "UNKNOWN") {
-      // Keep SENDING + deliveryBlocked=true. A human/provider reconciliation
-      // resolves the uncertainty; PR #86's at-most-once invariant is preserved.
       failed += 1;
     } else {
       await prisma.launchDelivery.update({

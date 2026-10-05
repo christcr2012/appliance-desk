@@ -1,26 +1,23 @@
 import { prisma } from "@/lib/prisma";
-import { computeUtilizationFraction } from "@/domains/inventory/analytics";
 import { computeChurnRisk, type ChurnRiskResult } from "./churn";
 import {
-  flagUtilization,
   isPriceReviewDue,
   isReviewRequestCandidate,
   monthsSince,
   winBackReason,
   type UtilizationFlag,
 } from "./signals";
+import { computeCustodyUtilization } from "./utilization";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const FAILED_PAYMENT_LOOKBACK_DAYS = 60;
 const MAINTENANCE_LOOKBACK_DAYS = 90;
+const MAX_GROWTH_ROWS = 100;
 
 function addDays(date: Date, days: number): Date {
   return new Date(date.getTime() + days * MS_PER_DAY);
 }
 
-/** UTC-safe month math (same reasoning as computeMrrTrend's own
- * Date.UTC use in src/domains/billing/revenue.ts): a fixed-term
- * agreement's expected end date is startDate + termMonths. */
 function addMonthsUtc(date: Date, months: number): Date {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + months, date.getUTCDate()));
 }
@@ -43,16 +40,6 @@ export type ChurnRiskRow = ChurnRiskResult & {
   customerName: string;
 };
 
-/**
- * Customers whose ACTIVE agreement is showing one or more churn signals
- * (past-due invoices, recent failed payments, a term ending soon with no
- * renewal recorded, repeat repair requests) — see
- * src/domains/growth/churn.ts for the scoring itself. A customer with
- * more than one active agreement gets one row per agreement (rare —
- * mostly property managers), since each agreement's own term-end date is
- * independent even though past-due/failed-payment/repair counts are
- * shared across their account.
- */
 export async function getChurnRiskCustomers(asOf: Date = new Date()): Promise<ChurnRiskRow[]> {
   const [agreements, pastDueInvoices, recentFailedPayments, recentMaintenanceRequests] =
     await Promise.all([
@@ -66,18 +53,26 @@ export async function getChurnRiskCustomers(asOf: Date = new Date()): Promise<Ch
           termMonths: true,
           customer: { select: { user: { select: { name: true, email: true } } } },
         },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        take: MAX_GROWTH_ROWS,
       }),
       prisma.invoice.findMany({
         where: { status: { in: ["DELINQUENT", "OPEN"] }, dueDate: { lt: asOf } },
         select: { customerId: true },
+        orderBy: [{ dueDate: "asc" }, { id: "asc" }],
+        take: MAX_GROWTH_ROWS * 4,
       }),
       prisma.payment.findMany({
         where: { status: "failed", createdAt: { gte: addDays(asOf, -FAILED_PAYMENT_LOOKBACK_DAYS) } },
         select: { invoice: { select: { customerId: true } } },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        take: MAX_GROWTH_ROWS * 4,
       }),
       prisma.maintenanceRequest.findMany({
         where: { openedAt: { gte: addDays(asOf, -MAINTENANCE_LOOKBACK_DAYS) } },
         select: { customerId: true },
+        orderBy: [{ openedAt: "desc" }, { id: "desc" }],
+        take: MAX_GROWTH_ROWS * 4,
       }),
     ]);
 
@@ -86,9 +81,6 @@ export async function getChurnRiskCustomers(asOf: Date = new Date()): Promise<Ch
   const maintenanceCounts = countByCustomerId(recentMaintenanceRequests);
 
   const rows = agreements.map((agreement) => {
-    // The saved end date (set when billing starts, at delivery) is the real
-    // end of the term; start + term months is only the fallback for agreements
-    // that never recorded one.
     const termEnd =
       agreement.termMonths && agreement.startDate
         ? (agreement.endDate ?? addMonthsUtc(agreement.startDate, agreement.termMonths))
@@ -111,7 +103,10 @@ export async function getChurnRiskCustomers(asOf: Date = new Date()): Promise<Ch
     };
   });
 
-  return rows.filter((r) => r.atRisk).sort((a, b) => b.score - a.score);
+  return rows
+    .filter((r) => r.atRisk)
+    .sort((a, b) => b.score - a.score || a.agreementId.localeCompare(b.agreementId))
+    .slice(0, MAX_GROWTH_ROWS);
 }
 
 export type WinBackLeadRow = {
@@ -120,33 +115,52 @@ export type WinBackLeadRow = {
   companyName: string | null;
   status: string;
   reason: string;
-  updatedAt: Date;
+  lastActivityAt: Date;
 };
 
-/** Leads worth a follow-up — see src/domains/growth/signals.ts's
- * winBackReason for exactly when. */
 export async function getWinBackLeads(asOf: Date = new Date()): Promise<WinBackLeadRow[]> {
   const leads = await prisma.lead.findMany({
     where: { status: { in: ["NEW", "CONTACTED", "LOST"] } },
-    select: { id: true, status: true, contactName: true, companyName: true, updatedAt: true },
+    select: {
+      id: true,
+      status: true,
+      contactName: true,
+      companyName: true,
+      createdAt: true,
+      updatedAt: true,
+      lastRealContactAt: true,
+    },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    take: MAX_GROWTH_ROWS * 2,
   });
 
   const rows = leads
     .map((lead) => {
-      const reason = winBackReason(lead.status as "NEW" | "CONTACTED" | "LOST", lead.updatedAt, asOf);
-      return reason ? { lead, reason } : null;
+      const ordinaryActivity = lead.lastRealContactAt ?? lead.createdAt;
+      const lastActivityAt =
+        lead.status === "LOST" && lead.updatedAt.getTime() > ordinaryActivity.getTime()
+          ? lead.updatedAt
+          : ordinaryActivity;
+      const reason = winBackReason(
+        lead.status as "NEW" | "CONTACTED" | "LOST",
+        lastActivityAt,
+        asOf,
+      );
+      return reason ? { lead, reason, lastActivityAt } : null;
     })
-    .filter((r): r is { lead: (typeof leads)[number]; reason: string } => r !== null)
-    .map(({ lead, reason }) => ({
+    .filter((r): r is { lead: (typeof leads)[number]; reason: string; lastActivityAt: Date } => r !== null)
+    .map(({ lead, reason, lastActivityAt }) => ({
       leadId: lead.id,
       contactName: lead.contactName,
       companyName: lead.companyName,
       status: lead.status,
       reason,
-      updatedAt: lead.updatedAt,
+      lastActivityAt,
     }));
 
-  return rows.sort((a, b) => a.updatedAt.getTime() - b.updatedAt.getTime());
+  return rows
+    .sort((a, b) => a.lastActivityAt.getTime() - b.lastActivityAt.getTime() || a.leadId.localeCompare(b.leadId))
+    .slice(0, MAX_GROWTH_ROWS);
 }
 
 export type PriceReviewRow = {
@@ -156,9 +170,6 @@ export type PriceReviewRow = {
   monthlyTotalCents: number;
 };
 
-/** ACTIVE agreements whose agreed price hasn't been revisited in over a
- * year — a reminder only, never an automatic change (see
- * src/domains/growth/signals.ts's isPriceReviewDue). */
 export async function getPriceReviewAgreements(asOf: Date = new Date()): Promise<PriceReviewRow[]> {
   const agreements = await prisma.rentalAgreement.findMany({
     where: { status: "ACTIVE", startDate: { not: null } },
@@ -168,6 +179,8 @@ export async function getPriceReviewAgreements(asOf: Date = new Date()): Promise
       customer: { select: { user: { select: { name: true, email: true } } } },
       lines: { select: { monthlyPriceCents: true } },
     },
+    orderBy: [{ startDate: "asc" }, { id: "asc" }],
+    take: MAX_GROWTH_ROWS * 2,
   });
 
   return agreements
@@ -178,7 +191,8 @@ export async function getPriceReviewAgreements(asOf: Date = new Date()): Promise
       monthsAgo: monthsSince(a.startDate, asOf),
       monthlyTotalCents: a.lines.reduce((sum, line) => sum + line.monthlyPriceCents, 0),
     }))
-    .sort((a, b) => b.monthsAgo - a.monthsAgo);
+    .sort((a, b) => b.monthsAgo - a.monthsAgo || a.agreementId.localeCompare(b.agreementId))
+    .slice(0, MAX_GROWTH_ROWS);
 }
 
 export type UtilizationFlagRow = {
@@ -186,18 +200,14 @@ export type UtilizationFlagRow = {
   applianceTypeName: string;
   unitCount: number;
   averageUtilizationFraction: number;
-  // Always SHORTAGE or UNDERUTILIZED here, never null — a row is only
-  // ever constructed once flagUtilization() has already returned a
-  // truthy flag (see the .filter(...) below), unlike the broader
-  // UtilizationFlag type (which flagUtilization itself returns and
-  // allows null for "nothing worth flagging").
+  currentUtilizationFraction: number;
+  rolling30DayUtilizationFraction: number;
+  observedDays: number;
   flag: NonNullable<UtilizationFlag>;
 };
 
-/** Appliance types running near-fully-rented (a shortage signal — idea
- * #3) or mostly idle (an overpriced/overstocked signal — idea #4). See
- * src/domains/growth/signals.ts's flagUtilization for the thresholds. */
 export async function getUtilizationFlags(asOf: Date = new Date()): Promise<UtilizationFlagRow[]> {
+  const windowStart = addDays(asOf, -30);
   const types = await prisma.applianceType.findMany({
     where: { isActive: true },
     select: {
@@ -207,38 +217,45 @@ export async function getUtilizationFlags(asOf: Date = new Date()): Promise<Util
         where: { archivedAt: null, status: { not: "RETIRED" } },
         select: {
           createdAt: true,
-          assignments: { select: { assignedAt: true, unassignedAt: true } },
+          custodyEpisodes: {
+            where: {
+              OR: [
+                { closedAt: null },
+                { endedOn: { gt: windowStart } },
+              ],
+            },
+            select: { startedOn: true, endedOn: true, closedAt: true },
+          },
         },
       },
     },
+    orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
   });
 
-  const rows = types
+  return types
     .map((type) => {
-      const unitCount = type.appliances.length;
-      if (unitCount === 0) {
-        return null;
-      }
-      const totalFraction = type.appliances.reduce(
-        (sum, appliance) => sum + computeUtilizationFraction(appliance.assignments, appliance.createdAt, asOf),
-        0,
-      );
-      const averageUtilizationFraction = totalFraction / unitCount;
-      const flag = flagUtilization(averageUtilizationFraction, unitCount);
-      if (!flag) {
-        return null;
-      }
+      if (type.appliances.length === 0) return null;
+      const utilization = computeCustodyUtilization(type.appliances, asOf);
+      if (!utilization.flag) return null;
       return {
         applianceTypeId: type.id,
         applianceTypeName: type.name,
-        unitCount,
-        averageUtilizationFraction,
-        flag,
+        unitCount: type.appliances.length,
+        averageUtilizationFraction: utilization.rolling30DayUtilizationFraction,
+        currentUtilizationFraction: utilization.currentUtilizationFraction,
+        rolling30DayUtilizationFraction: utilization.rolling30DayUtilizationFraction,
+        observedDays: utilization.observedDays,
+        flag: utilization.flag,
       };
     })
-    .filter((r): r is UtilizationFlagRow => r !== null);
-
-  return rows.sort((a, b) => b.averageUtilizationFraction - a.averageUtilizationFraction);
+    .filter((r): r is UtilizationFlagRow => r !== null)
+    .sort(
+      (a, b) =>
+        b.rolling30DayUtilizationFraction - a.rolling30DayUtilizationFraction ||
+        a.applianceTypeName.localeCompare(b.applianceTypeName) ||
+        a.applianceTypeId.localeCompare(b.applianceTypeId),
+    )
+    .slice(0, MAX_GROWTH_ROWS);
 }
 
 export type ReviewRequestRow = {
@@ -247,10 +264,6 @@ export type ReviewRequestRow = {
   customerName: string;
 };
 
-/** Customers whose rental has been billing cleanly for a while — a
- * reasonable moment to ask for a review or referral (idea #6). This only
- * picks candidates; nothing here sends anything automatically (see
- * docs/BUSINESS-RULES.md's "Growth signals" section). */
 export async function getReviewRequestCandidates(asOf: Date = new Date()): Promise<ReviewRequestRow[]> {
   const [agreements, pastDueInvoices] = await Promise.all([
     prisma.rentalAgreement.findMany({
@@ -261,10 +274,14 @@ export async function getReviewRequestCandidates(asOf: Date = new Date()): Promi
         billingStartedAt: true,
         customer: { select: { user: { select: { name: true, email: true } } } },
       },
+      orderBy: [{ billingStartedAt: "asc" }, { id: "asc" }],
+      take: MAX_GROWTH_ROWS * 2,
     }),
     prisma.invoice.findMany({
       where: { status: { in: ["DELINQUENT", "OPEN"] }, dueDate: { lt: asOf } },
       select: { customerId: true },
+      orderBy: [{ dueDate: "asc" }, { id: "asc" }],
+      take: MAX_GROWTH_ROWS * 4,
     }),
   ]);
 
@@ -276,5 +293,6 @@ export async function getReviewRequestCandidates(asOf: Date = new Date()): Promi
       agreementId: a.id,
       customerId: a.customerId,
       customerName: customerDisplayName(a.customer),
-    }));
+    }))
+    .slice(0, MAX_GROWTH_ROWS);
 }

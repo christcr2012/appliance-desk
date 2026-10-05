@@ -1,0 +1,65 @@
+name: Batch E Performance Baseline
+
+on:
+  pull_request:
+    paths:
+      - "src/**"
+      - "prisma/**"
+      - "tests/perf/**"
+      - ".github/workflows/perf.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: perf-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  perf:
+    name: large-list baseline
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: appliance_desk_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U test -d appliance_desk_test"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 15
+    env:
+      CI: "true"
+      BATCH_E_PERF: "true"
+      DATABASE_URL: postgresql://test:test@localhost:5432/appliance_desk_test
+      DIRECT_URL: postgresql://test:test@localhost:5432/appliance_desk_test
+      BETTER_AUTH_SECRET: ci-test-secret-not-for-production-use-only
+      BETTER_AUTH_URL: http://localhost:3000
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      OWNER_EMAIL: ci-owner@example.test
+      OWNER_PASSWORD: Ci-Test-Owner-Password-Not-Real-1!
+      TEST_CUSTOMER_EMAIL: ci-customer@example.test
+      TEST_CUSTOMER_PASSWORD: Ci-Test-Customer-Password-Not-Real-1!
+      TEST_STAFF_EMAIL: ci-staff@example.test
+      TEST_STAFF_PASSWORD: Ci-Test-Staff-Password-Not-Real-1!
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Apply migrations
+        run: npm run db:migrate:deploy
+      - name: Seed required singleton and test accounts
+        run: npm run db:seed
+      - name: Measure Batch E large lists
+        run: npx vitest run tests/perf/batch-e-large-lists.test.ts

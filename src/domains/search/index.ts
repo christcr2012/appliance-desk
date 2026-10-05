@@ -1,15 +1,6 @@
 import { requireRole } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 
-// ---------------------------------------------------------------------------
-// Global search (2026-09-28) — the desk-wide search box's backing query.
-// Looks across the things Chris is most likely typing a name, email, or
-// asset number to find: customers, appliances, and leads. Deliberately
-// NOT agreements or jobs — those don't have a name of their own to
-// search by; they're found through the customer or appliance they
-// belong to instead.
-// ---------------------------------------------------------------------------
-
 const RESULT_LIMIT = 8;
 
 export type SearchResults = {
@@ -19,18 +10,20 @@ export type SearchResults = {
   leads: { id: string; contactName: string; email: string | null; status: string }[];
 };
 
-/** Case-insensitive "contains" search across customers, appliances, and
- * leads, capped to a handful of results per category — this is a quick
- * jump-to lookup, not a full search results page with paging. A blank
- * or whitespace-only query returns nothing rather than every record. */
+/**
+ * Desk-wide quick lookup. Search is a data-access surface, so the categories
+ * follow the same role policy as their destination pages: OWNER/ADMIN may see
+ * leads; STAFF may search operational customers/appliances but never queries
+ * Lead at all.
+ */
 export async function searchAll(rawQuery: string): Promise<SearchResults> {
-  await requireRole("OWNER", "ADMIN", "STAFF");
+  const session = await requireRole("OWNER", "ADMIN", "STAFF");
   const query = rawQuery.trim();
   if (!query) {
     return { query: "", customers: [], appliances: [], leads: [] };
   }
 
-  const [customers, appliances, leads] = await Promise.all([
+  const [customers, appliances] = await Promise.all([
     prisma.customer.findMany({
       where: {
         archivedAt: null,
@@ -41,6 +34,7 @@ export async function searchAll(rawQuery: string): Promise<SearchResults> {
         ],
       },
       select: { id: true, companyName: true, user: { select: { name: true, email: true } } },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       take: RESULT_LIMIT,
     }),
     prisma.appliance.findMany({
@@ -53,20 +47,26 @@ export async function searchAll(rawQuery: string): Promise<SearchResults> {
         ],
       },
       select: { id: true, assetNumber: true, manufacturer: true, applianceType: { select: { name: true } } },
-      take: RESULT_LIMIT,
-    }),
-    prisma.lead.findMany({
-      where: {
-        OR: [
-          { contactName: { contains: query, mode: "insensitive" } },
-          { email: { contains: query, mode: "insensitive" } },
-          { companyName: { contains: query, mode: "insensitive" } },
-        ],
-      },
-      select: { id: true, contactName: true, email: true, status: true },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       take: RESULT_LIMIT,
     }),
   ]);
+
+  const leads =
+    session.user.role === "OWNER" || session.user.role === "ADMIN"
+      ? await prisma.lead.findMany({
+          where: {
+            OR: [
+              { contactName: { contains: query, mode: "insensitive" } },
+              { email: { contains: query, mode: "insensitive" } },
+              { companyName: { contains: query, mode: "insensitive" } },
+            ],
+          },
+          select: { id: true, contactName: true, email: true, status: true },
+          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+          take: RESULT_LIMIT,
+        })
+      : [];
 
   return {
     query,
@@ -90,4 +90,3 @@ export async function searchAll(rawQuery: string): Promise<SearchResults> {
     })),
   };
 }
-

@@ -7,6 +7,7 @@ import { MONTH_TO_MONTH_STARTING_DRAFTS, monthToMonthSettingsDefaults } from "@/
 import { prisma } from "@/lib/prisma";
 import { noticeDeliveryDefaults } from "@/domains/settings/notice-delivery";
 import { getBusinessSettings, getAllApplianceTypes } from "@/domains/settings";
+import { getLeadScoringPolicy } from "@/domains/leads/scoring-policy";
 import { getStaffAccounts } from "@/domains/staff";
 import { requireRole } from "@/lib/session";
 import {
@@ -30,6 +31,7 @@ import { TermsPolicyForm } from "./terms-policy-form";
 import { AutoRenewSwitch } from "./auto-renew-switch";
 import { PickupBillingForm } from "./pickup-billing-form";
 import { JobSchedulingForm } from "./job-scheduling-form";
+import { LeadScoringForm } from "./lead-scoring-form";
 import { jobSchedulingDefaults } from "@/domains/settings/job-scheduling";
 import { pickupBillingDefaults } from "@/domains/settings/pickup-billing";
 import { pickupBillingSettingsFrom } from "@/domains/billing/pickup-billing";
@@ -48,6 +50,7 @@ export default async function DeskSettingsPage({
   const session = await requireRole("OWNER", "ADMIN");
   const section = settingsSection((await searchParams).section);
   const settings = await getBusinessSettings();
+  const leadScoringPolicy = section === "policies" ? await getLeadScoringPolicy() : null;
   let content: React.ReactNode;
   if (section === "products") {
     const applianceTypes = await getAllApplianceTypes();
@@ -214,6 +217,9 @@ export default async function DeskSettingsPage({
         title={SETTINGS_SECTIONS.find((s) => s.id === section)!.label}
         description="Save only this section. Prices, staff accounts and other sections are preserved."
       >
+        {section === "policies" && leadScoringPolicy && (
+          <LeadScoringForm policy={leadScoringPolicy} />
+        )}
         {section === "policies" && (
           <div className="mb-4 rounded-lg border border-line bg-subtle p-4">
             <p className="text-sm text-ink-soft">

@@ -5,6 +5,7 @@ import { isNonProductionDeployment } from "@/lib/deployment-safety";
 import { sendEmail } from "@/lib/email";
 import { sendCustomerEmail } from "@/lib/customer-email";
 import { getSmsProviderState, sendSms } from "@/lib/sms";
+import { recordLeadMessageContactInTx } from "@/domains/leads/contact";
 import {
   getMarketingSuppression,
   normalizeMessageAddress,
@@ -110,15 +111,25 @@ async function finish(
     deliveredAt?: Date;
   },
 ) {
-  return prisma.messageDelivery.update({
-    where: { id },
-    data: {
-      state,
-      providerMessageId: input?.providerMessageId,
-      lastError: input?.lastError,
-      acceptedAt: input?.acceptedAt,
-      deliveredAt: input?.deliveredAt,
-    },
+  return prisma.$transaction(async (tx) => {
+    const row = await tx.messageDelivery.update({
+      where: { id },
+      data: {
+        state,
+        providerMessageId: input?.providerMessageId,
+        lastError: input?.lastError,
+        acceptedAt: input?.acceptedAt,
+        deliveredAt: input?.deliveredAt,
+      },
+    });
+    if (state === "ACCEPTED" || state === "DELIVERED") {
+      await recordLeadMessageContactInTx(
+        tx,
+        row,
+        input?.acceptedAt ?? input?.deliveredAt ?? new Date(),
+      );
+    }
+    return row;
   });
 }
 
@@ -138,9 +149,6 @@ function mapOutcome(
     case "UNKNOWN":
       return "UNKNOWN";
     default:
-      // Current production senders always provide outcome. This fallback keeps
-      // older tests/callers with the historic { sent: boolean } contract safe:
-      // false is a definite legacy failure, not permission for an extra retry.
       return result.sent ? "ACCEPTED" : "FAILED";
   }
 }
@@ -194,7 +202,6 @@ export async function deliverMessage(
   const invoke = async (): Promise<LowLevelResult> => {
     if (input.channel === "SMS") {
       return sendSms({
-        // claimDelivery canonicalizes SMS recipients before this provider call.
         to: delivery.recipientAddress,
         body: rendered.text,
         idempotencyKey: input.idempotencyKey,
@@ -238,9 +245,10 @@ export async function deliverMessage(
         : state === "UNKNOWN"
           ? "provider outcome unknown after one retry"
           : undefined;
+  const acceptedAt = state === "ACCEPTED" ? new Date() : undefined;
   const completed = await finish(delivery.id, state, {
     providerMessageId: provider.providerMessageId,
-    acceptedAt: state === "ACCEPTED" ? new Date() : undefined,
+    acceptedAt,
     lastError,
   });
   return asResult(completed);
@@ -307,16 +315,25 @@ export async function reconcileUnknownDeliveries(
         : await getSmsProviderState(row.providerMessageId!);
     if (state === "UNKNOWN") continue;
 
-    const updated = await prisma.messageDelivery.updateMany({
-      where: { id: row.id, state: "UNKNOWN" },
-      data: {
-        state,
-        acceptedAt: state === "ACCEPTED" ? new Date() : undefined,
-        deliveredAt: state === "DELIVERED" ? new Date() : undefined,
-        lastError: state === "FAILED" ? "provider reports failure" : null,
-      },
+    const resolvedAt = new Date();
+    const changed = await prisma.$transaction(async (tx) => {
+      const current = await tx.messageDelivery.findUnique({ where: { id: row.id } });
+      if (!current || current.state !== "UNKNOWN") return 0;
+      const completed = await tx.messageDelivery.update({
+        where: { id: row.id },
+        data: {
+          state,
+          acceptedAt: state === "ACCEPTED" ? resolvedAt : undefined,
+          deliveredAt: state === "DELIVERED" ? resolvedAt : undefined,
+          lastError: state === "FAILED" ? "provider reports failure" : null,
+        },
+      });
+      if (state === "ACCEPTED" || state === "DELIVERED") {
+        await recordLeadMessageContactInTx(tx, completed, resolvedAt);
+      }
+      return 1;
     });
-    resolved += updated.count;
+    resolved += changed;
   }
   return { resolved };
 }

@@ -11,6 +11,7 @@ import {
 } from "vitest";
 import { prisma } from "@/lib/prisma";
 import {
+  confirmLaunchSubscription,
   joinLaunchList,
   sendLaunchSequence,
   unsubscribeLaunch,
@@ -18,7 +19,7 @@ import {
 import { launchSignupSchema } from "@/domains/launch/schema";
 
 const { send } = vi.hoisted(() => ({
-  send: vi.fn().mockResolvedValue({ sent: true }),
+  send: vi.fn().mockResolvedValue({ sent: true, outcome: "SENT" }),
 }));
 vi.mock("@/lib/email", () => ({ sendEmail: send }));
 const run = randomBytes(6).toString("hex");
@@ -26,6 +27,7 @@ const address = `launch-${run}@example.test`;
 let originalSettings: Awaited<
   ReturnType<typeof prisma.launchSettings.findUnique>
 >;
+let confirmationToken = "";
 const input = launchSignupSchema.parse({
   name: "Launch Test",
   email: address,
@@ -35,7 +37,17 @@ const input = launchSignupSchema.parse({
   consent: true,
 });
 
-beforeEach(() => send.mockClear());
+function tokenFromLatestEmail(): string {
+  const latest = send.mock.calls.at(-1)?.[0] as { text?: string } | undefined;
+  const match = latest?.text?.match(/\/launch\/confirm\/([a-f0-9]{64})/i);
+  if (!match?.[1]) throw new Error("Confirmation email did not contain a token");
+  return match[1];
+}
+
+beforeEach(() => {
+  send.mockClear();
+  send.mockResolvedValue({ sent: true, outcome: "SENT" });
+});
 
 beforeAll(async () => {
   originalSettings = await prisma.launchSettings.findUnique({
@@ -61,6 +73,9 @@ beforeAll(async () => {
   vi.stubEnv("NEXT_PUBLIC_APP_URL", "https://robinsonappliancerentals.com");
 });
 afterAll(async () => {
+  await prisma.launchDelivery.deleteMany({
+    where: { subscriber: { email: { endsWith: `${run}@example.test` } } },
+  });
   await prisma.launchSubscriber.deleteMany({
     where: { email: { endsWith: `${run}@example.test` } },
   });
@@ -83,7 +98,7 @@ afterAll(async () => {
 });
 
 describe("durable launch sequence", () => {
-  it("deduplicates concurrent signups and records the exact consent", async () => {
+  it("deduplicates concurrent signups, records consent and sends one confirmation request", async () => {
     await Promise.all([
       joinLaunchList(input),
       joinLaunchList({ ...input, email: address.toUpperCase() }),
@@ -95,9 +110,35 @@ describe("durable launch sequence", () => {
     expect(rows[0].source).toBe("instagram");
     expect(rows[0].consentText).toContain("unsubscribe");
     expect(rows[0].unsubscribeToken).toMatch(/^[a-f0-9]{64}$/);
-    expect(send).not.toHaveBeenCalled();
+    expect(rows[0].confirmedAt).toBeNull();
+    expect(rows[0].confirmTokenHash).toMatch(/^[a-f0-9]{64}$/);
+    expect(send).toHaveBeenCalledTimes(1);
+    confirmationToken = tokenFromLatestEmail();
   });
-  it("concurrent cron runs send only one welcome, then wait at least three days", async () => {
+
+  it("never starts marketing for an unconfirmed address", async () => {
+    send.mockClear();
+    expect(await sendLaunchSequence()).toMatchObject({ sent: 0, failed: 0 });
+    expect(send).not.toHaveBeenCalled();
+    expect(await prisma.launchDelivery.count({
+      where: { subscriber: { email: address } },
+    })).toBe(0);
+  });
+
+  it("confirmation is single-use under concurrency and unlocks exactly one welcome", async () => {
+    const results = await Promise.all([
+      confirmLaunchSubscription(confirmationToken),
+      confirmLaunchSubscription(confirmationToken),
+    ]);
+    expect(results.filter(Boolean)).toHaveLength(1);
+    expect(await confirmLaunchSubscription(confirmationToken)).toBe(false);
+
+    const confirmed = await prisma.launchSubscriber.findUniqueOrThrow({ where: { email: address } });
+    expect(confirmed.confirmedAt).toBeInstanceOf(Date);
+    expect(confirmed.confirmTokenHash).toBeNull();
+    expect(confirmed.confirmExpiresAt).toBeNull();
+
+    send.mockClear();
     await Promise.all([sendLaunchSequence(), sendLaunchSequence()]);
     expect(send).toHaveBeenCalledTimes(1);
     expect(send.mock.calls[0][0].marketing.unsubscribeUrl).toContain(
@@ -115,12 +156,13 @@ describe("durable launch sequence", () => {
     await sendLaunchSequence();
     expect(send).toHaveBeenCalledTimes(1);
   });
+
   it("a provider failure stops this sequence, and another cron does not retry it", async () => {
     await prisma.launchSubscriber.update({
       where: { email: address },
       data: { nextSendAt: new Date(0) },
     });
-    send.mockResolvedValueOnce({ sent: false });
+    send.mockResolvedValueOnce({ sent: false, outcome: "REJECTED" });
     await sendLaunchSequence();
     await sendLaunchSequence();
     expect(send).toHaveBeenCalledTimes(1);
@@ -130,6 +172,7 @@ describe("durable launch sequence", () => {
     expect(row.deliveryBlocked).toBe(true);
     expect(row.nextStep).toBe(1);
   });
+
   it("unsubscribe is immediate and repeat signup cannot undo suppression", async () => {
     const row = await prisma.launchSubscriber.findUniqueOrThrow({
       where: { email: address },
@@ -137,6 +180,7 @@ describe("durable launch sequence", () => {
     expect(await unsubscribeLaunch(row.unsubscribeToken)).toBe(true);
     expect(await unsubscribeLaunch(row.unsubscribeToken)).toBe(true);
     expect(await unsubscribeLaunch("bad-token")).toBe(false);
+    send.mockClear();
     await joinLaunchList(input);
     await sendLaunchSequence();
     expect(send).not.toHaveBeenCalled();
@@ -148,6 +192,7 @@ describe("durable launch sequence", () => {
       ).unsubscribedAt,
     ).not.toBeNull();
   });
+
   it("honeypot submissions and disabled prelaunch do not create subscribers", async () => {
     await joinLaunchList({
       ...input,
@@ -174,8 +219,12 @@ describe("durable launch sequence", () => {
       data: { prelaunchMode: true },
     });
     const email = `complete-${run}@example.test`;
+    send.mockClear();
     await joinLaunchList({ ...input, email });
-    const before = send.mock.calls.length;
+    const token = tokenFromLatestEmail();
+    expect(await confirmLaunchSubscription(token)).toBe(true);
+    send.mockClear();
+
     for (let step = 0; step < 3; step++) {
       await prisma.launchSubscriber.update({
         where: { email },
@@ -191,6 +240,6 @@ describe("durable launch sequence", () => {
     expect(row.nextStep).toBe(3);
     expect(row.deliveries).toHaveLength(3);
     expect(row.deliveries.every((d) => d.status === "SENT")).toBe(true);
-    expect(send.mock.calls.length - before).toBe(3);
+    expect(send).toHaveBeenCalledTimes(3);
   });
 });

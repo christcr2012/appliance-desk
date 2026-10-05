@@ -22,7 +22,7 @@ describe.skipIf(!enabled)(
       });
       await prisma.lead.delete({ where: { id: leadId } });
     });
-    it("commits a real lead and privacy consent without inventing an appliance request", async () => {
+    it("commits a real lead, frozen scoring version and privacy consent without inventing an appliance request", async () => {
       const input = leadFormSchemaForCatalog(false).parse({
         accountType: "individual",
         isPropertyManager: false,
@@ -44,8 +44,10 @@ describe.skipIf(!enabled)(
         contactName: input.contactName,
         notes: input.notes,
         applianceRequests: [],
+        scoringPolicyVersion: 1,
       });
       expect(persisted.consentedAt).toBeInstanceOf(Date);
+      expect(persisted.lastRealContactAt).toBeInstanceOf(Date);
       expect(
         await prisma.consentRecord.count({
           where: {
