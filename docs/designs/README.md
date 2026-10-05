@@ -13,8 +13,8 @@ the points where the implementer must stop and ask instead of guessing.
 | C — Rental-to-service operations, custody, inventory & purchasing | `BATCH-C.md` + `BATCH-C-UPDATE-2026-10-03.md` + `BATCH-C-LITERAL-SPEC-2026-10-03.md` | Built and merged; its shared billing-end leftover was completed by B2. |
 | R — Remediation Batch R | `REMEDIATION-BATCH-R-2026-10-04.md` (+ amendment, recovery) | Built and merged. |
 | B2 — Renewal lifecycle, month-to-month rentals, pickup billing end | `BATCH-B2.md` | Built before Batch D; D's implementation uses these contracts. |
-| D — Owner/customer control plane, website, evidence & privacy | `BATCH-D.md` | **Implemented through the final D branch.** D1–D9 predecessors are merged; D10–D12 finalization is on `ai/sol/batch-d-d10-privacy`. The 2026-10-05 post-D reconciliation found one unresolved D disposition, B08, which must be closed before E starts. |
-| E — Communications, automation history, search, brand tokens & accessibility | `BATCH-E.md` + **`POST-BATCH-D-RECONCILIATION-2026-10-05.md`** | **Approved design, but implementation BLOCKED until final D is green and merged.** The reconciliation is mandatory because E was originally written before D existed in code. |
+| D — Owner/customer control plane, website, evidence & privacy | `BATCH-D.md` | **Implemented through the final D branch.** D1–D9 predecessors are merged; D10–D12 finalization is on `ai/sol/batch-d-d10-privacy`. Post-D reconciliation explicitly moved the one uncovered audit outcome, B08 lead-scoring configurability, into E's lead/settings migration instead of adding a one-off late D schema change. |
+| E — Communications, automation history, search, brand tokens & accessibility | `BATCH-E.md` + **`POST-BATCH-D-RECONCILIATION-2026-10-05.md`** | **Approved design, but implementation BLOCKED until final D is green and merged.** Reconciliation adds D's privacy sender/routes/metrics and the explicit B08 lead-scoring policy work. |
 | E2 — Visual redesign (owner desk, portal, public site; phone, desktop, dark) | `BATCH-E2.md` + **`POST-BATCH-D-RECONCILIATION-2026-10-05.md`** | Approved. Starts after E; must preserve D's website-editor preview, settings-backed copy/chrome and legal-page gate. |
 | F — Integrated verification, recovery, owner handoff & launch ledger | `BATCH-F.md` + **`POST-BATCH-D-RECONCILIATION-2026-10-05.md`** | Approved. Starts after E2; recovery must respect D privacy deletion and must never resurrect intentionally deleted private media. |
 
@@ -22,9 +22,10 @@ the points where the implementer must stop and ask instead of guessing.
 Batch D implementation. Before any E code is written, read
 `POST-BATCH-D-RECONCILIATION-2026-10-05.md`. It records the implemented D contracts and the exact E/E2/F amendments:
 D's new privacy-verification sender joins E's message ledger migration; E updates D's existing `METRICS` registry
-instead of creating competing definitions; E's distributed limiter preserves D's public-privacy semantics; E2 keeps
-D's draft website preview and versioned legal gate; and F's second private-media copy may never survive a verified
-privacy deletion or be restored later. Where the older E/E2/F text conflicts with that reconciliation, the
+instead of creating competing definitions; B08 lead scoring becomes a versioned BusinessSettings policy in E's
+already-planned Lead/BusinessSettings migration; E's distributed limiter preserves D's public-privacy semantics;
+E2 keeps D's draft website preview and versioned legal gate; and F's second private-media copy may never survive a
+verified privacy deletion or be restored later. Where the older E/E2/F text conflicts with that reconciliation, the
 reconciliation wins.
 
 The older 2026-10-02 designs remain under `docs/archive/designs-2026-10-02/` for history; they are not instructions.
