@@ -52,6 +52,8 @@ export async function pushLateDeliveryCreditForHandoff(
     case "UNKNOWN":
     case "DRIFT":
       return { state: "UNKNOWN", detail: operation.lastError ?? "The Stripe balance-credit outcome needs reconciliation." };
+    case "SUPERSEDED":
+      return { state: "UNKNOWN", detail: "This provider operation was superseded by a newer durable decision." };
     case "SUCCEEDED":
       return {
         state: "UNKNOWN",
