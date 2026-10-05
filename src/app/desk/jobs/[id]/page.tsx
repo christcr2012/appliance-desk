@@ -14,6 +14,8 @@ import { getJobCompletionScope } from "@/domains/jobs";
 import { pendingDeliveriesForJob } from "@/domains/billing/pickup-billing-events";
 import { substituteChoices } from "@/domains/jobs/substitution";
 import { businessDateKey } from "@/lib/business-date";
+import { LateReturnWaiverForm } from "./late-return-waiver-form";
+import { getLateReturnWaiverState } from "@/domains/billing/late-return-waiver";
 
 export const metadata = { title: "Job" };
 
@@ -60,6 +62,8 @@ export default async function JobDetailPage({
     pendingDeliveriesForJob(job.id),
   ]);
 
+  const waiverState =
+    canViewFinance && job.type === "REMOVAL" && job.status === "COMPLETED" ? await getLateReturnWaiverState(job.id) : null;
   const choices = canViewFinance
     ? new Map(await Promise.all(pendingDeliveries.filter((p) => !p.deliveredOn && !p.removedAt && !p.substituteJobId).map(async (p) => [p.id, await substituteChoices(p.id)] as const)))
     : new Map<string, Awaited<ReturnType<typeof substituteChoices>>>();
@@ -112,6 +116,8 @@ export default async function JobDetailPage({
           noShowAt={"noShowAt" in job && job.noShowAt ? job.noShowAt.toISOString() : null}
         />
       </div>
+
+      {waiverState && <LateReturnWaiverForm jobId={job.id} state={waiverState} />}
 
       {partsUsed && (
         <div className="mt-6">

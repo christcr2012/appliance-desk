@@ -144,7 +144,7 @@ export function quoteEarlyTermination(
   };
 }
 
-async function loadTermAgreement(
+export async function loadTermAgreement(
   tx: Prisma.TransactionClient,
   agreementId: string,
 ): Promise<TermAgreement & { termsSnapshot: unknown }> {

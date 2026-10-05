@@ -1,6 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { requireRole } from "@/lib/session";
 import {
@@ -283,4 +285,35 @@ export async function endMonthToMonthForCustomerAction(formData: FormData): Prom
   });
   revalidatePath(`/desk/agreements/${agreementId}`);
   revalidatePath("/desk/dashboard");
+}
+
+/** The owner confirms what happens to a rental whose equipment all came back early (B2-19). */
+export async function confirmEarlyReturnAction(formData: FormData): Promise<void> {
+  const session = await requireRole("OWNER", "ADMIN");
+  const agreementId = String(formData.get("agreementId") ?? "");
+  const base = `/desk/agreements/${encodeURIComponent(agreementId)}/early-return`;
+  let failure: string | null = null;
+  try {
+    const { choiceFromFields } = await import("@/domains/agreements/early-return-form");
+    const { applyEarlyReturn, choiceFromSettings, parsePreview } = await import("@/domains/agreements/early-return");
+    const { earlyReturnSettingsFrom } = await import("@/domains/settings/early-return");
+    const settings = await prisma.businessSettings.findUnique({ where: { id: "singleton" } });
+    const choice = choiceFromFields(
+      {
+        billing: String(formData.get("billing") ?? ""),
+        unusedDays: String(formData.get("unusedDays") ?? ""),
+        fee: String(formData.get("fee") ?? ""),
+        feeDollars: String(formData.get("feeDollars") ?? ""),
+        feeReason: String(formData.get("feeReason") ?? ""),
+      },
+      choiceFromSettings(earlyReturnSettingsFrom(settings)),
+    );
+    await applyEarlyReturn(session.user.id, agreementId, choice, parsePreview(String(formData.get("preview") ?? "")));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    failure = message && message.length < 300 && !message.includes("prisma") ? message : "That could not be saved. Please try again.";
+  }
+  revalidatePath(`/desk/agreements/${agreementId}`);
+  revalidatePath("/desk/today");
+  redirect(failure ? `${base}?error=${encodeURIComponent(failure)}` : `${base}?done=1`);
 }

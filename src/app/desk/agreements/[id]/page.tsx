@@ -76,6 +76,15 @@ export default async function AgreementDetailPage({
           }))}
         />
       </div>
+      {agreement.status === "ACTIVE" && (
+        <p className="mt-6 text-sm text-gray-700">
+          Did all of the equipment come back early?{" "}
+          <Link href={`/desk/agreements/${agreement.id}/early-return`} className="font-medium text-primary underline">
+            Choose what happens to billing, refunds and fees
+          </Link>
+          .
+        </p>
+      )}
       {endQuote && (
         <MonthToMonthEndForm
           agreementId={agreement.id}

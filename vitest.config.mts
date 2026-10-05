@@ -14,6 +14,7 @@ const SHARED_SETTINGS_TESTS = [
   "tests/month-to-month-end-integration.test.ts",
   "tests/month-to-month-terms-integration.test.ts",
   "tests/annual-reminders-integration.test.ts",
+  "tests/early-return-integration.test.ts",
   "tests/tax-rate-columns-sync-integration.test.ts",
   "tests/tax-rate-storage.test.ts",
 ];

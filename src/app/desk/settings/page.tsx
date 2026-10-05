@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { NoticeDeliveryForm } from "./notice-delivery-form";
 import { MonthToMonthForm } from "./month-to-month-form";
+import { EarlyReturnForm } from "./early-return-form";
+import { earlyReturnDefaults, earlyReturnSettingsFrom } from "@/domains/settings/early-return";
 import { MONTH_TO_MONTH_STARTING_DRAFTS, monthToMonthSettingsDefaults } from "@/domains/settings/month-to-month";
 import { prisma } from "@/lib/prisma";
 import { noticeDeliveryDefaults } from "@/domains/settings/notice-delivery";
@@ -96,6 +98,7 @@ export default async function DeskSettingsPage({
           currentVersion={(await prisma.monthToMonthTermsVersion.findFirst({ orderBy: { version: "desc" }, select: { version: true } }))?.version ?? null}
           startingDrafts={MONTH_TO_MONTH_STARTING_DRAFTS}
         />
+        <EarlyReturnForm defaultValues={earlyReturnDefaults(earlyReturnSettingsFrom(settings))} />
         <NoticeDeliveryForm
           defaultValues={noticeDeliveryDefaults(settings as { noticeCertifierRoles?: string; mailNoticeTransitDays?: number })}
           canChange={(session.user as { role?: string }).role === "OWNER"}

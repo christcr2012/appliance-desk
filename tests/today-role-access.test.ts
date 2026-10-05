@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   pendingDelivery: vi.fn(),
   providerOp: vi.fn(),
   raw: vi.fn(),
+  earlyResolution: vi.fn(),
 }));
 vi.mock("@/lib/session", () => ({ requireRole: mocks.requireRole }));
 vi.mock("@/lib/prisma", () => ({
@@ -22,6 +23,7 @@ vi.mock("@/lib/prisma", () => ({
     appliance: { findMany: mocks.appliance },
     customerNotice: { findMany: mocks.notice },
     pendingDelivery: { findMany: mocks.pendingDelivery },
+    earlyReturnResolution: { findMany: mocks.earlyResolution },
     providerOperation: { findMany: mocks.providerOp, count: vi.fn().mockResolvedValue(0) },
     // R17: term-ended agreements and maintenance-due appliances are found with set-based SQL.
     $queryRaw: mocks.raw,
@@ -43,6 +45,7 @@ beforeEach(() => {
     mocks.pendingDelivery,
     mocks.providerOp,
     mocks.raw,
+    mocks.earlyResolution,
   ]) {
     fn.mockResolvedValue([]);
   }

@@ -4,8 +4,9 @@ import { getStripeClient } from "@/lib/stripe";
 import { businessDateFromKey, businessDateKey, businessDayBounds, businessDaysBetween, formatBusinessDate } from "@/lib/business-date";
 import { formatCents } from "@/domains/pricing/money";
 import { sumTax, taxCentsForLine } from "./tax";
-import { prepareInvoiceRefundInTx, runPreparedInvoiceRefund, type ClaimedRefund } from "./refunds";
+import { runPreparedInvoiceRefund, type ClaimedRefund } from "./refunds";
 import { lockCustomerLedger } from "./ledger";
+import { refundAcrossPaidInvoicesInTx } from "./refund-across-invoices";
 import { assertActiveTeamActor } from "@/lib/team-actor";
 import { closeAgreementInTx, lockRentalAgreementInTx, runCloseAgreementContinuation, type CloseAgreementResult } from "@/domains/agreements";
 import { dropSubstituteInTx } from "@/domains/jobs/substitution";
@@ -109,7 +110,7 @@ async function loadSettings(tx: Prisma.TransactionClient): Promise<PickupBilling
   return pickupBillingSettingsFrom(row ?? {});
 }
 
-type Item = {
+export type Item = {
   assignmentId: string;
   applianceId: string;
   unassignedAt: Date | null;
@@ -126,7 +127,7 @@ export function isSupersededAssignment(reason: string | null): boolean {
 }
 
 /** Which rental line each appliance is on, what it is called, and its share of the line price. */
-async function itemsForAppliances(
+export async function itemsForAppliances(
   tx: Prisma.TransactionClient,
   agreementId: string,
   applianceIds: string[],
@@ -180,10 +181,21 @@ const AGREEMENT_SELECT = {
   customerId: true,
   status: true,
   endDate: true,
+  terminationEffectiveOn: true,
   billingStartedAt: true,
   paidInFullInAdvance: true,
   taxRateMilliPercent: true,
 } as const;
+
+/**
+ * The last day the customer has paid for: the earliest of the term's end date and the day before an agreed early
+ * ending takes effect. Null when the rental has neither (nothing can be late). docs/designs/BATCH-B2.md B2-7.
+ */
+export function agreedEndFor(agreement: { endDate: Date | null; terminationEffectiveOn?: Date | null }): Date | null {
+  const ending = agreement.terminationEffectiveOn ? new Date(agreement.terminationEffectiveOn.getTime() - 1000) : null;
+  if (agreement.endDate && ending) return agreement.endDate.getTime() <= ending.getTime() ? agreement.endDate : ending;
+  return agreement.endDate ?? ending;
+}
 
 /**
  * Rule 1. Called when a REMOVAL job completes, with the appliances it took
@@ -204,7 +216,8 @@ export async function recordLateReturnOnRemoval(
   if (input.applianceIds.length === 0) return EMPTY;
   const agreement = await tx.rentalAgreement.findUnique({ where: { id: input.agreementId }, select: AGREEMENT_SELECT });
   if (!agreement) return EMPTY;
-  if (!agreement.endDate) {
+  const agreedEnd = agreedEndFor(agreement);
+  if (!agreedEnd) {
     return { ...EMPTY, notes: ["The agreement has no end date yet, so nothing was late."] };
   }
   const settings = await loadSettings(tx);
@@ -217,7 +230,7 @@ export async function recordLateReturnOnRemoval(
       charge: calculateLateReturnCharge({
         itemLabel: item.label,
         itemMonthlyPriceCents: item.monthlyPriceCents,
-        agreedEndDate: agreement.endDate as Date,
+        agreedEndDate: agreedEnd,
         pickupDate: input.pickupDate,
         settings,
       }),
@@ -242,7 +255,7 @@ export async function recordLateReturnOnRemoval(
       customerId: agreement.customerId,
       agreementId: agreement.id,
       status: "OPEN",
-      billingPeriodStart: agreement.endDate,
+      billingPeriodStart: agreedEnd,
       billingPeriodEnd: input.pickupDate,
       subtotalCents,
       taxCents,
@@ -271,7 +284,7 @@ export async function recordLateReturnOnRemoval(
         agreementId: agreement.id,
         agreementStatus: agreement.status,
         jobId: input.jobId,
-        agreedEndDate: businessDateKey(agreement.endDate),
+        agreedEndDate: businessDateKey(agreedEnd),
         pickupDate: businessDateKey(input.pickupDate),
         pickupDayNotBilled: settings.pickupDayNotBilled,
         items: charges.map(({ charge }) => ({
@@ -578,34 +591,17 @@ export async function removeUndeliveredItem(userId: string, pendingDeliveryId: s
     } else {
       const periods = periodsBilledThrough(agreement.billingStartedAt, now);
       const owedCents = (item.monthlyPriceCents + taxCentsForLine(item.monthlyPriceCents, agreement.taxRateMilliPercent)) * periods;
-      let remaining = owedCents;
-      const invoices = remaining > 0
-        ? await tx.invoice.findMany({
-            where: { agreementId: agreement.id, amountPaidCents: { gt: 0 }, status: { notIn: ["VOID", "DRAFT"] } },
-            orderBy: [{ billingPeriodStart: "desc" }, { createdAt: "desc" }],
-            select: { id: true, amountPaidCents: true, refunds: { select: { amountCents: true } } },
-          })
-        : [];
-      for (const invoice of invoices) {
-        if (remaining <= 0) break;
-        const refundable = invoice.amountPaidCents - invoice.refunds.reduce((sum, r) => sum + r.amountCents, 0);
-        const chunk = Math.min(remaining, refundable);
-        if (chunk <= 0) continue;
-        const prepared = await prepareInvoiceRefundInTx(tx, userId, {
-          invoiceId: invoice.id,
-          amountCents: chunk,
-          reason: "BILLING_ERROR",
-          notes: `Never delivered: ${item.label} taken off the agreement.`,
-        });
-        refundIds.push(prepared.refundId);
-        if (prepared.claim) {
-          refundRuns.push({ refundId: prepared.refundId, claim: prepared.claim, invoiceId: invoice.id, amountCents: chunk });
-          refundedCents += chunk;
-        } else {
-          refundByHandCents += chunk;
-        }
-        remaining -= chunk;
-      }
+      const refunded = await refundAcrossPaidInvoicesInTx(tx, userId, {
+        agreementId: agreement.id,
+        amountCents: owedCents,
+        reason: "BILLING_ERROR",
+        notes: `Never delivered: ${item.label} taken off the agreement.`,
+      });
+      refundedCents = refunded.refundedCents;
+      refundByHandCents = refunded.refundByHandCents;
+      refundRuns.push(...refunded.runs);
+      refundIds.push(...refunded.refundIds);
+      const remaining = refunded.unpaidCents;
       if (owedCents === 0) {
         note = `${item.label}: taken off the agreement before anything was billed for it.`;
       } else {

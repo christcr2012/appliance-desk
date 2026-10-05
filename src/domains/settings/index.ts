@@ -54,7 +54,11 @@ const DEFAULT_SETTINGS = {
   lateReturnRateMode: "MONTHLY_DIV_30",
   lateReturnFixedDailyCents: 0,
   lateDeliveryProrationBasis: "MONTHLY_DIV_30",
-  earlyReturnProrationBasis: "MONTHLY_DIV_30", // deprecated column, never read
+  earlyReturnProrationBasis: "MONTHLY_DIV_30", // read again by "When equipment comes back early" (B2-19)
+  earlyReturnBilling: "KEEP_TO_AGREED_END",
+  earlyReturnUnusedDays: "KEEP",
+  earlyReturnFee: "AGREED_TERMS_FEE",
+  earlyReturnHandling: "ASK_ME",
   pickupDayNotBilled: true,
   defaultJobDurationMinutes: 120,
   staffMayWorkUnassignedJobs: true,
@@ -142,6 +146,12 @@ export type BusinessSettingsUpdate = Partial<{
   lateReturnFixedDailyCents: number;
   lateDeliveryProrationBasis: string;
   pickupDayNotBilled: boolean;
+  // When equipment comes back early (B2-19).
+  earlyReturnBilling: string;
+  earlyReturnUnusedDays: string;
+  earlyReturnFee: string;
+  earlyReturnHandling: string;
+  earlyReturnProrationBasis: string;
   // Visits and scheduling (Batch C P1-A).
   defaultJobDurationMinutes: number;
   staffMayWorkUnassignedJobs: boolean;

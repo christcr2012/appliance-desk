@@ -12,6 +12,8 @@ import {
   custodyUnknownException,
   earlyEndingNotDoneException,
   itemNotDeliveredException,
+  returnedEarlyException,
+  EARLY_RETURN_DEFAULTS_REVIEW_DAYS,
   subscriptionUpdatePendingException,
   noticeWaitingException,
   noticeProblemException,
@@ -62,6 +64,52 @@ async function capped<T>(find: (take: number) => Promise<T[]>, count: () => Prom
 export const LINE_REDUCE_KEY_PREFIX = "subscription-line-reduce-";
 const parseLineReduceKey = (key: string): string | null =>
   key.startsWith(LINE_REDUCE_KEY_PREFIX) ? key.slice(LINE_REDUCE_KEY_PREFIX.length) : null;
+
+export type ReturnedEarlyRow = { agreementId: string; customerName: string; since: Date; settled: boolean };
+
+/**
+ * Rentals whose equipment all came back before the agreed ending (B2-19): the ones still waiting for the owner's
+ * choice, plus the ones his standard choices settled in the last few days (so he can still change them).
+ */
+export async function returnedEarlyRows(take: number, now: Date): Promise<ReturnedEarlyRow[]> {
+  const waiting = await prisma.$queryRaw<Array<{ id: string; since: Date }>>`
+    SELECT a."id", MAX(e."closedAt") AS "since"
+    FROM "RentalAgreement" a
+    JOIN "ApplianceCustodyEpisode" e ON e."agreementId" = a."id"
+    WHERE a."status" = 'ACTIVE'
+      AND (a."endDate" IS NULL OR a."endDate" > ${utc(now)}::timestamp)
+      AND (a."terminationEffectiveOn" IS NULL OR a."terminationEffectiveOn" > ${utc(now)}::timestamp)
+      AND NOT EXISTS (SELECT 1 FROM "ApplianceCustodyEpisode" o WHERE o."agreementId" = a."id" AND o."closedAt" IS NULL)
+      AND NOT EXISTS (SELECT 1 FROM "EarlyReturnResolution" r WHERE r."agreementId" = a."id")
+      AND NOT EXISTS (SELECT 1 FROM "RentalAgreement" n WHERE n."renewedFromAgreementId" = a."id" AND n."status" = 'SCHEDULED')
+    GROUP BY a."id"
+    ORDER BY MAX(e."closedAt") ASC, a."id" ASC
+    LIMIT ${take}
+  `;
+  const settledRows = await prisma.earlyReturnResolution.findMany({
+    where: {
+      appliedBy: "DEFAULTS",
+      createdAt: { gte: addDays(now, -EARLY_RETURN_DEFAULTS_REVIEW_DAYS) },
+      refundedCents: 0,
+      refundByHandCents: 0,
+      creditId: null,
+    },
+    select: { agreementId: true, createdAt: true },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    take,
+  });
+  const ids = [...new Set([...waiting.map((w) => w.id), ...settledRows.map((r) => r.agreementId)])];
+  if (ids.length === 0) return [];
+  const agreements = await prisma.rentalAgreement.findMany({
+    where: { id: { in: ids } },
+    select: { id: true, customer: { select: { user: { select: { name: true, email: true } } } } },
+  });
+  const names = new Map(agreements.map((a) => [a.id, customerDisplayName(a.customer)]));
+  return [
+    ...waiting.map((w) => ({ agreementId: w.id, customerName: names.get(w.id) ?? "A customer", since: new Date(w.since), settled: false })),
+    ...settledRows.map((r) => ({ agreementId: r.agreementId, customerName: names.get(r.agreementId) ?? "A customer", since: r.createdAt, settled: true })),
+  ].slice(0, take);
+}
 
 const empty = <T,>(): Promise<Capped<T>> => Promise.resolve({ rows: [], total: 0 });
 
@@ -169,6 +217,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     uncertainNotices,
     failedNotices,
     itemsNotDelivered,
+    returnedEarly,
     custodyGaps,
     pendingLineReductions,
   ] = await Promise.all([
@@ -308,6 +357,13 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
       }),
       () => prisma.pendingDelivery.count({ where: undeliveredWhere }),
     ),
+    // Money decision (refund, credit, fee): owners and admins.
+    canViewFinance
+      ? capped(
+          (take) => returnedEarlyRows(take, now),
+          async () => (await returnedEarlyRows(5000, now)).length,
+        )
+      : empty<ReturnedEarlyRow>(),
     capped(
       (take) => prisma.appliance.findMany({
         where: custodyGapWhere,
@@ -369,6 +425,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
         customerName: customerDisplayName(p.agreement.customer),
       }),
     ),
+    ...returnedEarly.rows.map((r) => returnedEarlyException(r)),
     ...waitingNotices.rows.map((n) =>
       noticeWaitingException({ id: n.id, createdAt: n.createdAt, kind: n.kind, customerName: customerDisplayName(n.customer) }),
     ),
@@ -503,6 +560,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
       ["NOTICE_UNCERTAIN", uncertainNotices],
       ["NOTICE_FAILED", failedNotices],
       ["ITEM_NOT_DELIVERED", itemsNotDelivered],
+      ["RETURNED_EARLY", returnedEarly],
       ["CUSTODY_UNKNOWN", custodyGaps],
       ["SUBSCRIPTION_UPDATE_PENDING", pendingLineReductions],
     ] as Array<[ExceptionCategory, Capped<unknown>]>
