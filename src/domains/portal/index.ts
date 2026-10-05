@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { sendEmail } from "@/lib/email";
+import { deliverMessage } from "@/domains/messaging/deliver";
 import { getBusinessSettings } from "@/domains/settings";
 import {
   ACTIVE_ASSIGNMENT_WHERE,
@@ -55,13 +55,6 @@ async function portalCustomerId(userId: string): Promise<string | null> {
   return customer && !customer.archivedAt ? customer.id : null;
 }
 
-/**
- * Customer-visible portal data only. Identity is derived from the signed-in
- * user's id passed by the server page/action; the query never accepts a
- * customer id from the browser. Activity is intentionally bounded to the most
- * recent 20 rows. Internal notes, staff assignment, cost and provider fields
- * are not selected, so they cannot leak through serialization later.
- */
 export async function getPortalData(userId: string) {
   const now = new Date();
   const customer = await prisma.customer.findUnique({
@@ -189,8 +182,6 @@ export async function getPortalMaintenancePage(userId: string, rawPage: number) 
   };
 }
 
-/** The appliances this customer can file a maintenance request against —
- * only ones currently assigned to them through an ACTIVE agreement. */
 export async function getPortalApplianceOptions(userId: string) {
   return getActiveApplianceOptionsForUser(userId);
 }
@@ -202,7 +193,6 @@ export type NewMaintenanceRequestInput = {
   photoUrls?: string[];
 };
 
-/** The customer's own submission, always resolved from the session user id. */
 export async function createMaintenanceRequestForUser(
   userId: string,
   input: NewMaintenanceRequestInput,
@@ -211,22 +201,17 @@ export async function createMaintenanceRequestForUser(
     where: { userId },
     include: { user: { select: { name: true, email: true } } },
   });
-  if (!customer) {
-    throw new Error("No customer account found for this login.");
-  }
+  if (!customer) throw new Error("No customer account found for this login.");
 
   let applianceLabel: string | null = null;
   if (input.applianceId) {
     const options = await getPortalApplianceOptions(userId);
     const match = options.find((o) => o.id === input.applianceId);
-    if (!match) {
-      throw new Error("That appliance isn't on one of your active rentals.");
-    }
+    if (!match) throw new Error("That appliance isn't on one of your active rentals.");
     applianceLabel = match.label;
   }
 
   const photoUrls = (input.photoUrls ?? []).filter(Boolean);
-
   const request = await prisma.maintenanceRequest.create({
     data: {
       customerId: customer.id,
@@ -250,47 +235,47 @@ export async function createMaintenanceRequestForUser(
   const notifyTo = process.env.MAINTENANCE_NOTIFICATION_EMAIL || settings.publicEmail;
   const isUrgent = request.priority === "URGENT" || request.priority === "HIGH";
 
-  await sendEmail({
-    to: notifyTo,
-    subject: isUrgent
-      ? `URGENT maintenance request: ${customer.user.name ?? customer.user.email}`
-      : `New maintenance request: ${customer.user.name ?? customer.user.email}`,
-    text: [
-      `A customer submitted a maintenance request${isUrgent ? " (flagged " + request.priority + ")" : ""}.`,
-      "",
-      `Customer: ${customer.user.name ?? "(no name on file)"} <${customer.user.email}>`,
-      `Appliance: ${applianceLabel ?? "(not specified / general question)"}`,
-      `Priority: ${request.priority}`,
-      `Problem: ${request.problem}`,
-      "",
-      "Review it in the Owner Desk under Maintenance.",
-    ].join("\n"),
+  await deliverMessage({
+    idempotencyKey: `maintenance-request-staff-${request.id}`,
+    channel: "EMAIL",
+    purpose: "TRANSACTIONAL",
+    templateKey: "maintenance-request-staff",
+    customerFacing: false,
+    recipient: { type: "Staff", address: notifyTo },
+    subject: { type: "MaintenanceRequest", id: request.id },
+    render: () => ({
+      subject: isUrgent
+        ? `URGENT maintenance request: ${customer.user.name ?? customer.user.email}`
+        : `New maintenance request: ${customer.user.name ?? customer.user.email}`,
+      text: [
+        `A customer submitted a maintenance request${isUrgent ? " (flagged " + request.priority + ")" : ""}.`,
+        "",
+        `Customer: ${customer.user.name ?? "(no name on file)"} <${customer.user.email}>`,
+        `Appliance: ${applianceLabel ?? "(not specified / general question)"}`,
+        `Priority: ${request.priority}`,
+        `Problem: ${request.problem}`,
+        "",
+        "Review it in the Owner Desk under Maintenance.",
+      ].join("\n"),
+    }),
   });
 
   return request;
 }
 
-/** Records explicit SMS opt-in/out for the signed-in customer. */
 export async function updateSmsPreference(
   userId: string,
   input: { optedIn: boolean; phone: string | null },
 ): Promise<{ phone: string | null; smsOptInAt: Date | null }> {
   const customer = await prisma.customer.findUniqueOrThrow({ where: { userId } });
   const phone = input.phone?.trim() || customer.phone;
-
-  if (input.optedIn && !phone) {
-    throw new Error("Add a phone number before turning on text notifications.");
-  }
+  if (input.optedIn && !phone) throw new Error("Add a phone number before turning on text notifications.");
 
   const updated = await prisma.$transaction(async (tx) => {
     const row = await tx.customer.update({
       where: { id: customer.id },
-      data: {
-        phone,
-        smsOptInAt: input.optedIn ? new Date() : null,
-      },
+      data: { phone, smsOptInAt: input.optedIn ? new Date() : null },
     });
-
     await tx.consentRecord.create({
       data: {
         customerId: customer.id,
@@ -298,7 +283,6 @@ export async function updateSmsPreference(
         details: { optedIn: input.optedIn },
       },
     });
-
     return row;
   });
 
