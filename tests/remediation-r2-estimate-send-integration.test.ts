@@ -2,8 +2,8 @@ import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const m = vi.hoisted(() => ({ send: vi.fn() }));
-vi.mock("@/lib/customer-email", () => ({
-  sendCustomerEmail: (...a: unknown[]) => m.send(...a),
+vi.mock("@/domains/messaging/deliver", () => ({
+  deliverMessage: (...a: unknown[]) => m.send(...a),
 }));
 
 import { sendEstimate } from "@/domains/estimates";
@@ -45,7 +45,7 @@ describe.skipIf(!enabled)("R10 initial estimate send is one claimed transition",
       data: { id: customerId, userId, referralCode: `R10${tag.slice(0, 15)}` },
     });
   });
-  beforeEach(() => m.send.mockReset().mockResolvedValue({ sent: true, outcome: "SENT" }));
+  beforeEach(() => m.send.mockReset().mockResolvedValue({ state: "ACCEPTED", deliveryId: "delivery", providerMessageId: "provider" }));
   afterAll(async () => {
     await prisma.auditLog.deleteMany({ where: { entityId: { in: ids } } });
     await prisma.estimateLineItem.deleteMany({ where: { estimateId: { in: ids } } });
@@ -81,8 +81,11 @@ describe.skipIf(!enabled)("R10 initial estimate send is one claimed transition",
     expect(keyOf(1)).not.toBe(keyOf(0));
   });
 
-  it.each(["REJECTED", "UNKNOWN"])("%s leaves owner-visible evidence and no automatic replay", async (outcome) => {
-    m.send.mockResolvedValue({ sent: false, outcome });
+  it.each([
+    ["REJECTED", "FAILED"],
+    ["UNKNOWN", "UNKNOWN"],
+  ] as const)("%s leaves owner-visible evidence and no automatic replay", async (outcome, state) => {
+    m.send.mockResolvedValue({ state, deliveryId: "delivery", providerMessageId: null });
     const id = await draft();
     expect(await sendEstimate(userId, id)).toEqual({ emailed: false, outcome });
     expect(m.send).toHaveBeenCalledTimes(1);
@@ -93,7 +96,7 @@ describe.skipIf(!enabled)("R10 initial estimate send is one claimed transition",
   });
 
   it("NOT_ATTEMPTED (email switched off) is not treated as a failure", async () => {
-    m.send.mockResolvedValue({ sent: false, outcome: "NOT_ATTEMPTED" });
+    m.send.mockResolvedValue({ state: "NOT_SENT", deliveryId: "delivery", providerMessageId: null });
     const id = await draft();
     await sendEstimate(userId, id);
     expect(
