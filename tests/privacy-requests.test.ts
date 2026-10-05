@@ -2,7 +2,12 @@ import { createHash, randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 const email = vi.hoisted(() => vi.fn(async () => ({ sent: true, outcome: "SENT" as const })));
+const blobDelete = vi.hoisted(() => vi.fn(async () => undefined));
 vi.mock("@/lib/customer-email", () => ({ sendCustomerEmail: email }));
+vi.mock("@vercel/blob", () => ({ del: blobDelete }));
+vi.mock("@/lib/photo-storage", () => ({
+  getPrivatePhotoStore: () => ({ token: "private-test-token", storeId: "store_test" }),
+}));
 
 import { prisma } from "@/lib/prisma";
 import {
@@ -34,6 +39,7 @@ describe.skipIf(!enabled)("Batch D privacy requests (real Postgres)", () => {
   const deletionRequest = `privacy-delete-${tag}`;
   const exportRequest = `privacy-export-${tag}`;
   const rateKey = `privacy-rate-${tag}`;
+  const privatePhotoUrl = `https://store-test.private.blob.vercel-storage.com/maintenance-requests/${maintenanceA}/${tag}.jpg`;
 
   beforeAll(async () => {
     await prisma.user.createMany({ data: [
@@ -62,7 +68,7 @@ describe.skipIf(!enabled)("Batch D privacy requests (real Postgres)", () => {
     await prisma.documentArtifact.create({ data: { kind: "SIGNED_AGREEMENT", subjectType: "RentalAgreement", subjectId: agreementA, customerId: customerA, payload: { tag }, html: `<html>${tag}</html>`, sha256: sha(`<html>${tag}</html>`), rendererVersion: 1 } });
     await prisma.auditLog.create({ data: { userId: ownerId, action: "privacy.fixture", entityType: "Customer", entityId: customerA, newValue: { tag } } });
     await prisma.maintenanceRequest.create({ data: { id: maintenanceA, customerId: customerA, problem: `private photo ${tag}` } });
-    await prisma.photo.create({ data: { url: `https://example.test/${tag}.jpg`, maintenanceRequestId: maintenanceA } });
+    await prisma.photo.create({ data: { url: privatePhotoUrl, maintenanceRequestId: maintenanceA } });
     await prisma.privacyRequest.create({ data: { id: deletionRequest, kind: "DELETE", status: "VERIFIED", customerId: customerA, requesterEmail: `${tag}-a@example.test`, verifiedAt: new Date() } });
     await prisma.privacyRequest.create({ data: { id: exportRequest, kind: "EXPORT", status: "VERIFIED", customerId: customerB, requesterEmail: `${tag}-b@example.test`, verifiedAt: new Date() } });
     await prisma.invoice.create({ data: { customerId: customerB, status: "OPEN", amountDueCents: 1234, lineItems: { create: { kind: "RENTAL", description: `B-only-${tag}`, amountCents: 1234 } } } });
@@ -99,7 +105,8 @@ describe.skipIf(!enabled)("Batch D privacy requests (real Postgres)", () => {
     expect(JSON.stringify(json)).not.toContain(`111 A ${tag}`);
   });
 
-  it("pseudonymizes personal data, revokes sessions, deletes request-only photos, and retains evidence", async () => {
+  it("pseudonymizes personal data, deletes private bytes, revokes sessions, and retains evidence", async () => {
+    blobDelete.mockClear();
     const before = {
       invoice: await prisma.invoice.count({ where: { customerId: customerA } }),
       payment: await prisma.payment.count({ where: { invoice: { customerId: customerA } } }),
@@ -111,6 +118,7 @@ describe.skipIf(!enabled)("Batch D privacy requests (real Postgres)", () => {
     };
     const result = await fulfillPrivacyDeletion(ownerId, deletionRequest, "DELETE");
     expect(result.retained).toContain("Invoice");
+    expect(blobDelete).toHaveBeenCalledWith([privatePhotoUrl], { token: "private-test-token" });
     expect((await prisma.user.findUniqueOrThrow({ where: { id: userA } })).email).toBe(`deleted-${userA}@invalid`);
     expect((await prisma.customer.findUniqueOrThrow({ where: { id: customerA } })).phone).toBeNull();
     expect((await prisma.serviceAddress.findUniqueOrThrow({ where: { id: addressA } })).line1).toBe("Deleted address");
@@ -126,6 +134,7 @@ describe.skipIf(!enabled)("Batch D privacy requests (real Postgres)", () => {
     expect(await prisma.customerNotice.count({ where: { customerId: customerA } })).toBe(before.notice);
     expect(await prisma.auditLog.count({ where: { entityId: customerA } })).toBe(before.audit);
     await expect(fulfillPrivacyDeletion(ownerId, deletionRequest, "DELETE")).resolves.toEqual(result);
+    expect(blobDelete).toHaveBeenCalledTimes(1);
   });
 
   it("refuses expired and reused verification tokens", async () => {
