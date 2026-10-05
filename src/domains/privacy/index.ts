@@ -289,6 +289,85 @@ export async function buildPrivacyExport(userId: string, requestId: string): Pro
 const PSEUDONYMIZED = ["User", "Customer", "ServiceAddress", "CustomerContact", "Lead"];
 const RETAINED = ["Invoice", "Payment", "Receipt", "Refund", "CustomerCredit", "SignatureRecord", "DocumentArtifact", "CustomerNotice", "AuditLog"];
 
+type PrivacyDeletionClaim = {
+  fulfilled: boolean;
+  customerId: string | null;
+  photoIds: string[];
+  blobUrls: string[];
+  blobToken: string | null;
+};
+
+async function claimPrivacyDeletion(
+  userId: string,
+  requestId: string,
+): Promise<PrivacyDeletionClaim> {
+  return prisma.$transaction(async (tx) => {
+    const rows = await tx.$queryRaw<Array<{ id: string }>>`
+      SELECT "id" FROM "PrivacyRequest" WHERE "id" = ${requestId} FOR UPDATE
+    `;
+    if (rows.length !== 1) throw new Error("Privacy request not found.");
+
+    const request = await tx.privacyRequest.findUniqueOrThrow({ where: { id: requestId } });
+    if (request.kind !== "DELETE" || !request.customerId) {
+      throw new Error("This is not a customer deletion request.");
+    }
+    if (request.status === "FULFILLED") {
+      return { fulfilled: true, customerId: null, photoIds: [], blobUrls: [], blobToken: null };
+    }
+    if (request.status !== "VERIFIED") {
+      throw new Error("Verify the customer's identity before deleting personal data.");
+    }
+    if (request.fulfilledByUserId && request.fulfilledByUserId !== userId) {
+      throw new Error("This deletion is already being fulfilled by another owner.");
+    }
+
+    const customer = await tx.customer.findUniqueOrThrow({
+      where: { id: request.customerId },
+      select: { id: true, userId: true },
+    });
+    const privateRequestPhotos = await tx.photo.findMany({
+      where: {
+        applianceId: null,
+        jobId: null,
+        maintenanceRequest: { customerId: customer.id },
+      },
+      select: { id: true, url: true },
+    });
+    const blobUrls = privateRequestPhotos.map((row) => row.url).filter(isVercelBlobUrl);
+    const privateStore = blobUrls.length > 0 ? getPrivatePhotoStore() : null;
+    if (blobUrls.length > 0 && !privateStore) {
+      throw new Error("Private photo storage is unavailable; privacy deletion was not fulfilled.");
+    }
+
+    // Claim the destructive workflow before any external side effect. Revoking
+    // sessions here prevents a customer from adding a new private photo while
+    // the Blob delete is in flight. A failed Blob call leaves the request
+    // VERIFIED and claimed, so the owner can safely retry without duplicating
+    // the database pseudonymization.
+    await tx.session.deleteMany({ where: { userId: customer.userId } });
+    if (!request.fulfilledByUserId) {
+      const claimed = await tx.privacyRequest.updateMany({
+        where: { id: requestId, status: "VERIFIED", fulfilledByUserId: null },
+        data: {
+          fulfilledByUserId: userId,
+          notes: "Deletion fulfillment claimed; private-photo deletion pending.",
+        },
+      });
+      if (claimed.count !== 1) {
+        throw new Error("This deletion is already being fulfilled.");
+      }
+    }
+
+    return {
+      fulfilled: false,
+      customerId: customer.id,
+      photoIds: privateRequestPhotos.map((row) => row.id),
+      blobUrls,
+      blobToken: privateStore?.token ?? null,
+    };
+  });
+}
+
 export async function fulfillPrivacyDeletion(
   userId: string,
   requestId: string,
@@ -297,17 +376,41 @@ export async function fulfillPrivacyDeletion(
   await requireOwner(userId);
   if (confirmation !== "DELETE") throw new Error("Type DELETE to confirm this privacy deletion.");
 
+  const claim = await claimPrivacyDeletion(userId, requestId);
+  if (claim.fulfilled) {
+    return { pseudonymized: [...PSEUDONYMIZED], retained: [...RETAINED] };
+  }
+
+  // External provider work deliberately happens outside the database
+  // transaction. DELETE is retry-safe by server-state effect: if a previous
+  // attempt removed some/all objects and crashed before the local commit, a
+  // retry converges on the same missing-object state.
+  if (claim.blobUrls.length > 0) {
+    if (!claim.blobToken) {
+      throw new Error("Private photo storage is unavailable; privacy deletion was not fulfilled.");
+    }
+    await del(claim.blobUrls, { token: claim.blobToken });
+  }
+
   return prisma.$transaction(async (tx) => {
     const rows = await tx.$queryRaw<Array<{ id: string }>>`
       SELECT "id" FROM "PrivacyRequest" WHERE "id" = ${requestId} FOR UPDATE
     `;
     if (rows.length !== 1) throw new Error("Privacy request not found.");
+
     const request = await tx.privacyRequest.findUniqueOrThrow({ where: { id: requestId } });
-    if (request.kind !== "DELETE" || !request.customerId) throw new Error("This is not a customer deletion request.");
     if (request.status === "FULFILLED") {
       return { pseudonymized: [...PSEUDONYMIZED], retained: [...RETAINED] };
     }
-    if (request.status !== "VERIFIED") throw new Error("Verify the customer's identity before deleting personal data.");
+    if (
+      request.kind !== "DELETE" ||
+      !request.customerId ||
+      request.customerId !== claim.customerId ||
+      request.status !== "VERIFIED" ||
+      request.fulfilledByUserId !== userId
+    ) {
+      throw new Error("This privacy deletion can no longer be fulfilled from this claim.");
+    }
 
     const customer = await tx.customer.findUniqueOrThrow({
       where: { id: request.customerId },
@@ -365,24 +468,8 @@ export async function fulfillPrivacyDeletion(
       },
     });
 
-    const privateRequestPhotos = await tx.photo.findMany({
-      where: {
-        applianceId: null,
-        jobId: null,
-        maintenanceRequest: { customerId: customer.id },
-      },
-      select: { id: true, url: true },
-    });
-    const blobUrls = privateRequestPhotos.map((row) => row.url).filter(isVercelBlobUrl);
-    if (blobUrls.length > 0) {
-      const privateStore = getPrivatePhotoStore();
-      if (!privateStore) {
-        throw new Error("Private photo storage is unavailable; privacy deletion was not fulfilled.");
-      }
-      await del(blobUrls, { token: privateStore.token });
-    }
-    if (privateRequestPhotos.length > 0) {
-      await tx.photo.deleteMany({ where: { id: { in: privateRequestPhotos.map((row) => row.id) } } });
+    if (claim.photoIds.length > 0) {
+      await tx.photo.deleteMany({ where: { id: { in: claim.photoIds } } });
     }
 
     await tx.privacyRequest.update({
@@ -394,7 +481,7 @@ export async function fulfillPrivacyDeletion(
         fulfilledByUserId: userId,
         verificationTokenHash: null,
         verificationExpiresAt: null,
-        notes: `Personal fields pseudonymized. ${privateRequestPhotos.length} maintenance-request-only photo(s) deleted. Financial, signature, document, notice and audit evidence retained.`,
+        notes: `Personal fields pseudonymized. ${claim.photoIds.length} maintenance-request-only photo(s) deleted. Financial, signature, document, notice and audit evidence retained.`,
       },
     });
 
@@ -416,7 +503,11 @@ export async function rejectPrivacyRequest(userId: string, requestId: string, re
   const trimmed = reason.trim();
   if (trimmed.length < 3) throw new Error("Give a short reason for rejecting this request.");
   const changed = await prisma.privacyRequest.updateMany({
-    where: { id: requestId, status: { in: ["RECEIVED", "VERIFIED"] } },
+    where: {
+      id: requestId,
+      status: { in: ["RECEIVED", "VERIFIED"] },
+      fulfilledByUserId: null,
+    },
     data: {
       status: "REJECTED",
       rejectedReason: trimmed,
