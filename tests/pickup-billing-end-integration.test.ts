@@ -24,9 +24,9 @@ describe("late-return waiver cents (pure)", () => {
   });
   it("the agreed end is the earlier of the term end and the second before an agreed ending", () => {
     const termEnd = new Date("2027-03-01T06:59:59Z");
-    const effective = new Date("2026-09-01T06:00:00Z");
-    expect(agreedEndFor({ endDate: termEnd, terminationEffectiveOn: effective })?.toISOString()).toBe("2026-09-01T05:59:59.000Z");
-    expect(agreedEndFor({ endDate: null, terminationEffectiveOn: effective })?.toISOString()).toBe("2026-09-01T05:59:59.000Z");
+    const effective = new Date("2025-09-01T06:00:00Z");
+    expect(agreedEndFor({ endDate: termEnd, terminationEffectiveOn: effective })?.toISOString()).toBe("2025-09-01T05:59:59.000Z");
+    expect(agreedEndFor({ endDate: null, terminationEffectiveOn: effective })?.toISOString()).toBe("2025-09-01T05:59:59.000Z");
     expect(agreedEndFor({ endDate: termEnd })?.toISOString()).toBe(termEnd.toISOString());
     expect(agreedEndFor({ endDate: null })).toBeNull();
   });
@@ -43,7 +43,7 @@ describe.skipIf(!enabled)("pickup billing end: late returns, waiver and closing 
   const agreementIds: string[] = [];
   const applianceIds: string[] = [];
   const jobIds: string[] = [];
-  const octEnd = new Date("2026-11-01T05:59:59Z"); // the end of Colorado's October 31
+  const octEnd = new Date("2025-11-01T05:59:59Z"); // the end of Colorado's October 31, 2025
 
   async function rental(opts: { endDate?: Date | null; termMonths?: number | null; terminationEffectiveOn?: Date; units?: number } = {}) {
     const agreementId = `pb-ag-${agreementIds.length}-${tag}`;
@@ -57,10 +57,10 @@ describe.skipIf(!enabled)("pickup billing end: late returns, waiver and closing 
         termMonths: opts.termMonths === undefined ? 12 : opts.termMonths,
         endDate: opts.endDate === undefined ? octEnd : opts.endDate,
         terminationEffectiveOn: opts.terminationEffectiveOn ?? null,
-        terminationRequestedAt: opts.terminationEffectiveOn ? new Date("2026-08-01T06:00:00Z") : null,
+        terminationRequestedAt: opts.terminationEffectiveOn ? new Date("2025-08-01T06:00:00Z") : null,
         terminationFeeCents: opts.terminationEffectiveOn ? 0 : null,
         taxRateMilliPercent: 7000,
-        firstDeliveredOn: new Date("2025-11-01T06:00:00Z"),
+        firstDeliveredOn: new Date("2024-11-01T06:00:00Z"),
         lines: { create: { label: "Washer", monthlyPriceCents: 3000, listPriceCents: 3000 } },
       },
     });
@@ -75,7 +75,7 @@ describe.skipIf(!enabled)("pickup billing end: late returns, waiver and closing 
       await prisma.appliance.create({ data: { id, assetNumber: `PB${applianceIds.length}-${tag.slice(0, 8)}`, applianceTypeId: typeId, status: "RENTED" } });
       await prisma.applianceAssignment.create({ data: { rentalLineId: line.id, applianceId: id } });
       await prisma.$transaction((tx) =>
-        openCustodyEpisodeInTx(tx, { applianceId: id, customerId, serviceAddressId: addressId, agreementId, startedOn: new Date("2025-11-01T06:00:00Z"), startJobId: setupId }),
+        openCustodyEpisodeInTx(tx, { applianceId: id, customerId, serviceAddressId: addressId, agreementId, startedOn: new Date("2024-11-01T06:00:00Z"), startJobId: setupId }),
       );
       units.push(id);
     }
@@ -146,7 +146,7 @@ describe.skipIf(!enabled)("pickup billing end: late returns, waiver and closing 
 
   it("late-by-customer-bills-daily-unchanged, and full-return-after-term-end-closes-agreement-on-term-end", async () => {
     const { agreementId, units } = await rental();
-    const job = await pickup(agreementId, units, "2026-11-05");
+    const job = await pickup(agreementId, units, "2025-11-05");
     const invoice = await lateInvoice(job);
     expect(invoice.subtotalCents).toBe(400); // Nov 1 to Nov 4: 4 days of $30 / 30
     expect(invoice.taxCents).toBe(28);
@@ -158,7 +158,7 @@ describe.skipIf(!enabled)("pickup billing end: late returns, waiver and closing 
 
   it("late-by-company-waives-all-days-invoice-zero-paid", async () => {
     const { agreementId, units } = await rental();
-    const job = await pickup(agreementId, units, "2026-11-05");
+    const job = await pickup(agreementId, units, "2025-11-05");
     await recordLateReturnWaiver(ownerId, job, { waivedDays: null, note: "Our truck was late" });
     const invoice = await lateInvoice(job);
     expect(invoice.amountDueCents).toBe(0);
@@ -172,7 +172,7 @@ describe.skipIf(!enabled)("pickup billing end: late returns, waiver and closing 
 
   it("late-by-company-partial-days", async () => {
     const { agreementId, units } = await rental();
-    const job = await pickup(agreementId, units, "2026-11-05");
+    const job = await pickup(agreementId, units, "2025-11-05");
     await recordLateReturnWaiver(ownerId, job, { waivedDays: 1, note: "One day was ours" });
     const invoice = await lateInvoice(job);
     expect(invoice.subtotalCents).toBe(300);
@@ -185,48 +185,53 @@ describe.skipIf(!enabled)("pickup billing end: late returns, waiver and closing 
 
   it("waiver-refused-for-staff, waiver-twice-refused, waiver-refused-after-payment", async () => {
     const a = await rental();
-    const jobA = await pickup(a.agreementId, a.units, "2026-11-05");
+    const jobA = await pickup(a.agreementId, a.units, "2025-11-05");
     await expect(recordLateReturnWaiver(staffId, jobA, { waivedDays: null, note: "Staff try" })).rejects.toThrow();
     await recordLateReturnWaiver(ownerId, jobA, { waivedDays: 1, note: "One day was ours" });
     await expect(recordLateReturnWaiver(ownerId, jobA, { waivedDays: 1, note: "Again please" })).rejects.toThrow(/already been waived/);
 
     const b = await rental();
-    const jobB = await pickup(b.agreementId, b.units, "2026-11-05");
+    const jobB = await pickup(b.agreementId, b.units, "2025-11-05");
     const invoice = await lateInvoice(jobB);
     await prisma.invoice.update({ where: { id: invoice.id }, data: { amountPaidCents: 100, status: "PARTIALLY_PAID" } });
     await expect(recordLateReturnWaiver(ownerId, jobB, { waivedDays: null, note: "Too late for this" })).rejects.toThrow(/no longer open|payment/i);
   });
 
   it("early-ending-pickup-after-effective-date-charged-from-effective-date (the A6 fix)", async () => {
-    const { agreementId, units } = await rental({ endDate: new Date("2027-03-01T06:59:59Z"), terminationEffectiveOn: new Date("2026-09-01T06:00:00Z") });
-    const job = await pickup(agreementId, units, "2026-09-05");
+    const { agreementId, units } = await rental({ endDate: new Date("2027-03-01T06:59:59Z"), terminationEffectiveOn: new Date("2025-09-01T06:00:00Z") });
+    const job = await pickup(agreementId, units, "2025-09-05");
     const invoice = await lateInvoice(job);
     const audit = await prisma.auditLog.findFirstOrThrow({ where: { action: "billing.late_return_invoiced", entityId: invoice.id } });
-    expect((audit.newValue as { items: Array<{ firstChargedDay: string; days: number }> }).items[0]).toMatchObject({ firstChargedDay: "2026-09-01", days: 4 });
+    expect((audit.newValue as { items: Array<{ firstChargedDay: string; days: number }> }).items[0]).toMatchObject({ firstChargedDay: "2025-09-01", days: 4 });
     expect((await agreementOf(agreementId)).status).toBe("ENDED");
   });
 
   it("full-return-before-agreed-end-is-early-return and month-to-month-without-ending-is-early-return: stays open for the owner's choice", async () => {
     const fixed = await rental({ endDate: new Date("2027-03-01T06:59:59Z") });
-    const jobFixed = await pickup(fixed.agreementId, fixed.units, "2026-11-05");
+    const jobFixed = await pickup(fixed.agreementId, fixed.units, "2025-11-05");
     expect((await agreementOf(fixed.agreementId)).status).toBe("ACTIVE");
     expect(await prisma.auditLog.count({ where: { action: "billing.late_return_invoiced", newValue: { path: ["jobId"], equals: jobFixed } } })).toBe(0);
     const monthly = await rental({ termMonths: null, endDate: null });
-    await pickup(monthly.agreementId, monthly.units, "2026-11-05");
+    await pickup(monthly.agreementId, monthly.units, "2025-11-05");
     expect((await agreementOf(monthly.agreementId)).status).toBe("ACTIVE");
   });
 
   it("partial-return-leaves-agreement-open", async () => {
     const { agreementId, units } = await rental({ units: 2 });
-    await pickup(agreementId, [units[0]!], "2026-11-05");
+    await pickup(agreementId, [units[0]!], "2025-11-05");
     expect((await agreementOf(agreementId)).status).toBe("ACTIVE");
   });
 
-  it("dst: pickup on 2026-11-01 for an agreement ending 2026-10-31 owes nothing late and closes", async () => {
-    const { agreementId, units } = await rental();
-    const job = await pickup(agreementId, units, "2026-11-01");
-    expect(await prisma.auditLog.count({ where: { action: "billing.late_return_invoiced", newValue: { path: ["jobId"], equals: job } } })).toBe(0);
-    expect((await agreementOf(agreementId)).status).toBe("ENDED");
+  it("dst: pickup the day before the clocks change owes nothing late; on the change day owes exactly one day; both close", async () => {
+    const early = await rental();
+    const jobEarly = await pickup(early.agreementId, early.units, "2025-11-01");
+    expect(await prisma.auditLog.count({ where: { action: "billing.late_return_invoiced", newValue: { path: ["jobId"], equals: jobEarly } } })).toBe(0);
+    expect((await agreementOf(early.agreementId)).status).toBe("ENDED");
+    const change = await rental();
+    const jobChange = await pickup(change.agreementId, change.units, "2025-11-02");
+    const invoice = await lateInvoice(jobChange);
+    expect([invoice.subtotalCents, invoice.taxCents]).toEqual([100, 7]);
+    expect((await agreementOf(change.agreementId)).status).toBe("ENDED");
   });
 
   it("a signed renewal waiting makes a high task instead of closing", async () => {
@@ -234,9 +239,9 @@ describe.skipIf(!enabled)("pickup billing end: late returns, waiver and closing 
     const renewalId = `pb-renewal-${tag}`;
     agreementIds.push(renewalId);
     await prisma.rentalAgreement.create({
-      data: { id: renewalId, customerId, serviceAddressId: addressId, status: "SCHEDULED", termMonths: null, renewedFromAgreementId: agreementId, startDate: new Date("2026-11-01T06:00:00Z") },
+      data: { id: renewalId, customerId, serviceAddressId: addressId, status: "SCHEDULED", termMonths: null, renewedFromAgreementId: agreementId, startDate: new Date("2025-11-01T06:00:00Z") },
     });
-    const job = await pickup(agreementId, units, "2026-11-05");
+    const job = await pickup(agreementId, units, "2025-11-05");
     expect((await agreementOf(agreementId)).status).toBe("ACTIVE");
     const task = await prisma.staffTask.findFirst({ where: { sourceKey: `job:${job}:returned-renewal-waiting` } });
     expect(task?.priority).toBe("HIGH");
@@ -244,7 +249,7 @@ describe.skipIf(!enabled)("pickup billing end: late returns, waiver and closing 
 
   it("the nightly pass closes a fully returned rental once its agreed end has arrived", async () => {
     const { agreementId, units } = await rental({ endDate: new Date("2027-03-01T06:59:59Z") });
-    await pickup(agreementId, units, "2026-11-05");
+    await pickup(agreementId, units, "2025-11-05");
     expect((await agreementOf(agreementId)).status).toBe("ACTIVE");
     expect((await closeFullyReturnedAgreements(new Date("2027-02-01T12:00:00Z"))).closed).toBe(0);
     const result = await closeFullyReturnedAgreements(new Date("2027-03-02T12:00:00Z"));
