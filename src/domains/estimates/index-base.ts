@@ -10,6 +10,8 @@ import {
   type ManualLeadInput,
 } from "@/domains/leads";
 
+import { isEstimatePastValidity } from "./validity";
+
 const EDITABLE_STATUSES: EstimateStatus[] = ["DRAFT", "CHANGES_REQUESTED"];
 const PUBLICLY_VIEWABLE_STATUSES: EstimateStatus[] = [
   "SENT",
@@ -37,6 +39,28 @@ async function lockEstimateInTx(
     throw new Error("Couldn't find that estimate.");
   }
   return tx.estimate.findUniqueOrThrow({ where: { id: estimateId } });
+}
+
+const EXPIRED_ESTIMATE_MESSAGE =
+  "This estimate has expired. Please contact us if you'd still like to move forward.";
+
+/**
+ * R09: called under the Estimate row lock. An estimate still awaiting an answer
+ * whose "valid until" day has ended is marked EXPIRED in the same transaction, so
+ * the caller can commit that fact and then refuse the response with no other
+ * side effect (no approval, no lead conversion, no email).
+ */
+async function expireIfPastValidityInTx(
+  tx: Prisma.TransactionClient,
+  estimate: { id: string; status: EstimateStatus; validUntil: Date | null },
+): Promise<boolean> {
+  if (!AWAITING_RESPONSE_STATUSES.includes(estimate.status)) return false;
+  if (!isEstimatePastValidity(estimate.validUntil)) return false;
+  await tx.estimate.update({
+    where: { id: estimate.id },
+    data: { status: "EXPIRED" },
+  });
+  return true;
 }
 
 export type NewEstimateInput = {
@@ -438,6 +462,17 @@ export async function getEstimateForApproval(id: string) {
     return null;
   }
 
+  if (
+    AWAITING_RESPONSE_STATUSES.includes(estimate.status) &&
+    isEstimatePastValidity(estimate.validUntil)
+  ) {
+    await prisma.estimate.updateMany({
+      where: { id, status: { in: AWAITING_RESPONSE_STATUSES } },
+      data: { status: "EXPIRED" },
+    });
+    return { ...estimate, status: "EXPIRED" as EstimateStatus };
+  }
+
   if (estimate.status === "SENT") {
     const viewedAt = new Date();
     const claimed = await prisma.estimate.updateMany({
@@ -475,6 +510,7 @@ export async function approveEstimate(
     if (!AWAITING_RESPONSE_STATUSES.includes(estimate.status)) {
       throw new Error("This estimate isn't available to approve right now.");
     }
+    if (await expireIfPastValidityInTx(tx, estimate)) return { expired: true as const };
 
     let customerId = estimate.customerId;
     let activationEmail: string | null = null;
@@ -509,9 +545,10 @@ export async function approveEstimate(
       },
     });
 
-    return { customerId, activationEmail };
+    return { expired: false as const, customerId, activationEmail };
   });
 
+  if (result.expired) throw new Error(EXPIRED_ESTIMATE_MESSAGE);
   if (result.activationEmail) {
     await sendCustomerActivationEmail(result.activationEmail);
   }
@@ -523,11 +560,12 @@ export async function requestEstimateChanges(id: string, message: string) {
     throw new Error("Let us know what you'd like changed.");
   }
 
-  await prisma.$transaction(async (tx) => {
+  const expired = await prisma.$transaction(async (tx) => {
     const estimate = await lockEstimateInTx(tx, id);
     if (!AWAITING_RESPONSE_STATUSES.includes(estimate.status)) {
       throw new Error("This estimate isn't available to respond to right now.");
     }
+    if (await expireIfPastValidityInTx(tx, estimate)) return true;
     await tx.estimate.update({
       where: { id },
       data: {
@@ -536,7 +574,9 @@ export async function requestEstimateChanges(id: string, message: string) {
         changesRequestedMessage: trimmed,
       },
     });
+    return false;
   });
+  if (expired) throw new Error(EXPIRED_ESTIMATE_MESSAGE);
 }
 
 export type ConvertEstimateInput =
