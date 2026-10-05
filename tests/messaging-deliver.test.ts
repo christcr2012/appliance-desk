@@ -9,4 +9,14 @@ describe("message address normalization", () => {
   it("preserves an E.164 phone number", () => {
     expect(normalizeMessageAddress("SMS", " +13035550100 ")).toBe("+13035550100");
   });
+
+  it("canonicalizes common US phone formatting to E.164", () => {
+    expect(normalizeMessageAddress("SMS", "(303) 555-0100")).toBe("+13035550100");
+    expect(normalizeMessageAddress("SMS", "303-555-0100")).toBe("+13035550100");
+    expect(normalizeMessageAddress("SMS", "1 303 555 0100")).toBe("+13035550100");
+  });
+
+  it("rejects an address that cannot be used as an SMS destination", () => {
+    expect(() => normalizeMessageAddress("SMS", "555")).toThrow(/valid.*phone/i);
+  });
 });
