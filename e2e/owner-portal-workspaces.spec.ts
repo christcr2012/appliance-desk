@@ -68,6 +68,7 @@ for (const role of ["owner", "customer"] as const) {
                   .concat("/desk/settings/website")
                   .concat("/desk/billing?filter=deposits")
                   .concat("/desk/billing?filter=waiting")
+                  .concat("/desk/settings/policies/inspection-checklist")
               : [
                   "/account",
                   "/account/rentals",

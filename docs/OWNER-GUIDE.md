@@ -152,6 +152,13 @@ reason in "Pass it anyway" and it is saved with your name. A saved inspection
 cannot be edited; if something was wrong, add a correction note and the
 original stays as it was.
 
+**Changing the inspection checklist.** Go to **Settings → Policies →
+Inspection checklist**. Edit the list (one item per line, up to 40), then
+publish. Inspections already saved keep the checklist they were done with;
+only new inspections use the new list. If someone else published while you
+were editing, you are asked to reload first. Publishing an unchanged list
+does nothing.
+
 Go to **Jobs** to schedule a delivery, install, swap, removal, or
 maintenance visit — optionally tied to a specific agreement, which
 pre-fills its customer and appliances for you. Move a job through
