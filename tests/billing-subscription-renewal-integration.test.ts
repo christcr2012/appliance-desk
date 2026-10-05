@@ -190,7 +190,9 @@ describe.skipIf(!enabled)("subscription start and renewal against disposable Pos
         default_payment_method: paymentMethodId,
         metadata: { agreementId: agreement.id, firstDeliveredOn: deliveredOn.toISOString() },
       });
-      expect(params).not.toHaveProperty("backdate_start_date");
+      // IN-28: Stripe starts at Colorado midnight of the real delivery day.
+      expect(params).toHaveProperty("backdate_start_date");
+      expect(params).toHaveProperty("billing_mode", { type: "flexible" });
       expect(params).not.toHaveProperty("billing_cycle_anchor");
       expect(params).not.toHaveProperty("billing_cycle_anchor_config");
       const items = params.items as Array<{ price_data: { unit_amount: number; currency: string } }>;

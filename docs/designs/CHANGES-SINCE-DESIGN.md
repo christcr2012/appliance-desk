@@ -28,6 +28,13 @@ Last updated: 2026-10-04 (after Remediation Batch R, #185–#197).
 
 | **`InspectionChecklistVersion` (Batch D's D7 table) will be created by Batch C** (literal spec P2-E, review 2026-10-03), seeded as version 1 from the owner's saved checklist or the code default, with `publishedByUserId` nullable. | WU-D7 builds the editor and `publish` only; it must not add the table or a `BusinessSettings` version counter. Inspections carry `checklistVersionId` + a definition copy. |
 
+## IN-28 (2026-10-04): subscriptions are created backdated to the delivery day
+
+`startRecurringBillingForAgreement` now sends `backdate_start_date` (Colorado midnight of `firstDeliveredOn`, from
+`subscriptionStartSecondsFor` in `subscription-term.ts`) and `billing_mode: { type: "flexible" }`. Batch D and C-09 must
+assume Stripe's period start equals `billingStartedAt` (to within the daylight-saving hour), not the day the
+subscription was created. Subscriptions created before this change may still start later.
+
 ## Remediation Batch R (merged 2026-10-04, #185–#197): contract changes Batch D and later must follow
 
 Evidence for each is in `docs/reviews/2026-10-04-remediation-batch-r-acceptance.md`.

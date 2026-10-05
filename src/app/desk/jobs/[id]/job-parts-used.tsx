@@ -96,7 +96,7 @@ export function JobPartsUsed({
             : "No parts cost yet."}
       </p>
       <form onSubmit={add} className="mt-3 flex flex-wrap items-end gap-3">
-        <div>
+        <div className="w-full min-w-0 sm:w-auto">
           <label htmlFor="jobPartId" className="block text-sm font-medium text-gray-700">
             Part
           </label>
@@ -104,7 +104,7 @@ export function JobPartsUsed({
             id="jobPartId"
             value={partId}
             onChange={(e) => setPartId(e.target.value)}
-            className="mt-1 rounded-md border border-gray-300 px-3 py-2 text-sm"
+            className="mt-1 w-full max-w-full rounded-md sm:w-auto border border-gray-300 px-3 py-2 text-sm"
           >
             <option value="">Choose a part…</option>
             {partOptions.map((p) => (

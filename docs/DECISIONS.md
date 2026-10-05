@@ -20,6 +20,23 @@ editing the earlier decision away.
 
 ---
 
+### 2026-10-04 (later) — IN-28: Stripe billing begins on the real delivery day
+
+Chris: "Billing should begin upon delivery." A new subscription is created with Stripe's
+`backdate_start_date` = Colorado midnight of `firstDeliveredOn`, `billing_mode` named explicitly as
+`flexible`, and `cancel_at` as before. Evidence (Stripe test mode, 2026-10-05 UTC, probe objects cancelled):
+delivered 2026-08-01 and set up 2026-10-05 produced one invoice with three whole-month lines ($100 each, no
+partial amounts) and a current period 2026-10-01 to 2026-11-01; delivered 2026-10-01 with a 12-month
+`cancel_at` produced one $100 line and Stripe accepted the end date. Reasons for the shape: (1) the start is
+derived from the delivery date only, never from "today", so a retry on a later day sends the identical request
+(Stripe rejects a reused idempotency key with changed parameters); (2) no `billing_cycle_anchor` is sent, so
+there is no time-based proration and no daylight-saving drift between a hand-built anchor and Stripe's UTC clock;
+(3) naming flexible mode means a change in the Stripe account default cannot change what customers pay.
+Known and accepted: Stripe keeps its monthly date at the same UTC clock time, so in winter the renewal instant is
+11 pm Colorado time the evening before the delivery day-of-month. A customer set up months late is charged all the
+months since delivery on the first invoice; there is no cap (the customer had the item). Existing subscriptions
+are not changed.
+
 ### 2026-10-03 (later) — One stack per batch, clustered PRs, CI budget lifted, owner-configurable by default
 
 Chris replaced the earlier PR-size rules: each batch is one stack of

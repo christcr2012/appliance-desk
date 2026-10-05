@@ -51,19 +51,32 @@ First-review item P1-2 (historical staff `JobAppliance` provenance): verified fi
 
 ## Not done, or not proven here (read this before calling Batch R closed)
 
-1. **Stripe-side billing anchor for a late first delivery (second review P2-1) is not changed.**
+1. **(Superseded 2026-10-04: built after Chris answered IN-28, see `docs/DECISIONS.md`.) Stripe-side billing anchor for a late first delivery (second review P2-1) was not changed in Batch R.**
    #185 stores the real delivery date locally and derives local dates from it, but deliberately does
    not move or backdate Stripe's billing calendar, because the current Stripe behavior could change
    amounts or dates through proration. The design lists this as a stop-and-ask boundary. A Stripe
    subscription started late still bills from the day it was created. Chris must decide whether to
    accept that, or approve a designed approach; it is recorded in `docs/OWNER-INPUTS.md` as a question
    to answer before real customers.
-2. **No preview (browser) check of the touched owner and customer screens** was done by me: the
-   public estimate page, the add-appliances form, the job repair-cost form and Today. Automated
-   tests and the CI browser suite passed, which is not the same as someone looking at them.
-3. **The migration upgrade drill on a populated database** was not run by me. CI's migration check and
-   schema-health checks passed for both new migrations (`20261005010000`, `20261005020000`), and both are
-   additive.
+2. **(Done 2026-10-04) Browser check of the touched screens.** Production build (webpack, stand-in font) on a scratch
+   database, driven by a real Chromium at desktop (1280) and phone (390) width, logged in as the owner. Seen and
+   confirmed: public estimate page shows "Valid through" (Friday, October 9, 2026 for the open one) with the approve and
+   change buttons, and the expired one shows "This estimate has expired" with no buttons; the add-appliance form renders
+   fully on a phone, and a unit added with purchase date 2026-10-01 shows "purchased Thursday, October 1, 2026" (no
+   day shift); the repair-cost form refuses a negative number in the browser and saves 12.50; Today with 57 overdue
+   jobs shows 50 and "Overdue job: showing the 50 that have waited longest, 7 more not shown." One real defect found
+   and fixed: on a phone, the "Part" dropdown on a job page ran off the screen (page 1140 px wide on a 390 px phone);
+   after the fix the page width equals the phone width. Screenshots are not committed.
+3. **(Done 2026-10-04) The migration upgrade drill on a populated database.** A scratch Postgres was built by
+   applying every earlier migration in order (56), then filled with old-style data: 8 agreements each with a deposit,
+   invoice, deposit line and payments; 7 receipts; a supplier and a purchase order. Cases: one clean payment, a payment
+   split across two receipts, an uppercase `SUCCEEDED` status, no payment, two deposits sharing one receipt, a receipt
+   belonging to another customer, and a failed payment. Then `20261005010000` and `20261005020000` were applied.
+   Result: row counts identical before and after (8/8/7/8/1/8); every existing Deposit column byte-identical; only the
+   clean payment (D1) and the uppercase-status payment (D3) were linked to their receipt, and the six ambiguous or
+   unsafe cases stayed empty (no guessing); the unique index refused a second deposit claiming a linked receipt; deleting
+   a linked receipt was refused; the new `PurchaseOrderReceiptOperation` table started empty, refused a duplicate
+   operation key, and was removed with its purchase order. Scratch database only; nothing was run against production.
 4. **Unrelated open work stays open and is not claimed by this batch:** Batch B renewal-lifecycle items
    R1/R2/R3/R4/R6/D2 (the old, different "R" numbers in `docs/STATUS.md`), the month-to-month notice
    (IN-21), and C-09. Re-assess C-09 and Batch D against the contract changes in
