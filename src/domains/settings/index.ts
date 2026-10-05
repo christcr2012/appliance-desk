@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { cache } from "react";
 import { assertActiveTeamActor } from "@/lib/team-actor";
@@ -112,6 +113,11 @@ export type BusinessSettingsUpdate = Partial<{
   publicAddress: string;
   serviceAreaCities: string[];
   serviceAreaZips: string[];
+  // Opening hours, holiday closures, social links and logo (Batch D, D2); shapes are in ./profile-extras.
+  hours: Prisma.InputJsonObject;
+  holidayClosures: Prisma.InputJsonArray;
+  socialLinks: Prisma.InputJsonObject;
+  logoUrl: string | null;
   oneTimeDeliveryFeeCents: number;
   oneTimeInstallationFeeCents: number;
   oneTimeRemovalFeeCents: number;

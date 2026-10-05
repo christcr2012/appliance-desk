@@ -300,6 +300,29 @@ is given or the fee is paid). A rental paid in full in advance is always settled
 Also new: ending a month-to-month rental for a customer (agreement page), recording that a late pickup was our delay (job
 page, waives the late days), and Desk → Notices for reminders that could not be delivered.
 
+## Changing the wording on your website
+
+Settings → Website → **Edit website text**. The page lists the text you may change, grouped by page: the home page
+headline and sub-heading, the "before opening" version of them, short paragraphs for households and for property
+managers, up to eight common questions with answers, the "How it works" steps, the sentence above the quote form,
+descriptions of the pictures (read aloud to people who cannot see them), and the title and summary Google shows for
+each page. Each box says what it is for, shows a character count, and has a "Restore the starting text" link.
+
+1. Change the text and press **Save draft**. Visitors still see the old text.
+2. Use the **Preview** links to see your draft on the real page (only you and other owners or admins can see it).
+3. Press **Publish…**, read the list of what will change, then **Publish now**.
+4. Made a mistake? **History** lists every version that was live, with who published it and when. **Restore this
+   version** puts it back (as a new version, so nothing is ever erased).
+
+Prices, phone, email, address and service area are never in these boxes; they come from your price list and Settings.
+Boxes marked "Needs your decision" (opening-date wording, who you rent to) stay as they are until you decide. If two
+people edit at once, the second one is told to reload instead of overwriting the first.
+
+Settings → Business profile now also holds your **opening hours** (each day: not shown, closed, or open with times),
+**holiday closures** (one per line, like `2026-12-25 Christmas Day`; past dates stop showing by themselves), links to
+your **Facebook, Instagram, Google and Nextdoor** pages, and your **logo** (printed on invoices and work orders).
+Hours, closures and links appear in the website footer; hours and closures also appear on the contact page.
+
 ## Adding a new appliance category
 
 Also in **Settings** — add or retire an appliance type (e.g. a new

@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Container } from "@/components/site/container";
 import { getPublishedApplianceTypes } from "@/domains/pricing";
+import { getBusinessSettings } from "@/domains/settings";
+import { BusinessHours } from "@/components/site/business-hours";
 import { getPublishedContent } from "@/domains/site-content";
 import { getContentForRequest } from "@/domains/site-content/request";
 import { ContactForm } from "./contact-form";
@@ -15,9 +17,10 @@ export default async function ContactPage({
 }: {
   searchParams: Promise<{ revision?: string | string[] }>;
 }) {
-  const [applianceTypes, content] = await Promise.all([
+  const [applianceTypes, content, settings] = await Promise.all([
     getPublishedApplianceTypes(),
     searchParams.then(getContentForRequest),
+    getBusinessSettings(),
   ]);
 
   return (
@@ -29,6 +32,13 @@ export default async function ContactPage({
         <p className="mt-4 text-ink-soft">
           {content["contact.intro"]}
         </p>
+
+        <BusinessHours
+          hours={settings.hours}
+          holidayClosures={settings.holidayClosures}
+          headingLevel="h2"
+          className="mt-6 rounded-xl border border-line bg-surface p-4"
+        />
 
         <div className="mt-10">
           <ContactForm

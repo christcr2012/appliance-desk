@@ -3,6 +3,7 @@
 import type { EditableSettingsSection } from "@/domains/settings/section-config";
 
 import { forwardRef, useState } from "react";
+import { DAYS, SOCIAL_NETWORKS, BRAND_LOGO_FILES, MAX_CLOSURES, type ProfileExtrasForm } from "@/domains/settings/profile-extras";
 import { useForm } from "react-hook-form";
 import { updateSettingsAction, updateSettingsSectionAction } from "./actions";
 
@@ -12,7 +13,7 @@ import { updateSettingsAction, updateSettingsSectionAction } from "./actions";
 // server action is what converts dollars → cents before saving; see
 // docs/BUSINESS-RULES.md ("money is stored as integer cents, never
 // floating point") — that rule is about storage, not this form.
-type FormValues = {
+type FormValues = ProfileExtrasForm & {
   publicBusinessName: string;
   publicPhone: string;
   publicEmail: string;
@@ -107,6 +108,100 @@ export function SettingsForm({
             {...register("publicEmail")}
           />
           <LabeledInput label="Address" {...register("publicAddress")} />
+        </fieldset>
+      )}
+
+      {(!section || section === "profile") && (
+        <fieldset className="space-y-4">
+          <legend className="text-base font-semibold text-gray-900">
+            Opening hours
+          </legend>
+          <p className="text-sm text-gray-600">
+            Shown in the website footer and on the contact page. For each day choose <strong>Not shown</strong> (the
+            day is left out), <strong>Closed</strong>, or <strong>Open</strong> and fill in the times (24-hour clock,
+            Colorado time). Starting value: nothing shown, so no hours are promised until you set them.
+          </p>
+          <div className="space-y-3">
+            {DAYS.map((day) => (
+              <div key={day.id} className="flex flex-wrap items-center gap-3">
+                <label htmlFor={`hours-${day.id}-mode`} className="w-24 text-sm font-medium text-gray-900">
+                  {day.label}
+                </label>
+                <select
+                  id={`hours-${day.id}-mode`}
+                  className="min-h-11 rounded-lg border border-gray-300 px-2 text-sm"
+                  {...register(`hours.${day.id}.mode`)}
+                >
+                  <option value="none">Not shown</option>
+                  <option value="closed">Closed</option>
+                  <option value="open">Open</option>
+                </select>
+                <label htmlFor={`hours-${day.id}-open`} className="text-sm text-gray-700">
+                  Opens
+                </label>
+                <input
+                  id={`hours-${day.id}-open`}
+                  type="time"
+                  className="min-h-11 rounded-lg border border-gray-300 px-2 text-sm"
+                  {...register(`hours.${day.id}.open`)}
+                />
+                <label htmlFor={`hours-${day.id}-close`} className="text-sm text-gray-700">
+                  Closes
+                </label>
+                <input
+                  id={`hours-${day.id}-close`}
+                  type="time"
+                  className="min-h-11 rounded-lg border border-gray-300 px-2 text-sm"
+                  {...register(`hours.${day.id}.close`)}
+                />
+              </div>
+            ))}
+          </div>
+          <p className="text-xs text-gray-600">The times are used only for days set to Open.</p>
+          <div>
+            <label htmlFor="settings-holidayClosuresText" className="mb-1 block text-sm font-medium text-gray-900">
+              Holiday closures
+            </label>
+            <textarea
+              id="settings-holidayClosuresText"
+              rows={4}
+              aria-describedby="closures-help"
+              className="w-full max-w-sm rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              {...register("holidayClosuresText")}
+            />
+            <p id="closures-help" className="mt-1 text-xs text-gray-600">
+              One per line: the date, a space, then the name. Example: 2026-12-25 Christmas Day. Up to {MAX_CLOSURES}.
+              Past dates stop showing on the website by themselves.
+            </p>
+          </div>
+        </fieldset>
+      )}
+
+      {(!section || section === "profile") && (
+        <fieldset className="space-y-4">
+          <legend className="text-base font-semibold text-gray-900">
+            Social links and logo
+          </legend>
+          <p className="text-sm text-gray-600">
+            Leave a box empty to show nothing. Links must be full web addresses starting with https://.
+          </p>
+          {SOCIAL_NETWORKS.map((n) => (
+            <LabeledInput
+              key={n.id}
+              label={`${n.label} link`}
+              type="url"
+              inputMode="url"
+              {...register(`${n.id}Url` as "facebookUrl" | "instagramUrl" | "googleUrl" | "nextdoorUrl")}
+            />
+          ))}
+          <div>
+            <LabeledInput label="Logo address (for printed invoices and work orders)" {...register("logoUrl")} />
+            <p className="mt-1 text-xs text-gray-600">
+              One of {BRAND_LOGO_FILES.join(", ")}, or the address of a picture (PNG or JPG) uploaded to your own file
+              storage. Pictures from other websites are blocked by the site&apos;s security rules, so they would not
+              show. Leave empty to print the business name only.
+            </p>
+          </div>
         </fieldset>
       )}
 

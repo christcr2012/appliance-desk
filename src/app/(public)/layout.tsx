@@ -69,6 +69,9 @@ export default async function PublicLayout({
         phone={settings.publicPhone}
         email={settings.publicEmail}
         address={settings.publicAddress}
+        hours={settings.hours}
+        holidayClosures={settings.holidayClosures}
+        socialLinks={settings.socialLinks}
       />
     </>
   );

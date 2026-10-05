@@ -35,6 +35,7 @@ import { pickupBillingDefaults } from "@/domains/settings/pickup-billing";
 import { pickupBillingSettingsFrom } from "@/domains/billing/pickup-billing";
 import { termsPolicyDefaults, termsPolicyStatus } from "@/domains/settings/terms-policy";
 import { formatTaxRate } from "@/domains/billing/tax";
+import { profileExtrasDefaults } from "@/domains/settings/profile-extras";
 export const metadata = {
   title: "Settings",
   robots: { index: false, follow: false },
@@ -230,6 +231,7 @@ export default async function DeskSettingsPage({
             publicPhone: settings.publicPhone,
             publicEmail: settings.publicEmail,
             publicAddress: settings.publicAddress,
+            ...profileExtrasDefaults(settings),
             serviceAreaCities: Array.isArray(settings.serviceAreaCities)
               ? (settings.serviceAreaCities as string[]).join(", ")
               : "",

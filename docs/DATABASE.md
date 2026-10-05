@@ -413,3 +413,11 @@ real Postgres by `tests/batch-b2-migration-integration.test.ts`.
 it did. Credits it creates have `CustomerCredit.sourceType = "EARLY_RETURN"`, `sourceId` = the resolution id. The audit row
 `agreement.early_return_resolved` carries the full numbers and whether it recorded a new ending (`endingRecorded`), which a
 later change of an automatic decision uses to take that ending back. `BusinessSettings.earlyReturnProrationBasis` is read again.
+
+## Batch D control plane — October 5, 2026
+Migration `20261007010000_batch_d_control_plane` (additive):
+- `SiteContentRevision` — one row per version of the owner-editable website text (`fields` JSON holds only the whitelisted keys that differ from the built-in text). Status `DRAFT` (at most one open, never shown to the public), `PUBLISHED` (exactly one) or `ARCHIVED`. `version` is unique and only goes up. `restoredFromId` marks a revision that republishes an older one. `SiteContentPointer` (single row, id `published`) names the live revision and is the lock every save, publish and restore takes. The old flat `SiteContent` table is untouched and still unused.
+- `DocumentArtifact` — frozen copies of signed agreements, invoices and statements (built in a later Batch D step).
+- `PrivacyRequest` — customer data export / deletion requests (later Batch D step).
+- `BusinessSettings.legalApprovals` — which legal-page version the owner has approved (later Batch D step).
+All four tables are in `BACKUP_MODEL_POLICY`; `verifySchemaHealth` checks them because it enumerates the models. `docs/SETTINGS-COVERAGE.md` records what happens to every `BusinessSettings` column. Profile extras are stored in the existing columns: `hours` `{mon:{open,close}|{closed:true}}`, `holidayClosures` `[{date,label}]`, `socialLinks` `{facebook,instagram,google,nextdoor}`, `logoUrl`.

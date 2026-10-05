@@ -1,4 +1,6 @@
+import Image from "next/image";
 import type { WorkOrderDetail } from "@/domains/jobs/work-order-detail";
+import { safeLogoUrl } from "@/domains/settings/profile-extras";
 import { jobStatusLabel, jobTypeLabel } from "@/lib/status-labels";
 import { CalendarServiceIcon } from "@/components/icons/service-icons";
 
@@ -35,6 +37,15 @@ export function WorkOrderDocument({ job }: { job: WorkOrderDetail }) {
     <div className="overflow-hidden rounded-lg border border-gray-200 bg-white print:rounded-none print:border-0 print:text-black">
       <div className="flex flex-wrap items-start justify-between gap-4 bg-gray-900 px-6 py-6 text-white print:bg-white print:px-0 print:pt-0 print:text-black">
         <div>
+          {safeLogoUrl(job.business.logoUrl) && (
+            <Image
+              src={safeLogoUrl(job.business.logoUrl)!}
+              alt={job.business.name}
+              width={160}
+              height={40}
+              className="mb-2 h-10 w-auto rounded bg-white p-1 print:p-0"
+            />
+          )}
           <p className="text-lg font-semibold">{job.business.name}</p>
           <p className="mt-1 whitespace-pre-line text-sm opacity-90 print:opacity-100">{job.business.address}</p>
           <p className="text-sm opacity-90 print:opacity-100">
