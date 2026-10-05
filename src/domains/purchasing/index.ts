@@ -1,3 +1,4 @@
+import { createHash, randomUUID } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
 import { assertActiveTeamActor } from "@/lib/team-actor";
@@ -234,7 +235,26 @@ export async function receivePurchaseOrderLines(userId: string, input: ReceiveLi
       include: { lines: { orderBy: [{ id: "asc" }] } },
     });
 
-    // A retry of a receipt that already applied returns the first result, even if the order has since been completed.
+    // R16: claim this request's identity before anything else. The claim and the receipt commit
+    // together, so a failed receipt leaves no claim and can safely be retried. A conflict is read
+    // back (never caught as an error inside the aborted transaction).
+    const payloadHash = receiptPayloadHash(order.id, input.lines);
+    const claimed = await tx.$queryRaw<Array<{ id: string }>>`
+      INSERT INTO "PurchaseOrderReceiptOperation" ("id", "operationKey", "purchaseOrderId", "payloadHash")
+      VALUES (${randomUUID()}, ${input.operationKey}, ${order.id}, ${payloadHash})
+      ON CONFLICT ("operationKey") DO NOTHING
+      RETURNING "id"
+    `;
+    if (claimed.length === 0) {
+      const existing = await tx.purchaseOrderReceiptOperation.findUniqueOrThrow({ where: { operationKey: input.operationKey } });
+      if (existing.purchaseOrderId !== order.id || existing.payloadHash !== payloadHash) {
+        throw new PartOperationConflictError();
+      }
+      // Same request again: return the first result even if the order has since been completed.
+      return { replayed: true };
+    }
+
+    // Receipts recorded before claims existed are recognized by their movements or audit entry.
     const prior = await tx.partStockMovement.findFirst({
       where: { purchaseOrderLineItem: { purchaseOrderId: order.id }, operationKey: { startsWith: `${input.operationKey}:` } },
       select: { id: true },
@@ -297,6 +317,21 @@ export async function receivePurchaseOrderLines(userId: string, input: ReceiveLi
     });
     return { replayed: false };
   });
+}
+
+/**
+ * R16: SHA-256 of a stable serialization of one receipt request: the order id and every submitted
+ * line sorted by line id, each with its quantity and its submitted price (or an explicit "unknown"
+ * marker). Free-text lines are hashed exactly like stocked ones. Form field order does not matter.
+ */
+export function receiptPayloadHash(
+  purchaseOrderId: string,
+  lines: ReadonlyArray<{ lineId: string; quantity: number; unitCostCents: number | null }>,
+): string {
+  const canonical = [...lines]
+    .sort((a, b) => (a.lineId < b.lineId ? -1 : a.lineId > b.lineId ? 1 : 0))
+    .map((l) => [l.lineId, l.quantity, l.unitCostCents === null ? "unknown" : l.unitCostCents]);
+  return createHash("sha256").update(JSON.stringify({ purchaseOrderId, lines: canonical })).digest("hex");
 }
 
 /** On a retry: re-run each line's movement under the same key so a changed payload is still refused. */

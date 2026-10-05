@@ -587,13 +587,30 @@ model PurchaseOrder {
   createdByUserId String
   createdBy       User   @relation("PurchaseOrderCreatedBy", fields: [createdByUserId], references: [id])
 
-  lines PurchaseOrderLineItem[]
+  lines             PurchaseOrderLineItem[]
+  receiptOperations PurchaseOrderReceiptOperation[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([supplierId])
   @@index([status])
+}
+
+// R16: the durable identity of one "these items arrived" request. The key comes from the receive
+// form; payloadHash is a SHA-256 of the order id plus every submitted line (id, quantity, price or
+// "unknown"), so a retry with the same key and the same lines is recognized exactly, and the same
+// key with different lines is refused, for free-text lines as well as stocked ones. Claimed inside
+// the receipt transaction, so a failed receipt leaves no claim behind.
+model PurchaseOrderReceiptOperation {
+  id              String        @id @default(cuid())
+  operationKey    String        @unique
+  purchaseOrderId String
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  payloadHash     String
+  createdAt       DateTime      @default(now())
+
+  @@index([purchaseOrderId])
 }
 
 // One line on a purchase order. partRecordId is optional — Chris can
