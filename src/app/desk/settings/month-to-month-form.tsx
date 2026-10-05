@@ -44,7 +44,7 @@ export function MonthToMonthForm({
     }
   }
 
-  const placeholders = WORDING_PLACEHOLDERS.map((p) => `{${p}}`).join(" ");
+  const placeholders = WORDING_PLACEHOLDERS.map((p) => `{{${p}}}`).join(" ");
 
   return (
     <form onSubmit={onSubmit} className="mt-8 max-w-2xl space-y-6 border-t border-gray-200 pt-6">
@@ -89,7 +89,7 @@ export function MonthToMonthForm({
             {label}
           </label>
           <p className="text-sm text-gray-600">
-            {help} Leave it empty to use the starting draft. Words in braces are filled in for each customer: {placeholders}.
+            {help} Leave it empty to use the starting draft. Words in double braces are filled in for each customer: {placeholders}.
           </p>
           <textarea
             id={`mtm-${key}`}

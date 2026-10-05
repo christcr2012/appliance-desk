@@ -89,7 +89,7 @@ describe.skipIf(!enabled)("yearly reminders for month-to-month rentals", () => {
       termMonths: 12,
       status: "ENDED",
       since: new Date("2027-04-10T07:00:00Z"),
-      endDate: new Date("2028-04-09T05:59:59Z"),
+      endDate: new Date("2028-04-10T05:59:59Z"),
     });
     const monthly = await agreement({ since: new Date("2027-04-10T07:00:00Z"), root: fixed.id, renewedFrom: fixed.id });
     await prisma.customerNotice.create({

@@ -17,14 +17,15 @@ export function composeTermsChangeNotice(input: TermsChangeInput): { subject: st
   const template = input.template?.trim() ? input.template : DEFAULT_TERMS_CHANGE_TEXT;
   return {
     subject: `A change to the terms of your month-to-month rental with ${input.businessName}`,
-    body: fillWording(template, {
+    body: `Hello ${input.customerName},\n\n${fillWording(template, {
       customerName: input.customerName,
       businessName: input.businessName,
       businessPhone: input.businessPhone,
       businessEmail: input.businessEmail,
       noticeDays: String(input.noticeDays),
-      termsText: input.termsText.trim(),
-      changeDays: String(input.changeDays),
-    }),
+      terms: input.termsText.trim(),
+      // The delivery date is not known yet, so say it the way it is true: counted from when the notice arrives.
+      effectiveDate: `${input.changeDays} days after this notice reaches you`,
+    })}`,
   };
 }

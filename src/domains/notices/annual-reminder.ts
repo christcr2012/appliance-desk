@@ -28,6 +28,8 @@ export const annualReminderKey = (continuityRootId: string, k: number) => `annua
 export type AnnualReminderInput = {
   customerName: string;
   boundary: Date;
+  /** Whole years of continuous rental completed on the boundary date. */
+  years: number;
   monthlyTotalCents: number;
   lineLabels: string[];
   noticeDays: number;
@@ -41,16 +43,17 @@ export function composeAnnualReminder(input: AnnualReminderInput): { subject: st
   const template = input.template?.trim() ? input.template : DEFAULT_ANNUAL_REMINDER_TEXT;
   return {
     subject: `Your month-to-month rental with ${input.businessName} continues: yearly reminder`,
-    body: fillWording(template, {
+    body: `Hello ${input.customerName},\n\n${fillWording(template, {
       customerName: input.customerName,
       businessName: input.businessName,
       businessPhone: input.businessPhone,
       businessEmail: input.businessEmail,
       noticeDays: String(input.noticeDays),
       boundaryDate: formatBusinessDate(input.boundary),
+      years: String(input.years),
       monthlyTotal: formatCents(input.monthlyTotalCents),
       items: input.lineLabels.join(", "),
-    }),
+    })}`,
   };
 }
 
@@ -134,6 +137,7 @@ export async function queueAnnualReminders(now: Date = new Date()): Promise<Annu
       const composed = composeAnnualReminder({
         customerName: agreement.customer.user.name ?? agreement.customer.user.email,
         boundary,
+        years: k,
         monthlyTotalCents: agreement.lines.reduce((sum, l) => sum + l.monthlyPriceCents, 0),
         lineLabels: agreement.lines.map((l) => l.label),
         noticeDays: terms.noticeDays,

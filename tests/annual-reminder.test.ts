@@ -17,6 +17,7 @@ describe("notice wording", () => {
     const reminder = composeAnnualReminder({
       customerName: "Pat",
       boundary: new Date("2028-02-08T07:00:00Z"),
+      years: 1,
       monthlyTotalCents: 3000,
       lineLabels: ["Washer"],
       noticeDays: 30,
@@ -24,9 +25,9 @@ describe("notice wording", () => {
       businessPhone: "555",
       businessEmail: "a@b.c",
     });
-    expect(reminder.body).toContain("Hello Pat");
+    expect(reminder.body).toContain("1 year(s)");
     expect(reminder.body).toContain("$30 a month");
-    expect(reminder.body).not.toMatch(/\{\w+\}/);
+    expect(reminder.body).not.toMatch(/\{\{/);
     const change = composeTermsChangeNotice({
       customerName: "Pat",
       noticeDays: 45,
@@ -35,15 +36,15 @@ describe("notice wording", () => {
       businessName: "Robinson",
       businessPhone: "555",
       businessEmail: "a@b.c",
-      template: "Hi {customerName}: {noticeDays} days. {termsText}",
+      template: "Hi {{customerName}}: {{noticeDays}} days. {{terms}}",
     });
-    expect(change.body).toBe("Hi Pat: 45 days. New terms");
+    expect(change.body).toBe("Hello Pat,\n\nHi Pat: 45 days. New terms");
   });
 
   it("catches a misspelled placeholder before it reaches a customer", () => {
-    expect(unknownPlaceholders("Hi {customerNam} and {noticeDays}")).toEqual(["{customerNam}"]);
-    expect(fillWording("{a}", {})).toBe("{a}");
-    const parsed = parseMonthToMonthSettings({ monthToMonthChangeNoticeDays: "30", termsChangeNoticeText: "Hi {nope}", annualReminderText: "" });
+    expect(unknownPlaceholders("Hi {{customerNam}} and {{noticeDays}}")).toEqual(["{{customerNam}}"]);
+    expect(fillWording("{{a}}", {})).toBe("{{a}}");
+    const parsed = parseMonthToMonthSettings({ monthToMonthChangeNoticeDays: "30", termsChangeNoticeText: "Hi {{nope}}", annualReminderText: "" });
     expect(parsed.success).toBe(false);
   });
 
