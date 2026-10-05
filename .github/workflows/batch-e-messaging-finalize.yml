@@ -1,0 +1,34 @@
+name: Apply Batch E messaging final fixes
+
+on:
+  push:
+    branches: [ai/sol/batch-e-messaging]
+    paths:
+      - scripts/apply-batch-e-messaging-final.mjs
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ai/sol/batch-e-messaging
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Apply surgical final fixes
+        run: node scripts/apply-batch-e-messaging-final.mjs
+      - name: Remove one-shot helpers and commit
+        run: |
+          rm -f scripts/apply-batch-e-messaging-final.mjs
+          rm -f .github/workflows/batch-e-messaging-finalize.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet && exit 0
+          git commit -m "fix: finalize Batch E messaging integration"
+          git push origin HEAD:ai/sol/batch-e-messaging
