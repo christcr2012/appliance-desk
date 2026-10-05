@@ -40,7 +40,7 @@ const TONE_TEXT_COLOR: Record<StatusTone, string> = {
   success: "text-green-700",
   pending: "text-blue-700",
   attention: "text-amber-700",
-  stopped: "text-gray-500",
+  stopped: "text-ink-faint",
   progress: "text-amber-700",
 };
 
@@ -48,7 +48,7 @@ const TONE_PILL_COLOR: Record<StatusTone, string> = {
   success: "bg-green-100 text-green-800",
   pending: "bg-blue-100 text-blue-800",
   attention: "bg-amber-100 text-amber-800",
-  stopped: "bg-gray-100 text-gray-700",
+  stopped: "bg-canvas-alt text-ink-soft",
   progress: "bg-amber-100 text-amber-800",
 };
 
