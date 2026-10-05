@@ -437,7 +437,9 @@ describe.skipIf(!enabled)("auto-renew and agreed early endings are carried out",
 
         stripeMock.update.mockClear();
         expect(await extendBillingForDeliveredAutoRenewals(windowOpen)).toBe(0);
-        expect(stripeMock.update).not.toHaveBeenCalled();
+        // Nothing is extended: whatever Stripe is told is the plain end of the current term, never a cleared end date.
+        expect(stripeMock.update).not.toHaveBeenCalledWith(a.stripeSubscriptionId, { cancel_at: "" }, expect.anything());
+        expect(stripeMock.state.get(a.stripeSubscriptionId!)).not.toBeNull();
 
         // The nightly pass queues nothing new, and withdraws what was queued.
         const b = await agreement();
