@@ -11,6 +11,8 @@ import {
 import { getBusinessSettings, parseServiceArea } from "@/domains/settings";
 import { generateUniqueReferralCode, linkReferralIfCodeProvided } from "@/domains/referrals";
 import { scoreLead } from "./scoring";
+import { getLeadScoringPolicy, parseLeadScoringPolicy } from "./scoring-policy";
+import { recordRealContactInTx } from "./contact";
 import type { LeadFormInput } from "./schema";
 import type { Lead, LeadStatus, Prisma } from "@prisma/client";
 
@@ -22,6 +24,9 @@ import type { Lead, LeadStatus, Prisma } from "@prisma/client";
 export async function createLead(input: LeadFormInput) {
   const settings = await getBusinessSettings();
   const serviceArea = parseServiceArea(settings);
+  const scoringPolicy = parseLeadScoringPolicy(
+    (settings as { leadScoringPolicy?: unknown }).leadScoringPolicy,
+  );
 
   const zip = input.zip?.trim() || null;
   const city = input.city?.trim() || null;
@@ -36,12 +41,15 @@ export async function createLead(input: LeadFormInput) {
         )
       : null;
 
-  const { score, reasons, isHighValue } = scoreLead({
-    desiredTerm: input.desiredTerm,
-    quantity: input.quantity,
-    isPropertyManager: input.isPropertyManager,
-    isBusiness: input.accountType === "business",
-  });
+  const { score, reasons, isHighValue } = scoreLead(
+    {
+      desiredTerm: input.desiredTerm,
+      quantity: input.quantity,
+      isPropertyManager: input.isPropertyManager,
+      isBusiness: input.accountType === "business",
+    },
+    scoringPolicy,
+  );
 
   const lead = await prisma.$transaction(async (tx) => {
     const created = await tx.lead.create({
@@ -66,9 +74,11 @@ export async function createLead(input: LeadFormInput) {
         zip,
         inServiceArea,
         consentedAt: new Date(),
+        lastRealContactAt: new Date(),
         score,
         scoreReasons: reasons,
         isHighValue,
+        scoringPolicyVersion: scoringPolicy.version,
         applianceRequests: {
           create: input.applianceTypeIds.map((applianceTypeId) => ({
             applianceTypeId,
@@ -147,12 +157,16 @@ export type ManualLeadInput = {
 
 /** Lets staff add a phone/walk-in/manual lead. */
 export async function createLeadManually(userId: string, input: ManualLeadInput) {
-  const { score, reasons, isHighValue } = scoreLead({
-    desiredTerm: null,
-    quantity: 1,
-    isPropertyManager: Boolean(input.isPropertyManager),
-    isBusiness: Boolean(input.isBusiness),
-  });
+  const scoringPolicy = await getLeadScoringPolicy();
+  const { score, reasons, isHighValue } = scoreLead(
+    {
+      desiredTerm: null,
+      quantity: 1,
+      isPropertyManager: Boolean(input.isPropertyManager),
+      isBusiness: Boolean(input.isBusiness),
+    },
+    scoringPolicy,
+  );
 
   const lead = await prisma.lead.create({
     data: {
@@ -166,9 +180,11 @@ export async function createLeadManually(userId: string, input: ManualLeadInput)
       addressLine1: input.addressLine1 || null,
       city: input.city || null,
       zip: input.zip || null,
+      lastRealContactAt: new Date(),
       score,
       scoreReasons: reasons,
       isHighValue,
+      scoringPolicyVersion: scoringPolicy.version,
       createdByUserId: userId,
     },
   });
@@ -283,8 +299,12 @@ export async function addLeadNote(
   if (!trimmed) {
     throw new Error("A note can't be empty.");
   }
-  await prisma.leadNote.create({
-    data: { leadId, authorId, body: trimmed },
+  const contactedAt = new Date();
+  await prisma.$transaction(async (tx) => {
+    await tx.leadNote.create({
+      data: { leadId, authorId, body: trimmed },
+    });
+    await recordRealContactInTx(tx, leadId, contactedAt);
   });
 }
 
