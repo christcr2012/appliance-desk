@@ -41,9 +41,13 @@ it("All invoices clears a delinquent filter and each invoice links to its exact 
   expect(
     screen.getByRole("link", { name: "All invoices" }).getAttribute("href"),
   ).toBe("/desk/billing");
-  expect(screen.getByRole("link", { name: "#123" }).getAttribute("href")).toBe(
-    "/desk/billing/customer/c1/invoice/i1",
-  );
+  const invoiceLinks = screen.getAllByRole("link", { name: "#123" });
+  expect(invoiceLinks).toHaveLength(2);
+  for (const link of invoiceLinks) {
+    expect(link.getAttribute("href")).toBe(
+      "/desk/billing/customer/c1/invoice/i1",
+    );
+  }
   expect(m.page).toHaveBeenCalledWith({ delinquentOnly: true }, 0, 25);
 });
 it("statements do not fetch the invoice list and authorization runs before finance reads", async () => {

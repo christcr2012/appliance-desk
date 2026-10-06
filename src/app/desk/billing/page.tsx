@@ -8,17 +8,26 @@ import { formatCents } from "@/domains/pricing";
 import { requireRole } from "@/lib/session";
 import { parsePage, paginationMeta } from "@/domains/pagination";
 import { Pagination } from "@/components/pagination";
-import { StatusBadge } from "@/components/status-badge";
 import { formatBusinessDate } from "@/lib/business-date";
-import { PageHeader, FilterBar } from "@/components/desk/workspace";
+import { FilterBar } from "@/components/desk/workspace";
+import {
+  DataList,
+  EmptyState,
+  PageHeader,
+  StatusPill,
+  type DataListColumn,
+} from "@/components/ui";
 import { invoiceStatusTone } from "@/lib/status-labels";
 import { DepositsTab } from "./deposits-tab";
 import { WaitingTab } from "./waiting-tab";
 
 export const metadata = { title: "Billing" };
 
-// OWNER/ADMIN only (docs/DECISIONS.md, 2026-09-28 "Staff permissions
-// framework") — never rely on the nav link being hidden alone.
+type InvoiceRow = Awaited<ReturnType<typeof getInvoicesPage>>[number];
+type BalanceRow = Awaited<
+  ReturnType<typeof getCustomersWithOpenBalances>
+>[number];
+
 export default async function BillingPage({
   searchParams,
 }: {
@@ -33,13 +42,18 @@ export default async function BillingPage({
   const otherTab = showDeposits || showWaiting;
   const invoiceFilter = { delinquentOnly };
 
-  const totalCount = showStatements || otherTab ? 0 : await getInvoicesCount(invoiceFilter);
+  const totalCount =
+    showStatements || otherTab
+      ? 0
+      : await getInvoicesCount(invoiceFilter);
   const meta = paginationMeta(totalCount, parsePage(rawPage));
   const [invoices, customerBalances] = await Promise.all([
     showStatements || otherTab
       ? Promise.resolve([])
       : getInvoicesPage(invoiceFilter, meta.skip, meta.pageSize),
-    showStatements ? getCustomersWithOpenBalances() : Promise.resolve([]),
+    showStatements
+      ? getCustomersWithOpenBalances()
+      : Promise.resolve([]),
   ]);
 
   function billingHref(
@@ -53,12 +67,111 @@ export default async function BillingPage({
     return qs ? `/desk/billing?${qs}` : "/desk/billing";
   }
 
+  const invoiceColumns: DataListColumn<InvoiceRow>[] = [
+    {
+      key: "invoice",
+      header: "Invoice",
+      primary: true,
+      cell: (invoice) => (
+        <Link
+          href={`/desk/billing/customer/${invoice.customer.id}/invoice/${invoice.id}`}
+          className="font-semibold text-ink underline-offset-4 hover:underline"
+        >
+          #{invoice.invoiceNumber}
+        </Link>
+      ),
+    },
+    {
+      key: "customer",
+      header: "Customer",
+      cell: (invoice) => (
+        <Link
+          href={`/desk/customers/${invoice.customer.id}`}
+          className="font-medium text-ink underline-offset-4 hover:underline"
+        >
+          {invoice.customer.user.name ?? invoice.customer.user.email}
+        </Link>
+      ),
+    },
+    {
+      key: "status",
+      header: "Status",
+      cell: (invoice) => (
+        <StatusPill
+          tone={invoiceStatusTone(invoice.status)}
+          label={invoice.status}
+        />
+      ),
+    },
+    {
+      key: "period",
+      header: "Period",
+      cell: (invoice) =>
+        invoice.billingPeriodStart
+          ? formatBusinessDate(invoice.billingPeriodStart)
+          : "—",
+    },
+    {
+      key: "due",
+      header: "Amount due",
+      cell: (invoice) => formatCents(invoice.amountDueCents),
+    },
+    {
+      key: "paid",
+      header: "Amount paid",
+      cell: (invoice) => formatCents(invoice.amountPaidCents),
+    },
+  ];
+
+  const balanceColumns: DataListColumn<BalanceRow>[] = [
+    {
+      key: "customer",
+      header: "Customer",
+      primary: true,
+      cell: (customer) => (
+        <div>
+          <Link
+            href={`/desk/billing/customer/${customer.id}`}
+            className="font-semibold text-ink underline-offset-4 hover:underline"
+          >
+            {customer.customerName}
+          </Link>
+          {customer.isPropertyManager && (
+            <span className="mt-2 block">
+              <StatusPill tone="progress" label="Property manager" />
+            </span>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: "properties",
+      header: "Properties",
+      cell: (customer) => String(customer.propertyCount),
+    },
+    {
+      key: "invoices",
+      header: "Open invoices",
+      cell: (customer) => String(customer.openInvoiceCount),
+    },
+    {
+      key: "balance",
+      header: "Balance owed",
+      cell: (customer) => (
+        <span className="font-semibold text-warning-ink">
+          {formatCents(customer.balanceCents)}
+        </span>
+      ),
+    },
+  ];
+
   return (
     <div>
       <PageHeader
         title="Billing"
-        description="Invoice snapshots and recorded payments. Rental rates, deposits and revenue are separate amounts."
+        description="Invoice snapshots and recorded payments. Rental rates, deposits, and revenue are separate amounts."
       />
+
       <FilterBar
         label="Filter invoices"
         items={[
@@ -99,10 +212,11 @@ export default async function BillingPage({
           },
         ]}
       />
+
       <p className="mb-4 text-sm text-ink-soft">
-        An invoice status is the last recorded state. Pending payments may still
-        be processing. Open a customer statement to review or record a manual
-        payment.
+        An invoice status is the last recorded state. Pending payments may
+        still be processing. Open a customer statement to review or record a
+        manual payment.
       </p>
 
       {showDeposits ? (
@@ -110,171 +224,47 @@ export default async function BillingPage({
       ) : showWaiting ? (
         <WaitingTab />
       ) : showStatements ? (
-        customerBalances.length === 0 ? (
-          <p className="mt-6 text-sm text-ink-soft">
-            No customer currently has an open balance.
-          </p>
-        ) : (
-          <div className="mt-6 overflow-x-auto rounded-lg border border-line bg-white">
-            <table className="min-w-full divide-y divide-line text-sm">
-              <thead className="bg-canvas">
-                <tr>
-                  <th
-                    scope="col"
-                    className="px-4 py-2 text-left font-medium text-ink-soft"
-                  >
-                    Customer
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-4 py-2 text-left font-medium text-ink-soft"
-                  >
-                    Properties
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-4 py-2 text-right font-medium text-ink-soft"
-                  >
-                    Open invoices
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-4 py-2 text-right font-medium text-ink-soft"
-                  >
-                    Balance owed
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-line">
-                {customerBalances.map((c) => (
-                  <tr key={c.id}>
-                    <td className="px-4 py-2">
-                      <Link
-                        href={`/desk/billing/customer/${c.id}`}
-                        className="text-ink underline hover:no-underline"
-                      >
-                        {c.customerName}
-                      </Link>
-                      {c.isPropertyManager && (
-                        <span className="ml-2 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">
-                          Property manager
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-2 text-ink-soft">
-                      {c.propertyCount}
-                    </td>
-                    <td className="px-4 py-2 text-right text-ink-soft">
-                      {c.openInvoiceCount}
-                    </td>
-                    <td className="px-4 py-2 text-right font-medium text-amber-800">
-                      {formatCents(c.balanceCents)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )
-      ) : invoices.length === 0 ? (
-        <p className="mt-6 text-sm text-ink-soft">
-          {delinquentOnly
-            ? "No delinquent invoices right now."
-            : "No invoices yet — they're created automatically once a signed agreement's first Stripe payment goes through."}
-        </p>
+        <DataList
+          rows={customerBalances}
+          columns={balanceColumns}
+          caption="Customer open balances"
+          empty={
+            <EmptyState
+              title="No open customer balances"
+              description="No customer currently has an open balance."
+            />
+          }
+        />
       ) : (
-        <div className="mt-6 overflow-x-auto rounded-lg border border-line bg-white">
-          <table className="min-w-full divide-y divide-line text-sm">
-            <thead className="bg-canvas">
-              <tr>
-                <th
-                  scope="col"
-                  className="px-4 py-2 text-left font-medium text-ink-soft"
-                >
-                  Invoice #
-                </th>
-                <th
-                  scope="col"
-                  className="px-4 py-2 text-left font-medium text-ink-soft"
-                >
-                  Customer
-                </th>
-                <th
-                  scope="col"
-                  className="px-4 py-2 text-left font-medium text-ink-soft"
-                >
-                  Status
-                </th>
-                <th
-                  scope="col"
-                  className="px-4 py-2 text-left font-medium text-ink-soft"
-                >
-                  Period
-                </th>
-                <th
-                  scope="col"
-                  className="px-4 py-2 text-right font-medium text-ink-soft"
-                >
-                  Amount due
-                </th>
-                <th
-                  scope="col"
-                  className="px-4 py-2 text-right font-medium text-ink-soft"
-                >
-                  Amount paid
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-line">
-              {invoices.map((invoice) => (
-                <tr key={invoice.id}>
-                  <td className="px-4 py-2 font-mono text-xs text-ink-soft">
-                    <Link
-                      className="text-primary underline"
-                      href={`/desk/billing/customer/${invoice.customer.id}/invoice/${invoice.id}`}
-                    >
-                      #{invoice.invoiceNumber}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-2">
-                    <Link
-                      href={`/desk/customers/${invoice.customer.id}`}
-                      className="text-ink underline hover:no-underline"
-                    >
-                      {invoice.customer.user.name ??
-                        invoice.customer.user.email}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-2">
-                    <StatusBadge
-                      tone={invoiceStatusTone(invoice.status)}
-                      label={invoice.status}
-                      variant="pill"
-                    />
-                  </td>
-                  <td className="px-4 py-2 text-ink-soft">
-                    {invoice.billingPeriodStart
-                      ? formatBusinessDate(invoice.billingPeriodStart)
-                      : "—"}
-                  </td>
-                  <td className="px-4 py-2 text-right">
-                    {formatCents(invoice.amountDueCents)}
-                  </td>
-                  <td className="px-4 py-2 text-right">
-                    {formatCents(invoice.amountPaidCents)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          <Pagination
-            page={meta.page}
-            totalPages={meta.totalPages}
-            totalCount={meta.totalCount}
-            buildHref={(p) => billingHref(p)}
+        <>
+          <DataList
+            rows={invoices}
+            columns={invoiceColumns}
+            caption="Invoices"
+            empty={
+              <EmptyState
+                title={
+                  delinquentOnly
+                    ? "No delinquent invoices right now"
+                    : "No invoices yet"
+                }
+                description={
+                  delinquentOnly
+                    ? "Nothing currently needs delinquent-invoice follow-up."
+                    : "Invoices are created automatically after a signed agreement's first Stripe payment succeeds."
+                }
+              />
+            }
           />
-        </div>
+          {invoices.length > 0 && (
+            <Pagination
+              page={meta.page}
+              totalPages={meta.totalPages}
+              totalCount={meta.totalCount}
+              buildHref={(page) => billingHref(page)}
+            />
+          )}
+        </>
       )}
     </div>
   );
