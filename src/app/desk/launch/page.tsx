@@ -125,7 +125,7 @@ export default async function LaunchDeskPage({
       </section>
       <section>
         <h2 className="text-lg font-semibold">Subscribers</h2>
-        <div className="mt-3 overflow-x-auto">
+        <div className="mt-3 overflow-x-auto" tabIndex={0} aria-label="Subscriber table scroll area">
           <table className="w-full text-left text-sm">
             <caption className="sr-only">
               Launch subscribers, page {page}
