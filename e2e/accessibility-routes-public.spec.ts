@@ -15,7 +15,11 @@ function routesFor(...roles: AccessibilityRouteRole[]) {
 test.describe("generated accessibility routes — public", () => {
   for (const route of routesFor("PUBLIC")) {
     test(route.path, async ({ page }) => {
-      await scanAccessibilityRoute(page, route);
+      await scanAccessibilityRoute(
+        page,
+        route,
+        route.path === "/" ? [360, 390, 768, 1440] : undefined,
+      );
     });
   }
 });
