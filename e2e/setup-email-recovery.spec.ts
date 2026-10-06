@@ -30,5 +30,5 @@ test("unsent staff setup preserves the account and offers resend recovery", asyn
   await info.attach("setup-recovery-phone", { body: await page.screenshot({ fullPage: true }), contentType: "image/png" });
   await page.reload();
   await expect(page).toHaveTitle(/Settings/);
-  await expect(page.getByRole("row").filter({ hasText: email })).toHaveCount(1);
+  await expect(page.getByRole("listitem").filter({ hasText: email })).toHaveCount(1);
 });
