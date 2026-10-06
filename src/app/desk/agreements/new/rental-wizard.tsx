@@ -412,10 +412,10 @@ export function RentalWizard({
               aria-current={active ? "step" : undefined}
               className={`rounded-full border px-3 py-1 text-sm ${
                 active
-                  ? "border-gray-900 bg-gray-900 text-white"
+                  ? "border-primary bg-action text-on-action"
                   : done
                     ? "border-green-300 bg-green-50 text-green-800"
-                    : "border-gray-300 text-gray-500"
+                    : "border-line-strong text-ink-faint"
               }`}
             >
               {i + 1}. {s.label}
@@ -486,9 +486,9 @@ export function RentalWizard({
       {step === "customer" && !agreementId && (
         <form
           onSubmit={handleCustomerStepNext}
-          className="mt-4 space-y-4 rounded-lg border border-gray-200 bg-white p-5"
+          className="mt-4 space-y-4 rounded-lg border border-line bg-white p-5"
         >
-          <h2 className="font-medium text-gray-900">Who is this rental for?</h2>
+          <h2 className="font-medium text-ink">Who is this rental for?</h2>
 
           {customers.length > 0 && (
             <div className="flex gap-4 text-sm">
@@ -518,7 +518,7 @@ export function RentalWizard({
               <div>
                 <label
                   htmlFor="customerId"
-                  className="block text-sm font-medium text-gray-700"
+                  className="block text-sm font-medium text-ink-soft"
                 >
                   Customer
                 </label>
@@ -527,7 +527,7 @@ export function RentalWizard({
                   id="customerId"
                   value={customerId}
                   onChange={(e) => handleExistingCustomerChange(e.target.value)}
-                  className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                  className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
                 >
                   {customers.map((c) => (
                     <option key={c.id} value={c.id}>
@@ -539,7 +539,7 @@ export function RentalWizard({
               <div>
                 <label
                   htmlFor="serviceAddressId"
-                  className="block text-sm font-medium text-gray-700"
+                  className="block text-sm font-medium text-ink-soft"
                 >
                   Service address
                 </label>
@@ -553,7 +553,7 @@ export function RentalWizard({
                     id="serviceAddressId"
                     value={serviceAddressId}
                     onChange={(e) => setServiceAddressId(e.target.value)}
-                    className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                    className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
                   >
                     {addresses.map((a) => (
                       <option key={a.id} value={a.id}>
@@ -570,7 +570,7 @@ export function RentalWizard({
                 <div>
                   <label
                     htmlFor="ncName"
-                    className="block text-sm font-medium text-gray-700"
+                    className="block text-sm font-medium text-ink-soft"
                   >
                     Name
                   </label>
@@ -581,13 +581,13 @@ export function RentalWizard({
                     required
                     value={newCustomer.name}
                     onChange={(e) => updateNewCustomer("name", e.target.value)}
-                    className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                    className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
                   />
                 </div>
                 <div>
                   <label
                     htmlFor="ncEmail"
-                    className="block text-sm font-medium text-gray-700"
+                    className="block text-sm font-medium text-ink-soft"
                   >
                     Email
                   </label>
@@ -598,14 +598,14 @@ export function RentalWizard({
                     required
                     value={newCustomer.email}
                     onChange={(e) => updateNewCustomer("email", e.target.value)}
-                    className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                    className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
                   />
                 </div>
               </div>
               <div>
                 <label
                   htmlFor="ncPhone"
-                  className="block text-sm font-medium text-gray-700"
+                  className="block text-sm font-medium text-ink-soft"
                 >
                   Phone (optional)
                 </label>
@@ -615,16 +615,16 @@ export function RentalWizard({
                   type="tel"
                   value={newCustomer.phone}
                   onChange={(e) => updateNewCustomer("phone", e.target.value)}
-                  className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm sm:w-64"
+                  className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm sm:w-64"
                 />
               </div>
-              <fieldset className="border-t border-gray-100 pt-3">
-                <legend className="text-sm font-medium text-gray-700">
+              <fieldset className="border-t border-line pt-3">
+                <legend className="text-sm font-medium text-ink-soft">
                   Service address
                 </legend>
                 <div className="mt-2 space-y-3">
                   <div>
-                    <label htmlFor="nc-line1" className="mb-1 block text-sm font-medium text-gray-700">
+                    <label htmlFor="nc-line1" className="mb-1 block text-sm font-medium text-ink-soft">
                       Street address
                     </label>
                     <input
@@ -636,11 +636,11 @@ export function RentalWizard({
                       placeholder="Street address"
                       value={newCustomer.line1}
                       onChange={(e) => updateNewCustomer("line1", e.target.value)}
-                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                      className="w-full rounded-md border border-line-strong px-3 py-2 text-sm"
                     />
                   </div>
                   <div>
-                    <label htmlFor="nc-line2" className="mb-1 block text-sm font-medium text-gray-700">
+                    <label htmlFor="nc-line2" className="mb-1 block text-sm font-medium text-ink-soft">
                       Apartment / unit (optional)
                     </label>
                     <input
@@ -651,12 +651,12 @@ export function RentalWizard({
                       placeholder="Apt / unit (optional)"
                       value={newCustomer.line2}
                       onChange={(e) => updateNewCustomer("line2", e.target.value)}
-                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                      className="w-full rounded-md border border-line-strong px-3 py-2 text-sm"
                     />
                   </div>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                     <div>
-                      <label htmlFor="nc-city" className="mb-1 block text-sm font-medium text-gray-700">
+                      <label htmlFor="nc-city" className="mb-1 block text-sm font-medium text-ink-soft">
                         City
                       </label>
                       <input
@@ -668,11 +668,11 @@ export function RentalWizard({
                         placeholder="City"
                         value={newCustomer.city}
                         onChange={(e) => updateNewCustomer("city", e.target.value)}
-                        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                        className="w-full rounded-md border border-line-strong px-3 py-2 text-sm"
                       />
                     </div>
                     <div>
-                      <label htmlFor="nc-state" className="mb-1 block text-sm font-medium text-gray-700">
+                      <label htmlFor="nc-state" className="mb-1 block text-sm font-medium text-ink-soft">
                         State
                       </label>
                       <input
@@ -684,11 +684,11 @@ export function RentalWizard({
                         placeholder="State"
                         value={newCustomer.state}
                         onChange={(e) => updateNewCustomer("state", e.target.value)}
-                        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                        className="w-full rounded-md border border-line-strong px-3 py-2 text-sm"
                       />
                     </div>
                     <div>
-                      <label htmlFor="nc-zip" className="mb-1 block text-sm font-medium text-gray-700">
+                      <label htmlFor="nc-zip" className="mb-1 block text-sm font-medium text-ink-soft">
                         ZIP
                       </label>
                       <input
@@ -700,7 +700,7 @@ export function RentalWizard({
                         placeholder="ZIP"
                         value={newCustomer.zip}
                         onChange={(e) => updateNewCustomer("zip", e.target.value)}
-                        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                        className="w-full rounded-md border border-line-strong px-3 py-2 text-sm"
                       />
                     </div>
                   </div>
@@ -712,7 +712,7 @@ export function RentalWizard({
           <button
             type="submit"
             disabled={isPending}
-            className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+            className="rounded-md bg-action px-4 py-2 text-sm font-medium text-on-action hover:bg-action disabled:opacity-50"
           >
             {isPending ? "Working…" : "Next: term & fees"}
           </button>
@@ -722,9 +722,9 @@ export function RentalWizard({
       {step === "terms" && !agreementId && (
         <form
           onSubmit={handleTermsStepNext}
-          className="mt-4 space-y-4 rounded-lg border border-gray-200 bg-white p-5"
+          className="mt-4 space-y-4 rounded-lg border border-line bg-white p-5"
         >
-          <h2 className="font-medium text-gray-900">
+          <h2 className="font-medium text-ink">
             Term & fees for {customerName}
           </h2>
 
@@ -732,7 +732,7 @@ export function RentalWizard({
             <div>
               <label
                 htmlFor="termMonths"
-                className="block text-sm font-medium text-gray-700"
+                className="block text-sm font-medium text-ink-soft"
               >
                 Term (months, optional)
               </label>
@@ -748,11 +748,11 @@ export function RentalWizard({
                   updateTerm("termMonths", value);
                   if (value !== "12") updateTerm("paidInFullInAdvance", false);
                 }}
-                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
               />
               {(termFields.termMonths === "6" ||
                 termFields.termMonths === "12") && (
-                <p className="mt-1 text-xs text-gray-500">
+                <p className="mt-1 text-xs text-ink-faint">
                   A {termFields.termMonths}-month term automatically gets the{" "}
                   {termFields.termMonths}-month prepay discount (set from
                   /desk/settings).
@@ -762,7 +762,7 @@ export function RentalWizard({
             <div>
               <label
                 htmlFor="depositDollars"
-                className="block text-sm font-medium text-gray-700"
+                className="block text-sm font-medium text-ink-soft"
               >
                 Deposit ($, optional)
               </label>
@@ -774,7 +774,7 @@ export function RentalWizard({
                 step="0.01"
                 value={termFields.depositDollars}
                 onChange={(e) => updateTerm("depositDollars", e.target.value)}
-                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
               />
             </div>
           </div>
@@ -799,7 +799,7 @@ export function RentalWizard({
             <div>
               <label
                 htmlFor="damageWaiverDollars"
-                className="block text-sm font-medium text-gray-700"
+                className="block text-sm font-medium text-ink-soft"
               >
                 Damage waiver ($, one time at signing, optional)
               </label>
@@ -813,13 +813,13 @@ export function RentalWizard({
                 onChange={(e) =>
                   updateTerm("damageWaiverDollars", e.target.value)
                 }
-                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
               />
             </div>
             <div>
               <label
                 htmlFor="taxRatePercent"
-                className="block text-sm font-medium text-gray-700"
+                className="block text-sm font-medium text-ink-soft"
               >
                 Tax rate (%, optional)
               </label>
@@ -831,7 +831,7 @@ export function RentalWizard({
                 placeholder="e.g. 7.375"
                 value={termFields.taxRatePercent}
                 onChange={(e) => updateTerm("taxRatePercent", e.target.value)}
-                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
               />
             </div>
           </div>
@@ -840,7 +840,7 @@ export function RentalWizard({
             <div>
               <label
                 htmlFor="lateFeeGraceDays"
-                className="block text-sm font-medium text-gray-700"
+                className="block text-sm font-medium text-ink-soft"
               >
                 Late fee grace (days)
               </label>
@@ -851,13 +851,13 @@ export function RentalWizard({
                 min={0}
                 value={termFields.lateFeeGraceDays}
                 onChange={(e) => updateTerm("lateFeeGraceDays", e.target.value)}
-                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
               />
             </div>
             <div>
               <label
                 htmlFor="lateFeeDollars"
-                className="block text-sm font-medium text-gray-700"
+                className="block text-sm font-medium text-ink-soft"
               >
                 Late fee flat ($)
               </label>
@@ -869,13 +869,13 @@ export function RentalWizard({
                 step="0.01"
                 value={termFields.lateFeeDollars}
                 onChange={(e) => updateTerm("lateFeeDollars", e.target.value)}
-                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
               />
             </div>
             <div>
               <label
                 htmlFor="lateFeePercent"
-                className="block text-sm font-medium text-gray-700"
+                className="block text-sm font-medium text-ink-soft"
               >
                 Late fee (%)
               </label>
@@ -887,7 +887,7 @@ export function RentalWizard({
                 step="0.01"
                 value={termFields.lateFeePercent}
                 onChange={(e) => updateTerm("lateFeePercent", e.target.value)}
-                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
               />
             </div>
           </div>
@@ -897,14 +897,14 @@ export function RentalWizard({
               type="button"
               disabled={isPending}
               onClick={() => setStep("customer")}
-              className="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:border-gray-400"
+              className="rounded-md border border-line-strong px-4 py-2 text-sm text-ink-soft hover:border-line-strong"
             >
               Back
             </button>
             <button
               type="submit"
               disabled={isPending}
-              className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+              className="rounded-md bg-action px-4 py-2 text-sm font-medium text-on-action hover:bg-action disabled:opacity-50"
             >
               {isPending ? "Working…" : "Next: appliances"}
             </button>
@@ -913,20 +913,20 @@ export function RentalWizard({
       )}
 
       {step === "appliances" && agreementId && (
-        <div className="mt-4 space-y-4 rounded-lg border border-gray-200 bg-white p-5">
-          <h2 className="font-medium text-gray-900">
+        <div className="mt-4 space-y-4 rounded-lg border border-line bg-white p-5">
+          <h2 className="font-medium text-ink">
             Appliances ({addedLines.length} added
             {monthlyTotal > 0 && ` — ${formatCents(monthlyTotal)}/mo`})
           </h2>
 
           {addedLines.length > 0 && (
-            <ul className="divide-y divide-gray-100 text-sm">
+            <ul className="divide-y divide-line text-sm">
               {addedLines.map((l) => (
                 <li key={l.id} className="py-2">
-                  <p className="font-medium text-gray-900">
+                  <p className="font-medium text-ink">
                     {l.label} — {formatCents(l.monthlyPriceCents)}/mo
                   </p>
-                  <p className="text-gray-600">{l.applianceNames}</p>
+                  <p className="text-ink-soft">{l.applianceNames}</p>
                 </li>
               ))}
             </ul>
@@ -934,13 +934,13 @@ export function RentalWizard({
 
           <form
             onSubmit={handleAddLine}
-            className="space-y-3 border-t border-gray-100 pt-4"
+            className="space-y-3 border-t border-line pt-4"
           >
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label
                   htmlFor="lineLabel"
-                  className="block text-sm font-medium text-gray-700"
+                  className="block text-sm font-medium text-ink-soft"
                 >
                   Label
                 </label>
@@ -952,13 +952,13 @@ export function RentalWizard({
                   placeholder="e.g. Washer/Dryer set"
                   value={label}
                   onChange={(e) => setLabel(e.target.value)}
-                  className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                  className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
                 />
               </div>
               <div>
                 <label
                   htmlFor="listPriceDollars"
-                  className="block text-sm font-medium text-gray-700"
+                  className="block text-sm font-medium text-ink-soft"
                 >
                   Monthly price before any discount ($)
                 </label>
@@ -971,22 +971,22 @@ export function RentalWizard({
                   required
                   value={listPriceDollars}
                   onChange={(e) => setListPriceDollars(e.target.value)}
-                  className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                  className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
                 />
               </div>
             </div>
 
             <div>
-              <p className="block text-sm font-medium text-gray-700">
+              <p className="block text-sm font-medium text-ink-soft">
                 Which appliance(s)? (select 2 for a set — sets get the higher
                 prepay discount rate)
               </p>
               {availableAppliances.length === 0 ? (
-                <p className="mt-1 text-sm text-gray-600">
+                <p className="mt-1 text-sm text-ink-soft">
                   No available appliances in inventory right now.
                 </p>
               ) : (
-                <div className="mt-2 max-h-48 space-y-1 overflow-y-auto rounded-md border border-gray-200 p-2">
+                <div className="mt-2 max-h-48 space-y-1 overflow-y-auto rounded-md border border-line p-2">
                   {availableAppliances.map((a) => (
                     <label
                       key={a.id}
@@ -1008,18 +1008,18 @@ export function RentalWizard({
             <button
               type="submit"
               disabled={isPending || availableAppliances.length === 0}
-              className="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:border-gray-400 disabled:opacity-50"
+              className="rounded-md border border-line-strong px-4 py-2 text-sm text-ink-soft hover:border-line-strong disabled:opacity-50"
             >
               {isPending ? "Adding…" : "Add to agreement"}
             </button>
           </form>
 
-          <div className="flex gap-2 border-t border-gray-100 pt-4">
+          <div className="flex gap-2 border-t border-line pt-4">
             <button
               type="button"
               disabled={isPending}
               onClick={() => setStep("terms")}
-              className="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:border-gray-400"
+              className="rounded-md border border-line-strong px-4 py-2 text-sm text-ink-soft hover:border-line-strong"
             >
               Back
             </button>
@@ -1027,7 +1027,7 @@ export function RentalWizard({
               type="button"
               disabled={isPending}
               onClick={handleAppliancesStepNext}
-              className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
+              className="rounded-md bg-action px-4 py-2 text-sm font-medium text-on-action hover:bg-action"
             >
               Next: review
             </button>
@@ -1036,35 +1036,35 @@ export function RentalWizard({
       )}
 
       {step === "review" && agreementId && (
-        <div className="mt-4 space-y-4 rounded-lg border border-gray-200 bg-white p-5">
-          <h2 className="font-medium text-gray-900">Review</h2>
-          <p className="text-sm text-gray-600">
+        <div className="mt-4 space-y-4 rounded-lg border border-line bg-white p-5">
+          <h2 className="font-medium text-ink">Review</h2>
+          <p className="text-sm text-ink-soft">
             {customerName} —{" "}
             {termFields.termMonths
               ? `${termFields.termMonths}-month term`
               : "Month-to-month"}
           </p>
-          <ul className="divide-y divide-gray-100 text-sm">
+          <ul className="divide-y divide-line text-sm">
             {addedLines.map((l) => (
               <li key={l.id} className="py-2">
-                <p className="font-medium text-gray-900">
+                <p className="font-medium text-ink">
                   {l.label} — {formatCents(l.monthlyPriceCents)}/mo
                 </p>
-                <p className="text-gray-600">{l.applianceNames}</p>
+                <p className="text-ink-soft">{l.applianceNames}</p>
               </li>
             ))}
           </ul>
-          <p className="font-medium text-gray-900">
+          <p className="font-medium text-ink">
             Total: {formatCents(monthlyTotal)}/mo
           </p>
 
           {!sent ? (
-            <div className="flex flex-wrap gap-2 border-t border-gray-100 pt-4">
+            <div className="flex flex-wrap gap-2 border-t border-line pt-4">
               <button
                 type="button"
                 disabled={isPending}
                 onClick={() => setStep("appliances")}
-                className="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:border-gray-400"
+                className="rounded-md border border-line-strong px-4 py-2 text-sm text-ink-soft hover:border-line-strong"
               >
                 Back
               </button>
@@ -1072,13 +1072,13 @@ export function RentalWizard({
                 type="button"
                 disabled={isPending}
                 onClick={handleSend}
-                className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+                className="rounded-md bg-action px-4 py-2 text-sm font-medium text-on-action hover:bg-action disabled:opacity-50"
               >
                 {isPending ? "Sending…" : "Send for signature"}
               </button>
               <Link
                 href={`/desk/agreements/${agreementId}`}
-                className="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:border-gray-400"
+                className="rounded-md border border-line-strong px-4 py-2 text-sm text-ink-soft hover:border-line-strong"
               >
                 Finish this later
               </Link>
