@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { runAutomation } from "@/domains/automation/runs";
 import { exportDatabaseBackup, sendBackupFailureAlertToChris } from "@/domains/backup";
+import { runMediaInventoryAndCopy } from "../../../../../scripts/media-inventory";
 
 export const maxDuration = 60;
 
@@ -13,7 +14,8 @@ export async function GET(request: Request): Promise<NextResponse> {
   }
   if (authHeader !== `Bearer ${expected}`) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
 
-  const outcome = await runAutomation({
+  let databaseBackupUrl: string | null = null;
+  const backup = await runAutomation({
     ruleKey: "backup",
     budgetSeconds: 60,
     work: async () => {
@@ -22,6 +24,7 @@ export async function GET(request: Request): Promise<NextResponse> {
         await sendBackupFailureAlertToChris(result);
         throw new Error(result.error ?? "Database backup failed.");
       }
+      databaseBackupUrl = result.url ?? null;
       return {
         counts: {
           ...(result.tableCounts ?? {}),
@@ -30,5 +33,18 @@ export async function GET(request: Request): Promise<NextResponse> {
       };
     },
   });
-  return NextResponse.json(outcome);
+
+  let media: Awaited<ReturnType<typeof runAutomation>> | null = null;
+  if (backup.outcome === "RAN" || backup.outcome === "ALREADY_RAN") {
+    media = await runAutomation({
+      ruleKey: "media-copy",
+      budgetSeconds: 60,
+      work: async () => {
+        const result = await runMediaInventoryAndCopy({ databaseBackupUrl });
+        return { counts: result.counts };
+      },
+    });
+  }
+
+  return NextResponse.json({ backup, media });
 }
