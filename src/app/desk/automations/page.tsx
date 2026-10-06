@@ -1,12 +1,33 @@
 import { getAutomationHealth } from "@/domains/automation/health";
 import { requireRole } from "@/lib/session";
-import { formatBusinessDate, formatBusinessTime } from "@/lib/business-date";
+import {
+  formatBusinessDate,
+  formatBusinessTime,
+} from "@/lib/business-date";
+import {
+  Button,
+  Card,
+  PageHeader,
+  StatusPill,
+} from "@/components/ui";
+import type { StatusTone } from "@/components/status-badge";
 import { setAutomationPausedAction } from "./actions";
 
 export const metadata = { title: "Automations" };
 
+const STATE_TONE: Record<string, StatusTone> = {
+  healthy: "success",
+  paused: "attention",
+  failed: "attention",
+  uncertain: "attention",
+  "missing-configuration": "stopped",
+  "never-run": "pending",
+};
+
 function stateLabel(state: string) {
-  return state.replaceAll("-", " ").replace(/^./, (c) => c.toUpperCase());
+  return state
+    .replaceAll("-", " ")
+    .replace(/^./, (character) => character.toUpperCase());
 }
 
 function timestamp(value: Date | null) {
@@ -20,58 +41,77 @@ export default async function AutomationsPage() {
   const canPause = session.user.role === "OWNER";
 
   return (
-    <main className="max-w-5xl">
-      <h1 className="text-xl font-semibold text-ink">Automation health</h1>
-      <p className="mt-2 max-w-3xl text-sm text-ink-soft">
-        Each row is one durable nightly job. A successful run is recorded before this page calls it healthy; a missing
-        configuration, failed run, uncertain run or owner pause stays visible instead of being treated as success.
-      </p>
+    <div className="max-w-5xl">
+      <PageHeader
+        title="Automation health"
+        description="Each row is one durable nightly job. Success is recorded before this page calls a job healthy; missing configuration, failure, uncertainty, or an owner pause stays visible instead of being treated as success."
+      />
 
-      <div className="mt-6 space-y-4">
+      <div className="space-y-4">
         {health.map((item) => (
-          <section id={item.ruleKey.replaceAll(":", "-")} key={item.ruleKey} className="rounded-xl border border-line bg-surface p-5">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div className="min-w-0 flex-1">
-                <h2 className="font-medium text-ink">{item.label}</h2>
-                <p className="mt-1 text-sm text-ink-soft">{item.explanation}</p>
-                <p className="mt-2 text-xs text-ink-faint">Rule: {item.ruleKey}</p>
-              </div>
-              <span className="rounded-full border border-control bg-subtle px-3 py-1 text-xs font-medium text-ink">
-                {stateLabel(item.state)}
-              </span>
-            </div>
-
-            <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
-              <div>
-                <dt className="text-ink-soft">Last success</dt>
-                <dd className="font-medium text-ink">{timestamp(item.lastSuccessAt)}</dd>
-              </div>
-              <div>
-                <dt className="text-ink-soft">Last failure</dt>
-                <dd className="font-medium text-ink">
-                  {item.lastFailure ? timestamp(item.lastFailure.at) : "None recorded"}
-                </dd>
-              </div>
-            </dl>
-
-            {item.lastFailure && (
-              <p className="mt-3 rounded-lg border border-line bg-subtle p-3 text-sm text-ink">
-                {item.lastFailure.error}
+          <Card
+            key={item.ruleKey}
+            className="scroll-mt-4"
+            title={item.label}
+            description={item.explanation}
+            actions={
+              <StatusPill
+                tone={STATE_TONE[item.state] ?? "pending"}
+                label={stateLabel(item.state)}
+              />
+            }
+          >
+            <div id={item.ruleKey.replaceAll(":", "-")}>
+              <p className="text-xs text-ink-faint">
+                Rule: {item.ruleKey}
               </p>
-            )}
 
-            {canPause && (
-              <form action={setAutomationPausedAction} className="mt-4">
-                <input type="hidden" name="ruleKey" value={item.ruleKey} />
-                <input type="hidden" name="paused" value={item.state === "paused" ? "false" : "true"} />
-                <button type="submit" className="min-h-11 rounded-lg border border-control px-4 py-2 text-sm font-medium text-primary hover:bg-subtle">
-                  {item.state === "paused" ? "Resume this automation" : "Pause this automation"}
-                </button>
-              </form>
-            )}
-          </section>
+              <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+                <div>
+                  <dt className="text-ink-soft">Last success</dt>
+                  <dd className="font-semibold text-ink">
+                    {timestamp(item.lastSuccessAt)}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-ink-soft">Last failure</dt>
+                  <dd className="font-semibold text-ink">
+                    {item.lastFailure
+                      ? timestamp(item.lastFailure.at)
+                      : "None recorded"}
+                  </dd>
+                </div>
+              </dl>
+
+              {item.lastFailure && (
+                <p className="mt-4 rounded-control border border-line bg-subtle p-3 text-sm text-ink">
+                  {item.lastFailure.error}
+                </p>
+              )}
+
+              {canPause && (
+                <form action={setAutomationPausedAction} className="mt-4">
+                  <input
+                    type="hidden"
+                    name="ruleKey"
+                    value={item.ruleKey}
+                  />
+                  <input
+                    type="hidden"
+                    name="paused"
+                    value={item.state === "paused" ? "false" : "true"}
+                  />
+                  <Button type="submit" variant="secondary">
+                    {item.state === "paused"
+                      ? "Resume this automation"
+                      : "Pause this automation"}
+                  </Button>
+                </form>
+              )}
+            </div>
+          </Card>
         ))}
       </div>
-    </main>
+    </div>
   );
 }
