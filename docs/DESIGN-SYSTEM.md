@@ -187,3 +187,8 @@ ones that suite covers.
 E2 extends the final Batch E Evergreen tokens with brand-kit-only visual primitives: `rounded-control` = 8px, `rounded-card` = 16px, and semantic owner-navigation colors (`nav-bg`, `nav-ink`, `nav-current-bg`, `nav-current-ink`). Values remain defined only in `src/app/globals.css` and are exported through Tailwind's `@theme inline` block.
 
 Because current `main` still contains legacy radius utilities on screens intentionally scheduled for E2-2 through E2-8, E2-1A scopes the new hard-coded color/radius guard to `src/components/ui/**`. E2-8 broadens that same protection to all TSX after the screen migrations are complete.
+
+
+### E2 shared components — core primitives
+
+The first shared E2 primitives live in `src/components/ui/`: `Button`, `ButtonLink`, `Card`, `StatCard`, `StatusPill`, and the upgraded/re-exported `PageHeader`/`EmptyState`. They use semantic Evergreen tokens only; `npm run lint` enforces that rule for the shared UI layer. `tests/e2-ui-primitives.test.tsx` renders this primitive set in both light and dark wrappers and verifies semantic roles and links.
