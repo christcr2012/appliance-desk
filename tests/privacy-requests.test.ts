@@ -139,8 +139,9 @@ describe.skipIf(!enabled)("Batch D privacy requests (real Postgres)", () => {
     const result = await fulfillPrivacyDeletion(ownerId, deletionRequest, "DELETE");
     expect(result.retained).toContain("Invoice");
     expect(deletePrivatePhotos).toHaveBeenLastCalledWith(
-      privatePhotoUrl,
+      [privatePhotoUrl],
       { token: "private-test-token", storeId: "store_test" },
+      { privacyRequestId: deletionRequest },
     );
     expect((await prisma.user.findUniqueOrThrow({ where: { id: userA } })).email).toBe(`deleted-${userA}@invalid`);
     expect((await prisma.customer.findUniqueOrThrow({ where: { id: customerA } })).phone).toBeNull();
