@@ -83,14 +83,14 @@ export function DriverJobCard({ job }: { job: DriverJob }) {
   const isDone = job.status === "COMPLETED" || job.status === "CANCELLED";
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+    <div className="rounded-lg border border-line bg-white p-4 shadow-sm">
       <div className="flex items-start justify-between gap-2">
         <div>
-          <p className="text-base font-semibold text-gray-900">
+          <p className="text-base font-semibold text-ink">
             {formatTime(job.scheduledAt)} — {TYPE_LABELS[job.type]}
           </p>
           {job.customerName && (
-            <p className="mt-0.5 text-sm text-gray-700">{job.customerName}</p>
+            <p className="mt-0.5 text-sm text-ink-soft">{job.customerName}</p>
           )}
         </div>
         <StatusBadge
@@ -102,14 +102,14 @@ export function DriverJobCard({ job }: { job: DriverJob }) {
       </div>
 
       {job.appliances.length > 0 && (
-        <ul className="mt-2 text-sm text-gray-700">
+        <ul className="mt-2 text-sm text-ink-soft">
           {job.appliances.map((a) => (
             <li key={a.id}>{a.label}</li>
           ))}
         </ul>
       )}
 
-      {job.notes && <p className="mt-2 text-sm text-gray-600">{job.notes}</p>}
+      {job.notes && <p className="mt-2 text-sm text-ink-soft">{job.notes}</p>}
 
       <div className="mt-3 flex flex-wrap gap-2">
         {job.address && (
@@ -117,7 +117,7 @@ export function DriverJobCard({ job }: { job: DriverJob }) {
             href={mapsUrl(job.address)}
             target="_blank"
             rel="noreferrer"
-            className="rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:border-gray-400"
+            className="rounded-md border border-line-strong px-3 py-2 text-sm font-medium text-ink-soft hover:border-line-strong"
           >
             Get directions
           </a>
@@ -125,7 +125,7 @@ export function DriverJobCard({ job }: { job: DriverJob }) {
         {job.customerPhone && (
           <a
             href={`tel:${job.customerPhone}`}
-            className="rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:border-gray-400"
+            className="rounded-md border border-line-strong px-3 py-2 text-sm font-medium text-ink-soft hover:border-line-strong"
           >
             Call customer
           </a>
@@ -139,7 +139,7 @@ export function DriverJobCard({ job }: { job: DriverJob }) {
               type="button"
               disabled={isPending}
               onClick={() => handleStatusChange("IN_PROGRESS")}
-              className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+              className="rounded-md bg-action px-4 py-2 text-sm font-medium text-on-action hover:bg-action disabled:opacity-50"
             >
               Start
             </button>
@@ -149,7 +149,7 @@ export function DriverJobCard({ job }: { job: DriverJob }) {
               type="button"
               disabled={isPending}
               onClick={() => handleStatusChange("COMPLETED")}
-              className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+              className="rounded-md bg-action px-4 py-2 text-sm font-medium text-on-action hover:bg-action disabled:opacity-50"
             >
               Mark complete
             </button>
@@ -158,7 +158,7 @@ export function DriverJobCard({ job }: { job: DriverJob }) {
             type="button"
             disabled={isPending}
             onClick={() => setShowPhoto((s) => !s)}
-            className="rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:border-gray-400 disabled:opacity-50"
+            className="rounded-md border border-line-strong px-3 py-2 text-sm font-medium text-ink-soft hover:border-line-strong disabled:opacity-50"
           >
             {showPhoto ? "Cancel photo" : "Add photo"}
           </button>
@@ -166,7 +166,7 @@ export function DriverJobCard({ job }: { job: DriverJob }) {
       )}
 
       {showPhoto && (
-        <div className="mt-3 flex items-center gap-3 border-t border-gray-100 pt-3">
+        <div className="mt-3 flex items-center gap-3 border-t border-line pt-3">
           {photoUrl && (
             <span className="text-xs text-green-700">Photo uploaded securely.</span>
           )}
@@ -184,7 +184,7 @@ export function DriverJobCard({ job }: { job: DriverJob }) {
               type="button"
               disabled={isPending}
               onClick={handleAddPhoto}
-              className="rounded-md bg-gray-900 px-3 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+              className="rounded-md bg-action px-3 py-2 text-sm font-medium text-on-action hover:bg-action disabled:opacity-50"
             >
               Save
             </button>
