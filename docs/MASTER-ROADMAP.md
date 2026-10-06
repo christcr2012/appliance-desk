@@ -31,22 +31,22 @@ Legend: ✅ done · ▶ next · ⏳ waiting on Chris · ○ not started. "Design
 |---|---|---|---|---|---|
 | 1 | ✅ Batches A, B, B2, C, R, D, E, E2 | approved, built | — | — | merged |
 | 2 | ▶ **F-part-1** — backups that restore, media second copy, capacity numbers, runbooks (Batch F WU-F1, F2, F4, F5) | ✅ approved (`BATCH-F.md`) | now | nothing | 2–3 |
-| 3 | ⏳ **G** — audit fixes, dark-mode contrast fix, two-step login, session control | proposed (`BATCH-G.md`) | Chris approves G | approve design (IN-40) | 2 |
-| 4 | ⏳ **T** — Colorado sales and use tax | proposed (`BATCH-T.md`) | Chris approves T | approve design; register on SUTS for the free GIS key (can come later — manual entry works) | 4 |
-| 5 | ⏳ **V** — "Evergreen Signature" public-site redesign + desk/portal polish | proposed (`BATCH-V.md`, concept artifact) | Chris approves V | approve design; react to the concept | 3–4 |
+| 3 | ○ **G** — audit fixes, dark-mode contrast fix, two-step login, session control | ✅ approved (`BATCH-G.md`) | F-part-1 merged | nothing | 2 |
+| 4 | ○ **T** — Colorado sales and use tax | ✅ approved (`BATCH-T.md`) | G merged | nothing to start (register on SUTS for the free GIS key when ready — manual entry works without it) | 4 |
+| 5 | ○ **V** — "Evergreen Signature" public-site redesign + desk/portal polish | ✅ approved (`BATCH-V.md`, concept artifact) | T merged | accept the before/after screenshots before each public-site PR merges | 3–4 |
 | 6 | ○ **F-part-2** — end-to-end scenarios, owner guide with screenshots, review-thread discharge, launch ledger, rollback plan (WU-F3, F6–F9) | ✅ approved | steps 3–5 merged (so the proof covers the final product) | nothing | 3 |
 | 7 | ⏳ **Launch** — Chris's go-live checklist | `docs/GO-LIVE-CHECKLIST.md` | step 6 done | CPA answers IN-17, IN-33…IN-38 entered; attorney wording; live Stripe/email decisions; launch authorization | — |
-| 8 | ⏳ **K** — books: journal, expenses, Stripe fees, P&L, QuickBooks/Xero/other exports | proposed (`BATCH-K.md`) | T merged; Chris approves K (may move before launch if wanted) | approve design; IN-39 later | 5 |
-| 9 | ⏳ **O** — owner controls: settings undo, per-person permissions, approvals, dated prices, goals, switches page | proposed (`BATCH-O.md`) | K merged; Chris approves O | approve design | 4–5 |
+| 8 | ○ **K** — books: journal, expenses, Stripe fees, P&L, QuickBooks/Xero/other exports | ✅ approved (`BATCH-K.md`) | launch (or earlier if Chris asks; needs T merged) | nothing to start; IN-39 later | 5 |
+| 9 | ○ **O** — owner controls: settings undo, per-person permissions, approvals, dated prices, goals, switches page | ✅ approved (`BATCH-O.md`) | K merged | nothing | 4–5 |
 | 10 | ○ **P** — customer self-service and growth (section 5) | **no design yet** — a stronger model writes it when Chris picks items | after O, or earlier for a single picked item | pick items | — |
 | 11 | ○ Conditional/deferred: Google Workspace integration (O32), CSV import (O29), direct QuickBooks sync (`BATCH-K.md` §9) | deferred | prerequisites in their docs | provide accounts/data | — |
 
-**Why F is split (needs Chris's OK, recorded as IN-41):** F proves the finished product. If F runs completely now, the
+**Why F is split (approved by Chris 2026-10-06, IN-41):** F proves the finished product. If F runs completely now, the
 tax, security and redesign work that follows would make its scenarios and screenshots stale. Its infrastructure parts
 (backup/restore, media copy, capacity, runbooks) do not depend on those batches, so they run now; its product-wide
 proof runs last. If Chris prefers, F can run whole now and the scenario/screenshot work units are re-run after V.
 
-**If Chris has not approved G/T/V yet:** do step 2, then stop and report. Never start a PROPOSED design.
+**Approval record:** Chris approved designs G, T, V, K, O and the F split on 2026-10-06 ("I love all of this! Update the repo!"). Work them strictly in the order above, one batch at a time. A design marked PROPOSED or DRAFT must never be started.
 
 ## 3. How an implementing model runs a step
 
@@ -66,9 +66,6 @@ For F-part-1 use the same prompt with `BATCH-F.md` and add: "Build only WU-F1, W
 
 | ID | What | Blocks |
 |---|---|---|
-| IN-40 | Approve, change or reject designs G, T, K, O (`docs/plans/TAX-AND-BOOKS-OVERVIEW.md`) | steps 3, 4, 8, 9 |
-| IN-42 | Approve or change design V and the Evergreen Signature concept | step 5 |
-| IN-41 | OK the F split (section 2) | order of steps 2 and 6 |
 | IN-33 … IN-38, IN-17 | CPA and attorney answers for sales tax (questions in the overview) | **billing real customers** (not building) |
 | — | Register on Colorado SUTS; put the GIS key in Vercel yourself | automatic address lookup (manual works without it) |
 | IN-39 | CPA: tax on written-off bills, depreciation and 1099 starting values | nothing (conservative defaults) |

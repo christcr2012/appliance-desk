@@ -1,6 +1,6 @@
 # Design — Batch V: "Evergreen Signature" visual redesign (public site first, then desk and portal polish)
 
-Status: **PROPOSED — waiting for Chris's approval.** Do not implement until this line says APPROVED.
+Status: **APPROVED DESIGN — implement from this document** (Chris, 2026-10-06: "I love all of this! Update the repo!"). Run the drift check in section 0 before starting.
 Written 2026-10-06 by Claude Opus 5.5 against `main` 0a52c98 (after E2-8). Answers the deferred item in
 `docs/ROADMAP.md` ("Deferred public-site visual redesign follow-up": Chris judged E2's public site "too similar to the
 previous site"). Visual reference: the published concept **Evergreen Signature**

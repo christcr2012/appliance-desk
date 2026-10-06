@@ -1,6 +1,6 @@
 # Design — Batch O: More owner controls
 
-Status: **PROPOSED — waiting for Chris's approval.** Do not implement until this line says APPROVED.
+Status: **APPROVED DESIGN — implement from this document** (Chris, 2026-10-06: "I love all of this! Update the repo!"). Run the drift check in section 0 before starting.
 Written 2026-10-06 by Claude Opus 5.5 against `main` 23eff64, from Part 3 of
 `docs/reviews/2026-10-06-owner-audit-and-recommendations.md`. Runs after Batch K (approvals cover expense posting).
 Scope and acceptance: `docs/PLAN.md` → Batch O.

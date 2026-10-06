@@ -7,7 +7,7 @@ and the business audit items in `docs/reviews/2026-10-01-business-logic-audit.md
 (`B01–B36`). The original overhaul cards (O00–O32) are folded in below; their
 requirements are quoted inline so you do not need the archived card file.
 
-Order: **A, B, C, R, B2, D, E, E2 (merged) → F-part-1 (backup/restore, media, capacity, runbooks) → G (audit fixes, owner security) → T (Colorado sales and use tax) → V (premium visual redesign) → F-part-2 (scenarios, owner guide, launch ledger) → launch → K (books and accounting exports) → O (owner controls) → P (ideas Chris picks)**, plus the deferred Google PR. G, T, V, K and O were added 2026-10-06 and are PROPOSED until Chris approves them; the F split also needs his OK (IN-41). The step-by-step version with prerequisites is `docs/MASTER-ROADMAP.md`.
+Order: **A, B, C, R, B2, D, E, E2 (merged) → F-part-1 (backup/restore, media, capacity, runbooks) → G (audit fixes, owner security) → T (Colorado sales and use tax) → V (premium visual redesign) → F-part-2 (scenarios, owner guide, launch ledger) → launch → K (books and accounting exports) → O (owner controls) → P (ideas Chris picks)**, plus the deferred Google PR. G, T, V, K and O were added 2026-10-06 and approved by Chris the same day, together with the F split (IN-40, IN-41, IN-42). The step-by-step version with prerequisites is `docs/MASTER-ROADMAP.md`.
 `docs/STATUS.md` says which one is next.
 
 **Every batch has a design document in `docs/designs/` that says *how* to
@@ -588,7 +588,7 @@ New features, new screens or changed business rules (anything noticed goes to `d
 
 ## Batch G — Audit fixes and owner-account security
 
-**Design: `docs/designs/BATCH-G.md`** (PROPOSED until Chris approves). Source: `docs/reviews/2026-10-06-owner-audit-and-recommendations.md` F1, F2, F4, F5.
+**Design: `docs/designs/BATCH-G.md`** (approved by Chris 2026-10-06). Source: `docs/reviews/2026-10-06-owner-audit-and-recommendations.md` F1, F2, F4, F5.
 
 ### Acceptance checklist
 
@@ -603,7 +603,7 @@ New features, new screens or changed business rules (anything noticed goes to `d
 
 ## Batch T — Colorado sales and use tax
 
-**Design: `docs/designs/BATCH-T.md`** (PROPOSED until Chris approves). Required before the first real customer (legal compliance).
+**Design: `docs/designs/BATCH-T.md`** (approved by Chris 2026-10-06). Required before the first real customer (legal compliance).
 
 ### Purpose
 
@@ -631,7 +631,7 @@ IN-17 (rate check), IN-33 … IN-38 (`docs/OWNER-INPUTS.md`). Everything starts 
 
 ## Batch V — "Evergreen Signature" visual redesign
 
-**Design: `docs/designs/BATCH-V.md`** (PROPOSED until Chris approves). Concept: `docs/design-mockups/signature-2026-10-06/` and the private artifact "Evergreen Signature". Follows Chris's 2026-10-06 judgement that E2's public site looked too similar to the old one.
+**Design: `docs/designs/BATCH-V.md`** (approved by Chris 2026-10-06). Concept: `docs/design-mockups/signature-2026-10-06/` and the private artifact "Evergreen Signature". Follows Chris's 2026-10-06 judgement that E2's public site looked too similar to the old one.
 
 ### Acceptance checklist
 
@@ -724,7 +724,7 @@ do not start deferred features.
 
 ## Batch K — Books: journal, expenses, Stripe fees, profit & loss, accounting exports
 
-**Design: `docs/designs/BATCH-K.md`** (PROPOSED until Chris approves). Depends on T.
+**Design: `docs/designs/BATCH-K.md`** (approved by Chris 2026-10-06). Depends on T.
 
 ### Acceptance checklist
 
@@ -740,7 +740,7 @@ do not start deferred features.
 
 ## Batch O — Owner controls
 
-**Design: `docs/designs/BATCH-O.md`** (PROPOSED until Chris approves). After K. Every control starts in the position that changes nothing.
+**Design: `docs/designs/BATCH-O.md`** (approved by Chris 2026-10-06). After K. Every control starts in the position that changes nothing.
 
 ### Acceptance checklist
 

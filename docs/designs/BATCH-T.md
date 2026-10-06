@@ -1,6 +1,6 @@
 # Design — Batch T: Colorado sales and use tax
 
-Status: **PROPOSED — waiting for Chris's approval.** Do not implement until this line says APPROVED.
+Status: **APPROVED DESIGN — implement from this document** (Chris, 2026-10-06: "I love all of this! Update the repo!"). Run the drift check in section 0 before starting.
 Written 2026-10-06 by Claude Opus 5.5 against `main` 23eff64 (#260), after reading the tax, checkout, webhook,
 agreement, pickup-billing and settings code this document names. Plain-English summary for Chris:
 `docs/plans/TAX-AND-BOOKS-OVERVIEW.md`. Scope and acceptance: `docs/PLAN.md` → Batch T.

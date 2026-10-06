@@ -124,8 +124,7 @@ choose:
 
 ## What I need from you now
 
-1. **Approve (or change) the designs:** reply with something like "Approve G, T, K, O" or tell me what to change. Each
-   design says "PROPOSED" until you approve it.
+1. ~~Approve the designs~~ — **done 2026-10-06** ("I love all of this! Update the repo!").
 2. **Book a CPA conversation** with the question list above. Batch T can be *built* before the answers arrive (everything
    starts as "Not decided yet"), but no customer can be billed until they're entered.
 3. **Register on SUTS** and get the free GIS API key when you're ready (Batch T step T0).

@@ -626,11 +626,11 @@ What the real work will need (so it is not forgotten):
 
 Batch E2's public-site slice (#262) is technically complete and merged, but its visual result is **not accepted as the final desired design quality**. The required owner/browser comparison found that, despite the new shared components, live-home imagery, CTA hierarchy, responsive coverage and light/dark treatment, the overall composition still feels too similar to the previous public site. Chris explicitly authorized merge to finish E2 and defer this concern rather than block the project.
 
-**Designed 2026-10-06 as Batch V (`docs/designs/BATCH-V.md`, proposed, IN-42).** A later dedicated public-site visual pass should make the redesign immediately obvious while preserving the current business rules, published-content controls, SEO behavior, prelaunch/live-state logic, accessibility requirements, real brand assets, and provider/payment safety gates. This is a visual-quality follow-up, not a rollback of E2's shared component or accessibility work.
+**Designed and approved 2026-10-06 as Batch V (`docs/designs/BATCH-V.md`, IN-42).** A later dedicated public-site visual pass should make the redesign immediately obvious while preserving the current business rules, published-content controls, SEO behavior, prelaunch/live-state logic, accessibility requirements, real brand assets, and provider/payment safety gates. This is a visual-quality follow-up, not a rollback of E2's shared component or accessibility work.
 
 ## 2026-10-06 — Owner audit: money tools and owner controls (now designed as Batches G, T, K, O)
 
-From `docs/reviews/2026-10-06-owner-audit-and-recommendations.md`. Designed the same day (PROPOSED, awaiting Chris):
+From `docs/reviews/2026-10-06-owner-audit-and-recommendations.md`. Designed and approved the same day:
 must-fix items F1, F2, F4, F5 → Batch G; F3 (single tax rate) → Batch T; Part 2 money tools → Batch K; Part 3 owner
 controls → Batch O. Summary: `docs/plans/TAX-AND-BOOKS-OVERVIEW.md`. Still only ideas (not in any design):
 - Direct QuickBooks Online sync (outlined in `BATCH-K.md` section 9; needs its own approval after file exports are used).

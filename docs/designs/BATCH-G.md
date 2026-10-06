@@ -1,6 +1,6 @@
 # Design — Batch G: Audit fixes and owner-account security
 
-Status: **PROPOSED — waiting for Chris's approval.** Do not implement until this line says APPROVED.
+Status: **APPROVED DESIGN — implement from this document** (Chris, 2026-10-06: "I love all of this! Update the repo!"). Run the drift check in section 0 before starting.
 Written 2026-10-06 by Claude Opus 5.5 against `main` 23eff64, from the findings in
 `docs/reviews/2026-10-06-owner-audit-and-recommendations.md` (F1, F2, F4, F5 and the small items). F3 (one tax rate for
 every address) is Batch T. Scope and acceptance: `docs/PLAN.md` → Batch G.

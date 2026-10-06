@@ -91,7 +91,7 @@ file wins.
 
 ## Vocabulary you will meet
 
-- **Batch A–F, B2, E2, R, G, T, V, K, O, P** — the units of work (`docs/PLAN.md`). A, B, B2, C, R, D, E and E2 are merged. Proposed 2026-10-06 (not approved): G (audit fixes, two-step login), T (Colorado sales/use tax), V (premium visual redesign), K (books and accounting exports), O (owner controls); P is an idea list. The order is in `docs/MASTER-ROADMAP.md`.
+- **Batch A–F, B2, E2, R, G, T, V, K, O, P** — the units of work (`docs/PLAN.md`). A, B, B2, C, R, D, E and E2 are merged. Approved 2026-10-06 (not yet built): G (audit fixes, two-step login), T (Colorado sales/use tax), V (premium visual redesign), K (books and accounting exports), O (owner controls); P is an idea list. The order is in `docs/MASTER-ROADMAP.md`.
 - **O-cards (O00–O32)** — the original overhaul roadmap items. They are now
   folded into the batches; the plan quotes their requirements inline.
 - **B01–B36** — Chris's business audit items (`docs/reviews/2026-10-01-business-logic-audit.md`).

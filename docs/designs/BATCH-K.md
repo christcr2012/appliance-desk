@@ -1,6 +1,6 @@
 # Design — Batch K: Books — journal, expenses, Stripe fees, profit & loss, accounting exports
 
-Status: **PROPOSED — waiting for Chris's approval.** Do not implement until this line says APPROVED.
+Status: **APPROVED DESIGN — implement from this document** (Chris, 2026-10-06: "I love all of this! Update the repo!"). Run the drift check in section 0 before starting.
 Written 2026-10-06 by Claude Opus 5.5 against `main` 23eff64 (#260). Plain-English summary for Chris:
 `docs/plans/TAX-AND-BOOKS-OVERVIEW.md`. Scope and acceptance: `docs/PLAN.md` → Batch K. **Depends on Batch T**
 (sales tax lines, `allocateAcrossLines`, use tax, filing periods).

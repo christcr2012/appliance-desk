@@ -387,3 +387,11 @@ MASTER-ROADMAP section 6. Newly found in code: dark-mode success/error text at 2
 D-G6). Archive review: the September "complete operating platform" brief and growth ideas are mostly built; the
 remaining customer self-service and growth items are listed as Batch P candidates, not designed.
 
+## 2026-10-06 (evening) — Designs G, T, V, K, O and the Batch F split approved
+Chris, after reviewing the audit, the tax/books plan, the master roadmap and the Evergreen Signature concept: "I love
+all of this! Update the repo!" Recorded as approval of `docs/designs/BATCH-G.md`, `BATCH-T.md`, `BATCH-V.md`,
+`BATCH-K.md`, `BATCH-O.md` and the F split (IN-40, IN-41, IN-42). Order: F-part-1 → G → T → V → F-part-2 → launch →
+K → O (`docs/MASTER-ROADMAP.md`). Still open and unchanged by this approval: the CPA/attorney tax answers (IN-17,
+IN-33 … IN-39 — billing real customers stays blocked until they are entered), SUTS registration, live payment/email
+activation, and Chris's acceptance of Batch V's before/after screenshots.
+
