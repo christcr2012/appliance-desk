@@ -30,4 +30,4 @@ Neon's endpoint API exposes the endpoint's branch ID and the branch API exposes 
 
 `tests/backup-restore-integration.test.ts` exports the seeded CI database, restores it into `appliance_desk_restore`, compares every backed-up table count, proves credential tables are empty, checks restored number sequences, and runs schema health.
 
-Last drilled: pending the first green F1-a exact-head CI run.
+Last drilled: 2026-10-06 — PR #268 exact-head CI run 37545036997 (real PostgreSQL restore drill passed).
