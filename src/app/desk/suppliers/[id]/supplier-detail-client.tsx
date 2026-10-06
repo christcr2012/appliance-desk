@@ -22,7 +22,7 @@ export function SupplierDetailClient({
         <button
           type="button"
           onClick={() => setEditing(false)}
-          className="mt-2 text-sm text-gray-600 hover:underline"
+          className="mt-2 text-sm text-ink-soft hover:underline"
         >
           Cancel
         </button>
@@ -31,19 +31,19 @@ export function SupplierDetailClient({
   }
 
   return (
-    <div className="mt-4 rounded-lg border border-gray-200 bg-white p-5">
+    <div className="mt-4 rounded-lg border border-line bg-white p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold">{initial.name}</h1>
-          {initial.contactName && <p className="text-sm text-gray-700">{initial.contactName}</p>}
-          {initial.phone && <p className="text-sm text-gray-600">{initial.phone}</p>}
-          {initial.email && <p className="text-sm text-gray-600">{initial.email}</p>}
-          {initial.notes && <p className="mt-2 text-sm text-gray-600">{initial.notes}</p>}
+          {initial.contactName && <p className="text-sm text-ink-soft">{initial.contactName}</p>}
+          {initial.phone && <p className="text-sm text-ink-soft">{initial.phone}</p>}
+          {initial.email && <p className="text-sm text-ink-soft">{initial.email}</p>}
+          {initial.notes && <p className="mt-2 text-sm text-ink-soft">{initial.notes}</p>}
         </div>
         <button
           type="button"
           onClick={() => setEditing(true)}
-          className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:border-gray-400"
+          className="rounded-md border border-line-strong px-3 py-1.5 text-sm text-ink-soft hover:border-line-strong"
         >
           Edit
         </button>

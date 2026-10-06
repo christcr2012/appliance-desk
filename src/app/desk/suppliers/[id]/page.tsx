@@ -23,7 +23,7 @@ export default async function SupplierDetailPage({
 
   return (
     <div className="max-w-2xl">
-      <Link href="/desk/suppliers" className="text-sm text-gray-600 hover:underline">
+      <Link href="/desk/suppliers" className="text-sm text-ink-soft hover:underline">
         &larr; All suppliers
       </Link>
 
@@ -40,9 +40,9 @@ export default async function SupplierDetailPage({
 
       <SupplierArchiveButton supplierId={supplier.id} archived={supplier.archivedAt !== null} />
 
-      <h2 className="mt-8 text-sm font-medium text-gray-900">Purchase orders</h2>
+      <h2 className="mt-8 text-sm font-medium text-ink">Purchase orders</h2>
       {supplier.purchaseOrders.length === 0 ? (
-        <p className="mt-2 text-sm text-gray-600">
+        <p className="mt-2 text-sm text-ink-soft">
           No purchase orders yet — start one from{" "}
           <Link href="/desk/purchase-orders/new" className="underline">
             Purchase orders
@@ -50,7 +50,7 @@ export default async function SupplierDetailPage({
           .
         </p>
       ) : (
-        <ul className="mt-2 divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white">
+        <ul className="mt-2 divide-y divide-line rounded-lg border border-line bg-white">
           {supplier.purchaseOrders.map((po) => {
             const totalCents = po.lines.reduce(
               (sum, l) => sum + (l.unitCostKnown ? l.unitCostCents * l.quantity : 0),
@@ -61,13 +61,13 @@ export default async function SupplierDetailPage({
               <li key={po.id}>
                 <Link
                   href={`/desk/purchase-orders/${po.id}`}
-                  className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-gray-50"
+                  className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-canvas"
                 >
-                  <span className="text-sm text-gray-900">
+                  <span className="text-sm text-ink">
                     {new Date(po.createdAt).toLocaleDateString()} — {po.lines.length}{" "}
                     {po.lines.length === 1 ? "line" : "lines"}
                   </span>
-                  <span className="text-sm text-gray-600">
+                  <span className="text-sm text-ink-soft">
                     {po.status} · {formatCents(totalCents)}{unpriced > 0 ? ` + ${unpriced} unpriced` : ""}
                   </span>
                 </Link>

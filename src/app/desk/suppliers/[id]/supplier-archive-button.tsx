@@ -11,8 +11,8 @@ export function SupplierArchiveButton({ supplierId, archived }: { supplierId: st
   const [error, setError] = useState<string | null>(null);
 
   return (
-    <div className="mt-6 rounded-lg border border-gray-200 bg-white p-4 text-sm">
-      <p className="text-gray-700">
+    <div className="mt-6 rounded-lg border border-line bg-white p-4 text-sm">
+      <p className="text-ink-soft">
         {archived
           ? "This supplier is archived: it is hidden from the order form and cannot take new orders. Its past orders are kept."
           : "No longer ordering from this supplier? Archive it to hide it from the order form. Its past orders are kept, and you can restore it any time."}
@@ -28,7 +28,7 @@ export function SupplierArchiveButton({ supplierId, archived }: { supplierId: st
             else router.refresh();
           })
         }
-        className="mt-2 rounded-md border border-gray-300 px-3 py-1.5 text-gray-900 disabled:opacity-60"
+        className="mt-2 rounded-md border border-line-strong px-3 py-1.5 text-ink disabled:opacity-60"
       >
         {archived ? "Restore this supplier" : "Archive this supplier"}
       </button>
