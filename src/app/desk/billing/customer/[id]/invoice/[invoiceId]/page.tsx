@@ -44,7 +44,7 @@ export default async function DeskInvoicePage({
   return (
     <div className="max-w-3xl">
       <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
-        <Link href={`/desk/billing/customer/${id}`} className="text-sm text-gray-600 hover:underline">
+        <Link href={`/desk/billing/customer/${id}`} className="text-sm text-ink-soft hover:underline">
           &larr; Back to statement
         </Link>
         <div className="flex flex-wrap items-center gap-3">
@@ -66,10 +66,10 @@ export default async function DeskInvoicePage({
       </div>
 
       <section aria-labelledby="money-decisions" className="mt-8 space-y-4 print:hidden">
-        <h2 id="money-decisions" className="text-lg font-semibold text-gray-900">
+        <h2 id="money-decisions" className="text-lg font-semibold text-ink">
           Money decisions for this invoice
         </h2>
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-ink-soft">
           Refunds and credits are your decisions. Nothing here happens by itself. If a late pickup was our delay, record
           that on the pickup job instead (Jobs, then the job, then the late-pickup section) so the late days are waived.
         </p>
@@ -93,7 +93,7 @@ export default async function DeskInvoicePage({
             submit={refundInvoiceAction.bind(null, invoiceId)}
           />
         ) : (
-          <p className="text-sm text-gray-600">Nothing has been paid on this invoice that could still be refunded.</p>
+          <p className="text-sm text-ink-soft">Nothing has been paid on this invoice that could still be refunded.</p>
         )}
         {credits.length > 0 && (
           <MoneyDecisionForm
