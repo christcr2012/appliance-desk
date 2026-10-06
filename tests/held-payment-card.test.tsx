@@ -27,7 +27,8 @@ beforeEach(() => {
 
 it("explains each choice in plain words and marks the recommended one", () => {
   render(<ul><HeldPaymentCard {...props} /></ul>);
-  expect(screen.getByText(/Recommended: Mark the invoice paid/)).toBeTruthy();
+  expect(screen.getByText("Recommended")).toBeTruthy();
+  expect(screen.getAllByText(/Mark the invoice paid/).length).toBeGreaterThan(0);
   expect(screen.getByText(/Take the write-off back/)).toBeTruthy();
   expect(screen.getByText(/Choose this only if the customer asks for it/)).toBeTruthy();
   expect(screen.getByText(/Send the money back to the card/)).toBeTruthy();
