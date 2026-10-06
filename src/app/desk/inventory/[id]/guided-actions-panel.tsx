@@ -109,9 +109,9 @@ export function GuidedActionsPanel({
   }
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-5">
-      <h2 className="font-medium text-gray-900">Guided actions</h2>
-      <p className="mt-1 text-sm text-gray-600">
+    <div className="rounded-lg border border-line bg-white p-5">
+      <h2 className="font-medium text-ink">Guided actions</h2>
+      <p className="mt-1 text-sm text-ink-soft">
         These handle the multi-step parts for you — the status change, the job, and the
         record — together, in one click.
       </p>
@@ -121,7 +121,7 @@ export function GuidedActionsPanel({
           <button
             type="button"
             onClick={() => toggle("repair")}
-            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:border-gray-400"
+            className="rounded-md border border-line-strong px-3 py-1.5 text-sm text-ink-soft hover:border-line-strong"
           >
             Start a repair
           </button>
@@ -130,7 +130,7 @@ export function GuidedActionsPanel({
           <button
             type="button"
             onClick={() => toggle("swap")}
-            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:border-gray-400"
+            className="rounded-md border border-line-strong px-3 py-1.5 text-sm text-ink-soft hover:border-line-strong"
           >
             Swap for a working unit
           </button>
@@ -139,7 +139,7 @@ export function GuidedActionsPanel({
           <button
             type="button"
             onClick={() => toggle("inspection")}
-            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:border-gray-400"
+            className="rounded-md border border-line-strong px-3 py-1.5 text-sm text-ink-soft hover:border-line-strong"
           >
             Record inspection
           </button>
@@ -162,8 +162,8 @@ export function GuidedActionsPanel({
       )}
 
       {open === "repair" && (
-        <form onSubmit={handleRepair} className="mt-4 space-y-2 border-t border-gray-100 pt-4">
-          <p className="text-sm text-gray-600">
+        <form onSubmit={handleRepair} className="mt-4 space-y-2 border-t border-line pt-4">
+          <p className="text-sm text-ink-soft">
             Moves this unit to Maintenance and schedules a maintenance-visit job for right
             now — you can reschedule it from the jobs page afterward.
           </p>
@@ -171,12 +171,12 @@ export function GuidedActionsPanel({
             name="notes"
             rows={2}
             placeholder="What's wrong with it? (optional)"
-            className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+            className="w-full rounded-md border border-line-strong px-3 py-1.5 text-sm"
           />
           <button
             type="submit"
             disabled={isPending}
-            className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+            className="rounded-md bg-action px-3 py-1.5 text-sm font-medium text-on-action hover:bg-action disabled:opacity-50"
           >
             {isPending ? "Starting…" : "Start repair"}
           </button>
@@ -184,8 +184,8 @@ export function GuidedActionsPanel({
       )}
 
       {open === "retire" && (
-        <form onSubmit={handleRetire} className="mt-4 space-y-2 border-t border-gray-100 pt-4">
-          <p className="text-sm text-gray-600">
+        <form onSubmit={handleRetire} className="mt-4 space-y-2 border-t border-line pt-4">
+          <p className="text-sm text-ink-soft">
             Retiring is permanent — this unit won&apos;t be rentable again. Add a new unit
             instead if this was a mistake.
           </p>
@@ -194,7 +194,7 @@ export function GuidedActionsPanel({
             required
             rows={2}
             placeholder="Why is it being retired?"
-            className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+            className="w-full rounded-md border border-line-strong px-3 py-1.5 text-sm"
           />
           <button
             type="submit"
@@ -220,9 +220,9 @@ export function GuidedActionsPanel({
       {open === "inspection" && (
         <form
           onSubmit={handleInspection}
-          className="mt-4 space-y-3 border-t border-gray-100 pt-4"
+          className="mt-4 space-y-3 border-t border-line pt-4"
         >
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-ink-soft">
             Check every item that is OK. If every item is checked it goes back to Available.
             If any item is left unchecked it goes to Maintenance, unless you pass it on
             purpose below. The result is worked out for you, and a saved inspection cannot be edited.
@@ -230,14 +230,14 @@ export function GuidedActionsPanel({
           <fieldset className="space-y-1">
             <legend className="sr-only">Inspection checklist</legend>
             {inspectionChecklist.items.map((item, i) => (
-              <label key={i} className="flex items-center gap-2 text-sm text-gray-700">
+              <label key={i} className="flex items-center gap-2 text-sm text-ink-soft">
                 <input type="checkbox" name={`check-${i}`} className="rounded" />
                 {item}
               </label>
             ))}
           </fieldset>
           <div>
-            <label htmlFor="overrideReason" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="overrideReason" className="block text-sm font-medium text-ink-soft">
               Pass it anyway: why? (optional)
             </label>
             <input
@@ -245,31 +245,31 @@ export function GuidedActionsPanel({
               name="overrideReason"
               type="text"
               placeholder="Only if an item is unchecked and you are sure it is fine"
-              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+              className="mt-1 w-full rounded-md border border-line-strong px-3 py-1.5 text-sm"
             />
           </div>
           <div>
-            <label htmlFor="condition" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="condition" className="block text-sm font-medium text-ink-soft">
               Condition after inspection
             </label>
             <input
               id="condition"
               name="condition"
               type="text"
-              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+              className="mt-1 w-full rounded-md border border-line-strong px-3 py-1.5 text-sm"
             />
           </div>
           <textarea
             name="notes"
             rows={2}
             placeholder="Notes (optional)"
-            className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+            className="w-full rounded-md border border-line-strong px-3 py-1.5 text-sm"
           />
           <div className="flex gap-2">
             <button
               type="submit"
               disabled={isPending}
-              className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+              className="rounded-md bg-action px-3 py-1.5 text-sm font-medium text-on-action hover:bg-action disabled:opacity-50"
             >
               {isPending ? "Saving…" : "Record inspection"}
             </button>
@@ -324,15 +324,15 @@ function SwapForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="mt-4 space-y-2 border-t border-gray-100 pt-4">
-      <p className="text-sm text-gray-600">
+    <form onSubmit={handleSubmit} className="mt-4 space-y-2 border-t border-line pt-4">
+      <p className="text-sm text-ink-soft">
         Unassigns this unit from its rental, assigns the replacement in its place, and
         schedules a swap job — this one goes to Maintenance, the replacement to Reserved
         until the swap job is completed.
       </p>
-      {loading && <p className="text-sm text-gray-500">Loading available units…</p>}
+      {loading && <p className="text-sm text-ink-faint">Loading available units…</p>}
       {!loading && candidates && candidates.length === 0 && (
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-ink-faint">
           No other available units of this appliance type — add one to inventory first.
         </p>
       )}
@@ -341,7 +341,7 @@ function SwapForm({
           <select
             value={selected}
             onChange={(e) => setSelected(e.target.value)}
-            className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+            className="w-full rounded-md border border-line-strong px-3 py-1.5 text-sm"
           >
             <option value="">Choose a replacement…</option>
             {candidates.map((c) => (
@@ -354,7 +354,7 @@ function SwapForm({
           <button
             type="submit"
             disabled={isPending || !selected}
-            className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+            className="rounded-md bg-action px-3 py-1.5 text-sm font-medium text-on-action hover:bg-action disabled:opacity-50"
           >
             {isPending ? "Swapping…" : "Start swap"}
           </button>
