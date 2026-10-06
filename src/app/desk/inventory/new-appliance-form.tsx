@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { Button, Field, Select, Textarea } from "@/components/ui";
 import { createApplianceUnitsAction } from "./actions";
 
 type ApplianceTypeOption = { id: string; name: string };
@@ -47,11 +48,11 @@ export function NewApplianceForm({
   const quantityNum = parseInt(quantity, 10) || 1;
 
   function update<K extends keyof typeof EMPTY_FIELDS>(key: K, value: string) {
-    setFields((f) => ({ ...f, [key]: value }));
+    setFields((current) => ({ ...current, [key]: value }));
   }
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  function handleSubmit(event: React.FormEvent) {
+    event.preventDefault();
     setMessage(null);
     startTransition(async () => {
       const result = await createApplianceUnitsAction({
@@ -77,7 +78,9 @@ export function NewApplianceForm({
         setMessage({
           kind: "success",
           text:
-            quantityNum === 1 ? "Appliance added." : `${quantityNum} appliances added.`,
+            quantityNum === 1
+              ? "Appliance added."
+              : `${quantityNum} appliances added.`,
         });
         setFields(EMPTY_FIELDS);
         setQuantity("1");
@@ -87,101 +90,65 @@ export function NewApplianceForm({
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="max-w-2xl space-y-4 rounded-lg border border-line bg-white p-5"
-    >
-      <h2 className="font-medium text-ink">Add appliances you&apos;ve obtained</h2>
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <Select
+        id="applianceTypeId"
+        label="Appliance type"
+        value={applianceTypeId}
+        onChange={(event) => setApplianceTypeId(event.target.value)}
+      >
+        {applianceTypes.map((type) => (
+          <option key={type.id} value={type.id}>
+            {type.name}
+          </option>
+        ))}
+      </Select>
 
-      <div>
-        <label htmlFor="applianceTypeId" className="block text-sm font-medium text-ink-soft">
-          Appliance type
-        </label>
-        <select
-          id="applianceTypeId"
-          value={applianceTypeId}
-          onChange={(e) => setApplianceTypeId(e.target.value)}
-          className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
-        >
-          {applianceTypes.map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.name}
-            </option>
-          ))}
-        </select>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <Field
+          id="quantity"
+          label="How many"
+          type="number"
+          min={1}
+          max={50}
+          value={quantity}
+          onChange={(event) => setQuantity(event.target.value)}
+        />
+        <Field
+          id="acquisitionCostDollars"
+          label="Cost each ($, optional)"
+          type="number"
+          min={0}
+          step="0.01"
+          value={fields.acquisitionCostDollars}
+          onChange={(event) =>
+            update("acquisitionCostDollars", event.target.value)
+          }
+        />
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div>
-          <label htmlFor="quantity" className="block text-sm font-medium text-ink-soft">
-            How many
-          </label>
-          <input
-            id="quantity"
-            type="number"
-            min={1}
-            max={50}
-            value={quantity}
-            onChange={(e) => setQuantity(e.target.value)}
-            className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
-          />
-        </div>
-        <div>
-          <label htmlFor="acquisitionCostDollars" className="block text-sm font-medium text-ink-soft">
-            Cost each ($, optional)
-          </label>
-          <input
-            id="acquisitionCostDollars"
-            type="number"
-            min={0}
-            step="0.01"
-            value={fields.acquisitionCostDollars}
-            onChange={(e) => update("acquisitionCostDollars", e.target.value)}
-            className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
-          />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div>
-          <label htmlFor="manufacturer" className="block text-sm font-medium text-ink-soft">
-            Manufacturer (optional)
-          </label>
-          <input
-            id="manufacturer"
-            type="text"
-            value={fields.manufacturer}
-            onChange={(e) => update("manufacturer", e.target.value)}
-            className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
-          />
-        </div>
-        <div>
-          <label htmlFor="model" className="block text-sm font-medium text-ink-soft">
-            Model (optional)
-          </label>
-          <input
-            id="model"
-            type="text"
-            value={fields.model}
-            onChange={(e) => update("model", e.target.value)}
-            className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
-          />
-        </div>
+        <Field
+          id="manufacturer"
+          label="Manufacturer (optional)"
+          value={fields.manufacturer}
+          onChange={(event) => update("manufacturer", event.target.value)}
+        />
+        <Field
+          id="model"
+          label="Model (optional)"
+          value={fields.model}
+          onChange={(event) => update("model", event.target.value)}
+        />
       </div>
 
       {quantityNum === 1 ? (
-        <div>
-          <label htmlFor="serialNumber" className="block text-sm font-medium text-ink-soft">
-            Serial number (optional)
-          </label>
-          <input
-            id="serialNumber"
-            type="text"
-            value={fields.serialNumber}
-            onChange={(e) => update("serialNumber", e.target.value)}
-            className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
-          />
-        </div>
+        <Field
+          id="serialNumber"
+          label="Serial number (optional)"
+          value={fields.serialNumber}
+          onChange={(event) => update("serialNumber", event.target.value)}
+        />
       ) : (
         <p className="text-sm text-ink-faint">
           Adding {quantityNum} at once — serial numbers usually differ per
@@ -191,109 +158,73 @@ export function NewApplianceForm({
       )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div>
-          <label htmlFor="color" className="block text-sm font-medium text-ink-soft">
-            Color (optional)
-          </label>
-          <input
-            id="color"
-            type="text"
-            placeholder="e.g. White, Stainless"
-            value={fields.color}
-            onChange={(e) => update("color", e.target.value)}
-            className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
-          />
-        </div>
-        <div>
-          <label htmlFor="features" className="block text-sm font-medium text-ink-soft">
-            Features (optional)
-          </label>
-          <input
-            id="features"
-            type="text"
-            placeholder="e.g. front-load, agitator"
-            value={fields.features}
-            onChange={(e) => update("features", e.target.value)}
-            className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
-          />
-          <p className="mt-1 text-xs text-ink-faint">Separate multiple with commas.</p>
-        </div>
+        <Field
+          id="color"
+          label="Color (optional)"
+          placeholder="e.g. White, Stainless"
+          value={fields.color}
+          onChange={(event) => update("color", event.target.value)}
+        />
+        <Field
+          id="features"
+          label="Features (optional)"
+          help="Separate multiple with commas."
+          placeholder="e.g. front-load, agitator"
+          value={fields.features}
+          onChange={(event) => update("features", event.target.value)}
+        />
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div>
-          <label htmlFor="condition" className="block text-sm font-medium text-ink-soft">
-            Condition (optional)
-          </label>
-          <input
-            id="condition"
-            type="text"
-            placeholder="e.g. New, Good, Fair"
-            value={fields.condition}
-            onChange={(e) => update("condition", e.target.value)}
-            className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
-          />
-        </div>
-        <div>
-          <label htmlFor="purchaseDate" className="block text-sm font-medium text-ink-soft">
-            Purchase date (optional)
-          </label>
-          <input
-            id="purchaseDate"
-            type="date"
-            value={fields.purchaseDate}
-            onChange={(e) => update("purchaseDate", e.target.value)}
-            className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
-          />
-        </div>
-      </div>
-
-      <div>
-        <label htmlFor="currentLocation" className="block text-sm font-medium text-ink-soft">
-          Current location (optional)
-        </label>
-        <input
-          id="currentLocation"
-          type="text"
-          placeholder="e.g. Warehouse, or a customer's address"
-          value={fields.currentLocation}
-          onChange={(e) => update("currentLocation", e.target.value)}
-          className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
+        <Field
+          id="condition"
+          label="Condition (optional)"
+          placeholder="e.g. New, Good, Fair"
+          value={fields.condition}
+          onChange={(event) => update("condition", event.target.value)}
+        />
+        <Field
+          id="purchaseDate"
+          label="Purchase date (optional)"
+          type="date"
+          value={fields.purchaseDate}
+          onChange={(event) => update("purchaseDate", event.target.value)}
         />
       </div>
 
-      <div>
-        <label htmlFor="notes" className="block text-sm font-medium text-ink-soft">
-          Notes (optional)
-        </label>
-        <textarea
-          id="notes"
-          rows={2}
-          value={fields.notes}
-          onChange={(e) => update("notes", e.target.value)}
-          className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
-        />
-      </div>
+      <Field
+        id="currentLocation"
+        label="Current location (optional)"
+        placeholder="e.g. Warehouse, or a customer's address"
+        value={fields.currentLocation}
+        onChange={(event) => update("currentLocation", event.target.value)}
+      />
 
-      <button
-        type="submit"
-        disabled={isPending}
-        className="rounded-md bg-action px-4 py-2 text-sm font-medium text-on-action hover:bg-action disabled:opacity-50"
-      >
+      <Textarea
+        id="notes"
+        label="Notes (optional)"
+        rows={2}
+        value={fields.notes}
+        onChange={(event) => update("notes", event.target.value)}
+      />
+
+      <Button type="submit" disabled={isPending}>
         {isPending
           ? "Adding…"
           : quantityNum === 1
             ? "Add appliance"
             : `Add ${quantityNum} appliances`}
-      </button>
+      </Button>
 
       {message?.kind === "error" && (
-        <p role="alert" className="text-sm text-red-700">
+        <p role="alert" className="text-sm font-semibold text-danger">
           {message.text}
         </p>
       )}
       {message?.kind === "success" && (
-        <p className="text-sm text-green-700">{message.text}</p>
+        <p role="status" className="text-sm font-semibold text-success">
+          {message.text}
+        </p>
       )}
     </form>
   );
