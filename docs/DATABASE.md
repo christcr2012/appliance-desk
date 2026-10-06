@@ -22,6 +22,10 @@ in UTC and only converted to Mountain Time for display.
 - **ServiceAddress** — a physical address a customer's appliances live
   at. A customer can have more than one (e.g. a landlord with several
   properties).
+- **CustomerContact** — extra people on a customer account who are not
+  logins (a property manager's maintenance lead, a tenant, the person who
+  pays): name, role, phone, email, notes. Contacts never get portal access
+  and never receive billing messages unless separately designed.
 
 ## Leads
 

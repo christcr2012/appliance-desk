@@ -7,7 +7,7 @@ and the business audit items in `docs/reviews/2026-10-01-business-logic-audit.md
 (`B01–B36`). The original overhaul cards (O00–O32) are folded in below; their
 requirements are quoted inline so you do not need the archived card file.
 
-Order: **A, B, C, R (merged) → B2 (finishes B and C) → D → E → E2 (redesign) → G (audit fixes, owner security) → T (Colorado sales and use tax) → F → K (books and accounting exports) → O (owner controls)**, plus one conditional Google PR. G, T, K and O were added 2026-10-06 (`docs/plans/TAX-AND-BOOKS-OVERVIEW.md`); their designs are PROPOSED until Chris approves them. K may move before F if Chris wants profit reports before launch.
+Order: **A, B, C, R, B2, D, E, E2 (merged) → F-part-1 (backup/restore, media, capacity, runbooks) → G (audit fixes, owner security) → T (Colorado sales and use tax) → V (premium visual redesign) → F-part-2 (scenarios, owner guide, launch ledger) → launch → K (books and accounting exports) → O (owner controls) → P (ideas Chris picks)**, plus the deferred Google PR. G, T, V, K and O were added 2026-10-06 and are PROPOSED until Chris approves them; the F split also needs his OK (IN-41). The step-by-step version with prerequisites is `docs/MASTER-ROADMAP.md`.
 `docs/STATUS.md` says which one is next.
 
 **Every batch has a design document in `docs/designs/` that says *how* to
@@ -625,6 +625,22 @@ IN-17 (rate check), IN-33 … IN-38 (`docs/OWNER-INPUTS.md`). Everything starts 
 - [ ] Customer exemptions with certificate photo, scope and expiry.
 - [ ] OWNER-only policy edits and filing; ADMIN limits enforced server-side; screens explained in plain words; axe clean.
 - [ ] No tax rate or taxability answer is written into code, seeds or docs as fact.
+- [ ] Every item in "Rules that apply to every batch".
+
+---
+
+## Batch V — "Evergreen Signature" visual redesign
+
+**Design: `docs/designs/BATCH-V.md`** (PROPOSED until Chris approves). Concept: `docs/design-mockups/signature-2026-10-06/` and the private artifact "Evergreen Signature". Follows Chris's 2026-10-06 judgement that E2's public site looked too similar to the old one.
+
+### Acceptance checklist
+
+- [ ] Chris accepts the before/after comparison of the public site (human gate).
+- [ ] Brand kept exactly (kit colours, Manrope, 8/16 radii); the Split-R 45° cut is the one signature shape; no new colours outside tokens.
+- [ ] All public marketing copy comes from site-content fields; no hard-coded promises remain (grep test).
+- [ ] Hero address check uses only the owner's service area, is rate-limited, and stores nothing.
+- [ ] Contrast unit test for every token pair; axe clean light/dark; complete focus rings on clipped elements; no horizontal scroll at 360px; reduced motion honoured.
+- [ ] Desk Today day-timeline and severity words; Actual/Estimate tags from the METRICS registry; no behaviour change.
 - [ ] Every item in "Rules that apply to every batch".
 
 ---

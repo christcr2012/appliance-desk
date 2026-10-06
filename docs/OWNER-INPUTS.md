@@ -54,6 +54,8 @@ Only ask for the inputs needed by the next release. Do not ask all at once.
 | IN-38 | **Open — ask the attorney/CPA (Batch T)** | Agreement and signing-page wording "Sales tax for your address, currently X%" instead of a fixed rate. | Changing the agreement document wording (Batch T WU-T5) | Everything else |
 | IN-39 | **Open — ask the CPA (Batch K)** | When a bill is written off, may the sales tax already reported on it be taken back (bad-debt deduction)? Also: are 60-month straight-line book depreciation, expensing parts when bought, and a $2,000 1099 threshold fine? | Nothing (starting values are the conservative ones) | Everything |
 | IN-40 | **Open — Chris** | Approve, change or reject the proposed designs `docs/designs/BATCH-G.md`, `BATCH-T.md`, `BATCH-K.md`, `BATCH-O.md` (summary: `docs/plans/TAX-AND-BOOKS-OVERVIEW.md`); register on SUTS and obtain the free Colorado GIS API key (Batch T WU-T0). | Starting any of those batches | Batch E2 and F work |
+| IN-41 | **Open — Chris** | Split Batch F: run its infrastructure work units (backup/restore, media copy, capacity, runbooks) now, and its product-wide proof (scenarios, owner guide screenshots, launch ledger) after G, T and V, so the proof covers the final product (`docs/MASTER-ROADMAP.md` section 2). | Starting F-part-2 early or late | F-part-1 can start either way |
+| IN-42 | **Open — Chris** | Approve, change or reject the "Evergreen Signature" redesign (`docs/designs/BATCH-V.md`; concept artifact and `docs/design-mockups/signature-2026-10-06/`). Also confirm the home-page promises you are happy to make (delivery, installation, repairs included, easy to end) — they become editable text either way. | Starting Batch V | Everything else |
 
 ## Confirmed facts — do not ask again
 

@@ -376,3 +376,14 @@ forbids manual journals to its Accounts Receivable; QuickBooks needs a customer 
 QuickBooks sync is a later phase. Research notes: Greeley is home-rule, self-collected, 4.11%, not a SUTS participant
 (as listed 2026-10-06); public sources give 7.01% combined for Greeley vs the 7.375% in the owner's notes (IN-17).
 
+## 2026-10-06 (later) — Documentation audit, master roadmap, Batch V proposed
+Chris asked for the docs to be audited against the code, archived docs reviewed for intent, the remaining plans
+reconciled into one roadmap a cheaper model can follow, and a true premium redesign that keeps the brand. Done:
+`docs/MASTER-ROADMAP.md` (single ordered list; recommends splitting Batch F so its product-wide proof runs after G, T
+and V — IN-41); `docs/designs/BATCH-V.md` + concept "Evergreen Signature" (keeps every kit colour, Manrope and radii;
+the logo's 45° Split-R cut becomes the one signature shape; hairline ledgers replace card grids; marketing copy moves
+into settings; hero address check against the owner's service area only — IN-42). Audit fixes are listed in
+MASTER-ROADMAP section 6. Newly found in code: dark-mode success/error text at 2.0–2.7:1 contrast (added to Batch G as
+D-G6). Archive review: the September "complete operating platform" brief and growth ideas are mostly built; the
+remaining customer self-service and growth items are listed as Batch P candidates, not designed.
+

@@ -66,6 +66,16 @@ Previews and test copies never send email, even with the key and the switch on (
 | [ ] | Decide your standard "When equipment comes back early" choices (Settings → Ending and renewing rentals) and whether to apply them automatically | Chris (Owner) | Ask me each time | Today shows "Returned early" items after a test pickup |
 | [ ] | Counsel confirms the month-to-month wording, the yearly reminder and what counts as delivering a notice (IN-31) | Chris + attorney | Deferred | Written approval before automatic renewals or live customer email are turned on |
 
+## 6b. Coming with the proposed batches (2026-10-06 — these lines become real when each batch is built)
+
+- [ ] **Sales tax (Batch T):** CPA has answered IN-17 and IN-33 … IN-38; the answers are entered in Desk → Money → Sales
+      tax and every rule in use shows "CPA confirmed"; Colorado and City of Greeley license numbers entered; every tax area
+      you serve has its rate and start date. Until this is done, **do not bill real customers**.
+- [ ] **Two-step login (Batch G):** you and every admin have enrolled; backup codes stored away from your phone.
+- [ ] **Website look (Batch V):** you have accepted the redesigned public site and checked the editable home-page text.
+- [ ] **Books (Batch K, can be after launch):** books start date set; accounts mapped to your accounting software; one
+      month imported into a trial company and it balanced.
+
 ## 7. Final launch day (in this order)
 1. Every box above is ticked or has an explicit "skip for now" you chose.
 2. Full automated checks green on the exact version going live; Batch F verification report read by you.

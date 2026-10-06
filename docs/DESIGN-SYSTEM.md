@@ -140,7 +140,7 @@ in the CSS variable list.
 The owner desk's desktop navigation also changed from a row of plain
 text links (11 of them — Chris's own description: "it's just word
 links sitting on the pages") to a real sidebar with an active-page
-indicator (`src/components/desk-sidebar.tsx`). The customer portal
+indicator (now `src/components/ui/app-shell.tsx` with `src/components/ui/bottom-tab-bar.tsx` on phones, from Batch E2). The customer portal
 (4 links) keeps its original top-nav row, now with the same
 active-page indicator added to `AuthedHeader` itself. See
 `AuthedHeader`'s `variant` prop for how the two share the same

@@ -38,6 +38,13 @@ Update this file in the same PR that changes a rule.
     Stripe the exact percentage. The old `taxRatePermille` columns are
     deprecated: code never reads them, and a database trigger keeps them in
     step with the exact column so a deploy or rollback can never leave tax at zero.
+    **Known gap (2026-10-06 audit, F3):** this is one rate for every customer,
+    but Colorado tax depends on the exact delivery address, rentals of 3 years or
+    less may be exempt from *state* tax (C.R.S. 39-26-713), and home-rule cities
+    such as Greeley write their own rules. The `taxRateConfirmed` tick box changes
+    pricing-page wording only; it does not block billing. Replacement design:
+    `docs/designs/BATCH-T.md` (proposed). Until Batch T ships, do not take real
+    customers.
 - **Prepaid-term discount** (Chris's explicit request — see
   `docs/DECISIONS.md` for the dated design decision this section
   summarizes): signing a 6- or 12-month term automatically lowers a rental

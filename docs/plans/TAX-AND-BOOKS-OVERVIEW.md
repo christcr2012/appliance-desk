@@ -8,13 +8,14 @@ tax advice — your CPA confirms every tax answer before customers are charged.
 
 | Batch | What it gives you | When |
 |---|---|---|
-| **G** — Quick fixes and login security | Closes the 2 known security holes, fixes the cancelled-rental report bug, adds a phone code to your login (and your admins'), lets you sign people out of every device. | Right after the redesign (E2) finishes. Small. |
+| **G** — Quick fixes and login security | Closes the 2 known security holes, fixes the cancelled-rental report bug and the dark-mode contrast bug, adds a phone code to your login (and your admins'), lets you sign people out of every device. | Small; as soon as you approve it. |
 | **T** — Colorado sales and use tax | Correct tax for every customer's exact address, the right rules for rentals, the right numbers for your state and Greeley returns, use tax on appliances you buy without tax. | Before your first real customer. **Required for launch.** |
 | **K** — Books | Expenses (with receipt photos from your phone), Stripe fees and payouts, real profit-and-loss, appliance payback, cash forecast, and files that load into QuickBooks Online, Xero, Wave, Zoho and others. | Can be after launch — it rebuilds your books from day one automatically. |
 | **O** — Owner controls | Undo for settings changes, per-person permissions, "refunds over $X need my OK", price changes with a start date, goals and idle-appliance alerts, one page showing every on/off switch. | After K. |
 
-Suggested order: **E2 (in progress) → G → T → F (final launch checks) → K → O.** You can move K before F if you want the
-profit numbers before launch.
+Suggested order (updated later on 2026-10-06; the full list is `docs/MASTER-ROADMAP.md`): **F part 1 (backups and
+runbooks) → G → T → V (the premium redesign) → F part 2 (final launch proof) → launch → K → O.** You can move K before
+launch if you want the profit numbers sooner.
 
 ## The three big tax facts I found
 

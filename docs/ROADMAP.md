@@ -54,7 +54,7 @@ section with a date.
   site + login/password pages were checked by axe in CI; every
   `/desk/**` and `/account/**` page (owner desk, customer portal) had
   never actually been run through an automated accessibility check.
-  `e2e/accessibility-authenticated.spec.ts` now covers all of them, via
+  the generated route-inventory accessibility specs (`e2e/route-inventory.ts`, `e2e/accessibility-routes-desk-a.spec.ts`, `e2e/accessibility-routes-desk-b.spec.ts`, `e2e/accessibility-routes-public.spec.ts`; Batch E replaced the older `accessibility-authenticated` spec) now covers all of them, via
   a real login as test-only OWNER/CUSTOMER accounts CI seeds for this
   purpose. **Still not done, and not automatable:** a manual
   screen-reader + keyboard pass before launch — see
@@ -384,7 +384,7 @@ don't build it unasked" rule:
 - **No automated accessibility testing on signed-in pages.** — **this
   note was stale, confirmed done 2026-09-29**: see the "Automated
   accessibility coverage for every logged-in page" entry above —
-  `e2e/accessibility-authenticated.spec.ts` covers every `/desk/**` and
+  the generated route-inventory accessibility specs (`e2e/route-inventory.ts`, `e2e/accessibility-routes-desk-a.spec.ts`, `e2e/accessibility-routes-desk-b.spec.ts`, `e2e/accessibility-routes-public.spec.ts`; Batch E replaced the older `accessibility-authenticated` spec) covers every `/desk/**` and
   `/account/**` page via real seeded OWNER/CUSTOMER logins.
 - **Four HIGH-severity `npm audit` findings**, all inside Prisma's own
   build/CLI tooling (not code the live site runs against customers —
@@ -626,7 +626,7 @@ What the real work will need (so it is not forgotten):
 
 Batch E2's public-site slice (#262) is technically complete and merged, but its visual result is **not accepted as the final desired design quality**. The required owner/browser comparison found that, despite the new shared components, live-home imagery, CTA hierarchy, responsive coverage and light/dark treatment, the overall composition still feels too similar to the previous public site. Chris explicitly authorized merge to finish E2 and defer this concern rather than block the project.
 
-A later dedicated public-site visual pass should make the redesign immediately obvious while preserving the current business rules, published-content controls, SEO behavior, prelaunch/live-state logic, accessibility requirements, real brand assets, and provider/payment safety gates. This is a visual-quality follow-up, not a rollback of E2's shared component or accessibility work.
+**Designed 2026-10-06 as Batch V (`docs/designs/BATCH-V.md`, proposed, IN-42).** A later dedicated public-site visual pass should make the redesign immediately obvious while preserving the current business rules, published-content controls, SEO behavior, prelaunch/live-state logic, accessibility requirements, real brand assets, and provider/payment safety gates. This is a visual-quality follow-up, not a rollback of E2's shared component or accessibility work.
 
 ## 2026-10-06 — Owner audit: money tools and owner controls (now designed as Batches G, T, K, O)
 

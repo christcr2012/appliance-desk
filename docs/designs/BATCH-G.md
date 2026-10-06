@@ -47,6 +47,11 @@ as Batch E2 has merged (it touches the desk layout and login, which E2 restyles)
   created) with "Sign out everywhere else". The owner's Staff screen gets "Sign this person out everywhere" (deletes
   their `Session` rows in a domain function guarded by `requireRole("OWNER")`, audit row). Deactivating staff already
   blocks access; this adds the immediate sign-out.
+- **D-G6 Dark-mode status colours (accessibility, found 2026-10-06)** — `.dark` in `src/app/globals.css` overrides
+  neither `--color-success` (#1e6b3e) nor `--color-danger` (#a3271f), and `text-success`/`text-danger` are used in about 54
+  places. On the dark surface (#152e22) they measure 2.2:1 and 2.0:1 (WCAG AA needs 4.5:1). Add
+  `--color-success: #7fd39a; --color-danger: #ff9b8f;` to the `.dark` block (8.1:1 and 7.2:1) and the contrast unit test
+  `tests/theme-contrast.test.ts` described in `docs/designs/BATCH-V.md` V-2a. Goes in PR G-1.
 - **D-G5 STATUS** — refresh `docs/STATUS.md` to show Batch E2's merged parts (#250–#260) and add rows for G, T, K, O.
 
 ## 2. Schema (additive) — migration `<timestamp>_batch_g_security`
@@ -59,7 +64,7 @@ columns must match what the installed plugin expects — G-A4). The plugin store
 
 ## 3. Work units
 
-**PR G-1:** WU-G1 dependencies; WU-G2 `closedAt` + earnings fix; WU-G5 STATUS.
+**PR G-1:** WU-G1 dependencies; WU-G2 `closedAt` + earnings fix; WU-G6 dark-mode status colours; WU-G5 STATUS.
 **PR G-2:** WU-G3 two-step login; WU-G4 sessions.
 
 Tests:

@@ -26,6 +26,11 @@ See `.env.example` for the full list with comments. The short version:
 - `RESEND_API_KEY` — **set**, a sending-only key created via the Resend MCP connector for the now-verified `robinsonappliancerentals.com` domain.
 - `RESEND_FROM_EMAIL` / `LEAD_NOTIFICATION_EMAIL` / `MAINTENANCE_NOTIFICATION_EMAIL` — **set (2026-09-28, Task #69)**, real `robinsonappliancerentals.com` addresses. See "Email addresses (Google Workspace)" below.
 - `BILLING_NOTIFICATION_EMAIL` — **set (2026-09-28, Task #72)**, `billing@robinsonappliancerentals.com` (an alias reserved since Task #69 but unused until now). Where the automated-late-fee digest email goes — see docs/BUSINESS-RULES.md's "Consolidated statements, manual payments, and automated late fees."
+- `PRIVATE_PHOTO_BLOB_READ_WRITE_TOKEN` / `PRIVATE_PHOTO_BLOB_STORE_ID` — the **private** production file store for photos, signed documents and receipts (Batch A private media). `src/lib/photo-storage.ts` refuses to use a token whose embedded store id does not match the store id, so a wrong pairing fails closed instead of writing to the wrong store.
+- `PREVIEW_PRIVATE_BLOB_READ_WRITE_TOKEN` / `PREVIEW_PRIVATE_BLOB_STORE_ID` — Preview-only private store (owner-approved 2026-10-01). Used only when `VERCEL_ENV=preview` and the id equals the reviewed constant in `src/domains/preview-storage/index.ts`; never falls back to production.
+- `SENTRY_ORG` / `SENTRY_PROJECT` / `SENTRY_AUTH_TOKEN` — build-time only (source-map upload in `next.config.ts`); not needed at runtime.
+- Set by Vercel automatically, never by hand: `VERCEL`, `VERCEL_ENV`, `NEXT_PUBLIC_VERCEL_ENV`, `VERCEL_URL` (fallback base URL for auth and privacy links when `BETTER_AUTH_URL` is unset). `NODE_ENV` and `NEXT_RUNTIME` are set by Next.js.
+- Planned, not yet used by code: `COLORADO_GIS_API_KEY` (Batch T, `docs/designs/BATCH-T.md`).
 - Everything else (SignWell/Documenso/DocuSign) is added in later phases, only when that phase needs it.
 
 All of these are stored as **Vercel environment variables** (per environment: Production / Preview / Development). Nothing secret is ever committed. Local development uses `.env.local` (gitignored).
@@ -327,6 +332,21 @@ Every rule's outcome is written to the job's audit trail
 charge or credit.
 
 ## Automation rules (scheduled jobs)
+
+**At a glance (source of truth: `vercel.json`; all times UTC — Denver is UTC−6 in summer, UTC−7 in winter):**
+
+| Time (UTC) | Route | What it does |
+|---|---|---|
+| 07:10 | `/api/cron/start-renewals` | Nightly rental pass: start signed renewals, auto-renew/termination execution, returns (order in "Nightly rental pass" below) |
+| 09:00 | `/api/cron/backup` | Daily database backup to private storage |
+| 13:00 | `/api/cron/job-reminders` | Next-day job reminders |
+| 14:00 | `/api/cron/billing-reminders` | Billing reminder notices |
+| 15:00 | `/api/cron/late-fees` | Automatic late fees after the grace period |
+| 15:30 | `/api/cron/billing-reconcile` | Recovery sweep: finishes pending Stripe operations (`finishPendingProviderOperations`), runs job billing hand-offs (`runPendingHandoffs`), freezes final invoice documents (`freezeFinalInvoiceArtifacts`, 200 per run), reconciles unknown email/SMS outcomes (`reconcileUnknownDeliveries`, 50 per run). Each part is its own `runAutomation` rule key (`billing-reconcile:*`). |
+| 16:00 | `/api/cron/estimate-follow-ups` | Estimate follow-up claims/sends |
+| 16:00 | `/api/cron/launch-emails` | Prelaunch launch-list sequence (sending stays behind the owner's switches) |
+
+Every route refuses to run without `CRON_SECRET` and records its outcome through `runAutomation` (Desk → Automations).
 
 **As of 2026-09-28**, later extended 2026-09-29. Checks that used to
 depend on Chris noticing something on his own now run automatically —

@@ -19,6 +19,7 @@ the points where the implementer must stop and ask instead of guessing.
 | F — Integrated verification, recovery, owner handoff & launch ledger | `BATCH-F.md` + **`POST-BATCH-D-RECONCILIATION-2026-10-05.md`** | Approved. Starts after E2; recovery must respect D privacy deletion and must never resurrect intentionally deleted private media. |
 | G — Audit fixes and owner-account security | `BATCH-G.md` | **PROPOSED 2026-10-06 — not approved.** Two small PRs after E2. |
 | T — Colorado sales and use tax | `BATCH-T.md` | **PROPOSED 2026-10-06 — not approved.** Before F (launch blocker). Policy answers come from Chris's CPA (IN-33 … IN-38). |
+| V — "Evergreen Signature" visual redesign | `BATCH-V.md` | **PROPOSED 2026-10-06 — not approved.** After T, before F-part-2. Concept in `docs/design-mockups/signature-2026-10-06/`. |
 | K — Books, expenses, P&L, accounting exports | `BATCH-K.md` | **PROPOSED 2026-10-06 — not approved.** After T; may run after launch. |
 | O — Owner controls | `BATCH-O.md` | **PROPOSED 2026-10-06 — not approved.** After K. |
 
@@ -34,7 +35,7 @@ reconciliation wins.
 
 The older 2026-10-02 designs remain under `docs/archive/designs-2026-10-02/` for history; they are not instructions.
 
-**Order:** B2 → D → E → E2 → G → T → F → K → O (G, T, K, O proposed 2026-10-06; plain-English summary `docs/plans/TAX-AND-BOOKS-OVERVIEW.md`). One batch at a time, one stack of PRs per batch (`AGENTS.md`).
+**Order:** see `docs/MASTER-ROADMAP.md` (F-part-1 → G → T → V → F-part-2 → launch → K → O; G, T, V, K, O proposed 2026-10-06). One batch at a time, one stack of PRs per batch (`AGENTS.md`).
 
 ## The rule
 

@@ -5,7 +5,7 @@
 `docs/archive/STATUS-LOG.md`. The long history before 2026-10-02 is in
 `docs/archive/HANDOFF-2026-09-26-to-2026-10-02.md`.
 
-Last updated: 2026-10-06 · final E2 cleanup/docs is PR #263. This PR closes E2; **Batch F is next**. Chris authorized #262 to merge but judged the public-site visual result unsatisfactory / insufficiently different from the existing site, so a stronger public-site visual pass is explicitly deferred. O32 Google Workspace is also explicitly deferred until its app-side service-account/delegation, Drive OAuth, and live-walkthrough prerequisites are proven.
+Last updated: 2026-10-06 · final E2 cleanup/docs is PR #263. This PR closes E2; **Batch F is next**. Chris authorized #262 to merge but judged the public-site visual result unsatisfactory / insufficiently different from the existing site, so a stronger public-site visual pass is explicitly deferred. O32 Google Workspace is also explicitly deferred until its app-side service-account/delegation, Drive OAuth, and live-walkthrough prerequisites are proven. **Review session 2026-10-06 (later):** docs audited against code and fixed; new ordered plan `docs/MASTER-ROADMAP.md` (recommends F-part-1 now, then G → T → V → F-part-2, pending IN-40/41/42); redesign concept proposed as Batch V.
 
 ## Batch table
 
@@ -24,6 +24,7 @@ Last updated: 2026-10-06 · final E2 cleanup/docs is PR #263. This PR closes E2;
 | G — Audit fixes and owner-account security | DESIGN PROPOSED 2026-10-06 (not approved) | — | — | `docs/designs/BATCH-G.md`; from `docs/reviews/2026-10-06-owner-audit-and-recommendations.md`. Before F (Chris to approve the design). |
 | T — Colorado sales and use tax | DESIGN PROPOSED 2026-10-06 (not approved) | — | — | `docs/designs/BATCH-T.md`; launch blocker; CPA answers IN-33 … IN-38; Chris to obtain the Colorado GIS API key (IN-40). |
 | K — Books, expenses, P&L, accounting exports | DESIGN PROPOSED 2026-10-06 (not approved) | — | — | `docs/designs/BATCH-K.md`; after T. |
+| V — "Evergreen Signature" visual redesign | DESIGN PROPOSED 2026-10-06 (not approved) | — | — | `docs/designs/BATCH-V.md`; answers Chris's rejection of E2's public-site look; IN-42. |
 | O — Owner controls | DESIGN PROPOSED 2026-10-06 (not approved) | — | — | `docs/designs/BATCH-O.md`; after K. |
 
 Earlier roadmap work that is already shipped and must not be rebuilt

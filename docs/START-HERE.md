@@ -56,7 +56,8 @@ docs/               everything below
 | `AGENTS.md` | The rules. |
 | `docs/START-HERE.md` | This file. |
 | `docs/STATUS.md` | Where work stands: batch table, blockers, what is next. Updated every session. |
-| `docs/PLAN.md` | The batches (A–F plus B2 and E2) with full acceptance criteria, and the launch gates. |
+| `docs/MASTER-ROADMAP.md` | The single ordered list of remaining steps to launch and beyond, Chris's action queue, and the paste-ready prompt for running a step. |
+| `docs/PLAN.md` | The batches (A–F, B2, E2, and the proposed G, T, V, K, O) with full acceptance criteria, and the launch gates. |
 | `docs/designs/BATCH-<X>.md` | The approved design for each batch — the *how*: decisions, exact schema, signatures, work units, tests, stop-and-ask. `docs/designs/README.md` has the rule and the template. |
 | `docs/PLAYBOOK.md` | Step-by-step procedure for a batch, including local verification. |
 | `docs/OWNER-INPUTS.md` | Decisions only Chris can make, with stable IDs. |
@@ -90,7 +91,7 @@ file wins.
 
 ## Vocabulary you will meet
 
-- **Batch A–F, B2, E2, R** — the units of work (`docs/PLAN.md`). A, B, C and R are merged; B2 finishes B and C; then D, E, E2, F.
+- **Batch A–F, B2, E2, R, G, T, V, K, O, P** — the units of work (`docs/PLAN.md`). A, B, B2, C, R, D, E and E2 are merged. Proposed 2026-10-06 (not approved): G (audit fixes, two-step login), T (Colorado sales/use tax), V (premium visual redesign), K (books and accounting exports), O (owner controls); P is an idea list. The order is in `docs/MASTER-ROADMAP.md`.
 - **O-cards (O00–O32)** — the original overhaul roadmap items. They are now
   folded into the batches; the plan quotes their requirements inline.
 - **B01–B36** — Chris's business audit items (`docs/reviews/2026-10-01-business-logic-audit.md`).

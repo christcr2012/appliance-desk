@@ -387,7 +387,7 @@ was added and to whom. It never charges anyone's card by itself — it
 only adds the fee to what they owe, the same as any other automatic
 step in this app never takes payment on its own decision.
 
-## Reading the dashboard
+## Reading the dashboard (Money → Business overview)
 
 The dashboard shows real counts: leads by status, customers, draft/
 awaiting-signature/active agreements, scheduled jobs, and open
@@ -412,18 +412,34 @@ question:
   without checking each section separately.
 - **Search** — one search box (in the desk header on every page) that
   looks across customers, appliances, and leads at once.
-- **Revenue** (owner/admin only) — your monthly recurring revenue
-  (MRR) and annualized (ARR), trended over the last 6 months, plus
-  collected/past-due/failed-payment totals — all calculated from your
-  actual agreements and Stripe data, not estimates.
-- **Reports** (owner/admin only) — agreements whose price has drifted
-  from your current pricing, repairs missing a logged cost, and where
-  your leads are actually coming from.
+- **Revenue** (owner/admin only) — your agreed monthly rate (MRR) and
+  yearly rate (ARR), which are *estimates from agreed prices*, next to
+  money actually received and refunded, past-due and failed payments.
+  Every number has its definition printed next to it (what it counts,
+  which dates, actual or estimate).
+- **Reports** (owner/admin only) — estimated earnings versus money
+  actually collected per rental (the "gap" shows rentals falling
+  behind), repairs missing a logged cost, where leads come from, and the
+  accounting CSV download (every payment, refund and deposit movement).
+  Profit and loss with expenses is not built yet — see
+  `docs/plans/TAX-AND-BOOKS-OVERVIEW.md` (Batch K).
 - **Growth** (owner/admin only) — customers worth a proactive call:
   active rentals showing a churn signal (a past-due invoice, a
   cancellation-risk pattern), plus leads worth a win-back attempt.
 - **Fleet** (owner/admin only) — which appliances are getting the most
   and least use, and which have cost you the most in repairs.
+- **Growth signals** (owner/admin only) — same as "Growth" above.
+- **Notices** (reached from Today and from a rental) — the formal
+  letters the system writes for you (renewal reminders, month-to-month
+  change notices). Each is saved, held until it is delivered, and can be
+  marked delivered by hand while customer email is switched off.
+- **Automations** (owner/admin only) — every scheduled job's last runs,
+  what it did, and any failures; you can pause a rule here.
+- **Privacy requests** (owner only) — customer requests to see or delete
+  their data, with identity check, what must be kept by law, and a
+  downloadable export. Step-by-step: `docs/runbooks/PRIVACY-REQUESTS.md`.
+- **Launch list** (owner/admin only) — people who asked to hear when you
+  open; see "Launch list (preparing to open)" below.
 
 ## Resetting test data (once you're done testing)
 
