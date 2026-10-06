@@ -50,7 +50,7 @@ Previews and test copies never send email, even with the key and the switch on (
 
 ## 5. Website and company information
 | [ ] | Real business name, phone, email, address, hours, service area | Desk → Settings (Owner) | Placeholders like "[Phone Number]" until entered | Public site shows real details |
-| [ ] | Your own domain bought and pointed at the site | Vercel + domain registrar (Owner approves spending) | Not bought | Site opens on your domain with a lock icon |
+| [x] | Custom Robinson Appliance Rentals domain bought and pointed at the site | Vercel + domain registrar | Live | Production site opens on the custom domain over HTTPS |
 | [ ] | `NEXT_PUBLIC_APP_URL` and `BETTER_AUTH_URL` set to the real domain | Vercel (Production) | Test address | Login and emailed links go to your domain |
 
 ## 6. Accounts, security and platform
@@ -59,7 +59,7 @@ Previews and test copies never send email, even with the key and the switch on (
 | [ ] | Nightly jobs are running (Vercel Cron: reminders, renewals, late fees, billing check, backup, follow-ups) | Vercel → Cron (Owner checks) | Scheduled | Run history shows green daily |
 | [ ] | Daily backup tested by restoring it into a throwaway copy | Agent (Batch F) | Backups run | Restore proof recorded |
 | [x] | Neon plan upgrade and production branch protection | Neon | Completed/verified 2026-09-29 | Production `main` is protected; normal previews already use the isolated preview branch |
-| [ ] | Optional one-Neon-branch-per-preview-deployment automation | Post-launch infrastructure hardening | Not enabled | Not a launch blocker; current previews are isolated from production |
+| [x] | Preview database isolated from production | Existing `vercel-preview-2` guard/proof | Verified | One fresh Neon branch per individual preview remains optional post-launch hardening, not a launch gate |
 | [ ] | Photo storage (private) set for production | Vercel Blob tokens (`PRIVATE_PHOTO_BLOB_*`, `BLOB_READ_WRITE_TOKEN`) | Set per environment | Photo upload works in production only |
 | [ ] | Public sign-up stays disabled | Already enforced in code | Disabled | Nothing to do |
 
