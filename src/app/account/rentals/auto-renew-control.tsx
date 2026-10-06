@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui";
 import { setCustomerAutoRenewAction } from "./actions";
 
 export function AutoRenewControl(props: {
@@ -16,8 +17,9 @@ export function AutoRenewControl(props: {
 
   return (
     <div className="mt-3">
-      <button
+      <Button
         type="button"
+        variant="secondary"
         disabled={pending}
         onClick={() => {
           const prompt = nextEnabled
@@ -35,16 +37,15 @@ export function AutoRenewControl(props: {
             else router.refresh();
           });
         }}
-        className="min-h-11 rounded-lg border border-control px-4 py-2 text-sm text-primary hover:bg-subtle disabled:opacity-60"
       >
         {pending
           ? "Saving…"
           : props.enabled
             ? "Turn off automatic renewal"
             : "Turn on automatic renewal"}
-      </button>
+      </Button>
       {error && (
-        <p role="alert" className="mt-2 text-sm text-red-800">
+        <p role="alert" className="mt-2 text-sm font-semibold text-danger">
           {error}
         </p>
       )}
