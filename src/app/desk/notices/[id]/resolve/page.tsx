@@ -26,7 +26,7 @@ export default async function ResolveNoticePage({ params }: { params: Promise<{ 
         description="Every way forward, in one place. Nothing happens until you choose one and press the button."
       />
       {!stillNeedsFixing ? (
-        <div className="rounded-lg border border-gray-200 bg-white p-6 text-sm text-gray-700">
+        <div className="rounded-lg border border-line bg-white p-6 text-sm text-ink-soft">
           This reminder no longer needs fixing (it is {result.notice.status.toLowerCase().replace("_", " ")}).
         </div>
       ) : (

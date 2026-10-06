@@ -27,7 +27,7 @@ export default async function MaintenanceDetailPage({
     <div className="max-w-2xl">
       <Link
         href="/desk/maintenance"
-        className="text-sm text-gray-600 hover:underline"
+        className="text-sm text-ink-soft hover:underline"
       >
         &larr; Back to maintenance requests
       </Link>
@@ -35,7 +35,7 @@ export default async function MaintenanceDetailPage({
       <h1 className="mt-2 text-xl font-semibold">
         {request.customer.user.name ?? request.customer.user.email}
       </h1>
-      <p className="mt-1 text-sm text-gray-600">
+      <p className="mt-1 text-sm text-ink-soft">
         {request.appliance
           ? `${request.appliance.applianceType.name} (${request.appliance.assetNumber})`
           : "General request"}{" "}
@@ -43,13 +43,13 @@ export default async function MaintenanceDetailPage({
         {new Date(request.openedAt).toLocaleString()}
       </p>
 
-      <div className="mt-4 rounded-lg border border-gray-200 bg-white p-5">
-        <p className="text-sm text-gray-700">{request.problem}</p>
+      <div className="mt-4 rounded-lg border border-line bg-white p-5">
+        <p className="text-sm text-ink-soft">{request.problem}</p>
       </div>
 
       {request.photos.length > 0 && (
-        <div className="mt-4 rounded-lg border border-gray-200 bg-white p-5">
-          <h2 className="font-medium text-gray-900">
+        <div className="mt-4 rounded-lg border border-line bg-white p-5">
+          <h2 className="font-medium text-ink">
             Photo{request.photos.length > 1 ? "s" : ""} from the customer
           </h2>
           <div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -78,9 +78,9 @@ export default async function MaintenanceDetailPage({
       )}
 
       {request.jobs.length > 0 && (
-        <div className="mt-4 rounded-lg border border-gray-200 bg-white p-5">
-          <h2 className="font-medium text-gray-900">Jobs scheduled for this</h2>
-          <ul className="mt-2 divide-y divide-gray-200">
+        <div className="mt-4 rounded-lg border border-line bg-white p-5">
+          <h2 className="font-medium text-ink">Jobs scheduled for this</h2>
+          <ul className="mt-2 divide-y divide-line">
             {request.jobs.map((j) => (
               <li key={j.id} className="py-2 text-sm">
                 <Link
