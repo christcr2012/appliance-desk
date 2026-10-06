@@ -634,3 +634,14 @@ What the real work will need (so it is not forgotten):
 - The public home page direction is not yet approved (only the owner desk is). The hero's dark gradient and two buttons differ from the
   kit's "ivory surfaces, one dominant next action" guidance and need a decision before design.
 - **Update 2026-10-04:** this is now scheduled as **Batch E2** (after E, before F) in `docs/PLAN.md`, covering the whole redesign: desktop, phone, dark mode, owner desk, customer portal and public site. A phone mockup of Today and the home page exists in the same private canvas.
+
+## 2026-10-06 — Owner audit: money tools and owner controls (suggestions, not built)
+
+From `docs/reviews/2026-10-06-owner-audit-and-recommendations.md` (Parts 2–4). Not scheduled; Chris decides.
+- **Expenses and a real monthly Profit & Loss** (expense entry with receipt photo and owner-edited categories; cash-basis P&L by month).
+- **Stripe fee import**, appliance payback/depreciation, a per-city sales-tax filing report, a 90-day cash-flow forecast,
+  churn/lifetime-value reports, date-range bookkeeping export, a year-end package.
+- **Owner controls:** per-person permission switches and approval limits for refunds/write-offs/discounts, settings history
+  with undo, dated price changes, goals and idle-machine alerts, one "live switches" page, owner session control.
+- Must-fix items from the same review (F1–F5: dependency advisories, cancelled rentals inflating the earnings report,
+  single business-wide tax rate, no two-step owner login, stale STATUS) are listed in the review itself.
