@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint",
+    "lint": "eslint && node scripts/check-e2-ui-tokens.mjs",
     "typecheck": "next typegen && tsc --noEmit",
     "postinstall": "prisma generate",
     "db:migrate:deploy": "prisma migrate deploy",
@@ -42,34 +42,4 @@
     "react-hook-form": "^7.89.0",
     "resend": "^6.30.0",
     "stripe": "^22.6.2",
-    "twilio": "^6.1.2",
-    "ws": "^8.22.0",
-    "zod": "^4.6.5"
-  },
-  "devDependencies": {
-    "@axe-core/playwright": "^4.13.0",
-    "@playwright/test": "^1.63.0",
-    "@tailwindcss/postcss": "^4",
-    "@testing-library/jest-dom": "^7.0.1",
-    "@testing-library/react": "^16.3.3",
-    "@types/bcryptjs": "^2.4.6",
-    "@types/node": "^26.6.3",
-    "@types/pg": "^8.23.1",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "@types/ws": "^8.18.1",
-    "@vitejs/plugin-react": "^6.1.1",
-    "eslint": "^9",
-    "eslint-config-next": "16.3.6",
-    "jsdom": "^30.1.1",
-    "prettier": "^3.9.9",
-    "tailwindcss": "^4",
-    "tsx": "^4.23.15",
-    "typescript": "^5",
-    "vitest": "^5.0.2"
-  },
-  "overrides": {
-    "mysql2": "^3.24.4",
-    "deepmerge-ts": "^8.0.2"
-  }
-}
+    ¶»§q«^
