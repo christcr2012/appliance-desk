@@ -2,7 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 const email = vi.hoisted(() => vi.fn(async () => ({ sent: true, outcome: "SENT" as const })));
-const deletePrivatePhoto = vi.hoisted(() => vi.fn(async () => undefined));
+const deletePrivatePhoto = vi.hoisted(() => vi.fn(async (_sourceUrl: string, _store: { token: string; storeId: string }) => undefined));
 vi.mock("@/lib/customer-email", () => ({ sendCustomerEmail: email }));
 vi.mock("@/lib/photo-storage", () => ({
   getPrivatePhotoStore: () => ({ token: "private-test-token", storeId: "store_test" }),
