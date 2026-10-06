@@ -71,7 +71,7 @@ describe.each(["light", "dark"] as const)("E2 data/form primitives in %s mode", 
     expect(field.getAttribute("aria-describedby")).toBe(
       "customer-name-help customer-name-error",
     );
-    expect(screen.getByRole("alert", { name: "" }).textContent).toContain("Required");
+    expect(screen.getAllByRole("alert")).toHaveLength(2);\n    expect(document.getElementById("customer-name-error")?.textContent).toBe("Required");\n    expect(document.getElementById("consent-error")?.textContent).toBe("Required");
 
     expect(screen.getByLabelText("Term").getAttribute("aria-describedby")).toBe("term-help");
     expect(screen.getByLabelText("Notes").getAttribute("aria-describedby")).toBe("notes-help");
