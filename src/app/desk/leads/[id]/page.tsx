@@ -1,10 +1,6 @@
 import { requireRole } from "@/lib/session";
 import { getLeadEstimates } from "@/domains/leads/workspace";
-import {
-  PageHeader,
-  SectionCard,
-  primaryActionClass,
-} from "@/components/desk/workspace";
+import { PageHeader, SectionCard } from "@/components/desk/workspace";
 import {
   formatBusinessDate,
   formatBusinessTime,
@@ -89,14 +85,12 @@ export default async function LeadDetailPage({
                 : "Contact this lead, review their quotes and set a next follow-up."
           }
           primaryAction={
-            lead.convertedCustomerId ? (
-              <Link
-                className={primaryActionClass}
-                href={`/desk/customers/${lead.convertedCustomerId}`}
-              >
-                Open customer
-              </Link>
-            ) : undefined
+            lead.convertedCustomerId
+              ? {
+                  href: `/desk/customers/${lead.convertedCustomerId}`,
+                  label: "Open customer",
+                }
+              : undefined
           }
         />
       </div>
