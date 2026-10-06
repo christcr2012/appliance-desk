@@ -408,3 +408,19 @@ payout transaction handling made explicit. (6) BATCH-G: two-step-login enforceme
 sign-out and password reset. (7) BATCH-O: approvals execute as the approving owner. Doc corrections: nightly
 `start-renewals` job description, how Notices is reached, the 7.375% wording, and "books from any start date".
 
+## 2026-10-06 (night) — PR size budget and CI rules for the remaining batches
+Chris asked that agents not spend more time on CI than on implementation, and not take on more than they can finish.
+Added: a numeric PR budget (`docs/PLAYBOOK.md` Step 3a — about 500 production lines, ~15 files, one migration, one risk
+area, ≤2 expected CI runs, ≤2 merged PRs per session), CI rules for a moving codebase (Step 8 — is-it-mine check against
+`main`, a 3-run CI budget, updating deliberately changed assertions in the same commit, stack refresh and migration
+timestamp rules, change-proof tests), and an explicit PR list for F, G, T, V, K and O (`docs/MASTER-ROADMAP.md`
+section 7, about 34 PRs) that supersedes the coarser PR groupings in the designs. Two predictable CI ripples are named
+in advance: Batch T's billing gate needs tax-ready fixtures in the same PR; Batch G's two-step login needs the CI
+login and saved browser sessions updated in the same PR.
+Audit of these rules the same night (Chris: "audit them first"): fixed the stack-refresh rule (merge each PR's *base*
+branch, not `main`, into upper PRs), counted only *red* CI runs against the budget, allowed splitting inside an
+over-budget work unit at a complete-and-tested point, added the budget measurement commands, the local real-Postgres
+run for schema/money/auth PRs before the first push, a no-idle rule with a 20-minute timebox for unavailable automated
+reviewers, a "CI runs used" report with a split-smaller trigger, the WU-T0 row, the safe migration-rename rule, and
+corrected the PR count to 33.
+

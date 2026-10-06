@@ -67,6 +67,8 @@ columns must match what the installed plugin expects — G-A4). The plugin store
 
 ## 3. Work units
 
+> PR boundaries below are superseded by `docs/MASTER-ROADMAP.md` section 7 (smaller PRs, same work units and order).
+
 **PR G-1:** WU-G1 dependencies; WU-G2 `closedAt` + earnings fix; WU-G6 dark-mode status colours; WU-G5 STATUS.
 **PR G-2:** WU-G3 two-step login; WU-G4 sessions.
 

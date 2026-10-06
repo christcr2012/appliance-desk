@@ -642,6 +642,8 @@ line in `src/domains/documents/render.ts` changes to that wording. A rate change
 
 ## 5. Work units (in order; one PR per group; stacked per AGENTS.md)
 
+> PR boundaries below are superseded by `docs/MASTER-ROADMAP.md` section 7 (smaller PRs, same work units and order).
+
 **PR T-1 (foundation): WU-T0 … WU-T2. PR T-2 (engine in billing): WU-T3 … WU-T5. PR T-3 (returns and use tax):
 WU-T6 … WU-T8. PR T-4: WU-T9.**
 

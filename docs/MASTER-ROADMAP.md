@@ -57,7 +57,9 @@ Paste into a new session (replace `<X>`):
 > the work units in order as a stack of PRs, one PR per group the design names, following docs/PLAYBOOK.md. Do not
 > re-decide anything in the design's Decisions section, do not add anything it does not name, and stop and ask Chris at
 > every stop-and-ask point. Never enter a tax rate, a tax answer, a price or a legal promise yourself. After each PR:
-> exact-head CI green, review threads read and dispositioned, then merge per AGENTS.md. At the end update
+> exact-head CI green, review threads read and dispositioned, then merge per AGENTS.md. Use the PR list in
+> docs/MASTER-ROADMAP.md section 7, keep each PR within docs/PLAYBOOK.md Step 3a's budget, follow Step 8 for CI
+> (at most 3 red CI runs per PR, then stop and report), and stop after two merged PRs per session with a STATUS handoff. At the end update
 > docs/STATUS.md and tick the step in docs/MASTER-ROADMAP.md, and report to Chris in plain English.
 
 For F-part-1 use the same prompt with `BATCH-F.md` and add: "Build only WU-F1, WU-F2, WU-F4 and WU-F5 now."
@@ -122,3 +124,77 @@ and every desk screen against `docs/OWNER-GUIDE.md`. Fixed the same day:
 Found in code, not docs (scheduled into batches): dark-mode success/error text contrast 2.0–2.7:1 (Batch G, D-G6);
 hard-coded, partly unverified marketing promises on the home page (Batch V, V-3); tax-confirmed tick box gates nothing
 (Batch T, D-T7); cancelled rentals inflate estimated earnings (Batch G, D-G2).
+
+## 7. PR plan for every remaining batch (Chris, 2026-10-06)
+
+This table **overrides the "PR …" grouping lines inside the designs**; the work units, their order and their tests are
+unchanged. Each row is one PR, sized to the budget in `docs/PLAYBOOK.md` Step 3a (about 500 lines of production code,
+one risk area, at most one migration, at most one red CI run expected). Stack them in order; merge bottom-up. A row
+that still turns out over budget is split inside its work unit as Step 3a describes (G-2 and T-4 are the likely ones). "CI watch" names the
+tests most likely to break, so the agent updates them in the same PR instead of discovering them in CI.
+
+### F-part-1 (now)
+| PR | Work units | Risk area | CI watch |
+|---|---|---|---|
+| F1-a | WU-F1 consistent backup export, restore script, restore drill | data/backup | backup manifest and table-order tests; schema-health |
+| F1-b | WU-F2 media inventory and second copy | storage | private-media and privacy-deletion tests (a deleted file must never come back) |
+| F1-c | WU-F4 capacity fixtures and regression guard + WU-F5 runbooks | performance/docs | `tests/perf/*`; keep fixture creation fast (unit shard under ~2 min) |
+
+### G — audit fixes and owner security
+| PR | Work units | Risk area | CI watch |
+|---|---|---|---|
+| G-1 | WU-G1 dependency fix, WU-G6 dark-mode colours + `tests/theme-contrast.test.ts`, WU-G2 `closedAt` (the batch's one migration), WU-G5 STATUS | schema (small) | earnings tests (`tests/reports-earnings.test.ts`, `tests/earnings-not-cash.test.ts`); dark-mode axe spec; build (sharp) |
+| G-2 | WU-G3 two-step login **with** CI login and saved-session updates | auth | **every browser spec** (saved sessions), `staff-security`, `session-deactivation`; route inventory for `/desk/security/setup` |
+| G-3 | WU-G4 session control | auth | session tests; staff screen spec |
+
+### T — Colorado sales and use tax
+| PR | Work units | Risk area | CI watch |
+|---|---|---|---|
+| — | WU-T0 is Chris's SUTS registration plus the GIS runbook; the runbook (docs only) rides with T-2 | — | — |
+| T-1 | WU-T1 migration, seeds, backup/schema-health + WU-T2 pure engine, categories, allocator | schema + pure logic | migration check, populated-upgrade drill, backup coverage test |
+| T-2 | WU-T3 GIS adapter (fake source; real client only if the runbook exists) + address locating hooks | provider (read-only) | customer/address and rental-builder tests (locating runs after address saves) |
+| T-3 | WU-T4 readiness gate + Stripe tax rates **+ `seedTaxReadyContext()` helper and CI seed update** | money | **every test that signs an agreement or sets up billing**, checkout/webhook integration tests, rental-builder and signing browser specs |
+| T-4 | WU-T5 local invoices and the Stripe mirror use the engine; old single-rate assertions updated | money | pickup/late-return/early-return/waiver tests, webhook mirror tests, statements |
+| T-5 | WU-T6 exemptions + rate-change and re-check automations | money/automation | automation run tests, cron route auth tests |
+| T-6 | WU-T7 filing accounts, worksheet, use tax (+ appliance form field, purchase-order hook) | money | purchasing/receipt tests, appliance form tests |
+| T-7 | WU-T8 screens + WU-T9 docs | screens | route inventory (every new page), axe light/dark, `e2e/sales-tax.spec.ts` shard assignment |
+
+### V — "Evergreen Signature" redesign
+| PR | Work units | Risk area | CI watch |
+|---|---|---|---|
+| V-1 | V-2 tokens + contrast test, V-3 site-content fields + `tests/public-copy-from-settings.test.ts` | screens (foundation) | lint guard (`scripts/check-e2-ui-tokens.mjs`), website-editor tests |
+| V-2 | V-4 home page + V-6 address check (pure check, action, rate limit) | screens + public form | public axe routes, lead-form spec, rate-limit tests; Chris's before/after screenshot gate |
+| V-3 | V-5 remaining public pages | screens | public axe routes, 360px overflow assertions |
+| V-4 | V-7 desk Today timeline, sidebar search trigger, portal home + V-8 docs and screenshots | screens | desk/portal axe routes, `desk-workspace`, `owner-portal-workspaces`, `e2e/signature-focus.spec.ts` |
+
+### F-part-2 (after G, T and V merge)
+| PR | Work units | Risk area | CI watch |
+|---|---|---|---|
+| F2-a | WU-F3 scenarios 1–5 (include tax-ready fixtures from T-3) | cross-cutting tests | unit shard time — add a vitest shard if any shard passes ~2 min |
+| F2-b | WU-F3 scenarios 6–10 | cross-cutting tests | same |
+| F2-c | WU-F6 owner guide rewrite and screenshots | docs/browser | screenshot spec shard assignment |
+| F2-d | WU-F7 review-thread discharge, WU-F8 launch ledger, WU-F9 rollback plan and STATUS | docs/scripts | launch-ledger test |
+
+### K — books (after launch unless Chris asks sooner)
+| PR | Work units | Risk area | CI watch |
+|---|---|---|---|
+| K-1 | WU-K1 migration + seeded accounts + WU-K2 account map and posting rules (pure) | schema + pure logic | migration drill, backup coverage |
+| K-2 | WU-K3 poster, periods, integrity check, opening balance | money (journal) | concurrency tests (two posters at once) |
+| K-3 | WU-K4 Stripe balance sync and clearing check | provider | fake Stripe client tests; automation tests |
+| K-4 | WU-K5 expenses, recurring drafts, receipt photo, use-tax hook | money + uploads | upload/private-media tests, STAFF permission tests |
+| K-5 | WU-K6 exports + accounts/mapping screen | money + screens | route inventory, CSV formula-injection test |
+| K-6 | WU-K7 depreciation | money | appliance retirement tests |
+| K-7 | WU-K8 P&L, balance, payback | reports | METRICS registry tests, reports page specs |
+| K-8 | WU-K9 forecast, customers, year-end + WU-K10 docs | reports | same; `e2e/books.spec.ts` shard |
+
+### O — owner controls
+| PR | Work units | Risk area | CI watch |
+|---|---|---|---|
+| O-1 | WU-O1 settings history and undo + WU-O6 switches page (the batch's migration) | settings | settings save tests, route inventory |
+| O-2 | WU-O2 capabilities (behaviour must not change: table test of today's guards) | permissions | **every permission test**; staff-security spec |
+| O-3 | WU-O3 approvals | money + permissions | refund/credit/write-off integration tests |
+| O-4 | WU-O4 scheduled prices + WU-O5 goals and alerts + docs | settings/automation | pricing tests, Today tests |
+
+**33 PRs in all** (a few more if G-2 or T-4 split). At two merged PRs per session that is roughly 17 working sessions;
+each PR should reach green with at most one red CI run (each run is about 3–5 minutes). If a PR needs a third red run,
+the agent stops and reports (PLAYBOOK Step 8).

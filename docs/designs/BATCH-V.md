@@ -81,6 +81,8 @@ Chris can change it and nothing unverified ("haul away your old unit", "fast") i
 
 ## 3. Work units
 
+> PR boundaries below are superseded by `docs/MASTER-ROADMAP.md` section 7 (smaller PRs, same work units and order).
+
 **PR V-1 (foundation + home):** V-2 tokens; V-3 content fields; V-4 home page; V-6 address check.
 **PR V-2 (rest of public site):** V-5 pricing, how it works, service area, rent/[city], contact, launch, legal pages.
 **PR V-3 (desk and portal polish):** V-7 Today and shells. **PR V-4:** V-8 docs and screenshots.

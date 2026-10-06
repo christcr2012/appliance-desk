@@ -148,6 +148,8 @@ model BusinessGoal {
 
 ## 3. Work units
 
+> PR boundaries below are superseded by `docs/MASTER-ROADMAP.md` section 7 (smaller PRs, same work units and order).
+
 **PR O-1:** WU-O1 settings history + undo; WU-O6 switches page. **PR O-2:** WU-O2 capabilities. **PR O-3:** WU-O3
 approvals. **PR O-4:** WU-O4 scheduled prices; WU-O5 goals and alerts. **PR O-5:** docs (OWNER-GUIDE "Controls you have").
 

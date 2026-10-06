@@ -536,6 +536,8 @@ Changing the useful life affects only months not yet posted (recompute the remai
 
 ## 5. Work units (one PR per group; stacked)
 
+> PR boundaries below are superseded by `docs/MASTER-ROADMAP.md` section 7 (smaller PRs, same work units and order).
+
 **PR K-1:** WU-K1 migration + seeds; WU-K2 account map + posting rules (pure); WU-K3 poster, periods, integrity check.
 **PR K-2:** WU-K4 Stripe sync + clearing check; WU-K5 expenses, recurring, receipt photo, use-tax hook, staff submission.
 **PR K-3:** WU-K6 exports + accounts/mapping screen; WU-K7 depreciation. **PR K-4:** WU-K8 P&L, balance, payback;
