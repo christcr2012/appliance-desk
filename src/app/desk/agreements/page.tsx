@@ -1,14 +1,23 @@
+import Link from "next/link";
+import type { RentalAgreementStatus } from "@prisma/client";
 import { requireRole } from "@/lib/session";
 import { getDeskAgreementsPage } from "@/domains/desk-access";
-import Link from "next/link";
 import { getAgreementsCount, isReservationStale } from "@/domains/agreements";
 import { formatCents } from "@/domains/pricing";
-import type { RentalAgreementStatus } from "@prisma/client";
 import { parsePage, paginationMeta } from "@/domains/pagination";
 import { Pagination } from "@/components/pagination";
-import { PlusIcon } from "@/components/icons/status-icons";
-import { StatusBadge } from "@/components/status-badge";
-import { rentalAgreementStatusTone } from "@/lib/status-labels";
+import { FilterBar } from "@/components/desk/workspace";
+import {
+  DataList,
+  EmptyState,
+  PageHeader,
+  StatusPill,
+  type DataListColumn,
+} from "@/components/ui";
+import {
+  rentalAgreementStatusLabel,
+  rentalAgreementStatusTone,
+} from "@/lib/status-labels";
 
 export const metadata = { title: "Agreements" };
 
@@ -22,7 +31,9 @@ const STATUS_TABS: { value: RentalAgreementStatus | "ALL"; label: string }[] = [
   { value: "CANCELLED", label: "Cancelled" },
 ];
 
-function isAgreementStatus(value: string | undefined): value is RentalAgreementStatus {
+function isAgreementStatus(
+  value: string | undefined,
+): value is RentalAgreementStatus {
   return (
     value === "DRAFT" ||
     value === "AWAITING_SIGNATURE" ||
@@ -33,22 +44,34 @@ function isAgreementStatus(value: string | undefined): value is RentalAgreementS
   );
 }
 
+type AgreementRow = Awaited<
+  ReturnType<typeof getDeskAgreementsPage>
+>[number];
+
 export default async function AgreementsPage({
   searchParams,
 }: {
   searchParams: Promise<{ status?: string; page?: string }>;
 }) {
   const session = await requireRole("OWNER", "ADMIN", "STAFF");
-  const canViewFinance = session.user.role === "OWNER" || session.user.role === "ADMIN";
+  const canViewFinance =
+    session.user.role === "OWNER" || session.user.role === "ADMIN";
   const { status: rawStatus, page: rawPage } = await searchParams;
   const status = isAgreementStatus(rawStatus) ? rawStatus : undefined;
   const filter = status ? { status } : undefined;
 
   const totalCount = await getAgreementsCount(filter);
   const meta = paginationMeta(totalCount, parsePage(rawPage));
-  const agreements = await getDeskAgreementsPage(filter, meta.skip, meta.pageSize);
+  const agreements = await getDeskAgreementsPage(
+    filter,
+    meta.skip,
+    meta.pageSize,
+  );
 
-  function agreementsHref(page: number, forStatus: RentalAgreementStatus | "ALL" = status ?? "ALL") {
+  function agreementsHref(
+    page: number,
+    forStatus: RentalAgreementStatus | "ALL" = status ?? "ALL",
+  ) {
     const params = new URLSearchParams();
     if (forStatus !== "ALL") params.set("status", forStatus);
     if (page > 1) params.set("page", String(page));
@@ -56,89 +79,98 @@ export default async function AgreementsPage({
     return qs ? `/desk/agreements?${qs}` : "/desk/agreements";
   }
 
+  const columns: DataListColumn<AgreementRow>[] = [
+    {
+      key: "customer",
+      header: "Customer",
+      primary: true,
+      cell: (agreement) => (
+        <div>
+          <Link
+            href={`/desk/agreements/${agreement.id}`}
+            className="font-semibold text-ink underline-offset-4 hover:underline"
+          >
+            {agreement.customer.user.name ?? agreement.customer.user.email}
+          </Link>
+          <p className="mt-1 text-sm font-normal text-ink-soft">
+            {agreement.serviceAddress.line1}, {agreement.serviceAddress.city}
+          </p>
+        </div>
+      ),
+    },
+    {
+      key: "status",
+      header: "Status",
+      cell: (agreement) => (
+        <div className="flex flex-wrap gap-2">
+          <StatusPill
+            tone={rentalAgreementStatusTone(agreement.status)}
+            label={rentalAgreementStatusLabel(agreement.status)}
+          />
+          {isReservationStale(
+            agreement.status,
+            agreement.reservationExpiresAt,
+          ) && <StatusPill tone="attention" label="Stale hold" />}
+        </div>
+      ),
+    },
+    {
+      key: "rental",
+      header: canViewFinance ? "Rental value" : "Appliances",
+      cell: (agreement) =>
+        canViewFinance && agreement.applianceCount > 0
+          ? `${formatCents(agreement.monthlyCents ?? 0)}/mo`
+          : `${agreement.applianceCount} appliance line(s)`,
+    },
+  ];
+
   return (
     <div>
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Rental agreements</h1>
-        {canViewFinance && <Link
-          href="/desk/agreements/new"
-          className="inline-flex items-center gap-1 rounded-md bg-action px-4 py-2 text-sm font-medium text-on-action hover:bg-action"
-        >
-          <PlusIcon className="h-4 w-4" />
-          New agreement
-        </Link>}
-      </div>
+      <PageHeader
+        title="Rental agreements"
+        description="Review active rentals, upcoming starts, signatures, ended agreements, and cancelled agreements."
+        primaryAction={
+          canViewFinance
+            ? { href: "/desk/agreements/new", label: "New agreement" }
+            : undefined
+        }
+      />
 
-      <nav aria-label="Filter agreements by status" className="mt-6 flex flex-wrap gap-2">
-        {STATUS_TABS.map((tab) => {
-          const active = (status ?? "ALL") === tab.value;
-          return (
-            <Link
-              key={tab.value}
-              href={agreementsHref(1, tab.value)}
-              aria-current={active ? "page" : undefined}
-              className={`rounded-full border px-3 py-1 text-sm ${
-                active
-                  ? "border-action bg-action text-on-action"
-                  : "border-line-strong text-ink-soft hover:border-line-strong"
-              }`}
-            >
-              {tab.label}
-            </Link>
-          );
-        })}
-      </nav>
+      <FilterBar
+        label="Filter agreements by status"
+        items={STATUS_TABS.map((tab) => ({
+          href: agreementsHref(1, tab.value),
+          label: tab.label,
+          active: (status ?? "ALL") === tab.value,
+        }))}
+      />
 
-      {agreements.length === 0 ? (
-        <p className="mt-6 text-sm text-ink-soft">
-          {status ? "No agreements with this status." : "No agreements yet."}
-        </p>
-      ) : (
-        <ul className="mt-6 divide-y divide-line rounded-lg border border-line bg-white">
-          {agreements.map((a) => (
-            <li key={a.id}>
-              <Link
-                href={`/desk/agreements/${a.id}`}
-                className="flex flex-col gap-1 px-4 py-4 hover:bg-canvas sm:flex-row sm:items-center sm:justify-between"
-              >
-                <div>
-                  <p className="font-medium text-ink">
-                    {a.customer.user.name ?? a.customer.user.email}
-                  </p>
-                  <p className="text-sm text-ink-soft">
-                    {a.serviceAddress.line1}, {a.serviceAddress.city}
-                  </p>
-                </div>
-                <div className="text-sm text-ink-faint sm:text-right">
-                  <p>
-                    <StatusBadge tone={rentalAgreementStatusTone(a.status)} label={a.status} />
-                    {isReservationStale(a.status, a.reservationExpiresAt) && (
-                      <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
-                        Stale hold
-                      </span>
-                    )}
-                  </p>
-                  <p>
-                    {canViewFinance && a.applianceCount > 0
-                      ? `${formatCents(
-                          a.monthlyCents ?? 0,
-                        )}/mo`
-                      : `${a.applianceCount} appliance line(s)`}
-                  </p>
-                </div>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
+      <DataList
+        rows={agreements}
+        columns={columns}
+        caption="Rental agreements"
+        empty={
+          <EmptyState
+            title={
+              status
+                ? "No agreements with this status"
+                : "No agreements yet"
+            }
+            description={
+              status
+                ? "Choose another status to review different agreements."
+                : "New rental agreements will appear here."
+            }
+          />
+        }
+      />
 
       <Pagination
         page={meta.page}
         totalPages={meta.totalPages}
         totalCount={meta.totalCount}
-        buildHref={(p) => agreementsHref(p)}
+        buildHref={(page) => agreementsHref(page)}
       />
     </div>
   );
 }
-
