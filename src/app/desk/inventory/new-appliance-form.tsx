@@ -37,7 +37,7 @@ export function NewApplianceForm({
 
   if (applianceTypes.length === 0) {
     return (
-      <p className="text-sm text-gray-600">
+      <p className="text-sm text-ink-soft">
         Add an appliance <em>type</em> (a category, like Washer) in Settings
         first, then come back here to add individual units of it.
       </p>
@@ -89,19 +89,19 @@ export function NewApplianceForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className="max-w-2xl space-y-4 rounded-lg border border-gray-200 bg-white p-5"
+      className="max-w-2xl space-y-4 rounded-lg border border-line bg-white p-5"
     >
-      <h2 className="font-medium text-gray-900">Add appliances you&apos;ve obtained</h2>
+      <h2 className="font-medium text-ink">Add appliances you&apos;ve obtained</h2>
 
       <div>
-        <label htmlFor="applianceTypeId" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="applianceTypeId" className="block text-sm font-medium text-ink-soft">
           Appliance type
         </label>
         <select
           id="applianceTypeId"
           value={applianceTypeId}
           onChange={(e) => setApplianceTypeId(e.target.value)}
-          className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+          className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
         >
           {applianceTypes.map((t) => (
             <option key={t.id} value={t.id}>
@@ -113,7 +113,7 @@ export function NewApplianceForm({
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
-          <label htmlFor="quantity" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="quantity" className="block text-sm font-medium text-ink-soft">
             How many
           </label>
           <input
@@ -123,11 +123,11 @@ export function NewApplianceForm({
             max={50}
             value={quantity}
             onChange={(e) => setQuantity(e.target.value)}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
           />
         </div>
         <div>
-          <label htmlFor="acquisitionCostDollars" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="acquisitionCostDollars" className="block text-sm font-medium text-ink-soft">
             Cost each ($, optional)
           </label>
           <input
@@ -137,14 +137,14 @@ export function NewApplianceForm({
             step="0.01"
             value={fields.acquisitionCostDollars}
             onChange={(e) => update("acquisitionCostDollars", e.target.value)}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
           />
         </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
-          <label htmlFor="manufacturer" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="manufacturer" className="block text-sm font-medium text-ink-soft">
             Manufacturer (optional)
           </label>
           <input
@@ -152,11 +152,11 @@ export function NewApplianceForm({
             type="text"
             value={fields.manufacturer}
             onChange={(e) => update("manufacturer", e.target.value)}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
           />
         </div>
         <div>
-          <label htmlFor="model" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="model" className="block text-sm font-medium text-ink-soft">
             Model (optional)
           </label>
           <input
@@ -164,14 +164,14 @@ export function NewApplianceForm({
             type="text"
             value={fields.model}
             onChange={(e) => update("model", e.target.value)}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
           />
         </div>
       </div>
 
       {quantityNum === 1 ? (
         <div>
-          <label htmlFor="serialNumber" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="serialNumber" className="block text-sm font-medium text-ink-soft">
             Serial number (optional)
           </label>
           <input
@@ -179,11 +179,11 @@ export function NewApplianceForm({
             type="text"
             value={fields.serialNumber}
             onChange={(e) => update("serialNumber", e.target.value)}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
           />
         </div>
       ) : (
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-ink-faint">
           Adding {quantityNum} at once — serial numbers usually differ per
           unit, so add each one&apos;s serial number individually afterward
           from its own page.
@@ -192,7 +192,7 @@ export function NewApplianceForm({
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
-          <label htmlFor="color" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="color" className="block text-sm font-medium text-ink-soft">
             Color (optional)
           </label>
           <input
@@ -201,11 +201,11 @@ export function NewApplianceForm({
             placeholder="e.g. White, Stainless"
             value={fields.color}
             onChange={(e) => update("color", e.target.value)}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
           />
         </div>
         <div>
-          <label htmlFor="features" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="features" className="block text-sm font-medium text-ink-soft">
             Features (optional)
           </label>
           <input
@@ -214,15 +214,15 @@ export function NewApplianceForm({
             placeholder="e.g. front-load, agitator"
             value={fields.features}
             onChange={(e) => update("features", e.target.value)}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
           />
-          <p className="mt-1 text-xs text-gray-500">Separate multiple with commas.</p>
+          <p className="mt-1 text-xs text-ink-faint">Separate multiple with commas.</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
-          <label htmlFor="condition" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="condition" className="block text-sm font-medium text-ink-soft">
             Condition (optional)
           </label>
           <input
@@ -231,11 +231,11 @@ export function NewApplianceForm({
             placeholder="e.g. New, Good, Fair"
             value={fields.condition}
             onChange={(e) => update("condition", e.target.value)}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
           />
         </div>
         <div>
-          <label htmlFor="purchaseDate" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="purchaseDate" className="block text-sm font-medium text-ink-soft">
             Purchase date (optional)
           </label>
           <input
@@ -243,13 +243,13 @@ export function NewApplianceForm({
             type="date"
             value={fields.purchaseDate}
             onChange={(e) => update("purchaseDate", e.target.value)}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
           />
         </div>
       </div>
 
       <div>
-        <label htmlFor="currentLocation" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="currentLocation" className="block text-sm font-medium text-ink-soft">
           Current location (optional)
         </label>
         <input
@@ -258,12 +258,12 @@ export function NewApplianceForm({
           placeholder="e.g. Warehouse, or a customer's address"
           value={fields.currentLocation}
           onChange={(e) => update("currentLocation", e.target.value)}
-          className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+          className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
         />
       </div>
 
       <div>
-        <label htmlFor="notes" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="notes" className="block text-sm font-medium text-ink-soft">
           Notes (optional)
         </label>
         <textarea
@@ -271,14 +271,14 @@ export function NewApplianceForm({
           rows={2}
           value={fields.notes}
           onChange={(e) => update("notes", e.target.value)}
-          className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+          className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
         />
       </div>
 
       <button
         type="submit"
         disabled={isPending}
-        className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+        className="rounded-md bg-action px-4 py-2 text-sm font-medium text-on-action hover:bg-action disabled:opacity-50"
       >
         {isPending
           ? "Adding…"
