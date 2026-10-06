@@ -170,7 +170,7 @@ export function NewPurchaseOrderForm({
             setLines((previous) => [...previous, emptyLine()])
           }
         >
-          Add another line
+          + Add another line
         </Button>
       </fieldset>
 
