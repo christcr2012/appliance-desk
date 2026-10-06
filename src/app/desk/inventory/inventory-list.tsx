@@ -11,10 +11,8 @@ import {
 import {
   Button,
   Checkbox,
-  DataList,
   Select,
   StatusPill,
-  type DataListColumn,
 } from "@/components/ui";
 import type { StatusTone } from "@/components/status-badge";
 import { bulkUpdateApplianceStatusAction } from "./actions";
@@ -105,61 +103,6 @@ export function InventoryList({
     });
   }
 
-  const columns: DataListColumn<ApplianceRow>[] = [
-    ...(canManage
-      ? [
-          {
-            key: "select",
-            header: "Select",
-            cell: (appliance: ApplianceRow) => (
-              <Checkbox
-                disabled={isPending}
-                label={`Select ${appliance.assetNumber}`}
-                checked={selected.has(appliance.id)}
-                onChange={() => toggle(appliance.id)}
-              />
-            ),
-          },
-        ]
-      : []),
-    {
-      key: "appliance",
-      header: "Appliance",
-      primary: true,
-      cell: (appliance) => (
-        <div>
-          <Link
-            href={`/desk/inventory/${appliance.id}`}
-            className="font-semibold text-ink underline-offset-4 hover:underline"
-          >
-            {appliance.assetNumber} — {appliance.applianceType.name}
-          </Link>
-          <p className="mt-1 text-sm font-normal text-ink-soft">
-            {[appliance.manufacturer, appliance.model, appliance.color]
-              .filter(Boolean)
-              .join(" ") || "No manufacturer/model on file"}
-          </p>
-        </div>
-      ),
-    },
-    {
-      key: "status",
-      header: "Status",
-      cell: (appliance) => (
-        <StatusPill
-          tone={STATUS_TONE[appliance.status]}
-          label={APPLIANCE_STATUS_LABELS[appliance.status]}
-        />
-      ),
-    },
-    {
-      key: "location",
-      header: "Location",
-      cell: (appliance) =>
-        appliance.currentLocation ?? "No location on file",
-    },
-  ];
-
   return (
     <div className="mt-6 space-y-4">
       {canManage && (
@@ -234,12 +177,55 @@ export function InventoryList({
         </div>
       )}
 
-      <DataList
-        rows={appliances}
-        columns={columns}
-        caption="Inventory"
-        empty={null}
-      />
+      <ul
+        aria-label="Inventory"
+        className="divide-y divide-line rounded-card border border-line bg-surface"
+      >
+        {appliances.map((appliance) => (
+          <li
+            key={appliance.id}
+            className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center"
+          >
+            {canManage && (
+              <div className="shrink-0">
+                <Checkbox
+                  disabled={isPending}
+                  label={`Select ${appliance.assetNumber}`}
+                  checked={selected.has(appliance.id)}
+                  onChange={() => toggle(appliance.id)}
+                />
+              </div>
+            )}
+
+            <Link
+              href={`/desk/inventory/${appliance.id}`}
+              className="min-w-0 flex-1 rounded-control p-1 hover:bg-subtle sm:grid sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center sm:gap-4"
+            >
+              <div className="min-w-0">
+                <p className="font-semibold text-ink">
+                  {appliance.assetNumber} — {appliance.applianceType.name}
+                </p>
+                <p className="mt-1 text-sm text-ink-soft">
+                  {[appliance.manufacturer, appliance.model, appliance.color]
+                    .filter(Boolean)
+                    .join(" ") || "No manufacturer/model on file"}
+                </p>
+              </div>
+
+              <div className="mt-3 sm:mt-0">
+                <StatusPill
+                  tone={STATUS_TONE[appliance.status]}
+                  label={APPLIANCE_STATUS_LABELS[appliance.status]}
+                />
+              </div>
+
+              <p className="mt-2 text-sm text-ink-soft sm:mt-0 sm:text-right">
+                {appliance.currentLocation ?? "No location on file"}
+              </p>
+            </Link>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
