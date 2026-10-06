@@ -16,23 +16,23 @@ export async function WaitingTab() {
         </Link>{" "}
         to compare our records with Stripe&apos;s.
       </p>
-      {none && <p className="text-sm text-gray-600">Nothing is waiting for Stripe.</p>}
+      {none && <p className="text-sm text-ink-soft">Nothing is waiting for Stripe.</p>}
       {operations.length > 0 && (
         <section aria-labelledby="ops-h">
-          <h2 id="ops-h" className="text-base font-semibold text-gray-900">
+          <h2 id="ops-h" className="text-base font-semibold text-ink">
             Requests not confirmed ({operationCount})
           </h2>
           <ul className="mt-3 space-y-3">
             {operations.map((o) => (
-              <li key={o.id} className="rounded-lg border border-gray-200 bg-white p-4 text-sm">
-                <p className="font-medium text-gray-900">
-                  {o.what} <span className="ml-2 rounded-full bg-gray-100 px-2 py-0.5 text-xs">{o.status}</span>
+              <li key={o.id} className="rounded-lg border border-line bg-white p-4 text-sm">
+                <p className="font-medium text-ink">
+                  {o.what} <span className="ml-2 rounded-full bg-canvas-alt px-2 py-0.5 text-xs">{o.status}</span>
                 </p>
-                <p className="mt-1 text-gray-700">{o.meaning}</p>
-                <p className="mt-1 text-xs text-gray-600">
+                <p className="mt-1 text-ink-soft">{o.meaning}</p>
+                <p className="mt-1 text-xs text-ink-soft">
                   Asked {formatBusinessDate(o.since)} · {formatBusinessTime(o.since)} · tried {o.attempts} time(s)
                 </p>
-                {o.lastError && <p className="mt-1 text-xs text-gray-600">Last message from Stripe: {o.lastError}</p>}
+                {o.lastError && <p className="mt-1 text-xs text-ink-soft">Last message from Stripe: {o.lastError}</p>}
               </li>
             ))}
           </ul>
@@ -40,20 +40,20 @@ export async function WaitingTab() {
       )}
       {endings.length > 0 && (
         <section aria-labelledby="end-h">
-          <h2 id="end-h" className="text-base font-semibold text-gray-900">
+          <h2 id="end-h" className="text-base font-semibold text-ink">
             Billing end dates not applied yet ({endings.length})
           </h2>
           <ul className="mt-3 space-y-3">
             {endings.map((e) => (
-              <li key={e.stripeSubscriptionId} className="rounded-lg border border-gray-200 bg-white p-4 text-sm">
-                <p className="font-medium text-gray-900">{e.what}</p>
-                <p className="mt-1 text-xs text-gray-600">
+              <li key={e.stripeSubscriptionId} className="rounded-lg border border-line bg-white p-4 text-sm">
+                <p className="font-medium text-ink">{e.what}</p>
+                <p className="mt-1 text-xs text-ink-soft">
                   <Link className="text-primary underline" href={`/desk/agreements/${e.agreementId}`}>
                     Open the rental
                   </Link>{" "}
                   · waiting since {formatBusinessDate(e.since)} · tried {e.attempts} time(s)
                 </p>
-                {e.lastError && <p className="mt-1 text-xs text-gray-600">Last message: {e.lastError}</p>}
+                {e.lastError && <p className="mt-1 text-xs text-ink-soft">Last message: {e.lastError}</p>}
               </li>
             ))}
           </ul>

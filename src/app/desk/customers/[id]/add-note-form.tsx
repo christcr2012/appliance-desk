@@ -46,7 +46,7 @@ export function AddNoteForm({ customerId }: { customerId: string }) {
         rows={2}
         required
         placeholder="Log a call, or leave a reminder for next time…"
-        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+        className="w-full rounded-md border border-line-strong px-3 py-2 text-sm"
       />
       {error && (
         <p role="alert" className="mt-1 text-sm text-red-700">
@@ -56,7 +56,7 @@ export function AddNoteForm({ customerId }: { customerId: string }) {
       <button
         type="submit"
         disabled={isPending}
-        className="mt-2 rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+        className="mt-2 rounded-md bg-action px-3 py-1.5 text-sm font-medium text-on-action hover:bg-action disabled:opacity-50"
       >
         {isPending ? "Saving…" : "Add note"}
       </button>
