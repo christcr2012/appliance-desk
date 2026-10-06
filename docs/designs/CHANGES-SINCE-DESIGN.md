@@ -134,3 +134,8 @@ All customer-addressed email goes through `sendCustomerEmail` (owner master swit
 - E2-2 and E2-6 had already implemented the E2-10 print-shell rule before WU-E2-8: owner/customer headers, side navigation and bottom bars are `print:hidden`, and `e2e/work-order-print.spec.ts` already verifies desk chrome/padding disappear at phone and desktop print widths. WU-E2-8 therefore validates that behavior rather than adding duplicate print CSS.
 - The legacy `DeskSidebar` had no remaining imports, but several later-migrated screens still referenced `primaryActionClass`/`secondaryActionClass`. WU-E2-8 moves those callers to shared `Button`/`ButtonLink`, removes the aliases from `workspace.tsx`, and deletes the unused sidebar only after grep proves no live references.
 - `docs/OWNER-GUIDE.md` contains no embedded screenshot assets to refresh. WU-E2-8 updates its current navigation/orientation prose; Batch F remains the final screenshot/handoff capture pass called for by the approved plan.
+
+
+## 2026-10-06 — E2 public-site visual acceptance disposition
+
+- WU-E2-7 / PR #262 passed its functional, accessibility, performance, and deployment gates and implements the approved E2-7 specification. During the required owner visual review, browser comparison against the existing production site showed that the overall composition remained too similar to the prior design. Chris judged the result visually unsatisfactory / insufficiently differentiated, but explicitly authorized #262 to merge so Batch E2 could finish. Treat the public-site visual quality as deferred follow-up work: the implementation is technically accepted, but it is not the final desired public-site redesign.
