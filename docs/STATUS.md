@@ -5,7 +5,7 @@
 `docs/archive/STATUS-LOG.md`. The long history before 2026-10-02 is in
 `docs/archive/HANDOFF-2026-09-26-to-2026-10-02.md`.
 
-Last updated: 2026-10-06 · `main` 251b92e includes E2 through WU-E2-6 (#261). **In progress:** WU-E2-7 #262 (public-site visual gate + exact-head CI) and stacked WU-E2-8 cleanup/docs. Batch F starts only after E2 closes.
+Last updated: 2026-10-06 · `main` f5df905 includes E2 through WU-E2-7 (#262). **In progress:** final WU-E2-8 cleanup/docs in #263. Chris authorized #262 to merge after review but judged the public-site visual result unsatisfactory / insufficiently different from the existing site; that is deferred follow-up work, not a blocker to closing E2. Batch F starts after #263 merges.
 
 ## Batch table
 
@@ -19,7 +19,7 @@ Last updated: 2026-10-06 · `main` 251b92e includes E2 through WU-E2-6 (#261). *
 | B2 — Renewal lifecycle, month-to-month rentals, pickup billing end (finishes B and C) | **PR 4 OPEN** — PRs 1–3 merged (#205, #206, #207); PR 4 (late-return fix, our-delay waiver, closing after full return, early returns) on `ai/claude/batch-b2-pickup-returns` | `ai/claude/batch-b2-pickup-returns` | Full suite 1804/1804 against real Postgres (sandbox) | `docs/designs/BATCH-B2.md` (Amendments + review dispositions R1–R7, D1, D2). Covers C-09, IN-29, IN-30. Automatic renewals and live customer email stay OFF.
 | D — Owner/customer control plane, website, evidence & privacy | **MERGED** | #214, merge `a6c9c9a` (2026-10-05) | Exact-head CI green; Vercel preview READY; zero unresolved review threads | Final D implementation contracts and the mandatory E/E2/F reconciliation live in `docs/designs/POST-BATCH-D-RECONCILIATION-2026-10-05.md`. |
 | E — Communications, reporting, growth, branding & accessibility | **MERGED** | #215–#218, #221, #222 | Durable messaging/automation ledgers, reconciliation, growth/reporting, Evergreen tokens, generated accessibility coverage; exact-head CI at merge gates | Live customer email/SMS/marketing remain OFF unless separately approved. Accessibility checks are engineering evidence, not certification. |
-| E2 — Visual redesign (owner desk, public site, customer portal; desktop, phone, dark) | **IN PROGRESS — E2-1 through E2-6 merged; E2-7 open; E2-8 stacked** | Through #261 merged; #262 `ai/sol/e2-7-public-site`; `ai/sol/e2-8-cleanup-print-docs` | Shared UI/tokens, phone/desktop/dark route coverage, exact-head CI/preview gates; public home still needs the required owner preview check before E2-7 merges | `docs/designs/BATCH-E2.md`; current code/main is authoritative over stale prose. F waits for E2. |
+| E2 — Visual redesign (owner desk, public site, customer portal; desktop, phone, dark) | **FINAL PR — E2-1 through E2-7 merged; E2-8 #263 in progress** | Through #262 merged; #263 `ai/sol/e2-8-cleanup-print-docs` | Shared UI/tokens, phone/desktop/dark route coverage, print cleanup and exact-head gates | The public-site implementation satisfies the approved E2-7 technical spec, but Chris judged the overall visual result unsatisfactory / too similar to the prior site and explicitly authorized merge so E2 can close. A stronger public-site redesign is deferred follow-up work; do not treat E2-7 as the final desired visual quality. |
 | F — Integrated verification, recovery, owner handoff & launch ledger | NOT STARTED | — | — | Human/owner gates stay explicit. |
 
 Earlier roadmap work that is already shipped and must not be rebuilt
