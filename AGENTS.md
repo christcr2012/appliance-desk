@@ -14,6 +14,8 @@ Reading order at the start of every session (about 10 minutes total):
 1. This file.
 2. `docs/START-HERE.md` — what the project is, where everything lives.
 3. `docs/STATUS.md` — exactly where work stands right now and what is next.
+   Then `docs/MASTER-ROADMAP.md` — the one ordered list of every remaining step, what
+   must be true before each starts, and what only Chris can do.
 4. `docs/PLAN.md` — the section for the batch you are working on.
 5. `docs/designs/BATCH-<X>.md` — the approved design for that batch (how).
 6. `docs/PLAYBOOK.md` — the step-by-step procedure for doing a batch.

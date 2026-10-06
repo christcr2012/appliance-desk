@@ -1,0 +1,573 @@
+<title>Evergreen Signature</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap">
+<style>
+/* Layout concept: an ivory showroom cut by the Split-R's 45° diagonal — big Manrope type, hairline ledgers instead of card grids, one evergreen moment per screen. */
+:root {
+  --ivory: #F7F5EC; --white: #FFFFFF; --ink: #17251E; --muted: #4E6658;
+  --sage: #DCE7DF; --line: #A5B8AB; --evergreen: #123C2D; --fresh: #B9E66B; --night: #0C1E16;
+  --bg: var(--ivory); --surface: var(--white); --raised: var(--white); --text: var(--ink); --soft: var(--muted);
+  --hair: color-mix(in srgb, var(--line) 55%, var(--ivory));
+  --tint: color-mix(in srgb, var(--sage) 60%, var(--ivory));
+  --primary: var(--evergreen); --on-primary: var(--white);
+  --band: var(--evergreen); --band-ink: var(--ivory); --band-soft: color-mix(in srgb, var(--ivory) 72%, var(--evergreen));
+  --nav: var(--night); --nav-ink: var(--ivory);
+  --hl: var(--fresh); --hl-ink: var(--evergreen);
+  --ok: #1E6B3E; --ok-bg: color-mix(in srgb, #1E6B3E 10%, var(--white));
+  --warn: #7A4A05; --warn-bg: #FDF1D6; --bad: #A3271F; --bad-bg: color-mix(in srgb, #A3271F 8%, var(--white));
+  --shadow: 0 1px 0 color-mix(in srgb, var(--evergreen) 6%, transparent), 0 18px 40px -22px color-mix(in srgb, var(--evergreen) 35%, transparent);
+  --display: "Manrope", "Avenir Next", "Segoe UI", Arial, sans-serif;
+  --body: "Manrope", "Avenir Next", "Segoe UI", Arial, sans-serif;
+  --r-control: 8px; --r-card: 16px; --cut: 28px;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: var(--night); --surface: #152E22; --raised: color-mix(in srgb, #152E22 85%, var(--ivory)); --text: var(--ivory); --soft: #B7C8BB;
+  --hair: color-mix(in srgb, #789985 45%, var(--night)); --tint: color-mix(in srgb, #152E22 70%, var(--night));
+  --primary: var(--fresh); --on-primary: var(--evergreen);
+  --band: #152E22; --band-ink: var(--ivory); --band-soft: #B7C8BB;
+  --hl: var(--fresh); --hl-ink: var(--evergreen);
+  --ok: #7FD39A; --ok-bg: color-mix(in srgb, #7FD39A 12%, #152E22);
+  --warn: #F0C96B; --warn-bg: #3A2C0E; --bad: #FF9B8F; --bad-bg: color-mix(in srgb, #FF9B8F 12%, #152E22);
+  --shadow: 0 1px 0 color-mix(in srgb, var(--fresh) 6%, transparent), 0 18px 40px -24px rgb(0 0 0 / .7);
+  color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: var(--night); --surface: #152E22; --raised: color-mix(in srgb, #152E22 85%, var(--ivory)); --text: var(--ivory); --soft: #B7C8BB;
+  --hair: color-mix(in srgb, #789985 45%, var(--night)); --tint: color-mix(in srgb, #152E22 70%, var(--night));
+  --primary: var(--fresh); --on-primary: var(--evergreen);
+  --band: #152E22; --band-ink: var(--ivory); --band-soft: #B7C8BB;
+  --hl: var(--fresh); --hl-ink: var(--evergreen);
+  --ok: #7FD39A; --ok-bg: color-mix(in srgb, #7FD39A 12%, #152E22);
+  --warn: #F0C96B; --warn-bg: #3A2C0E; --bad: #FF9B8F; --bad-bg: color-mix(in srgb, #FF9B8F 12%, #152E22);
+  --shadow: 0 1px 0 color-mix(in srgb, var(--fresh) 6%, transparent), 0 18px 40px -24px rgb(0 0 0 / .7);
+  color-scheme: dark; }
+.logo-dark { display: none; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .logo-light { display: none; } :root:not([data-theme="light"]) .logo-dark { display: inline; } }
+:root[data-theme="dark"] .logo-light { display: none; } :root[data-theme="dark"] .logo-dark { display: inline; }
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--text); font-family: var(--body); font-size: 16px; line-height: 1.55; padding-inline: 16px; padding-block: 0 48px; -webkit-font-smoothing: antialiased; }
+h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; }
+p { margin: 0; }
+a { color: inherit; }
+:focus-visible { outline: 3px solid var(--primary); outline-offset: 3px; border-radius: 4px; }
+.num { font-variant-numeric: tabular-nums; }
+.eyebrow { font-size: .75rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--soft); }
+
+/* ---------- mockup chrome ---------- */
+.studio { max-width: 1280px; margin: 0 auto; }
+.toolbar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; justify-content: space-between; padding-block: 14px; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--hair); }
+.toolbar .name { display: flex; gap: 10px; align-items: center; font-weight: 800; letter-spacing: -.01em; }
+.toolbar .name small { font-weight: 600; color: var(--soft); }
+.seg { display: inline-flex; padding: 4px; gap: 4px; border-radius: 999px; background: var(--tint); border: 1px solid var(--hair); }
+.seg button { font: 600 .875rem var(--body); color: var(--soft); background: transparent; border: 0; padding: 8px 14px; border-radius: 999px; cursor: pointer; min-height: 36px; }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
+.chip { display: inline-flex; align-items: center; gap: 6px; font-size: .75rem; font-weight: 700; padding: 4px 10px; border-radius: 999px; background: var(--warn-bg); color: var(--warn); }
+.caption { max-width: 72ch; color: var(--soft); font-size: .9375rem; margin-block: 28px 14px; }
+.caption strong { color: var(--text); }
+
+.frame { border: 1px solid var(--hair); border-radius: 20px; overflow: hidden; background: var(--bg); box-shadow: var(--shadow); }
+.urlbar { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: var(--tint); border-bottom: 1px solid var(--hair); font-size: .8125rem; color: var(--soft); }
+.dots { display: flex; gap: 6px; } .dots i { width: 10px; height: 10px; border-radius: 50%; background: var(--hair); display: block; }
+.url { flex: 1; min-width: 0; padding: 4px 12px; border-radius: 999px; background: var(--surface); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ---------- website ---------- */
+.site { --pad: clamp(20px, 4vw, 56px); }
+.s-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px var(--pad); border-bottom: 1px solid var(--hair); }
+.s-head img { height: 34px; width: auto; }
+.s-nav { display: flex; gap: 26px; align-items: center; font-weight: 600; font-size: .9375rem; }
+.s-nav a { text-decoration: none; color: var(--soft); }
+.s-nav a:hover { color: var(--text); }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 0 22px; border: 0; cursor: pointer; font: 700 .9375rem var(--body); text-decoration: none; border-radius: var(--r-control); background: var(--primary); color: var(--on-primary); clip-path: polygon(0 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%); transition: transform .15s ease; }
+.btn:hover { transform: translateY(-1px); }
+.btn.alt { background: var(--hl); color: var(--hl-ink); }
+.btn.quiet { background: transparent; color: var(--text); clip-path: none; text-decoration: underline; text-underline-offset: 4px; padding: 0 6px; }
+.btn.sm { min-height: 40px; padding: 0 16px; font-size: .875rem; }
+
+.hero { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: clamp(28px, 4vw, 64px); align-items: center; padding: clamp(36px, 6vw, 88px) var(--pad) clamp(40px, 5vw, 72px); }
+.hero h1 { font-size: clamp(2.5rem, 5.6vw, 4.6rem); font-weight: 800; line-height: .98; letter-spacing: -.045em; color: var(--text); margin-block: 18px 22px; }
+.hl { background: linear-gradient(transparent 62%, var(--hl) 62%, var(--hl) 92%, transparent 92%); padding-inline: 2px; color: inherit; }
+.hero .lede { font-size: 1.1875rem; color: var(--soft); max-width: 46ch; }
+.pill-tag { display: inline-flex; align-items: center; gap: 10px; font-size: .8125rem; font-weight: 700; padding: 6px 14px 6px 6px; border-radius: 999px; background: var(--surface); border: 1px solid var(--hair); }
+.pill-tag b { background: var(--primary); color: var(--on-primary); border-radius: 999px; padding: 3px 10px; font-weight: 700; }
+.check { margin-top: 30px; display: flex; gap: 0; max-width: 560px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 6px; box-shadow: var(--shadow); }
+.check label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.check input { flex: 1; min-width: 0; border: 0; background: transparent; font: 500 1rem var(--body); color: var(--text); padding: 0 14px; min-height: 48px; }
+.check input:focus { outline: none; }
+.check:focus-within { outline: 3px solid var(--primary); outline-offset: 2px; }
+.result { margin-top: 14px; display: flex; gap: 10px; align-items: flex-start; font-size: .9375rem; color: var(--ok); background: var(--ok-bg); padding: 12px 14px; border-radius: 12px; max-width: 560px; }
+.result svg { flex: none; margin-top: 2px; }
+.secondary-row { margin-top: 18px; display: flex; flex-wrap: wrap; gap: 8px 22px; font-size: .9375rem; color: var(--soft); }
+.secondary-row a { font-weight: 700; color: var(--text); }
+
+.stage { position: relative; min-width: 0; }
+.stage::before { content: ""; position: absolute; inset: 9% -4% -6% 12%; background: var(--tint); border-radius: var(--r-card); clip-path: polygon(0 0, 100% 0, 100% 100%, 22% 100%, 0 78%); }
+.photo { position: relative; aspect-ratio: 1408 / 1000; max-width: 100%; border-radius: var(--r-card); overflow: hidden; clip-path: polygon(0 0, 100% 0, 100% 100%, 18% 100%, 0 calc(100% - 18% * 1408 / 1000)); }
+.photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ticket { position: absolute; right: -2%; bottom: 8%; background: var(--surface); border: 1px solid var(--hair); border-radius: 14px; padding: 14px 18px; box-shadow: var(--shadow); min-width: 190px; }
+.ticket .t-name { font-size: .8125rem; color: var(--soft); font-weight: 600; }
+.ticket .t-price { font-size: 1.875rem; font-weight: 800; letter-spacing: -.03em; line-height: 1.1; }
+.ticket .t-price span { font-size: .875rem; font-weight: 600; color: var(--soft); letter-spacing: 0; }
+.ticket .t-note { font-size: .75rem; color: var(--soft); margin-top: 4px; }
+
+.ledger { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-block: 1px solid var(--hair); }
+.ledger div { padding: 26px var(--pad) 28px; display: grid; gap: 8px; align-content: start; }
+.ledger div + div { border-left: 1px solid var(--hair); }
+.ledger svg { color: var(--primary); }
+.ledger h3 { font-size: 1.0625rem; font-weight: 800; letter-spacing: -.01em; }
+.ledger p { font-size: .9375rem; color: var(--soft); }
+
+.sec { padding: clamp(48px, 7vw, 96px) var(--pad); }
+.sec-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: end; gap: 20px; margin-bottom: 36px; }
+.sec-head h2 { font-size: clamp(2rem, 3.6vw, 3rem); font-weight: 800; letter-spacing: -.035em; line-height: 1.02; max-width: 16ch; }
+.sec-head p { max-width: 42ch; color: var(--soft); }
+
+.terms { display: inline-flex; padding: 4px; border-radius: 12px; background: var(--tint); border: 1px solid var(--hair); }
+.terms button { font: 700 .875rem var(--body); color: var(--soft); background: transparent; border: 0; padding: 10px 14px; border-radius: 9px; cursor: pointer; min-height: 44px; }
+.terms button[aria-pressed="true"] { background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
+.prices { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; align-items: stretch; }
+.price { display: grid; grid-template-rows: auto auto 1fr auto; gap: 14px; padding: 22px; background: var(--surface); border: 1px solid var(--hair); border-radius: var(--r-card); }
+.price.feature { background: var(--band); color: var(--band-ink); border-color: transparent; clip-path: polygon(0 0, 100% 0, 100% 100%, var(--cut) 100%, 0 calc(100% - var(--cut))); }
+.price.feature .p-sub, .price.feature li { color: var(--band-soft); }
+.price .p-img { aspect-ratio: 4 / 3; max-width: 100%; border-radius: 12px; overflow: hidden; background: var(--tint); }
+.price .p-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.p-top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.p-top h3 { font-size: 1.25rem; font-weight: 800; letter-spacing: -.015em; }
+.p-flag { font-size: .6875rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; background: var(--hl); color: var(--hl-ink); padding: 3px 8px; border-radius: 6px; }
+.p-amt { font-size: 2.75rem; font-weight: 800; letter-spacing: -.045em; line-height: 1; }
+.p-amt span { font-size: 1rem; font-weight: 600; letter-spacing: 0; opacity: .8; }
+.p-sub { font-size: .875rem; color: var(--soft); margin-top: 6px; min-height: 2.6em; }
+.price ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; font-size: .9375rem; color: var(--soft); }
+.price li { display: flex; gap: 10px; }
+.price li::before { content: ""; flex: none; width: 8px; height: 8px; margin-top: .55em; background: var(--primary); clip-path: polygon(0 0, 100% 0, 0 100%); }
+.price.feature li::before { background: var(--hl); }
+.price.feature .btn { background: var(--hl); color: var(--hl-ink); }
+
+.steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; position: relative; }
+.steps li { position: relative; padding: 0 22px 0 0; display: grid; gap: 10px; align-content: start; }
+.steps .dot { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; font-weight: 800; background: var(--surface); border: 1px solid var(--line); position: relative; z-index: 1; color: var(--text); }
+.steps li:first-child .dot { background: var(--primary); color: var(--on-primary); border-color: transparent; }
+.steps li:not(:last-child)::after { content: ""; position: absolute; top: 22px; left: 52px; right: 8px; height: 2px; background: repeating-linear-gradient(90deg, var(--line) 0 8px, transparent 8px 14px); }
+.steps h3 { font-size: 1.0625rem; font-weight: 800; }
+.steps p { font-size: .9375rem; color: var(--soft); }
+
+.band { background: var(--band); color: var(--band-ink); clip-path: polygon(0 48px, 48px 0, 100% 0, 100% 100%, 0 100%); padding: clamp(64px, 8vw, 104px) var(--pad) clamp(48px, 7vw, 88px); display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 40px; align-items: center; }
+.band h2 { font-size: clamp(2rem, 3.6vw, 3rem); font-weight: 800; letter-spacing: -.035em; line-height: 1.02; }
+.band p { color: var(--band-soft); margin-top: 16px; max-width: 48ch; }
+.band .eyebrow { color: var(--hl); }
+.facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; background: color-mix(in srgb, var(--band-ink) 18%, transparent); border-radius: 14px; overflow: hidden; }
+.facts div { background: var(--band); padding: 20px; display: grid; gap: 6px; }
+.facts b { font-size: 1rem; }
+.facts span { font-size: .875rem; color: var(--band-soft); }
+
+.faq { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 40px; }
+.faq details { border-top: 1px solid var(--hair); padding: 18px 0; }
+.faq summary { cursor: pointer; font-weight: 700; list-style: none; display: flex; justify-content: space-between; gap: 16px; }
+.faq summary::after { content: "+"; font-weight: 800; color: var(--soft); }
+.faq details[open] summary::after { content: "–"; }
+.faq details p { color: var(--soft); margin-top: 10px; font-size: .9375rem; }
+
+.s-foot { background: var(--night); color: var(--ivory); padding: 40px var(--pad); display: flex; flex-wrap: wrap; gap: 24px; justify-content: space-between; align-items: center; font-size: .875rem; }
+.s-foot img { height: 30px; width: auto; }
+.s-foot .muted { color: #B7C8BB; }
+
+/* ---------- desk ---------- */
+.app { display: grid; grid-template-columns: 248px minmax(0, 1fr); min-height: 760px; }
+.side { background: var(--nav); color: var(--nav-ink); padding: 18px 14px; display: flex; flex-direction: column; gap: 18px; }
+.brandrow { display: flex; align-items: center; gap: 10px; font-weight: 800; letter-spacing: -.01em; padding: 4px 8px; }
+.brandrow svg { color: var(--fresh); }
+.search { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: .8125rem; color: #B7C8BB; border: 1px solid color-mix(in srgb, var(--ivory) 18%, transparent); border-radius: 10px; padding: 9px 10px; }
+.search kbd { font: 700 .6875rem var(--body); border: 1px solid color-mix(in srgb, var(--ivory) 25%, transparent); border-radius: 5px; padding: 1px 5px; }
+.group { display: grid; gap: 2px; }
+.group .eyebrow { color: #8FA897; padding: 0 10px 4px; font-size: .6875rem; }
+.group a { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; border-radius: 9px; text-decoration: none; font-size: .9063rem; font-weight: 600; color: color-mix(in srgb, var(--ivory) 82%, transparent); }
+.group a:hover { background: color-mix(in srgb, var(--ivory) 7%, transparent); color: var(--ivory); }
+.group a[aria-current="page"] { background: var(--fresh); color: var(--evergreen); }
+.group a .count { font-size: .75rem; font-weight: 800; background: color-mix(in srgb, var(--ivory) 14%, transparent); padding: 1px 7px; border-radius: 999px; }
+.group a[aria-current="page"] .count { background: var(--evergreen); color: var(--fresh); }
+.side .me { margin-top: auto; display: flex; align-items: center; gap: 10px; font-size: .8125rem; padding: 8px; border-top: 1px solid color-mix(in srgb, var(--ivory) 12%, transparent); }
+.avatar { width: 30px; height: 30px; border-radius: 9px; background: var(--fresh); color: var(--evergreen); display: grid; place-items: center; font-weight: 800; font-size: .8125rem; }
+
+.main { padding: 26px clamp(18px, 3vw, 34px) 34px; display: grid; gap: 22px; align-content: start; min-width: 0; }
+.m-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: end; gap: 14px; }
+.m-head h1 { font-size: 2rem; font-weight: 800; letter-spacing: -.035em; }
+.m-head p { color: var(--soft); font-size: .9375rem; }
+.m-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.ghost { display: inline-flex; align-items: center; min-height: 40px; padding: 0 14px; border-radius: var(--r-control); border: 1px solid var(--line); background: var(--surface); color: var(--text); font: 700 .875rem var(--body); cursor: pointer; }
+
+.kpis { display: grid; grid-template-columns: 1.35fr repeat(3, minmax(0, 1fr)); gap: 14px; }
+.kpi { background: var(--surface); border: 1px solid var(--hair); border-radius: var(--r-card); padding: 16px 18px; display: grid; gap: 4px; min-width: 0; }
+.kpi .k-label { font-size: .8125rem; font-weight: 700; color: var(--soft); display: flex; justify-content: space-between; gap: 8px; }
+.kpi .k-val { font-size: 1.875rem; font-weight: 800; letter-spacing: -.035em; line-height: 1.1; }
+.kpi .k-note { font-size: .8125rem; color: var(--soft); }
+.kpi.hero-k { background: linear-gradient(145deg, var(--evergreen), var(--night)); color: var(--ivory); border-color: transparent; clip-path: polygon(0 0, 100% 0, 100% 100%, 22px 100%, 0 calc(100% - 22px)); }
+.kpi.hero-k .k-label, .kpi.hero-k .k-note { color: #B7C8BB; }
+.kpi.hero-k .k-val { font-size: 2.75rem; }
+.kpi.hero-k .k-note b { color: var(--fresh); }
+.tag { font-size: .6875rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; border: 1px solid var(--line); color: var(--soft); border-radius: 6px; padding: 1px 6px; }
+.spark { width: 100%; height: 34px; display: block; margin-top: 4px; }
+
+.panel { background: var(--surface); border: 1px solid var(--hair); border-radius: var(--r-card); min-width: 0; }
+.p-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 14px 18px; border-bottom: 1px solid var(--hair); }
+.p-head h2 { font-size: 1rem; font-weight: 800; letter-spacing: -.01em; }
+.p-head a { font-size: .8125rem; font-weight: 700; color: var(--soft); }
+.cols { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 14px; }
+
+.timeline { padding: 16px 18px 18px; overflow-x: auto; }
+.tl { position: relative; min-width: 560px; }
+.hours { display: grid; grid-template-columns: repeat(7, 1fr); font-size: .75rem; color: var(--soft); border-bottom: 1px solid var(--hair); padding-bottom: 6px; }
+.lanes { position: relative; height: 150px; background: repeating-linear-gradient(90deg, transparent 0 calc(100% / 6 - 1px), var(--hair) calc(100% / 6 - 1px) calc(100% / 6)); }
+.now { position: absolute; top: -26px; bottom: 0; width: 2px; background: var(--bad); }
+.now::before { content: "Now"; position: absolute; top: 0; left: 6px; font-size: .6875rem; font-weight: 800; color: var(--bad); }
+.blk { position: absolute; height: 40px; border-radius: 10px; padding: 4px 10px; font-size: .75rem; line-height: 1.25; display: flex; gap: 8px; align-items: center; overflow: hidden; white-space: nowrap; border: 1px solid var(--hair); background: var(--tint); color: var(--text); }
+.blk svg { flex: none; color: var(--primary); }
+.blk b { display: block; font-size: .8125rem; }
+.blk.done { opacity: .6; text-decoration: line-through; text-decoration-thickness: 1px; }
+.blk.next { background: var(--primary); color: var(--on-primary); border-color: transparent; }
+.blk.next svg { color: var(--on-primary); }
+
+.att { list-style: none; margin: 0; padding: 6px 0; }
+.att li { display: grid; grid-template-columns: 4px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px 18px; }
+.att li + li { border-top: 1px solid var(--hair); }
+.att .bar { align-self: stretch; border-radius: 2px; }
+.att .t { font-size: .9063rem; font-weight: 700; }
+.att .d { font-size: .8125rem; color: var(--soft); }
+.sev { font-size: .6875rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; padding: 2px 8px; border-radius: 6px; white-space: nowrap; }
+.sev.hi { color: var(--bad); background: var(--bad-bg); } .bar.hi { background: var(--bad); }
+.sev.md { color: var(--warn); background: var(--warn-bg); } .bar.md { background: var(--warn); }
+.sev.lo { color: var(--soft); background: var(--tint); } .bar.lo { background: var(--line); }
+
+table.pay { width: 100%; border-collapse: collapse; font-size: .875rem; }
+.pay th { text-align: left; font-size: .75rem; color: var(--soft); font-weight: 700; padding: 10px 18px; border-bottom: 1px solid var(--hair); }
+.pay td { padding: 11px 18px; border-bottom: 1px solid var(--hair); }
+.pay tr:last-child td { border-bottom: 0; }
+.pay td.r, .pay th.r { text-align: right; }
+.st { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; font-size: .8125rem; }
+.st.ok { color: var(--ok); } .st.bad { color: var(--bad); } .st.wait { color: var(--warn); }
+
+/* ---------- phones ---------- */
+.phones { display: flex; flex-wrap: wrap; gap: 28px; justify-content: center; }
+.phone { width: 360px; max-width: 100%; border-radius: 40px; padding: 10px; background: var(--night); box-shadow: var(--shadow); }
+.screen { border-radius: 31px; overflow: hidden; background: var(--bg); height: 720px; display: flex; flex-direction: column; position: relative; }
+.p-status { display: flex; justify-content: space-between; padding: 12px 22px 6px; font-size: .75rem; font-weight: 700; }
+.p-body { flex: 1; overflow: hidden; padding: 6px 16px 16px; display: grid; gap: 12px; align-content: start; }
+.p-title { display: flex; justify-content: space-between; align-items: center; padding: 6px 16px 4px; }
+.p-title img { height: 26px; width: auto; }
+.tabs { display: grid; grid-template-columns: repeat(5, 1fr); border-top: 1px solid var(--hair); background: var(--surface); padding: 6px 4px calc(10px + env(safe-area-inset-bottom, 0px)); }
+.tabs a { display: grid; justify-items: center; gap: 3px; font-size: .6875rem; font-weight: 700; color: var(--soft); text-decoration: none; padding: 6px 0; min-height: 44px; }
+.tabs a[aria-current="page"] { color: var(--text); }
+.tabs a[aria-current="page"] svg { background: var(--hl); color: var(--hl-ink); border-radius: 8px; }
+.tabs svg { padding: 3px; width: 30px; height: 26px; }
+.m-card { background: var(--surface); border: 1px solid var(--hair); border-radius: 14px; padding: 14px; display: grid; gap: 6px; }
+.m-card .row { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.mini-hero h2 { font-size: 2.125rem; line-height: 1; letter-spacing: -.045em; font-weight: 800; }
+.big-cta { margin-top: auto; padding: 12px 16px calc(14px + env(safe-area-inset-bottom, 0px)); background: color-mix(in srgb, var(--bg) 92%, transparent); border-top: 1px solid var(--hair); }
+.big-cta .btn { width: 100%; }
+
+[hidden] { display: none !important; }
+
+@media (max-width: 1080px) {
+  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cols { grid-template-columns: minmax(0, 1fr); }
+  .app { grid-template-columns: 1fr; } .side { display: none; }
+}
+@media (max-width: 900px) {
+  .hero, .band { grid-template-columns: minmax(0, 1fr); }
+  .s-nav a { display: none; }
+  .ledger { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ledger div:nth-child(3) { border-left: 0; } .ledger div:nth-child(n+3) { border-top: 1px solid var(--hair); }
+  .prices { grid-template-columns: minmax(0, 1fr); }
+  .steps { grid-template-columns: minmax(0, 1fr); gap: 22px; }
+  .steps li::after { display: none; }
+  .faq { grid-template-columns: minmax(0, 1fr); }
+  .ticket { right: 4%; }
+}
+@media (max-width: 560px) {
+  .ledger { grid-template-columns: minmax(0, 1fr); } .ledger div + div { border-left: 0; border-top: 1px solid var(--hair); }
+  .kpis { grid-template-columns: minmax(0, 1fr); }
+  .facts { grid-template-columns: minmax(0, 1fr); }
+  .check { flex-direction: column; } .check .btn { width: 100%; }
+  .s-head .btn { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+
+<div class="studio">
+  <header class="toolbar">
+    <div class="name">
+      <svg width="26" height="26" viewBox="0 0 100 100" aria-hidden="true"><path d="M0 0H57C83 0 98 13 98 33C98 51 87 62 65 65L100 100H64L9 45H55C63 45 67 41 67 35C67 29 63 25 55 25H0Z" fill="currentColor"/><path d="M0 49L49 100H0Z" fill="currentColor"/></svg>
+      Evergreen Signature <small>redesign concept</small>
+    </div>
+    <div class="seg" role="group" aria-label="Choose a view">
+      <button type="button" data-view="website" aria-pressed="true">Website</button>
+      <button type="button" data-view="desk" aria-pressed="false">Owner desk</button>
+      <button type="button" data-view="phones" aria-pressed="false">Phones</button>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <span class="chip">Example data</span>
+      <div class="seg" role="group" aria-label="Theme">
+        <button type="button" data-theme-set="light" aria-pressed="false">Light</button>
+        <button type="button" data-theme-set="dark" aria-pressed="false">Dark</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ================= WEBSITE ================= -->
+  <section id="v-website" data-pane="website">
+    <p class="caption"><strong>Public website.</strong> One job: get a visitor to check their address. The address field sits in the hero itself. Real photos sit inside the Split-R's 45° cut. Plain lines replace the old grid of identical cards. Prices, the town name and the headline would all come from your settings. Prices shown are examples.</p>
+    <div class="frame site">
+      <div class="urlbar"><div class="dots"><i></i><i></i><i></i></div><div class="url">robinsonappliancerentals.com</div></div>
+      <div class="s-head">
+        <span><img class="logo-light" src="../../../public/brand/logo-light.svg" alt="Robinson Appliance Rentals"><img class="logo-dark" src="../../../public/brand/logo-dark.svg" alt="Robinson Appliance Rentals"></span>
+        <nav class="s-nav" aria-label="Main"><a href="#prices">Pricing</a><a href="#how">How it works</a><a href="#pm">Property managers</a><a href="#faq">Questions</a><a href="#v-website">Sign in</a><a class="btn sm" href="#check" style="color:var(--on-primary)">Check your address</a></nav>
+      </div>
+
+      <div class="hero">
+        <div>
+          <span class="pill-tag"><b>Now renting</b> Greeley, Evans &amp; Windsor</span>
+          <h1>Laundry at home. <span class="hl">We handle the rest.</span></h1>
+          <p class="lede">Rent a washer, a dryer or the pair by the month. Delivery, installation and every repair are included, all from a local team.</p>
+          <form class="check" id="check" novalidate>
+            <label for="addr">Your street address</label>
+            <input id="addr" name="addr" autocomplete="street-address" placeholder="Enter your street address" value="2410 11th Ave, Greeley">
+            <button class="btn" type="submit">Check my address</button>
+          </form>
+          <p class="result" id="result" role="status">
+            <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12.5l5 5L20 6.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span><b>We deliver to 2410 11th Ave, Greeley.</b> Next step: pick your appliances. It takes about two minutes.</span>
+          </p>
+          <div class="secondary-row"><span>Month-to-month, 6 or 12 months</span><a href="#prices">See prices</a></div>
+        </div>
+        <div class="stage">
+          <div class="photo"><img src="../../../public/appliances/hero-lineup.jpg" alt="A matching washer and dryer installed in a bright laundry room"></div>
+          <div class="ticket"><div class="t-name">Washer + dryer set</div><div class="t-price num">$89<span>/month</span></div><div class="t-note">Example price · delivery and repairs included</div></div>
+        </div>
+      </div>
+
+      <div class="ledger" aria-label="Included with every rental">
+        <div><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><path d="M2 8H20V24H2ZM20 14H26L30 19V24H20 M6 28A3 3 0 1 0 6 22A3 3 0 1 0 6 28 M25 28A3 3 0 1 0 25 22A3 3 0 1 0 25 28" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg><h3>Delivered</h3><p>We bring it on a day that suits you.</p></div>
+        <div><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><path d="M2 15L16 3L30 15 M6 12V29H26V12 M12 29V19H20V29" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg><h3>Installed</h3><p>Connected, levelled and tested before we leave.</p></div>
+        <div><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><path d="M5 18V15A11 11 0 0 1 27 15V18 M5 15H2V24H8V15H5 M27 15H30V24H24V15H27 M27 24V28H17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg><h3>Repairs included</h3><p>Report a problem from your phone. We fix or swap it.</p></div>
+        <div><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><path d="M4 6H28V29H4ZM4 12H28 M10 2V9 M22 2V9 M10 19L14 23L23 16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg><h3>Easy to end</h3><p>Tell us when you're done and we pick it up.</p></div>
+      </div>
+
+      <section class="sec" id="prices" aria-labelledby="prices-h">
+        <div class="sec-head">
+          <div><p class="eyebrow">Pricing</p><h2 id="prices-h">One monthly price. No surprises.</h2></div>
+          <div style="display:grid;gap:10px;justify-items:start">
+            <div class="terms" role="group" aria-label="Rental term">
+              <button type="button" data-term="m2m" aria-pressed="true">Month-to-month</button>
+              <button type="button" data-term="6" aria-pressed="false">6 months prepaid</button>
+              <button type="button" data-term="12" aria-pressed="false">12 months prepaid</button>
+            </div>
+            <p class="p-sub" id="term-note" style="min-height:0">Pay monthly. End anytime with notice.</p>
+          </div>
+        </div>
+        <div class="prices">
+          <article class="price"><div class="p-img"><img src="../../../public/appliances/washer.jpg" alt="Front-load washer"></div><div><div class="p-top"><h3>Washer</h3></div><div class="p-amt num" data-base="49" data-kind="single">$49<span>/mo</span></div><p class="p-sub" data-save></p></div><ul><li>Delivery and installation</li><li>Repairs and maintenance</li></ul><a class="btn" href="#check">Choose washer</a></article>
+          <article class="price feature"><div class="p-img"><img src="../../../public/appliances/washer-dryer-set.jpg" alt="Matching washer and dryer set"></div><div><div class="p-top"><h3>Washer + dryer</h3><span class="p-flag">Most chosen</span></div><div class="p-amt num" data-base="89" data-kind="set">$89<span>/mo</span></div><p class="p-sub" data-save></p></div><ul><li>Both machines, one bill</li><li>Delivery, installation and repairs</li></ul><a class="btn" href="#check">Choose the set</a></article>
+          <article class="price"><div class="p-img"><img src="../../../public/appliances/dryer.jpg" alt="Electric dryer"></div><div><div class="p-top"><h3>Dryer</h3></div><div class="p-amt num" data-base="45" data-kind="single">$45<span>/mo</span></div><p class="p-sub" data-save></p></div><ul><li>Delivery and installation</li><li>Repairs and maintenance</li></ul><a class="btn" href="#check">Choose dryer</a></article>
+        </div>
+      </section>
+
+      <section class="sec" id="how" aria-labelledby="how-h" style="padding-top:0">
+        <div class="sec-head"><div><p class="eyebrow">How it works</p><h2 id="how-h">From your address to clean laundry.</h2></div><p>Each step is done by a person on our team, and you'll know what's next at every stage.</p></div>
+        <ol class="steps">
+          <li><span class="dot">1</span><h3>Check your address</h3><p>Find out in seconds whether we deliver to you.</p></li>
+          <li><span class="dot">2</span><h3>We confirm the details</h3><p>Hookups, stairs, access. We call before anything is booked.</p></li>
+          <li><span class="dot">3</span><h3>Sign online</h3><p>Read your agreement and sign from any phone.</p></li>
+          <li><span class="dot">4</span><h3>We deliver and install</h3><p>Your rent starts on the day it's installed.</p></li>
+        </ol>
+      </section>
+
+      <section class="band" id="pm" aria-labelledby="pm-h">
+        <div><p class="eyebrow">For landlords and property managers</p><h2 id="pm-h">Every unit equipped. One account, one statement.</h2><p>Add each property and unit. Tenants report problems straight to us, and you get one consolidated statement each month.</p><div style="margin-top:26px"><a class="btn alt" href="#check">Talk to us about your units</a></div></div>
+        <div class="facts"><div><b>Multiple properties</b><span>Every building and unit on one account</span></div><div><b>One statement</b><span>All units, one monthly bill</span></div><div><b>Service by unit</b><span>Requests tied to the exact machine</span></div><div><b>Move-outs handled</b><span>Pickups and swaps between tenants</span></div></div>
+      </section>
+
+      <section class="sec" id="faq" aria-labelledby="faq-h">
+        <div class="sec-head"><div><p class="eyebrow">Questions</p><h2 id="faq-h">Good to know.</h2></div></div>
+        <div class="faq">
+          <details open><summary>When does my rent start?</summary><p>On the day your appliances are installed, not the day you sign.</p></details>
+          <details><summary>What if something breaks?</summary><p>Report it from your account or scan the code on the machine. Repairs are included.</p></details>
+          <details><summary>Do I need hookups?</summary><p>Yes. We confirm your water, drain and power before booking delivery.</p></details>
+          <details><summary>Can I end early?</summary><p>Month-to-month ends with notice. Prepaid terms follow your agreement.</p></details>
+        </div>
+      </section>
+
+      <footer class="s-foot"><img src="../../../public/brand/logo-dark.svg" alt="Robinson Appliance Rentals"><span class="muted">Greeley, Colorado · Hours, phone and email from your settings</span><span class="muted">Privacy · Terms · Accessibility</span></footer>
+    </div>
+  </section>
+
+  <!-- ================= DESK ================= -->
+  <section id="v-desk" data-pane="desk" hidden>
+    <p class="caption"><strong>Owner desk, Today.</strong> Answers "what needs me now" before anything else. The day is drawn as a timeline of visits. Problems are sorted by how serious they are, and each is labelled in words as well as colour. Money tiles say plainly whether a number is <em>actual</em> or an <em>estimate</em>. All names and numbers are examples.</p>
+    <div class="frame">
+      <div class="app">
+        <aside class="side" aria-label="Desk menu">
+          <div class="brandrow"><svg width="26" height="26" viewBox="0 0 100 100" aria-hidden="true"><path d="M0 0H57C83 0 98 13 98 33C98 51 87 62 65 65L100 100H64L9 45H55C63 45 67 41 67 35C67 29 63 25 55 25H0Z" fill="currentColor"/><path d="M0 49L49 100H0Z" fill="currentColor"/></svg>Appliance Desk</div>
+          <div class="search">Search or jump to… <kbd>⌘K</kbd></div>
+          <nav class="group"><span class="eyebrow">Today</span><a href="#v-desk" aria-current="page">Today <span class="count">3</span></a><a href="#v-desk">Tasks <span class="count">5</span></a></nav>
+          <nav class="group"><span class="eyebrow">Customers &amp; sales</span><a href="#v-desk">Leads <span class="count">2</span></a><a href="#v-desk">Customers</a><a href="#v-desk">Estimates</a><a href="#v-desk">Agreements</a></nav>
+          <nav class="group"><span class="eyebrow">Service</span><a href="#v-desk">Dispatch</a><a href="#v-desk">Jobs</a><a href="#v-desk">Maintenance</a></nav>
+          <nav class="group"><span class="eyebrow">Money</span><a href="#v-desk">Billing</a><a href="#v-desk">Sales tax</a><a href="#v-desk">Books</a></nav>
+          <div class="me"><span class="avatar">CR</span><span>Chris Robinson<br><span style="color:#B7C8BB">Owner</span></span></div>
+        </aside>
+        <div class="main">
+          <div class="m-head">
+            <div><p class="eyebrow">Tuesday, October 6</p><h1>Today</h1></div>
+            <div class="m-actions"><button class="ghost" type="button">Record payment</button><a class="btn sm" href="#v-desk">New visit</a></div>
+          </div>
+          <div class="kpis">
+            <div class="kpi hero-k"><div class="k-label">Visits today <span>6</span></div><div class="k-val num">6</div><div class="k-note">3 deliveries · 2 pickups · 1 repair · <b>next at 11:30</b></div></div>
+            <div class="kpi"><div class="k-label">Open bills <span class="tag">Actual</span></div><div class="k-val num">$412.00</div><div class="k-note">4 bills · 1 past due</div></div>
+            <div class="kpi"><div class="k-label">Collected this month <span class="tag">Actual</span></div><div class="k-val num">$3,184</div><svg class="spark" viewBox="0 0 120 34" preserveAspectRatio="none" aria-label="Collected each day this month, rising"><path d="M0 30 L15 28 L30 25 L45 26 L60 20 L75 17 L90 13 L105 9 L120 6 L120 34 L0 34Z" style="fill:color-mix(in srgb, var(--primary) 14%, transparent)"/><path d="M0 30 L15 28 L30 25 L45 26 L60 20 L75 17 L90 13 L105 9 L120 6" style="fill:none;stroke:var(--primary);stroke-width:2"/><circle cx="118" cy="6" r="3" style="fill:var(--primary)"/></svg></div>
+            <div class="kpi"><div class="k-label">Agreed monthly rate <span class="tag">Estimate</span></div><div class="k-val num">$4,270</div><div class="k-note">48 active rentals · fleet 86% rented</div></div>
+          </div>
+          <div class="cols">
+            <div class="panel">
+              <div class="p-head"><h2>Today's route</h2><a href="#v-desk">Open dispatch</a></div>
+              <div class="timeline"><div class="tl">
+                <div class="hours num"><span>8 am</span><span>10</span><span>12 pm</span><span>2</span><span>4</span><span>6</span><span></span></div>
+                <div class="lanes">
+                  <span class="now" style="left:37%"></span>
+                  <div class="blk done" style="left:2%;width:22%;top:12px"><svg width="16" height="16" viewBox="0 0 32 32" aria-hidden="true"><path d="M2 8H20V24H2ZM20 14H26L30 19V24H20" stroke="currentColor" stroke-width="2.5" fill="none"/></svg><span><b>Delivery · Done</b>Alvarez · Evans</span></div>
+                  <div class="blk done" style="left:26%;width:10%;top:60px"><span><b>Pickup · Done</b>Lee</span></div>
+                  <div class="blk next" style="left:41%;width:22%;top:12px"><svg width="16" height="16" viewBox="0 0 32 32" aria-hidden="true"><path d="M2 8H20V24H2ZM20 14H26L30 19V24H20" stroke="currentColor" stroke-width="2.5" fill="none"/></svg><span><b>Delivery · Next</b>Patel · Greeley</span></div>
+                  <div class="blk" style="left:65%;width:17%;top:60px"><svg width="16" height="16" viewBox="0 0 32 32" aria-hidden="true"><path d="M5 18V15A11 11 0 0 1 27 15V18" stroke="currentColor" stroke-width="2.5" fill="none"/></svg><span><b>Repair</b>Nguyen · W-0047</span></div>
+                  <div class="blk" style="left:52%;width:14%;top:104px"><span><b>Pickup</b>Ortiz</span></div>
+                  <div class="blk" style="left:79%;width:19%;top:104px"><span><b>Delivery</b>Hall · Windsor</span></div>
+                </div>
+              </div></div>
+            </div>
+            <div class="panel">
+              <div class="p-head"><h2>Needs you</h2><a href="#v-desk">All 3</a></div>
+              <ul class="att">
+                <li><span class="bar hi"></span><span><span class="t">Payment failed twice</span><br><span class="d">Hall · $89.00 · card declined</span></span><span class="sev hi">Urgent</span></li>
+                <li><span class="bar md"></span><span><span class="t">Tax area needs review</span><br><span class="d">New address in unincorporated Weld</span></span><span class="sev md">Today</span></li>
+                <li><span class="bar lo"></span><span><span class="t">Repair cost not logged</span><br><span class="d">W-0031 · finished Oct 2</span></span><span class="sev lo">Soon</span></li>
+              </ul>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="p-head"><h2>Latest payments</h2><a href="#v-desk">Books</a></div>
+            <div style="overflow-x:auto"><table class="pay num">
+              <thead><tr><th>Customer</th><th>For</th><th>Status</th><th class="r">Amount</th></tr></thead>
+              <tbody>
+                <tr><td>Patel</td><td>October rent · set</td><td><span class="st ok">✓ Paid</span></td><td class="r">$95.24</td></tr>
+                <tr><td>Alvarez</td><td>October rent · washer</td><td><span class="st ok">✓ Paid</span></td><td class="r">$52.44</td></tr>
+                <tr><td>Hall</td><td>October rent · set</td><td><span class="st bad">✕ Failed</span></td><td class="r">$95.24</td></tr>
+                <tr><td>Nguyen</td><td>Late return · 3 days</td><td><span class="st wait">◷ Open</span></td><td class="r">$8.90</td></tr>
+              </tbody>
+            </table></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= PHONES ================= -->
+  <section id="v-phones" data-pane="phones" hidden>
+    <p class="caption"><strong>On a phone.</strong> Most visitors arrive on a phone, and you often run the business from one between shifts. The main button stays within thumb reach, the desk uses a bottom tab bar, and customers see the four things they come for, in order.</p>
+    <div class="phones">
+      <div class="phone" aria-label="Website on a phone"><div class="screen">
+        <div class="p-status num"><span>9:41</span><span>●●● 5G</span></div>
+        <div class="p-title"><span><img class="logo-light" src="../../../public/brand/logo-light.svg" alt="Robinson Appliance Rentals"><img class="logo-dark" src="../../../public/brand/logo-dark.svg" alt="Robinson Appliance Rentals"></span><span aria-hidden="true">☰</span></div>
+        <div class="p-body">
+          <span class="pill-tag" style="justify-self:start"><b>Now renting</b> Greeley</span>
+          <div class="mini-hero"><h2>Laundry at home. <span class="hl">We handle the rest.</span></h2></div>
+          <p style="color:var(--soft)">Washer, dryer or the pair, by the month. Delivery and repairs included.</p>
+          <div class="photo" style="aspect-ratio:16/11"><img src="../../../public/appliances/hero-lineup.jpg" alt=""></div>
+          <div class="m-card"><div class="row"><b>Washer + dryer</b><span class="num" style="font-weight:800;font-size:1.25rem">$89/mo</span></div><span style="font-size:.8125rem;color:var(--soft)">Example price</span></div>
+        </div>
+        <div class="big-cta"><a class="btn" href="#v-phones">Check your address</a></div>
+      </div></div>
+
+      <div class="phone" aria-label="Owner desk on a phone"><div class="screen">
+        <div class="p-status num"><span>9:41</span><span>●●● 5G</span></div>
+        <div class="p-title"><b style="font-size:1.375rem;letter-spacing:-.03em">Today</b><span class="avatar">CR</span></div>
+        <div class="p-body">
+          <div class="kpi hero-k"><div class="k-label">Visits today</div><div class="k-val num">6</div><div class="k-note">Next: <b>Patel delivery 11:30</b></div></div>
+          <div class="m-card"><div class="row"><b>Payment failed twice</b><span class="sev hi">Urgent</span></div><span style="font-size:.8125rem;color:var(--soft)">Hall · $89.00</span></div>
+          <div class="m-card"><div class="row"><b>11:30 · Delivery</b><span class="st wait">Next</span></div><span style="font-size:.8125rem;color:var(--soft)">Patel · 2410 11th Ave · set</span><a class="btn sm" href="#v-phones" style="justify-self:start;margin-top:4px">Start route</a></div>
+          <div class="m-card"><div class="row"><b>1:00 · Repair</b><span class="st" style="color:var(--soft)">Later</span></div><span style="font-size:.8125rem;color:var(--soft)">Nguyen · W-0047 · not spinning</span></div>
+        </div>
+        <nav class="tabs" aria-label="Desk tabs">
+          <a href="#v-phones" aria-current="page"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M2 15L16 3L30 15 M6 12V29H26V12" stroke="currentColor" stroke-width="2.4" fill="none"/></svg>Today</a>
+          <a href="#v-phones"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M4 6H28V29H4ZM4 12H28" stroke="currentColor" stroke-width="2.4" fill="none"/></svg>Schedule</a>
+          <a href="#v-phones"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M3 29V7H17V29 M17 14H29V29" stroke="currentColor" stroke-width="2.4" fill="none"/></svg>Customers</a>
+          <a href="#v-phones"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M3 8H29V24H3Z M3 13H29" stroke="currentColor" stroke-width="2.4" fill="none"/></svg>Billing</a>
+          <a href="#v-phones"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M6 16H8 M15 16H17 M24 16H26" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" fill="none"/></svg>More</a>
+        </nav>
+      </div></div>
+
+      <div class="phone" aria-label="Customer account on a phone"><div class="screen">
+        <div class="p-status num"><span>9:41</span><span>●●● 5G</span></div>
+        <div class="p-title"><b style="font-size:1.375rem;letter-spacing:-.03em">Hi, Priya</b><span><img class="logo-light" src="../../../public/brand/mark.svg" alt="" style="height:26px"></span></div>
+        <div class="p-body">
+          <div class="m-card"><span class="eyebrow">What you rent</span><div class="row"><b>Washer + dryer</b><span class="st ok">✓ Installed</span></div><span style="font-size:.8125rem;color:var(--soft)">2410 11th Ave · since Oct 6</span></div>
+          <div class="m-card"><span class="eyebrow">What's next</span><b>Next bill Nov 6</b><span style="font-size:.8125rem;color:var(--soft)">$95.24 including tax · card ending 4242</span></div>
+          <div class="m-card"><span class="eyebrow">Anything owed</span><b class="num">$0.00. You're all paid up.</b></div>
+          <div class="m-card" style="background:var(--band);color:var(--band-ink);border-color:transparent"><b>Something not working?</b><span style="font-size:.8125rem;color:var(--band-soft)">Tell us what's wrong. Add a photo if it helps.</span><a class="btn alt sm" href="#v-phones" style="justify-self:start;margin-top:6px">Report a problem</a></div>
+        </div>
+        <nav class="tabs" aria-label="Account tabs">
+          <a href="#v-phones" aria-current="page"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M2 15L16 3L30 15 M6 12V29H26V12" stroke="currentColor" stroke-width="2.4" fill="none"/></svg>Home</a>
+          <a href="#v-phones"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M6 2H26V30H6Z M22 19A6 6 0 1 1 10 19A6 6 0 1 1 22 19" stroke="currentColor" stroke-width="2.4" fill="none"/></svg>Rentals</a>
+          <a href="#v-phones"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M5 18V15A11 11 0 0 1 27 15V18" stroke="currentColor" stroke-width="2.4" fill="none"/></svg>Service</a>
+          <a href="#v-phones"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M3 8H29V24H3Z M3 13H29" stroke="currentColor" stroke-width="2.4" fill="none"/></svg>Billing</a>
+          <a href="#v-phones"><svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="11" r="5" stroke="currentColor" stroke-width="2.4" fill="none"/><path d="M6 29C6 22 11 19 16 19C21 19 26 22 26 29" stroke="currentColor" stroke-width="2.4" fill="none"/></svg>Account</a>
+        </nav>
+      </div></div>
+    </div>
+  </section>
+</div>
+
+<script>
+(function () {
+  var panes = document.querySelectorAll("[data-pane]");
+  var viewBtns = document.querySelectorAll("[data-view]");
+  function show(view) {
+    panes.forEach(function (p) { p.hidden = p.getAttribute("data-pane") !== view; });
+    viewBtns.forEach(function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-view") === view)); });
+    try { localStorage.setItem("sig-view", view); } catch (e) {}
+  }
+  viewBtns.forEach(function (b) { b.addEventListener("click", function () { show(b.getAttribute("data-view")); }); });
+  var initial = (location.hash || "").replace("#", "");
+  if (!["website", "desk", "phones"].includes(initial)) { try { initial = localStorage.getItem("sig-view") || "website"; } catch (e) { initial = "website"; } }
+  show(initial);
+
+  var themeBtns = document.querySelectorAll("[data-theme-set]");
+  function markTheme() {
+    var t = document.documentElement.getAttribute("data-theme") || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    themeBtns.forEach(function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-theme-set") === t)); });
+  }
+  themeBtns.forEach(function (b) { b.addEventListener("click", function () { document.documentElement.setAttribute("data-theme", b.getAttribute("data-theme-set")); markTheme(); }); });
+  markTheme();
+
+  var form = document.getElementById("check"), input = document.getElementById("addr"), result = document.getElementById("result");
+  form.addEventListener("submit", function (e) {
+    e.preventDefault();
+    var v = input.value.trim();
+    result.hidden = false;
+    result.querySelector("span").innerHTML = v ? "<b>We deliver to " + v.replace(/[<>&]/g, "") + ".</b> Next step: pick your appliances. It takes about two minutes." : "<b>Enter your street address</b> so we can check delivery.";
+  });
+
+  // Prepaid discounts mirror the app's starting settings: 6 months saves $5 (set) / $2.50 (single) a month;
+  // 12 months saves $10 / $5 a month and the first month is free.
+  var save = { m2m: { set: 0, single: 0 }, "6": { set: 5, single: 2.5 }, "12": { set: 10, single: 5 } };
+  var notes = { m2m: "Pay monthly. End anytime with notice.", "6": "Pay 6 months up front and save every month.", "12": "Pay 12 months up front, save every month, and get the first month free." };
+  function fmt(n) { return "$" + (Number.isInteger(n) ? n : n.toFixed(2)); }
+  function setTerm(t) {
+    document.querySelectorAll("[data-term]").forEach(function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-term") === t)); });
+    document.getElementById("term-note").textContent = notes[t];
+    document.querySelectorAll("[data-base]").forEach(function (el) {
+      var base = Number(el.getAttribute("data-base")), s = save[t][el.getAttribute("data-kind")];
+      el.innerHTML = fmt(base - s) + "<span>/mo</span>";
+      var sub = el.parentElement.querySelector("[data-save]");
+      sub.textContent = s ? "Save " + fmt(s) + " a month" + (t === "12" ? " + first month free" : "") : "Example price";
+    });
+  }
+  document.querySelectorAll("[data-term]").forEach(function (b) { b.addEventListener("click", function () { setTerm(b.getAttribute("data-term")); }); });
+  setTerm("m2m");
+})();
+</script>

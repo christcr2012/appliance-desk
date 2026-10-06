@@ -362,3 +362,49 @@ implementation (including the IN-29/IN-30/IN-32 answers folded in the night befo
 
 ## 2026-10-05 — Batch B2 built (PRs #205–#207 and PR 4)
 Built as designed. Deliberate differences are in `docs/designs/BATCH-B2.md` → Amendments. Early-return changes of an automatic decision are limited to "no refund, no credit, fee unpaid", and an automatic keep-billing decision is changed by first taking back the ending it recorded.
+
+## 2026-10-06 — Tax, books and owner-control designs proposed (G, T, K, O)
+Chris asked for a Colorado sales/use tax subsystem using the state's free lookup, a decision on Stripe Tax, an
+accounting export system (QuickBooks and others), and designs a cheaper model can implement. Proposed (not approved):
+`docs/designs/BATCH-G.md`, `BATCH-T.md`, `BATCH-K.md`, `BATCH-O.md`; summary `docs/plans/TAX-AND-BOOKS-OVERVIEW.md`.
+Key recommendations and why: (1) the app calculates tax from Colorado's GIS lookup and owner/CPA-set rules, and Stripe
+only collects through ordinary Tax Rates — Stripe Tax cannot know the short-term lease election (C.R.S. 39-26-713),
+would disagree with the app's own invoices, and costs ~0.5% of taxed volume; (2) every tax policy starts "Not decided
+yet" and blocks billing, replacing the decorative `taxRateConfirmed` gate; (3) books are a derived, append-only
+double-entry journal, exported as daily summary journals so the accounting software never needs customer records (Xero
+forbids manual journals to its Accounts Receivable; QuickBooks needs a customer name on A/R journal lines); direct
+QuickBooks sync is a later phase. Research notes: Greeley is home-rule, self-collected, 4.11%, not a SUTS participant
+(as listed 2026-10-06); public sources give 7.01% combined for Greeley vs the 7.375% in the owner's notes (IN-17).
+
+## 2026-10-06 (later) — Documentation audit, master roadmap, Batch V proposed
+Chris asked for the docs to be audited against the code, archived docs reviewed for intent, the remaining plans
+reconciled into one roadmap a cheaper model can follow, and a true premium redesign that keeps the brand. Done:
+`docs/MASTER-ROADMAP.md` (single ordered list; recommends splitting Batch F so its product-wide proof runs after G, T
+and V — IN-41); `docs/designs/BATCH-V.md` + concept "Evergreen Signature" (keeps every kit colour, Manrope and radii;
+the logo's 45° Split-R cut becomes the one signature shape; hairline ledgers replace card grids; marketing copy moves
+into settings; hero address check against the owner's service area only — IN-42). Audit fixes are listed in
+MASTER-ROADMAP section 6. Newly found in code: dark-mode success/error text at 2.0–2.7:1 contrast (added to Batch G as
+D-G6). Archive review: the September "complete operating platform" brief and growth ideas are mostly built; the
+remaining customer self-service and growth items are listed as Batch P candidates, not designed.
+
+## 2026-10-06 (evening) — Designs G, T, V, K, O and the Batch F split approved
+Chris, after reviewing the audit, the tax/books plan, the master roadmap and the Evergreen Signature concept: "I love
+all of this! Update the repo!" Recorded as approval of `docs/designs/BATCH-G.md`, `BATCH-T.md`, `BATCH-V.md`,
+`BATCH-K.md`, `BATCH-O.md` and the F split (IN-40, IN-41, IN-42). Order: F-part-1 → G → T → V → F-part-2 → launch →
+K → O (`docs/MASTER-ROADMAP.md`). Still open and unchanged by this approval: the CPA/attorney tax answers (IN-17,
+IN-33 … IN-39 — billing real customers stays blocked until they are entered), SUTS registration, live payment/email
+activation, and Chris's acceptance of Batch V's before/after screenshots.
+
+## 2026-10-06 (night) — Self-review of PR #264 (Codex and Copilot out of quota)
+Chris asked for a self-review in place of the unavailable reviewers. Fixes made in the designs before merge:
+(1) BATCH-T: `CREDIT` lines are account credit applied after tax (Stripe customer balance), so they are never taxed
+and never lower taxable rent — the earlier "follows parent" rule would have raised a false Stripe-mismatch card on
+every bill using a credit; whether late-delivery credits *should* lower taxable rent was added to IN-34. (2) BATCH-T:
+local bills (late/early return, pickup) never block job completion — tax problems leave the bill DRAFT with a card and a
+"Recalculate tax" button. (3) BATCH-T: a rate first learned from the GIS lookup returns its jurisdiction to review before
+use. (4) BATCH-T: tax lines and use-tax rows get real foreign keys; Prisma upsert caveat noted. (5) BATCH-K: opening
+balances at the books start date (D-K12); the Stripe clearing check compares both sides at the same cut-off; refund and
+payout transaction handling made explicit. (6) BATCH-G: two-step-login enforcement exempts the setup page, auth API,
+sign-out and password reset. (7) BATCH-O: approvals execute as the approving owner. Doc corrections: nightly
+`start-renewals` job description, how Notices is reached, the 7.375% wording, and "books from any start date".
+

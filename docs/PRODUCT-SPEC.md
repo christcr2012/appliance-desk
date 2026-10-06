@@ -506,13 +506,13 @@ at delivery, not at signing — see `docs/ARCHITECTURE.md`'s "Payments
 
 - [x] `e2e/accessibility.spec.ts` covers every public page plus
       `/login`, `/forgot-password`, `/reset-password`.
-- [x] `e2e/accessibility-authenticated.spec.ts` extends the same
+- [x] the generated route-inventory accessibility specs (`e2e/route-inventory.ts`, `e2e/accessibility-routes-desk-a.spec.ts`, `e2e/accessibility-routes-desk-b.spec.ts`, `e2e/accessibility-routes-public.spec.ts`; Batch E replaced the older `accessibility-authenticated` spec) extends the same
       automated axe checks to every page in both the `/desk/**` nav
       (OWNER) and `/account/**` nav (CUSTOMER), using real seeded
       test accounts gated behind CI-only env vars.
 - [x] Zero real accessibility violations found across all
       authenticated pages.
-- **Acceptance:** `e2e/accessibility-authenticated.spec.ts` (and
+- **Acceptance:** the generated route-inventory accessibility specs (`e2e/route-inventory.ts`, `e2e/accessibility-routes-desk-a.spec.ts`, `e2e/accessibility-routes-desk-b.spec.ts`, `e2e/accessibility-routes-public.spec.ts`; Batch E replaced the older `accessibility-authenticated` spec) (and
   `e2e/accessibility.spec.ts`, `e2e/accessibility-dark-mode.spec.ts`)
   run in CI on every PR and must pass with zero axe violations before
   merge.

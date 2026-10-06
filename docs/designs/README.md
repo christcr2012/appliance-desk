@@ -16,7 +16,12 @@ the points where the implementer must stop and ask instead of guessing.
 | D — Owner/customer control plane, website, evidence & privacy | `BATCH-D.md` | Built and merged; final PR #214. |
 | E — Communications, automation history, search, brand tokens & accessibility | `BATCH-E.md` + **`POST-BATCH-D-RECONCILIATION-2026-10-05.md`** | Built and merged; final PR #222. |
 | E2 — Visual redesign (owner desk, portal, public site; phone, desktop, dark) | `BATCH-E2.md` + **`POST-BATCH-D-RECONCILIATION-2026-10-05.md`** | Final cleanup/docs PR #263; on merge E2 is complete. Public-site visual quality is explicitly deferred for a stronger later pass. |
-| F — Integrated verification, recovery, owner handoff & launch ledger | `BATCH-F.md` + **`POST-BATCH-D-RECONCILIATION-2026-10-05.md`** | Approved. Starts after E2; recovery must respect D privacy deletion and must never resurrect intentionally deleted private media. |
+| F — Integrated verification, recovery, owner handoff & launch ledger | `BATCH-F.md` + **`POST-BATCH-D-RECONCILIATION-2026-10-05.md`** | Approved. **Split 2026-10-06 (IN-41):** F-part-1 (WU-F1, F2, F4, F5) now; F-part-2 (WU-F3, F6–F9) after G, T and V — see the design's Amendments. Starts after E2; recovery must respect D privacy deletion and must never resurrect intentionally deleted private media. |
+| G — Audit fixes and owner-account security | `BATCH-G.md` | **Approved 2026-10-06** (Chris). Two small PRs after E2. |
+| T — Colorado sales and use tax | `BATCH-T.md` | **Approved 2026-10-06** (Chris). Before F (launch blocker). Policy answers come from Chris's CPA (IN-33 … IN-38). |
+| V — "Evergreen Signature" visual redesign | `BATCH-V.md` | **Approved 2026-10-06** (Chris). After T, before F-part-2. Concept in `docs/design-mockups/signature-2026-10-06/`. |
+| K — Books, expenses, P&L, accounting exports | `BATCH-K.md` | **Approved 2026-10-06** (Chris). After T; may run after launch. |
+| O — Owner controls | `BATCH-O.md` | **Approved 2026-10-06** (Chris). After K. |
 
 **2026-10-05 post-D reconciliation.** D, E and F had been designed/reworked against code that predated the actual
 Batch D implementation. Before any E code is written, read
@@ -30,7 +35,7 @@ reconciliation wins.
 
 The older 2026-10-02 designs remain under `docs/archive/designs-2026-10-02/` for history; they are not instructions.
 
-**Order:** B2 → D → E → E2 → F. One batch at a time, one stack of PRs per batch (`AGENTS.md`).
+**Order:** see `docs/MASTER-ROADMAP.md` (F-part-1 → G → T → V → F-part-2 → launch → K → O; G, T, V, K, O and the F split approved by Chris 2026-10-06). One batch at a time, one stack of PRs per batch (`AGENTS.md`).
 
 ## The rule
 
