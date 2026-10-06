@@ -46,10 +46,10 @@ section with a date.
   webhook endpoint is registered in the Stripe dashboard — nothing
   left open here.
 - Full accessibility/security review, backup/restore test, launch
-  checklist — Phase 7. **Backup restore: done.** Verified 2026-09-28 (see
-  `docs/DECISIONS.md`) — a real Neon snapshot restore had already been
-  run and finalized against the live database, and its data checked out
-  with no loss. **Automated accessibility coverage for every
+  checklist — Phase 7. **Historical provider snapshot restore: done.** Verified 2026-09-28 (see
+  `docs/DECISIONS.md`) — a real Neon snapshot restore was run and its data checked.
+  This does **not** replace Batch F's still-required application-export snapshot consistency,
+  restore script/drill, private-media inventory/recovery, and privacy non-resurrection proof. **Automated accessibility coverage for every
   logged-in page — started (2026-09-27).** Previously only the public
   site + login/password pages were checked by axe in CI; every
   `/desk/**` and `/account/**` page (owner desk, customer portal) had
