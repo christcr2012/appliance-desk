@@ -224,7 +224,7 @@ export default async function RevenuePage({
                 >
                   <div className="min-w-0">
                     <Link
-                      className="break-words text-primary underline"
+                      className="inline-flex min-h-6 items-center break-words text-primary underline"
                       href={`/desk/billing/customer/${row.customerId}`}
                     >
                       {row.customerName}
@@ -236,7 +236,7 @@ export default async function RevenuePage({
                             <span key={invoice.id}>
                               {index > 0 && ", "}
                               <Link
-                                className="text-primary underline"
+                                className="inline-flex min-h-6 items-center text-primary underline"
                                 href={`/desk/billing/customer/${row.customerId}/invoice/${invoice.id}`}
                               >
                                 Invoice #{invoice.invoiceNumber}
