@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { Container } from "./container";
 import { NAV_LINKS } from "./nav-links";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { Button, ButtonLink } from "@/components/ui";
 
 /**
  * Public-site header: sticky, with a full nav row on desktop and a
@@ -163,24 +164,21 @@ export function Header({
           >
             Log in
           </Link>
-          <Link
-            href={prelaunch ? "/launch" : "/contact"}
-            className="inline-flex items-center justify-center rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-on-primary shadow-sm transition-colors hover:bg-primary-dark"
-          >
+          <ButtonLink href={prelaunch ? "/launch" : "/contact"}>
             {prelaunch ? "Join launch list" : "Get a Quote"}
-          </Link>
+          </ButtonLink>
           <ThemeToggle />
         </nav>
 
         {/* Mobile menu toggle */}
         <div className="flex items-center gap-1 md:hidden">
           <ThemeToggle />
-          <button
+          <Button
             type="button"
-            className="inline-flex items-center justify-center rounded-md p-2 text-ink"
+            variant="quiet"
+            aria-label={menuOpen ? "Close menu" : "Open menu"}
             aria-expanded={menuOpen}
             aria-controls="mobile-menu"
-            aria-label={menuOpen ? "Close menu" : "Open menu"}
             onClick={() => setMenuOpen((v) => !v)}
           >
             {menuOpen ? (
@@ -208,7 +206,7 @@ export function Header({
                 <path d="M4 7h16M4 12h16M4 17h16" strokeLinecap="round" />
               </svg>
             )}
-          </button>
+          </Button>
         </div>
       </Container>
 
@@ -230,23 +228,23 @@ export function Header({
               <Link
                 key={link.href}
                 href={link.href}
-                className="rounded-md px-2 py-3 text-base font-medium text-ink hover:bg-canvas-alt"
+                className="rounded-control px-2 py-3 text-base font-medium text-ink hover:bg-subtle"
               >
                 {link.label}
               </Link>
             ))}
             <Link
               href="/login"
-              className="rounded-md px-2 py-3 text-base font-medium text-ink hover:bg-canvas-alt"
+              className="rounded-control px-2 py-3 text-base font-medium text-ink hover:bg-subtle"
             >
               Log in
             </Link>
-            <Link
+            <ButtonLink
               href={prelaunch ? "/launch" : "/contact"}
-              className="mt-2 inline-flex items-center justify-center rounded-full bg-primary px-5 py-3 text-base font-semibold text-on-primary shadow-sm"
+              className="mt-2"
             >
               {prelaunch ? "Join launch list" : "Get a Quote"}
-            </Link>
+            </ButtonLink>
           </Container>
         </nav>
       )}

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Container } from "@/components/site/container";
-import { ButtonLink } from "@/components/site/button-link";
+import { ButtonLink } from "@/components/ui";
 import { getBusinessSettings, parseServiceArea } from "@/domains/settings";
 import { getPublishedContent } from "@/domains/site-content";
 
@@ -45,7 +45,7 @@ export default async function ServiceAreaPage() {
                     <li key={city}>
                       <Link
                         href={`/rent/${slugifyCity(city)}`}
-                        className="block rounded-full bg-primary-soft px-4 py-1.5 text-sm font-medium text-primary-dark hover:bg-primary/20"
+                        className="block rounded-control bg-primary-soft px-4 py-2 text-sm font-semibold text-primary-dark hover:bg-subtle"
                       >
                         {city}
                       </Link>
@@ -63,7 +63,7 @@ export default async function ServiceAreaPage() {
                   {zips.map((zip) => (
                     <li
                       key={zip}
-                      className="rounded-full bg-accent-soft px-4 py-1.5 text-sm font-medium text-accent-dark"
+                      className="rounded-control bg-accent-soft px-4 py-2 text-sm font-semibold text-accent-dark"
                     >
                       {zip}
                     </li>

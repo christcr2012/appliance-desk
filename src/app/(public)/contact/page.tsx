@@ -5,6 +5,7 @@ import { getBusinessSettings } from "@/domains/settings";
 import { BusinessHours } from "@/components/site/business-hours";
 import { getPublishedContent } from "@/domains/site-content";
 import { getContentForRequest } from "@/domains/site-content/request";
+import { Card } from "@/components/ui";
 import { ContactForm } from "./contact-form";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -33,12 +34,15 @@ export default async function ContactPage({
           {content["contact.intro"]}
         </p>
 
-        <BusinessHours
-          hours={settings.hours}
-          holidayClosures={settings.holidayClosures}
-          headingLevel="h2"
-          className="mt-6 rounded-xl border border-line bg-surface p-4"
-        />
+        <div className="mt-6">
+          <Card>
+            <BusinessHours
+              hours={settings.hours}
+              holidayClosures={settings.holidayClosures}
+              headingLevel="h2"
+            />
+          </Card>
+        </div>
 
         <div className="mt-10">
           <ContactForm

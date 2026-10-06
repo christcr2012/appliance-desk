@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Container } from "@/components/site/container";
 import { getLaunchSettings } from "@/domains/launch";
+import { ButtonLink, Card } from "@/components/ui";
 import { SignupForm } from "./signup-form";
 
 export const metadata = {
@@ -57,26 +58,19 @@ export default async function LaunchPage({
           .
         </p>
       </div>
-      <section
-        aria-labelledby="signup-title"
-        className="rounded-2xl border border-line bg-surface p-6 sm:p-8"
-      >
-        <h2
-          id="signup-title"
-          className="mb-6 font-display text-2xl font-semibold"
-        >
-          {settings.prelaunchMode
+      <Card
+        title={
+          settings.prelaunchMode
             ? "Be part of our local launch"
-            : "Let's talk about your needs"}
-        </h2>
+            : "Let's talk about your needs"
+        }
+      >
         {settings.prelaunchMode ? (
           <SignupForm source={source} />
         ) : (
-          <Link href="/contact" className="underline">
-            Request information
-          </Link>
+          <ButtonLink href="/contact">Request information</ButtonLink>
         )}
-      </section>
+      </Card>
     </Container>
   );
 }

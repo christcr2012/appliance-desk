@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Container } from "@/components/site/container";
-import { ButtonLink } from "@/components/site/button-link";
+import { ButtonLink, Card } from "@/components/ui";
 import { ApplianceMedia } from "@/components/site/appliance-icon";
 import { getBusinessSettings, parseServiceArea } from "@/domains/settings";
 import { getPublishedApplianceTypes, formatCents } from "@/domains/pricing";
@@ -91,14 +91,11 @@ export default async function CityLandingPage({
         {applianceTypes.length > 0 ? (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {applianceTypes.map((type) => (
-              <div
-                key={type.id}
-                className="flex flex-col rounded-2xl bg-surface p-8 shadow-sm ring-1 ring-line"
-              >
+              <Card key={type.id} className="flex flex-col">
                 <ApplianceMedia
                   photoUrl={type.photoUrl}
                   name={type.name}
-                  className="h-40 w-full rounded-lg object-cover"
+                  className="h-40 w-full rounded-control object-cover"
                   iconClassName="h-16 w-auto text-primary"
                 />
                 <h2 className="mt-5 font-display text-xl font-semibold text-ink">
@@ -111,7 +108,7 @@ export default async function CityLandingPage({
                     / month
                   </span>
                 </p>
-              </div>
+              </Card>
             ))}
           </div>
         ) : (
@@ -121,7 +118,8 @@ export default async function CityLandingPage({
           </p>
         )}
 
-        <div className="mt-16 rounded-2xl bg-surface p-8 text-center ring-1 ring-line">
+        <div className="mt-16">
+          <Card className="text-center">
           <h2 className="font-display text-xl font-semibold text-ink">
             Serving {city} and the surrounding area
           </h2>
@@ -134,10 +132,11 @@ export default async function CityLandingPage({
             <p className="mt-4 text-ink-soft">Call us at {settings.publicPhone}</p>
           )}
           <div className="mt-6">
-            <ButtonLink href="/contact" variant="primary">
+            <ButtonLink href="/contact">
               Check your address in {city}
             </ButtonLink>
           </div>
+          </Card>
         </div>
       </Container>
     </>
