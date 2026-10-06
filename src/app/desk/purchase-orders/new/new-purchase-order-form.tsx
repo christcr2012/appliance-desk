@@ -60,16 +60,16 @@ export function NewPurchaseOrderForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5 rounded-lg border border-gray-200 bg-white p-5">
+    <form onSubmit={handleSubmit} className="space-y-5 rounded-lg border border-line bg-white p-5">
       <div>
-        <label htmlFor="po-supplier" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="po-supplier" className="block text-sm font-medium text-ink-soft">
           Supplier
         </label>
         <select
           id="po-supplier"
           value={supplierId}
           onChange={(e) => setSupplierId(e.target.value)}
-          className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+          className="mt-1 block w-full rounded-md border border-line-strong px-3 py-2 text-sm"
         >
           {suppliers.map((s) => (
             <option key={s.id} value={s.id}>
@@ -80,18 +80,18 @@ export function NewPurchaseOrderForm({
       </div>
 
       <div>
-        <p className="text-sm font-medium text-gray-700">Lines</p>
+        <p className="text-sm font-medium text-ink-soft">Lines</p>
         <div className="mt-2 space-y-3">
           {lines.map((line, i) => (
-            <div key={i} className="rounded-md border border-gray-200 p-3">
+            <div key={i} className="rounded-md border border-line p-3">
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <div>
-                  <label htmlFor={`po-line-${i}-part`} className="block text-xs text-gray-600">Part on file (optional)</label>
+                  <label htmlFor={`po-line-${i}-part`} className="block text-xs text-ink-soft">Part on file (optional)</label>
                   <select
                     id={`po-line-${i}-part`}
                     value={line.partRecordId}
                     onChange={(e) => updateLine(i, { partRecordId: e.target.value })}
-                    className="mt-1 block w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+                    className="mt-1 block w-full rounded-md border border-line-strong px-2 py-1.5 text-sm"
                   >
                     <option value="">— Not in the parts catalog —</option>
                     {partRecords.map((p) => (
@@ -102,20 +102,20 @@ export function NewPurchaseOrderForm({
                   </select>
                 </div>
                 <div>
-                  <label htmlFor={`po-line-${i}-description`} className="block text-xs text-gray-600">Description</label>
+                  <label htmlFor={`po-line-${i}-description`} className="block text-xs text-ink-soft">Description</label>
                   <input
                     id={`po-line-${i}-description`}
                     type="text"
                     required
                     value={line.description}
                     onChange={(e) => updateLine(i, { description: e.target.value })}
-                    className="mt-1 block w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+                    className="mt-1 block w-full rounded-md border border-line-strong px-2 py-1.5 text-sm"
                   />
                 </div>
               </div>
               <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
                 <div>
-                  <label htmlFor={`po-line-${i}-quantity`} className="block text-xs text-gray-600">Quantity</label>
+                  <label htmlFor={`po-line-${i}-quantity`} className="block text-xs text-ink-soft">Quantity</label>
                   <input
                     id={`po-line-${i}-quantity`}
                     type="number"
@@ -123,11 +123,11 @@ export function NewPurchaseOrderForm({
                     required
                     value={line.quantity}
                     onChange={(e) => updateLine(i, { quantity: e.target.value })}
-                    className="mt-1 block w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+                    className="mt-1 block w-full rounded-md border border-line-strong px-2 py-1.5 text-sm"
                   />
                 </div>
                 <div>
-                  <label htmlFor={`po-line-${i}-cost`} className="block text-xs text-gray-600">Unit cost ($)</label>
+                  <label htmlFor={`po-line-${i}-cost`} className="block text-xs text-ink-soft">Unit cost ($)</label>
                   <input
                     id={`po-line-${i}-cost`}
                     type="number"
@@ -135,7 +135,7 @@ export function NewPurchaseOrderForm({
                     step="0.01"
                     value={line.unitCostDollars}
                     onChange={(e) => updateLine(i, { unitCostDollars: e.target.value })}
-                    className="mt-1 block w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+                    className="mt-1 block w-full rounded-md border border-line-strong px-2 py-1.5 text-sm"
                   />
                 </div>
                 <div className="flex items-end">
@@ -156,14 +156,14 @@ export function NewPurchaseOrderForm({
         <button
           type="button"
           onClick={() => setLines((prev) => [...prev, emptyLine()])}
-          className="mt-2 text-sm text-gray-700 underline"
+          className="mt-2 text-sm text-ink-soft underline"
         >
           + Add another line
         </button>
       </div>
 
       <div>
-        <label htmlFor="po-notes" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="po-notes" className="block text-sm font-medium text-ink-soft">
           Notes
         </label>
         <textarea
@@ -171,14 +171,14 @@ export function NewPurchaseOrderForm({
           rows={2}
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
-          className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+          className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
         />
       </div>
 
       <button
         type="submit"
         disabled={isPending}
-        className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+        className="rounded-md bg-action px-4 py-2 text-sm font-medium text-on-action hover:bg-action disabled:opacity-50"
       >
         {isPending ? "Creating…" : "Create purchase order"}
       </button>

@@ -86,7 +86,7 @@ export function PartStockPanel({
   if (mode === "use") {
     return (
       <form onSubmit={handleUse} className="mt-2 flex items-center gap-2 text-sm">
-        <label htmlFor={`use-${partRecordId}`} className="text-gray-600">
+        <label htmlFor={`use-${partRecordId}`} className="text-ink-soft">
           Used
         </label>
         <input
@@ -95,12 +95,12 @@ export function PartStockPanel({
           min={1}
           value={useQuantity}
           onChange={(e) => setUseQuantity(e.target.value)}
-          className="w-16 rounded-md border border-gray-300 px-2 py-1"
+          className="w-16 rounded-md border border-line-strong px-2 py-1"
         />
-        <button type="submit" disabled={isPending} className="text-gray-900 underline disabled:opacity-50">
+        <button type="submit" disabled={isPending} className="text-ink underline disabled:opacity-50">
           Save
         </button>
-        <button type="button" onClick={() => setMode("view")} className="text-gray-500">
+        <button type="button" onClick={() => setMode("view")} className="text-ink-faint">
           Cancel
         </button>
         {error && <span role="alert" className="text-red-700">{error}</span>}
@@ -111,7 +111,7 @@ export function PartStockPanel({
   if (mode === "settings") {
     return (
       <form onSubmit={handleSettings} className="mt-2 flex flex-wrap items-center gap-2 text-sm">
-        <label htmlFor={`qty-${partRecordId}`} className="text-gray-600">
+        <label htmlFor={`qty-${partRecordId}`} className="text-ink-soft">
           On hand
         </label>
         <input
@@ -120,9 +120,9 @@ export function PartStockPanel({
           min={0}
           value={settingsQuantity}
           onChange={(e) => setSettingsQuantity(e.target.value)}
-          className="w-16 rounded-md border border-gray-300 px-2 py-1"
+          className="w-16 rounded-md border border-line-strong px-2 py-1"
         />
-        <label htmlFor={`threshold-${partRecordId}`} className="text-gray-600">
+        <label htmlFor={`threshold-${partRecordId}`} className="text-ink-soft">
           Flag below
         </label>
         <input
@@ -132,12 +132,12 @@ export function PartStockPanel({
           placeholder="none"
           value={settingsThreshold}
           onChange={(e) => setSettingsThreshold(e.target.value)}
-          className="w-20 rounded-md border border-gray-300 px-2 py-1"
+          className="w-20 rounded-md border border-line-strong px-2 py-1"
         />
-        <button type="submit" disabled={isPending} className="text-gray-900 underline disabled:opacity-50">
+        <button type="submit" disabled={isPending} className="text-ink underline disabled:opacity-50">
           Save
         </button>
-        <button type="button" onClick={() => setMode("view")} className="text-gray-500">
+        <button type="button" onClick={() => setMode("view")} className="text-ink-faint">
           Cancel
         </button>
         {error && <span role="alert" className="text-red-700">{error}</span>}
@@ -147,7 +147,7 @@ export function PartStockPanel({
 
   return (
     <div className="mt-2 flex flex-wrap items-center gap-3 text-sm">
-      <span className={lowStock ? "font-medium text-amber-700" : "text-gray-600"}>
+      <span className={lowStock ? "font-medium text-amber-700" : "text-ink-soft"}>
         {quantityOnHand} on hand
         {reorderThreshold !== null && ` (flag at ${reorderThreshold})`}
         {lowStock && " — low stock"}
@@ -157,7 +157,7 @@ export function PartStockPanel({
           setOperationKey(newOperationKey());
           setError(null);
           setMode("use");
-        }} className="text-gray-700 underline">
+        }} className="text-ink-soft underline">
           Used some
         </button>
       )}
@@ -167,10 +167,10 @@ export function PartStockPanel({
         setOperationKey(newOperationKey());
         setError(null);
         setMode("settings");
-      }} className="text-gray-700 underline">
+      }} className="text-ink-soft underline">
         Edit stock
       </button>
-      <button type="button" disabled={isPending} onClick={handleArchive} className="text-gray-700 underline disabled:opacity-50">
+      <button type="button" disabled={isPending} onClick={handleArchive} className="text-ink-soft underline disabled:opacity-50">
         {archived ? "Restore" : "Archive"}
       </button>
       {error && <span role="alert" className="text-red-700">{error}</span>}

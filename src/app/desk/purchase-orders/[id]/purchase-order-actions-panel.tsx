@@ -78,14 +78,14 @@ export function PurchaseOrderActionsPanel({
   }
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-5">
+    <div className="rounded-lg border border-line bg-white p-5">
       <div className="flex flex-wrap gap-3">
         {status === "DRAFT" && (
           <button
             type="button"
             disabled={isPending}
             onClick={() => run(() => markPurchaseOrderOrderedAction(purchaseOrderId))}
-            className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+            className="rounded-md bg-action px-4 py-2 text-sm font-medium text-on-action hover:bg-action disabled:opacity-50"
           >
             Mark as ordered
           </button>
@@ -94,25 +94,25 @@ export function PurchaseOrderActionsPanel({
           type="button"
           disabled={isPending}
           onClick={() => run(() => cancelPurchaseOrderAction(purchaseOrderId))}
-          className="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:border-gray-400 disabled:opacity-50"
+          className="rounded-md border border-line-strong px-4 py-2 text-sm text-ink-soft hover:border-line-strong disabled:opacity-50"
         >
           Cancel order
         </button>
       </div>
       {status === "ORDERED" && open.length > 0 && (
-        <fieldset className="mt-4 space-y-3 border-t border-gray-100 pt-4">
-          <legend className="text-sm font-medium text-gray-900">What arrived</legend>
-          <p className="text-xs text-gray-600">
+        <fieldset className="mt-4 space-y-3 border-t border-line pt-4">
+          <legend className="text-sm font-medium text-ink">What arrived</legend>
+          <p className="text-xs text-ink-soft">
             Enter how many of each item arrived in this delivery. If only part of the order came, enter what came and
             come back when the rest arrives. Leave a price blank to keep the ordered price (or leave it unknown).
             Items tied to a part are added to that part&apos;s stock.
           </p>
           {open.map((l) => (
             <div key={l.id} className="flex flex-wrap items-center gap-3 text-sm">
-              <span className="min-w-40 flex-1 text-gray-900">
-                {l.description} <span className="text-gray-500">({l.outstanding} still to arrive)</span>
+              <span className="min-w-40 flex-1 text-ink">
+                {l.description} <span className="text-ink-faint">({l.outstanding} still to arrive)</span>
               </span>
-              <label className="flex items-center gap-1 text-gray-700">
+              <label className="flex items-center gap-1 text-ink-soft">
                 <span>Arrived</span>
                 <input
                   type="number"
@@ -121,10 +121,10 @@ export function PurchaseOrderActionsPanel({
                   aria-label={`Arrived: ${l.description}`}
                   value={quantities[l.id] ?? ""}
                   onChange={(e) => setQuantities((q) => ({ ...q, [l.id]: e.target.value }))}
-                  className="w-20 rounded-md border border-gray-300 px-2 py-1"
+                  className="w-20 rounded-md border border-line-strong px-2 py-1"
                 />
               </label>
-              <label className="flex items-center gap-1 text-gray-700">
+              <label className="flex items-center gap-1 text-ink-soft">
                 <span>Price each $</span>
                 <input
                   type="text"
@@ -133,7 +133,7 @@ export function PurchaseOrderActionsPanel({
                   placeholder={l.unitCostKnown ? (l.unitCostCents / 100).toFixed(2) : "unknown"}
                   value={prices[l.id] ?? ""}
                   onChange={(e) => setPrices((p) => ({ ...p, [l.id]: e.target.value }))}
-                  className="w-24 rounded-md border border-gray-300 px-2 py-1"
+                  className="w-24 rounded-md border border-line-strong px-2 py-1"
                 />
               </label>
             </div>
@@ -142,7 +142,7 @@ export function PurchaseOrderActionsPanel({
             type="button"
             disabled={isPending}
             onClick={receive}
-            className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+            className="rounded-md bg-action px-4 py-2 text-sm font-medium text-on-action hover:bg-action disabled:opacity-50"
           >
             Record what arrived
           </button>

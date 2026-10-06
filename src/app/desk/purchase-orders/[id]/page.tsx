@@ -25,7 +25,7 @@ export default async function PurchaseOrderDetailPage({
 
   return (
     <div className="max-w-2xl">
-      <Link href="/desk/purchase-orders" className="text-sm text-gray-600 hover:underline">
+      <Link href="/desk/purchase-orders" className="text-sm text-ink-soft hover:underline">
         &larr; All purchase orders
       </Link>
 
@@ -36,35 +36,35 @@ export default async function PurchaseOrderDetailPage({
               {order.supplier.name}
             </Link>
           </h1>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-ink-soft">
             Created {new Date(order.createdAt).toLocaleDateString()} by{" "}
             {order.createdBy.name ?? order.createdBy.email}
           </p>
         </div>
-        <span className="inline-block rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-700">
+        <span className="inline-block rounded-full bg-canvas-alt px-3 py-1 text-sm font-medium text-ink-soft">
           {order.status}
         </span>
       </div>
 
-      {order.notes && <p className="mt-4 text-sm text-gray-700">{order.notes}</p>}
+      {order.notes && <p className="mt-4 text-sm text-ink-soft">{order.notes}</p>}
 
-      <ul className="mt-4 divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white">
+      <ul className="mt-4 divide-y divide-line rounded-lg border border-line bg-white">
         {order.lines.map((line) => (
           <li key={line.id} className="flex items-center justify-between gap-3 px-4 py-3">
             <div>
-              <p className="text-sm text-gray-900">
+              <p className="text-sm text-ink">
                 {line.quantity}× {line.description}
               </p>
               {line.partRecord && (
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-ink-faint">
                   {line.partRecord.modelNumber} — {line.partRecord.partNumber}
                 </p>
               )}
             </div>
-            <div className="text-right text-sm text-gray-600">
+            <div className="text-right text-sm text-ink-soft">
               <p>{line.unitCostKnown ? formatCents(line.unitCostCents * line.quantity) : "price not known"}</p>
               {order.status !== "DRAFT" && (
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-ink-faint">
                   {line.receivedQuantity} of {line.quantity} arrived
                 </p>
               )}
@@ -73,7 +73,7 @@ export default async function PurchaseOrderDetailPage({
         ))}
       </ul>
 
-      <div className="mt-2 flex justify-end text-sm font-medium text-gray-900">
+      <div className="mt-2 flex justify-end text-sm font-medium text-ink">
         {formatCents(totalCents)} total{unknownPriceLines > 0 ? ` (${unknownPriceLines} line${unknownPriceLines === 1 ? "" : "s"} without a price)` : ""}
       </div>
 
@@ -82,7 +82,7 @@ export default async function PurchaseOrderDetailPage({
           Fully received {new Date(order.receivedAt).toLocaleDateString()} — parts already added to stock.
         </p>
       )}
-      {order.status === "CANCELLED" && <p className="mt-4 text-sm text-gray-500">This order was cancelled.</p>}
+      {order.status === "CANCELLED" && <p className="mt-4 text-sm text-ink-faint">This order was cancelled.</p>}
 
       {(order.status === "DRAFT" || order.status === "ORDERED") && (
         <div className="mt-6">
