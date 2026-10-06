@@ -537,6 +537,14 @@ browser) plus 1–1.5 minutes of tests. Measured 2026-10-06 on PR #266: **2 min 
 - **Runs on `main` are never cancelled** (`cancel-in-progress` only for pull requests), so every merged commit has a
   complete result; a newer push to a PR still cancels that PR's stale run.
 - **Action versions on Node 24:** checkout v5, setup-node v6, cache v5, upload-artifact v6.
+- **CI runs the same Node as production (24).** Vercel's project setting is Node 24.x, so `setup-deps` and the
+  `perf` workflow use Node 24 too (until 2026-10-06 CI tested on 22 while production ran 24). If Vercel's Node version
+  changes, change `.github/actions/setup-deps/action.yml` (version and cache key) in the same PR.
+- **No silent skips.** Real-database tests skip themselves outside a throwaway CI database, and several browser specs
+  skip when a CI fixture is missing. In CI both would be green no-ops, so `scripts/check-no-skipped-tests.mjs` (unit
+  shards, from vitest's JSON report) and `scripts/e2e-shard.mjs` (browser shards, from Playwright's JSON report) fail
+  the run if any test was skipped. The only allowed skip is `tests/perf/batch-e-large-lists.test.ts`, which runs in
+  `perf.yml`.
 
 ### When CI runs
 
@@ -564,7 +572,7 @@ browser) plus 1–1.5 minutes of tests. Measured 2026-10-06 on PR #266: **2 min 
 7. **Parallel groups are for read-only tests only.** Before adding `mode: "parallel"` to a describe, check that no test in it saves, deletes or changes data another test reads.
 8. **No sleeps, no per-test logins, no network calls to real providers** in tests; they are the usual cause of slow or flaky suites.
 9. **Keep the gate honest.** Any new required job is added to the `ci` job's check list, and a job that is skipped for docs-only changes must still be reported as skipped, never missing.
-9. **Update this file** when the layout changes (job list, shard count, expected times).
+10. **Update this file** when the layout changes (job list, shard count, expected times).
 
 ### Rules when adding tests
 
@@ -574,6 +582,31 @@ browser) plus 1–1.5 minutes of tests. Measured 2026-10-06 on PR #266: **2 min 
 4. **Build cache and Playwright cache** are restored per run; keep `package-lock.json` changes deliberate because they invalidate both.
 5. **Artifacts** (the Playwright report) are uploaded only when a shard fails, kept 3 days.
 6. **Tests that write the one business-settings row** (policy, tax rate) go in `SHARED_SETTINGS_TESTS` in `vitest.config.mts`, which runs them one at a time. They share a single database row, and which runner a file lands on changes whenever tests are added, so without this they randomly overwrite each other (seen on #153, 2026-10-03).
+
+### Vercel builds (previews and production)
+
+Measured 2026-10-06 (production build of PR #266's merge): about **48 s from clone to live** — install 5 s (Vercel's
+own cache), migration check + `prisma migrate deploy` + schema health 4 s, `next build` 19 s (compile 4 s, TypeScript
+8 s, 88 static pages 1 s), upload 8 s. After the site is live Vercel spends another ~40 s saving its ~1 GB build cache;
+that does not delay the deployment. The build machine is Vercel's standard 4-core one; there is nothing paid to turn on.
+
+- **Docs-only pushes are not built.** `vercel.json` → `ignoreCommand` runs `scripts/vercel-ignore-build.sh`, which
+  skips the build only when every file changed since the branch's last successful deployment
+  (`VERCEL_GIT_PREVIOUS_SHA`) is Markdown or under `docs/` — the same rule as CI's `classify` job. No earlier
+  deployment, a base commit outside Vercel's shallow clone, an empty diff or any git error → it builds.
+- **TypeScript runs inside `next build` as well as in CI.** Kept on purpose: Vercel can finish a deployment before CI,
+  and the 8 s check stops a broken build from ever being promoted.
+- **Known build-log messages:** "Update available 7.10.0 -> 8.0.0-rc" is Prisma advertising a pre-release (ignore
+  until 8 is stable and Batch G or later plans the upgrade); "Experiments: clientTraceMetadata" is Sentry's tracing
+  option (expected). The npm "install-scripts not yet covered by allowScripts" warning is fixed by `allowScripts` in
+  `package.json` (below).
+
+**Install scripts (`allowScripts`, npm 11+).** npm 12 (already npm's `latest`) blocks dependency install scripts that
+are not listed in `package.json` → `allowScripts`. Four are approved by name: `@prisma/engines` (downloads the
+migration engine `prisma migrate deploy` needs during every Vercel build), `prisma` (Node version check), `esbuild`
+and `unrs-resolver` (fetch their platform binary if the optional package is missing). Name-only entries keep routine
+upgrades working; a new dependency with an install script shows up as an npm warning and must be reviewed with
+`npm install-scripts ls` before approving. The project's own `postinstall` (`prisma generate`) is not affected.
 
 ### If a job gets slow
 

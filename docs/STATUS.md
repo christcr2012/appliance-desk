@@ -39,7 +39,10 @@ deny-by-default (#131), CI parallelized and sharded (#136, #137).
 
 ## Infrastructure facts that affect work
 
-- CI: parallel full run with 4 browser groups (`browser-a`…`browser-d` in `e2e/shards.json`). Budget ≤ 5 min.
+- CI: parallel full run with 4 browser groups (`browser-a`…`browser-d` in `e2e/shards.json`); about 2.5 min warm
+  (PR #266). CI uses Node 24, the same as Vercel production. Any skipped test fails CI (only the perf baseline may
+  skip; it runs in `perf.yml`). Docs-only pushes skip the Vercel build (`scripts/vercel-ignore-build.sh`). Details:
+  `docs/ARCHITECTURE.md` → "CI layout and speed" and "Vercel builds".
 - Preview deployments use an isolated Neon branch and a Preview-only private
   file store; preview photo-upload and backup APIs are deliberately disabled.
   Evidence: `docs/plans/overhaul/PREVIEW-ISOLATION-PROOF.md`.
@@ -75,5 +78,6 @@ authorization. None of those blocks Batch F engineering; live provider actions s
 
 ## Session log (last two batches only)
 
+- **2026-10-06 — CI and build health (after #266):** CI moved to Node 24 to match production; `allowScripts` added so npm 12 keeps running Prisma's engine download; skipped tests now fail CI; Vercel skips docs-only builds. Warnings reviewed: ESLint 9 end-of-support and a database-driver deprecation (via Prisma) are recorded in `docs/ROADMAP.md`, neither affects the live site today.
 - **2026-10-06 — Batch E2:** E2 implementation completed through final cleanup/docs PR #263. The public-site slice is technically accepted but the visual result is explicitly deferred for a stronger redesign pass.
 - **2026-10-06 — Documentation reconciliation:** current-state docs were audited against merged code. Stale claims that B/C/B2 work, configurable lead scoring, preview isolation, Neon protection/domain setup, and D/E evidence tables were still unbuilt were corrected. Batch F is next; O32 is explicitly deferred pending its prerequisites.

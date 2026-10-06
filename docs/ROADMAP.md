@@ -641,3 +641,20 @@ controls → Batch O. Summary: `docs/plans/TAX-AND-BOOKS-OVERVIEW.md`. Still onl
 - Revisit Stripe Tax if the business sells goods outright, leaves Colorado, or serves more than ~15 tax areas (BATCH-T D-T1).
 - Remove the unused `taxRateConfirmed` / `taxRatePermille` columns and the old accounting CSV route after T and K ship.
 - Collecting Colorado's Retail Delivery Fee, if the CPA says it applies (BATCH-T S-T4).
+
+## 2026-10-06 — Tooling warnings to revisit (none affects the live site today)
+
+- **ESLint 9 is out of support** (npm prints "eslint@9.39.5: This version is no longer supported"). ESLint 10 cannot be
+  used yet: `eslint-plugin-jsx-a11y` 6.10.2 and `eslint-plugin-import` 2.32.0 (both pulled in by
+  `eslint-config-next`) only declare support up to ESLint 9, and jsx-a11y is our accessibility lint. Upgrade when they
+  publish ESLint 10 support. ESLint is a development tool only; nothing it does ships to customers.
+- **Database driver deprecation:** `pg` warns "Calling client.query() when the client is already executing a query is
+  deprecated and will be removed in pg@9.0". The traced source is Prisma's `@prisma/adapter-pg` running two queries at
+  once inside one transaction (our code uses `Promise.all` on a transaction client in several domains). pg 8 queues them
+  safely; pg 9 is not released. Before ever upgrading to pg 9: either Prisma's adapter handles it, or replace
+  `Promise.all([...tx...])` with sequential awaits inside transactions. Do not upgrade `pg` to 9 casually.
+- **Prisma 8** (currently release candidate) is advertised in every Vercel build log. Plan the major upgrade as its own
+  PR after it is stable.
+- **`scmp` deprecated** (a dependency of `twilio`): Twilio's to fix; harmless.
+- **Node 24 everywhere:** if Vercel's Node version setting changes, change `.github/actions/setup-deps/action.yml` too.
+
