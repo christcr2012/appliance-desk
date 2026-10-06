@@ -58,7 +58,8 @@ Previews and test copies never send email, even with the key and the switch on (
 | [ ] | `BETTER_AUTH_SECRET` and `CRON_SECRET` are long random values unique to production | Vercel (Production) (Owner/Agent) | Set | Nightly jobs run (Desk shows no errors) |
 | [ ] | Nightly jobs are running (Vercel Cron: reminders, renewals, late fees, billing check, backup, follow-ups) | Vercel → Cron (Owner checks) | Scheduled | Run history shows green daily |
 | [ ] | Daily backup tested by restoring it into a throwaway copy | Agent (Batch F) | Backups run | Restore proof recorded |
-| [ ] | Database plan upgrade (protected branches, per-preview databases) | Neon (Owner approves spending) | Not upgraded | |
+| [x] | Neon plan upgrade and production branch protection | Neon | Completed/verified 2026-09-29 | Production `main` is protected; normal previews already use the isolated preview branch |
+| [ ] | Optional one-Neon-branch-per-preview-deployment automation | Post-launch infrastructure hardening | Not enabled | Not a launch blocker; current previews are isolated from production |
 | [ ] | Photo storage (private) set for production | Vercel Blob tokens (`PRIVATE_PHOTO_BLOB_*`, `BLOB_READ_WRITE_TOKEN`) | Set per environment | Photo upload works in production only |
 | [ ] | Public sign-up stays disabled | Already enforced in code | Disabled | Nothing to do |
 
