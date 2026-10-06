@@ -575,3 +575,12 @@ A refund Stripe could not finish shows as unfinished on the Billing check screen
 updated right after; if Stripe cannot be reached the line says "Cancelled —
 Stripe update pending" and the system keeps trying. Taking off the last item
 cancels the agreement.
+
+## Automations and recorded messages
+
+Open **Desk → Automations** to see whether each scheduled business pass is healthy, failing, unknown, never run, paused, or unconfigured. “Never run” and “unknown” do not mean success. Pausing a rule is an owner action and is audited; do not use pause/resume as a substitute for checking why a provider failed.
+
+Owner/admin Customer and Lead records include a **Messages** panel. It shows the business template, email/text recipient, request time and the durable delivery state. “Accepted by provider” is not the same as “Delivered.” “Not sent,” “Failed,” “Outcome unknown,” “Bounced,” “Spam complaint,” and “Suppressed” mean exactly that; do not tell a customer a message was sent unless the recorded state supports it.
+
+For provider trouble, follow `docs/runbooks/PROVIDER-OUTAGE.md`. In particular, never resend an unknown-outcome message just because the provider dashboard is temporarily unavailable.
+

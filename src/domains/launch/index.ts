@@ -139,7 +139,18 @@ export async function confirmLaunchSubscription(
         nextSendAt: now,
       },
     });
-    return changed.count === 1;
+    if (changed.count !== 1) return false;
+    await tx.consentRecord.create({
+      data: {
+        kind: "launch_email_confirm",
+        details: {
+          subscriberId: subscriber.id,
+          source: "mailbox_confirmation",
+          confirmedAt: now.toISOString(),
+        },
+      },
+    });
+    return true;
   });
 }
 

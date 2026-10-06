@@ -609,3 +609,13 @@ Historical shared-preview-DB statements above refer to earlier sessions.
 agreed end arrived; it must run after the terminations so the fee invoice is made first), then `startDueRenewals`.
 Early returns are decided at pickup completion (`closeIfFullyReturnedInTx` in `src/domains/agreements/returns.ts` →
 `early-return.ts`), not by the nightly pass. Stripe work from any of these always runs after the database commit.
+
+## Batch E messaging webhooks
+
+Business-message delivery is recorded in `MessageDelivery` before provider calls. Provider callbacks are verified before storage and update that durable ledger; provider acceptance is not represented as delivery.
+
+- Resend callback: `POST /api/webhooks/resend`; verify with `RESEND_WEBHOOK_SECRET`.
+- Twilio callback: `POST /api/webhooks/twilio`; verify `X-Twilio-Signature` with `TWILIO_AUTH_TOKEN` against the exact public request URL and form parameters.
+- Missing webhook verification configuration fails closed. Payload bodies are not logged.
+- `RESEND_API_KEY`, Twilio credentials and the customer-message owner switches remain separate from webhook verification. Adding a secret does not authorize live customer messaging.
+
