@@ -40,14 +40,14 @@ export async function buildDatabaseBackupSnapshot(): Promise<{
 }> {
   return prisma.$transaction(
     async (tx) => {
-      const migrations = await tx.$queryRaw<Array<{ migration_name: string }>>\`
+      const migrations = await tx.$queryRaw<Array<{ migration_name: string }>>`
         SELECT "migration_name"
         FROM "_prisma_migrations"
         WHERE "finished_at" IS NOT NULL
           AND "rolled_back_at" IS NULL
         ORDER BY "finished_at" DESC, "started_at" DESC
         LIMIT 1
-      \`;
+      `;
       const migrationId = migrations[0]?.migration_name;
       if (!migrationId) {
         throw new Error("No completed Prisma migration was found; refusing to create an unrestorable backup.");
@@ -62,7 +62,7 @@ export async function buildDatabaseBackupSnapshot(): Promise<{
       for (let index = 0; index < BACKUP_TABLES.length; index += 1) {
         const table = BACKUP_TABLES[index]!;
         const delegate = delegates[table];
-        if (!delegate?.findMany) throw new Error(\`Backup delegate "\${table}" is unavailable.\`);
+        if (!delegate?.findMany) throw new Error(`Backup delegate "${table}" is unavailable.`);
         const rows = await delegate.findMany();
         tables[table] = rows;
         tableCounts[table] = rows.length;
@@ -93,7 +93,7 @@ export async function exportDatabaseBackup(): Promise<BackupResult> {
   }
   try {
     const snapshot = await buildDatabaseBackupSnapshot();
-    const filename = \`\${BACKUP_PREFIX}\${snapshot.payload.exportedAt.slice(0, 10)}-\${Date.now()}.json\`;
+    const filename = `${BACKUP_PREFIX}${snapshot.payload.exportedAt.slice(0, 10)}-${Date.now()}.json`;
     const blob = await put(filename, JSON.stringify(snapshot.payload), {
       access: "private",
       contentType: "application/json",
@@ -131,7 +131,7 @@ export async function sendBackupFailureAlertToChris(result: BackupResult): Promi
   const notifyTo = process.env.BILLING_NOTIFICATION_EMAIL || settings.publicEmail;
   const day = businessDateKey(new Date());
   const delivery = await deliverMessage({
-    idempotencyKey: \`backup-failure-\${day}\`,
+    idempotencyKey: `backup-failure-${day}`,
     channel: "EMAIL",
     purpose: "TRANSACTIONAL",
     templateKey: "backup-failure",
@@ -140,7 +140,7 @@ export async function sendBackupFailureAlertToChris(result: BackupResult): Promi
     subject: { type: "BackupRun", id: day },
     render: () => ({
       subject: "Appliance Desk: today's automatic backup failed",
-      text: \`The daily backup of your business data didn't complete today.\\n\\nError: \${result.error ?? "Unknown error"}\\n\\nYour data itself is safe and untouched — this only means today's extra safety copy wasn't made. Neon (your database host) still keeps its own automatic recovery point, so nothing is at risk yet, but if this keeps happening it's worth having someone look into it.\`,
+      text: `The daily backup of your business data didn't complete today.\n\nError: ${result.error ?? "Unknown error"}\n\nYour data itself is safe and untouched — this only means today's extra safety copy wasn't made. Neon (your database host) still keeps its own automatic recovery point, so nothing is at risk yet, but if this keeps happening it's worth having someone look into it.`,
     }),
   });
   if (!["ACCEPTED", "DELIVERED", "NOT_SENT"].includes(delivery.state)) {

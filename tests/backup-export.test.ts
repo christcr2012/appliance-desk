@@ -14,7 +14,7 @@ const enabled =
   parsed.pathname === "/appliance_desk_test";
 
 describe.skipIf(!enabled)("backup snapshot consistency (real Postgres)", () => {
-  const marker = \`F1-\${process.pid}-snapshot\`;
+  const marker = `F1-${process.pid}-snapshot`;
 
   afterEach(async () => {
     __setBackupReadHookForTests(null);
@@ -35,14 +35,14 @@ describe.skipIf(!enabled)("backup snapshot consistency (real Postgres)", () => {
 
     try {
       const snapshot = await buildDatabaseBackupSnapshot();
-      const migration = await prisma.$queryRaw<Array<{ migration_name: string }>>\`
+      const migration = await prisma.$queryRaw<Array<{ migration_name: string }>>`
         SELECT "migration_name"
         FROM "_prisma_migrations"
         WHERE "finished_at" IS NOT NULL
           AND "rolled_back_at" IS NULL
         ORDER BY "finished_at" DESC, "started_at" DESC
         LIMIT 1
-      \`;
+      `;
 
       expect(snapshot.payload.formatVersion).toBe(2);
       expect(snapshot.payload.migrationId).toBe(migration[0]?.migration_name);

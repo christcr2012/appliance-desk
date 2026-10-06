@@ -22,7 +22,7 @@ describe("backup restore table order", () => {
       if (!modelDelegate || !dependencyDelegate) continue;
       expect(
         position.get(dependencyDelegate),
-        \`\${relation.dependsOn} must restore before \${relation.model}\`,
+        `${relation.dependsOn} must restore before ${relation.model}`,
       ).toBeLessThan(position.get(modelDelegate)!);
     }
   });

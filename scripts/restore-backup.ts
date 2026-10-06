@@ -51,7 +51,7 @@ function validatePayload(value: unknown): DatabaseBackupPayload {
     );
   }
   for (const [table, rows] of Object.entries(input.tables)) {
-    if (!Array.isArray(rows)) throw new Error(\`Backup table "\${table}" is not an array.\`);
+    if (!Array.isArray(rows)) throw new Error(`Backup table "${table}" is not an array.`);
   }
   return input as DatabaseBackupPayload;
 }
@@ -63,9 +63,9 @@ function normalizeNeonHost(host: string): string {
 
 async function neonJson(url: string, apiKey: string): Promise<Record<string, unknown>> {
   const response = await fetch(url, {
-    headers: { accept: "application/json", authorization: \`Bearer \${apiKey}\` },
+    headers: { accept: "application/json", authorization: `Bearer ${apiKey}` },
   });
-  if (!response.ok) throw new Error(\`Neon safety lookup failed with HTTP \${response.status}.\`);
+  if (!response.ok) throw new Error(`Neon safety lookup failed with HTTP ${response.status}.`);
   return (await response.json()) as Record<string, unknown>;
 }
 
@@ -90,7 +90,7 @@ async function assertSafeRestoreTarget(target: string): Promise<void> {
   }
 
   const endpointsPayload = await neonJson(
-    \`\${NEON_API}/projects/\${encodeURIComponent(projectId)}/endpoints\`,
+    `${NEON_API}/projects/${encodeURIComponent(projectId)}/endpoints`,
     apiKey,
   );
   const endpoints = Array.isArray(endpointsPayload.endpoints) ? endpointsPayload.endpoints : [];
@@ -105,7 +105,7 @@ async function assertSafeRestoreTarget(target: string): Promise<void> {
   }
 
   const branchesPayload = await neonJson(
-    \`\${NEON_API}/projects/\${encodeURIComponent(projectId)}/branches\`,
+    `${NEON_API}/projects/${encodeURIComponent(projectId)}/branches`,
     apiKey,
   );
   const branches = Array.isArray(branchesPayload.branches) ? branchesPayload.branches : [];
@@ -116,7 +116,7 @@ async function assertSafeRestoreTarget(target: string): Promise<void> {
   if (!branch || typeof branch.name !== "string" || !branch.name.startsWith("restore-")) {
     throw new Error("Restore refused: the Neon endpoint is not attached to a branch named restore-*.");
   }
-  console.log(\`[restore] Verified isolated Neon branch "\${branch.name}".\`);
+  console.log(`[restore] Verified isolated Neon branch "${branch.name}".`);
 }
 
 async function assertEmptyDatabase(client: Client): Promise<void> {
@@ -125,13 +125,13 @@ async function assertEmptyDatabase(client: Client): Promise<void> {
   );
   if (result.rows.length > 0) {
     throw new Error(
-      \`Restore target is not empty (\${result.rows.length} public table(s) found). Use a new empty restore database.\`,
+      `Restore target is not empty (${result.rows.length} public table(s) found). Use a new empty restore database.`,
     );
   }
 }
 
 async function ensureMigrationTable(client: Client): Promise<void> {
-  await client.query(\`
+  await client.query(`
     CREATE TABLE "_prisma_migrations" (
       "id" VARCHAR(36) PRIMARY KEY,
       "checksum" VARCHAR(64) NOT NULL,
@@ -142,7 +142,7 @@ async function ensureMigrationTable(client: Client): Promise<void> {
       "started_at" TIMESTAMPTZ NOT NULL DEFAULT now(),
       "applied_steps_count" INTEGER NOT NULL DEFAULT 0
     )
-  \`);
+  `);
 }
 
 async function migrationNamesThrough(migrationId: string): Promise<string[]> {
@@ -154,7 +154,7 @@ async function migrationNamesThrough(migrationId: string): Promise<string[]> {
   const index = names.indexOf(migrationId);
   if (index < 0) {
     throw new Error(
-      \`Backup migration "\${migrationId}" is not present in this checkout. Use the recorded appVersion commit.\`,
+      `Backup migration "${migrationId}" is not present in this checkout. Use the recorded appVersion commit.`,
     );
   }
   return names.slice(0, index + 1);
@@ -169,15 +169,15 @@ async function applyMigrations(client: Client, migrationId: string): Promise<voi
     try {
       await client.query(sql);
       await client.query(
-        \`INSERT INTO "_prisma_migrations"
+        `INSERT INTO "_prisma_migrations"
           ("id", "checksum", "finished_at", "migration_name", "logs", "rolled_back_at", "started_at", "applied_steps_count")
-         VALUES ($1, $2, now(), $3, NULL, NULL, now(), 1)\`,
+         VALUES ($1, $2, now(), $3, NULL, NULL, now(), 1)`,
         [randomUUID(), checksum, name],
       );
       await client.query("COMMIT");
     } catch (error) {
       await client.query("ROLLBACK");
-      throw new Error(\`Migration "\${name}" failed during restore.\`, { cause: error });
+      throw new Error(`Migration "${name}" failed during restore.`, { cause: error });
     }
   }
 }
@@ -190,18 +190,18 @@ function reviveRows(
 ): Record<string, unknown>[] {
   return rows.map((row, rowIndex) => {
     if (!row || typeof row !== "object" || Array.isArray(row)) {
-      throw new Error(\`Backup row \${rowIndex} in "\${table}" is not an object.\`);
+      throw new Error(`Backup row ${rowIndex} in "${table}" is not an object.`);
     }
     const revived = { ...(row as Record<string, unknown>) };
     for (const field of dateFields[table] ?? []) {
       const value = revived[field];
       if (value === null || value === undefined) continue;
       if (typeof value !== "string") {
-        throw new Error(\`Backup field "\${table}.\${field}" must be an ISO date string.\`);
+        throw new Error(`Backup field "${table}.${field}" must be an ISO date string.`);
       }
       const date = new Date(value);
       if (!Number.isFinite(date.getTime())) {
-        throw new Error(\`Backup field "\${table}.\${field}" contains an invalid date.\`);
+        throw new Error(`Backup field "${table}.${field}" contains an invalid date.`);
       }
       revived[field] = date;
     }
@@ -219,12 +219,12 @@ async function resetAutoincrementSequences(client: Client, schema: string): Prom
     }
     const sequence = await client.query<{ sequence_name: string | null }>(
       "SELECT pg_get_serial_sequence($1, $2) AS sequence_name",
-      [\`"\${field.model}"\`, field.field],
+      [`"${field.model}"`, field.field],
     );
     const sequenceName = sequence.rows[0]?.sequence_name;
     if (!sequenceName) continue;
     const maximum = await client.query<{ maximum: string | null }>(
-      \`SELECT MAX("\${field.field}")::text AS maximum FROM "\${field.model}"\`,
+      `SELECT MAX("${field.field}")::text AS maximum FROM "${field.model}"`,
     );
     if (maximum.rows[0]?.maximum) {
       await client.query("SELECT setval($1::regclass, $2::bigint, true)", [
@@ -262,18 +262,18 @@ async function restore(file: string, target: string): Promise<void> {
       const rows = payload.tables[table] ?? [];
       if (rows.length === 0) continue;
       const delegate = delegates[table];
-      if (!delegate?.createMany) throw new Error(\`Restore delegate "\${table}" is unavailable.\`);
+      if (!delegate?.createMany) throw new Error(`Restore delegate "${table}" is unavailable.`);
       const data = reviveRows(table, rows, dateFields, nullableJsonFields);
       const result = await delegate.createMany({ data });
       if (result.count !== rows.length) {
-        throw new Error(\`Restore count mismatch for "\${table}": expected \${rows.length}, wrote \${result.count}.\`);
+        throw new Error(`Restore count mismatch for "${table}": expected ${rows.length}, wrote ${result.count}.`);
       }
     }
 
     await resetAutoincrementSequences(sql, schema);
     await verifySchemaHealth(prisma);
     console.log(
-      \`[restore] Restored backup from \${payload.exportedAt} (app \${payload.appVersion}, migration \${payload.migrationId}).\`,
+      `[restore] Restored backup from ${payload.exportedAt} (app ${payload.appVersion}, migration ${payload.migrationId}).`,
     );
     console.log(
       "[restore] Account, Session and Verification credentials are intentionally absent; users must reset passwords.",

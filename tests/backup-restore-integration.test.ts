@@ -70,7 +70,7 @@ describe.skipIf(!enabled)("backup restore drill (real Postgres)", () => {
         const rows = snapshot.payload.tables[delegate] as Array<Record<string, unknown>>;
         const maximum = Math.max(0, ...rows.map((row) => Number(row[field] ?? 0)));
         const next = await pg.query<{ value: string }>(
-          \`SELECT nextval(pg_get_serial_sequence('"\${model}"', '\${field}'))::text AS value\`,
+          `SELECT nextval(pg_get_serial_sequence('"${model}"', '${field}'))::text AS value`,
         );
         expect(Number(next.rows[0]!.value)).toBeGreaterThan(maximum);
       }

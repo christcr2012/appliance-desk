@@ -60,7 +60,7 @@ export function relationDependencies(schema: string): RelationDependency[] {
 export function deriveRestoreTableOrder(schema: string, policy: BackupPolicy): string[] {
   const names = new Set(prismaModelNames(schema));
   for (const model of Object.keys(policy)) {
-    if (!names.has(model)) throw new Error(\`Backup policy names missing Prisma model "\${model}".\`);
+    if (!names.has(model)) throw new Error(`Backup policy names missing Prisma model "${model}".`);
   }
 
   const included = Object.entries(policy)
@@ -80,7 +80,7 @@ export function deriveRestoreTableOrder(schema: string, policy: BackupPolicy): s
   const visit = (model: string, path: string[]): void => {
     if (visited.has(model)) return;
     if (visiting.has(model)) {
-      throw new Error(\`Restore dependency cycle: \${[...path, model].join(" -> ")}\`);
+      throw new Error(`Restore dependency cycle: ${[...path, model].join(" -> ")}`);
     }
     visiting.add(model);
     for (const dependency of dependencies.get(model) ?? []) visit(dependency, [...path, model]);
