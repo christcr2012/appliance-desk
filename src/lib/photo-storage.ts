@@ -64,3 +64,34 @@ export function getPrivatePhotoStore():
 export function privatePhotoReadPath(photoId: string): string {
   return `/api/photos/${encodeURIComponent(photoId)}`;
 }
+
+
+export function privatePhotoPathFromUrl(value: string, storeId: string): string | null {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    return null;
+  }
+
+  const expectedHost = `${storeId.slice("store_".length).toLowerCase()}.private.blob.vercel-storage.com`;
+  if (
+    url.protocol !== "https:" ||
+    url.hostname.toLowerCase() !== expectedHost ||
+    url.username ||
+    url.password ||
+    url.port ||
+    url.search ||
+    url.hash
+  ) {
+    return null;
+  }
+
+  let pathname: string;
+  try {
+    pathname = decodeURIComponent(url.pathname.replace(/^\/+/, ""));
+  } catch {
+    return null;
+  }
+  return isPrivatePhotoPath(pathname) ? pathname : null;
+}

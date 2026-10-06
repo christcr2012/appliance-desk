@@ -18,6 +18,7 @@ export type AutomationRuleDefinition = {
 
 export const AUTOMATION_RULES: AutomationRuleDefinition[] = [
   { ruleKey: "backup", label: "Daily backup", explanation: "Exports the business database to the private backup store.", requiredEnv: ["CRON_SECRET", "BLOB_READ_WRITE_TOKEN"], resolutionHref: "/desk/automations#backup" },
+  { ruleKey: "media-copy", label: "Private media recovery copy", explanation: "Inventories private photo evidence and keeps a second recoverable copy without resurrecting privacy-deleted files.", requiredEnv: ["CRON_SECRET", "BLOB_READ_WRITE_TOKEN", "PRIVATE_PHOTO_BLOB_READ_WRITE_TOKEN", "PRIVATE_PHOTO_BLOB_STORE_ID"], resolutionHref: "/desk/automations#media-copy" },
   { ruleKey: "billing-reconcile:provider-ops", label: "Billing provider operations", explanation: "Reconciles durable Stripe operations that are still pending or uncertain.", requiredEnv: ["CRON_SECRET"], resolutionHref: "/desk/automations#billing-reconcile-provider-ops" },
   { ruleKey: "billing-reconcile:job-handoffs", label: "Job billing handoffs", explanation: "Finishes billing and credit work queued by completed field jobs.", requiredEnv: ["CRON_SECRET"], resolutionHref: "/desk/automations#billing-reconcile-job-handoffs" },
   { ruleKey: "billing-reconcile:invoice-artifacts", label: "Invoice evidence freeze", explanation: "Freezes immutable evidence for invoices that reached a final state.", requiredEnv: ["CRON_SECRET"], resolutionHref: "/desk/automations#billing-reconcile-invoice-artifacts" },

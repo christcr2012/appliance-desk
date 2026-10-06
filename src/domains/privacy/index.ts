@@ -1,10 +1,10 @@
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
-import { del } from "@vercel/blob";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { isRateLimited } from "@/lib/rate-limit";
 import { deliverMessage } from "@/domains/messaging/deliver";
 import { getPrivatePhotoStore } from "@/lib/photo-storage";
+import { deletePrivatePhotoWithRecovery } from "@/domains/backup/media-deletion";
 
 const TOKEN_TTL_MS = 48 * 60 * 60 * 1000;
 const PRIVACY_RATE_LIMIT = { max: 5, windowMs: 60 * 60 * 1000 } as const;
@@ -314,7 +314,7 @@ type PrivacyDeletionClaim = {
   customerId: string | null;
   photoIds: string[];
   blobUrls: string[];
-  blobToken: string | null;
+  blobStore: { token: string; storeId: string } | null;
 };
 
 async function claimPrivacyDeletion(
@@ -332,7 +332,7 @@ async function claimPrivacyDeletion(
       throw new Error("This is not a customer deletion request.");
     }
     if (request.status === "FULFILLED") {
-      return { fulfilled: true, customerId: null, photoIds: [], blobUrls: [], blobToken: null };
+      return { fulfilled: true, customerId: null, photoIds: [], blobUrls: [], blobStore: null };
     }
     if (request.status !== "VERIFIED") {
       throw new Error("Verify the customer's identity before deleting personal data.");
@@ -383,7 +383,7 @@ async function claimPrivacyDeletion(
       customerId: customer.id,
       photoIds: privateRequestPhotos.map((row) => row.id),
       blobUrls,
-      blobToken: privateStore?.token ?? null,
+      blobStore: privateStore,
     };
   });
 }
@@ -406,10 +406,12 @@ export async function fulfillPrivacyDeletion(
   // attempt removed some/all objects and crashed before the local commit, a
   // retry converges on the same missing-object state.
   if (claim.blobUrls.length > 0) {
-    if (!claim.blobToken) {
+    if (!claim.blobStore) {
       throw new Error("Private photo storage is unavailable; privacy deletion was not fulfilled.");
     }
-    await del(claim.blobUrls, { token: claim.blobToken });
+    for (const blobUrl of claim.blobUrls) {
+      await deletePrivatePhotoWithRecovery(blobUrl, claim.blobStore);
+    }
   }
 
   return prisma.$transaction(async (tx) => {
