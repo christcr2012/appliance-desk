@@ -58,7 +58,7 @@ export default async function NewJobPage({
   return (
     <div className="max-w-2xl">
       <h1 className="text-xl font-semibold">Schedule a job</h1>
-      <p className="mt-1 text-sm text-gray-600">
+      <p className="mt-1 text-sm text-ink-soft">
         A delivery, install, swap, removal, or maintenance visit.
       </p>
 
