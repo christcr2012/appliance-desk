@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Button, Checkbox, Field } from "@/components/ui";
 import { updateJobSchedulingAction } from "./actions";
 import {
   RECOMMENDED_JOB_DURATION_MINUTES,
@@ -42,13 +43,14 @@ export function JobSchedulingForm({ defaultValues }: { defaultValues: JobSchedul
       {message && (
         <p
           role={message.kind === "error" ? "alert" : "status"}
-          className={`rounded-lg px-4 py-3 text-sm ${
-            message.kind === "success" ? "bg-green-50 text-green-800" : "bg-red-50 text-red-800"
+          className={`rounded-control border border-line bg-subtle px-4 py-3 text-sm font-medium ${
+            message.kind === "error" ? "text-danger" : "text-success"
           }`}
         >
           {message.text}
         </p>
       )}
+
       <fieldset className="space-y-3">
         <legend className="text-base font-semibold text-ink">Usual visit length</legend>
         <p className="text-sm text-ink-soft">
@@ -57,22 +59,24 @@ export function JobSchedulingForm({ defaultValues }: { defaultValues: JobSchedul
           starts is not a conflict. Starting value: 120 (2 hours), a generous time for a delivery, install,
           pickup or repair including the drive to the next stop. Anyone with owner or admin access can change it.
         </p>
-        <div>
-          <label htmlFor="jobs-defaultMinutes" className="mb-1 block text-sm font-medium text-ink">
-            Minutes per visit
-          </label>
-          <input
+        <div className="max-w-xs">
+          <Field
             id="jobs-defaultMinutes"
+            label="Minutes per visit"
             type="text"
             inputMode="numeric"
-            className="w-32 rounded-lg border border-line-strong px-3 py-2 text-sm"
             value={values.defaultJobDurationMinutes}
-            onChange={(e) => setValues({ ...values, defaultJobDurationMinutes: e.target.value })}
+            onChange={(event) =>
+              setValues({ ...values, defaultJobDurationMinutes: event.target.value })
+            }
           />
         </div>
       </fieldset>
+
       <fieldset className="space-y-3">
-        <legend className="text-base font-semibold text-ink">Can staff work jobs nobody is assigned to?</legend>
+        <legend className="text-base font-semibold text-ink">
+          Can staff work jobs nobody is assigned to?
+        </legend>
         <p className="text-sm text-ink-soft">
           Staff can always work the jobs assigned to them, while those jobs are scheduled or in progress. This
           choice is about jobs with no one assigned. On: any staff member can open and finish an unassigned job,
@@ -81,28 +85,23 @@ export function JobSchedulingForm({ defaultValues }: { defaultValues: JobSchedul
           a job that is already finished or cancelled. Starting value: on, because it keeps the way things work
           today. Anyone with owner or admin access can change it.
         </p>
-        <label htmlFor="jobs-staffUnassigned" className="flex items-center gap-2 text-sm font-medium text-ink">
-          <input
-            id="jobs-staffUnassigned"
-            type="checkbox"
-            className="h-4 w-4 rounded border-line-strong"
-            checked={values.staffMayWorkUnassignedJobs}
-            onChange={(e) => setValues({ ...values, staffMayWorkUnassignedJobs: e.target.checked })}
-          />
-          Staff may work jobs that have no one assigned
-        </label>
+        <Checkbox
+          id="jobs-staffUnassigned"
+          label="Staff may work jobs that have no one assigned"
+          checked={values.staffMayWorkUnassignedJobs}
+          onChange={(event) =>
+            setValues({ ...values, staffMayWorkUnassignedJobs: event.target.checked })
+          }
+        />
       </fieldset>
+
       <div className="flex flex-wrap gap-3">
-        <button
-          type="submit"
-          disabled={saving}
-          className="rounded-full bg-action px-6 py-2.5 text-sm font-semibold text-on-action disabled:opacity-60"
-        >
+        <Button type="submit" disabled={saving}>
           {saving ? "Saving…" : "Save"}
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
-          className="rounded-lg border border-line-strong px-4 py-2 text-sm text-ink"
+          variant="secondary"
           onClick={() =>
             setValues({
               defaultJobDurationMinutes: String(RECOMMENDED_JOB_DURATION_MINUTES),
@@ -111,7 +110,7 @@ export function JobSchedulingForm({ defaultValues }: { defaultValues: JobSchedul
           }
         >
           Restore recommended values ({RECOMMENDED_JOB_DURATION_MINUTES} minutes, staff may work unassigned jobs)
-        </button>
+        </Button>
       </div>
     </form>
   );
