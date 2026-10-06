@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Button, Field, Textarea } from "@/components/ui";
 import { updateMonthToMonthSettingsAction } from "./actions";
 import {
   MONTH_TO_MONTH_CHANGE_DAYS_MAX,
@@ -59,23 +60,25 @@ export function MonthToMonthForm({
       {message && (
         <p
           role={message.kind === "error" ? "alert" : "status"}
-          className={`rounded-lg px-4 py-3 text-sm ${message.kind === "success" ? "bg-green-50 text-green-800" : "bg-red-50 text-red-800"}`}
+          className={`rounded-control border border-line bg-subtle px-4 py-3 text-sm font-medium ${message.kind === "success" ? "text-success" : "text-danger"}`}
         >
           {message.text}
         </p>
       )}
-      <div className="space-y-2">
-        <label htmlFor="mtm-days" className="block text-sm font-medium text-ink">
-          Days before a change applies ({MONTH_TO_MONTH_CHANGE_DAYS_MIN} to {MONTH_TO_MONTH_CHANGE_DAYS_MAX})
-        </label>
-        <p className="text-sm text-ink-soft">Starting value: {RECOMMENDED_MONTH_TO_MONTH_CHANGE_DAYS} days, the shortest the owner chose to give customers.</p>
-        <input
+      <div className="max-w-sm">
+        <Field
           id="mtm-days"
+          label={`Days before a change applies (${MONTH_TO_MONTH_CHANGE_DAYS_MIN} to ${MONTH_TO_MONTH_CHANGE_DAYS_MAX})`}
+          help={`Starting value: ${RECOMMENDED_MONTH_TO_MONTH_CHANGE_DAYS} days, the shortest the owner chose to give customers.`}
           type="text"
           inputMode="numeric"
-          className="w-24 rounded-lg border border-line-strong px-3 py-2 text-sm"
           value={values.monthToMonthChangeNoticeDays}
-          onChange={(e) => setValues({ ...values, monthToMonthChangeNoticeDays: e.target.value })}
+          onChange={(event) =>
+            setValues({
+              ...values,
+              monthToMonthChangeNoticeDays: event.target.value,
+            })
+          }
         />
       </div>
       {(
@@ -84,29 +87,30 @@ export function MonthToMonthForm({
           ["annualReminderText", "Yearly reminder wording", "Emailed once a year to each month-to-month customer, 25 to 40 days before each yearly anniversary (Colorado's automatic-renewal law)."],
         ] as const
       ).map(([key, label, help]) => (
-        <div key={key} className="space-y-2">
-          <label htmlFor={`mtm-${key}`} className="block text-sm font-medium text-ink">
-            {label}
-          </label>
-          <p className="text-sm text-ink-soft">
-            {help} Leave it empty to use the starting draft. Words in double braces are filled in for each customer: {placeholders}.
-          </p>
-          <textarea
+        <div key={key} className="space-y-3">
+          <Textarea
             id={`mtm-${key}`}
+            label={label}
+            help={`${help} Leave it empty to use the starting draft. Words in double braces are filled in for each customer: ${placeholders}.`}
             rows={8}
-            className="w-full rounded-lg border border-line-strong px-3 py-2 text-sm"
             placeholder={startingDrafts[key]}
             value={values[key]}
-            onChange={(e) => setValues({ ...values, [key]: e.target.value })}
+            onChange={(event) =>
+              setValues({ ...values, [key]: event.target.value })
+            }
           />
-          <button type="button" className="rounded-lg border border-line-strong px-3 py-1.5 text-sm text-ink" onClick={() => setValues({ ...values, [key]: "" })}>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => setValues({ ...values, [key]: "" })}
+          >
             Restore recommended wording
-          </button>
+          </Button>
         </div>
       ))}
-      <button type="submit" disabled={saving} className="rounded-full bg-action px-6 py-2.5 text-sm font-semibold text-on-action disabled:opacity-60">
+      <Button type="submit" disabled={saving}>
         {saving ? "Saving…" : "Save"}
-      </button>
+      </Button>
     </form>
   );
 }

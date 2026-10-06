@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { NoticeDeliveryForm } from "./notice-delivery-form";
 import { MonthToMonthForm } from "./month-to-month-form";
 import { EarlyReturnForm } from "./early-return-form";
@@ -15,12 +14,8 @@ import {
   settingsSection,
 } from "@/domains/settings/section-config";
 import { providerStatus } from "@/domains/settings/provider-status";
-import {
-  PageHeader,
-  FilterBar,
-  SectionCard,
-  secondaryActionClass,
-} from "@/components/desk/workspace";
+import { FilterBar } from "@/components/desk/workspace";
+import { ButtonLink, Card, PageHeader } from "@/components/ui";
 import { formatBusinessDate, formatBusinessTime } from "@/lib/business-date";
 import { SettingsForm } from "./settings-form";
 import { AppliancePricingTable } from "./appliance-pricing-table";
@@ -55,7 +50,7 @@ export default async function DeskSettingsPage({
   if (section === "products") {
     const applianceTypes = await getAllApplianceTypes();
     content = (
-      <SectionCard
+      <Card
         title="Products and pricing"
         description="Signed agreements keep their existing prices. Catalog changes apply to new rentals."
       >
@@ -69,7 +64,7 @@ export default async function DeskSettingsPage({
             photoUrl: t.photoUrl,
           }))}
         />
-      </SectionCard>
+      </Card>
     );
   } else if (section === "terms") {
     const status = termsPolicyStatus(settings);
@@ -82,11 +77,11 @@ export default async function DeskSettingsPage({
       </li>
     );
     content = (
-      <SectionCard
+      <Card
         title="Ending and renewing rentals"
         description="Set the rules here whenever you like. Agreements already signed keep working; new quotes use what is saved."
       >
-        <ul className="mb-6 space-y-1 rounded-lg bg-subtle p-3 text-sm text-ink-soft">
+        <ul className="mb-6 space-y-1 rounded-card bg-subtle p-3 text-sm text-ink-soft">
           {line("Ending early", status.earlyEnding)}
           {line("Automatic renewal", status.autoRenew)}
         </ul>
@@ -107,30 +102,30 @@ export default async function DeskSettingsPage({
           defaultValues={noticeDeliveryDefaults(settings as { noticeCertifierRoles?: string; mailNoticeTransitDays?: number })}
           canChange={(session.user as { role?: string }).role === "OWNER"}
         />
-      </SectionCard>
+      </Card>
     );
   } else if (section === "pickups") {
     content = (
-      <SectionCard
+      <Card
         title="Pickups and deliveries"
         description="What a customer is charged when an appliance comes back late, credited when one is delivered late, and whether the pickup day counts."
       >
         <PickupBillingForm defaultValues={pickupBillingDefaults(pickupBillingSettingsFrom(settings))} />
-      </SectionCard>
+      </Card>
     );
   } else if (section === "jobs") {
     content = (
-      <SectionCard
+      <Card
         title="Visits and scheduling"
         description="How long a visit is assumed to take when checking whether the same person is booked twice."
       >
         <JobSchedulingForm defaultValues={jobSchedulingDefaults(settings)} />
-      </SectionCard>
+      </Card>
     );
   } else if (section === "staff") {
     const accounts = await getStaffAccounts();
     content = (
-      <SectionCard title="Staff accounts">
+      <Card title="Staff accounts">
         <StaffAccountsSection
           accounts={accounts.map((a) => ({
             id: a.id,
@@ -140,41 +135,41 @@ export default async function DeskSettingsPage({
             isActive: a.archivedAt === null,
           }))}
         />
-      </SectionCard>
+      </Card>
     );
   } else if (section === "website") {
     content = (
-      <SectionCard
+      <Card
         title="Website controls"
         description="The public site uses your saved business profile, service area and catalog pricing."
       >
         <div className="flex flex-wrap gap-2">
-          <Link className={secondaryActionClass} href="/desk/settings/website">
+          <ButtonLink href="/desk/settings/website" variant="secondary">
             Edit website text
-          </Link>
-          <Link className={secondaryActionClass} href="/desk/launch">
+          </ButtonLink>
+          <ButtonLink href="/desk/launch" variant="secondary">
             Launch signup and announcement controls
-          </Link>
-          <Link
-            className={secondaryActionClass}
+          </ButtonLink>
+          <ButtonLink
             href="/"
+            variant="secondary"
             target="_blank"
             rel="noopener noreferrer"
           >
             View public website
-          </Link>
+          </ButtonLink>
         </div>
         <p className="mt-4 text-sm text-ink-soft">
           Use Edit website text for the wording on your pages. Use Business
           profile, Service area, and Products and pricing for contact details,
           where you work and prices.
         </p>
-      </SectionCard>
+      </Card>
     );
   } else if (section === "notifications" || section === "integrations") {
     const status = providerStatus();
     content = (
-      <SectionCard
+      <Card
         title={
           section === "notifications"
             ? "Notification configuration"
@@ -183,7 +178,7 @@ export default async function DeskSettingsPage({
         description="Configuration is shown separately from verified delivery. No credentials are displayed."
       >
         {section === "notifications" && (
-          <div className="mb-6 rounded-lg border border-line-strong p-4">
+          <div className="mb-6 rounded-card border border-line p-4">
             <CustomerEmailSwitch
               enabled={settings.customerEmailEnabled === true}
               canChange={(session.user as { role?: string }).role === "OWNER"}
@@ -203,17 +198,16 @@ export default async function DeskSettingsPage({
           Customer SMS preferences remain in each customer&apos;s account.
           Launch email controls are managed separately.
         </p>
-        <Link
-          className="mt-3 inline-flex min-h-11 items-center text-primary underline"
-          href="/desk/launch"
-        >
-          Open launch email controls
-        </Link>
-      </SectionCard>
+        <div className="mt-3">
+          <ButtonLink href="/desk/launch" variant="secondary">
+            Open launch email controls
+          </ButtonLink>
+        </div>
+      </Card>
     );
   } else {
     content = (
-      <SectionCard
+      <Card
         title={SETTINGS_SECTIONS.find((s) => s.id === section)!.label}
         description="Save only this section. Prices, staff accounts and other sections are preserved."
       >
@@ -221,20 +215,22 @@ export default async function DeskSettingsPage({
           <LeadScoringForm policy={leadScoringPolicy} />
         )}
         {section === "policies" && (
-          <div className="mb-4 rounded-lg border border-line bg-subtle p-4">
+          <div className="mb-4 rounded-card border border-line bg-subtle p-4">
             <p className="text-sm text-ink-soft">
               The return inspection checklist is versioned separately so changing it never rewrites an inspection that
               already happened.
             </p>
-            <Link className={`${secondaryActionClass} mt-3`} href="/desk/settings/policies">
-              Edit return inspection checklist
-            </Link>
+            <div className="mt-3">
+              <ButtonLink href="/desk/settings/policies" variant="secondary">
+                Edit return inspection checklist
+              </ButtonLink>
+            </div>
           </div>
         )}
         {section === "policies" && !settings.taxRateConfirmed && (
           <p
             role="status"
-            className="mb-4 rounded-lg bg-subtle p-3 text-sm text-ink"
+            className="mb-4 rounded-card bg-subtle p-3 text-sm text-ink"
           >
             Sales tax is not confirmed. Keep the current approval process before
             using a rate with customers.
@@ -279,7 +275,7 @@ export default async function DeskSettingsPage({
             draftReservationHoldDays: settings.draftReservationHoldDays,
           }}
         />
-      </SectionCard>
+      </Card>
     );
   }
   return (
@@ -288,9 +284,9 @@ export default async function DeskSettingsPage({
         title="Settings"
         description="Manage the business one section at a time."
         secondaryActions={
-          <Link className={secondaryActionClass} href="/desk/activity">
+          <ButtonLink href="/desk/activity" variant="secondary">
             View change history
-          </Link>
+          </ButtonLink>
         }
       />
       <FilterBar

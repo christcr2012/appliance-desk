@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { Button, Field, Select, Textarea } from "@/components/ui";
 import { updateTermsPolicyAction } from "./actions";
 import type { TermsPolicyFormValues } from "@/domains/settings/terms-policy";
 import { RECOMMENDED_TERMS_POLICY } from "@/domains/settings/recommended-terms";
 
-const inputClass = "w-full max-w-sm rounded-lg border border-line-strong px-3 py-2 text-sm";
 
 export function TermsPolicyForm({ defaultValues }: { defaultValues: TermsPolicyFormValues }) {
   const [values, setValues] = useState<TermsPolicyFormValues>(defaultValues);
@@ -46,22 +46,22 @@ export function TermsPolicyForm({ defaultValues }: { defaultValues: TermsPolicyF
       {message && (
         <p
           role={message.kind === "error" ? "alert" : "status"}
-          className={`rounded-lg px-4 py-3 text-sm ${
-            message.kind === "success" ? "bg-green-50 text-green-800" : "bg-red-50 text-red-800"
+          className={`rounded-control border border-line bg-subtle px-4 py-3 text-sm font-medium ${
+            message.kind === "success" ? "text-success" : "text-danger"
           }`}
         >
           {message.text}
         </p>
       )}
 
-      <p className="rounded-lg border border-line-strong px-4 py-3 text-sm text-ink">
+      <p className="rounded-card border border-line bg-subtle px-4 py-3 text-sm text-ink">
         The starting values here come from common practice for equipment rentals and Colorado&rsquo;s
         automatic-renewal law (a reminder 25 to 40 days before a renewal, and an easy way to
         cancel). Every number and sentence is yours to change. Owners and admins can edit this
         section. Please have a Colorado attorney read the wording before you rely on it.
       </p>
 
-      <p className="rounded-lg border border-line-strong px-4 py-3 text-sm text-ink">
+      <p className="rounded-card border border-line bg-subtle px-4 py-3 text-sm text-ink">
         Changes here apply only to rental agreements that are sent for signing <strong>after</strong> you
         save. Every agreement already sent keeps the terms it was sent with, so changing these never
         changes a customer&rsquo;s current 6- or 12-month rental.
@@ -75,101 +75,63 @@ export function TermsPolicyForm({ defaultValues }: { defaultValues: TermsPolicyF
           nothing is charged until every needed box is filled in.
         </p>
 
-        <div>
-          <label htmlFor="terms-feeDollars" className="mb-1 block text-sm font-medium text-ink">
-            Flat fee
-          </label>
-          <div className="flex max-w-sm items-center gap-2">
-            <span aria-hidden="true" className="text-ink-faint">
-              $
-            </span>
-            <input
-              id="terms-feeDollars"
-              inputMode="decimal"
-              value={values.feeDollars}
-              onChange={change("feeDollars")}
-              aria-describedby="terms-fee-help"
-              className="w-full rounded-lg border border-line-strong px-3 py-2 text-sm"
-            />
-          </div>
+        <div className="max-w-sm">
+          <Field
+            id="terms-feeDollars"
+            label="Flat fee"
+            inputMode="decimal"
+            value={values.feeDollars}
+            onChange={change("feeDollars")}
+          />
         </div>
-        <div>
-          <label htmlFor="terms-feePercent" className="mb-1 block text-sm font-medium text-ink">
-            Percent of the rent still owed
-          </label>
-          <div className="flex max-w-sm items-center gap-2">
-            <input
-              id="terms-feePercent"
-              inputMode="numeric"
-              value={values.feePercent}
-              onChange={change("feePercent")}
-              aria-describedby="terms-fee-help"
-              className="w-full rounded-lg border border-line-strong px-3 py-2 text-sm"
-            />
-            <span aria-hidden="true" className="text-ink-faint">
-              %
-            </span>
-          </div>
-          <p id="terms-fee-help" className="mt-1 text-xs text-ink-soft">
-            Fill in one or both. If you fill in both, the customer pays whichever comes out larger.
-            Enter 0 if there should be no fee.
-          </p>
+        <div className="max-w-sm">
+          <Field
+            id="terms-feePercent"
+            label="Percent of the rent still owed"
+            help="Fill in one or both. If you fill in both, the customer pays whichever comes out larger. Enter 0 if there should be no fee."
+            inputMode="numeric"
+            value={values.feePercent}
+            onChange={change("feePercent")}
+          />
         </div>
-        <div>
-          <label htmlFor="terms-feeCapDollars" className="mb-1 block text-sm font-medium text-ink">
-            Highest fee you will ever charge (optional)
-          </label>
-          <div className="flex max-w-sm items-center gap-2">
-            <span aria-hidden="true" className="text-ink-faint">
-              $
-            </span>
-            <input
-              id="terms-feeCapDollars"
-              inputMode="decimal"
-              value={values.feeCapDollars}
-              onChange={change("feeCapDollars")}
-              className="w-full rounded-lg border border-line-strong px-3 py-2 text-sm"
-            />
-          </div>
+        <div className="max-w-sm">
+          <Field
+            id="terms-feeCapDollars"
+            label="Highest fee you will ever charge (optional)"
+            inputMode="decimal"
+            value={values.feeCapDollars}
+            onChange={change("feeCapDollars")}
+          />
         </div>
-        <div>
-          <label htmlFor="terms-noticeDays" className="mb-1 block text-sm font-medium text-ink">
-            Days of notice the customer must give
-          </label>
-          <input
+        <div className="max-w-sm">
+          <Field
             id="terms-noticeDays"
+            label="Days of notice the customer must give"
             inputMode="numeric"
             value={values.noticeDays}
             onChange={change("noticeDays")}
-            className={inputClass}
           />
         </div>
-        <div>
-          <label htmlFor="terms-unusedTerm" className="mb-1 block text-sm font-medium text-ink">
-            If a customer prepaid, what happens to the months they did not use?
-          </label>
-          <select
+        <div className="max-w-sm">
+          <Select
             id="terms-unusedTerm"
+            label="If a customer prepaid, what happens to the months they did not use?"
             value={values.unusedTerm}
             onChange={change("unusedTerm")}
-            className={inputClass}
           >
             <option value="">Not decided yet</option>
             <option value="REFUND">Refund it to the customer</option>
             <option value="CREDIT">Give it as account credit</option>
             <option value="RETAIN">Keep it (no refund)</option>
-          </select>
+          </Select>
         </div>
-        <div>
-          <label htmlFor="terms-terminationTermsText" className="mb-1 block text-sm font-medium text-ink">
-            Wording customers will see about ending early
-          </label>
-          <textarea
+        <div className="max-w-xl">
+          <Textarea
             id="terms-terminationTermsText"
+            label="Wording customers will see about ending early"
             rows={5}
             value={values.terminationTermsText}
             onChange={change("terminationTermsText")}
-            className="w-full max-w-xl rounded-lg border border-line-strong px-3 py-2 text-sm"
           />
         </div>
       </fieldset>
@@ -181,42 +143,33 @@ export function TermsPolicyForm({ defaultValues }: { defaultValues: TermsPolicyF
           filled in. If you change the wording, customers who agreed earlier keep the wording they
           agreed to, and new agreements use the new wording.
         </p>
-        <div>
-          <label htmlFor="terms-autoRenewNoticeDays" className="mb-1 block text-sm font-medium text-ink">
-            Days before the term ends that the customer is told it will renew (25 to 40)
-          </label>
-          <input
+        <div className="max-w-sm">
+          <Field
             id="terms-autoRenewNoticeDays"
+            label="Days before the term ends that the customer is told it will renew (25 to 40)"
             inputMode="numeric"
             value={values.autoRenewNoticeDays}
             onChange={change("autoRenewNoticeDays")}
-            className={inputClass}
           />
         </div>
-        <div>
-          <label htmlFor="terms-renewalTermsText" className="mb-1 block text-sm font-medium text-ink">
-            Wording customers will see when they agree to renew
-          </label>
-          <textarea
+        <div className="max-w-xl">
+          <Textarea
             id="terms-renewalTermsText"
+            label="Wording customers will see when they agree to renew"
             rows={5}
             value={values.renewalTermsText}
             onChange={change("renewalTermsText")}
-            className="w-full max-w-xl rounded-lg border border-line-strong px-3 py-2 text-sm"
           />
         </div>
       </fieldset>
 
       <div className="flex flex-wrap items-center gap-4">
-        <button
-          type="submit"
-          disabled={saving}
-          className="rounded-full bg-action px-6 py-2.5 text-sm font-semibold text-on-action disabled:opacity-60"
-        >
+        <Button type="submit" disabled={saving}>
           {saving ? "Saving…" : "Save this section"}
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
+          variant="secondary"
           disabled={saving}
           onClick={() => {
             setValues(RECOMMENDED_TERMS_POLICY);
@@ -225,10 +178,9 @@ export function TermsPolicyForm({ defaultValues }: { defaultValues: TermsPolicyF
               text: "The recommended starting terms are filled in below. Nothing is saved until you press “Save this section”.",
             });
           }}
-          className="rounded-full border border-line-strong px-5 py-2.5 text-sm font-semibold text-ink disabled:opacity-60"
         >
           Restore recommended starting terms
-        </button>
+        </Button>
       </div>
     </form>
   );

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Button } from "@/components/ui";
 import { updateEarlyReturnAction } from "./actions";
 import { RECOMMENDED_EARLY_RETURN, type EarlyReturnFormValues } from "@/domains/settings/early-return";
 
@@ -54,12 +55,12 @@ export function EarlyReturnForm({ defaultValues }: { defaultValues: EarlyReturnF
       {message && (
         <p
           role={message.kind === "error" ? "alert" : "status"}
-          className={`rounded-lg px-4 py-3 text-sm ${message.kind === "success" ? "bg-green-50 text-green-800" : "bg-red-50 text-red-800"}`}
+          className={`rounded-control border border-line bg-subtle px-4 py-3 text-sm font-medium ${message.kind === "success" ? "text-success" : "text-danger"}`}
         >
           {message.text}
         </p>
       )}
-      <p className="rounded-lg border border-line-strong px-4 py-3 text-sm text-ink">
+      <p className="rounded-card border border-line bg-subtle px-4 py-3 text-sm text-ink">
         This is what happens when a customer returns <strong>all</strong> of their equipment before the rental&rsquo;s
         agreed ending (or a month-to-month customer returns everything without having asked to end). These are your
         standard choices. For any one rental you can look at the numbers and change any choice before you confirm.
@@ -108,20 +109,20 @@ export function EarlyReturnForm({ defaultValues }: { defaultValues: EarlyReturnF
       </fieldset>
 
       <div className="flex flex-wrap items-center gap-4">
-        <button type="submit" disabled={saving} className="rounded-full bg-action px-6 py-2.5 text-sm font-semibold text-on-action disabled:opacity-60">
+        <Button type="submit" disabled={saving}>
           {saving ? "Saving…" : "Save this section"}
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
+          variant="secondary"
           disabled={saving}
           onClick={() => {
             setValues({ ...RECOMMENDED_EARLY_RETURN });
             setMessage({ kind: "success", text: "The recommended values are filled in. Nothing is saved until you press “Save this section”." });
           }}
-          className="rounded-full border border-line-strong px-5 py-2.5 text-sm font-semibold text-ink disabled:opacity-60"
         >
           Restore recommended values
-        </button>
+        </Button>
       </div>
     </form>
   );

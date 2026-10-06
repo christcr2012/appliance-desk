@@ -3,6 +3,7 @@
 import type { EditableSettingsSection } from "@/domains/settings/section-config";
 
 import { forwardRef, useState } from "react";
+import { Button, Checkbox, Field, Select, Textarea } from "@/components/ui";
 import { DAYS, SOCIAL_NETWORKS, BRAND_LOGO_FILES, MAX_CLOSURES, type ProfileExtrasForm } from "@/domains/settings/profile-extras";
 import { useForm } from "react-hook-form";
 import { updateSettingsAction, updateSettingsSectionAction } from "./actions";
@@ -82,10 +83,8 @@ export function SettingsForm({
       {message && (
         <p
           role={message.kind === "error" ? "alert" : "status"}
-          className={`rounded-lg px-4 py-3 text-sm ${
-            message.kind === "success"
-              ? "bg-green-50 text-green-800"
-              : "bg-red-50 text-red-800"
+          className={`rounded-control border border-line bg-subtle px-4 py-3 text-sm font-medium ${
+            message.kind === "success" ? "text-success" : "text-danger"
           }`}
         >
           {message.text}
@@ -123,56 +122,43 @@ export function SettingsForm({
           </p>
           <div className="space-y-3">
             {DAYS.map((day) => (
-              <div key={day.id} className="flex flex-wrap items-center gap-3">
-                <label htmlFor={`hours-${day.id}-mode`} className="w-24 text-sm font-medium text-ink">
-                  {day.label}
-                </label>
-                <select
+              <div
+                key={day.id}
+                className="grid gap-3 rounded-card border border-line bg-subtle p-3 sm:grid-cols-3"
+              >
+                <Select
                   id={`hours-${day.id}-mode`}
-                  className="min-h-11 rounded-lg border border-line-strong px-2 text-sm"
+                  label={day.label}
                   {...register(`hours.${day.id}.mode`)}
                 >
                   <option value="none">Not shown</option>
                   <option value="closed">Closed</option>
                   <option value="open">Open</option>
-                </select>
-                <label htmlFor={`hours-${day.id}-open`} className="text-sm text-ink-soft">
-                  Opens
-                </label>
-                <input
+                </Select>
+                <Field
                   id={`hours-${day.id}-open`}
+                  label="Opens"
                   type="time"
-                  className="min-h-11 rounded-lg border border-line-strong px-2 text-sm"
                   {...register(`hours.${day.id}.open`)}
                 />
-                <label htmlFor={`hours-${day.id}-close`} className="text-sm text-ink-soft">
-                  Closes
-                </label>
-                <input
+                <Field
                   id={`hours-${day.id}-close`}
+                  label="Closes"
                   type="time"
-                  className="min-h-11 rounded-lg border border-line-strong px-2 text-sm"
                   {...register(`hours.${day.id}.close`)}
                 />
               </div>
             ))}
           </div>
           <p className="text-xs text-ink-soft">The times are used only for days set to Open.</p>
-          <div>
-            <label htmlFor="settings-holidayClosuresText" className="mb-1 block text-sm font-medium text-ink">
-              Holiday closures
-            </label>
-            <textarea
+          <div className="max-w-sm">
+            <Textarea
               id="settings-holidayClosuresText"
+              label="Holiday closures"
+              help={`One per line: the date, a space, then the name. Example: 2026-12-25 Christmas Day. Up to ${MAX_CLOSURES}. Past dates stop showing on the website by themselves.`}
               rows={4}
-              aria-describedby="closures-help"
-              className="w-full max-w-sm rounded-lg border border-line-strong px-3 py-2 text-sm"
               {...register("holidayClosuresText")}
             />
-            <p id="closures-help" className="mt-1 text-xs text-ink-soft">
-              One per line: the date, a space, then the name. Example: 2026-12-25 Christmas Day. Up to {MAX_CLOSURES}.
-              Past dates stop showing on the website by themselves.
-            </p>
           </div>
         </fieldset>
       )}
@@ -243,22 +229,14 @@ export function SettingsForm({
             label="Pickup/removal fee"
             {...register("removalFeeDollars", { valueAsNumber: true })}
           />
-          <label className="flex items-center gap-2 text-sm text-ink-soft">
-            <input
-              type="checkbox"
-              {...register("depositEnabled")}
-              className="h-4 w-4"
-            />
-            Require a refundable security deposit
-          </label>
-          <label className="flex items-center gap-2 text-sm text-ink-soft">
-            <input
-              type="checkbox"
-              {...register("damageWaiverEnabled")}
-              className="h-4 w-4"
-            />
-            Offer an optional damage waiver
-          </label>
+          <Checkbox
+            label="Require a refundable security deposit"
+            {...register("depositEnabled")}
+          />
+          <Checkbox
+            label="Offer an optional damage waiver"
+            {...register("damageWaiverEnabled")}
+          />
           <LabeledInput
             label="Late fee grace period (days)"
             type="number"
@@ -314,16 +292,10 @@ export function SettingsForm({
               valueAsNumber: true,
             })}
           />
-          <label className="flex items-center gap-2 text-sm text-ink-soft">
-            <input
-              type="checkbox"
-              {...register("twelveMonthPrepayFreeMonthEnabled")}
-              className="h-4 w-4"
-            />
-            Also give a free month when a customer pays the full 12-month term
-            in one lump sum up front (you mark this yourself when creating that
-            agreement)
-          </label>
+          <Checkbox
+            label="Also give a free month when a customer pays the full 12-month term in one lump sum up front (you mark this yourself when creating that agreement)"
+            {...register("twelveMonthPrepayFreeMonthEnabled")}
+          />
         </fieldset>
       )}
 
@@ -384,28 +356,20 @@ export function SettingsForm({
             inputMode="decimal"
             {...register("taxRatePercentText")}
           />
-          <label className="flex items-center gap-2 text-sm text-ink-soft">
-            <input
-              type="checkbox"
-              {...register("taxRateConfirmed")}
-              className="h-4 w-4"
-            />
-            A CPA has confirmed this rate is correct
-          </label>
+          <Checkbox
+            label="A CPA has confirmed this rate is correct"
+            {...register("taxRateConfirmed")}
+          />
         </fieldset>
       )}
 
-      <button
-        type="submit"
-        disabled={isSubmitting}
-        className="rounded-full bg-action px-6 py-2.5 text-sm font-semibold text-on-action disabled:opacity-60"
-      >
+      <Button type="submit" disabled={isSubmitting}>
         {isSubmitting
           ? "Saving…"
           : section
             ? "Save this section"
             : "Save settings"}
-      </button>
+      </Button>
     </form>
   );
 }
@@ -413,52 +377,38 @@ export function SettingsForm({
 const DollarInput = forwardRef<
   HTMLInputElement,
   Omit<React.InputHTMLAttributes<HTMLInputElement>, "type"> & { label: string }
->(function DollarInput({ label, ...props }, ref) {
+>(function DollarInput({ label, className = "", ...props }, ref) {
   const id = `settings-${props.name}`;
   return (
-    <div>
-      <label
-        htmlFor={id}
-        className="mb-1 block text-sm font-medium text-ink"
-      >
-        {label}
-      </label>
-      <div className="flex max-w-sm items-center gap-2">
-        <span aria-hidden="true" className="text-ink-faint">
-          $
-        </span>
-        <input
-          id={id}
-          ref={ref}
-          type="number"
-          min={0}
-          step="0.01"
-          {...props}
-          className="w-full rounded-lg border border-line-strong px-3 py-2 text-sm"
-        />
-      </div>
+    <div className="max-w-sm">
+      <Field
+        ref={ref}
+        id={id}
+        label={label}
+        type="number"
+        min={0}
+        step="0.01"
+        {...props}
+        className={className}
+      />
     </div>
   );
 });
 
-function LabeledInput({
-  label,
-  ...props
-}: React.InputHTMLAttributes<HTMLInputElement> & { label: string }) {
+const LabeledInput = forwardRef<
+  HTMLInputElement,
+  React.InputHTMLAttributes<HTMLInputElement> & { label: string }
+>(function LabeledInput({ label, className = "", ...props }, ref) {
   const id = `settings-${props.name}`;
   return (
-    <div>
-      <label
-        htmlFor={id}
-        className="mb-1 block text-sm font-medium text-ink"
-      >
-        {label}
-      </label>
-      <input
+    <div className="max-w-sm">
+      <Field
+        ref={ref}
         id={id}
+        label={label}
         {...props}
-        className="w-full max-w-sm rounded-lg border border-line-strong px-3 py-2 text-sm"
+        className={className}
       />
     </div>
   );
-}
+});

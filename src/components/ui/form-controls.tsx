@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  forwardRef,
   useId,
   type InputHTMLAttributes,
   type SelectHTMLAttributes,
@@ -42,18 +43,17 @@ function describedBy(id: string, help?: string, error?: string) {
     .join(" ") || undefined;
 }
 
-export function Field({
-  label,
-  help,
-  error,
-  id: explicitId,
-  className = "",
-  ...props
-}: InputHTMLAttributes<HTMLInputElement> & {
-  label: string;
-  help?: string;
-  error?: string;
-}) {
+export const Field = forwardRef<
+  HTMLInputElement,
+  InputHTMLAttributes<HTMLInputElement> & {
+    label: string;
+    help?: string;
+    error?: string;
+  }
+>(function Field(
+  { label, help, error, id: explicitId, className = "", ...props },
+  ref,
+) {
   const generatedId = useId();
   const id = explicitId ?? generatedId;
 
@@ -64,6 +64,7 @@ export function Field({
       </label>
       <input
         {...props}
+        ref={ref}
         id={id}
         aria-invalid={error ? true : undefined}
         aria-describedby={describedBy(id, help, error)}
@@ -72,21 +73,27 @@ export function Field({
       <HelpAndError id={id} help={help} error={error} />
     </div>
   );
-}
+});
 
-export function Select({
-  label,
-  help,
-  error,
-  id: explicitId,
-  className = "",
-  children,
-  ...props
-}: SelectHTMLAttributes<HTMLSelectElement> & {
-  label: string;
-  help?: string;
-  error?: string;
-}) {
+export const Select = forwardRef<
+  HTMLSelectElement,
+  SelectHTMLAttributes<HTMLSelectElement> & {
+    label: string;
+    help?: string;
+    error?: string;
+  }
+>(function Select(
+  {
+    label,
+    help,
+    error,
+    id: explicitId,
+    className = "",
+    children,
+    ...props
+  },
+  ref,
+) {
   const generatedId = useId();
   const id = explicitId ?? generatedId;
 
@@ -97,6 +104,7 @@ export function Select({
       </label>
       <select
         {...props}
+        ref={ref}
         id={id}
         aria-invalid={error ? true : undefined}
         aria-describedby={describedBy(id, help, error)}
@@ -107,20 +115,19 @@ export function Select({
       <HelpAndError id={id} help={help} error={error} />
     </div>
   );
-}
+});
 
-export function Textarea({
-  label,
-  help,
-  error,
-  id: explicitId,
-  className = "",
-  ...props
-}: TextareaHTMLAttributes<HTMLTextAreaElement> & {
-  label: string;
-  help?: string;
-  error?: string;
-}) {
+export const Textarea = forwardRef<
+  HTMLTextAreaElement,
+  TextareaHTMLAttributes<HTMLTextAreaElement> & {
+    label: string;
+    help?: string;
+    error?: string;
+  }
+>(function Textarea(
+  { label, help, error, id: explicitId, className = "", ...props },
+  ref,
+) {
   const generatedId = useId();
   const id = explicitId ?? generatedId;
 
@@ -131,6 +138,7 @@ export function Textarea({
       </label>
       <textarea
         {...props}
+        ref={ref}
         id={id}
         aria-invalid={error ? true : undefined}
         aria-describedby={describedBy(id, help, error)}
@@ -139,20 +147,19 @@ export function Textarea({
       <HelpAndError id={id} help={help} error={error} />
     </div>
   );
-}
+});
 
-export function Checkbox({
-  label,
-  help,
-  error,
-  id: explicitId,
-  className = "",
-  ...props
-}: Omit<InputHTMLAttributes<HTMLInputElement>, "type"> & {
-  label: string;
-  help?: string;
-  error?: string;
-}) {
+export const Checkbox = forwardRef<
+  HTMLInputElement,
+  Omit<InputHTMLAttributes<HTMLInputElement>, "type"> & {
+    label: string;
+    help?: string;
+    error?: string;
+  }
+>(function Checkbox(
+  { label, help, error, id: explicitId, className = "", ...props },
+  ref,
+) {
   const generatedId = useId();
   const id = explicitId ?? generatedId;
 
@@ -164,6 +171,7 @@ export function Checkbox({
       >
         <input
           {...props}
+          ref={ref}
           id={id}
           type="checkbox"
           aria-invalid={error ? true : undefined}
@@ -175,4 +183,4 @@ export function Checkbox({
       <HelpAndError id={id} help={help} error={error} />
     </div>
   );
-}
+});

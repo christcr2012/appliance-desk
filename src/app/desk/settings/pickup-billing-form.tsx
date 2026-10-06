@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Button, Checkbox, Field } from "@/components/ui";
 import { updatePickupBillingAction } from "./actions";
 import {
   RECOMMENDED_PICKUP_BILLING_FORM,
@@ -47,15 +48,15 @@ export function PickupBillingForm({ defaultValues }: { defaultValues: PickupBill
       {message && (
         <p
           role={message.kind === "error" ? "alert" : "status"}
-          className={`rounded-lg px-4 py-3 text-sm ${
-            message.kind === "success" ? "bg-green-50 text-green-800" : "bg-red-50 text-red-800"
+          className={`rounded-control border border-line bg-subtle px-4 py-3 text-sm font-medium ${
+            message.kind === "success" ? "text-success" : "text-danger"
           }`}
         >
           {message.text}
         </p>
       )}
 
-      <p className="rounded-lg border border-line-strong px-4 py-3 text-sm text-ink">
+      <p className="rounded-card border border-line bg-subtle px-4 py-3 text-sm text-ink">
         These three rules decide what a customer is charged when an appliance comes back late, credited
         when an appliance is delivered late, and whether the pickup day itself counts. Each one is a
         setting you can change at any time; the change applies to pickups and deliveries recorded after
@@ -108,27 +109,21 @@ export function PickupBillingForm({ defaultValues }: { defaultValues: PickupBill
             </span>
           </label>
         </div>
-        <div>
-          <label htmlFor="pickup-fixedDaily" className="mb-1 block text-sm font-medium text-ink">
-            Fixed amount per day (only used with the second choice)
-          </label>
-          <div className="flex max-w-sm items-center gap-2">
-            <span aria-hidden="true" className="text-ink-faint">
-              $
-            </span>
-            <input
-              id="pickup-fixedDaily"
-              inputMode="decimal"
-              value={values.lateReturnFixedDailyDollars}
-              onChange={(e) => setValues((c) => ({ ...c, lateReturnFixedDailyDollars: e.target.value }))}
-              aria-describedby="pickup-fixedDaily-help"
-              disabled={values.lateReturnRateMode !== "FIXED"}
-              className="w-full rounded-lg border border-line-strong px-3 py-2 text-sm disabled:bg-canvas-alt"
-            />
-          </div>
-          <p id="pickup-fixedDaily-help" className="mt-1 text-xs text-ink-soft">
-            Per day, per appliance. Ignored while &ldquo;monthly price ÷ 30&rdquo; is selected.
-          </p>
+        <div className="max-w-sm">
+          <Field
+            id="pickup-fixedDaily"
+            label="Fixed amount per day (only used with the second choice)"
+            help="Per day, per appliance. Ignored while “monthly price ÷ 30” is selected."
+            inputMode="decimal"
+            value={values.lateReturnFixedDailyDollars}
+            onChange={(event) =>
+              setValues((current) => ({
+                ...current,
+                lateReturnFixedDailyDollars: event.target.value,
+              }))
+            }
+            disabled={values.lateReturnRateMode !== "FIXED"}
+          />
         </div>
       </fieldset>
 
@@ -190,38 +185,27 @@ export function PickupBillingForm({ defaultValues }: { defaultValues: PickupBill
 
       <fieldset className="space-y-4">
         <legend className="text-base font-semibold text-ink">3. The pickup day itself</legend>
-        <label className="flex items-start gap-3 text-sm text-ink">
-          <input
-            type="checkbox"
-            className={radioClass}
-            checked={values.pickupDayNotBilled}
-            onChange={(e) => setValues((c) => ({ ...c, pickupDayNotBilled: e.target.checked }))}
-          />
-          <span>
-            <strong>Don&rsquo;t charge for the day an appliance is picked up or returned (recommended)</strong>
-            <br />
-            <span className="text-ink-soft">
-              With this on, the pickup day is not counted as a late day: the last late day a customer
-              pays for is the day <em>before</em> the pickup or return, so an appliance picked up on the
-              1st of the month is not charged for the 1st. It is on to start with because the customer
-              usually cannot use the appliance on the day it is taken away. Turn it off to charge for the
-              pickup day like any other day. Today this applies to late-return charges only; ending the
-              monthly Stripe charge on the pickup date is a later piece of work and is not built yet.
-            </span>
-          </span>
-        </label>
+        <Checkbox
+          id="pickup-day-not-billed"
+          label="Don’t charge for the day an appliance is picked up or returned (recommended)"
+          help="With this on, the pickup day is not counted as a late day: the last late day a customer pays for is the day before the pickup or return. Today this applies to late-return charges only; ending the monthly Stripe charge on the pickup date remains separate work."
+          checked={values.pickupDayNotBilled}
+          onChange={(event) =>
+            setValues((current) => ({
+              ...current,
+              pickupDayNotBilled: event.target.checked,
+            }))
+          }
+        />
       </fieldset>
 
       <div className="flex flex-wrap items-center gap-4">
-        <button
-          type="submit"
-          disabled={saving}
-          className="rounded-full bg-action px-6 py-2.5 text-sm font-semibold text-on-action disabled:opacity-60"
-        >
+        <Button type="submit" disabled={saving}>
           {saving ? "Saving…" : "Save this section"}
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
+          variant="secondary"
           disabled={saving}
           onClick={() => {
             setValues(RECOMMENDED_PICKUP_BILLING_FORM);
@@ -230,10 +214,9 @@ export function PickupBillingForm({ defaultValues }: { defaultValues: PickupBill
               text: "The recommended values are filled in below. Nothing is saved until you press “Save this section”.",
             });
           }}
-          className="rounded-full border border-line-strong px-5 py-2.5 text-sm font-semibold text-ink disabled:opacity-60"
         >
           Restore recommended values
-        </button>
+        </Button>
       </div>
     </form>
   );

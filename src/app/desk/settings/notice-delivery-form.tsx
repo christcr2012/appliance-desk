@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Button, Field, Select } from "@/components/ui";
 import { updateNoticeDeliveryAction } from "./actions";
 import {
   RECOMMENDED_MAIL_NOTICE_TRANSIT_DAYS,
@@ -41,7 +42,7 @@ export function NoticeDeliveryForm({ defaultValues, canChange }: { defaultValues
       {message && (
         <p
           role={message.kind === "error" ? "alert" : "status"}
-          className={`rounded-lg px-4 py-3 text-sm ${message.kind === "success" ? "bg-green-50 text-green-800" : "bg-red-50 text-red-800"}`}
+          className={`rounded-control border border-line bg-subtle px-4 py-3 text-sm font-medium ${message.kind === "success" ? "text-success" : "text-danger"}`}
         >
           {message.text}
         </p>
@@ -54,18 +55,20 @@ export function NoticeDeliveryForm({ defaultValues, canChange }: { defaultValues
           start, so it is a legal statement. “Owner only” means only you can make it; “Owner and admins” lets admins do it too.
           Starting value: owner only, the safest choice.
         </p>
-        <label htmlFor="notice-certifier" className="mb-1 block text-sm font-medium text-ink">
-          Who can record it
-        </label>
-        <select
+        <Select
           id="notice-certifier"
-          className="rounded-lg border border-line-strong px-3 py-2 text-sm"
+          label="Who can record it"
           value={values.noticeCertifierRoles}
-          onChange={(e) => setValues({ ...values, noticeCertifierRoles: e.target.value as NoticeDeliveryValues["noticeCertifierRoles"] })}
+          onChange={(event) =>
+            setValues({
+              ...values,
+              noticeCertifierRoles: event.target.value as NoticeDeliveryValues["noticeCertifierRoles"],
+            })
+          }
         >
           <option value="OWNER">Owner only</option>
           <option value="OWNER_AND_ADMIN">Owner and admins</option>
-        </select>
+        </Select>
       </fieldset>
       <fieldset className="space-y-3" disabled={!canChange}>
         <legend className="text-sm font-semibold text-ink">Days for mailed notices to arrive</legend>
@@ -74,26 +77,27 @@ export function NoticeDeliveryForm({ defaultValues, canChange }: { defaultValues
           are counted from when the customer most likely got it. Use 0 to count the mailing day itself. Starting value: 3
           days, a cautious guess for regular first-class mail. Your attorney can confirm the right number.
         </p>
-        <label htmlFor="notice-transit" className="mb-1 block text-sm font-medium text-ink">
-          Days (0 to 14)
-        </label>
-        <input
-          id="notice-transit"
-          type="text"
-          inputMode="numeric"
-          className="w-24 rounded-lg border border-line-strong px-3 py-2 text-sm"
-          value={values.mailNoticeTransitDays}
-          onChange={(e) => setValues({ ...values, mailNoticeTransitDays: e.target.value })}
-        />
+        <div className="max-w-xs">
+          <Field
+            id="notice-transit"
+            label="Days (0 to 14)"
+            type="text"
+            inputMode="numeric"
+            value={values.mailNoticeTransitDays}
+            onChange={(event) =>
+              setValues({ ...values, mailNoticeTransitDays: event.target.value })
+            }
+          />
+        </div>
       </fieldset>
       {canChange && (
         <div className="flex flex-wrap gap-3">
-          <button type="submit" disabled={saving} className="rounded-full bg-action px-6 py-2.5 text-sm font-semibold text-on-action disabled:opacity-60">
+          <Button type="submit" disabled={saving}>
             {saving ? "Saving…" : "Save"}
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
-            className="rounded-lg border border-line-strong px-4 py-2 text-sm text-ink"
+            variant="secondary"
             onClick={() =>
               setValues({
                 noticeCertifierRoles: RECOMMENDED_NOTICE_CERTIFIER,
@@ -102,7 +106,7 @@ export function NoticeDeliveryForm({ defaultValues, canChange }: { defaultValues
             }
           >
             Restore recommended values (owner only, {RECOMMENDED_MAIL_NOTICE_TRANSIT_DAYS} days)
-          </button>
+          </Button>
         </div>
       )}
     </form>
