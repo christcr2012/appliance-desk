@@ -93,3 +93,35 @@ export function activeDeskHref(
     )
     .sort((a, b) => b.href.length - a.href.length)[0]?.href;
 }
+
+
+/**
+ * Phone tabs are derived from the already role-filtered desk navigation.
+ * Restricted destinations are never introduced here.
+ */
+export function deskBottomTabLinks(
+  role: string,
+  groups: DeskNavGroup[],
+): { href: string; label: string }[] {
+  const allowed = new Map(
+    groups.flatMap((group) => group.links).map((link) => [link.href, link]),
+  );
+  const preferred =
+    role === "STAFF"
+      ? [
+          ["/desk/today", "Today"],
+          ["/desk/dispatch", "Schedule"],
+          ["/desk/jobs", "Jobs"],
+          ["/desk/inventory", "Inventory"],
+        ]
+      : [
+          ["/desk/today", "Today"],
+          ["/desk/dispatch", "Schedule"],
+          ["/desk/customers", "Customers"],
+          ["/desk/billing", "Billing"],
+        ];
+
+  return preferred.flatMap(([href, label]) =>
+    allowed.has(href) ? [{ href, label }] : [],
+  );
+}
