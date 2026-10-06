@@ -11,7 +11,7 @@ no separate component library beyond what's needed (shadcn/ui components
 get added as later phases need specific UI, e.g. a data table for
 `/desk/inventory`).
 
-## Accessibility — required, not optional (WCAG 2.1 AA)
+## Accessibility — required, not optional (WCAG 2.2 AA)
 
 Applies to the public site, the customer portal, and the owner desk
 alike:
@@ -33,20 +33,18 @@ alike:
 - Respect `prefers-reduced-motion`.
 - Usable at 200% browser zoom and on phones.
 
-**Automated checks are wired into CI**: `e2e/accessibility.spec.ts` runs
-axe against the public site and the login/password pages, tagged
-`wcag2a`/`wcag2aa`/`wcag21a`/`wcag21aa`, and fails the build on any
-violation. `e2e/accessibility-authenticated.spec.ts` (added 2026-09-27)
-does the same for every page behind a login — the owner desk
-(`/desk/**`) and the customer portal (`/account/**`) — by logging in for
-real as a test-only OWNER/CUSTOMER account that `prisma/seed.ts` creates
-when `OWNER_EMAIL`/`OWNER_PASSWORD`/`TEST_CUSTOMER_EMAIL`/
-`TEST_CUSTOMER_PASSWORD` are set (CI sets these against its own
-throwaway database only — see `.github/workflows/ci.yml`; never set
-them against production). Together these catch missing labels/
-contrast/etc. automatically across the entire app — they do **not**
-replace a manual screen-reader + keyboard pass before launch (tracked in
-`docs/ROADMAP.md`, Phase 7).
+**Automated checks are wired into CI**. `e2e/route-inventory.ts`
+is the authoritative page inventory, and the generated
+`e2e/accessibility-routes-*.spec.ts` suites run axe at 360 px and
+1440 px in both light and dark mode for every route with a deterministic
+fixture. CI's isolated OWNER/CUSTOMER/STAFF sessions are reused rather
+than logging in per test. Routes that require a generated or single-use
+record/token remain in the inventory with a written manual-only reason;
+`tests/accessibility-route-inventory.test.ts` fails if any App Router
+page is missing. The focused legacy accessibility specs remain useful
+regression tests for keyboard/menu/theme behavior. See
+`docs/ACCESSIBILITY.md` for the coverage boundary and manual checks.
+Automated checks are engineering evidence, **not WCAG certification**.
 
 An `/accessibility` statement page with a way to report problems is
 required before launch (Phase 2/7).
