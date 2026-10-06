@@ -2,15 +2,16 @@ import { expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import type { AccessibilityRoute } from "./route-inventory";
 
-const VIEWPORTS = [360, 1440] as const;
+const DEFAULT_VIEWPORTS = [360, 1440] as const;
 const THEMES = ["light", "dark"] as const;
 const AXE_TAGS = ["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"] as const;
 
 export async function scanAccessibilityRoute(
   page: Page,
   route: AccessibilityRoute,
+  viewports: readonly number[] = DEFAULT_VIEWPORTS,
 ) {
-  await page.setViewportSize({ width: VIEWPORTS[0], height: 900 });
+  await page.setViewportSize({ width: viewports[0] ?? 360, height: 900 });
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto(route.fixture, { waitUntil: "networkidle" });
   await expect(page.locator("body")).toBeVisible();
@@ -38,7 +39,7 @@ export async function scanAccessibilityRoute(
       );
     });
 
-    for (const width of VIEWPORTS) {
+    for (const width of viewports) {
       await page.setViewportSize({ width, height: 900 });
       const results = await new AxeBuilder({ page })
         .withTags([...AXE_TAGS])
