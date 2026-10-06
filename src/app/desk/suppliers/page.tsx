@@ -1,71 +1,100 @@
 import Link from "next/link";
 import { requireRole } from "@/lib/session";
 import { getSuppliers } from "@/domains/purchasing";
-import { PlusIcon } from "@/components/icons/status-icons";
+import {
+  ButtonLink,
+  DataList,
+  EmptyState,
+  PageHeader,
+  StatusPill,
+  type DataListColumn,
+} from "@/components/ui";
 
 export const metadata = { title: "Suppliers" };
 
-export default async function SuppliersPage({ searchParams }: { searchParams: Promise<{ archived?: string }> }) {
+type SupplierRow = Awaited<ReturnType<typeof getSuppliers>>[number];
+
+export default async function SuppliersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ archived?: string }>;
+}) {
   await requireRole("OWNER", "ADMIN");
   const showArchived = (await searchParams).archived === "1";
   const suppliers = await getSuppliers({ includeArchived: showArchived });
 
+  const columns: DataListColumn<SupplierRow>[] = [
+    {
+      key: "supplier",
+      header: "Supplier",
+      primary: true,
+      cell: (supplier) => (
+        <div>
+          <Link
+            href={`/desk/suppliers/${supplier.id}`}
+            className="font-semibold text-ink underline-offset-4 hover:underline"
+          >
+            {supplier.name}
+          </Link>
+          <p className="mt-1 text-sm font-normal text-ink-soft">
+            {supplier.contactName ?? ""}
+            {supplier.contactName && (supplier.phone || supplier.email)
+              ? " · "
+              : ""}
+            {supplier.phone ?? ""}
+            {supplier.phone && supplier.email ? " · " : ""}
+            {supplier.email ?? ""}
+          </p>
+        </div>
+      ),
+    },
+    {
+      key: "state",
+      header: "State",
+      cell: (supplier) =>
+        supplier.archivedAt ? (
+          <StatusPill tone="stopped" label="Archived" />
+        ) : (
+          <StatusPill tone="success" label="Active" />
+        ),
+    },
+    {
+      key: "orders",
+      header: "Purchase orders",
+      cell: (supplier) =>
+        `${supplier._count.purchaseOrders} purchase ${
+          supplier._count.purchaseOrders === 1 ? "order" : "orders"
+        }`,
+    },
+  ];
+
   return (
     <div>
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-xl font-semibold">Suppliers</h1>
-        <Link
-          href="/desk/suppliers/new"
-          className="inline-flex items-center gap-1 rounded-md bg-action px-4 py-2 text-sm font-medium text-on-action hover:bg-action"
-        >
-          <PlusIcon className="h-4 w-4" />
-          Add supplier
-        </Link>
-      </div>
-      <p className="mt-1 text-sm text-ink-soft">
-        Who you order parts and appliances from.{" "}
-        {showArchived ? (
-          <Link href="/desk/suppliers" className="text-primary underline">
-            Hide archived suppliers
-          </Link>
-        ) : (
-          <Link href="/desk/suppliers?archived=1" className="text-primary underline">
-            Show archived suppliers
-          </Link>
-        )}
-      </p>
+      <PageHeader
+        title="Suppliers"
+        description="Who you order parts and appliances from."
+        primaryAction={{ href: "/desk/suppliers/new", label: "Add supplier" }}
+        secondaryActions={
+          <ButtonLink
+            href={showArchived ? "/desk/suppliers" : "/desk/suppliers?archived=1"}
+            variant="secondary"
+          >
+            {showArchived ? "Hide archived suppliers" : "Show archived suppliers"}
+          </ButtonLink>
+        }
+      />
 
-      {suppliers.length === 0 ? (
-        <p className="mt-8 text-sm text-ink-soft">No suppliers on file yet.</p>
-      ) : (
-        <ul className="mt-6 divide-y divide-line rounded-lg border border-line bg-white">
-          {suppliers.map((s) => (
-            <li key={s.id}>
-              <Link
-                href={`/desk/suppliers/${s.id}`}
-                className="flex flex-col gap-1 px-4 py-4 hover:bg-canvas sm:flex-row sm:items-center sm:justify-between"
-              >
-                <div>
-                  <p className="font-medium text-ink">{s.name}{s.archivedAt ? " — archived" : ""}</p>
-                  <p className="text-sm text-ink-soft">
-                    {s.contactName ?? ""}
-                    {s.contactName && (s.phone || s.email) ? " · " : ""}
-                    {s.phone ?? ""}
-                    {s.phone && s.email ? " · " : ""}
-                    {s.email ?? ""}
-                  </p>
-                </div>
-                <div className="text-sm text-ink-faint sm:text-right">
-                  <p>
-                    {s._count.purchaseOrders} purchase{" "}
-                    {s._count.purchaseOrders === 1 ? "order" : "orders"}
-                  </p>
-                </div>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
+      <DataList
+        rows={suppliers}
+        columns={columns}
+        caption="Suppliers"
+        empty={
+          <EmptyState
+            title="No suppliers on file yet"
+            description="Add a supplier when you are ready to track purchasing."
+          />
+        }
+      />
     </div>
   );
 }
