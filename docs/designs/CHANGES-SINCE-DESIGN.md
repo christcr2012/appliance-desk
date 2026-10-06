@@ -139,3 +139,12 @@ All customer-addressed email goes through `sendCustomerEmail` (owner master swit
 ## 2026-10-06 — E2 public-site visual acceptance disposition
 
 - WU-E2-7 / PR #262 passed its functional, accessibility, performance, and deployment gates and implements the approved E2-7 specification. During the required owner visual review, browser comparison against the existing production site showed that the overall composition remained too similar to the prior design. Chris judged the result visually unsatisfactory / insufficiently differentiated, but explicitly authorized #262 to merge so Batch E2 could finish. Treat the public-site visual quality as deferred follow-up work: the implementation is technically accepted, but it is not the final desired public-site redesign.
+
+
+## 2026-10-06 — Batch F-part-1 start drift reconciliation
+
+- Re-checked BATCH-F §0 against current `main` at `e640b75` after E2 and the CI/tooling PRs. F1-a's backup assumptions still match: exports are not snapshot-consistent yet, WebhookEvent is excluded, and no restore script exists.
+- The schema currently has 70 Prisma models and its owning foreign-key relations form an acyclic dependency graph, so F1-a can derive restore order from the schema rather than maintain a duplicate hand-written ordering.
+- E's low-level email/SMS senders do not expose test injection hooks. BATCH-F A4 already tells the implementer to add them if absent; because F-part-1 does not run provider-send scenarios, that work stays with F-part-2/WU-F3 instead of broadening F1-a.
+- E2's final generated route/accessibility coverage and public-site acceptance disposition are already recorded above. They do not alter F1-a; F-part-2 screenshots/walkthroughs remain intentionally after G, T and V.
+- The post-Batch-D recovery amendment remains binding: database restore preserves D control-plane rows; F1-b separately implements private-media recovery without resurrecting privacy-deleted bytes.
