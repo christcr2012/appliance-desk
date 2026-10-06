@@ -89,11 +89,11 @@ export function JobSchedulePanel({
   }
 
   return (
-    <section className="space-y-3 rounded-lg border border-gray-200 bg-white p-4" aria-labelledby="schedule-heading">
-      <h2 id="schedule-heading" className="font-medium text-gray-900">
+    <section className="space-y-3 rounded-lg border border-line bg-white p-4" aria-labelledby="schedule-heading">
+      <h2 id="schedule-heading" className="font-medium text-ink">
         Schedule
       </h2>
-      <p className="text-sm text-gray-700">
+      <p className="text-sm text-ink-soft">
         {scheduledLabel ?? "Not scheduled yet"}
         {durationMinutes ? ` · ${durationMinutes} minutes` : " · usual visit length"}
         {assignedLabel ? ` · ${assignedLabel}` : " · nobody assigned"}
@@ -107,7 +107,7 @@ export function JobSchedulePanel({
       {canSchedule && open && (
         <div className="space-y-3">
           <div>
-            <label htmlFor="sched-when" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="sched-when" className="block text-sm font-medium text-ink-soft">
               When
             </label>
             <input
@@ -118,11 +118,11 @@ export function JobSchedulePanel({
                 setWhen(e.target.value);
                 setConflicts([]);
               }}
-              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+              className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
             />
           </div>
           <div>
-            <label htmlFor="sched-duration" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="sched-duration" className="block text-sm font-medium text-ink-soft">
               How long it takes, in minutes
             </label>
             <input
@@ -134,11 +134,11 @@ export function JobSchedulePanel({
                 setDurationText(e.target.value);
                 setConflicts([]);
               }}
-              className="mt-1 w-32 rounded-md border border-gray-300 px-3 py-2 text-sm"
+              className="mt-1 w-32 rounded-md border border-line-strong px-3 py-2 text-sm"
             />
           </div>
           <div>
-            <label htmlFor="sched-assignee" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="sched-assignee" className="block text-sm font-medium text-ink-soft">
               Who is doing it
             </label>
             <select
@@ -148,7 +148,7 @@ export function JobSchedulePanel({
                 setAssignee(e.target.value);
                 setConflicts([]);
               }}
-              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+              className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
             >
               <option value="">Nobody assigned</option>
               {teamMembers.map((m) => (
@@ -163,15 +163,15 @@ export function JobSchedulePanel({
             type="button"
             disabled={isPending}
             onClick={() => save([])}
-            className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+            className="rounded-md bg-action px-4 py-2 text-sm font-medium text-on-action disabled:opacity-60"
           >
             {isPending ? "Saving…" : "Save schedule"}
           </button>
         </div>
       )}
       {canMarkNoShow && open && (
-        <div className="border-t border-gray-100 pt-3">
-          <p className="text-sm text-gray-600">
+        <div className="border-t border-line pt-3">
+          <p className="text-sm text-ink-soft">
             If nobody was there, mark a no-show. The visit is cancelled and frees this person&apos;s time. No appliance, charge or
             credit is changed.
           </p>
@@ -179,7 +179,7 @@ export function JobSchedulePanel({
             type="button"
             disabled={isPending}
             onClick={noShow}
-            className="mt-2 rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-900 disabled:opacity-60"
+            className="mt-2 rounded-md border border-line-strong px-3 py-1.5 text-sm text-ink disabled:opacity-60"
           >
             Nobody was there (no-show)
           </button>
