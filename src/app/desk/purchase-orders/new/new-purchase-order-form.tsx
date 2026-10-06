@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { Button, Field, Select, Textarea } from "@/components/ui";
 import { createPurchaseOrderAction } from "../../purchasing-actions";
 
 type LineDraft = {
@@ -12,7 +13,12 @@ type LineDraft = {
 };
 
 function emptyLine(): LineDraft {
-  return { partRecordId: "", description: "", quantity: "1", unitCostDollars: "" };
+  return {
+    partRecordId: "",
+    description: "",
+    quantity: "1",
+    unitCostDollars: "",
+  };
 }
 
 export function NewPurchaseOrderForm({
@@ -30,21 +36,25 @@ export function NewPurchaseOrderForm({
   const [error, setError] = useState<string | null>(null);
 
   function updateLine(index: number, patch: Partial<LineDraft>) {
-    setLines((prev) => prev.map((line, i) => (i === index ? { ...line, ...patch } : line)));
+    setLines((previous) =>
+      previous.map((line, current) =>
+        current === index ? { ...line, ...patch } : line,
+      ),
+    );
   }
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  function handleSubmit(event: React.FormEvent) {
+    event.preventDefault();
     setError(null);
     startTransition(async () => {
       const result = await createPurchaseOrderAction({
         supplierId,
         notes,
-        lines: lines.map((l) => ({
-          partRecordId: l.partRecordId || undefined,
-          description: l.description,
-          quantity: l.quantity,
-          unitCostDollars: l.unitCostDollars || undefined,
+        lines: lines.map((line) => ({
+          partRecordId: line.partRecordId || undefined,
+          description: line.description,
+          quantity: line.quantity,
+          unitCostDollars: line.unitCostDollars || undefined,
         })),
       });
       if (result.status === "error") {
@@ -60,130 +70,124 @@ export function NewPurchaseOrderForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5 rounded-lg border border-line bg-white p-5">
-      <div>
-        <label htmlFor="po-supplier" className="block text-sm font-medium text-ink-soft">
-          Supplier
-        </label>
-        <select
-          id="po-supplier"
-          value={supplierId}
-          onChange={(e) => setSupplierId(e.target.value)}
-          className="mt-1 block w-full rounded-md border border-line-strong px-3 py-2 text-sm"
-        >
-          {suppliers.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div>
-        <p className="text-sm font-medium text-ink-soft">Lines</p>
-        <div className="mt-2 space-y-3">
-          {lines.map((line, i) => (
-            <div key={i} className="rounded-md border border-line p-3">
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                <div>
-                  <label htmlFor={`po-line-${i}-part`} className="block text-xs text-ink-soft">Part on file (optional)</label>
-                  <select
-                    id={`po-line-${i}-part`}
-                    value={line.partRecordId}
-                    onChange={(e) => updateLine(i, { partRecordId: e.target.value })}
-                    className="mt-1 block w-full rounded-md border border-line-strong px-2 py-1.5 text-sm"
-                  >
-                    <option value="">— Not in the parts catalog —</option>
-                    {partRecords.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label htmlFor={`po-line-${i}-description`} className="block text-xs text-ink-soft">Description</label>
-                  <input
-                    id={`po-line-${i}-description`}
-                    type="text"
-                    required
-                    value={line.description}
-                    onChange={(e) => updateLine(i, { description: e.target.value })}
-                    className="mt-1 block w-full rounded-md border border-line-strong px-2 py-1.5 text-sm"
-                  />
-                </div>
-              </div>
-              <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
-                <div>
-                  <label htmlFor={`po-line-${i}-quantity`} className="block text-xs text-ink-soft">Quantity</label>
-                  <input
-                    id={`po-line-${i}-quantity`}
-                    type="number"
-                    min={1}
-                    required
-                    value={line.quantity}
-                    onChange={(e) => updateLine(i, { quantity: e.target.value })}
-                    className="mt-1 block w-full rounded-md border border-line-strong px-2 py-1.5 text-sm"
-                  />
-                </div>
-                <div>
-                  <label htmlFor={`po-line-${i}-cost`} className="block text-xs text-ink-soft">Unit cost ($)</label>
-                  <input
-                    id={`po-line-${i}-cost`}
-                    type="number"
-                    min={0}
-                    step="0.01"
-                    value={line.unitCostDollars}
-                    onChange={(e) => updateLine(i, { unitCostDollars: e.target.value })}
-                    className="mt-1 block w-full rounded-md border border-line-strong px-2 py-1.5 text-sm"
-                  />
-                </div>
-                <div className="flex items-end">
-                  {lines.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => setLines((prev) => prev.filter((_, idx) => idx !== i))}
-                      className="text-sm text-red-700 hover:underline"
-                    >
-                      Remove line
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-        <button
-          type="button"
-          onClick={() => setLines((prev) => [...prev, emptyLine()])}
-          className="mt-2 text-sm text-ink-soft underline"
-        >
-          + Add another line
-        </button>
-      </div>
-
-      <div>
-        <label htmlFor="po-notes" className="block text-sm font-medium text-ink-soft">
-          Notes
-        </label>
-        <textarea
-          id="po-notes"
-          rows={2}
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
-        />
-      </div>
-
-      <button
-        type="submit"
-        disabled={isPending}
-        className="rounded-md bg-action px-4 py-2 text-sm font-medium text-on-action hover:bg-action disabled:opacity-50"
+    <form onSubmit={handleSubmit} className="space-y-5">
+      <Select
+        id="po-supplier"
+        label="Supplier"
+        value={supplierId}
+        onChange={(event) => setSupplierId(event.target.value)}
       >
+        {suppliers.map((supplier) => (
+          <option key={supplier.id} value={supplier.id}>
+            {supplier.name}
+          </option>
+        ))}
+      </Select>
+
+      <fieldset className="space-y-3">
+        <legend className="text-sm font-semibold text-ink">Lines</legend>
+        {lines.map((line, index) => (
+          <div
+            key={index}
+            className="space-y-3 rounded-card border border-line bg-subtle p-4"
+          >
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Select
+                id={`po-line-${index}-part`}
+                label="Part on file (optional)"
+                value={line.partRecordId}
+                onChange={(event) =>
+                  updateLine(index, { partRecordId: event.target.value })
+                }
+              >
+                <option value="">— Not in the parts catalog —</option>
+                {partRecords.map((part) => (
+                  <option key={part.id} value={part.id}>
+                    {part.label}
+                  </option>
+                ))}
+              </Select>
+              <Field
+                id={`po-line-${index}-description`}
+                label="Description"
+                required
+                value={line.description}
+                onChange={(event) =>
+                  updateLine(index, { description: event.target.value })
+                }
+              />
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <Field
+                id={`po-line-${index}-quantity`}
+                label="Quantity"
+                type="number"
+                min={1}
+                required
+                value={line.quantity}
+                onChange={(event) =>
+                  updateLine(index, { quantity: event.target.value })
+                }
+              />
+              <Field
+                id={`po-line-${index}-cost`}
+                label="Unit cost ($)"
+                type="number"
+                min={0}
+                step="0.01"
+                value={line.unitCostDollars}
+                onChange={(event) =>
+                  updateLine(index, { unitCostDollars: event.target.value })
+                }
+              />
+              {lines.length > 1 && (
+                <div className="flex items-end">
+                  <Button
+                    type="button"
+                    variant="quiet"
+                    className="text-danger"
+                    onClick={() =>
+                      setLines((previous) =>
+                        previous.filter(
+                          (_, current) => current !== index,
+                        ),
+                      )
+                    }
+                  >
+                    Remove line
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={() =>
+            setLines((previous) => [...previous, emptyLine()])
+          }
+        >
+          Add another line
+        </Button>
+      </fieldset>
+
+      <Textarea
+        id="po-notes"
+        label="Notes"
+        rows={2}
+        value={notes}
+        onChange={(event) => setNotes(event.target.value)}
+      />
+
+      <Button type="submit" disabled={isPending}>
         {isPending ? "Creating…" : "Create purchase order"}
-      </button>
+      </Button>
+
       {error && (
-        <p role="alert" className="text-sm text-red-700">
+        <p role="alert" className="text-sm font-semibold text-danger">
           {error}
         </p>
       )}
