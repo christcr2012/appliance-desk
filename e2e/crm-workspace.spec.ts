@@ -146,7 +146,10 @@ test("lead search/filter URL survives browser back and links its follow-up", asy
   await page.goto(
     `/desk/leads?view=no-next-task&q=${encodeURIComponent(name)}`,
   );
-  const row = page.getByRole("listitem").filter({ hasText: name });
+  const row = page
+    .locator("main tr:visible, main li:visible")
+    .filter({ hasText: name })
+    .first();
   await expect(row).toBeVisible();
   await row.getByRole("link", { name: "Add next task" }).click();
   await expect(page).toHaveURL(/#follow-up$/);
