@@ -23,8 +23,8 @@ export const metadata = { title: "Lead" };
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div>
-      <dt className="text-sm text-gray-500">{label}</dt>
-      <dd className="text-gray-900">{value}</dd>
+      <dt className="text-sm text-ink-faint">{label}</dt>
+      <dd className="text-ink">{value}</dd>
     </div>
   );
 }
@@ -67,7 +67,7 @@ export default async function LeadDetailPage({
     <div className="max-w-3xl">
       <Link
         href="/desk/leads"
-        className="text-sm text-gray-600 hover:underline"
+        className="text-sm text-ink-soft hover:underline"
       >
         &larr; Back to leads
       </Link>
@@ -128,7 +128,7 @@ export default async function LeadDetailPage({
         )}
       </SectionCard>
 
-      <div className="mt-6 rounded-lg border border-gray-200 bg-white p-5">
+      <div className="mt-6 rounded-lg border border-line bg-white p-5">
         <LeadActionsPanel
           leadId={lead.id}
           status={lead.status}
@@ -136,7 +136,7 @@ export default async function LeadDetailPage({
         />
       </div>
 
-      <dl className="mt-6 grid grid-cols-1 gap-4 rounded-lg border border-gray-200 bg-white p-5 sm:grid-cols-2">
+      <dl className="mt-6 grid grid-cols-1 gap-4 rounded-lg border border-line bg-white p-5 sm:grid-cols-2">
         <Field label="Phone" value={lead.phone} />
         <Field label="Email" value={lead.email ?? "(not given)"} />
         <Field
@@ -194,8 +194,8 @@ export default async function LeadDetailPage({
         )}
       </dl>
 
-      <div className="mt-6 rounded-lg border border-gray-200 bg-white p-5">
-        <h2 className="font-medium text-gray-900">
+      <div className="mt-6 rounded-lg border border-line bg-white p-5">
+        <h2 className="font-medium text-ink">
           Score: {lead.score}
           {lead.isHighValue && (
             <span className="ml-2 rounded bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
@@ -204,7 +204,7 @@ export default async function LeadDetailPage({
           )}
         </h2>
         {scoreReasons.length > 0 && (
-          <ul className="mt-2 list-disc pl-5 text-sm text-gray-700">
+          <ul className="mt-2 list-disc pl-5 text-sm text-ink-soft">
             {scoreReasons.map((reason) => (
               <li key={reason}>{reason}</li>
             ))}
@@ -213,9 +213,9 @@ export default async function LeadDetailPage({
       </div>
 
       {lead.notes && (
-        <div className="mt-6 rounded-lg border border-gray-200 bg-white p-5">
-          <h2 className="font-medium text-gray-900">Notes from the lead</h2>
-          <p className="mt-2 whitespace-pre-wrap text-sm text-gray-700">
+        <div className="mt-6 rounded-lg border border-line bg-white p-5">
+          <h2 className="font-medium text-ink">Notes from the lead</h2>
+          <p className="mt-2 whitespace-pre-wrap text-sm text-ink-soft">
             {lead.notes}
           </p>
         </div>
@@ -225,28 +225,28 @@ export default async function LeadDetailPage({
         <LinkedTasksPanel linkType="lead" linkId={lead.id} tasks={tasks} />
       </div>
 
-      <div className="mt-6 rounded-lg border border-gray-200 bg-white p-5">
-        <h2 className="font-medium text-gray-900">Contact history</h2>
-        <p className="mt-1 text-xs text-gray-500">
+      <div className="mt-6 rounded-lg border border-line bg-white p-5">
+        <h2 className="font-medium text-ink">Contact history</h2>
+        <p className="mt-1 text-xs text-ink-faint">
           Log every call, email, text, or in-person conversation here — it stays
           with this lead even after it&apos;s converted or lost.
         </p>
         <AddLeadNoteForm leadId={lead.id} />
 
         {notes.length === 0 ? (
-          <p className="mt-4 text-sm text-gray-600">Nothing logged yet.</p>
+          <p className="mt-4 text-sm text-ink-soft">Nothing logged yet.</p>
         ) : (
-          <ul className="mt-4 space-y-3 border-t border-gray-100 pt-4">
+          <ul className="mt-4 space-y-3 border-t border-line pt-4">
             {notes.map((note) => (
               <li key={note.id} className="text-sm">
                 <div className="flex items-baseline justify-between gap-3">
-                  <p className="text-gray-700">{note.body}</p>
-                  <span className="shrink-0 text-xs text-gray-500">
+                  <p className="text-ink-soft">{note.body}</p>
+                  <span className="shrink-0 text-xs text-ink-faint">
                     {timeAgo(note.createdAt)}
                   </span>
                 </div>
                 {note.author && (
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-ink-faint">
                     — {note.author.name ?? note.author.email}
                   </p>
                 )}
