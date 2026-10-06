@@ -449,7 +449,7 @@ Because this is one script that stops at its first failure (`&&` between each st
 
 **What Chris still needs to do by hand:** nothing, for a normal additive migration — merging the PR and Vercel's own deploy now does it all. He's only asked to do anything when a migration trips the destructive-change check, and even then the action is "confirm this is safe" and record it, not "figure out and paste raw SQL."
 
-**Neon ↔ Vercel preview branching:** not yet enabled. It's the kind of thing worth turning on once the team is actively merging PRs that touch the schema, so preview deployments get their own isolated database branch instead of sharing production data. Tracked in `docs/ROADMAP.md`.
+**Neon ↔ Vercel preview isolation:** previews already use the verified shared `vercel-preview-2` Neon branch rather than production, enforced by `src/lib/preview-database-safety.ts`. What is **not** enabled is one fresh Neon branch per individual preview deployment. That optional stronger isolation remains in `docs/ROADMAP.md`.
 
 **Branch protection:** Neon's free plan caps the number of protected branches, and the account already has one from a prior project, so `main` is not marked "protected" in Neon yet. It's still safe: the database it backs isn't publicly reachable except through this app, and (once billing allows) protecting it is a one-click follow-up — see `docs/DECISIONS.md`.
 
