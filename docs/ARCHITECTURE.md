@@ -506,14 +506,37 @@ A final `ci` job (the historical required-check name) succeeds only if every job
 
 | Job | What it does | Expected |
 |---|---|---|
-| classify | decides docs-only vs code (checkout only, no install) | ~10s |
-| secret scan | `scripts/check-secrets.mjs` + gitleaks (pinned, checksum-verified) over the full git history; always runs | ~20s |
-| type-check, lint and repo checks | `npm ci`, then typecheck and lint at the same time, browser-group check, migration check | ~1–1.5 min |
-| unit tests ×3 | each shard: own Postgres, migrate, seed, `vitest --shard=N/3`; shard 1 also runs schema-health and migration-upgrade drills | ~1.5 min |
-| browser tests ×4 | each shard: own Postgres, migrate, seed, production build (cached), its spec group from `e2e/shards.json` | ~3 min |
-| ci (gate) | passes only if everything required passed | ~5s |
+| classify | decides docs-only vs code (checkout only, no install) | ~6s |
+| secret scan | `scripts/check-secrets.mjs` + gitleaks (pinned, checksum-verified) over the full git history; always runs | ~10s |
+| type-check, lint and repo checks | dependencies (cached), then typecheck and lint at the same time, browser-group check, migration check | ~1–1.3 min |
+| unit tests ×3 | each shard: own Postgres, migrate, seed, `vitest --shard=N/3`; shard 1 also runs schema-health and migration-upgrade drills | ~1.3–1.8 min |
+| browser tests ×4 | each shard: own Postgres, migrate, seed, production build (cached), its spec group from `e2e/shards.json` | ~2–2.5 min |
+| ci (gate) | passes only if everything required passed | ~3s |
 
-Wall-clock for a full run is the slowest job (browser shards): fixed setup of roughly two minutes (container, `npm ci`, `next build`, browser OS libraries) plus about a minute of tests. Getting a browser run under about 2–3 minutes is not realistic with a full production build; unit/lint feedback is faster and arrives first.
+Wall-clock for a full run is the slowest browser shard: about a minute of fixed setup (container, dependencies, build,
+browser) plus 1–1.5 minutes of tests. Measured 2026-10-06 on PR #266: **2 min 31 s** with warm caches (the same kind of run took
+4 min 4 s before) and 3 min 10 s on a cold dependency cache; the four browser shards finished within 2 s of each other
+(123–125 s). Before the change, runs took 3.5–6.3 min (the 6.3 min run was one 3.5-minute apt download).
+
+**How the speed is kept (PR #266, 2026-10-06):**
+
+- **Pinned runner image `ubuntu-24.04`.** `ubuntu-latest` moves to Ubuntu 26 from 2026-10-19; moving is a deliberate
+  PR (check Playwright's library check and Postgres service), never a surprise.
+- **Cached `node_modules`** through `.github/actions/setup-deps` (used by every job that needs dependencies). The key
+  is the exact `package-lock.json` + `prisma/schema.prisma` + `prisma.config.ts`; a hit skips `npm ci` (the folder
+  already holds the generated Prisma client), a miss does a clean `npm ci`. There is no partial restore, so a changed
+  lockfile or schema can never reuse stale packages.
+- **No apt on a normal run.** The browser is restored from cache first; `ldd` lists any shared library the browser
+  binaries cannot find. None → apt is skipped. Anything missing → `npx playwright install-deps chromium` runs
+  detached in the background during migrations, seed and build; a later step waits for it and fails the job if it
+  failed. (apt used to cost 11–26 s per shard and once 3 min 27 s.)
+- **Read-only scans use both Playwright workers.** The generated accessibility route specs and the owner/portal
+  read-only section scans declare `test.describe.configure({ mode: "parallel" })`. Only tests that never change data may
+  be in a parallel group; tests that save and restore settings stay in normal file order.
+- **Groups balanced by measured test-seconds** printed by `scripts/e2e-shard.mjs` (notice per shard).
+- **Runs on `main` are never cancelled** (`cancel-in-progress` only for pull requests), so every merged commit has a
+  complete result; a newer push to a PR still cancels that PR's stale run.
+- **Action versions on Node 24:** checkout v5, setup-node v6, cache v5, upload-artifact v6.
 
 ### When CI runs
 
@@ -536,10 +559,11 @@ Wall-clock for a full run is the slowest job (browser shards): fixed setup of ro
 2. **Never make jobs wait for each other.** The wall-clock of a run is its slowest job. New checks join the `static` or `secrets` job, or become a new parallel job; they never chain after the browser shards.
 3. **Keep the slowest job the browser shard, and keep shards even.** Rebalance `e2e/shards.json` from the printed durations whenever one group is clearly longest; add a group (one entry in `shards.json` plus one in the workflow matrix) rather than letting a shard pass about 2 minutes of test time.
 4. **Tests go to the cheapest layer.** Business rules, money, permissions and concurrency belong in vitest against real Postgres; a browser spec is for axe, real sessions, headers and one click-through per major flow.
-5. **Protect the caches.** Do not change `package-lock.json` or the Next/Playwright cache keys casually; a cold cache adds about a minute to every shard.
+5. **Protect the caches.** Do not change `package-lock.json`, `prisma/schema.prisma` or the node_modules/Next/Playwright cache keys casually; a cold dependency cache adds about 15 s to every job and a cold Next cache about a minute to every shard.
 6. **Add vitest shards before it hurts.** When a unit shard nears 2 minutes, raise the matrix size and the `--shard=N/M` denominator together.
-7. **No sleeps, no per-test logins, no network calls to real providers** in tests; they are the usual cause of slow or flaky suites.
-8. **Keep the gate honest.** Any new required job is added to the `ci` job's check list, and a job that is skipped for docs-only changes must still be reported as skipped, never missing.
+7. **Parallel groups are for read-only tests only.** Before adding `mode: "parallel"` to a describe, check that no test in it saves, deletes or changes data another test reads.
+8. **No sleeps, no per-test logins, no network calls to real providers** in tests; they are the usual cause of slow or flaky suites.
+9. **Keep the gate honest.** Any new required job is added to the `ci` job's check list, and a job that is skipped for docs-only changes must still be reported as skipped, never missing.
 9. **Update this file** when the layout changes (job list, shard count, expected times).
 
 ### Rules when adding tests

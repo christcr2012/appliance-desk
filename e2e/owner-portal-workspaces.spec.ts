@@ -39,72 +39,78 @@ for (const role of ["owner", "customer"] as const) {
         "Disposable CI role fixtures only",
       );
     });
-    for (const width of [360, 768, 1440])
-      for (const theme of ["light", "dark"]) {
-        test(`sections at ${width}px ${theme}`, async ({ page }, info) => {
-          test.setTimeout(90_000);
-          await page.setViewportSize({ width, height: 900 });
-          await page.addInitScript(
-            (mode) => localStorage.setItem("theme", mode),
-            theme,
-          );
-          const routes =
-            role === "owner"
-              ? [
-                  "profile",
-                  "service-area",
-                  "products",
-                  "policies",
-                  "terms",
-                  "pickups",
-                  "jobs",
-                  "website",
-                  "notifications",
-                  "staff",
-                  "integrations",
-                ]
-                  .map((section) => `/desk/settings?section=${section}`)
-                  .concat("/desk/billing?filter=delinquent")
-                  .concat("/desk/settings/website")
-                  .concat("/desk/billing?filter=deposits")
-                  .concat("/desk/billing?filter=waiting")
-              : [
-                  "/account",
-                  "/account/rentals",
-                  "/account/billing",
-                  "/account/maintenance",
-                  "/account/settings",
-                ];
-          for (const route of routes) {
-            await page.goto(route);
-            await expect(page.locator("main h1")).toBeVisible();
-            await accessible(page);
-            const capture =
-              role === "customer"
-                ? width !== 768
-                : route === routes[0] || route.includes("section=products");
-            if (capture) {
-              const routeLabel =
+    // The section scans below only read pages (no data changes), so they may run on
+    // both Playwright workers at once. The tests further down that save and restore
+    // settings stay in this file's normal one-after-another order.
+    test.describe("read-only section scans", () => {
+      test.describe.configure({ mode: "parallel" });
+      for (const width of [360, 768, 1440])
+        for (const theme of ["light", "dark"]) {
+          test(`sections at ${width}px ${theme}`, async ({ page }, info) => {
+            test.setTimeout(90_000);
+            await page.setViewportSize({ width, height: 900 });
+            await page.addInitScript(
+              (mode) => localStorage.setItem("theme", mode),
+              theme,
+            );
+            const routes =
+              role === "owner"
+                ? [
+                    "profile",
+                    "service-area",
+                    "products",
+                    "policies",
+                    "terms",
+                    "pickups",
+                    "jobs",
+                    "website",
+                    "notifications",
+                    "staff",
+                    "integrations",
+                  ]
+                    .map((section) => `/desk/settings?section=${section}`)
+                    .concat("/desk/billing?filter=delinquent")
+                    .concat("/desk/settings/website")
+                    .concat("/desk/billing?filter=deposits")
+                    .concat("/desk/billing?filter=waiting")
+                : [
+                    "/account",
+                    "/account/rentals",
+                    "/account/billing",
+                    "/account/maintenance",
+                    "/account/settings",
+                  ];
+            for (const route of routes) {
+              await page.goto(route);
+              await expect(page.locator("main h1")).toBeVisible();
+              await accessible(page);
+              const capture =
                 role === "customer"
-                  ? route.replaceAll("/", "-").replace(/[^a-z0-9-]+/gi, "-").replace(/^-|-$/g, "")
-                  : route.includes("section=products")
-                    ? "products"
-                    : "home";
-              const image = info.outputPath(
-                `${role}-${width}-${theme}-${routeLabel}.png`,
-              );
-              await page.screenshot({ path: image, fullPage: true });
-              await info.attach(
-                `${role}-${width}-${theme}-${routeLabel}`,
-                {
-                  path: image,
-                  contentType: "image/png",
-                },
-              );
+                  ? width !== 768
+                  : route === routes[0] || route.includes("section=products");
+              if (capture) {
+                const routeLabel =
+                  role === "customer"
+                    ? route.replaceAll("/", "-").replace(/[^a-z0-9-]+/gi, "-").replace(/^-|-$/g, "")
+                    : route.includes("section=products")
+                      ? "products"
+                      : "home";
+                const image = info.outputPath(
+                  `${role}-${width}-${theme}-${routeLabel}.png`,
+                );
+                await page.screenshot({ path: image, fullPage: true });
+                await info.attach(
+                  `${role}-${width}-${theme}-${routeLabel}`,
+                  {
+                    path: image,
+                    contentType: "image/png",
+                  },
+                );
+              }
             }
-          }
-        });
-      }
+          });
+        }
+    });
     if (role === "customer") {
       for (const theme of ["light", "dark"] as const) {
         test(`portal home bottom tabs at 390px ${theme}`, async ({ page }) => {

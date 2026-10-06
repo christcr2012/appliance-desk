@@ -1,26 +1,26 @@
 {
-  "_comment": "Explicit CI shard assignment for the browser suite (4 parallel runners). Every e2e/*.spec.ts must appear in exactly one group (scripts/e2e-shard.mjs enforces this in CI). E10 generated route coverage replaces the old duplicate axe route loops; focused legacy keyboard/menu/theme regressions remain. Generated scans are split across browser-b/c/d from measured runtimes; no fifth runner.",
+  "_comment": "Explicit CI shard assignment for the browser suite (4 parallel runners). Every e2e/*.spec.ts must appear in exactly one group (scripts/e2e-shard.mjs enforces this in CI). E10 generated route coverage replaces the old duplicate axe route loops; focused legacy keyboard/menu/theme regressions remain. Generated scans are split across browser-b/c/d from measured runtimes; no fifth runner. 2026-10-06 (PR #266): the generated route scans and the read-only owner/portal section scans run in Playwright parallel mode (both workers), and groups were rebalanced from measured test-seconds after that change (a 158, b 94, c 105, d 133) to roughly 111-126 each.",
   "groups": {
     "browser-a": [
-      "owner-portal-workspaces.spec.ts",
-      "fleet-report.spec.ts"
+      "owner-portal-workspaces.spec.ts"
     ],
     "browser-b": [
       "revenue-records.spec.ts",
       "accessibility-dark-mode.spec.ts",
-      "accessibility-routes-public.spec.ts"
+      "accessibility-routes-public.spec.ts",
+      "fleet-report.spec.ts",
+      "rental-builder-recovery.spec.ts"
     ],
     "browser-c": [
       "crm-workspace.spec.ts",
       "appliance-price-save-feedback.spec.ts",
       "purchasing-review.spec.ts",
-      "accessibility-routes-desk-a.spec.ts"
+      "accessibility-routes-desk-a.spec.ts",
+      "desk-workspace.spec.ts",
+      "staff-security.spec.ts"
     ],
     "browser-d": [
-      "staff-security.spec.ts",
-      "desk-workspace.spec.ts",
       "accessibility.spec.ts",
-      "rental-builder-recovery.spec.ts",
       "task-assignment.spec.ts",
       "inventory-bulk-feedback.spec.ts",
       "session-deactivation.spec.ts",
