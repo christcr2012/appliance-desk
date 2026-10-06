@@ -35,20 +35,4 @@ stateful or generated per run:
 - `/desk/purchase-orders/[id]` — generated purchase-order id and lifecycle state.
 - `/desk/suppliers/[id]` — generated supplier id.
 
-The deterministic CI fixtures **are** used for `/scan/CI-SECURITY-UNIT`,
-`/desk/inventory/ci-security-appliance`, and `/desk/jobs/ci-security-job` (including their QR/work-order routes).
-
-## What automation does not prove
-
-Before launch, manual accessibility review still covers:
-
-- screen-reader reading order, landmarks, names, descriptions, and announcements;
-- full keyboard-only workflows, including dialogs, validation recovery, and destructive confirmations;
-- 200% and 400% zoom/reflow and text spacing;
-- touch target size and mobile ergonomics;
-- meaning, clarity, cognitive load, and whether instructions make sense without visual context;
-- focus order after async updates and route changes;
-- real forced-colors/high-contrast behavior on supported operating systems;
-- real assistive-technology behavior for document/signing/payment flows.
-
-Record any manual finding as a normal product defect; do not describe the product as “WCAG certified.”
+The de...[truncated]
