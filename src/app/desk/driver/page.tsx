@@ -1,4 +1,5 @@
 import { getDriverJobsForToday } from "@/domains/jobs";
+import { EmptyState, PageHeader } from "@/components/ui";
 import { DriverJobCard } from "./driver-job-card";
 
 export const metadata = { title: "Driver view" };
@@ -12,43 +13,52 @@ export default async function DriverViewPage() {
 
   return (
     <div className="mx-auto max-w-md">
-      <h1 className="text-xl font-semibold">Shared team route</h1>
-      <p className="mt-1 text-sm text-ink-soft">All scheduled visits for the team today.</p>
-      <p className="mt-1 text-sm text-ink-soft">
-        {jobs.length === 0
-          ? "Nothing scheduled for today."
-          : `${jobs.length} stop${jobs.length === 1 ? "" : "s"} today, in order.`}
-      </p>
+      <PageHeader
+        title="Shared team route"
+        description="All scheduled visits for the team today."
+      />
 
-      <div className="mt-4 space-y-4">
-        {jobs.map((job) => (
-          <DriverJobCard
-            key={job.id}
-            job={{
-              id: job.id,
-              type: job.type,
-              status: job.status,
-              scheduledAt: job.scheduledAt,
-              notes: job.notes,
-              customerName: job.customer?.user.name ?? null,
-              customerPhone: job.customer?.phone ?? null,
-              address: job.serviceAddress
-                ? {
-                    line1: job.serviceAddress.line1,
-                    line2: job.serviceAddress.line2,
-                    city: job.serviceAddress.city,
-                    state: job.serviceAddress.state,
-                    zip: job.serviceAddress.zip,
-                  }
-                : null,
-              appliances: job.appliances.map((a) => ({
-                id: a.appliance.id,
-                label: `${a.appliance.applianceType.name} — ${a.appliance.assetNumber}`,
-              })),
-            }}
-          />
-        ))}
-      </div>
+      {jobs.length === 0 ? (
+        <EmptyState
+          title="Nothing scheduled for today"
+          description="Scheduled visits will appear here in route order."
+        />
+      ) : (
+        <>
+          <p className="mb-4 text-sm text-ink-soft">
+            {jobs.length} stop{jobs.length === 1 ? "" : "s"} today, in order.
+          </p>
+          <div className="space-y-4">
+            {jobs.map((job) => (
+              <DriverJobCard
+                key={job.id}
+                job={{
+                  id: job.id,
+                  type: job.type,
+                  status: job.status,
+                  scheduledAt: job.scheduledAt,
+                  notes: job.notes,
+                  customerName: job.customer?.user.name ?? null,
+                  customerPhone: job.customer?.phone ?? null,
+                  address: job.serviceAddress
+                    ? {
+                        line1: job.serviceAddress.line1,
+                        line2: job.serviceAddress.line2,
+                        city: job.serviceAddress.city,
+                        state: job.serviceAddress.state,
+                        zip: job.serviceAddress.zip,
+                      }
+                    : null,
+                  appliances: job.appliances.map((item) => ({
+                    id: item.appliance.id,
+                    label: `${item.appliance.applianceType.name} — ${item.appliance.assetNumber}`,
+                  })),
+                }}
+              />
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }
