@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui";
 import { endMonthToMonthRentalAction } from "./actions";
 
 export function EndRental(props: {
@@ -19,8 +20,9 @@ export function EndRental(props: {
 
   return (
     <div className="mt-3">
-      <button
+      <Button
         type="button"
+        variant="secondary"
         disabled={pending}
         onClick={() => {
           setError(null);
@@ -36,12 +38,11 @@ export function EndRental(props: {
             else router.refresh();
           });
         }}
-        className="min-h-11 rounded-lg border border-control px-4 py-2 text-sm text-primary hover:bg-subtle disabled:opacity-60"
       >
         {pending ? "Saving…" : `End my rental on ${props.effectiveLabel}`}
-      </button>
+      </Button>
       {error && (
-        <p role="alert" className="mt-2 text-sm text-red-800">
+        <p role="alert" className="mt-2 text-sm font-semibold text-danger">
           {error}
         </p>
       )}
