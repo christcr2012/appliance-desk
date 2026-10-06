@@ -3,12 +3,21 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
+  Button,
+  ButtonLink,
+  Card,
+  EmptyState,
+  Field,
+  StatusPill,
+  Textarea,
+} from "@/components/ui";
+import {
   publishWebsiteDraftAction,
   restoreWebsiteVersionAction,
   saveWebsiteDraftAction,
 } from "./actions";
 
-type Field = {
+type FieldDefinition = {
   key: string;
   label: string;
   help: string;
@@ -19,9 +28,22 @@ type Field = {
   default: string;
 };
 
-type HistoryRow = { id: string; version: number; live: boolean; when: string; by: string | null; note: string | null };
+type HistoryRow = {
+  id: string;
+  version: number;
+  live: boolean;
+  when: string;
+  by: string | null;
+  note: string | null;
+};
 
-const MAX: Record<Field["kind"], number> = { short: 120, paragraph: 2000, url: 500, alt: 160, meta: 160 };
+const MAX: Record<FieldDefinition["kind"], number> = {
+  short: 120,
+  paragraph: 2000,
+  url: 500,
+  alt: 160,
+  meta: 160,
+};
 
 const PREVIEW_PATH: Record<string, string> = {
   "Home page": "/",
@@ -47,7 +69,7 @@ export function WebsiteEditor({
   draft,
   history,
 }: {
-  fields: Field[];
+  fields: FieldDefinition[];
   defaults: Record<string, string>;
   live: Record<string, string>;
   start: Record<string, string>;
@@ -60,22 +82,46 @@ export function WebsiteEditor({
   const [draftRef, setDraftRef] = useState(draft);
   const [busy, setBusy] = useState(false);
   const [confirming, setConfirming] = useState(false);
-  const [message, setMessage] = useState<{ kind: "success" | "error"; text: string } | null>(null);
+  const [message, setMessage] = useState<
+    { kind: "success" | "error"; text: string } | null
+  >(null);
 
-  const dirty = useMemo(() => fields.some((f) => (values[f.key] ?? "") !== (saved[f.key] ?? "")), [fields, values, saved]);
+  const dirty = useMemo(
+    () =>
+      fields.some(
+        (field) =>
+          (values[field.key] ?? "") !== (saved[field.key] ?? ""),
+      ),
+    [fields, values, saved],
+  );
   const changedFromLive = useMemo(
-    () => fields.filter((f) => (saved[f.key] ?? "") !== (live[f.key] ?? "")),
+    () =>
+      fields.filter(
+        (field) =>
+          (saved[field.key] ?? "") !== (live[field.key] ?? ""),
+      ),
     [fields, saved, live],
   );
 
   const groups = useMemo(() => {
-    const out: { page: string; sections: { section: string; items: Field[] }[] }[] = [];
-    for (const f of fields) {
-      let page = out.find((p) => p.page === f.page);
-      if (!page) out.push((page = { page: f.page, sections: [] }));
-      let sec = page.sections.find((s) => s.section === f.section);
-      if (!sec) page.sections.push((sec = { section: f.section, items: [] }));
-      sec.items.push(f);
+    const out: {
+      page: string;
+      sections: { section: string; items: FieldDefinition[] }[];
+    }[] = [];
+    for (const field of fields) {
+      let page = out.find((item) => item.page === field.page);
+      if (!page) {
+        page = { page: field.page, sections: [] };
+        out.push(page);
+      }
+      let section = page.sections.find(
+        (item) => item.section === field.section,
+      );
+      if (!section) {
+        section = { section: field.section, items: [] };
+        page.sections.push(section);
+      }
+      section.items.push(field);
     }
     return out;
   }, [fields]);
@@ -85,11 +131,12 @@ export function WebsiteEditor({
     setMessage(null);
     setConfirming(false);
     try {
-      // Only what differs from the starting text is stored; an empty box means "use the starting text".
       const changes: Record<string, string> = {};
-      for (const f of fields) {
-        const v = (values[f.key] ?? "").trim();
-        if (v !== (defaults[f.key] ?? "")) changes[f.key] = v;
+      for (const field of fields) {
+        const value = (values[field.key] ?? "").trim();
+        if (value !== (defaults[field.key] ?? "")) {
+          changes[field.key] = value;
+        }
       }
       const result = await saveWebsiteDraftAction({
         draftId: draftRef?.id,
@@ -97,14 +144,23 @@ export function WebsiteEditor({
         fields: changes,
       });
       if (result.status === "saved") {
-        setDraftRef({ id: result.draftId, version: result.version });
+        setDraftRef({
+          id: result.draftId,
+          version: result.version,
+        });
         setSaved(values);
-        setMessage({ kind: "success", text: "Draft saved. Visitors still see the old text until you publish." });
+        setMessage({
+          kind: "success",
+          text: "Draft saved. Visitors still see the old text until you publish.",
+        });
       } else if (result.status === "error") {
         setMessage({ kind: "error", text: result.message });
       }
     } catch {
-      setMessage({ kind: "error", text: "That could not be saved. Your changes are still on the screen; please try again." });
+      setMessage({
+        kind: "error",
+        text: "That could not be saved. Your changes are still on the screen; please try again.",
+      });
     } finally {
       setBusy(false);
     }
@@ -115,16 +171,25 @@ export function WebsiteEditor({
     setBusy(true);
     setMessage(null);
     try {
-      const result = await publishWebsiteDraftAction(draftRef.id, draftRef.version);
+      const result = await publishWebsiteDraftAction(
+        draftRef.id,
+        draftRef.version,
+      );
       if (result.status === "done") {
         setConfirming(false);
-        setMessage({ kind: "success", text: "Published. The public website now shows your text." });
+        setMessage({
+          kind: "success",
+          text: "Published. The public website now shows your text.",
+        });
         router.refresh();
       } else if (result.status === "error") {
         setMessage({ kind: "error", text: result.message });
       }
     } catch {
-      setMessage({ kind: "error", text: "That could not be published. Please try again." });
+      setMessage({
+        kind: "error",
+        text: "That could not be published. Please try again.",
+      });
     } finally {
       setBusy(false);
     }
@@ -136,131 +201,182 @@ export function WebsiteEditor({
     try {
       const result = await restoreWebsiteVersionAction(id);
       if (result.status === "done") {
-        setMessage({ kind: "success", text: `Version ${version} is live again (saved as a new version).` });
+        setMessage({
+          kind: "success",
+          text: `Version ${version} is live again (saved as a new version).`,
+        });
         router.refresh();
       } else if (result.status === "error") {
         setMessage({ kind: "error", text: result.message });
       }
     } catch {
-      setMessage({ kind: "error", text: "That could not be restored. Please try again." });
+      setMessage({
+        kind: "error",
+        text: "That could not be restored. Please try again.",
+      });
     } finally {
       setBusy(false);
     }
   }
-
-  const buttonBase = "inline-flex min-h-11 items-center rounded-lg px-4 text-sm font-semibold disabled:opacity-50";
-  const primary = `${buttonBase} bg-primary text-white`;
-  const secondary = `${buttonBase} border border-line-strong text-ink`;
 
   return (
     <div className="mt-6 space-y-8">
       {message && (
         <p
           role={message.kind === "error" ? "alert" : "status"}
-          className={`rounded-lg px-4 py-3 text-sm ${message.kind === "success" ? "bg-green-50 text-green-900" : "bg-red-50 text-red-900"}`}
+          className={`rounded-control border border-line bg-subtle px-4 py-3 text-sm font-medium ${
+            message.kind === "success" ? "text-success" : "text-danger"
+          }`}
         >
           {message.text}
         </p>
       )}
 
       {groups.map((group) => (
-        <section key={group.page} aria-labelledby={`page-${group.page}`} className="rounded-xl border border-line-strong p-5">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 id={`page-${group.page}`} className="text-lg font-semibold text-ink">
-              {group.page}
-            </h2>
-            {draftRef && PREVIEW_PATH[group.page] && (
-              <a
-                className="text-sm font-medium text-primary underline"
+        <Card
+          key={group.page}
+          title={group.page}
+          actions={
+            draftRef && PREVIEW_PATH[group.page] ? (
+              <ButtonLink
                 href={`${PREVIEW_PATH[group.page]}?revision=${draftRef.id}`}
+                variant="secondary"
                 target="_blank"
                 rel="noopener noreferrer"
               >
                 Preview {group.page.toLowerCase()} with my saved draft (opens a new tab)
-              </a>
-            )}
-          </div>
-          {group.sections.map((sec) => (
-            <fieldset key={sec.section} className="mt-5 space-y-5">
-              <legend className="text-sm font-semibold uppercase tracking-wide text-ink-soft">{sec.section}</legend>
-              {sec.items.map((f) => {
-                const id = `f-${f.key}`;
-                const value = values[f.key] ?? "";
-                const max = MAX[f.kind];
-                const multiline = f.kind === "paragraph";
-                return (
-                  <div key={f.key}>
-                    <label htmlFor={id} className="block text-sm font-medium text-ink">
-                      {f.label}
-                    </label>
-                    {f.ownerInput && (
-                      <p className="mt-1 text-xs font-semibold text-amber-900">
-                        Needs your decision ({f.ownerInput}) — it stays as it is until you change it.
+              </ButtonLink>
+            ) : undefined
+          }
+        >
+          <div className="space-y-6">
+            {group.sections.map((section) => (
+              <fieldset key={section.section} className="space-y-5">
+                <legend className="text-sm font-semibold uppercase tracking-wide text-ink-soft">
+                  {section.section}
+                </legend>
+
+                {section.items.map((field) => {
+                  const id = `f-${field.key}`;
+                  const value = values[field.key] ?? "";
+                  const max = MAX[field.kind];
+                  const multiline = field.kind === "paragraph";
+
+                  return (
+                    <div key={field.key} className="space-y-2">
+                      {field.ownerInput && (
+                        <div className="flex flex-wrap items-center gap-2">
+                          <StatusPill tone="attention" label="Needs your decision" />
+                          <span className="text-xs text-warning-ink">
+                            {field.ownerInput} — it stays as it is until you change it.
+                          </span>
+                        </div>
+                      )}
+
+                      <div
+                        className={
+                          THUMBS[field.key]
+                            ? "flex items-start gap-3"
+                            : undefined
+                        }
+                      >
+                        {THUMBS[field.key] && (
+                          // eslint-disable-next-line @next/next/no-img-element -- fixed preview of a /public asset
+                          <img
+                            src={THUMBS[field.key]}
+                            alt=""
+                            width={96}
+                            height={64}
+                            className="mt-8 h-16 w-24 rounded-control object-cover"
+                          />
+                        )}
+                        <div className="min-w-0 flex-1">
+                          {multiline ? (
+                            <Textarea
+                              id={id}
+                              label={field.label}
+                              rows={4}
+                              value={value}
+                              maxLength={max}
+                              onChange={(event) =>
+                                setValues((current) => ({
+                                  ...current,
+                                  [field.key]: event.target.value,
+                                }))
+                              }
+                            />
+                          ) : (
+                            <Field
+                              id={id}
+                              label={field.label}
+                              type="text"
+                              value={value}
+                              maxLength={max}
+                              onChange={(event) =>
+                                setValues((current) => ({
+                                  ...current,
+                                  [field.key]: event.target.value,
+                                }))
+                              }
+                            />
+                          )}
+                        </div>
+                      </div>
+
+                      <p className="text-xs text-ink-soft">
+                        {field.help}{" "}
+                        <span>
+                          ({value.length} of {max} characters.)
+                        </span>
+                        {value !== (defaults[field.key] ?? "") && (
+                          <>
+                            {" "}
+                            <button
+                              type="button"
+                              className="font-semibold text-ink underline underline-offset-4"
+                              onClick={() =>
+                                setValues((current) => ({
+                                  ...current,
+                                  [field.key]: defaults[field.key] ?? "",
+                                }))
+                              }
+                            >
+                              Restore the starting text
+                            </button>
+                          </>
+                        )}
                       </p>
-                    )}
-                    <div className={THUMBS[f.key] ? "mt-2 flex items-start gap-3" : "mt-2"}>
-                      {THUMBS[f.key] && (
-                        // eslint-disable-next-line @next/next/no-img-element -- a small fixed preview of a file in /public
-                        <img src={THUMBS[f.key]} alt="" width={96} height={64} className="h-16 w-24 rounded-md object-cover" />
-                      )}
-                      {multiline ? (
-                        <textarea
-                          id={id}
-                          aria-describedby={`${id}-help`}
-                          value={value}
-                          maxLength={max}
-                          rows={4}
-                          onChange={(e) => setValues((c) => ({ ...c, [f.key]: e.target.value }))}
-                          className="w-full rounded-lg border border-line-strong px-3 py-2 text-sm"
-                        />
-                      ) : (
-                        <input
-                          id={id}
-                          aria-describedby={`${id}-help`}
-                          type="text"
-                          value={value}
-                          maxLength={max}
-                          onChange={(e) => setValues((c) => ({ ...c, [f.key]: e.target.value }))}
-                          className="min-h-11 w-full rounded-lg border border-line-strong px-3 text-sm"
-                        />
-                      )}
                     </div>
-                    <p id={`${id}-help`} className="mt-1 text-xs text-ink-soft">
-                      {f.help} <span>({value.length} of {max} characters.)</span>
-                      {value !== (defaults[f.key] ?? "") && (
-                        <>
-                          {" "}
-                          <button
-                            type="button"
-                            className="font-medium text-primary underline"
-                            onClick={() => setValues((c) => ({ ...c, [f.key]: defaults[f.key] ?? "" }))}
-                          >
-                            Restore the starting text
-                          </button>
-                        </>
-                      )}
-                    </p>
-                  </div>
-                );
-              })}
-            </fieldset>
-          ))}
-        </section>
+                  );
+                })}
+              </fieldset>
+            ))}
+          </div>
+        </Card>
       ))}
 
-      <div className="sticky bottom-0 z-10 rounded-xl border border-line-strong bg-surface p-4 shadow">
+      <div className="sticky bottom-0 z-10 rounded-card border border-line bg-surface p-4 shadow">
         <div className="flex flex-wrap items-center gap-3">
-          <button type="button" className={primary} disabled={busy || !dirty} onClick={save}>
-            Save draft
-          </button>
-          <button
+          <Button
             type="button"
-            className={secondary}
-            disabled={busy || dirty || !draftRef || changedFromLive.length === 0}
+            disabled={busy || !dirty}
+            onClick={save}
+          >
+            Save draft
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={
+              busy ||
+              dirty ||
+              !draftRef ||
+              changedFromLive.length === 0
+            }
             onClick={() => setConfirming(true)}
           >
             Publish…
-          </button>
+          </Button>
           <span className="text-sm text-ink-soft">
             {dirty
               ? "You have changes that are not saved yet. Save the draft first."
@@ -268,57 +384,83 @@ export function WebsiteEditor({
                 ? "No draft yet."
                 : changedFromLive.length === 0
                   ? "Your draft matches what is live."
-                  : `${changedFromLive.length} change${changedFromLive.length === 1 ? "" : "s"} waiting to be published.`}
+                  : `${changedFromLive.length} change${
+                      changedFromLive.length === 1 ? "" : "s"
+                    } waiting to be published.`}
           </span>
         </div>
+
         {confirming && (
-          <div role="group" aria-label="Confirm publishing" className="mt-4 rounded-lg border border-amber-400 bg-amber-50 p-4 text-sm text-ink">
-            <p className="font-semibold">Publish these changes to the public website?</p>
+          <div
+            role="group"
+            aria-label="Confirm publishing"
+            className="mt-4 rounded-card border border-warning-ink bg-warning-bg p-4 text-sm text-ink"
+          >
+            <p className="font-semibold">
+              Publish these changes to the public website?
+            </p>
             <ul className="mt-2 list-disc pl-5">
-              {changedFromLive.map((f) => (
-                <li key={f.key}>
-                  {f.page} — {f.section}: {f.label}
+              {changedFromLive.map((field) => (
+                <li key={field.key}>
+                  {field.page} — {field.section}: {field.label}
                 </li>
               ))}
             </ul>
-            <div className="mt-3 flex gap-3">
-              <button type="button" className={primary} disabled={busy} onClick={publish}>
+            <div className="mt-3 flex flex-wrap gap-3">
+              <Button
+                type="button"
+                disabled={busy}
+                onClick={publish}
+              >
                 Publish now
-              </button>
-              <button type="button" className={secondary} disabled={busy} onClick={() => setConfirming(false)}>
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={busy}
+                onClick={() => setConfirming(false)}
+              >
                 Not yet
-              </button>
+              </Button>
             </div>
           </div>
         )}
       </div>
 
-      <section aria-labelledby="history-heading" className="rounded-xl border border-line-strong p-5">
-        <h2 id="history-heading" className="text-lg font-semibold text-ink">
-          History
-        </h2>
+      <Card title="History">
         {history.length === 0 ? (
-          <p className="mt-2 text-sm text-ink-soft">Nothing has been published yet, so the website shows its original text.</p>
+          <EmptyState
+            title="Nothing has been published yet"
+            description="The website is still showing its original text."
+          />
         ) : (
-          <ul className="mt-3 divide-y divide-line">
-            {history.map((h) => (
-              <li key={h.id} className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm">
+          <ul className="divide-y divide-line">
+            {history.map((item) => (
+              <li
+                key={item.id}
+                className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm"
+              >
                 <span>
-                  <strong>Version {h.version}</strong>
-                  {h.live ? " — live now" : ""} · {h.when}
-                  {h.by ? ` · by ${h.by}` : ""}
-                  {h.note ? ` · ${h.note}` : ""}
+                  <strong>Version {item.version}</strong>
+                  {item.live ? " — live now" : ""} · {item.when}
+                  {item.by ? ` · by ${item.by}` : ""}
+                  {item.note ? ` · ${item.note}` : ""}
                 </span>
-                {!h.live && (
-                  <button type="button" className={secondary} disabled={busy} onClick={() => restore(h.id, h.version)}>
+                {!item.live && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    disabled={busy}
+                    onClick={() => restore(item.id, item.version)}
+                  >
                     Restore this version
-                  </button>
+                  </Button>
                 )}
               </li>
             ))}
           </ul>
         )}
-      </section>
+      </Card>
     </div>
   );
 }
