@@ -7,3 +7,5 @@ export { DataList, type DataListColumn } from "./data-list";
 export { Checkbox, Field, Select, Textarea } from "./form-controls";
 export { AttentionList, type AttentionGroup } from "./attention-list";
 export { VisitRow } from "./visit-row";
+export { AppShell } from "./app-shell";
+export { BottomTabBar, type BottomTab } from "./bottom-tab-bar";

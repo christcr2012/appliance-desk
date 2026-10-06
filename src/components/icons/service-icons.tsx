@@ -73,3 +73,28 @@ export function SupportServiceIcon({ className = "" }: IconProps) {
     </svg>
   );
 }
+
+
+export function CustomersServiceIcon({ className = "" }: IconProps) {
+  return (
+    <svg {...commonProps} className={className}>
+      <path d="M11 15A5 5 0 1 0 11 5A5 5 0 1 0 11 15 M3 28V25C3 20 6 18 11 18C16 18 19 20 19 25V28 M22 12A4 4 0 1 0 22 4 M21 18C26 18 29 20 29 25V28" />
+    </svg>
+  );
+}
+
+export function BillingServiceIcon({ className = "" }: IconProps) {
+  return (
+    <svg {...commonProps} className={className}>
+      <path d="M5 4H27V28H5Z M9 10H23 M9 16H23 M9 22H16 M21 21V27 M18 24H24" />
+    </svg>
+  );
+}
+
+export function MenuServiceIcon({ className = "" }: IconProps) {
+  return (
+    <svg {...commonProps} className={className}>
+      <path d="M5 8H27 M5 16H27 M5 24H27" />
+    </svg>
+  );
+}
