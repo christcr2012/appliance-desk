@@ -10,7 +10,7 @@ import {
 import { LAUNCH_STEPS, launchMessage } from "./messages";
 
 const CONFIRM_TOKEN_BYTES = 32;
-const CONFIRM_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
+const CONFIRM_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 function hashConfirmToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
