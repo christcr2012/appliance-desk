@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { runAutomation } from "@/domains/automation/runs";
 import { exportDatabaseBackup, sendBackupFailureAlertToChris } from "@/domains/backup";
-import { runMediaInventoryAndCopy } from "../../../../../scripts/media-inventory";
+import { runMediaInventoryAndCopy, verifyMediaRecoverySample } from "../../../../../scripts/media-inventory";
 
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 export async function GET(request: Request): Promise<NextResponse> {
   const authHeader = request.headers.get("authorization");
@@ -38,10 +38,17 @@ export async function GET(request: Request): Promise<NextResponse> {
   if (backup.outcome === "RAN" || backup.outcome === "ALREADY_RAN") {
     media = await runAutomation({
       ruleKey: "media-copy",
-      budgetSeconds: 60,
+      budgetSeconds: 240,
       work: async () => {
         const result = await runMediaInventoryAndCopy({ databaseBackupUrl });
-        return { counts: result.counts };
+        const verification = await verifyMediaRecoverySample(result.manifestUrl, 3);
+        return {
+          counts: {
+            ...result.counts,
+            verifiedRecoverySamples: verification.checked,
+            verificationTombstonesSkipped: verification.skippedTombstoned,
+          },
+        };
       },
     });
   }

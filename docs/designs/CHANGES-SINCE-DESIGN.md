@@ -148,3 +148,11 @@ All customer-addressed email goes through `sendCustomerEmail` (owner master swit
 - E's low-level email/SMS senders do not expose test injection hooks. BATCH-F A4 already tells the implementer to add them if absent; because F-part-1 does not run provider-send scenarios, that work stays with F-part-2/WU-F3 instead of broadening F1-a.
 - E2's final generated route/accessibility coverage and public-site acceptance disposition are already recorded above. They do not alter F1-a; F-part-2 screenshots/walkthroughs remain intentionally after G, T and V.
 - The post-Batch-D recovery amendment remains binding: database restore preserves D control-plane rows; F1-b separately implements private-media recovery without resurrecting privacy-deleted bytes.
+
+
+## 2026-10-06 — F1 private-media recovery contract
+
+- F1-a (#268) made database backups snapshot-consistent and restorable; provider replay evidence is included while reusable auth credentials remain excluded.
+- F1-b pairs a media manifest with each database backup. Recovery bytes stay in the existing private photo store under content-addressed paths; unreferenced objects are reported and never automatically deleted.
+- Privacy deletion writes deterministic tombstones before byte deletion. Media verification and restore consult the live tombstone, including after a restore copy, so later recovery work must treat a tombstoned path as intentionally absent and must never recreate it.
+- F1-b adds no storage provider, schema table, live-provider activation or launch authorization.

@@ -13,6 +13,19 @@ describe("automation rule registry", () => {
     expect(keys).not.toContain("billing-reconcile:subscription-ends");
   });
 
+  it("tracks media recovery as its own durable automation", () => {
+    const media = AUTOMATION_RULES.find((rule) => rule.ruleKey === "media-copy");
+    expect(media).toMatchObject({
+      label: "Private media recovery copy",
+      requiredEnv: [
+        "CRON_SECRET",
+        "BLOB_READ_WRITE_TOKEN",
+        "PRIVATE_PHOTO_BLOB_READ_WRITE_TOKEN",
+        "PRIVATE_PHOTO_BLOB_STORE_ID",
+      ],
+    });
+  });
+
   it("tracks every current renewal lifecycle pass once", () => {
     const keys = AUTOMATION_RULES.map((rule) => rule.ruleKey);
     expect(keys.filter((key) => key.startsWith("start-renewals:"))).toEqual([

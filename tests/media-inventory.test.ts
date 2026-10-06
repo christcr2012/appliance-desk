@@ -93,6 +93,7 @@ import {
 } from "../scripts/media-inventory";
 import {
   deletePrivatePhotoWithRecovery,
+  deletePrivatePhotosWithRecovery,
   privacyDeletionTombstonePath,
 } from "@/domains/backup/media-deletion";
 
@@ -145,7 +146,7 @@ function installBlobFake(): void {
   blob.put.mockImplementation(async (
     pathname: string,
     body: unknown,
-    options: { token?: string; contentType?: string; allowOverwrite?: boolean },
+    options: { token?: string; contentType?: string; allowOverwrite?: boolean; ifMatch?: string },
   ) => {
     const token = options.token ?? "";
     const target = storeFor(token);
@@ -179,6 +180,9 @@ function installBlobFake(): void {
     const target = storeFor(token);
     const source = target.get(pathnameOf(from));
     if (!source) throw new Error(`fake Blob source missing: ${from}`);
+    if (options.ifMatch && options.ifMatch !== source.etag) {
+      throw new Error("fake Blob source changed");
+    }
     if (target.has(to) && options.allowOverwrite === false) {
       throw new Error("fake Blob destination already exists");
     }
@@ -354,4 +358,79 @@ describe("Batch F private-media recovery", () => {
     expect(blob.copy.mock.calls.length).toBe(copyCallsBeforeRestore);
     expect(storeFor(PRIVATE_TOKEN).has(sourcePath)).toBe(false);
   });
+
+  it("restores a missing primary only after verifying the recovery bytes", async () => {
+    const sourcePath = "jobs/job-restore/photo.jpg";
+    const sourceUrl = seed(PRIVATE_TOKEN, sourcePath, "recoverable");
+    state.photos.push({ id: "photo-restore", url: sourceUrl });
+    const backup = await runMediaInventoryAndCopy({
+      databaseBackupUrl: `https://${BACKUP_HOST}/backups/2026-10-06-restore.json`,
+      now: new Date("2026-10-06T09:00:00.000Z"),
+    });
+    storeFor(PRIVATE_TOKEN).delete(sourcePath);
+
+    await expect(restoreMediaFromManifest(backup.manifestUrl)).resolves.toEqual({
+      restored: 1,
+      alreadyPresent: 0,
+      skippedTombstoned: 0,
+    });
+    expect(new TextDecoder().decode(storeFor(PRIVATE_TOKEN).get(sourcePath)!.bytes)).toBe(
+      "recoverable",
+    );
+  });
+
+  it("removes a just-restored primary when privacy deletion races the restore", async () => {
+    const sourcePath = "jobs/job-race/photo.jpg";
+    const sourceUrl = seed(PRIVATE_TOKEN, sourcePath, "race-bytes");
+    state.photos.push({ id: "photo-race", url: sourceUrl });
+    const backup = await runMediaInventoryAndCopy({
+      databaseBackupUrl: `https://${BACKUP_HOST}/backups/2026-10-06-race.json`,
+      now: new Date("2026-10-06T09:00:00.000Z"),
+    });
+    storeFor(PRIVATE_TOKEN).delete(sourcePath);
+
+    const originalCopy = blob.copy.getMockImplementation()!;
+    blob.copy.mockImplementationOnce(async (...args: unknown[]) => {
+      const result = await originalCopy(...args);
+      seed(
+        PRIVATE_TOKEN,
+        privacyDeletionTombstonePath(sourcePath),
+        JSON.stringify({ status: "PRIVACY_DELETED", sourcePath }),
+        "application/json",
+      );
+      return result;
+    });
+
+    await expect(restoreMediaFromManifest(backup.manifestUrl)).resolves.toEqual({
+      restored: 0,
+      alreadyPresent: 0,
+      skippedTombstoned: 1,
+    });
+    expect(storeFor(PRIVATE_TOKEN).has(sourcePath)).toBe(false);
+  });
+
+  it("validates and tombstones a set before deleting any of its bytes", async () => {
+    const firstPath = "maintenance-requests/customer-1/first.jpg";
+    const secondPath = "maintenance-requests/customer-1/second.jpg";
+    const first = seed(PRIVATE_TOKEN, firstPath, "first");
+    const second = seed(PRIVATE_TOKEN, secondPath, "second");
+
+    await deletePrivatePhotosWithRecovery(
+      [first, second],
+      { token: PRIVATE_TOKEN, storeId: "store_test" },
+      { privacyRequestId: "privacy-1", deletedAt: new Date("2026-10-06T12:00:00Z") },
+    );
+
+    expect(state.putOrder).toEqual(
+      expect.arrayContaining([
+        privacyDeletionTombstonePath(firstPath),
+        privacyDeletionTombstonePath(secondPath),
+      ]),
+    );
+    const firstDeleteOrder = blob.del.mock.invocationCallOrder[0]!;
+    expect(blob.put.mock.invocationCallOrder.at(-1)).toBeLessThan(firstDeleteOrder);
+    expect(storeFor(PRIVATE_TOKEN).has(firstPath)).toBe(false);
+    expect(storeFor(PRIVATE_TOKEN).has(secondPath)).toBe(false);
+  });
+
 });

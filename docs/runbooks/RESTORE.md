@@ -20,9 +20,9 @@ Use this only for an isolated recovery drill or a real recovery after the owner 
    ```
    Then restore missing primary objects:
    ```bash
-   npx tsx scripts/media-inventory.ts restore 'https://.../backups/<backup>.json.media.json'
+   npx tsx scripts/media-inventory.ts restore 'https://.../backups/<backup>.json.media.json' --confirm RESTORE
    ```
-   Recovery re-hashes bytes before and after copying, refuses to overwrite a different primary object, and consults the current privacy-deletion tombstone before every restore.
+   Recovery re-hashes bytes before and after copying, refuses to overwrite a different primary object, and checks the live privacy-deletion tombstone before and after copying so a concurrent deletion cannot be resurrected.
 
 ## Private-media recovery
 
@@ -30,7 +30,7 @@ Use this only for an isolated recovery drill or a real recovery after the owner 
 2. New or changed bytes are copied inside the private photo store to `recovery/YYYY-MM/<sha256>/<source-path>`. Including the hash prevents a later edit in the same month from overwriting the bytes needed by an older backup.
 3. Unreferenced objects under the approved private-photo namespaces are reported in the manifest but **never deleted automatically**.
 4. Privacy fulfillment writes a deterministic `recovery/tombstones/<sha256-of-source-path>.json` before deleting the primary photo and known recovery copies. A later restore checks the live tombstone and skips that photo even if an older recovery copy still exists.
-5. A referenced primary object that is missing or privacy-tombstoned fails the media-copy automation after the paired manifest is written, making the problem visible in Desk → Automations.
+5. A referenced primary object that is accidentally missing fails the media-copy automation after the paired manifest is written. A tombstoned path is recorded separately as an intentional privacy deletion and is not treated as a missing-file failure.
 
 ## Safety checks
 
@@ -49,4 +49,4 @@ Neon's endpoint API exposes the endpoint's branch ID and the branch API exposes 
 Last drilled: 2026-10-06 — PR #268 exact-head CI run 37545036997 (real PostgreSQL restore drill passed).
 
 
-Media drill: `tests/media-inventory.test.ts` proves referenced objects are hashed and copied, unreferenced objects are only reported, changed bytes get a distinct content-addressed recovery path, recovery samples re-hash correctly, privacy deletion tombstones precede byte deletion, and restore never resurrects a tombstoned photo.
+Media drill: `tests/media-inventory.test.ts` covers referenced/unreferenced inventory, changed bytes, sample hash verification, normal restore, privacy tombstones, and a deletion racing a restore. Exact-head F1-b CI evidence is recorded when the PR reaches green.

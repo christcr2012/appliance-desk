@@ -26,7 +26,7 @@ See `.env.example` for the full list with comments. The short version:
 - `RESEND_API_KEY` — **set**, a sending-only key created via the Resend MCP connector for the now-verified `robinsonappliancerentals.com` domain.
 - `RESEND_FROM_EMAIL` / `LEAD_NOTIFICATION_EMAIL` / `MAINTENANCE_NOTIFICATION_EMAIL` — **set (2026-09-28, Task #69)**, real `robinsonappliancerentals.com` addresses. See "Email addresses (Google Workspace)" below.
 - `BILLING_NOTIFICATION_EMAIL` — **set (2026-09-28, Task #72)**, `billing@robinsonappliancerentals.com` (an alias reserved since Task #69 but unused until now). Where the automated-late-fee digest email goes — see docs/BUSINESS-RULES.md's "Consolidated statements, manual payments, and automated late fees."
-- `PRIVATE_PHOTO_BLOB_READ_WRITE_TOKEN` / `PRIVATE_PHOTO_BLOB_STORE_ID` — the **private** production file store for photos, signed documents and receipts (Batch A private media). `src/lib/photo-storage.ts` refuses to use a token whose embedded store id does not match the store id, so a wrong pairing fails closed instead of writing to the wrong store.
+- `PRIVATE_PHOTO_BLOB_READ_WRITE_TOKEN` / `PRIVATE_PHOTO_BLOB_STORE_ID` — the **private** production store for operational/customer photo evidence. F1 also keeps content-addressed recovery copies and privacy-deletion tombstones there. `src/lib/photo-storage.ts` refuses a token whose embedded store id does not match the configured id, so a wrong pairing fails closed.
 - `PREVIEW_PRIVATE_BLOB_READ_WRITE_TOKEN` / `PREVIEW_PRIVATE_BLOB_STORE_ID` — Preview-only private store (owner-approved 2026-10-01). Used only when `VERCEL_ENV=preview` and the id equals the reviewed constant in `src/domains/preview-storage/index.ts`; never falls back to production.
 - `SENTRY_ORG` / `SENTRY_PROJECT` / `SENTRY_AUTH_TOKEN` — build-time only (source-map upload in `next.config.ts`); not needed at runtime.
 - Set by Vercel automatically, never by hand: `VERCEL`, `VERCEL_ENV`, `NEXT_PUBLIC_VERCEL_ENV`, `VERCEL_URL` (fallback base URL for auth and privacy links when `BETTER_AUTH_URL` is unset). `NODE_ENV` and `NEXT_RUNTIME` are set by Next.js.
@@ -338,7 +338,7 @@ charge or credit.
 | Time (UTC) | Route | What it does |
 |---|---|---|
 | 07:10 | `/api/cron/start-renewals` | Nightly rental pass, seven `runAutomation` rules in this order: automatic renewals, annual reminders, sending pending notices, billing extensions for delivered auto-renewals, due early terminations, closing fully returned agreements, starting due signed renewals (`start-renewals:*`; details in "Nightly rental pass" below) |
-| 09:00 | `/api/cron/backup` | Daily database backup to private storage |
+| 09:00 | `/api/cron/backup` | Daily consistent database backup plus paired private-media inventory/recovery copy |
 | 13:00 | `/api/cron/job-reminders` | Next-day job reminders |
 | 14:00 | `/api/cron/billing-reminders` | Billing reminder notices |
 | 15:00 | `/api/cron/late-fees` | Automatic late fees after the grace period |
@@ -388,31 +388,9 @@ full reasoning behind the pattern.
   `runAutoRenewals()` (`auto-renew.ts`: queue month-to-month renewals for customers who agreed, cancel withdrawn ones), `sendPendingNotices()` (`src/domains/notices`: emails waiting reminders when live email is on), `runDueTerminations()` (`termination-execution.ts`: carry out agreed early endings, invoice the fee) and `startDueRenewals()`
   (`src/domains/agreements/renewal-start.ts`). Same `CRON_SECRET` protection.
   Safe to run twice; a renewal that cannot start is reported in the Today list.
-- **Daily database backup** (added 2026-09-29, part of a proactive
-  scaling/hardening pass) — a Vercel Cron job (`vercel.json`, once a
-  day at 09:00 UTC) hits `src/app/api/cron/backup/route.ts`, which calls
-  `exportDatabaseBackup()` (`src/domains/backup/index.ts`). Exports
-  every business-critical table (customers, leads, agreements, billing,
-  appliances, notes, audit history — everything except the
-  authentication session tables and the Stripe webhook log, which are
-  ephemeral/regenerable, not business records) to one JSON file and
-  uploads it to the same Vercel Blob store the photos use, under a
-  `backups/` prefix, with **private** access (unlike photos, this file
-  is full customer PII/billing data and must never be publicly
-  reachable by URL). Backups older than 30 days are deleted
-  automatically on every run so storage cost doesn't grow forever. This
-  exists on top of — not instead of — Neon's own built-in point-in-time
-  recovery; Neon's free-tier plan only keeps a 6-hour recovery window,
-  so this is the second, independent copy that reaches further back and
-  isn't tied to Neon's own infrastructure. It's a data export, not a
-  one-click restore: getting data back out means downloading the JSON
-  from Vercel Blob and re-inserting it with a script, which is an
-  acceptable trade for a small business's first line of defense (see
-  docs/ROADMAP.md for a fuller disaster-recovery pass as a possible
-  future project). A healthy day sends no email; if the export itself
-  fails, Chris gets a plain-English alert explaining that today's extra
-  safety copy didn't get made but his actual data is untouched. Same
-  `CRON_SECRET` protection as the other cron routes.
+- **Daily database + private-media recovery** — the 09:00 UTC cron first writes a format-2 database snapshot from one PostgreSQL `REPEATABLE READ` transaction. It records the migration/app commit, includes provider replay evidence such as `WebhookEvent`, and intentionally excludes reusable auth credentials. F1's restore command targets only an empty local database or API-verified Neon `restore-*` branch, restores in schema-derived dependency order, resets number sequences and runs schema health.
+
+  After a successful database export, a separate durable `media-copy` automation inventories every private `Photo`. New/changed bytes are SHA-256 hashed and copied inside the dedicated private media store to content-addressed recovery paths; a paired `<database-backup>.media.json` manifest records exact source/recovery evidence. Unreferenced primary objects are reported but never automatically deleted. Privacy fulfillment writes deterministic tombstones before deleting bytes; verification and restore consult those live tombstones, including after a restore copy, so an older backup cannot resurrect intentionally deleted media. The cron also re-hashes a recovery sample on each successful run. No second storage provider is created by F1.
 - **Estimate follow-ups** (added 2026-09-29) — a Vercel Cron job
   (`vercel.json`, once a day at 16:00 UTC, after the other four) hits
   `src/app/api/cron/estimate-follow-ups/route.ts`, which calls

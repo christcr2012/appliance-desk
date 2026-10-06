@@ -3,8 +3,8 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { isRateLimited } from "@/lib/rate-limit";
 import { deliverMessage } from "@/domains/messaging/deliver";
-import { getPrivatePhotoStore } from "@/lib/photo-storage";
-import { deletePrivatePhotoWithRecovery } from "@/domains/backup/media-deletion";
+import { getPrivatePhotoStore, privatePhotoPathFromUrl } from "@/lib/photo-storage";
+import { deletePrivatePhotosWithRecovery } from "@/domains/backup/media-deletion";
 
 const TOKEN_TTL_MS = 48 * 60 * 60 * 1000;
 const PRIVACY_RATE_LIMIT = { max: 5, windowMs: 60 * 60 * 1000 } as const;
@@ -23,14 +23,6 @@ function publicOrigin(): string {
     process.env.BETTER_AUTH_URL ??
     (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000")
   ).replace(/\/$/, "");
-}
-
-function isVercelBlobUrl(value: string): boolean {
-  try {
-    return new URL(value).hostname.toLowerCase().endsWith(".blob.vercel-storage.com");
-  } catch {
-    return false;
-  }
 }
 
 async function requireOwner(userId: string): Promise<void> {
@@ -353,10 +345,18 @@ async function claimPrivacyDeletion(
       },
       select: { id: true, url: true },
     });
-    const blobUrls = privateRequestPhotos.map((row) => row.url).filter(isVercelBlobUrl);
+    const blobUrls = privateRequestPhotos.map((row) => row.url);
     const privateStore = blobUrls.length > 0 ? getPrivatePhotoStore() : null;
     if (blobUrls.length > 0 && !privateStore) {
       throw new Error("Private photo storage is unavailable; privacy deletion was not fulfilled.");
+    }
+    if (
+      privateStore &&
+      blobUrls.some((url) => !privatePhotoPathFromUrl(url, privateStore.storeId))
+    ) {
+      throw new Error(
+        "A private photo storage reference is invalid; privacy deletion was not fulfilled.",
+      );
     }
 
     // Claim the destructive workflow before any external side effect. Revoking
@@ -409,9 +409,9 @@ export async function fulfillPrivacyDeletion(
     if (!claim.blobStore) {
       throw new Error("Private photo storage is unavailable; privacy deletion was not fulfilled.");
     }
-    for (const blobUrl of claim.blobUrls) {
-      await deletePrivatePhotoWithRecovery(blobUrl, claim.blobStore);
-    }
+    await deletePrivatePhotosWithRecovery(claim.blobUrls, claim.blobStore, {
+      privacyRequestId: requestId,
+    });
   }
 
   return prisma.$transaction(async (tx) => {

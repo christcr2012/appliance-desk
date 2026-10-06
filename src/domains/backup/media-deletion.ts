@@ -52,42 +52,74 @@ export async function hasPrivacyDeletionTombstone(
  * tombstone as authoritative, so a racing or historical recovery copy can
  * never resurrect customer media after privacy fulfillment.
  */
+export async function deletePrivatePhotosWithRecovery(
+  sourceUrls: string[],
+  store: { token: string; storeId: string },
+  context: { privacyRequestId?: string; deletedAt?: Date } = {},
+): Promise<void> {
+  if (sourceUrls.length === 0) return;
+
+  // Validate the complete set before the first external side effect. An invalid
+  // record must not let privacy fulfillment delete only some of the files.
+  const sources = sourceUrls.map((sourceUrl) => {
+    const sourcePath = privatePhotoPathFromUrl(sourceUrl, store.storeId);
+    if (!sourcePath) {
+      throw new Error(
+        "Private photo storage reference is invalid; privacy deletion was not fulfilled.",
+      );
+    }
+    return { sourceUrl, sourcePath };
+  });
+
+  const recoveryBlobs = await listAllRecoveryBlobs(store.token);
+  const deletedAt = (context.deletedAt ?? new Date()).toISOString();
+
+  // Tombstone every path before deleting any bytes. If a provider call fails
+  // afterward, old recovery bytes can remain, but restore is still permanently
+  // barred from recreating these paths.
+  for (const source of sources) {
+    await put(
+      privacyDeletionTombstonePath(source.sourcePath),
+      JSON.stringify({
+        formatVersion: 1,
+        sourcePath: source.sourcePath,
+        status: "PRIVACY_DELETED",
+        deletedAt,
+        privacyRequestId: context.privacyRequestId ?? null,
+      }),
+      {
+        access: "private",
+        token: store.token,
+        contentType: "application/json",
+        addRandomSuffix: false,
+        allowOverwrite: true,
+        abortSignal: AbortSignal.timeout(IO_TIMEOUT_MS),
+      },
+    );
+  }
+
+  const deleteUrls = new Set(sources.map((source) => source.sourceUrl));
+  for (const source of sources) {
+    const suffix = `/${source.sourcePath}`;
+    for (const blob of recoveryBlobs) {
+      if (
+        !blob.pathname.startsWith("recovery/tombstones/") &&
+        blob.pathname.endsWith(suffix)
+      ) {
+        deleteUrls.add(blob.url);
+      }
+    }
+  }
+
+  await del([...deleteUrls], {
+    token: store.token,
+    abortSignal: AbortSignal.timeout(IO_TIMEOUT_MS),
+  });
+}
+
 export async function deletePrivatePhotoWithRecovery(
   sourceUrl: string,
   store: { token: string; storeId: string },
 ): Promise<void> {
-  const sourcePath = privatePhotoPathFromUrl(sourceUrl, store.storeId);
-  if (!sourcePath) {
-    throw new Error("Private photo storage reference is invalid; privacy deletion was not fulfilled.");
-  }
-
-  const tombstonePath = privacyDeletionTombstonePath(sourcePath);
-  await put(
-    tombstonePath,
-    JSON.stringify({
-      formatVersion: 1,
-      sourcePath,
-      status: "PRIVACY_DELETED",
-      deletedAt: new Date().toISOString(),
-    }),
-    {
-      access: "private",
-      token: store.token,
-      contentType: "application/json",
-      addRandomSuffix: false,
-      allowOverwrite: true,
-      abortSignal: AbortSignal.timeout(IO_TIMEOUT_MS),
-    },
-  );
-
-  const suffix = `/${sourcePath}`;
-  const recoveryUrls = (await listAllRecoveryBlobs(store.token))
-    .filter((blob) => !blob.pathname.startsWith("recovery/tombstones/"))
-    .filter((blob) => blob.pathname.endsWith(suffix))
-    .map((blob) => blob.url);
-
-  await del([sourceUrl, ...recoveryUrls], {
-    token: store.token,
-    abortSignal: AbortSignal.timeout(IO_TIMEOUT_MS),
-  });
+  await deletePrivatePhotosWithRecovery([sourceUrl], store);
 }

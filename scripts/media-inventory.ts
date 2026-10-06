@@ -1,11 +1,13 @@
 import { createHash } from "node:crypto";
-import { copy, get, list, put } from "@vercel/blob";
+import { copy, del, get, list, put } from "@vercel/blob";
+import { businessDateKey } from "../src/lib/business-date";
 import { prisma } from "../src/lib/prisma";
 import {
   getPrivatePhotoStore,
   privatePhotoPathFromUrl,
 } from "../src/lib/photo-storage";
 import {
+  hasPrivacyDeletionTombstone,
   privacyDeletionTombstonePath,
 } from "../src/domains/backup/media-deletion";
 
@@ -226,17 +228,31 @@ export async function runMediaInventoryAndCopy(input: {
 
     const source = await readAndHash(photo.url, store.token);
     if (!source) {
-      entries.push({
-        photoId: photo.id,
-        sourceUrl: photo.url,
-        sourcePath,
-        size: null,
-        sha256: null,
-        sourceEtag: null,
-        status: "MISSING",
-        recoveryPath: null,
-        recoveryUrl: null,
-      });
+      if (await hasPrivacyDeletionTombstone(sourcePath, store.token)) {
+        entries.push({
+          photoId: photo.id,
+          sourceUrl: photo.url,
+          sourcePath,
+          size: null,
+          sha256: null,
+          sourceEtag: null,
+          status: "TOMBSTONED",
+          recoveryPath: null,
+          recoveryUrl: null,
+        });
+      } else {
+        entries.push({
+          photoId: photo.id,
+          sourceUrl: photo.url,
+          sourcePath,
+          size: null,
+          sha256: null,
+          sourceEtag: null,
+          status: "MISSING",
+          recoveryPath: null,
+          recoveryUrl: null,
+        });
+      }
       continue;
     }
 
@@ -263,13 +279,15 @@ export async function runMediaInventoryAndCopy(input: {
 
     // The hash is part of the path so a changed photo can never overwrite the
     // bytes paired with an older database backup from the same month.
-    const recoveryPath = `recovery/${now.toISOString().slice(0, 7)}/${source.sha256}/${sourcePath}`;
+    const recoveryPath = `recovery/${businessDateKey(now).slice(0, 7)}/${source.sha256}/${sourcePath}`;
     const recovered = await copy(photo.url, recoveryPath, {
       access: "private",
       token: store.token,
       contentType: source.contentType,
       addRandomSuffix: false,
-      allowOverwrite: false,
+      allowOverwrite: true,
+      ifMatch: source.etag,
+      abortSignal: AbortSignal.timeout(20_000),
     });
     const verifiedCopy = await readAndHash(recovered.url, store.token);
     if (
@@ -279,6 +297,28 @@ export async function runMediaInventoryAndCopy(input: {
     ) {
       throw new Error(`Recovery copy verification failed for "${sourcePath}".`);
     }
+    // Privacy deletion may race with inventory after the initial tombstone
+    // listing. If a tombstone appeared, discard the just-selected recovery copy
+    // and record intentional deletion rather than recoverable media.
+    if (await hasPrivacyDeletionTombstone(sourcePath, store.token)) {
+      await del(recovered.url, {
+        token: store.token,
+        abortSignal: AbortSignal.timeout(15_000),
+      });
+      entries.push({
+        photoId: photo.id,
+        sourceUrl: photo.url,
+        sourcePath,
+        size: null,
+        sha256: null,
+        sourceEtag: null,
+        status: "TOMBSTONED",
+        recoveryPath: null,
+        recoveryUrl: null,
+      });
+      continue;
+    }
+
     entries.push({
       photoId: photo.id,
       sourceUrl: photo.url,
@@ -322,9 +362,9 @@ export async function runMediaInventoryAndCopy(input: {
   });
 
   const counts = inventoryCounts(entries, unreferenced.length);
-  if (counts.missing + counts.tombstoned > 0) {
+  if (counts.missing > 0) {
     throw new Error(
-      `Media inventory found ${counts.missing + counts.tombstoned} referenced private object problem(s) (${counts.missing} missing, ${counts.tombstoned} privacy-tombstoned). Review the paired media manifest.`,
+      `Media inventory found ${counts.missing} referenced private object(s) missing. Review the paired media manifest.`,
     );
   }
   return { manifest, manifestUrl: written.url, counts };
@@ -352,7 +392,7 @@ export async function restoreMediaFromManifest(
 
     // This check is intentionally live, not just the manifest's historical
     // status: a privacy deletion may have happened after this backup.
-    if (await blobExists(privacyDeletionTombstonePath(entry.sourcePath), store.token)) {
+    if (await hasPrivacyDeletionTombstone(entry.sourcePath, store.token)) {
       skippedTombstoned += 1;
       continue;
     }
@@ -364,7 +404,15 @@ export async function restoreMediaFromManifest(
           `Primary object "${entry.sourcePath}" exists but differs from this recovery manifest; refusing to overwrite it.`,
         );
       }
-      alreadyPresent += 1;
+      if (await hasPrivacyDeletionTombstone(entry.sourcePath, store.token)) {
+        await del(entry.sourcePath, {
+          token: store.token,
+          abortSignal: AbortSignal.timeout(15_000),
+        });
+        skippedTombstoned += 1;
+      } else {
+        alreadyPresent += 1;
+      }
       continue;
     }
 
@@ -383,7 +431,20 @@ export async function restoreMediaFromManifest(
       contentType: recovery.contentType,
       addRandomSuffix: false,
       allowOverwrite: false,
+      ifMatch: recovery.etag,
+      abortSignal: AbortSignal.timeout(20_000),
     });
+
+    // A privacy deletion can begin between the pre-copy tombstone check and
+    // this copy. Remove the just-restored object if that happened.
+    if (await hasPrivacyDeletionTombstone(entry.sourcePath, store.token)) {
+      await del(entry.sourcePath, {
+        token: store.token,
+        abortSignal: AbortSignal.timeout(15_000),
+      });
+      skippedTombstoned += 1;
+      continue;
+    }
 
     const restoredPrimary = await readAndHash(entry.sourcePath, store.token);
     if (
@@ -420,7 +481,7 @@ export async function verifyMediaRecoverySample(
     if (checked >= wanted) break;
     if (!entry.recoveryUrl || !entry.sha256 || entry.size === null) continue;
 
-    if (await blobExists(privacyDeletionTombstonePath(entry.sourcePath), store.token)) {
+    if (await hasPrivacyDeletionTombstone(entry.sourcePath, store.token)) {
       skippedTombstoned += 1;
       continue;
     }
@@ -440,15 +501,18 @@ export async function verifyMediaRecoverySample(
 }
 
 async function cli(): Promise<void> {
-  const [command, manifestUrl, extra] = process.argv.slice(2);
-  if (!manifestUrl || !["verify", "restore"].includes(command ?? "")) {
+  const [command, manifestUrl, third, fourth, ...extra] = process.argv.slice(2);
+  if (!manifestUrl || !["verify", "restore"].includes(command ?? "") || extra.length > 0) {
     throw new Error(
-      "Usage: npx tsx scripts/media-inventory.ts <verify|restore> <media-manifest-url> [sample-count-for-verify]",
+      "Usage: npx tsx scripts/media-inventory.ts verify <media-manifest-url> [sample-count]\n" +
+        "   or: npx tsx scripts/media-inventory.ts restore <media-manifest-url> --confirm RESTORE",
     );
   }
 
   if (command === "restore") {
-    if (extra !== undefined) throw new Error("The restore command does not accept a sample count.");
+    if (third !== "--confirm" || fourth !== "RESTORE") {
+      throw new Error("Media restore requires the explicit arguments --confirm RESTORE.");
+    }
     const result = await restoreMediaFromManifest(manifestUrl);
     console.log(
       `Media restore passed (${result.restored} restored, ${result.alreadyPresent} already present, ${result.skippedTombstoned} privacy-tombstoned skipped).`,
@@ -456,7 +520,10 @@ async function cli(): Promise<void> {
     return;
   }
 
-  const sampleSize = extra === undefined ? 3 : Number(extra);
+  if (fourth !== undefined) {
+    throw new Error("The verify command accepts only one optional sample count.");
+  }
+  const sampleSize = third === undefined ? 3 : Number(third);
   if (!Number.isInteger(sampleSize) || sampleSize < 0) {
     throw new Error("sample-count must be a non-negative integer.");
   }
@@ -468,11 +535,15 @@ async function cli(): Promise<void> {
 }
 
 if (process.argv[1]?.endsWith("media-inventory.ts")) {
-  cli().catch((error) => {
-    console.error(
-      "[media-recovery] FAILED:",
-      error instanceof Error ? error.message : error,
-    );
-    process.exitCode = 1;
-  });
+  cli()
+    .catch((error) => {
+      console.error(
+        "[media-recovery] FAILED:",
+        error instanceof Error ? error.message : error,
+      );
+      process.exitCode = 1;
+    })
+    .finally(async () => {
+      await prisma.$disconnect();
+    });
 }

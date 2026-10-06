@@ -2,16 +2,20 @@ import { createHash, randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 const email = vi.hoisted(() => vi.fn(async () => ({ sent: true, outcome: "SENT" as const })));
-const deletePrivatePhoto = vi.hoisted(() => vi.fn(async () => undefined));
+const deletePrivatePhotos = vi.hoisted(() => vi.fn(async () => undefined));
 vi.mock("@/lib/customer-email", () => ({ sendCustomerEmail: email }));
 vi.mock("@/lib/photo-storage", () => ({
   getPrivatePhotoStore: () => ({ token: "private-test-token", storeId: "store_test" }),
+  privatePhotoPathFromUrl: (value: string) => {
+    try {
+      return decodeURIComponent(new URL(value).pathname.replace(/^\\/+/, ""));
+    } catch {
+      return null;
+    }
+  },
 }));
 vi.mock("@/domains/backup/media-deletion", () => ({
-  deletePrivatePhotoWithRecovery: (
-    sourceUrl: string,
-    store: { token: string; storeId: string },
-  ) => deletePrivatePhoto(sourceUrl, store),
+  deletePrivatePhotosWithRecovery: (...args: unknown[]) => deletePrivatePhotos(...args),
 }));
 
 import { prisma } from "@/lib/prisma";
@@ -111,7 +115,7 @@ describe.skipIf(!enabled)("Batch D privacy requests (real Postgres)", () => {
   });
 
   it("recovers from Blob failure, then pseudonymizes personal data and retains evidence", async () => {
-    deletePrivatePhoto.mockClear();
+    deletePrivatePhotos.mockClear();
     const before = {
       invoice: await prisma.invoice.count({ where: { customerId: customerA } }),
       payment: await prisma.payment.count({ where: { invoice: { customerId: customerA } } }),
@@ -122,7 +126,7 @@ describe.skipIf(!enabled)("Batch D privacy requests (real Postgres)", () => {
       audit: await prisma.auditLog.count({ where: { entityId: customerA } }),
     };
 
-    deletePrivatePhoto.mockRejectedValueOnce(new Error("private blob unavailable"));
+    deletePrivatePhotos.mockRejectedValueOnce(new Error("private blob unavailable"));
     await expect(fulfillPrivacyDeletion(ownerId, deletionRequest, "DELETE")).rejects.toThrow(/blob unavailable/i);
     expect((await prisma.user.findUniqueOrThrow({ where: { id: userA } })).email).toBe(`${tag}-a@example.test`);
     expect(await prisma.photo.count({ where: { maintenanceRequestId: maintenanceA } })).toBe(1);
@@ -134,7 +138,7 @@ describe.skipIf(!enabled)("Batch D privacy requests (real Postgres)", () => {
 
     const result = await fulfillPrivacyDeletion(ownerId, deletionRequest, "DELETE");
     expect(result.retained).toContain("Invoice");
-    expect(deletePrivatePhoto).toHaveBeenLastCalledWith(
+    expect(deletePrivatePhotos).toHaveBeenLastCalledWith(
       privatePhotoUrl,
       { token: "private-test-token", storeId: "store_test" },
     );
@@ -152,7 +156,7 @@ describe.skipIf(!enabled)("Batch D privacy requests (real Postgres)", () => {
     expect(await prisma.customerNotice.count({ where: { customerId: customerA } })).toBe(before.notice);
     expect(await prisma.auditLog.count({ where: { entityId: customerA } })).toBe(before.audit);
     await expect(fulfillPrivacyDeletion(ownerId, deletionRequest, "DELETE")).resolves.toEqual(result);
-    expect(deletePrivatePhoto).toHaveBeenCalledTimes(2);
+    expect(deletePrivatePhotos).toHaveBeenCalledTimes(2);
   });
 
   it("refuses expired and reused verification tokens", async () => {
