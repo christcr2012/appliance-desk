@@ -6,7 +6,12 @@ const deletePrivatePhoto = vi.hoisted(() => vi.fn(async () => undefined));
 vi.mock("@/lib/customer-email", () => ({ sendCustomerEmail: email }));
 vi.mock("@/lib/photo-storage", () => ({
   getPrivatePhotoStore: () => ({ token: "private-test-token", storeId: "store_test" }),
-  deletePrivatePhotoWithRecovery: (...args: unknown[]) => deletePrivatePhoto(...args),
+}));
+vi.mock("@/domains/backup/media-deletion", () => ({
+  deletePrivatePhotoWithRecovery: (
+    sourceUrl: string,
+    store: { token: string; storeId: string },
+  ) => deletePrivatePhoto(sourceUrl, store),
 }));
 
 import { prisma } from "@/lib/prisma";
