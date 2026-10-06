@@ -50,30 +50,30 @@ export function JobSchedulingForm({ defaultValues }: { defaultValues: JobSchedul
         </p>
       )}
       <fieldset className="space-y-3">
-        <legend className="text-base font-semibold text-gray-900">Usual visit length</legend>
-        <p className="text-sm text-gray-600">
+        <legend className="text-base font-semibold text-ink">Usual visit length</legend>
+        <p className="text-sm text-ink-soft">
           When a visit has no length of its own, the schedule assumes it takes this many minutes. It is used to
           warn you when two visits for the same person overlap. A visit that ends exactly when the next one
           starts is not a conflict. Starting value: 120 (2 hours), a generous time for a delivery, install,
           pickup or repair including the drive to the next stop. Anyone with owner or admin access can change it.
         </p>
         <div>
-          <label htmlFor="jobs-defaultMinutes" className="mb-1 block text-sm font-medium text-gray-900">
+          <label htmlFor="jobs-defaultMinutes" className="mb-1 block text-sm font-medium text-ink">
             Minutes per visit
           </label>
           <input
             id="jobs-defaultMinutes"
             type="text"
             inputMode="numeric"
-            className="w-32 rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            className="w-32 rounded-lg border border-line-strong px-3 py-2 text-sm"
             value={values.defaultJobDurationMinutes}
             onChange={(e) => setValues({ ...values, defaultJobDurationMinutes: e.target.value })}
           />
         </div>
       </fieldset>
       <fieldset className="space-y-3">
-        <legend className="text-base font-semibold text-gray-900">Can staff work jobs nobody is assigned to?</legend>
-        <p className="text-sm text-gray-600">
+        <legend className="text-base font-semibold text-ink">Can staff work jobs nobody is assigned to?</legend>
+        <p className="text-sm text-ink-soft">
           Staff can always work the jobs assigned to them, while those jobs are scheduled or in progress. This
           choice is about jobs with no one assigned. On: any staff member can open and finish an unassigned job,
           which is how it works today. Off: staff can only work jobs assigned to them, and an owner or admin has
@@ -81,11 +81,11 @@ export function JobSchedulingForm({ defaultValues }: { defaultValues: JobSchedul
           a job that is already finished or cancelled. Starting value: on, because it keeps the way things work
           today. Anyone with owner or admin access can change it.
         </p>
-        <label htmlFor="jobs-staffUnassigned" className="flex items-center gap-2 text-sm font-medium text-gray-900">
+        <label htmlFor="jobs-staffUnassigned" className="flex items-center gap-2 text-sm font-medium text-ink">
           <input
             id="jobs-staffUnassigned"
             type="checkbox"
-            className="h-4 w-4 rounded border-gray-300"
+            className="h-4 w-4 rounded border-line-strong"
             checked={values.staffMayWorkUnassignedJobs}
             onChange={(e) => setValues({ ...values, staffMayWorkUnassignedJobs: e.target.checked })}
           />
@@ -96,13 +96,13 @@ export function JobSchedulingForm({ defaultValues }: { defaultValues: JobSchedul
         <button
           type="submit"
           disabled={saving}
-          className="rounded-full bg-gray-900 px-6 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+          className="rounded-full bg-action px-6 py-2.5 text-sm font-semibold text-on-action disabled:opacity-60"
         >
           {saving ? "Saving…" : "Save"}
         </button>
         <button
           type="button"
-          className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-900"
+          className="rounded-lg border border-line-strong px-4 py-2 text-sm text-ink"
           onClick={() =>
             setValues({
               defaultJobDurationMinutes: String(RECOMMENDED_JOB_DURATION_MINUTES),
