@@ -72,19 +72,30 @@ for (const role of ["owner", "customer"] as const) {
                   "/account",
                   "/account/rentals",
                   "/account/billing",
-                  "/account/maintenance?request=pickup",
+                  "/account/maintenance",
+                  "/account/settings",
                 ];
           for (const route of routes) {
             await page.goto(route);
             await expect(page.locator("main h1")).toBeVisible();
             await accessible(page);
-            if (route === routes[0] || route.includes("section=products")) {
+            const capture =
+              role === "customer"
+                ? width !== 768
+                : route === routes[0] || route.includes("section=products");
+            if (capture) {
+              const routeLabel =
+                role === "customer"
+                  ? route.replaceAll("/", "-").replace(/[^a-z0-9-]+/gi, "-").replace(/^-|-$/g, "")
+                  : route.includes("section=products")
+                    ? "products"
+                    : "home";
               const image = info.outputPath(
-                `${role}-${width}-${theme}-${route.includes("section=products") ? "products" : "home"}.png`,
+                `${role}-${width}-${theme}-${routeLabel}.png`,
               );
               await page.screenshot({ path: image, fullPage: true });
               await info.attach(
-                `${role}-${width}-${theme}-${route.includes("section=products") ? "products" : "home"}`,
+                `${role}-${width}-${theme}-${routeLabel}`,
                 {
                   path: image,
                   contentType: "image/png",
@@ -94,6 +105,53 @@ for (const role of ["owner", "customer"] as const) {
           }
         });
       }
+    if (role === "customer") {
+      for (const theme of ["light", "dark"] as const) {
+        test(`portal home bottom tabs at 390px ${theme}`, async ({ page }) => {
+          test.setTimeout(90_000);
+          await page.setViewportSize({ width: 390, height: 844 });
+          await page.addInitScript(
+            (mode) => localStorage.setItem("theme", mode),
+            theme,
+          );
+          await page.goto("/account");
+
+          const nav = page.getByRole("navigation", { name: "Main" });
+          await expect(nav).toBeVisible();
+          const labels = ["Home", "Rentals", "Maintenance", "Billing", "Account"];
+          for (const label of labels) {
+            await expect(
+              nav.getByRole("link", { name: label, exact: true }),
+            ).toBeVisible();
+          }
+          await expect(
+            nav.getByRole("link", { name: "Home", exact: true }),
+          ).toHaveAttribute("aria-current", "page");
+
+          await nav.getByRole("link", { name: "Home", exact: true }).focus();
+          for (const label of labels.slice(1)) {
+            await page.keyboard.press("Tab");
+            await expect(
+              nav.getByRole("link", { name: label, exact: true }),
+            ).toBeFocused();
+          }
+
+          for (const question of [
+            "What do I rent?",
+            "What's next?",
+            "Do I owe anything?",
+            "How do I get help?",
+          ]) {
+            await expect(
+              page.getByRole("heading", { name: question, exact: true }),
+            ).toBeVisible();
+          }
+
+          await accessible(page);
+        });
+      }
+    }
+
     if (role === "owner") {
       test("section save survives reload and browser Back restores its selected section", async ({
         page,
@@ -205,6 +263,7 @@ for (const role of ["owner", "customer"] as const) {
         await page.goto("/account");
         await page
           .getByRole("link", { name: "Request pickup", exact: true })
+          .first()
           .click();
         await expect(page).toHaveURL(/request=pickup$/);
         await expect(page.getByRole("status")).toContainText("does not cancel");

@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createMaintenanceRequestAction } from "./actions";
 import { PhotoUploadField } from "@/components/photo-upload-field";
+import { Button, Select, Textarea } from "@/components/ui";
 
 type ApplianceOption = { id: string; label: string };
 
@@ -40,18 +41,26 @@ export function NewRequestForm({
   const [photoError, setPhotoError] = useState<string | null>(null);
   const MAX_PHOTOS = 6;
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  function handleSubmit(event: React.FormEvent) {
+    event.preventDefault();
     setError(null);
+    setSuccess(false);
+
     if (!problem.replace(/^pickup request:\s*/i, "").trim()) {
-      setError("Please describe your request, including pickup details if applicable.");
+      setError(
+        "Please describe your request, including pickup details if applicable.",
+      );
       return;
     }
+
     startTransition(async () => {
       let result;
       try {
         result = await createMaintenanceRequestAction({
-          problem: requestKind === "pickup" ? `Pickup request: ${problem.trim()}` : problem,
+          problem:
+            requestKind === "pickup"
+              ? `Pickup request: ${problem.trim()}`
+              : problem,
           applianceId,
           priority,
           photoUrls,
@@ -62,6 +71,7 @@ export function NewRequestForm({
         );
         return;
       }
+
       if (result.status === "error") {
         setError(result.message);
       } else {
@@ -76,105 +86,81 @@ export function NewRequestForm({
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="space-y-4 rounded-lg border border-line bg-surface p-5"
-    >
-      <h2 className="font-medium text-ink">{requestTitle}</h2>
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <p className="text-sm font-semibold text-ink">{requestTitle}</p>
 
       {appliances.length > 0 && (
-        <div>
-          <label
-            htmlFor="applianceId"
-            className="block text-sm font-medium text-ink-soft"
-          >
-            Which appliance? (optional)
-          </label>
-          <select
-            id="applianceId"
-            value={applianceId}
-            onChange={(e) => setApplianceId(e.target.value)}
-            className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
-          >
-            <option value="">Not sure / general question</option>
-            {appliances.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.label}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
-
-      <div>
-        <label
-          htmlFor="problem"
-          className="block text-sm font-medium text-ink-soft"
+        <Select
+          id="applianceId"
+          label="Which appliance? (optional)"
+          value={applianceId}
+          onChange={(event) => setApplianceId(event.target.value)}
         >
-          What&apos;s going on?
-        </label>
-        <textarea
-          id="problem"
-          rows={4}
-          required
-          value={problem}
-          onChange={(e) => setProblem(e.target.value)}
-          className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
-        />
-      </div>
-
-      <div>
-        <label
-          htmlFor="priority"
-          className="block text-sm font-medium text-ink-soft"
-        >
-          How urgent is this?
-        </label>
-        <select
-          id="priority"
-          value={priority}
-          onChange={(e) => setPriority(e.target.value)}
-          className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
-        >
-          {PRIORITIES.map((p) => (
-            <option key={p.value} value={p.value}>
-              {p.label}
+          <option value="">Not sure / general question</option>
+          {appliances.map((appliance) => (
+            <option key={appliance.id} value={appliance.id}>
+              {appliance.label}
             </option>
           ))}
-        </select>
-      </div>
+        </Select>
+      )}
+
+      <Textarea
+        id="problem"
+        label="What's going on?"
+        rows={4}
+        required
+        value={problem}
+        onChange={(event) => setProblem(event.target.value)}
+      />
+
+      <Select
+        id="priority"
+        label="How urgent is this?"
+        value={priority}
+        onChange={(event) => setPriority(event.target.value)}
+      >
+        {PRIORITIES.map((item) => (
+          <option key={item.value} value={item.value}>
+            {item.label}
+          </option>
+        ))}
+      </Select>
 
       <div>
-        <span className="block text-sm font-medium text-ink-soft">
-          Photo (optional)
-        </span>
-        <p className="mt-1 text-xs text-ink-faint">
+        <p className="text-sm font-semibold text-ink">Photo (optional)</p>
+        <p className="mt-1 text-xs text-ink-soft">
           A picture of the problem — a leak, a broken part, anything that helps.
         </p>
+
         {photoUrls.length > 0 && (
-          <div className="mt-2 space-y-2">
-            <p className="text-xs text-green-700">
-              {photoUrls.length} photo{photoUrls.length === 1 ? "" : "s"} uploaded securely.
+          <div className="mt-3 space-y-2">
+            <p className="text-xs font-semibold text-success">
+              {photoUrls.length} photo{photoUrls.length === 1 ? "" : "s"}{" "}
+              uploaded securely.
             </p>
             <div className="flex flex-wrap gap-2">
               {photoUrls.map((url, index) => (
-                <button
+                <Button
                   key={url}
                   type="button"
+                  variant="quiet"
                   onClick={() =>
-                    setPhotoUrls((urls) => urls.filter((u) => u !== url))
+                    setPhotoUrls((urls) =>
+                      urls.filter((savedUrl) => savedUrl !== url),
+                    )
                   }
                   aria-label={`Remove uploaded photo ${index + 1}`}
-                  className="rounded-md border border-line-strong px-2 py-1 text-xs text-ink-soft hover:border-line-strong"
                 >
                   Remove photo {index + 1}
-                </button>
+                </Button>
               ))}
             </div>
           </div>
         )}
+
         {photoUrls.length < MAX_PHOTOS && (
-          <div className="mt-2">
+          <div className="mt-3">
             <PhotoUploadField
               pathPrefix={`maintenance-requests/${customerId}`}
               label="Add a photo"
@@ -186,28 +172,25 @@ export function NewRequestForm({
             />
           </div>
         )}
+
         {photoError && (
-          <p role="alert" className="mt-1 text-xs text-red-700">
+          <p role="alert" className="mt-2 text-xs font-semibold text-danger">
             {photoError}
           </p>
         )}
       </div>
 
-      <button
-        type="submit"
-        disabled={isPending}
-        className="rounded-md bg-action px-4 py-2 text-sm font-medium text-on-action hover:bg-action disabled:opacity-50"
-      >
+      <Button type="submit" disabled={isPending}>
         {isPending ? "Submitting…" : "Submit request"}
-      </button>
+      </Button>
 
       {error && (
-        <p role="alert" className="text-sm text-red-700">
+        <p role="alert" className="text-sm font-semibold text-danger">
           {error}
         </p>
       )}
       {success && !error && (
-        <p role="status" className="text-sm text-green-700">
+        <p role="status" className="text-sm font-semibold text-success">
           Got it — we&apos;ll be in touch about next steps.
         </p>
       )}

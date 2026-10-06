@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui";
 import { turnOffAutoRenewAction } from "./actions";
 
 export function TurnOffAutoRenew({ agreementId }: { agreementId: string }) {
@@ -11,11 +12,17 @@ export function TurnOffAutoRenew({ agreementId }: { agreementId: string }) {
 
   return (
     <div className="mt-3">
-      <button
+      <Button
         type="button"
+        variant="secondary"
         disabled={pending}
         onClick={() => {
-          if (!window.confirm("Turn off automatic renewal? Your rental will end on its end date instead of continuing month to month.")) return;
+          if (
+            !window.confirm(
+              "Turn off automatic renewal? Your rental will end on its end date instead of continuing month to month.",
+            )
+          )
+            return;
           setError(null);
           startTransition(async () => {
             const result = await turnOffAutoRenewAction({ agreementId });
@@ -23,12 +30,11 @@ export function TurnOffAutoRenew({ agreementId }: { agreementId: string }) {
             else router.refresh();
           });
         }}
-        className="min-h-11 rounded-lg border border-control px-4 py-2 text-sm text-primary hover:bg-subtle disabled:opacity-60"
       >
         {pending ? "Saving…" : "Turn off automatic renewal"}
-      </button>
+      </Button>
       {error && (
-        <p role="alert" className="mt-2 text-sm text-red-800">
+        <p role="alert" className="mt-2 text-sm font-semibold text-danger">
           {error}
         </p>
       )}

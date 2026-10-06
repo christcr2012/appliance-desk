@@ -4,7 +4,17 @@ import { getServerSession } from "@/lib/session";
 import { getPortalData } from "@/domains/portal";
 import { getCustomerStatement } from "@/domains/billing";
 import { formatCents } from "@/domains/pricing/money";
-import { invoiceStatusLabel } from "@/lib/status-labels";
+import {
+  invoiceStatusLabel,
+  invoiceStatusTone,
+} from "@/lib/status-labels";
+import {
+  ButtonLink,
+  Card,
+  EmptyState,
+  PageHeader,
+  StatusPill,
+} from "@/components/ui";
 import { ManageBillingButton } from "./manage-billing-button";
 
 export const metadata = { title: "Billing" };
@@ -21,11 +31,12 @@ export default async function AccountBillingPage() {
 
   if (!customer) {
     return (
-      <div>
-        <h1 className="text-xl font-semibold">Billing</h1>
-        <p className="mt-2 text-ink-soft">
-          There&apos;s no rental account attached to this login yet.
-        </p>
+      <div className="max-w-3xl">
+        <PageHeader title="Billing" />
+        <EmptyState
+          title="No rental account attached to this login"
+          description="Contact the business if you expected to see billing history here."
+        />
       </div>
     );
   }
@@ -35,84 +46,93 @@ export default async function AccountBillingPage() {
   const statementMonth = previousBusinessMonth();
 
   return (
-    <div>
-      <h1 className="text-xl font-semibold">Billing</h1>
-      <p className="mt-1 text-sm text-ink-soft">
-        Update your card or bank account, and download past invoices, through
-        Stripe&apos;s secure billing page.
-      </p>
-      <div className="mt-4 flex flex-wrap items-center gap-3">
-        <ManageBillingButton />
-        <Link
-          className="inline-flex min-h-11 items-center rounded-lg border border-control px-4 py-2 text-sm font-medium text-primary hover:bg-subtle"
-          href={`/api/documents/statement/${statementMonth}`}
-          target="_blank"
+    <div className="max-w-5xl">
+      <PageHeader
+        title="Billing"
+        description="Update your payment method and review your recorded invoice history."
+        secondaryActions={
+          <ButtonLink
+            href={`/api/documents/statement/${statementMonth}`}
+            target="_blank"
+            variant="secondary"
+          >
+            View {statementMonth} frozen statement
+          </ButtonLink>
+        }
+      />
+
+      <div className="mb-6">
+        <Card
+          title="Payment method"
+          description="Stripe opens a secure billing page for card or bank-account changes."
         >
-          View {statementMonth} frozen statement
-        </Link>
+          <ManageBillingButton />
+        </Card>
       </div>
 
       {statement && statement.totalBalanceCents > 0 && (
-        <div className="mt-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
-          <p className="text-sm font-medium text-amber-900">
+        <div className="mb-6 rounded-card border border-warning-ink bg-warning-bg p-4">
+          <p className="font-semibold text-warning-ink">
             {formatCents(statement.totalBalanceCents)} currently owed
             {hasMultipleProperties ? " across all your properties" : ""}.
           </p>
         </div>
       )}
 
-      <p className="mt-4 text-sm text-ink-soft">
+      <p className="mb-6 text-sm text-ink-soft">
         Invoice amounts can include deposits, fees and tax. A required deposit
         is separate from a confirmed payment. Payment status shows the last
         recorded update.
       </p>
 
-      {/* Grouped by property once there's more than one — a property
-          manager's whole portfolio in one place instead of a flat list
-          with no indication which invoice belongs to which building
-          (docs/BUSINESS-RULES.md's "Property managers / portfolio
-          accounts"). A single-property customer just sees one section,
-          no different from the old flat list. */}
       {!statement || statement.properties.length === 0 ? (
-        <p className="mt-8 text-sm text-ink-soft">
-          No invoices yet — one is created automatically each time you&apos;re
-          billed.
-        </p>
+        <EmptyState
+          title="No invoices yet"
+          description="An invoice is created automatically each time you're billed."
+        />
       ) : (
-        <div className="mt-8 space-y-6">
+        <div className="space-y-6">
           {statement.properties.map((property) => (
-            <div key={property.serviceAddressId ?? "no-property"}>
-              {hasMultipleProperties && (
-                <h2 className="text-sm font-medium text-ink-soft">
-                  {property.addressLabel}
-                </h2>
-              )}
-              <ul className="mt-2 divide-y divide-line rounded-lg border border-line bg-surface">
+            <Card
+              key={property.serviceAddressId ?? "no-property"}
+              title={hasMultipleProperties ? property.addressLabel : "Invoices"}
+              description={
+                hasMultipleProperties
+                  ? "Invoices recorded for this property."
+                  : undefined
+              }
+            >
+              <ul className="divide-y divide-line">
                 {property.invoices.map((invoice) => (
                   <li
                     key={invoice.id}
-                    className="flex flex-wrap items-start justify-between gap-3 px-4 py-3 text-sm"
+                    className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between"
                   >
-                    <div>
+                    <div className="min-w-0">
                       <Link
                         href={`/account/billing/invoice/${invoice.id}`}
-                        className="font-medium text-ink hover:underline"
+                        className="font-semibold text-ink underline-offset-4 hover:underline"
                       >
                         Invoice #{invoice.invoiceNumber}
                       </Link>
-                      <p className="text-ink-soft">
+                      <p className="mt-1 text-sm text-ink-soft">
                         {invoice.billingPeriodStart
                           ? formatBusinessDate(invoice.billingPeriodStart)
-                          : "—"}{" "}
-                        · {invoiceStatusLabel(invoice.status)}
+                          : "—"}
                       </p>
+                      <div className="mt-2">
+                        <StatusPill
+                          tone={invoiceStatusTone(invoice.status)}
+                          label={invoiceStatusLabel(invoice.status)}
+                        />
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className="font-medium text-ink">
+                    <div className="text-left sm:text-right">
+                      <p className="font-semibold text-ink">
                         {formatCents(invoice.amountPaidCents)} paid
                       </p>
                       {invoice.balanceCents > 0 && (
-                        <p className="text-xs text-amber-700">
+                        <p className="mt-1 text-sm font-semibold text-warning-ink">
                           {formatCents(invoice.balanceCents)} owed
                         </p>
                       )}
@@ -120,7 +140,7 @@ export default async function AccountBillingPage() {
                   </li>
                 ))}
               </ul>
-            </div>
+            </Card>
           ))}
         </div>
       )}

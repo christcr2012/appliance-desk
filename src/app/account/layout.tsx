@@ -1,24 +1,13 @@
 import { requireSession } from "@/lib/session";
-import { AuthedHeader, type AuthedNavLink } from "@/components/authed-header";
+import { AccountShell } from "@/components/account-shell";
 import { IdleLogout } from "@/components/idle-logout";
 
 export const metadata = {
   robots: { index: false, follow: false },
 };
 
-const ACCOUNT_LINKS: AuthedNavLink[] = [
-  { href: "/account", label: "Overview" },
-  { href: "/account/rentals", label: "My rentals" },
-  { href: "/account/maintenance", label: "Maintenance" },
-  { href: "/account/billing", label: "Billing" },
-  { href: "/account/settings", label: "Settings" },
-];
-
-// Any signed-in user can reach /account — a customer sees their own
-// rentals, an owner/admin can still have an account of their own. What
-// DATA shows up inside each page is filtered by the signed-in user's id
-// on the server (see docs/BUSINESS-RULES.md — "a customer must never see
-// another customer's records").
+// Any signed-in user can reach /account — customer data remains filtered by
+// the signed-in user's id inside each page/domain query.
 export default async function AccountLayout({
   children,
 }: {
@@ -27,12 +16,9 @@ export default async function AccountLayout({
   await requireSession();
 
   return (
-    <div className="min-h-screen bg-canvas">
-      <AuthedHeader title="My Account" areaLabel="My account" links={ACCOUNT_LINKS} />
-      <main id="main-content" className="p-6">
-        {children}
-      </main>
+    <AccountShell>
+      {children}
       <IdleLogout timeoutMinutes={30} />
-    </div>
+    </AccountShell>
   );
 }

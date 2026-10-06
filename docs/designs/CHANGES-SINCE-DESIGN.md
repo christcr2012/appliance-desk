@@ -120,3 +120,7 @@ All customer-addressed email goes through `sendCustomerEmail` (owner master swit
 - The E2 design's global radius/style lint assumption was stale against final `main`: hundreds of legacy `rounded-*` utilities remain on screens that the approved E2 plan explicitly migrates in E2-2 through E2-8. Applying the final guard globally in E2-1 would therefore collapse the remaining redesign into one oversized PR.
 - At the owner's direction to use smaller PRs when needed, WU-E2-1 is split into E2-1A (tokens, lint foundation, contrast/accessibility proof), E2-1B (shared visual primitives and render tests), and E2-1C (structural, form and list components with render tests). This is a sequencing-only split; the approved E2 behavior and acceptance criteria are unchanged.
 - E2-1A adds only brand-kit values already approved in BATCH-E2: navigation tokens and the 8px/16px radii. It does not change route behavior, data, permissions, live messaging, or payment activation.
+
+## 2026-10-06 — WU-E2-6 drift reconciliation
+
+- The E2 design still names `e2e/accessibility-authenticated.spec.ts`, but Batch E replaced that legacy file with the generated route inventory/accessibility shards plus `e2e/owner-portal-workspaces.spec.ts`. WU-E2-6 extends those current tests instead of recreating the removed file. The customer route inventory already includes the D-added settings/privacy surfaces; portal-home-only 390px coverage is added in the focused workspace spec to satisfy E2-9 without multiplying every customer route across an extra viewport.

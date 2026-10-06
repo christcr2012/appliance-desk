@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui";
 import { endFixedTermRentalAction } from "./actions";
 
 export function EndFixedTerm(props: {
@@ -23,11 +24,17 @@ export function EndFixedTerm(props: {
 
   return (
     <div className="mt-3">
-      <button
+      <Button
         type="button"
+        variant="secondary"
         disabled={pending}
         onClick={() => {
-          if (!window.confirm(`Request the ending shown above for ${props.effectiveLabel}? This does not charge your card automatically.`)) return;
+          if (
+            !window.confirm(
+              `Request the ending shown above for ${props.effectiveLabel}? This does not charge your card automatically.`,
+            )
+          )
+            return;
           setError(null);
           startTransition(async () => {
             const result = await endFixedTermRentalAction({
@@ -46,12 +53,11 @@ export function EndFixedTerm(props: {
             else router.refresh();
           });
         }}
-        className="min-h-11 rounded-lg border border-control px-4 py-2 text-sm text-primary hover:bg-subtle disabled:opacity-60"
       >
         {pending ? "Saving…" : `Request ending on ${props.effectiveLabel}`}
-      </button>
+      </Button>
       {error && (
-        <p role="alert" className="mt-2 text-sm text-red-800">
+        <p role="alert" className="mt-2 text-sm font-semibold text-danger">
           {error}
         </p>
       )}
