@@ -98,7 +98,7 @@ export function NewEstimateForm({
             disabled={customers.length === 0}
             className={`rounded-md border px-3 py-1.5 text-sm ${
               mode === "existing"
-                ? "border-primary bg-action text-on-action"
+                ? "border-action bg-action text-on-action"
                 : "border-line-strong text-ink-soft hover:border-line-strong disabled:opacity-40"
             }`}
           >
@@ -109,7 +109,7 @@ export function NewEstimateForm({
             onClick={() => setMode("new")}
             className={`rounded-md border px-3 py-1.5 text-sm ${
               mode === "new"
-                ? "border-primary bg-action text-on-action"
+                ? "border-action bg-action text-on-action"
                 : "border-line-strong text-ink-soft hover:border-line-strong"
             }`}
           >
