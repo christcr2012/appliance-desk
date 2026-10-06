@@ -35,17 +35,19 @@ permissions:
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # A new push to a pull request cancels that PR's older run (it is stale). Runs on
+  # main are never cancelled, so every merged commit gets its own complete result.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   classify:
     name: classify changes
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     outputs:
       app_changed: ${{ steps.changes.outputs.app_changed }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
@@ -102,16 +104,17 @@ jobs:
     #   2. gitleaks - the widely used scanner, over the WHOLE git history.
     # Neither prints the secret itself, only the file, line and a short label.
     name: secret scan
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: 22
+          package-manager-cache: false
 
       - name: Project secret and private-identifier scan
         run: node scripts/check-secrets.mjs
@@ -134,7 +137,7 @@ jobs:
     name: type-check, lint and repo checks
     needs: classify
     if: needs.classify.outputs.app_changed == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     env:
       # `npm ci` runs `prisma generate`, which needs the variable to exist (no
@@ -145,15 +148,10 @@ jobs:
       BETTER_AUTH_URL: http://localhost:3000
       NEXT_PUBLIC_APP_URL: http://localhost:3000
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci --no-audit --no-fund
+      - name: Node and dependencies (cached node_modules)
+        uses: ./.github/actions/setup-deps
 
       - name: Type-check and lint (in parallel)
         shell: bash
@@ -183,7 +181,7 @@ jobs:
     name: unit tests (${{ matrix.shard }}/3)
     needs: classify
     if: needs.classify.outputs.app_changed == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     strategy:
       fail-fast: false
@@ -219,15 +217,10 @@ jobs:
       TEST_STAFF_PASSWORD: Ci-Test-Staff-Password-Not-Real-1!
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci --no-audit --no-fund
+      - name: Node and dependencies (cached node_modules)
+        uses: ./.github/actions/setup-deps
 
       - name: Apply database migrations
         run: npm run db:migrate:deploy
@@ -254,7 +247,7 @@ jobs:
     name: browser tests (${{ matrix.shard }})
     needs: classify
     if: needs.classify.outputs.app_changed == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     strategy:
       fail-fast: false
@@ -290,15 +283,52 @@ jobs:
       TEST_STAFF_PASSWORD: Ci-Test-Staff-Password-Not-Real-1!
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - name: Node and dependencies (cached node_modules)
+        uses: ./.github/actions/setup-deps
+
+      # Browser first, so its system-library check can run in the background while
+      # the database is prepared and the app is built.
+      - name: Restore Playwright browser cache
+        id: playwright-cache
+        uses: actions/cache@v5
         with:
-          node-version: 22
-          cache: npm
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package-lock.json') }}
 
-      - name: Install dependencies
-        run: npm ci --no-audit --no-fund
+      - name: Download the Playwright browser (only when the cache missed)
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: npx playwright install chromium
+
+      - name: Install missing browser system libraries in the background (usually none)
+        # The runner image already ships most libraries Chromium needs. Installing
+        # them with apt on every run cost 11-26 s and, when Ubuntu's mirrors were
+        # slow, once 3.5 minutes. Instead: ask the dynamic linker which libraries
+        # the downloaded browser binaries cannot find. Nothing missing -> skip apt.
+        # Anything missing (or no binary found) -> run Playwright's own installer in
+        # the background; the test step waits for it and fails loudly if it failed.
+        shell: bash
+        run: |
+          set -uo pipefail
+          mapfile -t bins < <(find "$HOME/.cache/ms-playwright" -type f \( -name chrome -o -name chrome-headless-shell -o -name headless_shell \) -perm -u+x 2>/dev/null)
+          missing=""
+          if (( ${#bins[@]} == 0 )); then
+            missing="(no browser binary found)"
+          else
+            for bin in "${bins[@]}"; do
+              missing+="$(ldd "$bin" 2>/dev/null | grep 'not found' || true)"
+            done
+          fi
+          if [[ -z "$missing" ]]; then
+            echo "All browser system libraries are present; skipping apt."
+            echo 0 > "$RUNNER_TEMP/pw-deps.status"
+          else
+            echo "Missing libraries, installing in the background:"; echo "$missing"
+            # Fully detached (own stdin/stdout/stderr) so this step ends immediately.
+            nohup bash -c 'npx playwright install-deps chromium; echo $? > "$RUNNER_TEMP/pw-deps.status"' \
+              < /dev/null > "$RUNNER_TEMP/pw-deps.log" 2>&1 &
+          fi
 
       - name: Apply database migrations
         run: npm run db:migrate:deploy
@@ -307,7 +337,7 @@ jobs:
         run: npm run db:seed
 
       - name: Restore Next build cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: .next/cache
           key: next-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-${{ github.sha }}
@@ -317,20 +347,14 @@ jobs:
       - name: Production build
         run: npm run build
 
-      - name: Restore Playwright browser cache
-        id: playwright-cache
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
-
-      - name: Install Playwright browser and OS dependencies
-        if: steps.playwright-cache.outputs.cache-hit != 'true'
-        run: npx playwright install --with-deps chromium
-
-      - name: Install Playwright OS dependencies
-        if: steps.playwright-cache.outputs.cache-hit == 'true'
-        run: npx playwright install-deps chromium
+      - name: Wait for browser system libraries
+        shell: bash
+        run: |
+          set -uo pipefail
+          for _ in $(seq 1 600); do [[ -f "$RUNNER_TEMP/pw-deps.status" ]] && break; sleep 1; done
+          status="$(cat "$RUNNER_TEMP/pw-deps.status" 2>/dev/null || echo timeout)"
+          [[ -f "$RUNNER_TEMP/pw-deps.log" ]] && cat "$RUNNER_TEMP/pw-deps.log"
+          if [[ "$status" != "0" ]]; then echo "::error::Installing browser system libraries failed ($status)"; exit 1; fi
 
       - name: Accessibility, security and end-to-end tests (${{ matrix.shard }})
         run: node scripts/e2e-shard.mjs ${{ matrix.shard }}
@@ -338,7 +362,7 @@ jobs:
       # Only kept when something failed.
       - name: Upload Playwright report
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: playwright-report-${{ matrix.shard }}
           path: playwright-report/
@@ -351,7 +375,7 @@ jobs:
     name: ci
     if: always()
     needs: [classify, secrets, static, unit, e2e]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - name: Verify required quality jobs

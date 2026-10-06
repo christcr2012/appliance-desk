@@ -13,6 +13,9 @@ function routesFor(...roles: AccessibilityRouteRole[]) {
 }
 
 test.describe("generated accessibility routes — public", () => {
+  // Each test only loads one page and scans it (no data changes), so the tests in this
+  // group can run on both Playwright workers at once (CI speed, 2026-10-06).
+  test.describe.configure({ mode: "parallel" });
   for (const route of routesFor("PUBLIC")) {
     test(route.path, async ({ page }, info) => {
       await scanAccessibilityRoute(
@@ -45,6 +48,9 @@ test.describe("generated accessibility routes — public", () => {
 });
 
 test.describe("generated accessibility routes — customer", () => {
+  // Each test only loads one page and scans it (no data changes), so the tests in this
+  // group can run on both Playwright workers at once (CI speed, 2026-10-06).
+  test.describe.configure({ mode: "parallel" });
   test.use({
     storageState: fs.existsSync(CUSTOMER_STATE) ? CUSTOMER_STATE : undefined,
   });

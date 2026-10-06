@@ -1,0 +1,26 @@
+name: Set up Node and dependencies
+description: >
+  Node 22 plus node_modules, restored from a cache keyed on the exact lockfile and
+  Prisma schema. On a cache hit `npm ci` is skipped entirely (the cached folder
+  already contains the generated Prisma client from the postinstall step). On a
+  miss it runs `npm ci` and the cache is saved for the next run. No partial
+  restore: a different lockfile or schema always gets a clean install.
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v6
+      with:
+        node-version: 22
+        package-manager-cache: false
+
+    - name: Restore node_modules (exact lockfile + schema match only)
+      id: node-modules
+      uses: actions/cache@v5
+      with:
+        path: node_modules
+        key: node-modules-${{ runner.os }}-${{ runner.arch }}-node22-${{ hashFiles('package-lock.json', 'prisma/schema.prisma', 'prisma.config.ts') }}
+
+    - name: Install dependencies (only when the cache missed)
+      if: steps.node-modules.outputs.cache-hit != 'true'
+      shell: bash
+      run: npm ci --no-audit --no-fund
