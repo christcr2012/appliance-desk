@@ -1,9 +1,18 @@
 import Link from "next/link";
-import { getMaintenanceRequestsPage, getMaintenanceRequestsCount } from "@/domains/maintenance";
 import type { MaintenanceStatus } from "@prisma/client";
+import { getMaintenanceRequestsPage, getMaintenanceRequestsCount } from "@/domains/maintenance";
 import { parsePage, paginationMeta } from "@/domains/pagination";
 import { Pagination } from "@/components/pagination";
-import { SupportServiceIcon } from "@/components/icons/service-icons";
+import { FilterBar } from "@/components/desk/workspace";
+import {
+  DataList,
+  EmptyState,
+  PageHeader,
+  StatusPill,
+  type DataListColumn,
+} from "@/components/ui";
+import type { StatusTone } from "@/components/status-badge";
+import { maintenanceStatusLabel } from "@/lib/status-labels";
 
 export const metadata = { title: "Maintenance" };
 
@@ -17,7 +26,18 @@ const STATUS_TABS: { value: MaintenanceStatus | "ALL"; label: string }[] = [
   { value: "CLOSED", label: "Closed" },
 ];
 
-function isMaintenanceStatus(value: string | undefined): value is MaintenanceStatus {
+const STATUS_TONE: Record<MaintenanceStatus, StatusTone> = {
+  SUBMITTED: "pending",
+  REVIEWING: "progress",
+  SCHEDULED: "progress",
+  IN_PROGRESS: "progress",
+  RESOLVED: "success",
+  CLOSED: "stopped",
+};
+
+function isMaintenanceStatus(
+  value: string | undefined,
+): value is MaintenanceStatus {
   return (
     value === "SUBMITTED" ||
     value === "REVIEWING" ||
@@ -27,6 +47,10 @@ function isMaintenanceStatus(value: string | undefined): value is MaintenanceSta
     value === "CLOSED"
   );
 }
+
+type MaintenanceRow = Awaited<
+  ReturnType<typeof getMaintenanceRequestsPage>
+>[number];
 
 export default async function MaintenancePage({
   searchParams,
@@ -39,9 +63,16 @@ export default async function MaintenancePage({
 
   const totalCount = await getMaintenanceRequestsCount(filter);
   const meta = paginationMeta(totalCount, parsePage(rawPage));
-  const requests = await getMaintenanceRequestsPage(filter, meta.skip, meta.pageSize);
+  const requests = await getMaintenanceRequestsPage(
+    filter,
+    meta.skip,
+    meta.pageSize,
+  );
 
-  function maintenanceHref(page: number, forStatus: MaintenanceStatus | "ALL" = status ?? "ALL") {
+  function maintenanceHref(
+    page: number,
+    forStatus: MaintenanceStatus | "ALL" = status ?? "ALL",
+  ) {
     const params = new URLSearchParams();
     if (forStatus !== "ALL") params.set("status", forStatus);
     if (page > 1) params.set("page", String(page));
@@ -49,76 +80,91 @@ export default async function MaintenancePage({
     return qs ? `/desk/maintenance?${qs}` : "/desk/maintenance";
   }
 
+  const columns: DataListColumn<MaintenanceRow>[] = [
+    {
+      key: "request",
+      header: "Request",
+      primary: true,
+      cell: (request) => (
+        <div>
+          <Link
+            href={`/desk/maintenance/${request.id}`}
+            className="font-semibold text-ink underline-offset-4 hover:underline"
+          >
+            {request.customer.user.name ?? request.customer.user.email}
+          </Link>
+          <p className="mt-1 text-sm font-normal text-ink-soft">
+            {request.appliance
+              ? `${request.appliance.applianceType.name} (${request.appliance.assetNumber})`
+              : "General"}{" "}
+            · {request.problem.slice(0, 80)}
+          </p>
+        </div>
+      ),
+    },
+    {
+      key: "status",
+      header: "Status",
+      cell: (request) => (
+        <StatusPill
+          tone={STATUS_TONE[request.status]}
+          label={maintenanceStatusLabel(request.status)}
+        />
+      ),
+    },
+    {
+      key: "priority",
+      header: "Priority",
+      cell: (request) => request.priority,
+    },
+    {
+      key: "opened",
+      header: "Opened",
+      cell: (request) => new Date(request.openedAt).toLocaleDateString(),
+    },
+  ];
+
   return (
     <div>
-      <h1 className="flex items-center gap-2 text-xl font-semibold">
-        <SupportServiceIcon className="h-5 w-5 text-ink-faint" />
-        Maintenance requests
-      </h1>
-      <p className="mt-1 text-sm text-ink-soft">
-        Submitted by customers from their account portal.
-      </p>
+      <PageHeader
+        title="Maintenance requests"
+        description="Customer-submitted service requests from the account portal."
+      />
 
-      <nav aria-label="Filter by status" className="mt-6 flex flex-wrap gap-2">
-        {STATUS_TABS.map((tab) => {
-          const active = (status ?? "ALL") === tab.value;
-          return (
-            <Link
-              key={tab.value}
-              href={maintenanceHref(1, tab.value)}
-              aria-current={active ? "page" : undefined}
-              className={`rounded-full border px-3 py-1 text-sm ${
-                active
-                  ? "border-action bg-action text-on-action"
-                  : "border-line-strong text-ink-soft hover:border-line-strong"
-              }`}
-            >
-              {tab.label}
-            </Link>
-          );
-        })}
-      </nav>
+      <FilterBar
+        label="Filter by status"
+        items={STATUS_TABS.map((tab) => ({
+          href: maintenanceHref(1, tab.value),
+          label: tab.label,
+          active: (status ?? "ALL") === tab.value,
+        }))}
+      />
 
-      {requests.length === 0 ? (
-        <p className="mt-6 text-sm text-ink-soft">
-          {status ? "No requests with this status." : "No maintenance requests yet."}
-        </p>
-      ) : (
-        <ul className="mt-6 divide-y divide-line rounded-lg border border-line bg-white">
-          {requests.map((r) => (
-            <li key={r.id}>
-              <Link
-                href={`/desk/maintenance/${r.id}`}
-                className="flex flex-col gap-1 px-4 py-4 hover:bg-canvas sm:flex-row sm:items-center sm:justify-between"
-              >
-                <div>
-                  <p className="font-medium text-ink">
-                    {r.customer.user.name ?? r.customer.user.email}
-                  </p>
-                  <p className="text-sm text-ink-soft">
-                    {r.appliance
-                      ? `${r.appliance.applianceType.name} (${r.appliance.assetNumber})`
-                      : "General"}{" "}
-                    · {r.problem.slice(0, 80)}
-                  </p>
-                </div>
-                <div className="text-sm text-ink-faint sm:text-right">
-                  <p>
-                    {r.status} · {r.priority}
-                  </p>
-                  <p>{new Date(r.openedAt).toLocaleDateString()}</p>
-                </div>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
+      <DataList
+        rows={requests}
+        columns={columns}
+        caption="Maintenance requests"
+        empty={
+          <EmptyState
+            title={
+              status
+                ? "No requests with this status"
+                : "No maintenance requests yet"
+            }
+            description={
+              status
+                ? "Choose another status to review different requests."
+                : "Customer service requests will appear here."
+            }
+          />
+        }
+      />
 
       <Pagination
         page={meta.page}
         totalPages={meta.totalPages}
         totalCount={meta.totalCount}
-        buildHref={(p) => maintenanceHref(p)}
+        buildHref={(page) => maintenanceHref(page)}
       />
     </div>
   );
