@@ -1,5 +1,5 @@
 {
-  "_comment": "Explicit CI shard assignment for the browser suite (4 parallel runners). Every e2e/*.spec.ts must appear in exactly one group (scripts/e2e-shard.mjs enforces this in CI). E10 route coverage was split across browser-b/c/d using the 2026-10-05 measured durations so no fifth runner is needed. Each run prints per-file durations as a CI notice; rebalance from those numbers.",
+  "_comment": "Explicit CI shard assignment for the browser suite (4 parallel runners). Every e2e/*.spec.ts must appear in exactly one group (scripts/e2e-shard.mjs enforces this in CI). E10 generated route coverage replaces the old duplicate axe route loops; focused legacy keyboard/menu/theme regressions remain. Generated scans are split across browser-b/c/d from measured runtimes; no fifth runner.",
   "groups": {
     "browser-a": [
       "owner-portal-workspaces.spec.ts",
@@ -12,7 +12,6 @@
     ],
     "browser-c": [
       "crm-workspace.spec.ts",
-      "accessibility-authenticated.spec.ts",
       "appliance-price-save-feedback.spec.ts",
       "purchasing-review.spec.ts",
       "accessibility-routes-desk-a.spec.ts"
