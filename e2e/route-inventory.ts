@@ -26,7 +26,7 @@ export const ACCESSIBILITY_ROUTES: readonly AccessibilityRoute[] = [
   { path: "/launch/confirm/[token]", role: "PUBLIC", fixture: "/launch/confirm/invalid-ci-token" },
   { path: "/login", role: "PUBLIC", fixture: "/login" },
   { path: "/reset-password", role: "PUBLIC", fixture: "/reset-password" },
-  { path: "/scan/[assetNumber]", role: "PUBLIC", fixture: "/scan/CI-SECURITY-UNIT" },
+  { path: "/scan/[assetNumber]", role: "OWNER", fixture: "/scan/CI-SECURITY-UNIT" },
   { path: "/sign/[id]", role: "PUBLIC", fixture: "/sign/__AGREEMENT_ID__", manualOnlyReason: "The signing page requires a purpose-built unsigned agreement; the standard CI agreement is already active." },
 
   { path: "/account", role: "CUSTOMER", fixture: "/account" },
