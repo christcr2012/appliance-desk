@@ -584,9 +584,7 @@ Google Tasks/Keep, Sheets-as-reporting, Contacts sync.
 - The revenue filter browser test raced the browser's "back" button (fixed in #149 by
   waiting for the page to catch up); other specs that use `goBack()` followed by
   keyboard navigation may have the same weakness.
-- Held payments (a card payment on a written-off invoice, IN-23): build the owner screen
-  that resolves one (credit the account, reverse the write-off, or refund) once Chris
-  decides.
+- ~~Held-payment owner resolution screen (IN-23).~~ **Done in Batch B**: Billing → Held payments lets OWNER/ADMIN mark the invoice paid, keep the money as account credit, or refund the card with a recommended choice.
 
 - **A way to end custody for a lost or written-off unit (found in Batch C review, 2026-10-04).** A hand-made status change now refuses "available", "reserved" or "retired" while a customer is recorded as holding the unit, and refuses "rented" or "awaiting pickup" with no customer recorded (deliveries and pickups go through job completion). A unit that is genuinely lost at a customer's home therefore has no way to be retired yet; it needs an owner-only "end custody (lost / written off)" action with a reason. Not built; decide when P2-E/P2-F are designed.
 
