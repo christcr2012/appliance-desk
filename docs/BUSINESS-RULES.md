@@ -1076,9 +1076,9 @@ scheduled date), never from the moment a status button is pressed.
    owner-set dollar amount per day. The late days appear on the next bill as
    their own line, labeled `Late return – [item] – [N] days` (one line per
    item), with the agreement's sales tax. The bill is an ordinary open
-   invoice: it is never charged to a card automatically, so the owner can
-   adjust or write it off (for example a late pickup that was the company's
-   fault — the automatic waiver for that is still to be built, IN-24).
+   invoice: it is never charged to a card automatically. If the business caused
+   the late pickup, OWNER/ADMIN can record "Our delay" with a required note and
+   add the matching audited waiver built in Batch B2.
 2. **Late delivery (an item missing from the first delivery).** Billing starts
    only on a delivery/installation visit where at least one rental item is
    actually delivered. If every item is marked not delivered, that visit starts
