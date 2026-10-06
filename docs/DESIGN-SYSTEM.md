@@ -29,4 +29,4 @@ alike:
   maintenance photos, logo).
 - Proper heading order (one `<h1>` per page, no skipped levels).
 - Never convey information by color alone (e.g. a status badge needs
-  text, ï¿½ï¿½ï¿½qï¿½^
+  text, ¶»§q«^

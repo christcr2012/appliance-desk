@@ -25,14 +25,4 @@ stateful or generated per run:
 - `/account/billing/invoice/[invoiceId]` — the CI customer invoice id is generated per run.
 - `/desk/agreements/[id]` and `/desk/agreements/[id]/early-return` — require generated agreement state/eligibility.
 - `/desk/billing/customer/[id]` and its invoice route — require generated customer/invoice ids.
-- `/desk/billing/deposits/[id]` — requires a specific deposit-liability record.
-- `/desk/customers/[id]` — generated customer id.
-- `/desk/estimates/[id]` — generated estimate id.
-- `/desk/leads/[id]` — generated lead id.
-- `/desk/maintenance/[id]` — generated maintenance-request id.
-- `/desk/notices/[id]/resolve` — requires a live unresolved notice and mutates its state.
-- `/desk/parts/[id]` — generated part id.
-- `/desk/purchase-orders/[id]` — generated purchase-order id and lifecycle state.
-- `/desk/suppliers/[id]` — generated supplier id.
-
-The de...[truncated]
+- `/desk/billing/deposits/[id]` — requires���q�^
