@@ -280,13 +280,9 @@ changing these never changes a customer's current 6- or 12-month rental.
   stays off.
 - Changing the wording of the renewal terms starts a new version. Customers who
   already agreed keep the wording they agreed to.
-- Not built yet: warning customers 30 days before a change, applying changes to
-  month-to-month rentals, and setting different terms for one customer.
-- A 6- or 12-month term starts when the appliances are delivered (when billing
-  starts), not when the agreement is signed.
-
-These screens only save the rules for now. The screens that show a customer a
-quote for ending early, or let you renew a rental, come in a later step.
+- Month-to-month changes are versioned. The system creates a tracked notice and the new version does not apply to that customer until the configured notice period has passed after the notice is delivered.
+- A 6- or 12-month term starts when the appliances are delivered (when billing starts), not when the agreement is signed.
+- Customer and owner ending/renewal screens are built. Live customer email and automatic-renewal execution still follow the separate go-live approval switches.
 
 ### When equipment comes back early
 
@@ -447,7 +443,7 @@ actual physical fleet, or your public site text. Running the same
 command without `-- --yes` first shows exactly what it would delete
 without changing anything, if you want to see that before it happens.
 
-## What's not built yet
+## What's still deferred or not live
 
 (Corrected 2026-09-29 — this section had gone stale; photo uploads and
 the revenue dashboard were both built a while back but this list never
