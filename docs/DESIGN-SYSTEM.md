@@ -11,7 +11,7 @@ no separate component library beyond what's needed (shadcn/ui components
 get added as later phases need specific UI, e.g. a data table for
 `/desk/inventory`).
 
-## Accessibility — required, not optional (WCAG 2.1 AA)
+## Accessibility — required, not optional (WCAG 2.2 AA)
 
 Applies to the public site, the customer portal, and the owner desk
 alike:
@@ -33,20 +33,16 @@ alike:
 - Respect `prefers-reduced-motion`.
 - Usable at 200% browser zoom and on phones.
 
-**Automated checks are wired into CI**: `e2e/accessibility.spec.ts` runs
-axe against the public site and the login/password pages, tagged
-`wcag2a`/`wcag2aa`/`wcag21a`/`wcag21aa`, and fails the build on any
-violation. `e2e/accessibility-authenticated.spec.ts` (added 2026-09-27)
-does the same for every page behind a login — the owner desk
-(`/desk/**`) and the customer portal (`/account/**`) — by logging in for
-real as a test-only OWNER/CUSTOMER account that `prisma/seed.ts` creates
-when `OWNER_EMAIL`/`OWNER_PASSWORD`/`TEST_CUSTOMER_EMAIL`/
-`TEST_CUSTOMER_PASSWORD` are set (CI sets these against its own
-throwaway database only — see `.github/workflows/ci.yml`; never set
-them against production). Together these catch missing labels/
-contrast/etc. automatically across the entire app — they do **not**
-replace a manual screen-reader + keyboard pass before launch (tracked in
-`docs/ROADMAP.md`, Phase 7).
+**Automated checks are wired into CI.** `e2e/route-inventory.ts` is the
+authoritative list of every App Router page. `tests/accessibility-route-inventory.test.ts`
+fails when a page is added without an inventory entry. The generated Playwright suites
+(`e2e/accessibility-routes*.spec.ts`) run axe against every automated route at
+360px and 1440px in both light and dark mode, using real test-only OWNER/CUSTOMER
+sessions where required. Routes that cannot safely have a stable CI fixture are
+listed in the same inventory with an explicit manual-only reason and are documented
+in `docs/ACCESSIBILITY.md`. These are **WCAG 2.2 AA engineering checks**, not a
+certification, and they do **not** replace manual screen-reader, keyboard, zoom,
+forced-colors, or content review before launch.
 
 An `/accessibility` statement page with a way to report problems is
 required before launch (Phase 2/7).
