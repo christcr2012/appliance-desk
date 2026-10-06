@@ -592,7 +592,7 @@ Google Tasks/Keep, Sheets-as-reporting, Contacts sync.
 
 - **A "Cash received from this customer" block on the customer page (found in Batch C, 2026-10-04).** The rule is that customer cash (`collectedBetween`) appears only on the customer's own page, never on appliance or fleet screens, and a test now guards that. No such block exists on the customer page yet. Add it when the customer money tab is designed (Batch D).
 
-## 2026-10-04 — Owner desk and public site visual redesign (direction approved, not built)
+## 2026-10-04 — Owner desk and public site visual redesign (historical E2 design notes; implemented)
 
 Chris asked for a more polished, "high-end" look, using modern component-library sites (21st.dev-style dashboards and
 atmospheric hero pages) as **inspiration only**. Nothing from those libraries is used; every piece is built fresh in the
@@ -619,7 +619,7 @@ What the real work will need (so it is not forgotten):
   the kit in its latest version, but contrast was not measured; E's axe and manual checks are the real test. Every word in
   [BRACKETS] on the public home page is a placeholder: prices, service promises, timing, contact details and "what's included" must come
   from `BusinessSettings`, the agreement terms and `docs/BUSINESS-RULES.md`, never from the mockup. The kit forbids invented claims.
-- The public home page direction is not yet approved (only the owner desk is). The hero's dark gradient and two buttons differ from the
+- **Superseded by IN-32 / Batch E2:** the public home direction was later approved as ivory in light mode and evergreen/night in dark mode. Earlier notes about an unapproved home direction or mockup gradient are historical. The old mockup's dark gradient and two buttons differed from the
   kit's "ivory surfaces, one dominant next action" guidance and need a decision before design.
 - **Update 2026-10-04:** this is now scheduled as **Batch E2** (after E, before F) in `docs/PLAN.md`, covering the whole redesign: desktop, phone, dark mode, owner desk, customer portal and public site. A phone mockup of Today and the home page exists in the same private canvas.
 
