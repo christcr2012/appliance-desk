@@ -94,6 +94,53 @@ for (const role of ["owner", "customer"] as const) {
           }
         });
       }
+    if (role === "customer") {
+      for (const theme of ["light", "dark"] as const) {
+        test(`portal home bottom tabs at 390px ${theme}`, async ({ page }) => {
+          test.setTimeout(90_000);
+          await page.setViewportSize({ width: 390, height: 844 });
+          await page.addInitScript(
+            (mode) => localStorage.setItem("theme", mode),
+            theme,
+          );
+          await page.goto("/account");
+
+          const nav = page.getByRole("navigation", { name: "Account" });
+          await expect(nav).toBeVisible();
+          const labels = ["Home", "Rentals", "Maintenance", "Billing", "Account"];
+          for (const label of labels) {
+            await expect(
+              nav.getByRole("link", { name: label, exact: true }),
+            ).toBeVisible();
+          }
+          await expect(
+            nav.getByRole("link", { name: "Home", exact: true }),
+          ).toHaveAttribute("aria-current", "page");
+
+          await nav.getByRole("link", { name: "Home", exact: true }).focus();
+          for (const label of labels.slice(1)) {
+            await page.keyboard.press("Tab");
+            await expect(
+              nav.getByRole("link", { name: label, exact: true }),
+            ).toBeFocused();
+          }
+
+          for (const question of [
+            "What do I rent?",
+            "What's next?",
+            "Do I owe anything?",
+            "How do I get help?",
+          ]) {
+            await expect(
+              page.getByRole("heading", { name: question, exact: true }),
+            ).toBeVisible();
+          }
+
+          await accessible(page);
+        });
+      }
+    }
+
     if (role === "owner") {
       test("section save survives reload and browser Back restores its selected section", async ({
         page,
