@@ -1,5 +1,5 @@
 import { requireRole } from "@/lib/session";
-import { PageHeader } from "@/components/desk/workspace";
+import { Card, EmptyState, PageHeader } from "@/components/ui";
 import { listWaitingNotices } from "@/domains/notices";
 import { formatBusinessDate } from "@/lib/business-date";
 import { NoticeCard } from "./notice-card";
@@ -14,43 +14,62 @@ export default async function NoticesPage() {
     <div>
       <PageHeader
         title="Notices waiting to go out"
-        description="Messages a customer is owed, such as the reminder before an automatic renewal. Each one is saved exactly as written."
+        description="Messages a customer is owed, such as the reminder before an automatic renewal. Each notice is saved exactly as written."
       />
-      <div className="mb-6 rounded-lg border border-line-strong bg-white px-4 py-3 text-sm text-ink">
-        <p className="font-medium text-ink">How this works</p>
-        <p className="mt-1">
-          Colorado asks that a customer is reminded 25 to 40 days before an automatic renewal. The reminder is written
-          for you the moment the renewal is set up, using the renewal wording the customer agreed to. It is emailed
-          automatically, inside those days only, once live customer email is on (that switch is yours to approve; it is off
-          today). If its last day passes it is never sent late. Until it has been delivered, the customer&rsquo;s renewal
-          will not start.
-        </p>
-        <p className="mt-2">
-          If you deliver it yourself, record how (mail, your business mailbox, a printed copy, or a text the customer agreed
-          to). A phone call is not a delivery: the law lists mail, email, or another easily accessible form the customer
-          authorized.
-        </p>
+
+      <div className="mb-6">
+        <Card title="How this works">
+          <div className="space-y-2 text-sm text-ink-soft">
+            <p>
+              Colorado asks that a customer is reminded 25 to 40 days before
+              an automatic renewal. The reminder is written when the renewal is
+              set up using the wording the customer agreed to. It is emailed
+              automatically only inside those days and only after live customer
+              email is explicitly approved; live customer email remains off
+              today. If its last day passes, it is never sent late. Until it
+              has been delivered, the customer&apos;s renewal will not start.
+            </p>
+            <p>
+              If you deliver it yourself, record how: mail, your business
+              mailbox, a printed copy, or a text the customer agreed to. A phone
+              call is not a delivery; the allowed methods are written forms the
+              customer can access.
+            </p>
+          </div>
+        </Card>
       </div>
+
       {waiting.length === 0 ? (
-        <div className="rounded-lg border border-line bg-white p-6 text-sm text-ink-soft">
-          No notices are waiting to go out.
-        </div>
+        <EmptyState
+          title="No notices are waiting to go out"
+          description="Renewal notices will appear here when a customer is owed one."
+        />
       ) : (
         <ul className="space-y-4">
-          {waiting.map((n) => (
+          {waiting.map((notice) => (
             <NoticeCard
-              key={n.id}
-              noticeId={n.id}
-              status={n.status}
-              customerName={n.customer.user.name ?? n.customer.user.email}
-              customerEmail={n.customer.user.email}
-              createdLabel={formatBusinessDate(n.createdAt)}
-              subject={n.subject}
-              body={n.body}
-              deadline={n.deadline}
-              firstDayLabel={n.earliestAt ? formatBusinessDate(n.earliestAt) : null}
-              lastDayLabel={n.deadlineAt ? formatBusinessDate(n.deadlineAt) : null}
-              lastError={n.lastError}
+              key={notice.id}
+              noticeId={notice.id}
+              status={notice.status}
+              customerName={
+                notice.customer.user.name ?? notice.customer.user.email
+              }
+              customerEmail={notice.customer.user.email}
+              createdLabel={formatBusinessDate(notice.createdAt)}
+              subject={notice.subject}
+              body={notice.body}
+              deadline={notice.deadline}
+              firstDayLabel={
+                notice.earliestAt
+                  ? formatBusinessDate(notice.earliestAt)
+                  : null
+              }
+              lastDayLabel={
+                notice.deadlineAt
+                  ? formatBusinessDate(notice.deadlineAt)
+                  : null
+              }
+              lastError={notice.lastError}
             />
           ))}
         </ul>
