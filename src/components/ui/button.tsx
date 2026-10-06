@@ -17,7 +17,7 @@ const SIZE_CLASSES: Record<ButtonSize, string> = {
 };
 
 function classes(variant: ButtonVariant, size: ButtonSize, className: string) {
-  return `inline-flex items-center justify-center gap-2 rounded-control font-semibold transition-colors ${VARIANT_CLASSES[variant]} ${SIZE_CLASSES[size]} ${className}`;
+  return `inline-flex items-center justify-center gap-2 rounded-control font-semibold ${VARIANT_CLASSES[variant]} ${SIZE_CLASSES[size]} ${className}`;
 }
 
 export function Button({

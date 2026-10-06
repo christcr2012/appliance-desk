@@ -18,7 +18,29 @@ for (const role of ["owner", "staff"] as const) {
     }) => {
       await page.setViewportSize({ width: 360, height: 800 });
       await page.goto("/desk/today");
-      const open = page.getByRole("button", { name: "Open menu", exact: true });
+      const open = page.getByRole("button", { name: "More navigation", exact: true });
+      const mainNav = page.getByRole("navigation", { name: "Main" });
+      const expectedTabs =
+        role === "owner"
+          ? ["Today", "Schedule", "Customers", "Billing"]
+          : ["Today", "Schedule", "Jobs", "Inventory"];
+      for (const label of expectedTabs) {
+        await expect(
+          mainNav.getByRole("link", { name: label, exact: true }),
+        ).toBeVisible();
+      }
+      await mainNav
+        .getByRole("link", { name: expectedTabs[0], exact: true })
+        .focus();
+      for (const label of expectedTabs.slice(1)) {
+        await page.keyboard.press("Tab");
+        await expect(
+          mainNav.getByRole("link", { name: label, exact: true }),
+        ).toBeFocused();
+      }
+      await page.keyboard.press("Tab");
+      await expect(open).toBeFocused();
+
       await open.click();
       const dialog = page.getByRole("dialog", { name: "Appliance Desk" });
       await expect(dialog).toBeVisible();
@@ -59,15 +81,11 @@ for (const role of ["owner", "staff"] as const) {
       await page.keyboard.press("Escape");
       await expect(dialog).not.toBeVisible();
       await expect(open).toBeFocused();
-      await page.getByRole("button", { name: "More", exact: true }).click();
+      await open.click();
       await dialog.getByRole("link", { name: "Tasks", exact: true }).click();
       await expect(page).toHaveURL(/\/desk\/tasks$/);
       await expect(dialog).not.toBeVisible();
-      await expect(
-        page
-          .getByRole("navigation", { name: "Quick access" })
-          .getByRole("link", { name: "Tasks" }),
-      ).toHaveAttribute("aria-current", "page");
+      await expect(mainNav).toBeVisible();
     });
   });
 }
@@ -78,7 +96,7 @@ test.describe("owner daily work", () => {
     if (process.env.CI) expect(fs.existsSync(owner)).toBe(true);
     test.skip(!fs.existsSync(owner), "Requires isolated CI owner fixture");
   });
-  for (const width of [360, 768, 1440])
+  for (const width of [360, 390, 768, 1440])
     for (const theme of ["light", "dark"]) {
       test(`Today and Tasks at ${width}px in ${theme}`, async ({
         page,
@@ -104,6 +122,13 @@ test.describe("owner daily work", () => {
               .locator("..")
               .boundingBox();
             expect(titleBlock!.width).toBeGreaterThan(300);
+          }
+          if (width === 1440 && route === "today") {
+            await expect(
+              page
+                .getByRole("navigation", { name: "Owner desk" })
+                .getByRole("link", { name: "Today", exact: true }),
+            ).toHaveAttribute("aria-current", "page");
           }
           const axe = await new AxeBuilder({ page })
             .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])

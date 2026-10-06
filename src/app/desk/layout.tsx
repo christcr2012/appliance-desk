@@ -1,5 +1,5 @@
 import { requireRole } from "@/lib/session";
-import { DeskSidebar } from "@/components/desk-sidebar";
+import { AppShell } from "@/components/ui";
 import { IdleLogout } from "@/components/idle-logout";
 import { deskNavigation } from "@/lib/desk-navigation";
 
@@ -11,10 +11,11 @@ export default async function DeskLayout({
   children: React.ReactNode;
 }) {
   const session = await requireRole("OWNER", "ADMIN", "STAFF");
-  const groups = deskNavigation((session.user as { role?: string }).role);
+  const role = (session.user as { role?: string }).role ?? "";
+  const groups = deskNavigation(role);
   return (
     <>
-      <DeskSidebar groups={groups}>{children}</DeskSidebar>
+      <AppShell nav={groups} role={role}>{children}</AppShell>
       <IdleLogout timeoutMinutes={20} />
     </>
   );
