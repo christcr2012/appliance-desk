@@ -12,13 +12,17 @@ import { catalogAlt, fillSiteText } from "@/domains/site-content/fields";
 export default async function HomePage({
   searchParams,
 }: {
-  searchParams: Promise<{ revision?: string | string[] }>;
+  searchParams: Promise<{
+    revision?: string | string[];
+    home?: string | string[];
+  }>;
 }) {
+  const params = await searchParams;
   const [settings, applianceTypes, launch, content] = await Promise.all([
     getBusinessSettings(),
     getPublishedApplianceTypes(),
     getLaunchSettings(),
-    searchParams.then(getContentForRequest),
+    getContentForRequest(params),
   ]);
   const businessName = settings.publicBusinessName;
   const faq = Array.from({ length: 8 }, (_, i) => ({
@@ -26,8 +30,11 @@ export default async function HomePage({
     a: content[`faq.${i + 1}.a`] ?? "",
   })).filter((item) => item.q && item.a);
   const serviceArea = parseServiceArea(settings);
+  const previewLiveHome =
+    process.env.VERCEL_ENV !== "production" && params.home === "live";
+  const showPrelaunchHome = launch.prelaunchMode && !previewLiveHome;
 
-  if (launch.prelaunchMode) {
+  if (showPrelaunchHome) {
     return (
       <>
         <section className="bg-canvas">
