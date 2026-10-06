@@ -635,13 +635,16 @@ What the real work will need (so it is not forgotten):
   kit's "ivory surfaces, one dominant next action" guidance and need a decision before design.
 - **Update 2026-10-04:** this is now scheduled as **Batch E2** (after E, before F) in `docs/PLAN.md`, covering the whole redesign: desktop, phone, dark mode, owner desk, customer portal and public site. A phone mockup of Today and the home page exists in the same private canvas.
 
-## 2026-10-06 — Owner audit: money tools and owner controls (suggestions, not built)
+## 2026-10-06 — Owner audit: money tools and owner controls (now designed as Batches G, T, K, O)
 
-From `docs/reviews/2026-10-06-owner-audit-and-recommendations.md` (Parts 2–4). Not scheduled; Chris decides.
-- **Expenses and a real monthly Profit & Loss** (expense entry with receipt photo and owner-edited categories; cash-basis P&L by month).
-- **Stripe fee import**, appliance payback/depreciation, a per-city sales-tax filing report, a 90-day cash-flow forecast,
-  churn/lifetime-value reports, date-range bookkeeping export, a year-end package.
-- **Owner controls:** per-person permission switches and approval limits for refunds/write-offs/discounts, settings history
-  with undo, dated price changes, goals and idle-machine alerts, one "live switches" page, owner session control.
-- Must-fix items from the same review (F1–F5: dependency advisories, cancelled rentals inflating the earnings report,
-  single business-wide tax rate, no two-step owner login, stale STATUS) are listed in the review itself.
+From `docs/reviews/2026-10-06-owner-audit-and-recommendations.md`. Designed the same day (PROPOSED, awaiting Chris):
+must-fix items F1, F2, F4, F5 → Batch G; F3 (single tax rate) → Batch T; Part 2 money tools → Batch K; Part 3 owner
+controls → Batch O. Summary: `docs/plans/TAX-AND-BOOKS-OVERVIEW.md`. Still only ideas (not in any design):
+- Direct QuickBooks Online sync (outlined in `BATCH-K.md` section 9; needs its own approval after file exports are used).
+- QuickBooks Desktop IIF export (Intuit stopped selling Desktop to new US subscribers).
+- Passkey login (after Batch G's two-step login).
+- Mileage log for vehicle deductions; route ordering and run sheets; customer self-service card update and delivery
+  windows; card-expiry reminders; parts reorder alerts; review requests after delivery.
+- Revisit Stripe Tax if the business sells goods outright, leaves Colorado, or serves more than ~15 tax areas (BATCH-T D-T1).
+- Remove the unused `taxRateConfirmed` / `taxRatePermille` columns and the old accounting CSV route after T and K ship.
+- Collecting Colorado's Retail Delivery Fee, if the CPA says it applies (BATCH-T S-T4).

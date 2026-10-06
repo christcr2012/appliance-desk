@@ -8,7 +8,7 @@ and the business audit items in `docs/reviews/2026-10-01-business-logic-audit.md
 (`B01–B36`). The original overhaul cards (O00–O32) are folded in below; their
 requirements are quoted inline so you do not need the archived card file.
 
-Order: **A, B, C, R (merged) → B2 (finishes B and C) → D → E → E2 (redesign) → F**, plus one conditional Google PR.
+Order: **A, B, C, R (merged) → B2 (finishes B and C) → D → E → E2 (redesign) → G (audit fixes, owner security) → T (Colorado sales and use tax) → F → K (books and accounting exports) → O (owner controls)**, plus one conditional Google PR. G, T, K and O were added 2026-10-06 (`docs/plans/TAX-AND-BOOKS-OVERVIEW.md`); their designs are PROPOSED until Chris approves them. K may move before F if Chris wants profit reports before launch.
 `docs/STATUS.md` says which one is next.
 
 **Every batch has a design document in `docs/designs/` that says *how* to
@@ -587,6 +587,49 @@ New features, new screens or changed business rules (anything noticed goes to `d
 
 ---
 
+## Batch G — Audit fixes and owner-account security
+
+**Design: `docs/designs/BATCH-G.md`** (PROPOSED until Chris approves). Source: `docs/reviews/2026-10-06-owner-audit-and-recommendations.md` F1, F2, F4, F5.
+
+### Acceptance checklist
+
+- [ ] `npm audit --omit=dev` shows no high or critical advisories; CI green.
+- [ ] A cancelled rental stops counting toward estimated earnings on the day it was cancelled (real-Postgres test).
+- [ ] Owner and admin must enrol in two-step login (authenticator code + backup codes); the requirement is an owner setting explained on screen; enforcement is server-side, not only a redirect; recovery runbook exists.
+- [ ] Users can sign out their other sessions; the owner can sign a staff member out everywhere.
+- [ ] `docs/STATUS.md` matches merged work.
+- [ ] Every item in "Rules that apply to every batch".
+
+---
+
+## Batch T — Colorado sales and use tax
+
+**Design: `docs/designs/BATCH-T.md`** (PROPOSED until Chris approves). Required before the first real customer (legal compliance).
+
+### Purpose
+
+Replace the single business-wide tax rate with address-exact Colorado tax: state, county, city and special districts from the Department of Revenue's free GIS lookup; the short-term lease election; home-rule cities (Greeley) with their own rules; owner-maintained taxability; customer exemptions; Stripe collecting exactly what the app computes; return worksheets per filing account; use tax on untaxed purchases.
+
+### Owner inputs / gates
+
+IN-17 (rate check), IN-33 … IN-38 (`docs/OWNER-INPUTS.md`). Everything starts "Not decided yet" and blocks billing until answered; the batch can be built and merged before the answers arrive.
+
+### Acceptance checklist
+
+- [ ] Tax areas come from the exact address (GIS or confirmed manual entry), never from ZIP or city name.
+- [ ] Billing setup, send-for-signature and local invoices are blocked with a plain-English list while any needed tax decision, address check or rate is missing.
+- [ ] The lease election applies only to state-collected areas; home-rule cities use only their own rules (engine tests).
+- [ ] Stripe subscription items carry one Stripe tax rate per taxable area; Stripe-mirrored invoices record per-area tax lines; a 1-cent difference from the engine raises a card.
+- [ ] A rate change entered with a future date reaches every affected live subscription the day before it starts, exactly once.
+- [ ] Per-filing-account worksheets (accrual or cash per the owner's setting); marking a period filed freezes it; later corrections appear on the next worksheet.
+- [ ] Use tax computed for appliances and purchase-order lines bought without (enough) tax.
+- [ ] Customer exemptions with certificate photo, scope and expiry.
+- [ ] OWNER-only policy edits and filing; ADMIN limits enforced server-side; screens explained in plain words; axe clean.
+- [ ] No tax rate or taxability answer is written into code, seeds or docs as fact.
+- [ ] Every item in "Rules that apply to every batch".
+
+---
+
 ## Batch F — Integrated verification, recovery, owner handoff & launch ledger
 
 **Design: `docs/designs/BATCH-F.md`** — read it in full before Step 2 of the playbook; its work units are the commit order.
@@ -664,6 +707,38 @@ do not start deferred features.
 
 ---
 
+## Batch K — Books: journal, expenses, Stripe fees, profit & loss, accounting exports
+
+**Design: `docs/designs/BATCH-K.md`** (PROPOSED until Chris approves). Depends on T.
+
+### Acceptance checklist
+
+- [ ] Every money record the app keeps produces balanced double-entry journal entries exactly once (concurrent runs included); closed months never change.
+- [ ] Stripe fees, service fees, disputes and payouts are synced nightly; the Stripe clearing balance is checked against Stripe daily.
+- [ ] Expenses with receipt photos; staff submit, owner/admin post; void, never delete; recurring templates create drafts only; use tax recorded.
+- [ ] Straight-line book depreciation with owner-set life and salvage.
+- [ ] Profit & loss (accrual and cash), balance snapshot, appliance payback, 90-day cash forecast, customer health, year-end package — each number in the METRICS registry.
+- [ ] Deterministic exports for QuickBooks Online, Xero, generic journal and cash-movements formats, daily-summary or detail, blocked until accounts are mapped.
+- [ ] Every item in "Rules that apply to every batch".
+
+---
+
+## Batch O — Owner controls
+
+**Design: `docs/designs/BATCH-O.md`** (PROPOSED until Chris approves). After K. Every control starts in the position that changes nothing.
+
+### Acceptance checklist
+
+- [ ] Settings history in plain words with one-step undo through the normal save path.
+- [ ] Per-person capability overrides whose defaults reproduce today's permissions exactly (table test).
+- [ ] Approval thresholds per money action; requests execute once, re-validated, with expiry.
+- [ ] Scheduled price changes applied once on their start date; agreements unchanged.
+- [ ] Goals with pace on Today; idle-appliance and utilization alerts.
+- [ ] Read-only page of every live switch with links.
+- [ ] Every item in "Rules that apply to every batch".
+
+---
+
 ## Deferred (not scheduled)
 
 - **O29 CSV import** — only when a real, authorized import dataset exists.
@@ -715,6 +790,6 @@ walkthrough; full business lifecycle completed through real user surfaces.
 **Gate 8 — Owner / legal / provider release inputs:** public contact and
 company information confirmed; legal/privacy/terms and agreement policy
 approved; renewal/termination/auto-renew rules approved; tax policy
-decisions; live provider credentials verified; spending decisions approved;
+decisions (IN-17, IN-33 … IN-38 answered and entered, Batch T); live provider credentials verified; spending decisions approved;
 destructive production operations separately approved; Chris explicitly
 authorizes launch.

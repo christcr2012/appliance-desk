@@ -5,7 +5,7 @@
 `docs/archive/STATUS-LOG.md`. The long history before 2026-10-02 is in
 `docs/archive/HANDOFF-2026-09-26-to-2026-10-02.md`.
 
-Last updated: 2026-10-05 · `main` 62a725f includes Batch E through E9 (#218). **In progress: E10 #221 and E11 #222**; E2 starts only after both merge and the required post-E drift check passes.
+Last updated: 2026-10-05 · `main` 62a725f includes Batch E through E9 (#218). **In progress: E10 #221 and E11 #222**; E2 starts only after both merge and the required post-E drift check passes. *(Note 2026-10-06, review session: `main` 23eff64 already contains E2 parts through E2-5 (#250–#260); the E/E2 rows below are stale — the next implementation session must refresh them. New proposed batches G, T, K, O are listed in the table; summary `docs/plans/TAX-AND-BOOKS-OVERVIEW.md`.)*
 
 ## Batch table
 
@@ -21,6 +21,10 @@ Last updated: 2026-10-05 · `main` 62a725f includes Batch E through E9 (#218). *
 | E — Communications, reporting, growth, branding & accessibility | **FINAL STACK — E1–E9 merged; E10/E11 awaiting merge** | #215 (E1–E3), #216 (E4–E5), #217 (E6–E8), #218 (E9), #221 (E10), #222 (E11) | Durable automation/message ledgers; verified provider events and suppression; confirmed launch opt-in; role-shaped search; real-contact/custody growth truth; configurable scoring; measured lists; Evergreen token migration; generated WCAG 2.2 AA engineering route coverage; message panels, demand estimate, public limits, consent evidence and outage runbook | Live customer email/SMS/marketing remain OFF unless separately approved. Accessibility checks are engineering evidence, not certification. E2 starts only after #219/#220 are merged and a post-E drift check confirms the redesign guide still matches current code. |
 | E2 — Visual redesign (owner desk, public site, customer portal; desktop, phone, dark) | NOT STARTED — design approved 2026-10-05 | — | — | `docs/designs/BATCH-E2.md`. Starts after E merges; F waits for it. Home page decided (IN-32: ivory light, evergreen dark). |
 | F — Integrated verification, recovery, owner handoff & launch ledger | NOT STARTED | — | — | Human/owner gates stay explicit. |
+| G — Audit fixes and owner-account security | DESIGN PROPOSED 2026-10-06 (not approved) | — | — | `docs/designs/BATCH-G.md`; from `docs/reviews/2026-10-06-owner-audit-and-recommendations.md`. After E2. |
+| T — Colorado sales and use tax | DESIGN PROPOSED 2026-10-06 (not approved) | — | — | `docs/designs/BATCH-T.md`; launch blocker; CPA answers IN-33 … IN-38; Chris to obtain the Colorado GIS API key (IN-40). |
+| K — Books, expenses, P&L, accounting exports | DESIGN PROPOSED 2026-10-06 (not approved) | — | — | `docs/designs/BATCH-K.md`; after T. |
+| O — Owner controls | DESIGN PROPOSED 2026-10-06 (not approved) | — | — | `docs/designs/BATCH-O.md`; after K. |
 
 Earlier roadmap work that is already shipped and must not be rebuilt
 (details in `docs/PLAN.md` → "Already shipped"): foundation/styles/

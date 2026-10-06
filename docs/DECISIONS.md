@@ -362,3 +362,17 @@ implementation (including the IN-29/IN-30/IN-32 answers folded in the night befo
 
 ## 2026-10-05 — Batch B2 built (PRs #205–#207 and PR 4)
 Built as designed. Deliberate differences are in `docs/designs/BATCH-B2.md` → Amendments. Early-return changes of an automatic decision are limited to "no refund, no credit, fee unpaid", and an automatic keep-billing decision is changed by first taking back the ending it recorded.
+
+## 2026-10-06 — Tax, books and owner-control designs proposed (G, T, K, O)
+Chris asked for a Colorado sales/use tax subsystem using the state's free lookup, a decision on Stripe Tax, an
+accounting export system (QuickBooks and others), and designs a cheaper model can implement. Proposed (not approved):
+`docs/designs/BATCH-G.md`, `BATCH-T.md`, `BATCH-K.md`, `BATCH-O.md`; summary `docs/plans/TAX-AND-BOOKS-OVERVIEW.md`.
+Key recommendations and why: (1) the app calculates tax from Colorado's GIS lookup and owner/CPA-set rules, and Stripe
+only collects through ordinary Tax Rates — Stripe Tax cannot know the short-term lease election (C.R.S. 39-26-713),
+would disagree with the app's own invoices, and costs ~0.5% of taxed volume; (2) every tax policy starts "Not decided
+yet" and blocks billing, replacing the decorative `taxRateConfirmed` gate; (3) books are a derived, append-only
+double-entry journal, exported as daily summary journals so the accounting software never needs customer records (Xero
+forbids manual journals to its Accounts Receivable; QuickBooks needs a customer name on A/R journal lines); direct
+QuickBooks sync is a later phase. Research notes: Greeley is home-rule, self-collected, 4.11%, not a SUTS participant
+(as listed 2026-10-06); public sources give 7.01% combined for Greeley vs the 7.375% in the owner's notes (IN-17).
+

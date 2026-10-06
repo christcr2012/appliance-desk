@@ -17,6 +17,10 @@ the points where the implementer must stop and ask instead of guessing.
 | E — Communications, automation history, search, brand tokens & accessibility | `BATCH-E.md` + **`POST-BATCH-D-RECONCILIATION-2026-10-05.md`** | **Approved design, but implementation BLOCKED until final D is green and merged.** Reconciliation adds D's privacy sender/routes/metrics and the explicit B08 lead-scoring policy work. |
 | E2 — Visual redesign (owner desk, portal, public site; phone, desktop, dark) | `BATCH-E2.md` + **`POST-BATCH-D-RECONCILIATION-2026-10-05.md`** | Approved. Starts after E; must preserve D's website-editor preview, settings-backed copy/chrome and legal-page gate. |
 | F — Integrated verification, recovery, owner handoff & launch ledger | `BATCH-F.md` + **`POST-BATCH-D-RECONCILIATION-2026-10-05.md`** | Approved. Starts after E2; recovery must respect D privacy deletion and must never resurrect intentionally deleted private media. |
+| G — Audit fixes and owner-account security | `BATCH-G.md` | **PROPOSED 2026-10-06 — not approved.** Two small PRs after E2. |
+| T — Colorado sales and use tax | `BATCH-T.md` | **PROPOSED 2026-10-06 — not approved.** Before F (launch blocker). Policy answers come from Chris's CPA (IN-33 … IN-38). |
+| K — Books, expenses, P&L, accounting exports | `BATCH-K.md` | **PROPOSED 2026-10-06 — not approved.** After T; may run after launch. |
+| O — Owner controls | `BATCH-O.md` | **PROPOSED 2026-10-06 — not approved.** After K. |
 
 **2026-10-05 post-D reconciliation.** D, E and F had been designed/reworked against code that predated the actual
 Batch D implementation. Before any E code is written, read
@@ -30,7 +34,7 @@ reconciliation wins.
 
 The older 2026-10-02 designs remain under `docs/archive/designs-2026-10-02/` for history; they are not instructions.
 
-**Order:** B2 → D → E → E2 → F. One batch at a time, one stack of PRs per batch (`AGENTS.md`).
+**Order:** B2 → D → E → E2 → G → T → F → K → O (G, T, K, O proposed 2026-10-06; plain-English summary `docs/plans/TAX-AND-BOOKS-OVERVIEW.md`). One batch at a time, one stack of PRs per batch (`AGENTS.md`).
 
 ## The rule
 
