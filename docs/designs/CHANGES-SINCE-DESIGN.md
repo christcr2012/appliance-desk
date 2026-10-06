@@ -124,3 +124,7 @@ All customer-addressed email goes through `sendCustomerEmail` (owner master swit
 ## 2026-10-06 — WU-E2-6 drift reconciliation
 
 - The E2 design still names `e2e/accessibility-authenticated.spec.ts`, but Batch E replaced that legacy file with the generated route inventory/accessibility shards plus `e2e/owner-portal-workspaces.spec.ts`. WU-E2-6 extends those current tests instead of recreating the removed file. The customer route inventory already includes the D-added settings/privacy surfaces; portal-home-only 390px coverage is added in the focused workspace spec to satisfy E2-9 without multiplying every customer route across an extra viewport.
+
+## 2026-10-06 — WU-E2-7 drift reconciliation
+
+- Batch D left a live `LaunchSettings.prelaunchMode` branch on the public home page. E2-7's “one home page” visual direction does not remove that business gate: both launch states are moved onto the approved Evergreen visual system, while the prelaunch state keeps its existing launch-list actions/copy and the live state gets the approved “Check your address” dominant action plus “See prices” text link. No launch state, legal approval, published-content, pricing, service-area, provider, or payment behavior changes.
