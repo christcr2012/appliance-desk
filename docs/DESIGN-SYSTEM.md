@@ -174,12 +174,11 @@ the patterns already in use:
 override list** (a new shade, e.g. `bg-purple-50`), it will look right
 in light mode but won't adapt in dark mode until a matching `.dark
 .bg-purple-50 { ... }` rule is added next to the others in
-`globals.css`. `e2e/accessibility-dark-mode.spec.ts` runs the same axe
-checks as the light-mode suite with the browser set to dark, on a
-representative sample of pages (not literally every page) — it's the
-first line of defense for something like this, but isn't a substitute
-for checking a new page in dark mode yourself if it's not one of the
-ones that suite covers.
+`globals.css`. Batch E/E2 replaced the old representative-only boundary with
+the generated route inventory: every current top-level route is assigned to the
+light/dark accessibility suites at the documented CI widths, with explicit
+manual-only reasons only where deterministic automation is impossible. Focused
+legacy dark-mode specs remain additional regression coverage.
 
 
 
