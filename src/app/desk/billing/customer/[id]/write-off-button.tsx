@@ -37,7 +37,7 @@ export function WriteOffButton({ customerId, invoiceId }: { customerId: string; 
         type="button"
         disabled={isPending}
         onClick={handleClick}
-        className="text-xs text-gray-500 hover:text-red-700 disabled:opacity-50"
+        className="text-xs text-ink-faint hover:text-red-700 disabled:opacity-50"
       >
         Write off
       </button>
