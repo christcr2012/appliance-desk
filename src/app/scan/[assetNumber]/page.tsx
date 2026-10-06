@@ -72,7 +72,7 @@ export default async function ScanApplianceRedirectPage({
       <h1 className="text-xl font-semibold text-ink">
         {appliance.applianceType.name}
       </h1>
-      <p className="mt-2 text-sm text-gray-600">
+      <p className="mt-2 text-sm text-ink-soft">
         This appliance isn&apos;t on your account. If you think that&apos;s
         wrong, or you need help with it, contact us directly.
       </p>
