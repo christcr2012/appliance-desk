@@ -1,15 +1,22 @@
 import Link from "next/link";
 import { getLeadWorkspace } from "@/domains/leads/workspace";
-import {
-  PageHeader,
-  FilterBar,
-  SectionCard,
-  EmptyState,
-  primaryActionClass,
-} from "@/components/desk/workspace";
+import { FilterBar } from "@/components/desk/workspace";
 import { Pagination } from "@/components/pagination";
+import {
+  Button,
+  Card,
+  DataList,
+  EmptyState,
+  Field,
+  PageHeader,
+  type DataListColumn,
+} from "@/components/ui";
 import { formatBusinessDate, formatTaskDate } from "@/lib/business-date";
+
 export const metadata = { title: "Leads" };
+
+type LeadRow = Awaited<ReturnType<typeof getLeadWorkspace>>["records"][number];
+
 export default async function LeadsPage({
   searchParams,
 }: {
@@ -22,25 +29,119 @@ export default async function LeadsPage({
 }) {
   const data = await getLeadWorkspace(await searchParams);
   const { filter } = data;
+
   function href(page = 1, status = filter.status ?? "ALL", view = filter.view) {
-    const p = new URLSearchParams();
-    if (status !== "ALL") p.set("status", status);
-    if (view !== "all") p.set("view", view);
-    if (filter.q) p.set("q", filter.q);
-    if (page > 1) p.set("page", String(page));
-    return `/desk/leads${p.size ? `?${p}` : ""}`;
+    const params = new URLSearchParams();
+    if (status !== "ALL") params.set("status", status);
+    if (view !== "all") params.set("view", view);
+    if (filter.q) params.set("q", filter.q);
+    if (page > 1) params.set("page", String(page));
+    return `/desk/leads${params.size ? `?${params}` : ""}`;
   }
+
+  const columns: DataListColumn<LeadRow>[] = [
+    {
+      key: "lead",
+      header: "Lead",
+      primary: true,
+      cell: (lead) => (
+        <div>
+          <Link
+            href={`/desk/leads/${lead.id}`}
+            className="font-semibold text-ink underline-offset-4 hover:underline"
+          >
+            {lead.contactName}
+            {lead.companyName && ` · ${lead.companyName}`}
+          </Link>
+          <p className="mt-1 text-sm font-normal text-ink-soft">
+            {lead.city ?? "City not provided"} · {lead.phone}
+          </p>
+        </div>
+      ),
+    },
+    {
+      key: "request",
+      header: "Requested",
+      cell: (lead) =>
+        lead.applianceRequests
+          .map(
+            (request) =>
+              `${request.quantity} × ${request.applianceType.name}`,
+          )
+          .join(", ") || "Appliances not specified",
+    },
+    {
+      key: "status",
+      header: "Status",
+      cell: (lead) => {
+        const last = lead.notesLog[0]?.createdAt;
+        return (
+          <div className="space-y-1">
+            <p className="font-medium text-ink">
+              {lead.status} · Score {lead.score}
+              {lead.isHighValue && " · High value"}
+            </p>
+            <p>Source: {lead.howHeard || "Not recorded"}</p>
+            <p>
+              {last
+                ? `Last note: ${formatBusinessDate(last)}`
+                : `Received: ${formatBusinessDate(lead.createdAt)}`}
+            </p>
+          </div>
+        );
+      },
+    },
+    {
+      key: "next",
+      header: "Next action",
+      cell: (lead) => {
+        const task = lead.tasks[0];
+        const quote = lead.estimates[0];
+        return (
+          <div className="space-y-2">
+            {quote && (
+              <p>
+                <Link
+                  href={`/desk/estimates/${quote.id}`}
+                  className="font-medium text-ink underline-offset-4 hover:underline"
+                >
+                  Quote #{quote.estimateNumber} awaiting reply
+                </Link>
+              </p>
+            )}
+            {task ? (
+              <p>
+                Follow-up:{" "}
+                {task.dueDate ? formatTaskDate(task.dueDate) : "No date set"}{" "}
+                <Link
+                  href={`/desk/leads/${lead.id}#follow-up`}
+                  className="font-medium text-ink underline-offset-4 hover:underline"
+                >
+                  Open task
+                </Link>
+              </p>
+            ) : (
+              <Link
+                href={`/desk/leads/${lead.id}#follow-up`}
+                className="inline-flex min-h-11 items-center font-medium text-ink underline-offset-4 hover:underline"
+              >
+                Add next task
+              </Link>
+            )}
+          </div>
+        );
+      },
+    },
+  ];
+
   return (
-    <div className="max-w-6xl">
+    <div>
       <PageHeader
         title="Leads"
         description="Choose the next conversation, quote or follow-up. Leads remain ranked by their existing score."
-        primaryAction={
-          <Link className={primaryActionClass} href="/desk/leads/new">
-            Add a lead
-          </Link>
-        }
+        primaryAction={{ href: "/desk/leads/new", label: "Add a lead" }}
       />
+
       <FilterBar
         label="Lead status"
         items={["ALL", "NEW", "CONTACTED", "CONVERTED", "LOST"].map(
@@ -54,6 +155,7 @@ export default async function LeadsPage({
           }),
         )}
       />
+
       <FilterBar
         label="Lead next action"
         items={[
@@ -66,8 +168,9 @@ export default async function LeadsPage({
           active: filter.view === view,
         }))}
       />
+
       <form
-        className="mb-6 flex flex-wrap items-end gap-2"
+        className="mb-6 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end"
         method="get"
         action="/desk/leads"
       >
@@ -75,107 +178,31 @@ export default async function LeadsPage({
           <input type="hidden" name="status" value={filter.status} />
         )}
         <input type="hidden" name="view" value={filter.view} />
-        <label className="flex min-w-0 flex-1 flex-col gap-1 text-sm text-ink">
-          Search contact or city
-          <input
-            name="q"
-            defaultValue={filter.q}
-            maxLength={100}
-            className="min-h-11 rounded-lg border border-control bg-surface px-3 text-ink"
-          />
-        </label>
-        <button className={primaryActionClass}>Search leads</button>
+        <Field
+          label="Search contact or city"
+          name="q"
+          defaultValue={filter.q}
+          maxLength={100}
+        />
+        <Button type="submit">Search leads</Button>
       </form>
-      <SectionCard
+
+      <Card
         title={`${data.totalCount} matching lead${data.totalCount === 1 ? "" : "s"}`}
       >
-        {data.records.length ? (
-          <ul className="divide-y divide-line">
-            {data.records.map((lead) => {
-              const task = lead.tasks[0];
-              const quote = lead.estimates[0];
-              const last = lead.notesLog[0]?.createdAt;
-              return (
-                <li
-                  key={lead.id}
-                  className="grid gap-3 py-4 sm:grid-cols-2 lg:grid-cols-3"
-                >
-                  <div>
-                    <Link
-                      href={`/desk/leads/${lead.id}`}
-                      className="font-semibold text-primary underline"
-                    >
-                      {lead.contactName}
-                      {lead.companyName && ` · ${lead.companyName}`}
-                    </Link>
-                    <p className="text-sm text-ink-soft">
-                      {lead.city ?? "City not provided"} · {lead.phone}
-                    </p>
-                    <p className="text-sm text-ink">
-                      {lead.applianceRequests
-                        .map((r) => `${r.quantity} × ${r.applianceType.name}`)
-                        .join(", ") || "Appliances not specified"}
-                    </p>
-                  </div>
-                  <div className="text-sm">
-                    <p className="text-ink">
-                      {lead.status} · Score {lead.score}
-                      {lead.isHighValue && " · High value"}
-                    </p>
-                    <p className="text-ink-soft">
-                      Source: {lead.howHeard || "Not recorded"}
-                    </p>
-                    <p className="text-ink-soft">
-                      {last
-                        ? `Last note: ${formatBusinessDate(last)}`
-                        : `Received: ${formatBusinessDate(lead.createdAt)}`}
-                    </p>
-                  </div>
-                  <div className="text-sm">
-                    {quote && (
-                      <p>
-                        <Link
-                          href={`/desk/estimates/${quote.id}`}
-                          className="text-primary underline"
-                        >
-                          Quote #{quote.estimateNumber} awaiting reply
-                        </Link>
-                      </p>
-                    )}
-                    {task ? (
-                      <p className="text-ink">
-                        Follow-up:{" "}
-                        {task.dueDate
-                          ? formatTaskDate(task.dueDate)
-                          : "No date set"}{" "}
-                        <Link
-                          href={`/desk/leads/${lead.id}#follow-up`}
-                          className="text-primary underline"
-                        >
-                          Open task
-                        </Link>
-                      </p>
-                    ) : (
-                      <Link
-                        href={`/desk/leads/${lead.id}#follow-up`}
-                        className="inline-flex min-h-11 items-center text-primary underline"
-                      >
-                        Add next task
-                      </Link>
-                    )}
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        ) : (
-          <EmptyState
-            title="No leads match these filters"
-            description="Adjust the filters or add a new inquiry."
-          />
-        )}
+        <DataList
+          rows={data.records}
+          columns={columns}
+          caption="Matching leads"
+          empty={
+            <EmptyState
+              title="No leads match these filters"
+              description="Adjust the filters or add a new inquiry."
+            />
+          }
+        />
         <Pagination {...data} buildHref={(page) => href(page)} />
-      </SectionCard>
+      </Card>
     </div>
   );
 }
