@@ -180,3 +180,10 @@ first line of defense for something like this, but isn't a substitute
 for checking a new page in dark mode yourself if it's not one of the
 ones that suite covers.
 
+
+
+### Batch E2 visual tokens
+
+E2 extends the final Batch E Evergreen tokens with brand-kit-only visual primitives: `rounded-control` = 8px, `rounded-card` = 16px, and semantic owner-navigation colors (`nav-bg`, `nav-ink`, `nav-current-bg`, `nav-current-ink`). Values remain defined only in `src/app/globals.css` and are exported through Tailwind's `@theme inline` block.
+
+Because current `main` still contains legacy radius utilities on screens intentionally scheduled for E2-2 through E2-8, E2-1A scopes the new hard-coded color/arbitrary-pixel/legacy-radius lint guard to `src/components/ui/**/*.tsx`. Each later E2 screen migration uses the shared layer; E2-8 broadens the guard to all TSX once those planned migrations are complete. This preserves the approved redesign sequence instead of forcing an accidental whole-app rewrite in the foundation PR.
