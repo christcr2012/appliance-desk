@@ -1,13 +1,22 @@
 import Link from "next/link";
+import type { JobStatus } from "@prisma/client";
 import { requireRole } from "@/lib/session";
 import { getJobsPage, getJobsCount } from "@/domains/jobs";
-import { CalendarServiceIcon } from "@/components/icons/service-icons";
-import { PlusIcon } from "@/components/icons/status-icons";
-import { StatusBadge } from "@/components/status-badge";
-import { jobStatusTone } from "@/lib/status-labels";
-import type { JobStatus } from "@prisma/client";
 import { parsePage, paginationMeta } from "@/domains/pagination";
 import { Pagination } from "@/components/pagination";
+import { FilterBar } from "@/components/desk/workspace";
+import {
+  DataList,
+  EmptyState,
+  PageHeader,
+  StatusPill,
+  type DataListColumn,
+} from "@/components/ui";
+import {
+  jobStatusLabel,
+  jobStatusTone,
+  jobTypeLabel,
+} from "@/lib/status-labels";
 
 export const metadata = { title: "Jobs" };
 
@@ -27,6 +36,8 @@ function isJobStatus(value: string | undefined): value is JobStatus {
     value === "CANCELLED"
   );
 }
+
+type JobRow = Awaited<ReturnType<typeof getJobsPage>>[number];
 
 export default async function JobsPage({
   searchParams,
@@ -55,93 +66,91 @@ export default async function JobsPage({
     return qs ? `/desk/jobs?${qs}` : "/desk/jobs";
   }
 
+  const columns: DataListColumn<JobRow>[] = [
+    {
+      key: "job",
+      header: "Job",
+      primary: true,
+      cell: (job) => (
+        <div>
+          <Link
+            href={`/desk/jobs/${job.id}`}
+            className="font-semibold text-ink underline-offset-4 hover:underline"
+          >
+            {jobTypeLabel(job.type)}
+            {job.customer &&
+              ` — ${job.customer.user.name ?? job.customer.user.email}`}
+          </Link>
+          <p className="mt-1 text-sm font-normal text-ink-soft">
+            {job.serviceAddress
+              ? `${job.serviceAddress.line1}, ${job.serviceAddress.city}`
+              : "No address on file"}
+          </p>
+        </div>
+      ),
+    },
+    {
+      key: "status",
+      header: "Status",
+      cell: (job) => (
+        <StatusPill
+          tone={jobStatusTone(job.status)}
+          label={jobStatusLabel(job.status)}
+        />
+      ),
+    },
+    {
+      key: "scheduled",
+      header: "Scheduled",
+      cell: (job) =>
+        job.scheduledAt
+          ? new Date(job.scheduledAt).toLocaleString()
+          : "Not scheduled yet",
+    },
+  ];
+
   return (
     <div>
-      <div className="flex items-center justify-between">
-        <h1 className="flex items-center gap-2 text-xl font-semibold">
-          <CalendarServiceIcon className="h-5 w-5 text-ink-faint" />
-          Jobs
-        </h1>
-        {canScheduleJobs && (
-          <Link
-            href="/desk/jobs/new"
-            className="inline-flex items-center gap-1 rounded-md bg-action px-4 py-2 text-sm font-medium text-on-action hover:bg-action"
-          >
-            <PlusIcon className="h-4 w-4" />
-            Schedule a job
-          </Link>
-        )}
-      </div>
+      <PageHeader
+        title="Jobs"
+        description="Review scheduled, active, completed, and cancelled service work."
+        primaryAction={
+          canScheduleJobs
+            ? { href: "/desk/jobs/new", label: "Schedule a job" }
+            : undefined
+        }
+      />
 
-      <nav
-        aria-label="Filter jobs by status"
-        className="mt-6 flex flex-wrap gap-2"
-      >
-        {STATUS_TABS.map((tab) => {
-          const active = (status ?? "ALL") === tab.value;
-          return (
-            <Link
-              key={tab.value}
-              href={jobsHref(1, tab.value)}
-              aria-current={active ? "page" : undefined}
-              className={`rounded-full border px-3 py-1 text-sm ${
-                active
-                  ? "border-action bg-action text-on-action"
-                  : "border-line-strong text-ink-soft hover:border-line-strong"
-              }`}
-            >
-              {tab.label}
-            </Link>
-          );
-        })}
-      </nav>
+      <FilterBar
+        label="Filter jobs by status"
+        items={STATUS_TABS.map((tab) => ({
+          href: jobsHref(1, tab.value),
+          label: tab.label,
+          active: (status ?? "ALL") === tab.value,
+        }))}
+      />
 
-      {jobs.length === 0 ? (
-        <p className="mt-6 text-sm text-ink-soft">
-          {status ? "No jobs with this status." : "No jobs scheduled yet."}
-        </p>
-      ) : (
-        <ul className="mt-6 divide-y divide-line rounded-lg border border-line bg-white">
-          {jobs.map((j) => (
-            <li key={j.id}>
-              <Link
-                href={`/desk/jobs/${j.id}`}
-                className="flex flex-col gap-1 px-4 py-4 hover:bg-canvas sm:flex-row sm:items-center sm:justify-between"
-              >
-                <div>
-                  <p className="font-medium text-ink">
-                    {j.type}{" "}
-                    {j.customer &&
-                      `— ${j.customer.user.name ?? j.customer.user.email}`}
-                  </p>
-                  <p className="text-sm text-ink-soft">
-                    {j.serviceAddress
-                      ? `${j.serviceAddress.line1}, ${j.serviceAddress.city}`
-                      : "No address on file"}
-                  </p>
-                </div>
-                <div className="text-sm text-ink-faint sm:text-right">
-                  <StatusBadge
-                    tone={jobStatusTone(j.status)}
-                    label={j.status}
-                  />
-                  <p>
-                    {j.scheduledAt
-                      ? new Date(j.scheduledAt).toLocaleString()
-                      : "Not scheduled yet"}
-                  </p>
-                </div>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
+      <DataList
+        rows={jobs}
+        columns={columns}
+        caption="Jobs"
+        empty={
+          <EmptyState
+            title={status ? "No jobs with this status" : "No jobs scheduled yet"}
+            description={
+              status
+                ? "Choose another status to review different jobs."
+                : "Scheduled work will appear here."
+            }
+          />
+        }
+      />
 
       <Pagination
         page={meta.page}
         totalPages={meta.totalPages}
         totalCount={meta.totalCount}
-        buildHref={(p) => jobsHref(p)}
+        buildHref={(page) => jobsHref(page)}
       />
     </div>
   );
