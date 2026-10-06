@@ -19,10 +19,13 @@ export default async function LaunchDeskPage({
     1,
     Math.min(100000, Number.parseInt(params.page || "1", 10) || 1),
   );
-  const [settings, total, active, blocked, rows, sources] = await Promise.all([
+  const [settings, total, active, unconfirmed, blocked, rows, sources] = await Promise.all([
     getLaunchSettings(),
     prisma.launchSubscriber.count(),
     prisma.launchSubscriber.count({ where: { unsubscribedAt: null } }),
+    prisma.launchSubscriber.count({
+      where: { unsubscribedAt: null, confirmedAt: null },
+    }),
     prisma.launchSubscriber.count({
       where: { unsubscribedAt: null, deliveryBlocked: true },
     }),
@@ -39,6 +42,7 @@ export default async function LaunchDeskPage({
         source: true,
         createdAt: true,
         nextStep: true,
+        confirmedAt: true,
         unsubscribedAt: true,
         deliveryBlocked: true,
         deliveries: {
@@ -85,8 +89,9 @@ export default async function LaunchDeskPage({
             "Enabled on production. Daily run at 16:00 UTC (10 a.m. Mountain daylight time / 9 a.m. standard time)."}
         </p>
         <p className="mt-3">
-          {total} signups · {active} subscribed · {total - active} unsubscribed
-          · {blocked} emails needing review or currently sending
+          {total} signups · {active} not unsubscribed · {unconfirmed} awaiting
+          email confirmation · {total - active} unsubscribed · {blocked} emails
+          needing review or currently sending
         </p>
         {blocked > 0 && (
           <p className="mt-2 text-sm text-ink-soft">
@@ -166,7 +171,9 @@ export default async function LaunchDeskPage({
                   <td className="border-b p-3">
                     {s.unsubscribedAt
                       ? "Unsubscribed"
-                      : s.deliveryBlocked
+                      : !s.confirmedAt
+                        ? "Awaiting email confirmation"
+                        : s.deliveryBlocked
                         ? `Needs review / sending (${s.deliveries[0]?.status || "claimed"})`
                         : s.nextStep === 3
                           ? "Welcome sequence complete"
