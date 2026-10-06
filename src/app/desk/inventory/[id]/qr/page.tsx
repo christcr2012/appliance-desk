@@ -36,21 +36,21 @@ export default async function ApplianceQrLabelPage({
   return (
     <div className="mx-auto max-w-sm">
       <div className="print:hidden">
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-ink-soft">
           Print this and attach it to the physical appliance. Scanning it
           opens the right page automatically for whoever scans it.
         </p>
         <PrintButton />
       </div>
 
-      <div className="mt-6 flex flex-col items-center gap-2 rounded-lg border border-gray-200 bg-white p-6 text-center print:border-0">
+      <div className="mt-6 flex flex-col items-center gap-2 rounded-lg border border-line bg-white p-6 text-center print:border-0">
         <div
           className="[&>svg]:h-auto [&>svg]:w-48"
           // Our own server-generated SVG (qrcode package) — not user input.
           dangerouslySetInnerHTML={{ __html: svg }}
         />
-        <p className="mt-2 font-medium text-gray-900">{appliance.assetNumber}</p>
-        <p className="text-sm text-gray-600">{appliance.applianceType.name}</p>
+        <p className="mt-2 font-medium text-ink">{appliance.assetNumber}</p>
+        <p className="text-sm text-ink-soft">{appliance.applianceType.name}</p>
       </div>
     </div>
   );

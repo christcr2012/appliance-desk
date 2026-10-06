@@ -59,7 +59,7 @@ export default async function ApplianceDetailPage({
 
   return (
     <div className="max-w-2xl">
-      <Link href="/desk/inventory" className="text-sm text-gray-600 hover:underline">
+      <Link href="/desk/inventory" className="text-sm text-ink-soft hover:underline">
         &larr; Back to inventory
       </Link>
 
@@ -69,12 +69,12 @@ export default async function ApplianceDetailPage({
         </h1>
         <Link
           href={`/desk/inventory/${id}/qr`}
-          className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:border-gray-400"
+          className="rounded-md border border-line-strong px-3 py-1.5 text-sm text-ink-soft hover:border-line-strong"
         >
           Print QR label
         </Link>
       </div>
-      <p className="mt-1 text-sm text-gray-600">
+      <p className="mt-1 text-sm text-ink-soft">
         Added {new Date(appliance.createdAt).toLocaleDateString()}
         {appliance.acquisitionCostCents !== null &&
           ` · cost ${formatCents(appliance.acquisitionCostCents)}`}
