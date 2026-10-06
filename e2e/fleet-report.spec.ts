@@ -74,7 +74,7 @@ test("fleet estimates expose incomplete costs, supporting records and every pagi
           .locator("..");
         expect(await records.locator("li").count()).toBeLessThanOrEqual(25);
         await expect(
-          page.locator(`a[href="/desk/jobs/${jobId}"]`),
+          page.locator(`a[href="/desk/jobs/${jobId}"]:visible`).first(),
         ).toBeVisible();
         expect(
           await page.evaluate(
