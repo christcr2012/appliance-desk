@@ -42,18 +42,17 @@ deny-by-default (#131), CI parallelized and sharded (#136, #137).
   sign-up is **disabled** (accounts are provisioned server-side).
 - Production `Photo` table was confirmed empty/test-only before private media
   landed (Batch A); no media migration was needed.
-- Chris plans to upgrade the Neon plan for protected branches and per-preview
-  database branching; not done yet.
+- The Neon plan upgrade is historical/completed. Previews already use the verified
+  isolated `vercel-preview-2` branch; one fresh branch per preview deployment
+  remains optional infrastructure hardening rather than a launch-code dependency.
 
 ## Open items carried across batches
 
-- Historical review threads: ~50 remain open in
-  `docs/reviews/2026-10-01-review-reconciliation.md`; each batch discharges
-  the ones in its area with evidence.
-- B01–B36 (`docs/reviews/2026-10-01-business-logic-audit.md`): mapped into
-  Batches B–F; none accepted yet.
-- Audit findings: 8 Critical were Batch A's scope; the 58 High / 51 Medium are
-  mapped per batch in `docs/PLAN.md`. Launch gates are in `docs/PLAN.md`.
+- Historical review/audit registers remain evidence inputs; their old unchecked
+  boxes are not a current implementation-status list. Batch F's review-disposition
+  and launch-ledger work reconciles every remaining valid finding against the
+  merged code and records anything genuinely still open.
+- Launch gates are in `docs/PLAN.md` and `docs/GO-LIVE-CHECKLIST.md`.
 - O29 CSV import: deferred until a real import dataset exists.
 - O32 Google Workspace: **explicitly deferred**. Connector-side work is largely available, but Appliance Desk's own service account/delegation, Drive OAuth connection, and required live walkthrough are not yet proven. It remains the one conditional follow-up PR; F may proceed without pretending O32 is complete.
 
@@ -64,9 +63,10 @@ See `docs/OWNER-INPUTS.md` for the full register. Chris gave direction on
 installed); IN-22 use best practice for a renewal signed in advance (built: see
 "Answered" in OWNER-INPUTS); IN-23 per-case choice with a recommended option.
 IN-22 and IN-23 are both built.
-Still waiting on him: IN-21 (wording and approval for sending live customer
-emails; building continues with sending switched off), IN-17's CPA check of the
-7.375% rate.
+Current external/release inputs include IN-21/IN-31 wording and counsel review,
+IN-25's CPA tax-treatment answer, the CPA confirmation of the configured sales-tax
+rate, real public contact/launch details, and explicit live Stripe/email/SMS/launch
+authorization. None of those blocks Batch F engineering; live provider actions stay OFF.
 
 ## Session log (last two batches only)
 
