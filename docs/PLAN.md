@@ -274,7 +274,7 @@ Owner decision UI for deposits/refunds (D); automation run history (E).
 
 ---
 
-## Batch B2 — Renewal lifecycle, month-to-month rentals and pickup billing end (finishes Batches B and C)
+## Batch B2 — Renewal lifecycle, month-to-month rentals and pickup billing end (finishes Batches B and C) — MERGED (#205–#208)
 
 **Design: `docs/designs/BATCH-B2.md`** (written 2026-10-05; approved by Chris 2026-10-05).
 
@@ -318,7 +318,7 @@ the "Automatic renewals" switch stays OFF until counsel has read the wording (`d
 
 ---
 
-## Batch D — Owner/customer control plane, website, evidence & privacy
+## Batch D — Owner/customer control plane, website, evidence & privacy — MERGED (final #214)
 
 **Design: `docs/designs/BATCH-D.md`** — read it in full before Step 2 of the playbook; its work units are the commit order.
 
@@ -415,7 +415,7 @@ Message sending (E); Google (E/conditional); launch authorization (F).
 
 ---
 
-## Batch E — Communications, reporting, growth, branding & accessibility
+## Batch E — Communications, reporting, growth, branding & accessibility — MERGED (final #222)
 
 **Design: `docs/designs/BATCH-E.md`** — read it in full before Step 2 of the playbook; its work units are the commit order.
 
@@ -540,7 +540,7 @@ Launch authorization and the final evidence ledger (F).
 
 ---
 
-## Batch E2 — Visual redesign: owner desk, public site and customer portal (desktop, phone, light and dark)
+## Batch E2 — Visual redesign: owner desk, public site and customer portal (desktop, phone, light and dark) — FINAL PR #263
 
 **Design: `docs/designs/BATCH-E2.md`** (written 2026-10-05; approved by Chris 2026-10-05; home page decided — IN-32). (Added at Chris's request, 2026-10-04: the whole redesign, not just phone screens, goes after E and before F.)
 
