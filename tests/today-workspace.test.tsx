@@ -1,5 +1,6 @@
 import { beforeEach, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
+
 const m = vi.hoisted(() => ({
   role: vi.fn(),
   exceptions: vi.fn(),
@@ -7,6 +8,7 @@ const m = vi.hoisted(() => ({
   tasks: vi.fn(),
   requests: vi.fn(),
 }));
+
 vi.mock("@/lib/session", () => ({ requireRole: m.role }));
 vi.mock("@/domains/exceptions", () => ({
   getExceptionOverview: m.exceptions,
@@ -17,7 +19,9 @@ vi.mock("@/lib/prisma", () => ({
   prisma: { maintenanceRequest: { count: m.requests } },
 }));
 vi.mock("@/app/desk/tasks/task-row", () => ({ TaskRow: () => null }));
+
 import TodayPage from "@/app/desk/today/page";
+
 beforeEach(() => {
   cleanup();
   vi.resetAllMocks();
@@ -27,11 +31,14 @@ beforeEach(() => {
   m.tasks.mockResolvedValue({ tasks: [], totalCount: 0, overdueCount: 0 });
   m.requests.mockResolvedValue(3);
 });
+
 it("shows honest empty states and excludes restricted staff create links", async () => {
   render(await TodayPage());
-  expect(screen.getByText("Nothing urgent right now")).toBeVisible();
+
+  expect(screen.getByText("Nothing needs attention right now.")).toBeVisible();
+  expect(screen.getByText("No visits today")).toBeVisible();
   expect(screen.getByText("No follow-ups due")).toBeVisible();
-  expect(screen.queryByRole("link", { name: "Create rental" })).toBeNull();
+  expect(screen.queryByRole("link", { name: "New visit" })).toBeNull();
   expect(
     screen.getByRole("link", { name: /Open service requests/ }),
   ).toHaveTextContent("3");
@@ -41,7 +48,8 @@ it("shows honest empty states and excludes restricted staff create links", async
     },
   });
 });
-it("offers owners a rental action, prioritizes work in progress and excludes cancelled jobs", async () => {
+
+it("offers owners a visit action and excludes cancelled jobs from Today", async () => {
   m.role.mockResolvedValue({ user: { role: "OWNER" } });
   m.jobs.mockResolvedValue(
     ["SCHEDULED", "CANCELLED", "IN_PROGRESS", "COMPLETED"].map((status, i) => ({
@@ -53,36 +61,40 @@ it("offers owners a rental action, prioritizes work in progress and excludes can
       serviceAddress: null,
     })),
   );
+
   render(await TodayPage());
-  expect(screen.getByRole("link", { name: "Create rental" })).toHaveAttribute(
+
+  expect(screen.getByRole("link", { name: "New visit" })).toHaveAttribute(
     "href",
-    "/desk/agreements/new",
-  );
-  expect(screen.getByRole("link", { name: "Open next job" })).toHaveAttribute(
-    "href",
-    "/desk/jobs/j2",
+    "/desk/jobs/new",
   );
   expect(
-    screen.getByRole("link", { name: /Jobs remaining today/ }),
-  ).toHaveTextContent("2");
+    screen.getByRole("link", { name: /Visits today/ }),
+  ).toHaveTextContent("3");
   expect(screen.queryByText("Customer 1")).toBeNull();
-  expect(screen.getByText("Completed today (1)")).toBeVisible();
+  expect(screen.getByText("Customer 0")).toBeVisible();
+  expect(screen.getByText("Customer 2")).toBeVisible();
+  expect(screen.getByText("Customer 3")).toBeVisible();
 });
 
 it("says plainly when a group has more items than are shown", async () => {
+  const items = Array.from({ length: 50 }, (_, index) => ({
+    category: "OVERDUE_JOB" as const,
+    severity: "high" as const,
+    title: `Delivery is overdue ${index + 1}`,
+    detail: "Scheduled and not done.",
+    href: `/desk/jobs/j${index + 1}`,
+    since: new Date("2026-09-01T12:00:00Z"),
+  }));
   m.exceptions.mockResolvedValue({
-    items: [
-      {
-        category: "OVERDUE_JOB",
-        severity: "high",
-        title: "Delivery is overdue",
-        detail: "Scheduled and not done.",
-        href: "/desk/jobs/j1",
-        since: new Date("2026-09-01T12:00:00Z"),
-      },
-    ],
+    items,
     truncated: [{ category: "OVERDUE_JOB", total: 73, shown: 50 }],
   });
+
   render(await TodayPage());
-  expect(screen.getByText(/showing the 50 that have waited longest, 23 more not shown/i)).toBeTruthy();
+
+  expect(screen.getByText("and 23 more")).toBeVisible();
+  expect(
+    screen.getByRole("heading", { name: "Overdue job" }),
+  ).toBeVisible();
 });
