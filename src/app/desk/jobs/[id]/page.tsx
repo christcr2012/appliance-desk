@@ -70,7 +70,7 @@ export default async function JobDetailPage({
 
   return (
     <div className="max-w-2xl">
-      <Link href="/desk/jobs" className="text-sm text-gray-600 hover:underline">
+      <Link href="/desk/jobs" className="text-sm text-ink-soft hover:underline">
         &larr; Back to jobs
       </Link>
 
@@ -83,7 +83,7 @@ export default async function JobDetailPage({
           View / print work order &rarr;
         </Link>
       </div>
-      <p className="mt-1 text-sm text-gray-600">
+      <p className="mt-1 text-sm text-ink-soft">
         {job.customer && (job.customer.user.name ?? job.customer.user.email)}
         {job.serviceAddress &&
           ` · ${job.serviceAddress.line1}, ${job.serviceAddress.city}, ${job.serviceAddress.state} ${job.serviceAddress.zip}`}
