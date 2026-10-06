@@ -22,6 +22,7 @@ test.describe("generated accessibility routes — public", () => {
       );
 
       if (route.path === "/") {
+        await page.goto("/?home=live");
         for (const theme of ["light", "dark"] as const) {
           await page.evaluate((mode) => {
             localStorage.setItem("theme", mode);
