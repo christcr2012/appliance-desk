@@ -1103,9 +1103,8 @@ scheduled date), never from the moment a status button is pressed.
    delivered later, stays on the subscription — the credit is the whole
    remedy. An item permanently cancelled (never delivered, taken off the
    agreement) comes off the Stripe subscription from the next billing period,
-   on top of the credit. *The subscription removal is not built yet — Batch C
-   (`docs/prompts/DESIGN-BATCH-C-LITERAL-SPECS.md`); until then the audit
-   entry tells the owner to adjust the subscription in Stripe by hand.*
+   on top of the credit. Batch C #175 implements that recurring-subscription
+   adjustment with durable provider-operation reconciliation.
 3. **The pickup day is not billed.** The final chargeable day of any rental
    is the day **before** the pickup/return date — for normal end-of-agreement
    pickups and late returns alike. An item picked up on the 1st of the month
