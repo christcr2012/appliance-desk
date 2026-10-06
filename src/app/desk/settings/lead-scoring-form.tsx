@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Button, Field } from "@/components/ui";
 import {
   DEFAULT_LEAD_SCORING_POLICY,
   type LeadScoringPolicy,
@@ -54,7 +55,7 @@ export function LeadScoringForm({ policy }: { policy: LeadScoringPolicy }) {
     setValues((current) => ({ ...current, termPoints: { ...current.termPoints, [term]: value } }));
 
   return (
-    <form onSubmit={save} className="mb-6 rounded-lg border border-line bg-subtle p-4">
+    <form onSubmit={save} className="mb-6 rounded-card border border-line bg-subtle p-4">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <h3 className="font-semibold text-ink">Lead scoring</h3>
@@ -71,50 +72,53 @@ export function LeadScoringForm({ policy }: { policy: LeadScoringPolicy }) {
       )}
       <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {(["month-to-month", "6-month", "12-month"] as const).map((term) => (
-          <label key={term} className="text-sm text-ink">
-            <span className="block font-medium">{term} term</span>
-            <input
-              type="number"
-              min={0}
-              max={1000}
-              value={values.termPoints[term]}
-              onChange={(event) => setTerm(term, Number(event.target.value))}
-              className="mt-1 w-full rounded-lg border border-line-strong bg-surface px-3 py-2"
-            />
-          </label>
+          <Field
+            key={term}
+            label={`${term} term`}
+            type="number"
+            min={0}
+            max={1000}
+            value={values.termPoints[term]}
+            onChange={(event) => setTerm(term, Number(event.target.value))}
+          />
         ))}
         {FIELDS.map((field) => (
-          <label key={field.key} className="text-sm text-ink">
-            <span className="block font-medium">{field.label}</span>
-            <input
-              type="number"
-              min={0}
-              max={field.key === "highValueThreshold" ? 10000 : 1000}
-              value={values[field.key]}
-              onChange={(event) => setValues((current) => ({ ...current, [field.key]: Number(event.target.value) }))}
-              className="mt-1 w-full rounded-lg border border-line-strong bg-surface px-3 py-2"
-            />
-            <span className="mt-1 block text-xs text-ink-soft">{field.help}</span>
-          </label>
+          <Field
+            key={field.key}
+            label={field.label}
+            help={field.help}
+            type="number"
+            min={0}
+            max={field.key === "highValueThreshold" ? 10000 : 1000}
+            value={values[field.key]}
+            onChange={(event) =>
+              setValues((current) => ({
+                ...current,
+                [field.key]: Number(event.target.value),
+              }))
+            }
+          />
         ))}
       </div>
       <div className="mt-4 flex flex-wrap gap-3">
-        <button type="submit" disabled={saving} className="rounded-full bg-action px-5 py-2.5 text-sm font-semibold text-on-action disabled:opacity-60">
+        <Button type="submit" disabled={saving}>
           {saving ? "Saving…" : "Save lead scoring"}
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
-          className="rounded-lg border border-line-strong px-4 py-2 text-sm text-ink"
-          onClick={() => setValues({
-            termPoints: { ...DEFAULT_LEAD_SCORING_POLICY.termPoints },
-            additionalUnitPoints: DEFAULT_LEAD_SCORING_POLICY.additionalUnitPoints,
-            businessAccountPoints: DEFAULT_LEAD_SCORING_POLICY.businessAccountPoints,
-            multiUnitPropertyManagerPoints: DEFAULT_LEAD_SCORING_POLICY.multiUnitPropertyManagerPoints,
-            highValueThreshold: DEFAULT_LEAD_SCORING_POLICY.highValueThreshold,
-          })}
+          variant="secondary"
+          onClick={() =>
+            setValues({
+              termPoints: { ...DEFAULT_LEAD_SCORING_POLICY.termPoints },
+              additionalUnitPoints: DEFAULT_LEAD_SCORING_POLICY.additionalUnitPoints,
+              businessAccountPoints: DEFAULT_LEAD_SCORING_POLICY.businessAccountPoints,
+              multiUnitPropertyManagerPoints: DEFAULT_LEAD_SCORING_POLICY.multiUnitPropertyManagerPoints,
+              highValueThreshold: DEFAULT_LEAD_SCORING_POLICY.highValueThreshold,
+            })
+          }
         >
           Restore v1 weights
-        </button>
+        </Button>
       </div>
     </form>
   );
