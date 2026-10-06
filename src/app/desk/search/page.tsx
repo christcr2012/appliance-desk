@@ -26,39 +26,39 @@ export default async function SearchPage({
           type="search"
           defaultValue={results.query}
           placeholder="Customer name, email, asset number…"
-          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+          className="w-full rounded-md border border-line-strong px-3 py-2 text-sm"
         />
         <button
           type="submit"
-          className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
+          className="rounded-md bg-action px-4 py-2 text-sm font-medium text-on-action hover:bg-action"
         >
           Search
         </button>
       </form>
 
       {!results.query ? (
-        <p className="mt-6 text-sm text-gray-600">
+        <p className="mt-6 text-sm text-ink-soft">
           Search across customers, appliances, and leads.
         </p>
       ) : totalFound === 0 ? (
-        <p className="mt-6 text-sm text-gray-600">
+        <p className="mt-6 text-sm text-ink-soft">
           Nothing found for &ldquo;{results.query}&rdquo;.
         </p>
       ) : (
         <div className="mt-6 space-y-6">
           {results.customers.length > 0 && (
             <section>
-              <h2 className="text-sm font-medium text-gray-500">Customers</h2>
-              <ul className="mt-2 divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white">
+              <h2 className="text-sm font-medium text-ink-faint">Customers</h2>
+              <ul className="mt-2 divide-y divide-line rounded-lg border border-line bg-white">
                 {results.customers.map((c) => (
                   <li key={c.id}>
                     <Link
                       href={`/desk/customers/${c.id}`}
-                      className="block px-4 py-3 text-sm hover:bg-gray-50"
+                      className="block px-4 py-3 text-sm hover:bg-canvas"
                     >
-                      <span className="font-medium text-gray-900">{c.name}</span>
+                      <span className="font-medium text-ink">{c.name}</span>
                       {c.companyName && ` — ${c.companyName}`}
-                      <span className="text-gray-500"> · {c.email}</span>
+                      <span className="text-ink-faint"> · {c.email}</span>
                     </Link>
                   </li>
                 ))}
@@ -68,18 +68,18 @@ export default async function SearchPage({
 
           {results.appliances.length > 0 && (
             <section>
-              <h2 className="text-sm font-medium text-gray-500">Appliances</h2>
-              <ul className="mt-2 divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white">
+              <h2 className="text-sm font-medium text-ink-faint">Appliances</h2>
+              <ul className="mt-2 divide-y divide-line rounded-lg border border-line bg-white">
                 {results.appliances.map((a) => (
                   <li key={a.id}>
                     <Link
                       href={`/desk/inventory/${a.id}`}
-                      className="block px-4 py-3 text-sm hover:bg-gray-50"
+                      className="block px-4 py-3 text-sm hover:bg-canvas"
                     >
-                      <span className="font-medium text-gray-900">
+                      <span className="font-medium text-ink">
                         {a.assetNumber} — {a.typeName}
                       </span>
-                      {a.manufacturer && <span className="text-gray-500"> · {a.manufacturer}</span>}
+                      {a.manufacturer && <span className="text-ink-faint"> · {a.manufacturer}</span>}
                     </Link>
                   </li>
                 ))}
@@ -89,17 +89,17 @@ export default async function SearchPage({
 
           {results.leads.length > 0 && (
             <section>
-              <h2 className="text-sm font-medium text-gray-500">Leads</h2>
-              <ul className="mt-2 divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white">
+              <h2 className="text-sm font-medium text-ink-faint">Leads</h2>
+              <ul className="mt-2 divide-y divide-line rounded-lg border border-line bg-white">
                 {results.leads.map((l) => (
                   <li key={l.id}>
                     <Link
                       href={`/desk/leads/${l.id}`}
-                      className="block px-4 py-3 text-sm hover:bg-gray-50"
+                      className="block px-4 py-3 text-sm hover:bg-canvas"
                     >
-                      <span className="font-medium text-gray-900">{l.contactName}</span>
-                      {l.email && <span className="text-gray-500"> · {l.email}</span>}
-                      <span className="ml-2 text-xs text-gray-400">{l.status}</span>
+                      <span className="font-medium text-ink">{l.contactName}</span>
+                      {l.email && <span className="text-ink-faint"> · {l.email}</span>}
+                      <span className="ml-2 text-xs text-ink-faint">{l.status}</span>
                     </Link>
                   </li>
                 ))}

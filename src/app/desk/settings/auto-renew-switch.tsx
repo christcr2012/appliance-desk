@@ -28,7 +28,7 @@ export function AutoRenewSwitch({ enabled, canChange }: { enabled: boolean; canC
   }
 
   return (
-    <div className="max-w-2xl space-y-3 rounded-lg border border-gray-300 p-4 text-sm text-ink">
+    <div className="max-w-2xl space-y-3 rounded-lg border border-line-strong p-4 text-sm text-ink">
       <p>
         <span className="font-medium">Automatic renewals:</span>{" "}
         <span className={enabled ? "font-semibold text-green-800" : "font-semibold"}>{enabled ? "ON" : "OFF"}</span>
@@ -52,7 +52,7 @@ export function AutoRenewSwitch({ enabled, canChange }: { enabled: boolean; canC
           type="button"
           disabled={pending}
           onClick={() => change(!enabled)}
-          className="rounded-full bg-gray-900 px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+          className="rounded-full bg-action px-5 py-2.5 text-sm font-semibold text-on-action disabled:opacity-60"
         >
           {pending ? "Saving…" : enabled ? "Turn OFF automatic renewals" : "Turn ON automatic renewals"}
         </button>

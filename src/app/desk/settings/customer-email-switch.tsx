@@ -64,7 +64,7 @@ export function CustomerEmailSwitch({
           type="button"
           disabled={pending}
           onClick={() => change(!enabled)}
-          className="rounded-full bg-gray-900 px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+          className="rounded-full bg-action px-5 py-2.5 text-sm font-semibold text-on-action disabled:opacity-60"
         >
           {pending ? "Saving…" : enabled ? "Turn OFF customer emails" : "Turn ON customer emails"}
         </button>
