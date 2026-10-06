@@ -9,6 +9,14 @@ import { businessDateKey } from "@/lib/business-date";
 const BACKUP_PREFIX = "backups/";
 const RETENTION_DAYS = 30;
 
+export type DatabaseBackupPayload = {
+  formatVersion: 2;
+  exportedAt: string;
+  migrationId: string;
+  appVersion: string;
+  tables: Record<string, unknown[]>;
+};
+
 export type BackupResult = {
   ok: boolean;
   url?: string;
@@ -17,40 +25,83 @@ export type BackupResult = {
   error?: string;
 };
 
-/** Exports every business-critical table to a single JSON file and uploads it
- * to Vercel Blob. Batch F owns snapshot consistency and restore drilling. */
+type BackupReadHook = (input: { table: string; index: number }) => void | Promise<void>;
+let backupReadHookForTests: BackupReadHook | null = null;
+
+/** Test-only seam used to prove REPEATABLE READ snapshot consistency. */
+export function __setBackupReadHookForTests(hook: BackupReadHook | null): void {
+  backupReadHookForTests = hook;
+}
+
+/** Read one restorable snapshot without contacting Blob storage. */
+export async function buildDatabaseBackupSnapshot(): Promise<{
+  payload: DatabaseBackupPayload;
+  tableCounts: Record<string, number>;
+}> {
+  return prisma.$transaction(
+    async (tx) => {
+      const migrations = await tx.$queryRaw<Array<{ migration_name: string }>>`
+        SELECT "migration_name"
+        FROM "_prisma_migrations"
+        WHERE "finished_at" IS NOT NULL
+          AND "rolled_back_at" IS NULL
+        ORDER BY "finished_at" DESC, "started_at" DESC
+        LIMIT 1
+      `;
+      const migrationId = migrations[0]?.migration_name;
+      if (!migrationId) {
+        throw new Error("No completed Prisma migration was found; refusing to create an unrestorable backup.");
+      }
+
+      const tableCounts: Record<string, number> = {};
+      const tables: Record<string, unknown[]> = {};
+      const delegates = tx as unknown as Record<string, { findMany?: () => Promise<unknown[]> }>;
+
+      // Sequential reads inside one REPEATABLE READ transaction are deliberate:
+      // every table is captured from the same PostgreSQL snapshot.
+      for (let index = 0; index < BACKUP_TABLES.length; index += 1) {
+        const table = BACKUP_TABLES[index]!;
+        const delegate = delegates[table];
+        if (!delegate?.findMany) throw new Error(`Backup delegate "${table}" is unavailable.`);
+        const rows = await delegate.findMany();
+        tables[table] = rows;
+        tableCounts[table] = rows.length;
+        if (backupReadHookForTests && index < BACKUP_TABLES.length - 1) {
+          await backupReadHookForTests({ table, index });
+        }
+      }
+
+      return {
+        payload: {
+          formatVersion: 2,
+          exportedAt: new Date().toISOString(),
+          migrationId,
+          appVersion: process.env.VERCEL_GIT_COMMIT_SHA || "unknown",
+          tables,
+        },
+        tableCounts,
+      };
+    },
+    { isolationLevel: "RepeatableRead" },
+  );
+}
+
+/** Exports every business-critical table to one private, restorable JSON file. */
 export async function exportDatabaseBackup(): Promise<BackupResult> {
   if (isNonProductionDeployment()) {
     return { ok: false, error: "Backups are disabled outside production deployments." };
   }
   try {
-    const entries = await Promise.all(
-      BACKUP_TABLES.map(async (table) => {
-        const rows = await (
-          prisma[table] as { findMany: () => Promise<unknown[]> }
-        ).findMany();
-        return [table, rows] as const;
-      }),
-    );
-
-    const tableCounts: Record<string, number> = {};
-    const data: Record<string, unknown[]> = {};
-    for (const [table, rows] of entries) {
-      data[table] = rows;
-      tableCounts[table] = rows.length;
-    }
-
-    const exportedAt = new Date().toISOString();
-    const payload = JSON.stringify({ exportedAt, tables: data }, null, 0);
-    const filename = `${BACKUP_PREFIX}${exportedAt.slice(0, 10)}-${Date.now()}.json`;
-    const blob = await put(filename, payload, {
+    const snapshot = await buildDatabaseBackupSnapshot();
+    const filename = `${BACKUP_PREFIX}${snapshot.payload.exportedAt.slice(0, 10)}-${Date.now()}.json`;
+    const blob = await put(filename, JSON.stringify(snapshot.payload), {
       access: "private",
       contentType: "application/json",
       addRandomSuffix: false,
     });
 
     const prunedCount = await pruneOldBackups();
-    return { ok: true, url: blob.url, tableCounts, prunedCount };
+    return { ok: true, url: blob.url, tableCounts: snapshot.tableCounts, prunedCount };
   } catch (error) {
     console.error("[backup] Export failed", error);
     return { ok: false, error: error instanceof Error ? error.message : "Unknown error" };

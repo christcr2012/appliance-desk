@@ -17,7 +17,7 @@ vi.mock("@vercel/blob", () => ({
 // Derive fixtures independently from the schema, not the export's table list.
 const SCHEMA_MODELS = [...readFileSync("prisma/schema.prisma", "utf8").matchAll(/^model (\w+) \{/gm)]
   .map((match) => match[1]!);
-const EXCLUDED_MODELS = ["Session", "Account", "Verification", "WebhookEvent"];
+const EXCLUDED_MODELS = ["Session", "Account", "Verification"];
 const BACKUP_TABLES = SCHEMA_MODELS.filter((model) => !EXCLUDED_MODELS.includes(model))
   .map((model) => model[0]!.toLowerCase() + model.slice(1));
 const ALL_TABLES = SCHEMA_MODELS.map((model) => model[0]!.toLowerCase() + model.slice(1));
@@ -30,7 +30,17 @@ function makePrismaMock() {
   return model;
 }
 
-const prismaMock = makePrismaMock();
+const transactionMock = vi.fn();
+const queryRawMock = vi.fn();
+type PrismaMock = Record<string, { findMany: ReturnType<typeof vi.fn> }> & {
+  $transaction: ReturnType<typeof vi.fn>;
+  $queryRaw: ReturnType<typeof vi.fn>;
+};
+const prismaMock = {
+  ...makePrismaMock(),
+  $transaction: transactionMock,
+  $queryRaw: queryRawMock,
+} as PrismaMock;
 
 vi.mock("@/lib/prisma", () => ({ prisma: prismaMock }));
 
@@ -44,6 +54,10 @@ vi.mock("@/domains/settings", () => ({ getBusinessSettings: () => getBusinessSet
 
 beforeEach(() => {
   vi.clearAllMocks();
+  queryRawMock.mockResolvedValue([{ migration_name: "20261008010000_batch_e_messaging" }]);
+  transactionMock.mockImplementation(
+    async (callback: (tx: typeof prismaMock) => Promise<unknown>) => callback(prismaMock),
+  );
   for (const table of ALL_TABLES) {
     prismaMock[table]!.findMany = vi
       .fn()
@@ -84,12 +98,17 @@ describe("exportDatabaseBackup", () => {
     expect(filename).toMatch(/^backups\/\d{4}-\d{2}-\d{2}-\d+\.json$/);
     expect(options.access).toBe("private");
     const parsed = JSON.parse(payload);
+    expect(parsed.formatVersion).toBe(2);
+    expect(parsed.migrationId).toBe("20261008010000_batch_e_messaging");
+    expect(typeof parsed.appVersion).toBe("string");
+    expect(new Date(parsed.exportedAt).toString()).not.toBe("Invalid Date");
     expect(parsed.tables.customer).toEqual([{ id: "cust-1" }]);
     expect(Object.keys(parsed.tables).sort()).toEqual([...BACKUP_TABLES].sort());
     for (const table of BACKUP_TABLES) {
       expect(parsed.tables[table]).toEqual([{ id: table === "customer" ? "cust-1" : `${table}-1` }]);
       expect(result.tableCounts?.[table]).toBe(1);
     }
+    expect(transactionMock.mock.calls[0]?.[1]).toEqual({ isolationLevel: "RepeatableRead" });
     for (const model of EXCLUDED_MODELS) {
       const table = model[0]!.toLowerCase() + model.slice(1);
       expect(prismaMock[table]!.findMany).not.toHaveBeenCalled();
