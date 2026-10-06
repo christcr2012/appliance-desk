@@ -2,7 +2,7 @@
 
 import { useActionState } from "react";
 import type { PreviewStorageResult } from "@/domains/preview-storage";
-import { primaryActionClass } from "@/components/desk/workspace";
+import { Button } from "@/components/ui";
 import { runPreviewStorageCheck } from "./actions";
 
 export function PreviewStorageCheckForm() {
@@ -15,9 +15,9 @@ export function PreviewStorageCheckForm() {
         This creates a tiny synthetic file, reads it privately, checks that
         access without a token is refused, then removes the test file.
       </p>
-      <button disabled={pending || state.cleanupPending} className={primaryActionClass}>
+      <Button type="submit" disabled={pending || state.cleanupPending}>
         {pending ? "Checking storage…" : "Run preview storage check"}
-      </button>
+      </Button>
       {state.message && (
         <div role={state.status === "error" ? "alert" : "status"} className="space-y-2">
           <p>{state.message}</p>
