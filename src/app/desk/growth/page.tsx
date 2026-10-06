@@ -10,213 +10,233 @@ import { formatCents } from "@/domains/pricing";
 import { requireRole } from "@/lib/session";
 import { MetricHelp } from "@/components/desk/metric-stat";
 import { getDemandEstimate } from "@/domains/growth/demand";
+import { Card, EmptyState, PageHeader } from "@/components/ui";
 
 export const metadata = { title: "Growth" };
 
-// OWNER/ADMIN only (docs/DECISIONS.md, 2026-09-28 "Staff permissions
-// framework") — never rely on the nav link being hidden alone.
 export default async function GrowthPage() {
   await requireRole("OWNER", "ADMIN");
-  const [churnRisk, winBackLeads, priceReview, utilizationFlags, reviewCandidates, demandEstimate] =
-    await Promise.all([
-      getChurnRiskCustomers(),
-      getWinBackLeads(),
-      getPriceReviewAgreements(),
-      getUtilizationFlags(),
-      getReviewRequestCandidates(),
-      getDemandEstimate(),
-    ]);
+  const [
+    churnRisk,
+    winBackLeads,
+    priceReview,
+    utilizationFlags,
+    reviewCandidates,
+    demandEstimate,
+  ] = await Promise.all([
+    getChurnRiskCustomers(),
+    getWinBackLeads(),
+    getPriceReviewAgreements(),
+    getUtilizationFlags(),
+    getReviewRequestCandidates(),
+    getDemandEstimate(),
+  ]);
 
   return (
     <div>
-      <h1 className="text-xl font-semibold">Growth</h1>
-      <p className="mt-1 max-w-2xl text-sm text-ink-soft">
-        Signals pulled from your existing data — customers worth a
-        proactive call, leads worth a second follow-up, agreements that
-        haven&apos;t had their price revisited, and fleet numbers worth
-        acting on. Nothing here does anything automatically — every item
-        is a nudge for you to act on, not an action taken for you.
+      <PageHeader
+        title="Growth"
+        description="Signals pulled from existing data: customers worth a proactive call, leads worth another follow-up, agreements due for a price review, and fleet numbers worth acting on."
+      />
+
+      <p className="max-w-2xl text-sm text-ink-soft">
+        Nothing on this page acts automatically. Every item is a nudge for you
+        to review and decide what to do.
       </p>
 
-      <section className="mt-8">
-        <h2 className="font-medium text-ink">
-          Customers worth a proactive call ({churnRisk.length})
-        </h2>
-        <p className="mt-1 text-sm text-ink-soft">
-          Active rentals showing a churn signal — a past-due invoice, a
-          recent failed payment, a term ending soon with no renewal, or
-          repeat repair requests.
-        </p>
-        <MetricHelp metric="growth.churnRisk" />
-        {churnRisk.length === 0 ? (
-          <p className="mt-4 text-sm text-ink-soft">Nothing flagged right now.</p>
-        ) : (
-          <ul className="mt-4 divide-y divide-line rounded-lg border border-line bg-white">
-            {churnRisk.map((row) => (
-              <li key={row.agreementId}>
-                <Link
-                  href={`/desk/customers/${row.customerId}`}
-                  className="flex flex-col gap-1 px-4 py-4 hover:bg-canvas sm:flex-row sm:items-center sm:justify-between"
-                >
-                  <p className="font-medium text-ink">{row.customerName}</p>
-                  <p className="text-sm text-amber-700 sm:text-right">
-                    {row.reasons.join(" · ")}
+      <div className="mt-8 space-y-6">
+        <Card
+          title={`Customers worth a proactive call (${churnRisk.length})`}
+          description="Active rentals showing a churn signal: a past-due invoice, recent failed payment, a term ending soon with no renewal, or repeat repair requests."
+        >
+          <MetricHelp metric="growth.churnRisk" />
+          {churnRisk.length === 0 ? (
+            <EmptyState
+              title="Nothing flagged right now"
+              description="No active rental currently meets the churn-risk rules."
+            />
+          ) : (
+            <ul className="mt-4 divide-y divide-line">
+              {churnRisk.map((row) => (
+                <li key={row.agreementId}>
+                  <Link
+                    href={`/desk/customers/${row.customerId}`}
+                    className="flex flex-col gap-1 py-4 hover:bg-subtle sm:flex-row sm:items-center sm:justify-between sm:px-3"
+                  >
+                    <p className="font-semibold text-ink">
+                      {row.customerName}
+                    </p>
+                    <p className="text-sm font-medium text-warning-ink sm:text-right">
+                      {row.reasons.join(" · ")}
+                    </p>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+
+        <Card
+          title={`Leads worth a follow-up (${winBackLeads.length})`}
+          description="Leads that have gone quiet, or were marked lost long enough ago that another try may be worthwhile."
+        >
+          <MetricHelp metric="growth.winBack" />
+          {winBackLeads.length === 0 ? (
+            <EmptyState
+              title="Nothing flagged right now"
+              description="No lead currently meets the win-back rules."
+            />
+          ) : (
+            <ul className="mt-4 divide-y divide-line">
+              {winBackLeads.map((lead) => (
+                <li key={lead.leadId}>
+                  <Link
+                    href={`/desk/leads/${lead.leadId}`}
+                    className="flex flex-col gap-1 py-4 hover:bg-subtle sm:flex-row sm:items-center sm:justify-between sm:px-3"
+                  >
+                    <p className="font-semibold text-ink">
+                      {lead.contactName}
+                      {lead.companyName ? ` — ${lead.companyName}` : ""}
+                    </p>
+                    <p className="text-sm text-ink-soft">{lead.reason}</p>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+
+        <Card
+          title={`Agreements due for a price review (${priceReview.length})`}
+          description="Active for a year or more at the same agreed price. This is a reminder only; no customer price changes automatically."
+        >
+          <MetricHelp metric="growth.priceReview" />
+          {priceReview.length === 0 ? (
+            <EmptyState
+              title="Nothing flagged right now"
+              description="No active agreement currently meets the price-review rule."
+            />
+          ) : (
+            <ul className="mt-4 divide-y divide-line">
+              {priceReview.map((row) => (
+                <li key={row.agreementId}>
+                  <Link
+                    href={`/desk/agreements/${row.agreementId}`}
+                    className="flex flex-col gap-1 py-4 hover:bg-subtle sm:flex-row sm:items-center sm:justify-between sm:px-3"
+                  >
+                    <p className="font-semibold text-ink">
+                      {row.customerName}
+                    </p>
+                    <p className="text-sm text-ink-soft">
+                      Signed {row.monthsAgo} months ago ·{" "}
+                      {formatCents(row.monthlyTotalCents)}/mo
+                    </p>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+
+        <Card
+          title={`Estimated demand by appliance type (${demandEstimate.length})`}
+          description="Planning estimate only: open NEW/CONTACTED lead requests compared with fleet units not currently in customer custody. It is not a sales forecast or purchase instruction."
+        >
+          {demandEstimate.length === 0 ? (
+            <EmptyState
+              title="No open lead demand to estimate"
+              description="Demand estimates will appear when open lead requests can be compared with fleet availability."
+            />
+          ) : (
+            <ul className="divide-y divide-line">
+              {demandEstimate.map((row) => (
+                <li key={row.applianceTypeId} className="py-4 text-sm">
+                  <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="font-semibold text-ink">
+                      {row.applianceTypeName}
+                    </p>
+                    <p className="text-ink-soft">
+                      Estimated gap: {row.estimatedUnitGap} unit
+                      {row.estimatedUnitGap === 1 ? "" : "s"}
+                    </p>
+                  </div>
+                  <p className="mt-1 text-xs text-ink-faint">
+                    Open lead requests: {row.openLeadRequestedUnits} · Fleet:{" "}
+                    {row.fleetUnits} · In customer custody:{" "}
+                    {row.unitsInCustomerCustody} · Estimated available now:{" "}
+                    {row.availableUnitsEstimate}
                   </p>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
 
-      <section className="mt-8">
-        <h2 className="font-medium text-ink">
-          Leads worth a follow-up ({winBackLeads.length})
-        </h2>
-        <p className="mt-1 text-sm text-ink-soft">
-          Gone quiet, or marked lost long enough ago that it&apos;s worth
-          another try.
-        </p>
-        <MetricHelp metric="growth.winBack" />
-        {winBackLeads.length === 0 ? (
-          <p className="mt-4 text-sm text-ink-soft">Nothing flagged right now.</p>
-        ) : (
-          <ul className="mt-4 divide-y divide-line rounded-lg border border-line bg-white">
-            {winBackLeads.map((lead) => (
-              <li key={lead.leadId}>
-                <Link
-                  href={`/desk/leads/${lead.leadId}`}
-                  className="flex flex-col gap-1 px-4 py-3 hover:bg-canvas sm:flex-row sm:items-center sm:justify-between"
+        <Card
+          title={`Fleet flags (${utilizationFlags.length})`}
+          description="High utilization can indicate lost rentals from low availability; persistent low utilization can justify reviewing price or stock."
+        >
+          <MetricHelp metric="growth.fleetFlags" />
+          {utilizationFlags.length === 0 ? (
+            <EmptyState
+              title="Nothing flagged right now"
+              description="No appliance type currently meets the fleet-flag rules."
+            />
+          ) : (
+            <ul className="divide-y divide-line">
+              {utilizationFlags.map((row) => (
+                <li
+                  key={row.applianceTypeId}
+                  className="flex flex-col gap-2 py-4 sm:flex-row sm:items-center sm:justify-between"
                 >
-                  <p className="text-sm text-ink">
-                    {lead.contactName}
-                    {lead.companyName ? ` — ${lead.companyName}` : ""}
+                  <p className="text-sm font-semibold text-ink">
+                    {row.applianceTypeName} — {row.unitCount} unit
+                    {row.unitCount === 1 ? "" : "s"}
                   </p>
-                  <p className="text-sm text-ink-faint">{lead.reason}</p>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      <section className="mt-8">
-        <h2 className="font-medium text-ink">
-          Agreements due for a price review ({priceReview.length})
-        </h2>
-        <p className="mt-1 text-sm text-ink-soft">
-          Active for a year or more at the same agreed price. A reminder
-          only — nothing changes a customer&apos;s price automatically.
-        </p>
-        <MetricHelp metric="growth.priceReview" />
-        {priceReview.length === 0 ? (
-          <p className="mt-4 text-sm text-ink-soft">Nothing flagged right now.</p>
-        ) : (
-          <ul className="mt-4 divide-y divide-line rounded-lg border border-line bg-white">
-            {priceReview.map((row) => (
-              <li key={row.agreementId}>
-                <Link
-                  href={`/desk/agreements/${row.agreementId}`}
-                  className="flex flex-col gap-1 px-4 py-3 hover:bg-canvas sm:flex-row sm:items-center sm:justify-between"
-                >
-                  <p className="text-sm text-ink">{row.customerName}</p>
-                  <p className="text-sm text-ink-faint">
-                    Signed {row.monthsAgo} months ago · {formatCents(row.monthlyTotalCents)}/mo
+                  <p
+                    className={`text-sm font-semibold ${
+                      row.flag === "SHORTAGE"
+                        ? "text-warning-ink"
+                        : "text-ink-soft"
+                    }`}
+                  >
+                    {Math.round(row.averageUtilizationFraction * 100)}% utilized
+                    {" — "}
+                    {row.flag === "SHORTAGE"
+                      ? "consider buying more"
+                      : "consider reviewing price/stock"}
                   </p>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
 
-      <section className="mt-8">
-        <h2 className="font-medium text-ink">
-          Estimated demand by appliance type ({demandEstimate.length})
-        </h2>
-        <p className="mt-1 text-sm text-ink-soft">
-          Planning estimate only: open NEW/CONTACTED lead requests compared with fleet units that are not currently in customer custody. It is not a sales forecast or a purchase instruction.
-        </p>
-        {demandEstimate.length === 0 ? (
-          <p className="mt-4 text-sm text-ink-soft">No open lead demand to estimate right now.</p>
-        ) : (
-          <ul className="mt-4 divide-y divide-line rounded-lg border border-line bg-surface">
-            {demandEstimate.map((row) => (
-              <li key={row.applianceTypeId} className="px-4 py-3 text-sm">
-                <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                  <p className="font-medium text-ink">{row.applianceTypeName}</p>
-                  <p className="text-ink-soft">
-                    Estimated gap: {row.estimatedUnitGap} unit{row.estimatedUnitGap === 1 ? "" : "s"}
-                  </p>
-                </div>
-                <p className="mt-1 text-xs text-ink-faint">
-                  Open lead requests: {row.openLeadRequestedUnits} · Fleet: {row.fleetUnits} · In customer custody: {row.unitsInCustomerCustody} · Estimated available now: {row.availableUnitsEstimate}
-                </p>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      <section className="mt-8">
-        <h2 className="font-medium text-ink">
-          Fleet flags ({utilizationFlags.length})
-        </h2>
-        <p className="mt-1 text-sm text-ink-soft">
-          An appliance type running near-fully-rented is probably costing
-          you rentals to no availability; one sitting mostly idle may be
-          overpriced or overstocked.
-        </p>
-        <MetricHelp metric="growth.fleetFlags" />
-        {utilizationFlags.length === 0 ? (
-          <p className="mt-4 text-sm text-ink-soft">Nothing flagged right now.</p>
-        ) : (
-          <ul className="mt-4 divide-y divide-line rounded-lg border border-line bg-white">
-            {utilizationFlags.map((row) => (
-              <li key={row.applianceTypeId} className="flex items-center justify-between px-4 py-3">
-                <p className="text-sm text-ink">
-                  {row.applianceTypeName} — {row.unitCount} unit{row.unitCount === 1 ? "" : "s"}
-                </p>
-                <p
-                  className={`text-sm font-medium ${
-                    row.flag === "SHORTAGE" ? "text-amber-700" : "text-ink-faint"
-                  }`}
-                >
-                  {Math.round(row.averageUtilizationFraction * 100)}% utilized —{" "}
-                  {row.flag === "SHORTAGE" ? "consider buying more" : "consider reviewing price/stock"}
-                </p>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      <section className="mt-8">
-        <h2 className="font-medium text-ink">
-          Good candidates for a review or referral ask ({reviewCandidates.length})
-        </h2>
-        <p className="mt-1 text-sm text-ink-soft">
-          Billing cleanly for 90+ days with nothing past due — a
-          reasonable moment to ask for a Google review or a referral.
-          Nothing is sent automatically; this is just who to reach out to.
-        </p>
-        {reviewCandidates.length === 0 ? (
-          <p className="mt-4 text-sm text-ink-soft">Nothing flagged right now.</p>
-        ) : (
-          <ul className="mt-4 divide-y divide-line rounded-lg border border-line bg-white">
-            {reviewCandidates.map((row) => (
-              <li key={row.agreementId}>
-                <Link
-                  href={`/desk/customers/${row.customerId}`}
-                  className="block px-4 py-3 text-sm text-ink hover:bg-canvas"
-                >
-                  {row.customerName}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+        <Card
+          title={`Good candidates for a review or referral ask (${reviewCandidates.length})`}
+          description="Billing cleanly for 90+ days with nothing past due. Nothing is sent automatically; this is only a list of customers worth considering."
+        >
+          {reviewCandidates.length === 0 ? (
+            <EmptyState
+              title="Nothing flagged right now"
+              description="No customer currently meets the review/referral candidate rules."
+            />
+          ) : (
+            <ul className="divide-y divide-line">
+              {reviewCandidates.map((row) => (
+                <li key={row.agreementId}>
+                  <Link
+                    href={`/desk/customers/${row.customerId}`}
+                    className="block py-4 font-semibold text-ink underline-offset-4 hover:bg-subtle hover:underline sm:px-3"
+                  >
+                    {row.customerName}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+      </div>
     </div>
   );
 }
