@@ -96,10 +96,7 @@ Default ranking, **lowest to highest** value:
 
 `month-to-month → 6-month → 12-month → bulk (multiple units) → landlord/property manager/apartment operator needing multiple units`
 
-- Scoring uses rule values that are **currently hard-coded** in
-  `src/domains/leads/scoring.ts` (making them editable in
-  `/desk/settings` is a later-phase idea, not built yet — see
-  `docs/ROADMAP.md`), and stores the specific reasons applied to each
+- Scoring uses the versioned owner-configurable policy in `BusinessSettings.leadScoringPolicy`, editable under Desk → Settings → Lead scoring. Each lead stores the policy version and the specific reasons applied to that
   lead (e.g. `"+ 12-month term"`, `"+ property manager"`, `"+ 4
   units"`), shown to Chris next to the lead so it's never a black box.
   Current point values:
@@ -982,8 +979,7 @@ is never replaced by a default.
   was not fully set at that moment is stored as "never agreed", so ending early
   or auto-renew stay unavailable for that agreement even if the owner completes
   the settings later. Agreements sent before this existed have no snapshot, so
-  they have no early-ending quote. Month-to-month agreements follow the live
-  system-wide terms; the 30-day notice for changing those is not built yet.
+  they have no early-ending quote. Month-to-month agreements use versioned system-wide terms; changing them creates tracked notices, and a new version applies to an existing rental only after its delivered notice has aged through the configured change-notice period.
 - **Requesting early termination records it; it does not end the agreement.**
   Ending still goes through the normal close path on the effective date. The
   owner/admin can do it for any agreement; a customer can do it only for their
