@@ -14,4 +14,4 @@ Last updated: 2026-10-05. **The D, E and F designs were rewritten on 2026-10-05 
 | Change (Batch B) | What a later design must do about it |
 |---|---|
 | **Tax is stored as `taxRateMilliPercent`** (thousandths of a percent, 7375 = 7.375%). `taxRatePermille` is deprecated, kept in step by a database trigger, and removed in a later cleanup. Use `src/domains/billing/tax.ts`. | Never read or write `taxRatePermille`. Any design text that says permille is superseded. |
-| **Money events are Receipts; Payments are per-invoice allocations.** Overpayment becomes a `CustomerCredit`. | Cash reports and "collected" read receipts (`collectedBetween` in `src/domains/billing/collected.ts`; categories in `categories.ts`). Do not sum ¶»§q«^
+| **Money events are Receipts; Payments are per-invoice allocations.** Overpayment becomes a `CustomerCredit`. | Cash reports and "collected" read receipts (`collectedBetween` in `src/domains/billing/collected.ts`; categories in `categories.ts`). Do not sum ï¿½ï¿½ï¿½qï¿½^
