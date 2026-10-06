@@ -1,7 +1,7 @@
 export type AccessibilityRouteRole = "PUBLIC" | "OWNER" | "CUSTOMER";
 
 export type AccessibilityRoute = {
-  /** Next.js route template, kept in sync with every src/app/**/page.tsx file. */
+  /** Next.js route template, kept in sync with every App Router page file. */
   path: string;
   role: AccessibilityRouteRole;
   /** Navigable CI fixture. Symbolic ids are resolved by the generated axe specs. */
