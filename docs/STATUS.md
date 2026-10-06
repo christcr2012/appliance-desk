@@ -71,4 +71,4 @@ authorization. None of those blocks Batch F engineering; live provider actions s
 ## Session log (last two batches only)
 
 - **2026-10-06 — Batch E2:** E2 implementation completed through final cleanup/docs PR #263. The public-site slice is technically accepted but the visual result is explicitly deferred for a stronger redesign pass.
-- **2026-10-06 — Documentation reconciliation:** current-state docs were audited against merged code. Stale claims that B/C/B2 work, configurable lead scoring, preview isolation, and D/E evidence tables were still unbuilt were corrected. Batch F is next; O32 is explicitly deferred pending its prerequisites.
+- **2026-10-06 — Documentation reconciliation:** current-state docs were audited against merged code. Stale claims that B/C/B2 work, configurable lead scoring, preview isolation, Neon protection/domain setup, and D/E evidence tables were still unbuilt were corrected. Batch F is next; O32 is explicitly deferred pending its prerequisites.
