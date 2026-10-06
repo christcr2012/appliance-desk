@@ -634,3 +634,10 @@ What the real work will need (so it is not forgotten):
 - The public home page direction is not yet approved (only the owner desk is). The hero's dark gradient and two buttons differ from the
   kit's "ivory surfaces, one dominant next action" guidance and need a decision before design.
 - **Update 2026-10-04:** this is now scheduled as **Batch E2** (after E, before F) in `docs/PLAN.md`, covering the whole redesign: desktop, phone, dark mode, owner desk, customer portal and public site. A phone mockup of Today and the home page exists in the same private canvas.
+
+
+## 2026-10-06 — Deferred public-site visual redesign follow-up
+
+Batch E2's public-site slice (#262) is technically complete and merged, but its visual result is **not accepted as the final desired design quality**. The required owner/browser comparison found that, despite the new shared components, live-home imagery, CTA hierarchy, responsive coverage and light/dark treatment, the overall composition still feels too similar to the previous public site. Chris explicitly authorized merge to finish E2 and defer this concern rather than block the project.
+
+A later dedicated public-site visual pass should make the redesign immediately obvious while preserving the current business rules, published-content controls, SEO behavior, prelaunch/live-state logic, accessibility requirements, real brand assets, and provider/payment safety gates. This is a visual-quality follow-up, not a rollback of E2's shared component or accessibility work.
