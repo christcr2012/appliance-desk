@@ -13,9 +13,9 @@ the points where the implementer must stop and ask instead of guessing.
 | C — Rental-to-service operations, custody, inventory & purchasing | `BATCH-C.md` + `BATCH-C-UPDATE-2026-10-03.md` + `BATCH-C-LITERAL-SPEC-2026-10-03.md` | Built and merged; its shared billing-end leftover was completed by B2. |
 | R — Remediation Batch R | `REMEDIATION-BATCH-R-2026-10-04.md` (+ amendment, recovery) | Built and merged. |
 | B2 — Renewal lifecycle, month-to-month rentals, pickup billing end | `BATCH-B2.md` | Built before Batch D; D's implementation uses these contracts. |
-| D — Owner/customer control plane, website, evidence & privacy | `BATCH-D.md` | **Implemented through the final D branch.** D1–D9 predecessors are merged; D10–D12 finalization is on `ai/sol/batch-d-d10-privacy`. Post-D reconciliation explicitly moved the one uncovered audit outcome, B08 lead-scoring configurability, into E's lead/settings migration instead of adding a one-off late D schema change. |
-| E — Communications, automation history, search, brand tokens & accessibility | `BATCH-E.md` + **`POST-BATCH-D-RECONCILIATION-2026-10-05.md`** | **Approved design, but implementation BLOCKED until final D is green and merged.** Reconciliation adds D's privacy sender/routes/metrics and the explicit B08 lead-scoring policy work. |
-| E2 — Visual redesign (owner desk, portal, public site; phone, desktop, dark) | `BATCH-E2.md` + **`POST-BATCH-D-RECONCILIATION-2026-10-05.md`** | Approved. Starts after E; must preserve D's website-editor preview, settings-backed copy/chrome and legal-page gate. |
+| D — Owner/customer control plane, website, evidence & privacy | `BATCH-D.md` | Built and merged; final PR #214. |
+| E — Communications, automation history, search, brand tokens & accessibility | `BATCH-E.md` + **`POST-BATCH-D-RECONCILIATION-2026-10-05.md`** | Built and merged; final PR #222. |
+| E2 — Visual redesign (owner desk, portal, public site; phone, desktop, dark) | `BATCH-E2.md` + **`POST-BATCH-D-RECONCILIATION-2026-10-05.md`** | Final cleanup/docs PR #263; on merge E2 is complete. Public-site visual quality is explicitly deferred for a stronger later pass. |
 | F — Integrated verification, recovery, owner handoff & launch ledger | `BATCH-F.md` + **`POST-BATCH-D-RECONCILIATION-2026-10-05.md`** | Approved. Starts after E2; recovery must respect D privacy deletion and must never resurrect intentionally deleted private media. |
 
 **2026-10-05 post-D reconciliation.** D, E and F had been designed/reworked against code that predated the actual
