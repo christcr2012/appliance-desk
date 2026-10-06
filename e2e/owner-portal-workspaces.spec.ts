@@ -72,7 +72,7 @@ for (const role of ["owner", "customer"] as const) {
                   "/account",
                   "/account/rentals",
                   "/account/billing",
-                  "/account/maintenance?request=pickup",
+                  "/account/maintenance",
                   "/account/settings",
                 ];
           for (const route of routes) {
@@ -86,7 +86,7 @@ for (const role of ["owner", "customer"] as const) {
             if (capture) {
               const routeLabel =
                 role === "customer"
-                  ? route.replace(/^\\/+|[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "")
+                  ? route.replaceAll("/", "-").replace(/[^a-z0-9-]+/gi, "-").replace(/^-|-$/g, "")
                   : route.includes("section=products")
                     ? "products"
                     : "home";
