@@ -55,15 +55,15 @@ export function ConvertEstimatePanel({
   }
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-5">
-      <h2 className="text-sm font-medium text-gray-900">Convert to a draft agreement</h2>
-      <p className="mt-1 text-sm text-gray-600">
+    <div className="rounded-lg border border-line bg-white p-5">
+      <h2 className="text-sm font-medium text-ink">Convert to a draft agreement</h2>
+      <p className="mt-1 text-sm text-ink-soft">
         This sets up the paperwork with the agreed terms — you&apos;ll still
         add the real appliances yourself, same as any other agreement.
       </p>
 
       <div className="mt-4 space-y-2">
-        <label className="flex items-start gap-2 text-sm text-gray-700">
+        <label className="flex items-start gap-2 text-sm text-ink-soft">
           <input
             type="radio"
             name="convert-mode"
@@ -78,7 +78,7 @@ export function ConvertEstimatePanel({
                 value={serviceAddressId}
                 onChange={(e) => setServiceAddressId(e.target.value)}
                 disabled={mode !== "single"}
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm disabled:opacity-50"
+                className="mt-1 block w-full rounded-md border border-line-strong px-3 py-2 text-sm disabled:opacity-50"
               >
                 {serviceAddresses.map((a) => (
                   <option key={a.id} value={a.id}>
@@ -92,7 +92,7 @@ export function ConvertEstimatePanel({
 
         <label
           className={`flex items-start gap-2 text-sm ${
-            perPropertyDisabled ? "text-gray-400" : "text-gray-700"
+            perPropertyDisabled ? "text-ink-faint" : "text-ink-soft"
           }`}
         >
           <input
@@ -107,7 +107,7 @@ export function ConvertEstimatePanel({
             A separate agreement per property ({distinctPropertyCount || 0} distinct{" "}
             {distinctPropertyCount === 1 ? "property" : "properties"} on this estimate)
             {perPropertyDisabled && (
-              <span className="block text-xs text-gray-500">
+              <span className="block text-xs text-ink-faint">
                 Some line items aren&apos;t tied to a property yet — assign one to each, or use the
                 combined option above.
               </span>
@@ -141,7 +141,7 @@ export function ConvertEstimatePanel({
         type="button"
         disabled={isPending || (mode === "single" && !serviceAddressId)}
         onClick={handleConvert}
-        className="mt-4 rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+        className="mt-4 rounded-md bg-action px-4 py-2 text-sm font-medium text-on-action hover:bg-action disabled:opacity-50"
       >
         {isPending ? "Converting…" : "Convert"}
       </button>

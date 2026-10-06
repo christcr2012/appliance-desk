@@ -26,25 +26,25 @@ export function EstimateLineItemsPanel({
 }) {
   return (
     <div className="mt-6">
-      <h2 className="text-sm font-medium text-gray-700">Line items</h2>
+      <h2 className="text-sm font-medium text-ink-soft">Line items</h2>
 
       {lineItems.length === 0 ? (
-        <p className="mt-2 text-sm text-gray-600">No line items yet.</p>
+        <p className="mt-2 text-sm text-ink-soft">No line items yet.</p>
       ) : (
-        <ul className="mt-2 divide-y divide-gray-100 rounded-lg border border-gray-200 bg-white">
+        <ul className="mt-2 divide-y divide-line rounded-lg border border-line bg-white">
           {lineItems.map((line) => (
             <li key={line.id} className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
               <div>
-                <p className="text-gray-900">
+                <p className="text-ink">
                   {line.quantity > 1 ? `${line.quantity}× ` : ""}
                   {line.description}
                 </p>
                 {line.propertyLabel && (
-                  <p className="text-xs text-gray-500">{line.propertyLabel}</p>
+                  <p className="text-xs text-ink-faint">{line.propertyLabel}</p>
                 )}
               </div>
               <div className="flex items-center gap-3">
-                <div className="text-right text-gray-600">
+                <div className="text-right text-ink-soft">
                   {line.monthlyPriceCents > 0 && <p>{formatCents(line.monthlyPriceCents)}/mo</p>}
                   {line.oneTimeFeeCents > 0 && <p>{formatCents(line.oneTimeFeeCents)} one-time</p>}
                 </div>
@@ -122,11 +122,11 @@ function AddLineItemForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className="space-y-3 rounded-lg border border-dashed border-gray-300 p-4"
+      className="space-y-3 rounded-lg border border-dashed border-line-strong p-4"
     >
       <div className="grid grid-cols-[1fr_auto] gap-3">
         <div>
-          <label htmlFor="li-description" className="block text-xs font-medium text-gray-700">
+          <label htmlFor="li-description" className="block text-xs font-medium text-ink-soft">
             Description
           </label>
           <input
@@ -136,11 +136,11 @@ function AddLineItemForm({
             placeholder="e.g. Washer/dryer set — unit 1"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
           />
         </div>
         <div>
-          <label htmlFor="li-quantity" className="block text-xs font-medium text-gray-700">
+          <label htmlFor="li-quantity" className="block text-xs font-medium text-ink-soft">
             Qty
           </label>
           <input
@@ -150,14 +150,14 @@ function AddLineItemForm({
             max="500"
             value={quantity}
             onChange={(e) => setQuantity(e.target.value)}
-            className="mt-1 w-20 rounded-md border border-gray-300 px-3 py-2 text-sm"
+            className="mt-1 w-20 rounded-md border border-line-strong px-3 py-2 text-sm"
           />
         </div>
       </div>
 
       <div className="grid grid-cols-3 gap-3">
         <div>
-          <label htmlFor="li-monthly" className="block text-xs font-medium text-gray-700">
+          <label htmlFor="li-monthly" className="block text-xs font-medium text-ink-soft">
             $/month, each
           </label>
           <input
@@ -167,11 +167,11 @@ function AddLineItemForm({
             step="0.01"
             value={monthlyPriceDollars}
             onChange={(e) => setMonthlyPriceDollars(e.target.value)}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
           />
         </div>
         <div>
-          <label htmlFor="li-onetime" className="block text-xs font-medium text-gray-700">
+          <label htmlFor="li-onetime" className="block text-xs font-medium text-ink-soft">
             One-time fee, each
           </label>
           <input
@@ -181,19 +181,19 @@ function AddLineItemForm({
             step="0.01"
             value={oneTimeFeeDollars}
             onChange={(e) => setOneTimeFeeDollars(e.target.value)}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
           />
         </div>
         {serviceAddresses.length > 0 && (
           <div>
-            <label htmlFor="li-property" className="block text-xs font-medium text-gray-700">
+            <label htmlFor="li-property" className="block text-xs font-medium text-ink-soft">
               Property (optional)
             </label>
             <select
               id="li-property"
               value={serviceAddressId}
               onChange={(e) => setServiceAddressId(e.target.value)}
-              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+              className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
             >
               <option value="">Not property-specific</option>
               {serviceAddresses.map((a) => (
@@ -209,7 +209,7 @@ function AddLineItemForm({
       <button
         type="submit"
         disabled={isPending}
-        className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:border-gray-400 disabled:opacity-50"
+        className="rounded-md border border-line-strong px-3 py-1.5 text-sm text-ink-soft hover:border-line-strong disabled:opacity-50"
       >
         {isPending ? "Adding…" : "+ Add line item"}
       </button>
