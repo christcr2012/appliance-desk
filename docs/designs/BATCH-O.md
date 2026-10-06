@@ -60,7 +60,9 @@ Per action kind (REFUND, CREDIT, WRITE_OFF, DEPOSIT_KEPT, EXPENSE): `approvalThr
 fills them, but does not turn them on by itself. When anyone except the OWNER starts an action at or above the threshold,
 the domain function stores an `ApprovalRequest` (kind, the validated input as JSON, amount, requester) instead of acting,
 and returns "Sent to the owner for approval". The owner sees it on Today and approves or declines with an optional note.
-Approval runs the **original domain function** with the stored input inside a transaction that row-locks the request,
+Approval runs the **original domain function** with the stored input, **acting as the approving owner** (so every
+existing permission and `assertActiveTeamActor` check still applies), with the requester recorded in the audit row and
+on the resulting record's notes, inside a transaction that row-locks the request,
 re-validates the input against current data (if the invoice is now paid, the approval fails with a plain message and the
 request becomes FAILED), records `executedAt` and the result id, and can run only once. Requests expire after
 `approvalExpiryDays` (starting value 7). The owner's own actions never need approval.

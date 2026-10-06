@@ -40,6 +40,9 @@ as Batch E2 has merged (it touches the desk layout and login, which E2 restyles)
   recommended". Enforcement in `src/app/desk/layout.tsx` **and** in `requireRole` for OWNER/ADMIN: a signed-in user
   whose role is required and who has not enrolled is sent to `/desk/security/setup` (the only desk route reachable
   until enrolment); server actions for those roles throw the same way, so enforcement is not just a redirect.
+  Exempt from the check (review fix 2026-10-06, to avoid a redirect loop or a lock-out): `/desk/security/setup` and
+  its own actions, `/api/auth/**` (Better Auth's endpoints, including the plugin's enrol/verify calls), sign-out, and
+  the password-reset pages. Test the exemptions explicitly.
   Recovery when a phone is lost: a backup code; if none, the runbook `docs/runbooks/two-factor-recovery.md` (Chris runs
   `scripts/reset-two-factor.ts --email <x> --confirm` from a trusted machine; the script refuses without `--confirm`
   and writes an audit row). Passkeys are listed in ROADMAP, not built.
@@ -69,7 +72,7 @@ columns must match what the installed plugin expects — G-A4). The plugin store
 
 Tests:
 - WU-G2 ★ `tests/agreements-closed-at-integration.test.ts` (both close paths set it; cancelled ACTIVE month-to-month stops
-  earning on the cancel date; ended unchanged), update `tests/reports-earnings*.test.ts` for the new cap.
+  earning on the cancel date; ended unchanged), update `tests/reports-earnings.test.ts` and `tests/earnings-not-cash.test.ts` for the new cap.
 - WU-G3 `tests/two-factor-policy.test.ts` (pure: who must enrol from the setting; CUSTOMER can never be required),
   ★ `tests/two-factor-enforcement-integration.test.ts` (unenrolled ADMIN's server action is refused; enrolled passes;
   STAFF unaffected by default), browser `e2e/two-factor.spec.ts` (enrol with a generated TOTP secret in the test,

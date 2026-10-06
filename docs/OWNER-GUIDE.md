@@ -429,7 +429,7 @@ question:
 - **Fleet** (owner/admin only) — which appliances are getting the most
   and least use, and which have cost you the most in repairs.
 - **Growth signals** (owner/admin only) — same as "Growth" above.
-- **Notices** (reached from Today and from a rental) — the formal
+- **Notices** (reached from the "Needs your attention" items on Today) — the formal
   letters the system writes for you (renewal reminders, month-to-month
   change notices). Each is saved, held until it is delivered, and can be
   marked delivered by hand while customer email is switched off.

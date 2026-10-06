@@ -150,7 +150,11 @@ breakdown on the invoice detail.
 true: the election is `UNDECIDED`; the agreement's address has no current `VERIFIED` location; any jurisdiction at
 the address is `NEEDS_REVIEW`; any jurisdiction lacks a rate version effective today; any category the agreement can
 charge (`RENTAL`, plus each fee the agreement carries) resolves to `UNDECIDED`. It is called by: rental-builder
-"send for signature", billing setup in `checkout.ts` (before any Stripe call), and local invoice creation. The
+"send for signature" and billing setup in `checkout.ts` (before any Stripe call). **Local invoices never block
+operations** (review fix 2026-10-06): a late-return, early-return or pickup invoice is created inside job completion,
+so a tax problem there must not fail the job. When `computeTax` returns problems for a local invoice, the invoice is
+saved as `DRAFT` with no tax lines, and a HIGH exception card "Bill #N needs a tax decision before it can be sent"
+lists the problems; once fixed, a "Recalculate tax" button on the bill re-runs the engine and opens it. The
 pricing page stops printing a rate; it says "plus sales tax for your address" (wording from site settings).
 `taxRateConfirmed` stays in the schema (additive rule) but nothing reads it after WU-T5; its settings control is
 removed and the cleanup is listed in `docs/ROADMAP.md`.
@@ -258,6 +262,8 @@ model TaxJurisdiction {
   rates            TaxRateVersion[]
   rules            TaxabilityRule[]
   addresses        AddressTaxJurisdiction[]
+  invoiceTaxLines  InvoiceTaxLine[]
+  useTaxRows       PurchaseUseTax[]
   createdAt        DateTime             @default(now())
   updatedAt        DateTime             @updatedAt
 }
@@ -272,6 +278,8 @@ model TaxRateVersion {
   sourceNote       String?
   recordedByUserId String?
   stripeTaxRateId  String?         @unique
+  invoiceTaxLines  InvoiceTaxLine[]
+  useTaxRows       PurchaseUseTax[]
   createdAt        DateTime        @default(now())
 
   @@unique([jurisdictionId, effectiveFrom])
@@ -324,7 +332,9 @@ model InvoiceTaxLine {
   invoice           Invoice           @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
   invoiceLineItemId String?
   jurisdictionId    String
+  jurisdiction      TaxJurisdiction   @relation(fields: [jurisdictionId], references: [id])
   rateVersionId     String
+  rateVersion       TaxRateVersion    @relation(fields: [rateVersionId], references: [id])
   category          TaxChargeCategory
   taxableCents      Int               // amount taxed (0 when exempt)
   exemptCents       Int               @default(0)
@@ -370,6 +380,7 @@ model TaxFilingPeriod {
   serviceFeeRetainedCents Int?
   filedByUserId           String?
   notes                   String?
+  useTaxRows              PurchaseUseTax[]
   createdAt               DateTime         @default(now())
   updatedAt               DateTime         @updatedAt
 
@@ -384,10 +395,13 @@ model PurchaseUseTax {
   purchaseAmountCents Int
   vendorTaxCents     Int          // tax the seller charged, allocated to this jurisdiction
   jurisdictionId     String
+  jurisdiction       TaxJurisdiction  @relation(fields: [jurisdictionId], references: [id])
   rateVersionId      String
+  rateVersion        TaxRateVersion   @relation(fields: [rateVersionId], references: [id])
   useTaxDueCents     Int
   status             UseTaxStatus
   filingPeriodId     String?
+  filingPeriod       TaxFilingPeriod? @relation(fields: [filingPeriodId], references: [id])
   createdAt          DateTime     @default(now())
 
   @@unique([sourceType, sourceId, jurisdictionId])
@@ -403,6 +417,9 @@ Additions to existing models (relations only where Prisma needs the back-referen
 - `ProviderOperationKind`: add `TAX_RATE_CREATE`, `SUBSCRIPTION_TAX_UPDATE`.
 - `Invoice`: `taxLines InvoiceTaxLine[]`. `ServiceAddress`: `taxLocations AddressTaxLocation[]`. `Customer`:
   `taxExemptions CustomerTaxExemption[]`.
+
+Prisma note: `TaxabilityRule`'s `@@unique([jurisdictionId, category])` cannot be used in an `upsert` for the default
+rows (null `jurisdictionId`); read with `findFirst` and create/update inside the same transaction instead.
 
 Raw SQL in the same migration (Prisma cannot express partial uniques):
 
@@ -433,12 +450,14 @@ default rule per category. No filing accounts are seeded.
 | DAMAGE_WAIVER | DAMAGE_WAIVER | UNDECIDED — ask the CPA |
 | EARLY_TERMINATION_FEE | EARLY_TERMINATION | UNDECIDED — ask the CPA (this is IN-25) |
 | LATE_FEE | LATE_PAYMENT_FEE | EXEMPT — "Late payment charge is not a sale" |
-| ADJUSTMENT, CREDIT, PREPAY_DISCOUNT | follows the line it reduces (see 3.2 step 5) | — |
+| ADJUSTMENT (negative), PREPAY_DISCOUNT | follows the line it reduces (see 3.2 step 5) | — |
+| ADJUSTMENT (positive) | OTHER_CHARGE | UNDECIDED — ask the CPA |
+| CREDIT | not taxable — it is account credit applied to the bill **after** tax (Stripe applies a customer balance after tax; local `CreditApplication` works the same way). Review fix 2026-10-06: treating it as a discount would make the engine expect less tax than Stripe charged on every bill that used a credit. Whether a late-delivery credit *should* lower taxable rent is part of IN-34; if the CPA says yes, those credits must be issued as negative rent lines instead of balance credits (design amendment, stop-and-ask) | — |
 | DEPOSIT | not taxable, never in the matrix | — |
 | TAX | not a taxable line | — |
 
 For **self-collected** jurisdictions the "Fill in" button writes nothing — the owner sets each one (Greeley's screen
-links to Greeley's tax page). `export function categoryForLineKind(kind): TaxChargeCategory | "NOT_TAXABLE" | "FOLLOWS_PARENT"`.
+links to Greeley's tax page). `export function categoryForLineKind(kind, amountCents): TaxChargeCategory | "NOT_TAXABLE" | "FOLLOWS_PARENT"`.
 
 ### 3.2 Engine — `engine.ts` (pure, no Prisma import)
 
@@ -519,8 +538,10 @@ export async function assertTaxReadyForAgreement(tx, agreementId): Promise<void>
 
 `locateServiceAddress` runs after the address is committed (never inside the address-save transaction): calls the
 source; on `MATCHED`, upserts each jurisdiction by `code` (new ones `NEEDS_REVIEW`), creates a rate version from the
-GIS rate when the jurisdiction has none effective today (source `COLORADO_GIS`, effective today, flagged in the
-jurisdiction review list), and writes a new current location (previous one `isCurrent = false`) — `VERIFIED` when all
+GIS rate when the jurisdiction has none effective today (source `COLORADO_GIS`, effective today) **and sets that
+jurisdiction back to `NEEDS_REVIEW`** so a person confirms the first rate before any bill uses it (review fix
+2026-10-06: otherwise the seeded, already-reviewed State of Colorado row would start billing at a rate nobody checked),
+and writes a new current location (previous one `isCurrent = false`) — `VERIFIED` when all
 jurisdictions are `REVIEWED`, else `NEEDS_REVIEW` with a note. Any other status → `NEEDS_REVIEW` (or `FAILED` for
 `NOT_FOUND`) with the message. Without `force`, an address looked up within 30 days is not looked up again. The bulk
 importer accepts the column layout documented in WU-T0's runbook only; unknown layouts are rejected with a message.
@@ -639,7 +660,7 @@ rule and a second current location; seeds present; old `BusinessSettings` row ge
 `categories.ts`, `engine.ts`, `allocate.ts`. Tests (`tests/tax-engine.test.ts`, `tests/tax-allocate.test.ts`):
 every row of 3.2's resolution order; exempt rent under PAY_ON_ACQUISITION in a state-collected area with taxable rent
 in a self-collected city on the same line; term 37 months taxable; customer exemption scoped to one jurisdiction;
-discount follows parent; multiple problems all returned; allocator sums exactly, handles negatives and ties; a 7.01%
+discount follows parent; a CREDIT line is never taxed and never lowers the taxable amount; multiple problems all returned; allocator sums exactly, handles negatives and ties; a 7.01%
 two-jurisdiction line rounds per jurisdiction (e.g. $64.99 → state 1.88 + city 2.67 = 4.55).
 
 ### WU-T3 — GIS adapter and address locating
@@ -651,7 +672,7 @@ failed; 30-day reuse; force re-check; business location). `tests/colorado-gis-cl
 
 ### WU-T4 — Readiness gate and Stripe rates
 `assertTaxReadyForAgreement` wired into send-for-signature, `checkout.ts` billing setup (before any Stripe call;
-replaces `getOrCreateTaxRate`), and local invoice creation. `stripe-rates.ts`; `subscription-line.ts` keeps copying
+replaces `getOrCreateTaxRate`) — **not** into local invoice creation (D-T7). `stripe-rates.ts`; `subscription-line.ts` keeps copying
 existing item rates (unchanged). Tests: `tests/tax-readiness-integration.test.ts` (each D-T7 condition blocks with
 its message; ready agreement passes), `tests/tax-stripe-rates-integration.test.ts` (fake Stripe client via
 `__setStripeClientForTests`: one Stripe rate per version, reused on retry, exact percentage string, >5 blocked).
@@ -664,7 +685,9 @@ ENGINE rows and the mismatch exception (D-T8). `RentalAgreement.taxRateMilliPerc
 taxable RENTAL rate at signing, display only) and no longer read for arithmetic — grep proves it. Remove the
 `taxRateConfirmed` control; pricing page wording change. Tests: `tests/tax-invoice-lines-integration.test.ts` (late
 return in Greeley under each election; waiver reverses the same jurisdictions; Stripe mirror with a 1-cent
-difference raises exactly one exception; exempt rows recorded), update existing tests that asserted the single-rate
+difference raises exactly one exception; exempt rows recorded; a Stripe bill that used account credit raises **no**
+exception; completing a pickup while a needed rule is UNDECIDED still completes the job and leaves a DRAFT bill plus
+one HIGH card, and "Recalculate tax" opens it once fixed), update existing tests that asserted the single-rate
 behaviour (grep `taxRateMilliPercent` in `tests/`).
 
 ### WU-T6 — Exemptions and rate changes

@@ -10,7 +10,7 @@ tax advice — your CPA confirms every tax answer before customers are charged.
 |---|---|---|
 | **G** — Quick fixes and login security | Closes the 2 known security holes, fixes the cancelled-rental report bug and the dark-mode contrast bug, adds a phone code to your login (and your admins'), lets you sign people out of every device. | Small; as soon as you approve it. |
 | **T** — Colorado sales and use tax | Correct tax for every customer's exact address, the right rules for rentals, the right numbers for your state and Greeley returns, use tax on appliances you buy without tax. | Before your first real customer. **Required for launch.** |
-| **K** — Books | Expenses (with receipt photos from your phone), Stripe fees and payouts, real profit-and-loss, appliance payback, cash forecast, and files that load into QuickBooks Online, Xero, Wave, Zoho and others. | Can be after launch — it rebuilds your books from day one automatically. |
+| **K** — Books | Expenses (with receipt photos from your phone), Stripe fees and payouts, real profit-and-loss, appliance payback, cash forecast, and files that load into QuickBooks Online, Xero, Wave, Zoho and others. | Can be after launch — it builds your books automatically from any start date you choose (launch day is the natural one). |
 | **O** — Owner controls | Undo for settings changes, per-person permissions, "refunds over $X need my OK", price changes with a start date, goals and idle-appliance alerts, one page showing every on/off switch. | After K. |
 
 Suggested order (updated later on 2026-10-06; the full list is `docs/MASTER-ROADMAP.md`): **F part 1 (backups and
@@ -26,7 +26,7 @@ launch if you want the profit numbers sooner.
 2. **Greeley plays by its own rules.** Greeley is a "home-rule" city. It collects its own 4.11% city tax, taxes rentals
    no matter which state option you choose, and isn't part of the state's SUTS filing website, so you file Greeley
    separately. Customers in Evans, Windsor or unincorporated Weld County get different rates — sometimes very different.
-3. **The 7.375% rate in your settings doesn't match what I can find.** Public sources say Greeley is 7.01% (2.9% state +
+3. **The 7.375% example in your notes (IN-17) doesn't match what I can find.** Public sources say Greeley is 7.01% (2.9% state +
    4.11% city). Under option 1 above, a Greeley customer might pay only the 4.11% city tax on rent. Your CPA should
    check this, and the app will stop guessing either way.
 
@@ -75,7 +75,7 @@ These are tracked as IN-33 to IN-39 in `docs/OWNER-INPUTS.md`.
    and state-run local tax, or (b) buy tax-free with the state's permission and charge tax on every rent payment? (C.R.S.
    39-26-713; also, does the Department's draft "Special Rule 47" from February 2026 change anything?)
 2. **(IN-34) What's taxable** — in state-run areas and in Greeley (and any other home-rule city I serve): rent, late-return
-   rent, delivery fee, installation fee, removal fee, damage waiver, early-ending fee, late-payment fee?
+   rent, delivery fee, installation fee, removal fee, damage waiver, early-ending fee, late-payment fee? And when I give a customer a credit (for example, an item delivered late), should that lower the taxable rent, or is it just money credited to their account?
 3. **(IN-35) Cash or accrual** reporting for my state and Greeley returns? Monthly, quarterly or annual filing?
 4. **(IN-36)** If one customer keeps the same appliance more than 3 years through renewals, does the rental rule change?
 5. **(IN-37) Retail delivery fee:** does Colorado's per-delivery fee apply to me (given the small-business exemption under

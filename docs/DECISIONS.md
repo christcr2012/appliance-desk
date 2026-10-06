@@ -395,3 +395,16 @@ K → O (`docs/MASTER-ROADMAP.md`). Still open and unchanged by this approval: t
 IN-33 … IN-39 — billing real customers stays blocked until they are entered), SUTS registration, live payment/email
 activation, and Chris's acceptance of Batch V's before/after screenshots.
 
+## 2026-10-06 (night) — Self-review of PR #264 (Codex and Copilot out of quota)
+Chris asked for a self-review in place of the unavailable reviewers. Fixes made in the designs before merge:
+(1) BATCH-T: `CREDIT` lines are account credit applied after tax (Stripe customer balance), so they are never taxed
+and never lower taxable rent — the earlier "follows parent" rule would have raised a false Stripe-mismatch card on
+every bill using a credit; whether late-delivery credits *should* lower taxable rent was added to IN-34. (2) BATCH-T:
+local bills (late/early return, pickup) never block job completion — tax problems leave the bill DRAFT with a card and a
+"Recalculate tax" button. (3) BATCH-T: a rate first learned from the GIS lookup returns its jurisdiction to review before
+use. (4) BATCH-T: tax lines and use-tax rows get real foreign keys; Prisma upsert caveat noted. (5) BATCH-K: opening
+balances at the books start date (D-K12); the Stripe clearing check compares both sides at the same cut-off; refund and
+payout transaction handling made explicit. (6) BATCH-G: two-step-login enforcement exempts the setup page, auth API,
+sign-out and password reset. (7) BATCH-O: approvals execute as the approving owner. Doc corrections: nightly
+`start-renewals` job description, how Notices is reached, the 7.375% wording, and "books from any start date".
+

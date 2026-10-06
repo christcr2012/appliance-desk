@@ -337,7 +337,7 @@ charge or credit.
 
 | Time (UTC) | Route | What it does |
 |---|---|---|
-| 07:10 | `/api/cron/start-renewals` | Nightly rental pass: start signed renewals, auto-renew/termination execution, returns (order in "Nightly rental pass" below) |
+| 07:10 | `/api/cron/start-renewals` | Nightly rental pass, seven `runAutomation` rules in this order: automatic renewals, annual reminders, sending pending notices, billing extensions for delivered auto-renewals, due early terminations, closing fully returned agreements, starting due signed renewals (`start-renewals:*`; details in "Nightly rental pass" below) |
 | 09:00 | `/api/cron/backup` | Daily database backup to private storage |
 | 13:00 | `/api/cron/job-reminders` | Next-day job reminders |
 | 14:00 | `/api/cron/billing-reminders` | Billing reminder notices |

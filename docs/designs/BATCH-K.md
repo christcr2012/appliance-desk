@@ -74,9 +74,21 @@ with `allocateAcrossLines`; expenses by `spentOn`. Both are labelled on screen w
 
 Card money lands in "Stripe balance (clearing)" at the **gross** amount. A nightly automation pulls Stripe balance
 transactions since a stored cursor and stores them (`StripeBalanceTransaction`); posting rules book card fees, Stripe's
-own billing/tax fees, disputes, and payouts (clearing → bank). A daily check compares the clearing account's balance
-with Stripe's reported balance; a difference of 1 cent or more becomes an exception card. Unknown transaction types are
+own billing/tax fees, disputes, and payouts (clearing → bank). A daily check compares the clearing account with Stripe
+**as of the same cut-off** (end of yesterday, Colorado time): journal clearing balance through the cut-off versus the
+opening balance plus the net of every synced Stripe balance transaction created through the cut-off. A difference of
+1 cent or more becomes an exception card. (Review fix 2026-10-06: comparing with Stripe's *live* balance would flag
+false differences whenever money arrived between the sync and the check.) Money already in Stripe on
+`booksStartDate` enters as an **opening balance** entry (D-K12). Unknown transaction types are
 stored, not posted, and raise a card (S-K4).
+
+### D-K12 — Opening balances (review fix 2026-10-06)
+
+When the owner sets `booksStartDate`, the app writes one `OPENING_BALANCE` entry dated that day: debit
+`STRIPE_CLEARING` with Stripe's balance at that moment (available + pending, read once and stored in the entry memo),
+credit `OWNER_CONTRIBUTIONS`. Bank and card opening balances are entered by the owner on the same screen (optional,
+default 0). Appliances bought before that day enter through `APPLIANCE_CONTRIBUTED`. Changing `booksStartDate` later is
+refused once any month is closed.
 
 ### D-K5 — Chart of accounts: system accounts plus owner categories; names are the owner's
 
@@ -140,7 +152,7 @@ no reports. CUSTOMER: nothing. Enforced in domain functions.
 
 ```prisma
 enum LedgerAccountType { ASSET CONTRA_ASSET LIABILITY EQUITY INCOME CONTRA_INCOME EXPENSE }
-enum JournalSourceType { INVOICE RECEIPT PAYMENT DEPOSIT CUSTOMER_CREDIT CREDIT_APPLICATION REFUND STRIPE_BALANCE_TXN EXPENSE APPLIANCE USE_TAX TAX_FILING }
+enum JournalSourceType { OPENING INVOICE RECEIPT PAYMENT DEPOSIT CUSTOMER_CREDIT CREDIT_APPLICATION REFUND STRIPE_BALANCE_TXN EXPENSE APPLIANCE USE_TAX TAX_FILING }
 enum AccountingPeriodStatus { OPEN CLOSED }
 enum ExpenseStatus { DRAFT SUBMITTED POSTED VOID }
 enum ExportTarget { QBO_JOURNAL_CSV XERO_JOURNAL_CSV GENERIC_JOURNAL_CSV CASH_MOVEMENTS_CSV }
@@ -168,7 +180,7 @@ model AccountExportMapping {
   ledgerAccount   LedgerAccount @relation(fields: [ledgerAccountId], references: [id])
   target          ExportTarget
   externalName    String        // QuickBooks account name ("Parent:Child" for sub-accounts) or Xero account code
-  externalTaxRate String?       // Xero only; starting value "Tax Exempt"
+  externalTaxRate String?       // Xero only; starting value "Tax Exempt" — the owner confirms the exact name of the no-tax rate in his Xero organisation
   @@unique([ledgerAccountId, target])
 }
 
@@ -404,7 +416,10 @@ Debits equal credits in every result (assert in the function; a test proves it f
 | `USE_TAX_ACCRUED` | PurchaseUseTax with due > 0 | `purchasedOn` | `USE_TAX_EXPENSE` | `USE_TAX:<acct>` |
 | `TAX_FILED` | TaxFilingPeriod FILED | `filedOn` | `SALES_TAX:<acct>` (worksheet sales tax) + `USE_TAX:<acct>` (worksheet use tax) | `BANK` (`amountPaidCents`) + `TAX_SERVICE_FEE_INCOME` (fee retained); any remainder to `TAX_ADJUSTMENTS` (either side) |
 
-Stripe charge/payment balance transactions themselves post nothing (the receipt already did); only their fee does.
+Stripe balance transactions of type `charge`, `payment`, `refund` and `payment_refund` post nothing themselves (the
+receipt, refund or deposit refund already posted the money); only a non-zero fee on them posts. Stripe reports payouts
+as negative amounts: post the absolute value. An `OPENING_BALANCE` row (source `OPENING`, source id = the books start
+date) follows D-K12.
 `INVOICE_RECOGNIZED` refuses (returns a problem, not an entry) when its lines plus tax lines do not equal
 `amountDueCents`; the poster turns that into an exception card with both numbers.
 
@@ -426,8 +441,8 @@ the first real customer invoice, or launch day).
 
 `syncStripeBalanceTransactions()`: `stripe.balanceTransactions.list({ created: { gte: cursor - 3 days }, limit: 100 })`
 paging with `starting_after`, upserting by id (the 3-day overlap makes missed pages harmless), cursor = newest
-`created` seen. `checkStripeClearing()`: clearing account balance vs `stripe.balance.retrieve()` (available + pending,
-USD); difference ≥ 1 cent → exception card "Stripe balance and your books differ by $X" with a link to the last 30 days
+`created` seen. `checkStripeClearing()`: per D-K4 — journal clearing balance through yesterday's Colorado end of day versus the opening
+balance plus the net of synced balance transactions created through the same moment; difference ≥ 1 cent → exception card "Stripe balance and your books differ by $X" with a link to the last 30 days
 of Stripe transactions. Both run in automation `books-nightly` (cron `"40 9 * * *"`, after the backup), followed by
 `postPending`. Test mode keys only until the owner turns on live payments (hard limit unchanged).
 
@@ -454,7 +469,7 @@ export async function runExport(actorUserId: string, input: { target: ExportTarg
 
 Steps: `postPending`; load entries in range (Colorado dates, inclusive) ordered by `entryDate, entryNumber`; skip
 `STRIPE_PAYOUT` entries when `exportPayoutLines[target]` is false; blocked if any used account lacks a mapping for the
-target; group (DAILY_SUMMARY: per `entryDate`, sum debits and credits per account, net each account to one side;
+target; group (DAILY_SUMMARY: per `entryDate`, sum debits and credits per account, net each account to one side and drop accounts that net to zero;
 DETAIL: per entry); format; store `ExportBatch` + entries; return. All amounts formatted with
 `formatCentsAsPlainDecimal`; text cells pass through `src/lib/csv.ts` (formula-injection safe).
 
@@ -535,7 +550,8 @@ Named tests (real Postgres where marked ★):
   runs = no duplicates); closed month → next open month with `lateForDate`; `booksStartDate` respected; problem →
   exception card; nightly integrity check flags an unbalanced entry inserted by raw SQL.
 - WU-K4 ★ `tests/books-stripe-sync-integration.test.ts` — fake client pages, overlap upsert, fee/payout/dispute/service
-  fee posting, unknown type stored and carded, clearing mismatch card.
+  fee posting, refund transactions post nothing, payout posted as a positive amount, opening balance entry, a payment
+  arriving after the cut-off does not raise a mismatch, a real 1-cent gap does.
 - WU-K5 ★ `tests/books-expenses-integration.test.ts` — STAFF submit/own-only visibility, ADMIN post, version conflict,
   void reverses, capitalize sets cost once, use tax row written; `tests/books-recurring.test.ts`.
 - WU-K6 `tests/books-exports.test.ts` — byte-identical re-export; summary nets per account and balances per day;
