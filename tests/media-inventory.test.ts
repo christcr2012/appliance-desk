@@ -94,7 +94,7 @@ import {
 import {
   deletePrivatePhotoWithRecovery,
   privacyDeletionTombstonePath,
-} from "@/lib/photo-storage";
+} from "@/domains/backup/media-deletion";
 
 function installBlobFake(): void {
   blob.list.mockImplementation(async (options: {
@@ -126,7 +126,7 @@ function installBlobFake(): void {
     if (!item) return null;
     return {
       statusCode: 200,
-      stream: new Blob([item.bytes]).stream(),
+      stream: new Blob([item.bytes as BlobPart]).stream(),
       headers: new Headers(),
       blob: {
         pathname,
@@ -325,8 +325,8 @@ describe("Batch F private-media recovery", () => {
     expect(storeFor(PRIVATE_TOKEN).has(recoveryOne)).toBe(false);
     expect(storeFor(PRIVATE_TOKEN).has(recoveryTwo)).toBe(false);
     expect(storeFor(PRIVATE_TOKEN).has(unrelated)).toBe(true);
-    expect(state.putOrder.indexOf(tombstone)).toBeLessThan(
-      state.delOrder.indexOf(sourcePath),
+    expect(blob.put.mock.invocationCallOrder.at(-1)).toBeLessThan(
+      blob.del.mock.invocationCallOrder.at(-1)!,
     );
   });
 
