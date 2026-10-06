@@ -35,6 +35,8 @@ import { ServiceAddressesPanel } from "./service-addresses-panel";
 import { LinkedTasksPanel } from "@/components/linked-tasks-panel";
 import { BillingContext } from "./billing-context";
 import { PropertyServiceContext } from "@/components/desk/property-service-context";
+import { getMessageHistory } from "@/domains/messaging/history";
+import { MessageHistoryPanel } from "@/components/desk/message-history-panel";
 
 export const metadata = { title: "Customer" };
 type Search = {
@@ -59,6 +61,7 @@ export default async function CustomerDetailPage({
   const query = await searchParams;
   const customer = await getCustomerIdentity(id);
   if (!customer) notFound();
+  const messages = await getMessageHistory("Customer", id);
   const tab = customerTab(query.tab);
   const base = `/desk/customers/${encodeURIComponent(id)}`;
   const href = (name: string, page = 1) =>
@@ -399,6 +402,9 @@ export default async function CustomerDetailPage({
         }))}
       />
       {content}
+      <div className="mt-6">
+        <MessageHistoryPanel rows={messages} />
+      </div>
     </div>
   );
 }

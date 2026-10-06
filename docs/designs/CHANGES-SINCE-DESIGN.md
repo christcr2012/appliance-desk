@@ -103,3 +103,12 @@ All customer-addressed email goes through `sendCustomerEmail` (owner master swit
 (5) Never-delivered cancellation refunds instead of crediting: `issueInvoiceRefund` was split into `prepareInvoiceRefundInTx` plus `runPreparedInvoiceRefund` so a refund can be recorded inside another transaction. `PendingDelivery.refundedCents` and `refundByHandCents` hold the result; `creditId` stays empty for a never-delivered item. Late-delivery credits are unchanged.
 
 **2026-10-05 (Batch B2, PRs 1–4).** Facts later designs must know: (1) Billing ends through one contract: `SubscriptionEndIntent` plus the leased `applySubscriptionEnd` worker; every writer calls `recomputeForAgreementInTx` in its transaction and `applySubscriptionEnds` after commit. (2) Notices have seven states and an evidence date; a missed notice is never sent late (`src/domains/notices`). (3) Month-to-month terms are versioned (`MonthToMonthTermsVersion`); an agreement's effective version is its base version plus any newer version whose change notice was delivered long enough ago. Wording uses `{{placeholder}}` syntax. (4) `continuityRootId` / `continuousSince` are copied across renewals. (5) Closing after a full return and early returns live in `agreements/returns.ts` and `agreements/early-return.ts`; `refundAcrossPaidInvoicesInTx` is the shared "refund newest paid invoices first" helper. (6) Today has RETURNED_EARLY, NOTICE_* and kind-aware titles. (7) Any screen that ends or renews a rental must use `requestMonthToMonthEnd`, `requestEarlyTermination` or the early-return screen, never write termination fields directly.
+
+## 2026-10-05 — Batch E implementation reconciliation
+
+- Batch E reused the Postgres-backed public limiter already shipped before E; no second distributed limiter was added.
+- Billing reconciliation records the real post-D passes and adds message-delivery reconciliation rather than recreating the obsolete `subscription-ends` assumption.
+- Batch D's central metric registry remains authoritative; E updates custody utilization and real-contact definitions in place.
+- Batch E11 closes the remaining business-audit surface with bounded Customer/Lead message history, explicit provider-state wording, public launch confirmation/unsubscribe limits, mailbox-confirmation consent evidence, an explainable custody + lead-pipeline demand estimate, and the provider-outage runbook.
+- Live customer email/SMS/marketing activation remains outside this implementation and still requires the existing owner gates.
+

@@ -28,6 +28,7 @@ let originalSettings: Awaited<
   ReturnType<typeof prisma.launchSettings.findUnique>
 >;
 let confirmationToken = "";
+const confirmationConsentIds: string[] = [];
 const input = launchSignupSchema.parse({
   name: "Launch Test",
   email: address,
@@ -73,6 +74,9 @@ beforeAll(async () => {
   vi.stubEnv("NEXT_PUBLIC_APP_URL", "https://robinsonappliancerentals.com");
 });
 afterAll(async () => {
+  if (confirmationConsentIds.length) {
+    await prisma.consentRecord.deleteMany({ where: { id: { in: confirmationConsentIds } } });
+  }
   await prisma.launchDelivery.deleteMany({
     where: { subscriber: { email: { endsWith: `${run}@example.test` } } },
   });
@@ -137,6 +141,16 @@ describe("durable launch sequence", () => {
     expect(confirmed.confirmedAt).toBeInstanceOf(Date);
     expect(confirmed.confirmTokenHash).toBeNull();
     expect(confirmed.confirmExpiresAt).toBeNull();
+    const confirmations = await prisma.consentRecord.findMany({
+      where: { kind: "launch_email_confirm" },
+      select: { id: true, details: true },
+    });
+    const matching = confirmations.filter(
+      (record) =>
+        (record.details as { subscriberId?: string } | null)?.subscriberId === confirmed.id,
+    );
+    expect(matching).toHaveLength(1);
+    confirmationConsentIds.push(matching[0]!.id);
 
     send.mockClear();
     await Promise.all([sendLaunchSequence(), sendLaunchSequence()]);
