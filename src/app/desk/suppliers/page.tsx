@@ -16,13 +16,13 @@ export default async function SuppliersPage({ searchParams }: { searchParams: Pr
         <h1 className="text-xl font-semibold">Suppliers</h1>
         <Link
           href="/desk/suppliers/new"
-          className="inline-flex items-center gap-1 rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
+          className="inline-flex items-center gap-1 rounded-md bg-action px-4 py-2 text-sm font-medium text-on-action hover:bg-action"
         >
           <PlusIcon className="h-4 w-4" />
           Add supplier
         </Link>
       </div>
-      <p className="mt-1 text-sm text-gray-600">
+      <p className="mt-1 text-sm text-ink-soft">
         Who you order parts and appliances from.{" "}
         {showArchived ? (
           <Link href="/desk/suppliers" className="text-primary underline">
@@ -36,18 +36,18 @@ export default async function SuppliersPage({ searchParams }: { searchParams: Pr
       </p>
 
       {suppliers.length === 0 ? (
-        <p className="mt-8 text-sm text-gray-600">No suppliers on file yet.</p>
+        <p className="mt-8 text-sm text-ink-soft">No suppliers on file yet.</p>
       ) : (
-        <ul className="mt-6 divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white">
+        <ul className="mt-6 divide-y divide-line rounded-lg border border-line bg-white">
           {suppliers.map((s) => (
             <li key={s.id}>
               <Link
                 href={`/desk/suppliers/${s.id}`}
-                className="flex flex-col gap-1 px-4 py-4 hover:bg-gray-50 sm:flex-row sm:items-center sm:justify-between"
+                className="flex flex-col gap-1 px-4 py-4 hover:bg-canvas sm:flex-row sm:items-center sm:justify-between"
               >
                 <div>
-                  <p className="font-medium text-gray-900">{s.name}{s.archivedAt ? " — archived" : ""}</p>
-                  <p className="text-sm text-gray-600">
+                  <p className="font-medium text-ink">{s.name}{s.archivedAt ? " — archived" : ""}</p>
+                  <p className="text-sm text-ink-soft">
                     {s.contactName ?? ""}
                     {s.contactName && (s.phone || s.email) ? " · " : ""}
                     {s.phone ?? ""}
@@ -55,7 +55,7 @@ export default async function SuppliersPage({ searchParams }: { searchParams: Pr
                     {s.email ?? ""}
                   </p>
                 </div>
-                <div className="text-sm text-gray-500 sm:text-right">
+                <div className="text-sm text-ink-faint sm:text-right">
                   <p>
                     {s._count.purchaseOrders} purchase{" "}
                     {s._count.purchaseOrders === 1 ? "order" : "orders"}

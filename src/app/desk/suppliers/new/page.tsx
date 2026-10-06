@@ -9,7 +9,7 @@ export default async function NewSupplierPage() {
 
   return (
     <div className="max-w-lg">
-      <Link href="/desk/suppliers" className="text-sm text-gray-600 hover:underline">
+      <Link href="/desk/suppliers" className="text-sm text-ink-soft hover:underline">
         &larr; All suppliers
       </Link>
       <h1 className="mt-2 text-xl font-semibold">Add a supplier</h1>

@@ -57,9 +57,9 @@ export function SupplierForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 rounded-lg border border-gray-200 bg-white p-5">
+    <form onSubmit={handleSubmit} className="space-y-4 rounded-lg border border-line bg-white p-5">
       <div>
-        <label htmlFor="supplier-name" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="supplier-name" className="block text-sm font-medium text-ink-soft">
           Supplier name
         </label>
         <input
@@ -68,11 +68,11 @@ export function SupplierForm({
           required
           value={values.name}
           onChange={(e) => setValues({ ...values, name: e.target.value })}
-          className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+          className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
         />
       </div>
       <div>
-        <label htmlFor="supplier-contact-name" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="supplier-contact-name" className="block text-sm font-medium text-ink-soft">
           Contact name
         </label>
         <input
@@ -80,12 +80,12 @@ export function SupplierForm({
           type="text"
           value={values.contactName}
           onChange={(e) => setValues({ ...values, contactName: e.target.value })}
-          className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+          className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
         />
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
-          <label htmlFor="supplier-phone" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="supplier-phone" className="block text-sm font-medium text-ink-soft">
             Phone
           </label>
           <input
@@ -93,11 +93,11 @@ export function SupplierForm({
             type="tel"
             value={values.phone}
             onChange={(e) => setValues({ ...values, phone: e.target.value })}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
           />
         </div>
         <div>
-          <label htmlFor="supplier-email" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="supplier-email" className="block text-sm font-medium text-ink-soft">
             Email
           </label>
           <input
@@ -105,12 +105,12 @@ export function SupplierForm({
             type="email"
             value={values.email}
             onChange={(e) => setValues({ ...values, email: e.target.value })}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
           />
         </div>
       </div>
       <div>
-        <label htmlFor="supplier-notes" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="supplier-notes" className="block text-sm font-medium text-ink-soft">
           Notes
         </label>
         <textarea
@@ -118,13 +118,13 @@ export function SupplierForm({
           rows={3}
           value={values.notes}
           onChange={(e) => setValues({ ...values, notes: e.target.value })}
-          className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+          className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
         />
       </div>
       <button
         type="submit"
         disabled={isPending}
-        className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+        className="rounded-md bg-action px-4 py-2 text-sm font-medium text-on-action hover:bg-action disabled:opacity-50"
       >
         {isPending ? "Saving…" : supplierId ? "Save changes" : "Add supplier"}
       </button>
