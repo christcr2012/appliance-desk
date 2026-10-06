@@ -1,10 +1,24 @@
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { isValidElement, type ReactNode } from "react";
+
+type PrimaryActionDescriptor = { href: string; label: string };
+
+function isPrimaryActionDescriptor(
+  value: ReactNode | PrimaryActionDescriptor | undefined,
+): value is PrimaryActionDescriptor {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    !isValidElement(value) &&
+    "href" in value &&
+    "label" in value
+  );
+}
 
 export const primaryActionClass =
-  "inline-flex min-h-11 items-center justify-center rounded-lg bg-action px-4 py-2 text-sm font-semibold text-on-action hover:opacity-90";
+  "inline-flex min-h-11 items-center justify-center rounded-control bg-action px-4 py-2 text-sm font-semibold text-on-action hover:opacity-90";
 export const secondaryActionClass =
-  "inline-flex min-h-11 items-center justify-center rounded-lg border border-control bg-surface px-4 py-2 text-sm font-medium text-ink hover:bg-subtle";
+  "inline-flex min-h-11 items-center justify-center rounded-control border border-control bg-surface px-4 py-2 text-sm font-medium text-ink hover:bg-subtle";
 
 export function PageHeader({
   title,
@@ -14,13 +28,21 @@ export function PageHeader({
 }: {
   title: string;
   description?: ReactNode;
-  primaryAction?: ReactNode;
+  primaryAction?: ReactNode | PrimaryActionDescriptor;
   secondaryActions?: ReactNode;
 }) {
+  const renderedPrimaryAction: ReactNode = isPrimaryActionDescriptor(primaryAction) ? (
+    <Link href={primaryAction.href} className={primaryActionClass}>
+      {primaryAction.label}
+    </Link>
+  ) : (
+    primaryAction as ReactNode
+  );
+
   return (
     <header className="mb-6 flex flex-col items-start justify-between gap-4 sm:flex-row sm:flex-wrap">
       <div className="min-w-0 w-full sm:min-w-64 sm:w-auto sm:flex-1">
-        <h1 className="break-words text-[28px] leading-9 font-semibold text-ink">
+        <h1 className="break-words text-3xl leading-9 font-semibold text-ink">
           {title}
         </h1>
         {description && (
@@ -29,10 +51,10 @@ export function PageHeader({
           </div>
         )}
       </div>
-      {(primaryAction || secondaryActions) && (
+      {(renderedPrimaryAction || secondaryActions) && (
         <div className="flex flex-wrap items-center gap-2">
           {secondaryActions}
-          {primaryAction}
+          {renderedPrimaryAction}
         </div>
       )}
     </header>
@@ -76,7 +98,7 @@ export function EmptyState({
   action?: ReactNode;
 }) {
   return (
-    <div className="rounded-lg bg-subtle p-5 text-sm">
+    <div className="rounded-card bg-subtle p-5 text-sm">
       <p className="font-medium text-ink">{title}</p>
       {description && <p className="mt-2 text-ink-soft">{description}</p>}
       {action && <div className="mt-3">{action}</div>}
