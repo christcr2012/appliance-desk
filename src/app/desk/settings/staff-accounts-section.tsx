@@ -89,7 +89,7 @@ export function StaffAccountsSection({ accounts }: { accounts: StaffAccountRow[]
 
   return (
     <div className="space-y-4">
-      <p className="max-w-2xl text-sm text-gray-600">
+      <p className="max-w-2xl text-sm text-ink-soft">
         A staff login can see day-to-day work — jobs, dispatch, customers,
         inventory, maintenance — but not revenue, billing, reports, or these
         settings. Only you (and any other owner/admin account) see the
@@ -97,23 +97,23 @@ export function StaffAccountsSection({ accounts }: { accounts: StaffAccountRow[]
       </p>
 
       {accounts.length === 0 ? (
-        <p className="text-sm text-gray-600">No staff accounts yet.</p>
+        <p className="text-sm text-ink-soft">No staff accounts yet.</p>
       ) : (
         <div className="max-w-2xl overflow-x-auto">
           <table className="w-full min-w-[480px] border-collapse text-sm">
             <thead>
-              <tr className="border-b border-gray-200 text-left">
-                <th className="py-2 pr-4 font-medium text-gray-900">Name</th>
-                <th className="py-2 pr-4 font-medium text-gray-900">Email</th>
-                <th className="py-2 pr-4 font-medium text-gray-900">Status</th>
-                <th className="py-2 pr-4 font-medium text-gray-900">Actions</th>
+              <tr className="border-b border-line text-left">
+                <th className="py-2 pr-4 font-medium text-ink">Name</th>
+                <th className="py-2 pr-4 font-medium text-ink">Email</th>
+                <th className="py-2 pr-4 font-medium text-ink">Status</th>
+                <th className="py-2 pr-4 font-medium text-ink">Actions</th>
               </tr>
             </thead>
             <tbody>
               {accounts.map((a) => (
-                <tr key={a.id} className="border-b border-gray-100 align-top">
-                  <td className="py-2 pr-4 text-gray-900">{a.name ?? "—"}</td>
-                  <td className="py-2 pr-4 text-gray-700">{a.email}</td>
+                <tr key={a.id} className="border-b border-line align-top">
+                  <td className="py-2 pr-4 text-ink">{a.name ?? "—"}</td>
+                  <td className="py-2 pr-4 text-ink-soft">{a.email}</td>
                   <td className="py-2 pr-4">
                     <StatusBadge
                       tone={a.isActive ? "success" : "stopped"}
@@ -129,7 +129,7 @@ export function StaffAccountsSection({ accounts }: { accounts: StaffAccountRow[]
                             type="button"
                             disabled={isPending}
                             onClick={() => handleResend(a.email, a.id)}
-                            className="rounded-md border border-gray-300 px-2 py-1 text-xs text-gray-700 hover:border-gray-400 disabled:opacity-50"
+                            className="rounded-md border border-line-strong px-2 py-1 text-xs text-ink-soft hover:border-line-strong disabled:opacity-50"
                           >
                             Resend setup email
                           </button>
@@ -147,7 +147,7 @@ export function StaffAccountsSection({ accounts }: { accounts: StaffAccountRow[]
                           type="button"
                           disabled={isPending}
                           onClick={() => handleReactivate(a.id)}
-                          className="rounded-md border border-gray-300 px-2 py-1 text-xs text-gray-700 hover:border-gray-400 disabled:opacity-50"
+                          className="rounded-md border border-line-strong px-2 py-1 text-xs text-ink-soft hover:border-line-strong disabled:opacity-50"
                         >
                           Restore access
                         </button>
@@ -175,11 +175,11 @@ export function StaffAccountsSection({ accounts }: { accounts: StaffAccountRow[]
 
       <form
         onSubmit={handleCreate}
-        className="max-w-md space-y-3 border-t border-gray-100 pt-4"
+        className="max-w-md space-y-3 border-t border-line pt-4"
       >
-        <h3 className="text-sm font-medium text-gray-900">Add a staff account</h3>
+        <h3 className="text-sm font-medium text-ink">Add a staff account</h3>
         <div>
-          <label htmlFor="staffName" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="staffName" className="block text-sm font-medium text-ink-soft">
             Name
           </label>
           <input
@@ -187,11 +187,11 @@ export function StaffAccountsSection({ accounts }: { accounts: StaffAccountRow[]
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
           />
         </div>
         <div>
-          <label htmlFor="staffEmail" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="staffEmail" className="block text-sm font-medium text-ink-soft">
             Email
           </label>
           <input
@@ -199,9 +199,9 @@ export function StaffAccountsSection({ accounts }: { accounts: StaffAccountRow[]
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
           />
-          <p className="mt-1 text-xs text-gray-500">
+          <p className="mt-1 text-xs text-ink-faint">
             They&apos;ll get an email with a link to set their own password —
             you never see or choose it.
           </p>
@@ -209,7 +209,7 @@ export function StaffAccountsSection({ accounts }: { accounts: StaffAccountRow[]
         <button
           type="submit"
           disabled={isPending || !name || !email}
-          className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+          className="rounded-md bg-action px-4 py-2 text-sm font-medium text-on-action hover:bg-action disabled:opacity-50"
         >
           {isPending ? "Adding…" : "Add staff account"}
         </button>
