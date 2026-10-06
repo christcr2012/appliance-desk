@@ -514,8 +514,9 @@ A final `ci` job (the historical required-check name) succeeds only if every job
 | ci (gate) | passes only if everything required passed | ~3s |
 
 Wall-clock for a full run is the slowest browser shard: about a minute of fixed setup (container, dependencies, build,
-browser) plus 1–1.5 minutes of tests. Measured 2026-10-06 after PR #266: 3 min 10 s on a cold dependency cache
-(was 4–6.3 min; the 6.3 min run was one 3.5-minute apt download).
+browser) plus 1–1.5 minutes of tests. Measured 2026-10-06 on PR #266: **2 min 31 s** with warm caches (the same kind of run took
+4 min 4 s before) and 3 min 10 s on a cold dependency cache; the four browser shards finished within 2 s of each other
+(123–125 s). Before the change, runs took 3.5–6.3 min (the 6.3 min run was one 3.5-minute apt download).
 
 **How the speed is kept (PR #266, 2026-10-06):**
 
