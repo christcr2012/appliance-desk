@@ -75,6 +75,14 @@
 
   --color-focus-ring: #123c2d;
 
+  --color-nav-bg: #0c1e16;
+  --color-nav-ink: #f7f5ec;
+  --color-nav-current-bg: #b9e66b;
+  --color-nav-current-ink: #123c2d;
+
+  --radius-control: 8px;
+  --radius-card: 16px;
+
   --font-display: var(--font-manrope);
   --font-sans: var(--font-manrope);
 
@@ -115,6 +123,13 @@
   --color-warning-ink: var(--color-warning-ink);
   --color-danger: var(--color-danger);
   --color-focus-ring: var(--color-focus-ring);
+
+  --color-nav-bg: var(--color-nav-bg);
+  --color-nav-ink: var(--color-nav-ink);
+  --color-nav-current-bg: var(--color-nav-current-bg);
+  --color-nav-current-ink: var(--color-nav-current-ink);
+  --radius-control: var(--radius-control);
+  --radius-card: var(--radius-card);
 
   --font-display: var(--font-display);
   --font-sans: var(--font-sans);
@@ -198,6 +213,11 @@
   --color-warning-ink: #f0c96b;
 
   --color-focus-ring: #b9e66b;
+
+  --color-nav-bg: #0c1e16;
+  --color-nav-ink: #f7f5ec;
+  --color-nav-current-bg: #b9e66b;
+  --color-nav-current-ink: #123c2d;
 
   color-scheme: dark;
 }
