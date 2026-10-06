@@ -561,8 +561,8 @@ browser) plus 1–1.5 minutes of tests. Measured 2026-10-06 after PR #266: 3 min
 5. **Protect the caches.** Do not change `package-lock.json`, `prisma/schema.prisma` or the node_modules/Next/Playwright cache keys casually; a cold dependency cache adds about 15 s to every job and a cold Next cache about a minute to every shard.
 6. **Add vitest shards before it hurts.** When a unit shard nears 2 minutes, raise the matrix size and the `--shard=N/M` denominator together.
 7. **Parallel groups are for read-only tests only.** Before adding `mode: "parallel"` to a describe, check that no test in it saves, deletes or changes data another test reads.
-7. **No sleeps, no per-test logins, no network calls to real providers** in tests; they are the usual cause of slow or flaky suites.
-8. **Keep the gate honest.** Any new required job is added to the `ci` job's check list, and a job that is skipped for docs-only changes must still be reported as skipped, never missing.
+8. **No sleeps, no per-test logins, no network calls to real providers** in tests; they are the usual cause of slow or flaky suites.
+9. **Keep the gate honest.** Any new required job is added to the `ci` job's check list, and a job that is skipped for docs-only changes must still be reported as skipped, never missing.
 9. **Update this file** when the layout changes (job list, shard count, expected times).
 
 ### Rules when adding tests
