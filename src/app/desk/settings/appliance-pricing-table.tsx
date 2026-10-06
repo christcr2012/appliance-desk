@@ -3,6 +3,15 @@
 import { useState, useTransition } from "react";
 import Image from "next/image";
 import {
+  Button,
+  Checkbox,
+  DataList,
+  EmptyState,
+  Field,
+  StatusPill,
+  type DataListColumn,
+} from "@/components/ui";
+import {
   updateAppliancePriceAction,
   setApplianceVisibilityAction,
   createApplianceTypeAction,
@@ -20,58 +29,66 @@ type ApplianceTypeRow = {
   photoUrl: string | null;
 };
 
+const columns: DataListColumn<ApplianceTypeRow>[] = [
+  {
+    key: "appliance",
+    header: "Appliance",
+    primary: true,
+    cell: (row) => (
+      <div className="space-y-2">
+        <p className="font-semibold text-ink">{row.name}</p>
+        <StatusPill
+          tone={row.isActive ? "success" : "stopped"}
+          label={row.isActive ? "Active" : "Retired"}
+        />
+      </div>
+    ),
+  },
+  {
+    key: "controls",
+    header: "Pricing and website",
+    cell: (row) => <ApplianceControls row={row} />,
+  },
+];
+
 export function AppliancePricingTable({ rows }: { rows: ApplianceTypeRow[] }) {
-  const active = rows.filter((r) => r.isActive);
-  const retired = rows.filter((r) => !r.isActive);
+  const active = rows.filter((row) => row.isActive);
+  const retired = rows.filter((row) => !row.isActive);
 
   return (
     <div className="min-w-0 max-w-full space-y-6">
-      <div className="relative w-full min-w-0 max-w-full overflow-x-auto">
-        <table className="w-full min-w-[640px] border-collapse text-sm">
-          <caption className="mb-2 text-left text-ink-soft">
-            Add a new category any time you&apos;re ready to offer it
-            (refrigerators, ranges, etc.) — no developer needed. It starts
-            hidden from the website until you turn on &quot;Show on
-            website&quot;.
-          </caption>
-          <thead>
-            <tr className="border-b border-line text-left">
-              <th className="py-2 pr-4 font-medium text-ink">Appliance</th>
-              <th className="py-2 pr-4 font-medium text-ink">
-                Monthly price
-              </th>
-              <th className="py-2 pr-4 font-medium text-ink">
-                Show on website
-              </th>
-              <th className="py-2 pr-4 font-medium text-ink">Photo</th>
-              <th className="py-2 font-medium text-ink">
-                <span className="sr-only">Retire</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {active.map((row) => (
-              <ApplianceRow key={row.id} row={row} />
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <p className="text-sm text-ink-soft">
+        Add a new category any time you&apos;re ready to offer it
+        (refrigerators, ranges, etc.) — no developer needed. It starts hidden
+        from the website until you turn on &quot;Show on website&quot;.
+      </p>
+
+      <DataList
+        rows={active}
+        columns={columns}
+        caption="Active appliance types"
+        empty={
+          <EmptyState
+            title="No active appliance types"
+            description="Add the first appliance type below."
+          />
+        }
+      />
 
       <NewApplianceTypeForm />
 
       {retired.length > 0 && (
-        <details className="max-w-3xl rounded-lg border border-line p-4">
-          <summary className="cursor-pointer text-sm font-medium text-ink-soft">
+        <details className="max-w-4xl rounded-card border border-line bg-surface p-4">
+          <summary className="cursor-pointer font-semibold text-ink">
             Retired appliance types ({retired.length})
           </summary>
-          <div className="relative mt-3 w-full min-w-0 max-w-full overflow-x-auto">
-            <table className="w-full min-w-[640px] border-collapse text-sm">
-              <tbody>
-                {retired.map((row) => (
-                  <ApplianceRow key={row.id} row={row} />
-                ))}
-              </tbody>
-            </table>
+          <div className="mt-4">
+            <DataList
+              rows={retired}
+              columns={columns}
+              caption="Retired appliance types"
+              empty={null}
+            />
           </div>
         </details>
       )}
@@ -79,8 +96,10 @@ export function AppliancePricingTable({ rows }: { rows: ApplianceTypeRow[] }) {
   );
 }
 
-function ApplianceRow({ row }: { row: ApplianceTypeRow }) {
-  const [price, setPrice] = useState((row.monthlyPriceCents / 100).toFixed(2));
+function ApplianceControls({ row }: { row: ApplianceTypeRow }) {
+  const [price, setPrice] = useState(
+    (row.monthlyPriceCents / 100).toFixed(2),
+  );
   const [visible, setVisible] = useState(row.showOnWebsite);
   const [photoUrl, setPhotoUrl] = useState(row.photoUrl ?? "");
   const [isPending, startTransition] = useTransition();
@@ -99,90 +118,99 @@ function ApplianceRow({ row }: { row: ApplianceTypeRow }) {
         setPhotoMessage({ kind: "error", text: result.message });
       } else {
         setPhotoUrl(url);
-        setPhotoMessage({ kind: "success", text: url ? "Photo saved." : "Photo removed." });
+        setPhotoMessage({
+          kind: "success",
+          text: url ? "Photo saved." : "Photo removed.",
+        });
       }
     });
   }
 
   return (
-    <tr className={`border-b border-line ${!row.isActive ? "opacity-60" : ""}`}>
-      <td className="py-3 pr-4 text-ink">{row.name}</td>
-      <td className="py-3 pr-4">
-        <div className="flex items-center gap-2">
-          <label className="sr-only" htmlFor={`price-${row.id}`}>
-            Monthly price for {row.name}
-          </label>
-          <span aria-hidden="true">$</span>
-          <input
-            id={`price-${row.id}`}
-            type="number"
-            min={0}
-            step="0.01"
-            value={price}
-            disabled={isPending || !row.isActive}
-            onChange={(e) => {
-              setPrice(e.target.value);
-              setPriceMessage(null);
-            }}
-            className="w-24 rounded-lg border border-line-strong px-2 py-1.5 disabled:bg-canvas"
-          />
-          <button
-            type="button"
-            disabled={isPending || !row.isActive}
-            onClick={() => {
-              setPriceMessage(null);
-              startTransition(async () => {
-                try {
-                  const result = await updateAppliancePriceAction(row.id, parseFloat(price));
-                  setPriceMessage(result.status === "success"
+    <div className={`space-y-4 ${!row.isActive ? "opacity-70" : ""}`}>
+      <div className="grid gap-3 sm:grid-cols-[minmax(10rem,14rem)_auto] sm:items-end">
+        <Field
+          id={`price-${row.id}`}
+          label={`Monthly price for ${row.name}`}
+          type="number"
+          min={0}
+          step="0.01"
+          value={price}
+          disabled={isPending || !row.isActive}
+          onChange={(event) => {
+            setPrice(event.target.value);
+            setPriceMessage(null);
+          }}
+        />
+        <Button
+          type="button"
+          disabled={isPending || !row.isActive}
+          onClick={() => {
+            setPriceMessage(null);
+            startTransition(async () => {
+              try {
+                const result = await updateAppliancePriceAction(
+                  row.id,
+                  parseFloat(price),
+                );
+                setPriceMessage(
+                  result.status === "success"
                     ? { kind: "success", text: "Saved" }
-                    : { kind: "error", text: result.status === "error" ? result.message : "Price save was not confirmed. Reload to check it before retrying." });
-                } catch {
-                  setPriceMessage({ kind: "error", text: "Price save was not confirmed. Your amount is still here; reload to check it before retrying." });
-                }
-              });
-            }}
-            className="rounded-md bg-action px-3 py-1.5 text-xs font-semibold text-on-action disabled:opacity-60"
-          >
-            {isPending ? "Saving…" : "Save"}
-          </button>
-          {priceMessage && !isPending && (
-            <span
-              role={priceMessage.kind === "error" ? "alert" : "status"}
-              className={`text-xs ${priceMessage.kind === "error" ? "text-red-700" : "text-green-700"}`}
-            >
-              {priceMessage.text}
-            </span>
-          )}
-        </div>
-      </td>
-      <td className="py-3 pr-4">
-        <label className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            checked={visible}
-            disabled={!row.isActive}
-            onChange={(e) => {
-              const next = e.target.checked;
-              setVisible(next);
-              startTransition(() => {
-                setApplianceVisibilityAction(row.id, next);
-              });
-            }}
-            className="h-4 w-4"
-          />
-          <span className="sr-only">Show {row.name} on website</span>
-        </label>
-      </td>
-      <td className="py-3 pr-4">
-        <div className="flex items-center gap-2">
+                    : {
+                        kind: "error",
+                        text:
+                          result.status === "error"
+                            ? result.message
+                            : "Price save was not confirmed. Reload to check it before retrying.",
+                      },
+                );
+              } catch {
+                setPriceMessage({
+                  kind: "error",
+                  text: "Price save was not confirmed. Your amount is still here; reload to check it before retrying.",
+                });
+              }
+            });
+          }}
+        >
+          {isPending ? "Saving…" : "Save"}
+        </Button>
+      </div>
+
+      {priceMessage && !isPending && (
+        <p
+          role={priceMessage.kind === "error" ? "alert" : "status"}
+          className={`text-sm font-medium ${
+            priceMessage.kind === "error" ? "text-danger" : "text-success"
+          }`}
+        >
+          {priceMessage.text}
+        </p>
+      )}
+
+      <Checkbox
+        label={`Show ${row.name} on website`}
+        checked={visible}
+        disabled={!row.isActive}
+        onChange={(event) => {
+          const next = event.target.checked;
+          setVisible(next);
+          startTransition(() => {
+            setApplianceVisibilityAction(row.id, next);
+          });
+        }}
+      />
+
+      <div className="space-y-2">
+        <p className="text-sm font-semibold text-ink">Photo</p>
+        <div className="flex flex-wrap items-center gap-3">
           {photoUrl && (
             <Image
               src={photoUrl}
               alt={`${row.name} photo`}
-              width={40}
-              height={40}
-              className="h-10 w-10 rounded-md object-cover"
+              width={56}
+              height={56}
+              className="h-14 w-14 rounded-control object-cover"
             />
           )}
           <PhotoUploadField
@@ -194,50 +222,52 @@ function ApplianceRow({ row }: { row: ApplianceTypeRow }) {
               setPhotoMessage(null);
               savePhotoUrl(url);
             }}
-            onError={(message) => setPhotoMessage({ kind: "error", text: message })}
+            onError={(message) =>
+              setPhotoMessage({ kind: "error", text: message })
+            }
           />
           {photoUrl && (
-            <button
+            <Button
               type="button"
+              variant="quiet"
               disabled={isPhotoPending || !row.isActive}
               onClick={() => {
                 setPhotoMessage(null);
                 savePhotoUrl("");
               }}
-              className="text-xs font-medium text-ink-soft underline hover:text-ink disabled:opacity-60"
             >
               Remove
-            </button>
+            </Button>
           )}
         </div>
         {photoMessage && (
           <p
-            className={`mt-1 text-xs ${
-              photoMessage.kind === "success" ? "text-green-700" : "text-red-700"
+            role={photoMessage.kind === "error" ? "alert" : "status"}
+            className={`text-sm font-medium ${
+              photoMessage.kind === "success" ? "text-success" : "text-danger"
             }`}
           >
             {photoMessage.text}
           </p>
         )}
-      </td>
-      <td className="py-3">
-        <button
-          type="button"
-          disabled={isPending}
-          onClick={() => {
-            if (row.isActive) {
-              setVisible(false);
-            }
-            startTransition(() => {
-              setApplianceTypeActiveAction(row.id, !row.isActive);
-            });
-          }}
-          className="text-xs font-medium text-ink-soft underline hover:text-ink disabled:opacity-60"
-        >
-          {row.isActive ? "Retire" : "Restore"}
-        </button>
-      </td>
-    </tr>
+      </div>
+
+      <Button
+        type="button"
+        variant={row.isActive ? "danger" : "secondary"}
+        disabled={isPending}
+        onClick={() => {
+          if (row.isActive) {
+            setVisible(false);
+          }
+          startTransition(() => {
+            setApplianceTypeActiveAction(row.id, !row.isActive);
+          });
+        }}
+      >
+        {row.isActive ? "Retire" : "Restore"}
+      </Button>
+    </div>
   );
 }
 
@@ -251,9 +281,9 @@ function NewApplianceTypeForm() {
 
   return (
     <form
-      className="max-w-md space-y-3 rounded-lg border border-line p-4"
-      onSubmit={(e) => {
-        e.preventDefault();
+      className="max-w-md space-y-4 rounded-card border border-line bg-subtle p-4"
+      onSubmit={(event) => {
+        event.preventDefault();
         setMessage(null);
         startTransition(async () => {
           const result = await createApplianceTypeAction({
@@ -270,58 +300,39 @@ function NewApplianceTypeForm() {
         });
       }}
     >
-      <h3 className="text-sm font-semibold text-ink">
-        Add an appliance type
-      </h3>
+      <h3 className="font-semibold text-ink">Add an appliance type</h3>
       {message && (
         <p
-          role="status"
-          className={`rounded-md px-3 py-2 text-xs ${
-            message.kind === "success"
-              ? "bg-green-50 text-green-800"
-              : "bg-red-50 text-red-800"
+          role={message.kind === "error" ? "alert" : "status"}
+          className={`rounded-control border border-line bg-surface px-3 py-2 text-sm font-medium ${
+            message.kind === "success" ? "text-success" : "text-danger"
           }`}
         >
           {message.text}
         </p>
       )}
-      <div>
-        <label htmlFor="new-appliance-name" className="mb-1 block text-xs font-medium text-ink">
-          Name
-        </label>
-        <input
-          id="new-appliance-name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Refrigerator"
-          required
-          className="w-full rounded-lg border border-line-strong px-3 py-2 text-sm"
+      <Field
+        id="new-appliance-name"
+        label="Name"
+        value={name}
+        onChange={(event) => setName(event.target.value)}
+        placeholder="Refrigerator"
+        required
+      />
+      <div className="max-w-xs">
+        <Field
+          id="new-appliance-price"
+          label="Monthly price"
+          type="number"
+          min={0}
+          step="0.01"
+          value={price}
+          onChange={(event) => setPrice(event.target.value)}
         />
       </div>
-      <div>
-        <label htmlFor="new-appliance-price" className="mb-1 block text-xs font-medium text-ink">
-          Monthly price
-        </label>
-        <div className="flex items-center gap-2">
-          <span aria-hidden="true">$</span>
-          <input
-            id="new-appliance-price"
-            type="number"
-            min={0}
-            step="0.01"
-            value={price}
-            onChange={(e) => setPrice(e.target.value)}
-            className="w-28 rounded-lg border border-line-strong px-3 py-2 text-sm"
-          />
-        </div>
-      </div>
-      <button
-        type="submit"
-        disabled={isPending || !name.trim()}
-        className="rounded-full bg-action px-5 py-2 text-xs font-semibold text-on-action disabled:opacity-60"
-      >
+      <Button type="submit" disabled={isPending || !name.trim()}>
         {isPending ? "Adding…" : "Add appliance type"}
-      </button>
+      </Button>
     </form>
   );
 }
