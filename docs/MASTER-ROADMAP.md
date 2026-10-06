@@ -59,7 +59,7 @@ Paste into a new session (replace `<X>`):
 > every stop-and-ask point. Never enter a tax rate, a tax answer, a price or a legal promise yourself. After each PR:
 > exact-head CI green, review threads read and dispositioned, then merge per AGENTS.md. Use the PR list in
 > docs/MASTER-ROADMAP.md section 7, keep each PR within docs/PLAYBOOK.md Step 3a's budget, follow Step 8 for CI
-> (at most 3 CI runs per PR, then stop and report), and stop after two merged PRs per session with a STATUS handoff. At the end update
+> (at most 3 red CI runs per PR, then stop and report), and stop after two merged PRs per session with a STATUS handoff. At the end update
 > docs/STATUS.md and tick the step in docs/MASTER-ROADMAP.md, and report to Chris in plain English.
 
 For F-part-1 use the same prompt with `BATCH-F.md` and add: "Build only WU-F1, WU-F2, WU-F4 and WU-F5 now."
@@ -129,7 +129,8 @@ hard-coded, partly unverified marketing promises on the home page (Batch V, V-3)
 
 This table **overrides the "PR …" grouping lines inside the designs**; the work units, their order and their tests are
 unchanged. Each row is one PR, sized to the budget in `docs/PLAYBOOK.md` Step 3a (about 500 lines of production code,
-one risk area, at most one migration, two CI runs expected). Stack them in order; merge bottom-up. "CI watch" names the
+one risk area, at most one migration, at most one red CI run expected). Stack them in order; merge bottom-up. A row
+that still turns out over budget is split inside its work unit as Step 3a describes (G-2 and T-4 are the likely ones). "CI watch" names the
 tests most likely to break, so the agent updates them in the same PR instead of discovering them in CI.
 
 ### F-part-1 (now)
@@ -149,6 +150,7 @@ tests most likely to break, so the agent updates them in the same PR instead of 
 ### T — Colorado sales and use tax
 | PR | Work units | Risk area | CI watch |
 |---|---|---|---|
+| — | WU-T0 is Chris's SUTS registration plus the GIS runbook; the runbook (docs only) rides with T-2 | — | — |
 | T-1 | WU-T1 migration, seeds, backup/schema-health + WU-T2 pure engine, categories, allocator | schema + pure logic | migration check, populated-upgrade drill, backup coverage test |
 | T-2 | WU-T3 GIS adapter (fake source; real client only if the runbook exists) + address locating hooks | provider (read-only) | customer/address and rental-builder tests (locating runs after address saves) |
 | T-3 | WU-T4 readiness gate + Stripe tax rates **+ `seedTaxReadyContext()` helper and CI seed update** | money | **every test that signs an agreement or sets up billing**, checkout/webhook integration tests, rental-builder and signing browser specs |
@@ -193,5 +195,6 @@ tests most likely to break, so the agent updates them in the same PR instead of 
 | O-3 | WU-O3 approvals | money + permissions | refund/credit/write-off integration tests |
 | O-4 | WU-O4 scheduled prices + WU-O5 goals and alerts + docs | settings/automation | pricing tests, Today tests |
 
-**About 34 PRs in all.** At two merged PRs per session that is roughly 17 working sessions; each PR should reach green in one
-or two CI runs (each run is about 3–5 minutes). If a PR needs a third red run, the agent stops and reports (PLAYBOOK Step 8).
+**33 PRs in all** (a few more if G-2 or T-4 split). At two merged PRs per session that is roughly 17 working sessions;
+each PR should reach green with at most one red CI run (each run is about 3–5 minutes). If a PR needs a third red run,
+the agent stops and reports (PLAYBOOK Step 8).

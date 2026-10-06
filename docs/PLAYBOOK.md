@@ -92,7 +92,19 @@ Rules while implementing:
 The goal: **more time implementing than testing or debugging, and no PR bigger than one agent can finish well.**
 `docs/MASTER-ROADMAP.md` section 7 gives the exact PR list for every remaining batch; it overrides the coarser PR
 grouping lines inside the designs (the work units and their order do not change). If you think a PR there is still
-too big, split it further along work-unit boundaries and say so in the PR — never merge two of them.
+too big, split it further along work-unit boundaries and say so in the PR — never merge two of them. When a single
+work unit is itself over budget (likely: WU-G3 two-step login, WU-T5 invoices on the engine), split it inside the work
+unit at a point where each part is complete and tested on its own — for example G-2a "plugin, schema, enrolment page
+and CI login support, enforcement not yet on" then G-2b "enforcement"; or T-4a "local invoices" then T-4b "Stripe
+mirror". Never ship a half-built path that tests cannot exercise.
+
+**How to measure the budget** (run before opening the PR; lockfile, generated files, tests, browser specs and docs are
+not counted):
+
+```bash
+git diff --shortstat origin/<base>...HEAD -- src prisma/schema.prisma prisma/migrations scripts ':!scripts/**/*.test.*'
+git diff --name-only origin/<base>...HEAD -- src prisma scripts | wc -l
+```
 
 **The budget for one PR** (all must hold; if a planned PR will break one, split it before writing code):
 
@@ -103,10 +115,23 @@ too big, split it further along work-unit boundaries and say so in the PR — ne
 | Migrations | **at most one**, and only in the first PR of a batch unless the design says otherwise | One schema change per CI cycle; easy rollback |
 | Risk areas | **one** of: schema, money/billing, auth/permissions, provider (Stripe/email/SMS), screens | Mixing two makes a red CI hard to diagnose |
 | New browser spec files | **at most one** | Browser shards are the slowest part of CI |
-| Expected CI runs to green | **2 or fewer** (3 is the ceiling, see Step 8) | If you expect more, the PR is too big |
+| Expected red CI runs | **1 or none** (3 red runs is the ceiling, see Step 8) | If you expect more, the PR is too big |
 | Session | **at most 2 merged PRs per agent session**; write the STATUS handoff after each | Long sessions lose context and start guessing |
 
 Tests are not budgeted — write as many as the change needs. A PR that is mostly tests is fine.
+
+**The cheapest way to avoid CI rounds:** for any PR in the schema, money/billing or auth risk area, run the integration
+tests you added or changed against the local throwaway Postgres (Step 4b, only those files) before the first push. It
+costs a few minutes once per session and usually saves a whole red CI round. For screen PRs, run the one browser spec
+you touched with the 4c recipe.
+
+**Never sit idle.** While a PR waits on CI, on a reviewer, or on Chris (Batch V's before/after screenshot gate), start
+the next PR in the stack from that PR's branch. Automated reviewers: if Codex replies that its usage limit is reached,
+or no review has posted 20 minutes after `ci` went green and no Copilot review run is in progress, record "automated
+review unavailable — waived" (AGENTS.md) with your own diff inspection, and continue.
+
+**Report what the budget cost.** Put "CI runs used: N (red: R)" in each PR description and in the STATUS handoff. If two
+PRs in a row needed three red runs, split every remaining PR of that batch one step smaller and say so in STATUS.
 
 **Ripple check before coding (5 minutes, saves a CI round):** grep `tests/` and `e2e/` for every function, route,
 setting and fixture you are about to change, and list the tests that will need updating in the same PR. Two known
@@ -298,12 +323,13 @@ Description, in this order, in plain English:
 2. Reproduce locally (Step 4). Fix every failure you can see, not just the first ten.
 3. Push once.
 
-**Is it mine?** Before debugging, look at the latest `ci` run on `main`. If the same test is red on `main`, the failure is
+**Is it mine?** Before debugging, look at the latest `ci` run on `main` (and, for a stacked PR, on its base PR). If the same test is red there, the failure is
 not your PR's: fix it in a tiny separate PR first (allowed alongside AGENTS.md's security/money exception to "review fixes ride the
 next PR", because a red `main` blocks every PR), or port
 an existing fix into your PR and say so. Never debug someone else's red for hours inside your PR.
 
-**The CI round budget.** At most **3 CI runs** per PR. After the second red run on the *same* failure, stop pushing
+**The CI round budget.** At most **3 red CI runs** caused by your change, per PR (a green run after merging the base
+branch, or one infra re-run, does not count). After the second red run on the *same* failure, stop pushing
 speculative fixes: set up the full local suite (Step 4b) or the browser recipe (4c) and reproduce it. After the third red
 run, stop: write the failure, what you tried and your best explanation into `docs/STATUS.md` and report to Chris (the
 existing "If you get stuck" rule). If debugging has taken longer than writing the change, the PR was too big — split
@@ -321,11 +347,17 @@ assumption), never skipped, retried in a loop or quarantined.
 **Keeping a stack current as `main` moves.** One agent works one batch, but `main` still moves when your own PRs merge and
 when docs PRs land.
 
-- Before opening each PR and again before merging it: `git fetch origin main`, merge `main` into the PR's branch
-  (a merge commit — do not rebase or force-push a branch that already has review comments), run Step 4a, push.
+- Before opening each PR and again before merging it, merge **that PR's base branch** into it: `main` for the bottom PR,
+  the previous PR's branch for every PR above it (merging `main` straight into an upper PR fills its diff with changes
+  its base has not seen yet). Use a merge commit — do not rebase or force-push a branch that already has review
+  comments — then run Step 4a and push.
 - After the bottom PR merges: retarget the next PR to `main`, merge `main` into it, and wait for `ci` at that exact head.
+  Do this one PR at a time, bottom-up; never merge an upper PR into its base branch (AGENTS.md: that leaves `main`
+  without the work).
 - **Migrations:** a migration folder's timestamp must be later than every migration on `main` at merge time. If one
-  landed after yours was named, rename your folder before merging and re-run CI.
+  landed after yours was named, rename your folder before merging and re-run CI. Only ever rename a migration that is
+  not on `main` yet (a migration on `main` may already be applied in production and must never change); the PR's
+  preview database may then need a fresh branch, which is fine because previews are isolated.
 - Merge conflicts in `docs/STATUS.md` or `docs/MASTER-ROADMAP.md`: keep both sides' facts; never drop another session's row.
 
 **Write tests that survive change.** Each integration test creates its own data (no dependence on seed order or on another
