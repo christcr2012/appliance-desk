@@ -111,7 +111,13 @@ async function listAllPrivateBlobs(
   let cursor: string | undefined;
 
   do {
-    const page = await list({ prefix, token, cursor, limit: 1000 });
+    const page = await list({
+      prefix,
+      token,
+      cursor,
+      limit: 1000,
+      abortSignal: AbortSignal.timeout(15_000),
+    });
     rows.push(...page.blobs.map((blob) => ({ pathname: blob.pathname, url: blob.url })));
     cursor = page.hasMore ? page.cursor : undefined;
   } while (cursor);
@@ -124,7 +130,12 @@ export async function hasPrivacyDeletionTombstone(
   token: string,
 ): Promise<boolean> {
   const pathname = privacyDeletionTombstonePath(sourcePath);
-  const page = await list({ prefix: pathname, token, limit: 1 });
+  const page = await list({
+    prefix: pathname,
+    token,
+    limit: 1,
+    abortSignal: AbortSignal.timeout(15_000),
+  });
   return page.blobs.some((blob) => blob.pathname === pathname);
 }
 
@@ -147,13 +158,14 @@ export async function deletePrivatePhotoWithRecovery(
 
   await put(
     privacyDeletionTombstonePath(sourcePath),
-    JSON.stringify({ formatVersion: 1, sourcePath, status: "PRIVACY_DELETED" }),
+    JSON.stringify({ formatVersion: 1, sourcePath, status: "PRIVACY_DELETED", deletedAt: new Date().toISOString() }),
     {
       access: "private",
       token: store.token,
       contentType: "application/json",
       addRandomSuffix: false,
       allowOverwrite: true,
+      abortSignal: AbortSignal.timeout(15_000),
     },
   );
 
@@ -163,5 +175,8 @@ export async function deletePrivatePhotoWithRecovery(
     .filter((blob) => blob.pathname.endsWith(suffix))
     .map((blob) => blob.url);
 
-  await del([sourceUrl, ...recoveryUrls], { token: store.token });
+  await del([sourceUrl, ...recoveryUrls], {
+    token: store.token,
+    abortSignal: AbortSignal.timeout(15_000),
+  });
 }
