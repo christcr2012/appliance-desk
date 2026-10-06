@@ -88,9 +88,9 @@ export function NewEstimateForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 rounded-lg border border-gray-200 bg-white p-5">
+    <form onSubmit={handleSubmit} className="space-y-4 rounded-lg border border-line bg-white p-5">
       <div>
-        <span className="block text-sm font-medium text-gray-700">Who&apos;s this for?</span>
+        <span className="block text-sm font-medium text-ink-soft">Who&apos;s this for?</span>
         <div className="mt-1 flex gap-2">
           <button
             type="button"
@@ -98,8 +98,8 @@ export function NewEstimateForm({
             disabled={customers.length === 0}
             className={`rounded-md border px-3 py-1.5 text-sm ${
               mode === "existing"
-                ? "border-gray-900 bg-gray-900 text-white"
-                : "border-gray-300 text-gray-700 hover:border-gray-400 disabled:opacity-40"
+                ? "border-primary bg-action text-on-action"
+                : "border-line-strong text-ink-soft hover:border-line-strong disabled:opacity-40"
             }`}
           >
             An existing customer
@@ -109,15 +109,15 @@ export function NewEstimateForm({
             onClick={() => setMode("new")}
             className={`rounded-md border px-3 py-1.5 text-sm ${
               mode === "new"
-                ? "border-gray-900 bg-gray-900 text-white"
-                : "border-gray-300 text-gray-700 hover:border-gray-400"
+                ? "border-primary bg-action text-on-action"
+                : "border-line-strong text-ink-soft hover:border-line-strong"
             }`}
           >
             Someone new
           </button>
         </div>
         {customers.length === 0 && mode === "existing" && (
-          <p className="mt-1 text-xs text-gray-500">
+          <p className="mt-1 text-xs text-ink-faint">
             No customers yet — pick &quot;Someone new&quot; instead.
           </p>
         )}
@@ -125,7 +125,7 @@ export function NewEstimateForm({
 
       {mode === "existing" ? (
         <div>
-          <label htmlFor="customerId" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="customerId" className="block text-sm font-medium text-ink-soft">
             Customer
           </label>
           <select
@@ -133,7 +133,7 @@ export function NewEstimateForm({
             required
             value={customerId}
             onChange={(e) => setCustomerId(e.target.value)}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
           >
             <option value="">Choose a customer…</option>
             {sortedCustomers.map((c) => (
@@ -146,8 +146,8 @@ export function NewEstimateForm({
           </select>
         </div>
       ) : (
-        <div className="space-y-4 rounded-md border border-gray-200 p-3">
-          <p className="text-xs text-gray-500">
+        <div className="space-y-4 rounded-md border border-line p-3">
+          <p className="text-xs text-ink-faint">
             This creates a lead for them first — it&apos;ll show up in{" "}
             <Link href="/desk/leads" className="underline">
               Leads
@@ -157,7 +157,7 @@ export function NewEstimateForm({
           </p>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
-              <label htmlFor="contactName" className="block text-xs font-medium text-gray-700">
+              <label htmlFor="contactName" className="block text-xs font-medium text-ink-soft">
                 Name
               </label>
               <input
@@ -165,11 +165,11 @@ export function NewEstimateForm({
                 required
                 value={contactName}
                 onChange={(e) => setContactName(e.target.value)}
-                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
               />
             </div>
             <div>
-              <label htmlFor="phone" className="block text-xs font-medium text-gray-700">
+              <label htmlFor="phone" className="block text-xs font-medium text-ink-soft">
                 Phone
               </label>
               <input
@@ -177,11 +177,11 @@ export function NewEstimateForm({
                 required
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
               />
             </div>
             <div>
-              <label htmlFor="leadEmail" className="block text-xs font-medium text-gray-700">
+              <label htmlFor="leadEmail" className="block text-xs font-medium text-ink-soft">
                 Email (optional for now)
               </label>
               <input
@@ -189,23 +189,23 @@ export function NewEstimateForm({
                 type="email"
                 value={leadEmail}
                 onChange={(e) => setLeadEmail(e.target.value)}
-                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
               />
             </div>
             <div>
-              <label htmlFor="leadCompanyName" className="block text-xs font-medium text-gray-700">
+              <label htmlFor="leadCompanyName" className="block text-xs font-medium text-ink-soft">
                 Company name (if any)
               </label>
               <input
                 id="leadCompanyName"
                 value={leadCompanyName}
                 onChange={(e) => setLeadCompanyName(e.target.value)}
-                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
               />
             </div>
           </div>
           <div className="space-y-1.5">
-            <label className="flex items-center gap-2 text-sm text-gray-700">
+            <label className="flex items-center gap-2 text-sm text-ink-soft">
               <input
                 type="checkbox"
                 checked={leadIsBusiness}
@@ -213,7 +213,7 @@ export function NewEstimateForm({
               />
               This is a business account
             </label>
-            <label className="flex items-center gap-2 text-sm text-gray-700">
+            <label className="flex items-center gap-2 text-sm text-ink-soft">
               <input
                 type="checkbox"
                 checked={leadIsPropertyManager}
@@ -227,7 +227,7 @@ export function NewEstimateForm({
       )}
 
       <div>
-        <label htmlFor="title" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="title" className="block text-sm font-medium text-ink-soft">
           Internal title
         </label>
         <input
@@ -237,16 +237,16 @@ export function NewEstimateForm({
           placeholder="e.g. Sunset Apartments — 12 units"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+          className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
         />
-        <p className="mt-1 text-xs text-gray-500">
+        <p className="mt-1 text-xs text-ink-faint">
           For your own reference — the customer only ever sees &quot;Estimate
           #123.&quot;
         </p>
       </div>
 
       <div>
-        <label htmlFor="clientMessage" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="clientMessage" className="block text-sm font-medium text-ink-soft">
           Message to the customer (optional)
         </label>
         <textarea
@@ -254,12 +254,12 @@ export function NewEstimateForm({
           rows={3}
           value={clientMessage}
           onChange={(e) => setClientMessage(e.target.value)}
-          className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+          className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
         />
       </div>
 
       <div>
-        <label htmlFor="internalNotes" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="internalNotes" className="block text-sm font-medium text-ink-soft">
           Internal notes (optional, never shown to the customer)
         </label>
         <textarea
@@ -267,13 +267,13 @@ export function NewEstimateForm({
           rows={2}
           value={internalNotes}
           onChange={(e) => setInternalNotes(e.target.value)}
-          className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+          className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
         />
       </div>
 
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label htmlFor="depositDollars" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="depositDollars" className="block text-sm font-medium text-ink-soft">
             Deposit ($, optional)
           </label>
           <input
@@ -283,11 +283,11 @@ export function NewEstimateForm({
             step="0.01"
             value={depositDollars}
             onChange={(e) => setDepositDollars(e.target.value)}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
           />
         </div>
         <div>
-          <label htmlFor="validUntil" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="validUntil" className="block text-sm font-medium text-ink-soft">
             Valid until (optional)
           </label>
           <input
@@ -295,7 +295,7 @@ export function NewEstimateForm({
             type="date"
             value={validUntil}
             onChange={(e) => setValidUntil(e.target.value)}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
           />
         </div>
       </div>
@@ -303,7 +303,7 @@ export function NewEstimateForm({
       <button
         type="submit"
         disabled={isPending}
-        className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+        className="rounded-md bg-action px-4 py-2 text-sm font-medium text-on-action hover:bg-action disabled:opacity-50"
       >
         {isPending ? "Creating…" : "Create draft estimate"}
       </button>

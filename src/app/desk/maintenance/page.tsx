@@ -52,10 +52,10 @@ export default async function MaintenancePage({
   return (
     <div>
       <h1 className="flex items-center gap-2 text-xl font-semibold">
-        <SupportServiceIcon className="h-5 w-5 text-gray-500" />
+        <SupportServiceIcon className="h-5 w-5 text-ink-faint" />
         Maintenance requests
       </h1>
-      <p className="mt-1 text-sm text-gray-600">
+      <p className="mt-1 text-sm text-ink-soft">
         Submitted by customers from their account portal.
       </p>
 
@@ -69,8 +69,8 @@ export default async function MaintenancePage({
               aria-current={active ? "page" : undefined}
               className={`rounded-full border px-3 py-1 text-sm ${
                 active
-                  ? "border-gray-900 bg-gray-900 text-white"
-                  : "border-gray-300 text-gray-700 hover:border-gray-400"
+                  ? "border-primary bg-action text-on-action"
+                  : "border-line-strong text-ink-soft hover:border-line-strong"
               }`}
             >
               {tab.label}
@@ -80,29 +80,29 @@ export default async function MaintenancePage({
       </nav>
 
       {requests.length === 0 ? (
-        <p className="mt-6 text-sm text-gray-600">
+        <p className="mt-6 text-sm text-ink-soft">
           {status ? "No requests with this status." : "No maintenance requests yet."}
         </p>
       ) : (
-        <ul className="mt-6 divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white">
+        <ul className="mt-6 divide-y divide-line rounded-lg border border-line bg-white">
           {requests.map((r) => (
             <li key={r.id}>
               <Link
                 href={`/desk/maintenance/${r.id}`}
-                className="flex flex-col gap-1 px-4 py-4 hover:bg-gray-50 sm:flex-row sm:items-center sm:justify-between"
+                className="flex flex-col gap-1 px-4 py-4 hover:bg-canvas sm:flex-row sm:items-center sm:justify-between"
               >
                 <div>
-                  <p className="font-medium text-gray-900">
+                  <p className="font-medium text-ink">
                     {r.customer.user.name ?? r.customer.user.email}
                   </p>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-ink-soft">
                     {r.appliance
                       ? `${r.appliance.applianceType.name} (${r.appliance.assetNumber})`
                       : "General"}{" "}
                     · {r.problem.slice(0, 80)}
                   </p>
                 </div>
-                <div className="text-sm text-gray-500 sm:text-right">
+                <div className="text-sm text-ink-faint sm:text-right">
                   <p>
                     {r.status} · {r.priority}
                   </p>
