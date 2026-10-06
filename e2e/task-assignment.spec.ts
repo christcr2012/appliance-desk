@@ -17,12 +17,14 @@ test("assign, preserve competing text, complete and reopen the same linked follo
 }) => {
   const note = `CI assigned follow-up ${Date.now()}`;
   await page.goto("/desk/customers");
-  const customerLink = page
-    .locator("main")
-    .getByRole("link")
-    .filter({
-      hasText: process.env.TEST_CUSTOMER_EMAIL ?? "ci-customer@example.test",
-    });
+  const customerEmail =
+    process.env.TEST_CUSTOMER_EMAIL ?? "ci-customer@example.test";
+  const customerRow = page
+    .locator("main tr:visible, main li:visible")
+    .filter({ hasText: customerEmail })
+    .first();
+  await expect(customerRow).toBeVisible();
+  const customerLink = customerRow.getByRole("link").first();
   const customerUrl = (await customerLink.getAttribute("href"))!;
   await page.goto(customerUrl);
   await page.getByLabel("New task", { exact: true }).fill(note);
