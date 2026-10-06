@@ -17,7 +17,7 @@ test("unsent staff setup preserves the account and offers resend recovery", asyn
   await page.getByLabel("Email", { exact: true }).fill(email);
   await page.getByRole("button", { name: "Add staff account", exact: true }).click();
   await expect(page.getByRole("alert").filter({ hasText: "Account created, but the setup email was not sent" })).toContainText("Account created, but the setup email was not sent");
-  const row = page.getByRole("row").filter({ hasText: email });
+  const row = page.getByRole("listitem").filter({ hasText: email });
   await expect(row).toHaveCount(1);
   await row.getByRole("button", { name: "Resend setup email" }).click();
   await expect(row.getByRole("alert")).toBeVisible();
