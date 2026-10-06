@@ -1,7 +1,6 @@
-# PLAN — the remaining work, in seven batches
+# PLAN — executable program plan
 
-This is the executable plan. Each batch is one substantial PR. Read your
-batch's section fully; it is written to stand on its own. The audit root
+This is the executable plan. Completed batches remain here as the acceptance history; `docs/STATUS.md` identifies what is still next. Each active batch is implemented as the reasonably sized PR stack required by `AGENTS.md`, not one giant PR. Read the active batch's section fully; it is written to stand on its own. The audit root
 causes behind it are in `docs/AUDIT_SYNTHESIS.md` (RC1–RC12), the detailed
 findings in `docs/audits/Package-N-*.md` (cited as `P<package> <C|H|M><n>`),
 and the business audit items in `docs/reviews/2026-10-01-business-logic-audit.md`
