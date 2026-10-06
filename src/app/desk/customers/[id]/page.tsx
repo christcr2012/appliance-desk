@@ -21,10 +21,9 @@ import {
   EmptyState,
   FilterBar,
   Metric,
-  primaryActionClass,
-  secondaryActionClass,
 } from "@/components/desk/workspace";
 import { Pagination } from "@/components/pagination";
+import { ButtonLink } from "@/components/ui";
 import { parsePage } from "@/domains/pagination";
 import { formatCents } from "@/domains/pricing/money";
 import { formatBusinessDate, formatBusinessTime } from "@/lib/business-date";
@@ -107,12 +106,12 @@ export default async function CustomerDetailPage({
             <EmptyState
               title="No scheduled visit"
               action={
-                <Link
-                  className={secondaryActionClass}
+                <ButtonLink
+                  variant="secondary"
                   href={`/desk/jobs/new?customerId=${id}`}
                 >
                   Schedule a job
-                </Link>
+                </ButtonLink>
               }
             />
           )}
@@ -315,20 +314,20 @@ export default async function CustomerDetailPage({
           className="mt-4 flex flex-wrap gap-2"
         >
           {query.cursor && (
-            <Link
-              className={secondaryActionClass}
+            <ButtonLink
+              variant="secondary"
               href={`${href("activity")}&filter=${filter}`}
             >
               Newest entries
-            </Link>
+            </ButtonLink>
           )}
           {data.nextCursor && (
-            <Link
-              className={secondaryActionClass}
+            <ButtonLink
+              variant="secondary"
               href={`${href("activity")}&filter=${filter}&cursor=${encodeURIComponent(data.nextCursor)}`}
             >
               Older entries
-            </Link>
+            </ButtonLink>
           )}
         </nav>
       </SectionCard>
@@ -352,41 +351,37 @@ export default async function CustomerDetailPage({
             {customer.archivedAt && <p>Archived customer record</p>}
           </>
         }
-        primaryAction={
-          <Link
-            className={primaryActionClass}
-            href={`/desk/agreements/new?customerId=${id}`}
-          >
-            + New agreement
-          </Link>
-        }
+        primaryAction={{
+          href: `/desk/agreements/new?customerId=${id}`,
+          label: "+ New agreement",
+        }}
         secondaryActions={
           <>
-            <Link
-              className={secondaryActionClass}
+            <ButtonLink
+              variant="secondary"
               href={`/desk/jobs/new?customerId=${id}`}
             >
               Schedule a job
-            </Link>
-            <Link
-              className={secondaryActionClass}
+            </ButtonLink>
+            <ButtonLink
+              variant="secondary"
               href={`/desk/estimates/new?customerId=${id}`}
             >
               New estimate
-            </Link>
-            <Link
-              className={secondaryActionClass}
+            </ButtonLink>
+            <ButtonLink
+              variant="secondary"
               href={`/desk/billing/customer/${id}`}
             >
               View statement
-            </Link>
+            </ButtonLink>
           </>
         }
       />
       {query.newAccount === "1" && (
         <p
           role="status"
-          className="mb-4 rounded-lg border border-line bg-subtle p-4 text-sm text-ink"
+          className="mb-4 rounded-control border border-line bg-subtle p-4 text-sm text-ink"
         >
           {query.emailSent === "1"
             ? "Account created. An activation email was sent so the customer can set their password."
