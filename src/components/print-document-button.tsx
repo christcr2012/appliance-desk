@@ -1,21 +1,26 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
+
 /** Triggers the browser's own print dialog — same "just use the browser"
  * approach as ExportCsvLink's plain <a href>, no PDF-generation library
- * needed. Shared by every printable business document (invoices, and
- * now work orders — see src/components/billing/invoice-document.tsx and
- * src/components/jobs/work-order-document.tsx). Each document has its
- * own print-specific CSS (the `print:` classes on the document itself)
- * so the page's nav, back link, and this button all disappear on the
- * printed/saved-as-PDF output and only the document remains. */
-export function PrintDocumentButton({ label = "Print / save as PDF" }: { label?: string }) {
+ * needed. Shared by every printable business document (invoices and work
+ * orders). Each document keeps its own print-specific treatment while the
+ * application shells and this button disappear from printed/saved-as-PDF
+ * output. */
+export function PrintDocumentButton({
+  label = "Print / save as PDF",
+}: {
+  label?: string;
+}) {
   return (
-    <button
+    <Button
       type="button"
+      variant="secondary"
       onClick={() => window.print()}
-      className="rounded-md border border-line-strong px-3 py-1.5 text-sm text-ink-soft hover:border-line-strong print:hidden"
+      className="print:hidden"
     >
       {label}
-    </button>
+    </Button>
   );
 }

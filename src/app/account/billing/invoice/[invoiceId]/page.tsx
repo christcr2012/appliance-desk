@@ -1,10 +1,10 @@
 import { notFound } from "next/navigation";
-import Link from "next/link";
 import { requireSession } from "@/lib/session";
 import { getPortalData } from "@/domains/portal";
 import { getInvoiceDetail } from "@/domains/billing/invoice-detail";
 import { InvoiceDocument } from "@/components/billing/invoice-document";
 import { PrintDocumentButton } from "@/components/print-document-button";
+import { ButtonLink } from "@/components/ui";
 
 export const metadata = { title: "Invoice" };
 
@@ -38,18 +38,18 @@ export default async function AccountInvoicePage({
   return (
     <div className="max-w-3xl">
       <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
-        <Link href="/account/billing" className="text-sm text-ink-soft hover:underline">
-          &larr; Back to billing
-        </Link>
+        <ButtonLink href="/account/billing" variant="quiet">
+          Back to billing
+        </ButtonLink>
         <div className="flex flex-wrap items-center gap-3">
           {FINAL_INVOICE_STATUSES.has(invoice.status) && (
-            <Link
-              className="text-sm font-medium text-primary underline"
+            <ButtonLink
               href={`/api/documents/invoice/${invoiceId}`}
               target="_blank"
+              variant="secondary"
             >
               View frozen invoice record
-            </Link>
+            </ButtonLink>
           )}
           <PrintDocumentButton />
         </div>

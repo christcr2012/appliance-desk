@@ -10,33 +10,35 @@ the most current state.
 fully built and running today, in Stripe's test mode — see "Billing,
 statements, and late fees" below.)
 
-## Updated desk and portal navigation (PR previews, 2026-09-30)
+## Evergreen desk, portal, and public-site navigation (2026-10-06)
 
-Customer records have Overview, Properties, Rentals, Service, Billing, and
-Activity sections. Choose a property, then **New rental here** or **Schedule
+On a desktop, the owner desk uses the dark Evergreen side navigation. On a
+phone, the main work areas are in the bottom bar and **More** opens the rest of
+the desk navigation. The current page is visibly selected. Search, theme
+switching, and sign-out remain available without changing business permissions.
+
+Customer records still have Overview, Properties, Rentals, Service, Billing,
+and Activity sections. Choose a property, then **New rental here** or **Schedule
 visit here** to carry that address into the next form. **Activity** keeps notes
 and recorded changes together; use **Older entries** for more history.
 
-Leads support search, status filters, pending quotes, and **No next task**.
-**Add next task** opens the inquiry's own follow-up area. Converting a lead
-continues to use the existing customer account and invitation process.
+The customer portal now uses the same visual system. On phones its bottom bar is
+**Home, Rentals, Maintenance, Billing, Account**. The home page answers, in
+order: what the customer rents, what happens next, whether anything is owed,
+and how to get help. **Report a problem** is the main action. **Request pickup**
+still submits a request for business review; it does not cancel an agreement or
+change billing.
 
-Settings is divided into sections. **Business profile**, **Service area**, and
-**Rental policies** each have their own save button. Products/pricing and staff
-keep their existing controls. **Integrations** shows whether configuration
-exists; it does not certify that payments or messages have been delivered.
-If a save fails, your edits stay in the form for another attempt.
+The public site follows the visitor's light/dark preference. Its live home page
+uses **Check your address** as the main action and **See prices** as a secondary
+text link. The existing prelaunch mode remains a real business setting and
+keeps its launch-interest workflow when enabled.
 
-Billing's **All invoices** clears the selected filter. Select an invoice number
-for the exact document, or a customer for their statement. Invoice totals can
-include deposits, fees, and tax; they are separate from rental revenue.
-The rental progress card tracks signature, equipment, delivery, and billing
-separately. A signature or required deposit amount does not prove payment.
-
-Customers see their rental summary, recorded next visit, invoice needing
-attention, and **Report a problem**/**Request pickup**. Pickup submits a request
-for the business to review; it does not cancel an agreement or change billing.
-Failed requests retain their text and photos until successfully submitted.
+Settings remains divided into sections with the same save/actions and approval
+gates. Billing still separates invoices, deposits, fees, tax, payments, and
+rental revenue. A signature or required deposit amount does not prove payment.
+Live customer email, SMS, and marketing activation remain off until their
+existing owner approval/go-live gates are satisfied.
 
 ## Logging in
 
@@ -278,13 +280,9 @@ changing these never changes a customer's current 6- or 12-month rental.
   stays off.
 - Changing the wording of the renewal terms starts a new version. Customers who
   already agreed keep the wording they agreed to.
-- Not built yet: warning customers 30 days before a change, applying changes to
-  month-to-month rentals, and setting different terms for one customer.
-- A 6- or 12-month term starts when the appliances are delivered (when billing
-  starts), not when the agreement is signed.
-
-These screens only save the rules for now. The screens that show a customer a
-quote for ending early, or let you renew a rental, come in a later step.
+- Month-to-month changes are versioned. The system creates a tracked notice and the new version does not apply to that customer until the configured notice period has passed after the notice is delivered.
+- A 6- or 12-month term starts when the appliances are delivered (when billing starts), not when the agreement is signed.
+- Customer and owner ending/renewal screens are built. Live customer email and automatic-renewal execution still follow the separate go-live approval switches.
 
 ### When equipment comes back early
 
@@ -445,7 +443,7 @@ actual physical fleet, or your public site text. Running the same
 command without `-- --yes` first shows exactly what it would delete
 without changing anything, if you want to see that before it happens.
 
-## What's not built yet
+## What's still deferred or not live
 
 (Corrected 2026-09-29 — this section had gone stale; photo uploads and
 the revenue dashboard were both built a while back but this list never

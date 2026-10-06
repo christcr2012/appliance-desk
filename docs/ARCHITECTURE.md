@@ -266,8 +266,9 @@ How each rule works:
    (`taxRateMilliPercent`, the same rate its rent carries) — the same way the
    early-ending fee is billed. Nothing is charged to a card automatically: the
    customer pays it like any other invoice, and the owner can see, adjust or
-   write it off (which is also how a company-caused late pickup is handled
-   until the IN-24 waiver is designed). Audit: `billing.late_return_invoiced`.
+   write it off. For a company-caused late pickup, Batch B2's owner/admin waiver
+   records the reason and matching negative rent adjustment without erasing the
+   original late-return line. Audit: `billing.late_return_invoiced`.
 2. **Late delivery.** When a DELIVERY/INSTALLATION job for an agreement is
    completed, staff can tick any agreement item that was **not** on the truck.
    Those appliances stay reserved for the customer and each gets a
@@ -448,9 +449,9 @@ Because this is one script that stops at its first failure (`&&` between each st
 
 **What Chris still needs to do by hand:** nothing, for a normal additive migration — merging the PR and Vercel's own deploy now does it all. He's only asked to do anything when a migration trips the destructive-change check, and even then the action is "confirm this is safe" and record it, not "figure out and paste raw SQL."
 
-**Neon ↔ Vercel preview branching:** not yet enabled. It's the kind of thing worth turning on once the team is actively merging PRs that touch the schema, so preview deployments get their own isolated database branch instead of sharing production data. Tracked in `docs/ROADMAP.md`.
+**Neon ↔ Vercel preview isolation:** previews already use the verified shared `vercel-preview-2` Neon branch rather than production, enforced by `src/lib/preview-database-safety.ts`. What is **not** enabled is one fresh Neon branch per individual preview deployment. That optional stronger isolation remains in `docs/ROADMAP.md`.
 
-**Branch protection:** Neon's free plan caps the number of protected branches, and the account already has one from a prior project, so `main` is not marked "protected" in Neon yet. It's still safe: the database it backs isn't publicly reachable except through this app, and (once billing allows) protecting it is a one-click follow-up — see `docs/DECISIONS.md`.
+**Branch protection:** completed and verified on 2026-09-29 after the Neon plan upgrade; the production `main` branch is protected. See `docs/DECISIONS.md` / `docs/ROADMAP.md`. Per-preview-deployment branching is a separate optional hardening item.
 
 ## Auth
 

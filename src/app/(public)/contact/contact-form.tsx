@@ -1,10 +1,20 @@
 "use client";
 
-import { cloneElement, isValidElement, useId, useState } from "react";
-import type { ReactElement } from "react";
+import { useId, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { leadFormSchemaForCatalog, type LeadFormInput } from "@/domains/leads/schema";
+import {
+  Button,
+  Card,
+  Checkbox,
+  Field,
+  Select,
+  Textarea,
+} from "@/components/ui";
+import {
+  leadFormSchemaForCatalog,
+  type LeadFormInput,
+} from "@/domains/leads/schema";
 import { submitLead } from "./actions";
 
 type ApplianceTypeOption = {
@@ -62,35 +72,23 @@ export function ContactForm({
 
   if (submitState === "success") {
     return (
-      <div
-        role="status"
-        className="rounded-2xl bg-accent-soft p-8 text-center ring-1 ring-accent/30"
-      >
-        <h2 className="font-display text-2xl font-semibold text-accent-dark">
-          Thanks — we&apos;ve got your request.
-        </h2>
-        <p className="mt-3 text-ink-soft">
-          We&apos;ll follow up soon, usually the same day, to confirm details
-          and get you a firm quote.
-        </p>
+      <div role="status">
+        <Card
+          title="Thanks — we've got your request."
+          className="text-center"
+        >
+          <p className="text-ink-soft">
+            We&apos;ll follow up soon, usually the same day, to confirm details
+            and get you a firm quote.
+          </p>
+        </Card>
       </div>
     );
   }
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-10">
-      {/* Honeypot (Phase 6A item 7 — spam protection): invisible to a
-          real visitor and never announced to assistive tech, but a
-          simple bot that fills in every field will fill this one too —
-          see leadFormSchema's "website" field and submitLead's check.
-          Not `display: none`, which some bots skip, but positioned
-          off-screen so it's genuinely never seen or focused. */}
-      {/* Static values only (no per-render data), so this is a plain
-          Tailwind class instead of an inline `style` — added 2026-09-29
-          alongside the new Content-Security-Policy header, which
-          restricts inline styles; every avoidable one that's removed
-          keeps that policy stricter. */}
-      <div aria-hidden="true" className="absolute -left-[9999px] h-px w-px overflow-hidden">
+      <div aria-hidden="true" className="sr-only">
         <label htmlFor={`${formId}-website`}>Leave this field blank</label>
         <input
           id={`${formId}-website`}
@@ -104,7 +102,7 @@ export function ContactForm({
       {serverMessage && (
         <p
           role="alert"
-          className="rounded-xl bg-danger/10 px-4 py-3 text-sm font-medium text-danger"
+          className="rounded-control border border-line bg-subtle px-4 py-3 text-sm font-semibold text-danger"
         >
           {serverMessage}
         </p>
@@ -116,25 +114,32 @@ export function ContactForm({
         </legend>
 
         <div>
-          <span className="mb-2 block text-sm font-medium text-ink">
+          <span
+            id={`${formId}-account-type-label`}
+            className="mb-2 block text-sm font-semibold text-ink"
+          >
             Are you renting for yourself or a business/property?
           </span>
-          <div className="flex gap-6">
-            <label className="flex items-center gap-2 text-sm text-ink-soft">
+          <div
+            role="radiogroup"
+            aria-labelledby={`${formId}-account-type-label`}
+            className="flex flex-wrap gap-6"
+          >
+            <label className="flex min-h-11 items-center gap-2 text-sm text-ink">
               <input
                 type="radio"
                 value="individual"
                 {...register("accountType")}
-                className="h-4 w-4"
+                className="h-5 w-5"
               />
               Myself
             </label>
-            <label className="flex items-center gap-2 text-sm text-ink-soft">
+            <label className="flex min-h-11 items-center gap-2 text-sm text-ink">
               <input
                 type="radio"
                 value="business"
                 {...register("accountType")}
-                className="h-4 w-4"
+                className="h-5 w-5"
               />
               Business / property
             </label>
@@ -146,84 +151,49 @@ export function ContactForm({
             id={`${formId}-companyName`}
             label="Company name"
             error={errors.companyName?.message}
-          >
-            <input
-              id={`${formId}-companyName`}
-              type="text"
-              {...register("companyName")}
-              className={inputClass}
-            />
-          </Field>
+            {...register("companyName")}
+          />
         )}
 
-        <label className="flex items-center gap-2 text-sm text-ink-soft">
-          <input
-            type="checkbox"
-            {...register("isPropertyManager")}
-            className="h-4 w-4"
-          />
-          I&apos;m a landlord, property manager, or apartment operator
-        </label>
+        <Checkbox
+          label="I'm a landlord, property manager, or apartment operator"
+          {...register("isPropertyManager")}
+        />
 
         <div className="grid gap-5 sm:grid-cols-2">
           <Field
             id={`${formId}-contactName`}
             label="Your name"
-            error={errors.contactName?.message}
+            autoComplete="name"
             required
-          >
-            <input
-              id={`${formId}-contactName`}
-              type="text"
-              autoComplete="name"
-              {...register("contactName")}
-              className={inputClass}
-            />
-          </Field>
-
+            error={errors.contactName?.message}
+            {...register("contactName")}
+          />
           <Field
             id={`${formId}-phone`}
             label="Phone number"
-            error={errors.phone?.message}
+            type="tel"
+            autoComplete="tel"
             required
-          >
-            <input
-              id={`${formId}-phone`}
-              type="tel"
-              autoComplete="tel"
-              {...register("phone")}
-              className={inputClass}
-            />
-          </Field>
-
+            error={errors.phone?.message}
+            {...register("phone")}
+          />
           <Field
             id={`${formId}-email`}
             label="Email"
-            hint="Optional, but recommended"
+            type="email"
+            autoComplete="email"
+            help="Optional, but recommended"
             error={errors.email?.message}
-          >
-            <input
-              id={`${formId}-email`}
-              type="email"
-              autoComplete="email"
-              {...register("email")}
-              className={inputClass}
-            />
-          </Field>
-
+            {...register("email")}
+          />
           <Field
             id={`${formId}-bestTimeToContact`}
             label="Best time to reach you"
+            placeholder="e.g. weekday afternoons"
             error={errors.bestTimeToContact?.message}
-          >
-            <input
-              id={`${formId}-bestTimeToContact`}
-              type="text"
-              placeholder="e.g. weekday afternoons"
-              {...register("bestTimeToContact")}
-              className={inputClass}
-            />
-          </Field>
+            {...register("bestTimeToContact")}
+          />
         </div>
       </fieldset>
 
@@ -233,30 +203,31 @@ export function ContactForm({
         </legend>
 
         <div>
-          <span className="mb-2 block text-sm font-medium text-ink">
+          <span className="mb-2 block text-sm font-semibold text-ink">
             Appliances you&apos;re interested in
           </span>
           {applianceTypes.length === 0 && (
-            <p className="text-sm text-ink-soft">No appliance options are listed yet. Tell us what you need in the notes below.</p>
+            <p className="text-sm text-ink-soft">
+              No appliance options are listed yet. Tell us what you need in the
+              notes below.
+            </p>
           )}
           <div className="grid gap-2 sm:grid-cols-2">
             {applianceTypes.map((type) => (
-              <label
+              <div
                 key={type.id}
-                className="flex items-center gap-2 rounded-lg border border-line px-4 py-3 text-sm text-ink-soft"
+                className="rounded-control border border-line bg-surface px-3"
               >
-                <input
-                  type="checkbox"
+                <Checkbox
+                  label={type.name}
                   value={type.id}
                   {...register("applianceTypeIds")}
-                  className="h-4 w-4"
                 />
-                {type.name}
-              </label>
+              </div>
             ))}
           </div>
           {errors.applianceTypeIds && (
-            <p role="alert" className="mt-2 text-sm text-danger">
+            <p role="alert" className="mt-2 text-sm font-semibold text-danger">
               {errors.applianceTypeIds.message}
             </p>
           )}
@@ -266,50 +237,31 @@ export function ContactForm({
           <Field
             id={`${formId}-quantity`}
             label="Quantity"
+            type="number"
+            min={1}
+            max={50}
             error={errors.quantity?.message}
+            {...register("quantity", { valueAsNumber: true })}
+          />
+          <Select
+            id={`${formId}-desiredTerm`}
+            label="Desired term"
+            error={errors.desiredTerm?.message}
+            {...register("desiredTerm")}
           >
-            <input
-              id={`${formId}-quantity`}
-              type="number"
-              min={1}
-              max={50}
-              {...register("quantity", { valueAsNumber: true })}
-              className={inputClass}
-            />
-          </Field>
-
-          <div>
-            <label
-              htmlFor={`${formId}-desiredTerm`}
-              className="mb-1 block text-sm font-medium text-ink"
-            >
-              Desired term
-            </label>
-            <select
-              id={`${formId}-desiredTerm`}
-              {...register("desiredTerm")}
-              className={inputClass}
-            >
-              {TERM_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
+            {TERM_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </Select>
           <Field
             id={`${formId}-desiredStartDate`}
             label="Desired start date"
+            type="date"
             error={errors.desiredStartDate?.message}
-          >
-            <input
-              id={`${formId}-desiredStartDate`}
-              type="date"
-              {...register("desiredStartDate")}
-              className={inputClass}
-            />
-          </Field>
+            {...register("desiredStartDate")}
+          />
         </div>
       </fieldset>
 
@@ -322,40 +274,26 @@ export function ContactForm({
             <Field
               id={`${formId}-addressLine1`}
               label="Service address"
+              autoComplete="address-line1"
               error={errors.addressLine1?.message}
-            >
-              <input
-                id={`${formId}-addressLine1`}
-                type="text"
-                autoComplete="address-line1"
-                {...register("addressLine1")}
-                className={inputClass}
-              />
-            </Field>
+              {...register("addressLine1")}
+            />
           </div>
           <Field
             id={`${formId}-city`}
             label="City"
+            autoComplete="address-level2"
             error={errors.city?.message}
-          >
-            <input
-              id={`${formId}-city`}
-              type="text"
-              autoComplete="address-level2"
-              {...register("city")}
-              className={inputClass}
-            />
-          </Field>
-          <Field id={`${formId}-zip`} label="ZIP code" error={errors.zip?.message}>
-            <input
-              id={`${formId}-zip`}
-              type="text"
-              inputMode="numeric"
-              autoComplete="postal-code"
-              {...register("zip")}
-              className={inputClass}
-            />
-          </Field>
+            {...register("city")}
+          />
+          <Field
+            id={`${formId}-zip`}
+            label="ZIP code"
+            inputMode="numeric"
+            autoComplete="postal-code"
+            error={errors.zip?.message}
+            {...register("zip")}
+          />
         </div>
       </fieldset>
 
@@ -367,39 +305,26 @@ export function ContactForm({
           id={`${formId}-howHeard`}
           label="How did you hear about us?"
           error={errors.howHeard?.message}
-        >
-          <input
-            id={`${formId}-howHeard`}
-            type="text"
-            {...register("howHeard")}
-            className={inputClass}
-          />
-        </Field>
-        <Field id={`${formId}-notes`} label="Notes" error={errors.notes?.message}>
-          <textarea
-            id={`${formId}-notes`}
-            rows={4}
-            {...register("notes")}
-            className={inputClass}
-          />
-        </Field>
+          {...register("howHeard")}
+        />
+        <Textarea
+          id={`${formId}-notes`}
+          label="Notes"
+          rows={4}
+          error={errors.notes?.message}
+          {...register("notes")}
+        />
         <Field
           id={`${formId}-referralCode`}
           label="Referral code (optional)"
+          placeholder="Got a code from a friend? Enter it here"
           error={errors.referralCode?.message}
-        >
-          <input
-            id={`${formId}-referralCode`}
-            type="text"
-            placeholder="Got a code from a friend? Enter it here"
-            {...register("referralCode")}
-            className={inputClass}
-          />
-        </Field>
+          {...register("referralCode")}
+        />
       </fieldset>
 
       <div>
-        <label className="flex items-start gap-3 text-sm text-ink-soft">
+        <label className="flex min-h-11 items-start gap-3 text-sm text-ink">
           <input
             type="checkbox"
             {...register("consent")}
@@ -407,7 +332,7 @@ export function ContactForm({
               errors.consent ? `${formId}-consent-error` : undefined
             }
             aria-invalid={errors.consent ? true : undefined}
-            className="mt-0.5 h-4 w-4"
+            className="mt-1 h-5 w-5 rounded-control border border-control bg-surface"
           />
           <span>
             I agree to the{" "}
@@ -425,66 +350,16 @@ export function ContactForm({
           <p
             id={`${formId}-consent-error`}
             role="alert"
-            className="mt-2 text-sm text-danger"
+            className="mt-1 text-sm font-semibold text-danger"
           >
             {errors.consent.message}
           </p>
         )}
       </div>
 
-      <button
-        type="submit"
-        disabled={isSubmitting}
-        className="inline-flex items-center justify-center rounded-full bg-primary px-8 py-3.5 text-base font-semibold text-on-primary shadow-sm transition-colors hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-60"
-      >
+      <Button type="submit" size="lg" disabled={isSubmitting}>
         {isSubmitting ? "Sending…" : "Request a quote"}
-      </button>
+      </Button>
     </form>
-  );
-}
-
-const inputClass =
-  "w-full rounded-lg border border-line-strong bg-surface px-3.5 py-2.5 text-ink placeholder:text-ink-faint focus-visible:border-primary";
-
-function Field({
-  id,
-  label,
-  hint,
-  error,
-  required,
-  children,
-}: {
-  id: string;
-  label: string;
-  hint?: string;
-  error?: string;
-  required?: boolean;
-  children: ReactElement<{
-    "aria-invalid"?: boolean;
-    "aria-describedby"?: string;
-  }>;
-}) {
-  const errorId = `${id}-error`;
-  const field = isValidElement(children)
-    ? cloneElement(children, {
-        "aria-invalid": error ? true : undefined,
-        "aria-describedby": error ? errorId : undefined,
-      })
-    : children;
-
-  return (
-    <div>
-      <label htmlFor={id} className="mb-1 block text-sm font-medium text-ink">
-        {label}
-        {required && <span aria-hidden="true"> *</span>}
-      </label>
-      {hint && <p className="mb-1 text-xs text-ink-faint">{hint}</p>}
-      {field}
-      {error && (
-        <p id={errorId} role="alert" className="mt-1 text-sm text-danger">
-          {error}
-        </p>
-      )}
-    </div>
   );
 }

@@ -96,10 +96,7 @@ Default ranking, **lowest to highest** value:
 
 `month-to-month → 6-month → 12-month → bulk (multiple units) → landlord/property manager/apartment operator needing multiple units`
 
-- Scoring uses rule values that are **currently hard-coded** in
-  `src/domains/leads/scoring.ts` (making them editable in
-  `/desk/settings` is a later-phase idea, not built yet — see
-  `docs/ROADMAP.md`), and stores the specific reasons applied to each
+- Scoring uses the versioned owner-configurable policy in `BusinessSettings.leadScoringPolicy`, editable under Desk → Settings → Lead scoring. Each lead stores the policy version and the specific reasons applied to that
   lead (e.g. `"+ 12-month term"`, `"+ property manager"`, `"+ 4
   units"`), shown to Chris next to the lead so it's never a black box.
   Current point values:
@@ -982,8 +979,7 @@ is never replaced by a default.
   was not fully set at that moment is stored as "never agreed", so ending early
   or auto-renew stay unavailable for that agreement even if the owner completes
   the settings later. Agreements sent before this existed have no snapshot, so
-  they have no early-ending quote. Month-to-month agreements follow the live
-  system-wide terms; the 30-day notice for changing those is not built yet.
+  they have no early-ending quote. Month-to-month agreements use versioned system-wide terms; changing them creates tracked notices, and a new version applies to an existing rental only after its delivered notice has aged through the configured change-notice period.
 - **Requesting early termination records it; it does not end the agreement.**
   Ending still goes through the normal close path on the effective date. The
   owner/admin can do it for any agreement; a customer can do it only for their
@@ -1080,9 +1076,9 @@ scheduled date), never from the moment a status button is pressed.
    owner-set dollar amount per day. The late days appear on the next bill as
    their own line, labeled `Late return – [item] – [N] days` (one line per
    item), with the agreement's sales tax. The bill is an ordinary open
-   invoice: it is never charged to a card automatically, so the owner can
-   adjust or write it off (for example a late pickup that was the company's
-   fault — the automatic waiver for that is still to be built, IN-24).
+   invoice: it is never charged to a card automatically. If the business caused
+   the late pickup, OWNER/ADMIN can record "Our delay" with a required note and
+   add the matching audited waiver built in Batch B2.
 2. **Late delivery (an item missing from the first delivery).** Billing starts
    only on a delivery/installation visit where at least one rental item is
    actually delivered. If every item is marked not delivered, that visit starts
@@ -1107,9 +1103,8 @@ scheduled date), never from the moment a status button is pressed.
    delivered later, stays on the subscription — the credit is the whole
    remedy. An item permanently cancelled (never delivered, taken off the
    agreement) comes off the Stripe subscription from the next billing period,
-   on top of the credit. *The subscription removal is not built yet — Batch C
-   (`docs/prompts/DESIGN-BATCH-C-LITERAL-SPECS.md`); until then the audit
-   entry tells the owner to adjust the subscription in Stripe by hand.*
+   on top of the credit. Batch C #175 implements that recurring-subscription
+   adjustment with durable provider-operation reconciliation.
 3. **The pickup day is not billed.** The final chargeable day of any rental
    is the day **before** the pickup/return date — for normal end-of-agreement
    pickups and late returns alike. An item picked up on the 1st of the month

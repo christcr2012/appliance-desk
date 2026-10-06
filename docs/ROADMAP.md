@@ -8,16 +8,8 @@ section with a date.
 
 ## Deferred to a later phase (already scoped, just not yet)
 
-- **Take a permanently cancelled item off the live Stripe subscription**
-  (Chris's rule, 2026-10-03): a never-delivered item that is removed from the
-  agreement must stop billing from the next period (delivered-late and
-  swapped-same-type items stay on the subscription). Needs a
-  `SUBSCRIPTION_UPDATE`-style provider operation with reconciliation and a
-  local rental-line amendment; specified as a Batch C work unit in
-  `docs/prompts/DESIGN-BATCH-C-LITERAL-SPECS.md`. Until built, the audit entry
-  tells the owner to adjust Stripe by hand.
-- **Company-caused late pickup waiver** (IN-24): record who caused a late
-  pickup and waive the late-return charge for company fault. Batch C design.
+- ~~**Take a permanently cancelled item off the live Stripe subscription.**~~ **Done in Batch C #175**: a never-delivered item permanently removed from the agreement is removed from recurring billing from the next period with reconciled provider evidence.
+- ~~**Company-caused late pickup waiver** (IN-24).~~ **Done in Batch B2 #208**: OWNER/ADMIN can record "Our delay" with a note and waive the applicable late-return days while preserving the original charge and audit trail.
 - **Collect late-return invoices through Stripe automatically** (today they
   are ordinary open invoices, like the early-ending fee).
 
@@ -54,10 +46,10 @@ section with a date.
   webhook endpoint is registered in the Stripe dashboard — nothing
   left open here.
 - Full accessibility/security review, backup/restore test, launch
-  checklist — Phase 7. **Backup restore: done.** Verified 2026-09-28 (see
-  `docs/DECISIONS.md`) — a real Neon snapshot restore had already been
-  run and finalized against the live database, and its data checked out
-  with no loss. **Automated accessibility coverage for every
+  checklist — Phase 7. **Historical provider snapshot restore: done.** Verified 2026-09-28 (see
+  `docs/DECISIONS.md`) — a real Neon snapshot restore was run and its data checked.
+  This does **not** replace Batch F's still-required application-export snapshot consistency,
+  restore script/drill, private-media inventory/recovery, and privacy non-resurrection proof. **Automated accessibility coverage for every
   logged-in page — started (2026-09-27).** Previously only the public
   site + login/password pages were checked by axe in CI; every
   `/desk/**` and `/account/**` page (owner desk, customer portal) had
@@ -123,11 +115,7 @@ section with a date.
     agreements' actual Stripe charges into one transaction (each
     property still bills independently) — a real design/risk question,
     not a UI gap, left for if Chris ever needs it.
-  - Not started: the 6/12-month-lease framing already exists as the
-    prepaid-term discount (see "Pricing" in `docs/BUSINESS-RULES.md`)
-    — the brief's owner-desk dashboard/nav rebuild and customer-portal
-    rebuild haven't been evaluated against what the in-house review's
-    PR #39 already changed yet.
+  - The owner-desk navigation/dashboard and customer-portal redesign ideas were subsequently evaluated and implemented through Batch E2. The separate 6/12-month lease framing already exists in the rental terms/pricing model.
 - **Require customers to verify their email before logging in** —
   **done (2026-09-28, Task #70)**. `requireEmailVerification: true` in
   `src/lib/auth.ts`. Because every account here is created server-side
@@ -596,15 +584,13 @@ Google Tasks/Keep, Sheets-as-reporting, Contacts sync.
 - The revenue filter browser test raced the browser's "back" button (fixed in #149 by
   waiting for the page to catch up); other specs that use `goBack()` followed by
   keyboard navigation may have the same weakness.
-- Held payments (a card payment on a written-off invoice, IN-23): build the owner screen
-  that resolves one (credit the account, reverse the write-off, or refund) once Chris
-  decides.
+- ~~Held-payment owner resolution screen (IN-23).~~ **Done in Batch B**: Billing → Held payments lets OWNER/ADMIN mark the invoice paid, keep the money as account credit, or refund the card with a recommended choice.
 
 - **A way to end custody for a lost or written-off unit (found in Batch C review, 2026-10-04).** A hand-made status change now refuses "available", "reserved" or "retired" while a customer is recorded as holding the unit, and refuses "rented" or "awaiting pickup" with no customer recorded (deliveries and pickups go through job completion). A unit that is genuinely lost at a customer's home therefore has no way to be retired yet; it needs an owner-only "end custody (lost / written off)" action with a reason. Not built; decide when P2-E/P2-F are designed.
 
 - **A "Cash received from this customer" block on the customer page (found in Batch C, 2026-10-04).** The rule is that customer cash (`collectedBetween`) appears only on the customer's own page, never on appliance or fleet screens, and a test now guards that. No such block exists on the customer page yet. Add it when the customer money tab is designed (Batch D).
 
-## 2026-10-04 — Owner desk and public site visual redesign (direction approved, not built)
+## 2026-10-04 — Owner desk and public site visual redesign (historical E2 design notes; implemented)
 
 Chris asked for a more polished, "high-end" look, using modern component-library sites (21st.dev-style dashboards and
 atmospheric hero pages) as **inspiration only**. Nothing from those libraries is used; every piece is built fresh in the
@@ -631,9 +617,16 @@ What the real work will need (so it is not forgotten):
   the kit in its latest version, but contrast was not measured; E's axe and manual checks are the real test. Every word in
   [BRACKETS] on the public home page is a placeholder: prices, service promises, timing, contact details and "what's included" must come
   from `BusinessSettings`, the agreement terms and `docs/BUSINESS-RULES.md`, never from the mockup. The kit forbids invented claims.
-- The public home page direction is not yet approved (only the owner desk is). The hero's dark gradient and two buttons differ from the
+- **Superseded by IN-32 / Batch E2:** the public home direction was later approved as ivory in light mode and evergreen/night in dark mode. Earlier notes about an unapproved home direction or mockup gradient are historical. The old mockup's dark gradient and two buttons differed from the
   kit's "ivory surfaces, one dominant next action" guidance and need a decision before design.
 - **Update 2026-10-04:** this is now scheduled as **Batch E2** (after E, before F) in `docs/PLAN.md`, covering the whole redesign: desktop, phone, dark mode, owner desk, customer portal and public site. A phone mockup of Today and the home page exists in the same private canvas.
+
+
+## 2026-10-06 — Deferred public-site visual redesign follow-up
+
+Batch E2's public-site slice (#262) is technically complete and merged, but its visual result is **not accepted as the final desired design quality**. The required owner/browser comparison found that, despite the new shared components, live-home imagery, CTA hierarchy, responsive coverage and light/dark treatment, the overall composition still feels too similar to the previous public site. Chris explicitly authorized merge to finish E2 and defer this concern rather than block the project.
+
+A later dedicated public-site visual pass should make the redesign immediately obvious while preserving the current business rules, published-content controls, SEO behavior, prelaunch/live-state logic, accessibility requirements, real brand assets, and provider/payment safety gates. This is a visual-quality follow-up, not a rollback of E2's shared component or accessibility work.
 
 ## 2026-10-06 — Owner audit: money tools and owner controls (now designed as Batches G, T, K, O)
 

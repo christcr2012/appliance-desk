@@ -38,10 +38,10 @@ axe · GitHub Actions · Vercel (preview per PR, production on `main`).
 src/app/            routes: (public) pages, /login, /account/**, /desk/**, /api/**
 src/domains/<x>/    business logic by domain — all rules and writes live here, not in pages
 src/lib/            auth, prisma, email, sms, stripe, session, rate-limit, uploads
-src/components/     shared UI (desk primitives, pagination, status badges, forms)
+src/components/     shared UI (`ui/`) plus domain/site shells and focused components
 prisma/             schema.prisma + migrations/ (additive only) + seed.ts
-tests/              vitest unit + real-Postgres integration tests (~1,000)
-e2e/                Playwright + axe browser tests (24 files), shards.json
+tests/              Vitest unit + real-Postgres integration tests
+e2e/                generated route inventory + sharded Playwright/axe browser tests
 scripts/            CI/ops scripts: migration check, schema health, CI login, shard runner
 .github/workflows/  ci.yml
 docs/               everything below

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Container } from "@/components/site/container";
-import { ButtonLink } from "@/components/site/button-link";
+import { ButtonLink } from "@/components/ui";
 import { getPublishedContent } from "@/domains/site-content";
 import { getContentForRequest } from "@/domains/site-content/request";
 

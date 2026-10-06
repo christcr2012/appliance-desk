@@ -120,3 +120,22 @@ All customer-addressed email goes through `sendCustomerEmail` (owner master swit
 - The E2 design's global radius/style lint assumption was stale against final `main`: hundreds of legacy `rounded-*` utilities remain on screens that the approved E2 plan explicitly migrates in E2-2 through E2-8. Applying the final guard globally in E2-1 would therefore collapse the remaining redesign into one oversized PR.
 - At the owner's direction to use smaller PRs when needed, WU-E2-1 is split into E2-1A (tokens, lint foundation, contrast/accessibility proof), E2-1B (shared visual primitives and render tests), and E2-1C (structural, form and list components with render tests). This is a sequencing-only split; the approved E2 behavior and acceptance criteria are unchanged.
 - E2-1A adds only brand-kit values already approved in BATCH-E2: navigation tokens and the 8px/16px radii. It does not change route behavior, data, permissions, live messaging, or payment activation.
+
+## 2026-10-06 — WU-E2-6 drift reconciliation
+
+- The E2 design still names `e2e/accessibility-authenticated.spec.ts`, but Batch E replaced that legacy file with the generated route inventory/accessibility shards plus `e2e/owner-portal-workspaces.spec.ts`. WU-E2-6 extends those current tests instead of recreating the removed file. The customer route inventory already includes the D-added settings/privacy surfaces; portal-home-only 390px coverage is added in the focused workspace spec to satisfy E2-9 without multiplying every customer route across an extra viewport.
+
+## 2026-10-06 — WU-E2-7 drift reconciliation
+
+- Batch D left a live `LaunchSettings.prelaunchMode` branch on the public home page. E2-7's “one home page” visual direction does not remove that business gate: both launch states are moved onto the approved Evergreen visual system, while the prelaunch state keeps its existing launch-list actions/copy and the live state gets the approved “Check your address” dominant action plus “See prices” text link. No launch state, legal approval, published-content, pricing, service-area, provider, or payment behavior changes.
+
+## 2026-10-06 — WU-E2-8 drift reconciliation
+
+- E2-2 and E2-6 had already implemented the E2-10 print-shell rule before WU-E2-8: owner/customer headers, side navigation and bottom bars are `print:hidden`, and `e2e/work-order-print.spec.ts` already verifies desk chrome/padding disappear at phone and desktop print widths. WU-E2-8 therefore validates that behavior rather than adding duplicate print CSS.
+- The legacy `DeskSidebar` had no remaining imports, but several later-migrated screens still referenced `primaryActionClass`/`secondaryActionClass`. WU-E2-8 moves those callers to shared `Button`/`ButtonLink`, removes the aliases from `workspace.tsx`, and deletes the unused sidebar only after grep proves no live references.
+- `docs/OWNER-GUIDE.md` contains no embedded screenshot assets to refresh. WU-E2-8 updates its current navigation/orientation prose; Batch F remains the final screenshot/handoff capture pass called for by the approved plan.
+
+
+## 2026-10-06 — E2 public-site visual acceptance disposition
+
+- WU-E2-7 / PR #262 passed its functional, accessibility, performance, and deployment gates and implements the approved E2-7 specification. During the required owner visual review, browser comparison against the existing production site showed that the overall composition remained too similar to the prior design. Chris judged the result visually unsatisfactory / insufficiently differentiated, but explicitly authorized #262 to merge so Batch E2 could finish. Treat the public-site visual quality as deferred follow-up work: the implementation is technically accepted, but it is not the final desired public-site redesign.

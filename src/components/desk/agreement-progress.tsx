@@ -1,6 +1,6 @@
-import Link from "next/link";
 import { agreementProgress } from "@/domains/agreements/progress";
-import { SectionCard, secondaryActionClass } from "./workspace";
+import { SectionCard } from "./workspace";
+import { ButtonLink } from "@/components/ui/button";
 export function AgreementProgress({
   agreement,
 }: {
@@ -14,17 +14,17 @@ export function AgreementProgress({
     >
       <p className="mb-4 text-sm font-medium text-ink">{data.next.label}</p>
       {data.next.href && (
-        <Link className={secondaryActionClass} href={data.next.href}>
+        <ButtonLink variant="secondary" href={data.next.href}>
           Open next step
-        </Link>
+        </ButtonLink>
       )}
       {agreement.status === "DRAFT" && (
-        <Link
-          className={secondaryActionClass}
+        <ButtonLink
+          variant="secondary"
           href={`/desk/agreements/new?draftId=${agreement.id}`}
         >
           Resume rental builder
-        </Link>
+        </ButtonLink>
       )}
       <dl className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {data.milestones.map((m) => (

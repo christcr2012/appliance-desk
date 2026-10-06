@@ -45,12 +45,12 @@ export default async function PrivacyPage({
       {!approved && <div className="mt-6"><DraftNotice /></div>}
 
       {params.verified === "yes" && (
-        <p role="status" className="mt-6 rounded-lg border border-line bg-subtle p-3 text-sm text-ink">
+        <p role="status" className="mt-6 rounded-control border border-line bg-subtle p-3 text-sm text-ink">
           Your privacy request is verified. The owner can now process it.
         </p>
       )}
       {params.verified === "no" && (
-        <p role="status" className="mt-6 rounded-lg border border-line bg-subtle p-3 text-sm text-ink">
+        <p role="status" className="mt-6 rounded-control border border-line bg-subtle p-3 text-sm text-ink">
           That verification link is invalid, expired, or already used. Contact us if you still need help with the request.
         </p>
       )}

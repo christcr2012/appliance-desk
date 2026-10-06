@@ -18,7 +18,7 @@ Legend: **Owner** = only Chris can do it · **Agent** = Claude can do it once yo
 | [ ] | Prices, deposit, late fees, prepay discounts reviewed | Desk → Settings (Owner) | Starting values | You have read every number on the settings screens |
 | [ ] | Held-payment and refund rules understood | Desk → Billing → Held payments (Owner) | Built | Walkthrough done |
 | [ ] | Pickup and delivery billing rules reviewed (late-return rate, late-delivery credit basis, pickup day not charged) | Desk → Settings → Pickups and deliveries (Owner) | Recommended values | You have read the three rules and saved them |
-| [ ] | Early-return choices reviewed: keep billing or stop at pickup, unused days (keep/credit/refund), early-ending fee, ask me or apply automatically (IN-29) | Desk → Settings → Ending and renewing rentals (Owner; built by Batch B2) | Not built yet | You have read each choice and saved your defaults |
+| [ ] | Early-return choices reviewed: keep billing or stop at pickup, unused days (keep/credit/refund), early-ending fee, ask me or apply automatically (IN-29) | Desk → Settings → Ending and renewing rentals (Owner; built by Batch B2 #208) | Ask me each time | You have read each choice and saved your defaults |
 
 ## 2. Customer email
 | Done | Item | Where / how | Today | How you know it worked |
@@ -28,7 +28,7 @@ Legend: **Owner** = only Chris can do it · **Agent** = Claude can do it once yo
 | [ ] | Owner switch "Send emails to customers" turned On | Desk → Settings → Notifications (owner only; built, starts Off) | Off | Renewal reminders on Desk → Notices turn "sent" (nightly), or send one by turning it on then waiting for the next night |
 | [ ] | Launch-list emails | Desk → Launch controls (has its own approval, separate from the switch above) (Owner) | Off | |
 | [ ] | Where staff alerts go | Vercel `BILLING_NOTIFICATION_EMAIL`, `LEAD_NOTIFICATION_EMAIL`, `MAINTENANCE_NOTIFICATION_EMAIL` (Owner) | Not set | Test lead/billing alert arrives |
-| [ ] | **Owner switch "Automatic renewals" stays OFF until the renewal-lifecycle design amendment is built** | Desk → Settings → Ending and renewing rentals (owner only; built, starts OFF) | Off | While OFF nothing is queued, started or billing-extended automatically, even for customers who agreed when signing; opt-out and early endings still work. Open findings R1-R7, D1-D2 in `docs/reviews/2026-10-03-pr161-independent-review.md`; fixed by Batch B2 (`docs/designs/BATCH-B2.md`, section 7 has the lines to tick) |
+| [ ] | **Owner switch "Automatic renewals" stays OFF until B2 is confirmed merged and counsel/owner wording gates (IN-21, IN-31) are satisfied** | Desk → Settings → Ending and renewing rentals (owner only; built, starts OFF) | Off | Batch B2 #205–#208 is merged. Before turning this on, complete the attorney/wording checks below and perform the live walkthrough; while OFF no automatic renewal extends billing. |
 | [ ] | Customer "Turn off automatic renewal" button tried end to end on the live site | My rentals page (customer account) | Built | Use a test customer with auto-renew on |
 | [ ] | Wording of every customer message read and approved | Notices, billing reminders, launch emails (Owner) | Draft wording | You approve each |
 
@@ -44,13 +44,13 @@ Previews and test copies never send email, even with the key and the switch on (
 |---|---|---|---|---|
 | [ ] | Colorado attorney reads the early-ending and auto-renew wording and the rental agreement | Desk → Settings → Terms (Owner) | Recommended starting wording | Attorney sign-off saved in `docs/OWNER-INPUTS.md` |
 | [ ] | Privacy policy, terms of use, accessibility statement published | Website pages (Owner approves) | Drafts | |
-| [ ] | Month-to-month rules and 30-day change notice decided (IN-21) | Owner decision, then Agent builds | Waiting for you | |
+| [ ] | Month-to-month notice wording approved (IN-21) | Owner + attorney; mechanism is already built in B2 #207 | Starting draft, live email OFF | Approval recorded before any live notice email is enabled |
 | [ ] | Is the early-ending fee taxable (IN-25) | CPA | Not taxed | |
-| [ ] | Pickup/return billing rule: stop at pickup, waive company-caused delay (IN-24) | Batch B2 (WU-B2-9) | Designed, not built | Record "our delay" on a late test pickup; the bill nets to $0 |
+| [ ] | Pickup/return billing rule walkthrough: stop at pickup, waive company-caused delay (IN-24) | Built in Batch B2 #208 | Built, not yet live-proven | Record "our delay" on a late test pickup; the late charge and matching waiver net correctly |
 
 ## 5. Website and company information
 | [ ] | Real business name, phone, email, address, hours, service area | Desk → Settings (Owner) | Placeholders like "[Phone Number]" until entered | Public site shows real details |
-| [ ] | Your own domain bought and pointed at the site | Vercel + domain registrar (Owner approves spending) | Not bought | Site opens on your domain with a lock icon |
+| [x] | Custom Robinson Appliance Rentals domain bought and pointed at the site | Vercel + domain registrar | Live | Production site opens on the custom domain over HTTPS |
 | [ ] | `NEXT_PUBLIC_APP_URL` and `BETTER_AUTH_URL` set to the real domain | Vercel (Production) | Test address | Login and emailed links go to your domain |
 
 ## 6. Accounts, security and platform
@@ -58,7 +58,8 @@ Previews and test copies never send email, even with the key and the switch on (
 | [ ] | `BETTER_AUTH_SECRET` and `CRON_SECRET` are long random values unique to production | Vercel (Production) (Owner/Agent) | Set | Nightly jobs run (Desk shows no errors) |
 | [ ] | Nightly jobs are running (Vercel Cron: reminders, renewals, late fees, billing check, backup, follow-ups) | Vercel → Cron (Owner checks) | Scheduled | Run history shows green daily |
 | [ ] | Daily backup tested by restoring it into a throwaway copy | Agent (Batch F) | Backups run | Restore proof recorded |
-| [ ] | Database plan upgrade (protected branches, per-preview databases) | Neon (Owner approves spending) | Not upgraded | |
+| [x] | Neon plan upgrade and production branch protection | Neon | Completed/verified 2026-09-29 | Production `main` is protected; normal previews already use the isolated preview branch |
+| [x] | Preview database isolated from production | Existing `vercel-preview-2` guard/proof | Verified | One fresh Neon branch per individual preview remains optional post-launch hardening, not a launch gate |
 | [ ] | Photo storage (private) set for production | Vercel Blob tokens (`PRIVATE_PHOTO_BLOB_*`, `BLOB_READ_WRITE_TOKEN`) | Set per environment | Photo upload works in production only |
 | [ ] | Public sign-up stays disabled | Already enforced in code | Disabled | Nothing to do |
 

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Container } from "@/components/site/container";
-import { ButtonLink } from "@/components/site/button-link";
+import { ButtonLink, Card } from "@/components/ui";
 import { ApplianceMedia } from "@/components/site/appliance-icon";
 import { getBusinessSettings } from "@/domains/settings";
 import { getPublishedApplianceTypes, formatCents } from "@/domains/pricing";
@@ -54,15 +54,12 @@ export default async function PricingPage({
         {applianceTypes.length > 0 ? (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {applianceTypes.map((type) => (
-              <div
-                key={type.id}
-                className="flex flex-col rounded-2xl bg-surface p-8 shadow-sm ring-1 ring-line"
-              >
+              <Card key={type.id} className="flex flex-col">
                 <ApplianceMedia
                   photoUrl={type.photoUrl}
                   name={type.name}
                   alt={catalogAlt(content, type.slug, type.name)}
-                  className="h-40 w-full rounded-lg object-cover"
+                  className="h-40 w-full rounded-control object-cover"
                   iconClassName="h-16 w-auto text-primary"
                 />
                 <h2 className="mt-5 font-display text-xl font-semibold text-ink">
@@ -81,11 +78,11 @@ export default async function PricingPage({
                   </p>
                 )}
                 <div className="mt-6">
-                  <ButtonLink href="/contact" variant="outline" className="w-full">
+                  <ButtonLink href="/contact" variant="secondary" className="w-full">
                     Get this one
                   </ButtonLink>
                 </div>
-              </div>
+              </Card>
             ))}
           </div>
         ) : (
@@ -108,7 +105,7 @@ export default async function PricingPage({
             <h2 className="font-display text-2xl font-semibold text-ink">
               One-time fees
             </h2>
-            <dl className="mt-4 divide-y divide-line rounded-xl bg-surface ring-1 ring-line">
+            <dl className="mt-4 divide-y divide-line rounded-card border border-line bg-surface">
               {fees.map((fee) => (
                 <div
                   key={fee.label}
