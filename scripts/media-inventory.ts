@@ -256,15 +256,24 @@ export async function runMediaInventoryAndCopy(input: {
       continue;
     }
 
-    const recoveryPath = `recovery/${now.toISOString().slice(0, 7)}/${sourcePath}`;
+    // The hash is part of the path so a changed photo can never overwrite the
+    // bytes paired with an older database backup from the same month.
+    const recoveryPath = `recovery/${now.toISOString().slice(0, 7)}/${source.sha256}/${sourcePath}`;
     const recovered = await copy(photo.url, recoveryPath, {
       access: "private",
       token: store.token,
       contentType: source.contentType,
       addRandomSuffix: false,
-      allowOverwrite: true,
-      ifMatch: source.etag,
+      allowOverwrite: false,
     });
+    const verifiedCopy = await readAndHash(recovered.url, store.token);
+    if (
+      !verifiedCopy ||
+      verifiedCopy.sha256 !== source.sha256 ||
+      verifiedCopy.size !== source.size
+    ) {
+      throw new Error(`Recovery copy verification failed for "${sourcePath}".`);
+    }
     entries.push({
       photoId: photo.id,
       sourceUrl: photo.url,
@@ -308,12 +317,81 @@ export async function runMediaInventoryAndCopy(input: {
   });
 
   const counts = inventoryCounts(entries, unreferenced.length);
-  if (counts.missing > 0) {
+  if (counts.missing + counts.tombstoned > 0) {
     throw new Error(
-      `Media inventory found ${counts.missing} referenced private object(s) missing. Review the paired media manifest.`,
+      `Media inventory found ${counts.missing + counts.tombstoned} referenced private object problem(s) (${counts.missing} missing, ${counts.tombstoned} privacy-tombstoned). Review the paired media manifest.`,
     );
   }
   return { manifest, manifestUrl: written.url, counts };
+}
+
+export async function restoreMediaFromManifest(
+  manifestUrl: string,
+): Promise<{ restored: number; alreadyPresent: number; skippedTombstoned: number }> {
+  const store = getPrivatePhotoStore();
+  if (!store) throw new Error("Private photo storage is unavailable.");
+  const backupToken = process.env.BLOB_READ_WRITE_TOKEN;
+  if (!backupToken) throw new Error("Backup Blob storage is unavailable.");
+
+  const manifest = await readPrivateJson<MediaRecoveryManifest>(manifestUrl, backupToken);
+  if (!manifest || manifest.formatVersion !== 1) {
+    throw new Error("Media recovery manifest is invalid.");
+  }
+
+  let restored = 0;
+  let alreadyPresent = 0;
+  let skippedTombstoned = 0;
+
+  for (const entry of manifest.entries) {
+    if (!entry.recoveryUrl || !entry.sha256 || entry.size === null) continue;
+
+    // This check is intentionally live, not just the manifest's historical
+    // status: a privacy deletion may have happened after this backup.
+    if (await blobExists(privacyDeletionTombstonePath(entry.sourcePath), store.token)) {
+      skippedTombstoned += 1;
+      continue;
+    }
+
+    const primary = await readAndHash(entry.sourceUrl, store.token);
+    if (primary) {
+      if (primary.sha256 !== entry.sha256 || primary.size !== entry.size) {
+        throw new Error(
+          `Primary object "${entry.sourcePath}" exists but differs from this recovery manifest; refusing to overwrite it.`,
+        );
+      }
+      alreadyPresent += 1;
+      continue;
+    }
+
+    const recovery = await readAndHash(entry.recoveryUrl, store.token);
+    if (
+      !recovery ||
+      recovery.sha256 !== entry.sha256 ||
+      recovery.size !== entry.size
+    ) {
+      throw new Error(`Recovery copy hash mismatch for "${entry.sourcePath}".`);
+    }
+
+    await copy(entry.recoveryUrl, entry.sourcePath, {
+      access: "private",
+      token: store.token,
+      contentType: recovery.contentType,
+      addRandomSuffix: false,
+      allowOverwrite: false,
+    });
+
+    const restoredPrimary = await readAndHash(entry.sourcePath, store.token);
+    if (
+      !restoredPrimary ||
+      restoredPrimary.sha256 !== entry.sha256 ||
+      restoredPrimary.size !== entry.size
+    ) {
+      throw new Error(`Restored primary object "${entry.sourcePath}" failed hash verification.`);
+    }
+    restored += 1;
+  }
+
+  return { restored, alreadyPresent, skippedTombstoned };
 }
 
 export async function verifyMediaRecoverySample(
@@ -357,13 +435,23 @@ export async function verifyMediaRecoverySample(
 }
 
 async function cli(): Promise<void> {
-  const [command, manifestUrl, sampleCount] = process.argv.slice(2);
-  if (command !== "verify" || !manifestUrl) {
+  const [command, manifestUrl, extra] = process.argv.slice(2);
+  if (!manifestUrl || !["verify", "restore"].includes(command ?? "")) {
     throw new Error(
-      "Usage: npx tsx scripts/media-inventory.ts verify <media-manifest-url> [sample-count]",
+      "Usage: npx tsx scripts/media-inventory.ts <verify|restore> <media-manifest-url> [sample-count-for-verify]",
     );
   }
-  const sampleSize = sampleCount === undefined ? 3 : Number(sampleCount);
+
+  if (command === "restore") {
+    if (extra !== undefined) throw new Error("The restore command does not accept a sample count.");
+    const result = await restoreMediaFromManifest(manifestUrl);
+    console.log(
+      `Media restore passed (${result.restored} restored, ${result.alreadyPresent} already present, ${result.skippedTombstoned} privacy-tombstoned skipped).`,
+    );
+    return;
+  }
+
+  const sampleSize = extra === undefined ? 3 : Number(extra);
   if (!Number.isInteger(sampleSize) || sampleSize < 0) {
     throw new Error("sample-count must be a non-negative integer.");
   }
