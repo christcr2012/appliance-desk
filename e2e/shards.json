@@ -1,5 +1,5 @@
 {
-  "_comment": "Explicit CI shard assignment for the browser suite (4 parallel runners). Every e2e/*.spec.ts must appear in exactly one group (scripts/e2e-shard.mjs enforces this in CI). Balanced by measured duration on 2026-10-03 (~56s of test time per group; the two heaviest files cannot be split further). Each run prints per-file durations as a CI notice; rebalance from those numbers. See docs/ARCHITECTURE.md (Keeping CI fast).",
+  "_comment": "Explicit CI shard assignment for the browser suite (4 parallel runners). Every e2e/*.spec.ts must appear in exactly one group (scripts/e2e-shard.mjs enforces this in CI). E10 generated route coverage replaces the old duplicate axe route loops; focused legacy keyboard/menu/theme regressions remain. Generated scans are split across browser-b/c/d from measured runtimes; no fifth runner.",
   "groups": {
     "browser-a": [
       "owner-portal-workspaces.spec.ts",
@@ -7,13 +7,14 @@
     ],
     "browser-b": [
       "revenue-records.spec.ts",
-      "accessibility-dark-mode.spec.ts"
+      "accessibility-dark-mode.spec.ts",
+      "accessibility-routes-public.spec.ts"
     ],
     "browser-c": [
       "crm-workspace.spec.ts",
-      "accessibility-authenticated.spec.ts",
       "appliance-price-save-feedback.spec.ts",
-      "purchasing-review.spec.ts"
+      "purchasing-review.spec.ts",
+      "accessibility-routes-desk-a.spec.ts"
     ],
     "browser-d": [
       "staff-security.spec.ts",
@@ -31,7 +32,8 @@
       "launch.spec.ts",
       "signing-waiver-presentation.spec.ts",
       "work-order-print.spec.ts",
-      "security-response-headers.spec.ts"
+      "security-response-headers.spec.ts",
+      "accessibility-routes-desk-b.spec.ts"
     ]
   }
 }
