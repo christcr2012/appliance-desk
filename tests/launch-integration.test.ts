@@ -116,6 +116,11 @@ describe("durable launch sequence", () => {
     expect(rows[0].unsubscribeToken).toMatch(/^[a-f0-9]{64}$/);
     expect(rows[0].confirmedAt).toBeNull();
     expect(rows[0].confirmTokenHash).toMatch(/^[a-f0-9]{64}$/);
+    expect(rows[0].confirmExpiresAt).toBeInstanceOf(Date);
+    const confirmationLifetimeMs =
+      rows[0].confirmExpiresAt!.getTime() - rows[0].createdAt.getTime();
+    expect(confirmationLifetimeMs).toBeGreaterThan(6.9 * 24 * 60 * 60 * 1000);
+    expect(confirmationLifetimeMs).toBeLessThanOrEqual(7.1 * 24 * 60 * 60 * 1000);
     expect(send).toHaveBeenCalledTimes(1);
     confirmationToken = tokenFromLatestEmail();
   });
