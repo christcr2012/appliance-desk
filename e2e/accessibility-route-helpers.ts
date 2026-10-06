@@ -26,6 +26,18 @@ export async function scanAccessibilityRoute(
       theme === "dark" ? /dark/ : /^(?!.*\bdark\b)/,
     );
 
+    // The class changes before browser paints and before transition-colors
+    // finishes. Axe must inspect the settled palette, never a half-dark frame.
+    await page.evaluate(async () => {
+      await new Promise<void>((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+      });
+      await Promise.all(
+        document.getAnimations().filter((animation) => animation.playState === "running")
+          .map((animation) => animation.finished.catch(() => undefined)),
+      );
+    });
+
     for (const width of VIEWPORTS) {
       await page.setViewportSize({ width, height: 900 });
       const results = await new AxeBuilder({ page })
