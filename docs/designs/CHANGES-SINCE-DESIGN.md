@@ -128,3 +128,9 @@ All customer-addressed email goes through `sendCustomerEmail` (owner master swit
 ## 2026-10-06 — WU-E2-7 drift reconciliation
 
 - Batch D left a live `LaunchSettings.prelaunchMode` branch on the public home page. E2-7's “one home page” visual direction does not remove that business gate: both launch states are moved onto the approved Evergreen visual system, while the prelaunch state keeps its existing launch-list actions/copy and the live state gets the approved “Check your address” dominant action plus “See prices” text link. No launch state, legal approval, published-content, pricing, service-area, provider, or payment behavior changes.
+
+## 2026-10-06 — WU-E2-8 drift reconciliation
+
+- E2-2 and E2-6 had already implemented the E2-10 print-shell rule before WU-E2-8: owner/customer headers, side navigation and bottom bars are `print:hidden`, and `e2e/work-order-print.spec.ts` already verifies desk chrome/padding disappear at phone and desktop print widths. WU-E2-8 therefore validates that behavior rather than adding duplicate print CSS.
+- The legacy `DeskSidebar` had no remaining imports, but several later-migrated screens still referenced `primaryActionClass`/`secondaryActionClass`. WU-E2-8 moves those callers to shared `Button`/`ButtonLink`, removes the aliases from `workspace.tsx`, and deletes the unused sidebar only after grep proves no live references.
+- `docs/OWNER-GUIDE.md` contains no embedded screenshot assets to refresh. WU-E2-8 updates its current navigation/orientation prose; Batch F remains the final screenshot/handoff capture pass called for by the approved plan.
