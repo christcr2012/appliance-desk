@@ -1,21 +1,35 @@
 import Link from "next/link";
-import { getEarningsReport, getJobsMissingRepairCost } from "@/domains/reports";
+import {
+  getEarningsReport,
+  getJobsMissingRepairCost,
+} from "@/domains/reports";
 import { getLeadSourceBreakdown } from "@/domains/leads";
 import { formatCents } from "@/domains/pricing";
 import { requireRole } from "@/lib/session";
 import { ExportCsvLink } from "@/components/export-csv-link";
 import { MetricStat } from "@/components/desk/metric-stat";
+import {
+  Card,
+  DataList,
+  EmptyState,
+  PageHeader,
+  type DataListColumn,
+} from "@/components/ui";
 
 export const metadata = { title: "Reports" };
 
-/** A gap worth calling out on its own row, not just sorting order — small
- * rounding/timing noise (an invoice that posted a day late, say) isn't
- * worth flagging as "behind." $10 is a deliberately low, simple bar: this
- * is meant to catch real shortfalls, not create noise. */
 const NOTABLE_GAP_CENTS = 1000;
 
-// OWNER/ADMIN only (docs/DECISIONS.md, 2026-09-28 "Staff permissions
-// framework") — never rely on the nav link being hidden alone.
+type EarningsRow = Awaited<
+  ReturnType<typeof getEarningsReport>
+>["rows"][number];
+type MissingRepairRow = Awaited<
+  ReturnType<typeof getJobsMissingRepairCost>
+>[number];
+type LeadSourceRow = Awaited<
+  ReturnType<typeof getLeadSourceBreakdown>
+>[number];
+
 export default async function ReportsPage() {
   await requireRole("OWNER", "ADMIN");
   const [earnings, missingCostJobs, leadSources] = await Promise.all([
@@ -24,153 +38,204 @@ export default async function ReportsPage() {
     getLeadSourceBreakdown(),
   ]);
 
-  const notableRows = earnings.rows.filter((r) => r.gapCents > NOTABLE_GAP_CENTS);
+  const notableRows = earnings.rows.filter(
+    (row) => row.gapCents > NOTABLE_GAP_CENTS,
+  );
+
+  const earningsColumns: DataListColumn<EarningsRow>[] = [
+    {
+      key: "customer",
+      header: "Customer",
+      primary: true,
+      cell: (row) => (
+        <Link
+          href={`/desk/agreements/${row.agreementId}`}
+          className="font-semibold text-ink underline-offset-4 hover:underline"
+        >
+          {row.customerName}
+        </Link>
+      ),
+    },
+    {
+      key: "estimated",
+      header: "Estimated",
+      cell: (row) => formatCents(row.estimatedCents),
+    },
+    {
+      key: "collected",
+      header: "Collected",
+      cell: (row) => formatCents(row.actualCents),
+    },
+    {
+      key: "gap",
+      header: "Gap",
+      cell: (row) => (
+        <span className="font-semibold text-warning-ink">
+          {formatCents(row.gapCents)} behind
+        </span>
+      ),
+    },
+  ];
+
+  const repairColumns: DataListColumn<MissingRepairRow>[] = [
+    {
+      key: "repair",
+      header: "Repair",
+      primary: true,
+      cell: (job) => {
+        const first = job.appliances[0]?.appliance;
+        return (
+          <Link
+            href={`/desk/jobs/${job.id}`}
+            className="font-semibold text-ink underline-offset-4 hover:underline"
+          >
+            {first
+              ? `${first.applianceType.name} ${first.assetNumber}`
+              : "Repair job"}
+          </Link>
+        );
+      },
+    },
+    {
+      key: "customer",
+      header: "Customer",
+      cell: (job) =>
+        job.customer
+          ? job.customer.user.name ?? job.customer.user.email
+          : "No customer",
+    },
+    {
+      key: "completed",
+      header: "Completed",
+      cell: (job) =>
+        job.completedAt
+          ? new Date(job.completedAt).toLocaleDateString("en-US")
+          : "—",
+    },
+  ];
+
+  const leadColumns: DataListColumn<LeadSourceRow>[] = [
+    {
+      key: "source",
+      header: "Source",
+      primary: true,
+      cell: (row) => row.source,
+    },
+    {
+      key: "leads",
+      header: "Leads",
+      cell: (row) => String(row.total),
+    },
+    {
+      key: "converted",
+      header: "Converted",
+      cell: (row) => String(row.converted),
+    },
+    {
+      key: "rate",
+      header: "Conversion rate",
+      cell: (row) => `${Math.round(row.conversionRate * 100)}%`,
+    },
+  ];
 
   return (
     <div>
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold">Reports</h1>
-          <p className="mt-1 max-w-2xl text-sm text-ink-soft">
-            What your agreements&apos; agreed pricing says you should have
-            collected by now, compared with what&apos;s actually been paid —
-            and repairs that are missing their cost, which would otherwise
-            quietly make an appliance look more profitable than it really was.
-          </p>
-        </div>
-        <ExportCsvLink href="/desk/reports/export" label="Export transactions (CSV)" />
-      </div>
-      <p className="mt-2 max-w-2xl text-sm text-ink-faint">
-        The export is every payment, refund, and security deposit movement
-        on file, oldest first — hand it to a bookkeeper or import it into
-        whatever accounting software you end up using.
+      <PageHeader
+        title="Reports"
+        description="Compare agreed pricing with collections, find completed repairs missing cost data, and review lead-source conversion."
+        secondaryActions={
+          <ExportCsvLink
+            href="/desk/reports/export"
+            label="Export transactions (CSV)"
+          />
+        }
+      />
+
+      <p className="max-w-2xl text-sm text-ink-soft">
+        The export contains every payment, refund, and security-deposit
+        movement on file, oldest first, for bookkeeping or accounting import.
       </p>
 
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <MetricStat metric="reports.estimatedEarnings" value={formatCents(earnings.totals.estimatedCents)} />
-        <MetricStat metric="reports.collected" value={formatCents(earnings.totals.actualCents)} />
+        <MetricStat
+          metric="reports.estimatedEarnings"
+          value={formatCents(earnings.totals.estimatedCents)}
+        />
+        <MetricStat
+          metric="reports.collected"
+          value={formatCents(earnings.totals.actualCents)}
+        />
         <MetricStat
           metric="reports.gap"
           value={formatCents(earnings.totals.gapCents)}
-          tone={earnings.totals.gapCents > NOTABLE_GAP_CENTS ? "warning" : "default"}
+          tone={
+            earnings.totals.gapCents > NOTABLE_GAP_CENTS
+              ? "warning"
+              : "default"
+          }
         />
       </div>
 
-      <section className="mt-8">
-        <h2 className="font-medium text-ink">Agreements falling behind their own pricing</h2>
-        <p className="mt-1 text-sm text-ink-soft">
-          Only agreements more than $10 short are listed — small
-          timing differences (an invoice that posted a day or two late)
-          aren&apos;t worth flagging.
-        </p>
-        {notableRows.length === 0 ? (
-          <p className="mt-4 text-sm text-ink-soft">
-            Nothing behind right now — every billing agreement&apos;s
-            collections are keeping up with its agreed price.
-          </p>
-        ) : (
-          <ul className="mt-4 divide-y divide-line rounded-lg border border-line bg-white">
-            {notableRows.map((row) => (
-              <li key={row.agreementId}>
-                <Link
-                  href={`/desk/agreements/${row.agreementId}`}
-                  className="flex flex-col gap-1 px-4 py-4 hover:bg-canvas sm:flex-row sm:items-center sm:justify-between"
-                >
-                  <p className="font-medium text-ink">{row.customerName}</p>
-                  <div className="text-sm text-ink-faint sm:text-right">
-                    <p>
-                      Estimated {formatCents(row.estimatedCents)} · Collected{" "}
-                      {formatCents(row.actualCents)}
-                    </p>
-                    <p className="font-medium text-amber-700">
-                      {formatCents(row.gapCents)} behind
-                    </p>
-                  </div>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+      <div className="mt-8 space-y-6">
+        <Card
+          title="Agreements falling behind their own pricing"
+          description="Only agreements more than $10 short are listed so small timing differences do not create noise."
+        >
+          <DataList
+            rows={notableRows}
+            columns={earningsColumns}
+            caption="Agreements falling behind their own pricing"
+            empty={
+              <EmptyState
+                title="Nothing is behind right now"
+                description="Every billing agreement's collections are keeping up with its agreed price."
+              />
+            }
+          />
+        </Card>
 
-      <section className="mt-8">
-        <h2 className="font-medium text-ink">Repairs missing a logged cost</h2>
-        <p className="mt-1 text-sm text-ink-soft">
-          Completed repair jobs with no parts or labor cost entered yet —
-          until it&apos;s logged, that appliance&apos;s profitability
-          (Fleet page) counts this repair as free, which almost certainly
-          isn&apos;t true.
-        </p>
-        {missingCostJobs.length === 0 ? (
-          <p className="mt-4 text-sm text-ink-soft">
-            Every completed repair has a cost logged. Nothing to fix here.
-          </p>
-        ) : (
-          <ul className="mt-4 divide-y divide-line rounded-lg border border-line bg-white">
-            {missingCostJobs.map((job) => {
-              const first = job.appliances[0]?.appliance;
-              return (
-                <li key={job.id}>
-                  <Link
-                    href={`/desk/jobs/${job.id}`}
-                    className="flex flex-col gap-1 px-4 py-3 hover:bg-canvas sm:flex-row sm:items-center sm:justify-between"
-                  >
-                    <p className="text-sm text-ink">
-                      {first ? `${first.applianceType.name} ${first.assetNumber}` : "Repair job"}
-                      {job.customer && (
-                        <span className="text-ink-faint">
-                          {" "}
-                          — {job.customer.user.name ?? job.customer.user.email}
-                        </span>
-                      )}
-                    </p>
-                    <p className="text-sm text-ink-faint">
-                      Completed{" "}
-                      {job.completedAt ? new Date(job.completedAt).toLocaleDateString("en-US") : ""}
-                    </p>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </section>
+        <Card
+          title="Repairs missing a logged cost"
+          description="Completed repair jobs with no parts or labor cost entered yet. Until the cost is logged, Fleet profitability treats that repair as free."
+        >
+          <DataList
+            rows={missingCostJobs}
+            columns={repairColumns}
+            caption="Repairs missing a logged cost"
+            empty={
+              <EmptyState
+                title="Every completed repair has a cost logged"
+                description="Nothing needs cost follow-up here."
+              />
+            }
+          />
+        </Card>
 
-      <section className="mt-8">
-        <h2 className="font-medium text-ink">Where your leads come from</h2>
-        <p className="mt-1 text-sm text-ink-soft">
-          Every lead, grouped by how they said they heard about you, with
-          how many of each group actually became a customer — a quick way
-          to see whether your marketing is actually working, not just word
-          of mouth (or the other way around).
-        </p>
-        {leadSources.length === 0 ? (
-          <p className="mt-4 text-sm text-ink-soft">No leads yet.</p>
-        ) : (
-          <ul className="mt-4 divide-y divide-line rounded-lg border border-line bg-white">
-            {leadSources.map((row) => (
-              <li key={row.source} className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
-                <p className="text-ink">{row.source}</p>
-                <p className="text-ink-faint">
-                  {row.total} lead{row.total === 1 ? "" : "s"} · {row.converted} converted (
-                  {Math.round(row.conversionRate * 100)}%)
-                </p>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+        <Card
+          title="Where your leads come from"
+          description="Lead sources with conversion counts and rates so marketing performance can be compared."
+        >
+          <DataList
+            rows={leadSources}
+            columns={leadColumns}
+            caption="Lead source conversion"
+            empty={
+              <EmptyState
+                title="No leads yet"
+                description="Lead-source reporting will appear after leads are recorded."
+              />
+            }
+          />
+        </Card>
+      </div>
 
       <p className="mt-6 max-w-2xl text-xs text-ink-faint">
-        &ldquo;Estimated&rdquo; is reconstructed from each agreement&apos;s
-        own agreed monthly price and how long it&apos;s actually been
-        billing — the same math used elsewhere in the app for revenue
-        trends. &ldquo;Collected&rdquo; is money received and account credit
-        applied to that agreement&apos;s invoices (card, check, cash and
-        any other recorded payment), minus refunds recorded on them. It is
-        the same basis on every row and in the totals. This is a reconciliation aid, not a legal
-        record — the real invoice/payment history on each customer&apos;s
-        page is always the exact figure.
+        “Estimated” is reconstructed from each agreement&apos;s agreed monthly
+        price and how long it has been billing. “Collected” is money received
+        and account credit applied to that agreement&apos;s invoices, minus
+        recorded refunds. This is a reconciliation aid, not a legal record;
+        the invoice and payment history on each customer&apos;s page remains
+        the exact record.
       </p>
     </div>
   );
