@@ -112,3 +112,9 @@ All customer-addressed email goes through `sendCustomerEmail` (owner master swit
 - Batch E11 closes the remaining business-audit surface with bounded Customer/Lead message history, explicit provider-state wording, public launch confirmation/unsubscribe limits, mailbox-confirmation consent evidence, an explainable custody + lead-pipeline demand estimate, and the provider-outage runbook.
 - Live customer email/SMS/marketing activation remains outside this implementation and still requires the existing owner gates.
 
+
+
+## 2026-10-06 — Batch E2 post-E drift check
+
+- E2 begins from final Batch E `main` after #221–#225, including generated route accessibility coverage, E11 messaging surfaces, seven-day launch confirmation expiry/owner visibility, and the approved E9 `border-action` correction.
+- The original E2 lint-guard wording assumed legacy radii could be forbidden across all `src/**/*.tsx` before screen migration. Final Batch E still has legacy `rounded-*` utilities on screens intentionally scheduled for E2-2 through E2-8, so the guard is introduced on `src/components/ui/**` first and expands to the whole TSX tree only after those migrations. This preserves the approved design without turning E2-1 into an unplanned whole-app rewrite.
