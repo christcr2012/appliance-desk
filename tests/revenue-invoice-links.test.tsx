@@ -27,14 +27,22 @@ beforeEach(() => {
 });
 it.each(["payments", "refunds"])("%s rows link to the customer statement and each exact desk invoice", async (source) => {
   render(await RevenuePage({ searchParams: Promise.resolve({ source, scope: "all" }) }));
-  expect(screen.getByRole("link", { name: "Test Customer" })).toHaveAttribute("href", "/desk/billing/customer/customer-456");
-  expect(screen.getByRole("link", { name: "Invoice #123" })).toHaveAttribute(
-    "href", "/desk/billing/customer/customer-456/invoice/invoice-123",
-  );
-  expect(screen.getByRole("link", { name: "Invoice #124" })).toHaveAttribute(
-    "href", "/desk/billing/customer/customer-456/invoice/invoice-124",
-  );
-  expect(screen.getByText(/\$5 held as account credit/)).toBeVisible();
+  for (const link of screen.getAllByRole("link", { name: "Test Customer" })) {
+    expect(link).toHaveAttribute("href", "/desk/billing/customer/customer-456");
+  }
+  for (const link of screen.getAllByRole("link", { name: "Invoice #123" })) {
+    expect(link).toHaveAttribute(
+      "href",
+      "/desk/billing/customer/customer-456/invoice/invoice-123",
+    );
+  }
+  for (const link of screen.getAllByRole("link", { name: "Invoice #124" })) {
+    expect(link).toHaveAttribute(
+      "href",
+      "/desk/billing/customer/customer-456/invoice/invoice-124",
+    );
+  }
+  expect(screen.getAllByText(/\$5 held as account credit/)).toHaveLength(2);
   expect(m.role).toHaveBeenCalledWith("OWNER", "ADMIN");
   expect(m.records).toHaveBeenCalledWith(source, false, undefined, expect.any(Date));
 });
