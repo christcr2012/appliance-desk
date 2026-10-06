@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { EndRental } from "./end-rental";
 import { EndFixedTerm } from "./end-fixed-term";
 import { AutoRenewControl } from "./auto-renew-control";
@@ -16,9 +15,17 @@ import { formatCents } from "@/domains/pricing/money";
 import { prisma } from "@/lib/prisma";
 import {
   rentalAgreementStatusLabel,
+  rentalAgreementStatusTone,
   jobStatusLabel,
   jobTypeLabel,
 } from "@/lib/status-labels";
+import {
+  ButtonLink,
+  Card,
+  EmptyState,
+  PageHeader,
+  StatusPill,
+} from "@/components/ui";
 
 export const metadata = { title: "My rentals" };
 
@@ -42,7 +49,15 @@ export default async function AccountRentalsPage({
   const customer = session ? await getPortalData(session.user.id) : null;
 
   if (!customer || !session) {
-    return <p className="text-ink-soft">No rental account found.</p>;
+    return (
+      <div className="max-w-3xl">
+        <PageHeader title="My rentals" />
+        <EmptyState
+          title="No rental account found"
+          description="Contact the business if you expected to see rental details here."
+        />
+      </div>
+    );
   }
 
   const visitsPage = positivePage((await searchParams).visitsPage);
@@ -71,13 +86,27 @@ export default async function AccountRentalsPage({
   }));
 
   return (
-    <div className="max-w-3xl">
-      <h1 className="text-xl font-semibold text-ink">My rentals</h1>
+    <div className="max-w-4xl">
+      <PageHeader
+        title="My rentals"
+        description="Review your rental items, visits, and the ending or renewal terms that belong to each agreement."
+        secondaryActions={
+          <ButtonLink
+            href="/account/maintenance?request=pickup"
+            variant="secondary"
+          >
+            Request pickup
+          </ButtonLink>
+        }
+      />
 
       {customer.rentalAgreements.length === 0 ? (
-        <p className="mt-4 text-sm text-ink-soft">You don&apos;t have any rentals yet.</p>
+        <EmptyState
+          title="You don't have any rentals yet"
+          description="Signed and active rental details will appear here."
+        />
       ) : (
-        <div className="mt-6 space-y-6">
+        <div className="space-y-6">
           {customer.rentalAgreements.map((agreement) => {
             const total = agreement.lines.reduce((sum, line) => sum + line.monthlyPriceCents, 0);
             const fixedTerms = agreement.termMonths ? describeSnapshotTerms(agreement.termsSnapshot) : null;
@@ -91,30 +120,34 @@ export default async function AccountRentalsPage({
               : null;
 
             return (
-              <section key={agreement.id} className="rounded-lg border border-line bg-surface p-5">
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <h2 className="font-medium text-ink">
-                    {agreement.serviceAddress.line1}, {agreement.serviceAddress.city}
-                  </h2>
-                  <span className="text-sm text-ink-soft">
-                    {agreement.status === "SCHEDULED" && agreement.startDate
-                      ? `Renewal starts on ${formatBusinessDate(agreement.startDate)}`
-                      : rentalAgreementStatusLabel(agreement.status)}
-                  </span>
-                </div>
-
-                <p className="mt-1 text-sm text-ink-soft">
-                  {agreement.termMonths ? `${agreement.termMonths}-month term` : "Month-to-month"}
-                </p>
+              <Card
+                key={agreement.id}
+                title={`${agreement.serviceAddress.line1}, ${agreement.serviceAddress.city}`}
+                description={
+                  agreement.termMonths
+                    ? `${agreement.termMonths}-month term`
+                    : "Month-to-month"
+                }
+                actions={
+                  <StatusPill
+                    tone={rentalAgreementStatusTone(agreement.status)}
+                    label={
+                      agreement.status === "SCHEDULED" && agreement.startDate
+                        ? `Renewal starts on ${formatBusinessDate(agreement.startDate)}`
+                        : rentalAgreementStatusLabel(agreement.status)
+                    }
+                  />
+                }
+              >
 
                 {agreement.terminationRequestedAt && agreement.terminationEffectiveOn && endingLastBilledDay && (
-                  <p className="mt-3 rounded-lg border border-line bg-subtle p-3 text-sm text-ink">
+                  <p className="mt-3 rounded-card border border-line bg-subtle p-3 text-sm text-ink">
                     Ends on {formatBusinessDate(agreement.terminationEffectiveOn)} — last billed day {formatBusinessDate(endingLastBilledDay)}.
                     We will contact you to arrange pickup.
                   </p>
                 )}
 
-                <div className="mt-4 rounded-lg bg-subtle p-3">
+                <div className="mt-4 rounded-card bg-subtle p-3">
                   <p className="text-sm font-medium text-ink">Next visit</p>
                   {nextVisit?.scheduledAt ? (
                     <p className="mt-1 text-sm text-ink-soft">
@@ -144,7 +177,7 @@ export default async function AccountRentalsPage({
 
                 <p className="mt-3 text-sm font-medium text-ink">Monthly total: {formatCents(total)}</p>
                 {agreement.freeMonthGranted && (
-                  <p className="text-sm font-medium text-green-700">Paid in full, in advance — your first month was free.</p>
+                  <p className="text-sm font-medium text-success">Paid in full, in advance — your first month was free.</p>
                 )}
                 {agreement.depositCents > 0 && (
                   <p className="text-sm text-ink-soft">Deposit required: {formatCents(agreement.depositCents)}</p>
@@ -170,7 +203,7 @@ export default async function AccountRentalsPage({
 
                       {agreement.status === "ACTIVE" && !agreement.terminationRequestedAt && fixedTerms?.ending && (
                         earlyQuote ? (
-                          <div className="rounded-lg border border-line bg-subtle p-3">
+                          <div className="rounded-card border border-line bg-subtle p-3">
                             <p className="font-medium text-ink">Your ending quote</p>
                             <ul className="mt-1 space-y-1 text-ink-soft">
                               <li>Ending date: {formatBusinessDate(earlyQuote.effectiveOn)}</li>
@@ -238,7 +271,7 @@ export default async function AccountRentalsPage({
                         <p className="text-ink-soft">Not available for this rental — contact us.</p>
                       )}
                       {agreement.status === "ACTIVE" && !agreement.terminationRequestedAt && mtmQuote && (
-                        <div className="mt-3 rounded-lg border border-line bg-subtle p-3">
+                        <div className="mt-3 rounded-card border border-line bg-subtle p-3">
                           <p className="text-ink">
                             If you end it now, it will end on {formatBusinessDate(mtmQuote.effectiveOn)}; your last billed day will be {formatBusinessDate(mtmQuote.lastBilledDay)}. There is no fee. We will arrange pickup.
                           </p>
@@ -256,18 +289,19 @@ export default async function AccountRentalsPage({
                     </div>
                   )}
                 </div>
-              </section>
+              </Card>
             );
           })}
         </div>
       )}
 
-      <Link
+      <ButtonLink
         href="/account/maintenance?request=pickup"
-        className="mt-6 inline-flex min-h-11 items-center rounded-lg border border-control px-4 py-2 text-primary hover:bg-subtle"
+        variant="secondary"
+        className="mt-6"
       >
         Request pickup
-      </Link>
+      </ButtonLink>
       <p className="mt-2 text-sm text-ink-soft">
         A pickup request is reviewed by the business; it does not cancel your agreement or change billing automatically.
       </p>
@@ -277,7 +311,7 @@ export default async function AccountRentalsPage({
         {!visitPage || visitPage.items.length === 0 ? (
           <p className="mt-2 text-sm text-ink-soft">No visits on this page.</p>
         ) : (
-          <ul className="mt-2 divide-y divide-line rounded-lg border border-line bg-surface">
+          <ul className="mt-2 divide-y divide-line rounded-card border border-line bg-surface">
             {visitPage.items.map((job) => (
               <li key={job.id} className="px-4 py-3 text-sm">
                 <p className="font-medium text-ink">{jobTypeLabel(job.type)}</p>
@@ -291,10 +325,20 @@ export default async function AccountRentalsPage({
         )}
         <div className="mt-3 flex gap-4 text-sm">
           {visitsPage > 1 && (
-            <Link className="text-primary underline" href={`/account/rentals?visitsPage=${visitsPage - 1}`}>Newer visits</Link>
+            <ButtonLink
+              href={`/account/rentals?visitsPage=${visitsPage - 1}`}
+              variant="secondary"
+            >
+              Newer visits
+            </ButtonLink>
           )}
           {visitPage?.hasMore && (
-            <Link className="text-primary underline" href={`/account/rentals?visitsPage=${visitsPage + 1}`}>Older visits</Link>
+            <ButtonLink
+              href={`/account/rentals?visitsPage=${visitsPage + 1}`}
+              variant="secondary"
+            >
+              Older visits
+            </ButtonLink>
           )}
         </div>
       </div>
