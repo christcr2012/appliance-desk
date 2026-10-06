@@ -3,7 +3,7 @@
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createTaskAction } from "./actions";
-import { primaryActionClass } from "@/components/desk/workspace";
+import { Button } from "@/components/ui";
 
 import { TaskFields, readTaskFields, type TaskAssignee } from "./task-fields";
 
@@ -62,13 +62,9 @@ export function NewTaskForm({
         note={initialNote}
       />
       <div className="flex flex-wrap items-end gap-3">
-        <button
-          type="submit"
-          disabled={isPending}
-          className={`${primaryActionClass} disabled:opacity-60`}
-        >
+        <Button type="submit" disabled={isPending}>
           {isPending ? "Adding…" : "Add task"}
-        </button>
+        </Button>
       </div>
       {error && (
         <p
