@@ -86,7 +86,7 @@ export default async function JobsPage({
               aria-current={active ? "page" : undefined}
               className={`rounded-full border px-3 py-1 text-sm ${
                 active
-                  ? "border-primary bg-action text-on-action"
+                  ? "border-action bg-action text-on-action"
                   : "border-line-strong text-ink-soft hover:border-line-strong"
               }`}
             >

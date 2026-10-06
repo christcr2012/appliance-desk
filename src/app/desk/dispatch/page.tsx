@@ -165,7 +165,7 @@ export default async function DispatchPage({
               aria-current={view === v ? "page" : undefined}
               className={`rounded-full border px-3 py-1 text-sm capitalize ${
                 view === v
-                  ? "border-primary bg-action text-on-action"
+                  ? "border-action bg-action text-on-action"
                   : "border-line-strong text-ink-soft hover:border-line-strong"
               }`}
             >

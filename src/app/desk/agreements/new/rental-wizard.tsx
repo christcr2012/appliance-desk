@@ -412,7 +412,7 @@ export function RentalWizard({
               aria-current={active ? "step" : undefined}
               className={`rounded-full border px-3 py-1 text-sm ${
                 active
-                  ? "border-primary bg-action text-on-action"
+                  ? "border-action bg-action text-on-action"
                   : done
                     ? "border-green-300 bg-green-50 text-green-800"
                     : "border-line-strong text-ink-faint"
