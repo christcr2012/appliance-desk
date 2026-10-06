@@ -16,8 +16,8 @@ export default async function NoticesPage() {
         title="Notices waiting to go out"
         description="Messages a customer is owed, such as the reminder before an automatic renewal. Each one is saved exactly as written."
       />
-      <div className="mb-6 rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-800">
-        <p className="font-medium text-gray-900">How this works</p>
+      <div className="mb-6 rounded-lg border border-line-strong bg-white px-4 py-3 text-sm text-ink">
+        <p className="font-medium text-ink">How this works</p>
         <p className="mt-1">
           Colorado asks that a customer is reminded 25 to 40 days before an automatic renewal. The reminder is written
           for you the moment the renewal is set up, using the renewal wording the customer agreed to. It is emailed
@@ -32,7 +32,7 @@ export default async function NoticesPage() {
         </p>
       </div>
       {waiting.length === 0 ? (
-        <div className="rounded-lg border border-gray-200 bg-white p-6 text-sm text-gray-700">
+        <div className="rounded-lg border border-line bg-white p-6 text-sm text-ink-soft">
           No notices are waiting to go out.
         </div>
       ) : (
