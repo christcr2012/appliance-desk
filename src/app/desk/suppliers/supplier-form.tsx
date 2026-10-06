@@ -2,7 +2,11 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { createSupplierAction, updateSupplierAction } from "../purchasing-actions";
+import { Button, Field, Textarea } from "@/components/ui";
+import {
+  createSupplierAction,
+  updateSupplierAction,
+} from "../purchasing-actions";
 
 type SupplierFormValues = {
   name: string;
@@ -12,9 +16,6 @@ type SupplierFormValues = {
   notes: string;
 };
 
-/** Shared by "add a supplier" (no supplierId) and editing an existing
- * one (supplierId set) — same fields either way, same pattern as this
- * app's other create/edit form pairs (e.g. the customer address form). */
 export function SupplierForm({
   supplierId,
   initial,
@@ -35,8 +36,8 @@ export function SupplierForm({
   });
   const [error, setError] = useState<string | null>(null);
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  function handleSubmit(event: React.FormEvent) {
+    event.preventDefault();
     setError(null);
     startTransition(async () => {
       const result = supplierId
@@ -57,79 +58,63 @@ export function SupplierForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 rounded-lg border border-line bg-white p-5">
-      <div>
-        <label htmlFor="supplier-name" className="block text-sm font-medium text-ink-soft">
-          Supplier name
-        </label>
-        <input
-          id="supplier-name"
-          type="text"
-          required
-          value={values.name}
-          onChange={(e) => setValues({ ...values, name: e.target.value })}
-          className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
-        />
-      </div>
-      <div>
-        <label htmlFor="supplier-contact-name" className="block text-sm font-medium text-ink-soft">
-          Contact name
-        </label>
-        <input
-          id="supplier-contact-name"
-          type="text"
-          value={values.contactName}
-          onChange={(e) => setValues({ ...values, contactName: e.target.value })}
-          className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
-        />
-      </div>
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <Field
+        id="supplier-name"
+        label="Supplier name"
+        required
+        value={values.name}
+        onChange={(event) =>
+          setValues({ ...values, name: event.target.value })
+        }
+      />
+
+      <Field
+        id="supplier-contact-name"
+        label="Contact name"
+        value={values.contactName}
+        onChange={(event) =>
+          setValues({ ...values, contactName: event.target.value })
+        }
+      />
+
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div>
-          <label htmlFor="supplier-phone" className="block text-sm font-medium text-ink-soft">
-            Phone
-          </label>
-          <input
-            id="supplier-phone"
-            type="tel"
-            value={values.phone}
-            onChange={(e) => setValues({ ...values, phone: e.target.value })}
-            className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
-          />
-        </div>
-        <div>
-          <label htmlFor="supplier-email" className="block text-sm font-medium text-ink-soft">
-            Email
-          </label>
-          <input
-            id="supplier-email"
-            type="email"
-            value={values.email}
-            onChange={(e) => setValues({ ...values, email: e.target.value })}
-            className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
-          />
-        </div>
-      </div>
-      <div>
-        <label htmlFor="supplier-notes" className="block text-sm font-medium text-ink-soft">
-          Notes
-        </label>
-        <textarea
-          id="supplier-notes"
-          rows={3}
-          value={values.notes}
-          onChange={(e) => setValues({ ...values, notes: e.target.value })}
-          className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
+        <Field
+          id="supplier-phone"
+          label="Phone"
+          type="tel"
+          value={values.phone}
+          onChange={(event) =>
+            setValues({ ...values, phone: event.target.value })
+          }
+        />
+        <Field
+          id="supplier-email"
+          label="Email"
+          type="email"
+          value={values.email}
+          onChange={(event) =>
+            setValues({ ...values, email: event.target.value })
+          }
         />
       </div>
-      <button
-        type="submit"
-        disabled={isPending}
-        className="rounded-md bg-action px-4 py-2 text-sm font-medium text-on-action hover:bg-action disabled:opacity-50"
-      >
+
+      <Textarea
+        id="supplier-notes"
+        label="Notes"
+        rows={3}
+        value={values.notes}
+        onChange={(event) =>
+          setValues({ ...values, notes: event.target.value })
+        }
+      />
+
+      <Button type="submit" disabled={isPending}>
         {isPending ? "Saving…" : supplierId ? "Save changes" : "Add supplier"}
-      </button>
+      </Button>
+
       {error && (
-        <p role="alert" className="text-sm text-red-700">
+        <p role="alert" className="text-sm font-semibold text-danger">
           {error}
         </p>
       )}
