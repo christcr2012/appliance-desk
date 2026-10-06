@@ -16,11 +16,12 @@ test("draft and reserved line survive refresh with discounted pricing and one ch
   test.setTimeout(120_000);
   await page.setViewportSize({ width: 360, height: 900 });
   await page.goto("/desk/customers");
-  const customer = page
-    .locator("main")
-    .getByRole("link")
-    .filter({ hasText: process.env.TEST_CUSTOMER_EMAIL! });
-  await customer.click();
+  const customerRow = page
+    .locator("main tr:visible, main li:visible")
+    .filter({ hasText: process.env.TEST_CUSTOMER_EMAIL! })
+    .first();
+  await expect(customerRow).toBeVisible();
+  await customerRow.getByRole("link").first().click();
   await page
     .getByRole("link", { name: "+ New agreement", exact: true })
     .click();

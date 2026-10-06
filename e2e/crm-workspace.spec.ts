@@ -13,13 +13,15 @@ test.beforeEach(() => {
 });
 async function customerUrl(page: Page) {
   await page.goto("/desk/customers");
-  const link = page
-    .locator("main")
-    .getByRole("link")
-    .filter({
-      hasText: process.env.TEST_CUSTOMER_EMAIL ?? "ci-customer@example.test",
-    });
-  await expect(link).toHaveCount(1);
+  const email =
+    process.env.TEST_CUSTOMER_EMAIL ?? "ci-customer@example.test";
+  const row = page
+    .locator("main tr:visible, main li:visible")
+    .filter({ hasText: email })
+    .first();
+  await expect(row).toBeVisible();
+  const link = row.getByRole("link").first();
+  await expect(link).toBeVisible();
   return (await link.getAttribute("href"))!;
 }
 for (const width of [360, 768, 1440])

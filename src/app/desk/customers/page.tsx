@@ -3,10 +3,18 @@ import { getCustomersPage, getCustomersCount } from "@/domains/customers";
 import { parsePage, paginationMeta } from "@/domains/pagination";
 import { Pagination } from "@/components/pagination";
 import { ExportCsvLink } from "@/components/export-csv-link";
-import { HomeServiceIcon } from "@/components/icons/service-icons";
-import { PlusIcon } from "@/components/icons/status-icons";
+import {
+  ButtonLink,
+  DataList,
+  EmptyState,
+  PageHeader,
+  StatusPill,
+  type DataListColumn,
+} from "@/components/ui";
 
 export const metadata = { title: "Customers" };
+
+type CustomerRow = Awaited<ReturnType<typeof getCustomersPage>>[number];
 
 export default async function CustomersPage({
   searchParams,
@@ -18,73 +26,87 @@ export default async function CustomersPage({
   const meta = paginationMeta(totalCount, parsePage(rawPage));
   const customers = await getCustomersPage(meta.skip, meta.pageSize);
 
+  const columns: DataListColumn<CustomerRow>[] = [
+    {
+      key: "customer",
+      header: "Customer",
+      primary: true,
+      cell: (customer) => (
+        <div>
+          <Link
+            href={`/desk/customers/${customer.id}`}
+            className="font-semibold text-ink underline-offset-4 hover:underline"
+          >
+            {customer.user.name ?? customer.user.email}
+          </Link>
+          {customer.companyName && (
+            <span className="mt-1 block text-sm font-normal text-ink-soft">
+              {customer.companyName}
+            </span>
+          )}
+          {customer.isPropertyManager && (
+            <span className="mt-2 block">
+              <StatusPill tone="progress" label="Property manager" />
+            </span>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: "contact",
+      header: "Contact",
+      cell: (customer) => customer.user.email,
+    },
+    {
+      key: "agreements",
+      header: "Agreements",
+      cell: (customer) => String(customer._count.rentalAgreements),
+    },
+    {
+      key: "properties",
+      header: "Properties",
+      cell: (customer) =>
+        `${customer.serviceAddresses.length} ${customer.serviceAddresses.length === 1 ? "property" : "properties"}`,
+    },
+  ];
+
   return (
     <div>
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="flex items-center gap-2 text-xl font-semibold">
-          <HomeServiceIcon className="h-5 w-5 text-ink-faint" />
-          Customers
-        </h1>
-        <div className="flex gap-2">
+      <PageHeader
+        title="Customers"
+        description="Everyone renting from you. Website inquiries begin as leads; convert them there, or add a customer directly."
+        primaryAction={{ href: "/desk/customers/new", label: "Add customer" }}
+        secondaryActions={
           <ExportCsvLink href="/desk/customers/export" label="Export CSV" />
-          <Link
-            href="/desk/customers/new"
-            className="inline-flex items-center gap-1 rounded-md bg-action px-3 py-1.5 text-sm font-medium text-on-action hover:bg-action"
-          >
-            <PlusIcon className="h-4 w-4" />
-            Add customer
-          </Link>
-        </div>
-      </div>
-      <p className="mt-1 text-sm text-ink-soft">
-        Everyone renting from you. A website inquiry comes in as a lead first
-        — convert it from the Leads page to turn it into a customer here, or
-        add someone directly if you&apos;re signing them up yourself.
-      </p>
+        }
+      />
 
       {customers.length === 0 ? (
-        <p className="mt-6 text-sm text-ink-soft">
-          No customers yet — add one directly, or convert your first lead.
-        </p>
+        <EmptyState
+          title="No customers yet"
+          description="Add someone directly, or convert your first lead."
+          action={
+            <ButtonLink href="/desk/customers/new" variant="secondary">
+              Add customer
+            </ButtonLink>
+          }
+        />
       ) : (
-        <ul className="mt-6 divide-y divide-line rounded-lg border border-line bg-white">
-          {customers.map((c) => (
-            <li key={c.id}>
-              <Link
-                href={`/desk/customers/${c.id}`}
-                className="flex flex-col gap-1 px-4 py-4 hover:bg-canvas sm:flex-row sm:items-center sm:justify-between"
-              >
-                <div>
-                  <p className="font-medium text-ink">
-                    {c.user.name ?? c.user.email}
-                    {c.companyName ? ` — ${c.companyName}` : ""}
-                    {c.isPropertyManager && (
-                      <span className="ml-2 rounded-full bg-primary-soft px-2 py-0.5 text-xs font-medium text-primary-dark">
-                        Property manager
-                      </span>
-                    )}
-                  </p>
-                  <p className="text-sm text-ink-soft">{c.user.email}</p>
-                </div>
-                <div className="text-sm text-ink-faint sm:text-right">
-                  <p>{c._count.rentalAgreements} agreement(s)</p>
-                  <p>
-                    {c.serviceAddresses.length}{" "}
-                    {c.serviceAddresses.length === 1 ? "property" : "properties"}{" "}
-                    on file
-                  </p>
-                </div>
-              </Link>
-            </li>
-          ))}
-        </ul>
+        <DataList
+          rows={customers}
+          columns={columns}
+          caption="Customers"
+          empty={null}
+        />
       )}
 
       <Pagination
         page={meta.page}
         totalPages={meta.totalPages}
         totalCount={meta.totalCount}
-        buildHref={(p) => (p === 1 ? "/desk/customers" : `/desk/customers?page=${p}`)}
+        buildHref={(page) =>
+          page === 1 ? "/desk/customers" : `/desk/customers?page=${page}`
+        }
       />
     </div>
   );
