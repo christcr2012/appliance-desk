@@ -1,8 +1,8 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Container } from "@/components/site/container";
-import { ButtonLink } from "@/components/site/button-link";
 import { ApplianceMedia } from "@/components/site/appliance-icon";
+import { ButtonLink, Card } from "@/components/ui";
 import { getBusinessSettings, parseServiceArea } from "@/domains/settings";
 import { getPublishedApplianceTypes, formatCents } from "@/domains/pricing";
 import { getLaunchSettings } from "@/domains/launch";
@@ -27,53 +27,52 @@ export default async function HomePage({
   })).filter((item) => item.q && item.a);
   const serviceArea = parseServiceArea(settings);
 
-  if (launch.prelaunchMode)
+  if (launch.prelaunchMode) {
     return (
       <>
-        <section>
-          <Container className="grid items-center gap-12 py-16 md:grid-cols-2 md:py-24">
+        <section className="bg-canvas">
+          <Container className="grid items-center gap-10 py-14 md:grid-cols-2 md:py-20">
             <div>
-              <p className="inline-flex rounded-full bg-primary-soft px-4 py-2 text-sm font-semibold text-primary-dark">
+              <p className="inline-flex rounded-control bg-primary-soft px-3 py-2 text-sm font-semibold text-primary-dark">
                 Preparing to launch · Greeley, Colorado
               </p>
-              <h1 className="mt-6 font-display text-4xl font-semibold leading-tight md:text-5xl">
+              <h1 className="mt-6 font-display text-4xl font-semibold leading-tight text-primary dark:text-ink md:text-5xl">
                 {fillSiteText(content["home.prelaunch.heading"], { businessName })}
               </h1>
-              <p className="mt-5 text-lg text-ink-soft">
+              <p className="mt-5 max-w-xl text-lg text-ink-soft">
                 {fillSiteText(content["home.prelaunch.body"], { businessName })}
               </p>
-              <div className="mt-8 flex flex-wrap gap-4">
-                <ButtonLink href="/launch" variant="primary">
+              <div className="mt-8 flex flex-wrap items-center gap-4">
+                <ButtonLink href="/launch" size="lg">
                   Join the launch interest list
                 </ButtonLink>
-                <ButtonLink href="/contact" variant="outline">
+                <Link
+                  href="/contact"
+                  className="inline-flex min-h-11 items-center font-semibold text-primary underline"
+                >
                   Ask a question
-                </ButtonLink>
+                </Link>
               </div>
               <p className="mt-4 text-sm text-ink-soft">
                 No payment or rental commitment. Our opening date is still being
                 finalized.
               </p>
             </div>
-            <div className="rounded-3xl border border-line bg-surface p-8 md:p-10">
-              <h2 className="font-display text-2xl font-semibold">
-                A local business, built around a local need.
-              </h2>
-              <p className="mt-4 text-ink-soft">
-                We started Robinson Appliance Rentals because we believe our
-                community needs more choices beyond buying appliances outright
-                or taking on expensive rent-to-own arrangements.
-              </p>
-              <p className="mt-4 text-ink-soft">
-                We&apos;re a small family business getting ready to serve our
-                neighbors. Join our interest list to hear how things are coming
-                together.
-              </p>
+            <div className="overflow-hidden rounded-card border border-line bg-surface p-2">
+              <Image
+                src="/appliances/hero-lineup.jpg"
+                alt={fillSiteText(content["image.hero.alt"], { businessName })}
+                width={1408}
+                height={768}
+                className="h-auto w-full rounded-control object-cover"
+                priority
+              />
             </div>
           </Container>
         </section>
+
         <section className="border-y border-line bg-surface">
-          <Container className="grid gap-8 py-12 md:grid-cols-3">
+          <Container className="grid gap-5 py-12 md:grid-cols-3">
             {[
               [
                 "Maintenance included",
@@ -88,16 +87,16 @@ export default async function HomePage({
                 "Planning for renters, homeowners, landlords, and property managers in Greeley and the surrounding area.",
               ],
             ].map(([title, body]) => (
-              <div key={title}>
-                <h2 className="font-display text-xl font-semibold">{title}</h2>
-                <p className="mt-3 text-ink-soft">{body}</p>
-              </div>
+              <Card key={title} title={title}>
+                <p className="text-sm text-ink-soft">{body}</p>
+              </Card>
             ))}
           </Container>
         </section>
+
         <section>
           <Container className="py-16 text-center">
-            <h2 className="font-display text-3xl font-semibold">
+            <h2 className="font-display text-3xl font-semibold text-ink">
               Help us get ready for your neighborhood.
             </h2>
             <p className="mx-auto mt-4 max-w-xl text-ink-soft">
@@ -105,58 +104,56 @@ export default async function HomePage({
               send launch news and a short introduction to our business.
             </p>
             <div className="mt-6">
-              <ButtonLink href="/launch" variant="primary">
-                Keep me updated
-              </ButtonLink>
+              <ButtonLink href="/launch">Keep me updated</ButtonLink>
             </div>
           </Container>
         </section>
       </>
     );
+  }
 
   return (
     <>
-      {/* Hero */}
-      <section className="overflow-hidden">
-        <Container className="grid items-center gap-12 py-16 md:grid-cols-2 md:py-24">
+      <section className="bg-canvas">
+        <Container className="grid items-center gap-10 py-14 md:grid-cols-2 md:py-20">
           <div>
-            <p className="inline-flex items-center rounded-full bg-primary-soft px-4 py-1.5 text-sm font-medium text-primary-dark">
+            <p className="inline-flex rounded-control bg-primary-soft px-3 py-2 text-sm font-semibold text-primary-dark">
               Now renting in {serviceArea.cities[0] ?? "Colorado"}
             </p>
-            <h1 className="mt-6 font-display text-4xl font-semibold leading-tight text-ink md:text-5xl">
+            <h1 className="mt-6 font-display text-4xl font-semibold leading-tight text-primary dark:text-ink md:text-5xl">
               {fillSiteText(content["home.hero.heading"], { businessName })}
             </h1>
-            <p className="mt-5 max-w-lg text-lg text-ink-soft">
+            <p className="mt-5 max-w-xl text-lg text-ink-soft">
               {fillSiteText(content["home.hero.body"], { businessName })}
             </p>
-            <div className="mt-8 flex flex-wrap gap-4">
-              <ButtonLink href="/contact" variant="primary">
-                Get a free quote
+            <div className="mt-8 flex flex-wrap items-center gap-4">
+              <ButtonLink href="/contact" size="lg">
+                Check your address
               </ButtonLink>
-              <ButtonLink href="/pricing" variant="outline">
-                See pricing
-              </ButtonLink>
+              <Link
+                href="/pricing"
+                className="inline-flex min-h-11 items-center font-semibold text-primary underline"
+              >
+                See prices
+              </Link>
             </div>
           </div>
 
-          <div className="relative flex justify-center">
-            <div className="w-full max-w-md overflow-hidden rounded-3xl bg-surface p-2 shadow-xl shadow-ink/5 ring-1 ring-line sm:p-3">
-              <Image
-                src="/appliances/hero-lineup.jpg"
-                alt={fillSiteText(content["image.hero.alt"], { businessName })}
-                width={1408}
-                height={768}
-                className="h-auto w-full rounded-2xl object-cover"
-                priority
-              />
-            </div>
+          <div className="overflow-hidden rounded-card border border-line bg-surface p-2">
+            <Image
+              src="/appliances/hero-lineup.jpg"
+              alt={fillSiteText(content["image.hero.alt"], { businessName })}
+              width={1408}
+              height={768}
+              className="h-auto w-full rounded-control object-cover"
+              priority
+            />
           </div>
         </Container>
       </section>
 
-      {/* Trust bullets */}
       <section className="border-y border-line bg-surface">
-        <Container className="grid gap-8 py-12 sm:grid-cols-3">
+        <Container className="grid gap-5 py-12 sm:grid-cols-3">
           {[
             {
               title: "No long-term contract",
@@ -171,17 +168,13 @@ export default async function HomePage({
               body: "Something breaks, you call us — not a warranty hotline in another state.",
             },
           ].map((item) => (
-            <div key={item.title}>
-              <h2 className="font-display text-lg font-semibold text-ink">
-                {item.title}
-              </h2>
-              <p className="mt-2 text-sm text-ink-soft">{item.body}</p>
-            </div>
+            <Card key={item.title} title={item.title}>
+              <p className="text-sm text-ink-soft">{item.body}</p>
+            </Card>
           ))}
         </Container>
       </section>
 
-      {/* How it works */}
       <section>
         <Container className="py-16 md:py-20">
           <div className="max-w-2xl">
@@ -193,7 +186,7 @@ export default async function HomePage({
               real local business, not a call center.
             </p>
           </div>
-          <ol className="mt-10 grid gap-8 md:grid-cols-4">
+          <ol className="mt-10 grid gap-5 md:grid-cols-4">
             {[
               "Tell us what you need",
               "We follow up to confirm details",
@@ -201,71 +194,66 @@ export default async function HomePage({
               "We deliver & install",
             ].map((step, i) => (
               <li key={step}>
-                <span className="font-display text-3xl font-semibold text-primary">
-                  {String(i + 1).padStart(2, "0")}
-                </span>
-                <p className="mt-3 font-medium text-ink">{step}</p>
+                <Card>
+                  <span className="font-display text-2xl font-semibold text-primary">
+                    {String(i + 1).padStart(2, "0")}
+                  </span>
+                  <p className="mt-3 font-semibold text-ink">{step}</p>
+                </Card>
               </li>
             ))}
           </ol>
         </Container>
       </section>
 
-      {/* Who we rent to (hidden until the owner writes it) */}
       {(content["home.household"] || content["home.propertyManager"]) && (
         <section>
-          <Container className="grid gap-8 py-12 md:grid-cols-2">
+          <Container className="grid gap-5 py-12 md:grid-cols-2">
             {content["home.household"] && (
-              <div>
-                <h2 className="font-display text-2xl font-semibold text-ink">For households</h2>
-                <p className="mt-3 text-ink-soft">{fillSiteText(content["home.household"], { businessName })}</p>
-              </div>
+              <Card title="For households">
+                <p className="text-ink-soft">
+                  {fillSiteText(content["home.household"], { businessName })}
+                </p>
+              </Card>
             )}
             {content["home.propertyManager"] && (
-              <div>
-                <h2 className="font-display text-2xl font-semibold text-ink">For property managers</h2>
-                <p className="mt-3 text-ink-soft">
+              <Card title="For property managers">
+                <p className="text-ink-soft">
                   {fillSiteText(content["home.propertyManager"], { businessName })}
                 </p>
-              </div>
+              </Card>
             )}
           </Container>
         </section>
       )}
 
-      {/* Pricing preview */}
       <section className="border-y border-line bg-canvas-alt">
         <Container className="py-16 md:py-20">
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <h2 className="font-display text-3xl font-semibold text-ink">
-                Simple, published pricing
-              </h2>
-              <p className="mt-3 max-w-xl text-ink-soft">
-                Starting with washers and dryers, with more appliance types on
-                the way. Every price below is real, and never changes for you
-                once you sign — see our{" "}
-                <Link href="/pricing" className="underline hover:text-primary">
-                  full pricing page
-                </Link>
-                .
-              </p>
-            </div>
+          <div className="max-w-2xl">
+            <h2 className="font-display text-3xl font-semibold text-ink">
+              Simple, published pricing
+            </h2>
+            <p className="mt-3 text-ink-soft">
+              Starting with washers and dryers, with more appliance types on
+              the way. Every price below is real, and never changes for you
+              once you sign — see our{" "}
+              <Link href="/pricing" className="underline hover:text-primary">
+                full pricing page
+              </Link>
+              .
+            </p>
           </div>
 
           {applianceTypes.length > 0 ? (
             <>
-              <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
                 {applianceTypes.map((type) => (
-                  <div
-                    key={type.id}
-                    className="rounded-2xl bg-surface p-6 shadow-sm ring-1 ring-line"
-                  >
+                  <Card key={type.id}>
                     <ApplianceMedia
                       photoUrl={type.photoUrl}
                       name={type.name}
                       alt={catalogAlt(content, type.slug, type.name)}
-                      className="h-40 w-full rounded-lg object-cover"
+                      className="h-40 w-full rounded-control object-cover"
                       iconClassName="h-16 w-auto text-primary"
                     />
                     <h3 className="mt-4 font-display text-xl font-semibold text-ink">
@@ -278,7 +266,7 @@ export default async function HomePage({
                         / month
                       </span>
                     </p>
-                  </div>
+                  </Card>
                 ))}
               </div>
               <p className="mt-6 text-sm text-ink-faint">
@@ -295,24 +283,28 @@ export default async function HomePage({
         </Container>
       </section>
 
-      {/* Common questions (hidden until the owner writes some) */}
       {faq.length > 0 && (
         <section>
           <Container className="max-w-3xl py-16 md:py-20">
-            <h2 className="font-display text-3xl font-semibold text-ink">Common questions</h2>
-            <dl className="mt-8 space-y-6">
+            <h2 className="font-display text-3xl font-semibold text-ink">
+              Common questions
+            </h2>
+            <dl className="mt-8 space-y-5">
               {faq.map((item, i) => (
-                <div key={i}>
-                  <dt className="font-medium text-ink">{fillSiteText(item.q, { businessName })}</dt>
-                  <dd className="mt-2 text-ink-soft">{fillSiteText(item.a, { businessName })}</dd>
-                </div>
+                <Card key={i}>
+                  <dt className="font-semibold text-ink">
+                    {fillSiteText(item.q, { businessName })}
+                  </dt>
+                  <dd className="mt-2 text-ink-soft">
+                    {fillSiteText(item.a, { businessName })}
+                  </dd>
+                </Card>
               ))}
             </dl>
           </Container>
         </section>
       )}
 
-      {/* Final CTA */}
       <section>
         <Container className="py-16 text-center md:py-20">
           <h2 className="font-display text-3xl font-semibold text-ink">
@@ -323,9 +315,7 @@ export default async function HomePage({
             usually the same day.
           </p>
           <div className="mt-8">
-            <ButtonLink href="/contact" variant="primary">
-              Get a free quote
-            </ButtonLink>
+            <ButtonLink href="/contact">Check your address</ButtonLink>
           </div>
         </Container>
       </section>
