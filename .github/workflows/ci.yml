@@ -113,7 +113,7 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
-          node-version: 22
+          node-version: 24
           package-manager-cache: false
 
       - name: Project secret and private-identifier scan
@@ -237,7 +237,13 @@ jobs:
         run: npm run db:seed
 
       - name: Unit and real-Postgres integration tests (shard ${{ matrix.shard }} of 3)
-        run: npx vitest run --shard=${{ matrix.shard }}/3
+        run: npx vitest run --shard=${{ matrix.shard }}/3 --reporter=default --reporter=json --outputFile.json=vitest-results.json
+
+      - name: No test was silently skipped
+        # The real-database tests skip themselves outside a throwaway CI
+        # database. In CI that must never happen: a missing variable would
+        # otherwise turn real tests into green no-ops.
+        run: node scripts/check-no-skipped-tests.mjs vitest-results.json
 
   e2e:
     # Production build + browser/accessibility/security tests, split over 4

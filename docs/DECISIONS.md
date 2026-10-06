@@ -424,3 +424,21 @@ run for schema/money/auth PRs before the first push, a no-idle rule with a 20-mi
 reviewers, a "CI runs used" report with a split-smaller trigger, the WU-T0 row, the safe migration-rename rule, and
 corrected the PR count to 33.
 
+## 2026-10-06 — CI matches production Node; skipped tests fail CI; docs-only pushes skip Vercel builds
+
+Chris asked whether the tests, Vercel builds and warnings could be improved without breaking anything. Findings and
+decisions: (1) Vercel production runs Node 24.x but CI tested on Node 22 — CI now uses 24 so the tests run on what
+customers get. (2) npm 12 (already npm's latest) blocks dependency install scripts not listed in `allowScripts`;
+`@prisma/engines`' download of the migration engine is one of them, so a future Vercel npm upgrade could have broken
+`prisma migrate deploy` in every build. The four reviewed packages are approved by name in `package.json`. (3) About 20
+real-database test files and several browser specs skip themselves when their environment is missing; correct
+locally, but in CI that would be a green run that tested nothing. CI now fails on any skip except the perf baseline
+(runs in its own workflow). All 1,988 unit/integration tests and 170 browser tests already ran with zero unexpected skips, so
+this guards the future rather than fixing a present gap. (5) A full local run exposed one timing-flaky test
+(`tests/remediation-r2-webhook-evidence-integration.test.ts`): it probed a database lock that other test files also
+take briefly. It now retries the probe for up to a second; the code under test is paused inside the probe, so if it
+ever held the lock every retry would still fail (checked by holding the lock by hand: the test fails). (4) Docs-only pushes produced full Vercel builds; an ignored-build
+step now skips them using CI's docs-only rule, building whenever unsure. Rejected: removing the TypeScript check from
+`next build` (8 s; it is the only check between a deployment and CI finishing), and upgrading to ESLint 10 (our
+accessibility lint plugin does not support it yet — `docs/ROADMAP.md`).
+

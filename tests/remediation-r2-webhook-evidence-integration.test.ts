@@ -58,7 +58,7 @@ const enabled =
   ["localhost", "127.0.0.1"].includes(url.hostname) &&
   url.pathname === "/appliance_desk_test";
 
-async function advisoryLockIsFree(): Promise<boolean> {
+async function tryAdvisoryLock(): Promise<boolean> {
   const rows = await prisma.$transaction(
     (tx) =>
       tx.$queryRaw<
@@ -66,6 +66,18 @@ async function advisoryLockIsFree(): Promise<boolean> {
       >`SELECT pg_try_advisory_xact_lock(174831, 1) AS got`,
   );
   return rows[0]!.got;
+}
+
+// The webhook lock is shared: another test file processing a Stripe event at the
+// same moment holds it for a few milliseconds, which made a single attempt flaky
+// under load. The code under test is paused inside this mocked provider call, so
+// if IT held the lock, every attempt would fail; one success proves it does not.
+async function advisoryLockIsFree(): Promise<boolean> {
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    if (await tryAdvisoryLock()) return true;
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  return false;
 }
 
 async function inFlight<T>(value: T): Promise<T> {

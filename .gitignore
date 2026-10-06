@@ -54,3 +54,4 @@ next-env.d.ts
 # Claude Code local, machine-specific settings (permissions, etc.) —
 # never shared/committed. The .claude/skills/ folder itself IS committed.
 .claude/settings.local.json
+/vitest-results.json

@@ -70,6 +70,31 @@ function reportDurations(group) {
   console.log(`::notice title=e2e shard "${group}" durations (${(total / 1000).toFixed(0)}s of test time)::${summary}`);
 }
 
+// Several specs call `test.skip(!fixtureExists, ...)` so they are harmless
+// outside CI. In CI the fixtures always exist, so a skip means the setup broke;
+// fail loudly instead of reporting a green run that tested less.
+function checkNothingSkipped() {
+  if (!existsSync(resultsFile)) {
+    console.error("::error title=Skipped-test check::playwright-results.json was not written.");
+    return false;
+  }
+  const results = JSON.parse(readFileSync(resultsFile, "utf8"));
+  const skipped = [];
+  const walk = (suite) => {
+    for (const spec of suite.specs ?? []) {
+      for (const t of spec.tests ?? []) {
+        if (t.status === "skipped") skipped.push(`${spec.file} > ${spec.title}`);
+      }
+    }
+    for (const child of suite.suites ?? []) walk(child);
+  };
+  for (const s of results.suites ?? []) walk(s);
+  if (!skipped.length) return true;
+  console.error(`::error title=${skipped.length} browser test(s) skipped in CI::A CI fixture or saved login is missing.`);
+  for (const s of skipped) console.error(`  - ${s}`);
+  return false;
+}
+
 const arg = process.argv[2];
 if (!arg) {
   console.error("Usage: node scripts/e2e-shard.mjs --check | all | <group-name>");
@@ -91,4 +116,5 @@ const files = arg === "all" ? Object.values(groups).flat() : groups[arg];
 const patterns = files.map((f) => `/e2e/${f.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`);
 const result = spawnSync("npx", ["playwright", "test", ...patterns], { stdio: "inherit", cwd: root });
 reportDurations(arg);
+if ((result.status ?? 1) === 0 && process.env.CI && !checkNothingSkipped()) process.exit(1);
 process.exit(result.status ?? 1);

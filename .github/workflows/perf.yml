@@ -19,7 +19,7 @@ concurrency:
 jobs:
   perf:
     name: large-list baseline
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     services:
       postgres:
@@ -50,13 +50,9 @@ jobs:
       TEST_STAFF_EMAIL: ci-staff@example.test
       TEST_STAFF_PASSWORD: Ci-Test-Staff-Password-Not-Real-1!
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - name: Install dependencies
-        run: npm ci --no-audit --no-fund
+      - uses: actions/checkout@v5
+      - name: Node and dependencies (cached node_modules, shared with CI)
+        uses: ./.github/actions/setup-deps
       - name: Apply migrations
         run: npm run db:migrate:deploy
       - name: Seed required singleton and test accounts
