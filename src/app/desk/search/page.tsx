@@ -1,5 +1,12 @@
 import Link from "next/link";
 import { searchAll } from "@/domains/search";
+import {
+  Button,
+  Card,
+  EmptyState,
+  Field,
+  PageHeader,
+} from "@/components/ui";
 
 export const metadata = { title: "Search" };
 
@@ -10,101 +17,121 @@ export default async function SearchPage({
 }) {
   const { q } = await searchParams;
   const results = await searchAll(q ?? "");
-  const totalFound = results.customers.length + results.appliances.length + results.leads.length;
+  const totalFound =
+    results.customers.length +
+    results.appliances.length +
+    results.leads.length;
 
   return (
-    <div className="max-w-2xl">
-      <h1 className="text-xl font-semibold">Search</h1>
+    <div className="max-w-3xl">
+      <PageHeader
+        title="Search"
+        description="Find customers, appliances, and leads from one place."
+      />
 
-      <form action="/desk/search" method="get" className="mt-4 flex gap-2">
-        <label htmlFor="q" className="sr-only">
-          Search customers, appliances, and leads
-        </label>
-        <input
+      <form
+        action="/desk/search"
+        method="get"
+        className="mb-6 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end"
+      >
+        <Field
           id="q"
           name="q"
           type="search"
+          label="Search customers, appliances, and leads"
           defaultValue={results.query}
           placeholder="Customer name, email, asset number…"
-          className="w-full rounded-md border border-line-strong px-3 py-2 text-sm"
         />
-        <button
-          type="submit"
-          className="rounded-md bg-action px-4 py-2 text-sm font-medium text-on-action hover:bg-action"
-        >
-          Search
-        </button>
+        <Button type="submit">Search</Button>
       </form>
 
       {!results.query ? (
-        <p className="mt-6 text-sm text-ink-soft">
-          Search across customers, appliances, and leads.
-        </p>
+        <EmptyState
+          title="Start with a name, email, or asset number"
+          description="Search across customers, appliances, and leads."
+        />
       ) : totalFound === 0 ? (
-        <p className="mt-6 text-sm text-ink-soft">
-          Nothing found for &ldquo;{results.query}&rdquo;.
-        </p>
+        <EmptyState
+          title={`Nothing found for “${results.query}”`}
+          description="Try a different name, email, city, or asset number."
+        />
       ) : (
-        <div className="mt-6 space-y-6">
+        <div className="space-y-6">
           {results.customers.length > 0 && (
-            <section>
-              <h2 className="text-sm font-medium text-ink-faint">Customers</h2>
-              <ul className="mt-2 divide-y divide-line rounded-lg border border-line bg-white">
-                {results.customers.map((c) => (
-                  <li key={c.id}>
+            <Card title="Customers">
+              <ul className="divide-y divide-line">
+                {results.customers.map((customer) => (
+                  <li key={customer.id}>
                     <Link
-                      href={`/desk/customers/${c.id}`}
-                      className="block px-4 py-3 text-sm hover:bg-canvas"
+                      href={`/desk/customers/${customer.id}`}
+                      className="block min-h-11 rounded-control px-3 py-3 text-sm hover:bg-subtle"
                     >
-                      <span className="font-medium text-ink">{c.name}</span>
-                      {c.companyName && ` — ${c.companyName}`}
-                      <span className="text-ink-faint"> · {c.email}</span>
+                      <span className="font-medium text-ink">
+                        {customer.name}
+                      </span>
+                      {customer.companyName && ` — ${customer.companyName}`}
+                      <span className="text-ink-faint">
+                        {" · "}
+                        {customer.email}
+                      </span>
                     </Link>
                   </li>
                 ))}
               </ul>
-            </section>
+            </Card>
           )}
 
           {results.appliances.length > 0 && (
-            <section>
-              <h2 className="text-sm font-medium text-ink-faint">Appliances</h2>
-              <ul className="mt-2 divide-y divide-line rounded-lg border border-line bg-white">
-                {results.appliances.map((a) => (
-                  <li key={a.id}>
+            <Card title="Appliances">
+              <ul className="divide-y divide-line">
+                {results.appliances.map((appliance) => (
+                  <li key={appliance.id}>
                     <Link
-                      href={`/desk/inventory/${a.id}`}
-                      className="block px-4 py-3 text-sm hover:bg-canvas"
+                      href={`/desk/inventory/${appliance.id}`}
+                      className="block min-h-11 rounded-control px-3 py-3 text-sm hover:bg-subtle"
                     >
                       <span className="font-medium text-ink">
-                        {a.assetNumber} — {a.typeName}
+                        {appliance.assetNumber} — {appliance.typeName}
                       </span>
-                      {a.manufacturer && <span className="text-ink-faint"> · {a.manufacturer}</span>}
+                      {appliance.manufacturer && (
+                        <span className="text-ink-faint">
+                          {" · "}
+                          {appliance.manufacturer}
+                        </span>
+                      )}
                     </Link>
                   </li>
                 ))}
               </ul>
-            </section>
+            </Card>
           )}
 
           {results.leads.length > 0 && (
-            <section>
-              <h2 className="text-sm font-medium text-ink-faint">Leads</h2>
-              <ul className="mt-2 divide-y divide-line rounded-lg border border-line bg-white">
-                {results.leads.map((l) => (
-                  <li key={l.id}>
+            <Card title="Leads">
+              <ul className="divide-y divide-line">
+                {results.leads.map((lead) => (
+                  <li key={lead.id}>
                     <Link
-                      href={`/desk/leads/${l.id}`}
-                      className="block px-4 py-3 text-sm hover:bg-canvas"
+                      href={`/desk/leads/${lead.id}`}
+                      className="block min-h-11 rounded-control px-3 py-3 text-sm hover:bg-subtle"
                     >
-                      <span className="font-medium text-ink">{l.contactName}</span>
-                      {l.email && <span className="text-ink-faint"> · {l.email}</span>}
-                      <span className="ml-2 text-xs text-ink-faint">{l.status}</span>
+                      <span className="font-medium text-ink">
+                        {lead.contactName}
+                      </span>
+                      {lead.email && (
+                        <span className="text-ink-faint">
+                          {" · "}
+                          {lead.email}
+                        </span>
+                      )}
+                      <span className="ml-2 text-xs text-ink-faint">
+                        {lead.status}
+                      </span>
                     </Link>
                   </li>
                 ))}
               </ul>
-            </section>
+            </Card>
           )}
         </div>
       )}
