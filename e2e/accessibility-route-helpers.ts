@@ -12,7 +12,7 @@ export async function scanAccessibilityRoute(
 ) {
   await page.setViewportSize({ width: VIEWPORTS[0], height: 900 });
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await page.goto(route.fixture, { waitUntil: "domcontentloaded" });
+  await page.goto(route.fixture, { waitUntil: "networkidle" });
   await expect(page.locator("body")).toBeVisible();
 
   for (const theme of THEMES) {
