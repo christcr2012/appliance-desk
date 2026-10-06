@@ -3,7 +3,8 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { isRateLimited } from "@/lib/rate-limit";
 import { deliverMessage } from "@/domains/messaging/deliver";
-import { deletePrivatePhotoWithRecovery, getPrivatePhotoStore } from "@/lib/photo-storage";
+import { getPrivatePhotoStore } from "@/lib/photo-storage";
+import { deletePrivatePhotoWithRecovery } from "@/domains/backup/media-deletion";
 
 const TOKEN_TTL_MS = 48 * 60 * 60 * 1000;
 const PRIVACY_RATE_LIMIT = { max: 5, windowMs: 60 * 60 * 1000 } as const;
