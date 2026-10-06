@@ -9,7 +9,7 @@ export async function OperationalAgreement({ id }: { id: string }) {
     <div className="max-w-3xl">
       <Link
         href="/desk/agreements"
-        className="text-sm text-gray-600 hover:underline"
+        className="text-sm text-ink-soft hover:underline"
       >
         ← Back to agreements
       </Link>
