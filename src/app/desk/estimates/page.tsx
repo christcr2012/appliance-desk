@@ -1,10 +1,20 @@
 import Link from "next/link";
 import { requireRole } from "@/lib/session";
-import { getAllEstimates, totalMonthlyCents, totalOneTimeCents } from "@/domains/estimates";
+import {
+  getAllEstimates,
+  totalMonthlyCents,
+  totalOneTimeCents,
+} from "@/domains/estimates";
 import { formatCents } from "@/domains/pricing";
 import { estimateStatusLabel } from "@/lib/status-labels";
-import { StatusBadge, type StatusTone } from "@/components/status-badge";
-import { PlusIcon } from "@/components/icons/status-icons";
+import {
+  DataList,
+  EmptyState,
+  PageHeader,
+  StatusPill,
+  type DataListColumn,
+} from "@/components/ui";
+import type { StatusTone } from "@/components/status-badge";
 
 export const metadata = { title: "Estimates" };
 
@@ -19,6 +29,8 @@ const STATUS_TONE: Record<string, StatusTone> = {
   CONVERTED: "success",
 };
 
+type EstimateRow = Awaited<ReturnType<typeof getAllEstimates>>[number];
+
 /** Custom-priced estimates for deals that don't fit standard self-serve
  * pricing — a property manager ordering for several units, an entire
  * building, and similar (2026-09-29, see docs/DECISIONS.md). Always
@@ -28,76 +40,89 @@ export default async function EstimatesPage() {
   await requireRole("OWNER", "ADMIN");
   const estimates = await getAllEstimates();
 
+  const columns: DataListColumn<EstimateRow>[] = [
+    {
+      key: "estimate",
+      header: "Estimate",
+      primary: true,
+      cell: (estimate) => (
+        <div>
+          <Link
+            href={`/desk/estimates/${estimate.id}`}
+            className="font-semibold text-ink underline-offset-4 hover:underline"
+          >
+            #{estimate.estimateNumber} — {estimate.title}
+          </Link>
+          <p className="mt-1 text-sm font-normal text-ink-soft">
+            {estimate.customer ? (
+              <>
+                {estimate.customer.user.name ?? estimate.customer.user.email}
+                {estimate.customer.companyName
+                  ? ` · ${estimate.customer.companyName}`
+                  : ""}
+              </>
+            ) : estimate.lead ? (
+              <>
+                {estimate.lead.contactName}
+                {estimate.lead.companyName
+                  ? ` · ${estimate.lead.companyName}`
+                  : ""}
+                {" · lead"}
+              </>
+            ) : (
+              "No customer or lead linked"
+            )}
+          </p>
+        </div>
+      ),
+    },
+    {
+      key: "status",
+      header: "Status",
+      cell: (estimate) => (
+        <StatusPill
+          tone={STATUS_TONE[estimate.status] ?? "pending"}
+          label={estimateStatusLabel(estimate.status)}
+        />
+      ),
+    },
+    {
+      key: "pricing",
+      header: "Pricing",
+      cell: (estimate) => {
+        const monthly = totalMonthlyCents(estimate.lineItems);
+        const oneTime = totalOneTimeCents(estimate.lineItems);
+        return (
+          <span>
+            {monthly > 0 && `${formatCents(monthly)}/mo`}
+            {monthly > 0 && oneTime > 0 && " + "}
+            {oneTime > 0 && `${formatCents(oneTime)} one-time`}
+            {monthly === 0 && oneTime === 0 && "No line items yet"}
+          </span>
+        );
+      },
+    },
+  ];
+
   return (
     <div>
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Estimates</h1>
-        <Link
-          href="/desk/estimates/new"
-          className="inline-flex items-center gap-1 rounded-md bg-action px-4 py-2 text-sm font-medium text-on-action hover:bg-action"
-        >
-          <PlusIcon className="h-4 w-4" />
-          New estimate
-        </Link>
-      </div>
-      <p className="mt-1 text-sm text-ink-soft">
-        Custom-priced proposals for deals that don&apos;t fit standard
-        pricing — a property manager ordering for several units, a whole
-        building, and similar.
-      </p>
+      <PageHeader
+        title="Estimates"
+        description="Custom-priced proposals for deals that don't fit standard pricing, including property-manager and multi-unit work."
+        primaryAction={{ href: "/desk/estimates/new", label: "New estimate" }}
+      />
 
-      {estimates.length === 0 ? (
-        <p className="mt-6 text-sm text-ink-soft">No estimates yet.</p>
-      ) : (
-        <ul className="mt-6 divide-y divide-line rounded-lg border border-line bg-white">
-          {estimates.map((estimate) => {
-            const monthly = totalMonthlyCents(estimate.lineItems);
-            const oneTime = totalOneTimeCents(estimate.lineItems);
-            return (
-              <li key={estimate.id}>
-                <Link
-                  href={`/desk/estimates/${estimate.id}`}
-                  className="flex flex-col gap-1 px-4 py-4 hover:bg-canvas sm:flex-row sm:items-center sm:justify-between"
-                >
-                  <div>
-                    <p className="font-medium text-ink">
-                      #{estimate.estimateNumber} — {estimate.title}
-                    </p>
-                    <p className="text-sm text-ink-soft">
-                      {estimate.customer ? (
-                        <>
-                          {estimate.customer.user.name ?? estimate.customer.user.email}
-                          {estimate.customer.companyName ? ` · ${estimate.customer.companyName}` : ""}
-                        </>
-                      ) : estimate.lead ? (
-                        <>
-                          {estimate.lead.contactName}
-                          {estimate.lead.companyName ? ` · ${estimate.lead.companyName}` : ""}
-                          {" "}
-                          <span className="text-xs text-ink-faint">(lead)</span>
-                        </>
-                      ) : null}
-                    </p>
-                  </div>
-                  <div className="text-sm text-ink-faint sm:text-right">
-                    <StatusBadge
-                      tone={STATUS_TONE[estimate.status] ?? "pending"}
-                      label={estimateStatusLabel(estimate.status)}
-                      variant="pill"
-                    />
-                    <p className="mt-1">
-                      {monthly > 0 && `${formatCents(monthly)}/mo`}
-                      {monthly > 0 && oneTime > 0 && " + "}
-                      {oneTime > 0 && `${formatCents(oneTime)} one-time`}
-                      {monthly === 0 && oneTime === 0 && "No line items yet"}
-                    </p>
-                  </div>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      )}
+      <DataList
+        rows={estimates}
+        columns={columns}
+        caption="Estimates"
+        empty={
+          <EmptyState
+            title="No estimates yet"
+            description="Create the first custom-priced proposal when a deal falls outside standard pricing."
+          />
+        }
+      />
     </div>
   );
 }
