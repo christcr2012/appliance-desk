@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { Button, Card, StatusPill } from "@/components/ui";
 import { setAutoRenewAction } from "./actions";
 
 export function AutoRenewSwitch({ enabled, canChange }: { enabled: boolean; canChange: boolean }) {
@@ -28,11 +29,13 @@ export function AutoRenewSwitch({ enabled, canChange }: { enabled: boolean; canC
   }
 
   return (
-    <div className="max-w-2xl space-y-3 rounded-lg border border-line-strong p-4 text-sm text-ink">
-      <p>
-        <span className="font-medium">Automatic renewals:</span>{" "}
-        <span className={enabled ? "font-semibold text-green-800" : "font-semibold"}>{enabled ? "ON" : "OFF"}</span>
-      </p>
+    <Card title="Automatic renewals">
+      <div className="mb-3">
+        <StatusPill
+          tone={enabled ? "success" : "pending"}
+          label={enabled ? "Automatic renewals ON" : "Automatic renewals OFF"}
+        />
+      </div>
       <p className="text-ink-soft">
         <strong>What it does.</strong> When ON, a customer who agreed to renew automatically gets a month-to-month
         renewal queued near the end of their term, a reminder before it, and keeps being billed afterward. When OFF,
@@ -48,22 +51,17 @@ export function AutoRenewSwitch({ enabled, canChange }: { enabled: boolean; canC
         <strong>Who can change it:</strong> only the owner.
       </p>
       {canChange ? (
-        <button
-          type="button"
-          disabled={pending}
-          onClick={() => change(!enabled)}
-          className="rounded-full bg-action px-5 py-2.5 text-sm font-semibold text-on-action disabled:opacity-60"
-        >
+        <Button type="button" disabled={pending} onClick={() => change(!enabled)}>
           {pending ? "Saving…" : enabled ? "Turn OFF automatic renewals" : "Turn ON automatic renewals"}
-        </button>
+        </Button>
       ) : (
         <p className="font-medium">Only the owner can change this.</p>
       )}
       {error && (
-        <p role="alert" className="text-red-800">
+        <p role="alert" className="text-danger">
           {error}
         </p>
       )}
-    </div>
+    </Card>
   );
 }
