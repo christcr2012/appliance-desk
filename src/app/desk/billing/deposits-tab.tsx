@@ -15,39 +15,39 @@ export async function DepositsTab() {
       </p>
       <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {order.map((b) => (
-          <div key={b} className={`rounded-lg border p-4 ${b === "OVER_90" && liability.byBucket[b].count > 0 ? "border-amber-500 bg-amber-50" : "border-gray-200 bg-white"}`}>
-            <dt className="text-sm text-gray-600">{DEPOSIT_BUCKET_LABEL[b]}</dt>
-            <dd className="mt-1 text-xl font-semibold text-gray-900">{formatCents(liability.byBucket[b].cents)}</dd>
-            <dd className="text-xs text-gray-600">{liability.byBucket[b].count} deposit(s)</dd>
+          <div key={b} className={`rounded-lg border p-4 ${b === "OVER_90" && liability.byBucket[b].count > 0 ? "border-amber-500 bg-amber-50" : "border-line bg-white"}`}>
+            <dt className="text-sm text-ink-soft">{DEPOSIT_BUCKET_LABEL[b]}</dt>
+            <dd className="mt-1 text-xl font-semibold text-ink">{formatCents(liability.byBucket[b].cents)}</dd>
+            <dd className="text-xs text-ink-soft">{liability.byBucket[b].count} deposit(s)</dd>
           </div>
         ))}
       </dl>
-      <p className="text-sm font-medium text-gray-900">
+      <p className="text-sm font-medium text-ink">
         Total waiting for a decision: {formatCents(liability.totalCents)} across {liability.count} deposit(s).
       </p>
       {liability.rows.length === 0 ? (
-        <p className="text-sm text-gray-600">No deposits are waiting for a decision.</p>
+        <p className="text-sm text-ink-soft">No deposits are waiting for a decision.</p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
-          <table className="min-w-full divide-y divide-gray-200 text-sm">
+        <div className="overflow-x-auto rounded-lg border border-line bg-white">
+          <table className="min-w-full divide-y divide-line text-sm">
             <caption className="sr-only">Deposits waiting for a decision</caption>
-            <thead className="bg-gray-50">
+            <thead className="bg-canvas">
               <tr>
-                <th scope="col" className="px-4 py-2 text-left font-medium text-gray-600">Customer</th>
-                <th scope="col" className="px-4 py-2 text-left font-medium text-gray-600">Where it stands</th>
-                <th scope="col" className="px-4 py-2 text-right font-medium text-gray-600">Deposit</th>
-                <th scope="col" className="px-4 py-2 text-left font-medium text-gray-600">Decision</th>
+                <th scope="col" className="px-4 py-2 text-left font-medium text-ink-soft">Customer</th>
+                <th scope="col" className="px-4 py-2 text-left font-medium text-ink-soft">Where it stands</th>
+                <th scope="col" className="px-4 py-2 text-right font-medium text-ink-soft">Deposit</th>
+                <th scope="col" className="px-4 py-2 text-left font-medium text-ink-soft">Decision</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-line">
               {liability.rows.map((r) => (
                 <tr key={r.depositId}>
                   <td className="px-4 py-2">
-                    <Link className="text-gray-900 underline" href={`/desk/customers/${r.customerId}`}>
+                    <Link className="text-ink underline" href={`/desk/customers/${r.customerId}`}>
                       {r.customerName}
                     </Link>
                   </td>
-                  <td className="px-4 py-2 text-gray-700">
+                  <td className="px-4 py-2 text-ink-soft">
                     {DEPOSIT_BUCKET_LABEL[r.bucket]}
                     {r.daysSinceEnd !== null ? ` (${r.daysSinceEnd} days)` : ""}
                     {r.overdue && <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-900">Over 90 days</span>}

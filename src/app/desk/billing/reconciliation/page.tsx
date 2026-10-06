@@ -25,31 +25,31 @@ export default async function BillingReconciliationPage() {
       </div>
 
       {rows.length === 0 ? (
-        <div className="rounded-lg border border-gray-200 bg-white p-6 text-sm text-gray-700">
+        <div className="rounded-lg border border-line bg-white p-6 text-sm text-ink-soft">
           No billing/provider drift was detected in the bounded reconciliation scan.
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
-          <table className="min-w-full divide-y divide-gray-200 text-sm">
-            <thead className="bg-gray-50">
+        <div className="overflow-x-auto rounded-lg border border-line bg-white">
+          <table className="min-w-full divide-y divide-line text-sm">
+            <thead className="bg-canvas">
               <tr>
-                <th className="px-4 py-2 text-left font-medium text-gray-600">Kind</th>
-                <th className="px-4 py-2 text-left font-medium text-gray-600">Subject</th>
-                <th className="px-4 py-2 text-left font-medium text-gray-600">Detail</th>
-                <th className="px-4 py-2 text-left font-medium text-gray-600">Since</th>
+                <th className="px-4 py-2 text-left font-medium text-ink-soft">Kind</th>
+                <th className="px-4 py-2 text-left font-medium text-ink-soft">Subject</th>
+                <th className="px-4 py-2 text-left font-medium text-ink-soft">Detail</th>
+                <th className="px-4 py-2 text-left font-medium text-ink-soft">Since</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-line">
               {rows.map((row) => (
                 <tr key={`${row.kind}:${row.subjectType}:${row.subjectId}`}>
-                  <td className="whitespace-nowrap px-4 py-3 font-medium text-gray-900">
+                  <td className="whitespace-nowrap px-4 py-3 font-medium text-ink">
                     {row.kind.replaceAll("_", " ")}
                   </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-gray-700">
+                  <td className="whitespace-nowrap px-4 py-3 text-ink-soft">
                     <div>{row.subjectType}</div>
-                    <div className="font-mono text-xs text-gray-500">{row.subjectId}</div>
+                    <div className="font-mono text-xs text-ink-faint">{row.subjectId}</div>
                   </td>
-                  <td className="min-w-80 px-4 py-3 text-gray-700">
+                  <td className="min-w-80 px-4 py-3 text-ink-soft">
                     {row.detail}
                     {row.kind === "HELD_PAYMENT" && (
                       <>
@@ -60,7 +60,7 @@ export default async function BillingReconciliationPage() {
                       </>
                     )}
                   </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-gray-600">
+                  <td className="whitespace-nowrap px-4 py-3 text-ink-soft">
                     {formatBusinessDate(row.since)} {formatBusinessTime(row.since)}
                   </td>
                 </tr>

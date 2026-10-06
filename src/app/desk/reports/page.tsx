@@ -31,7 +31,7 @@ export default async function ReportsPage() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-xl font-semibold">Reports</h1>
-          <p className="mt-1 max-w-2xl text-sm text-gray-600">
+          <p className="mt-1 max-w-2xl text-sm text-ink-soft">
             What your agreements&apos; agreed pricing says you should have
             collected by now, compared with what&apos;s actually been paid —
             and repairs that are missing their cost, which would otherwise
@@ -40,7 +40,7 @@ export default async function ReportsPage() {
         </div>
         <ExportCsvLink href="/desk/reports/export" label="Export transactions (CSV)" />
       </div>
-      <p className="mt-2 max-w-2xl text-sm text-gray-500">
+      <p className="mt-2 max-w-2xl text-sm text-ink-faint">
         The export is every payment, refund, and security deposit movement
         on file, oldest first — hand it to a bookkeeper or import it into
         whatever accounting software you end up using.
@@ -57,27 +57,27 @@ export default async function ReportsPage() {
       </div>
 
       <section className="mt-8">
-        <h2 className="font-medium text-gray-900">Agreements falling behind their own pricing</h2>
-        <p className="mt-1 text-sm text-gray-600">
+        <h2 className="font-medium text-ink">Agreements falling behind their own pricing</h2>
+        <p className="mt-1 text-sm text-ink-soft">
           Only agreements more than $10 short are listed — small
           timing differences (an invoice that posted a day or two late)
           aren&apos;t worth flagging.
         </p>
         {notableRows.length === 0 ? (
-          <p className="mt-4 text-sm text-gray-600">
+          <p className="mt-4 text-sm text-ink-soft">
             Nothing behind right now — every billing agreement&apos;s
             collections are keeping up with its agreed price.
           </p>
         ) : (
-          <ul className="mt-4 divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white">
+          <ul className="mt-4 divide-y divide-line rounded-lg border border-line bg-white">
             {notableRows.map((row) => (
               <li key={row.agreementId}>
                 <Link
                   href={`/desk/agreements/${row.agreementId}`}
-                  className="flex flex-col gap-1 px-4 py-4 hover:bg-gray-50 sm:flex-row sm:items-center sm:justify-between"
+                  className="flex flex-col gap-1 px-4 py-4 hover:bg-canvas sm:flex-row sm:items-center sm:justify-between"
                 >
-                  <p className="font-medium text-gray-900">{row.customerName}</p>
-                  <div className="text-sm text-gray-500 sm:text-right">
+                  <p className="font-medium text-ink">{row.customerName}</p>
+                  <div className="text-sm text-ink-faint sm:text-right">
                     <p>
                       Estimated {formatCents(row.estimatedCents)} · Collected{" "}
                       {formatCents(row.actualCents)}
@@ -94,37 +94,37 @@ export default async function ReportsPage() {
       </section>
 
       <section className="mt-8">
-        <h2 className="font-medium text-gray-900">Repairs missing a logged cost</h2>
-        <p className="mt-1 text-sm text-gray-600">
+        <h2 className="font-medium text-ink">Repairs missing a logged cost</h2>
+        <p className="mt-1 text-sm text-ink-soft">
           Completed repair jobs with no parts or labor cost entered yet —
           until it&apos;s logged, that appliance&apos;s profitability
           (Fleet page) counts this repair as free, which almost certainly
           isn&apos;t true.
         </p>
         {missingCostJobs.length === 0 ? (
-          <p className="mt-4 text-sm text-gray-600">
+          <p className="mt-4 text-sm text-ink-soft">
             Every completed repair has a cost logged. Nothing to fix here.
           </p>
         ) : (
-          <ul className="mt-4 divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white">
+          <ul className="mt-4 divide-y divide-line rounded-lg border border-line bg-white">
             {missingCostJobs.map((job) => {
               const first = job.appliances[0]?.appliance;
               return (
                 <li key={job.id}>
                   <Link
                     href={`/desk/jobs/${job.id}`}
-                    className="flex flex-col gap-1 px-4 py-3 hover:bg-gray-50 sm:flex-row sm:items-center sm:justify-between"
+                    className="flex flex-col gap-1 px-4 py-3 hover:bg-canvas sm:flex-row sm:items-center sm:justify-between"
                   >
-                    <p className="text-sm text-gray-900">
+                    <p className="text-sm text-ink">
                       {first ? `${first.applianceType.name} ${first.assetNumber}` : "Repair job"}
                       {job.customer && (
-                        <span className="text-gray-500">
+                        <span className="text-ink-faint">
                           {" "}
                           — {job.customer.user.name ?? job.customer.user.email}
                         </span>
                       )}
                     </p>
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-ink-faint">
                       Completed{" "}
                       {job.completedAt ? new Date(job.completedAt).toLocaleDateString("en-US") : ""}
                     </p>
@@ -137,21 +137,21 @@ export default async function ReportsPage() {
       </section>
 
       <section className="mt-8">
-        <h2 className="font-medium text-gray-900">Where your leads come from</h2>
-        <p className="mt-1 text-sm text-gray-600">
+        <h2 className="font-medium text-ink">Where your leads come from</h2>
+        <p className="mt-1 text-sm text-ink-soft">
           Every lead, grouped by how they said they heard about you, with
           how many of each group actually became a customer — a quick way
           to see whether your marketing is actually working, not just word
           of mouth (or the other way around).
         </p>
         {leadSources.length === 0 ? (
-          <p className="mt-4 text-sm text-gray-600">No leads yet.</p>
+          <p className="mt-4 text-sm text-ink-soft">No leads yet.</p>
         ) : (
-          <ul className="mt-4 divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white">
+          <ul className="mt-4 divide-y divide-line rounded-lg border border-line bg-white">
             {leadSources.map((row) => (
               <li key={row.source} className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
-                <p className="text-gray-900">{row.source}</p>
-                <p className="text-gray-500">
+                <p className="text-ink">{row.source}</p>
+                <p className="text-ink-faint">
                   {row.total} lead{row.total === 1 ? "" : "s"} · {row.converted} converted (
                   {Math.round(row.conversionRate * 100)}%)
                 </p>
@@ -161,7 +161,7 @@ export default async function ReportsPage() {
         )}
       </section>
 
-      <p className="mt-6 max-w-2xl text-xs text-gray-500">
+      <p className="mt-6 max-w-2xl text-xs text-ink-faint">
         &ldquo;Estimated&rdquo; is reconstructed from each agreement&apos;s
         own agreed monthly price and how long it&apos;s actually been
         billing — the same math used elsewhere in the app for revenue

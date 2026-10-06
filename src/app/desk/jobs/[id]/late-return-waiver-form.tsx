@@ -9,28 +9,28 @@ export function LateReturnWaiverForm({ jobId, state }: { jobId: string; state: S
   if (state.kind === "NONE") return null;
   if (state.kind === "WAIVED") {
     return (
-      <p className="mt-6 rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-900">
+      <p className="mt-6 rounded-lg border border-line bg-canvas p-4 text-sm text-ink">
         The late days on this pickup were waived because the delay was ours ({formatCents(state.waivedCents)} taken off).
       </p>
     );
   }
   if (state.kind === "BLOCKED") {
-    return <p className="mt-6 rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-900">{state.reason}</p>;
+    return <p className="mt-6 rounded-lg border border-line bg-canvas p-4 text-sm text-ink">{state.reason}</p>;
   }
   return (
-    <form action={waiveLateReturnAction} className="mt-6 rounded-lg border border-gray-200 bg-white p-5">
-      <h2 className="font-medium text-gray-900">Who caused the delay?</h2>
-      <p className="mt-1 text-sm text-gray-700">
+    <form action={waiveLateReturnAction} className="mt-6 rounded-lg border border-line bg-white p-5">
+      <h2 className="font-medium text-ink">Who caused the delay?</h2>
+      <p className="mt-1 text-sm text-ink-soft">
         This pickup was after the last paid day, so the customer was charged for the late days ({formatCents(state.chargedCents)}).
         That stands unless the delay was ours. If it was, waive the days: the charge stays visible on the invoice with a matching
         credit line, and the tax comes off too. It cannot be undone once a payment is made.
       </p>
       <input type="hidden" name="jobId" value={jobId} />
-      <label htmlFor="waivedDays" className="mt-3 block text-sm font-medium text-gray-900">
+      <label htmlFor="waivedDays" className="mt-3 block text-sm font-medium text-ink">
         Days to waive (leave empty for all {state.maxDays})
       </label>
       <input id="waivedDays" name="waivedDays" inputMode="numeric" className="mt-1 min-h-11 w-28 rounded-lg border border-control px-3" />
-      <label htmlFor="waiverNote" className="mt-3 block text-sm font-medium text-gray-900">
+      <label htmlFor="waiverNote" className="mt-3 block text-sm font-medium text-ink">
         Why (5 to 500 characters)
       </label>
       <input id="waiverNote" name="note" required minLength={5} maxLength={500} className="mt-1 min-h-11 w-full rounded-lg border border-control px-3" />

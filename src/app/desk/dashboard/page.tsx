@@ -29,11 +29,11 @@ function StatCard({
       className={`rounded-lg border p-5 ${
         tone === "warning" && shouldWarn
           ? "border-amber-300 bg-amber-50"
-          : "border-gray-200 bg-white"
+          : "border-line bg-white"
       }`}
     >
-      <p className="text-sm text-gray-600">{label}</p>
-      <p className="mt-1 text-3xl font-semibold text-gray-900">{value}</p>
+      <p className="text-sm text-ink-soft">{label}</p>
+      <p className="mt-1 text-3xl font-semibold text-ink">{value}</p>
     </div>
   );
   return href ? (
@@ -56,7 +56,7 @@ export default async function DeskDashboardPage() {
   return (
     <div>
       <h1 className="text-xl font-semibold">Dashboard</h1>
-      <p className="mt-1 text-sm text-gray-600">
+      <p className="mt-1 text-sm text-ink-soft">
         A quick look at what needs your attention right now.
       </p>
 
@@ -162,7 +162,7 @@ export default async function DeskDashboardPage() {
       </div>
 
       {stats.totalAppliances === 0 && (
-        <p className="mt-6 max-w-2xl text-sm text-gray-600">
+        <p className="mt-6 max-w-2xl text-sm text-ink-soft">
           You don&apos;t have any individual appliance units tracked yet —
           add your first one from{" "}
           <Link href="/desk/inventory" className="underline">

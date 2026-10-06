@@ -41,7 +41,7 @@ export function LaunchSettingsForm({
           defaultValue={settings.postalAddress}
           maxLength={500}
           rows={3}
-          className="mt-1 w-full rounded border border-gray-300 bg-white p-2"
+          className="mt-1 w-full rounded border border-line-strong bg-white p-2"
           aria-invalid={Boolean(state.errors?.postalAddress)}
           aria-describedby={
             state.errors?.postalAddress
@@ -54,7 +54,7 @@ export function LaunchSettingsForm({
             {state.errors.postalAddress[0]}
           </p>
         )}
-        <p id="address-help" className="mt-1 text-sm text-gray-600">
+        <p id="address-help" className="mt-1 text-sm text-ink-soft">
           Use your valid business mailing address, registered PO box, or
           eligible private mailbox. This appears in every launch email.
         </p>
@@ -69,7 +69,7 @@ export function LaunchSettingsForm({
           type="email"
           maxLength={254}
           defaultValue={settings.replyToEmail}
-          className="mt-1 w-full rounded border border-gray-300 bg-white p-2"
+          className="mt-1 w-full rounded border border-line-strong bg-white p-2"
           aria-invalid={Boolean(state.errors?.replyToEmail)}
           aria-describedby={
             state.errors?.replyToEmail ? "reply-error" : undefined
@@ -94,7 +94,7 @@ export function LaunchSettingsForm({
           25 emails daily; previews never send.
         </span>
       </label>
-      <p className="text-sm text-gray-600">
+      <p className="text-sm text-ink-soft">
         The first email goes out on the next daily run, then the next two follow
         at least 3 and 4 days later. Pausing retains signups. An email already
         being sent may still arrive.
@@ -106,7 +106,7 @@ export function LaunchSettingsForm({
       )}
       <button
         disabled={pending}
-        className="rounded bg-gray-900 px-4 py-2 text-white disabled:opacity-60"
+        className="rounded bg-action px-4 py-2 text-on-action disabled:opacity-60"
       >
         {pending ? "Saving…" : "Save launch settings"}
       </button>

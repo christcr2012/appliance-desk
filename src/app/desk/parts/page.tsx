@@ -22,7 +22,7 @@ export default async function PartsPage({ searchParams }: { searchParams: Promis
   return (
     <div>
       <h1 className="text-xl font-semibold">Parts</h1>
-      <p className="mt-1 text-sm text-gray-600">
+      <p className="mt-1 text-sm text-ink-soft">
         Every part you&apos;ve logged, by model number. To add a new one, go
         to an appliance of that model and use the &ldquo;Parts for this
         model&rdquo; section on its page.
@@ -63,25 +63,25 @@ export default async function PartsPage({ searchParams }: { searchParams: Promis
       )}
 
       {partRecords.length === 0 ? (
-        <p className="mt-6 text-sm text-gray-600">
+        <p className="mt-6 text-sm text-ink-soft">
           No parts logged yet — they&apos;ll show up here once you save one
           from an appliance&apos;s page.
         </p>
       ) : (
-        <ul className="mt-6 divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white">
+        <ul className="mt-6 divide-y divide-line rounded-lg border border-line bg-white">
           {partRecords.map((p) => (
             <li key={p.id} className="px-4 py-4">
-              <p className="font-medium text-gray-900">
+              <p className="font-medium text-ink">
                 {p.modelNumber}
                 {p.manufacturer ? ` (${p.manufacturer})` : ""}
                 {p.applianceType ? ` — ${p.applianceType.name}` : ""}
                 {p.archivedAt ? " — archived" : ""}
               </p>
-              <p className="text-sm text-gray-700">
+              <p className="text-sm text-ink-soft">
                 Part {p.partNumber}
                 {p.partName ? ` — ${p.partName}` : ""}
               </p>
-              {p.notes && <p className="text-sm text-gray-600">{p.notes}</p>}
+              {p.notes && <p className="text-sm text-ink-soft">{p.notes}</p>}
               <p className="mt-2 text-sm">
                 <Link href={`/desk/parts/${p.id}`} className="text-primary underline">
                   View stock movement history

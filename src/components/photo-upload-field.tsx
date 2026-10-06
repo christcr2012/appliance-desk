@@ -70,7 +70,7 @@ export function PhotoUploadField({
     <div className="inline-block">
       <label
         htmlFor={inputId}
-        className={`inline-flex cursor-pointer items-center gap-2 rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:border-gray-400 ${
+        className={`inline-flex cursor-pointer items-center gap-2 rounded-md border border-line-strong px-3 py-1.5 text-sm font-medium text-ink-soft hover:border-line-strong ${
           disabled || isUploading ? "pointer-events-none opacity-60" : ""
         }`}
       >

@@ -150,7 +150,7 @@ export function WebsiteEditor({
 
   const buttonBase = "inline-flex min-h-11 items-center rounded-lg px-4 text-sm font-semibold disabled:opacity-50";
   const primary = `${buttonBase} bg-primary text-white`;
-  const secondary = `${buttonBase} border border-gray-400 text-ink`;
+  const secondary = `${buttonBase} border border-line-strong text-ink`;
 
   return (
     <div className="mt-6 space-y-8">
@@ -164,7 +164,7 @@ export function WebsiteEditor({
       )}
 
       {groups.map((group) => (
-        <section key={group.page} aria-labelledby={`page-${group.page}`} className="rounded-xl border border-gray-300 p-5">
+        <section key={group.page} aria-labelledby={`page-${group.page}`} className="rounded-xl border border-line-strong p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 id={`page-${group.page}`} className="text-lg font-semibold text-ink">
               {group.page}
@@ -211,7 +211,7 @@ export function WebsiteEditor({
                           maxLength={max}
                           rows={4}
                           onChange={(e) => setValues((c) => ({ ...c, [f.key]: e.target.value }))}
-                          className="w-full rounded-lg border border-gray-400 px-3 py-2 text-sm"
+                          className="w-full rounded-lg border border-line-strong px-3 py-2 text-sm"
                         />
                       ) : (
                         <input
@@ -221,7 +221,7 @@ export function WebsiteEditor({
                           value={value}
                           maxLength={max}
                           onChange={(e) => setValues((c) => ({ ...c, [f.key]: e.target.value }))}
-                          className="min-h-11 w-full rounded-lg border border-gray-400 px-3 text-sm"
+                          className="min-h-11 w-full rounded-lg border border-line-strong px-3 text-sm"
                         />
                       )}
                     </div>
@@ -248,7 +248,7 @@ export function WebsiteEditor({
         </section>
       ))}
 
-      <div className="sticky bottom-0 z-10 rounded-xl border border-gray-300 bg-surface p-4 shadow">
+      <div className="sticky bottom-0 z-10 rounded-xl border border-line-strong bg-surface p-4 shadow">
         <div className="flex flex-wrap items-center gap-3">
           <button type="button" className={primary} disabled={busy || !dirty} onClick={save}>
             Save draft
@@ -293,14 +293,14 @@ export function WebsiteEditor({
         )}
       </div>
 
-      <section aria-labelledby="history-heading" className="rounded-xl border border-gray-300 p-5">
+      <section aria-labelledby="history-heading" className="rounded-xl border border-line-strong p-5">
         <h2 id="history-heading" className="text-lg font-semibold text-ink">
           History
         </h2>
         {history.length === 0 ? (
           <p className="mt-2 text-sm text-ink-soft">Nothing has been published yet, so the website shows its original text.</p>
         ) : (
-          <ul className="mt-3 divide-y divide-gray-200">
+          <ul className="mt-3 divide-y divide-line">
             {history.map((h) => (
               <li key={h.id} className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm">
                 <span>

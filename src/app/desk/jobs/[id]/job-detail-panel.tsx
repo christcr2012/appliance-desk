@@ -134,23 +134,23 @@ function SubstituteForm({
   const [unitId, setUnitId] = useState(item.substituteUnits[0]?.id ?? "");
   const [visitId, setVisitId] = useState(item.substituteVisits[0]?.id ?? "");
   return (
-    <div className="basis-full rounded-md border border-gray-200 p-3">
-      <p className="text-sm font-medium text-gray-900">Send a different unit of the same type instead</p>
-      <p className="mt-1 text-xs text-gray-600">
+    <div className="basis-full rounded-md border border-line p-3">
+      <p className="text-sm font-medium text-ink">Send a different unit of the same type instead</p>
+      <p className="mt-1 text-xs text-ink-soft">
         The missing unit goes back on the shelf when the replacement is delivered. The monthly price does not change, and the customer is still credited for the days without it.
       </p>
       <div className="mt-2 flex flex-wrap items-end gap-2">
-        <label className="text-xs text-gray-700">
+        <label className="text-xs text-ink-soft">
           Unit
-          <select value={unitId} onChange={(e) => setUnitId(e.target.value)} className="mt-1 block rounded-md border border-gray-300 px-2 py-1 text-sm">
+          <select value={unitId} onChange={(e) => setUnitId(e.target.value)} className="mt-1 block rounded-md border border-line-strong px-2 py-1 text-sm">
             {item.substituteUnits.map((u) => (
               <option key={u.id} value={u.id}>{u.label}</option>
             ))}
           </select>
         </label>
-        <label className="text-xs text-gray-700">
+        <label className="text-xs text-ink-soft">
           Delivery visit
-          <select value={visitId} onChange={(e) => setVisitId(e.target.value)} className="mt-1 block rounded-md border border-gray-300 px-2 py-1 text-sm">
+          <select value={visitId} onChange={(e) => setVisitId(e.target.value)} className="mt-1 block rounded-md border border-line-strong px-2 py-1 text-sm">
             {item.substituteVisits.map((v) => (
               <option key={v.id} value={v.id}>{v.label}</option>
             ))}
@@ -160,7 +160,7 @@ function SubstituteForm({
           type="button"
           disabled={disabled || !unitId || !visitId}
           onClick={() => onSubmit(item.id, unitId, visitId)}
-          className="rounded-md border border-gray-300 px-2 py-1 text-xs text-gray-700 hover:border-gray-400 disabled:opacity-50"
+          className="rounded-md border border-line-strong px-2 py-1 text-xs text-ink-soft hover:border-line-strong disabled:opacity-50"
         >
           Set this unit aside
         </button>
@@ -351,21 +351,21 @@ export function JobDetailPanel({
 
   return (
     <div className="space-y-6">
-      <div className="rounded-lg border border-gray-200 bg-white p-5">
-        <h2 className="font-medium text-gray-900">Status: {job.status}</h2>
+      <div className="rounded-lg border border-line bg-white p-5">
+        <h2 className="font-medium text-ink">Status: {job.status}</h2>
 
         {job.status === "IN_PROGRESS" && (
           <form onSubmit={handleComplete} className="mt-3">
             {completionScope.length > 0 && (
               <fieldset>
-                <legend className="text-sm font-medium text-gray-700">What happened with each item?</legend>
-                <p className="text-xs text-gray-600">
+                <legend className="text-sm font-medium text-ink-soft">What happened with each item?</legend>
+                <p className="text-xs text-ink-soft">
                   Every item on this visit needs a result before the job can be completed. The usual result is already chosen; change it for anything that did not go as planned. {job.type === "DELIVERY" || job.type === "INSTALLATION" ? " The customer is still billed for the whole agreement; an item that did not arrive earns a credit for the missing days once it is delivered." : ""}
                 </p>
                 <ul className="mt-2 space-y-2">
                   {completionScope.map((row) => (
                     <li key={row.applianceId} className="flex flex-wrap items-center justify-between gap-2">
-                      <label htmlFor={`result-${row.applianceId}`} className="text-sm text-gray-700">
+                      <label htmlFor={`result-${row.applianceId}`} className="text-sm text-ink-soft">
                         {row.label}
                         {row.role === "REPLACEMENT" ? " (new unit)" : job.type === "SWAP" ? " (old unit)" : ""}
                       </label>
@@ -373,7 +373,7 @@ export function JobDetailPanel({
                         id={`result-${row.applianceId}`}
                         value={results[row.applianceId] ?? row.defaultResult}
                         onChange={(e) => setResults((prev) => ({ ...prev, [row.applianceId]: e.target.value as JobApplianceResult }))}
-                        className="rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+                        className="rounded-md border border-line-strong px-2 py-1.5 text-sm"
                       >
                         {row.allowed.map((value) => (
                           <option key={value} value={value}>
@@ -388,7 +388,7 @@ export function JobDetailPanel({
             )}
             <label
               htmlFor="completionNotes"
-              className="mt-3 block text-sm font-medium text-gray-700"
+              className="mt-3 block text-sm font-medium text-ink-soft"
             >
               Completion notes (used when you mark it completed)
             </label>
@@ -397,9 +397,9 @@ export function JobDetailPanel({
               rows={2}
               value={completionNotes}
               onChange={(e) => setCompletionNotes(e.target.value)}
-              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+              className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
             />
-            <label htmlFor="performedOn" className="mt-3 block text-sm font-medium text-gray-700">
+            <label htmlFor="performedOn" className="mt-3 block text-sm font-medium text-ink-soft">
               Date the work was done
             </label>
             <input
@@ -408,16 +408,16 @@ export function JobDetailPanel({
               value={performedOn}
               onChange={(e) => setPerformedOn(e.target.value)}
               aria-describedby="performedOn-help"
-              className="mt-1 rounded-md border border-gray-300 px-3 py-2 text-sm"
+              className="mt-1 rounded-md border border-line-strong px-3 py-2 text-sm"
             />
-            <p id="performedOn-help" className="mt-1 text-xs text-gray-600">
+            <p id="performedOn-help" className="mt-1 text-xs text-ink-soft">
               Billing counts days from this date (a late return, or an item delivered late), not from the moment you press the button. Change it if you are recording the visit a day or two later.
             </p>
-            {AUTOMATIC_ON_COMPLETE[job.type] && <p className="mt-2 text-sm text-gray-600">{AUTOMATIC_ON_COMPLETE[job.type]}</p>}
+            {AUTOMATIC_ON_COMPLETE[job.type] && <p className="mt-2 text-sm text-ink-soft">{AUTOMATIC_ON_COMPLETE[job.type]}</p>}
             <button
               type="submit"
               disabled={isPending}
-              className="mt-3 rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+              className="mt-3 rounded-md bg-action px-4 py-2 text-sm font-medium text-on-action hover:bg-action disabled:opacity-50"
             >
               {isPending ? "Completing…" : "Complete job"}
             </button>
@@ -425,7 +425,7 @@ export function JobDetailPanel({
         )}
 
         {job.status === "COMPLETED" && (
-          <div className="mt-3 text-sm text-gray-700">
+          <div className="mt-3 text-sm text-ink-soft">
             {outcome && <p>{outcome === "COMPLETE" ? "Everything went as planned." : "Partly done: something on this visit did not go as planned, and a follow-up task was created for each."}</p>}
             {job.appliances.some((a) => a.result) && (
               <ul className="mt-2 space-y-1">
@@ -440,7 +440,7 @@ export function JobDetailPanel({
         )}
 
         {nextStatuses.length === 0 && job.status !== "IN_PROGRESS" ? (
-          <p className="mt-3 text-sm text-gray-600">This job is closed out.</p>
+          <p className="mt-3 text-sm text-ink-soft">This job is closed out.</p>
         ) : (
           <div className="mt-3 flex flex-wrap gap-2">
             {ALL_STATUSES.filter((s) => nextStatuses.includes(s.value)).map((s) => (
@@ -449,7 +449,7 @@ export function JobDetailPanel({
                 type="button"
                 disabled={isPending}
                 onClick={() => handleStatusChange(s.value)}
-                className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:border-gray-400 disabled:opacity-50"
+                className="rounded-md border border-line-strong px-3 py-1.5 text-sm text-ink-soft hover:border-line-strong disabled:opacity-50"
               >
                 Mark {s.label}
               </button>
@@ -464,12 +464,12 @@ export function JobDetailPanel({
       </div>
 
       {pendingDeliveries.length > 0 && (
-        <div className="rounded-lg border border-gray-200 bg-white p-5">
-          <h2 className="font-medium text-gray-900">Items not delivered on this visit</h2>
-          <p className="mt-1 text-sm text-gray-600">
+        <div className="rounded-lg border border-line bg-white p-5">
+          <h2 className="font-medium text-ink">Items not delivered on this visit</h2>
+          <p className="mt-1 text-sm text-ink-soft">
             The customer is billed for these from the original delivery date. Schedule a delivery job for each one; when that job is completed the credit for the missing days is worked out automatically.
           </p>
-          <ul className="mt-3 space-y-2 text-sm text-gray-700">
+          <ul className="mt-3 space-y-2 text-sm text-ink-soft">
             {pendingDeliveries.map((item) => (
               <li key={item.id} className="flex flex-wrap items-center justify-between gap-2">
                 <span>
@@ -488,7 +488,7 @@ export function JobDetailPanel({
                         ? `; unit ${item.substituteLabel} is set aside to take its place`
                         : "; still waiting"}
                   {item.removed && item.stripeUpdatePending && (
-                    <strong className="ml-1 font-medium text-gray-900"> Cancelled — Stripe update pending. The customer&apos;s monthly subscription has not been lowered yet; the system keeps retrying and the Billing check screen shows it until it is done.</strong>
+                    <strong className="ml-1 font-medium text-ink"> Cancelled — Stripe update pending. The customer&apos;s monthly subscription has not been lowered yet; the system keeps retrying and the Billing check screen shows it until it is done.</strong>
                   )}
                 </span>
                 {canViewFinance && !item.deliveredOn && !item.removed && !item.substituteLabel && item.substituteUnits.length > 0 && item.substituteVisits.length > 0 && (
@@ -504,7 +504,7 @@ export function JobDetailPanel({
                         type="button"
                         disabled={isPending}
                         onClick={() => handleRemoveUndelivered(item.id)}
-                        className="rounded-md border border-gray-300 px-2 py-1 text-xs text-gray-700 hover:border-gray-400 disabled:opacity-50"
+                        className="rounded-md border border-line-strong px-2 py-1 text-xs text-ink-soft hover:border-line-strong disabled:opacity-50"
                       >
                         Never delivered — take it off the agreement and refund it
                       </button>
@@ -515,7 +515,7 @@ export function JobDetailPanel({
             ))}
           </ul>
           {removeMessage && (
-            <p role="status" className="mt-2 text-sm text-gray-700">
+            <p role="status" className="mt-2 text-sm text-ink-soft">
               {removeMessage}
             </p>
           )}
@@ -523,25 +523,25 @@ export function JobDetailPanel({
       )}
 
       {checklist.length > 0 && (
-        <div className="rounded-lg border border-gray-200 bg-white p-5">
-          <h2 className="font-medium text-gray-900">
+        <div className="rounded-lg border border-line bg-white p-5">
+          <h2 className="font-medium text-ink">
             Checklist ({checklist.filter((i) => i.checked).length}/{checklist.length})
           </h2>
-          <p className="mt-1 text-sm text-gray-600">
+          <p className="mt-1 text-sm text-ink-soft">
             A memory aid for the visit — nothing here is required to mark this job
             completed.
           </p>
           <ul className="mt-3 space-y-2">
             {checklist.map((item, i) => (
               <li key={item.item}>
-                <label className="flex items-start gap-2 text-sm text-gray-700">
+                <label className="flex items-start gap-2 text-sm text-ink-soft">
                   <input
                     type="checkbox"
                     checked={item.checked}
                     onChange={() => handleToggleChecklist(i)}
                     className="mt-0.5 rounded"
                   />
-                  <span className={item.checked ? "text-gray-600 line-through" : ""}>
+                  <span className={item.checked ? "text-ink-soft line-through" : ""}>
                     {item.item}
                   </span>
                 </label>
@@ -553,7 +553,7 @@ export function JobDetailPanel({
 
 
       {appliancesNeedingUpdate.length > 0 && suggestedStatus && (
-        <div className="rounded-lg border border-gray-200 bg-primary-soft p-5">
+        <div className="rounded-lg border border-line bg-primary-soft p-5">
           <h2 className="font-medium text-primary-dark">Update appliance status?</h2>
           <p className="mt-1 text-sm text-primary-dark">
             This job&apos;s done — want to mark{" "}
@@ -568,14 +568,14 @@ export function JobDetailPanel({
                 type="button"
                 disabled={isPending}
                 onClick={() => handleUpdateApplianceStatus(appliance.id, suggestedStatus)}
-                className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+                className="rounded-md bg-action px-3 py-1.5 text-sm font-medium text-on-action hover:bg-action disabled:opacity-50"
               >
                 Mark {appliance.assetNumber} as {STATUS_LABEL[suggestedStatus]}
               </button>
             ))}
             <Link
               href={`/desk/inventory/${appliancesNeedingUpdate[0].id}`}
-              className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 hover:border-gray-400"
+              className="rounded-md border border-line-strong bg-white px-3 py-1.5 text-sm text-ink-soft hover:border-line-strong"
             >
               Go to the appliance instead
             </Link>
@@ -584,16 +584,16 @@ export function JobDetailPanel({
       )}
 
       {canViewFinance && job.type === "MAINTENANCE_VISIT" && (
-        <div className="rounded-lg border border-gray-200 bg-white p-5">
-          <h2 className="font-medium text-gray-900">Repair cost</h2>
-          <p className="mt-1 text-sm text-gray-600">
+        <div className="rounded-lg border border-line bg-white p-5">
+          <h2 className="font-medium text-ink">Repair cost</h2>
+          <p className="mt-1 text-sm text-ink-soft">
             What this repair actually cost — used to track each appliance&apos;s
             profitability on the Fleet page. Leave blank if unknown; it&apos;s counted as
             $0 until you enter it.
           </p>
           <form onSubmit={handleSaveCosts} className="mt-3 flex flex-wrap items-end gap-4">
             <div>
-              <label htmlFor="partsCost" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="partsCost" className="block text-sm font-medium text-ink-soft">
                 Parts cost
               </label>
               <input
@@ -606,12 +606,12 @@ export function JobDetailPanel({
                 value={partsFromList ? "" : partsCostDollars}
                 disabled={partsFromList}
                 onChange={(e) => setPartsCostDollars(e.target.value)}
-                className="mt-1 w-28 rounded-md border border-gray-300 px-3 py-2 text-sm disabled:bg-gray-100"
+                className="mt-1 w-28 rounded-md border border-line-strong px-3 py-2 text-sm disabled:bg-canvas-alt"
               />
-              {partsFromList && <p className="mt-1 max-w-48 text-xs text-gray-600">From the parts list above.</p>}
+              {partsFromList && <p className="mt-1 max-w-48 text-xs text-ink-soft">From the parts list above.</p>}
             </div>
             <div>
-              <label htmlFor="laborCost" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="laborCost" className="block text-sm font-medium text-ink-soft">
                 Labor cost
               </label>
               <input
@@ -623,13 +623,13 @@ export function JobDetailPanel({
                 placeholder="0.00"
                 value={laborCostDollars}
                 onChange={(e) => setLaborCostDollars(e.target.value)}
-                className="mt-1 w-28 rounded-md border border-gray-300 px-3 py-2 text-sm"
+                className="mt-1 w-28 rounded-md border border-line-strong px-3 py-2 text-sm"
               />
             </div>
             <button
               type="submit"
               disabled={isPending}
-              className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:border-gray-400 disabled:opacity-50"
+              className="rounded-md border border-line-strong px-3 py-2 text-sm text-ink-soft hover:border-line-strong disabled:opacity-50"
             >
               {isPending ? "Saving…" : "Save cost"}
             </button>
@@ -646,9 +646,9 @@ export function JobDetailPanel({
       )}
 
       {job.appliances.length > 0 && (
-        <div className="rounded-lg border border-gray-200 bg-white p-5">
-          <h2 className="font-medium text-gray-900">Appliances on this visit</h2>
-          <ul className="mt-2 space-y-1 text-sm text-gray-700">
+        <div className="rounded-lg border border-line bg-white p-5">
+          <h2 className="font-medium text-ink">Appliances on this visit</h2>
+          <ul className="mt-2 space-y-1 text-sm text-ink-soft">
             {job.appliances.map((a, i) => (
               <li key={i}>
                 {a.appliance.applianceType.name} ({a.appliance.assetNumber})
@@ -658,11 +658,11 @@ export function JobDetailPanel({
         </div>
       )}
 
-      <div className="space-y-4 rounded-lg border border-gray-200 bg-white p-5">
-        <h2 className="font-medium text-gray-900">Condition photos</h2>
+      <div className="space-y-4 rounded-lg border border-line bg-white p-5">
+        <h2 className="font-medium text-ink">Condition photos</h2>
 
         {job.photos.length === 0 ? (
-          <p className="text-sm text-gray-600">No photos added yet.</p>
+          <p className="text-sm text-ink-soft">No photos added yet.</p>
         ) : (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             {job.photos.map((p) => (
@@ -679,9 +679,9 @@ export function JobDetailPanel({
           </div>
         )}
 
-        <form onSubmit={handleAddPhoto} className="space-y-3 border-t border-gray-100 pt-4">
+        <form onSubmit={handleAddPhoto} className="space-y-3 border-t border-line pt-4">
           <div>
-            <span className="block text-sm font-medium text-gray-700">Photo</span>
+            <span className="block text-sm font-medium text-ink-soft">Photo</span>
             <div className="mt-1 flex items-center gap-3">
               {photoPreviewUrl && (
                 <Image
@@ -707,7 +707,7 @@ export function JobDetailPanel({
             </div>
           </div>
           <div>
-            <label htmlFor="photoAlt" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="photoAlt" className="block text-sm font-medium text-ink-soft">
               Description (optional)
             </label>
             <input
@@ -716,13 +716,13 @@ export function JobDetailPanel({
               placeholder="e.g. Scratch on left panel before delivery"
               value={photoAlt}
               onChange={(e) => setPhotoAlt(e.target.value)}
-              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+              className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
             />
           </div>
           <button
             type="submit"
             disabled={isPending || !photoUrl}
-            className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+            className="rounded-md bg-action px-4 py-2 text-sm font-medium text-on-action hover:bg-action disabled:opacity-50"
           >
             {isPending ? "Adding…" : "Add photo"}
           </button>

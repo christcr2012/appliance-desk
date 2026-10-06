@@ -28,23 +28,23 @@ export function AppliancePricingTable({ rows }: { rows: ApplianceTypeRow[] }) {
     <div className="min-w-0 max-w-full space-y-6">
       <div className="relative w-full min-w-0 max-w-full overflow-x-auto">
         <table className="w-full min-w-[640px] border-collapse text-sm">
-          <caption className="mb-2 text-left text-gray-600">
+          <caption className="mb-2 text-left text-ink-soft">
             Add a new category any time you&apos;re ready to offer it
             (refrigerators, ranges, etc.) — no developer needed. It starts
             hidden from the website until you turn on &quot;Show on
             website&quot;.
           </caption>
           <thead>
-            <tr className="border-b border-gray-200 text-left">
-              <th className="py-2 pr-4 font-medium text-gray-900">Appliance</th>
-              <th className="py-2 pr-4 font-medium text-gray-900">
+            <tr className="border-b border-line text-left">
+              <th className="py-2 pr-4 font-medium text-ink">Appliance</th>
+              <th className="py-2 pr-4 font-medium text-ink">
                 Monthly price
               </th>
-              <th className="py-2 pr-4 font-medium text-gray-900">
+              <th className="py-2 pr-4 font-medium text-ink">
                 Show on website
               </th>
-              <th className="py-2 pr-4 font-medium text-gray-900">Photo</th>
-              <th className="py-2 font-medium text-gray-900">
+              <th className="py-2 pr-4 font-medium text-ink">Photo</th>
+              <th className="py-2 font-medium text-ink">
                 <span className="sr-only">Retire</span>
               </th>
             </tr>
@@ -60,8 +60,8 @@ export function AppliancePricingTable({ rows }: { rows: ApplianceTypeRow[] }) {
       <NewApplianceTypeForm />
 
       {retired.length > 0 && (
-        <details className="max-w-3xl rounded-lg border border-gray-200 p-4">
-          <summary className="cursor-pointer text-sm font-medium text-gray-700">
+        <details className="max-w-3xl rounded-lg border border-line p-4">
+          <summary className="cursor-pointer text-sm font-medium text-ink-soft">
             Retired appliance types ({retired.length})
           </summary>
           <div className="relative mt-3 w-full min-w-0 max-w-full overflow-x-auto">
@@ -105,8 +105,8 @@ function ApplianceRow({ row }: { row: ApplianceTypeRow }) {
   }
 
   return (
-    <tr className={`border-b border-gray-100 ${!row.isActive ? "opacity-60" : ""}`}>
-      <td className="py-3 pr-4 text-gray-900">{row.name}</td>
+    <tr className={`border-b border-line ${!row.isActive ? "opacity-60" : ""}`}>
+      <td className="py-3 pr-4 text-ink">{row.name}</td>
       <td className="py-3 pr-4">
         <div className="flex items-center gap-2">
           <label className="sr-only" htmlFor={`price-${row.id}`}>
@@ -124,7 +124,7 @@ function ApplianceRow({ row }: { row: ApplianceTypeRow }) {
               setPrice(e.target.value);
               setPriceMessage(null);
             }}
-            className="w-24 rounded-lg border border-gray-300 px-2 py-1.5 disabled:bg-gray-50"
+            className="w-24 rounded-lg border border-line-strong px-2 py-1.5 disabled:bg-canvas"
           />
           <button
             type="button"
@@ -142,7 +142,7 @@ function ApplianceRow({ row }: { row: ApplianceTypeRow }) {
                 }
               });
             }}
-            className="rounded-md bg-gray-900 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
+            className="rounded-md bg-action px-3 py-1.5 text-xs font-semibold text-on-action disabled:opacity-60"
           >
             {isPending ? "Saving…" : "Save"}
           </button>
@@ -204,7 +204,7 @@ function ApplianceRow({ row }: { row: ApplianceTypeRow }) {
                 setPhotoMessage(null);
                 savePhotoUrl("");
               }}
-              className="text-xs font-medium text-gray-600 underline hover:text-gray-900 disabled:opacity-60"
+              className="text-xs font-medium text-ink-soft underline hover:text-ink disabled:opacity-60"
             >
               Remove
             </button>
@@ -232,7 +232,7 @@ function ApplianceRow({ row }: { row: ApplianceTypeRow }) {
               setApplianceTypeActiveAction(row.id, !row.isActive);
             });
           }}
-          className="text-xs font-medium text-gray-600 underline hover:text-gray-900 disabled:opacity-60"
+          className="text-xs font-medium text-ink-soft underline hover:text-ink disabled:opacity-60"
         >
           {row.isActive ? "Retire" : "Restore"}
         </button>
@@ -251,7 +251,7 @@ function NewApplianceTypeForm() {
 
   return (
     <form
-      className="max-w-md space-y-3 rounded-lg border border-gray-200 p-4"
+      className="max-w-md space-y-3 rounded-lg border border-line p-4"
       onSubmit={(e) => {
         e.preventDefault();
         setMessage(null);
@@ -270,7 +270,7 @@ function NewApplianceTypeForm() {
         });
       }}
     >
-      <h3 className="text-sm font-semibold text-gray-900">
+      <h3 className="text-sm font-semibold text-ink">
         Add an appliance type
       </h3>
       {message && (
@@ -286,7 +286,7 @@ function NewApplianceTypeForm() {
         </p>
       )}
       <div>
-        <label htmlFor="new-appliance-name" className="mb-1 block text-xs font-medium text-gray-900">
+        <label htmlFor="new-appliance-name" className="mb-1 block text-xs font-medium text-ink">
           Name
         </label>
         <input
@@ -295,11 +295,11 @@ function NewApplianceTypeForm() {
           onChange={(e) => setName(e.target.value)}
           placeholder="Refrigerator"
           required
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+          className="w-full rounded-lg border border-line-strong px-3 py-2 text-sm"
         />
       </div>
       <div>
-        <label htmlFor="new-appliance-price" className="mb-1 block text-xs font-medium text-gray-900">
+        <label htmlFor="new-appliance-price" className="mb-1 block text-xs font-medium text-ink">
           Monthly price
         </label>
         <div className="flex items-center gap-2">
@@ -311,14 +311,14 @@ function NewApplianceTypeForm() {
             step="0.01"
             value={price}
             onChange={(e) => setPrice(e.target.value)}
-            className="w-28 rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            className="w-28 rounded-lg border border-line-strong px-3 py-2 text-sm"
           />
         </div>
       </div>
       <button
         type="submit"
         disabled={isPending || !name.trim()}
-        className="rounded-full bg-gray-900 px-5 py-2 text-xs font-semibold text-white disabled:opacity-60"
+        className="rounded-full bg-action px-5 py-2 text-xs font-semibold text-on-action disabled:opacity-60"
       >
         {isPending ? "Adding…" : "Add appliance type"}
       </button>

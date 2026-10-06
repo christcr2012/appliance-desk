@@ -51,29 +51,29 @@ function JobRow({ job, conflicted, defaultMinutes }: { job: BoardJob; conflicted
     <li>
       <Link
         href={`/desk/jobs/${job.id}`}
-        className={`flex flex-col gap-1 rounded-md border px-3 py-2 text-sm hover:bg-gray-50 sm:flex-row sm:items-center sm:justify-between ${
+        className={`flex flex-col gap-1 rounded-md border px-3 py-2 text-sm hover:bg-canvas sm:flex-row sm:items-center sm:justify-between ${
           conflicted
             ? "border-amber-300 bg-amber-50"
-            : "border-gray-200 bg-white"
+            : "border-line bg-white"
         }`}
       >
         <div>
-          <p className="font-medium text-gray-900">
+          <p className="font-medium text-ink">
             {job.scheduledAt && `${formatTime(new Date(job.scheduledAt))} — `}
             {jobTypeLabel(job.type)} — {customerLabel(job)}
           </p>
-          <p className="text-gray-600">
+          <p className="text-ink-soft">
             {job.serviceAddress
               ? `${job.serviceAddress.line1}, ${job.serviceAddress.city}`
               : "No address on file"}
           </p>
-          <p className="text-gray-700">
+          <p className="text-ink-soft">
             {job.assignedTo ? `Assigned to ${job.assignedTo.name ?? job.assignedTo.email}` : "Nobody assigned"}
             {" · "}
             {job.durationMinutes ? `${job.durationMinutes} minutes` : `usual length (${defaultMinutes} minutes)`}
           </p>
         </div>
-        <div className="text-xs text-gray-500 sm:text-right">
+        <div className="text-xs text-ink-faint sm:text-right">
           {conflicted && (
             <p className="font-medium text-amber-700">
               ⚠ Double-booked around this time
@@ -142,13 +142,13 @@ export default async function DispatchPage({
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="flex items-center gap-2 text-xl font-semibold">
-          <DeliveryServiceIcon className="h-5 w-5 text-gray-500" />
+          <DeliveryServiceIcon className="h-5 w-5 text-ink-faint" />
           Dispatch
         </h1>
         {canScheduleJobs && (
           <Link
             href="/desk/jobs/new"
-            className="inline-flex items-center gap-1 rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
+            className="inline-flex items-center gap-1 rounded-md bg-action px-4 py-2 text-sm font-medium text-on-action hover:bg-action"
           >
             <PlusIcon className="h-4 w-4" />
             Schedule a job
@@ -165,8 +165,8 @@ export default async function DispatchPage({
               aria-current={view === v ? "page" : undefined}
               className={`rounded-full border px-3 py-1 text-sm capitalize ${
                 view === v
-                  ? "border-gray-900 bg-gray-900 text-white"
-                  : "border-gray-300 text-gray-700 hover:border-gray-400"
+                  ? "border-primary bg-action text-on-action"
+                  : "border-line-strong text-ink-soft hover:border-line-strong"
               }`}
             >
               {v}
@@ -185,13 +185,13 @@ export default async function DispatchPage({
                 view === "week" ? -7 : view === "agenda" ? -14 : -1,
               ),
             )}
-            className="rounded-md border border-gray-300 px-2 py-1 text-gray-700 hover:border-gray-400"
+            className="rounded-md border border-line-strong px-2 py-1 text-ink-soft hover:border-line-strong"
           >
             &larr; Earlier
           </Link>
           <Link
             href={boardLink(view, new Date())}
-            className="rounded-md border border-gray-300 px-2 py-1 text-gray-700 hover:border-gray-400"
+            className="rounded-md border border-line-strong px-2 py-1 text-ink-soft hover:border-line-strong"
           >
             Today
           </Link>
@@ -200,7 +200,7 @@ export default async function DispatchPage({
               view,
               addDays(anchor, view === "week" ? 7 : view === "agenda" ? 14 : 1),
             )}
-            className="rounded-md border border-gray-300 px-2 py-1 text-gray-700 hover:border-gray-400"
+            className="rounded-md border border-line-strong px-2 py-1 text-ink-soft hover:border-line-strong"
           >
             Later &rarr;
           </Link>
@@ -209,10 +209,10 @@ export default async function DispatchPage({
 
       {unscheduled.length > 0 && (
         <div className="mt-6 rounded-lg border border-blue-200 bg-blue-50 p-4">
-          <h2 className="font-medium text-gray-900">
+          <h2 className="font-medium text-ink">
             Unscheduled ({unscheduled.length})
           </h2>
-          <p className="mt-1 text-sm text-gray-600">
+          <p className="mt-1 text-sm text-ink-soft">
             These jobs don&apos;t have a time on the calendar yet — open one to
             set it.
           </p>
@@ -226,7 +226,7 @@ export default async function DispatchPage({
 
       {view === "day" && (
         <div className="mt-6">
-          <h2 className="font-medium text-gray-900">
+          <h2 className="font-medium text-ink">
             {anchor.toLocaleDateString("en-US", {
               timeZone: BUSINESS_TIME_ZONE,
               weekday: "long",
@@ -235,7 +235,7 @@ export default async function DispatchPage({
             })}
           </h2>
           {scheduled.length === 0 ? (
-            <p className="mt-2 text-sm text-gray-600">
+            <p className="mt-2 text-sm text-ink-soft">
               Nothing scheduled for this day.
             </p>
           ) : (
@@ -261,11 +261,11 @@ export default async function DispatchPage({
             return (
               <div
                 key={key}
-                className="rounded-lg border border-gray-200 bg-white p-3"
+                className="rounded-lg border border-line bg-white p-3"
               >
                 <Link
                   href={boardLink("day", day)}
-                  className="font-medium text-gray-900 hover:underline"
+                  className="font-medium text-ink hover:underline"
                 >
                   {day.toLocaleDateString("en-US", {
                     timeZone: BUSINESS_TIME_ZONE,
@@ -275,7 +275,7 @@ export default async function DispatchPage({
                   })}
                 </Link>
                 {dayJobs.length === 0 ? (
-                  <p className="mt-1 text-xs text-gray-500">
+                  <p className="mt-1 text-xs text-ink-faint">
                     Nothing scheduled
                   </p>
                 ) : (
@@ -284,10 +284,10 @@ export default async function DispatchPage({
                       <li key={job.id}>
                         <Link
                           href={`/desk/jobs/${job.id}`}
-                          className={`block rounded px-1.5 py-1 text-xs hover:bg-gray-50 ${
+                          className={`block rounded px-1.5 py-1 text-xs hover:bg-canvas ${
                             conflicting.has(job.id)
                               ? "bg-amber-50 text-amber-800"
-                              : "text-gray-700"
+                              : "text-ink-soft"
                           }`}
                         >
                           {job.scheduledAt &&
@@ -308,7 +308,7 @@ export default async function DispatchPage({
       {view === "agenda" && (
         <div className="mt-6 space-y-6">
           {[...jobsByDay.keys()].length === 0 ? (
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-ink-soft">
               Nothing scheduled in the next two weeks.
             </p>
           ) : (
@@ -316,7 +316,7 @@ export default async function DispatchPage({
               .sort(([a], [b]) => (a < b ? -1 : 1))
               .map(([key, dayJobs]) => (
                 <div key={key}>
-                  <h2 className="font-medium text-gray-900">
+                  <h2 className="font-medium text-ink">
                     {new Date(
                       dayJobs[0].scheduledAt as Date,
                     ).toLocaleDateString("en-US", {

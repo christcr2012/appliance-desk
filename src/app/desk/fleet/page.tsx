@@ -110,24 +110,24 @@ export default async function FleetPage({
       </div>
 
       <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <div className="rounded-lg border border-gray-200 bg-white p-5">
-          <h2 className="font-medium text-gray-900">Most utilized</h2>
+        <div className="rounded-lg border border-line bg-white p-5">
+          <h2 className="font-medium text-ink">Most utilized</h2>
           <ApplianceRankList
             items={mostUtilized}
             renderValue={(a) => `${Math.round(a.utilizationFraction * 100)}%`}
           />
         </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-5">
-          <h2 className="font-medium text-gray-900">Least utilized</h2>
+        <div className="rounded-lg border border-line bg-white p-5">
+          <h2 className="font-medium text-ink">Least utilized</h2>
           <ApplianceRankList
             items={leastUtilized}
             renderValue={(a) => `${Math.round(a.utilizationFraction * 100)}%`}
           />
         </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-5 lg:col-span-2">
-          <h2 className="font-medium text-gray-900">Highest repair costs</h2>
+        <div className="rounded-lg border border-line bg-white p-5 lg:col-span-2">
+          <h2 className="font-medium text-ink">Highest repair costs</h2>
           {highestRepairCost.length === 0 ? (
-            <p className="mt-2 text-sm text-gray-600">
+            <p className="mt-2 text-sm text-ink-soft">
               No repair costs recorded yet — enter parts/labor cost on a
               maintenance job to see them here.
             </p>
@@ -251,10 +251,10 @@ function ApplianceRankList<
   },
 >({ items, renderValue }: { items: T[]; renderValue: (item: T) => string }) {
   if (items.length === 0) {
-    return <p className="mt-2 text-sm text-gray-600">Not enough data yet.</p>;
+    return <p className="mt-2 text-sm text-ink-soft">Not enough data yet.</p>;
   }
   return (
-    <ul className="mt-2 divide-y divide-gray-100 text-sm">
+    <ul className="mt-2 divide-y divide-line text-sm">
       {items.map((item) => (
         <li
           key={item.applianceId}
@@ -262,11 +262,11 @@ function ApplianceRankList<
         >
           <Link
             href={`/desk/inventory/${item.applianceId}`}
-            className="min-w-0 break-words text-gray-900 hover:underline"
+            className="min-w-0 break-words text-ink hover:underline"
           >
             {item.applianceTypeName} ({item.assetNumber})
           </Link>
-          <span className="shrink-0 text-gray-600">{renderValue(item)}</span>
+          <span className="shrink-0 text-ink-soft">{renderValue(item)}</span>
         </li>
       ))}
     </ul>

@@ -47,9 +47,9 @@ export function MonthToMonthForm({
   const placeholders = WORDING_PLACEHOLDERS.map((p) => `{{${p}}}`).join(" ");
 
   return (
-    <form onSubmit={onSubmit} className="mt-8 max-w-2xl space-y-6 border-t border-gray-200 pt-6">
-      <h3 className="text-base font-semibold text-gray-900">Month-to-month rentals</h3>
-      <p className="text-sm text-gray-600">
+    <form onSubmit={onSubmit} className="mt-8 max-w-2xl space-y-6 border-t border-line pt-6">
+      <h3 className="text-base font-semibold text-ink">Month-to-month rentals</h3>
+      <p className="text-sm text-ink-soft">
         The days of notice and the wording in “Early-ending terms” above are also the terms for month-to-month rentals.
         {currentVersion ? ` The terms customers are on now are version ${currentVersion}.` : " No terms version is published yet."} When you
         change them, every month-to-month customer gets a notice, and the new terms apply to a customer only after the number
@@ -65,15 +65,15 @@ export function MonthToMonthForm({
         </p>
       )}
       <div className="space-y-2">
-        <label htmlFor="mtm-days" className="block text-sm font-medium text-gray-900">
+        <label htmlFor="mtm-days" className="block text-sm font-medium text-ink">
           Days before a change applies ({MONTH_TO_MONTH_CHANGE_DAYS_MIN} to {MONTH_TO_MONTH_CHANGE_DAYS_MAX})
         </label>
-        <p className="text-sm text-gray-600">Starting value: {RECOMMENDED_MONTH_TO_MONTH_CHANGE_DAYS} days, the shortest the owner chose to give customers.</p>
+        <p className="text-sm text-ink-soft">Starting value: {RECOMMENDED_MONTH_TO_MONTH_CHANGE_DAYS} days, the shortest the owner chose to give customers.</p>
         <input
           id="mtm-days"
           type="text"
           inputMode="numeric"
-          className="w-24 rounded-lg border border-gray-300 px-3 py-2 text-sm"
+          className="w-24 rounded-lg border border-line-strong px-3 py-2 text-sm"
           value={values.monthToMonthChangeNoticeDays}
           onChange={(e) => setValues({ ...values, monthToMonthChangeNoticeDays: e.target.value })}
         />
@@ -85,26 +85,26 @@ export function MonthToMonthForm({
         ] as const
       ).map(([key, label, help]) => (
         <div key={key} className="space-y-2">
-          <label htmlFor={`mtm-${key}`} className="block text-sm font-medium text-gray-900">
+          <label htmlFor={`mtm-${key}`} className="block text-sm font-medium text-ink">
             {label}
           </label>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-ink-soft">
             {help} Leave it empty to use the starting draft. Words in double braces are filled in for each customer: {placeholders}.
           </p>
           <textarea
             id={`mtm-${key}`}
             rows={8}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            className="w-full rounded-lg border border-line-strong px-3 py-2 text-sm"
             placeholder={startingDrafts[key]}
             value={values[key]}
             onChange={(e) => setValues({ ...values, [key]: e.target.value })}
           />
-          <button type="button" className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-900" onClick={() => setValues({ ...values, [key]: "" })}>
+          <button type="button" className="rounded-lg border border-line-strong px-3 py-1.5 text-sm text-ink" onClick={() => setValues({ ...values, [key]: "" })}>
             Restore recommended wording
           </button>
         </div>
       ))}
-      <button type="submit" disabled={saving} className="rounded-full bg-gray-900 px-6 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
+      <button type="submit" disabled={saving} className="rounded-full bg-action px-6 py-2.5 text-sm font-semibold text-on-action disabled:opacity-60">
         {saving ? "Saving…" : "Save"}
       </button>
     </form>

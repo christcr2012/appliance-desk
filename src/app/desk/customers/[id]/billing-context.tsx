@@ -13,11 +13,11 @@ export async function BillingContext({ id }: { id: string }) {
       >
         Open invoices, payments and customer statement
       </Link>
-      <div className="mt-6 rounded-lg border border-gray-200 bg-white p-5">
-        <h2 className="font-medium text-gray-900">Referral program</h2>
-        <p className="mt-2 text-sm text-gray-600">
+      <div className="mt-6 rounded-lg border border-line bg-white p-5">
+        <h2 className="font-medium text-ink">Referral program</h2>
+        <p className="mt-2 text-sm text-ink-soft">
           Their code:{" "}
-          <span className="font-mono font-semibold text-gray-900">
+          <span className="font-mono font-semibold text-ink">
             {customer.referralCode}
           </span>
           {" — "}give it to friends; when someone they refer signs up and starts
@@ -25,7 +25,7 @@ export async function BillingContext({ id }: { id: string }) {
         </p>
 
         {customer.referredBy && (
-          <p className="mt-2 text-sm text-gray-700">
+          <p className="mt-2 text-sm text-ink-soft">
             Referred by{" "}
             <Link
               href={`/desk/customers/${customer.referredBy.referrerCustomerId}`}
@@ -43,10 +43,10 @@ export async function BillingContext({ id }: { id: string }) {
 
         {customer.referralsMade.length > 0 && (
           <div className="mt-3">
-            <p className="text-sm font-medium text-gray-900">
+            <p className="text-sm font-medium text-ink">
               People they&apos;ve referred
             </p>
-            <ul className="mt-1 space-y-1 text-sm text-gray-700">
+            <ul className="mt-1 space-y-1 text-sm text-ink-soft">
               {customer.referralsMade.map((r) => (
                 <li key={r.id}>
                   <Link
@@ -65,8 +65,8 @@ export async function BillingContext({ id }: { id: string }) {
 
         {customer.credits.length > 0 && (
           <div className="mt-3">
-            <p className="text-sm font-medium text-gray-900">Account credits</p>
-            <ul className="mt-1 space-y-1 text-sm text-gray-700">
+            <p className="text-sm font-medium text-ink">Account credits</p>
+            <ul className="mt-1 space-y-1 text-sm text-ink-soft">
               {customer.credits.map((c) => (
                 <li key={c.id}>
                   {formatCents(c.remainingCents)} remaining of{" "}

@@ -86,10 +86,10 @@ export function ResolveForm({
   return (
     <form onSubmit={go} className="max-w-3xl space-y-4">
       <fieldset className="space-y-3">
-        <legend className="text-base font-semibold text-gray-900">What do you want to do? ({noticeStatus.toLowerCase()})</legend>
+        <legend className="text-base font-semibold text-ink">What do you want to do? ({noticeStatus.toLowerCase()})</legend>
         {options.map((o) => (
-          <div key={o.kind} className={`rounded-lg border p-4 ${o.available ? "border-gray-300 bg-white" : "border-gray-200 bg-gray-50"}`}>
-            <label className="flex items-start gap-3 text-sm text-gray-900">
+          <div key={o.kind} className={`rounded-lg border p-4 ${o.available ? "border-line-strong bg-white" : "border-line bg-canvas"}`}>
+            <label className="flex items-start gap-3 text-sm text-ink">
               <input
                 type="radio"
                 name="option"
@@ -101,8 +101,8 @@ export function ResolveForm({
               />
               <span>
                 <span className="font-semibold">{TITLES[o.kind] ?? o.kind}</span>
-                <span className="mt-1 block text-gray-700">{o.effect}</span>
-                <span className="mt-1 block text-xs text-gray-600">{o.available ? "Available." : "Not available:"} {o.why}</span>
+                <span className="mt-1 block text-ink-soft">{o.effect}</span>
+                <span className="mt-1 block text-xs text-ink-soft">{o.available ? "Available." : "Not available:"} {o.why}</span>
               </span>
             </label>
             {kind === o.kind && o.available && (
@@ -116,7 +116,7 @@ export function ResolveForm({
                 {o.kind === "SEND_NEW_RENEWAL" && (
                   <div>
                     <label htmlFor="renewal-term" className="block font-medium">Length of the new renewal</label>
-                    <select id="renewal-term" value={termMonths} onChange={(e) => setTermMonths(e.target.value)} className="rounded-lg border border-gray-300 px-3 py-2">
+                    <select id="renewal-term" value={termMonths} onChange={(e) => setTermMonths(e.target.value)} className="rounded-lg border border-line-strong px-3 py-2">
                       <option value="">Month to month</option>
                       <option value="6">6 months</option>
                       <option value="12">12 months</option>
@@ -126,14 +126,14 @@ export function ResolveForm({
                 {o.kind === "KEEP_WAITING" && (
                   <div>
                     <label htmlFor="remind-on" className="block font-medium">Remind me on</label>
-                    <input id="remind-on" type="date" min={today} value={remindOn} onChange={(e) => setRemindOn(e.target.value)} className="rounded-lg border border-gray-300 px-3 py-2" />
+                    <input id="remind-on" type="date" min={today} value={remindOn} onChange={(e) => setRemindOn(e.target.value)} className="rounded-lg border border-line-strong px-3 py-2" />
                   </div>
                 )}
                 {o.kind === "RECORD_DELIVERY" && (
                   <div className="flex flex-wrap gap-3">
                     <div>
                       <label htmlFor="del-channel" className="block font-medium">How</label>
-                      <select id="del-channel" value={channel} onChange={(e) => setChannel(e.target.value)} className="rounded-lg border border-gray-300 px-3 py-2">
+                      <select id="del-channel" value={channel} onChange={(e) => setChannel(e.target.value)} className="rounded-lg border border-line-strong px-3 py-2">
                         <option value="MAIL">Mailed</option>
                         <option value="BUSINESS_MAILBOX">Emailed from our business mailbox</option>
                         <option value="IN_PERSON_WRITTEN">Printed copy handed over</option>
@@ -142,11 +142,11 @@ export function ResolveForm({
                     </div>
                     <div>
                       <label htmlFor="del-date" className="block font-medium">Date</label>
-                      <input id="del-date" type="date" max={today} value={date} onChange={(e) => setDate(e.target.value)} className="rounded-lg border border-gray-300 px-3 py-2" />
+                      <input id="del-date" type="date" max={today} value={date} onChange={(e) => setDate(e.target.value)} className="rounded-lg border border-line-strong px-3 py-2" />
                     </div>
                     <div>
                       <label htmlFor="del-to" className="block font-medium">Address, email or number used</label>
-                      <input id="del-to" value={sentTo} onChange={(e) => setSentTo(e.target.value)} maxLength={200} className="w-64 rounded-lg border border-gray-300 px-3 py-2" />
+                      <input id="del-to" value={sentTo} onChange={(e) => setSentTo(e.target.value)} maxLength={200} className="w-64 rounded-lg border border-line-strong px-3 py-2" />
                     </div>
                   </div>
                 )}
@@ -157,7 +157,7 @@ export function ResolveForm({
                     {emailWent === "yes" && (
                       <div>
                         <label htmlFor="email-date" className="block font-medium">Date the email service shows</label>
-                        <input id="email-date" type="date" max={today} value={date} onChange={(e) => setDate(e.target.value)} className="rounded-lg border border-gray-300 px-3 py-2" />
+                        <input id="email-date" type="date" max={today} value={date} onChange={(e) => setDate(e.target.value)} className="rounded-lg border border-line-strong px-3 py-2" />
                       </div>
                     )}
                   </div>
@@ -169,12 +169,12 @@ export function ResolveForm({
       </fieldset>
       {needsNote && (
         <div>
-          <label htmlFor="resolve-note" className="block text-sm font-medium text-gray-900">Note (saved with the record: why, or how you know)</label>
-          <input id="resolve-note" value={note} onChange={(e) => setNote(e.target.value)} maxLength={500} className="w-full max-w-xl rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+          <label htmlFor="resolve-note" className="block text-sm font-medium text-ink">Note (saved with the record: why, or how you know)</label>
+          <input id="resolve-note" value={note} onChange={(e) => setNote(e.target.value)} maxLength={500} className="w-full max-w-xl rounded-lg border border-line-strong px-3 py-2 text-sm" />
         </div>
       )}
       {error && <p role="alert" className="text-sm text-red-800">{error}</p>}
-      <button type="submit" disabled={pending || !kind} className="rounded-full bg-gray-900 px-6 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
+      <button type="submit" disabled={pending || !kind} className="rounded-full bg-action px-6 py-2.5 text-sm font-semibold text-on-action disabled:opacity-60">
         {pending ? "Working…" : "Do this"}
       </button>
     </form>

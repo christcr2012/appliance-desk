@@ -78,15 +78,15 @@ export function NewRequestForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className="space-y-4 rounded-lg border border-gray-200 bg-white p-5"
+      className="space-y-4 rounded-lg border border-line bg-surface p-5"
     >
-      <h2 className="font-medium text-gray-900">{requestTitle}</h2>
+      <h2 className="font-medium text-ink">{requestTitle}</h2>
 
       {appliances.length > 0 && (
         <div>
           <label
             htmlFor="applianceId"
-            className="block text-sm font-medium text-gray-700"
+            className="block text-sm font-medium text-ink-soft"
           >
             Which appliance? (optional)
           </label>
@@ -94,7 +94,7 @@ export function NewRequestForm({
             id="applianceId"
             value={applianceId}
             onChange={(e) => setApplianceId(e.target.value)}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
           >
             <option value="">Not sure / general question</option>
             {appliances.map((a) => (
@@ -109,7 +109,7 @@ export function NewRequestForm({
       <div>
         <label
           htmlFor="problem"
-          className="block text-sm font-medium text-gray-700"
+          className="block text-sm font-medium text-ink-soft"
         >
           What&apos;s going on?
         </label>
@@ -119,14 +119,14 @@ export function NewRequestForm({
           required
           value={problem}
           onChange={(e) => setProblem(e.target.value)}
-          className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+          className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
         />
       </div>
 
       <div>
         <label
           htmlFor="priority"
-          className="block text-sm font-medium text-gray-700"
+          className="block text-sm font-medium text-ink-soft"
         >
           How urgent is this?
         </label>
@@ -134,7 +134,7 @@ export function NewRequestForm({
           id="priority"
           value={priority}
           onChange={(e) => setPriority(e.target.value)}
-          className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+          className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
         >
           {PRIORITIES.map((p) => (
             <option key={p.value} value={p.value}>
@@ -145,10 +145,10 @@ export function NewRequestForm({
       </div>
 
       <div>
-        <span className="block text-sm font-medium text-gray-700">
+        <span className="block text-sm font-medium text-ink-soft">
           Photo (optional)
         </span>
-        <p className="mt-1 text-xs text-gray-500">
+        <p className="mt-1 text-xs text-ink-faint">
           A picture of the problem — a leak, a broken part, anything that helps.
         </p>
         {photoUrls.length > 0 && (
@@ -165,7 +165,7 @@ export function NewRequestForm({
                     setPhotoUrls((urls) => urls.filter((u) => u !== url))
                   }
                   aria-label={`Remove uploaded photo ${index + 1}`}
-                  className="rounded-md border border-gray-300 px-2 py-1 text-xs text-gray-700 hover:border-gray-400"
+                  className="rounded-md border border-line-strong px-2 py-1 text-xs text-ink-soft hover:border-line-strong"
                 >
                   Remove photo {index + 1}
                 </button>
@@ -196,7 +196,7 @@ export function NewRequestForm({
       <button
         type="submit"
         disabled={isPending}
-        className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+        className="rounded-md bg-action px-4 py-2 text-sm font-medium text-on-action hover:bg-action disabled:opacity-50"
       >
         {isPending ? "Submitting…" : "Submit request"}
       </button>

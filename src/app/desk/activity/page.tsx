@@ -61,7 +61,7 @@ export default async function ActivityPage({
   return (
     <div>
       <h1 className="text-xl font-semibold">Activity</h1>
-      <p className="mt-1 text-sm text-gray-600">
+      <p className="mt-1 text-sm text-ink-soft">
         A record of who changed what, and when — pricing changes, settings
         updates, lead activity, estimates, jobs, and billing.{" "}
         {DEFAULT_PAGE_SIZE} per page.
@@ -75,8 +75,8 @@ export default async function ActivityPage({
             aria-current={range === tab.value ? "page" : undefined}
             className={`rounded-full border px-3 py-1 text-sm ${
               range === tab.value
-                ? "border-gray-900 bg-gray-900 text-white"
-                : "border-gray-300 text-gray-700 hover:border-gray-400"
+                ? "border-primary bg-action text-on-action"
+                : "border-line-strong text-ink-soft hover:border-line-strong"
             }`}
           >
             {tab.label}
@@ -85,16 +85,16 @@ export default async function ActivityPage({
       </nav>
 
       {range !== "all" && (
-        <div className="mt-4 rounded-lg border border-gray-200 bg-white p-4">
+        <div className="mt-4 rounded-lg border border-line bg-white p-4">
           {summary.length === 0 ? (
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-ink-soft">
               Nothing recorded {range === "today" ? "today" : "this week"} yet.
             </p>
           ) : (
-            <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-gray-700">
+            <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-ink-soft">
               {summary.map((row) => (
                 <span key={row.category}>
-                  <span className="font-medium text-gray-900">{row.count}</span> {row.category}
+                  <span className="font-medium text-ink">{row.count}</span> {row.category}
                 </span>
               ))}
             </div>
@@ -103,24 +103,24 @@ export default async function ActivityPage({
       )}
 
       {entries.length === 0 ? (
-        <p className="mt-8 text-sm text-gray-600">Nothing recorded yet.</p>
+        <p className="mt-8 text-sm text-ink-soft">Nothing recorded yet.</p>
       ) : (
-        <ul className="mt-6 divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white">
+        <ul className="mt-6 divide-y divide-line rounded-lg border border-line bg-white">
           {entries.map((entry) => (
             <li key={entry.id} className="px-4 py-3 text-sm">
-              <p className="text-gray-900">
+              <p className="text-ink">
                 <span className="font-medium">
                   {entry.user?.name ?? entry.user?.email ?? "Unknown user"}
                 </span>{" "}
                 — {describeAuditAction(entry.action)}
                 {entry.entityId ? (
-                  <span className="text-gray-500">
+                  <span className="text-ink-faint">
                     {" "}
                     ({entry.entityType} {entry.entityId})
                   </span>
                 ) : null}
               </p>
-              <p className="text-gray-500">
+              <p className="text-ink-faint">
                 {new Date(entry.createdAt).toLocaleString()}
               </p>
             </li>

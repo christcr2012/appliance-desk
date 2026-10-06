@@ -12,13 +12,13 @@ export default async function NewPurchaseOrderPage() {
 
   return (
     <div className="max-w-2xl">
-      <Link href="/desk/purchase-orders" className="text-sm text-gray-600 hover:underline">
+      <Link href="/desk/purchase-orders" className="text-sm text-ink-soft hover:underline">
         &larr; All purchase orders
       </Link>
       <h1 className="mt-2 text-xl font-semibold">New purchase order</h1>
 
       {suppliers.length === 0 ? (
-        <p className="mt-4 text-sm text-gray-600">
+        <p className="mt-4 text-sm text-ink-soft">
           You need a supplier on file first —{" "}
           <Link href="/desk/suppliers/new" className="underline">
             add one

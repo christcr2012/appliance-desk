@@ -24,7 +24,7 @@ export default async function WorkOrderPage({
   return (
     <div className="max-w-2xl">
       <div className="mb-4 flex items-center justify-between print:hidden">
-        <Link href={`/desk/jobs/${job.id}`} className="text-sm text-gray-600 hover:underline">
+        <Link href={`/desk/jobs/${job.id}`} className="text-sm text-ink-soft hover:underline">
           &larr; Back to job
         </Link>
         <PrintDocumentButton label="Print work order" />

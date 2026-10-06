@@ -52,13 +52,13 @@ export default async function NewAgreementPage({
   return (
     <div className="max-w-2xl">
       <h1 className="text-xl font-semibold">New rental agreement</h1>
-      <p className="mt-1 text-sm text-gray-600">
+      <p className="mt-1 text-sm text-ink-soft">
         A few quick steps — customer, term & fees, appliances, then send it for
         signature.
       </p>
 
       {customers.length === 0 ? (
-        <p className="mt-6 rounded-md border border-gray-200 bg-white p-4 text-sm text-gray-600">
+        <p className="mt-6 rounded-md border border-line bg-white p-4 text-sm text-ink-soft">
           No customers yet — the first step below lets you add one, or convert a
           lead into a customer first from /desk/leads.
         </p>

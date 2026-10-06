@@ -22,7 +22,7 @@ export function EstimateResponseForm({ estimateId }: { estimateId: string }) {
 
   if (result.status === "redirecting") {
     return (
-      <div className="rounded-lg border border-gray-200 bg-white p-5 text-sm text-gray-700">
+      <div className="rounded-lg border border-line bg-surface p-5 text-sm text-ink-soft">
         <p>Thanks — taking you to a secure page to pay the deposit…</p>
       </div>
     );
@@ -60,10 +60,10 @@ export function EstimateResponseForm({ estimateId }: { estimateId: string }) {
 
   if (mode === "approve") {
     return (
-      <form onSubmit={handleApprove} className="space-y-4 rounded-lg border border-gray-200 bg-white p-5">
-        <p className="text-sm text-gray-700">Enter your name and email to approve this estimate.</p>
+      <form onSubmit={handleApprove} className="space-y-4 rounded-lg border border-line bg-surface p-5">
+        <p className="text-sm text-ink-soft">Enter your name and email to approve this estimate.</p>
         <div>
-          <label htmlFor="approverName" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="approverName" className="block text-sm font-medium text-ink-soft">
             Your full name
           </label>
           <input
@@ -72,11 +72,11 @@ export function EstimateResponseForm({ estimateId }: { estimateId: string }) {
             required
             value={approverName}
             onChange={(e) => setApproverName(e.target.value)}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
           />
         </div>
         <div>
-          <label htmlFor="approverEmail" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="approverEmail" className="block text-sm font-medium text-ink-soft">
             Your email
           </label>
           <input
@@ -85,21 +85,21 @@ export function EstimateResponseForm({ estimateId }: { estimateId: string }) {
             required
             value={approverEmail}
             onChange={(e) => setApproverEmail(e.target.value)}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
           />
         </div>
         <div className="flex gap-3">
           <button
             type="submit"
             disabled={isPending}
-            className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+            className="rounded-md bg-action px-4 py-2 text-sm font-medium text-on-action hover:bg-action disabled:opacity-50"
           >
             {isPending ? "Submitting…" : "Approve estimate"}
           </button>
           <button
             type="button"
             onClick={() => setMode("choose")}
-            className="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:border-gray-400"
+            className="rounded-md border border-line-strong px-4 py-2 text-sm text-ink-soft hover:border-line-strong"
           >
             Back
           </button>
@@ -117,10 +117,10 @@ export function EstimateResponseForm({ estimateId }: { estimateId: string }) {
     return (
       <form
         onSubmit={handleRequestChanges}
-        className="space-y-4 rounded-lg border border-gray-200 bg-white p-5"
+        className="space-y-4 rounded-lg border border-line bg-surface p-5"
       >
         <div>
-          <label htmlFor="changes-message" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="changes-message" className="block text-sm font-medium text-ink-soft">
             What would you like changed?
           </label>
           <textarea
@@ -129,21 +129,21 @@ export function EstimateResponseForm({ estimateId }: { estimateId: string }) {
             rows={4}
             value={message}
             onChange={(e) => setMessage(e.target.value)}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
           />
         </div>
         <div className="flex gap-3">
           <button
             type="submit"
             disabled={isPending}
-            className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+            className="rounded-md bg-action px-4 py-2 text-sm font-medium text-on-action hover:bg-action disabled:opacity-50"
           >
             {isPending ? "Sending…" : "Send request"}
           </button>
           <button
             type="button"
             onClick={() => setMode("choose")}
-            className="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:border-gray-400"
+            className="rounded-md border border-line-strong px-4 py-2 text-sm text-ink-soft hover:border-line-strong"
           >
             Back
           </button>
@@ -162,14 +162,14 @@ export function EstimateResponseForm({ estimateId }: { estimateId: string }) {
       <button
         type="button"
         onClick={() => setMode("approve")}
-        className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
+        className="rounded-md bg-action px-4 py-2 text-sm font-medium text-on-action hover:bg-action"
       >
         Approve estimate
       </button>
       <button
         type="button"
         onClick={() => setMode("changes")}
-        className="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:border-gray-400"
+        className="rounded-md border border-line-strong px-4 py-2 text-sm text-ink-soft hover:border-line-strong"
       >
         Request changes
       </button>

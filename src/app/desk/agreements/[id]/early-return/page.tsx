@@ -54,7 +54,7 @@ export default async function EarlyReturnPage({
 
   const header = (
     <>
-      <Link href={`/desk/agreements/${id}`} className="text-sm text-gray-600 hover:underline">
+      <Link href={`/desk/agreements/${id}`} className="text-sm text-ink-soft hover:underline">
         &larr; Back to the agreement
       </Link>
       <h1 className="mt-2 text-xl font-semibold">Equipment returned early — {name}</h1>
@@ -65,7 +65,7 @@ export default async function EarlyReturnPage({
     return (
       <div className="max-w-3xl">
         {header}
-        <p className="mt-4 text-sm text-gray-700">No equipment has come back from this rental yet, so there is nothing to settle here.</p>
+        <p className="mt-4 text-sm text-ink-soft">No equipment has come back from this rental yet, so there is nothing to settle here.</p>
       </div>
     );
   }
@@ -112,13 +112,13 @@ export default async function EarlyReturnPage({
   return (
     <div className="max-w-3xl">
       {header}
-      <p className="mt-2 text-sm text-gray-700">
+      <p className="mt-2 text-sm text-ink-soft">
         All of the equipment came back on {pickedUp}, before the rental&rsquo;s agreed ending. Choose what happens, look at the
         numbers, then confirm. Nothing is charged to the customer&rsquo;s card by this screen.
       </p>
       {error && <p role="alert" className="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-800">{error}</p>}
       {resolution && (
-        <p className="mt-4 rounded-lg border border-gray-300 px-4 py-3 text-sm text-gray-900">
+        <p className="mt-4 rounded-lg border border-line-strong px-4 py-3 text-sm text-ink">
           Your standard choices were applied automatically when the pickup was completed. You can still change them while no
           refund or credit has been given and no fee has been paid.
         </p>
@@ -129,9 +129,9 @@ export default async function EarlyReturnPage({
         </p>
       )}
 
-      <form method="get" className="mt-6 space-y-5 rounded-lg border border-gray-200 bg-white p-5">
+      <form method="get" className="mt-6 space-y-5 rounded-lg border border-line bg-white p-5">
         <fieldset>
-          <legend className="font-medium text-gray-900">What happens to the monthly bill?</legend>
+          <legend className="font-medium text-ink">What happens to the monthly bill?</legend>
           <label className="mt-2 flex items-start gap-3 text-sm">
             <input type="radio" name="billing" value="KEEP_TO_AGREED_END" defaultChecked={f.billing === "KEEP_TO_AGREED_END"} className="mt-1 h-4 w-4" />
             <span>Keep billing to the agreed ending{fixed ? " (using the early-ending terms the customer signed)" : " (using this rental's ending notice rules, as if asked on the pickup day)"}.</span>
@@ -142,7 +142,7 @@ export default async function EarlyReturnPage({
           </label>
         </fieldset>
         <fieldset>
-          <legend className="font-medium text-gray-900">Days already paid for after pickup (only if billing stops now)</legend>
+          <legend className="font-medium text-ink">Days already paid for after pickup (only if billing stops now)</legend>
           {([["KEEP", "Keep them"], ["CREDIT", "Give account credit"], ["REFUND", "Refund them"]] as const).map(([value, label]) => (
             <label key={value} className="mt-2 flex items-start gap-3 text-sm">
               <input type="radio" name="unusedDays" value={value} defaultChecked={f.unusedDays === value} className="mt-1 h-4 w-4" />
@@ -152,7 +152,7 @@ export default async function EarlyReturnPage({
         </fieldset>
         {fixed ? (
           <fieldset>
-            <legend className="font-medium text-gray-900">Early-ending fee</legend>
+            <legend className="font-medium text-ink">Early-ending fee</legend>
             <label className="mt-2 flex items-start gap-3 text-sm">
               <input type="radio" name="fee" value="AGREED_TERMS" defaultChecked={f.fee === "AGREED_TERMS"} className="mt-1 h-4 w-4" />
               <span>The fee in the customer&rsquo;s signed terms{preview ? ` (${formatCents(preview.quotedFeeCents)})` : ""}</span>
@@ -167,17 +167,17 @@ export default async function EarlyReturnPage({
             </label>
             <div className="mt-2 grid gap-2 sm:grid-cols-2">
               <div>
-                <label htmlFor="feeDollars" className="block text-sm font-medium text-gray-900">Amount in dollars</label>
+                <label htmlFor="feeDollars" className="block text-sm font-medium text-ink">Amount in dollars</label>
                 <input id="feeDollars" name="feeDollars" inputMode="decimal" defaultValue={f.feeDollars} className="mt-1 min-h-11 w-full rounded-lg border border-control px-3" />
               </div>
               <div>
-                <label htmlFor="feeReason" className="block text-sm font-medium text-gray-900">Reason (5 to 500 characters)</label>
+                <label htmlFor="feeReason" className="block text-sm font-medium text-ink">Reason (5 to 500 characters)</label>
                 <input id="feeReason" name="feeReason" maxLength={500} defaultValue={f.feeReason} className="mt-1 min-h-11 w-full rounded-lg border border-control px-3" />
               </div>
             </div>
           </fieldset>
         ) : (
-          <p className="text-sm text-gray-700">This is a month-to-month rental, so there is never an early-ending fee.</p>
+          <p className="text-sm text-ink-soft">This is a month-to-month rental, so there is never an early-ending fee.</p>
         )}
         <button type="submit" className="min-h-11 rounded-lg border border-control px-4 py-2 text-sm text-primary hover:bg-subtle">
           Show the numbers
@@ -187,24 +187,24 @@ export default async function EarlyReturnPage({
       {problem && <p role="alert" className="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-800">{problem}</p>}
 
       {preview && !preview.prepaidNeedsOwner && (
-        <section aria-labelledby="numbers" className="mt-6 rounded-lg border border-gray-200 bg-white p-5">
-          <h2 id="numbers" className="font-medium text-gray-900">The numbers</h2>
+        <section aria-labelledby="numbers" className="mt-6 rounded-lg border border-line bg-white p-5">
+          <h2 id="numbers" className="font-medium text-ink">The numbers</h2>
           <dl className="mt-3 grid grid-cols-[1fr_auto] gap-x-6 gap-y-2 text-sm">
-            <dt className="text-gray-700">Last day the customer is billed</dt>
+            <dt className="text-ink-soft">Last day the customer is billed</dt>
             <dd className="font-medium">{formatBusinessDate(preview.lastBilledDay)}</dd>
             {f.billing === "END_AT_PICKUP" && (
               <>
-                <dt className="text-gray-700">Days already paid for after pickup</dt>
+                <dt className="text-ink-soft">Days already paid for after pickup</dt>
                 <dd className="font-medium">{preview.unusedDaysCount}</dd>
-                <dt className="text-gray-700">Their value (before tax)</dt>
+                <dt className="text-ink-soft">Their value (before tax)</dt>
                 <dd className="font-medium">{formatCents(preview.unusedCents)}</dd>
-                <dt className="text-gray-700">Tax on that</dt>
+                <dt className="text-ink-soft">Tax on that</dt>
                 <dd className="font-medium">{formatCents(preview.unusedTaxCents)}</dd>
               </>
             )}
-            <dt className="text-gray-700">Early-ending fee (added as an open bill)</dt>
+            <dt className="text-ink-soft">Early-ending fee (added as an open bill)</dt>
             <dd className="font-medium">{formatCents(preview.feeCents)}</dd>
-            <dt className="text-gray-700">
+            <dt className="text-ink-soft">
               {f.unusedDays === "CREDIT" ? "Goes to the customer as account credit" : f.unusedDays === "REFUND" ? "Goes back to the customer" : "Goes back to the customer"}
             </dt>
             <dd className="font-medium">{formatCents(preview.refundOrCreditCents)}</dd>
@@ -217,7 +217,7 @@ export default async function EarlyReturnPage({
             <input type="hidden" name="feeDollars" value={f.feeDollars} />
             <input type="hidden" name="feeReason" value={f.feeReason} />
             <input type="hidden" name="preview" value={serializePreview(preview)} />
-            <button type="submit" className="min-h-11 rounded-lg bg-gray-900 px-5 py-2 text-sm font-semibold text-white">
+            <button type="submit" className="min-h-11 rounded-lg bg-action px-5 py-2 text-sm font-semibold text-on-action">
               Confirm these choices
             </button>
           </form>
@@ -229,9 +229,9 @@ export default async function EarlyReturnPage({
 
 function Settled({ resolution }: { resolution: NonNullable<Awaited<ReturnType<typeof prisma.earlyReturnResolution.findUnique>>> }) {
   return (
-    <section className="mt-6 rounded-lg border border-gray-200 bg-white p-5 text-sm">
-      <h2 className="font-medium text-gray-900">This early return is settled</h2>
-      <ul className="mt-3 space-y-1 text-gray-800">
+    <section className="mt-6 rounded-lg border border-line bg-white p-5 text-sm">
+      <h2 className="font-medium text-ink">This early return is settled</h2>
+      <ul className="mt-3 space-y-1 text-ink">
         <li>Equipment came back on {formatBusinessDate(resolution.pickupDate)}.</li>
         <li>{resolution.billing === "END_AT_PICKUP" ? "Billing stopped at pickup." : "Billing continues to the agreed ending."}</li>
         {resolution.unusedDaysCount > 0 && resolution.billing === "END_AT_PICKUP" && (

@@ -72,11 +72,11 @@ export function MoneyDecisionForm({
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-3 rounded-xl border border-gray-300 p-4" aria-labelledby={`${id}-t`}>
-      <h3 id={`${id}-t`} className="text-base font-semibold text-gray-900">
+    <form onSubmit={onSubmit} className="space-y-3 rounded-xl border border-line-strong p-4" aria-labelledby={`${id}-t`}>
+      <h3 id={`${id}-t`} className="text-base font-semibold text-ink">
         {title}
       </h3>
-      <p className="text-sm text-gray-600">{help}</p>
+      <p className="text-sm text-ink-soft">{help}</p>
       {result && (
         <p
           role={result.status === "error" ? "alert" : "status"}
@@ -86,7 +86,7 @@ export function MoneyDecisionForm({
         </p>
       )}
       <div>
-        <label htmlFor={`${id}-amt`} className="block text-sm font-medium text-gray-900">
+        <label htmlFor={`${id}-amt`} className="block text-sm font-medium text-ink">
           Amount (most you can enter: ${(maxCents / 100).toFixed(2)})
         </label>
         <div className="mt-1 flex items-center gap-2">
@@ -99,20 +99,20 @@ export function MoneyDecisionForm({
               setDollars(e.target.value);
               setConfirmed(false);
             }}
-            className="min-h-11 w-40 rounded-lg border border-gray-400 px-3 text-sm"
+            className="min-h-11 w-40 rounded-lg border border-line-strong px-3 text-sm"
           />
         </div>
       </div>
       {options && options.length > 0 && (
         <div>
-          <label htmlFor={`${id}-sel`} className="block text-sm font-medium text-gray-900">
+          <label htmlFor={`${id}-sel`} className="block text-sm font-medium text-ink">
             {selectLabel}
           </label>
           <select
             id={`${id}-sel`}
             value={select}
             onChange={(e) => setSelect(e.target.value)}
-            className="mt-1 min-h-11 max-w-full rounded-lg border border-gray-400 px-2 text-sm"
+            className="mt-1 min-h-11 max-w-full rounded-lg border border-line-strong px-2 text-sm"
           >
             {options.map((o) => (
               <option key={o.value} value={o.value}>
@@ -124,7 +124,7 @@ export function MoneyDecisionForm({
       )}
       {reasonLabel && (
         <div>
-          <label htmlFor={`${id}-why`} className="block text-sm font-medium text-gray-900">
+          <label htmlFor={`${id}-why`} className="block text-sm font-medium text-ink">
             {reasonLabel}
             {reasonRequired ? " (required)" : " (optional)"}
           </label>
@@ -134,11 +134,11 @@ export function MoneyDecisionForm({
             maxLength={500}
             rows={2}
             onChange={(e) => setReason(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-gray-400 px-3 py-2 text-sm"
+            className="mt-1 w-full rounded-lg border border-line-strong px-3 py-2 text-sm"
           />
         </div>
       )}
-      <label className="flex items-start gap-3 text-sm text-gray-900">
+      <label className="flex items-start gap-3 text-sm text-ink">
         <input
           type="checkbox"
           className="mt-1 h-4 w-4"

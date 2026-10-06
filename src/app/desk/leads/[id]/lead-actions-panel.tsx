@@ -92,7 +92,7 @@ export function LeadActionsPanel({
                 handleResult(result);
               })
             }
-            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:border-gray-400 disabled:opacity-50"
+            className="rounded-md border border-line-strong px-3 py-1.5 text-sm text-ink-soft hover:border-line-strong disabled:opacity-50"
           >
             {s.label}
           </button>
@@ -103,7 +103,7 @@ export function LeadActionsPanel({
             type="button"
             disabled={isPending}
             onClick={() => setShowLostForm((v) => !v)}
-            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:border-gray-400 disabled:opacity-50"
+            className="rounded-md border border-line-strong px-3 py-1.5 text-sm text-ink-soft hover:border-line-strong disabled:opacity-50"
           >
             {showLostForm ? "Cancel" : "Mark as Lost"}
           </button>
@@ -123,7 +123,7 @@ export function LeadActionsPanel({
               handleResult(result);
             })
           }
-          className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+          className="rounded-md bg-action px-3 py-1.5 text-sm font-medium text-on-action hover:bg-action disabled:opacity-50"
         >
           Convert to customer
         </button>
@@ -137,17 +137,17 @@ export function LeadActionsPanel({
           <label htmlFor={`lead-email-${leadId}`} className="block text-sm font-medium">Email for customer account</label>
           <input id={`lead-email-${leadId}`} type="email" required maxLength={254}
             value={email} onChange={e => setEmail(e.target.value)}
-            className="rounded-md border border-gray-300 px-3 py-2" />
-          <button type="submit" disabled={isPending} className="ml-2 min-h-11 rounded-md border border-gray-300 px-3 py-2 disabled:opacity-50">Save email</button>
+            className="rounded-md border border-line-strong px-3 py-2" />
+          <button type="submit" disabled={isPending} className="ml-2 min-h-11 rounded-md border border-line-strong px-3 py-2 disabled:opacity-50">Save email</button>
         </form>
       )}
 
       {showLostForm && (
-        <div className="rounded-md border border-gray-200 p-3">
-          <p className="text-sm font-medium text-gray-700">Why was this lead lost?</p>
+        <div className="rounded-md border border-line p-3">
+          <p className="text-sm font-medium text-ink-soft">Why was this lead lost?</p>
           <div className="mt-2 space-y-1.5">
             {LOST_REASONS.map((reason) => (
-              <label key={reason} className="flex items-center gap-2 text-sm text-gray-700">
+              <label key={reason} className="flex items-center gap-2 text-sm text-ink-soft">
                 <input
                   type="radio"
                   name="lost-reason"
@@ -157,7 +157,7 @@ export function LeadActionsPanel({
                 {reason}
               </label>
             ))}
-            <label className="flex items-center gap-2 text-sm text-gray-700">
+            <label className="flex items-center gap-2 text-sm text-ink-soft">
               <input
                 type="radio"
                 name="lost-reason"
@@ -172,7 +172,7 @@ export function LeadActionsPanel({
                 value={lostReasonOther}
                 onChange={(e) => setLostReasonOther(e.target.value)}
                 placeholder="What happened?"
-                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+                className="mt-1 w-full rounded-md border border-line-strong px-3 py-1.5 text-sm"
               />
             )}
           </div>
@@ -191,7 +191,7 @@ export function LeadActionsPanel({
                 }
               })
             }
-            className="mt-3 rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+            className="mt-3 rounded-md bg-action px-3 py-1.5 text-sm font-medium text-on-action hover:bg-action disabled:opacity-50"
           >
             Mark as Lost
           </button>
@@ -238,13 +238,13 @@ export function LeadActionsPanel({
           <div className="mt-3 flex flex-wrap gap-2">
             <Link
               href={`/desk/customers/${message.customerId}`}
-              className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
+              className="rounded-md bg-action px-3 py-1.5 text-sm font-medium text-on-action hover:bg-action"
             >
               Go to their customer page
             </Link>
             <Link
               href={`/desk/agreements/new?customerId=${message.customerId}`}
-              className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 hover:border-gray-400"
+              className="rounded-md border border-line-strong bg-white px-3 py-1.5 text-sm text-ink-soft hover:border-line-strong"
             >
               Start an agreement
             </Link>

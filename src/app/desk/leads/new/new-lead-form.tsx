@@ -49,11 +49,11 @@ export function NewLeadForm() {
   return (
     <form
       onSubmit={handleSubmit}
-      className="max-w-2xl space-y-6 rounded-lg border border-gray-200 bg-white p-5"
+      className="max-w-2xl space-y-6 rounded-lg border border-line bg-white p-5"
     >
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
-          <label htmlFor="contactName" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="contactName" className="block text-sm font-medium text-ink-soft">
             Name
           </label>
           <input
@@ -61,11 +61,11 @@ export function NewLeadForm() {
             required
             value={contactName}
             onChange={(e) => setContactName(e.target.value)}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
           />
         </div>
         <div>
-          <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="phone" className="block text-sm font-medium text-ink-soft">
             Phone
           </label>
           <input
@@ -73,11 +73,11 @@ export function NewLeadForm() {
             required
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
           />
         </div>
         <div>
-          <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="email" className="block text-sm font-medium text-ink-soft">
             Email (optional for now)
           </label>
           <input
@@ -85,28 +85,28 @@ export function NewLeadForm() {
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
           />
-          <p className="mt-1 text-xs text-gray-500">
+          <p className="mt-1 text-xs text-ink-faint">
             Needed later if this converts to a customer — you can add it
             now or when that happens.
           </p>
         </div>
         <div>
-          <label htmlFor="companyName" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="companyName" className="block text-sm font-medium text-ink-soft">
             Company name (if any)
           </label>
           <input
             id="companyName"
             value={companyName}
             onChange={(e) => setCompanyName(e.target.value)}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
           />
         </div>
       </div>
 
       <div className="space-y-2">
-        <label className="flex items-center gap-2 text-sm text-gray-700">
+        <label className="flex items-center gap-2 text-sm text-ink-soft">
           <input
             type="checkbox"
             checked={isBusiness}
@@ -114,7 +114,7 @@ export function NewLeadForm() {
           />
           This is a business account
         </label>
-        <label className="flex items-center gap-2 text-sm text-gray-700">
+        <label className="flex items-center gap-2 text-sm text-ink-soft">
           <input
             type="checkbox"
             checked={isPropertyManager}
@@ -126,49 +126,49 @@ export function NewLeadForm() {
       </div>
 
       <div>
-        <h2 className="font-medium text-gray-900">Address (optional)</h2>
-        <p className="mt-1 text-sm text-gray-600">
+        <h2 className="font-medium text-ink">Address (optional)</h2>
+        <p className="mt-1 text-sm text-ink-soft">
           Fill this in if you already know it — you can always add it later.
         </p>
         <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div className="sm:col-span-3">
-            <label htmlFor="addressLine1" className="block text-xs font-medium text-gray-700">
+            <label htmlFor="addressLine1" className="block text-xs font-medium text-ink-soft">
               Street address
             </label>
             <input
               id="addressLine1"
               value={addressLine1}
               onChange={(e) => setAddressLine1(e.target.value)}
-              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+              className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
             />
           </div>
           <div>
-            <label htmlFor="city" className="block text-xs font-medium text-gray-700">
+            <label htmlFor="city" className="block text-xs font-medium text-ink-soft">
               City
             </label>
             <input
               id="city"
               value={city}
               onChange={(e) => setCity(e.target.value)}
-              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+              className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
             />
           </div>
           <div>
-            <label htmlFor="zip" className="block text-xs font-medium text-gray-700">
+            <label htmlFor="zip" className="block text-xs font-medium text-ink-soft">
               ZIP
             </label>
             <input
               id="zip"
               value={zip}
               onChange={(e) => setZip(e.target.value)}
-              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+              className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
             />
           </div>
         </div>
       </div>
 
       <div>
-        <label htmlFor="notes" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="notes" className="block text-sm font-medium text-ink-soft">
           Notes (optional)
         </label>
         <textarea
@@ -176,7 +176,7 @@ export function NewLeadForm() {
           rows={3}
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
-          className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+          className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
           placeholder="What they're looking for, how you heard from them, anything worth remembering."
         />
       </div>
@@ -190,7 +190,7 @@ export function NewLeadForm() {
       <button
         type="submit"
         disabled={isPending}
-        className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+        className="rounded-md bg-action px-4 py-2 text-sm font-medium text-on-action hover:bg-action disabled:opacity-50"
       >
         {isPending ? "Adding…" : "Add lead"}
       </button>

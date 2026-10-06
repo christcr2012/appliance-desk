@@ -94,7 +94,7 @@ export function SettingsForm({
 
       {(!section || section === "profile") && (
         <fieldset className="space-y-4">
-          <legend className="text-base font-semibold text-gray-900">
+          <legend className="text-base font-semibold text-ink">
             Public business info
           </legend>
           <LabeledInput
@@ -113,10 +113,10 @@ export function SettingsForm({
 
       {(!section || section === "profile") && (
         <fieldset className="space-y-4">
-          <legend className="text-base font-semibold text-gray-900">
+          <legend className="text-base font-semibold text-ink">
             Opening hours
           </legend>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-ink-soft">
             Shown in the website footer and on the contact page. For each day choose <strong>Not shown</strong> (the
             day is left out), <strong>Closed</strong>, or <strong>Open</strong> and fill in the times (24-hour clock,
             Colorado time). Starting value: nothing shown, so no hours are promised until you set them.
@@ -124,52 +124,52 @@ export function SettingsForm({
           <div className="space-y-3">
             {DAYS.map((day) => (
               <div key={day.id} className="flex flex-wrap items-center gap-3">
-                <label htmlFor={`hours-${day.id}-mode`} className="w-24 text-sm font-medium text-gray-900">
+                <label htmlFor={`hours-${day.id}-mode`} className="w-24 text-sm font-medium text-ink">
                   {day.label}
                 </label>
                 <select
                   id={`hours-${day.id}-mode`}
-                  className="min-h-11 rounded-lg border border-gray-300 px-2 text-sm"
+                  className="min-h-11 rounded-lg border border-line-strong px-2 text-sm"
                   {...register(`hours.${day.id}.mode`)}
                 >
                   <option value="none">Not shown</option>
                   <option value="closed">Closed</option>
                   <option value="open">Open</option>
                 </select>
-                <label htmlFor={`hours-${day.id}-open`} className="text-sm text-gray-700">
+                <label htmlFor={`hours-${day.id}-open`} className="text-sm text-ink-soft">
                   Opens
                 </label>
                 <input
                   id={`hours-${day.id}-open`}
                   type="time"
-                  className="min-h-11 rounded-lg border border-gray-300 px-2 text-sm"
+                  className="min-h-11 rounded-lg border border-line-strong px-2 text-sm"
                   {...register(`hours.${day.id}.open`)}
                 />
-                <label htmlFor={`hours-${day.id}-close`} className="text-sm text-gray-700">
+                <label htmlFor={`hours-${day.id}-close`} className="text-sm text-ink-soft">
                   Closes
                 </label>
                 <input
                   id={`hours-${day.id}-close`}
                   type="time"
-                  className="min-h-11 rounded-lg border border-gray-300 px-2 text-sm"
+                  className="min-h-11 rounded-lg border border-line-strong px-2 text-sm"
                   {...register(`hours.${day.id}.close`)}
                 />
               </div>
             ))}
           </div>
-          <p className="text-xs text-gray-600">The times are used only for days set to Open.</p>
+          <p className="text-xs text-ink-soft">The times are used only for days set to Open.</p>
           <div>
-            <label htmlFor="settings-holidayClosuresText" className="mb-1 block text-sm font-medium text-gray-900">
+            <label htmlFor="settings-holidayClosuresText" className="mb-1 block text-sm font-medium text-ink">
               Holiday closures
             </label>
             <textarea
               id="settings-holidayClosuresText"
               rows={4}
               aria-describedby="closures-help"
-              className="w-full max-w-sm rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              className="w-full max-w-sm rounded-lg border border-line-strong px-3 py-2 text-sm"
               {...register("holidayClosuresText")}
             />
-            <p id="closures-help" className="mt-1 text-xs text-gray-600">
+            <p id="closures-help" className="mt-1 text-xs text-ink-soft">
               One per line: the date, a space, then the name. Example: 2026-12-25 Christmas Day. Up to {MAX_CLOSURES}.
               Past dates stop showing on the website by themselves.
             </p>
@@ -179,10 +179,10 @@ export function SettingsForm({
 
       {(!section || section === "profile") && (
         <fieldset className="space-y-4">
-          <legend className="text-base font-semibold text-gray-900">
+          <legend className="text-base font-semibold text-ink">
             Social links and logo
           </legend>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-ink-soft">
             Leave a box empty to show nothing. Links must be full web addresses starting with https://.
           </p>
           {SOCIAL_NETWORKS.map((n) => (
@@ -196,7 +196,7 @@ export function SettingsForm({
           ))}
           <div>
             <LabeledInput label="Logo address (for printed invoices and work orders)" {...register("logoUrl")} />
-            <p className="mt-1 text-xs text-gray-600">
+            <p className="mt-1 text-xs text-ink-soft">
               One of {BRAND_LOGO_FILES.join(", ")}, or the address of a picture (PNG or JPG) uploaded to your own file
               storage. Pictures from other websites are blocked by the site&apos;s security rules, so they would not
               show. Leave empty to print the business name only.
@@ -207,7 +207,7 @@ export function SettingsForm({
 
       {(!section || section === "service-area") && (
         <fieldset className="space-y-4">
-          <legend className="text-base font-semibold text-gray-900">
+          <legend className="text-base font-semibold text-ink">
             Service area
           </legend>
           <LabeledInput
@@ -223,10 +223,10 @@ export function SettingsForm({
 
       {(!section || section === "policies") && (
         <fieldset className="space-y-4">
-          <legend className="text-base font-semibold text-gray-900">
+          <legend className="text-base font-semibold text-ink">
             Fees
           </legend>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-ink-soft">
             Delivery and installation are separate, optional one-time fees —
             each shows as its own line on the public pricing page. Leave either
             at $0.00 to not charge for it.
@@ -243,7 +243,7 @@ export function SettingsForm({
             label="Pickup/removal fee"
             {...register("removalFeeDollars", { valueAsNumber: true })}
           />
-          <label className="flex items-center gap-2 text-sm text-gray-700">
+          <label className="flex items-center gap-2 text-sm text-ink-soft">
             <input
               type="checkbox"
               {...register("depositEnabled")}
@@ -251,7 +251,7 @@ export function SettingsForm({
             />
             Require a refundable security deposit
           </label>
-          <label className="flex items-center gap-2 text-sm text-gray-700">
+          <label className="flex items-center gap-2 text-sm text-ink-soft">
             <input
               type="checkbox"
               {...register("damageWaiverEnabled")}
@@ -281,10 +281,10 @@ export function SettingsForm({
 
       {(!section || section === "policies") && (
         <fieldset className="space-y-4">
-          <legend className="text-base font-semibold text-gray-900">
+          <legend className="text-base font-semibold text-ink">
             Prepaid-term discounts
           </legend>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-ink-soft">
             A customer who signs up for a 6- or 12-month term automatically gets
             a lower monthly rate — a &quot;set&quot; means 2 or more appliances
             on the same line (like a washer + dryer), a single appliance gets
@@ -314,7 +314,7 @@ export function SettingsForm({
               valueAsNumber: true,
             })}
           />
-          <label className="flex items-center gap-2 text-sm text-gray-700">
+          <label className="flex items-center gap-2 text-sm text-ink-soft">
             <input
               type="checkbox"
               {...register("twelveMonthPrepayFreeMonthEnabled")}
@@ -329,10 +329,10 @@ export function SettingsForm({
 
       {(!section || section === "policies") && (
         <fieldset className="space-y-4">
-          <legend className="text-base font-semibold text-gray-900">
+          <legend className="text-base font-semibold text-ink">
             Referral program
           </legend>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-ink-soft">
             Every customer gets their own referral code automatically (shown on
             their customer page). When someone they refer signs up using it and
             actually starts paying, you both get the same credit — a &quot;give
@@ -348,10 +348,10 @@ export function SettingsForm({
 
       {(!section || section === "policies") && (
         <fieldset className="space-y-4">
-          <legend className="text-base font-semibold text-gray-900">
+          <legend className="text-base font-semibold text-ink">
             Reserved-appliance holds
           </legend>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-ink-soft">
             When you assign a physical appliance to a draft agreement, it&apos;s
             held for that customer and can&apos;t be rented to anyone else. If
             an agreement sits as a draft or awaiting signature for too long
@@ -371,10 +371,10 @@ export function SettingsForm({
 
       {(!section || section === "policies") && (
         <fieldset className="space-y-4">
-          <legend className="text-base font-semibold text-gray-900">
+          <legend className="text-base font-semibold text-ink">
             Sales tax
           </legend>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-ink-soft">
             Defaults to 0% until confirmed with a CPA — never guess a tax rate
             (see docs/BUSINESS-RULES.md).
           </p>
@@ -384,7 +384,7 @@ export function SettingsForm({
             inputMode="decimal"
             {...register("taxRatePercentText")}
           />
-          <label className="flex items-center gap-2 text-sm text-gray-700">
+          <label className="flex items-center gap-2 text-sm text-ink-soft">
             <input
               type="checkbox"
               {...register("taxRateConfirmed")}
@@ -398,7 +398,7 @@ export function SettingsForm({
       <button
         type="submit"
         disabled={isSubmitting}
-        className="rounded-full bg-gray-900 px-6 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+        className="rounded-full bg-action px-6 py-2.5 text-sm font-semibold text-on-action disabled:opacity-60"
       >
         {isSubmitting
           ? "Saving…"
@@ -419,12 +419,12 @@ const DollarInput = forwardRef<
     <div>
       <label
         htmlFor={id}
-        className="mb-1 block text-sm font-medium text-gray-900"
+        className="mb-1 block text-sm font-medium text-ink"
       >
         {label}
       </label>
       <div className="flex max-w-sm items-center gap-2">
-        <span aria-hidden="true" className="text-gray-500">
+        <span aria-hidden="true" className="text-ink-faint">
           $
         </span>
         <input
@@ -434,7 +434,7 @@ const DollarInput = forwardRef<
           min={0}
           step="0.01"
           {...props}
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+          className="w-full rounded-lg border border-line-strong px-3 py-2 text-sm"
         />
       </div>
     </div>
@@ -450,14 +450,14 @@ function LabeledInput({
     <div>
       <label
         htmlFor={id}
-        className="mb-1 block text-sm font-medium text-gray-900"
+        className="mb-1 block text-sm font-medium text-ink"
       >
         {label}
       </label>
       <input
         id={id}
         {...props}
-        className="w-full max-w-sm rounded-lg border border-gray-300 px-3 py-2 text-sm"
+        className="w-full max-w-sm rounded-lg border border-line-strong px-3 py-2 text-sm"
       />
     </div>
   );

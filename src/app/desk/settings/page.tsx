@@ -183,7 +183,7 @@ export default async function DeskSettingsPage({
         description="Configuration is shown separately from verified delivery. No credentials are displayed."
       >
         {section === "notifications" && (
-          <div className="mb-6 rounded-lg border border-gray-300 p-4">
+          <div className="mb-6 rounded-lg border border-line-strong p-4">
             <CustomerEmailSwitch
               enabled={settings.customerEmailEnabled === true}
               canChange={(session.user as { role?: string }).role === "OWNER"}

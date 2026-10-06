@@ -36,7 +36,7 @@ export function SmsPreferenceForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <label htmlFor="sms-phone" className="block text-sm font-medium text-gray-900">
+        <label htmlFor="sms-phone" className="block text-sm font-medium text-ink">
           Phone number
         </label>
         <input
@@ -45,11 +45,11 @@ export function SmsPreferenceForm({
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
           placeholder="(303) 555-0100"
-          className="mt-1 w-full max-w-xs rounded-md border border-gray-300 px-3 py-2 text-sm"
+          className="mt-1 w-full max-w-xs rounded-md border border-line-strong px-3 py-2 text-sm"
         />
       </div>
 
-      <label className="flex items-start gap-3 text-sm text-gray-700">
+      <label className="flex items-start gap-3 text-sm text-ink-soft">
         <input
           type="checkbox"
           checked={optedIn}
@@ -77,7 +77,7 @@ export function SmsPreferenceForm({
       <button
         type="submit"
         disabled={isPending}
-        className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+        className="rounded-md bg-action px-4 py-2 text-sm font-medium text-on-action hover:bg-action disabled:opacity-50"
       >
         {isPending ? "Saving…" : "Save"}
       </button>

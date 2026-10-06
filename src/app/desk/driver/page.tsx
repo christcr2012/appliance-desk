@@ -13,8 +13,8 @@ export default async function DriverViewPage() {
   return (
     <div className="mx-auto max-w-md">
       <h1 className="text-xl font-semibold">Shared team route</h1>
-      <p className="mt-1 text-sm text-gray-600">All scheduled visits for the team today.</p>
-      <p className="mt-1 text-sm text-gray-600">
+      <p className="mt-1 text-sm text-ink-soft">All scheduled visits for the team today.</p>
+      <p className="mt-1 text-sm text-ink-soft">
         {jobs.length === 0
           ? "Nothing scheduled for today."
           : `${jobs.length} stop${jobs.length === 1 ? "" : "s"} today, in order.`}

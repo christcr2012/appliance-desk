@@ -59,14 +59,14 @@ export default async function InventoryPage({
     <div>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="flex items-center gap-2 text-xl font-semibold">
-          <ApplianceServiceIcon className="h-5 w-5 text-gray-500" />
+          <ApplianceServiceIcon className="h-5 w-5 text-ink-faint" />
           Inventory
         </h1>
         {canManage && <ExportCsvLink
           href={status ? `/desk/inventory/export?status=${status}` : "/desk/inventory/export"}
         />}
       </div>
-      <p className="mt-1 text-sm text-gray-600">
+      <p className="mt-1 text-sm text-ink-soft">
         Every individual appliance unit you own — separate from the
         categories and pricing managed in Settings.
       </p>
@@ -88,8 +88,8 @@ export default async function InventoryPage({
               aria-current={active ? "page" : undefined}
               className={`rounded-full border px-3 py-1 text-sm ${
                 active
-                  ? "border-gray-900 bg-gray-900 text-white"
-                  : "border-gray-300 text-gray-700 hover:border-gray-400"
+                  ? "border-primary bg-action text-on-action"
+                  : "border-line-strong text-ink-soft hover:border-line-strong"
               }`}
             >
               {tab.label}
@@ -100,7 +100,7 @@ export default async function InventoryPage({
       </nav>
 
       {appliances.length === 0 ? (
-        <p className="mt-6 text-sm text-gray-600">
+        <p className="mt-6 text-sm text-ink-soft">
           {status
             ? "No appliances with this status."
             : "No appliances yet — add your first one above as you obtain it."}

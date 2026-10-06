@@ -105,11 +105,11 @@ export default async function RevenuePage({
         />
       </div>
 
-      <div className="mt-8 rounded-lg border border-gray-200 bg-white p-5">
-        <h2 className="font-medium text-gray-900">
+      <div className="mt-8 rounded-lg border border-line bg-white p-5">
+        <h2 className="font-medium text-ink">
           Estimated agreed rates, last 6 UTC months
         </h2>
-        <p className="mt-1 text-sm text-gray-600">
+        <p className="mt-1 text-sm text-ink-soft">
           Sum of agreed monthly line rates for rentals whose billing period
           overlaps each month. A mid-month rental contributes its full rate;
           this is not invoiced rent or cash received.
@@ -128,7 +128,7 @@ export default async function RevenuePage({
                   }}
                   title={formatCents(point.mrrCents)}
                 />
-                <span className="text-xs text-gray-500">
+                <span className="text-xs text-ink-faint">
                   {point.monthLabel}
                 </span>
               </div>

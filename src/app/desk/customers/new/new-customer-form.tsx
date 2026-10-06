@@ -103,11 +103,11 @@ export function NewCustomerForm() {
   return (
     <form
       onSubmit={handleSubmit}
-      className="max-w-2xl space-y-6 rounded-lg border border-gray-200 bg-white p-5"
+      className="max-w-2xl space-y-6 rounded-lg border border-line bg-white p-5"
     >
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
-          <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="name" className="block text-sm font-medium text-ink-soft">
             Name
           </label>
           <input
@@ -115,11 +115,11 @@ export function NewCustomerForm() {
             required
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
           />
         </div>
         <div>
-          <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="email" className="block text-sm font-medium text-ink-soft">
             Email
           </label>
           <input
@@ -128,39 +128,39 @@ export function NewCustomerForm() {
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
           />
-          <p className="mt-1 text-xs text-gray-500">
+          <p className="mt-1 text-xs text-ink-faint">
             They&apos;ll sign in with this — we&apos;ll email them a link to set
             their own password.
           </p>
         </div>
         <div>
-          <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="phone" className="block text-sm font-medium text-ink-soft">
             Phone
           </label>
           <input
             id="phone"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
           />
         </div>
         <div>
-          <label htmlFor="companyName" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="companyName" className="block text-sm font-medium text-ink-soft">
             Company name (if any)
           </label>
           <input
             id="companyName"
             value={companyName}
             onChange={(e) => setCompanyName(e.target.value)}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
           />
         </div>
       </div>
 
       <div className="space-y-2">
-        <label className="flex items-center gap-2 text-sm text-gray-700">
+        <label className="flex items-center gap-2 text-sm text-ink-soft">
           <input
             type="checkbox"
             checked={isBusiness}
@@ -168,7 +168,7 @@ export function NewCustomerForm() {
           />
           This is a business account
         </label>
-        <label className="flex items-center gap-2 text-sm text-gray-700">
+        <label className="flex items-center gap-2 text-sm text-ink-soft">
           <input
             type="checkbox"
             checked={isPropertyManager}
@@ -181,7 +181,7 @@ export function NewCustomerForm() {
 
       <div>
         <div className="flex items-center justify-between">
-          <h2 className="font-medium text-gray-900">
+          <h2 className="font-medium text-ink">
             {isPropertyManager ? "Properties" : "Property"}
           </h2>
           {isPropertyManager && (
@@ -194,7 +194,7 @@ export function NewCustomerForm() {
             </button>
           )}
         </div>
-        <p className="mt-1 text-sm text-gray-600">
+        <p className="mt-1 text-sm text-ink-soft">
           {isPropertyManager
             ? "Add every property they manage now, or come back and add more later from their customer page."
             : "The address they're renting at."}
@@ -204,17 +204,17 @@ export function NewCustomerForm() {
           {addresses.map((address, index) => (
             <div
               key={index}
-              className="rounded-md border border-gray-200 p-3"
+              className="rounded-md border border-line p-3"
             >
               {addresses.length > 1 && (
                 <div className="mb-2 flex items-center justify-between">
-                  <span className="text-xs font-medium text-gray-500">
+                  <span className="text-xs font-medium text-ink-faint">
                     Property {index + 1}
                   </span>
                   <button
                     type="button"
                     onClick={() => removeAddress(index)}
-                    className="text-xs text-gray-500 hover:text-gray-900"
+                    className="text-xs text-ink-faint hover:text-ink"
                   >
                     Remove
                   </button>
@@ -224,7 +224,7 @@ export function NewCustomerForm() {
                 <div className="sm:col-span-2">
                   <label
                     htmlFor={`address-${index}-line1`}
-                    className="block text-xs font-medium text-gray-700"
+                    className="block text-xs font-medium text-ink-soft"
                   >
                     Street address
                   </label>
@@ -233,13 +233,13 @@ export function NewCustomerForm() {
                     required
                     value={address.line1}
                     onChange={(e) => updateAddress(index, "line1", e.target.value)}
-                    className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                    className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
                   />
                 </div>
                 <div className="sm:col-span-2">
                   <label
                     htmlFor={`address-${index}-line2`}
-                    className="block text-xs font-medium text-gray-700"
+                    className="block text-xs font-medium text-ink-soft"
                   >
                     Unit / apt (optional)
                   </label>
@@ -247,13 +247,13 @@ export function NewCustomerForm() {
                     id={`address-${index}-line2`}
                     value={address.line2}
                     onChange={(e) => updateAddress(index, "line2", e.target.value)}
-                    className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                    className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
                   />
                 </div>
                 <div>
                   <label
                     htmlFor={`address-${index}-city`}
-                    className="block text-xs font-medium text-gray-700"
+                    className="block text-xs font-medium text-ink-soft"
                   >
                     City
                   </label>
@@ -262,14 +262,14 @@ export function NewCustomerForm() {
                     required
                     value={address.city}
                     onChange={(e) => updateAddress(index, "city", e.target.value)}
-                    className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                    className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label
                       htmlFor={`address-${index}-state`}
-                      className="block text-xs font-medium text-gray-700"
+                      className="block text-xs font-medium text-ink-soft"
                     >
                       State
                     </label>
@@ -277,13 +277,13 @@ export function NewCustomerForm() {
                       id={`address-${index}-state`}
                       value={address.state}
                       onChange={(e) => updateAddress(index, "state", e.target.value)}
-                      className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                      className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
                     />
                   </div>
                   <div>
                     <label
                       htmlFor={`address-${index}-zip`}
-                      className="block text-xs font-medium text-gray-700"
+                      className="block text-xs font-medium text-ink-soft"
                     >
                       ZIP
                     </label>
@@ -292,7 +292,7 @@ export function NewCustomerForm() {
                       required
                       value={address.zip}
                       onChange={(e) => updateAddress(index, "zip", e.target.value)}
-                      className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                      className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
                     />
                   </div>
                 </div>
@@ -311,7 +311,7 @@ export function NewCustomerForm() {
       <button
         type="submit"
         disabled={isPending}
-        className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+        className="rounded-md bg-action px-4 py-2 text-sm font-medium text-on-action hover:bg-action disabled:opacity-50"
       >
         {isPending ? "Adding…" : "Add customer"}
       </button>

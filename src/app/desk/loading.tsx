@@ -17,14 +17,14 @@ export default function DeskLoading() {
         Loading…
       </p>
       <div className="animate-pulse" aria-hidden="true">
-        <div className="h-6 w-40 rounded bg-gray-200" />
-        <div className="mt-2 h-4 w-72 rounded bg-gray-100" />
+        <div className="h-6 w-40 rounded bg-canvas-alt" />
+        <div className="mt-2 h-4 w-72 rounded bg-canvas-alt" />
         <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-20 rounded-lg border border-gray-200 bg-white" />
+            <div key={i} className="h-20 rounded-lg border border-line bg-white" />
           ))}
         </div>
-        <div className="mt-6 h-64 rounded-lg border border-gray-200 bg-white" />
+        <div className="mt-6 h-64 rounded-lg border border-line bg-white" />
       </div>
     </div>
   );

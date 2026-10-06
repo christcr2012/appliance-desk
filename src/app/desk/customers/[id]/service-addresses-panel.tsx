@@ -83,10 +83,10 @@ export function ServiceAddressesPanel({
   }
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-5">
+    <div className="rounded-lg border border-line bg-white p-5">
       <div className="flex items-center justify-between">
-        <h2 className="flex items-center gap-1.5 font-medium text-gray-900">
-          <PropertyServiceIcon className="h-4 w-4 text-gray-500" />
+        <h2 className="flex items-center gap-1.5 font-medium text-ink">
+          <PropertyServiceIcon className="h-4 w-4 text-ink-faint" />
           {addresses.length > 1 ? "Properties" : "Service address"}
         </h2>
         <button
@@ -99,7 +99,7 @@ export function ServiceAddressesPanel({
       </div>
 
       {addresses.length === 0 && !showForm && (
-        <p className="mt-2 text-sm text-gray-600">None on file.</p>
+        <p className="mt-2 text-sm text-ink-soft">None on file.</p>
       )}
 
       {addresses.length > 0 && (
@@ -122,10 +122,10 @@ export function ServiceAddressesPanel({
             return (
               <li
                 key={a.id}
-                className="rounded-md border border-gray-100 p-3 text-sm"
+                className="rounded-md border border-line p-3 text-sm"
               >
-                <p className="font-medium text-gray-900">{addressLine(a)}</p>
-                <p className="mt-1 text-gray-600">
+                <p className="font-medium text-ink">{addressLine(a)}</p>
+                <p className="mt-1 text-ink-soft">
                   {atThisAddress.length === 0
                     ? "No agreements here yet"
                     : `${atThisAddress.length} agreement(s)${
@@ -182,13 +182,13 @@ export function ServiceAddressesPanel({
             aria-label="Street address"
             required
             placeholder="Street address"
-            className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+            className="w-full rounded-md border border-line-strong px-3 py-1.5 text-sm"
           />
           <input
             name="line2"
             aria-label="Unit or suite"
             placeholder="Unit / suite (optional)"
-            className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+            className="w-full rounded-md border border-line-strong px-3 py-1.5 text-sm"
           />
           <div className="flex flex-wrap gap-2">
             <input
@@ -196,21 +196,21 @@ export function ServiceAddressesPanel({
               aria-label="City"
               required
               placeholder="City"
-              className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+              className="w-full rounded-md border border-line-strong px-3 py-1.5 text-sm"
             />
             <input
               name="state"
               aria-label="State"
               defaultValue="CO"
               placeholder="State"
-              className="w-20 rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+              className="w-20 rounded-md border border-line-strong px-3 py-1.5 text-sm"
             />
             <input
               name="zip"
               aria-label="ZIP code"
               required
               placeholder="ZIP"
-              className="w-28 rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+              className="w-28 rounded-md border border-line-strong px-3 py-1.5 text-sm"
             />
           </div>
           {error && (
@@ -221,7 +221,7 @@ export function ServiceAddressesPanel({
           <button
             type="submit"
             disabled={isPending}
-            className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+            className="rounded-md bg-action px-3 py-1.5 text-sm font-medium text-on-action hover:bg-action disabled:opacity-50"
           >
             {isPending ? "Saving…" : "Save property"}
           </button>

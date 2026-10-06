@@ -125,14 +125,14 @@ export function IdleLogout({ timeoutMinutes }: { timeoutMinutes: number }) {
       role="alertdialog"
       aria-labelledby="idle-logout-heading"
       aria-describedby="idle-logout-body"
-      className="fixed inset-x-0 bottom-0 z-[100] border-t border-gray-200 bg-white px-4 py-4 shadow-[0_-4px_12px_rgba(0,0,0,0.08)]"
+      className="fixed inset-x-0 bottom-0 z-[100] border-t border-line bg-white px-4 py-4 shadow-[0_-4px_12px_rgba(0,0,0,0.08)]"
     >
       <div className="mx-auto flex max-w-3xl flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p id="idle-logout-heading" className="font-medium text-gray-900">
+          <p id="idle-logout-heading" className="font-medium text-ink">
             You&apos;ll be signed out soon
           </p>
-          <p id="idle-logout-body" className="text-sm text-gray-600">
+          <p id="idle-logout-body" className="text-sm text-ink-soft">
             No activity for a while — signing out in {secondsLeft} second
             {secondsLeft === 1 ? "" : "s"} to keep your account safe.
           </p>
@@ -144,7 +144,7 @@ export function IdleLogout({ timeoutMinutes }: { timeoutMinutes: number }) {
             recordActivity();
             setSecondsLeft(null);
           }}
-          className="shrink-0 rounded-md bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800"
+          className="shrink-0 rounded-md bg-action px-4 py-2 text-sm font-semibold text-on-action hover:bg-action"
         >
           Stay signed in
         </button>

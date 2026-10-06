@@ -32,7 +32,7 @@ export default async function EstimateDetailPage({
 
   return (
     <div className="max-w-3xl">
-      <Link href="/desk/estimates" className="text-sm text-gray-600 hover:underline">
+      <Link href="/desk/estimates" className="text-sm text-ink-soft hover:underline">
         &larr; All estimates
       </Link>
 
@@ -41,7 +41,7 @@ export default async function EstimateDetailPage({
           <h1 className="text-xl font-semibold">
             Estimate #{estimate.estimateNumber} — {estimate.title}
           </h1>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-ink-soft">
             {estimate.customer ? (
               <>
                 {estimate.customer.user.name ?? estimate.customer.user.email}
@@ -58,7 +58,7 @@ export default async function EstimateDetailPage({
             ) : null}
           </p>
         </div>
-        <span className="inline-block rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-700">
+        <span className="inline-block rounded-full bg-canvas-alt px-3 py-1 text-sm font-medium text-ink-soft">
           {estimateStatusLabel(estimate.status)}
         </span>
       </div>
@@ -97,9 +97,9 @@ export default async function EstimateDetailPage({
       )}
 
       {(estimate.status === "SENT" || estimate.status === "VIEWED") && appUrl && (
-        <p className="mt-4 text-sm text-gray-600">
+        <p className="mt-4 text-sm text-ink-soft">
           Customer link:{" "}
-          <a href={`${appUrl}/estimate/${estimate.id}`} className="text-gray-900 underline">
+          <a href={`${appUrl}/estimate/${estimate.id}`} className="text-ink underline">
             {appUrl}/estimate/{estimate.id}
           </a>
         </p>
@@ -146,14 +146,14 @@ export default async function EstimateDetailPage({
       />
 
       {!estimate.customer && estimate.lead && (
-        <p className="mt-2 text-xs text-gray-500">
+        <p className="mt-2 text-xs text-ink-faint">
           This estimate is for a lead, not yet a customer, so there are no
           saved properties to pick from — line items can still be added
           without one.
         </p>
       )}
 
-      <div className="mt-4 flex justify-end gap-3 text-sm font-medium text-gray-900">
+      <div className="mt-4 flex justify-end gap-3 text-sm font-medium text-ink">
         {monthly > 0 && <span>{formatCents(monthly)}/month</span>}
         {oneTime > 0 && <span>{formatCents(oneTime)} one-time</span>}
         {estimate.depositCents > 0 && <span>{formatCents(estimate.depositCents)} deposit</span>}

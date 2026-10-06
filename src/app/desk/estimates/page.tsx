@@ -34,22 +34,22 @@ export default async function EstimatesPage() {
         <h1 className="text-xl font-semibold">Estimates</h1>
         <Link
           href="/desk/estimates/new"
-          className="inline-flex items-center gap-1 rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
+          className="inline-flex items-center gap-1 rounded-md bg-action px-4 py-2 text-sm font-medium text-on-action hover:bg-action"
         >
           <PlusIcon className="h-4 w-4" />
           New estimate
         </Link>
       </div>
-      <p className="mt-1 text-sm text-gray-600">
+      <p className="mt-1 text-sm text-ink-soft">
         Custom-priced proposals for deals that don&apos;t fit standard
         pricing — a property manager ordering for several units, a whole
         building, and similar.
       </p>
 
       {estimates.length === 0 ? (
-        <p className="mt-6 text-sm text-gray-600">No estimates yet.</p>
+        <p className="mt-6 text-sm text-ink-soft">No estimates yet.</p>
       ) : (
-        <ul className="mt-6 divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white">
+        <ul className="mt-6 divide-y divide-line rounded-lg border border-line bg-white">
           {estimates.map((estimate) => {
             const monthly = totalMonthlyCents(estimate.lineItems);
             const oneTime = totalOneTimeCents(estimate.lineItems);
@@ -57,13 +57,13 @@ export default async function EstimatesPage() {
               <li key={estimate.id}>
                 <Link
                   href={`/desk/estimates/${estimate.id}`}
-                  className="flex flex-col gap-1 px-4 py-4 hover:bg-gray-50 sm:flex-row sm:items-center sm:justify-between"
+                  className="flex flex-col gap-1 px-4 py-4 hover:bg-canvas sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div>
-                    <p className="font-medium text-gray-900">
+                    <p className="font-medium text-ink">
                       #{estimate.estimateNumber} — {estimate.title}
                     </p>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-ink-soft">
                       {estimate.customer ? (
                         <>
                           {estimate.customer.user.name ?? estimate.customer.user.email}
@@ -74,12 +74,12 @@ export default async function EstimatesPage() {
                           {estimate.lead.contactName}
                           {estimate.lead.companyName ? ` · ${estimate.lead.companyName}` : ""}
                           {" "}
-                          <span className="text-xs text-gray-400">(lead)</span>
+                          <span className="text-xs text-ink-faint">(lead)</span>
                         </>
                       ) : null}
                     </p>
                   </div>
-                  <div className="text-sm text-gray-500 sm:text-right">
+                  <div className="text-sm text-ink-faint sm:text-right">
                     <StatusBadge
                       tone={STATUS_TONE[estimate.status] ?? "pending"}
                       label={estimateStatusLabel(estimate.status)}

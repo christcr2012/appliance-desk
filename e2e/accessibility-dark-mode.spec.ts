@@ -18,8 +18,24 @@ const OWNER_STATE_PATH = "e2e/.auth/owner.json";
 const CUSTOMER_STATE_PATH = "e2e/.auth/customer.json";
 
 const PUBLIC_PAGES = ["/", "/login", "/pricing", "/how-it-works", "/contact"];
-const DESK_PAGES = ["/desk/today", "/desk/dashboard", "/desk/agreements", "/desk/billing", "/desk/inventory"];
-const ACCOUNT_PAGES = ["/account", "/account/billing"];
+const DESK_PAGES = [
+  "/desk/today",
+  "/desk/dashboard",
+  "/desk/agreements",
+  "/desk/automations",
+  "/desk/billing",
+  "/desk/customers",
+  "/desk/inventory",
+  "/desk/jobs",
+  "/desk/maintenance",
+  "/desk/reports",
+];
+const ACCOUNT_PAGES = [
+  "/account",
+  "/account/billing",
+  "/account/maintenance",
+  "/account/settings",
+];
 
 /**
  * The public marketing header intentionally uses `transition-colors`.

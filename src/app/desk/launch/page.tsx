@@ -59,7 +59,7 @@ export default async function LaunchDeskPage({
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-semibold">Launch interest list</h1>
-        <p className="mt-2 text-gray-600">
+        <p className="mt-2 text-ink-soft">
           Local interest in the upcoming launch. These are opt-in subscribers,
           not booked rentals or quote requests.
         </p>
@@ -75,7 +75,7 @@ export default async function LaunchDeskPage({
       </div>
       <section
         aria-labelledby="launch-status"
-        className="rounded-lg border border-gray-200 bg-white p-5"
+        className="rounded-lg border border-line bg-white p-5"
       >
         <h2 id="launch-status" className="text-lg font-semibold">
           Automation status
@@ -89,7 +89,7 @@ export default async function LaunchDeskPage({
           · {blocked} emails needing review or currently sending
         </p>
         {blocked > 0 && (
-          <p className="mt-2 text-sm text-gray-600">
+          <p className="mt-2 text-sm text-ink-soft">
             If an email remains marked for review after the daily run, check
             Resend&apos;s sending activity. Failed or uncertain sends stop that
             subscriber&apos;s sequence so they are not accidentally sent twice.
@@ -118,7 +118,7 @@ export default async function LaunchDeskPage({
             <li>No signups yet.</li>
           )}
         </ul>
-        <p className="mt-2 text-sm text-gray-600">
+        <p className="mt-2 text-sm text-ink-soft">
           Source labels come from the signup link. They are self-reported
           attribution, not verified advertising conversions.
         </p>
@@ -208,7 +208,7 @@ export default async function LaunchDeskPage({
         <h2 className="text-lg font-semibold">
           The automated welcome sequence
         </h2>
-        <p className="mt-2 text-sm text-gray-600">
+        <p className="mt-2 text-sm text-ink-soft">
           Provider acceptance is recorded; inbox delivery and opens are not
           tracked here. Launch announcements require a separate, reviewed send
           once the opening date is confirmed.
@@ -217,12 +217,12 @@ export default async function LaunchDeskPage({
           {LAUNCH_STEPS.map((s, i) => (
             <li
               key={s.subject}
-              className="rounded-lg border border-gray-200 bg-white p-4"
+              className="rounded-lg border border-line bg-white p-4"
             >
               <h3 className="font-semibold">
                 {i + 1}. {s.subject}
               </h3>
-              <p className="mt-2 whitespace-pre-line text-sm text-gray-600">
+              <p className="mt-2 whitespace-pre-line text-sm text-ink-soft">
                 {s.body}
               </p>
             </li>

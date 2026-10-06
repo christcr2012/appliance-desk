@@ -140,9 +140,9 @@ export function AgreementDetailPanel({
 
   return (
     <div className="space-y-6">
-      <div className="rounded-lg border border-gray-200 bg-white p-5">
+      <div className="rounded-lg border border-line bg-white p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="font-medium text-gray-900">
+          <h2 className="font-medium text-ink">
             Status:{" "}
             {agreement.status === "SCHEDULED"
               ? `Signed, starts ${agreement.startDate ? new Date(agreement.startDate).toLocaleDateString("en-US", { timeZone: "America/Denver" }) : "later"}`
@@ -154,7 +154,7 @@ export function AgreementDetailPanel({
                 type="button"
                 disabled={isPending || agreement.lines.length === 0}
                 onClick={handleSendForSignature}
-                className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+                className="rounded-md bg-action px-3 py-1.5 text-sm font-medium text-on-action hover:bg-action disabled:opacity-50"
               >
                 Send for signature
               </button>
@@ -164,7 +164,7 @@ export function AgreementDetailPanel({
                 type="button"
                 disabled={isPending}
                 onClick={handleEnd}
-                className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:border-gray-400 disabled:opacity-50"
+                className="rounded-md border border-line-strong px-3 py-1.5 text-sm text-ink-soft hover:border-line-strong disabled:opacity-50"
               >
                 Mark ended
               </button>
@@ -185,7 +185,7 @@ export function AgreementDetailPanel({
           </div>
         </div>
 
-        <p className="mt-2 text-sm text-gray-600">
+        <p className="mt-2 text-sm text-ink-soft">
           {agreement.termMonths ? `${agreement.termMonths}-month term` : "Month-to-month"}
           {agreement.depositCents > 0 && ` · Deposit ${formatCents(agreement.depositCents)}`}
           {agreement.damageWaiverCents > 0 &&
@@ -252,19 +252,19 @@ export function AgreementDetailPanel({
         )}
       </div>
 
-      <div className="rounded-lg border border-gray-200 bg-white p-5">
-        <h2 className="font-medium text-gray-900">
+      <div className="rounded-lg border border-line bg-white p-5">
+        <h2 className="font-medium text-ink">
           Appliances ({formatCents(monthlyTotal)}/mo total)
         </h2>
 
         {agreement.lines.length === 0 ? (
-          <p className="mt-2 text-sm text-gray-600">No appliances added yet.</p>
+          <p className="mt-2 text-sm text-ink-soft">No appliances added yet.</p>
         ) : (
-          <ul className="mt-3 divide-y divide-gray-100">
+          <ul className="mt-3 divide-y divide-line">
             {agreement.lines.map((line) => (
               <li key={line.id} className="flex items-start justify-between gap-4 py-2">
                 <div>
-                  <p className="text-sm font-medium text-gray-900">
+                  <p className="text-sm font-medium text-ink">
                     {line.label} — {formatCents(line.monthlyPriceCents)}/mo
                   </p>
                   {line.prepayDiscountCentsPerMonth > 0 && (
@@ -273,7 +273,7 @@ export function AgreementDetailPanel({
                       {formatCents(line.prepayDiscountCentsPerMonth)}/mo term discount
                     </p>
                   )}
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-ink-soft">
                     {line.assignments
                       .map((a) => `${a.appliance.applianceType.name} (${a.appliance.assetNumber})`)
                       .join(", ")}
@@ -295,10 +295,10 @@ export function AgreementDetailPanel({
         )}
 
         {agreement.status === "DRAFT" && (
-          <form onSubmit={handleAddLine} className="mt-4 space-y-3 border-t border-gray-100 pt-4">
+          <form onSubmit={handleAddLine} className="mt-4 space-y-3 border-t border-line pt-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label htmlFor="lineLabel" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="lineLabel" className="block text-sm font-medium text-ink-soft">
                   Label
                 </label>
                 <input
@@ -308,13 +308,13 @@ export function AgreementDetailPanel({
                   placeholder="e.g. Washer/Dryer set"
                   value={label}
                   onChange={(e) => setLabel(e.target.value)}
-                  className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                  className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
                 />
               </div>
               <div>
                 <label
                   htmlFor="listPriceDollars"
-                  className="block text-sm font-medium text-gray-700"
+                  className="block text-sm font-medium text-ink-soft"
                 >
                   Monthly price before any discount ($)
                 </label>
@@ -326,10 +326,10 @@ export function AgreementDetailPanel({
                   required
                   value={listPriceDollars}
                   onChange={(e) => setListPriceDollars(e.target.value)}
-                  className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                  className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
                 />
                 {agreement.termMonths === 6 || agreement.termMonths === 12 ? (
-                  <p className="mt-1 text-xs text-gray-500">
+                  <p className="mt-1 text-xs text-ink-faint">
                     This agreement&apos;s {agreement.termMonths}-month prepay discount is
                     applied automatically.
                   </p>
@@ -338,16 +338,16 @@ export function AgreementDetailPanel({
             </div>
 
             <div>
-              <p className="block text-sm font-medium text-gray-700">
+              <p className="block text-sm font-medium text-ink-soft">
                 Which appliance(s)? (select 2 for a set — sets get the higher prepay
                 discount rate)
               </p>
               {availableAppliances.length === 0 ? (
-                <p className="mt-1 text-sm text-gray-600">
+                <p className="mt-1 text-sm text-ink-soft">
                   No available appliances in inventory right now.
                 </p>
               ) : (
-                <div className="mt-2 max-h-48 space-y-1 overflow-y-auto rounded-md border border-gray-200 p-2">
+                <div className="mt-2 max-h-48 space-y-1 overflow-y-auto rounded-md border border-line p-2">
                   {availableAppliances.map((a) => (
                     <label key={a.id} className="flex items-center gap-2 text-sm">
                       <input
@@ -365,7 +365,7 @@ export function AgreementDetailPanel({
             <button
               type="submit"
               disabled={isPending || availableAppliances.length === 0}
-              className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+              className="rounded-md bg-action px-4 py-2 text-sm font-medium text-on-action hover:bg-action disabled:opacity-50"
             >
               {isPending ? "Adding…" : "Add to agreement"}
             </button>
@@ -373,9 +373,9 @@ export function AgreementDetailPanel({
         )}
       </div>
 
-      <div className="rounded-lg border border-gray-200 bg-white p-5">
+      <div className="rounded-lg border border-line bg-white p-5">
         <div className="flex items-center justify-between">
-          <h2 className="font-medium text-gray-900">Jobs</h2>
+          <h2 className="font-medium text-ink">Jobs</h2>
           {agreement.status === "ACTIVE" && (
             <Link
               href={`/desk/jobs/new?agreementId=${agreement.id}`}
@@ -386,9 +386,9 @@ export function AgreementDetailPanel({
           )}
         </div>
         {agreement.jobs.length === 0 ? (
-          <p className="mt-2 text-sm text-gray-600">No jobs scheduled yet.</p>
+          <p className="mt-2 text-sm text-ink-soft">No jobs scheduled yet.</p>
         ) : (
-          <ul className="mt-2 space-y-1 text-sm text-gray-700">
+          <ul className="mt-2 space-y-1 text-sm text-ink-soft">
             {agreement.jobs.map((j) => (
               <li key={j.id}>
                 <Link href={`/desk/jobs/${j.id}`} className="hover:underline">

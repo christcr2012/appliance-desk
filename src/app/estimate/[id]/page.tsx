@@ -24,7 +24,7 @@ export default async function PublicEstimatePage({
     return (
       <main className="mx-auto max-w-lg px-6 py-16 text-center">
         <h1 className="text-xl font-semibold">This link isn&apos;t available</h1>
-        <p className="mt-3 text-gray-600">
+        <p className="mt-3 text-ink-soft">
           This estimate may not have been sent yet, or the link may no
           longer be valid. If you think this is a mistake, contact us
           directly.
@@ -42,29 +42,29 @@ export default async function PublicEstimatePage({
   return (
     <main className="mx-auto max-w-lg px-6 py-16">
       <h1 className="text-xl font-semibold">Estimate #{estimate.estimateNumber}</h1>
-      <p className="mt-2 text-sm text-gray-600">Prepared for {customerName}</p>
+      <p className="mt-2 text-sm text-ink-soft">Prepared for {customerName}</p>
 
       {estimate.clientMessage && (
-        <p className="mt-4 whitespace-pre-line text-sm text-gray-700">{estimate.clientMessage}</p>
+        <p className="mt-4 whitespace-pre-line text-sm text-ink-soft">{estimate.clientMessage}</p>
       )}
 
-      <div className="mt-6 space-y-3 rounded-lg border border-gray-200 bg-white p-5 text-sm">
-        <ul className="divide-y divide-gray-100">
+      <div className="mt-6 space-y-3 rounded-lg border border-line bg-surface p-5 text-sm">
+        <ul className="divide-y divide-line">
           {estimate.lineItems.map((line) => (
             <li key={line.id} className="py-2">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-gray-900">
+                  <p className="text-ink">
                     {line.quantity > 1 ? `${line.quantity}× ` : ""}
                     {line.description}
                   </p>
                   {line.serviceAddress && (
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-ink-faint">
                       {line.serviceAddress.line1}, {line.serviceAddress.city}
                     </p>
                   )}
                 </div>
-                <div className="text-right text-gray-600">
+                <div className="text-right text-ink-soft">
                   {line.monthlyPriceCents > 0 && <p>{formatCents(line.monthlyPriceCents)}/mo</p>}
                   {line.oneTimeFeeCents > 0 && <p>{formatCents(line.oneTimeFeeCents)} one-time</p>}
                 </div>
@@ -73,13 +73,13 @@ export default async function PublicEstimatePage({
           ))}
         </ul>
 
-        <div className="border-t border-gray-200 pt-3 font-medium text-gray-900">
+        <div className="border-t border-line pt-3 font-medium text-ink">
           {monthly > 0 && <p>{formatCents(monthly)}/month</p>}
           {oneTime > 0 && <p>{formatCents(oneTime)} one-time</p>}
         </div>
         {estimate.depositCents > 0 && <p>Deposit: {formatCents(estimate.depositCents)}</p>}
         {estimate.validUntil && (
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-ink-faint">
             Valid through {formatBusinessDate(businessDateFromKey(estimateValidThroughKey(estimate.validUntil))!)}
           </p>
         )}
@@ -114,10 +114,10 @@ export default async function PublicEstimatePage({
           </div>
         )}
         {estimate.status === "DECLINED" && (
-          <p className="text-sm text-gray-600">This estimate was declined.</p>
+          <p className="text-sm text-ink-soft">This estimate was declined.</p>
         )}
         {estimate.status === "EXPIRED" && (
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-ink-soft">
             This estimate has expired — contact us if you&apos;d still like to move forward.
           </p>
         )}

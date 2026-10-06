@@ -38,7 +38,7 @@ export default async function AccountInvoicePage({
   return (
     <div className="max-w-3xl">
       <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
-        <Link href="/account/billing" className="text-sm text-gray-600 hover:underline">
+        <Link href="/account/billing" className="text-sm text-ink-soft hover:underline">
           &larr; Back to billing
         </Link>
         <div className="flex flex-wrap items-center gap-3">

@@ -29,10 +29,10 @@ const STATUS_STYLES: Record<string, string> = {
   FAILED: "bg-red-100 text-red-800",
   OPEN: "bg-yellow-100 text-yellow-800",
   PARTIALLY_PAID: "bg-yellow-100 text-yellow-800",
-  WRITTEN_OFF: "bg-gray-200 text-gray-700",
+  WRITTEN_OFF: "bg-canvas-alt text-ink-soft",
   REFUNDED: "bg-blue-100 text-blue-800",
-  VOID: "bg-gray-200 text-gray-700",
-  DRAFT: "bg-gray-100 text-gray-600",
+  VOID: "bg-canvas-alt text-ink-soft",
+  DRAFT: "bg-canvas-alt text-ink-soft",
 };
 
 const PAYMENT_METHOD_LABELS: Record<string, string> = {
@@ -50,8 +50,8 @@ function formatDate(date: Date | null): string {
 
 export function InvoiceDocument({ invoice }: { invoice: InvoiceDetail }) {
   return (
-    <div className="overflow-hidden rounded-lg border border-gray-200 bg-white print:rounded-none print:border-0 print:text-black">
-      <div className="flex flex-wrap items-start justify-between gap-4 bg-gray-900 px-6 py-6 text-white print:bg-white print:px-0 print:pt-0 print:text-black">
+    <div className="overflow-hidden rounded-lg border border-line bg-white print:rounded-none print:border-0 print:text-black">
+      <div className="flex flex-wrap items-start justify-between gap-4 bg-action px-6 py-6 text-on-action print:bg-white print:px-0 print:pt-0 print:text-black">
         <div>
           {safeLogoUrl(invoice.business.logoUrl) && (
             <Image
@@ -79,23 +79,23 @@ export function InvoiceDocument({ invoice }: { invoice: InvoiceDetail }) {
       <div className="px-6 py-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Billed to</p>
-            <p className="mt-1 font-medium text-gray-900">{invoice.customer.name}</p>
-            {invoice.customer.companyName && <p className="text-sm text-gray-600">{invoice.customer.companyName}</p>}
-            <p className="text-sm text-gray-600">{invoice.customer.email}</p>
-            {invoice.propertyAddress && <p className="mt-1 text-sm text-gray-600">{invoice.propertyAddress}</p>}
+            <p className="text-xs font-medium uppercase tracking-wide text-ink-faint">Billed to</p>
+            <p className="mt-1 font-medium text-ink">{invoice.customer.name}</p>
+            {invoice.customer.companyName && <p className="text-sm text-ink-soft">{invoice.customer.companyName}</p>}
+            <p className="text-sm text-ink-soft">{invoice.customer.email}</p>
+            {invoice.propertyAddress && <p className="mt-1 text-sm text-ink-soft">{invoice.propertyAddress}</p>}
           </div>
           <div className="text-right">
-            <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Status</p>
+            <p className="text-xs font-medium uppercase tracking-wide text-ink-faint">Status</p>
             <span
               className={`mt-1 inline-block rounded-full px-3 py-1 text-sm font-medium ${
-                STATUS_STYLES[invoice.status] ?? "bg-gray-100 text-gray-700"
+                STATUS_STYLES[invoice.status] ?? "bg-canvas-alt text-ink-soft"
               }`}
             >
               {invoiceStatusLabel(invoice.status)}
             </span>
             {invoice.billingPeriodStart && (
-              <p className="mt-2 text-sm text-gray-600">
+              <p className="mt-2 text-sm text-ink-soft">
                 For {formatDate(invoice.billingPeriodStart)}
                 {invoice.billingPeriodEnd ? ` – ${formatDate(invoice.billingPeriodEnd)}` : ""}
               </p>
@@ -105,18 +105,18 @@ export function InvoiceDocument({ invoice }: { invoice: InvoiceDetail }) {
 
         <table className="mt-6 w-full border-collapse text-sm">
           <thead>
-            <tr className="border-b border-gray-200 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
+            <tr className="border-b border-line text-left text-xs font-medium uppercase tracking-wide text-ink-faint">
               <th className="py-2">Description</th>
               <th className="py-2 text-center">Qty</th>
               <th className="py-2 text-right">Amount</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
+          <tbody className="divide-y divide-line">
             {invoice.lineItems.map((line) => (
               <tr key={line.id}>
-                <td className="py-2.5 text-gray-900">{line.description}</td>
-                <td className="py-2.5 text-center text-gray-600">{line.quantity}</td>
-                <td className="py-2.5 text-right text-gray-900">{formatCents(line.amountCents)}</td>
+                <td className="py-2.5 text-ink">{line.description}</td>
+                <td className="py-2.5 text-center text-ink-soft">{line.quantity}</td>
+                <td className="py-2.5 text-right text-ink">{formatCents(line.amountCents)}</td>
               </tr>
             ))}
           </tbody>
@@ -124,37 +124,37 @@ export function InvoiceDocument({ invoice }: { invoice: InvoiceDetail }) {
 
         <div className="mt-6 flex justify-end">
           <div className="w-full max-w-xs space-y-1.5 text-sm">
-            <div className="flex justify-between text-gray-600">
+            <div className="flex justify-between text-ink-soft">
               <span>Subtotal</span>
               <span>{formatCents(invoice.subtotalCents)}</span>
             </div>
             {invoice.discountCents !== 0 && (
-              <div className="flex justify-between text-gray-600">
+              <div className="flex justify-between text-ink-soft">
                 <span>Discount</span>
                 <span>−{formatCents(Math.abs(invoice.discountCents))}</span>
               </div>
             )}
             {invoice.taxCents > 0 && (
-              <div className="flex justify-between text-gray-600">
+              <div className="flex justify-between text-ink-soft">
                 <span>Tax</span>
                 <span>{formatCents(invoice.taxCents)}</span>
               </div>
             )}
             {invoice.lateFeeCents > 0 && (
-              <div className="flex justify-between text-gray-600">
+              <div className="flex justify-between text-ink-soft">
                 <span>Late fee</span>
                 <span>{formatCents(invoice.lateFeeCents)}</span>
               </div>
             )}
-            <div className="flex justify-between border-t border-gray-200 pt-1.5 font-medium text-gray-900">
+            <div className="flex justify-between border-t border-line pt-1.5 font-medium text-ink">
               <span>Total due</span>
               <span>{formatCents(invoice.amountDueCents)}</span>
             </div>
-            <div className="flex justify-between text-gray-600">
+            <div className="flex justify-between text-ink-soft">
               <span>Paid</span>
               <span>{formatCents(invoice.amountPaidCents)}</span>
             </div>
-            <div className="flex justify-between border-t border-gray-200 pt-1.5 text-base font-semibold text-gray-900">
+            <div className="flex justify-between border-t border-line pt-1.5 text-base font-semibold text-ink">
               <span>Balance owed</span>
               <span>{formatCents(invoice.balanceCents)}</span>
             </div>
@@ -162,23 +162,23 @@ export function InvoiceDocument({ invoice }: { invoice: InvoiceDetail }) {
         </div>
 
         {invoice.payments.length > 0 && (
-          <div className="mt-8 border-t border-gray-100 pt-4">
-            <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Payment history</p>
-            <ul className="mt-2 divide-y divide-gray-100 text-sm">
+          <div className="mt-8 border-t border-line pt-4">
+            <p className="text-xs font-medium uppercase tracking-wide text-ink-faint">Payment history</p>
+            <ul className="mt-2 divide-y divide-line text-sm">
               {invoice.payments.map((payment) => (
                 <li key={payment.id} className="flex items-center justify-between py-1.5">
-                  <span className="text-gray-600">
+                  <span className="text-ink-soft">
                     {formatDate(payment.createdAt)} · {PAYMENT_METHOD_LABELS[payment.method ?? ""] ?? "Payment"}
                     {!isSuccessfulPaymentStatus(payment.status) ? ` (${payment.status})` : ""}
                   </span>
-                  <span className="text-gray-900">{formatCents(payment.amountCents)}</span>
+                  <span className="text-ink">{formatCents(payment.amountCents)}</span>
                 </li>
               ))}
             </ul>
           </div>
         )}
 
-        <p className="mt-8 border-t border-gray-100 pt-4 text-center text-xs text-gray-500">
+        <p className="mt-8 border-t border-line pt-4 text-center text-xs text-ink-faint">
           {invoice.business.name} · {invoice.business.phone} · {invoice.business.email}
         </p>
       </div>

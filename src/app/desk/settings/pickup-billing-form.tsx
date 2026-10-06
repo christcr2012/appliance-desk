@@ -55,7 +55,7 @@ export function PickupBillingForm({ defaultValues }: { defaultValues: PickupBill
         </p>
       )}
 
-      <p className="rounded-lg border border-gray-300 px-4 py-3 text-sm text-gray-900">
+      <p className="rounded-lg border border-line-strong px-4 py-3 text-sm text-ink">
         These three rules decide what a customer is charged when an appliance comes back late, credited
         when an appliance is delivered late, and whether the pickup day itself counts. Each one is a
         setting you can change at any time; the change applies to pickups and deliveries recorded after
@@ -64,14 +64,14 @@ export function PickupBillingForm({ defaultValues }: { defaultValues: PickupBill
       </p>
 
       <fieldset className="space-y-4">
-        <legend className="text-base font-semibold text-gray-900">1. Late return — kept past the end date</legend>
-        <p className="text-sm text-gray-600">
+        <legend className="text-base font-semibold text-ink">1. Late return — kept past the end date</legend>
+        <p className="text-sm text-ink-soft">
           When a customer keeps an appliance past the end date of their agreement, each extra day is
           charged at a daily rate, for each appliance. The charge appears on their next bill as
           &ldquo;Late return – [appliance] – [number] days&rdquo;. Choose how the daily rate is worked out:
         </p>
         <div className="space-y-3">
-          <label className="flex items-start gap-3 text-sm text-gray-900">
+          <label className="flex items-start gap-3 text-sm text-ink">
             <input
               type="radio"
               name="lateReturnRateMode"
@@ -82,14 +82,14 @@ export function PickupBillingForm({ defaultValues }: { defaultValues: PickupBill
             <span>
               <strong>The appliance&rsquo;s monthly price ÷ 30 (recommended)</strong>
               <br />
-              <span className="text-gray-600">
+              <span className="text-ink-soft">
                 A $45-a-month appliance costs $1.50 for each late day. This is the fairest default: the
                 customer pays the same daily rate they already pay, no more and no less, and you never
                 have to update a separate number when prices change.
               </span>
             </span>
           </label>
-          <label className="flex items-start gap-3 text-sm text-gray-900">
+          <label className="flex items-start gap-3 text-sm text-ink">
             <input
               type="radio"
               name="lateReturnRateMode"
@@ -100,7 +100,7 @@ export function PickupBillingForm({ defaultValues }: { defaultValues: PickupBill
             <span>
               <strong>A fixed dollar amount per day, per appliance</strong>
               <br />
-              <span className="text-gray-600">
+              <span className="text-ink-soft">
                 Every late day costs the same amount whatever the appliance&rsquo;s price. Use this if
                 you want late returns to cost noticeably more than ordinary rent, as an incentive to
                 return on time. Enter the amount below.
@@ -109,11 +109,11 @@ export function PickupBillingForm({ defaultValues }: { defaultValues: PickupBill
           </label>
         </div>
         <div>
-          <label htmlFor="pickup-fixedDaily" className="mb-1 block text-sm font-medium text-gray-900">
+          <label htmlFor="pickup-fixedDaily" className="mb-1 block text-sm font-medium text-ink">
             Fixed amount per day (only used with the second choice)
           </label>
           <div className="flex max-w-sm items-center gap-2">
-            <span aria-hidden="true" className="text-gray-500">
+            <span aria-hidden="true" className="text-ink-faint">
               $
             </span>
             <input
@@ -123,20 +123,20 @@ export function PickupBillingForm({ defaultValues }: { defaultValues: PickupBill
               onChange={(e) => setValues((c) => ({ ...c, lateReturnFixedDailyDollars: e.target.value }))}
               aria-describedby="pickup-fixedDaily-help"
               disabled={values.lateReturnRateMode !== "FIXED"}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm disabled:bg-gray-100"
+              className="w-full rounded-lg border border-line-strong px-3 py-2 text-sm disabled:bg-canvas-alt"
             />
           </div>
-          <p id="pickup-fixedDaily-help" className="mt-1 text-xs text-gray-600">
+          <p id="pickup-fixedDaily-help" className="mt-1 text-xs text-ink-soft">
             Per day, per appliance. Ignored while &ldquo;monthly price ÷ 30&rdquo; is selected.
           </p>
         </div>
       </fieldset>
 
       <fieldset className="space-y-4">
-        <legend className="text-base font-semibold text-gray-900">
+        <legend className="text-base font-semibold text-ink">
           2. Late delivery — an item that was not on the first delivery
         </legend>
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-ink-soft">
           When one or more appliances on an agreement are not delivered on the visit that starts billing
           (for example the dryer was back-ordered), the <strong>whole agreement</strong> is billed as normal
           from that first delivery date. When the missing appliance is delivered later, the customer gets a
@@ -147,7 +147,7 @@ export function PickupBillingForm({ defaultValues }: { defaultValues: PickupBill
           Choose how the per-day credit is worked out:
         </p>
         <div className="space-y-3">
-          <label className="flex items-start gap-3 text-sm text-gray-900">
+          <label className="flex items-start gap-3 text-sm text-ink">
             <input
               type="radio"
               name="lateDeliveryProrationBasis"
@@ -158,14 +158,14 @@ export function PickupBillingForm({ defaultValues }: { defaultValues: PickupBill
             <span>
               <strong>The appliance&rsquo;s monthly price ÷ 30 (recommended)</strong>
               <br />
-              <span className="text-gray-600">
+              <span className="text-ink-soft">
                 The same simple daily rate every month, and the same rate late returns use, so a customer
                 is never charged at one rate and credited at another. A $45-a-month appliance earns $1.50
                 back for each day it was missing.
               </span>
             </span>
           </label>
-          <label className="flex items-start gap-3 text-sm text-gray-900">
+          <label className="flex items-start gap-3 text-sm text-ink">
             <input
               type="radio"
               name="lateDeliveryProrationBasis"
@@ -178,7 +178,7 @@ export function PickupBillingForm({ defaultValues }: { defaultValues: PickupBill
             <span>
               <strong>The appliance&rsquo;s monthly price ÷ the real number of days in that billing month</strong>
               <br />
-              <span className="text-gray-600">
+              <span className="text-ink-soft">
                 Exact to the calendar: a 31-day month credits a little less per day and a 28-day month a
                 little more, so a whole month of missing days always adds up to exactly one month&rsquo;s
                 price. Slightly harder for a customer to check by hand.
@@ -189,8 +189,8 @@ export function PickupBillingForm({ defaultValues }: { defaultValues: PickupBill
       </fieldset>
 
       <fieldset className="space-y-4">
-        <legend className="text-base font-semibold text-gray-900">3. The pickup day itself</legend>
-        <label className="flex items-start gap-3 text-sm text-gray-900">
+        <legend className="text-base font-semibold text-ink">3. The pickup day itself</legend>
+        <label className="flex items-start gap-3 text-sm text-ink">
           <input
             type="checkbox"
             className={radioClass}
@@ -200,7 +200,7 @@ export function PickupBillingForm({ defaultValues }: { defaultValues: PickupBill
           <span>
             <strong>Don&rsquo;t charge for the day an appliance is picked up or returned (recommended)</strong>
             <br />
-            <span className="text-gray-600">
+            <span className="text-ink-soft">
               With this on, the pickup day is not counted as a late day: the last late day a customer
               pays for is the day <em>before</em> the pickup or return, so an appliance picked up on the
               1st of the month is not charged for the 1st. It is on to start with because the customer
@@ -216,7 +216,7 @@ export function PickupBillingForm({ defaultValues }: { defaultValues: PickupBill
         <button
           type="submit"
           disabled={saving}
-          className="rounded-full bg-gray-900 px-6 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+          className="rounded-full bg-action px-6 py-2.5 text-sm font-semibold text-on-action disabled:opacity-60"
         >
           {saving ? "Saving…" : "Save this section"}
         </button>
@@ -230,7 +230,7 @@ export function PickupBillingForm({ defaultValues }: { defaultValues: PickupBill
               text: "The recommended values are filled in below. Nothing is saved until you press “Save this section”.",
             });
           }}
-          className="rounded-full border border-gray-400 px-5 py-2.5 text-sm font-semibold text-gray-900 disabled:opacity-60"
+          className="rounded-full border border-line-strong px-5 py-2.5 text-sm font-semibold text-ink disabled:opacity-60"
         >
           Restore recommended values
         </button>

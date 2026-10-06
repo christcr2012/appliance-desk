@@ -12,7 +12,7 @@ export async function OperationalAppliance({ id }: { id: string }) {
     <div className="max-w-2xl">
       <Link
         href="/desk/inventory"
-        className="text-sm text-gray-600 hover:underline"
+        className="text-sm text-ink-soft hover:underline"
       >
         ← Back to inventory
       </Link>

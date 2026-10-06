@@ -39,7 +39,7 @@ export function ResendActivationButton({ customerId }: { customerId: string }) {
             }
           })
         }
-        className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:border-gray-400 disabled:opacity-50"
+        className="rounded-md border border-line-strong px-3 py-1.5 text-sm text-ink-soft hover:border-line-strong disabled:opacity-50"
       >
         {isPending ? "Sending…" : "Resend activation email"}
       </button>

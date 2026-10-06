@@ -21,7 +21,7 @@ export function PayDepositButton({ estimateId }: { estimateId: string }) {
   }, [result]);
 
   if (result.status === "redirecting") {
-    return <p className="mt-2 text-sm text-gray-700">Taking you to a secure page to pay the deposit…</p>;
+    return <p className="mt-2 text-sm text-ink-soft">Taking you to a secure page to pay the deposit…</p>;
   }
 
   return (
@@ -34,7 +34,7 @@ export function PayDepositButton({ estimateId }: { estimateId: string }) {
             setResult(await payEstimateDepositAction(estimateId));
           })
         }
-        className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+        className="rounded-md bg-action px-4 py-2 text-sm font-medium text-on-action hover:bg-action disabled:opacity-50"
       >
         {isPending ? "Starting…" : "Pay deposit"}
       </button>

@@ -59,13 +59,13 @@ export default async function JobsPage({
     <div>
       <div className="flex items-center justify-between">
         <h1 className="flex items-center gap-2 text-xl font-semibold">
-          <CalendarServiceIcon className="h-5 w-5 text-gray-500" />
+          <CalendarServiceIcon className="h-5 w-5 text-ink-faint" />
           Jobs
         </h1>
         {canScheduleJobs && (
           <Link
             href="/desk/jobs/new"
-            className="inline-flex items-center gap-1 rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
+            className="inline-flex items-center gap-1 rounded-md bg-action px-4 py-2 text-sm font-medium text-on-action hover:bg-action"
           >
             <PlusIcon className="h-4 w-4" />
             Schedule a job
@@ -86,8 +86,8 @@ export default async function JobsPage({
               aria-current={active ? "page" : undefined}
               className={`rounded-full border px-3 py-1 text-sm ${
                 active
-                  ? "border-gray-900 bg-gray-900 text-white"
-                  : "border-gray-300 text-gray-700 hover:border-gray-400"
+                  ? "border-primary bg-action text-on-action"
+                  : "border-line-strong text-ink-soft hover:border-line-strong"
               }`}
             >
               {tab.label}
@@ -97,30 +97,30 @@ export default async function JobsPage({
       </nav>
 
       {jobs.length === 0 ? (
-        <p className="mt-6 text-sm text-gray-600">
+        <p className="mt-6 text-sm text-ink-soft">
           {status ? "No jobs with this status." : "No jobs scheduled yet."}
         </p>
       ) : (
-        <ul className="mt-6 divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white">
+        <ul className="mt-6 divide-y divide-line rounded-lg border border-line bg-white">
           {jobs.map((j) => (
             <li key={j.id}>
               <Link
                 href={`/desk/jobs/${j.id}`}
-                className="flex flex-col gap-1 px-4 py-4 hover:bg-gray-50 sm:flex-row sm:items-center sm:justify-between"
+                className="flex flex-col gap-1 px-4 py-4 hover:bg-canvas sm:flex-row sm:items-center sm:justify-between"
               >
                 <div>
-                  <p className="font-medium text-gray-900">
+                  <p className="font-medium text-ink">
                     {j.type}{" "}
                     {j.customer &&
                       `— ${j.customer.user.name ?? j.customer.user.email}`}
                   </p>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-ink-soft">
                     {j.serviceAddress
                       ? `${j.serviceAddress.line1}, ${j.serviceAddress.city}`
                       : "No address on file"}
                   </p>
                 </div>
-                <div className="text-sm text-gray-500 sm:text-right">
+                <div className="text-sm text-ink-faint sm:text-right">
                   <StatusBadge
                     tone={jobStatusTone(j.status)}
                     label={j.status}

@@ -10,16 +10,16 @@ export default async function AccountSettingsPage() {
   const customer = session ? await getPortalData(session.user.id) : null;
 
   if (!customer) {
-    return <p className="text-gray-600">No rental account found.</p>;
+    return <p className="text-ink-soft">No rental account found.</p>;
   }
 
   return (
     <div className="max-w-2xl">
       <h1 className="text-xl font-semibold">Settings</h1>
 
-      <div className="mt-6 rounded-lg border border-gray-200 bg-white p-5">
-        <h2 className="font-medium text-gray-900">Text message notifications</h2>
-        <p className="mt-1 text-sm text-gray-600">
+      <div className="mt-6 rounded-lg border border-line bg-surface p-5">
+        <h2 className="font-medium text-ink">Text message notifications</h2>
+        <p className="mt-1 text-sm text-ink-soft">
           Off by default — you only get texts if you turn this on.
         </p>
         <div className="mt-4">
@@ -30,9 +30,9 @@ export default async function AccountSettingsPage() {
         </div>
       </div>
 
-      <div className="mt-4 rounded-lg border border-gray-200 bg-white p-5">
-        <h2 className="font-medium text-gray-900">Privacy requests</h2>
-        <p className="mt-1 text-sm text-gray-600">
+      <div className="mt-4 rounded-lg border border-line bg-surface p-5">
+        <h2 className="font-medium text-ink">Privacy requests</h2>
+        <p className="mt-1 text-sm text-ink-soft">
           Request a copy of your account information or ask us to delete personal information we are allowed to remove.
         </p>
         <Link href="/account/settings/privacy" className="mt-3 inline-flex min-h-11 items-center text-sm font-medium text-primary underline">

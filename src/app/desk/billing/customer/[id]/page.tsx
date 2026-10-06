@@ -43,7 +43,7 @@ export default async function CustomerStatementPage({
     <div className="max-w-3xl">
       <Link
         href={`/desk/customers/${statement.customerId}`}
-        className="text-sm text-gray-600 hover:underline"
+        className="text-sm text-ink-soft hover:underline"
       >
         &larr; Back to customer
       </Link>
@@ -52,7 +52,7 @@ export default async function CustomerStatementPage({
         <div>
           <h1 className="text-xl font-semibold">{statement.customerName}</h1>
           {statement.companyName && (
-            <p className="text-sm text-gray-600">{statement.companyName}</p>
+            <p className="text-sm text-ink-soft">{statement.companyName}</p>
           )}
         </div>
         <ExportCsvLink
@@ -62,15 +62,15 @@ export default async function CustomerStatementPage({
       </div>
 
       <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
-          <p className="text-xs text-gray-500">Total billed</p>
-          <p className="mt-1 text-lg font-semibold text-gray-900">
+        <div className="rounded-lg border border-line bg-white p-4">
+          <p className="text-xs text-ink-faint">Total billed</p>
+          <p className="mt-1 text-lg font-semibold text-ink">
             {formatCents(statement.totalDueCents)}
           </p>
         </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
-          <p className="text-xs text-gray-500">Total paid</p>
-          <p className="mt-1 text-lg font-semibold text-gray-900">
+        <div className="rounded-lg border border-line bg-white p-4">
+          <p className="text-xs text-ink-faint">Total paid</p>
+          <p className="mt-1 text-lg font-semibold text-ink">
             {formatCents(statement.totalPaidCents)}
           </p>
         </div>
@@ -99,32 +99,32 @@ export default async function CustomerStatementPage({
       </div>
 
       {statement.properties.length === 0 ? (
-        <p className="mt-6 text-sm text-gray-600">No invoices on file yet.</p>
+        <p className="mt-6 text-sm text-ink-soft">No invoices on file yet.</p>
       ) : (
         <div className="mt-6 space-y-6">
           {statement.properties.map((property) => (
             <div
               key={property.serviceAddressId ?? "no-property"}
-              className="rounded-lg border border-gray-200 bg-white p-5"
+              className="rounded-lg border border-line bg-white p-5"
             >
               <div className="flex flex-wrap items-start justify-between gap-2">
-                <h2 className="font-medium text-gray-900">
+                <h2 className="font-medium text-ink">
                   {property.addressLabel}
                 </h2>
-                <span className="text-sm text-gray-600">
+                <span className="text-sm text-ink-soft">
                   {property.totalBalanceCents > 0
                     ? `${formatCents(property.totalBalanceCents)} owed`
                     : "Paid up"}
                 </span>
               </div>
-              <ul className="mt-3 divide-y divide-gray-100">
+              <ul className="mt-3 divide-y divide-line">
                 {property.invoices.map((invoice) => (
                   <li key={invoice.id} className="py-2 text-sm">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
                         <Link
                           href={`/desk/billing/customer/${statement.customerId}/invoice/${invoice.id}`}
-                          className="font-mono text-xs text-gray-500 hover:underline"
+                          className="font-mono text-xs text-ink-faint hover:underline"
                         >
                           #{invoice.invoiceNumber}
                         </Link>{" "}
@@ -135,7 +135,7 @@ export default async function CustomerStatementPage({
                           className="ml-1"
                         />
                         {invoice.billingPeriodStart && (
-                          <span className="ml-2 text-gray-600">
+                          <span className="ml-2 text-ink-soft">
                             {formatBusinessDate(invoice.billingPeriodStart)}
                           </span>
                         )}
@@ -148,7 +148,7 @@ export default async function CustomerStatementPage({
                       </div>
                       <div className="flex items-center gap-3 text-right">
                         <div>
-                          <p className="text-gray-900">
+                          <p className="text-ink">
                             {formatCents(invoice.amountDueCents)} due
                           </p>
                           {invoice.balanceCents > 0 && (

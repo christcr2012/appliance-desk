@@ -82,8 +82,8 @@ export function InventoryList({ appliances, canManage = false }: { appliances: A
   return (
     <div className="mt-6">
       {canManage && selected.size > 0 && (
-        <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-gray-300 bg-gray-50 p-3 text-sm">
-          <span className="font-medium text-gray-900">{selected.size} selected</span>
+        <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-line-strong bg-canvas p-3 text-sm">
+          <span className="font-medium text-ink">{selected.size} selected</span>
           <label htmlFor="bulkStatus" className="sr-only">
             Set status to
           </label>
@@ -92,7 +92,7 @@ export function InventoryList({ appliances, canManage = false }: { appliances: A
             id="bulkStatus"
             value={bulkStatus}
             onChange={(e) => setBulkStatus(e.target.value as ApplianceStatus)}
-            className="rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+            className="rounded-md border border-line-strong px-2 py-1.5 text-sm"
           >
             {ALL_APPLIANCE_STATUSES.map((s) => (
               <option key={s} value={s}>
@@ -104,7 +104,7 @@ export function InventoryList({ appliances, canManage = false }: { appliances: A
             type="button"
             disabled={isPending}
             onClick={handleApplyBulk}
-            className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+            className="rounded-md bg-action px-3 py-1.5 text-sm font-medium text-on-action hover:bg-action disabled:opacity-50"
           >
             {isPending ? "Applying…" : "Apply"}
           </button>
@@ -112,7 +112,7 @@ export function InventoryList({ appliances, canManage = false }: { appliances: A
             type="button"
             disabled={isPending}
             onClick={() => setSelected(new Set())}
-            className="text-sm text-gray-600 hover:underline"
+            className="text-sm text-ink-soft hover:underline"
           >
             Clear selection
           </button>
@@ -120,7 +120,7 @@ export function InventoryList({ appliances, canManage = false }: { appliances: A
       )}
 
       {message && (
-        <div role="status" className="mb-3 text-sm text-gray-700">
+        <div role="status" className="mb-3 text-sm text-ink-soft">
           <p>{message}</p>
           {skipped.length > 0 && (
             <ul className="mt-2 list-disc pl-5">
@@ -136,8 +136,8 @@ export function InventoryList({ appliances, canManage = false }: { appliances: A
         </div>
       )}
 
-      <div className="rounded-lg border border-gray-200 bg-white">
-        {canManage && <label className="flex items-center gap-2 border-b border-gray-200 px-4 py-2 text-sm text-gray-600">
+      <div className="rounded-lg border border-line bg-white">
+        {canManage && <label className="flex items-center gap-2 border-b border-line px-4 py-2 text-sm text-ink-soft">
           <input
             disabled={isPending}
             type="checkbox"
@@ -146,9 +146,9 @@ export function InventoryList({ appliances, canManage = false }: { appliances: A
           />
           Select all on this page
         </label>}
-        <ul className="divide-y divide-gray-200">
+        <ul className="divide-y divide-line">
           {appliances.map((appliance) => (
-            <li key={appliance.id} className="flex items-center gap-3 px-4 py-4 hover:bg-gray-50">
+            <li key={appliance.id} className="flex items-center gap-3 px-4 py-4 hover:bg-canvas">
               {canManage && <input
                 disabled={isPending}
                 type="checkbox"
@@ -161,16 +161,16 @@ export function InventoryList({ appliances, canManage = false }: { appliances: A
                 className="flex flex-1 flex-col gap-1 sm:flex-row sm:items-center sm:justify-between"
               >
                 <div>
-                  <p className="font-medium text-gray-900">
+                  <p className="font-medium text-ink">
                     {appliance.assetNumber} — {appliance.applianceType.name}
                   </p>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-ink-soft">
                     {[appliance.manufacturer, appliance.model, appliance.color]
                       .filter(Boolean)
                       .join(" ") || "No manufacturer/model on file"}
                   </p>
                 </div>
-                <div className="text-sm text-gray-500 sm:text-right">
+                <div className="text-sm text-ink-faint sm:text-right">
                   <StatusBadge
                     tone={STATUS_TONE[appliance.status]}
                     label={APPLIANCE_STATUS_LABELS[appliance.status]}

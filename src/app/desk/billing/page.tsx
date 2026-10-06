@@ -111,47 +111,47 @@ export default async function BillingPage({
         <WaitingTab />
       ) : showStatements ? (
         customerBalances.length === 0 ? (
-          <p className="mt-6 text-sm text-gray-600">
+          <p className="mt-6 text-sm text-ink-soft">
             No customer currently has an open balance.
           </p>
         ) : (
-          <div className="mt-6 overflow-x-auto rounded-lg border border-gray-200 bg-white">
-            <table className="min-w-full divide-y divide-gray-200 text-sm">
-              <thead className="bg-gray-50">
+          <div className="mt-6 overflow-x-auto rounded-lg border border-line bg-white">
+            <table className="min-w-full divide-y divide-line text-sm">
+              <thead className="bg-canvas">
                 <tr>
                   <th
                     scope="col"
-                    className="px-4 py-2 text-left font-medium text-gray-600"
+                    className="px-4 py-2 text-left font-medium text-ink-soft"
                   >
                     Customer
                   </th>
                   <th
                     scope="col"
-                    className="px-4 py-2 text-left font-medium text-gray-600"
+                    className="px-4 py-2 text-left font-medium text-ink-soft"
                   >
                     Properties
                   </th>
                   <th
                     scope="col"
-                    className="px-4 py-2 text-right font-medium text-gray-600"
+                    className="px-4 py-2 text-right font-medium text-ink-soft"
                   >
                     Open invoices
                   </th>
                   <th
                     scope="col"
-                    className="px-4 py-2 text-right font-medium text-gray-600"
+                    className="px-4 py-2 text-right font-medium text-ink-soft"
                   >
                     Balance owed
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-line">
                 {customerBalances.map((c) => (
                   <tr key={c.id}>
                     <td className="px-4 py-2">
                       <Link
                         href={`/desk/billing/customer/${c.id}`}
-                        className="text-gray-900 underline hover:no-underline"
+                        className="text-ink underline hover:no-underline"
                       >
                         {c.customerName}
                       </Link>
@@ -161,10 +161,10 @@ export default async function BillingPage({
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-2 text-gray-600">
+                    <td className="px-4 py-2 text-ink-soft">
                       {c.propertyCount}
                     </td>
-                    <td className="px-4 py-2 text-right text-gray-600">
+                    <td className="px-4 py-2 text-right text-ink-soft">
                       {c.openInvoiceCount}
                     </td>
                     <td className="px-4 py-2 text-right font-medium text-amber-800">
@@ -177,58 +177,58 @@ export default async function BillingPage({
           </div>
         )
       ) : invoices.length === 0 ? (
-        <p className="mt-6 text-sm text-gray-600">
+        <p className="mt-6 text-sm text-ink-soft">
           {delinquentOnly
             ? "No delinquent invoices right now."
             : "No invoices yet — they're created automatically once a signed agreement's first Stripe payment goes through."}
         </p>
       ) : (
-        <div className="mt-6 overflow-x-auto rounded-lg border border-gray-200 bg-white">
-          <table className="min-w-full divide-y divide-gray-200 text-sm">
-            <thead className="bg-gray-50">
+        <div className="mt-6 overflow-x-auto rounded-lg border border-line bg-white">
+          <table className="min-w-full divide-y divide-line text-sm">
+            <thead className="bg-canvas">
               <tr>
                 <th
                   scope="col"
-                  className="px-4 py-2 text-left font-medium text-gray-600"
+                  className="px-4 py-2 text-left font-medium text-ink-soft"
                 >
                   Invoice #
                 </th>
                 <th
                   scope="col"
-                  className="px-4 py-2 text-left font-medium text-gray-600"
+                  className="px-4 py-2 text-left font-medium text-ink-soft"
                 >
                   Customer
                 </th>
                 <th
                   scope="col"
-                  className="px-4 py-2 text-left font-medium text-gray-600"
+                  className="px-4 py-2 text-left font-medium text-ink-soft"
                 >
                   Status
                 </th>
                 <th
                   scope="col"
-                  className="px-4 py-2 text-left font-medium text-gray-600"
+                  className="px-4 py-2 text-left font-medium text-ink-soft"
                 >
                   Period
                 </th>
                 <th
                   scope="col"
-                  className="px-4 py-2 text-right font-medium text-gray-600"
+                  className="px-4 py-2 text-right font-medium text-ink-soft"
                 >
                   Amount due
                 </th>
                 <th
                   scope="col"
-                  className="px-4 py-2 text-right font-medium text-gray-600"
+                  className="px-4 py-2 text-right font-medium text-ink-soft"
                 >
                   Amount paid
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-line">
               {invoices.map((invoice) => (
                 <tr key={invoice.id}>
-                  <td className="px-4 py-2 font-mono text-xs text-gray-700">
+                  <td className="px-4 py-2 font-mono text-xs text-ink-soft">
                     <Link
                       className="text-primary underline"
                       href={`/desk/billing/customer/${invoice.customer.id}/invoice/${invoice.id}`}
@@ -239,7 +239,7 @@ export default async function BillingPage({
                   <td className="px-4 py-2">
                     <Link
                       href={`/desk/customers/${invoice.customer.id}`}
-                      className="text-gray-900 underline hover:no-underline"
+                      className="text-ink underline hover:no-underline"
                     >
                       {invoice.customer.user.name ??
                         invoice.customer.user.email}
@@ -252,7 +252,7 @@ export default async function BillingPage({
                       variant="pill"
                     />
                   </td>
-                  <td className="px-4 py-2 text-gray-600">
+                  <td className="px-4 py-2 text-ink-soft">
                     {invoice.billingPeriodStart
                       ? formatBusinessDate(invoice.billingPeriodStart)
                       : "—"}

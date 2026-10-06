@@ -18,16 +18,16 @@ export function StatementReconciliationCard({
   return (
     <section
       aria-labelledby="statement-reconciliation-heading"
-      className="mt-6 rounded-lg border border-gray-200 bg-white p-5"
+      className="mt-6 rounded-lg border border-line bg-white p-5"
     >
-      <h2 id="statement-reconciliation-heading" className="font-medium text-gray-900">
+      <h2 id="statement-reconciliation-heading" className="font-medium text-ink">
         How this balance adds up
       </h2>
       <dl className="mt-3 space-y-1 text-sm">
         {rows.map(([label, value, strong]) => (
           <div
             key={label}
-            className={`flex justify-between gap-4 ${strong ? "border-t border-gray-200 pt-2 font-semibold" : ""}`}
+            className={`flex justify-between gap-4 ${strong ? "border-t border-line pt-2 font-semibold" : ""}`}
           >
             <dt>{label}</dt>
             <dd>{value}</dd>

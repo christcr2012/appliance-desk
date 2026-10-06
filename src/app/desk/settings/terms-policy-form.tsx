@@ -5,7 +5,7 @@ import { updateTermsPolicyAction } from "./actions";
 import type { TermsPolicyFormValues } from "@/domains/settings/terms-policy";
 import { RECOMMENDED_TERMS_POLICY } from "@/domains/settings/recommended-terms";
 
-const inputClass = "w-full max-w-sm rounded-lg border border-gray-300 px-3 py-2 text-sm";
+const inputClass = "w-full max-w-sm rounded-lg border border-line-strong px-3 py-2 text-sm";
 
 export function TermsPolicyForm({ defaultValues }: { defaultValues: TermsPolicyFormValues }) {
   const [values, setValues] = useState<TermsPolicyFormValues>(defaultValues);
@@ -54,33 +54,33 @@ export function TermsPolicyForm({ defaultValues }: { defaultValues: TermsPolicyF
         </p>
       )}
 
-      <p className="rounded-lg border border-gray-300 px-4 py-3 text-sm text-gray-900">
+      <p className="rounded-lg border border-line-strong px-4 py-3 text-sm text-ink">
         The starting values here come from common practice for equipment rentals and Colorado&rsquo;s
         automatic-renewal law (a reminder 25 to 40 days before a renewal, and an easy way to
         cancel). Every number and sentence is yours to change. Owners and admins can edit this
         section. Please have a Colorado attorney read the wording before you rely on it.
       </p>
 
-      <p className="rounded-lg border border-gray-300 px-4 py-3 text-sm text-gray-900">
+      <p className="rounded-lg border border-line-strong px-4 py-3 text-sm text-ink">
         Changes here apply only to rental agreements that are sent for signing <strong>after</strong> you
         save. Every agreement already sent keeps the terms it was sent with, so changing these never
         changes a customer&rsquo;s current 6- or 12-month rental.
       </p>
 
       <fieldset className="space-y-4">
-        <legend className="text-base font-semibold text-gray-900">Ending a rental early</legend>
-        <p className="text-sm text-gray-600">
+        <legend className="text-base font-semibold text-ink">Ending a rental early</legend>
+        <p className="text-sm text-ink-soft">
           What a customer owes if they end a 6- or 12-month rental before the term is up. A rental
           can only end on its monthly billing date. Leave a box empty if you have not decided yet;
           nothing is charged until every needed box is filled in.
         </p>
 
         <div>
-          <label htmlFor="terms-feeDollars" className="mb-1 block text-sm font-medium text-gray-900">
+          <label htmlFor="terms-feeDollars" className="mb-1 block text-sm font-medium text-ink">
             Flat fee
           </label>
           <div className="flex max-w-sm items-center gap-2">
-            <span aria-hidden="true" className="text-gray-500">
+            <span aria-hidden="true" className="text-ink-faint">
               $
             </span>
             <input
@@ -89,12 +89,12 @@ export function TermsPolicyForm({ defaultValues }: { defaultValues: TermsPolicyF
               value={values.feeDollars}
               onChange={change("feeDollars")}
               aria-describedby="terms-fee-help"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              className="w-full rounded-lg border border-line-strong px-3 py-2 text-sm"
             />
           </div>
         </div>
         <div>
-          <label htmlFor="terms-feePercent" className="mb-1 block text-sm font-medium text-gray-900">
+          <label htmlFor="terms-feePercent" className="mb-1 block text-sm font-medium text-ink">
             Percent of the rent still owed
           </label>
           <div className="flex max-w-sm items-center gap-2">
@@ -104,23 +104,23 @@ export function TermsPolicyForm({ defaultValues }: { defaultValues: TermsPolicyF
               value={values.feePercent}
               onChange={change("feePercent")}
               aria-describedby="terms-fee-help"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              className="w-full rounded-lg border border-line-strong px-3 py-2 text-sm"
             />
-            <span aria-hidden="true" className="text-gray-500">
+            <span aria-hidden="true" className="text-ink-faint">
               %
             </span>
           </div>
-          <p id="terms-fee-help" className="mt-1 text-xs text-gray-600">
+          <p id="terms-fee-help" className="mt-1 text-xs text-ink-soft">
             Fill in one or both. If you fill in both, the customer pays whichever comes out larger.
             Enter 0 if there should be no fee.
           </p>
         </div>
         <div>
-          <label htmlFor="terms-feeCapDollars" className="mb-1 block text-sm font-medium text-gray-900">
+          <label htmlFor="terms-feeCapDollars" className="mb-1 block text-sm font-medium text-ink">
             Highest fee you will ever charge (optional)
           </label>
           <div className="flex max-w-sm items-center gap-2">
-            <span aria-hidden="true" className="text-gray-500">
+            <span aria-hidden="true" className="text-ink-faint">
               $
             </span>
             <input
@@ -128,12 +128,12 @@ export function TermsPolicyForm({ defaultValues }: { defaultValues: TermsPolicyF
               inputMode="decimal"
               value={values.feeCapDollars}
               onChange={change("feeCapDollars")}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              className="w-full rounded-lg border border-line-strong px-3 py-2 text-sm"
             />
           </div>
         </div>
         <div>
-          <label htmlFor="terms-noticeDays" className="mb-1 block text-sm font-medium text-gray-900">
+          <label htmlFor="terms-noticeDays" className="mb-1 block text-sm font-medium text-ink">
             Days of notice the customer must give
           </label>
           <input
@@ -145,7 +145,7 @@ export function TermsPolicyForm({ defaultValues }: { defaultValues: TermsPolicyF
           />
         </div>
         <div>
-          <label htmlFor="terms-unusedTerm" className="mb-1 block text-sm font-medium text-gray-900">
+          <label htmlFor="terms-unusedTerm" className="mb-1 block text-sm font-medium text-ink">
             If a customer prepaid, what happens to the months they did not use?
           </label>
           <select
@@ -161,7 +161,7 @@ export function TermsPolicyForm({ defaultValues }: { defaultValues: TermsPolicyF
           </select>
         </div>
         <div>
-          <label htmlFor="terms-terminationTermsText" className="mb-1 block text-sm font-medium text-gray-900">
+          <label htmlFor="terms-terminationTermsText" className="mb-1 block text-sm font-medium text-ink">
             Wording customers will see about ending early
           </label>
           <textarea
@@ -169,20 +169,20 @@ export function TermsPolicyForm({ defaultValues }: { defaultValues: TermsPolicyF
             rows={5}
             value={values.terminationTermsText}
             onChange={change("terminationTermsText")}
-            className="w-full max-w-xl rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            className="w-full max-w-xl rounded-lg border border-line-strong px-3 py-2 text-sm"
           />
         </div>
       </fieldset>
 
       <fieldset className="space-y-4">
-        <legend className="text-base font-semibold text-gray-900">Automatic renewal</legend>
-        <p className="text-sm text-gray-600">
+        <legend className="text-base font-semibold text-ink">Automatic renewal</legend>
+        <p className="text-sm text-ink-soft">
           Lets a customer agree to renew automatically. It stays off until both boxes below are
           filled in. If you change the wording, customers who agreed earlier keep the wording they
           agreed to, and new agreements use the new wording.
         </p>
         <div>
-          <label htmlFor="terms-autoRenewNoticeDays" className="mb-1 block text-sm font-medium text-gray-900">
+          <label htmlFor="terms-autoRenewNoticeDays" className="mb-1 block text-sm font-medium text-ink">
             Days before the term ends that the customer is told it will renew (25 to 40)
           </label>
           <input
@@ -194,7 +194,7 @@ export function TermsPolicyForm({ defaultValues }: { defaultValues: TermsPolicyF
           />
         </div>
         <div>
-          <label htmlFor="terms-renewalTermsText" className="mb-1 block text-sm font-medium text-gray-900">
+          <label htmlFor="terms-renewalTermsText" className="mb-1 block text-sm font-medium text-ink">
             Wording customers will see when they agree to renew
           </label>
           <textarea
@@ -202,7 +202,7 @@ export function TermsPolicyForm({ defaultValues }: { defaultValues: TermsPolicyF
             rows={5}
             value={values.renewalTermsText}
             onChange={change("renewalTermsText")}
-            className="w-full max-w-xl rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            className="w-full max-w-xl rounded-lg border border-line-strong px-3 py-2 text-sm"
           />
         </div>
       </fieldset>
@@ -211,7 +211,7 @@ export function TermsPolicyForm({ defaultValues }: { defaultValues: TermsPolicyF
         <button
           type="submit"
           disabled={saving}
-          className="rounded-full bg-gray-900 px-6 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+          className="rounded-full bg-action px-6 py-2.5 text-sm font-semibold text-on-action disabled:opacity-60"
         >
           {saving ? "Saving…" : "Save this section"}
         </button>
@@ -225,7 +225,7 @@ export function TermsPolicyForm({ defaultValues }: { defaultValues: TermsPolicyF
               text: "The recommended starting terms are filled in below. Nothing is saved until you press “Save this section”.",
             });
           }}
-          className="rounded-full border border-gray-400 px-5 py-2.5 text-sm font-semibold text-gray-900 disabled:opacity-60"
+          className="rounded-full border border-line-strong px-5 py-2.5 text-sm font-semibold text-ink disabled:opacity-60"
         >
           Restore recommended starting terms
         </button>

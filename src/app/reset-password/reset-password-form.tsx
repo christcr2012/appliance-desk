@@ -97,7 +97,7 @@ export function ResetPasswordForm() {
           onChange={(e) => setPassword(e.target.value)}
           aria-invalid={error ? true : undefined}
           aria-describedby={error ? "reset-password-error" : undefined}
-          className="rounded border border-gray-300 px-3 py-2"
+          className="rounded border border-line-strong px-3 py-2"
         />
       </div>
 
@@ -116,7 +116,7 @@ export function ResetPasswordForm() {
           onChange={(e) => setConfirmPassword(e.target.value)}
           aria-invalid={error ? true : undefined}
           aria-describedby={error ? "reset-password-error" : undefined}
-          className="rounded border border-gray-300 px-3 py-2"
+          className="rounded border border-line-strong px-3 py-2"
         />
       </div>
 

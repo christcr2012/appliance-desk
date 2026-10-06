@@ -12,19 +12,19 @@ export async function OperationalCustomer({ id }: { id: string }) {
     <div className="max-w-3xl">
       <Link
         href="/desk/customers"
-        className="text-sm text-gray-600 hover:underline"
+        className="text-sm text-ink-soft hover:underline"
       >
         ← Back to customers
       </Link>
       <h1 className="mt-2 text-xl font-semibold">
         {customer.user.name ?? customer.user.email}
       </h1>
-      <p className="mt-1 text-sm text-gray-600">
+      <p className="mt-1 text-sm text-ink-soft">
         {customer.user.email}
         {customer.phone ? ` · ${customer.phone}` : ""}
         {customer.companyName ? ` · ${customer.companyName}` : ""}
       </p>
-      <section className="mt-6 rounded-lg border border-gray-200 bg-white p-5">
+      <section className="mt-6 rounded-lg border border-line bg-white p-5">
         <h2 className="font-medium">Service addresses</h2>
         {customer.serviceAddresses.length === 0 ? (
           <p>No service addresses recorded.</p>
@@ -39,7 +39,7 @@ export async function OperationalCustomer({ id }: { id: string }) {
           </ul>
         )}
       </section>
-      <section className="mt-6 rounded-lg border border-gray-200 bg-white p-5">
+      <section className="mt-6 rounded-lg border border-line bg-white p-5">
         <h2 className="font-medium">Jobs</h2>
         {customer.jobs.length === 0 ? (
           <p>No jobs scheduled yet.</p>
@@ -58,7 +58,7 @@ export async function OperationalCustomer({ id }: { id: string }) {
           </ul>
         )}
       </section>
-      <section className="mt-6 rounded-lg border border-gray-200 bg-white p-5">
+      <section className="mt-6 rounded-lg border border-line bg-white p-5">
         <h2 className="font-medium">Rental status</h2>
         {customer.rentalAgreements.length === 0 ? (
           <p>No agreements yet.</p>
@@ -77,7 +77,7 @@ export async function OperationalCustomer({ id }: { id: string }) {
           </ul>
         )}
       </section>
-      <section className="mt-6 rounded-lg border border-gray-200 bg-white p-5">
+      <section className="mt-6 rounded-lg border border-line bg-white p-5">
         <h2 className="font-medium">Contacts</h2>
         {customer.contacts.length === 0 ? (
           <p>No additional contacts recorded.</p>
@@ -97,7 +97,7 @@ export async function OperationalCustomer({ id }: { id: string }) {
       <div className="mt-6">
         <LinkedTasksPanel linkType="customer" linkId={id} tasks={tasks} />
       </div>
-      <section className="mt-6 rounded-lg border border-gray-200 bg-white p-5">
+      <section className="mt-6 rounded-lg border border-line bg-white p-5">
         <h2 className="font-medium">Notes</h2>
         {customer.notes.length === 0 ? (
           <p>No notes recorded yet.</p>
@@ -106,7 +106,7 @@ export async function OperationalCustomer({ id }: { id: string }) {
             {customer.notes.map((n) => (
               <li key={n.id}>
                 <p>{n.body}</p>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-ink-faint">
                   {n.author?.name ?? "Staff"} ·{" "}
                   {n.createdAt.toLocaleDateString("en-US", {
                     timeZone: "America/Denver",

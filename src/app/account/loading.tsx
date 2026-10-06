@@ -9,11 +9,11 @@ export default function AccountLoading() {
         Loading…
       </p>
       <div className="animate-pulse" aria-hidden="true">
-        <div className="h-6 w-40 rounded bg-gray-200" />
-        <div className="mt-2 h-4 w-56 rounded bg-gray-100" />
+        <div className="h-6 w-40 rounded bg-canvas-alt" />
+        <div className="mt-2 h-4 w-56 rounded bg-canvas-alt" />
         <div className="mt-6 space-y-3">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="h-20 rounded-lg border border-gray-200 bg-white" />
+            <div key={i} className="h-20 rounded-lg border border-line bg-surface" />
           ))}
         </div>
       </div>

@@ -22,40 +22,40 @@ export default async function CustomersPage({
     <div>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="flex items-center gap-2 text-xl font-semibold">
-          <HomeServiceIcon className="h-5 w-5 text-gray-500" />
+          <HomeServiceIcon className="h-5 w-5 text-ink-faint" />
           Customers
         </h1>
         <div className="flex gap-2">
           <ExportCsvLink href="/desk/customers/export" label="Export CSV" />
           <Link
             href="/desk/customers/new"
-            className="inline-flex items-center gap-1 rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
+            className="inline-flex items-center gap-1 rounded-md bg-action px-3 py-1.5 text-sm font-medium text-on-action hover:bg-action"
           >
             <PlusIcon className="h-4 w-4" />
             Add customer
           </Link>
         </div>
       </div>
-      <p className="mt-1 text-sm text-gray-600">
+      <p className="mt-1 text-sm text-ink-soft">
         Everyone renting from you. A website inquiry comes in as a lead first
         — convert it from the Leads page to turn it into a customer here, or
         add someone directly if you&apos;re signing them up yourself.
       </p>
 
       {customers.length === 0 ? (
-        <p className="mt-6 text-sm text-gray-600">
+        <p className="mt-6 text-sm text-ink-soft">
           No customers yet — add one directly, or convert your first lead.
         </p>
       ) : (
-        <ul className="mt-6 divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white">
+        <ul className="mt-6 divide-y divide-line rounded-lg border border-line bg-white">
           {customers.map((c) => (
             <li key={c.id}>
               <Link
                 href={`/desk/customers/${c.id}`}
-                className="flex flex-col gap-1 px-4 py-4 hover:bg-gray-50 sm:flex-row sm:items-center sm:justify-between"
+                className="flex flex-col gap-1 px-4 py-4 hover:bg-canvas sm:flex-row sm:items-center sm:justify-between"
               >
                 <div>
-                  <p className="font-medium text-gray-900">
+                  <p className="font-medium text-ink">
                     {c.user.name ?? c.user.email}
                     {c.companyName ? ` — ${c.companyName}` : ""}
                     {c.isPropertyManager && (
@@ -64,9 +64,9 @@ export default async function CustomersPage({
                       </span>
                     )}
                   </p>
-                  <p className="text-sm text-gray-600">{c.user.email}</p>
+                  <p className="text-sm text-ink-soft">{c.user.email}</p>
                 </div>
-                <div className="text-sm text-gray-500 sm:text-right">
+                <div className="text-sm text-ink-faint sm:text-right">
                   <p>{c._count.rentalAgreements} agreement(s)</p>
                   <p>
                     {c.serviceAddresses.length}{" "}

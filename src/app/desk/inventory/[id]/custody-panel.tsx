@@ -47,10 +47,10 @@ export function CustodyPanel({
   if (!current && !needsRecord) return null;
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-5">
-      <h2 className="font-medium text-gray-900">Who has it</h2>
+    <div className="rounded-lg border border-line bg-white p-5">
+      <h2 className="font-medium text-ink">Who has it</h2>
       {current ? (
-        <p className="mt-2 text-sm text-gray-700">
+        <p className="mt-2 text-sm text-ink-soft">
           With{" "}
           <Link href={`/desk/customers/${current.customerId}`} className="text-primary hover:underline">
             {current.customerName}
@@ -60,13 +60,13 @@ export function CustodyPanel({
         </p>
       ) : (
         <>
-          <p className="mt-2 text-sm text-gray-700">
+          <p className="mt-2 text-sm text-ink-soft">
             This appliance is marked as out with a customer, but no delivery record says which one.
           </p>
           {canRecord ? (
             <form onSubmit={handleSubmit} className="mt-3 space-y-3">
               <div>
-                <label htmlFor="custody-customer" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="custody-customer" className="block text-sm font-medium text-ink-soft">
                   Customer
                 </label>
                 <select
@@ -77,7 +77,7 @@ export function CustodyPanel({
                     setCustomerId(e.target.value);
                     setAddressId("");
                   }}
-                  className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                  className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
                 >
                   <option value="">Choose a customer</option>
                   {customers.map((c) => (
@@ -89,14 +89,14 @@ export function CustodyPanel({
               </div>
               {addresses.length > 0 && (
                 <div>
-                  <label htmlFor="custody-address" className="block text-sm font-medium text-gray-700">
+                  <label htmlFor="custody-address" className="block text-sm font-medium text-ink-soft">
                     Address (optional)
                   </label>
                   <select
                     id="custody-address"
                     value={addressId}
                     onChange={(e) => setAddressId(e.target.value)}
-                    className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                    className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
                   >
                     <option value="">Not sure</option>
                     {addresses.map((a) => (
@@ -108,7 +108,7 @@ export function CustodyPanel({
                 </div>
               )}
               <div>
-                <label htmlFor="custody-since" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="custody-since" className="block text-sm font-medium text-ink-soft">
                   Since (optional)
                 </label>
                 <input
@@ -116,12 +116,12 @@ export function CustodyPanel({
                   type="date"
                   value={since}
                   onChange={(e) => setSince(e.target.value)}
-                  className="mt-1 rounded-md border border-gray-300 px-3 py-2 text-sm"
+                  className="mt-1 rounded-md border border-line-strong px-3 py-2 text-sm"
                 />
-                <p className="mt-1 text-xs text-gray-600">Leave blank if you don&apos;t know. The app never guesses a date.</p>
+                <p className="mt-1 text-xs text-ink-soft">Leave blank if you don&apos;t know. The app never guesses a date.</p>
               </div>
               <div>
-                <label htmlFor="custody-reason" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="custody-reason" className="block text-sm font-medium text-ink-soft">
                   How do you know?
                 </label>
                 <input
@@ -130,13 +130,13 @@ export function CustodyPanel({
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
                   placeholder="e.g. confirmed by phone"
-                  className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                  className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
                 />
               </div>
               <button
                 type="submit"
                 disabled={isPending}
-                className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+                className="rounded-md bg-action px-4 py-2 text-sm font-medium text-on-action hover:bg-action disabled:opacity-50"
               >
                 {isPending ? "Saving…" : "Record customer"}
               </button>
@@ -147,7 +147,7 @@ export function CustodyPanel({
               )}
             </form>
           ) : (
-            <p className="mt-2 text-sm text-gray-600">An owner or admin can record who has it.</p>
+            <p className="mt-2 text-sm text-ink-soft">An owner or admin can record who has it.</p>
           )}
         </>
       )}
