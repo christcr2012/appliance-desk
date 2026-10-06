@@ -17,6 +17,8 @@ import { getTasksForLead } from "@/domains/tasks";
 import { LeadActionsPanel } from "./lead-actions-panel";
 import { AddLeadNoteForm } from "./add-lead-note-form";
 import { LinkedTasksPanel } from "@/components/linked-tasks-panel";
+import { getMessageHistory } from "@/domains/messaging/history";
+import { MessageHistoryPanel } from "@/components/desk/message-history-panel";
 
 export const metadata = { title: "Lead" };
 
@@ -46,11 +48,12 @@ export default async function LeadDetailPage({
 }) {
   await requireRole("OWNER", "ADMIN");
   const { id } = await params;
-  const [lead, notes, tasks, estimates] = await Promise.all([
+  const [lead, notes, tasks, estimates, messages] = await Promise.all([
     getLeadById(id),
     getLeadNotes(id),
     getTasksForLead(id),
     getLeadEstimates(id),
+    getMessageHistory("Lead", id),
   ]);
 
   if (!lead) {
@@ -220,6 +223,10 @@ export default async function LeadDetailPage({
           </p>
         </div>
       )}
+
+      <div className="mt-6">
+        <MessageHistoryPanel rows={messages} />
+      </div>
 
       <div id="follow-up" className="mt-6 scroll-mt-24">
         <LinkedTasksPanel linkType="lead" linkId={lead.id} tasks={tasks} />

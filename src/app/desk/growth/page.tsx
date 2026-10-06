@@ -9,6 +9,7 @@ import {
 import { formatCents } from "@/domains/pricing";
 import { requireRole } from "@/lib/session";
 import { MetricHelp } from "@/components/desk/metric-stat";
+import { getDemandEstimate } from "@/domains/growth/demand";
 
 export const metadata = { title: "Growth" };
 
@@ -16,13 +17,14 @@ export const metadata = { title: "Growth" };
 // framework") — never rely on the nav link being hidden alone.
 export default async function GrowthPage() {
   await requireRole("OWNER", "ADMIN");
-  const [churnRisk, winBackLeads, priceReview, utilizationFlags, reviewCandidates] =
+  const [churnRisk, winBackLeads, priceReview, utilizationFlags, reviewCandidates, demandEstimate] =
     await Promise.all([
       getChurnRiskCustomers(),
       getWinBackLeads(),
       getPriceReviewAgreements(),
       getUtilizationFlags(),
       getReviewRequestCandidates(),
+      getDemandEstimate(),
     ]);
 
   return (
@@ -122,6 +124,34 @@ export default async function GrowthPage() {
                     Signed {row.monthsAgo} months ago · {formatCents(row.monthlyTotalCents)}/mo
                   </p>
                 </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="mt-8">
+        <h2 className="font-medium text-ink">
+          Estimated demand by appliance type ({demandEstimate.length})
+        </h2>
+        <p className="mt-1 text-sm text-ink-soft">
+          Planning estimate only: open NEW/CONTACTED lead requests compared with fleet units that are not currently in customer custody. It is not a sales forecast or a purchase instruction.
+        </p>
+        {demandEstimate.length === 0 ? (
+          <p className="mt-4 text-sm text-ink-soft">No open lead demand to estimate right now.</p>
+        ) : (
+          <ul className="mt-4 divide-y divide-line rounded-lg border border-line bg-surface">
+            {demandEstimate.map((row) => (
+              <li key={row.applianceTypeId} className="px-4 py-3 text-sm">
+                <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="font-medium text-ink">{row.applianceTypeName}</p>
+                  <p className="text-ink-soft">
+                    Estimated gap: {row.estimatedUnitGap} unit{row.estimatedUnitGap === 1 ? "" : "s"}
+                  </p>
+                </div>
+                <p className="mt-1 text-xs text-ink-faint">
+                  Open lead requests: {row.openLeadRequestedUnits} · Fleet: {row.fleetUnits} · In customer custody: {row.unitsInCustomerCustody} · Estimated available now: {row.availableUnitsEstimate}
+                </p>
               </li>
             ))}
           </ul>

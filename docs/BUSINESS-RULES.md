@@ -1435,3 +1435,23 @@ without sending any message or recording an invented contact promise.
   open bill). Days are priced per item with the monthly price ÷ 30 or ÷ the real days in that billing month. A prepaid
   rental is always settled by the owner. One decision per rental; an automatic decision can be changed only until money
   moves (a refund or credit given, or the fee paid). Defaults: keep billing, keep unused days, agreed-terms fee, ask me.
+
+## Message delivery, consent and public abuse limits (Batch E)
+
+Business domains write a durable `MessageDelivery` before contacting email/SMS providers. `ACCEPTED` means the provider accepted the request; only `DELIVERED` means provider delivery evidence arrived. `NOT_SENT`, `FAILED`, `UNKNOWN`, `BOUNCED`, `COMPLAINED` and `SUPPRESSED` are never presented as sent. An unknown outcome is not blindly retried.
+
+Public mutation limits use the shared Postgres-backed `isRateLimited` control:
+- contact/lead form: 5 attempts per 10 minutes per connection;
+- launch signup: 5 per 10 minutes;
+- launch mailbox confirmation: 10 per 10 minutes;
+- launch unsubscribe POST: 30 per hour;
+- public privacy intake: 5 per hour;
+- estimate response/deposit actions: 10 per 10 minutes;
+- agreement signing: 10 per 10 minutes.
+
+Provider webhooks use cryptographic request verification instead of the public-form limiter. Authenticated owner/customer actions keep their existing authorization and are not double-limited as anonymous public intake.
+
+Launch consent has two facts: the signup's saved consent text and a separate single-use mailbox-confirmation `ConsentRecord`. Twilio STOP clears `smsOptInAt`, writes `sms_opt_out` evidence, and writes marketing suppression atomically. Suppression is checked before marketing sends; a hard email bounce also blocks later transactional sends to that bad address until reviewed.
+
+Billing/job reminder claims are taken before sending. Definite `FAILED` or `NOT_SENT` outcomes release retryable claims; uncertain outcomes stay visible for reconciliation rather than causing a blind second send.
+

@@ -1,5 +1,9 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { confirmLaunchSubscription } from "@/domains/launch";
+import { isRateLimited } from "@/lib/rate-limit";
+
+const CONFIRM_RATE_LIMIT = { max: 10, windowMs: 10 * 60 * 1000 };
 
 export default async function LaunchConfirmPage({
   params,
@@ -7,7 +11,13 @@ export default async function LaunchConfirmPage({
   params: Promise<{ token: string }>;
 }) {
   const { token } = await params;
-  const confirmed = await confirmLaunchSubscription(token);
+  const h = await headers();
+  const ip =
+    h.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    h.get("x-real-ip") ??
+    "unknown";
+  const limited = await isRateLimited(`launch-confirm:${ip}`, CONFIRM_RATE_LIMIT);
+  const confirmed = limited ? false : await confirmLaunchSubscription(token);
 
   return (
     <main className="min-h-screen bg-canvas px-6 py-16 text-ink">

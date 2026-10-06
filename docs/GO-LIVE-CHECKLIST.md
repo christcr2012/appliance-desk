@@ -70,3 +70,16 @@ Previews and test copies never send email, even with the key and the switch on (
 2. Full automated checks green on the exact version going live; Batch F verification report read by you.
 3. A real $1 payment, refund, renewal reminder and a customer login tested end to end.
 4. You say, in writing, "launch". Only then do the live keys and the email switch go on.
+
+## Batch E messaging provider registration
+
+- [ ] Register the production Resend webhook URL: `/api/webhooks/resend`.
+- [ ] Set and verify `RESEND_WEBHOOK_SECRET` in the production environment.
+- [ ] Register the production Twilio status/inbound webhook URL: `/api/webhooks/twilio`.
+- [ ] Confirm Twilio signs the exact production URL with the configured `TWILIO_AUTH_TOKEN`.
+- [ ] Send test provider events and verify forged/unsigned requests are rejected and real events appear once.
+- [ ] Verify STOP clears SMS opt-in, records consent evidence and suppression.
+- [ ] Verify a hard bounce suppresses the address and customer/lead **Messages** panels show honest states.
+- [ ] Review `docs/runbooks/PROVIDER-OUTAGE.md` before enabling live messaging.
+- [ ] **Do not enable customer email, SMS or marketing merely because webhook credentials are present.** Existing owner activation/approval gates still apply.
+
