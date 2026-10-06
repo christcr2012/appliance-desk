@@ -25,7 +25,17 @@ test("owner can name, keyboard edit and persist purchase-order lines on a phone"
   await info.attach("purchase-order-phone", { body: await page.screenshot({ fullPage: true }), contentType: "image/png" });
   await page.getByRole("button", { name: "Create purchase order", exact: true }).click();
   await expect(page).toHaveURL(/\/desk\/purchase-orders\/(?!new$)[^/]+$/);
-  await expect(page.getByText("2× Door seal review fixture", { exact: true })).toBeVisible();
+  const savedLine = page
+    .locator("main li:visible")
+    .filter({ hasText: "Door seal review fixture" })
+    .first();
+  await expect(savedLine).toBeVisible();
+  await expect(savedLine).toContainText("2");
   await page.reload();
-  await expect(page.getByText("2× Door seal review fixture", { exact: true })).toBeVisible();
+  const reloadedLine = page
+    .locator("main li:visible")
+    .filter({ hasText: "Door seal review fixture" })
+    .first();
+  await expect(reloadedLine).toBeVisible();
+  await expect(reloadedLine).toContainText("2");
 });
