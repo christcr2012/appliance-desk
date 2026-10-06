@@ -8,16 +8,8 @@ section with a date.
 
 ## Deferred to a later phase (already scoped, just not yet)
 
-- **Take a permanently cancelled item off the live Stripe subscription**
-  (Chris's rule, 2026-10-03): a never-delivered item that is removed from the
-  agreement must stop billing from the next period (delivered-late and
-  swapped-same-type items stay on the subscription). Needs a
-  `SUBSCRIPTION_UPDATE`-style provider operation with reconciliation and a
-  local rental-line amendment; specified as a Batch C work unit in
-  `docs/prompts/DESIGN-BATCH-C-LITERAL-SPECS.md`. Until built, the audit entry
-  tells the owner to adjust Stripe by hand.
-- **Company-caused late pickup waiver** (IN-24): record who caused a late
-  pickup and waive the late-return charge for company fault. Batch C design.
+- ~~**Take a permanently cancelled item off the live Stripe subscription.**~~ **Done in Batch C #175**: a never-delivered item permanently removed from the agreement is removed from recurring billing from the next period with reconciled provider evidence.
+- ~~**Company-caused late pickup waiver** (IN-24).~~ **Done in Batch B2 #208**: OWNER/ADMIN can record "Our delay" with a note and waive the applicable late-return days while preserving the original charge and audit trail.
 - **Collect late-return invoices through Stripe automatically** (today they
   are ordinary open invoices, like the early-ending fee).
 
@@ -123,11 +115,7 @@ section with a date.
     agreements' actual Stripe charges into one transaction (each
     property still bills independently) — a real design/risk question,
     not a UI gap, left for if Chris ever needs it.
-  - Not started: the 6/12-month-lease framing already exists as the
-    prepaid-term discount (see "Pricing" in `docs/BUSINESS-RULES.md`)
-    — the brief's owner-desk dashboard/nav rebuild and customer-portal
-    rebuild haven't been evaluated against what the in-house review's
-    PR #39 already changed yet.
+  - The owner-desk navigation/dashboard and customer-portal redesign ideas were subsequently evaluated and implemented through Batch E2. The separate 6/12-month lease framing already exists in the rental terms/pricing model.
 - **Require customers to verify their email before logging in** —
   **done (2026-09-28, Task #70)**. `requireEmailVerification: true` in
   `src/lib/auth.ts`. Because every account here is created server-side
