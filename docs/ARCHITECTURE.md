@@ -266,8 +266,9 @@ How each rule works:
    (`taxRateMilliPercent`, the same rate its rent carries) — the same way the
    early-ending fee is billed. Nothing is charged to a card automatically: the
    customer pays it like any other invoice, and the owner can see, adjust or
-   write it off (which is also how a company-caused late pickup is handled
-   until the IN-24 waiver is designed). Audit: `billing.late_return_invoiced`.
+   write it off. For a company-caused late pickup, Batch B2's owner/admin waiver
+   records the reason and matching negative rent adjustment without erasing the
+   original late-return line. Audit: `billing.late_return_invoiced`.
 2. **Late delivery.** When a DELIVERY/INSTALLATION job for an agreement is
    completed, staff can tick any agreement item that was **not** on the truck.
    Those appliances stay reserved for the customer and each gets a
