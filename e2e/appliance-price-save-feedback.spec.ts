@@ -61,7 +61,10 @@ test("phone price editor reports rejected saves and persists a confirmed correct
     await prisma.applianceType.create({ data: { id, name, slug: id, monthlyPriceCents: 4000 } });
     await page.setViewportSize({ width: 360, height: 900 });
     await page.goto("/desk/settings?section=products");
-    const row = page.getByRole("row").filter({ has: page.getByText(name, { exact: true }) });
+    const row = page
+      .locator("main tr:visible, main li:visible")
+      .filter({ has: page.getByText(name, { exact: true }) })
+      .first();
     const input = row.getByRole("spinbutton", { name: `Monthly price for ${name}` });
     for (const value of ["", "-5"]) {
       await input.fill(value);
