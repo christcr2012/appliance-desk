@@ -52,3 +52,25 @@ Before launch, manual accessibility review still covers:
 - real assistive-technology behavior for document/signing/payment flows.
 
 Record any manual finding as a normal product defect; do not describe the product as “WCAG certified.”
+
+
+## Batch E2 contrast foundation
+
+Batch E2 reuses the final Batch E Evergreen palette. `tests/contrast-pairs.test.ts` calculates WCAG contrast directly from `src/app/globals.css` for both light and dark token sets. Text pairs are required to be at least 4.5:1; focus/control UI pairs are required to be at least 3:1.
+
+Measured representative pairs on the E2-1A baseline:
+
+| Pair | Ratio |
+| --- | ---: |
+| Light ink on ivory canvas | 14.57:1 |
+| Light muted text on ivory canvas | 5.71:1 |
+| White on evergreen action | 12.28:1 |
+| Ivory on night navigation | 15.85:1 |
+| Evergreen on fresh current-navigation | 8.53:1 |
+| Dark ivory text on dark surface | 13.30:1 |
+| Dark muted text on dark surface | 8.29:1 |
+| Dark evergreen text on fresh action | 8.53:1 |
+| Light control border on white surface | 6.24:1 |
+| Dark control border on dark surface | 4.63:1 |
+
+The automated test is a regression guard, not a WCAG certification. Route-level axe and the existing manual-only checks below still apply.
