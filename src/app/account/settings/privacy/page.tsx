@@ -93,7 +93,7 @@ export default async function AccountPrivacyPage({
                   </p>
                   <StatusPill
                     tone={
-                      request.status === "COMPLETED"
+                      request.status === "FULFILLED"
                         ? "success"
                         : request.status === "REJECTED"
                           ? "stopped"
