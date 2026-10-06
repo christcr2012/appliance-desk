@@ -2,11 +2,15 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { Button, Card, StatusPill } from "@/components/ui";
 import { resolveHeldPaymentAction } from "./actions";
 
 type Option = "MARK_PAID" | "CREDIT" | "REFUND";
 
-const OPTION_TEXT: Record<Option, { title: string; what: string; button: string }> = {
+const OPTION_TEXT: Record<
+  Option,
+  { title: string; what: string; button: string }
+> = {
   MARK_PAID: {
     title: "Mark the invoice paid",
     what: "Take the write-off back and record this invoice as paid. Your books then show the money as collected. Choose this when the customer really did owe it.",
@@ -19,7 +23,7 @@ const OPTION_TEXT: Record<Option, { title: string; what: string; button: string 
   },
   REFUND: {
     title: "Refund it to their card",
-    what: "Send the money back to the card it came from (it can take a few days to show up for them). The invoice stays as it is. Choose this when the customer did not owe it.",
+    what: "Send the money back to the card it came from. The invoice stays as it is. Choose this when the customer did not owe it.",
     button: "Refund to card",
   },
 };
@@ -46,67 +50,88 @@ export function HeldPaymentCard(props: HeldPaymentCardProps) {
       `${OPTION_TEXT[option].title}?\n\n${OPTION_TEXT[option].what}\n\nThis cannot be undone from here.`,
     );
     if (!ok) return;
+
     setError(null);
     startTransition(async () => {
-      const result = await resolveHeldPaymentAction({ paymentId: props.paymentId, option });
+      const result = await resolveHeldPaymentAction({
+        paymentId: props.paymentId,
+        option,
+      });
       if (result.status === "error") {
         setError(result.message);
         return;
       }
-      if (result.status === "pending") window.alert(result.message);
+      if (result.status === "pending") {
+        window.alert(result.message);
+      }
       router.refresh();
     });
   }
 
   return (
-    <li className="rounded-lg border border-line bg-white p-5">
-      <h2 className="text-base font-semibold text-ink">
-        {props.amountLabel} from {props.customerName}
-      </h2>
-      <p className="mt-1 text-sm text-ink-soft">
-        They paid by card on {props.receivedLabel} for invoice {props.invoiceNumber}, which was already{" "}
-        {props.invoiceStatusLabel.toLowerCase()}
-        {props.writtenOffReason ? ` (reason given: “${props.writtenOffReason}”)` : ""}. The money is safe in your
-        records but is not applied to anything until you choose what to do with it.
-      </p>
+    <li>
+      <Card
+        title={`${props.amountLabel} from ${props.customerName}`}
+        description={`Paid by card on ${props.receivedLabel} for invoice ${
+          props.invoiceNumber
+        }, which was already ${props.invoiceStatusLabel.toLowerCase()}${
+          props.writtenOffReason
+            ? ` (reason given: “${props.writtenOffReason}”)`
+            : ""
+        }. The money is recorded but is not applied to anything until you choose what to do with it.`}
+      >
+        <div className="mb-4 rounded-control border border-line bg-subtle p-3 text-sm text-ink">
+          <div className="mb-2">
+            <StatusPill tone="progress" label="Recommended" />
+          </div>
+          <p>
+            <strong>
+              {OPTION_TEXT[props.recommendation.option].title}.
+            </strong>{" "}
+            {props.recommendation.reason}
+          </p>
+        </div>
 
-      <p className="mt-3 rounded-md bg-canvas px-3 py-2 text-sm text-ink">
-        <strong>Recommended: {OPTION_TEXT[props.recommendation.option].title}.</strong> {props.recommendation.reason}
-      </p>
-
-      <ul className="mt-4 space-y-3">
-        {props.options.map((option) => {
-          const recommended = option === props.recommendation.option;
-          return (
-            <li key={option} className="flex flex-wrap items-start justify-between gap-3">
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-ink">
-                  {OPTION_TEXT[option].title}
-                  {recommended ? " (recommended)" : ""}
-                </p>
-                <p className="text-sm text-ink-soft">{OPTION_TEXT[option].what}</p>
-              </div>
-              <button
-                type="button"
-                disabled={pending}
-                onClick={() => choose(option)}
-                className={
-                  recommended
-                    ? "rounded-full bg-action px-4 py-2 text-sm font-semibold text-on-action disabled:opacity-60"
-                    : "rounded-full border border-line-strong px-4 py-2 text-sm font-semibold text-ink disabled:opacity-60"
-                }
+        <ul className="space-y-4">
+          {props.options.map((option) => {
+            const recommended =
+              option === props.recommendation.option;
+            return (
+              <li
+                key={option}
+                className="flex flex-col gap-3 border-t border-line pt-4 first:border-t-0 first:pt-0 sm:flex-row sm:items-start sm:justify-between"
               >
-                {OPTION_TEXT[option].button}
-              </button>
-            </li>
-          );
-        })}
-      </ul>
-      {error && (
-        <p role="alert" className="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-800">
-          {error}
-        </p>
-      )}
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold text-ink">
+                    {OPTION_TEXT[option].title}
+                    {recommended ? " (recommended)" : ""}
+                  </p>
+                  <p className="mt-1 text-sm text-ink-soft">
+                    {OPTION_TEXT[option].what}
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant={recommended ? "primary" : "secondary"}
+                  disabled={pending}
+                  onClick={() => choose(option)}
+                >
+                  {OPTION_TEXT[option].button}
+                </Button>
+              </li>
+            );
+          })}
+        </ul>
+
+        {error && (
+          <p
+            role="alert"
+            className="mt-4 rounded-control border border-line bg-subtle px-3 py-2 text-sm font-semibold text-danger"
+          >
+            {error}
+          </p>
+        )}
+      </Card>
     </li>
   );
 }

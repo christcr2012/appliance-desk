@@ -1,7 +1,14 @@
-import Link from "next/link";
 import { requireRole } from "@/lib/session";
-import { PageHeader } from "@/components/desk/workspace";
-import { listHeldPayments, listHeldRefundsWaitingOnStripe } from "@/domains/billing/held-payments";
+import {
+  ButtonLink,
+  Card,
+  EmptyState,
+  PageHeader,
+} from "@/components/ui";
+import {
+  listHeldPayments,
+  listHeldRefundsWaitingOnStripe,
+} from "@/domains/billing/held-payments";
 import { formatCents } from "@/domains/pricing";
 import { formatBusinessDate } from "@/lib/business-date";
 import { invoiceStatusLabel } from "@/lib/status-labels";
@@ -11,74 +18,83 @@ export const metadata = { title: "Held payments" };
 
 export default async function HeldPaymentsPage() {
   await requireRole("OWNER", "ADMIN");
-  const [held, waiting] = await Promise.all([listHeldPayments(), listHeldRefundsWaitingOnStripe()]);
+  const [held, waiting] = await Promise.all([
+    listHeldPayments(),
+    listHeldRefundsWaitingOnStripe(),
+  ]);
 
   return (
     <div>
       <PageHeader
         title="Held payments"
-        description="Card payments that arrived after you had already written the invoice off or cancelled it. The money is recorded but waiting for your decision."
+        description="Card payments that arrived after an invoice had already been written off or cancelled. The money is recorded but waits for an owner/admin decision."
+        secondaryActions={
+          <ButtonLink href="/desk/billing" variant="secondary">
+            Back to billing
+          </ButtonLink>
+        }
       />
-      <p className="mb-4 text-sm text-ink-soft">
-        <Link href="/desk/billing" className="font-medium text-brand hover:underline">
-          Back to billing
-        </Link>
-      </p>
 
-      <div className="mb-6 rounded-lg border border-line-strong bg-white px-4 py-3 text-sm text-ink">
-        <p className="font-medium text-ink">How this works</p>
-        <p className="mt-1">
-          Each payment below is real money that is not counted toward anything yet. For each one, pick what should
-          happen: mark the invoice paid (the customer did owe it), keep it as credit for their next bills, or refund
-          it to their card. The recommended choice is highlighted with the reason. You decide one payment at a time,
-          and only the owner and admins can do this.
-        </p>
+      <div className="mb-6">
+        <Card title="How this works">
+          <p className="text-sm text-ink-soft">
+            Each payment below is real money that is not counted toward
+            anything yet. For each one, choose whether to restore and mark the
+            invoice paid, keep the money as customer credit, or refund it to the
+            original card. The recommended choice includes its reason. You
+            decide one payment at a time, and only owners/admins can do this.
+          </p>
+        </Card>
       </div>
 
       {held.length === 0 ? (
-        <div className="rounded-lg border border-line bg-white p-6 text-sm text-ink-soft">
-          No payments are waiting for a decision.
-        </div>
+        <EmptyState
+          title="No payments are waiting for a decision"
+          description="Late-arriving card payments will appear here if they need owner/admin review."
+        />
       ) : (
         <ul className="space-y-4">
-          {held.map((h) => (
+          {held.map((payment) => (
             <HeldPaymentCard
-              key={h.id}
-              paymentId={h.id}
-              customerName={h.customerName}
-              invoiceNumber={`#${h.invoiceNumber}`}
-              invoiceStatusLabel={invoiceStatusLabel(h.invoiceStatus)}
-              amountLabel={formatCents(h.amountCents)}
-              receivedLabel={formatBusinessDate(h.receivedOn)}
-              writtenOffReason={h.writtenOffReason}
-              recommendation={h.recommendation}
-              options={h.options}
+              key={payment.id}
+              paymentId={payment.id}
+              customerName={payment.customerName}
+              invoiceNumber={`#${payment.invoiceNumber}`}
+              invoiceStatusLabel={invoiceStatusLabel(payment.invoiceStatus)}
+              amountLabel={formatCents(payment.amountCents)}
+              receivedLabel={formatBusinessDate(payment.receivedOn)}
+              writtenOffReason={payment.writtenOffReason}
+              recommendation={payment.recommendation}
+              options={payment.options}
             />
           ))}
         </ul>
       )}
 
       {waiting.length > 0 && (
-        <section className="mt-8" aria-labelledby="waiting-refunds">
-          <h2 id="waiting-refunds" className="text-base font-semibold text-ink">
-            Refunds waiting on the card processor
-          </h2>
-          <p className="mt-1 text-sm text-ink-soft">
-            You decided to refund these, but the card processor has not confirmed them yet. They are retried
-            automatically. If one stays here for more than a day, check{" "}
-            <Link href="/desk/billing/reconciliation" className="font-medium text-brand hover:underline">
-              billing reconciliation
-            </Link>
-            .
-          </p>
-          <ul className="mt-3 space-y-2 text-sm text-ink">
-            {waiting.map((w) => (
-              <li key={w.id} className="rounded-md border border-line bg-white px-3 py-2">
-                {formatCents(w.amountCents)} to {w.customerName} (invoice #{w.invoiceNumber})
-              </li>
-            ))}
-          </ul>
-        </section>
+        <div className="mt-8">
+          <Card
+            title="Refunds waiting on the card processor"
+            description="You already chose to refund these payments, but the card processor has not confirmed them yet. They retry automatically."
+            actions={
+              <ButtonLink
+                href="/desk/billing/reconciliation"
+                variant="secondary"
+              >
+                Billing reconciliation
+              </ButtonLink>
+            }
+          >
+            <ul className="divide-y divide-line text-sm text-ink">
+              {waiting.map((refund) => (
+                <li key={refund.id} className="py-3">
+                  {formatCents(refund.amountCents)} to {refund.customerName}{" "}
+                  (invoice #{refund.invoiceNumber})
+                </li>
+              ))}
+            </ul>
+          </Card>
+        </div>
       )}
     </div>
   );
