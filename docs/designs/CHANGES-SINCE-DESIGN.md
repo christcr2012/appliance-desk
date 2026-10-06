@@ -112,3 +112,11 @@ All customer-addressed email goes through `sendCustomerEmail` (owner master swit
 - Batch E11 closes the remaining business-audit surface with bounded Customer/Lead message history, explicit provider-state wording, public launch confirmation/unsubscribe limits, mailbox-confirmation consent evidence, an explainable custody + lead-pipeline demand estimate, and the provider-outage runbook.
 - Live customer email/SMS/marketing activation remains outside this implementation and still requires the existing owner gates.
 
+
+
+## 2026-10-06 — Batch E2 post-E drift reconciliation
+
+- Batch E is fully merged. E2 starts from the final Evergreen token/accessibility code, generated route inventory, E11 messaging surfaces, and the D control-plane/metrics/privacy contracts; none are rebuilt in parallel.
+- The E2 design's global radius/style lint assumption was stale against final `main`: hundreds of legacy `rounded-*` utilities remain on screens that the approved E2 plan explicitly migrates in E2-2 through E2-8. Applying the final guard globally in E2-1 would therefore collapse the remaining redesign into one oversized PR.
+- At the owner's direction to use smaller PRs when needed, WU-E2-1 is split into E2-1A (tokens, lint foundation, contrast/accessibility proof) and E2-1B (shared UI component layer and render tests). This is a sequencing-only split; the approved E2 behavior and acceptance criteria are unchanged.
+- E2-1A adds only brand-kit values already approved in BATCH-E2: navigation tokens and the 8px/16px radii. It does not change route behavior, data, permissions, live messaging, or payment activation.
