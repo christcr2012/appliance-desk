@@ -255,8 +255,21 @@ async function restore(file: string, target: string): Promise<void> {
     prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: target }) });
     const delegates = prisma as unknown as Record<
       string,
-      { createMany?: (input: { data: Record<string, unknown>[] }) => Promise<{ count: number }> }
+      {
+        deleteMany?: () => Promise<{ count: number }>;
+        createMany?: (input: { data: Record<string, unknown>[] }) => Promise<{ count: number }>;
+      }
     >;
+
+    // Data migrations may seed business rows (for example the initial inspection
+    // checklist). A recovery must reproduce the backup exactly, not merge those
+    // seed rows with recovered state, so clear backed-up tables in reverse FK
+    // order after schema migration and before loading the snapshot.
+    for (const table of [...order].reverse()) {
+      const delegate = delegates[table];
+      if (!delegate?.deleteMany) throw new Error(`Restore delegate "${table}" cannot be cleared.`);
+      await delegate.deleteMany();
+    }
 
     for (const table of order) {
       const rows = payload.tables[table] ?? [];
