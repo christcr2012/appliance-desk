@@ -1,4 +1,3 @@
-import Link from "next/link";
 import {
   getTaskWorkspace,
   parseTaskFilter,
@@ -8,13 +7,13 @@ import {
 } from "@/domains/tasks/workspace";
 import { getTaskAssignees } from "@/domains/tasks";
 import { businessDateKey } from "@/lib/business-date";
+import { FilterBar } from "@/components/desk/workspace";
 import {
-  PageHeader,
-  SectionCard,
+  ButtonLink,
+  Card,
   EmptyState,
-  FilterBar,
-  secondaryActionClass,
-} from "@/components/desk/workspace";
+  PageHeader,
+} from "@/components/ui";
 import { Pagination } from "@/components/pagination";
 import { NewTaskForm } from "./new-task-form";
 import { TaskRow } from "./task-row";
@@ -35,47 +34,58 @@ export default async function TasksPage({
     getTaskAssignees(),
   ]);
   const { tasks, ...pagination } = workspace;
+
   return (
     <div className="max-w-4xl">
       <PageHeader
         title="Tasks"
         description="Shared team follow-ups, linked to the people and jobs they concern. Due dates follow the Colorado business calendar."
         secondaryActions={
-          <Link href="/desk/today" className={secondaryActionClass}>
+          <ButtonLink href="/desk/today" variant="secondary">
             Back to Today
-          </Link>
+          </ButtonLink>
         }
       />
+
       <div id="new-task" className="mb-6 scroll-mt-4">
-        <SectionCard
+        <Card
           title="Add a follow-up"
           description="Give the team a clear next step and an optional due date."
         >
           <NewTaskForm assignees={assignees} />
-        </SectionCard>
+        </Card>
       </div>
+
       <FilterBar
         label="Choose task view"
-        items={TASK_VIEWS.map((v) => ({
-          label: v.label,
-          href: `/desk/tasks?view=${v.value}&due=${filter}`,
-          active: view === v.value,
+        items={TASK_VIEWS.map((item) => ({
+          label: item.label,
+          href: `/desk/tasks?view=${item.value}&due=${filter}`,
+          active: view === item.value,
         }))}
       />
+
       <FilterBar
         label="Filter tasks by due date"
-        items={TASK_FILTERS.map((f) => ({
+        items={TASK_FILTERS.map((item) => ({
           label:
-            view === "completed" && f.value === "all"
+            view === "completed" && item.value === "all"
               ? "All due dates"
-              : f.label,
-          href: `/desk/tasks?view=${view}&due=${f.value}`,
-          active: filter === f.value,
+              : item.label,
+          href: `/desk/tasks?view=${view}&due=${item.value}`,
+          active: filter === item.value,
         }))}
       />
-      <SectionCard
-        title={`${TASK_VIEWS.find((v) => v.value === view)!.label} · ${view === "completed" && filter === "all" ? "All due dates" : TASK_FILTERS.find((f) => f.value === filter)!.label}`}
-        description={`${pagination.totalCount} ${view === "completed" ? "completed" : "open"} ${pagination.totalCount === 1 ? "task" : "tasks"}`}
+
+      <Card
+        title={`${TASK_VIEWS.find((item) => item.value === view)!.label} · ${
+          view === "completed" && filter === "all"
+            ? "All due dates"
+            : TASK_FILTERS.find((item) => item.value === filter)!.label
+        }`}
+        description={`${pagination.totalCount} ${
+          view === "completed" ? "completed" : "open"
+        } ${pagination.totalCount === 1 ? "task" : "tasks"}`}
       >
         {tasks.length ? (
           <ul className="divide-y divide-line">
@@ -100,7 +110,7 @@ export default async function TasksPage({
             `/desk/tasks?view=${view}&due=${filter}&page=${page}`
           }
         />
-      </SectionCard>
+      </Card>
     </div>
   );
 }
