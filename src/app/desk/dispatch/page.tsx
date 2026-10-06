@@ -6,7 +6,6 @@ import {
   formatBusinessTime,
   BUSINESS_TIME_ZONE,
 } from "@/lib/business-date";
-import { PlusIcon } from "@/components/icons/status-icons";
 import {
   findConflictingJobIds,
   dayKey,
@@ -15,7 +14,7 @@ import {
   type DispatchableJob,
 } from "@/domains/jobs/dispatch";
 import { checklistProgress, parseChecklist } from "@/domains/jobs/checklist";
-import { DeliveryServiceIcon } from "@/components/icons/service-icons";
+import { ButtonLink, Card, EmptyState, PageHeader } from "@/components/ui";
 
 export const metadata = { title: "Dispatch" };
 
@@ -45,16 +44,25 @@ function customerLabel(job: BoardJob): string {
     : "No customer on file";
 }
 
-function JobRow({ job, conflicted, defaultMinutes }: { job: BoardJob; conflicted: boolean; defaultMinutes: number }) {
+function JobRow({
+  job,
+  conflicted,
+  defaultMinutes,
+}: {
+  job: BoardJob;
+  conflicted: boolean;
+  defaultMinutes: number;
+}) {
   const progress = checklistProgress(parseChecklist(job.checklist, job.type));
+
   return (
     <li>
       <Link
         href={`/desk/jobs/${job.id}`}
-        className={`flex flex-col gap-1 rounded-md border px-3 py-2 text-sm hover:bg-canvas sm:flex-row sm:items-center sm:justify-between ${
+        className={`flex flex-col gap-1 rounded-control border px-3 py-3 text-sm hover:bg-subtle sm:flex-row sm:items-center sm:justify-between ${
           conflicted
-            ? "border-amber-300 bg-amber-50"
-            : "border-line bg-white"
+            ? "border-warning-ink bg-warning-bg"
+            : "border-line bg-surface"
         }`}
       >
         <div>
@@ -68,16 +76,22 @@ function JobRow({ job, conflicted, defaultMinutes }: { job: BoardJob; conflicted
               : "No address on file"}
           </p>
           <p className="text-ink-soft">
-            {job.assignedTo ? `Assigned to ${job.assignedTo.name ?? job.assignedTo.email}` : "Nobody assigned"}
+            {job.assignedTo
+              ? `Assigned to ${job.assignedTo.name ?? job.assignedTo.email}`
+              : "Nobody assigned"}
             {" · "}
-            {job.durationMinutes ? `${job.durationMinutes} minutes` : `usual length (${defaultMinutes} minutes)`}
+            {job.durationMinutes
+              ? `${job.durationMinutes} minutes`
+              : `usual length (${defaultMinutes} minutes)`}
           </p>
         </div>
         <div className="text-xs text-ink-faint sm:text-right">
           {conflicted && (
-            <p className="font-medium text-amber-700">
-              ⚠ Double-booked around this time
-              {job.assignedTo ? ` for ${job.assignedTo.name ?? job.assignedTo.email}` : " (no one assigned)"}
+            <p className="font-medium text-warning-ink">
+              Double-booked around this time
+              {job.assignedTo
+                ? ` for ${job.assignedTo.name ?? job.assignedTo.email}`
+                : " (no one assigned)"}
             </p>
           )}
           {progress.total > 0 && (
@@ -120,12 +134,14 @@ export default async function DispatchPage({
   const { scheduled, unscheduled, conflictCandidates, defaultJobMinutes } =
     await getDispatchBoardJobs(rangeStart, rangeEnd);
   const conflicting = findConflictingJobIds(
-    conflictCandidates.map((j): DispatchableJob => ({
-      id: j.id,
-      scheduledAt: j.scheduledAt,
-      assignedToUserId: j.assignedToUserId,
-      durationMinutes: j.durationMinutes,
-    })),
+    conflictCandidates.map(
+      (job): DispatchableJob => ({
+        id: job.id,
+        scheduledAt: job.scheduledAt,
+        assignedToUserId: job.assignedToUserId,
+        durationMinutes: job.durationMinutes,
+      }),
+    ),
     defaultJobMinutes,
   );
 
@@ -140,44 +156,32 @@ export default async function DispatchPage({
 
   return (
     <div>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="flex items-center gap-2 text-xl font-semibold">
-          <DeliveryServiceIcon className="h-5 w-5 text-ink-faint" />
-          Dispatch
-        </h1>
-        {canScheduleJobs && (
-          <Link
-            href="/desk/jobs/new"
-            className="inline-flex items-center gap-1 rounded-md bg-action px-4 py-2 text-sm font-medium text-on-action hover:bg-action"
-          >
-            <PlusIcon className="h-4 w-4" />
-            Schedule a job
-          </Link>
-        )}
-      </div>
+      <PageHeader
+        title="Dispatch"
+        description="Schedule and review service work without changing the underlying job workflow."
+        primaryAction={
+          canScheduleJobs
+            ? { href: "/desk/jobs/new", label: "Schedule a job" }
+            : undefined
+        }
+      />
 
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-        <nav aria-label="Dispatch view" className="flex gap-2">
-          {(["day", "week", "agenda"] as View[]).map((v) => (
-            <Link
-              key={v}
-              href={boardLink(v, anchor)}
-              aria-current={view === v ? "page" : undefined}
-              className={`rounded-full border px-3 py-1 text-sm capitalize ${
-                view === v
-                  ? "border-action bg-action text-on-action"
-                  : "border-line-strong text-ink-soft hover:border-line-strong"
-              }`}
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <nav aria-label="Dispatch view" className="flex flex-wrap gap-2">
+          {(["day", "week", "agenda"] as View[]).map((item) => (
+            <ButtonLink
+              key={item}
+              href={boardLink(item, anchor)}
+              variant={view === item ? "primary" : "secondary"}
+              aria-current={view === item ? "page" : undefined}
             >
-              {v}
-            </Link>
+              <span className="capitalize">{item}</span>
+            </ButtonLink>
           ))}
         </nav>
-        <nav
-          aria-label="Change date"
-          className="flex items-center gap-2 text-sm"
-        >
-          <Link
+
+        <nav aria-label="Change date" className="flex flex-wrap gap-2">
+          <ButtonLink
             href={boardLink(
               view,
               addDays(
@@ -185,61 +189,61 @@ export default async function DispatchPage({
                 view === "week" ? -7 : view === "agenda" ? -14 : -1,
               ),
             )}
-            className="rounded-md border border-line-strong px-2 py-1 text-ink-soft hover:border-line-strong"
+            variant="secondary"
           >
-            &larr; Earlier
-          </Link>
-          <Link
+            Earlier
+          </ButtonLink>
+          <ButtonLink
             href={boardLink(view, new Date())}
-            className="rounded-md border border-line-strong px-2 py-1 text-ink-soft hover:border-line-strong"
+            variant="secondary"
           >
             Today
-          </Link>
-          <Link
+          </ButtonLink>
+          <ButtonLink
             href={boardLink(
               view,
               addDays(anchor, view === "week" ? 7 : view === "agenda" ? 14 : 1),
             )}
-            className="rounded-md border border-line-strong px-2 py-1 text-ink-soft hover:border-line-strong"
+            variant="secondary"
           >
-            Later &rarr;
-          </Link>
+            Later
+          </ButtonLink>
         </nav>
       </div>
 
       {unscheduled.length > 0 && (
-        <div className="mt-6 rounded-lg border border-blue-200 bg-blue-50 p-4">
-          <h2 className="font-medium text-ink">
-            Unscheduled ({unscheduled.length})
-          </h2>
-          <p className="mt-1 text-sm text-ink-soft">
-            These jobs don&apos;t have a time on the calendar yet — open one to
-            set it.
-          </p>
-          <ul className="mt-3 space-y-2">
-            {unscheduled.map((job) => (
-              <JobRow key={job.id} job={job} conflicted={false} defaultMinutes={defaultJobMinutes} />
-            ))}
-          </ul>
+        <div className="mb-6">
+          <Card
+            title={`Unscheduled (${unscheduled.length})`}
+            description="These jobs don't have a time on the calendar yet — open one to set it."
+          >
+            <ul className="space-y-2">
+              {unscheduled.map((job) => (
+                <JobRow
+                  key={job.id}
+                  job={job}
+                  conflicted={false}
+                  defaultMinutes={defaultJobMinutes}
+                />
+              ))}
+            </ul>
+          </Card>
         </div>
       )}
 
       {view === "day" && (
-        <div className="mt-6">
-          <h2 className="font-medium text-ink">
-            {anchor.toLocaleDateString("en-US", {
-              timeZone: BUSINESS_TIME_ZONE,
-              weekday: "long",
-              month: "long",
-              day: "numeric",
-            })}
-          </h2>
+        <Card
+          title={anchor.toLocaleDateString("en-US", {
+            timeZone: BUSINESS_TIME_ZONE,
+            weekday: "long",
+            month: "long",
+            day: "numeric",
+          })}
+        >
           {scheduled.length === 0 ? (
-            <p className="mt-2 text-sm text-ink-soft">
-              Nothing scheduled for this day.
-            </p>
+            <EmptyState title="Nothing scheduled for this day" />
           ) : (
-            <ul className="mt-3 space-y-2">
+            <ul className="space-y-2">
               {scheduled.map((job) => (
                 <JobRow
                   key={job.id}
@@ -250,22 +254,22 @@ export default async function DispatchPage({
               ))}
             </ul>
           )}
-        </div>
+        </Card>
       )}
 
       {view === "week" && (
-        <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-7">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-7">
           {weekDays(anchor).map((day) => {
             const key = dayKey(day);
             const dayJobs = jobsByDay.get(key) ?? [];
             return (
-              <div
+              <section
                 key={key}
-                className="rounded-lg border border-line bg-white p-3"
+                className="rounded-card border border-line bg-surface p-3"
               >
                 <Link
                   href={boardLink("day", day)}
-                  className="font-medium text-ink hover:underline"
+                  className="font-medium text-ink underline-offset-4 hover:underline"
                 >
                   {day.toLocaleDateString("en-US", {
                     timeZone: BUSINESS_TIME_ZONE,
@@ -275,7 +279,7 @@ export default async function DispatchPage({
                   })}
                 </Link>
                 {dayJobs.length === 0 ? (
-                  <p className="mt-1 text-xs text-ink-faint">
+                  <p className="mt-2 text-xs text-ink-faint">
                     Nothing scheduled
                   </p>
                 ) : (
@@ -284,49 +288,47 @@ export default async function DispatchPage({
                       <li key={job.id}>
                         <Link
                           href={`/desk/jobs/${job.id}`}
-                          className={`block rounded px-1.5 py-1 text-xs hover:bg-canvas ${
+                          className={`block rounded-control px-2 py-1 text-xs hover:bg-subtle ${
                             conflicting.has(job.id)
-                              ? "bg-amber-50 text-amber-800"
+                              ? "bg-warning-bg text-warning-ink"
                               : "text-ink-soft"
                           }`}
                         >
                           {job.scheduledAt &&
                             formatTime(new Date(job.scheduledAt))}{" "}
                           — {jobTypeLabel(job.type)}
-                          {conflicting.has(job.id) && " ⚠"}
+                          {conflicting.has(job.id) && " · conflict"}
                         </Link>
                       </li>
                     ))}
                   </ul>
                 )}
-              </div>
+              </section>
             );
           })}
         </div>
       )}
 
       {view === "agenda" && (
-        <div className="mt-6 space-y-6">
+        <div className="space-y-6">
           {[...jobsByDay.keys()].length === 0 ? (
-            <p className="text-sm text-ink-soft">
-              Nothing scheduled in the next two weeks.
-            </p>
+            <EmptyState title="Nothing scheduled in the next two weeks" />
           ) : (
             [...jobsByDay.entries()]
               .sort(([a], [b]) => (a < b ? -1 : 1))
               .map(([key, dayJobs]) => (
-                <div key={key}>
-                  <h2 className="font-medium text-ink">
-                    {new Date(
-                      dayJobs[0].scheduledAt as Date,
-                    ).toLocaleDateString("en-US", {
-                      timeZone: BUSINESS_TIME_ZONE,
-                      weekday: "long",
-                      month: "long",
-                      day: "numeric",
-                    })}
-                  </h2>
-                  <ul className="mt-2 space-y-2">
+                <Card
+                  key={key}
+                  title={new Date(
+                    dayJobs[0].scheduledAt as Date,
+                  ).toLocaleDateString("en-US", {
+                    timeZone: BUSINESS_TIME_ZONE,
+                    weekday: "long",
+                    month: "long",
+                    day: "numeric",
+                  })}
+                >
+                  <ul className="space-y-2">
                     {dayJobs.map((job) => (
                       <JobRow
                         key={job.id}
@@ -336,7 +338,7 @@ export default async function DispatchPage({
                       />
                     ))}
                   </ul>
-                </div>
+                </Card>
               ))
           )}
         </div>
