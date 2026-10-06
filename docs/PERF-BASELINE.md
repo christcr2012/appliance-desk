@@ -1,20 +1,29 @@
-# Batch E performance baseline
+# Performance baselines
 
-Batch E measures the list/read paths that are expected to stay usable as the business grows. The measurement runs in `.github/workflows/perf.yml` against its own disposable PostgreSQL 17 database, never production.
+Performance measurements run in `.github/workflows/perf.yml` against one disposable PostgreSQL 17 database, never production. Test files run serially so one scale fixture cannot distort another. Fixture setup and cleanup are outside timed sections.
 
-## Fixture
+## Batch E list/read baseline
 
-The isolated performance job bulk-generates the scale data after migrations and the normal CI seed: **1,000 customers, 2,000 invoices, 500 jobs, and 1,000 leads**. Fixture setup is deliberately outside the timed section; existing domain/integration tests prove write-path business rules, while this harness measures the read/query paths without spending CI time hashing 1,000 invitation passwords or sending test invitations.
+The existing Batch E harness bulk-generates **1,000 customers, 2,000 invoices, 500 jobs, and 1,000 leads** and measures bounded customer/job/growth reads. It logs `[batch-e-perf]` timings and asserts the result caps; these historical reads remain in the workflow.
 
-The measured reads are:
+## Batch F capacity fixtures
 
-- customer page, capped at 50 rows;
-- job page, capped at 50 rows;
-- win-back list, capped at 100 rows;
-- churn-risk result, capped at 100 rows while its invoice/payment/maintenance inputs are independently bounded.
+Batch F adds the two launch-capacity scenarios required by the approved design:
 
-Every timed query prints `[batch-e-perf] <label>: <milliseconds>ms` in the workflow log. The test fails if a list loses its documented result bound. Stable ID tie-breakers are part of the corresponding list contracts so paging does not depend on database storage order.
+- **large property-manager account:** 1 customer, 50 service addresses, 50 active agreements, 200 rental lines/appliances/assignments. The timed operation is the real owner property workspace plus current-equipment query.
+- **large invoice ledger:** 1 customer with 5,000 invoices. The timed operation is the real billing-page count plus its first 50-row page.
 
-## Exact-head baseline
+Each F measurement gets one warm-up and five samples; the committed value is the median. A future result more than **20% slower** fails. `PERF_BASELINE_OVERRIDE_REASON` can override that failure only when a nonblank reviewed reason is printed into the workflow log.
 
-The numeric wall-time baseline is recorded from the first green `Batch E Performance Baseline` run for the E6-E8 PR. Do not copy timings from local development or production; runner/database conditions must stay comparable. If a later change materially increases one of these times, inspect the query plan before adding an index—the Batch E design allows indexes only when the measurement shows they are needed.
+| Metric key | Baseline | Fixture / operation |
+|---|---:|---|
+| f-large-account-owner-read | 1000 ms | Bootstrap ceiling for first F1-c CI measurement; **replace with the first green runner median before merge** |
+| f-large-invoices-billing-page | 1000 ms | Bootstrap ceiling for first F1-c CI measurement; **replace with the first green runner median before merge** |
+
+The two 1000 ms values above are intentionally temporary first-run ceilings, not claimed measurements. **F1-c must not merge with them.** After its first green `Performance Baselines` run, replace them with that exact runner's printed medians and record the tested commit/run below. Subsequent runs enforce the +20% rule against those measured values.
+
+## Baseline evidence
+
+Pending the first green F1-c performance run. Record: commit SHA, workflow run ID, both medians, PostgreSQL 17 / Ubuntu 24.04 / Node 24.
+
+Do not copy timings from a developer laptop or production. If a regression appears, inspect the query/query-plan and fixture first; do not add an index simply to silence the guard.

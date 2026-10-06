@@ -24,10 +24,17 @@ A request may be rejected only with a recorded reason. Do not reject a request m
 
 Deletion archives the customer login, revokes its sessions, clears stored authentication credentials/tokens, and pseudonymizes personal fields on the User, Customer, ServiceAddress, CustomerContact and associated Lead records. Optional address fields are cleared. Because the current database requires `ServiceAddress.line1`, `city`, `state` and `zip`, those required fields are replaced with non-identifying placeholders rather than `null`.
 
-Photos attached only to that customer's maintenance request are deleted. A photo also tied to a job or appliance is retained as operational evidence.
+Photos attached only to that customer's maintenance request are deleted. Before bytes are removed, the private-media recovery layer writes a deterministic privacy tombstone and removes known recovery copies; restore code checks the live tombstone and will not resurrect the photo. A photo also tied to a job or appliance is retained as operational evidence.
 
 ## What deletion retains
 
 Invoices, payments, receipts, refunds, customer credits, signature records, frozen DocumentArtifact evidence, customer notices and audit rows are retained. They are financial, signed-contract, delivery or audit evidence and are not silently destroyed by a privacy deletion.
 
 If a case requires different retention behavior, stop and obtain legal/business direction before changing records outside this workflow.
+
+
+## Drill
+
+Automated coverage in `tests/privacy-requests.test.ts` proves verified deletion, external-storage failure/retry behavior, idempotency and retained evidence. `tests/media-inventory.test.ts` proves a privacy tombstone blocks later media recovery.
+
+Last drilled: **2026-10-06 (automated CI coverage).**
