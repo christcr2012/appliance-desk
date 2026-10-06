@@ -4,8 +4,10 @@ import { prisma } from "../src/lib/prisma";
 import {
   getPrivatePhotoStore,
   privatePhotoPathFromUrl,
-  privacyDeletionTombstonePath,
 } from "../src/lib/photo-storage";
+import {
+  privacyDeletionTombstonePath,
+} from "../src/domains/backup/media-deletion";
 
 const PRIMARY_PREFIXES = ["jobs/", "appliances/", "maintenance-requests/"] as const;
 const MEDIA_MANIFEST_SUFFIX = ".media.json";
@@ -43,6 +45,9 @@ async function listAll(prefix: string, token: string): Promise<ListedBlob[]> {
   do {
     const page = await list({ prefix, token, cursor, limit: 1000 });
     rows.push(...page.blobs);
+    if (page.hasMore && !page.cursor) {
+      throw new Error(`Blob listing for "${prefix}" reported more rows without a cursor.`);
+    }
     cursor = page.hasMore ? page.cursor : undefined;
   } while (cursor);
 
