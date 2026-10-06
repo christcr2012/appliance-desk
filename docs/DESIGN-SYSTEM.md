@@ -3,13 +3,14 @@
 > Current brand correction (2026-09-30): Evergreen v2.0, implemented in
 > `src/app/globals.css`, superseded the navy/teal palette and placeholder
 > wordmark described in historical sections below. Keep the real brand assets.
-> The proposed UI/UX overhaul is specified in `plans/overhaul/DESIGN.md`;
-> its implementation has not started. Existing accessibility rules still apply.
+> The UI/UX overhaul and Batch E2 shared visual layer are implemented through
+> PR #263. `plans/overhaul/DESIGN.md` remains design history/reference; current
+> shared primitives live in `src/components/ui/`. Existing accessibility rules
+> remain mandatory. The public-site implementation is technically complete but
+> its overall visual quality is explicitly deferred for a stronger later pass.
 
-Kept intentionally simple for Phase 1: Tailwind CSS utility classes,
-no separate component library beyond what's needed (shadcn/ui components
-get added as later phases need specific UI, e.g. a data table for
-`/desk/inventory`).
+The app uses Tailwind CSS plus the repository's own shared UI primitives; no
+third-party component library is required for the current design system.
 
 ## Accessibility — required, not optional (WCAG 2.2 AA)
 
@@ -186,4 +187,4 @@ ones that suite covers.
 
 E2 extends the final Batch E Evergreen tokens with brand-kit-only visual primitives: `rounded-control` = 8px, `rounded-card` = 16px, and semantic owner-navigation colors (`nav-bg`, `nav-ink`, `nav-current-bg`, `nav-current-ink`). Values remain defined only in `src/app/globals.css` and are exported through Tailwind's `@theme inline` block.
 
-Because current `main` still contains legacy radius utilities on screens intentionally scheduled for E2-2 through E2-8, E2-1A scopes the new hard-coded color/arbitrary-pixel/legacy-radius lint guard to `src/components/ui/**/*.tsx`. Each later E2 screen migration uses the shared layer; E2-8 broadens the guard to all TSX once those planned migrations are complete. This preserves the approved redesign sequence instead of forcing an accidental whole-app rewrite in the foundation PR.
+E2-1A initially scoped the hard-coded color/arbitrary-pixel/legacy-radius guard to `src/components/ui/**/*.tsx` while screens migrated. E2-8 completes the planned cleanup and broadens the guard to the finished TSX surface.
