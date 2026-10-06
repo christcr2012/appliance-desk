@@ -252,6 +252,7 @@ for (const role of ["owner", "customer"] as const) {
         await page.goto("/account");
         await page
           .getByRole("link", { name: "Request pickup", exact: true })
+          .first()
           .click();
         await expect(page).toHaveURL(/request=pickup$/);
         await expect(page.getByRole("status")).toContainText("does not cancel");

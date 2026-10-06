@@ -130,7 +130,6 @@ function ApplianceControls({ row }: { row: ApplianceTypeRow }) {
     <div className={`space-y-4 ${!row.isActive ? "opacity-70" : ""}`}>
       <div className="grid gap-3 sm:grid-cols-[minmax(10rem,14rem)_auto] sm:items-end">
         <Field
-          id={`price-${row.id}`}
           label={`Monthly price for ${row.name}`}
           type="number"
           min={0}
