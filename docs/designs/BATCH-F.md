@@ -159,4 +159,7 @@ copy, capacity, runbooks) runs now. F-part-2 = WU-F3, WU-F6 … WU-F9 (scenarios
 discharge, launch ledger, rollback/STATUS) runs after Batches G, T and V merge, and must include their features in the
 scenarios and ledger. Order and PR boundaries (F1-a … F1-c, F2-a … F2-d): `docs/MASTER-ROADMAP.md` section 7.
 
+
+**2026-10-06 — F-part-1 drift check against main `e640b75`.** A1–A3 and A5–A8 still match the implemented code. A4's Stripe test hook exists; the email/SMS sender injection hooks do not. That is the contingency already described by A4 and is deferred to F-part-2/WU-F3, where provider-failure scenarios actually need it; F1-a does not touch provider sending. E2's final route/accessibility changes are recorded in CHANGES-SINCE-DESIGN and do not affect F1-a's database-only work. The mandatory post-Batch-D recovery amendment remains in force: F1-a restores D's database control-plane rows as ordinary backed-up tables; F1-b owns private-media deletion/tombstone recovery semantics. No decision-level drift was found, so F-part-1 may proceed.
+
 (Dated entries only.)
