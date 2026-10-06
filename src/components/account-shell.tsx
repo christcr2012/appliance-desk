@@ -12,7 +12,7 @@ import {
   SupportServiceIcon,
 } from "@/components/icons/service-icons";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { Button } from "@/components/ui";
+import { BottomTabBar, Button } from "@/components/ui";
 import { signOut } from "@/lib/auth-client";
 
 type AccountLink = {
@@ -147,30 +147,19 @@ export function AccountShell({ children }: { children: ReactNode }) {
         {children}
       </main>
 
-      <nav
-        aria-label="Account"
-        className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-line bg-surface px-1 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:hidden print:hidden"
-      >
-        {ACCOUNT_LINKS.map((link) => {
-          const active = activeFor(pathname, link.href);
-          const Icon = link.icon;
-          return (
-            <Link
-              key={link.href}
-              href={link.href}
-              aria-current={active ? "page" : undefined}
-              className={`flex min-h-11 min-w-0 flex-col items-center justify-center gap-1 rounded-control px-1 text-center text-xs font-semibold ${
-                active
-                  ? "bg-action text-on-action"
-                  : "text-ink hover:bg-subtle"
-              }`}
-            >
-              <Icon className="h-5 w-5" />
-              <span className="max-w-full truncate">{link.mobileLabel}</span>
-            </Link>
-          );
-        })}
-      </nav>
+      <div className="md:hidden print:hidden">
+        <BottomTabBar
+          tabs={ACCOUNT_LINKS.map((link) => ({
+            href: link.href,
+            label: link.mobileLabel,
+            icon: link.icon,
+          }))}
+          activeHref={
+            ACCOUNT_LINKS.find((link) => activeFor(pathname, link.href))?.href ??
+            "/account"
+          }
+        />
+      </div>
     </div>
   );
 }

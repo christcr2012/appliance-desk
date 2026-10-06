@@ -73,18 +73,29 @@ for (const role of ["owner", "customer"] as const) {
                   "/account/rentals",
                   "/account/billing",
                   "/account/maintenance?request=pickup",
+                  "/account/settings",
                 ];
           for (const route of routes) {
             await page.goto(route);
             await expect(page.locator("main h1")).toBeVisible();
             await accessible(page);
-            if (route === routes[0] || route.includes("section=products")) {
+            const capture =
+              role === "customer"
+                ? width !== 768
+                : route === routes[0] || route.includes("section=products");
+            if (capture) {
+              const routeLabel =
+                role === "customer"
+                  ? route.replace(/^\\/+|[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "")
+                  : route.includes("section=products")
+                    ? "products"
+                    : "home";
               const image = info.outputPath(
-                `${role}-${width}-${theme}-${route.includes("section=products") ? "products" : "home"}.png`,
+                `${role}-${width}-${theme}-${routeLabel}.png`,
               );
               await page.screenshot({ path: image, fullPage: true });
               await info.attach(
-                `${role}-${width}-${theme}-${route.includes("section=products") ? "products" : "home"}`,
+                `${role}-${width}-${theme}-${routeLabel}`,
                 {
                   path: image,
                   contentType: "image/png",
@@ -105,7 +116,7 @@ for (const role of ["owner", "customer"] as const) {
           );
           await page.goto("/account");
 
-          const nav = page.getByRole("navigation", { name: "Account" });
+          const nav = page.getByRole("navigation", { name: "Main" });
           await expect(nav).toBeVisible();
           const labels = ["Home", "Rentals", "Maintenance", "Billing", "Account"];
           for (const label of labels) {
