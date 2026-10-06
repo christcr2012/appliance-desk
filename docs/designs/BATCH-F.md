@@ -157,6 +157,6 @@ from the ledger.
 **2026-10-06 — F is split (Chris approved, IN-41).** F-part-1 = WU-F1, WU-F2, WU-F4, WU-F5 (backup/restore, media
 copy, capacity, runbooks) runs now. F-part-2 = WU-F3, WU-F6 … WU-F9 (scenarios, owner guide and screenshots, review
 discharge, launch ledger, rollback/STATUS) runs after Batches G, T and V merge, and must include their features in the
-scenarios and ledger. Order: `docs/MASTER-ROADMAP.md`.
+scenarios and ledger. Order and PR boundaries (F1-a … F1-c, F2-a … F2-d): `docs/MASTER-ROADMAP.md` section 7.
 
 (Dated entries only.)

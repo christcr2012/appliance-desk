@@ -408,3 +408,13 @@ payout transaction handling made explicit. (6) BATCH-G: two-step-login enforceme
 sign-out and password reset. (7) BATCH-O: approvals execute as the approving owner. Doc corrections: nightly
 `start-renewals` job description, how Notices is reached, the 7.375% wording, and "books from any start date".
 
+## 2026-10-06 (night) — PR size budget and CI rules for the remaining batches
+Chris asked that agents not spend more time on CI than on implementation, and not take on more than they can finish.
+Added: a numeric PR budget (`docs/PLAYBOOK.md` Step 3a — about 500 production lines, ~15 files, one migration, one risk
+area, ≤2 expected CI runs, ≤2 merged PRs per session), CI rules for a moving codebase (Step 8 — is-it-mine check against
+`main`, a 3-run CI budget, updating deliberately changed assertions in the same commit, stack refresh and migration
+timestamp rules, change-proof tests), and an explicit PR list for F, G, T, V, K and O (`docs/MASTER-ROADMAP.md`
+section 7, about 34 PRs) that supersedes the coarser PR groupings in the designs. Two predictable CI ripples are named
+in advance: Batch T's billing gate needs tax-ready fixtures in the same PR; Batch G's two-step login needs the CI
+login and saved browser sessions updated in the same PR.
+

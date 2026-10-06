@@ -117,7 +117,10 @@ resulting behavior are verified.
   together** (for example "ledger statements and reports", "tax-rate
   precision move", "signing-page terms and consent"): not one item per PR, and
   not a whole batch in one PR. Size it so the work in it can be done properly,
-  with its tests and docs, and reviewed in one sitting.
+  with its tests and docs, and reviewed in one sitting. **Concrete budget (Chris, 2026-10-06):** about 500 lines of
+  production code (tests not counted), about 15 files, at most one migration, one risk area, two CI runs expected,
+  at most two merged PRs per session — `docs/PLAYBOOK.md` Step 3a. The PR list for every remaining batch is
+  `docs/MASTER-ROADMAP.md` section 7.
 - **CI is free and fast, so lean on it** (Chris, 2026-10-03; details in the
   "CI" section below). Do not drop tests to save minutes, and do keep CI fast
   (the "Keeping CI fast" checklist in `docs/ARCHITECTURE.md`).
@@ -274,7 +277,11 @@ push to a pull request, with a goal of results in about 3 minutes
    above). Push a PR when its cluster is coherent, not after every edit — a new
    push cancels the running CI. When CI fails, read the **full** logs (CI's
    summary shows only the first 10 failures per step; fetch the job log through
-   the API), fix everything you can see, and push once.
+   the API), fix everything you can see, and push once. **At most 3 CI runs per
+   PR:** after a second red run on the same failure, reproduce locally instead of
+   guessing; after a third, stop and report (`docs/PLAYBOOK.md` Step 8, which also
+   covers keeping a stack current as `main` moves and updating tests a design
+   deliberately changes).
 2. **The `ci` check is the single gate.** It needs the secret scan, type-check
    and lint, all three unit-test shards and all four browser shards. It runs on
    every push to a PR and on `main`; the browser suite also runs nightly. Never

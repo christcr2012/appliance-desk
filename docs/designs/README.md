@@ -35,6 +35,9 @@ reconciliation wins.
 
 The older 2026-10-02 designs remain under `docs/archive/designs-2026-10-02/` for history; they are not instructions.
 
+**PR boundaries:** for G, T, V, K, O and F, the PR list in `docs/MASTER-ROADMAP.md` section 7 overrides the coarser "PR …"
+grouping lines inside the designs (Chris, 2026-10-06); work units and their order are unchanged.
+
 **Order:** see `docs/MASTER-ROADMAP.md` (F-part-1 → G → T → V → F-part-2 → launch → K → O; G, T, V, K, O and the F split approved by Chris 2026-10-06). One batch at a time, one stack of PRs per batch (`AGENTS.md`).
 
 ## The rule
