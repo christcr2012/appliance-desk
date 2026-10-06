@@ -1,63 +1,111 @@
 import Link from "next/link";
 import { getWaitingForStripe } from "@/domains/billing/waiting-for-stripe";
-import { formatBusinessDate, formatBusinessTime } from "@/lib/business-date";
+import {
+  formatBusinessDate,
+  formatBusinessTime,
+} from "@/lib/business-date";
+import {
+  ButtonLink,
+  Card,
+  EmptyState,
+  StatusPill,
+} from "@/components/ui";
 
-/** What Stripe has been asked to do and has not finished. Read-only: retries belong to the nightly pass. */
 export async function WaitingTab() {
-  const { operations, operationCount, endings } = await getWaitingForStripe();
+  const { operations, operationCount, endings } =
+    await getWaitingForStripe();
   const none = operations.length === 0 && endings.length === 0;
+
   return (
-    <div className="mt-6 space-y-6">
-      <p className="text-sm text-ink-soft">
-        These are requests we sent (or are about to send) to Stripe that are not finished. There is nothing to press here:
-        the system retries them every night. If one stays here, open the{" "}
-        <Link className="text-primary underline" href="/desk/billing/reconciliation">
-          reconciliation page
-        </Link>{" "}
-        to compare our records with Stripe&apos;s.
-      </p>
-      {none && <p className="text-sm text-ink-soft">Nothing is waiting for Stripe.</p>}
+    <div className="space-y-6">
+      <Card
+        title="Waiting for Stripe"
+        description="These requests have been sent, or are ready to be sent, but Stripe has not confirmed completion. The nightly process retries them automatically."
+        actions={
+          <ButtonLink
+            href="/desk/billing/reconciliation"
+            variant="secondary"
+          >
+            Open reconciliation
+          </ButtonLink>
+        }
+      >
+        {none ? (
+          <EmptyState
+            title="Nothing is waiting for Stripe"
+            description="No unfinished Stripe requests or unapplied billing end dates are currently recorded."
+          />
+        ) : (
+          <p className="text-sm text-ink-soft">
+            If an item remains here, use reconciliation to compare Appliance
+            Desk records with Stripe before taking any manual action.
+          </p>
+        )}
+      </Card>
+
       {operations.length > 0 && (
-        <section aria-labelledby="ops-h">
-          <h2 id="ops-h" className="text-base font-semibold text-ink">
-            Requests not confirmed ({operationCount})
-          </h2>
-          <ul className="mt-3 space-y-3">
-            {operations.map((o) => (
-              <li key={o.id} className="rounded-lg border border-line bg-white p-4 text-sm">
-                <p className="font-medium text-ink">
-                  {o.what} <span className="ml-2 rounded-full bg-canvas-alt px-2 py-0.5 text-xs">{o.status}</span>
+        <Card title={`Requests not confirmed (${operationCount})`}>
+          <ul className="divide-y divide-line">
+            {operations.map((operation) => (
+              <li key={operation.id} className="py-4 text-sm">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="font-semibold text-ink">
+                    {operation.what}
+                  </p>
+                  <StatusPill
+                    tone="pending"
+                    label={operation.status}
+                  />
+                </div>
+                <p className="mt-2 text-ink-soft">
+                  {operation.meaning}
                 </p>
-                <p className="mt-1 text-ink-soft">{o.meaning}</p>
-                <p className="mt-1 text-xs text-ink-soft">
-                  Asked {formatBusinessDate(o.since)} · {formatBusinessTime(o.since)} · tried {o.attempts} time(s)
+                <p className="mt-2 text-xs text-ink-soft">
+                  Asked {formatBusinessDate(operation.since)} ·{" "}
+                  {formatBusinessTime(operation.since)} · tried{" "}
+                  {operation.attempts} time(s)
                 </p>
-                {o.lastError && <p className="mt-1 text-xs text-ink-soft">Last message from Stripe: {o.lastError}</p>}
+                {operation.lastError && (
+                  <p className="mt-1 text-xs text-ink-soft">
+                    Last message from Stripe: {operation.lastError}
+                  </p>
+                )}
               </li>
             ))}
           </ul>
-        </section>
+        </Card>
       )}
+
       {endings.length > 0 && (
-        <section aria-labelledby="end-h">
-          <h2 id="end-h" className="text-base font-semibold text-ink">
-            Billing end dates not applied yet ({endings.length})
-          </h2>
-          <ul className="mt-3 space-y-3">
-            {endings.map((e) => (
-              <li key={e.stripeSubscriptionId} className="rounded-lg border border-line bg-white p-4 text-sm">
-                <p className="font-medium text-ink">{e.what}</p>
-                <p className="mt-1 text-xs text-ink-soft">
-                  <Link className="text-primary underline" href={`/desk/agreements/${e.agreementId}`}>
+        <Card
+          title={`Billing end dates not applied yet (${endings.length})`}
+        >
+          <ul className="divide-y divide-line">
+            {endings.map((ending) => (
+              <li
+                key={ending.stripeSubscriptionId}
+                className="py-4 text-sm"
+              >
+                <p className="font-semibold text-ink">{ending.what}</p>
+                <p className="mt-2 text-xs text-ink-soft">
+                  <Link
+                    className="font-medium text-ink underline-offset-4 hover:underline"
+                    href={`/desk/agreements/${ending.agreementId}`}
+                  >
                     Open the rental
                   </Link>{" "}
-                  · waiting since {formatBusinessDate(e.since)} · tried {e.attempts} time(s)
+                  · waiting since {formatBusinessDate(ending.since)} · tried{" "}
+                  {ending.attempts} time(s)
                 </p>
-                {e.lastError && <p className="mt-1 text-xs text-ink-soft">Last message: {e.lastError}</p>}
+                {ending.lastError && (
+                  <p className="mt-1 text-xs text-ink-soft">
+                    Last message: {ending.lastError}
+                  </p>
+                )}
               </li>
             ))}
           </ul>
-        </section>
+        </Card>
       )}
     </div>
   );
