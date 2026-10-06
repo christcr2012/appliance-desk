@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { isValidElement, type ReactNode } from "react";
+import { ButtonLink } from "@/components/ui/button";
 
 type PrimaryActionDescriptor = { href: string; label: string };
 
@@ -15,11 +16,6 @@ function isPrimaryActionDescriptor(
   );
 }
 
-export const primaryActionClass =
-  "inline-flex min-h-11 items-center justify-center rounded-control bg-action px-4 py-2 text-sm font-semibold text-on-action hover:opacity-90";
-export const secondaryActionClass =
-  "inline-flex min-h-11 items-center justify-center rounded-control border border-control bg-surface px-4 py-2 text-sm font-medium text-ink hover:bg-subtle";
-
 export function PageHeader({
   title,
   description,
@@ -32,9 +28,7 @@ export function PageHeader({
   secondaryActions?: ReactNode;
 }) {
   const renderedPrimaryAction: ReactNode = isPrimaryActionDescriptor(primaryAction) ? (
-    <Link href={primaryAction.href} className={primaryActionClass}>
-      {primaryAction.label}
-    </Link>
+    <ButtonLink href={primaryAction.href}>{primaryAction.label}</ButtonLink>
   ) : (
     primaryAction as ReactNode
   );
@@ -116,14 +110,14 @@ export function FilterBar({
   return (
     <nav aria-label={label} className="mb-6 flex flex-wrap gap-2">
       {items.map((item) => (
-        <Link
+        <ButtonLink
           key={item.href}
           href={item.href}
           aria-current={item.active ? "page" : undefined}
-          className={item.active ? primaryActionClass : secondaryActionClass}
+          variant={item.active ? "primary" : "secondary"}
         >
           {item.label}
-        </Link>
+        </ButtonLink>
       ))}
     </nav>
   );
