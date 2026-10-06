@@ -5,7 +5,7 @@
 `docs/archive/STATUS-LOG.md`. The long history before 2026-10-02 is in
 `docs/archive/HANDOFF-2026-09-26-to-2026-10-02.md`.
 
-Last updated: 2026-10-06 · `main` f5df905 includes E2 through WU-E2-7 (#262). **In progress:** final WU-E2-8 cleanup/docs in #263. Chris authorized #262 to merge after review but judged the public-site visual result unsatisfactory / insufficiently different from the existing site; that is deferred follow-up work, not a blocker to closing E2. Batch F starts after #263 merges.
+Last updated: 2026-10-06 · final E2 cleanup/docs is PR #263. This PR closes E2; **Batch F is next**. Chris authorized #262 to merge but judged the public-site visual result unsatisfactory / insufficiently different from the existing site, so a stronger public-site visual pass is explicitly deferred. O32 Google Workspace is also explicitly deferred until its app-side service-account/delegation, Drive OAuth, and live-walkthrough prerequisites are proven.
 
 ## Batch table
 
@@ -14,13 +14,13 @@ Last updated: 2026-10-06 · `main` f5df905 includes E2 through WU-E2-7 (#262). *
 | A — Critical integrity & platform safety | **MERGED** | #136 (2026-10-02) | Full CI green; real-Postgres concurrency and adversarial auth tests | Audit registers stay open; nothing in A claims a B–F item. |
 | B — Billing, provider reconciliation & financial ledger | **MERGED — completion work finished by B2** | Core Batch B PRs through #161; B2 #205–#208 | Real-Postgres/provider reconciliation coverage across the core stack and B2; exact-head CI at merge gates | Renewal lifecycle, customer month-to-month ending, annual reminders, manual-delivery evidence, provider ambiguity handling, company-delay pickup waiver and early-return workflows are built. Live Stripe/customer email/automatic-renewal activation remains OFF pending the separate owner/legal go-live gates; IN-25 remains a CPA decision. |
 | C — Rental-to-service operations, custody, inventory & purchasing | **MERGED — shared billing-end leftover finished by B2** | #169–#175 plus B2 #208 for C-09 | Real-Postgres tests across scheduling, custody, parts, swaps, maintenance, missing-item handling and pickup billing end | C-09 is no longer blocked: billing stop at return/company-delay waiver is built in #208. A never-delivered refund spanning several Stripe charges still intentionally requires owner/manual settlement rather than an unsafe automatic split refund. |
-| R — Remediation Batch R (17 review findings R01–R17) | **MERGED** (all 17 fixed; three items below are not done or not proven) | #185 (R01–R05), #186 (R06), #187 (R07), #188 (R08), #189 (R09, R11 estimate part), #190 (R10), #191 (R11), #192 (R12), #193 (R13), #194 (R14), #195 (R15), #196 (R16), #197 (R17) | Real-Postgres tests per finding; exact-head `ci` green on every PR; ledger `docs/reviews/2026-10-04-remediation-batch-r-acceptance.md` | **Not done / not proven:** (1) Stripe's billing calendar is not moved to the real first-delivery date (owner question IN-28); (2) no human preview check of the touched estimate page, add-appliance form, repair-cost form and Today; (3) the upgrade drill on a populated database was not run (CI migration and schema checks passed for both additive migrations). Codex was out of quota on #187–#197 (waived, recorded on each PR); no Copilot review posted. Batch D contract changes are in `docs/designs/CHANGES-SINCE-DESIGN.md`. Re-assess C-09 and Batch D against them before starting. |
-| Follow-ups after Batch R (Chris's answers, 2026-10-04) | **CODE COMPLETE / superseded by B2 where applicable** | #199 plus B2 #205–#208 | IN-28 delivery-date billing proof, migration drill, follow-up claiming, Today recovery item, and B2 lifecycle tests | Remaining items are release/owner inputs, not missing implementation: live customer messaging stays OFF; counsel/owner wording approval (IN-21/IN-31) and IN-25 tax treatment remain external decisions. |
+| R — Remediation Batch R (17 review findings R01–R17) | **MERGED; follow-up proof closed** | #185–#197; follow-up #199 | Real-Postgres tests per finding; #199 proved first-delivery billing behavior, completed the browser checks and migration drill recorded in the acceptance ledger | No remaining R implementation item. Later B2 work superseded the renewal/pickup lifecycle gaps that were still open when R first closed. |
+| Follow-ups after Batch R (Chris's answers, 2026-10-04) | **DONE** | #199 plus B2 #205–#208 | Delivery-date billing proof, migration drill, follow-up claiming, Today recovery item, and B2 lifecycle tests | Remaining IN-21/IN-31/IN-25 items are owner/legal/CPA release decisions, not missing implementation. |
 | B2 — Renewal lifecycle, month-to-month rentals, pickup billing end (finishes B and C) | **MERGED** | #205, #206, #207, #208 (final merge 2026-10-05) | #208 records 1804/1804 full-suite pass against real Postgres; prior slices have their own real-Postgres and exact-head CI evidence | B2 closes R1–R7, D1/D2, C-09, IN-29 and IN-30 implementation. Automatic renewals and live customer email remain OFF until the owner/legal go-live conditions are satisfied. |
 | D — Owner/customer control plane, website, evidence & privacy | **MERGED** | #214, merge `a6c9c9a` (2026-10-05) | Exact-head CI green; Vercel preview READY; zero unresolved review threads | Final D implementation contracts and the mandatory E/E2/F reconciliation live in `docs/designs/POST-BATCH-D-RECONCILIATION-2026-10-05.md`. |
 | E — Communications, reporting, growth, branding & accessibility | **MERGED** | #215–#218, #221, #222 | Durable messaging/automation ledgers, reconciliation, growth/reporting, Evergreen tokens, generated accessibility coverage; exact-head CI at merge gates | Live customer email/SMS/marketing remain OFF unless separately approved. Accessibility checks are engineering evidence, not certification. |
-| E2 — Visual redesign (owner desk, public site, customer portal; desktop, phone, dark) | **FINAL PR — E2-1 through E2-7 merged; E2-8 #263 in progress** | Through #262 merged; #263 `ai/sol/e2-8-cleanup-print-docs` | Shared UI/tokens, phone/desktop/dark route coverage, print cleanup and exact-head gates | The public-site implementation satisfies the approved E2-7 technical spec, but Chris judged the overall visual result unsatisfactory / too similar to the prior site and explicitly authorized merge so E2 can close. A stronger public-site redesign is deferred follow-up work; do not treat E2-7 as the final desired visual quality. |
-| F — Integrated verification, recovery, owner handoff & launch ledger | NOT STARTED | — | — | Human/owner gates stay explicit. |
+| E2 — Visual redesign (owner desk, public site, customer portal; desktop, phone, dark) | **COMPLETE with #263** | #254–#263 | Shared UI/tokens, phone/desktop/dark route coverage, print cleanup, exact-head CI/preview gates | Public-site technical scope is complete, but Chris rejected the visual result as the final desired quality; a stronger public-site visual redesign remains explicitly deferred. |
+| F — Integrated verification, recovery, owner handoff & launch ledger | **NEXT — NOT STARTED** | — | Approved design: `docs/designs/BATCH-F.md` | Starts after #263 merges. O32 is explicitly deferred, satisfying F's conditional-integration precondition without pretending Google integration exists. |
 
 Earlier roadmap work that is already shipped and must not be rebuilt
 (details in `docs/PLAN.md` → "Already shipped"): foundation/styles/
@@ -45,7 +45,7 @@ deny-by-default (#131), CI parallelized and sharded (#136, #137).
 - Chris plans to upgrade the Neon plan for protected branches and per-preview
   database branching; not done yet.
 
-## Batch B — what is left (as of 2026-10-03, evening)
+## Batch B historical completion notes (finished by B2)
 
 The core of Batch B (ledger, provider reconciliation, statements, reports, locked
 terms, exact tax, held payments) is merged; see
@@ -58,7 +58,7 @@ second stack, `batch-b-completion-*`, in this order. Tick each when merged:
 - [x] Renewals signed ahead of time get a "signed, starts later" (SCHEDULED) state (IN-22): nightly start, one-step hand-off, reports, exceptions (PR in this stack; tests `agreements-scheduled-renewal-integration`, `scheduled-renewal-rules`).
 - [x] Held-payment screen: owner resolves a held payment per case (IN-23): Billing → Held payments, recommended choice highlighted (tests `billing-held-payments-integration`, `held-payment-card`).
 - [x] Auto-renew and scheduled early-termination execution (nightly pass: month-to-month renewal queued for customers who agreed; agreed endings carried out with the fee invoiced, never auto-charged; prepaid rentals left for the owner; tests `agreements-auto-renew-and-termination-integration`, `auto-renew-termination-rules`). Pickup-based billing stop is Batch C (IN-24).
-- [x] (renewal reminder part) Notices: saved record, held-until-delivered rule, Desk → Notices (tests `renewal-reminder`, `agreements-auto-renew-and-termination-integration`). Owner email switch built (Desk → Settings → Notifications). Still open: the month-to-month 30-day change notice, waiting on Chris's IN-21 answer.
+- [x] Notices: saved record, held-until-delivered rule, Desk → Notices; B2 #207 later completed the month-to-month change-notice mechanism. Owner email switch remains OFF pending approval.
 - [x] Term-change notices (IN-21 mechanism): versioned month-to-month terms, notice records, delivery evidence and the 30-day apply rule were completed in B2 #207. Live customer email stays OFF until Chris approves the wording/activation gate.
 - [x] Out-of-order Stripe webhook cases (acceptance item 3): real-Postgres tests `billing-webhook-ordering-integration` (the code already handled them; now proven).
 
@@ -121,7 +121,7 @@ as owner settings; built as stated. (The first push misread rule 2 as an
 - Audit findings: 8 Critical were Batch A's scope; the 58 High / 51 Medium are
   mapped per batch in `docs/PLAN.md`. Launch gates are in `docs/PLAN.md`.
 - O29 CSV import: deferred until a real import dataset exists.
-- O32 Google Workspace: conditional; see Batch E.
+- O32 Google Workspace: **explicitly deferred**. Connector-side work is largely available, but Appliance Desk's own service account/delegation, Drive OAuth connection, and required live walkthrough are not yet proven. It remains the one conditional follow-up PR; F may proceed without pretending O32 is complete.
 
 ## Owner inputs currently blocking something
 
