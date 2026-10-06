@@ -32,11 +32,15 @@ function makePrismaMock() {
 
 const transactionMock = vi.fn();
 const queryRawMock = vi.fn();
+type PrismaMock = Record<string, { findMany: ReturnType<typeof vi.fn> }> & {
+  $transaction: ReturnType<typeof vi.fn>;
+  $queryRaw: ReturnType<typeof vi.fn>;
+};
 const prismaMock = {
   ...makePrismaMock(),
-  $transaction: (...args: unknown[]) => transactionMock(...args),
-  $queryRaw: (...args: unknown[]) => queryRawMock(...args),
-};
+  $transaction: transactionMock,
+  $queryRaw: queryRawMock,
+} as PrismaMock;
 
 vi.mock("@/lib/prisma", () => ({ prisma: prismaMock }));
 
