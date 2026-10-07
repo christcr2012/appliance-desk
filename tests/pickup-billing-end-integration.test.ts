@@ -10,6 +10,7 @@ import { openCustodyEpisodeInTx } from "@/domains/inventory/custody";
 import { recordLateReturnWaiver, lateReturnWaiverCents } from "@/domains/billing/late-return-waiver";
 import { closeFullyReturnedAgreements } from "@/domains/agreements/returns";
 import { agreedEndFor } from "@/domains/billing/pickup-billing-events";
+import { seedTaxReadyContext } from "./helpers/tax-ready";
 
 const url = new URL(process.env.DATABASE_URL ?? "postgresql://localhost/unset");
 const enabled = process.env.CI === "true" && ["localhost", "127.0.0.1"].includes(url.hostname) && url.pathname === "/appliance_desk_test";
@@ -44,6 +45,7 @@ describe.skipIf(!enabled)("pickup billing end: late returns, waiver and closing 
   const applianceIds: string[] = [];
   const jobIds: string[] = [];
   const octEnd = new Date("2025-11-01T05:59:59Z"); // the end of Colorado's October 31, 2025
+  let taxReady: Awaited<ReturnType<typeof seedTaxReadyContext>> | null = null;
 
   async function rental(opts: { endDate?: Date | null; termMonths?: number | null; terminationEffectiveOn?: Date; units?: number } = {}) {
     const agreementId = `pb-ag-${agreementIds.length}-${tag}`;
@@ -102,7 +104,10 @@ describe.skipIf(!enabled)("pickup billing end: late returns, waiver and closing 
   const agreementOf = (id: string) => prisma.rentalAgreement.findUniqueOrThrow({ where: { id } });
   const lateInvoice = async (jobId: string) => {
     const audit = await prisma.auditLog.findFirstOrThrow({ where: { action: "billing.late_return_invoiced", newValue: { path: ["jobId"], equals: jobId } } });
-    return prisma.invoice.findUniqueOrThrow({ where: { id: audit.entityId! }, include: { lineItems: true } });
+    return prisma.invoice.findUniqueOrThrow({
+      where: { id: audit.entityId! },
+      include: { lineItems: true, taxLines: true },
+    });
   };
 
   beforeEach(() => undefined);
@@ -117,6 +122,7 @@ describe.skipIf(!enabled)("pickup billing end: late returns, waiver and closing 
     });
     await prisma.customer.create({ data: { id: customerId, userId, referralCode: `P${tag.slice(0, 18)}` } });
     await prisma.serviceAddress.create({ data: { id: addressId, customerId, line1: "1 Test St", city: "Greeley", zip: "80631" } });
+    taxReady = await seedTaxReadyContext(addressId, { rateMilliPercent: 7000 });
     await prisma.applianceType.create({ data: { id: typeId, name: `PB ${tag}`, slug: `pb-${tag}` } });
   });
 
@@ -139,6 +145,7 @@ describe.skipIf(!enabled)("pickup billing end: late returns, waiver and closing 
     await prisma.rentalAgreement.deleteMany({ where: { id: { in: agreementIds } } });
     await prisma.appliance.deleteMany({ where: { id: { in: applianceIds } } });
     await prisma.applianceType.deleteMany({ where: { id: typeId } });
+    await taxReady?.cleanup();
     await prisma.serviceAddress.deleteMany({ where: { id: addressId } });
     await prisma.customer.deleteMany({ where: { id: customerId } });
     await prisma.user.deleteMany({ where: { id: { in: [ownerId, staffId, userId] } } });
@@ -168,6 +175,15 @@ describe.skipIf(!enabled)("pickup billing end: late returns, waiver and closing 
     expect(invoice.lineItems.filter((l) => l.kind === "LATE_RETURN")).toHaveLength(1); // the original stays visible
     expect(invoice.lineItems.filter((l) => l.kind === "LATE_RETURN_WAIVER").map((l) => l.amountCents)).toEqual([-400]);
     expect(invoice.lineItems.filter((l) => l.kind === "TAX").map((l) => l.amountCents).sort((a, b) => a - b)).toEqual([-28, 28]);
+    const originalTax = invoice.taxLines.find((line) => line.taxCents === 28);
+    const reversedTax = invoice.taxLines.find((line) => line.taxCents === -28);
+    expect(originalTax).toBeTruthy();
+    expect(reversedTax).toMatchObject({
+      jurisdictionId: originalTax!.jurisdictionId,
+      rateVersionId: originalTax!.rateVersionId,
+      category: "LATE_RETURN",
+      taxCents: -28,
+    });
   });
 
   it("late-by-company-partial-days", async () => {
