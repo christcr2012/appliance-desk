@@ -54,6 +54,24 @@ async function assertJurisdictionsExist(
   }
 }
 
+async function lockCustomerTaxExemptionInTx(
+  tx: Prisma.TransactionClient,
+  exemptionId: string,
+) {
+  const rows = await tx.$queryRaw<Array<{ id: string }>>`
+    SELECT "id"
+    FROM "CustomerTaxExemption"
+    WHERE "id" = ${exemptionId}
+    FOR UPDATE
+  `;
+  if (rows.length !== 1) {
+    throw new Error("Couldn't find that tax exemption.");
+  }
+  return tx.customerTaxExemption.findUniqueOrThrow({
+    where: { id: exemptionId },
+  });
+}
+
 async function exemptionDataInTx(
   tx: Prisma.TransactionClient,
   actorUserId: string,
@@ -209,9 +227,7 @@ export async function updateCustomerTaxExemption(
 ) {
   return prisma.$transaction(async (tx) => {
     await assertActiveTeamActor(tx, actorUserId, ["OWNER"]);
-    const existing = await tx.customerTaxExemption.findUniqueOrThrow({
-      where: { id: exemptionId },
-    });
+    const existing = await lockCustomerTaxExemptionInTx(tx, exemptionId);
     if (existing.revokedAt) {
       throw new Error("A revoked tax exemption cannot be edited. Add a new exemption instead.");
     }
@@ -254,9 +270,7 @@ export async function revokeCustomerTaxExemption(
   }
   return prisma.$transaction(async (tx) => {
     await assertActiveTeamActor(tx, actorUserId, ["OWNER"]);
-    const existing = await tx.customerTaxExemption.findUniqueOrThrow({
-      where: { id: exemptionId },
-    });
+    const existing = await lockCustomerTaxExemptionInTx(tx, exemptionId);
     if (existing.revokedAt) return existing;
     const row = await tx.customerTaxExemption.update({
       where: { id: exemptionId },
