@@ -129,6 +129,41 @@ describe.skipIf(!enabled)("Batch T tax-address re-check (real Postgres)", () => 
     expect(after.status).toBe("VERIFIED");
   });
 
+  it("preserves verified evidence when an automatic provider is temporarily unavailable", async () => {
+    const before = await prisma.addressTaxLocation.findFirstOrThrow({
+      where: { serviceAddressId: addressId, isCurrent: true },
+      include: { jurisdictions: true },
+    });
+    __setColoradoRateSourceForTests({
+      lookup: async () => ({
+        status: "UNAVAILABLE",
+        message: "temporary provider outage",
+      }),
+    });
+
+    const result = await recheckCurrentTaxAddresses(
+      businessDateFromKey("2026-11-01")!,
+      { serviceAddressIds: [addressId] },
+    );
+
+    expect(result).toEqual({
+      due: true,
+      automaticSourceAvailable: true,
+      checked: 1,
+      changed: 0,
+      needsReview: 0,
+    });
+    const after = await prisma.addressTaxLocation.findFirstOrThrow({
+      where: { serviceAddressId: addressId, isCurrent: true },
+      include: { jurisdictions: true },
+    });
+    expect(after.id).toBe(before.id);
+    expect(after.status).toBe("VERIFIED");
+    expect(after.jurisdictions.map((row) => row.jurisdictionId)).toEqual(
+      before.jurisdictions.map((row) => row.jurisdictionId),
+    );
+  });
+
   it("marks a changed jurisdiction set for review and records evidence", async () => {
     const source: ColoradoRateSource = {
       lookup: async () => ({
