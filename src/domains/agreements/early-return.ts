@@ -382,11 +382,19 @@ async function planInTx(
     }
   }
   const unusedCents = unusedLines.reduce((sum, l) => sum + l.amountCents, 0);
-  const { taxCents: unusedTaxCents } =
-    await historicalRentalTaxForBaseCentsInTx(tx, {
+  let unusedTaxCents = 0;
+  if (choice.unusedDays !== "KEEP" && unusedCents > 0) {
+    const historicalTax = await historicalRentalTaxForBaseCentsInTx(tx, {
       agreementId: agreement.id,
       baseCents: unusedCents,
     });
+    if (!historicalTax.evidenceComplete) {
+      throw new Error(
+        "This rental has older paid tax that is missing line-level tax evidence. Review the historical bill before refunding or crediting unused days.",
+      );
+    }
+    unusedTaxCents = historicalTax.taxCents;
+  }
   const refundOrCreditCents =
     choice.unusedDays === "KEEP" ? 0 : unusedCents + unusedTaxCents;
   return {
