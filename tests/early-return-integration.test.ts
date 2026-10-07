@@ -21,6 +21,7 @@ import { choiceFromFields, fieldsFromChoice } from "@/domains/agreements/early-r
 import { earlyReturnSettingsFrom, earlyReturnUpdate, RECOMMENDED_EARLY_RETURN } from "@/domains/settings/early-return";
 import { removeUndeliveredItem } from "@/domains/billing/pickup-billing-events";
 import { returnedEarlyRows } from "@/domains/exceptions";
+import { seedTaxReadyContext } from "./helpers/tax-ready";
 
 const url = new URL(process.env.DATABASE_URL ?? "postgresql://localhost/unset");
 const enabled = process.env.CI === "true" && ["localhost", "127.0.0.1"].includes(url.hostname) && url.pathname === "/appliance_desk_test";
@@ -74,6 +75,7 @@ describe.skipIf(!enabled)("early returns (real Postgres)", () => {
   const endOfSep2027 = new Date("2027-10-01T05:59:59Z");
   const policy = { feeCents: 5000, feePercent: null, feeCapCents: null, noticeDays: 30, unusedTerm: "RETAIN", termsText: "Early ending terms for the test." };
   let original: Record<string, unknown> | null = null;
+  let taxReady: Awaited<ReturnType<typeof seedTaxReadyContext>> | null = null;
 
   async function settings(partial: { billing?: string; unused?: string; fee?: string; handling?: string; basis?: string; pickupDayNotBilled?: boolean } = {}) {
     await prisma.businessSettings.update({
@@ -191,6 +193,7 @@ describe.skipIf(!enabled)("early returns (real Postgres)", () => {
     });
     await prisma.customer.create({ data: { id: customerId, userId, referralCode: `E${tag.slice(0, 18)}` } });
     await prisma.serviceAddress.create({ data: { id: addressId, customerId, line1: "1 Test St", city: "Greeley", zip: "80631" } });
+    taxReady = await seedTaxReadyContext(addressId, { rateMilliPercent: 7000 });
     await prisma.applianceType.create({ data: { id: typeId, name: `ER ${tag}`, slug: `er-${tag}` } });
     await prisma.monthToMonthTermsVersion.create({
       data: { id: `er-mtm-${tag}`, version: mtmVersion, noticeDays: 30, termsText: "Thirty days' notice to end.", publishedAt: new Date("2025-01-01T00:00:00Z") },
@@ -229,6 +232,7 @@ describe.skipIf(!enabled)("early returns (real Postgres)", () => {
     await prisma.appliance.deleteMany({ where: { id: { in: applianceIds } } });
     await prisma.applianceType.deleteMany({ where: { id: typeId } });
     await prisma.monthToMonthTermsVersion.deleteMany({ where: { version: mtmVersion } });
+    await taxReady?.cleanup();
     await prisma.serviceAddress.deleteMany({ where: { id: addressId } });
     await prisma.customer.deleteMany({ where: { id: customerId } });
     await prisma.user.deleteMany({ where: { id: { in: [ownerId, userId] } } });
@@ -290,9 +294,12 @@ describe.skipIf(!enabled)("early returns (real Postgres)", () => {
     expect(after.endDate?.toISOString()).toBe("2026-09-20T05:59:59.000Z");
     const invoice = await prisma.invoice.findFirstOrThrow({ where: { agreementId }, include: { lineItems: true, payments: true } });
     expect(invoice.status).toBe("OPEN");
-    expect(invoice.amountDueCents).toBe(5000);
+    expect(invoice.amountDueCents).toBe(5350);
     expect(invoice.payments).toHaveLength(0);
-    expect(invoice.lineItems.map((l) => [l.kind, l.amountCents])).toEqual([["EARLY_TERMINATION_FEE", 5000]]);
+    expect(invoice.lineItems.map((l) => [l.kind, l.amountCents])).toEqual([
+      ["EARLY_TERMINATION_FEE", 5000],
+      ["TAX", 350],
+    ]);
     expect((await resolutionOf(agreementId))?.feeInvoiceId).toBe(invoice.id);
     expect(await prisma.customerCredit.count({ where: { customerId, sourceType: "EARLY_RETURN", sourceId: (await resolutionOf(agreementId))!.id } })).toBe(0);
   });
