@@ -225,6 +225,7 @@ export async function startRenewalInTx(
     where: { id: old.id },
     data: {
       status: "ENDED",
+      closedAt: now,
       stripeSubscriptionId: null,
       nextBillingDate: null,
       billingBlockedReason: null,

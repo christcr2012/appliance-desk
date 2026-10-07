@@ -25,6 +25,7 @@ const DAYS_PER_MONTH = 30;
 export type AgreementEarningsInput = {
   billingStartedAt: Date | null;
   endDate: Date | null;
+  closedAt: Date | null;
   lines: { monthlyPriceCents: number }[];
   invoicePaidCents: number;
 };
@@ -44,13 +45,20 @@ export type AgreementEarnings = {
  * that never started billing (billingStartedAt is null) contributes $0,
  * never a guessed number. */
 export function computeEstimatedEarningsCents(
-  agreement: { billingStartedAt: Date | null; endDate: Date | null; lines: { monthlyPriceCents: number }[] },
+  agreement: {
+    billingStartedAt: Date | null;
+    endDate: Date | null;
+    closedAt: Date | null;
+    lines: { monthlyPriceCents: number }[];
+  },
   asOf: Date,
 ): number {
   if (!agreement.billingStartedAt) {
     return 0;
   }
-  const end = agreement.endDate && agreement.endDate < asOf ? agreement.endDate : asOf;
+  let end = asOf;
+  if (agreement.endDate && agreement.endDate < end) end = agreement.endDate;
+  if (agreement.closedAt && agreement.closedAt < end) end = agreement.closedAt;
   const days = Math.max(0, (end.getTime() - agreement.billingStartedAt.getTime()) / MS_PER_DAY);
   const monthlyTotalCents = agreement.lines.reduce((sum, line) => sum + line.monthlyPriceCents, 0);
   return Math.round((monthlyTotalCents / DAYS_PER_MONTH) * days);

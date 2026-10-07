@@ -640,11 +640,13 @@ export async function closeAgreementInTx(
     });
   }
 
+  const closedAt = new Date();
   await tx.rentalAgreement.update({
     where: { id: agreementId },
     data: {
       status: newStatus,
-      endDate: newStatus === "ENDED" ? (options.endedOn ?? new Date()) : agreement.endDate,
+      closedAt,
+      endDate: newStatus === "ENDED" ? (options.endedOn ?? closedAt) : agreement.endDate,
     },
   });
 

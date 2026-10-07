@@ -95,3 +95,15 @@ Tests:
 
 - "Security: you (Owner) have turned on two-step login and stored your backup codes somewhere safe, away from your phone."
 - "Security: every Admin has enrolled in two-step login."
+
+
+## Amendments
+
+**2026-10-06 — Better Auth 1.7.6 schema + roadmap sequencing drift (Sol 5.6, current-source verified).**
+
+- Section 0 G-A4 was directionally correct but the four-field `TwoFactor` model in section 2 is stale for installed Better Auth 1.7.6. Better Auth added verified-enrollment state before 1.7 and account-level lockout before 1.7.6. The model used by this batch is therefore: `id String @id`, `userId String @unique`, `secret String`, `backupCodes String`, `verified Boolean @default(true)`, `failedVerificationCount Int @default(0)`, `lockedUntil DateTime?`, plus the `User.twoFactorEnabled Boolean @default(false)` relation/field required by the plugin. G-2 must use the installed plugin APIs and their 1.7.6 discriminated TOTP enable response; it must not disable the plugin's default account lockout.
+- Master Roadmap §7 says G-1 owns Batch G's one migration while G-2 owns two-step behavior. To keep both rules true, **G-1's single additive migration contains all Batch G schema only**: `RentalAgreement.closedAt`, `BusinessSettings.twoFactorRequiredRoles`, `User.twoFactorEnabled`, and the complete Better Auth 1.7.6 `TwoFactor` table. G-1 does not enable or enforce two-step login; G-2 wires the plugin/UI/policy onto the already-present schema.
+- `TwoFactor` stores TOTP secret and backup codes and therefore joins `Account`, `Session`, and `Verification` as an explicit credential exclusion in `BACKUP_MODEL_POLICY`. A database restore still forces account recovery rather than restoring reusable authentication factors. Schema/backup structural tests must prove the exclusion is deliberate.
+- G-A6's wording was stale: the preview private store ID is not in `ALLOWED_IDENTIFIERS`; the secret scanner's infrastructure-ID rule does not classify `store_...` IDs. Existing preview-store verification and fail-closed tests remain unchanged; no allowlist entry is added.
+
+These are compatibility/sequencing amendments only. D-G3's owner/admin requirement, TOTP + ten single-use backup codes, setup exemptions, server-side enforcement, recovery script, and no-SMS decision are unchanged.

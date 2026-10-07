@@ -38,12 +38,14 @@ model User {
   emailVerified Boolean   @default(false)
   passwordHash  String?
   name          String?
-  role          Role      @default(CUSTOMER)
-  image         String?
+  role             Role    @default(CUSTOMER)
+  image            String?
+  twoFactorEnabled Boolean @default(false)
 
-  // Better Auth's own tables (sessions, accounts, verification tokens)
-  sessions Session[]
-  accounts Account[]
+  // Better Auth's own tables (sessions, accounts, verification tokens / TOTP)
+  sessions  Session[]
+  accounts  Account[]
+  twoFactor TwoFactor?
 
   customer Customer?
 
@@ -102,6 +104,17 @@ model Verification {
   updatedAt  DateTime @updatedAt
 
   @@index([identifier])
+}
+
+model TwoFactor {
+  id                      String   @id
+  userId                  String   @unique
+  user                    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  secret                  String
+  backupCodes             String
+  verified                Boolean  @default(true)
+  failedVerificationCount Int      @default(0)
+  lockedUntil             DateTime?
 }
 
 // ---------------------------------------------------------------------------
@@ -715,6 +728,9 @@ model RentalAgreement {
   termMonths Int? // null = month-to-month
   startDate  DateTime?
   endDate    DateTime?
+  // Actual time this record transitioned to ENDED/CANCELLED. Unlike endDate,
+  // this is never backdated to a contractual/agreed ending date.
+  closedAt   DateTime?
 
   // Price snapshot — what THIS customer agreed to, frozen at signing.
   // Changing PricingRule / ApplianceType later never touches these.
@@ -1802,6 +1818,9 @@ model BusinessSettings {
   // Master switch for every message sent to customers. Off until the owner turns it on; previews
   // and test copies never send even when on. Owner only.
   customerEmailEnabled Boolean @default(false)
+  // Batch G schema foundation; G-2 wires enforcement/UI. Stored as roles so
+  // owner policy can later include STAFF while CUSTOMER remains prohibited.
+  twoFactorRequiredRoles Json @default("[\"OWNER\",\"ADMIN\"]")
   // Master switch for AUTOMATIC renewals (queuing them, starting them, extending billing for them). Off until
   // the owner turns it on, whatever the wording settings say. Opt-out and billing-stop operations are never blocked.
   autoRenewEnabled Boolean @default(false)
