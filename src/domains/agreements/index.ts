@@ -7,6 +7,7 @@ import {
   recomputeForAgreementInTx,
 } from "@/domains/billing/subscription-end";
 import { createSignedAgreementArtifactInTx } from "@/domains/documents/artifacts";
+import { assertTaxReadyForAgreement } from "@/domains/tax/locations";
 import { prisma } from "@/lib/prisma";
 import type {
   Prisma,
@@ -449,6 +450,8 @@ export async function sendForSignature(userId: string, agreementId: string) {
     if (lineCount === 0) {
       throw new Error("Add at least one appliance to this agreement first.");
     }
+
+    await assertTaxReadyForAgreement(tx, agreementId);
 
     const signature = await tx.signatureRecord.create({
       data: { agreementId, provider: "typed_signature" },
