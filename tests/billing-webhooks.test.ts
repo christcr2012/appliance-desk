@@ -201,6 +201,12 @@ beforeAll(async () => {
           id,
           payment_method: { id: `pm_from_${id}`, type: "card" },
           latest_charge: null,
+          amount_received:
+            id === "pi_fake_paid_signing_taxed"
+              ? 16073
+              : id.includes("signing")
+                ? 15000
+                : 0,
         }) as unknown as Stripe.PaymentIntent,
     },
     setupIntents: {
@@ -233,6 +239,7 @@ afterAll(async () => {
           "evt_setup_1",
           "evt_payment_pending",
           "evt_payment_paid",
+          "evt_payment_paid_taxed",
           "evt_async_succeeded",
           "evt_async_failed",
         ],
@@ -502,6 +509,73 @@ describe("checkout.session.completed — payment mode", () => {
     expect(invoice!.payments[0].status).toBe("succeeded");
     expect(invoice!.payments[0].receiptId).not.toBeNull();
   });
+  it("mirrors damage-waiver tax from the actual signing payment", async () => {
+    await prisma.rentalAgreement.update({
+      where: { id: agreementId },
+      data: { damageWaiverCents: 1000 },
+    });
+    try {
+      const event = fakeEvent(
+        "evt_payment_paid_taxed",
+        "checkout.session.completed",
+        {
+          mode: "payment",
+          payment_intent: "pi_fake_paid_signing_taxed",
+          payment_status: "paid",
+          metadata: { agreementId },
+        },
+      );
+      await processStripeWebhookEvent(event);
+
+      const invoice = await prisma.invoice.findFirstOrThrow({
+        where: {
+          agreementId,
+          payments: {
+            some: { stripePaymentIntentId: "pi_fake_paid_signing_taxed" },
+          },
+        },
+        include: { lineItems: true, payments: true, taxLines: true },
+      });
+      expect(invoice).toMatchObject({
+        subtotalCents: 16000,
+        taxCents: 73,
+        amountDueCents: 16073,
+        amountPaidCents: 16073,
+      });
+      expect(invoice.lineItems.map((line) => [line.kind, line.amountCents])).toEqual(
+        expect.arrayContaining([
+          ["DEPOSIT", 15000],
+          ["DAMAGE_WAIVER", 1000],
+          ["TAX", 73],
+        ]),
+      );
+      expect(invoice.taxLines).toEqual([
+        expect.objectContaining({
+          jurisdictionId: taxReady.jurisdictionId,
+          rateVersionId: taxReady.rateVersionId,
+          category: "DAMAGE_WAIVER",
+          taxableCents: 1000,
+          taxCents: 73,
+          source: "ENGINE",
+        }),
+      ]);
+      expect(
+        await prisma.auditLog.count({
+          where: {
+            entityType: "Invoice",
+            entityId: invoice.id,
+            action: "billing.tax_mismatch",
+          },
+        }),
+      ).toBe(0);
+    } finally {
+      await prisma.rentalAgreement.update({
+        where: { id: agreementId },
+        data: { damageWaiverCents: 0 },
+      });
+    }
+  });
+
 });
 
 describe("checkout.session.async_payment_succeeded / _failed", () => {
