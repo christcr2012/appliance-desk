@@ -487,3 +487,6 @@ map — one "Sales tax" entry in the Money nav group (`/desk/sales-tax`, OWNER/A
 & addresses, What's taxed, Exemptions, Setup), one combined return/filing page, every tax Today item routed to its fixing
 screen, a setup checklist identical to the billing blockers, and an on-screen glossary (no "jurisdiction", "packet",
 "GIS" or "RDF" in the UI).
+Fourth Codex review fixes: the delivery fee's sale date is the first rent charge (not the signing date); prepaid or
+ended agreements get a standalone fee invoice so a collected fee is never only reported; a prior-period fee credit is
+tied to the return that claims it so it cannot be reused; the page watch counts consecutive failures.

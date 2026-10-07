@@ -1255,8 +1255,12 @@ model RetailDeliveryFeeRecord {
   firstJobId          String             // the delivery job that first fulfilled the sale (later partial trips dedupe)
   agreementId         String
   deliveredOn         DateTime           // first delivery of the sale
-  saleOn              DateTime           // date of the sale's first lease payment (agreement start or addition);
-                                         // selects the fee amount and the reporting period (review fix)
+  saleOn              DateTime?          // date of the sale's FIRST RENT CHARGE (review fix): the first invoice —
+                                         // Stripe or local — that charges rent for this sale (for a normal rental the
+                                         // first invoice anchored to firstDeliveredOn; for a prepaid one the signing
+                                         // payment date); null until that charge exists. Selects amount and period.
+  creditAppliedPeriodId String?          // set when an over-reported fee is claimed as a credit on a later RDF return;
+                                         // frozen when that return is filed, so the credit can never be claimed twice
   status              RdfRecordStatus
   rateId              String?            // null while PENDING_DECISION / PENDING_RATE (review fix)
   rate                RetailDeliveryFeeRate? @relation(fields: [rateId], references: [id])
@@ -1283,16 +1287,22 @@ model RetailDeliveryFeeRecord {
   is `UNDECIDED` at delivery time, the record is written as `PENDING_DECISION`; once decided it becomes `NOT_DUE`
   (status turned out not to apply) or, if the fee applies, `READY` when a rate exists for `saleOn` and `PENDING_RATE`
   otherwise (review fix: never `READY` without an amount), with an audit row.
-- **Amount:** the `RetailDeliveryFeeRate` in effect on **`saleOn`** — the date of the sale's first lease payment
-  (Colorado charges a lease's fee once, at the first payment, at the amount in effect when the sale takes place; this
-  matters for an agreement paid before July 1 and delivered after it, including `paidInFullInAdvance` agreements);
-  none entered → the completion still succeeds,
+- **Amount:** the `RetailDeliveryFeeRate` in effect on **`saleOn`** — the date of the sale's **first rent charge**
+  (Colorado charges a lease's fee once, at the first payment, at the amount in effect when the sale takes place). It is
+  *not* the agreement's `startDate`, which is the signing date: recurring billing starts from `firstDeliveredOn`, so a
+  rental signed in June and first charged in July uses July's amount, while a `paidInFullInAdvance` rental paid at
+  signing in June uses June's. `saleOn` is filled when that first rent invoice is recorded (local invoice creation or
+  the Stripe invoice mirror); until then the record stays `PENDING_RATE` with the reason "first rent charge not yet
+  made". If no rate exists for `saleOn` → the completion still succeeds,
   the record is `PENDING_RATE` (rate and amount empty) and is completed in place when the rate is entered; a `high`
   Today task says "Enter the retail delivery fee amount for July 2026 –
   June 2027". A June Today task (from June 1) reminds the owner to enter the next July's amount.
 - **Charging the customer** (`COLLECT_FROM_CUSTOMER`): one invoice line category `RETAIL_DELIVERY_FEE`, label "Colorado
   retail delivery fee", never taxed (the engine skips it; add it to the 3.1 category map as non-taxable by law, not by
-  matrix), on the next invoice for that agreement. Stripe-billed agreements: a one-time invoice item on the next
+  matrix), on the next invoice for that agreement. **When the agreement will have no next invoice** — a
+  `paidInFullInAdvance` agreement (no subscription is created for it) or one already ended — the app issues a
+  **standalone local invoice** for the fee alone, due on receipt and payable in the customer portal like any local
+  invoice, idempotent per record (review fix: otherwise the fee would be reported but never collected). Stripe-billed agreements: a one-time invoice item on the next
   subscription invoice through the existing provider-operation pattern (`ProviderOperation` kind
   `RDF_INVOICE_ITEM`, key `rdf-<recordId>`); local invoices: a line on the next local invoice. Shown separately on the
   invoice, statement and customer portal (B-F4).
@@ -1311,7 +1321,10 @@ rate if the period crosses July 1), total fee; zero return when there were none.
 `saleOn`. **Corrections (review fix):** fees *added* to an already-filed period open an amendment (11.12); fees
 *over-reported* on a filed period (a record later found `NOT_DUE`, or a cancelled sale) are claimed as a **credit on the
 current open RDF return** (DR 1786 tells filers to claim prior-period overpayments that way instead of amending): the
-RDF packet has a `priorPeriodCreditCents` line with the source period named, and no amendment is opened.
+RDF packet has a `priorPeriodCreditCents` line with the source period named, and no amendment is opened. A credit is
+offered only by records whose `creditAppliedPeriodId` is empty or equals the open period; it is set to the open period
+when the packet is built and frozen when that return is marked filed, so a later return can never claim it again
+(review fix; DR 1786 forbids reusing a credit already taken on another return).
 
 ### 12.6 Watching the exemption
 
@@ -1328,7 +1341,8 @@ rate switch; one fee per sale with several appliances and with a partial deliver
 grace until the first period starting 90+ days after crossing; state-exempt delivery charges nothing; undecided status
 blocks readiness),
 ★ `tests/retail-delivery-fee-integration.test.ts` (completion writes one record under retry; collected line is untaxed
-and on the next invoice; PAY_MYSELF adds no line; rate missing leaves a PENDING_RATE record completed later; undecided
+and on the next invoice; a prepaid agreement gets a standalone fee invoice; a rental signed in June and first charged in
+July uses July's amount; a credit claimed on one filed return is not offered on the next; PAY_MYSELF adds no line; rate missing leaves a PENDING_RATE record completed later; undecided
 leaves PENDING_DECISION resolved later — to PENDING_RATE when no amount exists yet; a free repair swap creates no
 record; a sale paid before July 1 and delivered after uses the earlier amount; added fee after filing opens an amendment; over-reported fee
 becomes a credit on the current return), packet tests for the RDF return in `tests/tax-filing-packet.test.ts`, readiness test in the
@@ -1409,6 +1423,7 @@ model OfficialSourceWatch {
   lastCheckedAt DateTime?
   lastChangedAt DateTime?
   lastError     String?
+  consecutiveFailures Int @default(0)   // +1 on each failed fetch, back to 0 on any successful fetch (review fix)
   reviewedAt    DateTime?
   createdAt     DateTime  @default(now())
 }
@@ -1427,7 +1442,8 @@ model OfficialSourceWatch {
   change).
 - **Change found:** Today task `TAX_SOURCE_CHANGED` "Colorado updated *Sales tax rate changes* — here is what's new"
   (excerpt + link), cleared by "I looked at it" (sets `reviewedAt`). An owner email goes out with the same text (11.6).
-  Three failed fetches in a row → task "We couldn't check <label> — the page may have moved".
+  When `consecutiveFailures` reaches 3 → task "We couldn't check <label> — the page may have moved" (stays until a
+  successful fetch resets the counter or the owner pauses the entry).
 - **Yearly CPA check:** each December a Today task "Ask your CPA whether anything in Colorado sales tax changes on
   January 1 for you" (laws are not machine-readable; this is the safety net).
 
