@@ -8,6 +8,7 @@ import {
 import { getActiveApplianceOptionsForCustomer } from "@/domains/agreements/active-appliances";
 import { sendCustomerActivationEmail } from "@/domains/leads";
 import { generateUniqueReferralCode } from "@/domains/referrals";
+import { locateServiceAddress } from "@/domains/tax/locations";
 
 export { getCustomerTimeline, getCustomerContacts } from "./timeline";
 export type { TimelineEntry } from "./timeline";
@@ -207,6 +208,17 @@ export async function createCustomerDirectly(
     return { customer: customerRow, serviceAddresses: addresses };
   });
 
+  await Promise.all(
+    serviceAddresses.map((address) =>
+      locateServiceAddress(address.id).catch((error) => {
+        console.error(
+          "[tax] Service-address lookup failed after customer creation:",
+          error instanceof Error ? error.message : "unknown error",
+        );
+      }),
+    ),
+  );
+
   const activationEmailSent = await sendCustomerActivationEmail(email);
   return {
     customer,
@@ -253,6 +265,13 @@ export async function addServiceAddress(
       },
     }),
   ]);
+
+  await locateServiceAddress(address.id).catch((error) => {
+    console.error(
+      "[tax] Service-address lookup failed after address creation:",
+      error instanceof Error ? error.message : "unknown error",
+    );
+  });
 
   return address;
 }

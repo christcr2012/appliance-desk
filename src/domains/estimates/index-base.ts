@@ -3,6 +3,7 @@ import type { EstimateStatus, Prisma } from "@prisma/client";
 import { deliverMessage } from "@/domains/messaging/deliver";
 import { getBusinessSettings } from "@/domains/settings";
 import { createDraftAgreementInTx } from "@/domains/agreements";
+import { locateServiceAddress } from "@/domains/tax/locations";
 import {
   createLeadManually,
   convertLeadToCustomerInTx,
@@ -590,6 +591,7 @@ export async function approveEstimate(
 
     let customerId = estimate.customerId;
     let activationEmail: string | null = null;
+    let serviceAddressId: string | null = null;
 
     if (!customerId && estimate.leadId) {
       const lead = await tx.lead.findUniqueOrThrow({
@@ -605,6 +607,7 @@ export async function approveEstimate(
           { emailOverride: lead.email ? undefined : input.approverEmail },
         );
         customerId = converted.customer.id;
+        serviceAddressId = converted.serviceAddressId;
         if (converted.isNewAccount) activationEmail = converted.email;
       }
     }
@@ -621,10 +624,23 @@ export async function approveEstimate(
       },
     });
 
-    return { expired: false as const, customerId, activationEmail };
+    return {
+      expired: false as const,
+      customerId,
+      activationEmail,
+      serviceAddressId,
+    };
   });
 
   if (result.expired) throw new Error(EXPIRED_ESTIMATE_MESSAGE);
+  if (result.serviceAddressId) {
+    await locateServiceAddress(result.serviceAddressId).catch((error) => {
+      console.error(
+        "[tax] Service-address lookup failed after estimate approval:",
+        error instanceof Error ? error.message : "unknown error",
+      );
+    });
+  }
   if (result.activationEmail) {
     await sendCustomerActivationEmail(result.activationEmail);
   }
