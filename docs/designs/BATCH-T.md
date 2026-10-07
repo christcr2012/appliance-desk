@@ -1596,8 +1596,8 @@ signing or billing (IN-43/IN-44 never block — `PLAN.md`), they only make retur
   status with link to Exemptions. No editing here.
 - **Agreement and rental builder:** the address's tax areas and rate in the price summary; a blocking notice links to
   the exact fix (14.3 targets).
-- **Appliance form / purchase order receiving:** "Sales tax the seller charged" field (3.6) with a hint linking to
-  Returns → Use tax purchases.
+- **Appliance form / purchase order receiving:** the "Sales tax when you bought it" section (Amendment D, 15.2) and an
+  appliance-detail "Tax at purchase" panel, linking to Returns → Use tax purchases.
 - **Invoices, statements, customer portal:** tax lines by area name and the separate "Colorado retail delivery fee"
   line (12.4); customers never see filing information.
 - **Automations page:** the new rules (`tax-rate-changes`, `tax-address-recheck`, `tax-filing-calendar`,
