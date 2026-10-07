@@ -596,9 +596,13 @@ describe.skipIf(!enabled)("a waiting item and the Stripe subscription (real Post
     expect(sim.state.refundCalls).toHaveLength(0);
     const row = await prisma.pendingDelivery.findUniqueOrThrow({ where: { id: s.pending.id } });
     expect(row).toMatchObject({ refundedCents: 0, refundByHandCents: 6480 });
-    const refund = await prisma.refund.findFirstOrThrow({ where: { invoiceId: { in: invoiceIds.filter((id) => id.includes(`-${s.n}-`)) } } });
-    expect(refund.stripeRefundId).toBeNull();
-    expect(refund.amountCents).toBe(6480);
+    const refunds = await prisma.refund.findMany({
+      where: { invoiceId: { in: invoiceIds.filter((id) => id.includes(`-${s.n}-`)) } },
+      orderBy: { createdAt: "asc" },
+    });
+    expect(refunds).toHaveLength(2);
+    expect(refunds.every((refund) => refund.stripeRefundId === null)).toBe(true);
+    expect(refunds.map((refund) => refund.amountCents).sort((a, b) => a - b)).toEqual([3240, 3240]);
   });
 
   it("R3 a failed Stripe refund stays on record as unfinished and is never counted as done", async () => {
