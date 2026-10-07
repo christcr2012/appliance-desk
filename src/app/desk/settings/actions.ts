@@ -522,3 +522,43 @@ export async function updateTwoFactorRequiredRolesAction(formData: FormData): Pr
   await setTwoFactorRequiredRoles(session.user.id, roles);
   revalidatePath("/desk/settings");
 }
+
+
+/** Keeps this browser's session and revokes every other session for the current user. */
+export async function signOutOtherSessionsAction(): Promise<
+  | { status: "success"; revoked: number }
+  | { status: "error"; message: string }
+> {
+  const session = await requireRole("OWNER", "ADMIN");
+  const { signOutOtherSessions } = await import("@/domains/security/session-control");
+  try {
+    const revoked = await signOutOtherSessions(session.user.id, session.session.id);
+    revalidatePath("/desk/settings");
+    revalidatePath("/desk/activity");
+    return { status: "success", revoked };
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Other sessions could not be signed out.",
+    };
+  }
+}
+
+/** Owner-only emergency revocation for one staff login. */
+export async function signOutStaffEverywhereAction(
+  staffUserId: string,
+): Promise<SettingsActionState & { revoked?: number }> {
+  const session = await requireRole("OWNER");
+  const { signOutStaffEverywhere } = await import("@/domains/security/session-control");
+  try {
+    const revoked = await signOutStaffEverywhere(session.user.id, staffUserId);
+    revalidatePath("/desk/settings");
+    revalidatePath("/desk/activity");
+    return { status: "success", revoked };
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "That staff account could not be signed out.",
+    };
+  }
+}
