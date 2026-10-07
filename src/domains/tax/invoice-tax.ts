@@ -3,7 +3,8 @@ import type { InvoiceLineItemKind as PrismaInvoiceLineItemKind, Prisma } from "@
 import { computeTax, type EngineResult } from "@/domains/tax/engine";
 import { getAgreementTaxContext } from "@/domains/tax/locations";
 import type { InvoiceLineItemKind } from "@/domains/tax/categories";
-import { businessDateKey } from "@/lib/business-date";
+import { businessDateFromKey, businessDateKey } from "@/lib/business-date";
+import { lockCustomerLedger } from "@/domains/billing/ledger";
 
 export type AgreementInvoiceTaxLine = {
   key: string;
@@ -218,6 +219,126 @@ export async function createLocalTaxedInvoice(
       status: "OPEN",
       taxCents: result.totalTaxCents,
       amountDueCents: subtotalCents + result.totalTaxCents,
+    },
+  });
+  return { invoice: opened, result };
+}
+
+
+function taxDateFromAudit(
+  value: Prisma.JsonValue | null,
+  fallback: Date,
+): Date {
+  if (!value || Array.isArray(value) || typeof value !== "object") return fallback;
+  const taxDate = (value as Prisma.JsonObject).taxDate;
+  return typeof taxDate === "string"
+    ? (businessDateFromKey(taxDate) ?? fallback)
+    : fallback;
+}
+
+export async function recalculateDraftInvoiceTax(
+  tx: Prisma.TransactionClient,
+  input: { invoiceId: string; userId: string },
+) {
+  const summary = await tx.invoice.findUniqueOrThrow({
+    where: { id: input.invoiceId },
+    select: { customerId: true },
+  });
+  await lockCustomerLedger(tx, summary.customerId);
+  await tx.$queryRaw`
+    SELECT "id" FROM "Invoice" WHERE "id" = ${input.invoiceId} FOR UPDATE
+  `;
+
+  const invoice = await tx.invoice.findUniqueOrThrow({
+    where: { id: input.invoiceId },
+    include: { lineItems: { orderBy: [{ createdAt: "asc" }, { id: "asc" }] } },
+  });
+  if (invoice.status !== "DRAFT" || !invoice.agreementId) {
+    throw new Error("Only a draft agreement bill can have tax recalculated.");
+  }
+
+  const marker = await tx.auditLog.findFirst({
+    where: {
+      entityType: "Invoice",
+      entityId: invoice.id,
+      action: "billing.tax_decision_needed",
+    },
+    select: { newValue: true },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+  });
+  const fallbackTaxDate =
+    invoice.dueDate ?? invoice.billingPeriodStart ?? invoice.createdAt;
+  const taxDate = taxDateFromAudit(marker?.newValue ?? null, fallbackTaxDate);
+  const taxableLines = invoice.lineItems.filter((line) => line.kind !== "TAX");
+  const result = await computeAgreementInvoiceTax(tx, {
+    agreementId: invoice.agreementId,
+    taxDate,
+    lines: taxableLines.map((line) => ({
+      key: line.id,
+      kind: line.kind,
+      amountCents: line.amountCents,
+    })),
+  });
+
+  if (!result.ok) {
+    await tx.auditLog.create({
+      data: {
+        userId: input.userId,
+        action: "billing.tax_decision_needed",
+        entityType: "Invoice",
+        entityId: invoice.id,
+        newValue: {
+          agreementId: invoice.agreementId,
+          taxDate: businessDateKey(taxDate),
+          problems: result.problems,
+        },
+      },
+    });
+    return { invoice, result };
+  }
+
+  await tx.invoiceLineItem.deleteMany({
+    where: { invoiceId: invoice.id, kind: "TAX" },
+  });
+  await replaceEngineInvoiceTaxLines(tx, {
+    invoiceId: invoice.id,
+    result,
+    lineItemIdByKey: new Map(taxableLines.map((line) => [line.id, line.id])),
+  });
+  if (result.totalTaxCents > 0) {
+    await tx.invoiceLineItem.create({
+      data: {
+        invoiceId: invoice.id,
+        kind: "TAX",
+        description: "Sales tax",
+        amountCents: result.totalTaxCents,
+        quantity: 1,
+        rentalLineId: null,
+      },
+    });
+  }
+
+  const opened = await tx.invoice.update({
+    where: { id: invoice.id },
+    data: {
+      status: "OPEN",
+      version: { increment: 1 },
+      taxCents: result.totalTaxCents,
+      amountDueCents:
+        invoice.subtotalCents -
+        invoice.discountCents +
+        invoice.lateFeeCents +
+        result.totalTaxCents,
+    },
+  });
+  await tx.auditLog.create({
+    data: {
+      userId: input.userId,
+      action: "billing.tax_recalculated",
+      entityType: "Invoice",
+      entityId: invoice.id,
+      oldValue: { status: "DRAFT", taxCents: invoice.taxCents },
+      newValue: { status: "OPEN", taxCents: result.totalTaxCents },
     },
   });
   return { invoice: opened, result };
