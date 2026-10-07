@@ -119,17 +119,23 @@ git diff --name-only origin/<base>...HEAD -- src prisma scripts | wc -l
 | Risk areas | **one** of: schema, money/billing, auth/permissions, provider (Stripe/email/SMS), screens | Mixing two makes a red CI hard to diagnose |
 | New browser spec files | **at most one** | Browser shards are the slowest part of CI |
 | Expected red CI runs | **1 or none** (3 red runs is the ceiling, see Step 8) | If you expect more, the PR is too big |
-| Session | **at most 2 merged PRs per agent session**; write the STATUS handoff after each | Long sessions lose context and start guessing |
+| Session | **no numeric merge limit**; merge ready PRs in dependency order while exact-head gates/reviews remain clean | Drift control comes from authoritative docs, lockstep and exact-head verification—not a counter |
 
 Tests are not budgeted — write as many as the change needs. A PR that is mostly tests is fine.
+
+**Stack lockstep / context anchor (Chris, 2026-10-07):** keep at most two unmerged implementation PRs open in one dependency chain. Do not keep building a third PR while the bottom PR is still changing. If the bottom PR receives a patch after its successor was branched, freeze the successor, finish/review the bottom PR, then sync/rebase the successor onto that final head before further implementation. Any dependent card or documentation PR stacks on the top prerequisite branch rather than stale `main`.
+
+The approved design, applicable PR card, `docs/STATUS.md` and `docs/MASTER-ROADMAP.md` are the persistent context anchor. Re-read the current applicable pieces at each PR boundary and after a base changes; do not rely on an earlier session's remembered state. Session length by itself is not a stop condition. After each predecessor merges, retarget the next PR to current `main`, verify exact-head CI/performance/preview/reviews once, and merge it if clean. Continue while the next step is authorized and verified; stop at a required patch, failed/pending blocking gate, review finding, approval gate, or insufficient verified context. Never skip exact-head gates.
 
 **The cheapest way to avoid CI rounds:** for any PR in the schema, money/billing or auth risk area, run the integration
 tests you added or changed against the local throwaway Postgres (Step 4b, only those files) before the first push. It
 costs a few minutes once per session and usually saves a whole red CI round. For screen PRs, run the one browser spec
 you touched with the 4c recipe.
 
-**Never sit idle.** While a PR waits on CI, on a reviewer, or on Chris (Batch V's before/after screenshot gate), start
-the next PR in the stack from that PR's branch. Automated reviewers: if Codex replies that its usage limit is reached,
+**Never sit idle.** While a PR waits on CI, on a reviewer, or on Chris (Batch V's before/after screenshot gate), you may
+start **only its immediate successor**, and only if that creates no more than two unmerged implementation PRs in the
+dependency chain. If a successor already exists, use the wait for independent docs/review/self-audit work instead of
+starting a third dependent implementation PR. Automated reviewers: if Codex replies that its usage limit is reached,
 or no review has posted 20 minutes after `ci` went green and no Copilot review run is in progress, record "automated
 review unavailable — waived" (AGENTS.md) with your own diff inspection, and continue.
 
