@@ -224,14 +224,9 @@ describe.skipIf(!enabled)("Batch T local invoice tax evidence (real Postgres)", 
 
   it("keeps the field operation successful when tax is undecided, then opens the draft after recalculation", async () => {
     const fixture = await lateReturnFixture(3);
-    await prisma.taxabilityRule.update({
-      where: {
-        jurisdictionId_category: {
-          jurisdictionId: taxFixture.jurisdictionId,
-          category: "LATE_RETURN",
-        },
-      },
-      data: { taxability: "UNDECIDED" },
+    await prisma.businessSettings.update({
+      where: { id: "singleton" },
+      data: { shortTermLeaseElection: "UNDECIDED" },
     });
 
     const billed = await prisma.$transaction((tx) =>
@@ -260,14 +255,9 @@ describe.skipIf(!enabled)("Batch T local invoice tax evidence (real Postgres)", 
     });
     expect((audit?.newValue as { problems?: string[] } | null)?.problems?.join(" ")).toMatch(/not decided/i);
 
-    await prisma.taxabilityRule.update({
-      where: {
-        jurisdictionId_category: {
-          jurisdictionId: taxFixture.jurisdictionId,
-          category: "LATE_RETURN",
-        },
-      },
-      data: { taxability: "TAXABLE" },
+    await prisma.businessSettings.update({
+      where: { id: "singleton" },
+      data: { shortTermLeaseElection: "COLLECT_ON_RENTALS" },
     });
     expect(await recalculateLocalInvoiceTax(ownerId, blocked.id)).toEqual({
       ok: true,
