@@ -107,6 +107,27 @@ export function stripeTaxMismatchException(invoice: {
   };
 }
 
+export function stripeTaxUnverifiedException(invoice: {
+  id: string;
+  invoiceNumber: number;
+  customerId: string;
+  customerName: string;
+  since: Date;
+  problems: string[];
+}): ExceptionItem {
+  return {
+    category: "SALES_TAX",
+    severity: "high",
+    title: `Bill #${invoice.invoiceNumber} tax could not be verified`,
+    detail:
+      invoice.problems.length > 0
+        ? invoice.problems.join(" ")
+        : "Review this Stripe bill's tax evidence before relying on it for filing or a refund.",
+    href: `/desk/billing/customer/${invoice.customerId}/invoice/${invoice.id}`,
+    since: invoice.since,
+  };
+}
+
 export function billingBlockedException(agreement: {
   id: string;
   billingBlockedReason: string;
