@@ -8,6 +8,10 @@ import { businessDateEnd, businessDateFromKey } from "@/lib/business-date";
 vi.mock("@/lib/prisma", () => ({ prisma: {} }));
 vi.mock("@/lib/stripe", () => ({ getStripeClient: () => ({}) }));
 vi.mock("@/lib/team-actor", () => ({ assertActiveTeamActor: vi.fn() }));
+const applyLocalInvoiceTaxInTx = vi.hoisted(() =>
+  vi.fn(async () => ({ ok: true as const, totalTaxCents: 33 })),
+);
+vi.mock("@/domains/tax/local-invoice", () => ({ applyLocalInvoiceTaxInTx }));
 
 import {
   jobServiceDate,
@@ -94,7 +98,10 @@ const assignment = (id: string, applianceId: string, rentalLine: ReturnType<type
   appliance: { assetNumber: applianceId.toUpperCase(), applianceType: { name } },
 });
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => {
+  vi.clearAllMocks();
+  applyLocalInvoiceTaxInTx.mockResolvedValue({ ok: true, totalTaxCents: 33 });
+});
 
 describe("the date a job's work happened", () => {
   it("prefers the date staff recorded, then the scheduled date, then completion", () => {
@@ -133,7 +140,7 @@ describe("late return (rule 1)", () => {
     taxRateMilliPercent: 7_375,
   };
 
-  it("bills 3 late days per item on one open invoice, each as its own labeled line, with the agreement's tax", async () => {
+  it("creates the late-return bill as draft, then delegates address-exact tax before returning the total", async () => {
     const { tx, writes } = fakeTx({ agreement: base, assignments: [assignment("as-1", "w1", line("line-w", 4_500, ["w1"]), "Washer")] });
     const result = await recordLateReturnOnRemoval(tx as never, {
       userId: "owner",
@@ -152,14 +159,17 @@ describe("late return (rule 1)", () => {
       amountDueCents: number;
       lineItems: { createMany: { data: Array<Record<string, unknown>> } };
     };
-    expect(invoice.status).toBe("OPEN");
+    expect(invoice.status).toBe("DRAFT");
     expect(invoice.subtotalCents).toBe(450);
-    expect(invoice.taxCents).toBe(33); // 7.375% of $4.50 = $0.3319 → $0.33
-    expect(invoice.amountDueCents).toBe(483);
+    expect(invoice.taxCents).toBe(0);
+    expect(invoice.amountDueCents).toBe(450);
     expect(invoice.lineItems.createMany.data).toEqual([
       { kind: "LATE_RETURN", description: "Late return – Washer #W1 – 3 days", amountCents: 450, quantity: 1, rentalLineId: "line-w" },
-      { kind: "TAX", description: "Sales tax", amountCents: 33, quantity: 1, rentalLineId: null },
     ]);
+    expect(applyLocalInvoiceTaxInTx).toHaveBeenCalledWith(
+      tx,
+      expect.objectContaining({ invoiceId: "inv-1", agreementId: "agr-1", actorUserId: "owner" }),
+    );
     expect(writes.credits).toHaveLength(0);
     expect(writes.audits[0].action).toBe("billing.late_return_invoiced");
   });

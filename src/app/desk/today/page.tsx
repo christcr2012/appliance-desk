@@ -27,6 +27,7 @@ export const metadata = { title: "Today" };
 
 const CATEGORIES: Record<ExceptionCategory, string> = {
   BILLING_BLOCKED: "Billing blocked",
+  SALES_TAX: "Sales tax",
   STALE_RESERVATION: "Reservation expired",
   PAST_DUE_INVOICE: "Past due",
   OVERDUE_JOB: "Overdue job",

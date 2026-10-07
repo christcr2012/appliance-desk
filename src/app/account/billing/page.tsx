@@ -41,7 +41,7 @@ export default async function AccountBillingPage() {
     );
   }
 
-  const statement = await getCustomerStatement(customer.id);
+  const statement = await getCustomerStatement(customer.id, { customerVisible: true });
   const hasMultipleProperties = (statement?.properties.length ?? 0) > 1;
   const statementMonth = previousBusinessMonth();
 

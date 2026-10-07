@@ -126,6 +126,24 @@ describe("getCustomerStatement", () => {
     expect(addr1?.totalBalanceCents).toBe(3000);
   });
 
+  it("hides draft invoices at the customer-visible statement boundary", async () => {
+    customerFindUnique.mockResolvedValue({
+      id: "cust-1",
+      companyName: null,
+      user: { name: "Pat", email: "pat@example.com" },
+      invoices: [
+        invoice({ id: "draft", invoiceNumber: 1, status: "DRAFT" }),
+        invoice({ id: "open", invoiceNumber: 2, status: "OPEN" }),
+      ],
+    });
+    const { getCustomerStatement } = await import("@/domains/billing/statements");
+
+    const result = await getCustomerStatement("cust-1", { customerVisible: true });
+
+    expect(result?.properties.flatMap((property) => property.invoices).map((row) => row.id)).toEqual(["open"]);
+    expect(customerFindUnique.mock.calls.at(-1)?.[0].select.invoices.where.status).toEqual({ not: "DRAFT" });
+  });
+
   it("counts only OPEN/PARTIALLY_PAID/DELINQUENT invoices as open", async () => {
     customerFindUnique.mockResolvedValue({
       id: "cust-1",

@@ -10,6 +10,7 @@ import { openCustodyEpisodeInTx } from "@/domains/inventory/custody";
 import { recordLateReturnWaiver, lateReturnWaiverCents } from "@/domains/billing/late-return-waiver";
 import { closeFullyReturnedAgreements } from "@/domains/agreements/returns";
 import { agreedEndFor } from "@/domains/billing/pickup-billing-events";
+import { seedTaxReadyContext } from "./helpers/tax-ready";
 
 const url = new URL(process.env.DATABASE_URL ?? "postgresql://localhost/unset");
 const enabled = process.env.CI === "true" && ["localhost", "127.0.0.1"].includes(url.hostname) && url.pathname === "/appliance_desk_test";
@@ -44,6 +45,7 @@ describe.skipIf(!enabled)("pickup billing end: late returns, waiver and closing 
   const applianceIds: string[] = [];
   const jobIds: string[] = [];
   const octEnd = new Date("2025-11-01T05:59:59Z"); // the end of Colorado's October 31, 2025
+  let taxFixture: Awaited<ReturnType<typeof seedTaxReadyContext>>;
 
   async function rental(opts: { endDate?: Date | null; termMonths?: number | null; terminationEffectiveOn?: Date; units?: number } = {}) {
     const agreementId = `pb-ag-${agreementIds.length}-${tag}`;
@@ -117,6 +119,7 @@ describe.skipIf(!enabled)("pickup billing end: late returns, waiver and closing 
     });
     await prisma.customer.create({ data: { id: customerId, userId, referralCode: `P${tag.slice(0, 18)}` } });
     await prisma.serviceAddress.create({ data: { id: addressId, customerId, line1: "1 Test St", city: "Greeley", zip: "80631" } });
+    taxFixture = await seedTaxReadyContext(addressId, { rateMilliPercent: 7_000 });
     await prisma.applianceType.create({ data: { id: typeId, name: `PB ${tag}`, slug: `pb-${tag}` } });
   });
 
@@ -139,6 +142,7 @@ describe.skipIf(!enabled)("pickup billing end: late returns, waiver and closing 
     await prisma.rentalAgreement.deleteMany({ where: { id: { in: agreementIds } } });
     await prisma.appliance.deleteMany({ where: { id: { in: applianceIds } } });
     await prisma.applianceType.deleteMany({ where: { id: typeId } });
+    await taxFixture.cleanup();
     await prisma.serviceAddress.deleteMany({ where: { id: addressId } });
     await prisma.customer.deleteMany({ where: { id: customerId } });
     await prisma.user.deleteMany({ where: { id: { in: [ownerId, staffId, userId] } } });
