@@ -158,7 +158,21 @@ async function main() {
       `INSERT INTO "StaffTask" (id,note,"dueDate","createdByUserId","customerId") VALUES ('upgrade-task','Preserve follow-up','2026-11-02','upgrade-user','upgrade-customer')`,
     );
 
+    const preGClosedUpdatedAt = new Date("2026-10-02T15:30:00Z");
+    await fixtureClient.query(
+      'UPDATE "RentalAgreement" SET status=\'CANCELLED\', "endDate"=NULL, "updatedAt"=$1 WHERE id=\'upgrade-agreement\'',
+      [preGClosedUpdatedAt],
+    );
+
     deploy(path.join(root, "prisma.config.ts"));
+    const closedAgreement = await fixtureClient.query(
+      'SELECT "closedAt" FROM "RentalAgreement" WHERE id=\'upgrade-agreement\'',
+    );
+    assert.equal(
+      closedAgreement.rows[0].closedAt.toISOString(),
+      preGClosedUpdatedAt.toISOString(),
+      "Batch G must backfill a previously cancelled agreement from updatedAt when endDate is null",
+    );
     const preservedTask = await fixtureClient.query(
       `SELECT note,"dueDate","customerId","assigneeUserId",priority,version FROM "StaffTask" WHERE id='upgrade-task'`,
     );

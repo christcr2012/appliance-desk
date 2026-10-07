@@ -6,8 +6,8 @@ type ModelDelegate = {
   [K in keyof PrismaClient]: PrismaClient[K] extends { findMany: unknown } ? K : never;
 }[keyof PrismaClient];
 
-// Sessions and verification tokens are ephemeral, and reusable account
-// credentials stay out of recovery copies. Webhook idempotency evidence is
+// Sessions, verification tokens, account credentials and reusable two-factor
+// secrets/backup codes stay out of recovery copies. Webhook idempotency evidence is
 // business-critical recovery state so provider events are not applied twice
 // after a restore.
 export const BACKUP_MODEL_POLICY = {
@@ -15,6 +15,7 @@ export const BACKUP_MODEL_POLICY = {
   Session: null,
   Account: null,
   Verification: null,
+  TwoFactor: null,
   Customer: "customer",
   Referral: "referral",
   ServiceAddress: "serviceAddress",

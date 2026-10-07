@@ -30,6 +30,13 @@ describe("appliance earnings are an estimate, not cash", () => {
     expect(offenders).toEqual([]);
   });
 
+  it("the estimate calculation uses closure evidence without importing customer cash", () => {
+    const text = readFileSync(join(root, "src/domains/reports/earnings.ts"), "utf8");
+    expect(text).toContain("closedAt");
+    expect(text).not.toContain("collectedBetween");
+    expect(text).not.toMatch(/domains\/billing\/collected/);
+  });
+
   it("the screens label the number as an estimate that splits the line price evenly", () => {
     for (const file of [join(root, "src/components/desk/appliance-earnings-summary.tsx"), join(root, "src/app/desk/fleet/page.tsx")]) {
       const text = readFileSync(file, "utf8");
