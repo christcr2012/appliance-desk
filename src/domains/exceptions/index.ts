@@ -9,6 +9,7 @@ import {
   agreementTermExpiredException,
   applianceMaintenanceDueException,
   billingBlockedException,
+  taxDecisionNeededException,
   custodyUnknownException,
   earlyEndingNotDoneException,
   itemNotDeliveredException,
@@ -64,6 +65,94 @@ async function capped<T>(find: (take: number) => Promise<T[]>, count: () => Prom
 export const LINE_REDUCE_KEY_PREFIX = "subscription-line-reduce-";
 const parseLineReduceKey = (key: string): string | null =>
   key.startsWith(LINE_REDUCE_KEY_PREFIX) ? key.slice(LINE_REDUCE_KEY_PREFIX.length) : null;
+
+type TaxDecisionRow = {
+  id: string;
+  invoiceNumber: number;
+  customerId: string;
+  customerName: string;
+  problems: string[];
+  createdAt: Date;
+};
+
+function taxProblems(value: Prisma.JsonValue | null): string[] {
+  if (!value || Array.isArray(value) || typeof value !== "object") return [];
+  const problems = (value as Prisma.JsonObject).problems;
+  return Array.isArray(problems)
+    ? problems.filter((problem): problem is string => typeof problem === "string")
+    : [];
+}
+
+async function taxDecisionRows(take: number): Promise<TaxDecisionRow[]> {
+  const rows = await prisma.$queryRaw<
+    Array<{ id: string; invoiceNumber: number; customerId: string; createdAt: Date }>
+  >`
+    SELECT i."id", i."invoiceNumber", i."customerId", i."createdAt"
+    FROM "Invoice" i
+    WHERE i."status" = 'DRAFT'
+      AND EXISTS (
+        SELECT 1
+        FROM "AuditLog" a
+        WHERE a."entityType" = 'Invoice'
+          AND a."entityId" = i."id"
+          AND a."action" = 'billing.tax_decision_needed'
+      )
+    ORDER BY i."createdAt" ASC, i."id" ASC
+    LIMIT ${take}
+  `;
+  if (rows.length === 0) return [];
+
+  const [customers, audits] = await Promise.all([
+    prisma.invoice.findMany({
+      where: { id: { in: rows.map((row) => row.id) } },
+      select: {
+        id: true,
+        customer: { select: { user: { select: { name: true, email: true } } } },
+      },
+    }),
+    prisma.auditLog.findMany({
+      where: {
+        entityType: "Invoice",
+        entityId: { in: rows.map((row) => row.id) },
+        action: "billing.tax_decision_needed",
+      },
+      select: { entityId: true, newValue: true, createdAt: true },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    }),
+  ]);
+
+  const customerByInvoice = new Map(
+    customers.map((invoice) => [invoice.id, customerDisplayName(invoice.customer)]),
+  );
+  const auditByInvoice = new Map<string, (typeof audits)[number]>();
+  for (const audit of audits) {
+    if (audit.entityId && !auditByInvoice.has(audit.entityId)) {
+      auditByInvoice.set(audit.entityId, audit);
+    }
+  }
+
+  return rows.map((row) => ({
+    ...row,
+    customerName: customerByInvoice.get(row.id) ?? "A customer",
+    problems: taxProblems(auditByInvoice.get(row.id)?.newValue ?? null),
+  }));
+}
+
+async function taxDecisionCount(): Promise<number> {
+  const [{ n }] = await prisma.$queryRaw<Array<{ n: number }>>`
+    SELECT COUNT(*)::int AS "n"
+    FROM "Invoice" i
+    WHERE i."status" = 'DRAFT'
+      AND EXISTS (
+        SELECT 1
+        FROM "AuditLog" a
+        WHERE a."entityType" = 'Invoice'
+          AND a."entityId" = i."id"
+          AND a."action" = 'billing.tax_decision_needed'
+      )
+  `;
+  return n;
+}
 
 export type ReturnedEarlyRow = { agreementId: string; customerName: string; since: Date; settled: boolean };
 
@@ -202,6 +291,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
 
   const [
     billingBlockedAgreements,
+    taxDecisionInvoices,
     staleReservations,
     pastDueInvoices,
     overdueJobs,
@@ -232,6 +322,9 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
           () => prisma.rentalAgreement.count({ where: billingBlockedWhere }),
         )
       : empty<never>(),
+    canViewFinance
+      ? capped(taxDecisionRows, taxDecisionCount)
+      : empty<TaxDecisionRow>(),
     capped(
       (take) => prisma.rentalAgreement.findMany({
         where: staleWhere,
@@ -403,6 +496,9 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
   const pendingItemById = new Map(pendingItems.map((p) => [p.id, p]));
 
   const items: ExceptionItem[] = [
+    ...taxDecisionInvoices.rows.map((invoice) =>
+      taxDecisionNeededException(invoice),
+    ),
     ...pendingLineReductions.rows.flatMap((op) => {
       const pd = pendingItemById.get(parseLineReduceKey(op.idempotencyKey) ?? "");
       return pd
@@ -545,6 +641,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
   const truncated: ExceptionTruncation[] = (
     [
       ["BILLING_BLOCKED", billingBlockedAgreements],
+      ["TAX_DECISION_NEEDED", taxDecisionInvoices],
       ["STALE_RESERVATION", staleReservations],
       ["PAST_DUE_INVOICE", pastDueInvoices],
       ["OVERDUE_JOB", overdueJobs],
