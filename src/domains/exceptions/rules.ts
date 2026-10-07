@@ -1,3 +1,5 @@
+import { addBusinessDays, businessDayBounds } from "@/lib/business-date";
+
 // ---------------------------------------------------------------------------
 // Exception inbox (2026-09-28) — one place that surfaces anything stuck or
 // needing Chris's attention, instead of him having to remember to go check
@@ -126,6 +128,20 @@ export function stripeTaxUnverifiedException(invoice: {
     href: `/desk/billing/customer/${invoice.customerId}/invoice/${invoice.id}`,
     since: invoice.since,
   };
+}
+
+export function taxExemptionExpiryWindow(now: Date): {
+  from: Date;
+  through: Date;
+} {
+  return {
+    from: now,
+    through: businessDayBounds(addBusinessDays(now, 30)).end,
+  };
+}
+
+export function taxExemptionWarningSince(expiresOn: Date): Date {
+  return businessDayBounds(addBusinessDays(expiresOn, -30)).start;
 }
 
 export function taxExemptionExpiryException(exemption: {
