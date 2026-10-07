@@ -28,6 +28,7 @@ export type InvoiceDetail = {
   amountDueCents: number;
   amountPaidCents: number;
   balanceCents: number;
+  isLocalInvoice: boolean;
   lineItems: { id: string; description: string; amountCents: number; quantity: number }[];
   payments: {
     id: string;
@@ -106,6 +107,7 @@ export async function getInvoiceDetail(
     amountDueCents: invoice.amountDueCents,
     amountPaidCents: invoice.amountPaidCents,
     balanceCents,
+    isLocalInvoice: invoice.stripeInvoiceId === null,
     lineItems: invoice.lineItems.map((li) => ({
       id: li.id,
       description: li.description,
