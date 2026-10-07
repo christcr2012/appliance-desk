@@ -3,6 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireRole } from "@/lib/session";
+import { businessDateEnd, businessDateFromKey } from "@/lib/business-date";
+import {
+  createCustomerTaxExemption,
+  revokeCustomerTaxExemption,
+  updateCustomerTaxExemption,
+} from "@/domains/tax/exemptions";
 import { sendCustomerActivationEmail } from "@/domains/leads";
 import { getCustomerById, createCustomerDirectly, addServiceAddress } from "@/domains/customers";
 import {
@@ -299,3 +305,102 @@ export async function deleteCustomerContactAction(
     };
   }
 }
+
+const taxExemptionInputSchema = z.object({
+  exemptionId: z.string().trim().min(1).optional(),
+  reason: z.enum(["RESALE", "GOVERNMENT", "CHARITABLE", "OTHER"]),
+  certificateNumber: z.string().trim().max(200).optional().or(z.literal("")),
+  certificatePhotoId: z.string().trim().max(2000).optional().or(z.literal("")),
+  validFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Choose a valid start date."),
+  expiresOn: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Choose a valid expiration date.")
+    .optional()
+    .or(z.literal("")),
+  allJurisdictions: z.boolean(),
+  jurisdictionIds: z.array(z.string().trim().min(1)).max(50),
+  notes: z.string().trim().max(2000).optional().or(z.literal("")),
+});
+
+export type TaxExemptionActionInput = z.infer<typeof taxExemptionInputSchema>;
+export type TaxExemptionActionState =
+  | { status: "success" }
+  | { status: "error"; message: string };
+
+export async function saveCustomerTaxExemptionAction(
+  customerId: string,
+  input: TaxExemptionActionInput,
+): Promise<TaxExemptionActionState> {
+  const session = await requireRole("OWNER");
+  const parsed = taxExemptionInputSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      status: "error",
+      message: parsed.error.issues[0]?.message ?? "Check the exemption and try again.",
+    };
+  }
+
+  const validFrom = businessDateFromKey(parsed.data.validFrom);
+  const expiresOn = parsed.data.expiresOn
+    ? businessDateEnd(parsed.data.expiresOn)
+    : null;
+  if (!validFrom) {
+    return { status: "error", message: "Choose a valid exemption start date." };
+  }
+
+  try {
+    const payload = {
+      reason: parsed.data.reason,
+      certificateNumber: parsed.data.certificateNumber || null,
+      certificatePhotoId: parsed.data.certificatePhotoId || null,
+      validFrom,
+      expiresOn,
+      jurisdictionIds: parsed.data.allJurisdictions
+        ? []
+        : parsed.data.jurisdictionIds,
+      notes: parsed.data.notes || null,
+    };
+
+    if (parsed.data.exemptionId) {
+      await updateCustomerTaxExemption(
+        session.user.id,
+        parsed.data.exemptionId,
+        payload,
+      );
+    } else {
+      await createCustomerTaxExemption(session.user.id, customerId, payload);
+    }
+
+    revalidatePath(`/desk/customers/${customerId}`);
+    return { status: "success" };
+  } catch (error) {
+    return {
+      status: "error",
+      message:
+        error instanceof Error
+          ? error.message
+          : "Couldn't save that tax exemption.",
+    };
+  }
+}
+
+export async function revokeCustomerTaxExemptionAction(
+  customerId: string,
+  exemptionId: string,
+): Promise<TaxExemptionActionState> {
+  const session = await requireRole("OWNER");
+  try {
+    await revokeCustomerTaxExemption(session.user.id, exemptionId);
+    revalidatePath(`/desk/customers/${customerId}`);
+    return { status: "success" };
+  } catch (error) {
+    return {
+      status: "error",
+      message:
+        error instanceof Error
+          ? error.message
+          : "Couldn't revoke that tax exemption.",
+    };
+  }
+}
+
