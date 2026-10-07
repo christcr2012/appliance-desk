@@ -1907,20 +1907,20 @@ model TaxJurisdiction {
 }
 
 model TaxRateVersion {
-  id               String          @id @default(cuid())
-  jurisdictionId   String
-  jurisdiction     TaxJurisdiction @relation(fields: [jurisdictionId], references: [id])
-  rateMilliPercent Int
-  effectiveFrom    DateTime
-  source             TaxRateSource
-  sourceNote         String?
-  recordedByUserId   String?
-  stripeTaxRateId    String?         @unique
-  autoApplied        Boolean         @default(false)
+  id                  String          @id @default(cuid())
+  jurisdictionId      String
+  jurisdiction        TaxJurisdiction @relation(fields: [jurisdictionId], references: [id])
+  rateMilliPercent    Int
+  effectiveFrom       DateTime
+  source              TaxRateSource
+  sourceNote          String?
+  recordedByUserId    String?
+  stripeTaxRateId     String?         @unique
+  autoApplied         Boolean         @default(false)
   autoAppliedUndoneAt DateTime?
-  invoiceTaxLines  InvoiceTaxLine[]
-  useTaxRows       PurchaseUseTax[]
-  createdAt        DateTime        @default(now())
+  invoiceTaxLines     InvoiceTaxLine[]
+  useTaxRows          PurchaseUseTax[]
+  createdAt           DateTime        @default(now())
 
   @@unique([jurisdictionId, effectiveFrom])
 }
@@ -2111,12 +2111,12 @@ model BusinessSettings {
   taxRateConfirmed        Boolean @default(false)
 
   // Batch T: tax policy starts undecided; rates/rules are entered and reviewed separately.
-  shortTermLeaseElection     ShortTermLeaseElection @default(UNDECIDED)
-  shortTermLeaseElectionNote String?
-  retailDeliveryFeeDecision       String  @default("UNDECIDED")
-  businessTaxAddress              Json    @default("{}")
-  autoApplyOfficialRateChanges    Boolean @default(true)
-  autoRateChangeMaxMilliPercent   Int     @default(1000)
+  shortTermLeaseElection          ShortTermLeaseElection @default(UNDECIDED)
+  shortTermLeaseElectionNote      String?
+  retailDeliveryFeeDecision       String                 @default("UNDECIDED")
+  businessTaxAddress              Json                   @default("{}")
+  autoApplyOfficialRateChanges    Boolean                @default(true)
+  autoRateChangeMaxMilliPercent   Int                    @default(1000)
 
   announcementBannerText String?
   announcementBannerOn   Boolean @default(false)
