@@ -510,6 +510,23 @@ describe("startRecurringBillingForAgreement", () => {
       expect(params.items[0].tax_rates).toEqual(["txr_rate-state", "txr_rate-city"]);
     });
 
+    it("blocks automatic backdating when the rental tax rate changed after delivery", async () => {
+      mocks.taxRateVersionIdsForAgreement
+        .mockResolvedValueOnce(["rate-at-delivery"])
+        .mockResolvedValueOnce(["rate-today"]);
+      const { startRecurringBillingForAgreement } = await import("@/domains/billing/checkout");
+
+      const outcome = await startRecurringBillingForAgreement("agr-1");
+
+      expect(outcome).toMatchObject({
+        state: "RETRY",
+        detail: expect.stringMatching(/sales-tax rate changed after delivery/i),
+      });
+      expect(mocks.claimProviderOperation).not.toHaveBeenCalled();
+      expect(mocks.ensureStripeTaxRate).not.toHaveBeenCalled();
+      expect(mocks.subscriptionsCreate).not.toHaveBeenCalled();
+    });
+
     it("omits Stripe tax rates when the rental resolves exempt", async () => {
       mocks.taxRateVersionIdsForAgreement.mockResolvedValue([]);
       const { startRecurringBillingForAgreement } = await import("@/domains/billing/checkout");
