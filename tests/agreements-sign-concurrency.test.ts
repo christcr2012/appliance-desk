@@ -14,6 +14,8 @@ const rentalAgreementUpdate = vi.fn();
 const rentalLineFindMany = vi.fn();
 const auditLogCreate = vi.fn();
 const createSignedAgreementArtifactInTx = vi.fn();
+const createPrepaidRentInvoiceInTx = vi.fn();
+let prepaidInFull = false;
 
 function makeTx() {
   return {
@@ -22,7 +24,11 @@ function makeTx() {
     $queryRaw: async () => [{ id: "agr-1" }],
     signatureRecord: { updateMany: signatureRecordUpdateMany },
     rentalAgreement: {
-      findUniqueOrThrow: async () => ({ id: "agr-1", status: "AWAITING_SIGNATURE" }),
+      findUniqueOrThrow: async () => ({
+        id: "agr-1",
+        status: "AWAITING_SIGNATURE",
+        paidInFullInAdvance: prepaidInFull,
+      }),
       update: rentalAgreementUpdate,
     },
     rentalLine: { findMany: rentalLineFindMany },
@@ -32,6 +38,10 @@ function makeTx() {
 
 vi.mock("@/domains/documents/artifacts", () => ({
   createSignedAgreementArtifactInTx,
+}));
+
+vi.mock("@/domains/tax/prepaid-invoice", () => ({
+  createPrepaidRentInvoiceInTx,
 }));
 
 vi.mock("@/lib/prisma", () => ({
@@ -55,6 +65,13 @@ describe("signAgreement — atomic conditional update", () => {
     rentalLineFindMany.mockReset().mockResolvedValue([]);
     auditLogCreate.mockReset().mockResolvedValue({});
     createSignedAgreementArtifactInTx.mockReset().mockResolvedValue("artifact-1");
+    createPrepaidRentInvoiceInTx.mockReset().mockResolvedValue({
+      invoiceId: "inv-prepaid",
+      created: true,
+      status: "OPEN",
+      taxResult: { ok: true, totalTaxCents: 100 },
+    });
+    prepaidInFull = false;
   });
 
   it("signs via a conditional updateMany requiring signedAt still be null, not a plain update", async () => {
@@ -73,6 +90,25 @@ describe("signAgreement — atomic conditional update", () => {
     });
     expect(rentalAgreementUpdate).toHaveBeenCalled();
     expect(createSignedAgreementArtifactInTx).toHaveBeenCalledWith(expect.any(Object), "agr-1");
+  });
+
+  it("creates the prepaid local invoice inside the signing transaction when the agreement is paid in full", async () => {
+    prepaidInFull = true;
+    signatureRecordUpdateMany.mockResolvedValue({ count: 1 });
+    const { signAgreement } = await import("@/domains/agreements");
+
+    await signAgreement("sig-1", {
+      signerName: "Jane Doe",
+      signerEmail: "jane@example.test",
+      ipAddress: "1.2.3.4",
+    });
+
+    expect(createPrepaidRentInvoiceInTx).toHaveBeenCalledTimes(1);
+    expect(createPrepaidRentInvoiceInTx).toHaveBeenCalledWith(
+      expect.any(Object),
+      "agr-1",
+      expect.any(Date),
+    );
   });
 
   it("aborts — and never activates the agreement — when the conditional update loses the race (count 0)", async () => {
