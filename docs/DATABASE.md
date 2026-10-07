@@ -293,6 +293,26 @@ same external object twice or losing the local link.
   credits are minted/provider pushes begin, so concurrent paid events cannot
   grant a referral twice (design D4).
 
+## Batch T — official tax-rate metadata
+
+- **TaxRateVersion** keeps its existing jurisdiction/rate/effective-date history.
+  T-5b adds `autoApplied` and nullable `autoAppliedUndoneAt` so a future
+  official rate can be identified as machine-applied and later undone without
+  deleting the historical row.
+- **TaxRateObservation** is non-PII proof that one official candidate rate was
+  observed for one jurisdiction and effective date at a particular time. Two
+  different Colorado calendar days are required before later T-5b work may
+  auto-apply a candidate. Rows older than one Colorado year are pruned.
+- **OfficialSourceWatch** is the registry/evidence row for official tax pages:
+  label, unique URL, active switch, last hash/text/change excerpt, check/error
+  timestamps and failure/review state. The six starting URLs are seeded
+  inactive; this metadata PR performs no network fetch or automatic law/rate
+  change.
+- **BusinessSettings** adds `autoApplyOfficialRateChanges` (starting on) and
+  `autoRateChangeMaxMilliPercent` (starting 1000 = 1.000 percentage point).
+  T-5b1 only stores those owner-configurable defaults; later bounded work owns
+  the guarded application behavior and T-7 owns the settings screens.
+
 ## Settings, content & compliance
 
 - **BusinessSettings** — the one-row table behind `/desk/settings`:
