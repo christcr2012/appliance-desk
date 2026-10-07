@@ -665,14 +665,20 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     ),
   ];
 
+  const salesTaxItems = items
+    .filter((item) => item.category === "SALES_TAX")
+    .sort((left, right) => left.since.getTime() - right.since.getTime());
+  const cappedSalesTaxItems = salesTaxItems.slice(0, EXCEPTION_CATEGORY_CAP);
+  const visibleItems = [
+    ...items.filter((item) => item.category !== "SALES_TAX"),
+    ...cappedSalesTaxItems,
+  ];
+
   const truncated: ExceptionTruncation[] = (
     [
       ["BILLING_BLOCKED", billingBlockedAgreements],
       ["SALES_TAX", {
-        rows: [...taxBlockedInvoices.rows, ...taxMismatchAudits.rows].slice(
-          0,
-          EXCEPTION_CATEGORY_CAP,
-        ),
+        rows: cappedSalesTaxItems,
         total: taxBlockedInvoices.total + taxMismatchAudits.total,
       }],
       ["STALE_RESERVATION", staleReservations],
@@ -698,7 +704,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     .filter(([, c]) => c.total > c.rows.length)
     .map(([category, c]) => ({ category, total: c.total, shown: c.rows.length }));
 
-  return { items: sortExceptions(items), truncated };
+  return { items: sortExceptions(visibleItems), truncated };
 }
 
 export async function getExceptions(): Promise<ExceptionItem[]> {
@@ -810,5 +816,4 @@ export async function getTodaysJobs(now = new Date()) {
     orderBy: [{ scheduledAt: "asc" }, { id: "asc" }],
   });
 }
-
 
