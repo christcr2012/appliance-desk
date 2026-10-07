@@ -128,6 +128,24 @@ export function stripeTaxUnverifiedException(invoice: {
   };
 }
 
+export function taxExemptionExpiryException(exemption: {
+  id: string;
+  customerId: string;
+  customerName: string;
+  expiresOn: Date;
+}): ExceptionItem {
+  return {
+    category: "SALES_TAX",
+    severity: "medium",
+    title: `${exemption.customerName}'s tax exemption expires soon`,
+    detail: `The exemption expires ${exemption.expiresOn
+      .toISOString()
+      .slice(0, 10)}. Review or replace the certificate before it expires.`,
+    href: `/desk/customers/${exemption.customerId}`,
+    since: exemption.expiresOn,
+  };
+}
+
 export function billingBlockedException(agreement: {
   id: string;
   billingBlockedReason: string;
