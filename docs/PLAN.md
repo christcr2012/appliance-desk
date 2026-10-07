@@ -813,6 +813,29 @@ stock), scrap it, throw it away or other. Scrap checks and dump fees are recorde
 
 ---
 
+## Batch BP — Business offers operations and partnerships — PROPOSED
+
+Design: `docs/designs/BATCH-BP.md`; business documents: `docs/business/README.md`.
+The owner requested architecture and business-document creation on 2026-10-07. This is a code-informed proposal,
+not deployed behavior or approval of the consultant's commercial/legal examples. Keep the current approved work order.
+Default placement is after K/M/O; a specific earlier safety/permission slice needs an explicit scheduling decision.
+
+### Deliverables and acceptance
+
+- [ ] Owner-editable named agreement templates with optional clauses, supported policy options, explicit inheritance and immutable customer copies.
+- [ ] Versioned offers and explicit final-price mode; three-month terms, service zones, bounded promotions and immutable quotes.
+- [ ] Verified-unused asset eligibility; scoped property permission and required installation evidence within existing job completion.
+- [ ] Commercial master documents linked to existing customer/address agreements and consolidated statements.
+- [ ] Settled-rent partner commission ledger, reversals, owner-approved manual settlements and a privacy-limited partner portal.
+- [ ] Campaign acquisition costs and distinct cash/economic/accounting asset measures using K and METRICS.
+- [ ] BP01–BP31 source dispositions reconciled; exact acceptance and race/security tests in design sections 6–7.
+- [ ] IN-48/49/50 resolved for the selected release; existing tax/legal/live-provider gates preserved.
+
+Business document creation is complete in the documentation branch. Runtime boxes above deliberately remain unchecked.
+The design's 16 estimated slices need bounded PR cards and current-code drift checks before implementation.
+
+---
+
 ## Deferred (not scheduled)
 
 - **O29 CSV import** — only when a real, authorized import dataset exists.

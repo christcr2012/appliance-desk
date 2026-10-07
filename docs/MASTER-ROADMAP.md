@@ -38,6 +38,7 @@ Legend: ✅ done · ▶ next · ⏳ waiting on Chris · ○ not started. "Design
 | 7 | ⏳ **Launch** — Chris's go-live checklist | `docs/GO-LIVE-CHECKLIST.md` | step 6 done | CPA answers IN-17, IN-33…IN-38 entered; attorney wording; live Stripe/email decisions; launch authorization | — |
 | 8 | ○ **K** — books: journal, expenses, Stripe fees, P&L, QuickBooks/Xero/other exports | ✅ approved (`BATCH-K.md`) | launch (or earlier if Chris asks; needs T merged) | nothing to start; IN-39 later | 5 |
 | 9 | ○ **O** — owner controls: settings undo, per-person permissions, approvals, dated prices, goals, switches page | ✅ approved (`BATCH-O.md`) | K merged | nothing | 4–5 |
+| 9a | ○ **BP** — business offers, permission/installation evidence and property-manager partnerships | proposed (`BATCH-BP.md`), docs created 2026-10-07 | K, M and O complete; accepted design and bounded cards | IN-48/49/50 before affected offer/program activation | 16 estimated |
 | 10 | ○ **P** — customer self-service and growth (section 5) | **no design yet** — a stronger model writes it when Chris picks items | after O, or earlier for a single picked item | pick items | — |
 | 11 | ○ Conditional/deferred: Google Workspace integration (O32), CSV import (O29), direct QuickBooks sync (`BATCH-K.md` §9) | deferred | prerequisites in their docs | provide accounts/data | — |
 
@@ -219,3 +220,11 @@ designs for those PRs carry an "Implementation gate": no card, no start. Earlier
 **42 PRs in all** (Batch M adds 3; Batch S adds 2; T-6d by Amendment D; T-6 split into T-6a/T-6b by Amendment A, T-6c added by Amendment B and T-5b by Amendment C, 2026-10-07) (a few more if G-2 or T-4 split). At two merged PRs per session that is roughly 21 working sessions;
 each PR should reach green with at most one red CI run (each run is about 3–5 minutes). If a PR needs a third red run,
 the agent stops and reports (PLAYBOOK Step 8).
+
+### BP — proposed business integration from the consultant briefing
+
+`docs/designs/BATCH-BP.md` section 6 owns the proposed BP-1…BP-16 slice list and dependencies. These are additional
+proposed slices, **not included in the earlier approved-work PR counts** and not permission to interrupt T.
+`docs/business/SOURCE-DISPOSITION.md` maps 31 source concepts to existing work, new scope or explicit deferral.
+The business folder is ready to review; pricing, tax positions, contracts and commissions are not activated.
+Before coding BP, create its bounded cards against the merged prerequisite code and record design acceptance.

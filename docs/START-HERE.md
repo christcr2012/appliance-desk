@@ -66,6 +66,7 @@ docs/               everything below
 
 | File | What it is |
 |---|---|
+| `docs/business/README.md` | Business plan, offers, operations, property-manager program, marketing, financial scenarios and legal/tax review derived from the October 7 consultant briefing. Proposed policy is distinguished from live settings. |
 | `docs/BUSINESS-RULES.md` | Prices, fees, discounts, lead scoring, statuses and transitions. The one source of truth for business behavior. |
 | `docs/PRODUCT-SPEC.md` | What each screen/flow does, by role. |
 | `docs/DATABASE.md` | Tables, why they are shaped that way, backup policy. |

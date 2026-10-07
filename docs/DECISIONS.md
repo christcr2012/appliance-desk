@@ -558,3 +558,30 @@ customer (no login, never emailed), the delivery-fee record allows shop sales (`
 resale tracked per purchase-order line with a fixed unit-order rule, no cost of goods sold (parts are expensed when
 bought), and the retirement-day write-off stays Batch K's only disposal entry (plans post nothing).
 
+## 2026-10-07 — Consultant briefing becomes business documents and proposed Batch BP
+
+Owner request: architect, plan and design the supplied business_planning.docx into Appliance Desk; treat its
+specific instructions as consultant suggestions; create a repository folder for business documents and improve them.
+
+Created `docs/business/` with business plan, offer policy, operations, property-manager program, marketing drafts,
+financial scenarios, legal/tax brief and source trace. Retained Robinson Appliance Rentals and existing domain
+ownership. Added proposed `docs/designs/BATCH-BP.md`: versioned offers, permission/installation evidence, commercial
+master documents, settled-rent commissions, narrow partner access and acquisition/cash-recovery reporting.
+
+Rejected the consultant's blanket tax exemption, contractual reset shield, irrevocable entry and pure-profit/90-day
+payback claims. Official sources and unresolved professional questions are recorded in the legal/tax brief.
+Reuse IN-33/36 for acquisition-tax and continuous-use questions; added IN-48/49/50 for new business release choices.
+
+No runtime change, live policy selection, document publication to customers, payment or provider activation occurred.
+BP is proposed after existing K/M/O prerequisites; implementation needs design acceptance and bounded current-code
+PR cards. Existing approved batches keep their order. T Amendment D's unpaid-use-tax exemption assumption remains
+explicitly unresolved under IN-33 and must not be described as professionally approved by this new documentation.
+
+## 2026-10-07 — Publication approved and configurable templates clarified
+
+Chris explicitly approved publishing this business-document package to the public Appliance Desk repository. He
+also clarified that lease terms and other proposed policies should be built as reusable configurable templates,
+with editable options, rather than hard-coded contracts. BATCH-BP D-BP11 and the business template guide record
+the editor, structured policy/text validation, inheritance, review/versioning and frozen customer-copy behavior.
+Example 3/6/12-month terms are presets; an owner-added supported duration must work end to end without a code change.
+This approval publishes planning documents; runtime implementation and live-business activation remain separate.
