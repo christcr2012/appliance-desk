@@ -63,7 +63,7 @@ Paste into a new session (replace `<X>`):
 > every stop-and-ask point. Never enter a tax rate, a tax answer, a price or a legal promise yourself. After each PR:
 > exact-head CI green, review threads read and dispositioned, then merge per AGENTS.md. Use the PR list in
 > docs/MASTER-ROADMAP.md section 7, keep each PR within docs/PLAYBOOK.md Step 3a's budget, follow Step 8 for CI
-> (at most 3 red CI runs per PR, then stop and report), and stop after two merged PRs per session with a STATUS handoff. At the end update
+> (at most 3 red CI runs per PR, then stop and report). There is no numeric merge-per-session limit: use the current design/card/STATUS/roadmap as the context anchor, keep dependent PRs in lockstep, and merge ready work in order under PLAYBOOK Step 3a’s exact-head gates. At the end update
 > docs/STATUS.md and tick the step in docs/MASTER-ROADMAP.md, and report to Chris in plain English.
 
 For F-part-1 use the same prompt with `BATCH-F.md` and add: "Build only WU-F1, WU-F2, WU-F4 and WU-F5 now."
