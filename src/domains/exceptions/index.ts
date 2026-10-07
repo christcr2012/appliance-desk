@@ -12,6 +12,7 @@ import {
   custodyUnknownException,
   earlyEndingNotDoneException,
   itemNotDeliveredException,
+  invoiceTaxBlockedException,
   returnedEarlyException,
   EARLY_RETURN_DEFAULTS_REVIEW_DAYS,
   subscriptionUpdatePendingException,
@@ -143,6 +144,12 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
   const customerSelect = { customer: { select: { user: { select: { name: true, email: true } } } } } as const;
 
   const billingBlockedWhere = { billingBlockedReason: { not: null } } satisfies Prisma.RentalAgreementWhereInput;
+  const taxBlockedInvoiceWhere = {
+    status: "DRAFT",
+    stripeInvoiceId: null,
+    agreementId: { not: null },
+    lineItems: { some: { kind: { in: ["LATE_RETURN", "EARLY_TERMINATION_FEE", "RENTAL"] } } },
+  } satisfies Prisma.InvoiceWhereInput;
   const staleWhere = {
     status: { in: ["DRAFT", "AWAITING_SIGNATURE"] },
     reservationExpiresAt: { lt: now },
@@ -202,6 +209,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
 
   const [
     billingBlockedAgreements,
+    taxBlockedInvoices,
     staleReservations,
     pastDueInvoices,
     overdueJobs,
@@ -230,6 +238,23 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
             take,
           }),
           () => prisma.rentalAgreement.count({ where: billingBlockedWhere }),
+        )
+      : empty<never>(),
+    canViewFinance
+      ? capped(
+          (take) => prisma.invoice.findMany({
+            where: taxBlockedInvoiceWhere,
+            select: {
+              id: true,
+              invoiceNumber: true,
+              customerId: true,
+              createdAt: true,
+              customer: { select: { user: { select: { name: true, email: true } } } },
+            },
+            orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+            take,
+          }),
+          () => prisma.invoice.count({ where: taxBlockedInvoiceWhere }),
         )
       : empty<never>(),
     capped(
@@ -386,6 +411,27 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
         )
       : empty<never>(),
   ]);
+  const taxProblemAudits = taxBlockedInvoices.rows.length
+    ? await prisma.auditLog.findMany({
+        where: {
+          action: "billing.invoice_tax_blocked",
+          entityType: "Invoice",
+          entityId: { in: taxBlockedInvoices.rows.map((invoice) => invoice.id) },
+        },
+        select: { entityId: true, newValue: true, createdAt: true },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      })
+    : [];
+  const taxProblemsByInvoice = new Map<string, { problems: string[]; since: Date }>();
+  for (const audit of taxProblemAudits) {
+    if (!audit.entityId || taxProblemsByInvoice.has(audit.entityId)) continue;
+    const value = audit.newValue as { problems?: unknown } | null;
+    const problems = Array.isArray(value?.problems)
+      ? value.problems.filter((problem): problem is string => typeof problem === "string")
+      : [];
+    taxProblemsByInvoice.set(audit.entityId, { problems, since: audit.createdAt });
+  }
+
   const pendingItems = pendingLineReductions.rows.length
     ? await prisma.pendingDelivery.findMany({
         where: {
@@ -457,6 +503,17 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
           customerName: customerDisplayName(a.customer),
         }),
       ),
+    ...taxBlockedInvoices.rows.map((invoice) => {
+      const taxProblem = taxProblemsByInvoice.get(invoice.id);
+      return invoiceTaxBlockedException({
+        id: invoice.id,
+        invoiceNumber: invoice.invoiceNumber,
+        customerId: invoice.customerId,
+        customerName: customerDisplayName(invoice.customer),
+        since: taxProblem?.since ?? invoice.createdAt,
+        problems: taxProblem?.problems ?? [],
+      });
+    }),
     ...billingBlockedAgreements.rows
       .filter((a): a is typeof a & { billingBlockedReason: string } => a.billingBlockedReason !== null)
       .map((a) =>
@@ -545,6 +602,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
   const truncated: ExceptionTruncation[] = (
     [
       ["BILLING_BLOCKED", billingBlockedAgreements],
+      ["INVOICE_TAX_BLOCKED", taxBlockedInvoices],
       ["STALE_RESERVATION", staleReservations],
       ["PAST_DUE_INVOICE", pastDueInvoices],
       ["OVERDUE_JOB", overdueJobs],
