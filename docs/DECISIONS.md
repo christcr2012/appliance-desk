@@ -455,3 +455,7 @@ about 8 rows). Research corrections: Greeley is a SUTS participating city (code 
 the 2026-10-06 note above that it is not; the state vendor fee ended 2026-01-01 (HB25B-1005). Reminders count from the
 plain due date, never the holiday-shifted one, so a holiday can never make a reminder late. New owner inputs: IN-43
 (SUTS screen details after registration), IN-44 (CPA: how to report non-taxed amounts).
+Same day, follow-up: an unfiled return is a computed Today task (exception categories `TAX_RETURN_DUE`,
+`TAX_FILING_NOT_READY`, `TAX_LICENSE_RENEWAL`) rather than a stored task, so nothing but marking the return filed can
+clear it; it opens a guided "File this return" page (11.11). Chosen over a `StaffTask` because a task can be ticked off
+without the return actually being filed.

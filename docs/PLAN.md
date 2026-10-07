@@ -623,6 +623,7 @@ IN-17 (rate check), IN-33 … IN-38, IN-43, IN-44 (`docs/OWNER-INPUTS.md`). Ever
 - [ ] Per-filing-account worksheets (accrual or cash per the owner's setting); marking a period filed freezes it; later corrections appear on the next worksheet.
 - [ ] (Amendment A, 2026-10-07) Each return is a SUTS entry packet: per tax area in SUTS order, the exact numbers to type with copy buttons, a zero-return path, and a total equal to the tax customers were charged.
 - [ ] (Amendment A) Every filing account has its periods, due dates (with Colorado's weekend/holiday rule) and license renewal on a calendar; the owner is prompted on Today and by email from the day a period closes until it is marked filed; a calendar file can be downloaded.
+- [ ] (Amendment A 11.11) An unfiled return is a Today task that cannot be dismissed and disappears only when the return is marked filed; clicking it opens the guided "File this return" page (check → open SUTS → type these in with copy buttons and saved ticks → pay → confirmation).
 - [ ] Use tax computed for appliances and purchase-order lines bought without (enough) tax.
 - [ ] Customer exemptions with certificate photo, scope and expiry.
 - [ ] OWNER-only policy edits and filing; ADMIN limits enforced server-side; screens explained in plain words; axe clean.

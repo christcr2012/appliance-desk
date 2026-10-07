@@ -928,12 +928,12 @@ as a second `runAutomation` call — no new cron entry; add it to `src/domains/a
 1. Create missing `TaxFilingPeriod` rows for every active account up to the period containing today (Denver), with
    `dueOn` and `legalDueOn` (idempotent on `@@unique([filingAccountId, periodStart])`).
 2. For each OPEN period, compute `reminderStages` for today and, per stage not yet sent:
-   - a **Today card** (exceptions rule `TAX_RETURN`, OWNER and ADMIN see it; ADMIN cannot mark filed): "September sales
-     tax return is ready — due Oct 20 — $123.45 to pay", "…due in 2 days", "…due today", "Overdue since Oct 20 — file
-     now; Colorado adds penalties and interest";
+   - the **Today task** is *not* written here — it is computed live (11.11), so it exists from the day after the period
+     ends until the period is FILED, whatever the automation did;
    - an **owner email** (11.6) when `emailReminders` is on, idempotency key `tax-reminder:<periodId>:<stage>` (OVERDUE
      sends on the first overdue day and then every 3rd day, key includes the date).
-3. License renewal: cards and emails 60, 30 and 7 days before `licenseExpiresOn`, then daily once past it.
+3. License renewal: emails 60, 30 and 7 days before `licenseExpiresOn`, then every 3rd day once past it (the Today task
+   for it is computed live, 11.11).
 4. A filed period whose invoices later changed raises a card "A correction will appear on your October return" (the
    numbers themselves already move to the next packet per D-T11).
 
@@ -994,7 +994,7 @@ customer data appears in them (period, account name, amount due and a link only)
 - **T-7 — WU-TA3 screens** (with WU-T8): Desk → Money → Sales tax → **Filing calendar** (next 12 months, status chips
   Upcoming / Ready / Due soon / Overdue / Filed, "Add to my calendar") and **Return** (the packet: total to pay first,
   the checklist with copy buttons, rows in SUTS order, warnings, "I filed it" form; print-friendly and usable on a
-  phone beside the SUTS tab). Filing-account form: frequency, due day, first period, license expiry, reminder days,
+  phone beside the SUTS tab) and the guided **File this return** page (11.11). Filing-account form: frequency, due day, first period, license expiry, reminder days,
   email switch, deduction labels, and per-area SUTS code, order and service fee — each explained on screen per
   AGENTS.md. Browser spec additions in `e2e/sales-tax.spec.ts`: owner opens a ready return, copies a number, marks it
   filed; axe clean at 360/1440 light/dark.
@@ -1013,3 +1013,53 @@ customer data appears in them (period, account name, amount due and a link only)
   Today and by email from the day a period closes until it is marked filed (WU-TA1 tests).
 - Each return shows, per tax area in SUTS order, exactly the numbers to type, with a zero-return path and a total that
   matches the tax customers were charged (WU-TA2 tests).
+
+### 11.11 The Today task and the guided "File this return" page (Chris, 2026-10-07)
+
+Chris: the return "should also populate in Today tasks and remain there until it is handled … click it and handle it
+inside the system … so I just have to transfer data from Appliance Desk to the SUTS remittance portal — as hands off as
+possible."
+
+**Today task (computed, cannot be dismissed).** New exception categories in `src/domains/exceptions/rules.ts` (pure,
+like every other Today item — computed from current rows on each load, never stored, so it cannot be cleared, snoozed
+or completed by anything except the underlying fact changing):
+
+- `TAX_RETURN_DUE` — one item per `TaxFilingPeriod` with `status = OPEN` and `periodEnd` before today (Denver).
+  Title "File your <Month> sales tax return — <account name>"; detail "Due <dueOn> · <$ total to pay or 'zero return'>
+  · about 5 minutes in SUTS". Severity `medium`, becoming `high` from `min(reminderDaysBefore)` days before `dueOn` and
+  when overdue ("Overdue since Oct 20 — Colorado adds penalties and interest; file now"). `href` = the guided page below.
+  It disappears only when the period is marked FILED. Sort: overdue first, then nearest due date.
+- `TAX_FILING_NOT_READY` — the packet for an open (or about-to-close, last 5 days of the period) period is `blocked` or has
+  warnings that change the total (addresses needing review, missing rate, undecided basis). Severity `high` when the
+  due date is within 7 days. `href` = the screen that fixes the first problem. This surfaces problems *before* filing day
+  so the filing itself stays a few minutes of typing.
+- `TAX_LICENSE_RENEWAL` — from 60 days before `licenseExpiresOn` until the owner enters a new expiry date.
+
+Visible to OWNER and ADMIN (ADMIN sees "Ask the owner to file" instead of the button). STAFF and CUSTOMER never.
+Unit tests in `tests/exceptions-tax.test.ts` (pure: appears the day after period end; severity switches; disappears
+when FILED; zero return wording; not-ready ordering).
+
+**Guided page** `/desk/money/sales-tax/returns/<periodId>/file` (OWNER; ADMIN read-only). One screen, top to bottom,
+built for a phone or a half-width window next to the SUTS tab:
+
+1. **Check** — green "Ready to file" or the list of problems with a fix link each (same as `TAX_FILING_NOT_READY`).
+   Filing is still allowed with warnings that do not change the total (for example IN-44 labels not decided).
+2. **Open SUTS** — button opening `portalUrl` in a new tab, the account number with a copy button, and the period
+   to choose. Zero return: "Choose 'File a zero return' and skip to step 4."
+3. **Type these in** — one card per row in `filingOrder`, each value with a copy button and a tick box "Entered".
+   Ticks are saved on the period (`entryProgress Json @default("{}")`, additive column on `TaxFilingPeriod`, keyed by
+   row and field) so Chris can stop and come back; ticks are convenience only and never block anything.
+4. **Pay** — "SUTS should now show <$total>. Pay it in SUTS." with a copy button. If SUTS shows a different total:
+   "Use SUTS's total and note it below; do not change anything here."
+5. **Done** — "I filed it": confirmation number (required), date filed (defaults to today, Denver), amount paid
+   (pre-filled with the packet total; a different amount needs a one-line reason), optional screenshot. Saving runs
+   `markPeriodFiled`; the Today task disappears; the page shows "Filed — next return due <date>".
+
+Hands-off measures (all automatic, no setting): the packet is prepared the morning after the period ends; problems
+surface early through `TAX_FILING_NOT_READY`; zero returns get the shortest path; the email reminder links straight to
+this page; the confirmation form is pre-filled. Browser spec additions (`e2e/sales-tax.spec.ts`): the Today item opens
+the page, ticks persist after reload, filing removes the Today item; axe clean at 360/1440 light/dark.
+
+Roadmap idea (not built): forward SUTS's confirmation email to a dedicated inbound address so the app records the
+confirmation number itself (needs inbound email parsing and a confirmed SUTS email format).
+
