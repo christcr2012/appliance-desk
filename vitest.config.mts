@@ -16,7 +16,6 @@ const SHARED_SETTINGS_TESTS = [
   "tests/annual-reminders-integration.test.ts",
   "tests/early-return-integration.test.ts",
   "tests/tax-rate-columns-sync-integration.test.ts",
-  "tests/tax-rate-storage.test.ts",
   "tests/documents-artifacts.test.ts",
   "tests/agreement-estimate-concurrency-integration.test.ts",
   "tests/billing-subscription-renewal-integration.test.ts",
