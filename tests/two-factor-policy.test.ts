@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   RECOMMENDED_TWO_FACTOR_ROLES,
+  isTwoFactorEnrollmentExemptPath,
   roleRequiresTwoFactor,
   twoFactorRolesFromSetting,
 } from "@/domains/security/two-factor";
@@ -25,19 +26,20 @@ describe("two-factor role policy", () => {
     expect(roleRequiresTwoFactor("CUSTOMER", ["CUSTOMER"])).toBe(false);
   });
 
-  it("keeps setup/auth/reset/sign-out paths outside ordinary desk enforcement", () => {
-    const source = [
+  it("exempts only setup/auth/login/recovery paths from page-level enrollment", () => {
+    for (const path of [
       "/desk/security/setup",
       "/api/auth/two-factor/verify-totp",
       "/api/auth/sign-out",
+      "/login",
+      "/login/two-factor",
       "/forgot-password",
       "/reset-password",
-    ];
-    expect(source).toEqual(expect.arrayContaining([
-      "/desk/security/setup",
-      "/api/auth/sign-out",
-      "/forgot-password",
-      "/reset-password",
-    ]));
+    ]) {
+      expect(isTwoFactorEnrollmentExemptPath(path), path).toBe(true);
+    }
+    for (const path of ["/desk/today", "/desk/billing", "/desk/settings", "/account"]) {
+      expect(isTwoFactorEnrollmentExemptPath(path), path).toBe(false);
+    }
   });
 });
