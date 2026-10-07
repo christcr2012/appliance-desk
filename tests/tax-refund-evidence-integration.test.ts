@@ -149,6 +149,7 @@ describe.skipIf(!enabled)("Batch T historical refund tax evidence (real Postgres
       baseCents: 8_000,
       taxCents: 612,
       totalCents: 8_612,
+      evidenceComplete: true,
     });
   });
 
@@ -162,6 +163,7 @@ describe.skipIf(!enabled)("Batch T historical refund tax evidence (real Postgres
     expect(halfNewest).toEqual({
       taxCents: 160,
       uncoveredBaseCents: 0,
+      evidenceComplete: true,
     });
 
     const newestPlusHalfOlder = await prisma.$transaction((tx) =>
@@ -173,6 +175,55 @@ describe.skipIf(!enabled)("Batch T historical refund tax evidence (real Postgres
     expect(newestPlusHalfOlder).toEqual({
       taxCents: 466,
       uncoveredBaseCents: 0,
+      evidenceComplete: true,
     });
   });
+
+  it("flags a legacy taxed invoice with no line-level tax evidence instead of treating its tax as zero", async () => {
+    const legacyInvoiceId = `refund-tax-invoice-legacy-${tag}`;
+    const invoice = await prisma.invoice.create({
+      data: {
+        id: legacyInvoiceId,
+        customerId,
+        agreementId,
+        status: "PAID",
+        billingPeriodStart: new Date("2026-03-01T07:00:00.000Z"),
+        subtotalCents: 4_000,
+        taxCents: 400,
+        amountDueCents: 4_400,
+        amountPaidCents: 4_400,
+      },
+    });
+    await prisma.invoiceLineItem.create({
+      data: {
+        invoiceId: invoice.id,
+        kind: "RENTAL",
+        description: "Washer",
+        amountCents: 4_000,
+        rentalLineId,
+      },
+    });
+
+    try {
+      const lineEvidence = await prisma.$transaction((tx) =>
+        billedRentalLineEvidenceInTx(tx, { agreementId, rentalLineId }),
+      );
+      expect(lineEvidence.evidenceComplete).toBe(false);
+
+      const newest = await prisma.$transaction((tx) =>
+        historicalRentalTaxForBaseCentsInTx(tx, {
+          agreementId,
+          baseCents: 1_000,
+        }),
+      );
+      expect(newest).toEqual({
+        taxCents: 0,
+        uncoveredBaseCents: 0,
+        evidenceComplete: false,
+      });
+    } finally {
+      await prisma.invoice.delete({ where: { id: legacyInvoiceId } });
+    }
+  });
+
 });
