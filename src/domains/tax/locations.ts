@@ -665,6 +665,49 @@ export async function getAgreementTaxContext(
   };
 }
 
+/**
+ * Combined RENTAL rate saved on the agreement for customer-facing contract
+ * display. Billing never reads this snapshot for arithmetic; invoice tax uses
+ * the per-jurisdiction engine and persisted InvoiceTaxLine evidence.
+ */
+export async function combinedRentalTaxRateMilliPercentForAgreement(
+  tx: Prisma.TransactionClient,
+  agreementId: string,
+  taxDate: Date,
+): Promise<number> {
+  const context = await getAgreementTaxContext(tx, agreementId, taxDate);
+  const problems: string[] = [];
+  let total = 0;
+
+  for (const jurisdiction of context.jurisdictions) {
+    const resolution = resolveTaxability(jurisdiction, "RENTAL", context);
+    if (resolution.taxability === "UNDECIDED") {
+      problems.push(
+        `rental in ${jurisdiction.name}: decide whether it is taxable before billing.`,
+      );
+      continue;
+    }
+    if (
+      resolution.taxability !== "TAXABLE" ||
+      context.exemptJurisdictionIds.has(jurisdiction.id)
+    ) {
+      continue;
+    }
+    if (!jurisdiction.rate) {
+      problems.push(
+        `Enter a tax rate for ${jurisdiction.name} effective on ${businessDateKey(taxDate)}.`,
+      );
+      continue;
+    }
+    total += jurisdiction.rate.rateMilliPercent;
+  }
+
+  if (problems.length > 0) {
+    throw new TaxNotReadyError([...new Set(problems)]);
+  }
+  return total;
+}
+
 export async function taxRateVersionIdsForAgreement(
   tx: Prisma.TransactionClient,
   agreementId: string,
