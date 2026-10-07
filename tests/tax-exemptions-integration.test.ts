@@ -124,6 +124,24 @@ describe.skipIf(!enabled)("Batch T customer tax exemptions (real Postgres)", () 
     });
   }
 
+  it("refuses to activate an exemption without certificate photo evidence", async () => {
+    await expect(
+      createCustomerTaxExemption(ownerId, customerId, {
+        reason: "OTHER",
+        validFrom: new Date("2026-01-01T07:00:00.000Z"),
+      }),
+    ).rejects.toThrow(/private photo/i);
+    expect(
+      await prisma.customerTaxExemption.count({
+        where: {
+          customerId,
+          reason: "OTHER",
+          certificatePhotoId: null,
+        },
+      }),
+    ).toBe(0);
+  });
+
   it("lets only the owner create and edit an exemption and applies an active all-jurisdiction exemption", async () => {
     await expect(
       createCustomerTaxExemption(staffId, customerId, {
