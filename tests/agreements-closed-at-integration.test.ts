@@ -13,11 +13,11 @@ const enabled =
 
 describe.skipIf(!enabled)("Batch G agreement closure evidence (real Postgres)", () => {
   const tag = randomUUID().replaceAll("-", "");
+  const ownerId = "gclose-owner-" + tag;
   const userId = "gclose-user-" + tag;
   const customerId = "gclose-customer-" + tag;
   const addressId = "gclose-address-" + tag;
   const agreementIds: string[] = [];
-  let ownerId: string;
 
   async function createAgreement(input: {
     status?: "ACTIVE" | "SCHEDULED";
@@ -48,15 +48,23 @@ describe.skipIf(!enabled)("Batch G agreement closure evidence (real Postgres)", 
   }
 
   beforeAll(async () => {
-    ownerId = (await prisma.user.findFirstOrThrow({ where: { role: "OWNER" } })).id;
-    await prisma.user.create({
-      data: {
-        id: userId,
-        email: "gclose-" + tag + "@example.test",
-        name: "Batch G Closure",
-        role: "CUSTOMER",
-        emailVerified: true,
-      },
+    await prisma.user.createMany({
+      data: [
+        {
+          id: ownerId,
+          email: "gclose-owner-" + tag + "@example.test",
+          name: "Batch G Closure Owner",
+          role: "OWNER",
+          emailVerified: true,
+        },
+        {
+          id: userId,
+          email: "gclose-" + tag + "@example.test",
+          name: "Batch G Closure",
+          role: "CUSTOMER",
+          emailVerified: true,
+        },
+      ],
     });
     await prisma.customer.create({
       data: { id: customerId, userId, referralCode: "GC" + tag.slice(-20) },
@@ -76,9 +84,9 @@ describe.skipIf(!enabled)("Batch G agreement closure evidence (real Postgres)", 
   afterAll(async () => {
     await prisma.rentalLine.deleteMany({ where: { agreementId: { in: agreementIds } } });
     await prisma.rentalAgreement.deleteMany({ where: { id: { in: agreementIds } } });
-    await prisma.serviceAddress.delete({ where: { id: addressId } });
-    await prisma.customer.delete({ where: { id: customerId } });
-    await prisma.user.delete({ where: { id: userId } });
+    await prisma.serviceAddress.deleteMany({ where: { id: addressId } });
+    await prisma.customer.deleteMany({ where: { id: customerId } });
+    await prisma.user.deleteMany({ where: { id: { in: [ownerId, userId] } } });
   });
 
   it("stamps cancellation time and stops month-to-month estimated earnings there", async () => {
