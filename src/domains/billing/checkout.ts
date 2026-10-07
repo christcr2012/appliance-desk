@@ -453,9 +453,25 @@ export async function startRecurringBillingForAgreement(
       const taxRateVersionIds = await taxRateVersionIdsForAgreement(
         tx,
         agreementId,
+        firstDeliveredOn,
+        "RENTAL",
+      );
+      const currentTaxRateVersionIds = await taxRateVersionIdsForAgreement(
+        tx,
+        agreementId,
         new Date(),
         "RENTAL",
       );
+      if (
+        taxRateVersionIds.length !== currentTaxRateVersionIds.length ||
+        taxRateVersionIds.some(
+          (rateVersionId, index) => rateVersionId !== currentTaxRateVersionIds[index],
+        )
+      ) {
+        throw new Error(
+          "A sales-tax rate changed after delivery. Automatic backdated billing is blocked so Stripe cannot apply the wrong rate to earlier rental periods.",
+        );
+      }
 
       const plan = buildCheckoutLinePlan(agreement).filter((item) => item.recurring);
       if (plan.length === 0) return { done: true, outcome: { state: "DONE" }, subscriptionEndIds: [] };
