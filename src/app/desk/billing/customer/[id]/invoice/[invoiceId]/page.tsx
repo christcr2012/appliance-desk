@@ -7,7 +7,11 @@ import { PrintDocumentButton } from "@/components/print-document-button";
 import { prisma } from "@/lib/prisma";
 import { getSpendableCredits } from "@/domains/billing/money-decisions";
 import { MoneyDecisionForm } from "@/components/desk/money-decision-form";
-import { applyCreditAction, refundInvoiceAction } from "@/app/desk/billing/money-actions";
+import {
+  applyCreditAction,
+  recalculateInvoiceTaxAction,
+  refundInvoiceAction,
+} from "@/app/desk/billing/money-actions";
 import { formatCents } from "@/domains/pricing";
 
 export const metadata = { title: "Invoice" };
@@ -36,6 +40,27 @@ export default async function DeskInvoicePage({
     where: { id: invoiceId },
     select: { status: true, amountDueCents: true, amountPaidCents: true, refunds: { select: { amountCents: true } } },
   });
+  const taxMarker =
+    money?.status === "DRAFT"
+      ? await prisma.auditLog.findFirst({
+          where: {
+            entityType: "Invoice",
+            entityId: invoiceId,
+            action: "billing.tax_decision_needed",
+          },
+          select: { newValue: true },
+          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        })
+      : null;
+  const markerProblems =
+    taxMarker?.newValue &&
+    !Array.isArray(taxMarker.newValue) &&
+    typeof taxMarker.newValue === "object"
+      ? (taxMarker.newValue as { problems?: unknown }).problems
+      : null;
+  const taxProblems = Array.isArray(markerProblems)
+    ? markerProblems.filter((problem): problem is string => typeof problem === "string")
+    : [];
   const refundable = money ? money.amountPaidCents - money.refunds.reduce((sum, r) => sum + r.amountCents, 0) : 0;
   const outstanding = money ? Math.max(0, money.amountDueCents - money.amountPaidCents) : 0;
   const isOpen = money ? ["OPEN", "PARTIALLY_PAID", "DELINQUENT"].includes(money.status) : false;
@@ -60,6 +85,32 @@ export default async function DeskInvoicePage({
           <PrintDocumentButton />
         </div>
       </div>
+
+      {taxMarker && (
+        <section className="mt-4 rounded-xl border border-line-strong bg-subtle p-4 print:hidden">
+          <h2 className="font-semibold text-ink">
+            This bill needs a tax decision before it can be sent
+          </h2>
+          <p className="mt-1 text-sm text-ink-soft">
+            Fix the tax setup below, then recalculate. The bill stays in Draft and is not collectible until this passes.
+          </p>
+          {taxProblems.length > 0 && (
+            <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-ink">
+              {taxProblems.map((problem) => (
+                <li key={problem}>{problem}</li>
+              ))}
+            </ul>
+          )}
+          <form action={recalculateInvoiceTaxAction.bind(null, invoiceId)} className="mt-4">
+            <button
+              type="submit"
+              className="min-h-11 rounded-md bg-action px-4 py-2 text-sm font-medium text-on-action hover:bg-action"
+            >
+              Recalculate tax
+            </button>
+          </form>
+        </section>
+      )}
 
       <div className="mt-4 print:mt-0">
         <InvoiceDocument invoice={invoice} />
