@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import { chromium, type FullConfig } from "@playwright/test";
 import { loginAs } from "./utils/auth";
+import { completeTwoFactorSetup } from "./utils/two-factor";
 
 // Logs in once per role (OWNER, CUSTOMER) and saves the resulting
 // session to disk, so e2e/accessibility-authenticated.spec.ts's many
@@ -27,6 +28,9 @@ export default async function globalSetup(config: FullConfig): Promise<void> {
   if (ownerEmail && ownerPassword) {
     const page = await browser.newPage({ baseURL });
     await loginAs(page, ownerEmail, ownerPassword);
+    if (new URL(page.url()).pathname === "/desk/security/setup") {
+      await completeTwoFactorSetup(page, ownerPassword);
+    }
     await page.context().storageState({ path: "e2e/.auth/owner.json" });
     await page.close();
   }

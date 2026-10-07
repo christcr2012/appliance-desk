@@ -1,5 +1,5 @@
 /**
- * Creates ONE disposable customer login for a browser test, using the same
+ * Creates ONE disposable login for a browser test, using the same
  * trusted provisioning path the real app uses (src/lib/account-provisioning.ts).
  *
  * Public sign-up is intentionally disabled in production (see src/lib/auth.ts),
@@ -7,7 +7,7 @@
  * Playwright's own worker cannot import Better Auth (it uses a separate ESM
  * loader), so e2e specs run this script in a child process instead.
  *
- * Usage: npx tsx scripts/create-ci-login.ts <email> <password>
+ * Usage: npx tsx scripts/create-ci-login.ts <email> <password> [CUSTOMER|ADMIN|STAFF]
  * Prints the new user's id on stdout.
  *
  * Safety: refuses to run unless CI=true and DATABASE_URL points at the
@@ -26,16 +26,19 @@ async function main() {
     throw new Error("create-ci-login only runs against CI's disposable test database.");
   }
 
-  const [email, password] = process.argv.slice(2);
-  if (!email || !password) {
-    throw new Error("Usage: tsx scripts/create-ci-login.ts <email> <password>");
+  const [email, password, rawRole = "CUSTOMER"] = process.argv.slice(2);
+  if (!email || !password || !["CUSTOMER", "ADMIN", "STAFF"].includes(rawRole)) {
+    throw new Error(
+      "Usage: tsx scripts/create-ci-login.ts <email> <password> [CUSTOMER|ADMIN|STAFF]",
+    );
   }
+  const role = rawRole as "CUSTOMER" | "ADMIN" | "STAFF";
 
   const user = await prisma.$transaction((tx) =>
     createTrustedCredentialUserInTx(tx, {
       email,
       name: "Session fixture",
-      role: "CUSTOMER",
+      role,
       password,
     }),
   );
