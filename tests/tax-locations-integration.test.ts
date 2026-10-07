@@ -8,7 +8,6 @@ import {
 } from "@/domains/tax/colorado-gis";
 import {
   confirmAddressLocation,
-  importBulkLookupFile,
   locateBusinessTaxAddress,
   locateServiceAddress,
 } from "@/domains/tax/locations";
@@ -244,6 +243,142 @@ describe.skipIf(!enabled)("Batch T address tax locations (real Postgres)", () =>
     });
   });
 
+  it("serializes two addresses discovering the same new jurisdiction and first rate", async () => {
+    const secondAddressId = `${addressId}-concurrent`;
+    const sharedCode = code("RACE");
+    await prisma.serviceAddress.create({
+      data: {
+        id: secondAddressId,
+        customerId,
+        line1: "2 Synthetic Tax Test Way",
+        city: "Greeley",
+        state: "CO",
+        zip: "80631",
+      },
+    });
+
+    let calls = 0;
+    let releaseBoth!: () => void;
+    const bothStarted = new Promise<void>((resolve) => {
+      releaseBoth = resolve;
+    });
+    const source: ColoradoRateSource = {
+      async lookup() {
+        calls += 1;
+        if (calls === 2) releaseBoth();
+        await bothStarted;
+        return {
+          status: "MATCHED",
+          normalizedAddress: "Synthetic concurrent address",
+          jurisdictions: [
+            {
+              code: sharedCode,
+              name: "Synthetic Shared District",
+              level: "SPECIAL_DISTRICT",
+              administration: "STATE_COLLECTED",
+              rateMilliPercent: 1750,
+            },
+          ],
+        };
+      },
+    };
+    __setColoradoRateSourceForTests(source);
+
+    try {
+      const results = await Promise.all([
+        locateServiceAddress(addressId, { force: true }),
+        locateServiceAddress(secondAddressId, { force: true }),
+      ]);
+      expect(results).toEqual([
+        { status: "NEEDS_REVIEW" },
+        { status: "NEEDS_REVIEW" },
+      ]);
+      expect(
+        await prisma.taxJurisdiction.count({ where: { code: sharedCode } }),
+      ).toBe(1);
+      const jurisdiction = await prisma.taxJurisdiction.findUniqueOrThrow({
+        where: { code: sharedCode },
+      });
+      expect(
+        await prisma.taxRateVersion.count({
+          where: { jurisdictionId: jurisdiction.id },
+        }),
+      ).toBe(1);
+      expect(
+        await prisma.addressTaxLocation.count({
+          where: {
+            serviceAddressId: { in: [addressId, secondAddressId] },
+            isCurrent: true,
+          },
+        }),
+      ).toBe(2);
+    } finally {
+      await prisma.addressTaxLocation.deleteMany({
+        where: { serviceAddressId: secondAddressId },
+      });
+      await prisma.serviceAddress.deleteMany({
+        where: { id: secondAddressId },
+      });
+    }
+  });
+
+  it("discards a provider result when the address changes before the write lock", async () => {
+    const originalLine1 = "1 Synthetic Tax Test Way";
+    const reviewed = await reviewedJurisdiction("STALE", {
+      rateMilliPercent: 1000,
+    });
+
+    let startLookup!: () => void;
+    let finishLookup!: () => void;
+    const lookupStarted = new Promise<void>((resolve) => {
+      startLookup = resolve;
+    });
+    const allowResult = new Promise<void>((resolve) => {
+      finishLookup = resolve;
+    });
+    __setColoradoRateSourceForTests({
+      async lookup() {
+        startLookup();
+        await allowResult;
+        return {
+          status: "MATCHED",
+          normalizedAddress: "Old private normalized address",
+          jurisdictions: [
+            {
+              code: reviewed.code,
+              name: reviewed.name,
+              level: reviewed.level,
+              administration: reviewed.administration,
+              rateMilliPercent: 1000,
+            },
+          ],
+        };
+      },
+    });
+
+    const pending = locateServiceAddress(addressId, { force: true });
+    await lookupStarted;
+    await prisma.serviceAddress.update({
+      where: { id: addressId },
+      data: { line1: "Deleted address" },
+    });
+    finishLookup();
+
+    try {
+      await expect(pending).resolves.toEqual({ status: "NEEDS_REVIEW" });
+      expect(
+        await prisma.addressTaxLocation.count({
+          where: { serviceAddressId: addressId },
+        }),
+      ).toBe(0);
+    } finally {
+      await prisma.serviceAddress.update({
+        where: { id: addressId },
+        data: { line1: originalLine1 },
+      });
+    }
+  });
+
   it("never guesses the administration for a new jurisdiction when the source does not know it", async () => {
     const unknownCode = code("UNKNOWN-ADMIN");
     __setColoradoRateSourceForTests(
@@ -402,11 +537,5 @@ describe.skipIf(!enabled)("Batch T address tax locations (real Postgres)", () =>
         },
       }),
     ).not.toBeNull();
-  });
-
-  it("rejects bulk files until the authenticated SUTS column contract exists", async () => {
-    const result = await importBulkLookupFile(ownerId, "made,up,columns");
-    expect(result).toMatchObject({ matched: 0, needsReview: 0 });
-    expect(result.errors[0]).toContain("not configured");
   });
 });

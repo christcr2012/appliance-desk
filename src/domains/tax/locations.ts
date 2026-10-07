@@ -1,8 +1,7 @@
+import { randomUUID } from "node:crypto";
 import type {
   Prisma,
   TaxAddressStatus,
-  TaxAdministration,
-  TaxJurisdictionLevel,
   TaxRateSource,
 } from "@prisma/client";
 
@@ -58,6 +57,67 @@ function currentWhere(target: Target) {
   return target.kind === "SERVICE"
     ? { serviceAddressId: target.serviceAddressId, isCurrent: true }
     : { forBusinessLocation: true, isCurrent: true };
+}
+
+function sameAddress(
+  left: AddressInput,
+  right: AddressInput,
+): boolean {
+  return (
+    left.line1 === right.line1 &&
+    (left.line2 ?? null) === (right.line2 ?? null) &&
+    left.city === right.city &&
+    left.zip === right.zip
+  );
+}
+
+function addressFromJson(raw: unknown): AddressInput | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const value = raw as Record<string, unknown>;
+  const line1 = typeof value.line1 === "string" ? value.line1.trim() : "";
+  const line2 =
+    typeof value.line2 === "string" ? value.line2.trim() || null : null;
+  const city = typeof value.city === "string" ? value.city.trim() : "";
+  const zip = typeof value.zip === "string" ? value.zip.trim() : "";
+  return line1 && city && zip ? { line1, line2, city, zip } : null;
+}
+
+async function targetStillMatches(
+  tx: LocationTx,
+  target: Target,
+): Promise<boolean> {
+  if (target.kind === "SERVICE") {
+    const current = await tx.serviceAddress.findUnique({
+      where: { id: target.serviceAddressId },
+      select: {
+        line1: true,
+        line2: true,
+        city: true,
+        zip: true,
+        customer: { select: { archivedAt: true } },
+      },
+    });
+    return Boolean(
+      current &&
+        !current.customer.archivedAt &&
+        sameAddress(
+          {
+            line1: current.line1,
+            line2: current.line2,
+            city: current.city,
+            zip: current.zip,
+          },
+          target.address,
+        ),
+    );
+  }
+
+  const settings = await tx.businessSettings.findUnique({
+    where: { id: "singleton" },
+    select: { businessTaxAddress: true },
+  });
+  const current = addressFromJson(settings?.businessTaxAddress);
+  return current ? sameAddress(current, target.address) : false;
 }
 
 async function currentLocation(tx: LocationTx, target: Target) {
@@ -134,37 +194,50 @@ async function resolveJurisdiction(
       };
     }
 
-    jurisdiction = await tx.taxJurisdiction.create({
+    // Multiple address lookups can discover the same jurisdiction at once.
+    // PostgreSQL's conflict handling makes that shared write race-safe inside
+    // the surrounding transaction; a caught unique violation would poison it.
+    await tx.$executeRaw`
+      INSERT INTO "TaxJurisdiction"
+        ("id", "code", "name", "level", "administration", "reviewStatus", "createdAt", "updatedAt")
+      VALUES
+        (
+          ${randomUUID()},
+          ${gis.code},
+          ${gis.name},
+          ${gis.level}::"TaxJurisdictionLevel",
+          ${gis.administration}::"TaxAdministration",
+          'NEEDS_REVIEW'::"TaxReviewStatus",
+          CURRENT_TIMESTAMP,
+          CURRENT_TIMESTAMP
+        )
+      ON CONFLICT ("code") DO NOTHING
+    `;
+    jurisdiction = await tx.taxJurisdiction.findUniqueOrThrow({
+      where: { code: gis.code },
+    });
+  }
+
+  const changed =
+    jurisdiction.name !== gis.name ||
+    jurisdiction.level !== gis.level ||
+    (gis.administration !== null &&
+      jurisdiction.administration !== gis.administration);
+
+  if (changed) {
+    jurisdiction = await tx.taxJurisdiction.update({
+      where: { id: jurisdiction.id },
       data: {
-        code: gis.code,
         name: gis.name,
         level: gis.level,
-        administration: gis.administration,
+        ...(gis.administration
+          ? { administration: gis.administration }
+          : {}),
         reviewStatus: "NEEDS_REVIEW",
+        reviewedByUserId: null,
+        reviewedAt: null,
       },
     });
-  } else {
-    const changed =
-      jurisdiction.name !== gis.name ||
-      jurisdiction.level !== gis.level ||
-      (gis.administration !== null &&
-        jurisdiction.administration !== gis.administration);
-
-    if (changed) {
-      jurisdiction = await tx.taxJurisdiction.update({
-        where: { id: jurisdiction.id },
-        data: {
-          name: gis.name,
-          level: gis.level,
-          ...(gis.administration
-            ? { administration: gis.administration }
-            : {}),
-          reviewStatus: "NEEDS_REVIEW",
-          reviewedByUserId: null,
-          reviewedAt: null,
-        },
-      });
-    }
   }
 
   const currentRate = await tx.taxRateVersion.findFirst({
@@ -179,22 +252,21 @@ async function resolveJurisdiction(
   if (!currentRate && gis.rateMilliPercent !== null) {
     if (validRate(gis.rateMilliPercent)) {
       const effectiveFrom = effectiveFromFor(now);
-      await tx.taxRateVersion.upsert({
-        where: {
-          jurisdictionId_effectiveFrom: {
-            jurisdictionId: jurisdiction.id,
-            effectiveFrom,
-          },
-        },
-        create: {
-          jurisdictionId: jurisdiction.id,
-          rateMilliPercent: gis.rateMilliPercent,
-          effectiveFrom,
-          source: "COLORADO_GIS",
-          sourceNote: "Address lookup",
-        },
-        update: {},
-      });
+      await tx.$executeRaw`
+        INSERT INTO "TaxRateVersion"
+          ("id", "jurisdictionId", "rateMilliPercent", "effectiveFrom", "source", "sourceNote", "createdAt")
+        VALUES
+          (
+            ${randomUUID()},
+            ${jurisdiction.id},
+            ${gis.rateMilliPercent},
+            ${effectiveFrom},
+            'COLORADO_GIS'::"TaxRateSource",
+            'Address lookup',
+            CURRENT_TIMESTAMP
+          )
+        ON CONFLICT ("jurisdictionId", "effectiveFrom") DO NOTHING
+      `;
 
       jurisdiction = await tx.taxJurisdiction.update({
         where: { id: jurisdiction.id },
@@ -267,6 +339,13 @@ async function applyLookup(
 ): Promise<{ status: TaxAddressStatus }> {
   return prisma.$transaction(async (tx) => {
     await lockTarget(tx, target);
+
+    // The provider call happens outside the transaction. Re-read the address
+    // after taking the row lock so a stale response cannot restore PII after
+    // privacy deletion or overwrite a newer address edit.
+    if (!(await targetStillMatches(tx, target))) {
+      return { status: "NEEDS_REVIEW" };
+    }
 
     const existing = await currentLocation(tx, target);
     if (!force && existing && isFresh(existing.lookedUpAt, now)) {
@@ -397,24 +476,13 @@ export async function locateBusinessTaxAddress(
     where: { id: "singleton" },
     select: { businessTaxAddress: true },
   });
-  const raw = settings?.businessTaxAddress;
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
-    return writeMissingBusinessAddress();
-  }
-
-  const value = raw as Record<string, unknown>;
-  const line1 = typeof value.line1 === "string" ? value.line1.trim() : "";
-  const line2 =
-    typeof value.line2 === "string" ? value.line2.trim() || null : null;
-  const city = typeof value.city === "string" ? value.city.trim() : "";
-  const zip = typeof value.zip === "string" ? value.zip.trim() : "";
-
-  if (!line1 || !city || !zip) return writeMissingBusinessAddress();
+  const address = addressFromJson(settings?.businessTaxAddress);
+  if (!address) return writeMissingBusinessAddress();
 
   return locateTarget(
     {
       kind: "BUSINESS",
-      address: { line1, line2, city, zip },
+      address,
     },
     opts,
   );
@@ -504,24 +572,4 @@ export async function confirmAddressLocation(
       },
     });
   });
-}
-
-export async function importBulkLookupFile(
-  actorUserId: string,
-  csvText: string,
-): Promise<{ matched: number; needsReview: number; errors: string[] }> {
-  await prisma.$transaction((tx) =>
-    assertActiveTeamActor(tx, actorUserId, ["OWNER", "ADMIN"]),
-  );
-  void csvText;
-
-  // WU-T0 has not supplied the authenticated SUTS bulk-file column contract.
-  // Reject instead of guessing a CSV layout.
-  return {
-    matched: 0,
-    needsReview: 0,
-    errors: [
-      "Bulk Colorado tax lookup import is not configured yet. Review addresses manually until the SUTS file format is recorded.",
-    ],
-  };
 }
