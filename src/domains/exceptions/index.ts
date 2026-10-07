@@ -15,6 +15,7 @@ import {
   invoiceTaxBlockedException,
   stripeTaxMismatchException,
   stripeTaxUnverifiedException,
+  taxExemptionExpiryException,
   returnedEarlyException,
   EARLY_RETURN_DEFAULTS_REVIEW_DAYS,
   subscriptionUpdatePendingException,
@@ -159,6 +160,13 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     entityType: "Invoice",
     entityId: { not: null },
   } satisfies Prisma.AuditLogWhereInput;
+  const taxExemptionExpiryWhere = {
+    revokedAt: null,
+    expiresOn: {
+      gte: now,
+      lte: addDays(now, 30),
+    },
+  } satisfies Prisma.CustomerTaxExemptionWhereInput;
   const staleWhere = {
     status: { in: ["DRAFT", "AWAITING_SIGNATURE"] },
     reservationExpiresAt: { lt: now },
@@ -220,6 +228,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     billingBlockedAgreements,
     taxBlockedInvoices,
     stripeTaxReviewAudits,
+    taxExemptionsExpiring,
     staleReservations,
     pastDueInvoices,
     overdueJobs,
@@ -281,6 +290,29 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
             take,
           }),
           () => prisma.auditLog.count({ where: stripeTaxReviewAuditWhere }),
+        )
+      : empty<never>(),
+    canViewFinance
+      ? capped(
+          (take) => prisma.customerTaxExemption.findMany({
+            where: taxExemptionExpiryWhere,
+            select: {
+              id: true,
+              customerId: true,
+              expiresOn: true,
+              customer: {
+                select: {
+                  user: { select: { name: true, email: true } },
+                },
+              },
+            },
+            orderBy: [{ expiresOn: "asc" }, { id: "asc" }],
+            take,
+          }),
+          () =>
+            prisma.customerTaxExemption.count({
+              where: taxExemptionExpiryWhere,
+            }),
         )
       : empty<never>(),
     capped(
@@ -597,6 +629,19 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
         }),
       ];
     }),
+    ...taxExemptionsExpiring.rows
+      .filter(
+        (exemption): exemption is typeof exemption & { expiresOn: Date } =>
+          exemption.expiresOn !== null,
+      )
+      .map((exemption) =>
+        taxExemptionExpiryException({
+          id: exemption.id,
+          customerId: exemption.customerId,
+          customerName: customerDisplayName(exemption.customer),
+          expiresOn: exemption.expiresOn,
+        }),
+      ),
     ...taxBlockedInvoices.rows.map((invoice) => {
       const taxProblem = taxProblemsByInvoice.get(invoice.id);
       return invoiceTaxBlockedException({
@@ -707,7 +752,10 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
       ["BILLING_BLOCKED", billingBlockedAgreements],
       ["SALES_TAX", {
         rows: cappedSalesTaxItems,
-        total: taxBlockedInvoices.total + stripeTaxReviewAudits.total,
+        total:
+          taxBlockedInvoices.total +
+          stripeTaxReviewAudits.total +
+          taxExemptionsExpiring.total,
       }],
       ["STALE_RESERVATION", staleReservations],
       ["PAST_DUE_INVOICE", pastDueInvoices],
@@ -798,49 +846,3 @@ async function maintenanceDueAppliances(cutoffText: string): Promise<Capped<Main
            COALESCE(m."lastDone", a."purchaseDate", a."createdAt") AS "since"
     FROM "Appliance" a
     JOIN "ApplianceType" t ON t."id" = a."applianceTypeId"
-    LEFT JOIN LATERAL (
-      SELECT MAX(j."completedAt") AS "lastDone"
-      FROM "JobAppliance" ja
-      JOIN "Job" j ON j."id" = ja."jobId"
-      WHERE ja."applianceId" = a."id" AND j."type" = 'MAINTENANCE_VISIT' AND j."status" = 'COMPLETED'
-    ) m ON TRUE
-    WHERE a."status" = 'RENTED' AND a."archivedAt" IS NULL
-      AND COALESCE(m."lastDone", a."purchaseDate", a."createdAt") < CAST(${cutoffText} AS timestamp)
-    ORDER BY "since" ASC, a."id" ASC
-    LIMIT ${EXCEPTION_CATEGORY_CAP}
-  `;
-  let total = rows.length;
-  if (rows.length >= EXCEPTION_CATEGORY_CAP) {
-    const [{ n }] = await prisma.$queryRaw<Array<{ n: number }>>`
-      SELECT COUNT(*)::int AS "n"
-      FROM "Appliance" a
-      LEFT JOIN LATERAL (
-        SELECT MAX(j."completedAt") AS "lastDone"
-        FROM "JobAppliance" ja
-        JOIN "Job" j ON j."id" = ja."jobId"
-        WHERE ja."applianceId" = a."id" AND j."type" = 'MAINTENANCE_VISIT' AND j."status" = 'COMPLETED'
-      ) m ON TRUE
-      WHERE a."status" = 'RENTED' AND a."archivedAt" IS NULL
-        AND COALESCE(m."lastDone", a."purchaseDate", a."createdAt") < CAST(${cutoffText} AS timestamp)
-    `;
-    total = n;
-  }
-  return { rows, total };
-}
-
-/** Today's schedule — every job (of any status) due today, earliest
- * first. Used by /desk/today alongside getExceptions(). */
-export async function getTodaysJobs(now = new Date()) {
-  await requireRole("OWNER", "ADMIN", "STAFF");
-  const { start: startOfDay, end: startOfTomorrow } = businessDayBounds(now);
-
-  return prisma.job.findMany({
-    where: { scheduledAt: { gte: startOfDay, lt: startOfTomorrow } },
-    select: {
-      id: true, type: true, status: true, scheduledAt: true,
-      customer: { select: { user: { select: { name: true, email: true } } } },
-      serviceAddress: { select: { line1: true, city: true } },
-    },
-    orderBy: [{ scheduledAt: "asc" }, { id: "asc" }],
-  });
-}
