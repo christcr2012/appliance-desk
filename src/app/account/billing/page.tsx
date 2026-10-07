@@ -132,9 +132,16 @@ export default async function AccountBillingPage() {
                         {formatCents(invoice.amountPaidCents)} paid
                       </p>
                       {invoice.balanceCents > 0 && (
-                        <p className="mt-1 text-sm font-semibold text-warning-ink">
-                          {formatCents(invoice.balanceCents)} owed
-                        </p>
+                        <>
+                          <p className="mt-1 text-sm font-semibold text-warning-ink">
+                            {formatCents(invoice.balanceCents)} owed
+                          </p>
+                          {invoice.isLocalInvoice && (
+                            <p className="mt-1 text-sm text-ink-soft">
+                              Pay as arranged with Robinson Appliance Rentals.
+                            </p>
+                          )}
+                        </>
                       )}
                     </div>
                   </li>
