@@ -280,6 +280,7 @@ async function recordPaidInvoice(
   }
 
   const cashEvents = evidence.cashEvents(stripeInvoice.id as string);
+  const taxCents = extractTaxCents(stripeInvoice);
   const nextBillingDate = stripeInvoice.period_end
     ? new Date(stripeInvoice.period_end * 1000)
     : null;
