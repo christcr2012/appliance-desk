@@ -28,6 +28,10 @@ export default async function globalSetup(config: FullConfig): Promise<void> {
   if (ownerEmail && ownerPassword) {
     const page = await browser.newPage({ baseURL });
     await loginAs(page, ownerEmail, ownerPassword);
+    // loginAs resolves on the first non-/login URL. The desk layout may then
+    // immediately redirect an unenrolled Owner to setup, so force one stable
+    // desk navigation before deciding whether enrollment is needed.
+    await page.goto("/desk/today");
     if (new URL(page.url()).pathname === "/desk/security/setup") {
       await completeTwoFactorSetup(page, ownerPassword);
     }
