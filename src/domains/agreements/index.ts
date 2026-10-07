@@ -452,12 +452,13 @@ export async function sendForSignature(userId: string, agreementId: string) {
       throw new Error("Add at least one appliance to this agreement first.");
     }
 
-    await assertTaxReadyForAgreement(tx, agreementId);
+    const taxDate = new Date();
+    await assertTaxReadyForAgreement(tx, agreementId, taxDate);
     const taxRateMilliPercent =
       await combinedRentalTaxRateMilliPercentForAgreement(
         tx,
         agreementId,
-        new Date(),
+        taxDate,
       );
 
     const signature = await tx.signatureRecord.create({
