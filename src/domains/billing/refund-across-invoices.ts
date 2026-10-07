@@ -7,7 +7,12 @@ export type RefundAcrossRun = { refundId: string; claim: ClaimedRefund; invoiceI
 export async function billedRentalLineEvidenceInTx(
   tx: Prisma.TransactionClient,
   input: { agreementId: string; rentalLineId: string },
-): Promise<{ baseCents: number; taxCents: number; totalCents: number }> {
+): Promise<{
+  baseCents: number;
+  taxCents: number;
+  totalCents: number;
+  evidenceComplete: boolean;
+}> {
   const lines = await tx.invoiceLineItem.findMany({
     where: {
       rentalLineId: input.rentalLineId,
@@ -19,6 +24,7 @@ export async function billedRentalLineEvidenceInTx(
     },
     select: {
       amountCents: true,
+      invoice: { select: { taxCents: true } },
       taxLines: {
         select: { taxCents: true },
       },
@@ -31,7 +37,15 @@ export async function billedRentalLineEvidenceInTx(
       sum + line.taxLines.reduce((taxSum, taxLine) => taxSum + taxLine.taxCents, 0),
     0,
   );
-  return { baseCents, taxCents, totalCents: baseCents + taxCents };
+  const evidenceComplete = lines.every(
+    (line) => line.taxLines.length > 0 || line.invoice.taxCents === 0,
+  );
+  return {
+    baseCents,
+    taxCents,
+    totalCents: baseCents + taxCents,
+    evidenceComplete,
+  };
 }
 
 /**
@@ -49,9 +63,14 @@ export async function billedRentalLineEvidenceInTx(
 export async function historicalRentalTaxForBaseCentsInTx(
   tx: Prisma.TransactionClient,
   input: { agreementId: string; baseCents: number },
-): Promise<{ taxCents: number; uncoveredBaseCents: number }> {
+): Promise<{
+  taxCents: number;
+  uncoveredBaseCents: number;
+  evidenceComplete: boolean;
+}> {
   let remainingBaseCents = Math.max(0, input.baseCents);
   let taxCents = 0;
+  let evidenceComplete = true;
   const lines =
     remainingBaseCents > 0
       ? await tx.invoiceLineItem.findMany({
@@ -71,6 +90,7 @@ export async function historicalRentalTaxForBaseCentsInTx(
           ],
           select: {
             amountCents: true,
+            invoice: { select: { taxCents: true } },
             taxLines: { select: { taxCents: true } },
           },
         })
@@ -79,6 +99,9 @@ export async function historicalRentalTaxForBaseCentsInTx(
   for (const line of lines) {
     if (remainingBaseCents <= 0) break;
     const takeBaseCents = Math.min(remainingBaseCents, line.amountCents);
+    if (line.taxLines.length === 0 && line.invoice.taxCents !== 0) {
+      evidenceComplete = false;
+    }
     const lineTaxCents = line.taxLines.reduce(
       (sum, taxLine) => sum + taxLine.taxCents,
       0,
@@ -90,7 +113,11 @@ export async function historicalRentalTaxForBaseCentsInTx(
     remainingBaseCents -= takeBaseCents;
   }
 
-  return { taxCents, uncoveredBaseCents: remainingBaseCents };
+  return {
+    taxCents,
+    uncoveredBaseCents: remainingBaseCents,
+    evidenceComplete,
+  };
 }
 
 /**
