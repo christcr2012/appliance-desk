@@ -10,6 +10,9 @@ import {
   staleReservationException,
   stripeTaxMismatchException,
   stripeTaxUnverifiedException,
+  taxExemptionExpiryException,
+  taxExemptionExpiryWindow,
+  taxExemptionWarningSince,
   uninspectedReturnException,
   unreviewedMaintenanceRequestException,
   type ExceptionItem,
@@ -65,6 +68,41 @@ describe("exception builders", () => {
     expect(item.title).toContain("could not be verified");
     expect(item.detail).toContain("not ready");
     expect(item.href).toBe("/desk/billing/customer/cust-tax-1/invoice/inv-tax-2");
+  });
+
+  it("taxExemptionExpiryException stays in Sales tax and links to the customer billing tab", () => {
+    const item = taxExemptionExpiryException({
+      customerId: "cust-exempt-1",
+      customerName: "Jane Doe",
+      expiresOn: new Date("2026-11-06T06:59:59.000Z"),
+      warningSince: new Date("2026-10-07T06:59:59.000Z"),
+    });
+    expect(item.category).toBe("SALES_TAX");
+    expect(item.severity).toBe("medium");
+    expect(item.title).toContain("Jane Doe");
+    expect(item.detail).toContain("2026-11-06");
+    expect(item.href).toBe("/desk/customers/cust-exempt-1?tab=billing");
+    expect(item.since.toISOString()).toBe("2026-10-07T06:59:59.000Z");
+  });
+
+  it("uses Denver calendar days for the exemption warning across spring DST", () => {
+    const now = new Date("2026-02-07T18:00:00.000Z");
+    expect(taxExemptionExpiryWindow(now).throughExclusive.toISOString()).toBe(
+      "2026-03-10T06:00:00.000Z",
+    );
+    expect(
+      taxExemptionWarningSince(new Date("2026-03-10T05:59:59.999Z")).toISOString(),
+    ).toBe("2026-02-07T07:00:00.000Z");
+  });
+
+  it("uses Denver calendar days for the exemption warning across fall DST", () => {
+    const now = new Date("2026-10-05T18:00:00.000Z");
+    expect(taxExemptionExpiryWindow(now).throughExclusive.toISOString()).toBe(
+      "2026-11-05T07:00:00.000Z",
+    );
+    expect(
+      taxExemptionWarningSince(new Date("2026-11-05T06:59:59.999Z")).toISOString(),
+    ).toBe("2026-10-05T06:00:00.000Z");
   });
 
   it("staleReservationException links to the draft agreement", () => {

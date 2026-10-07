@@ -1,3 +1,5 @@
+import { addBusinessDays, businessDayBounds } from "@/lib/business-date";
+
 // ---------------------------------------------------------------------------
 // Exception inbox (2026-09-28) — one place that surfaces anything stuck or
 // needing Chris's attention, instead of him having to remember to go check
@@ -125,6 +127,38 @@ export function stripeTaxUnverifiedException(invoice: {
         : "Review this Stripe bill's tax evidence before relying on it for filing or a refund.",
     href: `/desk/billing/customer/${invoice.customerId}/invoice/${invoice.id}`,
     since: invoice.since,
+  };
+}
+
+export function taxExemptionExpiryWindow(now: Date): {
+  from: Date;
+  throughExclusive: Date;
+} {
+  return {
+    from: now,
+    throughExclusive: businessDayBounds(addBusinessDays(now, 30)).end,
+  };
+}
+
+export function taxExemptionWarningSince(expiresOn: Date): Date {
+  return businessDayBounds(addBusinessDays(expiresOn, -30)).start;
+}
+
+export function taxExemptionExpiryException(exemption: {
+  customerId: string;
+  customerName: string;
+  expiresOn: Date;
+  warningSince: Date;
+}): ExceptionItem {
+  return {
+    category: "SALES_TAX",
+    severity: "medium",
+    title: `${exemption.customerName}'s tax exemption expires soon`,
+    detail: `The exemption expires ${exemption.expiresOn
+      .toISOString()
+      .slice(0, 10)}. Review or replace the certificate before it expires.`,
+    href: `/desk/customers/${exemption.customerId}?tab=billing`,
+    since: exemption.warningSince,
   };
 }
 

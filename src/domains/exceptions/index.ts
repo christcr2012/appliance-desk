@@ -15,6 +15,9 @@ import {
   invoiceTaxBlockedException,
   stripeTaxMismatchException,
   stripeTaxUnverifiedException,
+  taxExemptionExpiryException,
+  taxExemptionExpiryWindow,
+  taxExemptionWarningSince,
   returnedEarlyException,
   EARLY_RETURN_DEFAULTS_REVIEW_DAYS,
   subscriptionUpdatePendingException,
@@ -159,6 +162,14 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     entityType: "Invoice",
     entityId: { not: null },
   } satisfies Prisma.AuditLogWhereInput;
+  const exemptionExpiryWindow = taxExemptionExpiryWindow(now);
+  const taxExemptionExpiryWhere = {
+    revokedAt: null,
+    expiresOn: {
+      gte: exemptionExpiryWindow.from,
+      lt: exemptionExpiryWindow.throughExclusive,
+    },
+  } satisfies Prisma.CustomerTaxExemptionWhereInput;
   const staleWhere = {
     status: { in: ["DRAFT", "AWAITING_SIGNATURE"] },
     reservationExpiresAt: { lt: now },
@@ -220,6 +231,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     billingBlockedAgreements,
     taxBlockedInvoices,
     stripeTaxReviewAudits,
+    taxExemptionsExpiring,
     staleReservations,
     pastDueInvoices,
     overdueJobs,
@@ -281,6 +293,29 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
             take,
           }),
           () => prisma.auditLog.count({ where: stripeTaxReviewAuditWhere }),
+        )
+      : empty<never>(),
+    canViewFinance
+      ? capped(
+          (take) =>
+            prisma.customerTaxExemption.findMany({
+              where: taxExemptionExpiryWhere,
+              select: {
+                customerId: true,
+                expiresOn: true,
+                customer: {
+                  select: {
+                    user: { select: { name: true, email: true } },
+                  },
+                },
+              },
+              orderBy: [{ expiresOn: "asc" }, { id: "asc" }],
+              take,
+            }),
+          () =>
+            prisma.customerTaxExemption.count({
+              where: taxExemptionExpiryWhere,
+            }),
         )
       : empty<never>(),
     capped(
@@ -597,6 +632,19 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
         }),
       ];
     }),
+    ...taxExemptionsExpiring.rows
+      .filter(
+        (exemption): exemption is typeof exemption & { expiresOn: Date } =>
+          exemption.expiresOn !== null,
+      )
+      .map((exemption) =>
+        taxExemptionExpiryException({
+          customerId: exemption.customerId,
+          customerName: customerDisplayName(exemption.customer),
+          expiresOn: exemption.expiresOn,
+          warningSince: taxExemptionWarningSince(exemption.expiresOn),
+        }),
+      ),
     ...taxBlockedInvoices.rows.map((invoice) => {
       const taxProblem = taxProblemsByInvoice.get(invoice.id);
       return invoiceTaxBlockedException({
@@ -707,7 +755,10 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
       ["BILLING_BLOCKED", billingBlockedAgreements],
       ["SALES_TAX", {
         rows: cappedSalesTaxItems,
-        total: taxBlockedInvoices.total + stripeTaxReviewAudits.total,
+        total:
+          taxBlockedInvoices.total +
+          stripeTaxReviewAudits.total +
+          taxExemptionsExpiring.total,
       }],
       ["STALE_RESERVATION", staleReservations],
       ["PAST_DUE_INVOICE", pastDueInvoices],
