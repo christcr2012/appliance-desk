@@ -29,9 +29,10 @@ Colorado is one of the hardest US states for sales tax:
    Many "Greeley" mailing addresses are in unincorporated Weld County, Evans, Garden City or Windsor.
 2. **Two kinds of local tax.** *State-collected* local taxes (counties, most towns, special districts) are filed with
    the state on SUTS. *Home-rule, self-collected* cities (Greeley, Loveland, Fort Collins, Windsor's neighbours, …)
-   write their own rules and are filed with each city. Greeley is home-rule, self-collected, taxes leases/rentals
-   of tangible personal property, and (per the state's SUTS jurisdiction list as found 2026-10-06) is **not** a SUTS
-   participating city, so it is filed directly with Greeley. Public sources give Greeley 4.11% city + 2.9% state =
+   write their own rules. Greeley is home-rule, self-collected and taxes leases/rentals of tangible personal property.
+   **Corrected 2026-10-07 (Amendment A):** Greeley *is* a SUTS participating city (code 030057, live 2023-08-01, as are
+   Evans 030041 and Windsor 030142), so its return is filed in SUTS next to the state return even though Greeley keeps
+   its own taxability rules. The 2026-10-06 text said the opposite. Public sources give Greeley 4.11% city + 2.9% state =
    7.01% combined, not 7.375%. **Chris's CPA must confirm** (IN-17 stays open for this).
 3. **Rentals have a special state rule.** C.R.S. 39-26-713(2)(f): a lease of 3 years or less is **exempt** from state
    (and state-administered local) sales tax **if the lessor paid Colorado sales or use tax when acquiring the
@@ -89,7 +90,8 @@ same product, no-code) are both rejected because:
    cannot know that. Using Stripe Tax would still need per-jurisdiction "customizations" maintained by hand.
 2. The app already creates its own invoices (late returns, early returns, pickups, waivers) that Stripe never
    calculates. Two engines would disagree; one engine cannot.
-3. Greeley is not on SUTS, so Greeley returns are filed by hand either way; Stripe's filing partners cost extra.
+3. Filing is a short monthly SUTS session either way (Greeley participates in SUTS — Amendment A); Stripe's filing
+   partners cost extra and cannot see the lease election.
 4. Cost: roughly 0.5% of every taxed payment for a calculation the state gives away free.
 
 **When to revisit** (write it in `docs/ROADMAP.md`): selling goods outright (not renting), operating outside
@@ -194,6 +196,9 @@ filed its worksheet is frozen; later corrections to invoices in that period appe
 as "Corrections to earlier periods", never by silently changing a filed number. Each account's reporting basis
 (`ACCRUAL` by invoice date, or `CASH` by payment date) is a setting starting at `UNDECIDED` (IN-35); an `UNDECIDED`
 basis shows the worksheet with a warning instead of totals.
+**Extended by Amendment A (section 11):** the worksheet becomes a SUTS *entry packet* laid out in SUTS's order, the app
+keeps a filing calendar for every account (including quarterly/annual and license renewals), and it prompts the owner
+on Today and by email until each return is marked filed.
 
 ### D-T12 — Permissions
 
@@ -699,8 +704,9 @@ the monthly/Jan 1/Jul 1 re-check (`tax-address-recheck`, `"20 13 1 * *"`) plus t
 Tests: `tests/tax-rate-change-integration.test.ts` (version starting tomorrow updates only affected subscriptions,
 once; retry after crash uses the same key; exempt-rent subscriptions untouched), `tests/tax-exemptions-integration.test.ts`.
 
-### WU-T7 — Filing accounts, worksheet, use tax
-Section 3.5 and 3.6, appliance form field, purchase-order receipt hook. Periods are created lazily for each active
+### WU-T7 — Filing accounts, worksheet, use tax (+ Amendment A WU-TA1 … WU-TA3)
+Section 3.5 and 3.6, appliance form field, purchase-order receipt hook. **Read section 11 first**: it adds the filing
+calendar, reminders, owner emails, calendar file and the entry packet, and splits this work into PRs T-6a and T-6b. Periods are created lazily for each active
 account (current + previous). Due-date Today cards 7 days and 1 day before. Tests:
 `tests/tax-worksheet.test.ts` (pure: accrual vs cash; refund reduces tax; correction to a filed period lands on the
 next worksheet), `tests/tax-filing-integration.test.ts` (mark filed freezes; ADMIN refused; second filing refused),
@@ -708,7 +714,8 @@ next worksheet), `tests/tax-filing-integration.test.ts` (mark filed freezes; ADM
 proportionally; COLLECT_ON_RENTALS rental inventory not due).
 
 ### WU-T8 — Screens
-Section 4 screens, navigation entry under Money, customer invoice breakdown. Browser spec `e2e/sales-tax.spec.ts`
+Section 4 screens (with Amendment A's "Filing calendar" and "Return — SUTS entry packet" pages), navigation entry under
+Money, customer invoice breakdown. Browser spec `e2e/sales-tax.spec.ts`
 (assign to the lightest group in `e2e/shards.json`): owner sees blocking cards, fills the matrix, confirms an address;
 ADMIN cannot change the election; axe clean at 360/1440 light/dark. Unit tests for each form's validation.
 
@@ -737,7 +744,8 @@ ADMIN cannot change the election; axe clean at 360/1440 light/dark. Unit tests f
 - "Sales tax: your CPA has answered IN-33 (lease election), IN-34 (what is taxed), IN-35 (cash or accrual), IN-36
   (rentals over 3 years), IN-37 (retail delivery fee); you have entered the answers in Desk → Money → Sales tax and
   every rule in use shows 'CPA confirmed'."
-- "Sales tax: Colorado sales tax license and City of Greeley license numbers entered as filing accounts; filing
+- "Sales tax: Colorado sales tax license (and a separate City of Greeley account only if Greeley issued one — Greeley
+  files through SUTS, Amendment A) entered as filing accounts; filing
   frequency matches what each license letter says."
 - "Sales tax: COLORADO_GIS_API_KEY set in Vercel (Production and Preview) — or you accept manual address checking."
 - "Sales tax: the rate for every tax area you serve is entered with its effective date and matches the state's
@@ -777,3 +785,231 @@ ADMIN cannot change the election; axe clean at 360/1440 light/dark. Unit tests f
 | Returns worksheet per filing account; filed periods frozen | WU-T7 tests |
 | Use tax on untaxed purchases | WU-T7 tests |
 | Owner screens explained in plain words; ADMIN limits enforced | WU-T8 browser spec |
+
+---
+
+## 11. Amendment A (2026-10-07) — Filing workspace: SUTS entry packet and filing calendar
+
+Status: **APPROVED** (Chris, 2026-10-07: "make sure my system can handle as much of this as possible. If it can't do
+anything for me directly, then it at least needs to provide me exactly what I need in a way that I am just doing data
+entry in the SUTS portal. System should still handle scheduling so that I always am prompted to do the filings on
+time"). Replaces nothing above except where it says so; implement it inside WU-T7/WU-T8 as the PRs in 11.8.
+
+### 11.1 Facts this amendment relies on (researched 2026-10-07; verify in WU-TA0)
+
+| # | Fact | Source / confidence | If wrong |
+|---|---|---|---|
+| A-F1 | Greeley (030057), Evans (030041) and Windsor (030142) are SUTS **participating** home-rule cities, so one SUTS session files the state, state-collected locals and those cities. They keep their own taxability rules (the D-T5 matrix is unchanged). | Colorado's SUTS participating-jurisdictions page (state staging copy, found by search; tax.colorado.gov itself was unreachable from the sandbox). Medium-high. | Add a second SALES_RETURN account for the city; nothing else changes. |
+| A-F2 | The **state** vendor (service) fee is gone from 2026-01-01 (HB25B-1005). Some state-collected local jurisdictions still allow a service fee (listed in the state's DR 1002); home-rule cities set their own. | Colorado General Assembly bill page; tax-software notices. High. | The per-area fee setting below simply stays 0. |
+| A-F3 | Returns are due the **20th of the month after the period**; a deadline on a weekend or Colorado legal holiday moves to the next business day. Frequency (monthly / quarterly / annual, calendar periods) is assigned on the license; a return is filed **even when nothing was sold**. | DR 0100 instructions; Department due-date guide. High; CPA confirms (IN-35). | Due day and frequency are per-account settings already. |
+| A-F4 | Use tax the business owes on its own untaxed purchases is a **separate** return (Consumer Use Tax, DR 0252, on Revenue Online for state + special districts): annual (due January 20) while the yearly total stays under $300, otherwise monthly by the 20th. Whether Greeley's use tax goes through SUTS must be checked in Chris's account. | Department consumer-use-tax pages. Medium-high. | Use-tax accounts are ordinary filing accounts of kind USE_TAX_RETURN. |
+| A-F5 | SUTS offers "File Taxes Here via Excel Upload": it generates a **custom template for the account**, you fill it and upload it. Column layout is only visible inside SUTS; spreadsheet filing has historically needed Department pre-approval for multi-location filers. XML filing is for certified software vendors only. | Department "Filing Using Excel" material via search. Medium. | Not built now (11.7). |
+| A-F6 | The Colorado sales tax license is renewed every two years (expires December 31 of odd-numbered years). | Department licensing pages via search. Medium — the owner enters the real expiry from the license. | Expiry is an owner-entered date, not computed. |
+
+Chris's YouTube links (Colorado Department of Revenue SUTS walk-throughs: sign up, manage locations, file and pay,
+filing with Excel) could not be opened from the sandbox (YouTube blocked); the facts above come from the Department's
+written pages instead. WU-TA0 is where those screens get checked against the packet.
+
+### 11.2 What the system does and does not do
+
+- **Does:** work out every number each return needs, per tax area, in the order SUTS asks for it; show a numbered
+  "In SUTS, do this" checklist with a copy button next to every number; keep a calendar of every return and license
+  renewal; prompt the owner on Today and by email from the day a period closes until it is marked filed; record the
+  confirmation number, date and amount paid; freeze the filed numbers; export a calendar file for the phone.
+- **Does not:** log in to SUTS, submit returns, or move money. SUTS has no public filing API (XML filing is limited to
+  certified software vendors) and payment needs the owner's bank authorisation. No SUTS password, bank number or
+  payment card is ever stored or requested by the app.
+
+### 11.3 Schema (additive) — migration `<timestamp>_batch_t_filing_workspace`
+
+```prisma
+enum TaxFilingAccountKind { SALES_RETURN USE_TAX_RETURN }
+
+model TaxFilingAccount {
+  // existing fields unchanged, plus:
+  kind               TaxFilingAccountKind @default(SALES_RETURN)
+  firstPeriodStart   DateTime?            // license start; no periods (or reminders) before it
+  licenseExpiresOn   DateTime?            // owner enters from the license; reminders 60/30/7 days before
+  reminderDaysBefore Int[]                @default([7, 2])
+  emailReminders     Boolean              @default(true)
+  deductionLabels    Json                 @default("{}") // see 11.4 "Deductions"
+  useTaxJurisdictions TaxJurisdiction[]   @relation("UseTaxFilingAccount")
+}
+
+model TaxJurisdiction {
+  // existing fields unchanged (rename the existing relation to @relation("SalesTaxFilingAccount") in the schema
+  // file only — relation names are not stored in the database), plus:
+  filingCode             String?   // the code SUTS shows, e.g. "030057"; owner-entered
+  filingOrder            Int       @default(0) // row order on the packet = order on the SUTS screen
+  serviceFeeMilliPercent Int       @default(0) // service fee the area lets the retailer keep (A-F2); 0 = none
+  useTaxFilingAccountId  String?
+  useTaxFilingAccount    TaxFilingAccount? @relation("UseTaxFilingAccount", fields: [useTaxFilingAccountId], references: [id])
+}
+
+model TaxFilingPeriod {
+  // existing fields unchanged (dueOn = the 20th-style due date before any weekend/holiday move), plus:
+  legalDueOn          DateTime?  // after the next-business-day rule; display only
+  dueOnEditedByUserId String?    // set when the owner overrides dueOn (audit row too)
+  zeroReturn          Boolean    @default(false) // true when filed with no sales and no tax
+  confirmationPhotoId String?    // optional screenshot of the SUTS confirmation (existing private photo store)
+}
+```
+
+Add the new columns to backup coverage and `src/lib/schema-health.ts`; the populated-upgrade drill shows existing
+accounts become `SALES_RETURN` with reminders `[7, 2]` and email on.
+
+### 11.4 Shared primitives (`src/domains/tax/`)
+
+**`filing-calendar.ts` (pure, no Prisma):**
+
+```ts
+export function periodsFor(account: { frequency; firstPeriodStart: Date | null }, through: Date): { start: Date; end: Date }[];
+// calendar months / calendar quarters / calendar years in America/Denver; never before firstPeriodStart
+export function dueOnFor(periodEnd: Date, dueDayOfFollowingMonth: number): Date;   // the plain due date
+export function legalDueOn(dueOn: Date): Date;          // moves past Saturdays, Sundays and Colorado legal holidays
+export function coloradoLegalHolidays(year: number): Date[]; // C.R.S. 24-11-101 list, computed (New Year's, MLK,
+// Washington-Lincoln, Memorial, Juneteenth, Independence, Labor, Frances Xavier Cabrini (1st Mon Oct), Veterans,
+// Thanksgiving, Christmas) with weekend observance — re-check the list against the current C.R.S. 24-11-101 text
+// when implementing (Juneteenth in particular); a wrong entry only changes the displayed legalDueOn, never a reminder
+export function reminderStages(period, account, today): ReminderStage[];
+// "READY" (day after period end), "DUE_IN_<n>" for each reminderDaysBefore, "DUE_TODAY", "OVERDUE" (every day after)
+```
+
+Reminders always count from `dueOn` (the plain 20th), **not** `legalDueOn`, so a holiday never makes a reminder late;
+the screen shows both ("Due Oct 20 — Colorado accepts it until Monday Oct 21 because the 20th is a Sunday").
+
+**`filing-packet.ts`** (replaces `worksheet.ts`'s output shape; the 3.5 rules on accrual/cash, refunds and corrections
+stay exactly as written):
+
+```ts
+export type FilingPacket = {
+  account: { id: string; name: string; kind: "SALES_RETURN" | "USE_TAX_RETURN"; accountNumber: string | null; portalUrl: string | null };
+  periodStart: string; periodEnd: string; dueOn: string; legalDueOn: string;
+  basis: "ACCRUAL" | "CASH";
+  zeroReturn: boolean;                                   // nothing sold and no tax: "File a zero return"
+  rows: {                                                // one per tax area (and per rate version if a rate changed mid-period)
+    jurisdictionId: string; name: string; filingCode: string | null; administration: "STATE_COLLECTED" | "SELF_COLLECTED";
+    grossSalesCents: number;
+    deductions: { key: string; label: string; cents: number }[];   // label = the SUTS wording from deductionLabels
+    netTaxableCents: number; rateMilliPercent: number; taxCents: number;
+    serviceFeeCents: number; remitCents: number;
+  }[];
+  useTax: { jurisdictionId: string; name: string; filingCode: string | null; purchaseCents: number; useTaxCents: number }[];
+  correctionsToEarlierPeriods: { periodStart: string; jurisdictionId: string; taxCents: number }[];
+  totals: { taxCents: number; serviceFeeCents: number; remitCents: number };
+  steps: string[];                                       // plain-language "In SUTS, do this" checklist (11.5)
+  warnings: string[];                                    // e.g. basis or deduction mapping not decided, rate changed mid-period
+};
+export function buildFilingPacket(input: {...}): FilingPacket;                        // pure
+export async function loadFilingPacket(periodId: string): Promise<FilingPacket | { blocked: string }>; // OWNER/ADMIN
+```
+
+- **Gross sales** per row = charges sourced to addresses inside that area (the state row = all Colorado charges),
+  excluding deposits and tax. **Tax** per row = the sum of `InvoiceTaxLine.taxCents` for that area — never re-derived
+  from rate × taxable (that would drift from what customers were charged by rounding).
+- **Deductions:** the packet groups non-taxed amounts into buckets with stable keys: `EXEMPT_SHORT_TERM_RENTAL` (state
+  and state-collected rent under PAY_ON_ACQUISITION), `EXEMPT_CUSTOMER_<reason>` (D-T10 reasons), `NOT_TAXED_CATEGORY`
+  (a category the matrix marks Exempt), `OUTSIDE_AREA` (only on city rows). `TaxFilingAccount.deductionLabels` maps each
+  key to `{ label: string; reportAs: "DEDUCTION" | "LEAVE_OUT_OF_GROSS" }`, entered by the owner from the CPA's answer
+  (IN-44). An unmapped key is shown as "Not decided — ask your CPA" and adds a warning; totals still show (the tax due
+  does not depend on it).
+- **Service fee** = `taxCentsForLine(taxCents, serviceFeeMilliPercent)` per row, shown as "you may keep"; zero by
+  default. `remitCents = taxCents − serviceFeeCents`.
+- **Rounding check:** if a row's tax (sum of per-bill tax lines, D-T6) differs from its net taxable × rate rounded once,
+  the packet shows both and explains that the few-cent difference comes from rounding each bill. The amount to report
+  is the tax actually collected (the row's tax) unless the CPA says otherwise — never silently adjust either number.
+- `markPeriodFiled` (3.5) additionally requires `amountPaidCents`; if it differs from `totals.remitCents` the owner must
+  type a reason (stored in `notes`). It sets `zeroReturn`, freezes the packet JSON into `worksheet`, writes an audit row,
+  and accepts an optional `confirmationPhotoId` (screenshot) through the existing private photo upload.
+
+**`filing-reminders.ts`** — daily automation rule `tax-filing-calendar` (run inside the `tax-rate-changes` cron route
+as a second `runAutomation` call — no new cron entry; add it to `src/domains/automation/health.ts`):
+
+1. Create missing `TaxFilingPeriod` rows for every active account up to the period containing today (Denver), with
+   `dueOn` and `legalDueOn` (idempotent on `@@unique([filingAccountId, periodStart])`).
+2. For each OPEN period, compute `reminderStages` for today and, per stage not yet sent:
+   - a **Today card** (exceptions rule `TAX_RETURN`, OWNER and ADMIN see it; ADMIN cannot mark filed): "September sales
+     tax return is ready — due Oct 20 — $123.45 to pay", "…due in 2 days", "…due today", "Overdue since Oct 20 — file
+     now; Colorado adds penalties and interest";
+   - an **owner email** (11.6) when `emailReminders` is on, idempotency key `tax-reminder:<periodId>:<stage>` (OVERDUE
+     sends on the first overdue day and then every 3rd day, key includes the date).
+3. License renewal: cards and emails 60, 30 and 7 days before `licenseExpiresOn`, then daily once past it.
+4. A filed period whose invoices later changed raises a card "A correction will appear on your October return" (the
+   numbers themselves already move to the next packet per D-T11).
+
+**`calendar-file.ts` (pure):** `buildIcs(periods, licenses): string` — one all-day event per due date ("File sales tax:
+Colorado — SUTS, September") with alarms 7 days and 1 day before, plus license renewals; downloaded from the calendar
+page for the next 12 months. No subscription URL (it would need a secret in a link); the page says "download again
+after you change a filing setting".
+
+### 11.5 The "In SUTS, do this" checklist (generated text, editable wording lives in the template, not settings)
+
+1. "Sign in to SUTS (link) and open your Colorado sales tax account <accountNumber>."
+2. "Choose File a return → period <Month YYYY>." (`zeroReturn`: "Choose File a zero return.")
+3. One step per row in `filingOrder`: "<Area name> (<filingCode>): Gross sales <$>, deductions <label: $> …, taxable
+   <$>, tax <$>." each number with a copy button.
+4. "Check that SUTS shows a total of <$totals.remitCents>. If SUTS shows a different amount, do not change the app —
+   note SUTS's figure when you mark the return filed."
+5. "Pay in SUTS. Write down the confirmation number."
+6. "Come back here and press I filed it."
+
+WU-TA0 replaces step 2–3 wording with the real SUTS button and field names once Chris has an account (screenshots or
+his description). Until then the packet says "SUTS may label these slightly differently".
+
+### 11.6 Owner emails (new, owner-only)
+
+`src/domains/messaging/owner-alerts.ts`: `sendOwnerAlert({ key, subject, text, href })` sends through the existing
+delivery ledger (`MessageDelivery`, `recipientType: "TeamMember"`, purpose TRANSACTIONAL, template `owner-alert`) to
+every active OWNER user's login email. It obeys the existing non-production guard (previews never send) and the
+existing transport configuration; if email is not configured the delivery records NOT_SENT and the Today card is still
+shown. Owner emails are **not** customer email: the hard limit on live customer email/SMS does not apply, and no
+customer data appears in them (period, account name, amount due and a link only). The switch is per filing account
+(`emailReminders`, starting ON because Chris asked to always be prompted), explained on the account screen.
+
+### 11.7 Not built now (record in `docs/ROADMAP.md`)
+
+- **SUTS Excel upload file.** With Greeley, Weld County and the state the return has only a handful of rows, so typing
+  from the packet takes a few minutes, while an upload generator needs SUTS's account-specific template, a spreadsheet
+  library and possibly Department approval. Revisit when the packet regularly has more than about 8 rows; it then
+  becomes "owner uploads one blank template, maps each column once, the app fills a copy each period".
+- Automatic filing (XML) — certified vendors only. SMS reminders — after live SMS is approved.
+
+### 11.8 Work units and PRs (replace T-6 in `docs/MASTER-ROADMAP.md` section 7)
+
+- **WU-TA0 (Chris + any model, docs only):** after SUTS registration, record in `docs/runbooks/suts-filing.md` which
+  areas his return lists (with codes), the filing frequency and license expiry from the license letter, whether Greeley
+  use tax is in SUTS, and the button/field names on the return screens (IN-43). No code waits on it; the packet's
+  wording is updated when it lands.
+- **T-6a — WU-TA1 calendar and prompts:** 11.3 migration, `filing-calendar.ts`, `filing-reminders.ts`,
+  `owner-alerts.ts`, `calendar-file.ts`, filing-account settings fields (server side). Tests (★ real Postgres):
+  `tests/tax-filing-calendar.test.ts` (monthly/quarterly/annual periods; first period start; due date and legal due
+  date across weekends and every Colorado holiday 2026–2030; DST month edges), ★ `tests/tax-filing-reminders-integration.test.ts`
+  (each stage once; overdue repeat cadence; emails off; previews never send; license renewal; ADMIN sees card but cannot
+  file), `tests/tax-calendar-file.test.ts` (valid ICS, alarms, all-day dates in Denver).
+- **T-6b — WU-TA2 packet and use tax:** 3.5 rules through `filing-packet.ts`, 3.6 use tax, deduction mapping, service
+  fee, mark filed with amount check and screenshot, corrections. Tests: `tests/tax-filing-packet.test.ts` (pure:
+  accrual vs cash; deduction buckets; unmapped label warning; zero return; service fee; rate change mid-period splits
+  rows; tax equals stored lines), ★ `tests/tax-filing-integration.test.ts` (as in WU-T7, plus amount-differs reason
+  required), ★ `tests/tax-use-tax-integration.test.ts` (as in WU-T7; use tax lands on the USE_TAX_RETURN account).
+- **T-7 — WU-TA3 screens** (with WU-T8): Desk → Money → Sales tax → **Filing calendar** (next 12 months, status chips
+  Upcoming / Ready / Due soon / Overdue / Filed, "Add to my calendar") and **Return** (the packet: total to pay first,
+  the checklist with copy buttons, rows in SUTS order, warnings, "I filed it" form; print-friendly and usable on a
+  phone beside the SUTS tab). Filing-account form: frequency, due day, first period, license expiry, reminder days,
+  email switch, deduction labels, and per-area SUTS code, order and service fee — each explained on screen per
+  AGENTS.md. Browser spec additions in `e2e/sales-tax.spec.ts`: owner opens a ready return, copies a number, marks it
+  filed; axe clean at 360/1440 light/dark.
+
+### 11.9 Stop-and-ask points (add to section 8)
+
+- **S-T8** SUTS's return screens ask for a number the packet does not produce (WU-TA0 finds it). Stop; write a design
+  note — do not invent a calculation.
+- **S-T9** The CPA's answer to IN-44 needs a deduction bucket that cannot be computed from `InvoiceTaxLine` and the
+  matrix.
+- **S-T10** Production email delivery refuses team-member recipients or needs a new provider setting.
+
+### 11.10 Acceptance additions (PLAN.md Batch T)
+
+- Every active filing account has its periods, due dates and license renewal on a calendar; the owner is prompted on
+  Today and by email from the day a period closes until it is marked filed (WU-TA1 tests).
+- Each return shows, per tax area in SUTS order, exactly the numbers to type, with a zero-return path and a total that
+  matches the tax customers were charged (WU-TA2 tests).

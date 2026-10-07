@@ -150,14 +150,15 @@ tests most likely to break, so the agent updates them in the same PR instead of 
 ### T — Colorado sales and use tax
 | PR | Work units | Risk area | CI watch |
 |---|---|---|---|
-| — | WU-T0 is Chris's SUTS registration plus the GIS runbook; the runbook (docs only) rides with T-2 | — | — |
+| — | WU-T0 is Chris's SUTS registration plus the GIS runbook; the runbook (docs only) rides with T-2. WU-TA0 (Amendment A): once registered, record the SUTS return screens in `docs/runbooks/suts-filing.md` (IN-43) | — | — |
 | T-1 | WU-T1 migration, seeds, backup/schema-health + WU-T2 pure engine, categories, allocator | schema + pure logic | migration check, populated-upgrade drill, backup coverage test |
 | T-2 | WU-T3 GIS adapter (fake source; real client only if the runbook exists) + address locating hooks | provider (read-only) | customer/address and rental-builder tests (locating runs after address saves) |
 | T-3 | WU-T4 readiness gate + Stripe tax rates **+ `seedTaxReadyContext()` helper and CI seed update** | money | **every test that signs an agreement or sets up billing**, checkout/webhook integration tests, rental-builder and signing browser specs |
 | T-4 | WU-T5 local invoices and the Stripe mirror use the engine; old single-rate assertions updated | money | pickup/late-return/early-return/waiver tests, webhook mirror tests, statements |
 | T-5 | WU-T6 exemptions + rate-change and re-check automations | money/automation | automation run tests, cron route auth tests |
-| T-6 | WU-T7 filing accounts, worksheet, use tax (+ appliance form field, purchase-order hook) | money | purchasing/receipt tests, appliance form tests |
-| T-7 | WU-T8 screens + WU-T9 docs | screens | route inventory (every new page), axe light/dark, `e2e/sales-tax.spec.ts` shard assignment |
+| T-6a | WU-T7 filing accounts + Amendment A WU-TA1: filing calendar, due dates and holidays, Today/email prompts, owner alerts, calendar file (`BATCH-T.md` section 11) | schema + automation | migration check, automation run tests, cron route auth tests, messaging delivery tests |
+| T-6b | WU-T7 worksheet → Amendment A WU-TA2 SUTS entry packet, use tax (+ appliance form field, purchase-order hook), mark filed | money | purchasing/receipt tests, appliance form tests |
+| T-7 | WU-T8 screens (incl. Amendment A filing calendar and return packet pages) + WU-T9 docs | screens | route inventory (every new page), axe light/dark, `e2e/sales-tax.spec.ts` shard assignment |
 
 ### V — "Evergreen Signature" redesign
 | PR | Work units | Risk area | CI watch |
@@ -195,6 +196,6 @@ tests most likely to break, so the agent updates them in the same PR instead of 
 | O-3 | WU-O3 approvals | money + permissions | refund/credit/write-off integration tests |
 | O-4 | WU-O4 scheduled prices + WU-O5 goals and alerts + docs | settings/automation | pricing tests, Today tests |
 
-**33 PRs in all** (a few more if G-2 or T-4 split). At two merged PRs per session that is roughly 17 working sessions;
+**34 PRs in all** (T-6 split into T-6a/T-6b by Amendment A, 2026-10-07) (a few more if G-2 or T-4 split). At two merged PRs per session that is roughly 17 working sessions;
 each PR should reach green with at most one red CI run (each run is about 3–5 minutes). If a PR needs a third red run,
 the agent stops and reports (PLAYBOOK Step 8).

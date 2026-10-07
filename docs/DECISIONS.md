@@ -442,3 +442,16 @@ step now skips them using CI's docs-only rule, building whenever unsure. Rejecte
 `next build` (8 s; it is the only check between a deployment and CI finishing), and upgrading to ESLint 10 (our
 accessibility lint plugin does not support it yet — `docs/ROADMAP.md`).
 
+## 2026-10-07 — Sales tax filing: SUTS entry packet and filing calendar (Batch T Amendment A)
+
+Chris asked that the system handle as much of filing as possible, and otherwise give him exactly what to type into
+SUTS, with scheduling so he is always prompted on time. Decisions (`docs/designs/BATCH-T.md` section 11): each return
+becomes an entry packet in SUTS's order with copy buttons and a plain checklist; a daily automation keeps a filing
+calendar (monthly/quarterly/annual, Colorado weekend/holiday rule, license renewal) and prompts on Today and by
+owner-only email until the return is marked filed; a calendar file is downloadable. Rejected for now: automatic filing
+(SUTS XML filing is for certified software vendors) and generating SUTS's Excel upload file (account-specific template,
+a new spreadsheet library and possible Department approval, for a return with only a handful of rows — revisit above
+about 8 rows). Research corrections: Greeley is a SUTS participating city (code 030057, since 2023-08-01), correcting
+the 2026-10-06 note above that it is not; the state vendor fee ended 2026-01-01 (HB25B-1005). Reminders count from the
+plain due date, never the holiday-shifted one, so a holiday can never make a reminder late. New owner inputs: IN-43
+(SUTS screen details after registration), IN-44 (CPA: how to report non-taxed amounts).

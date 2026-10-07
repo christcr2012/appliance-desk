@@ -658,3 +658,9 @@ controls → Batch O. Summary: `docs/plans/TAX-AND-BOOKS-OVERVIEW.md`. Still onl
 - **`scmp` deprecated** (a dependency of `twilio`): Twilio's to fix; harmless.
 - **Node 24 everywhere:** if Vercel's Node version setting changes, change `.github/actions/setup-deps/action.yml` too.
 
+## 2026-10-07 — Sales tax filing ideas not built in Batch T Amendment A
+
+- **SUTS Excel upload file:** owner uploads one blank template from SUTS, maps each column once, the app fills a copy
+  each period. Worth it when the return regularly has more than about 8 rows (`BATCH-T.md` 11.7).
+- **Automatic filing:** only through SUTS's XML channel for certified software vendors — not available to us.
+- **SMS tax reminders:** after live SMS is approved.

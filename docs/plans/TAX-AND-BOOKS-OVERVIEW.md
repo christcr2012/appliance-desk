@@ -53,10 +53,14 @@ Revisit this if you ever sell appliances outright, expand outside Colorado, or e
 - **Stripe charges exactly what the app calculated.** If Stripe's number ever differs by even a cent, you get a warning.
 - **Tax-exempt customers** (resale, government, charities) keep a photo of their certificate on file, with an expiry
   reminder.
-- **Monthly returns:** for "Colorado — SUTS" and "City of Greeley" (and any other city you register with), the app shows
-  gross sales, exempt sales, taxable sales and tax for each area, reminds you before the due date, and records when you
-  filed, the confirmation number and what you paid. Once a month is marked filed, its numbers never change; later
-  corrections show up on the next month.
+- **Returns (updated 2026-10-07):** Greeley, Evans and Windsor take returns through **SUTS**, so one SUTS session
+  covers the state, Weld County and those cities. For each return the app shows an **entry packet**: every number to
+  type, area by area in the same order as the SUTS screens, each with a copy button, plus a short "In SUTS, do this"
+  checklist and the total to pay (or "file a zero return" when nothing was sold). It keeps a **filing calendar**
+  (monthly, quarterly or yearly, license renewals too), reminds you on Today and by email from the day a period ends
+  until you press "I filed it", and gives you a calendar file for your phone. Once a period is marked filed its numbers
+  never change; later corrections show up on the next return. The app never logs in to SUTS or moves money — SUTS has
+  no filing connection for small businesses — so the last step (typing, paying) stays yours.
 - **Use tax:** when you buy an appliance from a private seller or an out-of-state store without tax, the app works out
   the use tax you owe the state and Greeley and puts it on the right return.
 
@@ -65,7 +69,8 @@ Revisit this if you ever sell appliances outright, expand outside Colorado, or e
 1. Register on Colorado's **SUTS** website (if you haven't) and get the free **GIS API key**. I'll give you click-by-click
    steps when we start. Copy the key into Vercel yourself — never paste it into a chat.
 2. Take the questions below to your CPA.
-3. Enter your Colorado sales tax license number and your City of Greeley license number in the app.
+3. Enter your Colorado sales tax license number (and a City of Greeley number only if Greeley gave you a separate one)
+   in the app, then tell me what your SUTS return screen lists (IN-43).
 
 ## Questions for your CPA (copy this list)
 
@@ -83,8 +88,12 @@ These are tracked as IN-33 to IN-39 in `docs/OWNER-INPUTS.md`.
 6. **(IN-38)** My rental agreement will say "sales tax for your address, currently X%" instead of a fixed rate — is that
    fine? (Also ask your attorney.)
 7. **(IN-39)** When I write off a bill a customer never paid, can I take back the sales tax I already reported on it?
-8. **(IN-17, still open)** Is the Greeley combined rate 7.01% (2.9% + 4.11%)?
-9. **(For Batch K)** Are 60-month straight-line depreciation and "expense parts when bought" fine for my own profit
+8. **(IN-17, still open)** Is the Greeley combined rate 7.01% (2.9% + 4.11%)? (Some 2026 rate sites show a higher
+   combined rate with a special district; the app uses the state's address lookup, but please confirm.)
+9. **(IN-44) Reporting non-taxed amounts on SUTS:** rent that is exempt under the short-term lease rule, sales to exempt
+   customers, and charges that are not taxable — do I include them in gross sales and deduct them (under which
+   deduction name), or leave them out of gross sales?
+10. **(For Batch K)** Are 60-month straight-line depreciation and "expense parts when bought" fine for my own profit
    reports? And is $2,000 the right 1099 threshold for 2026?
 
 ## How the books work (Batch K)
