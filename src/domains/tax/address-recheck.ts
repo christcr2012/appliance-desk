@@ -24,6 +24,7 @@ function sameIds(left: readonly string[], right: readonly string[]): boolean {
 
 export async function recheckCurrentTaxAddresses(
   now = new Date(),
+  options: { serviceAddressIds?: string[] } = {},
 ): Promise<{
   due: boolean;
   automaticSourceAvailable: boolean;
@@ -54,7 +55,9 @@ export async function recheckCurrentTaxAddresses(
   const current = await prisma.addressTaxLocation.findMany({
     where: {
       isCurrent: true,
-      serviceAddressId: { not: null },
+      serviceAddressId: options.serviceAddressIds?.length
+        ? { in: options.serviceAddressIds }
+        : { not: null },
     },
     select: {
       serviceAddressId: true,
