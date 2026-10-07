@@ -535,8 +535,8 @@ export async function startRecurringBillingForAgreement(
           : "Recurring billing is already being started by another request. Try again after it finishes."
         : `Couldn't start recurring billing: ${error instanceof Error ? error.message : "Unexpected error."}`;
     await prisma.rentalAgreement
-      .update({
-        where: { id: agreementId },
+      .updateMany({
+        where: { id: agreementId, stripeSubscriptionId: null },
         data: { billingBlockedReason: detail },
       })
       .catch(() => undefined);
