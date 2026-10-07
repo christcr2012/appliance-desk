@@ -8,6 +8,7 @@ import {
 } from "@/domains/billing/subscription-end";
 import { createSignedAgreementArtifactInTx } from "@/domains/documents/artifacts";
 import { assertTaxReadyForAgreement } from "@/domains/tax/locations";
+import { createPrepaidRentInvoiceInTx } from "@/domains/tax/prepaid-invoice";
 import { prisma } from "@/lib/prisma";
 import type {
   Prisma,
@@ -531,6 +532,7 @@ export async function signAgreement(
       throw new Error("This agreement isn't available to sign right now.");
     }
 
+    const signedAt = new Date();
     const signResult = await tx.signatureRecord.updateMany({
       where: {
         id: signatureRecordId,
@@ -541,7 +543,7 @@ export async function signAgreement(
         signerName: input.signerName,
         signerEmail: input.signerEmail,
         ipAddress: input.ipAddress,
-        signedAt: new Date(),
+        signedAt,
       },
     });
     if (signResult.count !== 1) {
@@ -561,13 +563,17 @@ export async function signAgreement(
           }
         : {
             status: "ACTIVE",
-            startDate: new Date(),
+            startDate: signedAt,
             // A new month-to-month rental starts on the newest published terms.
             ...(agreement.termMonths === null && agreement.monthToMonthTermsVersion === null
               ? { monthToMonthTermsVersion: await newestMonthToMonthVersionInTx(tx) }
               : {}),
           },
     });
+    if (agreement.paidInFullInAdvance) {
+      await createPrepaidRentInvoiceInTx(tx, agreement.id, signedAt);
+    }
+
     // The signed artifact is part of signing's atomic evidence. If rendering
     // or storage fails, the signature/status changes above roll back too.
     await createSignedAgreementArtifactInTx(tx, agreement.id);
