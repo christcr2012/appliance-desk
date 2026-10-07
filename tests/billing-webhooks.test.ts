@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { __setStripeClientForTests } from "@/lib/stripe";
 import { getAccountingTransactions } from "@/domains/reports/accounting-export";
 import { processStripeWebhookEvent } from "@/domains/billing/webhooks";
+import { seedTaxReadyContext } from "./helpers/tax-ready";
 
 const RUN_ID = Math.random().toString(36).slice(2, 10);
 
@@ -14,6 +15,7 @@ let serviceAddressId: string;
 let agreementId: string;
 let lineId: string;
 let fakeInvoicesById: Record<string, Record<string, unknown>>;
+let taxReady: Awaited<ReturnType<typeof seedTaxReadyContext>>;
 
 function fakeEvent(id: string, type: string, object: unknown): Stripe.Event {
   return { id, type, data: { object } } as unknown as Stripe.Event;
@@ -56,6 +58,11 @@ beforeAll(async () => {
     },
   });
   serviceAddressId = serviceAddress.id;
+  taxReady = await seedTaxReadyContext(serviceAddress.id, { rateMilliPercent: 7300 });
+  await prisma.taxRateVersion.update({
+    where: { id: taxReady.rateVersionId },
+    data: { stripeTaxRateId: "txr_billing_test" },
+  });
 
   const agreement = await prisma.rentalAgreement.create({
     data: {
@@ -84,7 +91,16 @@ beforeAll(async () => {
       id: "in_fake_1",
       status: "paid",
       subtotal: 4000,
-      total_taxes: [{ amount: 292 }],
+      total_taxes: [
+        {
+          amount: 292,
+          tax_behavior: "exclusive",
+          tax_rate_details: { tax_rate: "txr_billing_test" },
+          taxability_reason: "not_available",
+          taxable_amount: 4000,
+          type: "tax_rate_details",
+        },
+      ],
       amount_due: 19292,
       amount_paid: 19292,
       period_start: 1735689600,
@@ -103,8 +119,8 @@ beforeAll(async () => {
       },
       lines: {
         data: [
-          { description: "Washer", amount: 4000 },
-          { description: "Security deposit", amount: 15000 },
+          { id: "il_fake_washer", description: "Washer", amount: 4000 },
+          { id: "il_fake_deposit", description: "Security deposit", amount: 15000 },
         ],
       },
     },
@@ -112,7 +128,16 @@ beforeAll(async () => {
       id: "in_fake_failed_1",
       status: "open",
       subtotal: 4000,
-      total_taxes: [{ amount: 292 }],
+      total_taxes: [
+        {
+          amount: 292,
+          tax_behavior: "exclusive",
+          tax_rate_details: { tax_rate: "txr_billing_test" },
+          taxability_reason: "not_available",
+          taxable_amount: 4000,
+          type: "tax_rate_details",
+        },
+      ],
       amount_due: 4292,
       amount_paid: 0,
       period_start: 1738368000,
@@ -129,13 +154,22 @@ beforeAll(async () => {
           },
         ],
       },
-      lines: { data: [] },
+      lines: { data: [{ id: "il_failed_washer", description: "Washer", amount: 4000 }] },
     },
     in_fake_ach_pending: {
       id: "in_fake_ach_pending",
       status: "open",
       subtotal: 4000,
-      total_taxes: [{ amount: 292 }],
+      total_taxes: [
+        {
+          amount: 292,
+          tax_behavior: "exclusive",
+          tax_rate_details: { tax_rate: "txr_billing_test" },
+          taxability_reason: "not_available",
+          taxable_amount: 4000,
+          type: "tax_rate_details",
+        },
+      ],
       amount_due: 4292,
       amount_paid: 0,
       period_start: 1738368000,
@@ -152,7 +186,7 @@ beforeAll(async () => {
           },
         ],
       },
-      lines: { data: [{ description: "Washer", amount: 4000 }] },
+      lines: { data: [{ id: "il_ach_washer", description: "Washer", amount: 4000 }] },
     },
   };
 
@@ -209,6 +243,7 @@ afterAll(async () => {
   await prisma.auditLog.deleteMany({ where: { userId } });
   await prisma.rentalLine.delete({ where: { id: lineId } });
   await prisma.rentalAgreement.delete({ where: { id: agreementId } });
+  await taxReady.cleanup();
   await prisma.serviceAddress.delete({ where: { id: serviceAddressId } });
   await prisma.customer.delete({ where: { id: customerId } });
   await prisma.user.delete({ where: { id: userId } });
