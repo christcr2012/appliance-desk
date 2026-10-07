@@ -20,6 +20,7 @@ const enabled =
 
 describe.skipIf(!enabled)("Batch T rate-change automation (real Postgres)", () => {
   const tag = randomUUID().replaceAll("-", "");
+  const ownerId = `tax-rate-owner-${tag}`;
   const taxedUserId = `tax-rate-user-${tag}`;
   const exemptUserId = `tax-rate-exempt-user-${tag}`;
   const taxedCustomerId = `tax-rate-customer-${tag}`;
@@ -117,6 +118,13 @@ describe.skipIf(!enabled)("Batch T rate-change automation (real Postgres)", () =
     await prisma.user.createMany({
       data: [
         {
+          id: ownerId,
+          email: `${tag}-owner@example.test`,
+          name: "Tax rate owner",
+          role: "OWNER",
+          emailVerified: true,
+        },
+        {
           id: taxedUserId,
           email: `${tag}-taxed@example.test`,
           name: "Taxed rate-change customer",
@@ -199,7 +207,7 @@ describe.skipIf(!enabled)("Batch T rate-change automation (real Postgres)", () =
         reason: "RESALE",
         jurisdictionIds: [],
         validFrom: new Date("2026-01-01T07:00:00.000Z"),
-        verifiedByUserId: taxedUserId,
+        verifiedByUserId: ownerId,
       },
     });
 
@@ -266,7 +274,7 @@ describe.skipIf(!enabled)("Batch T rate-change automation (real Postgres)", () =
       where: { id: { in: [taxedCustomerId, exemptCustomerId] } },
     });
     await prisma.user.deleteMany({
-      where: { id: { in: [taxedUserId, exemptUserId] } },
+      where: { id: { in: [ownerId, taxedUserId, exemptUserId] } },
     });
   });
 
