@@ -180,6 +180,56 @@ describe.skipIf(!enabled)("Batch T customer tax exemptions (real Postgres)", () 
     ).rejects.toThrow(/revoked/i);
   });
 
+  it("serializes a concurrent edit and revocation so no edit can commit after revocation", async () => {
+    const race = await createCustomerTaxExemption(ownerId, customerId, {
+      reason: "OTHER",
+      certificateNumber: "RACE-ORIGINAL",
+      validFrom: new Date("2026-01-01T07:00:00.000Z"),
+      expiresOn: new Date("2026-12-31T06:59:59.999Z"),
+    });
+
+    const [updated, revoked] = await Promise.allSettled([
+      updateCustomerTaxExemption(ownerId, race.id, {
+        reason: "OTHER",
+        certificateNumber: "RACE-UPDATED",
+        validFrom: new Date("2026-01-01T07:00:00.000Z"),
+        expiresOn: new Date("2026-12-31T06:59:59.999Z"),
+      }),
+      revokeCustomerTaxExemption(
+        ownerId,
+        race.id,
+        new Date("2026-10-07T18:00:00.000Z"),
+      ),
+    ]);
+
+    expect(revoked.status).toBe("fulfilled");
+    const final = await prisma.customerTaxExemption.findUniqueOrThrow({
+      where: { id: race.id },
+    });
+    expect(final.revokedAt).not.toBeNull();
+
+    if (updated.status === "fulfilled") {
+      expect(final.certificateNumber).toBe("RACE-UPDATED");
+      const audits = await prisma.auditLog.findMany({
+        where: {
+          entityType: "CustomerTaxExemption",
+          entityId: race.id,
+          action: { in: ["tax.exemption_updated", "tax.exemption_revoked"] },
+        },
+        select: { action: true, createdAt: true },
+        orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+      });
+      expect(audits.map((audit) => audit.action)).toEqual([
+        "tax.exemption_updated",
+        "tax.exemption_revoked",
+      ]);
+    } else {
+      expect(updated.reason).toBeInstanceOf(Error);
+      expect((updated.reason as Error).message).toMatch(/revoked/i);
+      expect(final.certificateNumber).toBe("RACE-ORIGINAL");
+    }
+  });
+
   it("ignores an exemption after its expiration date", async () => {
     const expired = await createCustomerTaxExemption(ownerId, customerId, {
       reason: "GOVERNMENT",
