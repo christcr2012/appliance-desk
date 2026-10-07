@@ -60,7 +60,8 @@ Revisit this if you ever sell appliances outright, expand outside Colorado, or e
   (monthly, quarterly or yearly, license renewals too), reminds you on Today and by email from the day a period ends
   until you press "I filed it", and gives you a calendar file for your phone. An unfiled return sits on **Today** as a task you cannot dismiss; tap it
   and a step-by-step "File this return" page walks you through check → open SUTS → type these in → pay → confirmation. Once a period is marked filed its numbers
-  never change; later corrections show up on the next return. The app never logs in to SUTS or moves money — SUTS has
+  never change; if something in a filed month changes later, the app prepares an **amended return** for that month and
+  puts "Amend your September return" on Today. The app never logs in to SUTS or moves money — SUTS has
   no filing connection for small businesses — so the last step (typing, paying) stays yours.
 - **Use tax:** when you buy an appliance from a private seller or an out-of-state store without tax, the app works out
   the use tax you owe the state and Greeley and puts it on the right return.

@@ -192,8 +192,10 @@ verifies or revokes one.
 `TaxFilingAccount` = a place Chris files ("Colorado — SUTS", "City of Greeley"), with frequency, due day, account
 number and the jurisdictions it covers. `TaxFilingPeriod` = one return. The app produces the worksheet (section 3.5),
 reminds before the due date, and records "filed on / confirmation number / amount paid". When a period is marked
-filed its worksheet is frozen; later corrections to invoices in that period appear on the **next** period's worksheet
-as "Corrections to earlier periods", never by silently changing a filed number. Each account's reporting basis
+filed its worksheet is frozen. **Corrected 2026-10-07 (review of Amendment A):** a later change that alters a filed
+period's numbers is reported on an **amended return for that same period** (Colorado requires an amended return with
+the full corrected amounts; it is not netted into a later return) — section 11.12. A filed number is never silently
+changed. Each account's reporting basis
 (`ACCRUAL` by invoice date, or `CASH` by payment date) is a setting starting at `UNDECIDED` (IN-35); an `UNDECIDED`
 basis shows the worksheet with a warning instead of totals.
 **Extended by Amendment A (section 11):** the worksheet becomes a SUTS *entry packet* laid out in SUTS's order, the app
@@ -560,7 +562,6 @@ export type FilingWorksheet = {
   exemptByReason: { reason: string; cents: number }[];
   byJurisdiction: { jurisdictionId: string; name: string; code: string; taxableCents: number; taxCents: number }[];
   refundsAndCreditsCents: number;                          // tax-bearing reductions in the period
-  correctionsToEarlierPeriods: { periodStart: string; jurisdictionId: string; taxCents: number }[];
   useTax: { jurisdictionId: string; purchaseCents: number; useTaxCents: number }[];
   totalTaxDueCents: number;
 };
@@ -588,8 +589,7 @@ is `COLLECT_ON_RENTALS` (rental inventory bought for re-lease under that electio
 acquisition cost is saved (new optional field on the add/edit appliance form: "Sales tax the seller charged"), when a
 purchase order is marked received (per line with a known cost; vendor tax entered once per order and split across
 lines by amount), and by Batch K's expenses. Idempotent per `(sourceType, sourceId, jurisdictionId)`; a cost change
-updates the row unless its status is `FILED` (then a correction row is not written — a Today card asks the owner to
-handle it on the next return; stop-and-ask point S-T6 explains why).
+updates the row; if its status is `FILED` the change makes that period need an amended return (11.12).
 
 ### 3.7 Allocation helper — `allocate.ts` (pure)
 
@@ -708,8 +708,8 @@ once; retry after crash uses the same key; exempt-rent subscriptions untouched),
 Section 3.5 and 3.6, appliance form field, purchase-order receipt hook. **Read section 11 first**: it adds the filing
 calendar, reminders, owner emails, calendar file and the entry packet, and splits this work into PRs T-6a and T-6b. Periods are created lazily for each active
 account (current + previous). Due-date Today cards 7 days and 1 day before. Tests:
-`tests/tax-worksheet.test.ts` (pure: accrual vs cash; refund reduces tax; correction to a filed period lands on the
-next worksheet), `tests/tax-filing-integration.test.ts` (mark filed freezes; ADMIN refused; second filing refused),
+`tests/tax-worksheet.test.ts` (pure: accrual vs cash; refund reduces tax; a change to a filed period produces an
+amended packet for that period and leaves the next period untouched — 11.12), `tests/tax-filing-integration.test.ts` (mark filed freezes; ADMIN refused; second filing refused),
 `tests/tax-use-tax-integration.test.ts` (private-seller appliance owes state + Greeley; vendor tax credited
 proportionally; COLLECT_ON_RENTALS rental inventory not due).
 
@@ -760,8 +760,8 @@ ADMIN cannot change the election; axe clean at 360/1440 light/dark. Unit tests f
 - **S-T4** Retail delivery fee answer is `COLLECT`. Collecting it is not designed here; stop and ask for a design
   amendment (Stripe supports it as a flat-amount tax; the app would need a per-delivery line).
 - **S-T5** Production has real agreements when WU-T5 starts (backfilling tax lines for past invoices is not designed).
-- **S-T6** A correction to use tax or sales tax on an already-filed period needs anything beyond "show it on the next
-  worksheet" (amended returns are out of scope).
+- **S-T6** Amending a filed period needs anything beyond 11.12 (for example SUTS requires a form or field the
+  amended packet does not produce, or a refund claim must go through a separate process the CPA describes).
 - **S-T7** Stripe rejects `jurisdiction`/`tax_type` values or the API version in `src/lib/stripe.ts` lacks
   `invoice.total_taxes[].tax_rate_details`; do not guess a different mapping.
 
@@ -771,7 +771,7 @@ ADMIN cannot change the election; axe clean at 360/1440 light/dark. Unit tests f
 - `RentalAgreement.taxRateMilliPercent` is display-only. `taxRateConfirmed` is unused.
 - `allocateAcrossLines` is the one proportional-split helper.
 - Batch K posts sales tax payable per **filing account** from `InvoiceTaxLine`, use tax from `PurchaseUseTax`, and
-  tax payments from `TaxFilingPeriod.amountPaidCents`.
+  tax payments from `TaxFilingPeriod.amountPaidCents` plus filed `TaxFilingAmendment.amountPaidCents` (11.12).
 
 ## 10. Acceptance mapping
 
@@ -803,7 +803,7 @@ time"). Replaces nothing above except where it says so; implement it inside WU-T
 | A-F2 | The **state** vendor (service) fee is gone from 2026-01-01 (HB25B-1005). Some state-collected local jurisdictions still allow a service fee (listed in the state's DR 1002); home-rule cities set their own. | Colorado General Assembly bill page; tax-software notices. High. | The per-area fee setting below simply stays 0. |
 | A-F3 | Returns are due the **20th of the month after the period**; a deadline on a weekend or Colorado legal holiday moves to the next business day. Frequency (monthly / quarterly / annual, calendar periods) is assigned on the license; a return is filed **even when nothing was sold**. | DR 0100 instructions; Department due-date guide. High; CPA confirms (IN-35). | Due day and frequency are per-account settings already. |
 | A-F4 | Use tax the business owes on its own untaxed purchases is a **separate** return (Consumer Use Tax, DR 0252, on Revenue Online for state + special districts): annual (due January 20) while the yearly total stays under $300, otherwise monthly by the 20th. Whether Greeley's use tax goes through SUTS must be checked in Chris's account. | Department consumer-use-tax pages. Medium-high. | Use-tax accounts are ordinary filing accounts of kind USE_TAX_RETURN. |
-| A-F5 | SUTS offers "File Taxes Here via Excel Upload": it generates a **custom template for the account**, you fill it and upload it. Column layout is only visible inside SUTS; spreadsheet filing has historically needed Department pre-approval for multi-location filers. XML filing is for certified software vendors only. | Department "Filing Using Excel" material via search. Medium. | Not built now (11.7). |
+| A-F5 | SUTS offers "File Taxes Here via Excel Upload": it generates a **custom template for the account**, you fill it and upload it. Column layout is only visible inside SUTS; spreadsheet filing has historically needed Department pre-approval for multi-location filers. SUTS also has **Bulk XML** filing for "bulk filers", which the portal defines to include anyone who wants the bulk XML option; whether a single business can use it and what upload steps it needs is unknown. | Department "Filing Using Excel" material via search; SUTS portal (per review). Medium. | Not built now; WU-TA0 checks eligibility for both (11.7). |
 | A-F6 | The Colorado sales tax license is renewed every two years (expires December 31 of odd-numbered years). | Department licensing pages via search. Medium — the owner enters the real expiry from the license. | Expiry is an owner-entered date, not computed. |
 
 Chris's YouTube links (Colorado Department of Revenue SUTS walk-throughs: sign up, manage locations, file and pay,
@@ -816,8 +816,9 @@ written pages instead. WU-TA0 is where those screens get checked against the pac
   "In SUTS, do this" checklist with a copy button next to every number; keep a calendar of every return and license
   renewal; prompt the owner on Today and by email from the day a period closes until it is marked filed; record the
   confirmation number, date and amount paid; freeze the filed numbers; export a calendar file for the phone.
-- **Does not:** log in to SUTS, submit returns, or move money. SUTS has no public filing API (XML filing is limited to
-  certified software vendors) and payment needs the owner's bank authorisation. No SUTS password, bank number or
+- **Does not:** log in to SUTS, submit returns, or move money. SUTS has no public submission API (its Excel and Bulk
+  XML options are files the filer uploads; eligibility is checked in WU-TA0) and payment needs the owner's bank
+  authorisation. No SUTS password, bank number or
   payment card is ever stored or requested by the app.
 
 ### 11.3 Schema (additive) — migration `<timestamp>_batch_t_filing_workspace`
@@ -873,14 +874,18 @@ export function coloradoLegalHolidays(year: number): Date[]; // C.R.S. 24-11-101
 // Thanksgiving, Christmas) with weekend observance — re-check the list against the current C.R.S. 24-11-101 text
 // when implementing (Juneteenth in particular); a wrong entry only changes the displayed legalDueOn, never a reminder
 export function reminderStages(period, account, today): ReminderStage[];
-// "READY" (day after period end), "DUE_IN_<n>" for each reminderDaysBefore, "DUE_TODAY", "OVERDUE" (every day after)
+// "READY" (day after period end), "DUE_IN_<n>" for each reminderDaysBefore, "DUE_TODAY" (on dueOn),
+// "DUE_BY_LEGAL" (each day after dueOn up to and including legalDueOn, only when they differ), "OVERDUE" (every day
+// after legalDueOn)
 ```
 
-Reminders always count from `dueOn` (the plain 20th), **not** `legalDueOn`, so a holiday never makes a reminder late;
-the screen shows both ("Due Oct 20 — Colorado accepts it until Monday Oct 21 because the 20th is a Sunday").
+Advance reminders count from `dueOn` (the plain 20th) so a holiday never makes a reminder late; **overdue starts only
+after `legalDueOn`** (review fix: a return filed on the moved deadline is on time, so the app must not claim penalties
+the day before). Between the two the task reads "Due date moved to Monday Oct 21 because the 20th is a Sunday — file
+today if you can".
 
-**`filing-packet.ts`** (replaces `worksheet.ts`'s output shape; the 3.5 rules on accrual/cash, refunds and corrections
-stay exactly as written):
+**`filing-packet.ts`** (replaces `worksheet.ts`'s output shape; the 3.5 rules on accrual/cash and refunds stay
+exactly as written; corrections to filed periods follow 11.12):
 
 ```ts
 export type FilingPacket = {
@@ -896,8 +901,7 @@ export type FilingPacket = {
     serviceFeeCents: number; remitCents: number;
   }[];
   useTax: { jurisdictionId: string; name: string; filingCode: string | null; purchaseCents: number; useTaxCents: number }[];
-  correctionsToEarlierPeriods: { periodStart: string; jurisdictionId: string; taxCents: number }[];
-  totals: { taxCents: number; serviceFeeCents: number; remitCents: number };
+  totals: { taxCents: number; serviceFeeCents: number; remitIfOnTimeCents: number; remitIfLateCents: number; remitCents: number };
   steps: string[];                                       // plain-language "In SUTS, do this" checklist (11.5)
   warnings: string[];                                    // e.g. basis or deduction mapping not decided, rate changed mid-period
 };
@@ -914,13 +918,17 @@ export async function loadFilingPacket(periodId: string): Promise<FilingPacket |
   key to `{ label: string; reportAs: "DEDUCTION" | "LEAVE_OUT_OF_GROSS" }`, entered by the owner from the CPA's answer
   (IN-44). An unmapped key is shown as "Not decided — ask your CPA" and adds a warning; totals still show (the tax due
   does not depend on it).
-- **Service fee** = `taxCentsForLine(taxCents, serviceFeeMilliPercent)` per row, shown as "you may keep"; zero by
-  default. `remitCents = taxCents − serviceFeeCents`.
+- **Service fee** = `taxCentsForLine(taxCents, serviceFeeMilliPercent)` per row, zero by default, and **only when the
+  return is filed and paid by `legalDueOn`** (Colorado allows no service fee on a delinquent remittance, nor on additional
+  tax reported on an amended return). The packet therefore carries both `remitIfOnTimeCents` (tax − fee) and
+  `remitIfLateCents` (all tax); the guided page shows the one that applies today and, once late, says "SUTS will add
+  penalty and interest — pay the total SUTS shows". `totals.remitCents` = the amount for the day the packet is viewed.
 - **Rounding check:** if a row's tax (sum of per-bill tax lines, D-T6) differs from its net taxable × rate rounded once,
   the packet shows both and explains that the few-cent difference comes from rounding each bill. The amount to report
   is the tax actually collected (the row's tax) unless the CPA says otherwise — never silently adjust either number.
-- `markPeriodFiled` (3.5) additionally requires `amountPaidCents`; if it differs from `totals.remitCents` the owner must
-  type a reason (stored in `notes`). It sets `zeroReturn`, freezes the packet JSON into `worksheet`, writes an audit row,
+- `markPeriodFiled` (3.5) additionally requires `amountPaidCents`; the expected amount is `remitIfOnTimeCents` when
+  `filedOn` ≤ `legalDueOn`, otherwise `remitIfLateCents` (penalty and interest may make the paid amount higher); if the
+  paid amount differs from the expected one the owner must type a reason (stored in `notes`). It sets `zeroReturn`, freezes the packet JSON into `worksheet`, writes an audit row,
   and accepts an optional `confirmationPhotoId` (screenshot) through the existing private photo upload.
 
 **`filing-reminders.ts`** — daily automation rule `tax-filing-calendar` (run inside the `tax-rate-changes` cron route
@@ -935,8 +943,10 @@ as a second `runAutomation` call — no new cron entry; add it to `src/domains/a
      sends on the first overdue day and then every 3rd day, key includes the date).
 3. License renewal: emails 60, 30 and 7 days before `licenseExpiresOn`, then every 3rd day once past it (the Today task
    for it is computed live, 11.11).
-4. A filed period whose invoices later changed raises a card "A correction will appear on your October return" (the
-   numbers themselves already move to the next packet per D-T11).
+4. Amendment detection (11.12): for each FILED period, find tax lines, refunds, payments (cash basis) or use-tax rows
+   created or changed after `filedOn` that fall inside the period; rebuild its packet and, if any row differs from the
+   frozen one, create or refresh the period's OPEN `TaxFilingAmendment`. Emails use key `tax-amendment:<amendmentId>`
+   (once, then weekly while OPEN).
 
 **`calendar-file.ts` (pure):** `buildIcs(periods, licenses): string` — one all-day event per due date ("File sales tax:
 Colorado — SUTS, September") with alarms 7 days and 1 day before, plus license renewals; downloaded from the calendar
@@ -973,7 +983,9 @@ customer data appears in them (period, account name, amount due and a link only)
   from the packet takes a few minutes, while an upload generator needs SUTS's account-specific template, a spreadsheet
   library and possibly Department approval. Revisit when the packet regularly has more than about 8 rows; it then
   becomes "owner uploads one blank template, maps each column once, the app fills a copy each period".
-- Automatic filing (XML) — certified vendors only. SMS reminders — after live SMS is approved.
+- **Bulk XML file.** If WU-TA0 finds that a single business may use SUTS's Bulk XML option, generating that file
+  from the packet is the preferred replacement for typing (still uploaded by Chris; it would need the XML schema from
+  SUTS and its own design amendment). SMS reminders — after live SMS is approved.
 
 ### 11.8 Work units and PRs (replace T-6 in `docs/MASTER-ROADMAP.md` section 7)
 
@@ -985,12 +997,14 @@ customer data appears in them (period, account name, amount due and a link only)
   `owner-alerts.ts`, `calendar-file.ts`, filing-account settings fields (server side). Tests (★ real Postgres):
   `tests/tax-filing-calendar.test.ts` (monthly/quarterly/annual periods; first period start; due date and legal due
   date across weekends and every Colorado holiday 2026–2030; DST month edges), ★ `tests/tax-filing-reminders-integration.test.ts`
-  (each stage once; overdue repeat cadence; emails off; previews never send; license renewal; ADMIN sees card but cannot
-  file), `tests/tax-calendar-file.test.ts` (valid ICS, alarms, all-day dates in Denver).
+  (each stage once; no OVERDUE before `legalDueOn` when the 20th is a weekend or holiday; overdue repeat cadence; emails
+  off; previews never send; license renewal; amendment detected after a refund on a filed period; ADMIN sees the task
+  but cannot file), `tests/tax-calendar-file.test.ts` (valid ICS, alarms, all-day dates in Denver).
 - **T-6b — WU-TA2 packet and use tax:** 3.5 rules through `filing-packet.ts`, 3.6 use tax, deduction mapping, service
-  fee, mark filed with amount check and screenshot, corrections. Tests: `tests/tax-filing-packet.test.ts` (pure:
-  accrual vs cash; deduction buckets; unmapped label warning; zero return; service fee; rate change mid-period splits
-  rows; tax equals stored lines), ★ `tests/tax-filing-integration.test.ts` (as in WU-T7, plus amount-differs reason
+  fee, mark filed with amount check and screenshot, amended returns (11.12). Tests: `tests/tax-filing-packet.test.ts` (pure:
+  accrual vs cash; deduction buckets; unmapped label warning; zero return; service fee only when on time; late packet
+  remits all tax; rate change mid-period splits rows; tax equals stored lines; amended packet shows previously reported,
+  corrected and difference per row and gives no service fee on additional tax), ★ `tests/tax-filing-integration.test.ts` (as in WU-T7, plus amount-differs reason
   required), ★ `tests/tax-use-tax-integration.test.ts` (as in WU-T7; use tax lands on the USE_TAX_RETURN account).
 - **T-7 — WU-TA3 screens** (with WU-T8): Desk → Money → Sales tax → **Filing calendar** (next 12 months, status chips
   Upcoming / Ready / Due soon / Overdue / Filed, "Add to my calendar") and **Return** (the packet: total to pay first,
@@ -1035,6 +1049,9 @@ or completed by anything except the underlying fact changing):
   due date is within 7 days. `href` = the screen that fixes the first problem. This surfaces problems *before* filing day
   so the filing itself stays a few minutes of typing.
 - `TAX_LICENSE_RENEWAL` — from 60 days before `licenseExpiresOn` until the owner enters a new expiry date.
+- `TAX_AMENDMENT_DUE` — one per OPEN `TaxFilingAmendment` (11.12): "Amend your <Month> return — <$ more to pay / $
+  overpaid>"; severity `high` when more tax is owed; disappears only when the amendment is marked filed (or, for an
+  overpayment, marked "Handled with my CPA"). `href` = the guided page in amendment mode.
 
 Visible to OWNER and ADMIN (ADMIN sees "Ask the owner to file" instead of the button). STAFF and CUSTOMER never.
 Unit tests in `tests/exceptions-tax.test.ts` (pure: appears the day after period end; severity switches; disappears
@@ -1063,4 +1080,52 @@ the page, ticks persist after reload, filing removes the Today item; axe clean a
 
 Roadmap idea (not built): forward SUTS's confirmation email to a dedicated inbound address so the app records the
 confirmation number itself (needs inbound email parsing and a confirmed SUTS email format).
+
+### 11.12 Amended returns (review fix, 2026-10-07)
+
+Codex's review of Amendment A pointed out that Colorado requires an **amended return for the original period** with
+the full corrected amounts when a filed return turns out wrong (DR 0100 instructions); netting the difference into a
+later return, as D-T11 first said, would leave the original return wrong and distort the later one.
+
+```prisma
+enum TaxAmendmentStatus { OPEN FILED HANDLED_OUTSIDE }
+
+model TaxFilingAmendment {
+  id                 String             @id @default(cuid())
+  periodId           String
+  period             TaxFilingPeriod    @relation(fields: [periodId], references: [id])
+  sequence           Int                // 1 = first amendment of that period
+  status             TaxAmendmentStatus @default(OPEN)
+  packet             Json               // FilingPacket of the corrected period + previouslyReported per row; frozen when FILED
+  additionalTaxCents Int                // corrected tax − previously reported tax (negative = overpaid)
+  detectedAt         DateTime           @default(now())
+  filedOn            DateTime?
+  confirmationNumber String?
+  amountPaidCents    Int?
+  filedByUserId      String?
+  notes              String?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  @@unique([periodId, sequence])
+}
+```
+
+(Add `amendments TaxFilingAmendment[]` to `TaxFilingPeriod`; same migration as 11.3; backup and schema-health coverage.)
+
+- **Previously reported** = the latest FILED packet for the period (the original, or the last filed amendment).
+  At most one OPEN amendment per period; detection refreshes its packet while it is OPEN.
+- **Amended packet** = the period's packet rebuilt from current data, with per row: previously reported, corrected,
+  difference. The guided page in amendment mode says "In SUTS choose Amend for <Month> and enter the corrected
+  totals below (not the difference)", lists the corrected numbers with copy buttons, then: more tax owed → "Pay
+  <$additional>; SUTS adds any interest" (no service fee on the additional tax); overpaid → "Colorado returns overpaid
+  tax through a refund claim — ask your CPA how to file it" and a "Handled with my CPA" button (OWNER, reason
+  required) instead of "I filed it".
+- `markAmendmentFiled(actorUserId, { amendmentId, filedOn, confirmationNumber, amountPaidCents })` — OWNER; row-locks
+  the amendment; freezes its packet; audit row. The original period's frozen worksheet is never edited.
+- The **next** period's packet never contains earlier-period corrections (the old `correctionsToEarlierPeriods` field
+  is removed from the shape).
+- Batch K (section 9): tax payments are `TaxFilingPeriod.amountPaidCents` **plus** filed amendments' `amountPaidCents`.
+
+Tests: in `tests/tax-filing-packet.test.ts` and the integration tests listed in 11.8 (detection, one OPEN amendment per
+period, mark filed freezes, overpayment path requires a reason, ADMIN refused).
 

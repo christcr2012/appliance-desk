@@ -459,3 +459,8 @@ Same day, follow-up: an unfiled return is a computed Today task (exception categ
 `TAX_FILING_NOT_READY`, `TAX_LICENSE_RENEWAL`) rather than a stored task, so nothing but marking the return filed can
 clear it; it opens a guided "File this return" page (11.11). Chosen over a `StaffTask` because a task can be ticked off
 without the return actually being filed.
+Review fixes the same day (Codex on PR #282): a change to a filed period is reported on an **amended return for that
+period** (`TaxFilingAmendment`, 11.12), not netted into the next return — this also corrects the original D-T11; a
+local service fee is shown only for on-time returns and never on amended additional tax; overdue starts only after the
+holiday-shifted legal deadline; IN-43/IN-44 never block billing; SUTS Bulk XML eligibility is checked rather than ruled
+out.

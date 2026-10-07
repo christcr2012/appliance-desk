@@ -611,7 +611,7 @@ Replace the single business-wide tax rate with address-exact Colorado tax: state
 
 ### Owner inputs / gates
 
-IN-17 (rate check), IN-33 … IN-38, IN-43, IN-44 (`docs/OWNER-INPUTS.md`). Everything starts "Not decided yet" and blocks billing until answered; the batch can be built and merged before the answers arrive.
+IN-17 (rate check), IN-33 … IN-38 (`docs/OWNER-INPUTS.md`). IN-43 and IN-44 (Amendment A) only refine the return packet's wording and deduction names; they never block billing or launch. Everything starts "Not decided yet" and blocks billing until answered; the batch can be built and merged before the answers arrive.
 
 ### Acceptance checklist
 
@@ -620,7 +620,7 @@ IN-17 (rate check), IN-33 … IN-38, IN-43, IN-44 (`docs/OWNER-INPUTS.md`). Ever
 - [ ] The lease election applies only to state-collected areas; home-rule cities use only their own rules (engine tests).
 - [ ] Stripe subscription items carry one Stripe tax rate per taxable area; Stripe-mirrored invoices record per-area tax lines; a 1-cent difference from the engine raises a card.
 - [ ] A rate change entered with a future date reaches every affected live subscription the day before it starts, exactly once.
-- [ ] Per-filing-account worksheets (accrual or cash per the owner's setting); marking a period filed freezes it; later corrections appear on the next worksheet.
+- [ ] Per-filing-account worksheets (accrual or cash per the owner's setting); marking a period filed freezes it; a later change to a filed period opens an amended return for that same period (Amendment A 11.12).
 - [ ] (Amendment A, 2026-10-07) Each return is a SUTS entry packet: per tax area in SUTS order, the exact numbers to type with copy buttons, a zero-return path, and a total equal to the tax customers were charged.
 - [ ] (Amendment A) Every filing account has its periods, due dates (with Colorado's weekend/holiday rule) and license renewal on a calendar; the owner is prompted on Today and by email from the day a period closes until it is marked filed; a calendar file can be downloaded.
 - [ ] (Amendment A 11.11) An unfiled return is a Today task that cannot be dismissed and disappears only when the return is marked filed; clicking it opens the guided "File this return" page (check → open SUTS → type these in with copy buttons and saved ticks → pay → confirmation).

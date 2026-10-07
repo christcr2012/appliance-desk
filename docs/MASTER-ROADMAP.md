@@ -157,7 +157,7 @@ tests most likely to break, so the agent updates them in the same PR instead of 
 | T-4 | WU-T5 local invoices and the Stripe mirror use the engine; old single-rate assertions updated | money | pickup/late-return/early-return/waiver tests, webhook mirror tests, statements |
 | T-5 | WU-T6 exemptions + rate-change and re-check automations | money/automation | automation run tests, cron route auth tests |
 | T-6a | WU-T7 filing accounts + Amendment A WU-TA1: filing calendar, due dates and holidays, Today tasks (11.11 exception rules)/email prompts, owner alerts, calendar file (`BATCH-T.md` section 11) | schema + automation | migration check, automation run tests, cron route auth tests, messaging delivery tests |
-| T-6b | WU-T7 worksheet → Amendment A WU-TA2 SUTS entry packet, use tax (+ appliance form field, purchase-order hook), mark filed | money | purchasing/receipt tests, appliance form tests |
+| T-6b | WU-T7 worksheet → Amendment A WU-TA2 SUTS entry packet, use tax (+ appliance form field, purchase-order hook), mark filed, amended returns (11.12) | money | purchasing/receipt tests, appliance form tests |
 | T-7 | WU-T8 screens (incl. Amendment A filing calendar, return packet and guided "File this return" pages) + WU-T9 docs | screens | route inventory (every new page), axe light/dark, `e2e/sales-tax.spec.ts` shard assignment |
 
 ### V — "Evergreen Signature" redesign
