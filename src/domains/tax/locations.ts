@@ -619,6 +619,18 @@ export async function getAgreementTaxContext(
   const defaultRules = Object.fromEntries(
     defaultRows.map((row) => [row.category, row.taxability]),
   ) as EngineInput["defaultRules"];
+  const activeExemptions = await tx.customerTaxExemption.findMany({
+    where: {
+      customerId: agreement.customerId,
+      validFrom: { lte: taxDate },
+      AND: [
+        { OR: [{ expiresOn: null }, { expiresOn: { gte: taxDate } }] },
+        { OR: [{ revokedAt: null }, { revokedAt: { gt: taxDate } }] },
+      ],
+    },
+    select: { jurisdictionIds: true },
+  });
+
   const location = await tx.addressTaxLocation.findFirst({
     where: { serviceAddressId: agreement.serviceAddressId, isCurrent: true },
     include: {
@@ -655,13 +667,36 @@ export async function getAgreementTaxContext(
         jurisdiction.rules.map((row) => [row.category, row.taxability]),
       ) as EngineJurisdiction["rules"],
     })) ?? [];
+  const currentJurisdictionIds = new Set(
+    jurisdictions.map((jurisdiction) => jurisdiction.id),
+  );
+  const exemptJurisdictionIds = new Set<string>();
+  for (const exemption of activeExemptions) {
+    const scopedIds = Array.isArray(exemption.jurisdictionIds)
+      ? exemption.jurisdictionIds.filter(
+          (value): value is string => typeof value === "string",
+        )
+      : [];
+    if (scopedIds.length === 0) {
+      for (const jurisdictionId of currentJurisdictionIds) {
+        exemptJurisdictionIds.add(jurisdictionId);
+      }
+      continue;
+    }
+    for (const jurisdictionId of scopedIds) {
+      if (currentJurisdictionIds.has(jurisdictionId)) {
+        exemptJurisdictionIds.add(jurisdictionId);
+      }
+    }
+  }
+
   return {
     taxDate,
     leaseTermMonths: agreement.termMonths,
     election: settings.shortTermLeaseElection,
     defaultRules,
     jurisdictions,
-    exemptJurisdictionIds: new Set<string>(),
+    exemptJurisdictionIds,
   };
 }
 
