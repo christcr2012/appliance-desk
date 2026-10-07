@@ -16,6 +16,8 @@ import {
   stripeTaxMismatchException,
   stripeTaxUnverifiedException,
   taxExemptionExpiryException,
+  taxExemptionExpiryWindow,
+  taxExemptionWarningSince,
   returnedEarlyException,
   EARLY_RETURN_DEFAULTS_REVIEW_DAYS,
   subscriptionUpdatePendingException,
@@ -160,9 +162,13 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     entityType: "Invoice",
     entityId: { not: null },
   } satisfies Prisma.AuditLogWhereInput;
+  const exemptionExpiryWindow = taxExemptionExpiryWindow(now);
   const taxExemptionExpiryWhere = {
     revokedAt: null,
-    expiresOn: { gte: now, lte: addDays(now, 30) },
+    expiresOn: {
+      gte: exemptionExpiryWindow.from,
+      lt: exemptionExpiryWindow.throughExclusive,
+    },
   } satisfies Prisma.CustomerTaxExemptionWhereInput;
   const staleWhere = {
     status: { in: ["DRAFT", "AWAITING_SIGNATURE"] },
@@ -636,7 +642,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
           customerId: exemption.customerId,
           customerName: customerDisplayName(exemption.customer),
           expiresOn: exemption.expiresOn,
-          warningSince: addDays(exemption.expiresOn, -30),
+          warningSince: taxExemptionWarningSince(exemption.expiresOn),
         }),
       ),
     ...taxBlockedInvoices.rows.map((invoice) => {
