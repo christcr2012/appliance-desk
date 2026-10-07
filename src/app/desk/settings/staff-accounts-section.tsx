@@ -14,6 +14,7 @@ import {
   deactivateStaffAccountAction,
   reactivateStaffAccountAction,
   resendStaffActivationEmailAction,
+  signOutStaffEverywhereAction,
 } from "./actions";
 
 type StaffAccountRow = {
@@ -26,8 +27,10 @@ type StaffAccountRow = {
 
 export function StaffAccountsSection({
   accounts,
+  canSignOutEverywhere = false,
 }: {
   accounts: StaffAccountRow[];
+  canSignOutEverywhere?: boolean;
 }) {
   const [isPending, startTransition] = useTransition();
   const [name, setName] = useState("");
@@ -85,6 +88,25 @@ export function StaffAccountsSection({
     });
   }
 
+  function handleSignOutEverywhere(id: string) {
+    startTransition(async () => {
+      const result = await signOutStaffEverywhereAction(id);
+      setRowMessage((current) => ({
+        ...current,
+        [id]:
+          result.status === "error"
+            ? { kind: "error", text: result.message }
+            : {
+                kind: "success",
+                text:
+                  (result.revokedCount ?? 0) === 0
+                    ? "No signed-in sessions were found."
+                    : `Signed out ${result.revokedCount} session${result.revokedCount === 1 ? "" : "s"}.`,
+              },
+      }));
+    });
+  }
+
   function handleResend(emailAddress: string, id: string) {
     startTransition(async () => {
       const result = await resendStaffActivationEmailAction(emailAddress);
@@ -136,6 +158,16 @@ export function StaffAccountsSection({
                 >
                   Resend setup email
                 </Button>
+                {canSignOutEverywhere && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    disabled={isPending}
+                    onClick={() => handleSignOutEverywhere(account.id)}
+                  >
+                    Sign out everywhere
+                  </Button>
+                )}
                 <Button
                   type="button"
                   variant="danger"
