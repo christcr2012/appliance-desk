@@ -39,6 +39,7 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
       "Launch confirmation tokens are single-use and expire; a fixed token would make the accessibility test stateful and non-repeatable.",
   },
   { path: "/login", role: "PUBLIC", fixture: "/login" },
+  { path: "/login/two-factor", role: "PUBLIC", fixture: "/login/two-factor" },
   { path: "/reset-password", role: "PUBLIC", fixture: "/reset-password" },
   { path: "/scan/[assetNumber]", role: "STAFF", fixture: "/scan/CI-SECURITY-UNIT" },
   {
@@ -182,6 +183,7 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
   { path: "/desk/reports", role: "OWNER", fixture: "/desk/reports" },
   { path: "/desk/revenue", role: "OWNER", fixture: "/desk/revenue" },
   { path: "/desk/search", role: "OWNER", fixture: "/desk/search?q=washer" },
+  { path: "/desk/security/setup", role: "OWNER", fixture: "/desk/security/setup" },
   { path: "/desk/settings", role: "OWNER", fixture: "/desk/settings" },
   { path: "/desk/settings/policies", role: "OWNER", fixture: "/desk/settings/policies" },
   { path: "/desk/settings/preview-storage", role: "OWNER", fixture: "/desk/settings/preview-storage" },

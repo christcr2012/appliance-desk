@@ -33,6 +33,8 @@ import { pickupBillingSettingsFrom } from "@/domains/billing/pickup-billing";
 import { termsPolicyDefaults, termsPolicyStatus } from "@/domains/settings/terms-policy";
 import { formatTaxRate } from "@/domains/billing/tax";
 import { profileExtrasDefaults } from "@/domains/settings/profile-extras";
+import { twoFactorRolesFromSetting } from "@/domains/security/two-factor";
+import { updateTwoFactorRequiredRolesAction } from "./actions";
 export const metadata = {
   title: "Settings",
   robots: { index: false, follow: false },
@@ -164,6 +166,76 @@ export default async function DeskSettingsPage({
           profile, Service area, and Products and pricing for contact details,
           where you work and prices.
         </p>
+      </Card>
+    );
+  } else if (section === "security") {
+    const requiredRoles = twoFactorRolesFromSetting(settings.twoFactorRequiredRoles);
+    const currentUser = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { twoFactorEnabled: true },
+    });
+    const canChange = session.user.role === "OWNER";
+    content = (
+      <Card
+        title="Security"
+        description="Require an authenticator-app code after the password for people who can reach sensitive business data."
+      >
+        <div className="mb-6 rounded-card border border-line bg-subtle p-4">
+          <p className="font-medium text-ink">Your two-step login</p>
+          <p className="mt-1 text-sm text-ink-soft">
+            {currentUser?.twoFactorEnabled
+              ? "Authenticator setup is complete."
+              : "Authenticator setup is not complete yet."}
+          </p>
+          <div className="mt-3">
+            <ButtonLink href="/desk/security/setup" variant="secondary">
+              {currentUser?.twoFactorEnabled ? "Review setup" : "Set up authenticator"}
+            </ButtonLink>
+          </div>
+        </div>
+        <form action={updateTwoFactorRequiredRolesAction} className="space-y-4">
+          <fieldset disabled={!canChange} className="space-y-3">
+            <legend className="font-medium text-ink">Roles that must use two-step login</legend>
+            <p className="text-sm text-ink-soft">
+              Anyone in these roles must enter a 6-digit code from an authenticator app after their password.
+              Recommended: Owner and Admin, because they can refund money and see every customer.
+            </p>
+            {(["OWNER", "ADMIN", "STAFF"] as const).map((role) => (
+              <label key={role} className="flex items-center gap-2 text-sm text-ink">
+                <input
+                  type="checkbox"
+                  name="role"
+                  value={role}
+                  defaultChecked={requiredRoles.includes(role)}
+                  className="h-4 w-4"
+                />
+                {role === "OWNER" ? "Owner" : role === "ADMIN" ? "Admin" : "Staff"}
+              </label>
+            ))}
+          </fieldset>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="submit"
+              disabled={!canChange}
+              className="rounded-control bg-primary px-4 py-2 text-sm font-medium text-on-primary disabled:opacity-50"
+            >
+              Save security policy
+            </button>
+            <button
+              type="submit"
+              name="restoreRecommended"
+              value="1"
+              disabled={!canChange}
+              className="rounded-control border border-line-strong px-4 py-2 text-sm font-medium text-ink disabled:opacity-50"
+            >
+              Restore recommended
+            </button>
+          </div>
+          {!canChange && (
+            <p className="text-sm text-ink-soft">Only the Owner can change which roles are required.</p>
+          )}
+          <p className="text-xs text-ink-soft">Customer accounts can never be required by this setting.</p>
+        </form>
       </Card>
     );
   } else if (section === "notifications" || section === "integrations") {

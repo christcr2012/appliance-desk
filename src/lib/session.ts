@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
 import { auth } from "./auth";
+import { twoFactorEnrollmentRequired } from "@/domains/security/two-factor";
 
 export type Role = "OWNER" | "ADMIN" | "STAFF" | "CUSTOMER";
 
@@ -53,16 +54,61 @@ export async function requireSession() {
   return session;
 }
 
-/**
- * Redirects to /login if signed out, or to / if signed in but the wrong
- * role. This is the server-side gate for every /desk/** route — never rely
- * on hiding a nav link instead of calling this.
- */
-export async function requireRole(...roles: Role[]) {
+async function requireAllowedRole(roles: Role[]) {
   const session = await requireSession();
   const role = session.user.role;
   if (!roles.includes(role)) {
     redirect("/");
+  }
+  return session;
+}
+
+export class TwoFactorEnrollmentRequiredError extends Error {
+  constructor() {
+    super("Two-step login setup is required before this action can continue.");
+    this.name = "TwoFactorEnrollmentRequiredError";
+  }
+}
+
+/**
+ * The setup page/actions are the only desk surface allowed before enrollment.
+ * Never use this helper for ordinary pages or business actions.
+ */
+export async function requireRoleForTwoFactorSetup(...roles: Role[]) {
+  return requireAllowedRole(roles);
+}
+
+export async function enforceTwoFactorForDeskPage(
+  session: Awaited<ReturnType<typeof requireSession>>,
+) {
+  if (
+    await twoFactorEnrollmentRequired(
+      session.user.id,
+      session.user.role,
+    )
+  ) {
+    redirect("/desk/security/setup");
+  }
+}
+
+/**
+ * Server-side role + two-factor gate used by ordinary desk pages/actions.
+ * Server actions fail closed with an error instead of relying on a page
+ * redirect; setup actions use requireRoleForTwoFactorSetup explicitly.
+ */
+export async function requireRole(...roles: Role[]) {
+  const session = await requireAllowedRole(roles);
+  if (
+    await twoFactorEnrollmentRequired(
+      session.user.id,
+      session.user.role,
+    )
+  ) {
+    const requestHeaders = await headers();
+    if (requestHeaders.get("next-action")) {
+      throw new TwoFactorEnrollmentRequiredError();
+    }
+    redirect("/desk/security/setup");
   }
   return session;
 }

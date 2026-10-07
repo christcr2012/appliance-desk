@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { signIn } from "@/lib/auth-client";
+import { LOGIN_NEXT_STORAGE_KEY, signIn } from "@/lib/auth-client";
 import { getPostLoginDestination } from "./actions";
 
 export function LoginForm() {
@@ -19,17 +19,27 @@ export function LoginForm() {
     setError(null);
     setSubmitting(true);
 
-    const { error: signInError } = await signIn.email({ email, password });
+    const next = searchParams.get("next");
+    if (next) sessionStorage.setItem(LOGIN_NEXT_STORAGE_KEY, next);
+    else sessionStorage.removeItem(LOGIN_NEXT_STORAGE_KEY);
 
-    setSubmitting(false);
-    if (signInError) {
+    const result = await signIn.email({ email, password });
+    const signInData = result.data as { twoFactorRedirect?: boolean } | null;
+
+    if (result.error) {
+      setSubmitting(false);
       setError(
-        signInError.message ?? "That email and password don't match. Please try again.",
+        result.error.message ?? "That email and password don't match. Please try again.",
       );
       return;
     }
 
-    const destination = await getPostLoginDestination(searchParams.get("next"));
+    if (signInData?.twoFactorRedirect) {
+      return;
+    }
+
+    setSubmitting(false);
+    const destination = await getPostLoginDestination(next);
     router.push(destination);
     router.refresh();
   }
