@@ -167,7 +167,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     revokedAt: null,
     expiresOn: {
       gte: exemptionExpiryWindow.from,
-      lte: exemptionExpiryWindow.through,
+      lt: exemptionExpiryWindow.throughExclusive,
     },
   } satisfies Prisma.CustomerTaxExemptionWhereInput;
   const staleWhere = {
