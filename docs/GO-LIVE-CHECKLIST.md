@@ -72,7 +72,7 @@ Previews and test copies never send email, even with the key and the switch on (
       tax and every rule in use shows "CPA confirmed"; Colorado license number entered as a filing account (plus a City
       of Greeley one only if Greeley issued a separate account — Greeley files through SUTS); every tax area you serve
       has its rate and start date. Until this is done, **do not bill real customers**.
-- [ ] **Tax filing prompts (Batch T Amendment A):** each filing account has its frequency, first period and license
+- [ ] **Tax filing prompts (Batch T Amendment A) — recommended, not a launch blocker (tick or mark "skipped — after launch"):** each filing account has its frequency, first period and license
       expiry; the SUTS codes and order match your SUTS return (IN-43); the deduction names are filled in from your
       CPA's answer (IN-44); you received one test reminder email and downloaded the calendar file to your phone; the retail
       delivery fee status in the app is confirmed by your CPA (IN-37), and if it applies, this year's fee amount is entered;

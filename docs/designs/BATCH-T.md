@@ -1277,7 +1277,8 @@ model RetailDeliveryFeeRecord {
   saleOn              DateTime?          // date of the sale's FIRST RENT CHARGE (review fix): the first invoice —
                                          // Stripe or local — that charges rent for this sale (for a normal rental the
                                          // first invoice anchored to firstDeliveredOn; for a prepaid one the signing
-                                         // payment date); null until that charge exists. Selects amount and period.
+                                         // payment date); null until that charge exists. Selects the fee AMOUNT only;
+                                         // the filing period comes from deliveredOn (12.5).
   customerRefundedAt  DateTime?          // collected fees: set when the customer was refunded in full (credit gate)
   customerRefundRef   String?
   creditAppliedPeriodId String?          // set when an over-reported fee is claimed as a credit on a later RDF return;
@@ -1414,8 +1415,10 @@ New automation `tax-rate-watch` (inside the `tax-address-recheck` cron route as 
    contract supports an effective date (runbook gate; the public bulk-lookup format already accepts a `Date` column). If
    it does not, the look-ahead is skipped and the existing November 15 / May 15 reminder plus the page watch (13.3)
    cover it.
-2. **Current check:** daily at 00:20 Denver on January 1 and July 1, and on the 1st of every month, the same lookups for
-   today (replaces D-T9's monthly re-check wording; per-address differences still raise the existing review task).
+2. **Current check:** **every day** (00:20 Denver), the same per-combination lookups for today — home-rule cities can
+   change rates on any date, so a monthly check could leave a mid-month change unnoticed for weeks (review fix). The
+   full per-address re-check (every active address) stays monthly plus January 1 and July 1; per-address differences
+   still raise the existing review task.
 3. For each difference in a jurisdiction that is already `REVIEWED`:
    - **Guardrails (all must hold to apply automatically):** same jurisdiction code and level; the new rate was returned
      by **two lookups on different days**; the change is within `autoRateChangeMaxMilliPercent` (owner setting,

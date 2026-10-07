@@ -662,7 +662,7 @@ controls → Batch O. Summary: `docs/plans/TAX-AND-BOOKS-OVERVIEW.md`. Still onl
 
 - **SUTS Excel upload file:** owner uploads one blank template from SUTS, maps each column once, the app fills a copy
   each period. Worth it when the return regularly has more than about 8 rows (`BATCH-T.md` 11.7).
-- **Automatic filing:** only through SUTS's XML channel for certified software vendors — not available to us.
+- **Bulk XML filing file:** SUTS offers Bulk XML to "bulk filers"; whether Chris's account may use it is an open check (BATCH-T WU-TA0 / IN-43). If yes, generating the XML from the return packet replaces typing (its own design amendment).
 - **SMS tax reminders:** after live SMS is approved.
 - **(Now designed as Batch M PR M-3, 2026-10-07)** **Card payment of local invoices in the customer portal** (prepaid rent invoices and standalone delivery-fee invoices
   are manual-payment-only in Batch T, D-T14) — would need a Checkout session or Stripe one-off invoice per local invoice

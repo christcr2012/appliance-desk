@@ -60,7 +60,8 @@ an issue's `detail` cannot be constructed from an arbitrary string (type test).
 ### D-S3 — A private, read-mostly door for an AI agent
 
 `GET /api/ops/issues` returns open and recently resolved issues as JSON; `POST /api/ops/issues/<id>/notes` lets the agent
-add a note and set `ACKNOWLEDGED`. Nothing else: the agent cannot change settings, data, or resolve issues (resolution
+add a note and moves the issue to `ACKNOWLEDGED` **only if it is still `OPEN`** (a conditional update in the same
+transaction as the note — review fix: a note arriving after the issue auto-resolved keeps it `RESOLVED`). Nothing else: the agent cannot change settings, data, or resolve issues (resolution
 happens when the underlying problem stops, or by the owner).
 
 - **Authentication:** an **AI check-up key** the owner creates in the app (Settings & activity → System health → "Create
@@ -172,7 +173,7 @@ failing rule is not double-reported as stale; stuck provider op counted once; co
 - **S-2 — WU-S2:** `OpsAgentKey`, key screen, `/api/ops/issues` GET and notes POST, rate limit, `docs/runbooks/AI-CHECKUP.md`
   (owner setup steps + the routine prompt), OWNER-GUIDE section "System health and the AI check-up". Tests:
   ★ `tests/ops-api-integration.test.ts` (no key → 404; revoked → 404; wrong key → 404 with constant-time compare;
-  notes cannot carry PII; agent cannot resolve; rate limit), `tests/ops-key.test.ts` (shown once, stored hashed).
+  notes cannot carry PII; agent cannot resolve; a note posted after auto-resolve leaves the issue RESOLVED; rate limit), `tests/ops-key.test.ts` (shown once, stored hashed).
 
 ## 5. Owner steps after S-2 (go-live checklist lines)
 
