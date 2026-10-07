@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => {
     queryRaw: vi.fn(),
     rentalAgreementFindUniqueOrThrow: vi.fn(),
     rentalAgreementUpdate: vi.fn(),
+    rentalAgreementUpdateMany: vi.fn(),
     claimProviderOperation: vi.fn(),
     completeProviderOperation: vi.fn(),
     runProviderCall: vi.fn(),
@@ -59,6 +60,7 @@ vi.mock("@/lib/prisma", () => ({
       }),
     rentalAgreement: {
       update: (...args: unknown[]) => mocks.rentalAgreementUpdate(...args),
+      updateMany: (...args: unknown[]) => mocks.rentalAgreementUpdateMany(...args),
     },
   },
 }));
@@ -123,6 +125,7 @@ describe("startRecurringBillingForAgreement", () => {
     mocks.queryRaw.mockResolvedValue([lockRow()]);
     mocks.rentalAgreementFindUniqueOrThrow.mockResolvedValue(baseAgreement());
     mocks.rentalAgreementUpdate.mockResolvedValue({});
+    mocks.rentalAgreementUpdateMany.mockResolvedValue({ count: 1 });
     mocks.claimProviderOperation.mockResolvedValue({
       done: false,
       opId: "provider-op-1",
@@ -474,6 +477,10 @@ describe("startRecurringBillingForAgreement", () => {
 
     expect(outcome).toMatchObject({ state: "RETRY" });
     expect(mocks.subscriptionsCreate).not.toHaveBeenCalled();
+    expect(mocks.rentalAgreementUpdateMany).toHaveBeenCalledWith({
+      where: { id: "agr-1", stripeSubscriptionId: null },
+      data: { billingBlockedReason: expect.stringMatching(/already being started/i) },
+    });
   });
 
   it("never overwrites a different subscription id that appears during reconciliation", async () => {
