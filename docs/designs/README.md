@@ -21,7 +21,7 @@ the points where the implementer must stop and ask instead of guessing.
 | T — Colorado sales and use tax | `BATCH-T.md` | **Approved 2026-10-06** (Chris). Before F (launch blocker). Policy answers come from Chris's CPA (IN-33 … IN-38). |
 | V — "Evergreen Signature" visual redesign | `BATCH-V.md` | **Approved 2026-10-06** (Chris). After T, before F-part-2. Concept in `docs/design-mockups/signature-2026-10-06/`. |
 | S — System issues inbox and the AI check-up | `BATCH-S.md` | **Approved 2026-10-07** (Chris). Two PRs after T, before V. |
-| M — Shop sales (merchandise) and retired-appliance endings (sold, scrapped, disposed) | `BATCH-M.md` | **Approved 2026-10-07** (Chris). After K by default; right after T if Chris sells items before launch (IN-47). |
+| M — Shop sales (merchandise) and retired appliances (sell, strip for parts, scrap, throw away) | `BATCH-M.md` | **Approved 2026-10-07** (Chris). After K (Chris will not sell before launch, IN-47). Retired appliances: "what's next" plan, revised 2026-10-07. |
 | K — Books, expenses, P&L, accounting exports | `BATCH-K.md` | **Approved 2026-10-06** (Chris). After T; may run after launch. |
 | O — Owner controls | `BATCH-O.md` | **Approved 2026-10-06** (Chris). After K. |
 

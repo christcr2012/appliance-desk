@@ -771,22 +771,25 @@ do not start deferred features.
 
 ## Batch M — Shop sales and appliance endings
 
-**Design: `docs/designs/BATCH-M.md`** (approved by Chris 2026-10-07). After Batch K by default; right after Batch T if
-Chris sells items before launch (IN-47).
+**Design: `docs/designs/BATCH-M.md`** (approved by Chris 2026-10-07). After Batch K — Chris will not sell before launch
+(IN-47, answered 2026-10-07).
 
 ### Purpose
 
 Sell small items (hoses, cords …) and used appliances with correct Colorado sales tax (shop pickup vs delivered),
-stock tracking, resale-certificate buying and use tax when resale stock is used; record how every retired appliance
-ends — sold, scrapped (scrap-yard payments for several appliances at once), thrown away (dump fees) or other — with
-the money flowing to revenue reports and the books.
+stock tracking, resale-certificate buying and use tax when resale stock is used; after an appliance is retired (which
+already takes it out of rental), record what's next for it — sell it, strip it for parts (working parts go into parts
+stock), scrap it, throw it away or other. Scrap checks and dump fees are recorded as lump amounts, not per appliance.
 
 ### Acceptance checklist
 
 - [ ] Items marked "sold to customers" share the parts stock ledger; sales, refunds and repairs move stock exactly once (integration tests).
 - [ ] A pickup sale is taxed at the shop's tax areas and a delivered sale at the customer's; delivered taxable sales follow the delivery-fee rules.
 - [ ] Resale stock creates no use tax when bought and records use tax when used on a repair.
-- [ ] Every retired appliance can record its ending; scrap-trip payments split across appliances by book value; disposal fees are expenses; endings feed Batch K.
+- [ ] Retiring still removes the unit from everything rentable; every retired appliance can get a plan (sell / strip for parts / scrap / throw away / other), changeable until done; a sale completes its plan automatically.
+- [ ] Parts kept from a stripped appliance enter parts stock at $0 cost exactly once and list on the appliance page.
+- [ ] Scrap checks are lump "Scrap money received" entries (scrap income); dump fees are normal expenses; no per-appliance fees are asked; a done plan writes off the remaining book value in Batch K.
+- [ ] One Today follow-up item for retired appliances undecided or not done after the owner-set days (starting 30, 0 = off).
 - [ ] Shop sales appear on the SUTS return and as "Shop sales" in revenue reports; screens explained in plain words; axe clean.
 - [ ] Every item in "Rules that apply to every batch".
 

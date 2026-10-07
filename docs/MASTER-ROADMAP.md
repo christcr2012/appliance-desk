@@ -197,11 +197,11 @@ tests most likely to break, so the agent updates them in the same PR instead of 
 | K-7 | WU-K8 P&L, balance, payback | reports | METRICS registry tests, reports page specs |
 | K-8 | WU-K9 forecast, customers, year-end + WU-K10 docs | reports | same; `e2e/books.spec.ts` shard |
 
-### M — shop sales and appliance endings (`docs/designs/BATCH-M.md`, approved 2026-10-07; after K by default, or right after T if IN-47 says Chris sells before launch)
+### M — shop sales and appliance endings (`docs/designs/BATCH-M.md`, approved 2026-10-07; after K — Chris will not sell before launch, IN-47 answered 2026-10-07)
 | PR | Work units | Risk area | CI watch |
 |---|---|---|---|
 | M-1 | WU-M1 items for sale on the parts ledger, resale stock and use tax on withdrawals, Sales page (pickup vs delivered tax, delivery fee), revenue split | money + screens | parts ledger tests, invoice/tax tests, delivery-fee tests, new browser spec shard |
-| M-2 | WU-M2 appliance endings (sold / scrapped / disposed / other), scrap trips, K postings | money | inventory status tests, K posting tests if K merged |
+| M-2 | WU-M2 retired appliances — "what's next" (sell / strip for parts / scrap / throw away / other), parts kept into stock, lump scrap money, K postings | money + inventory | inventory status tests, parts ledger tests, K posting tests |
 | M-3 | WU-M3 card payment for local invoices (Stripe Checkout per local invoice) | money + provider | checkout/webhook tests, provider-operation idempotency tests |
 
 ### O — owner controls

@@ -531,3 +531,16 @@ records one ending — sold (a taxed sale), scrapped (scrap trips split one paym
 untaxed by default pending the CPA), thrown away (dump fee as an expense) or other — feeding revenue reports and Batch K
 gain/loss. Card payment for local invoices becomes PR M-3. Placement after K by default, earlier if Chris sells before
 launch (IN-47).
+
+## 2026-10-07 — Batch M revised: selling after launch; retired appliances get a "what's next" plan, no per-item fees
+
+Chris answered IN-47: no selling before launch, so Batch M stays after Batch K. He also described the retire process he
+wants: retiring takes the unit out of rental (already true — RETIRED is final and never rentable), then he decides
+what's next: sell it, strip it for parts (working parts back into parts stock, the rest scrapped or thrown away), scrap
+it or throw it away; he does not want to track scrap or dump amounts per appliance. Decided (BATCH-M D-M4, replacing
+the per-appliance "endings" and scrap trips split by book value): one changeable plan per retired appliance
+(`RetiredAppliancePlan`), parts kept enter stock as `SALVAGE` movements at $0 cost (their cost is already in the
+appliance), scrap checks are lump `ScrapPayment` income entries and dump fees are ordinary Batch K expenses — the money
+still reaches the books for income tax, just not per item. A done plan writes off the remaining book value; a sale
+records gain/loss. One Today follow-up after 30 days (owner setting). The CPA confirms lump scrap income and $0
+salvaged parts (IN-46).

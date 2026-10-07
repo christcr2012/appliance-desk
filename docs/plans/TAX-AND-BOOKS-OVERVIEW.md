@@ -121,7 +121,9 @@ These are tracked as IN-33 to IN-39 in `docs/OWNER-INPUTS.md`.
    deduction name), or leave them out of gross sales?
 11. **(IN-46, for Batch M) Selling items and old appliances:** are hose/cord and used-appliance sales taxed like other
     goods? What do I give suppliers to buy resale stock tax-free, and do I owe use tax if I use a resale item on a
-    repair? Is selling scrap metal to a scrap yard tax-free? Anything special about selling an appliance I rented out?
+    repair? Is selling scrap metal to a scrap yard tax-free, and is one lump amount per scrap check fine (not split per
+    appliance)? Anything special about selling an appliance I rented out? Parts I strip from a retired appliance go into
+    stock at $0 cost because their cost was already in the appliance — is that right?
 10. **(For Batch K)** Are 60-month straight-line depreciation and "expense parts when bought" fine for my own profit
    reports? And is $2,000 the right 1099 threshold for 2026?
 
