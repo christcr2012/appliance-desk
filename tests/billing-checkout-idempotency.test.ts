@@ -28,6 +28,17 @@ async function runTransaction(callback: (tx: unknown) => Promise<unknown>) {
   });
 }
 
+vi.mock("@/domains/tax/locations", () => ({
+  assertTaxReadyForAgreement: vi.fn(async () => undefined),
+  taxRateVersionIdsForAgreement: vi.fn(async () => []),
+}));
+
+vi.mock("@/domains/tax/stripe-rates", () => ({
+  ensureStripeTaxRate: vi.fn(async () => {
+    throw new Error("No Stripe tax rate should be needed in this idempotency suite.");
+  }),
+}));
+
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     $transaction: (callback: (tx: unknown) => Promise<unknown>) => runTransaction(callback),
