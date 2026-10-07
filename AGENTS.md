@@ -53,6 +53,12 @@ are mandatory:
 8. **Small checkpoints.** One work unit at a time; commit after each (local commit, push at the end), so a stall never
    loses work. Before a long step, note in one line what you are about to do.
 9. **External waits** follow the anti-stall rule below: check once, act, move on, never watch.
+10. **CI/review gate loop — validated on PRs #283–#285 (2026-10-07).** Check the exact PR head once. If a gate fails,
+    fetch the job list once, read only the failed job/review evidence, make the smallest targeted patch, then verify the
+    new exact head once. While a gate is still running, advance one genuinely independent next work unit on its own
+    branch; if there is no safe independent work, return control instead of polling. Never replace this loop with broad
+    repo rescans, repeated status checks, sleep loops or watching live logs. The two-strikes rule still applies to the
+    targeted fix itself.
 
 ## What this is
 
