@@ -110,6 +110,7 @@ describe.skipIf(!enabled)("Batch T tax readiness (real Postgres)", () => {
     await prisma.rentalAgreement.deleteMany({ where: { id: agreementId } });
     await prisma.serviceAddress.deleteMany({ where: { id: addressId } });
     await prisma.customer.deleteMany({ where: { id: customerId } });
+    await prisma.auditLog.deleteMany({ where: { userId } });
     await prisma.user.deleteMany({ where: { id: userId } });
     await prisma.businessSettings.update({
       where: { id: "singleton" },
