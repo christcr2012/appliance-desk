@@ -26,6 +26,7 @@ describe.skipIf(!enabled)("Batch T customer tax exemptions (real Postgres)", () 
   const addressId = `tax-ex-address-${tag}`;
   const agreementId = `tax-ex-agreement-${tag}`;
   const taxDate = new Date("2026-10-07T18:00:00.000Z");
+  const certificatePhotoId = `tax-exemptions/${customerId}/certificate.jpg`;
   let taxFixture: Awaited<ReturnType<typeof seedTaxReadyContext>>;
   let exemptionId: string;
 
@@ -123,16 +124,36 @@ describe.skipIf(!enabled)("Batch T customer tax exemptions (real Postgres)", () 
     });
   }
 
+  it("refuses to activate an exemption without certificate photo evidence", async () => {
+    await expect(
+      createCustomerTaxExemption(ownerId, customerId, {
+        reason: "OTHER",
+        validFrom: new Date("2026-01-01T07:00:00.000Z"),
+      }),
+    ).rejects.toThrow(/private photo/i);
+    expect(
+      await prisma.customerTaxExemption.count({
+        where: {
+          customerId,
+          reason: "OTHER",
+          certificatePhotoId: null,
+        },
+      }),
+    ).toBe(0);
+  });
+
   it("lets only the owner create and edit an exemption and applies an active all-jurisdiction exemption", async () => {
     await expect(
       createCustomerTaxExemption(staffId, customerId, {
         reason: "RESALE",
+        certificatePhotoId,
         validFrom: new Date("2026-01-01T07:00:00.000Z"),
       }),
     ).rejects.toThrow(/no longer has access/i);
 
     const exemption = await createCustomerTaxExemption(ownerId, customerId, {
       reason: "RESALE",
+      certificatePhotoId,
       certificateNumber: "  RESALE-123  ",
       jurisdictionIds: [],
       validFrom: new Date("2026-01-01T07:00:00.000Z"),
@@ -150,6 +171,7 @@ describe.skipIf(!enabled)("Batch T customer tax exemptions (real Postgres)", () 
 
     const updated = await updateCustomerTaxExemption(ownerId, exemption.id, {
       reason: "RESALE",
+      certificatePhotoId,
       certificateNumber: "RESALE-124",
       jurisdictionIds: [taxFixture.jurisdictionId],
       validFrom: new Date("2026-01-01T07:00:00.000Z"),
@@ -175,19 +197,76 @@ describe.skipIf(!enabled)("Batch T customer tax exemptions (real Postgres)", () 
     await expect(
       updateCustomerTaxExemption(ownerId, exemptionId, {
         reason: "RESALE",
+        certificatePhotoId,
         validFrom: new Date("2026-01-01T07:00:00.000Z"),
       }),
     ).rejects.toThrow(/revoked/i);
   });
 
+  it("serializes a concurrent edit and revocation so no edit can commit after revocation", async () => {
+    const race = await createCustomerTaxExemption(ownerId, customerId, {
+      reason: "OTHER",
+      certificatePhotoId,
+      certificateNumber: "RACE-ORIGINAL",
+      validFrom: new Date("2026-01-01T07:00:00.000Z"),
+      expiresOn: new Date("2026-12-31T06:59:59.999Z"),
+    });
+
+    const [updated, revoked] = await Promise.allSettled([
+      updateCustomerTaxExemption(ownerId, race.id, {
+        reason: "OTHER",
+        certificatePhotoId,
+        certificateNumber: "RACE-UPDATED",
+        validFrom: new Date("2026-01-01T07:00:00.000Z"),
+        expiresOn: new Date("2026-12-31T06:59:59.999Z"),
+      }),
+      revokeCustomerTaxExemption(
+        ownerId,
+        race.id,
+        new Date("2026-10-07T18:00:00.000Z"),
+      ),
+    ]);
+
+    expect(revoked.status).toBe("fulfilled");
+    const final = await prisma.customerTaxExemption.findUniqueOrThrow({
+      where: { id: race.id },
+    });
+    expect(final.revokedAt).not.toBeNull();
+
+    if (updated.status === "fulfilled") {
+      expect(final.certificateNumber).toBe("RACE-UPDATED");
+      const audits = await prisma.auditLog.findMany({
+        where: {
+          entityType: "CustomerTaxExemption",
+          entityId: race.id,
+          action: { in: ["tax.exemption_updated", "tax.exemption_revoked"] },
+        },
+        select: { action: true, createdAt: true },
+        orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+      });
+      expect(audits.map((audit) => audit.action)).toEqual([
+        "tax.exemption_updated",
+        "tax.exemption_revoked",
+      ]);
+    } else {
+      expect(updated.reason).toBeInstanceOf(Error);
+      expect((updated.reason as Error).message).toMatch(/revoked/i);
+      expect(final.certificateNumber).toBe("RACE-ORIGINAL");
+    }
+  });
+
   it("ignores an exemption after its expiration date", async () => {
     const expired = await createCustomerTaxExemption(ownerId, customerId, {
       reason: "GOVERNMENT",
+      certificatePhotoId,
       validFrom: new Date("2026-01-01T07:00:00.000Z"),
       expiresOn: new Date("2026-09-30T23:59:59.000Z"),
     });
 
-    expect((await rentalTaxCents()).totalTaxCents).toBe(730);
+    expect(
+      (await rentalTaxCents(new Date("2026-10-09T18:00:00.000Z")))
+        .totalTaxCents,
+    ).toBe(730);
 
     await revokeCustomerTaxExemption(ownerId, expired.id, taxDate);
   });
