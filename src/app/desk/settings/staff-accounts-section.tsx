@@ -27,10 +27,10 @@ type StaffAccountRow = {
 
 export function StaffAccountsSection({
   accounts,
-  canSignOutEverywhere,
+  canSignOutEverywhere = false,
 }: {
   accounts: StaffAccountRow[];
-  canSignOutEverywhere: boolean;
+  canSignOutEverywhere?: boolean;
 }) {
   const [isPending, startTransition] = useTransition();
   const [name, setName] = useState("");
