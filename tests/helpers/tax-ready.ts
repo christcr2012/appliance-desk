@@ -17,10 +17,12 @@ export async function seedTaxReadyContext(
   const rateMilliPercent = options.rateMilliPercent ?? 1000;
   const effectiveFrom = new Date("2020-01-01T07:00:00.000Z");
 
-  await prisma.businessSettings.update({
-    where: { id: "singleton" },
-    data: { shortTermLeaseElection: "COLLECT_ON_RENTALS" },
-  });
+  const originalElection = (
+    await prisma.businessSettings.findUniqueOrThrow({
+      where: { id: "singleton" },
+      select: { shortTermLeaseElection: true },
+    })
+  ).shortTermLeaseElection;
 
   await prisma.taxJurisdiction.upsert({
     where: { id: jurisdictionId },
@@ -77,6 +79,10 @@ export async function seedTaxReadyContext(
       jurisdictions: { create: { jurisdictionId } },
     },
   });
+  await prisma.businessSettings.update({
+    where: { id: "singleton" },
+    data: { shortTermLeaseElection: "COLLECT_ON_RENTALS" },
+  });
 
   async function cleanup() {
     await prisma.addressTaxLocation.deleteMany({ where: { serviceAddressId } });
@@ -86,6 +92,10 @@ export async function seedTaxReadyContext(
     await prisma.taxabilityRule.deleteMany({ where: { jurisdictionId } });
     await prisma.taxRateVersion.deleteMany({ where: { jurisdictionId } });
     await prisma.taxJurisdiction.deleteMany({ where: { id: jurisdictionId } });
+    await prisma.businessSettings.update({
+      where: { id: "singleton" },
+      data: { shortTermLeaseElection: originalElection },
+    });
   }
 
   return { jurisdictionId, rateVersionId, locationId: location.id, cleanup };
