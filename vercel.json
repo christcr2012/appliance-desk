@@ -37,6 +37,10 @@
     {
       "path": "/api/cron/tax-address-recheck",
       "schedule": "20 13 * * *"
+    },
+    {
+      "path": "/api/cron/tax-rate-changes",
+      "schedule": "5 18 * * *"
     }
   ]
 }

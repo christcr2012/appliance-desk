@@ -18,6 +18,7 @@ import {
   recomputeSubscriptionEndInTx,
 } from "./subscription-end";
 import { parseLineReduceKey, retryLineReduction } from "./subscription-line";
+import { retrySubscriptionTaxUpdate } from "@/domains/tax/rate-changes";
 
 export type DriftRow = {
   kind:
@@ -45,6 +46,7 @@ type RecoverableOperation = {
     | "SUBSCRIPTION_CREATE"
     | "SUBSCRIPTION_CANCEL"
     | "SUBSCRIPTION_UPDATE"
+    | "SUBSCRIPTION_TAX_UPDATE"
     | "BALANCE_CREDIT"
     | "REFUND_CREATE";
   subjectType: string;
@@ -63,6 +65,7 @@ function isRecoverableOperationKind(
     kind === "SUBSCRIPTION_CREATE" ||
     kind === "SUBSCRIPTION_CANCEL" ||
     kind === "SUBSCRIPTION_UPDATE" ||
+    kind === "SUBSCRIPTION_TAX_UPDATE" ||
     kind === "BALANCE_CREDIT" ||
     kind === "REFUND_CREATE"
   );
@@ -548,6 +551,8 @@ async function reconcileOne(operation: RecoverableOperation): Promise<boolean> {
       return reconcileSubscriptionCancel(operation);
     case "SUBSCRIPTION_UPDATE":
       return reconcileSubscriptionUpdate(operation);
+    case "SUBSCRIPTION_TAX_UPDATE":
+      return retrySubscriptionTaxUpdate(operation);
     case "BALANCE_CREDIT":
       return reconcileBalanceCredit(operation);
     case "REFUND_CREATE":
