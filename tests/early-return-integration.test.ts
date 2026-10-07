@@ -319,7 +319,7 @@ describe.skipIf(!enabled)("early returns (real Postgres)", () => {
     await pickup(agreementId, units, "2026-09-20");
     const preview = await settle(agreementId, { billing: "END_AT_PICKUP", unusedDays: "KEEP", feeCents: "AGREED_TERMS" });
     expect(preview.lastBilledDay.toISOString().slice(0, 10)).toBe("2026-09-19"); // the pickup day is not billed
-    expect([preview.unusedDaysCount, preview.unusedCents, preview.unusedTaxCents]).toEqual([11, 1100, 77]);
+    expect([preview.unusedDaysCount, preview.unusedCents, preview.unusedTaxCents]).toEqual([11, 1100, 0]);
     const after = await agreementOf(agreementId);
     expect(after.status).toBe("ENDED");
     expect(after.endDate?.toISOString()).toBe("2026-09-20T05:59:59.000Z");
@@ -358,7 +358,7 @@ describe.skipIf(!enabled)("early returns (real Postgres)", () => {
     await settle(agreementId, { billing: "END_AT_PICKUP", unusedDays: "CREDIT", feeCents: 0 });
     const resolution = (await resolutionOf(agreementId))!;
     const credit = await prisma.customerCredit.findFirstOrThrow({ where: { customerId, sourceType: "EARLY_RETURN", sourceId: resolution.id } });
-    expect([credit.amountCents, credit.remainingCents]).toEqual([1177, 1177]);
+    expect([credit.amountCents, credit.remainingCents]).toEqual([1100, 1100]);
     expect(resolution.creditId).toBe(credit.id);
     expect(await prisma.refund.count({ where: { invoice: { agreementId } } })).toBe(0);
     expect(await prisma.invoice.count({ where: { agreementId } })).toBe(0); // no fee asked for
@@ -414,7 +414,7 @@ describe.skipIf(!enabled)("early returns (real Postgres)", () => {
     expect(after.status).toBe("ENDED");
     const resolution = (await resolutionOf(agreementId))!;
     expect([resolution.appliedBy, resolution.jobId, resolution.feeCents]).toEqual(["DEFAULTS", job, 5000]);
-    expect((await prisma.customerCredit.findFirstOrThrow({ where: { sourceId: resolution.id } })).amountCents).toBe(1177);
+    expect((await prisma.customerCredit.findFirstOrThrow({ where: { sourceId: resolution.id } })).amountCents).toBe(1100);
     expect((await prisma.invoice.findFirstOrThrow({ where: { agreementId } })).amountDueCents).toBe(5350);
     expect(await prisma.staffTask.count({ where: { sourceKey: `job:${job}:returned-early` } })).toBe(0);
   });
@@ -499,7 +499,7 @@ describe.skipIf(!enabled)("early returns (real Postgres)", () => {
     await pickup(agreementId, units, "2026-03-08");
     const preview = await previewEarlyReturn(agreementId, { billing: "END_AT_PICKUP", unusedDays: "CREDIT", feeCents: 0 });
     expect(preview.lastBilledDay.toISOString().slice(0, 10)).toBe("2026-03-07");
-    expect([preview.unusedDaysCount, preview.unusedCents, preview.unusedTaxCents]).toEqual([24, 2323, 163]); // 3,000 × 24 ÷ 31
+    expect([preview.unusedDaysCount, preview.unusedCents, preview.unusedTaxCents]).toEqual([24, 2323, 0]); // no paid historical tax exists to reverse
     await settings({ basis: "MONTHLY_DIV_30" });
     expect((await previewEarlyReturn(agreementId, { billing: "END_AT_PICKUP", unusedDays: "CREDIT", feeCents: 0 })).unusedCents).toBe(2400);
   });
