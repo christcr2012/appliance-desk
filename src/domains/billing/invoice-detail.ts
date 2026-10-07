@@ -87,6 +87,7 @@ export async function getInvoiceDetail(
 
   if (!invoice) return null;
   if (options?.customerId && invoice.customerId !== options.customerId) return null;
+  if (options?.customerId && invoice.status === "DRAFT") return null;
 
   const balanceCents = Math.max(0, invoice.amountDueCents - invoice.amountPaidCents);
 
