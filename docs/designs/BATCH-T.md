@@ -814,6 +814,14 @@ ADMIN cannot change the election; axe clean at 360/1440 light/dark. Unit tests f
 
 ## 11. Amendment A (2026-10-07) — Filing workspace: SUTS entry packet and filing calendar
 
+> **Implementation gate (2026-10-07).** A readiness audit found that the PRs built from this section are larger than the
+> PR budget and leave some details open (exact signatures, permissions, migration ownership, a few contradictions).
+> They are being turned into **one implementation card per PR** in `docs/pr-cards/` — a short, self-contained file that
+> settles every open detail, lists exactly what to read, which files to touch and which tests to run, and overrides
+> this section where they differ. **Do not start T-5b, T-6a, T-6b, T-6c, T-6d or T-7 (or any split of them) until its card exists in `docs/pr-cards/`. If it does not, stop
+> and report.** The decisions and reasons in this section stay authoritative.
+
+
 Status: **APPROVED** (Chris, 2026-10-07: "make sure my system can handle as much of this as possible. If it can't do
 anything for me directly, then it at least needs to provide me exactly what I need in a way that I am just doing data
 entry in the SUTS portal. System should still handle scheduling so that I always am prompted to do the filings on
@@ -1197,6 +1205,14 @@ app"; WU-TA0's runbook becomes optional notes, not a dependency.
 
 ## 12. Amendment B (2026-10-07) — Colorado Retail Delivery Fee, handled automatically
 
+> **Implementation gate (2026-10-07).** A readiness audit found that the PRs built from this section are larger than the
+> PR budget and leave some details open (exact signatures, permissions, migration ownership, a few contradictions).
+> They are being turned into **one implementation card per PR** in `docs/pr-cards/` — a short, self-contained file that
+> settles every open detail, lists exactly what to read, which files to touch and which tests to run, and overrides
+> this section where they differ. **Do not start T-5b, T-6a, T-6b, T-6c, T-6d or T-7 (or any split of them) until its card exists in `docs/pr-cards/`. If it does not, stop
+> and report.** The decisions and reasons in this section stay authoritative.
+
+
 Status: **APPROVED** (Chris, 2026-10-07: "make sure the colorado required delivery tax is handled properly as well").
 Replaces stop-and-ask S-T4 ("collecting it is not designed here") and the "likely not applicable" wording in the
 introduction. Built in PRs T-6c and T-7 (12.8).
@@ -1270,9 +1286,13 @@ model RetailDeliveryFeeRate {
 model RetailDeliveryFeeRecord {
   id                  String   @id @default(cuid())
   saleKey             String   @unique   // one fee per retail SALE (review fix): "agreement:<id>",
-                                         // or "addition:<amendmentId>" (free replacements never count)
-  firstJobId          String             // the delivery job that first fulfilled the sale (later partial trips dedupe)
-  agreementId         String
+                                         // or "addition:<amendmentId>" (free replacements never count),
+                                         // or "retail:<invoiceId>" for a delivered shop sale (Batch M D-M3)
+  firstJobId          String?            // the delivery job that first fulfilled the sale (later partial trips dedupe);
+                                         // null only for shop sales
+  agreementId         String?            // null only for shop sales
+  invoiceId           String?            // shop sales only (Batch M). DB CHECK: (agreementId IS NOT NULL AND
+                                         // firstJobId IS NOT NULL) OR invoiceId IS NOT NULL
   deliveredOn         DateTime           // first delivery of the sale
   saleOn              DateTime?          // date of the sale's FIRST RENT CHARGE (review fix): the first invoice —
                                          // Stripe or local — that charges rent for this sale (for a normal rental the
@@ -1393,6 +1413,14 @@ existing readiness suite.
 ---
 
 ## 13. Amendment C (2026-10-07) — Watching official sources and applying rate changes automatically
+
+> **Implementation gate (2026-10-07).** A readiness audit found that the PRs built from this section are larger than the
+> PR budget and leave some details open (exact signatures, permissions, migration ownership, a few contradictions).
+> They are being turned into **one implementation card per PR** in `docs/pr-cards/` — a short, self-contained file that
+> settles every open detail, lists exactly what to read, which files to touch and which tests to run, and overrides
+> this section where they differ. **Do not start T-5b, T-6a, T-6b, T-6c, T-6d or T-7 (or any split of them) until its card exists in `docs/pr-cards/`. If it does not, stop
+> and report.** The decisions and reasons in this section stay authoritative.
+
 
 Status: **APPROVED** (Chris, 2026-10-07: "Is there a way to cause the app to monitor the correct official places and
 update tax changes automatically?"). Extends D-T9 and WU-T6; built in PR T-5b (13.7).
@@ -1515,6 +1543,14 @@ network in CI.
 ---
 
 ## 14. Screen map — how all of Batch T is organized in the desk (Chris, 2026-10-07: "make sure this is all properly organized in the UI")
+
+> **Implementation gate (2026-10-07).** A readiness audit found that the PRs built from this section are larger than the
+> PR budget and leave some details open (exact signatures, permissions, migration ownership, a few contradictions).
+> They are being turned into **one implementation card per PR** in `docs/pr-cards/` — a short, self-contained file that
+> settles every open detail, lists exactly what to read, which files to touch and which tests to run, and overrides
+> this section where they differ. **Do not start T-5b, T-6a, T-6b, T-6c, T-6d or T-7 (or any split of them) until its card exists in `docs/pr-cards/`. If it does not, stop
+> and report.** The decisions and reasons in this section stay authoritative.
+
 
 **This section is the single source for where every tax screen lives.** It supersedes the screen lists in section 4,
 11.8 (T-7), 11.11, 11.13, 12.2, 13.2 and 13.3 wherever they disagree; those sections still define *what* each screen
@@ -1639,6 +1675,14 @@ the STAFF exclusion; the 14.3 targets are a table test in `tests/exceptions-tax.
 ---
 
 ## 15. Amendment D (2026-10-07) — Appliance intake records purchase tax; each appliance decides its own rental tax; use tax is filed
+
+> **Implementation gate (2026-10-07).** A readiness audit found that the PRs built from this section are larger than the
+> PR budget and leave some details open (exact signatures, permissions, migration ownership, a few contradictions).
+> They are being turned into **one implementation card per PR** in `docs/pr-cards/` — a short, self-contained file that
+> settles every open detail, lists exactly what to read, which files to touch and which tests to run, and overrides
+> this section where they differ. **Do not start T-5b, T-6a, T-6b, T-6c, T-6d or T-7 (or any split of them) until its card exists in `docs/pr-cards/`. If it does not, stop
+> and report.** The decisions and reasons in this section stay authoritative.
+
 
 Status: **APPROVED** (Chris, 2026-10-07: the appliance entry form should record whether sales tax was paid when the
 appliance was bought and how much; if it was not (for example a private-party purchase), the use tax owed should be

@@ -544,3 +544,17 @@ appliance), scrap checks are lump `ScrapPayment` income entries and dump fees ar
 still reaches the books for income tax, just not per item. A done plan writes off the remaining book value; a sale
 records gain/loss. One Today follow-up after 30 days (owner setting). The CPA confirms lump scrap income and $0
 salvaged parts (IN-46).
+
+## 2026-10-07 — PR cards and stall-proof rules for medium-effort implementers
+
+Chris implements mostly with Sol 5.6 at medium effort, which stalls on broad reads, broad searches and commands that
+never finish. Decided: (1) AGENTS.md gains "Working without stalling" — read by section, narrow capped searches,
+only self-terminating non-interactive commands, capped output, two strikes, a 10-read explore budget, commit per work
+unit. (2) A readiness audit of BATCH-T sections 11–15, BATCH-S and BATCH-M found most of their PRs over budget and some
+details open, so those sections carry an "Implementation gate" and each PR gets a self-contained card in
+`docs/pr-cards/` (template in its README) that fits the budget, names every file/signature/test, lists exactly what to
+read, and wins over the design where they differ. Same day, Codex's review of Batch M fixed: one built-in walk-in
+customer (no login, never emailed), the delivery-fee record allows shop sales (`invoiceId`, nullable agreement/job),
+resale tracked per purchase-order line with a fixed unit-order rule, no cost of goods sold (parts are expensed when
+bought), and the retirement-day write-off stays Batch K's only disposal entry (plans post nothing).
+

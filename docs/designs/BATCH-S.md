@@ -5,6 +5,13 @@ issues like moved pages, can all these be recorded to a place where I can have a
 solutions or otherwise figure out what's going on? … if it could be scheduled to check and address these things, that
 would be great"). Runs **after Batch T, before Batch V** (`docs/MASTER-ROADMAP.md`). Two PRs.
 
+> **Implementation gate (2026-10-07).** A readiness audit found that the PRs built from this design are larger than the
+> PR budget and leave some details open (exact signatures, permissions, migration ownership, a few contradictions).
+> They are being turned into **one implementation card per PR** in `docs/pr-cards/` — a short, self-contained file that
+> settles every open detail, lists exactly what to read, which files to touch and which tests to run, and overrides
+> this section where they differ. **Do not start S-1 or S-2 (or any split of them) until its card exists in `docs/pr-cards/`. If it does not, stop
+> and report.** The decisions and reasons in this section stay authoritative.
+
 **Who this is written for.** An implementing model following it literally. Plain-English owner text is part of the
 deliverable.
 

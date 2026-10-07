@@ -7,6 +7,13 @@ Runs **after Batch K** (Chris, 2026-10-07, IN-47: "Preferably not until after la
 system done before I actually begin business" — so no shop sales before launch and no reason to move this batch up).
 Needs Batch T (tax engine, returns, delivery fee) and Batch K (expenses, book values). Three PRs.
 
+> **Implementation gate (2026-10-07).** A readiness audit found that the PRs built from this design are larger than the
+> PR budget and leave some details open (exact signatures, permissions, migration ownership, a few contradictions).
+> They are being turned into **one implementation card per PR** in `docs/pr-cards/` — a short, self-contained file that
+> settles every open detail, lists exactly what to read, which files to touch and which tests to run, and overrides
+> this section where they differ. **Do not start M-1, M-2 or M-3 (or any split of them) until its card exists in `docs/pr-cards/`. If it does not, stop
+> and report.** The decisions and reasons in this section stay authoritative.
+
 **Until Batch M is built the app cannot record a shop sale.** Selling items before then means recording the sale and its
 sales tax outside the app and adding it to the SUTS return by hand — the owner guide says so.
 
@@ -27,16 +34,36 @@ sales tax outside the app and adding it to the SUTS return by hand — the owner
 
 A hose may be installed during a delivery *or* sold over the counter, so merchandise reuses the parts ledger.
 `PartRecord` gains `sellable Boolean @default(false)`, `retailPriceCents Int?` (owner-set price, shown with "your cost"
-and margin), `boughtForResale Boolean @default(false)` (owner ticks it for stock bought tax-free with a resale
-certificate). New movement kind **`SALE`** (stock down, linked to the invoice line). Screens: Parts gets a filter
-"Items I sell" and the item form gains a "Sell to customers" section (price, bought for resale) — explained on screen.
+and margin) and `defaultForResale Boolean @default(false)` (only pre-ticks the "bought for resale" box on new purchase
+order lines for this item — it never decides tax by itself). New movement kind **`SALE`** (stock down, linked to the
+invoice line). Screens: Parts gets a filter "Items I sell" and the item form gains a "Sell to customers" section (price,
+"usually bought for resale") — explained on screen.
+
+**Resale is tracked per purchase, not per item (review fix).** The same hose can have some units bought tax-paid and
+later units bought tax-free with a resale certificate, so the answer lives on each purchase:
+- `PurchaseOrderLineItem.forResale Boolean @default(false)` — ticked on the purchase order line (pre-ticked from
+  `defaultForResale`), frozen once the line is received.
+- `PartRecord.resaleUnitsOnHand Int @default(0)` — how many of `quantityOnHand` came from resale purchases (always
+  `0 ≤ resaleUnitsOnHand ≤ quantityOnHand`; a database CHECK enforces it), and `PartStockMovement.resaleUnits Int
+  @default(0)` — how many of that movement's units were resale units (same sign as `quantityDelta`).
+- **Which units a movement uses (fixed rule, no choice):** a `RECEIPT` adds `resaleUnits = quantity` when its line is
+  `forResale`, else 0. A `SALE` takes resale units first: `resaleUnits = −min(qty, resaleUnitsOnHand)`. A `USAGE` or a
+  downward `ADJUSTMENT`/`RECOUNT` takes ordinary units first and only the shortfall from resale units:
+  `resaleUnits = −max(0, qty − (quantityOnHand − resaleUnitsOnHand))`. `SALVAGE` (D-M4) adds ordinary units. A
+  `REVERSAL` undoes exactly the original movement's `resaleUnits`. Upward `ADJUSTMENT`/`RECOUNT` add ordinary units.
+- **Resale unit cost** = the weighted average `unitCostCents` of this part's `forResale` `RECEIPT` movements (all
+  time; integer cents, half-up). Used only for use tax below and for the margin shown on screen.
 
 ### D-M2 — Buying for resale and taking stock for your own use (use tax)
 
-- Stock with `boughtForResale` creates **no use tax** when received (3.6 records `NOT_DUE`, reason "Bought for resale").
-- When such an item is instead **used** (a repair, an installation, given away) — a `USAGE` movement — Colorado treats
-  that as taking it out of resale stock for your own use, so the app records **use tax on its cost** at that time
-  (`PurchaseUseTax`, `sourceType "PART_WITHDRAWAL"`, on the use-tax return like any other — Amendment D 15.5).
+- A purchase order line received with `forResale` creates **no use tax** (3.6 records `NOT_DUE`, reason "Bought for
+  resale").
+- When a `USAGE` or downward `ADJUSTMENT`/`RECOUNT` movement takes resale units (`resaleUnits < 0` by the rule in D-M1 —
+  a repair, an installation, given away, lost), Colorado treats that as taking them out of resale stock for your own
+  use, so the app records **use tax on their cost**: `|resaleUnits| × resale unit cost` (`PurchaseUseTax`, `sourceType
+  "PART_WITHDRAWAL"`, `sourceId` = the movement id, on the use-tax return like any other — Amendment D 15.5). Tax-paid
+  units never owe it, so a mixed stock is never taxed twice and never missed. A `REVERSAL` of that movement cancels the
+  use-tax row (or, if its return is already filed, opens an amendment like any other change — 11.12).
 - The owner guide explains giving suppliers your Colorado sales tax license / resale certificate (the CPA confirms the
   form, IN-46).
 
@@ -44,6 +71,15 @@ certificate). New movement kind **`SALE`** (stock down, linked to the invoice li
 
 **Desk → Customers & sales → Sales** (`/desk/sales`, OWNER/ADMIN; STAFF can ring up if the owner allows it later —
 not in this batch): "New sale" for an existing customer or a **walk-in** (name optional; no portal account).
+- **Walk-ins (review fix — every invoice needs a customer):** all walk-in sales belong to **one built-in "Walk-in
+  sales" customer**, created on first use by `ensureWalkInCustomer(tx)` (idempotent; `Customer.isWalkIn Boolean
+  @default(false)` with a partial unique index so at most one exists). Its `User` row has role CUSTOMER, name "Walk-in
+  sales", email `walk-in-sales@customers.invalid` (the `.invalid` domain can never receive mail), no password and no
+  login account, so nobody can sign in as it. The buyer's name, if given, goes in `Invoice.walkInName`. The walk-in
+  customer is hidden from customer lists, search, notices, referral and launch lists and every customer email (a
+  test proves each list excludes `isWalkIn`), but its invoices appear in sales, tax returns and exports like any other.
+  A walk-in *delivery* needs an address, so a delivered sale requires an existing customer (create one first —
+  the screen says so); walk-ins are pickup only.
 - Lines: sellable parts (price prefilled, editable with a reason if lowered), a used appliance (D-M4), or a delivery /
   installation charge (existing categories).
 - **Where the sale happens decides the tax** (Colorado is destination-based): *picked up at the shop* → the business
@@ -51,15 +87,27 @@ not in this batch): "New sale" for an existing customer or a **walk-in** (name o
   D-T3). New `TaxChargeCategory` values `MERCHANDISE` and `USED_APPLIANCE_SALE` join the "What's taxed" grid; the
   "common Colorado starting answers" button fills both as Taxable (sales of goods are taxable) for the CPA to confirm.
 - **Retail delivery fee:** a delivered sale of taxable goods is a retail delivery — the fee rules of section 12 of
-  BATCH-T apply (key `retail:<invoiceId>`, status, small-business exemption, handling, return). Pickups never owe it.
+  BATCH-T apply (status, small-business exemption, handling, return). Pickups never owe it. **Shop-sale record shape
+  (review fix):** when a DELIVERED sale is completed with at least one line taxable for the state jurisdiction at the
+  delivery address, write one `RetailDeliveryFeeRecord` with `saleKey = "retail:<invoiceId>"`, `invoiceId` set,
+  `agreementId` and `firstJobId` null (BATCH-T 12.3 allows this only when `invoiceId` is set), `deliveredOn` = the
+  sale's delivery date entered on the sale (default: the completion date, Denver), `saleOn` = the completion date (the
+  sale happens then — not a first rent charge), and status/rate/amount by 12.4. When collected from the customer, the
+  fee is a line on the same sale invoice (it is created before the invoice is finalized). A refund of the whole sale
+  follows the 12.5 credit rules.
 - Payment: recorded with the existing manual-payment action (cash, check, card on a reader outside the app) —
   card-in-portal payment is PR M-3. The receipt prints/emails from the invoice (existing invoice view).
 - Stock: a `SALE` movement per line at the moment the sale is completed; a refund/return of an item creates a
   `REVERSAL` (back in stock) or an `ADJUSTMENT` (damaged, not resellable) plus the existing refund flow with its tax
   (D-K10).
 - Sales flow into the SUTS return packet automatically (they are invoices with tax lines), into revenue reports as
-  **"Shop sales"** (separate from rental revenue), and into Batch K as merchandise income and cost of goods sold (at
-  the stock's average cost).
+  **"Shop sales"** (separate from rental revenue), and into Batch K as income: item lines to `MERCHANDISE_INCOME`
+  "Item sales", used-appliance lines to `RETIRED_APPLIANCE_SALES` "Sales of retired appliances". **No cost of goods sold
+  is posted (review fix):** Batch K D-K8 already expenses every part — resale stock included — when it is bought, so
+  posting its cost again at sale would count it twice. The on-screen margin ("price − resale unit cost") is
+  information only.
+- **New invoice line kinds:** `InvoiceLineItemKind` gains `MERCHANDISE` and `USED_APPLIANCE`; the BATCH-T 3.1 category
+  map sends them to `TaxChargeCategory.MERCHANDISE` and `USED_APPLIANCE_SALE`.
 
 ### D-M4 — Retiring an appliance: out of rental right away, then "what's next for it"
 
@@ -99,11 +147,13 @@ in a lump, when they happen:
 - **Scrap-yard checks** are a lump **"Scrap money received"** entry (date, amount, scrap yard, photo of the check or
   ticket, optional note) on `/desk/inventory/retired` — one entry per check, not split by appliance. It posts to a new
   income account **`SCRAP_INCOME` "Scrap sales"** in Batch K.
-- **Your own profit numbers (Batch K):** when an appliance's plan is marked done, its remaining book value is written off
-  as "Loss on retired appliances" (the entry Batch K already has); a sold appliance instead shows gain or loss = sale
-  price − remaining book value. Scrap money is income in the month received. Your CPA does the tax-return version; if
-  the CPA wants scrap proceeds per appliance (IN-46), the scrap entry can gain an optional "which appliances" list later
-  — not built now.
+- **Your own profit numbers (Batch K) — one trigger only (review fix):** Batch K already writes off an appliance's
+  remaining book value **on the day it is retired** (`APPLIANCE_RETIRED`, D-K9) — it stops earning rent that day.
+  Batch M posts **nothing** when a plan is chosen, changed, marked done or reopened, so reopening never needs a reversal
+  and nothing can be posted twice. Money that comes later is income when it comes: a sold appliance's price →
+  `RETIRED_APPLIANCE_SALES` (its book value is already zero); scrap money → `SCRAP_INCOME`; dump fees → an expense.
+  Your CPA does the tax-return version; if the CPA wants scrap proceeds per appliance (IN-46), the scrap entry can gain
+  an optional "which appliances" list later — not built now.
 
 **Where to see it.** `/desk/inventory/retired` (a tab on Inventory): every retired appliance with its plan and whether
 it is done, filters "Decide later / Sell / Parts / Scrap / Throw away / Done", bulk "Mark done" for a truckload, and the
@@ -126,8 +176,12 @@ enum RetiredRemainder { SCRAPPED DISPOSED }
 // PartMovementKind gains SALE and SALVAGE
 // TaxChargeCategory gains MERCHANDISE, USED_APPLIANCE_SALE (and SCRAP_SALE only if IN-46 says taxable)
 
-// PartRecord additions: sellable Boolean @default(false), retailPriceCents Int?, boughtForResale Boolean @default(false)
-// PartStockMovement additions: invoiceLineId String? (SALE movements), applianceId String? (SALVAGE movements)
+// PartRecord additions: sellable Boolean @default(false), retailPriceCents Int?, defaultForResale Boolean @default(false),
+//   resaleUnitsOnHand Int @default(0)   -- CHECK (0 <= resaleUnitsOnHand AND resaleUnitsOnHand <= quantityOnHand)
+// PurchaseOrderLineItem addition: forResale Boolean @default(false)
+// PartStockMovement additions: resaleUnits Int @default(0), invoiceLineId String? (SALE), applianceId String? (SALVAGE)
+// InvoiceLineItemKind gains MERCHANDISE, USED_APPLIANCE
+// Customer addition: isWalkIn Boolean @default(false)  -- partial unique index: at most one row WHERE isWalkIn
 // Invoice additions: saleKind String? ("SHOP_SALE"), walkInName String?, saleLocation String? ("PICKUP" | "DELIVERED")
 // BusinessSettings addition: retiredFollowUpDays Int @default(30)
 
@@ -160,9 +214,11 @@ model ScrapPayment {
 }
 ```
 
-Plan changes and "done" are audited (old → new); a done plan can be reopened by the owner only, with a reason. Backup
+Plan changes and "done" are audited (old → new); a done plan can be reopened by the owner only, with a reason (no
+journal effect — see D-M4). Backup
 coverage and schema health for both tables. Batch K additions: income account `SCRAP_INCOME` "Scrap sales", seeded
-expense category "Dump and disposal fees", journal sources for `ScrapPayment` and for the write-off when a plan is done.
+expense category "Dump and disposal fees", income accounts `MERCHANDISE_INCOME` and `RETIRED_APPLIANCE_SALES`, a
+journal source for `ScrapPayment`. No journal source for plans (D-M4).
 
 ## 3. Work units and PRs
 

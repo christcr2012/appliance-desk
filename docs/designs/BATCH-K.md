@@ -588,7 +588,7 @@ Named tests (real Postgres where marked ★):
 - **S-K3** Uploads cannot store a standalone receipt photo (K-A8).
 - **S-K4** A Stripe balance transaction type not named in 3.2 appears in test data — list it; do not invent a rule.
 - **S-K5** `INVOICE_RECOGNIZED` mismatches appear for invoices created by existing code paths (a real data-model gap).
-- **S-K6** Manual journal entries are requested — out of scope. (Retired appliances are now designed in `BATCH-M.md` D-M4: K posts the write-off when a retired appliance's plan is marked done (`RetiredAppliancePlan`), gain/loss on a sold one, lump `ScrapPayment` entries to `SCRAP_INCOME`, and dump fees as ordinary expenses in a seeded "Dump and disposal fees" category, once M is merged.)
+- **S-K6** Manual journal entries are requested — out of scope. (Retired appliances are now designed in `BATCH-M.md` D-M4. K's `APPLIANCE_RETIRED` write-off on the retirement date stays the only disposal entry — M posts nothing for plans. Once M is merged, a used-appliance sale posts to `RETIRED_APPLIANCE_SALES`, item sales to `MERCHANDISE_INCOME` with no cost of goods sold (parts are expensed when bought, D-K8), lump `ScrapPayment` entries to `SCRAP_INCOME`, and dump fees are ordinary expenses in a seeded "Dump and disposal fees" category.)
 - **S-K7** Any accounting-software import format cannot be confirmed from the vendor's public documentation.
 
 ## 9. Later phase (NOT approved by this design): direct QuickBooks Online sync

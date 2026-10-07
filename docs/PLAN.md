@@ -785,7 +785,9 @@ stock), scrap it, throw it away or other. Scrap checks and dump fees are recorde
 
 - [ ] Items marked "sold to customers" share the parts stock ledger; sales, refunds and repairs move stock exactly once (integration tests).
 - [ ] A pickup sale is taxed at the shop's tax areas and a delivered sale at the customer's; delivered taxable sales follow the delivery-fee rules.
-- [ ] Resale stock creates no use tax when bought and records use tax when used on a repair.
+- [ ] Resale is recorded per purchase-order line; resale units create no use tax when bought and record use tax only when used or lost (tax-paid units in the same stock never do), following the fixed unit-order rule.
+- [ ] Walk-in sales belong to the one built-in walk-in customer (cannot sign in, never emailed, hidden from customer lists); delivered sales need a real customer.
+- [ ] Item and used-appliance sales post income only (no cost of goods sold — parts are expensed when bought).
 - [ ] Retiring still removes the unit from everything rentable; every retired appliance can get a plan (sell / strip for parts / scrap / throw away / other), changeable until done; a sale completes its plan automatically.
 - [ ] Parts kept from a stripped appliance enter parts stock at $0 cost exactly once and list on the appliance page.
 - [ ] Scrap checks are lump "Scrap money received" entries (scrap income); dump fees are normal expenses; no per-appliance fees are asked; a done plan writes off the remaining book value in Batch K.
