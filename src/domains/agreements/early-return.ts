@@ -221,7 +221,6 @@ async function planInTx(
       nextBillingDate: true,
       billingStartedAt: true,
       paidInFullInAdvance: true,
-      taxRateMilliPercent: true,
       terminationRequestedAt: true,
       terminationEffectiveOn: true,
       terminationFeeCents: true,
