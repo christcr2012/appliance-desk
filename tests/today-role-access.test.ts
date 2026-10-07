@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   earlyResolution: vi.fn(),
   audit: vi.fn(),
   taxExemption: vi.fn(),
+  taxAddressLocation: vi.fn(),
 }));
 vi.mock("@/lib/session", () => ({ requireRole: mocks.requireRole }));
 vi.mock("@/lib/prisma", () => ({
@@ -30,6 +31,10 @@ vi.mock("@/lib/prisma", () => ({
     auditLog: { findMany: mocks.audit },
     customerTaxExemption: {
       findMany: mocks.taxExemption,
+      count: vi.fn().mockResolvedValue(0),
+    },
+    addressTaxLocation: {
+      findMany: mocks.taxAddressLocation,
       count: vi.fn().mockResolvedValue(0),
     },
     // R17: term-ended agreements and maintenance-due appliances are found with set-based SQL.
@@ -55,6 +60,7 @@ beforeEach(() => {
     mocks.earlyResolution,
     mocks.audit,
     mocks.taxExemption,
+    mocks.taxAddressLocation,
   ]) {
     fn.mockResolvedValue([]);
   }
@@ -136,10 +142,10 @@ describe("Today server-side visibility", () => {
   it("R17: every category read is capped at 50 and ordered oldest-first with an id tie-breaker", async () => {
     mocks.requireRole.mockResolvedValue({ user: { role: "OWNER" } });
     await getExceptions();
-    const calls = [mocks.agreement, mocks.invoice, mocks.job, mocks.request, mocks.appliance, mocks.notice, mocks.pendingDelivery, mocks.providerOp, mocks.taxExemption].flatMap(
+    const calls = [mocks.agreement, mocks.invoice, mocks.job, mocks.request, mocks.appliance, mocks.notice, mocks.pendingDelivery, mocks.providerOp, mocks.taxExemption, mocks.taxAddressLocation].flatMap(
       (fn) => fn.mock.calls.map(([query]) => query),
     );
-    expect(calls.length).toBe(18); // includes bounded Sales tax draft-invoice and exemption-expiry reads
+    expect(calls.length).toBe(19); // includes bounded Sales tax draft-invoice, exemption-expiry and address-change reads
     for (const query of calls) {
       expect(query.take).toBe(50);
       expect(query.orderBy.at(-1)).toEqual({ id: "asc" });
