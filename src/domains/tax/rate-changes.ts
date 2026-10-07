@@ -263,16 +263,6 @@ export async function syncSubscriptionTaxRatesForAgreement(
     return "pending";
   }
 
-  if (taxRatesMatch(read.subscription, desiredIds)) {
-    await prisma.$transaction((tx) =>
-      completeProviderOperation(tx, claim.opId, {
-        status: "SUCCEEDED",
-        providerObjectId: target.subscriptionId,
-      }),
-    );
-    return "already_current";
-  }
-
   if (read.subscription.items.data.length === 0) {
     await prisma.$transaction((tx) =>
       completeProviderOperation(tx, claim.opId, {
@@ -282,6 +272,16 @@ export async function syncSubscriptionTaxRatesForAgreement(
       }),
     );
     return "pending";
+  }
+
+  if (taxRatesMatch(read.subscription, desiredIds)) {
+    await prisma.$transaction((tx) =>
+      completeProviderOperation(tx, claim.opId, {
+        status: "SUCCEEDED",
+        providerObjectId: target.subscriptionId,
+      }),
+    );
+    return "already_current";
   }
 
   const providerKey = await stripeKeyForAttempt(
@@ -363,6 +363,8 @@ export async function retrySubscriptionTaxUpdate(
   const read = await readSubscription(target.subscriptionId);
   if (!read.ok) return false;
 
+  if (read.subscription.items.data.length === 0) return false;
+
   if (taxRatesMatch(read.subscription, desiredIds)) {
     await prisma.$transaction((tx) =>
       completeProviderOperation(tx, operation.id, {
@@ -372,7 +374,6 @@ export async function retrySubscriptionTaxUpdate(
     );
     return true;
   }
-  if (read.subscription.items.data.length === 0) return false;
 
   let claim;
   try {
