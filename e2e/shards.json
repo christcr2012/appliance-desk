@@ -9,7 +9,8 @@
       "accessibility-dark-mode.spec.ts",
       "accessibility-routes-public.spec.ts",
       "fleet-report.spec.ts",
-      "rental-builder-recovery.spec.ts"
+      "rental-builder-recovery.spec.ts",
+      "two-factor.spec.ts"
     ],
     "browser-c": [
       "crm-workspace.spec.ts",

@@ -1,6 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const getSession = vi.fn();
+const twoFactorEnrollmentRequired = vi.fn();
+
+vi.mock("@/domains/security/two-factor", () => ({
+  twoFactorEnrollmentRequired: (...args: unknown[]) =>
+    twoFactorEnrollmentRequired(...args),
+}));
 
 vi.mock("@/lib/auth", () => ({
   auth: { api: { getSession: (...args: unknown[]) => getSession(...args) } },
@@ -24,6 +30,8 @@ vi.mock("next/navigation", () => ({
 describe("requireSession / requireRole", () => {
   beforeEach(() => {
     getSession.mockReset();
+    twoFactorEnrollmentRequired.mockReset();
+    twoFactorEnrollmentRequired.mockResolvedValue(false);
     redirectMock.mockClear();
   });
 
@@ -55,6 +63,17 @@ describe("requireSession / requireRole", () => {
     const { requireRole } = await import("@/lib/session");
 
     await expect(requireRole("OWNER", "ADMIN")).resolves.toEqual(session);
+  });
+
+  it("redirects a required unenrolled OWNER to two-step setup", async () => {
+    const session = { user: { id: "u1", role: "OWNER", archivedAt: null } };
+    getSession.mockResolvedValue(session);
+    twoFactorEnrollmentRequired.mockResolvedValue(true);
+    const { requireRole } = await import("@/lib/session");
+
+    await expect(requireRole("OWNER", "ADMIN")).rejects.toThrow(
+      "NEXT_REDIRECT:/desk/security/setup",
+    );
   });
 
   it("redirects an ADMIN away from a page that requires OWNER only", async () => {

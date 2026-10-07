@@ -508,3 +508,17 @@ export async function updateMonthToMonthSettingsAction(raw: Record<string, unkno
   revalidatePath("/desk/settings");
   return { status: "success" };
 }
+
+
+/** Owner-only policy for which team roles must enroll in authenticator-app 2FA. */
+export async function updateTwoFactorRequiredRolesAction(formData: FormData): Promise<void> {
+  const session = await requireRole("OWNER");
+  const { RECOMMENDED_TWO_FACTOR_ROLES, setTwoFactorRequiredRoles } =
+    await import("@/domains/security/two-factor");
+  const roles =
+    formData.get("restoreRecommended") === "1"
+      ? RECOMMENDED_TWO_FACTOR_ROLES
+      : formData.getAll("role").filter((value): value is string => typeof value === "string");
+  await setTwoFactorRequiredRoles(session.user.id, roles);
+  revalidatePath("/desk/settings");
+}
