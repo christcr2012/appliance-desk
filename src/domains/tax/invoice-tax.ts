@@ -68,3 +68,42 @@ export async function computeAgreementInvoiceTax(
     ? { ok: false, problems: [...problems] }
     : computed;
 }
+
+
+export async function replaceEngineInvoiceTaxLines(
+  tx: Prisma.TransactionClient,
+  input: {
+    invoiceId: string;
+    result: Extract<EngineResult, { ok: true }>;
+    lineItemIdByKey: ReadonlyMap<string, string>;
+  },
+): Promise<void> {
+  await tx.invoiceTaxLine.deleteMany({
+    where: { invoiceId: input.invoiceId, source: "ENGINE" },
+  });
+
+  if (input.result.lines.length === 0) return;
+
+  await tx.invoiceTaxLine.createMany({
+    data: input.result.lines.map((line) => {
+      const invoiceLineItemId = input.lineItemIdByKey.get(line.lineKey);
+      if (!invoiceLineItemId) {
+        throw new Error(
+          `Couldn't match tax result line ${line.lineKey} to its invoice line.`,
+        );
+      }
+      return {
+        invoiceId: input.invoiceId,
+        invoiceLineItemId,
+        jurisdictionId: line.jurisdictionId,
+        rateVersionId: line.rateVersionId,
+        category: line.category,
+        taxableCents: line.taxableCents,
+        exemptCents: line.exemptCents,
+        exemptReason: line.exemptReason,
+        taxCents: line.taxCents,
+        source: "ENGINE" as const,
+      };
+    }),
+  });
+}
