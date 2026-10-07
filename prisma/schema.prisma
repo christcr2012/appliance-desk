@@ -166,6 +166,7 @@ model Customer {
   rentalAgreements RentalAgreement[]
   maintenanceRequests MaintenanceRequest[]
   invoices         Invoice[]
+  taxExemptions    CustomerTaxExemption[]
   receipts         Receipt[]
   credits          CustomerCredit[]
   consentRecords   ConsentRecord[]
@@ -238,6 +239,7 @@ model ServiceAddress {
   rentalAgreements RentalAgreement[]
   estimateLineItems EstimateLineItem[]
   custodyEpisodes ApplianceCustodyEpisode[]
+  taxLocations AddressTaxLocation[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1507,6 +1509,95 @@ enum InvoiceLineItemKind {
   LATE_RETURN_WAIVER
 }
 
+// Batch T — Colorado sales and use tax
+enum TaxJurisdictionLevel {
+  STATE
+  COUNTY
+  CITY
+  SPECIAL_DISTRICT
+}
+
+enum TaxAdministration {
+  STATE_COLLECTED
+  SELF_COLLECTED
+}
+
+enum TaxReviewStatus {
+  NEEDS_REVIEW
+  REVIEWED
+}
+
+enum TaxChargeCategory {
+  RENTAL
+  LATE_RETURN
+  DELIVERY
+  INSTALLATION
+  REMOVAL
+  DAMAGE_WAIVER
+  EARLY_TERMINATION
+  LATE_PAYMENT_FEE
+  OTHER_CHARGE
+}
+
+enum Taxability {
+  TAXABLE
+  EXEMPT
+  UNDECIDED
+}
+
+enum TaxRateSource {
+  COLORADO_GIS
+  BULK_FILE
+  MANUAL
+}
+
+enum TaxAddressStatus {
+  VERIFIED
+  NEEDS_REVIEW
+  FAILED
+}
+
+enum ShortTermLeaseElection {
+  UNDECIDED
+  PAY_ON_ACQUISITION
+  COLLECT_ON_RENTALS
+}
+
+enum TaxReportingBasis {
+  UNDECIDED
+  ACCRUAL
+  CASH
+}
+
+enum TaxFilingFrequency {
+  MONTHLY
+  QUARTERLY
+  ANNUAL
+}
+
+enum TaxFilingStatus {
+  OPEN
+  FILED
+}
+
+enum TaxExemptionReason {
+  RESALE
+  GOVERNMENT
+  CHARITABLE
+  OTHER
+}
+
+enum TaxLineSource {
+  ENGINE
+  STRIPE
+}
+
+enum UseTaxStatus {
+  DUE
+  NOT_DUE
+  FILED
+}
+
 // Batch B — provider operations (docs/designs/BATCH-B.md D1/D2)
 enum ProviderOperationKind {
   CUSTOMER_CREATE
@@ -1516,6 +1607,8 @@ enum ProviderOperationKind {
   SUBSCRIPTION_UPDATE
   BALANCE_CREDIT
   REFUND_CREATE
+  TAX_RATE_CREATE
+  SUBSCRIPTION_TAX_UPDATE
 }
 
 enum ProviderOperationStatus {
@@ -1654,6 +1747,7 @@ model Invoice {
 
   stripeInvoiceId    String? @unique
   lineItems           InvoiceLineItem[]
+  taxLines            InvoiceTaxLine[]
   payments            Payment[]
   refunds             Refund[]
   creditApplications  CreditApplication[]
@@ -1772,6 +1866,185 @@ model WebhookEvent {
 }
 
 // ---------------------------------------------------------------------------
+// Batch T — Colorado sales and use tax
+// ---------------------------------------------------------------------------
+
+model TaxFilingAccount {
+  id                     String             @id @default(cuid())
+  name                   String
+  accountNumber          String?
+  frequency              TaxFilingFrequency @default(MONTHLY)
+  dueDayOfFollowingMonth Int                @default(20)
+  basis                  TaxReportingBasis  @default(UNDECIDED)
+  portalUrl              String?
+  active                 Boolean            @default(true)
+  jurisdictions          TaxJurisdiction[]
+  periods                TaxFilingPeriod[]
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+}
+
+model TaxJurisdiction {
+  id               String                    @id @default(cuid())
+  code             String                    @unique
+  name             String
+  level            TaxJurisdictionLevel
+  administration   TaxAdministration
+  filingAccountId  String?
+  filingAccount    TaxFilingAccount?         @relation(fields: [filingAccountId], references: [id])
+  reviewStatus     TaxReviewStatus           @default(NEEDS_REVIEW)
+  reviewedByUserId String?
+  reviewedAt       DateTime?
+  notes            String?
+  rates            TaxRateVersion[]
+  rules            TaxabilityRule[]
+  addresses        AddressTaxJurisdiction[]
+  invoiceTaxLines  InvoiceTaxLine[]
+  useTaxRows       PurchaseUseTax[]
+  createdAt        DateTime                  @default(now())
+  updatedAt        DateTime                  @updatedAt
+}
+
+model TaxRateVersion {
+  id               String          @id @default(cuid())
+  jurisdictionId   String
+  jurisdiction     TaxJurisdiction @relation(fields: [jurisdictionId], references: [id])
+  rateMilliPercent Int
+  effectiveFrom    DateTime
+  source           TaxRateSource
+  sourceNote       String?
+  recordedByUserId String?
+  stripeTaxRateId  String?         @unique
+  invoiceTaxLines  InvoiceTaxLine[]
+  useTaxRows       PurchaseUseTax[]
+  createdAt        DateTime        @default(now())
+
+  @@unique([jurisdictionId, effectiveFrom])
+}
+
+model TaxabilityRule {
+  id              String           @id @default(cuid())
+  jurisdictionId  String?
+  jurisdiction    TaxJurisdiction? @relation(fields: [jurisdictionId], references: [id])
+  category        TaxChargeCategory
+  taxability      Taxability       @default(UNDECIDED)
+  reason          String?
+  cpaConfirmedOn  DateTime?
+  updatedByUserId String?
+  updatedAt       DateTime         @updatedAt
+
+  @@unique([jurisdictionId, category])
+}
+
+model AddressTaxLocation {
+  id                  String                   @id @default(cuid())
+  serviceAddressId    String?
+  serviceAddress      ServiceAddress?          @relation(fields: [serviceAddressId], references: [id])
+  forBusinessLocation Boolean                  @default(false)
+  status              TaxAddressStatus
+  source              TaxRateSource
+  normalizedAddress   String?
+  reviewNote          String?
+  lookedUpAt          DateTime
+  confirmedByUserId   String?
+  isCurrent           Boolean                  @default(true)
+  jurisdictions       AddressTaxJurisdiction[]
+  createdAt           DateTime                 @default(now())
+
+  @@index([serviceAddressId, isCurrent])
+}
+
+model AddressTaxJurisdiction {
+  addressTaxLocationId String
+  location             AddressTaxLocation @relation(fields: [addressTaxLocationId], references: [id], onDelete: Cascade)
+  jurisdictionId       String
+  jurisdiction         TaxJurisdiction    @relation(fields: [jurisdictionId], references: [id])
+
+  @@id([addressTaxLocationId, jurisdictionId])
+}
+
+model InvoiceTaxLine {
+  id                String            @id @default(cuid())
+  invoiceId         String
+  invoice           Invoice           @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  invoiceLineItemId String?
+  jurisdictionId    String
+  jurisdiction      TaxJurisdiction   @relation(fields: [jurisdictionId], references: [id])
+  rateVersionId     String
+  rateVersion       TaxRateVersion    @relation(fields: [rateVersionId], references: [id])
+  category          TaxChargeCategory
+  taxableCents      Int
+  exemptCents       Int               @default(0)
+  exemptReason      String?
+  taxCents          Int
+  source            TaxLineSource
+  createdAt         DateTime          @default(now())
+
+  @@index([invoiceId])
+  @@index([jurisdictionId, createdAt])
+}
+
+model CustomerTaxExemption {
+  id                 String             @id @default(cuid())
+  customerId         String
+  customer           Customer           @relation(fields: [customerId], references: [id])
+  reason             TaxExemptionReason
+  certificateNumber  String?
+  certificatePhotoId String?
+  jurisdictionIds    Json               @default("[]")
+  validFrom          DateTime
+  expiresOn          DateTime?
+  revokedAt          DateTime?
+  verifiedByUserId   String
+  notes              String?
+  createdAt          DateTime           @default(now())
+
+  @@index([customerId])
+}
+
+model TaxFilingPeriod {
+  id                      String           @id @default(cuid())
+  filingAccountId         String
+  filingAccount           TaxFilingAccount @relation(fields: [filingAccountId], references: [id])
+  periodStart             DateTime
+  periodEnd               DateTime
+  dueOn                   DateTime
+  status                  TaxFilingStatus  @default(OPEN)
+  worksheet               Json?
+  filedOn                 DateTime?
+  confirmationNumber      String?
+  amountPaidCents         Int?
+  serviceFeeRetainedCents Int?
+  filedByUserId           String?
+  notes                   String?
+  useTaxRows              PurchaseUseTax[]
+  createdAt               DateTime         @default(now())
+  updatedAt               DateTime         @updatedAt
+
+  @@unique([filingAccountId, periodStart])
+}
+
+model PurchaseUseTax {
+  id                  String           @id @default(cuid())
+  sourceType          String
+  sourceId            String
+  purchasedOn         DateTime
+  purchaseAmountCents Int
+  vendorTaxCents      Int
+  jurisdictionId      String
+  jurisdiction        TaxJurisdiction  @relation(fields: [jurisdictionId], references: [id])
+  rateVersionId       String
+  rateVersion         TaxRateVersion    @relation(fields: [rateVersionId], references: [id])
+  useTaxDueCents      Int
+  status              UseTaxStatus
+  filingPeriodId      String?
+  filingPeriod        TaxFilingPeriod? @relation(fields: [filingPeriodId], references: [id])
+  createdAt           DateTime         @default(now())
+
+  @@unique([sourceType, sourceId, jurisdictionId])
+}
+
+// ---------------------------------------------------------------------------
 // Settings, site content, and everything else Chris edits himself
 // ---------------------------------------------------------------------------
 
@@ -1804,6 +2077,12 @@ model BusinessSettings {
   taxRatePermille         Int     @default(0) // DEPRECATED (see taxRateMilliPercent); kept in step by a database trigger until cleanup
   taxRateMilliPercent     Int     @default(0) // thousandths of one percent: 7375 = 7.375%
   taxRateConfirmed        Boolean @default(false)
+
+  // Batch T: tax policy starts undecided; rates/rules are entered and reviewed separately.
+  shortTermLeaseElection     ShortTermLeaseElection @default(UNDECIDED)
+  shortTermLeaseElectionNote String?
+  retailDeliveryFeeDecision  String @default("UNDECIDED")
+  businessTaxAddress         Json   @default("{}")
 
   announcementBannerText String?
   announcementBannerOn   Boolean @default(false)
