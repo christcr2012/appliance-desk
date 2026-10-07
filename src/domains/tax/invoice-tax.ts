@@ -1,8 +1,9 @@
-import type { Prisma } from "@prisma/client";
+import type { InvoiceLineItemKind as PrismaInvoiceLineItemKind, Prisma } from "@prisma/client";
 
 import { computeTax, type EngineResult } from "@/domains/tax/engine";
 import { getAgreementTaxContext } from "@/domains/tax/locations";
 import type { InvoiceLineItemKind } from "@/domains/tax/categories";
+import { businessDateKey } from "@/lib/business-date";
 
 export type AgreementInvoiceTaxLine = {
   key: string;
@@ -106,4 +107,118 @@ export async function replaceEngineInvoiceTaxLines(
       };
     }),
   });
+}
+
+
+type LocalTaxedInvoiceLine = {
+  kind: PrismaInvoiceLineItemKind;
+  description: string;
+  amountCents: number;
+  quantity?: number;
+  rentalLineId?: string | null;
+};
+
+export async function createLocalTaxedInvoice(
+  tx: Prisma.TransactionClient,
+  input: {
+    userId: string | null;
+    agreementId: string;
+    customerId: string;
+    taxDate: Date;
+    billingPeriodStart?: Date | null;
+    billingPeriodEnd?: Date | null;
+    dueDate?: Date | null;
+    lines: LocalTaxedInvoiceLine[];
+  },
+) {
+  const subtotalCents = input.lines.reduce(
+    (sum, line) => sum + line.amountCents,
+    0,
+  );
+  const invoice = await tx.invoice.create({
+    data: {
+      customerId: input.customerId,
+      agreementId: input.agreementId,
+      status: "DRAFT",
+      billingPeriodStart: input.billingPeriodStart ?? null,
+      billingPeriodEnd: input.billingPeriodEnd ?? null,
+      subtotalCents,
+      taxCents: 0,
+      amountDueCents: subtotalCents,
+      amountPaidCents: 0,
+      dueDate: input.dueDate ?? null,
+    },
+  });
+
+  const persistedLines = [];
+  for (const line of input.lines) {
+    persistedLines.push(
+      await tx.invoiceLineItem.create({
+        data: {
+          invoiceId: invoice.id,
+          kind: line.kind,
+          description: line.description,
+          amountCents: line.amountCents,
+          quantity: line.quantity ?? 1,
+          rentalLineId: line.rentalLineId ?? null,
+        },
+      }),
+    );
+  }
+
+  const result = await computeAgreementInvoiceTax(tx, {
+    agreementId: input.agreementId,
+    taxDate: input.taxDate,
+    lines: persistedLines.map((line) => ({
+      key: line.id,
+      kind: line.kind,
+      amountCents: line.amountCents,
+    })),
+  });
+
+  if (!result.ok) {
+    await tx.auditLog.create({
+      data: {
+        userId: input.userId,
+        action: "billing.tax_decision_needed",
+        entityType: "Invoice",
+        entityId: invoice.id,
+        newValue: {
+          agreementId: input.agreementId,
+          taxDate: businessDateKey(input.taxDate),
+          problems: result.problems,
+        },
+      },
+    });
+    return { invoice, result };
+  }
+
+  await replaceEngineInvoiceTaxLines(tx, {
+    invoiceId: invoice.id,
+    result,
+    lineItemIdByKey: new Map(
+      persistedLines.map((line) => [line.id, line.id]),
+    ),
+  });
+  if (result.totalTaxCents > 0) {
+    await tx.invoiceLineItem.create({
+      data: {
+        invoiceId: invoice.id,
+        kind: "TAX",
+        description: "Sales tax",
+        amountCents: result.totalTaxCents,
+        quantity: 1,
+        rentalLineId: null,
+      },
+    });
+  }
+  const opened = await tx.invoice.update({
+    where: { id: invoice.id },
+    data: {
+      status: "OPEN",
+      taxCents: result.totalTaxCents,
+      amountDueCents: subtotalCents + result.totalTaxCents,
+    },
+  });
+  return { invoice: opened, result };
 }
