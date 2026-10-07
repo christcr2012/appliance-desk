@@ -4,6 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   billedRentalLineEvidenceInTx,
   historicalRentalTaxForBaseCentsInTx,
+  rentalItemInvoiceEvidenceInTx,
 } from "@/domains/billing/refund-across-invoices";
 import { prisma } from "@/lib/prisma";
 import { seedTaxReadyContext } from "./helpers/tax-ready";
@@ -22,6 +23,9 @@ describe.skipIf(!enabled)("Batch T historical refund tax evidence (real Postgres
   const agreementId = `refund-tax-agreement-${tag}`;
   const rentalLineId = `refund-tax-line-${tag}`;
   const newerRateId = `refund-tax-rate-new-${tag}`;
+  const typeId = `refund-tax-type-${tag}`;
+  const applianceOneId = `refund-tax-appliance-1-${tag}`;
+  const applianceTwoId = `refund-tax-appliance-2-${tag}`;
   let taxFixture: Awaited<ReturnType<typeof seedTaxReadyContext>>;
 
   beforeAll(async () => {
@@ -73,10 +77,47 @@ describe.skipIf(!enabled)("Batch T historical refund tax evidence (real Postgres
       data: {
         id: rentalLineId,
         agreementId,
-        label: "Washer",
+        label: "Washer set",
         listPriceCents: 4_000,
         monthlyPriceCents: 4_000,
       },
+    });
+    await prisma.applianceType.create({
+      data: {
+        id: typeId,
+        name: `Refund Tax Type ${tag}`,
+        slug: `refund-tax-${tag}`,
+      },
+    });
+    await prisma.appliance.createMany({
+      data: [
+        {
+          id: applianceOneId,
+          assetNumber: `RTA1-${tag.slice(0, 8)}`,
+          applianceTypeId: typeId,
+          status: "RENTED",
+        },
+        {
+          id: applianceTwoId,
+          assetNumber: `RTA2-${tag.slice(0, 8)}`,
+          applianceTypeId: typeId,
+          status: "RENTED",
+        },
+      ],
+    });
+    await prisma.applianceAssignment.createMany({
+      data: [
+        {
+          rentalLineId,
+          applianceId: applianceOneId,
+          assignedAt: new Date("2025-12-01T07:00:00.000Z"),
+        },
+        {
+          rentalLineId,
+          applianceId: applianceTwoId,
+          assignedAt: new Date("2025-12-01T07:00:00.000Z"),
+        },
+      ],
     });
 
     for (const period of [
@@ -132,6 +173,11 @@ describe.skipIf(!enabled)("Batch T historical refund tax evidence (real Postgres
 
   afterAll(async () => {
     await prisma.invoice.deleteMany({ where: { agreementId } });
+    await prisma.applianceAssignment.deleteMany({ where: { rentalLineId } });
+    await prisma.appliance.deleteMany({
+      where: { id: { in: [applianceOneId, applianceTwoId] } },
+    });
+    await prisma.applianceType.deleteMany({ where: { id: typeId } });
     await prisma.rentalLine.deleteMany({ where: { agreementId } });
     await prisma.rentalAgreement.deleteMany({ where: { id: agreementId } });
     await taxFixture.cleanup();
@@ -177,6 +223,112 @@ describe.skipIf(!enabled)("Batch T historical refund tax evidence (real Postgres
       uncoveredBaseCents: 0,
       evidenceComplete: true,
     });
+  });
+
+  it("keeps the second appliance's historical half after the first appliance is removed and future line price is reduced", async () => {
+    const before = await prisma.$transaction((tx) =>
+      rentalItemInvoiceEvidenceInTx(tx, {
+        agreementId,
+        rentalLineId,
+        applianceId: applianceTwoId,
+      }),
+    );
+    expect(before.reduce((sum, row) => sum + row.baseCents, 0)).toBe(4_000);
+    expect(before.reduce((sum, row) => sum + row.taxCents, 0)).toBe(306);
+
+    await prisma.applianceAssignment.updateMany({
+      where: { rentalLineId, applianceId: applianceOneId },
+      data: { unassignedAt: new Date("2026-02-15T07:00:00.000Z") },
+    });
+    await prisma.rentalLine.update({
+      where: { id: rentalLineId },
+      data: { monthlyPriceCents: 2_000 },
+    });
+
+    try {
+      const after = await prisma.$transaction((tx) =>
+        rentalItemInvoiceEvidenceInTx(tx, {
+          agreementId,
+          rentalLineId,
+          applianceId: applianceTwoId,
+        }),
+      );
+      expect(after.reduce((sum, row) => sum + row.baseCents, 0)).toBe(4_000);
+      expect(after.reduce((sum, row) => sum + row.taxCents, 0)).toBe(306);
+    } finally {
+      await prisma.applianceAssignment.updateMany({
+        where: { rentalLineId, applianceId: applianceOneId },
+        data: { unassignedAt: null },
+      });
+      await prisma.rentalLine.update({
+        where: { id: rentalLineId },
+        data: { monthlyPriceCents: 4_000 },
+      });
+    }
+  });
+
+  it("ignores a newer unpaid invoice when choosing historical tax for a refundable base amount", async () => {
+    const unpaidRateId = `refund-tax-rate-unpaid-${tag}`;
+    const unpaidInvoiceId = `refund-tax-invoice-unpaid-${tag}`;
+    await prisma.taxRateVersion.create({
+      data: {
+        id: unpaidRateId,
+        jurisdictionId: taxFixture.jurisdictionId,
+        rateMilliPercent: 9_000,
+        effectiveFrom: new Date("2026-03-01T07:00:00.000Z"),
+        source: "MANUAL",
+      },
+    });
+    const invoice = await prisma.invoice.create({
+      data: {
+        id: unpaidInvoiceId,
+        customerId,
+        agreementId,
+        status: "OPEN",
+        billingPeriodStart: new Date("2026-03-01T07:00:00.000Z"),
+        subtotalCents: 4_000,
+        taxCents: 360,
+        amountDueCents: 4_360,
+        amountPaidCents: 0,
+      },
+    });
+    const line = await prisma.invoiceLineItem.create({
+      data: {
+        invoiceId: invoice.id,
+        kind: "RENTAL",
+        description: "Washer set",
+        amountCents: 4_000,
+        rentalLineId,
+      },
+    });
+    await prisma.invoiceTaxLine.create({
+      data: {
+        invoiceId: invoice.id,
+        invoiceLineItemId: line.id,
+        jurisdictionId: taxFixture.jurisdictionId,
+        rateVersionId: unpaidRateId,
+        category: "RENTAL",
+        taxableCents: 4_000,
+        taxCents: 360,
+        source: "STRIPE",
+      },
+    });
+
+    try {
+      const result = await prisma.$transaction((tx) =>
+        historicalRentalTaxForBaseCentsInTx(tx, {
+          agreementId,
+          baseCents: 2_000,
+        }),
+      );
+      expect(result).toEqual({
+        taxCents: 160,
+        uncoveredBaseCents: 0,
+        evidenceComplete: true,
+      });
+    } finally {
+      await prisma.invoice.delete({ where: { id: unpaidInvoiceId } });
+    }
   });
 
   it("flags a legacy taxed invoice with no line-level tax evidence instead of treating its tax as zero", async () => {
