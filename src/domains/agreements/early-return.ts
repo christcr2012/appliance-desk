@@ -5,6 +5,7 @@ import { addBusinessDays, businessDaysBetween, businessEndOfDay, formatBusinessD
 import { formatCents } from "@/domains/pricing";
 import { lockCustomerLedger } from "@/domains/billing/ledger";
 import { sumTax } from "@/domains/billing/tax";
+import { applyLocalInvoiceTaxInTx } from "@/domains/tax/local-invoice";
 import {
   billingPeriodContaining,
   lastChargeableDayKey,
@@ -509,7 +510,7 @@ export async function applyEarlyReturnInTx(
         data: {
           customerId: agreement.customerId,
           agreementId: input.agreementId,
-          status: "OPEN",
+          status: "DRAFT",
           subtotalCents: plan.fee.feeCents,
           taxCents: 0,
           amountDueCents: plan.fee.feeCents,
@@ -525,13 +526,26 @@ export async function applyEarlyReturnInTx(
         },
       });
       feeInvoiceId = invoice.id;
+      const taxResult = await applyLocalInvoiceTaxInTx(tx, {
+        invoiceId: invoice.id,
+        agreementId: input.agreementId,
+        taxDate: input.pickupDate,
+        actorUserId: actor.userId,
+      });
       await tx.auditLog.create({
         data: {
           userId: actor.userId,
           action: "agreement.termination_fee_invoiced",
           entityType: "Invoice",
           entityId: invoice.id,
-          newValue: { agreementId: input.agreementId, feeCents: plan.fee.feeCents, fee: formatCents(plan.fee.feeCents), taxed: false, earlyReturn: true },
+          newValue: {
+            agreementId: input.agreementId,
+            feeCents: plan.fee.feeCents,
+            fee: formatCents(plan.fee.feeCents),
+            taxCents: taxResult.ok ? taxResult.totalTaxCents : 0,
+            taxBlocked: !taxResult.ok,
+            earlyReturn: true,
+          },
         },
       });
     }
