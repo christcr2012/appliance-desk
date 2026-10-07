@@ -412,15 +412,16 @@ requested or its waiver recorded. Then merge with the expected-head SHA:
 resp=$(gh api -X PUT repos/<owner>/<repo>/pulls/<n>/merge-async \
   -f merge_method=merge -f merge_action=direct_merge -f sha=<head-sha>)
 echo "$resp" | jq -r '.status, .details.message'
-# Only "pending" carries a uuid. Poll it until it is no longer pending:
+# Only "pending" carries a uuid. Check it once; do not enter a polling loop.
 uuid=$(echo "$resp" | jq -r '.details.uuid // empty')
-while [ -n "$uuid" ]; do
+if [ -n "$uuid" ]; then
   r=$(gh api repos/<owner>/<repo>/pulls/<n>/merge-async/$uuid)
-  [ "$(echo "$r" | jq -r .status)" != "pending" ] && { echo "$r" | jq -r '.status, .details.message'; break; }
-  sleep 5
-done
+  echo "$r" | jq -r '.status, .details.message'
+fi
 # "merged" = done. "failed" = read details.message (closed, draft, or head moved).
-# "enqueued" = in a merge queue: NOT merged yet; confirm separately.
+# "pending"/"enqueued" = not merged yet. Record the uuid/status, do other runnable
+# work, and re-check at the next anti-stall checkpoint (or next turn if nothing
+# else remains). Never sleep/poll in a loop waiting for it.
 ```
 
 Before merging, confirm the reviewers have finished: the `Running Copilot Code
