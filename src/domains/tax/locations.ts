@@ -372,7 +372,7 @@ async function applyLookup(
 
     for (const gis of lookup.jurisdictions) {
       const resolved = await resolveJurisdiction(tx, gis, now);
-      if (!resolved.id) {
+      if (resolved.id === null) {
         allReviewed = false;
         notes.push(resolved.note);
         continue;
