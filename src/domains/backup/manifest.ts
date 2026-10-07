@@ -63,6 +63,8 @@ export const BACKUP_MODEL_POLICY = {
   TaxFilingAccount: "taxFilingAccount",
   TaxJurisdiction: "taxJurisdiction",
   TaxRateVersion: "taxRateVersion",
+  TaxRateObservation: "taxRateObservation",
+  OfficialSourceWatch: "officialSourceWatch",
   TaxabilityRule: "taxabilityRule",
   AddressTaxLocation: "addressTaxLocation",
   AddressTaxJurisdiction: "addressTaxJurisdiction",
