@@ -3,10 +3,10 @@ import { prepareInvoiceRefundInTx, type ClaimedRefund } from "./refunds";
 
 export type RefundAcrossRun = { refundId: string; claim: ClaimedRefund; invoiceId: string; amountCents: number };
 
-export async function billedRentalLineChargeCentsInTx(
+export async function billedRentalLineEvidenceInTx(
   tx: Prisma.TransactionClient,
   input: { agreementId: string; rentalLineId: string },
-): Promise<number> {
+): Promise<{ baseCents: number; taxCents: number; totalCents: number }> {
   const lines = await tx.invoiceLineItem.findMany({
     where: {
       rentalLineId: input.rentalLineId,
@@ -24,19 +24,19 @@ export async function billedRentalLineChargeCentsInTx(
     },
   });
 
-  return lines.reduce(
+  const baseCents = lines.reduce((sum, line) => sum + line.amountCents, 0);
+  const taxCents = lines.reduce(
     (sum, line) =>
-      sum +
-      line.amountCents +
-      line.taxLines.reduce((taxSum, taxLine) => taxSum + taxLine.taxCents, 0),
+      sum + line.taxLines.reduce((taxSum, taxLine) => taxSum + taxLine.taxCents, 0),
     0,
   );
+  return { baseCents, taxCents, totalCents: baseCents + taxCents };
 }
 
 /**
- * Actual historical billed amount for one agreement line. This deliberately
- * reads persisted invoice/tax evidence instead of rebuilding history from the
- * agreement's display-only tax snapshot or today's tax rules.
+ * Actual historical billed evidence for one agreement line. Callers that
+ * refund only one appliance from a multi-appliance line must allocate their
+ * share of both base and tax rather than refunding the whole line.
  */
 /**
  * Pay money back to a customer for an agreement: the newest paid invoices first. A Stripe-paid invoice is refunded to
