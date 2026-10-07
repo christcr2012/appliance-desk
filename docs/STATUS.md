@@ -5,7 +5,7 @@
 `docs/archive/STATUS-LOG.md`. The long history before 2026-10-02 is in
 `docs/archive/HANDOFF-2026-09-26-to-2026-10-02.md`.
 
-Last updated: 2026-10-06 · **F-part-1 is merged complete (#268, #269, #273). Batch G implementation is complete through final PR #277. Batch T is next after G merges.** F-part-2 remains intentionally after G → T → V. Chris judged the earlier E2 public-site visual result insufficiently different, so the stronger Evergreen Signature redesign remains Batch V. O32 Google Workspace remains explicitly deferred until its app-side service-account/delegation, Drive OAuth, and live-walkthrough prerequisites are proven.
+Last updated: 2026-10-06 · **F-part-1 and Batch G are merged complete. Batch T is in progress: T-1 foundation merged as #279; T-2 address locating is #280.** F-part-2 remains intentionally after G → T → V. Chris judged the earlier E2 public-site visual result insufficiently different, so the stronger Evergreen Signature redesign remains Batch V. O32 Google Workspace remains explicitly deferred until its app-side service-account/delegation, Drive OAuth, and live-walkthrough prerequisites are proven.
 
 ## Batch table
 
@@ -22,7 +22,7 @@ Last updated: 2026-10-06 · **F-part-1 is merged complete (#268, #269, #273). Ba
 | E2 — Visual redesign (owner desk, public site, customer portal; desktop, phone, dark) | **COMPLETE with #263** | E2 implementation stack through #263 | Shared UI/tokens, phone/desktop/dark route coverage, print cleanup, exact-head CI/preview gates | Public-site technical scope is complete, but Chris rejected the visual result as the final desired quality; a stronger public-site visual redesign remains explicitly deferred. |
 | F — Integrated verification, recovery, owner handoff & launch ledger | **F-PART-1 COMPLETE** | #268, #269, #273 merged | Repeatable-read DB restore drill; privacy-safe media recovery; stable capacity baselines 11.94 ms/op (50 properties/200 appliances) and 4.42 ms/op (5,000 invoices); recovery/provider/account/privacy runbooks audited | F-part-2 (scenarios, screenshots, owner guide, launch/review ledger) remains intentionally after G → T → V. |
 | G — Audit fixes and owner-account security | **COMPLETE — final PR #277** | #275 G-1; #276 G-2; #277 G-3 | Production audit clean; closure earnings evidence; Better Auth TOTP + 10 encrypted single-use backup codes; required-role enforcement; recovery path; CI browser proof; own-session list/revoke-other; Owner-only Staff sign-out with audit evidence | Owner/Admin two-step login is required by default; Staff is owner-configurable; Customer can never be required. No live provider activation was added. |
-| T — Colorado sales and use tax | DESIGN APPROVED 2026-10-06 — not started | — | — | `docs/designs/BATCH-T.md`; launch blocker; CPA answers IN-33 … IN-38; Chris to obtain the Colorado GIS API key (IN-40). |
+| T — Colorado sales and use tax | **IN PROGRESS — T-1 merged; T-2 in review** | #279 merged; #280 | T-1 additive schema/migration + pure tax engine/allocator; T-2 address locating/manual fallback with real-Postgres race/privacy coverage | Authenticated SUTS API method contract is not yet available, so the real HTTP client is intentionally not guessed. CPA answers IN-33 … IN-38 still block live billing, not engineering. |
 | K — Books, expenses, P&L, accounting exports | DESIGN APPROVED 2026-10-06 — not started | — | — | `docs/designs/BATCH-K.md`; after T. |
 | V — "Evergreen Signature" visual redesign | DESIGN APPROVED 2026-10-06 — not started | — | — | `docs/designs/BATCH-V.md`; answers Chris's rejection of E2's public-site look; IN-42. |
 | O — Owner controls | DESIGN APPROVED 2026-10-06 — not started | — | — | `docs/designs/BATCH-O.md`; after K. |
@@ -77,6 +77,8 @@ rate, real public contact/launch details, and explicit live Stripe/email/SMS/lau
 authorization. None of those blocks Batch F engineering; live provider actions stay OFF.
 
 ## Session log (last two batches only)
+
+- **2026-10-06 — Batch T T-1 merged / T-2 in review:** #279 merged the additive tax schema, migration/seeds, backup coverage and pure category/engine/allocation primitives after exact-head CI, performance, Vercel and review-thread gates. #280 implements WU-T3 address locating with manual production fallback, shared-jurisdiction concurrency protection, stale-response/privacy protection and real-Postgres coverage. Colorado publicly documents key generation but keeps the API method contract on the authenticated SUTS key screen, so `docs/runbooks/colorado-gis-api.md` records the contract gate instead of guessing it.
 
 - **2026-10-06 — Batch G complete (#275/#276/#277):** G-1 closes production dependency advisories, adds `closedAt` earnings evidence, Better Auth 1.7.6 schema, credential-safe backup policy and dark semantic contrast; G-2 adds authenticator TOTP, ten encrypted single-use backup codes, required-role enforcement, owner Security policy and recovery; G-3 adds self-session controls and Owner-only Staff sign-out with audit evidence. Final exact-head CI/Preview gate is #277.
 
