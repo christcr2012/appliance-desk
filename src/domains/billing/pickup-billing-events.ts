@@ -601,6 +601,11 @@ export async function removeUndeliveredItem(userId: string, pendingDeliveryId: s
         agreementId: agreement.id,
         rentalLineId: item.rentalLineId,
       });
+      if (!billed.evidenceComplete) {
+        throw new Error(
+          "This rental has older paid tax that is missing line-level tax evidence. Review the historical bill before removing this never-delivered item.",
+        );
+      }
       const otherShareCents = Math.max(
         0,
         item.lineMonthlyPriceCents - item.monthlyPriceCents,
