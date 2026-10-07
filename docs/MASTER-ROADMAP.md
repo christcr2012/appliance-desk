@@ -204,6 +204,6 @@ tests most likely to break, so the agent updates them in the same PR instead of 
 | O-3 | WU-O3 approvals | money + permissions | refund/credit/write-off integration tests |
 | O-4 | WU-O4 scheduled prices + WU-O5 goals and alerts + docs | settings/automation | pricing tests, Today tests |
 
-**38 PRs in all** (Batch S adds 2; T-6 split into T-6a/T-6b by Amendment A, T-6c added by Amendment B and T-5b by Amendment C, 2026-10-07) (a few more if G-2 or T-4 split). At two merged PRs per session that is roughly 17 working sessions;
+**38 PRs in all** (Batch S adds 2; T-6 split into T-6a/T-6b by Amendment A, T-6c added by Amendment B and T-5b by Amendment C, 2026-10-07) (a few more if G-2 or T-4 split). At two merged PRs per session that is roughly 19 working sessions;
 each PR should reach green with at most one red CI run (each run is about 3–5 minutes). If a PR needs a third red run,
 the agent stops and reports (PLAYBOOK Step 8).
