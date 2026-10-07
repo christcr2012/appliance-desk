@@ -12,7 +12,7 @@ import { getBusinessSettings, parseServiceArea } from "@/domains/settings";
 import { generateUniqueReferralCode, linkReferralIfCodeProvided } from "@/domains/referrals";
 import { scoreLead } from "./scoring";
 import { getLeadScoringPolicy, parseLeadScoringPolicy } from "./scoring-policy";
-import { recordRealContactInTx } from "./contact";
+import { recordRealContactInTx } from "./contact";\nimport { locateServiceAddress } from "@/domains/tax/locations";
 import type { LeadFormInput } from "./schema";
 import type { Lead, LeadStatus, Prisma } from "@prisma/client";
 
@@ -432,8 +432,9 @@ export async function convertLeadToCustomerInTx(
     await linkReferralIfCodeProvided(tx, customerRow.id, lead.referredByCode);
   }
 
+  let serviceAddressId: string | null = null;
   if (lead.addressLine1 && lead.city && lead.zip) {
-    await tx.serviceAddress.create({
+    const address = await tx.serviceAddress.create({
       data: {
         customerId: customerRow.id,
         line1: lead.addressLine1,
@@ -441,6 +442,7 @@ export async function convertLeadToCustomerInTx(
         zip: lead.zip,
       },
     });
+    serviceAddressId = address.id;
   }
 
   await tx.lead.update({
@@ -463,7 +465,7 @@ export async function convertLeadToCustomerInTx(
     },
   });
 
-  return { customer: customerRow, isNewAccount, email };
+  return { customer: customerRow, isNewAccount, email, serviceAddressId };
 }
 
 export async function convertLeadToCustomer(
@@ -473,6 +475,15 @@ export async function convertLeadToCustomer(
   const result = await prisma.$transaction((tx) =>
     convertLeadToCustomerInTx(tx, userId, leadId),
   );
+
+  if (result.serviceAddressId) {
+    await locateServiceAddress(result.serviceAddressId).catch((error) => {
+      console.error(
+        "[tax] Service-address lookup failed after lead conversion:",
+        error instanceof Error ? error.message : "unknown error",
+      );
+    });
+  }
 
   const activationEmailSent = result.isNewAccount
     ? await sendCustomerActivationEmail(result.email)
