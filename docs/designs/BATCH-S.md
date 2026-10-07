@@ -59,10 +59,18 @@ never passed in; the full error stays only in the existing private `AutomationRu
 `STRIPE_TIMEOUT`), validated against `^[A-Za-z0-9_.:-]{1,80}$`; `officialUrl` must be an allowlisted watch URL.
 Free-text fields that people write — `SystemIssueNote.body` and `resolvedReason` — go through a new shared
 `redactForOps()` (strips emails, phone numbers, street-address patterns (number + street word), card-like and long digit
-runs, `sk_`/`rk_`/`whsec_`/`Bearer` tokens, and anything matching a customer name or address in the database is **not**
-attempted — instead the screen warns "Do not include customer details") and are capped at 2 KB. Tests: planted emails,
+runs, `sk_`/`rk_`/`whsec_`/`Bearer` tokens) and are capped at 2 KB. **Names are then checked against the database
+(review fix — a warning is not enforcement):** `assertNoKnownPersonNames(tx, text)` rejects the note or reason (error
+"This note mentions a customer or person — describe the problem without names") when, after lower-casing and
+collapsing whitespace, it contains any **full name** (first + last, both ≥ 2 letters) of a `User`, `Customer` contact
+or `Lead` in the database, or any single word that is a stored last name of ≥ 4 letters next to a capitalised word in
+the original text. It runs in the same transaction as the insert, uses one query over the name columns (indexed
+lower-case), and the screen still says "Do not include customer details". Rejection, not silent removal, so a person
+sees what happened and the agent's API call gets a 422 it can correct. Tests: planted emails,
 phones, a street address, a card number, a provider JSON blob and a key are removed from notes and resolution reasons;
-an issue's `detail` cannot be constructed from an arbitrary string (type test).
+a note containing a planted customer's full name ("Lookup failed for Jane Smith") is rejected by the screen action and
+by the API (422) and nothing is stored; an issue's `detail` cannot be constructed from an arbitrary string (type
+test).
 
 ### D-S3 — A private, read-mostly door for an AI agent
 
@@ -153,7 +161,21 @@ recovery — a restored system gets a new key). Schema-health list updated.
 ## 3. Functions (`src/domains/system-issues/`)
 
 ```ts
-export async function recordSystemIssue(input: { kind: SystemIssueKind; fingerprint: string; severity: Severity; summary: string; detail: string }): Promise<void>;
+// Typed payloads only (review fix): one variant per kind, fields from the D-S2 allowlist. summary/detail are
+// rendered INSIDE recordSystemIssue from the kind's template — callers can never pass free text.
+export type SystemIssueInput =
+  | { kind: "AUTOMATION_FAILED"; ruleKey: string; runId: string; startedAt: Date; errorName: string; errorCode?: string }
+  | { kind: "AUTOMATION_STALE"; ruleKey: string; lastSuccessAt: Date | null; expectedEveryHours: number }
+  | { kind: "PROVIDER_OPERATION_STUCK"; operationKind: string; count: number; oldestSince: Date }
+  | { kind: "TAX_LOOKUP_UNAVAILABLE"; count: number }
+  | { kind: "SOURCE_PAGE_UNREACHABLE"; watchId: string; officialUrl: string; consecutiveFailures: number }
+  | { kind: "SOURCE_PAGE_CHANGED"; watchId: string; officialUrl: string; contentHash: string }
+  | { kind: "TAX_RATE_GUARDRAIL"; jurisdictionId: string; jurisdictionCode: string; asOf: Date; observationId: string }
+  | { kind: "MESSAGE_DELIVERY_UNKNOWN"; count: number; oldestSince: Date }
+  | { kind: "CONFIGURATION_MISSING"; ruleKey: string; missingVariableNames: string[] }; // names only, never values
+  // exactly one variant per row of the D-S1 sources table; fingerprints follow that table.
+export async function recordSystemIssue(input: SystemIssueInput): Promise<void>;
+// fingerprint and severity are derived from the input (kind + its identifying ids; severity by the R14 rule).
 // upsert by fingerprint: new → OPEN; existing OPEN/ACKNOWLEDGED → occurrences+1, lastSeenAt, refreshed text;
 // RESOLVED → reopen (status OPEN, resolvedAt null). Redacts. Never throws into the caller (a failure here is logged).
 export async function resolveSystemIssue(fingerprint: string, reason: string): Promise<void>; // no-op if absent

@@ -11,8 +11,11 @@ like, and what to do if it fails. The rules behind the steps are in
    If a row is **IN PROGRESS** with a branch name, continue that branch
    instead of starting over — check it out and read its latest commits.
 3. Read that batch's section in `docs/PLAN.md` end to end.
-4. Read the batch's design, `docs/designs/BATCH-<X>.md`, end to end, and
-   run every check in its "Verify before starting" table. **If the design
+4. If your PR has a card in `docs/pr-cards/`, read the card and only the design sections it names (by heading, a
+   section at a time). If it has no card, read the batch's design, `docs/designs/BATCH-<X>.md`, by sections: list its
+   headings (`grep -n "^## \|^### "`), then read the decisions, the schema, your work unit and its tests — never more
+   than ~150 lines per read (AGENTS.md "Working without stalling"). A design section marked "Implementation gate"
+   needs a card first. Run every check in its "Verify before starting" table. **If the design
    is missing, marked DRAFT, or any check is false: stop and report.** You
    do not implement without an approved design (`docs/designs/README.md`).
 5. Open only the reference docs the batch section and the design list.

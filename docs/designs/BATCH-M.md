@@ -51,8 +51,14 @@ later units bought tax-free with a resale certificate, so the answer lives on ea
   downward `ADJUSTMENT`/`RECOUNT` takes ordinary units first and only the shortfall from resale units:
   `resaleUnits = −max(0, qty − (quantityOnHand − resaleUnitsOnHand))`. `SALVAGE` (D-M4) adds ordinary units. A
   `REVERSAL` undoes exactly the original movement's `resaleUnits`. Upward `ADJUSTMENT`/`RECOUNT` add ordinary units.
-- **Resale unit cost** = the weighted average `unitCostCents` of this part's `forResale` `RECEIPT` movements (all
-  time; integer cents, half-up). Used only for use tax below and for the margin shown on screen.
+- **Resale cost on hand (moving average — review fix):** `PartRecord.resaleCostOnHandCents Int @default(0)` holds the
+  total cost of the resale units still in stock. A resale `RECEIPT` adds `quantity × unitCostCents`. A movement that
+  takes resale units removes `round_half_up(|resaleUnits| × resaleCostOnHandCents / resaleUnitsOnHand)` — or, when it
+  takes the last resale units, exactly what remains — so the cost of sold-out batches never lingers. A `REVERSAL`
+  restores exactly the cost its original movement removed (stored as `PartStockMovement.resaleCostCents Int
+  @default(0)`, same sign as `resaleUnits`). **Resale unit cost** = `resaleCostOnHandCents / resaleUnitsOnHand`; used
+  only for use tax below and the margin on screen. Test: sell out a $5 batch, receive a $10 batch, use one → use tax
+  on $10, not $7.50.
 
 ### D-M2 — Buying for resale and taking stock for your own use (use tax)
 
@@ -60,7 +66,7 @@ later units bought tax-free with a resale certificate, so the answer lives on ea
   resale").
 - When a `USAGE` or downward `ADJUSTMENT`/`RECOUNT` movement takes resale units (`resaleUnits < 0` by the rule in D-M1 —
   a repair, an installation, given away, lost), Colorado treats that as taking them out of resale stock for your own
-  use, so the app records **use tax on their cost**: `|resaleUnits| × resale unit cost` (`PurchaseUseTax`, `sourceType
+  use, so the app records **use tax on their cost**: the `resaleCostCents` that movement removed (D-M1) (`PurchaseUseTax`, `sourceType
   "PART_WITHDRAWAL"`, `sourceId` = the movement id, on the use-tax return like any other — Amendment D 15.5). Tax-paid
   units never owe it, so a mixed stock is never taxed twice and never missed. A `REVERSAL` of that movement cancels the
   use-tax row (or, if its return is already filed, opens an amendment like any other change — 11.12).
@@ -177,9 +183,11 @@ enum RetiredRemainder { SCRAPPED DISPOSED }
 // TaxChargeCategory gains MERCHANDISE, USED_APPLIANCE_SALE (and SCRAP_SALE only if IN-46 says taxable)
 
 // PartRecord additions: sellable Boolean @default(false), retailPriceCents Int?, defaultForResale Boolean @default(false),
-//   resaleUnitsOnHand Int @default(0)   -- CHECK (0 <= resaleUnitsOnHand AND resaleUnitsOnHand <= quantityOnHand)
+//   resaleUnitsOnHand Int @default(0), resaleCostOnHandCents Int @default(0)
+//   -- CHECK (0 <= resaleUnitsOnHand AND resaleUnitsOnHand <= quantityOnHand AND resaleCostOnHandCents >= 0)
 // PurchaseOrderLineItem addition: forResale Boolean @default(false)
-// PartStockMovement additions: resaleUnits Int @default(0), invoiceLineId String? (SALE), applianceId String? (SALVAGE)
+// PartStockMovement additions: resaleUnits Int @default(0), resaleCostCents Int @default(0),
+//   invoiceLineId String? (SALE), applianceId String? (SALVAGE)
 // InvoiceLineItemKind gains MERCHANDISE, USED_APPLIANCE
 // Customer addition: isWalkIn Boolean @default(false)  -- partial unique index: at most one row WHERE isWalkIn
 // Invoice additions: saleKind String? ("SHOP_SALE"), walkInName String?, saleLocation String? ("PICKUP" | "DELIVERED")
@@ -231,10 +239,11 @@ journal source for `ScrapPayment`. No journal source for plans (D-M4).
   (ring up a walk-in pickup sale at 360 px; axe clean).
 - **M-2 — WU-M2 Retired appliances — what's next:** D-M4: "What's next for it?" on the retire panel and the appliance
   page, `/desk/inventory/retired` tab (plans, bulk "Mark done", scrap money list), `SALVAGE` parts movements, Today
-  follow-up item, "Sell it" feeding the Sales page picker, Batch K postings (write-off on done, scrap income, seeded
-  disposal expense category). Tests: ★ `tests/retired-appliance-plan-integration.test.ts` (retiring still removes the
+  follow-up item, "Sell it" feeding the Sales page picker, Batch K postings (no plan postings — K's retirement-day write-off is the only one;
+  used-appliance sale income, scrap income, seeded disposal expense category). Tests: ★ `tests/retired-appliance-plan-integration.test.ts` (retiring still removes the
   unit from every rentable list; a plan can be set and changed until done; selling completes the plan automatically
-  and records gain/loss; strip-for-parts adds parts to stock at $0 once under retry and requires the remainder choice;
+  and posts the price to `RETIRED_APPLIANCE_SALES`; choosing, changing, completing and reopening a plan create no journal
+  entries; strip-for-parts adds parts to stock at $0 once under retry and requires the remainder choice;
   a plan cannot be set on a non-retired appliance; reopening is owner-only with a reason); ★
   `tests/scrap-payment-integration.test.ts` (lump entry posts to scrap income once; void reverses it); unit test for the
   Today follow-up threshold (29/30/31 days and 0 = off, in Denver days); browser spec extension in `e2e/shop-sales.spec.ts`
@@ -250,12 +259,12 @@ journal source for `ScrapPayment`. No journal source for plans (D-M4).
 
 `docs/BUSINESS-RULES.md` (shop sales, resale stock, retired-appliance plans), `docs/OWNER-GUIDE.md` ("Selling items",
 "Retiring an appliance — sell, strip for parts, scrap or throw away"), `docs/DATABASE.md`, Batch K (`BATCH-K.md` S-K6 replaced by D-M4's
-postings: write-off when a plan is done, gain/loss on a sold appliance, scrap income, disposal expense category), STATUS.
+postings: no plan postings, used-appliance sale income, item sale income, scrap income, disposal expense category), STATUS.
 
 ## 5. Stop-and-ask
 
 - **S-M1** The CPA says scrap sales or used-appliance sales are taxed differently from D-M3/D-M4's defaults in a way the
   matrix cannot express (for example a special rate).
 - **S-M2** Card payment of local invoices needs changes to the signing checkout or webhook contracts (M-3).
-- **S-M3** Batch K's disposal entry cannot take a sale price (gain/loss on a sold appliance) without changing its posting
-  rules — amend K's design first.
+- **S-M3** Batch K as merged does not write off an appliance on its retirement date (`APPLIANCE_RETIRED`), or has no
+  place for the new income accounts — amend K's design first; never add a second disposal entry in M.
