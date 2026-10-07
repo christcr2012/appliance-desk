@@ -73,7 +73,7 @@ async function exemptionDataInTx(
     expiresOn,
     verifiedByUserId: actorUserId,
     notes: normalizeOptionalText(input.notes),
-  } satisfies Prisma.CustomerTaxExemptionUncheckedCreateInput;
+  };
 }
 
 export async function listCustomerTaxExemptions(
