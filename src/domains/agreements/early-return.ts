@@ -4,7 +4,6 @@ import { assertActiveTeamActor } from "@/lib/team-actor";
 import { addBusinessDays, businessDaysBetween, businessEndOfDay, formatBusinessDate } from "@/lib/business-date";
 import { formatCents } from "@/domains/pricing";
 import { lockCustomerLedger } from "@/domains/billing/ledger";
-import { sumTax } from "@/domains/billing/tax";
 import { applyLocalInvoiceTaxInTx } from "@/domains/tax/local-invoice";
 import {
   billingPeriodContaining,
@@ -12,7 +11,11 @@ import {
   pickupBillingSettingsFrom,
 } from "@/domains/billing/pickup-billing";
 import { agreedEndFor, isSupersededAssignment, itemsForAppliances } from "@/domains/billing/pickup-billing-events";
-import { refundAcrossPaidInvoicesInTx, type RefundAcrossRun } from "@/domains/billing/refund-across-invoices";
+import {
+  historicalRentalTaxForBaseCentsInTx,
+  refundAcrossPaidInvoicesInTx,
+  type RefundAcrossRun,
+} from "@/domains/billing/refund-across-invoices";
 import { runPreparedInvoiceRefund } from "@/domains/billing/refunds";
 import { applySubscriptionEnds, recomputeForAgreementInTx } from "@/domains/billing/subscription-end";
 import {
@@ -222,7 +225,6 @@ async function planInTx(
       nextBillingDate: true,
       billingStartedAt: true,
       paidInFullInAdvance: true,
-      taxRateMilliPercent: true,
       terminationRequestedAt: true,
       terminationEffectiveOn: true,
       terminationFeeCents: true,
@@ -380,8 +382,21 @@ async function planInTx(
     }
   }
   const unusedCents = unusedLines.reduce((sum, l) => sum + l.amountCents, 0);
-  const unusedTaxCents = sumTax(unusedLines, agreement.taxRateMilliPercent);
-  const refundOrCreditCents = choice.unusedDays === "KEEP" ? 0 : unusedCents + unusedTaxCents;
+  let unusedTaxCents = 0;
+  if (choice.unusedDays !== "KEEP" && unusedCents > 0) {
+    const historicalTax = await historicalRentalTaxForBaseCentsInTx(tx, {
+      agreementId: agreement.id,
+      baseCents: unusedCents,
+    });
+    if (!historicalTax.evidenceComplete) {
+      throw new Error(
+        "This rental has older paid tax that is missing line-level tax evidence. Review the historical bill before refunding or crediting unused days.",
+      );
+    }
+    unusedTaxCents = historicalTax.taxCents;
+  }
+  const refundOrCreditCents =
+    choice.unusedDays === "KEEP" ? 0 : unusedCents + unusedTaxCents;
   return {
     preview: emptyPreview({
       lastBilledDay,

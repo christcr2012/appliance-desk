@@ -104,6 +104,8 @@ describe.skipIf(!enabled)("a waiting item and the Stripe subscription (real Post
   const lineIds: string[] = [];
   const invoiceIds: string[] = [];
   const receiptIds: string[] = [];
+  const taxJurisdictionId = `sl-tax-jurisdiction-${tag}`;
+  const taxRateVersionId = `sl-tax-rate-${tag}`;
   let counter = 0;
 
   type Scenario = Awaited<ReturnType<typeof build>>;
@@ -158,12 +160,12 @@ describe.skipIf(!enabled)("a waiting item and the Stripe subscription (real Post
     if (options.threeOnA) await make(ids.third, "T", "RESERVED");
     await make(ids.spare, "S", "AVAILABLE");
     await make(ids.other, "X", "AVAILABLE", otherTypeId);
-    await prisma.applianceAssignment.create({ data: { rentalLineId: lineA, applianceId: ids.washer } });
-    await prisma.applianceAssignment.create({ data: { rentalLineId: lineA, applianceId: ids.dryer } });
-    if (options.threeOnA) await prisma.applianceAssignment.create({ data: { rentalLineId: lineA, applianceId: ids.third } });
+    await prisma.applianceAssignment.create({ data: { rentalLineId: lineA, applianceId: ids.washer, assignedAt: businessDateFromKey("2026-09-01")! } });
+    await prisma.applianceAssignment.create({ data: { rentalLineId: lineA, applianceId: ids.dryer, assignedAt: businessDateFromKey("2026-09-01")! } });
+    if (options.threeOnA) await prisma.applianceAssignment.create({ data: { rentalLineId: lineA, applianceId: ids.third, assignedAt: businessDateFromKey("2026-09-01")! } });
     if (options.lineB) {
       await make(ids.filler, "F", options.laterList ? "RESERVED" : "RENTED", otherTypeId);
-      await prisma.applianceAssignment.create({ data: { rentalLineId: lineB, applianceId: ids.filler } });
+      await prisma.applianceAssignment.create({ data: { rentalLineId: lineB, applianceId: ids.filler, assignedAt: businessDateFromKey("2026-09-01")! } });
     }
     await prisma.job.create({ data: { id: originalJobId, type: "DELIVERY", status: "COMPLETED", customerId, agreementId } });
     await prisma.job.create({
@@ -213,22 +215,59 @@ describe.skipIf(!enabled)("a waiting item and the Stripe subscription (real Post
   const lineOp = (s: Scenario, pendingId: string) =>
     prisma.providerOperation.findUnique({ where: { idempotencyKey: `subscription-line-reduce-${pendingId}` } });
 
-  /** A paid monthly invoice for the agreement, paid through Stripe (a charge id) or by hand (cash). */
-  async function payInvoice(s: Scenario, input: { cents: number; periodStart: string; via: "STRIPE" | "MANUAL"; chargeId?: string }) {
+  /** A historical monthly invoice for line A, paid fully or partially through Stripe or by hand. */
+  async function payInvoice(
+    s: Scenario,
+    input: {
+      cents: number;
+      periodStart: string;
+      via: "STRIPE" | "MANUAL";
+      chargeId?: string;
+      taxCents?: number;
+    },
+  ) {
     const id = `sl-inv-${s.n}-${input.periodStart}-${tag}`;
+    const baseCents = 6000;
+    const taxCents = input.taxCents ?? 0;
+    const amountDueCents = baseCents + taxCents;
     invoiceIds.push(id);
     await prisma.invoice.create({
       data: {
         id,
         customerId,
         agreementId: s.agreementId,
-        status: "PAID",
+        status: input.cents >= amountDueCents ? "PAID" : "PARTIALLY_PAID",
         billingPeriodStart: businessDateFromKey(input.periodStart)!,
-        subtotalCents: input.cents,
-        amountDueCents: input.cents,
+        subtotalCents: baseCents,
+        taxCents,
+        amountDueCents,
         amountPaidCents: input.cents,
       },
     });
+    const line = await prisma.invoiceLineItem.create({
+      data: {
+        invoiceId: id,
+        kind: "RENTAL",
+        description: "Washer/Dryer set",
+        amountCents: baseCents,
+        quantity: 1,
+        rentalLineId: s.lineA,
+      },
+    });
+    if (taxCents > 0) {
+      await prisma.invoiceTaxLine.create({
+        data: {
+          invoiceId: id,
+          invoiceLineItemId: line.id,
+          jurisdictionId: taxJurisdictionId,
+          rateVersionId: taxRateVersionId,
+          category: "RENTAL",
+          taxableCents: baseCents,
+          taxCents,
+          source: "STRIPE",
+        },
+      });
+    }
     const receiptId = `sl-rec-${s.n}-${input.periodStart}-${tag}`;
     receiptIds.push(receiptId);
     await prisma.receipt.create({
@@ -261,6 +300,25 @@ describe.skipIf(!enabled)("a waiting item and the Stripe subscription (real Post
     await prisma.user.create({ data: { id: userId, email: `${tag}@example.test`, name: "Line fixture", role: "CUSTOMER" } });
     await prisma.customer.create({ data: { id: customerId, userId, referralCode: `S${tag.slice(0, 18)}` } });
     await prisma.serviceAddress.create({ data: { id: addressId, customerId, line1: "9 Test St", city: "Denver", zip: "80201" } });
+    await prisma.taxJurisdiction.create({
+      data: {
+        id: taxJurisdictionId,
+        code: `SL-${tag.slice(0, 8)}`,
+        name: "Subscription-line historical tax",
+        level: "CITY",
+        administration: "STATE_COLLECTED",
+        reviewStatus: "REVIEWED",
+      },
+    });
+    await prisma.taxRateVersion.create({
+      data: {
+        id: taxRateVersionId,
+        jurisdictionId: taxJurisdictionId,
+        rateMilliPercent: 8000,
+        effectiveFrom: businessDateFromKey("2026-09-01")!,
+        source: "MANUAL",
+      },
+    });
     await prisma.applianceType.create({ data: { id: typeId, name: `Dryer ${tag}`, slug: `sl-dryer-${tag}`, monthlyPriceCents: 3000 } });
     await prisma.applianceType.create({ data: { id: otherTypeId, name: `Freezer ${tag}`, slug: `sl-freezer-${tag}`, monthlyPriceCents: 2000 } });
   });
@@ -308,6 +366,8 @@ describe.skipIf(!enabled)("a waiting item and the Stripe subscription (real Post
     await prisma.rentalAgreement.deleteMany({ where: { id: { in: agreementIds } } });
     await prisma.appliance.deleteMany({ where: { id: { in: applianceIds } } });
     await prisma.applianceType.deleteMany({ where: { id: { in: [typeId, otherTypeId] } } });
+    await prisma.taxRateVersion.deleteMany({ where: { id: taxRateVersionId } });
+    await prisma.taxJurisdiction.deleteMany({ where: { id: taxJurisdictionId } });
     await prisma.serviceAddress.deleteMany({ where: { id: addressId } });
     await prisma.customer.deleteMany({ where: { id: customerId } });
     await prisma.user.deleteMany({ where: { id: { in: [userId, ownerId] } } });
@@ -506,13 +566,13 @@ describe.skipIf(!enabled)("a waiting item and the Stripe subscription (real Post
     const s = await build({ lineB: true });
     await withTax(s);
     // $60 + 8% tax = $64.80 per month for the whole agreement. The item's share is $30 + $2.40 tax = $32.40 a month, two months billed.
-    await payInvoice(s, { cents: 6480, periodStart: "2026-09-01", via: "STRIPE", chargeId: `ch_sep_${s.n}` });
-    await payInvoice(s, { cents: 4000, periodStart: "2026-10-01", via: "STRIPE", chargeId: `ch_oct_${s.n}` });
+    await payInvoice(s, { cents: 6480, periodStart: "2026-09-01", via: "STRIPE", chargeId: `ch_sep_${s.n}`, taxCents: 480 });
+    await payInvoice(s, { cents: 4000, periodStart: "2026-10-01", via: "STRIPE", chargeId: `ch_oct_${s.n}`, taxCents: 480 });
     await removeUndeliveredItem(ownerId, s.pending.id, businessDateFromKey("2026-10-03")!);
 
     expect(sim.state.refundCalls.map((c) => [c.charge, c.amount])).toEqual([
-      [`ch_oct_${s.n}`, 4000],
-      [`ch_sep_${s.n}`, 2480],
+      [`ch_oct_${s.n}`, 3240],
+      [`ch_sep_${s.n}`, 3240],
     ]);
     const row = await prisma.pendingDelivery.findUniqueOrThrow({ where: { id: s.pending.id } });
     expect(row).toMatchObject({ refundedCents: 6480, refundByHandCents: 0, creditId: null });
@@ -530,15 +590,19 @@ describe.skipIf(!enabled)("a waiting item and the Stripe subscription (real Post
   it("R2 money paid by cash or check is not sent to Stripe: it is recorded for the owner to pay back by hand", async () => {
     const s = await build({ lineB: true });
     await withTax(s);
-    await payInvoice(s, { cents: 6480, periodStart: "2026-09-01", via: "MANUAL" });
-    await payInvoice(s, { cents: 6480, periodStart: "2026-10-01", via: "MANUAL" });
+    await payInvoice(s, { cents: 6480, periodStart: "2026-09-01", via: "MANUAL", taxCents: 480 });
+    await payInvoice(s, { cents: 6480, periodStart: "2026-10-01", via: "MANUAL", taxCents: 480 });
     await removeUndeliveredItem(ownerId, s.pending.id, businessDateFromKey("2026-10-03")!);
     expect(sim.state.refundCalls).toHaveLength(0);
     const row = await prisma.pendingDelivery.findUniqueOrThrow({ where: { id: s.pending.id } });
     expect(row).toMatchObject({ refundedCents: 0, refundByHandCents: 6480 });
-    const refund = await prisma.refund.findFirstOrThrow({ where: { invoiceId: { in: invoiceIds.filter((id) => id.includes(`-${s.n}-`)) } } });
-    expect(refund.stripeRefundId).toBeNull();
-    expect(refund.amountCents).toBe(6480);
+    const refunds = await prisma.refund.findMany({
+      where: { invoiceId: { in: invoiceIds.filter((id) => id.includes(`-${s.n}-`)) } },
+      orderBy: { createdAt: "asc" },
+    });
+    expect(refunds).toHaveLength(2);
+    expect(refunds.every((refund) => refund.stripeRefundId === null)).toBe(true);
+    expect(refunds.map((refund) => refund.amountCents).sort((a, b) => a - b)).toEqual([3240, 3240]);
   });
 
   it("R3 a failed Stripe refund stays on record as unfinished and is never counted as done", async () => {

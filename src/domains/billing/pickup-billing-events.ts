@@ -3,11 +3,10 @@ import { prisma } from "@/lib/prisma";
 import { getStripeClient } from "@/lib/stripe";
 import { businessDateFromKey, businessDateKey, businessDayBounds, businessDaysBetween, formatBusinessDate } from "@/lib/business-date";
 import { formatCents } from "@/domains/pricing/money";
-import { taxCentsForLine } from "./tax";
 import { applyLocalInvoiceTaxInTx } from "@/domains/tax/local-invoice";
 import { runPreparedInvoiceRefund, type ClaimedRefund } from "./refunds";
 import { lockCustomerLedger } from "./ledger";
-import { refundAcrossPaidInvoicesInTx } from "./refund-across-invoices";
+import { refundRentalItemAcrossPaidInvoicesInTx } from "./refund-across-invoices";
 import { assertActiveTeamActor } from "@/lib/team-actor";
 import { closeAgreementInTx, lockRentalAgreementInTx, runCloseAgreementContinuation, type CloseAgreementResult } from "@/domains/agreements";
 import { dropSubstituteInTx } from "@/domains/jobs/substitution";
@@ -118,6 +117,7 @@ export type Item = {
   rentalLineId: string;
   label: string;
   monthlyPriceCents: number;
+  lineMonthlyPriceCents: number;
 };
 
 const SUPERSEDED_UNASSIGN_PREFIXES = [NEVER_DELIVERED_UNASSIGN_REASON, "Swapped out for repair", "Swapped for", "Replaced by"];
@@ -172,6 +172,7 @@ export async function itemsForAppliances(
       rentalLineId: a.rentalLine.id,
       label: `${a.appliance.applianceType.name} #${a.appliance.assetNumber}`,
       monthlyPriceCents: itemMonthlyPriceCents(a.rentalLine.monthlyPriceCents, onLine.length, index),
+      lineMonthlyPriceCents: a.rentalLine.monthlyPriceCents,
     });
   }
   return items;
@@ -185,7 +186,6 @@ const AGREEMENT_SELECT = {
   terminationEffectiveOn: true,
   billingStartedAt: true,
   paidInFullInAdvance: true,
-  taxRateMilliPercent: true,
 } as const;
 
 /**
@@ -593,14 +593,18 @@ export async function removeUndeliveredItem(userId: string, pendingDeliveryId: s
     } else if (agreement.paidInFullInAdvance) {
       note = `${item.label}: paid in full in advance, the owner settles the refund by hand.`;
     } else {
-      const periods = periodsBilledThrough(agreement.billingStartedAt, now);
-      const owedCents = (item.monthlyPriceCents + taxCentsForLine(item.monthlyPriceCents, agreement.taxRateMilliPercent)) * periods;
-      const refunded = await refundAcrossPaidInvoicesInTx(tx, userId, {
-        agreementId: agreement.id,
-        amountCents: owedCents,
-        reason: "BILLING_ERROR",
-        notes: `Never delivered: ${item.label} taken off the agreement.`,
-      });
+      const refunded = await refundRentalItemAcrossPaidInvoicesInTx(
+        tx,
+        userId,
+        {
+          agreementId: agreement.id,
+          rentalLineId: item.rentalLineId,
+          applianceId: item.applianceId,
+          reason: "BILLING_ERROR",
+          notes: `Never delivered: ${item.label} taken off the agreement.`,
+        },
+      );
+      const owedCents = refunded.requestedCents;
       refundedCents = refunded.refundedCents;
       refundByHandCents = refunded.refundByHandCents;
       refundRuns.push(...refunded.runs);
@@ -609,7 +613,7 @@ export async function removeUndeliveredItem(userId: string, pendingDeliveryId: s
       if (owedCents === 0) {
         note = `${item.label}: taken off the agreement before anything was billed for it.`;
       } else {
-        note = `${item.label}: taken off the agreement. Billed for ${periods} month(s), ${formatCents(owedCents)} with tax.`;
+        note = `${item.label}: taken off the agreement. Historical billed amount to reverse: ${formatCents(owedCents)} including recorded tax.`;
         if (refundedCents > 0) note += ` ${formatCents(refundedCents)} is being refunded to the card or bank it was paid with.`;
         if (refundByHandCents > 0) note += ` ${formatCents(refundByHandCents)} was paid another way, so you pay that back by hand.`;
         if (remaining > 0) note += ` ${formatCents(remaining)} was billed but never paid, so there is nothing to refund for it.`;
