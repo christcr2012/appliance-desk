@@ -19,9 +19,18 @@ export async function GET(request: Request): Promise<NextResponse> {
   return NextResponse.json(
     await runAutomation({
       ruleKey: "tax-address-recheck",
-      work: async () => ({
-        counts: await recheckCurrentTaxAddresses(),
-      }),
+      work: async () => {
+        const result = await recheckCurrentTaxAddresses();
+        return {
+          counts: {
+            due: result.due ? 1 : 0,
+            automaticSourceAvailable: result.automaticSourceAvailable ? 1 : 0,
+            checked: result.checked,
+            changed: result.changed,
+            needsReview: result.needsReview,
+          },
+        };
+      },
     }),
   );
 }
