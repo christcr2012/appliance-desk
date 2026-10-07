@@ -20,7 +20,7 @@ Each F measurement gets one warm-up and five samples; the committed value is the
 | f-large-account-owner-read | 13.5 ms | 50 properties / 200 active appliances; owner property workspace + active-equipment query |
 | f-large-invoices-billing-page | 3.3 ms | 5,000 invoices; billing count + first 50-row page |
 
-The two 1000 ms values above are intentionally temporary first-run ceilings, not claimed measurements. **F1-c must not merge with them.** After its first green `Performance Baselines` run, replace them with that exact runner's printed medians and record the tested commit/run below. Subsequent runs enforce the +20% rule against those measured values.
+These are the exact medians from the first green F1-c `Performance Baselines` run. Subsequent runs enforce the +20% rule against these committed measurements.
 
 ## Baseline evidence
 
