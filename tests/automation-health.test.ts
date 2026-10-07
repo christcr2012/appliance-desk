@@ -26,6 +26,12 @@ describe("automation rule registry", () => {
     ]);
   });
 
+  it("tracks the Batch T address re-check", () => {
+    expect(AUTOMATION_RULES.map((rule) => rule.ruleKey)).toContain(
+      "tax-address-recheck",
+    );
+  });
+
   it("has one unique key and a plain explanation for every displayed rule", () => {
     const keys = AUTOMATION_RULES.map((rule) => rule.ruleKey);
     expect(new Set(keys).size).toBe(keys.length);
