@@ -31,6 +31,34 @@ function remainingRefundableCents(invoice: {
   );
 }
 
+async function taxRowsByInvoiceLineId(
+  tx: Prisma.TransactionClient,
+  lineIds: string[],
+): Promise<Map<string, number[]>> {
+  const rows =
+    lineIds.length === 0
+      ? []
+      : await tx.invoiceTaxLine.findMany({
+          where: { invoiceLineItemId: { in: lineIds } },
+          select: { invoiceLineItemId: true, taxCents: true },
+        });
+  const byLine = new Map<string, number[]>();
+  for (const row of rows) {
+    if (!row.invoiceLineItemId) continue;
+    const amounts = byLine.get(row.invoiceLineItemId) ?? [];
+    amounts.push(row.taxCents);
+    byLine.set(row.invoiceLineItemId, amounts);
+  }
+  return byLine;
+}
+
+function taxCentsForStoredLine(
+  taxRows: Map<string, number[]>,
+  lineId: string,
+): number {
+  return (taxRows.get(lineId) ?? []).reduce((sum, cents) => sum + cents, 0);
+}
+
 export async function billedRentalLineEvidenceInTx(
   tx: Prisma.TransactionClient,
   input: { agreementId: string; rentalLineId: string },
@@ -50,21 +78,23 @@ export async function billedRentalLineEvidenceInTx(
       },
     },
     select: {
+      id: true,
       amountCents: true,
       invoice: { select: { taxCents: true } },
-      taxLines: { select: { taxCents: true } },
     },
   });
+  const taxRows = await taxRowsByInvoiceLineId(
+    tx,
+    lines.map((line) => line.id),
+  );
 
   const baseCents = lines.reduce((sum, line) => sum + line.amountCents, 0);
   const taxCents = lines.reduce(
-    (sum, line) =>
-      sum +
-      line.taxLines.reduce((taxSum, taxLine) => taxSum + taxLine.taxCents, 0),
+    (sum, line) => sum + taxCentsForStoredLine(taxRows, line.id),
     0,
   );
   const evidenceComplete = lines.every(
-    (line) => line.taxLines.length > 0 || line.invoice.taxCents === 0,
+    (line) => taxRows.has(line.id) || line.invoice.taxCents === 0,
   );
   return {
     baseCents,
@@ -119,8 +149,8 @@ export async function rentalItemInvoiceEvidenceInTx(
       { id: "asc" },
     ],
     select: {
+      id: true,
       amountCents: true,
-      taxLines: { select: { taxCents: true } },
       invoice: {
         select: {
           id: true,
@@ -133,6 +163,10 @@ export async function rentalItemInvoiceEvidenceInTx(
       },
     },
   });
+  const taxRows = await taxRowsByInvoiceLineId(
+    tx,
+    lines.map((line) => line.id),
+  );
 
   const byInvoice = new Map<string, RentalItemInvoiceEvidence>();
   for (const line of lines) {
@@ -151,11 +185,12 @@ export async function rentalItemInvoiceEvidenceInTx(
 
     const weights = active.map(() => 1);
     const baseCents = allocateAcrossLines(line.amountCents, weights)[targetIndex];
+    const storedTaxRows = taxRows.get(line.id) ?? [];
     const evidenceComplete =
-      line.taxLines.length > 0 || line.invoice.taxCents === 0;
-    const taxCents = line.taxLines.reduce(
-      (sum, taxLine) =>
-        sum + allocateAcrossLines(taxLine.taxCents, weights)[targetIndex],
+      storedTaxRows.length > 0 || line.invoice.taxCents === 0;
+    const taxCents = storedTaxRows.reduce(
+      (sum, lineTaxCents) =>
+        sum + allocateAcrossLines(lineTaxCents, weights)[targetIndex],
       0,
     );
 
@@ -302,13 +337,17 @@ export async function historicalRentalTaxForBaseCentsInTx(
             lineItems: {
               where: { kind: "RENTAL", amountCents: { gt: 0 } },
               select: {
+                id: true,
                 amountCents: true,
-                taxLines: { select: { taxCents: true } },
               },
             },
           },
         })
       : [];
+  const taxRows = await taxRowsByInvoiceLineId(
+    tx,
+    invoices.flatMap((invoice) => invoice.lineItems.map((line) => line.id)),
+  );
 
   for (const invoice of invoices) {
     if (remainingBaseCents <= 0) break;
@@ -322,17 +361,12 @@ export async function historicalRentalTaxForBaseCentsInTx(
     if (rentalBaseCents <= 0) continue;
 
     const invoiceEvidenceComplete = invoice.lineItems.every(
-      (line) => line.taxLines.length > 0 || invoice.taxCents === 0,
+      (line) => taxRows.has(line.id) || invoice.taxCents === 0,
     );
     if (!invoiceEvidenceComplete) evidenceComplete = false;
 
     const rentalTaxCents = invoice.lineItems.reduce(
-      (sum, line) =>
-        sum +
-        line.taxLines.reduce(
-          (taxSum, taxLine) => taxSum + taxLine.taxCents,
-          0,
-        ),
+      (sum, line) => sum + taxCentsForStoredLine(taxRows, line.id),
       0,
     );
     const rentalGrossCents = rentalBaseCents + rentalTaxCents;
