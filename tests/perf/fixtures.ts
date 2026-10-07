@@ -17,21 +17,31 @@ export async function measuredMedian<T>(
   label: string,
   fn: () => Promise<T>,
   samples = 5,
+  iterationsPerSample = 20,
 ): Promise<{ value: T; ms: number; samples: number[] }> {
   if (!Number.isInteger(samples) || samples < 3) throw new Error("Performance measurements need at least three samples.");
+  if (!Number.isInteger(iterationsPerSample) || iterationsPerSample < 1) {
+    throw new Error("Performance measurements need at least one iteration per sample.");
+  }
 
+  // Warm the Prisma client/query path once. Each measured sample then batches
+  // repeated real reads and reports per-operation wall time. This keeps tiny
+  // 3–15 ms queries from turning normal GitHub-runner scheduling noise into a
+  // false >20% regression.
   await fn();
   const timings: number[] = [];
   let value!: T;
-  for (let index = 0; index < samples; index += 1) {
+  for (let sample = 0; sample < samples; sample += 1) {
     const started = performance.now();
-    value = await fn();
-    timings.push(performance.now() - started);
+    for (let iteration = 0; iteration < iterationsPerSample; iteration += 1) {
+      value = await fn();
+    }
+    timings.push((performance.now() - started) / iterationsPerSample);
   }
   const ordered = [...timings].sort((a, b) => a - b);
   const ms = ordered[Math.floor(ordered.length / 2)]!;
   console.log(
-    `[batch-f-perf] ${label}: median ${ms.toFixed(1)}ms; samples ${timings.map((n) => n.toFixed(1)).join(", ")}ms`,
+    `[batch-f-perf] ${label}: median ${ms.toFixed(2)}ms/op over ${iterationsPerSample} ops/sample; samples ${timings.map((n) => n.toFixed(2)).join(", ")}ms/op`,
   );
   return { value, ms, samples: timings };
 }
