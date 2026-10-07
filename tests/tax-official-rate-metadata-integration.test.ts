@@ -129,6 +129,37 @@ describe.skipIf(!enabled)("T-5b1 official rate metadata (real Postgres)", () => 
     ).toBe(1);
   });
 
+  it("serializes concurrent same-day observations to one row", async () => {
+    const asOf = businessDateFromKey("2027-01-03")!;
+    const observedAt = new Date("2026-10-06T18:00:00.000Z");
+
+    const [first, second] = await Promise.all([
+      prisma.$transaction((tx) =>
+        recordTaxRateObservationInTx(tx, {
+          jurisdictionId,
+          asOf,
+          rateMilliPercent: 7_550,
+          observedAt,
+        }),
+      ),
+      prisma.$transaction((tx) =>
+        recordTaxRateObservationInTx(tx, {
+          jurisdictionId,
+          asOf,
+          rateMilliPercent: 7_550,
+          observedAt: new Date("2026-10-06T22:00:00.000Z"),
+        }),
+      ),
+    ]);
+
+    expect(second.id).toBe(first.id);
+    expect(
+      await prisma.taxRateObservation.count({
+        where: { jurisdictionId, asOf, rateMilliPercent: 7_550 },
+      }),
+    ).toBe(1);
+  });
+
   it("requires the same rate on two distinct Colorado dates for confirmation", async () => {
     const asOf = businessDateFromKey("2027-07-01")!;
     const dayOne = new Date("2026-10-06T15:00:00.000Z");
