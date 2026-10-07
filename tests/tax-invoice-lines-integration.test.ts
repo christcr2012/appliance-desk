@@ -3,6 +3,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import {
   computeAgreementInvoiceTax,
+  mirrorStripeInvoiceTax,
   recalculateDraftInvoiceTax,
 } from "@/domains/tax/invoice-tax";
 import { recordLateReturnOnRemoval } from "@/domains/billing/pickup-billing-events";
@@ -26,6 +27,7 @@ describe.skipIf(!enabled)("Batch T invoice tax lines (real Postgres)", () => {
   const applianceId = `tax-invoice-unit-${tag}`;
   let rentalLineId: string;
   let taxReady: Awaited<ReturnType<typeof seedTaxReadyContext>>;
+  const stripeTaxRateId = `txr_tax_invoice_${tag}`;
 
   beforeAll(async () => {
     await prisma.user.create({
@@ -79,6 +81,10 @@ describe.skipIf(!enabled)("Batch T invoice tax lines (real Postgres)", () => {
       data: { rentalLineId, applianceId },
     });
     taxReady = await seedTaxReadyContext(addressId, { rateMilliPercent: 1000 });
+    await prisma.taxRateVersion.update({
+      where: { id: taxReady.rateVersionId },
+      data: { stripeTaxRateId },
+    });
   });
 
   beforeEach(async () => {
@@ -107,6 +113,7 @@ describe.skipIf(!enabled)("Batch T invoice tax lines (real Postgres)", () => {
         OR: [
           { action: "billing.late_return_invoiced" },
           { action: "billing.tax_decision_needed" },
+          { action: "billing.tax_mismatch" },
         ],
       },
     });
@@ -281,6 +288,165 @@ describe.skipIf(!enabled)("Batch T invoice tax lines (real Postgres)", () => {
         source: "ENGINE",
       }),
     ]);
+  });
+
+  it("records Stripe tax and raises exactly one exception for a one-cent mismatch", async () => {
+    const invoice = await prisma.invoice.create({
+      data: {
+        customerId,
+        agreementId,
+        status: "PAID",
+        subtotalCents: 1000,
+        taxCents: 11,
+        amountDueCents: 1011,
+        amountPaidCents: 1011,
+      },
+    });
+
+    const run = () =>
+      prisma.$transaction((tx) =>
+        mirrorStripeInvoiceTax(tx, {
+          invoiceId: invoice.id,
+          agreementId,
+          taxDate: new Date(),
+          lines: [{ key: "stripe-rent", kind: "RENTAL", amountCents: 1000 }],
+          stripeTaxes: [
+            {
+              taxRateId: stripeTaxRateId,
+              amountCents: 11,
+              taxableCents: 1000,
+            },
+          ],
+        }),
+      );
+
+    const result = await run();
+    expect(result).toMatchObject({
+      expectedTaxCents: 10,
+      stripeTaxCents: 11,
+    });
+    expect(result.problems.some((problem) => problem.includes("Stripe charged 11 cents"))).toBe(true);
+    expect(
+      await prisma.invoiceTaxLine.findMany({
+        where: { invoiceId: invoice.id, source: "STRIPE" },
+      }),
+    ).toEqual([
+      expect.objectContaining({
+        jurisdictionId: taxReady.jurisdictionId,
+        rateVersionId: taxReady.rateVersionId,
+        taxableCents: 1000,
+        taxCents: 11,
+      }),
+    ]);
+    expect(
+      await prisma.auditLog.count({
+        where: {
+          entityType: "Invoice",
+          entityId: invoice.id,
+          action: "billing.tax_mismatch",
+        },
+      }),
+    ).toBe(1);
+
+    await run();
+    expect(
+      await prisma.auditLog.count({
+        where: {
+          entityType: "Invoice",
+          entityId: invoice.id,
+          action: "billing.tax_mismatch",
+        },
+      }),
+    ).toBe(1);
+  });
+
+  it("records exempt engine rows when Stripe correctly charges no tax", async () => {
+    await prisma.businessSettings.update({
+      where: { id: "singleton" },
+      data: { shortTermLeaseElection: "PAY_ON_ACQUISITION" },
+    });
+    const invoice = await prisma.invoice.create({
+      data: {
+        customerId,
+        agreementId,
+        status: "PAID",
+        subtotalCents: 1000,
+        taxCents: 0,
+        amountDueCents: 1000,
+        amountPaidCents: 1000,
+      },
+    });
+
+    const result = await prisma.$transaction((tx) =>
+      mirrorStripeInvoiceTax(tx, {
+        invoiceId: invoice.id,
+        agreementId,
+        taxDate: new Date(),
+        lines: [{ key: "stripe-rent", kind: "RENTAL", amountCents: 1000 }],
+        stripeTaxes: [],
+      }),
+    );
+
+    expect(result.problems).toEqual([]);
+    expect(
+      await prisma.invoiceTaxLine.findMany({ where: { invoiceId: invoice.id } }),
+    ).toEqual([
+      expect.objectContaining({
+        source: "ENGINE",
+        jurisdictionId: taxReady.jurisdictionId,
+        taxableCents: 0,
+        exemptCents: 1000,
+        taxCents: 0,
+      }),
+    ]);
+  });
+
+  it("does not treat account credit as a taxable-base reduction", async () => {
+    const invoice = await prisma.invoice.create({
+      data: {
+        customerId,
+        agreementId,
+        status: "PAID",
+        subtotalCents: 500,
+        taxCents: 10,
+        amountDueCents: 510,
+        amountPaidCents: 510,
+      },
+    });
+
+    const result = await prisma.$transaction((tx) =>
+      mirrorStripeInvoiceTax(tx, {
+        invoiceId: invoice.id,
+        agreementId,
+        taxDate: new Date(),
+        lines: [
+          { key: "stripe-rent", kind: "RENTAL", amountCents: 1000 },
+          { key: "account-credit", kind: "CREDIT", amountCents: -500 },
+        ],
+        stripeTaxes: [
+          {
+            taxRateId: stripeTaxRateId,
+            amountCents: 10,
+            taxableCents: 1000,
+          },
+        ],
+      }),
+    );
+
+    expect(result).toMatchObject({
+      expectedTaxCents: 10,
+      stripeTaxCents: 10,
+      problems: [],
+    });
+    expect(
+      await prisma.auditLog.count({
+        where: {
+          entityType: "Invoice",
+          entityId: invoice.id,
+          action: "billing.tax_mismatch",
+        },
+      }),
+    ).toBe(0);
   });
 
   it("returns a problem instead of throwing when the address needs review", async () => {
