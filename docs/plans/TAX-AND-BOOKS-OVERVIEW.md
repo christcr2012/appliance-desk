@@ -95,8 +95,7 @@ These are tracked as IN-33 to IN-39 in `docs/OWNER-INPUTS.md`.
 4. **(IN-36)** If one customer keeps the same appliance more than 3 years through renewals, does the rental rule change?
 5. **(IN-37) Retail delivery fee:** the app says whether Colorado's 31¢-per-delivery fee applies to me (it should not
    under option (a) of question 1, and I am exempt while my prior-year Colorado sales are $500,000 or less). Is that
-   right? If it ever applies, should I charge customers or pay it myself? Does a replacement appliance delivered for a
-   repair count as a new delivery?
+   right? If it ever applies, should I charge customers or pay it myself? (Free repair swaps never owe it.)
 6. **(IN-38)** My rental agreement will say "sales tax for your address, currently X%" instead of a fixed rate — is that
    fine? (Also ask your attorney.)
 7. **(IN-39)** When I write off a bill a customer never paid, can I take back the sales tax I already reported on it?

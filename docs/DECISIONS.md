@@ -478,3 +478,7 @@ Second Codex review (PR #282) fixes: retail delivery fee counted once per sale (
 grace; undecided fee status blocks readiness and deliveries are kept as pending records; pending records allowed when
 the year's amount is missing; RDF over-reporting is a credit on the current return (DR 1786) while added fees amend;
 service-fee eligibility uses the payment date as well as the filing date.
+Third Codex review fixes: free repair swaps never owe the retail delivery fee (Colorado's regulation; the owner
+setting was removed); the fee amount and reporting period follow the sale's first-payment date (`saleOn`); an
+undecided record resolves to PENDING_RATE when no amount exists; the rate/page watch route runs daily so the two-days
+rule can be met; the page watch keeps the previous text so it can show what actually changed.

@@ -704,7 +704,9 @@ behaviour (grep `taxRateMilliPercent` in `tests/`).
 ### WU-T6 — Exemptions and rate changes
 `CustomerTaxExemption` CRUD (OWNER), engine input from active exemptions, Today expiry card. Automation
 `tax-rate-changes` (new cron route, `vercel.json` `"5 18 * * *"`, `runAutomation` rule key `tax-rate-changes`) and
-the monthly/Jan 1/Jul 1 re-check (`tax-address-recheck`, `"20 13 1 * *"`) plus the Nov 15 / May 15 reminder cards.
+the re-check (`tax-address-recheck`, **daily** `"20 13 * * *"` — review fix for Amendment C: the route runs every day
+and each rule inside decides whether today is its day: the monthly/Jan 1/Jul 1 address re-check, the daily December/June
+look-ahead, the weekly page watch) plus the Nov 15 / May 15 reminder cards.
 Tests: `tests/tax-rate-change-integration.test.ts` (version starting tomorrow updates only affected subscriptions,
 once; retry after crash uses the same key; exempt-rent subscriptions untouched), `tests/tax-exemptions-integration.test.ts`.
 
@@ -1213,9 +1215,10 @@ Owner settings on Desk → Money → Sales tax → **Your tax decisions** (OWNER
   `APPLIES`; explained with the customer consequence ("customers see a separate 31¢ line" vs "you pay it; customers see
   nothing").
 - `rdfCpaConfirmedOn` (date) — the CPA has confirmed the status the app shows (IN-37).
-- `rdfCountsReplacementDeliveries`: `UNDECIDED` | `YES` | `NO` — whether delivering a replacement appliance on an
-  existing rental (repair swap) is a new retail delivery (IN-37 follow-up). Initial deliveries and deliveries of an
-  added appliance always count.
+- **Replacements are never charged (review fix, not a setting):** Colorado's retail-delivery-fee regulation says a
+  later delivery that exchanges or replaces an item free of charge is not a new retail sale, so repair/broken-unit
+  swaps never create a record. Only a new sale counts: an agreement's first delivery and an appliance added to an
+  existing agreement.
 
 **Readiness (extends D-T7; review fix):** while the status is `UNDECIDED` because the fee would apply but `rdfHandling`
 or `rdfCpaConfirmedOn` is missing, send-for-signature and billing setup show "Decide how to handle Colorado's retail
@@ -1228,13 +1231,11 @@ block. Deliveries completed while undecided (for example on agreements signed ea
 
 ```prisma
 enum RdfHandling { UNDECIDED COLLECT_FROM_CUSTOMER PAY_MYSELF }
-enum RdfReplacementRule { UNDECIDED YES NO }
 
 // BusinessSettings additions
 //   rdfThresholdCents Int @default(50000000)
 //   rdfHandling RdfHandling @default(UNDECIDED)
 //   rdfCpaConfirmedOn DateTime?
-//   rdfCountsReplacementDeliveries RdfReplacementRule @default(UNDECIDED)
 //   rdfThresholdCrossedOn DateTime?   // first day current-year sales passed the threshold with no prior-year sales
 
 enum RdfRecordStatus { PENDING_DECISION PENDING_RATE READY NOT_DUE }
@@ -1250,10 +1251,12 @@ model RetailDeliveryFeeRate {
 model RetailDeliveryFeeRecord {
   id                  String   @id @default(cuid())
   saleKey             String   @unique   // one fee per retail SALE (review fix): "agreement:<id>",
-                                         // "addition:<amendmentId>", "replacement:<jobId>" (only when counted)
+                                         // or "addition:<amendmentId>" (free replacements never count)
   firstJobId          String             // the delivery job that first fulfilled the sale (later partial trips dedupe)
   agreementId         String
   deliveredOn         DateTime           // first delivery of the sale
+  saleOn              DateTime           // date of the sale's first lease payment (agreement start or addition);
+                                         // selects the fee amount and the reporting period (review fix)
   status              RdfRecordStatus
   rateId              String?            // null while PENDING_DECISION / PENDING_RATE (review fix)
   rate                RetailDeliveryFeeRate? @relation(fields: [rateId], references: [id])
@@ -1276,12 +1279,14 @@ model RetailDeliveryFeeRecord {
   D-T5), write one `RetailDeliveryFeeRecord` keyed by the **sale**, not the trip (review fix: Colorado counts one
   retail sale as one delivery however many trips it takes): the agreement's first delivery uses `agreement:<id>`, an
   appliance added to an existing agreement uses `addition:<amendmentId>`, and later partial-delivery trips for the
-  same sale find the existing key and add nothing. Replacement deliveries count only when
-  `rdfCountsReplacementDeliveries = YES` (key `replacement:<jobId>`); while it is `UNDECIDED` they are not counted and a
-  Today task asks the owner to decide (once per replacement delivery, listing it). If the overall status is `UNDECIDED`
-  at delivery time, the record is written as `PENDING_DECISION`; once decided it becomes `READY` (charged/counted) or
-  `NOT_DUE` (status turned out not to apply), with an audit row.
-- **Amount:** the `RetailDeliveryFeeRate` in effect on the delivery date; none entered → the completion still succeeds,
+  same sale find the existing key and add nothing. Swap/replacement jobs never create a record. If the overall status
+  is `UNDECIDED` at delivery time, the record is written as `PENDING_DECISION`; once decided it becomes `NOT_DUE`
+  (status turned out not to apply) or, if the fee applies, `READY` when a rate exists for `saleOn` and `PENDING_RATE`
+  otherwise (review fix: never `READY` without an amount), with an audit row.
+- **Amount:** the `RetailDeliveryFeeRate` in effect on **`saleOn`** — the date of the sale's first lease payment
+  (Colorado charges a lease's fee once, at the first payment, at the amount in effect when the sale takes place; this
+  matters for an agreement paid before July 1 and delivered after it, including `paidInFullInAdvance` agreements);
+  none entered → the completion still succeeds,
   the record is `PENDING_RATE` (rate and amount empty) and is completed in place when the rate is entered; a `high`
   Today task says "Enter the retail delivery fee amount for July 2026 –
   June 2027". A June Today task (from June 1) reminds the owner to enter the next July's amount.
@@ -1303,7 +1308,7 @@ delivery fee" filing account (prefilled: kind `RETAIL_DELIVERY_FEE_RETURN`, freq
 Colorado sales tax account, B-F6). It then uses the same calendar, Today task, email reminders, guided page and amended
 return flow as sales tax (11.4–11.12) with a simpler packet: number of retail deliveries, fee per delivery (one row per
 rate if the period crosses July 1), total fee; zero return when there were none. Records attach to the period by
-`deliveredOn`. **Corrections (review fix):** fees *added* to an already-filed period open an amendment (11.12); fees
+`saleOn`. **Corrections (review fix):** fees *added* to an already-filed period open an amendment (11.12); fees
 *over-reported* on a filed period (a record later found `NOT_DUE`, or a cancelled sale) are claimed as a **credit on the
 current open RDF return** (DR 1786 tells filers to claim prior-period overpayments that way instead of amending): the
 RDF packet has a `priorPeriodCreditCents` line with the source period named, and no amendment is opened.
@@ -1324,7 +1329,8 @@ grace until the first period starting 90+ days after crossing; state-exempt deli
 blocks readiness),
 ★ `tests/retail-delivery-fee-integration.test.ts` (completion writes one record under retry; collected line is untaxed
 and on the next invoice; PAY_MYSELF adds no line; rate missing leaves a PENDING_RATE record completed later; undecided
-leaves PENDING_DECISION resolved later; replacement rule; added fee after filing opens an amendment; over-reported fee
+leaves PENDING_DECISION resolved later — to PENDING_RATE when no amount exists yet; a free repair swap creates no
+record; a sale paid before July 1 and delivered after uses the earlier amount; added fee after filing opens an amendment; over-reported fee
 becomes a credit on the current return), packet tests for the RDF return in `tests/tax-filing-packet.test.ts`, readiness test in the
 existing readiness suite.
 
@@ -1358,7 +1364,8 @@ update tax changes automatically?"). Extends D-T9 and WU-T6; built in PR T-5b (1
 
 New automation `tax-rate-watch` (inside the `tax-address-recheck` cron route as a second `runAutomation` call):
 
-1. **Look-ahead:** from **December 1** and **June 1**, weekly, look up every jurisdiction in use (one representative
+1. **Look-ahead:** **every day** from **December 1** and **June 1** (so the two-days rule can be met well before the
+   change), look up every jurisdiction in use (one representative
    reviewed address per jurisdiction combination, not every customer) **as of the coming January 1 / July 1**, if the GIS
    contract supports an effective date (runbook gate; the public bulk-lookup format already accepts a `Date` column). If
    it does not, the look-ahead is skipped and the existing November 15 / May 15 reminder plus the page watch (13.3)
@@ -1388,7 +1395,7 @@ two-days rule (rows older than a year are deleted by the same automation).
 
 ### 13.3 Official page watch (alerts only)
 
-New automation `tax-source-watch` (weekly, same cron route). Model:
+New automation `tax-source-watch` (weekly on Mondays, inside the daily `tax-address-recheck` route). Model:
 
 ```prisma
 model OfficialSourceWatch {
@@ -1397,7 +1404,8 @@ model OfficialSourceWatch {
   url           String    @unique
   active        Boolean   @default(true)
   lastHash      String?   // sha256 of the normalised page text
-  lastExcerpt   String?   // first ~600 characters of what changed, plain text
+  lastText      String?   // the normalised page text from the last check (capped at 200 KB) — needed to show what changed
+  lastExcerpt   String?   // up to ~600 characters of the paragraphs added or removed since the previous check
   lastCheckedAt DateTime?
   lastChangedAt DateTime?
   lastError     String?
@@ -1413,7 +1421,10 @@ model OfficialSourceWatch {
 - **Fetch safety** (server-side fetch of owner-entered URLs): `https` only; host must end in `.gov` or `.co.us` or be in
   a short reviewed allowlist in code; no IP literals, no redirects to another host, 10-second timeout, 2 MB cap, no
   cookies or credentials; text extracted by stripping tags/scripts and collapsing whitespace before hashing (so page
-  chrome changes rarely trigger).
+  chrome changes rarely trigger). The page text is split into paragraphs; on a hash change the paragraphs added or
+  removed versus `lastText` (a simple paragraph-level diff) form `lastExcerpt` ("Added: …" / "Removed: …"), and then
+  `lastText` is replaced (review fix: an excerpt of the new page's first lines would usually show navigation, not the
+  change).
 - **Change found:** Today task `TAX_SOURCE_CHANGED` "Colorado updated *Sales tax rate changes* — here is what's new"
   (excerpt + link), cleared by "I looked at it" (sets `reviewedAt`). An owner email goes out with the same text (11.6).
   Three failed fetches in a row → task "We couldn't check <label> — the page may have moved".
@@ -1431,7 +1442,8 @@ July. The amount is still entered (or confirmed) by the owner — the page is no
 only), ★ `tests/tax-rate-watch-integration.test.ts` (auto-applied version created once; undo before start removes it
 and D-T9 does not push it; guardrail failure creates a review task; switch off → review only),
 `tests/official-source-watch.test.ts` (URL validation rejects http, IP literals, other-host redirects; normalisation
-ignores whitespace; change produces one task; fetch failures counted), all with fake fetch and fake GIS — never real
+ignores whitespace; the excerpt shows the added/removed paragraph, not the page header; change produces one task;
+fetch failures counted), all with fake fetch and fake GIS — never real
 network in CI.
 
 ### 13.6 Stop-and-ask
