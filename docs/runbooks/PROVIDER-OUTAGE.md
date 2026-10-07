@@ -36,4 +36,4 @@ Use this when Stripe, Resend, Twilio, Vercel Blob, or another configured provide
 
 In an isolated preview/test environment: remove or invalidate one provider credential, run the affected workflow, confirm the UI shows **unconfigured/failing/unknown** as appropriate, confirm no duplicate provider action occurs, restore configuration, run normal reconciliation, and verify the record returns to a known state.
 
-Last drilled: not yet recorded.
+Last drilled: **not yet manually (as of 2026-10-06)**. Automated provider failure/idempotency/reconciliation paths run in CI; a manual provider-outage drill remains to be recorded.

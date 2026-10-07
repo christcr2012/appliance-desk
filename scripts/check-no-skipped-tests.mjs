@@ -8,13 +8,18 @@
 //
 // The report comes from `vitest run --reporter=default --reporter=json
 // --outputFile.json=<file>`. The only test allowed to skip in the main unit
-// job is the Batch E performance baseline, which runs in its own workflow
-// (.github/workflows/perf.yml, BATCH_E_PERF=true).
+// job is a dedicated performance test that runs in its own workflow
+// (.github/workflows/perf.yml, BATCH_E_PERF=true). Pure perf guard tests still
+// run in normal CI and therefore are not allow-listed here.
 
 import { readFileSync, existsSync } from "node:fs";
 import path from "node:path";
 
-const ALLOWED_TO_SKIP = new Set(["tests/perf/batch-e-large-lists.test.ts"]);
+const ALLOWED_TO_SKIP = new Set([
+  "tests/perf/batch-e-large-lists.test.ts",
+  "tests/perf/large-account.test.ts",
+  "tests/perf/large-invoices.test.ts",
+]);
 
 const file = process.argv[2];
 if (!file || !existsSync(file)) {
