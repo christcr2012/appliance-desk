@@ -8,7 +8,6 @@ import { getPublishedApplianceTypes, formatCents } from "@/domains/pricing";
 import { getPublishedContent } from "@/domains/site-content";
 import { getContentForRequest } from "@/domains/site-content/request";
 import { catalogAlt } from "@/domains/site-content/fields";
-import { formatTaxRate } from "@/domains/billing/tax";
 
 export async function generateMetadata(): Promise<Metadata> {
   const content = await getPublishedContent();
@@ -146,9 +145,7 @@ export default async function PricingPage({
               )}
               <li>
                 <span className="font-medium text-ink">Sales tax:</span>{" "}
-                {settings.taxRateConfirmed
-                  ? `${formatTaxRate(settings.taxRateMilliPercent)} applied at invoice time.`
-                  : "not yet finalized — will be added at invoice time and shown before you owe anything."}
+                plus sales tax for your service address, shown on your invoice.
               </li>
               <li>
                 <span className="font-medium text-ink">Late fee:</span> a
