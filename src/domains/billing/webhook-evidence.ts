@@ -27,6 +27,7 @@ export type PaymentDetails = {
   method: string | null;
   stripeChargeId: string | null;
   receivedOn: Date;
+  amountReceivedCents: number | null;
 };
 
 export class MissingWebhookEvidenceError extends Error {
@@ -87,6 +88,9 @@ async function fetchPaymentDetails(
     method,
     stripeChargeId: charge?.id ?? null,
     receivedOn: charge?.created ? new Date(charge.created * 1000) : fallbackReceivedOn,
+    amountReceivedCents: Number.isInteger(intent.amount_received)
+      ? intent.amount_received
+      : null,
   };
 }
 
