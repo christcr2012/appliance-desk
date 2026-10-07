@@ -131,6 +131,20 @@ Template rendering uses an allowlist of placeholders for customer, address, equi
 
 Default seeds are examples marked “Suggested starting template — review before use.” Fees, rates, duration lists, reminder timing, promotion hold lengths, commission policy and operational thresholds are stored values; values already owned by B2/E/T/K/O continue to use those settings. Do not create competing global controls. The optional 45-day retention contact is configurable and distinct from the existing legally constrained notice schedule.
 
+### D-BP12 Options are selectable only when behavior supports them
+
+The owner requested additional options and research on 2026-10-07. The [options catalog](../business/OPTIONS-CATALOG.md) defines 22 commercial/operational choices and their current, BP or later implementation ownership. It is the required template-design input; candidate future options do not silently become deliverables of the existing 16-slice estimate.
+
+Expose five editor groups: equipment/service, duration/renewal, charges/payment, access/delivery, exceptions/protections. A typed capability descriptor declares each option key, supported choices, existing domain validator, required policy fields, compatible template kinds, required approvals and delivery status. This is a small appliance-specific manifest beside the template validator, not a generic scripting/rules platform or another database ledger.
+
+Statuses shown to the owner: Supported; Needs setup; Needs review; Not built yet. Compute them from actual domain support, configuration, review evidence and stock as relevant. A published template can select only supported, ready choices. Legacy inherited behavior remains intact; new optional extras start unselected, not automatically enabled by default seeds. A duplicate template retains its version/provenance and does not duplicate accounts or obligations.
+
+Explicitly validate conflicts: auto-renew prose versus NONE policy; manual collection versus undisclosed automatic debit; waiver and deposit conflation; incompatible replacement stock; stale/new-address permission; promotion/prepay/referral stacking; a promised customer credit without an implemented credit path. Report all affected fields with plain explanations before issue/signing; do not just hide inconsistent controls.
+
+Do not put unsupported money behavior into policyOverrides JSON. Its allowlist stays tied to real terms-snapshot/domain schema support. Later options (pause/installments, unified move wizard, one-time partner compensation, automatic outage compensation, dynamic volume repricing, rent-to-own) have an informational disabled state with a roadmap reference. Add their implementation cards/tests and schema support before enabling them. Terms/status labels remain owner-editable where safe; financial and authorization invariants cannot be bypassed by changing prose.
+
+Tests in BP-2/3 prove an owner-added supported choice executes the real rule, an unsupported choice cannot be signed, contradictions block publication, text/structured values stay consistent, defaults restore into a new draft and old signed agreements remain unchanged. Options involving new workflows stay on ROADMAP with acceptance requirements rather than placeholder implementation.
+
 ## 3. Data contracts
 
 All IDs are cuid strings unless an existing model uses another type. Money is Int cents; percentage is Int basis points for commissions (tax retains its own existing precision). Timestamps are UTC; service-month keys are first-of-month Colorado business dates. All financial/evidence relationships use restrictive deletion. Every model has createdAt and actor audit evidence; mutable operational records have updatedAt and optimistic version Int default 1. Append-only versions/entries have no business-field update path. No historical evidence backfill may invent a signature, condition or permission.

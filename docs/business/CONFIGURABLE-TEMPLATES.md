@@ -36,3 +36,7 @@ Choose an existing template or create a draft from a suggested example. Duplicat
 “Restore suggested template” creates a fresh draft instead of destroying your edited version. Suggested examples are marked for review and are not enabled automatically. Approval of publication of repository planning documents does not activate customer contracts, prices, payments or communications.
 
 Implementation is specified in Batch BP decision D-BP11. Existing settings, terms snapshots and approval machinery are reused; no separate conflicting source of business rules is introduced.
+
+## Expanded choices
+
+The [options catalog](OPTIONS-CATALOG.md) adds choices beyond the consultant briefing. The editor distinguishes supported, configuration-needed, professional-review-needed and not-yet-implemented choices. Unsupported options cannot be selected into a signable agreement; each has a clear next step instead of a nonfunctional toggle.

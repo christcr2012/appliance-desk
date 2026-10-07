@@ -585,3 +585,12 @@ with editable options, rather than hard-coded contracts. BATCH-BP D-BP11 and the
 the editor, structured policy/text validation, inheritance, review/versioning and frozen customer-copy behavior.
 Example 3/6/12-month terms are presets; an owner-added supported duration must work end to end without a code change.
 This approval publishes planning documents; runtime implementation and live-business activation remain separate.
+
+## 2026-10-07 — Expanded researched options with support-aware template controls
+
+Chris invited additional options beyond the consultant briefing and current-source research. Added a 22-option
+catalog with transparent existing/BP/later ownership and supported-setting choices. Provider FAQs inform service,
+equipment, access, relocation and purchase-path examples; FTC guidance informs cost clarity. D-BP12 requires real
+domain support and compatible structured/text policies before a choice can be published or signed. Future flows
+are explicit roadmap work, not new unchecked toggles that pretend to function. Research URLs and limits are in
+OPTIONS-CATALOG.md. Publication approval from the same turn continues to cover the updated business package.

@@ -8,6 +8,7 @@ The established Robinson Appliance Rentals identity is retained. Proposed prices
 
 | Document | Purpose |
 |---|---|
+| [Options catalog](OPTIONS-CATALOG.md) | Expanded policy choices, starting recommendations, current foundations and future-work boundaries |
 | [Configurable templates](CONFIGURABLE-TEMPLATES.md) | How editable presets become customer-specific agreements without changing accepted terms |
 | [Business plan](BUSINESS-PLAN.md) | Strategy, customers, operating model, economics and milestones |
 | [Offers and pricing](OFFERS-AND-PRICING.md) | Candidate offers, fees, discounts and approval rules |
