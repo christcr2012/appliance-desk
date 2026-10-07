@@ -667,3 +667,21 @@ controls → Batch O. Summary: `docs/plans/TAX-AND-BOOKS-OVERVIEW.md`. Still onl
 - **(Now designed as Batch M PR M-3, 2026-10-07)** **Card payment of local invoices in the customer portal** (prepaid rent invoices and standalone delivery-fee invoices
   are manual-payment-only in Batch T, D-T14) — would need a Checkout session or Stripe one-off invoice per local invoice
   plus webhook reconciliation.
+
+## October 7 2026 business strategy proposal
+
+Business documents and the proposed BP implementation design live at `docs/business/README.md` and
+`docs/designs/BATCH-BP.md`. BP replaces overlapping unscheduled campaign/partner ideas; it does not replace existing
+T/K/M/O work or reorder the active stack. Remaining separate future designs: automated partner payouts/Stripe
+Connect, one automated portfolio debit, rent-to-own legal/financial behavior, paid route-distance services and
+supplier integrations. Current manual collection/settlement designs do not imply any of these are built.
+
+### Additional configurable options requested October 7
+
+`docs/business/OPTIONS-CATALOG.md` records 22 options, with existing/BP/later ownership. Later workflows need
+separate cards/designs: safe move/transfer wizard (new address/tax/permission/custody/quote), installment or pause
+arrangements (accrual/subscription/notice/restart handling), one-time partner reward (settled first-rent evidence and
+reversal), automated outage credit (recorded downtime/cap/invoice-tax treatment), dynamic commercial-volume pricing
+(prospective notice/consent, never retroactive) and a reviewed rent-to-own ledger (purchase price, cash price/total
+cost, credited payments, return/reinstatement, early purchase, title transfer, tax and signatures). Until built,
+template UI must identify these as unavailable and prevent signable promises of their behavior.

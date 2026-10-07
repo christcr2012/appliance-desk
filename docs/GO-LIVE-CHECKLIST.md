@@ -102,3 +102,11 @@ Previews and test copies never send email, even with the key and the switch on (
 - [ ] Review `docs/runbooks/PROVIDER-OUTAGE.md` before enabling live messaging.
 - [ ] **Do not enable customer email, SMS or marketing merely because webhook credentials are present.** Existing owner activation/approval gates still apply.
 
+## Proposed business offers and partnerships — not built or enabled
+
+These are conditional release checks for Batch BP, not new blockers for unrelated approved engineering work.
+
+- [ ] Before publishing a BP offer: IN-48 final prices, minimum-term/fee disclosures, eligible stock and real service capacity reviewed; preview agrees with quote, signing and invoice.
+- [ ] Before new permission/master templates: IN-49 counsel review and exact template-version approval; lawful-access procedure understood; signature and installation gates demonstrated.
+- [ ] Before partner commissions: IN-50 signed policy, disclosures and margin approved; settled-rent/reversal tests and owner manual-payment walkthrough passed; no automatic transfers enabled.
+- [ ] Before relying on acquisition-tax exemption: resolve IN-33's unpaid-use-tax question and IN-36 continuity treatment as applicable; the consultant's document is not approval evidence.

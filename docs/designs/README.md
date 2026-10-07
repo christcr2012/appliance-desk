@@ -9,6 +9,7 @@ the points where the implementer must stop and ask instead of guessing.
 
 | Batch | Design | Status |
 |---|---|---|
+| BP — Business offers, permission/installation evidence and partnerships | `BATCH-BP.md` | Proposed 2026-10-07 at owner request; documentation only. Reuses T/K/M/O and existing billing/renewals. Implementation requires accepted design and bounded cards after prerequisites. |
 | B — Billing, provider reconciliation & financial ledger | `BATCH-B.md` | Built and merged; its renewal/pickup leftovers were completed by B2. |
 | C — Rental-to-service operations, custody, inventory & purchasing | `BATCH-C.md` + `BATCH-C-UPDATE-2026-10-03.md` + `BATCH-C-LITERAL-SPEC-2026-10-03.md` | Built and merged; its shared billing-end leftover was completed by B2. |
 | R — Remediation Batch R | `REMEDIATION-BATCH-R-2026-10-04.md` (+ amendment, recovery) | Built and merged. |

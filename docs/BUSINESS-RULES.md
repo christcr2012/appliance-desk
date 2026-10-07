@@ -1454,3 +1454,10 @@ Launch consent has two facts: the signup's saved consent text and a separate sin
 
 Billing/job reminder claims are taken before sending. Definite `FAILED` or `NOT_SENT` outcomes release retryable claims; uncertain outcomes stay visible for reconciliation rather than causing a blind second send.
 
+## Proposed business planning package from October 7 2026
+
+`docs/business/README.md` contains the owner's requested business plan and supporting policies.
+`docs/designs/BATCH-BP.md` maps them into existing domains and proposed extensions. These documents do **not**
+change current prices, discounts, fees, deposit rules, tax elections, signatures or renewal behavior. In particular,
+the consultant's $60 six-month example is a proposed final-price offer, not an instruction to overwrite the current
+term-discount policy. Update the applicable rules here only in the implementation PR that changes their behavior.
