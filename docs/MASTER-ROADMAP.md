@@ -5,7 +5,7 @@ launch and beyond, written so an implementing model (for example Sol 5.6) can pi
 It does not replace the batch acceptance lists (`docs/PLAN.md`) or the designs (`docs/designs/BATCH-<X>.md`): it points
 to them and says **what comes next, what must be true before it starts, and what only Chris can do.**
 
-Last reconciled with the code: 2026-10-07 after #287. F-part-1 and G are complete; Batch T is in progress. Batch S is
+Last reconciled with the code: 2026-10-07 after #297. F-part-1 and G are complete; Batch T is in progress. Batch S is
 approved and runs after T, before V. Keep this file current: when a step finishes, tick it, add the PR numbers, and move
 the "▶ Next" marker.
 
@@ -160,7 +160,9 @@ tests most likely to break, so the agent updates them in the same PR instead of 
 | T-3 | WU-T4 readiness gate + Stripe tax rates **+ `seedTaxReadyContext()` helper and CI seed update** | money | **every test that signs an agreement or sets up billing**, checkout/webhook integration tests, rental-builder and signing browser specs |
 | T-4 | WU-T5 local invoices and the Stripe mirror use the engine; old single-rate assertions updated | money | pickup/late-return/early-return/waiver tests, webhook mirror tests, statements |
 | T-5 | WU-T6 exemptions + rate-change and re-check automations | money/automation | automation run tests, cron route auth tests |
-| T-5b | Amendment C WU-TC1: automatic official rate updates with guardrails and undo, look-ahead to Jan 1 / Jul 1, official page watch (`BATCH-T.md` section 13) | automation/provider (read-only) | automation run tests, cron route auth tests, rate-change (D-T9) tests |
+| T-5b1 | Amendment C metadata/source registry — `docs/pr-cards/T-5B1-OFFICIAL-RATE-METADATA.md` | tax metadata persistence | migration/schema-health, observation confirmation/pruning tests |
+| T-5b2 | Amendment C official-page watch + SSRF-safe fetch — `docs/pr-cards/T-5B2-OFFICIAL-SOURCE-WATCH.md` | external-source monitoring / SSRF safety | safe-fetch, automation, cron auth, messaging tests |
+| T-5b3 | Amendment C guarded official-rate observation/auto-apply + D-T9 extension — `docs/pr-cards/T-5B3-GUARDED-OFFICIAL-RATE-AUTO-APPLY.md` | tax-rate money correctness / provider synchronization | real-Postgres guardrail tests, Today actions, rate-change durable-provider tests |
 | T-6a | WU-T7 filing accounts + Amendment A WU-TA1: filing calendar, due dates and holidays, Today tasks (11.11 exception rules)/email prompts, owner alerts, calendar file (`BATCH-T.md` section 11) | schema + automation | migration check, automation run tests, cron route auth tests, messaging delivery tests |
 | T-6b | WU-T7 worksheet → Amendment A WU-TA2 SUTS entry packet, use tax (+ appliance form field, purchase-order hook), mark filed, amended returns (11.12) | money | purchasing/receipt tests, appliance form tests |
 | T-6d | Amendment D WU-TD1: appliance intake "Sales tax when you bought it", per-appliance rental exemption, automatic annual/monthly use-tax frequency, DR 0252 filled PDF or worksheet (`BATCH-T.md` section 15) | money + screens | inventory/intake tests, engine tests, readiness tests, purchase-order receiving tests |
@@ -216,12 +218,12 @@ tests most likely to break, so the agent updates them in the same PR instead of 
 | O-3 | WU-O3 approvals | money + permissions | refund/credit/write-off integration tests |
 | O-4 | WU-O4 scheduled prices + WU-O5 goals and alerts + docs | settings/automation | pricing tests, Today tests |
 
-**Being re-sized (2026-10-07):** a readiness audit found T-5b, T-6a, T-6b, T-6c, T-6d, T-7, S-1, M-1 and M-2 over the
-PR budget; each is being split as it gets its card in `docs/pr-cards/` (about 11 more PRs, so roughly 53 in all). The
+**Being re-sized (2026-10-07):** T-5b is now split into bounded T-5b1/T-5b2/T-5b3 cards. T-6a, T-6b, T-6c, T-6d, T-7, S-1, M-1 and M-2 remain over the
+PR budget and must be split as their cards are written in `docs/pr-cards/`. The
 designs for those PRs carry an "Implementation gate": no card, no start. Earlier T PRs (T-3, T-4, T-5) are unaffected.
 
-**42 PRs in all** (Batch M adds 3; Batch S adds 2; T-6d by Amendment D; T-6 split into T-6a/T-6b by Amendment A, T-6c added by Amendment B and T-5b by Amendment C, 2026-10-07) (a few more if G-2 or T-4 split). At two merged PRs per session that is roughly 21 working sessions;
-each PR should reach green with at most one red CI run (each run is about 3–5 minutes). If a PR needs a third red run,
+**PR count:** the old fixed estimate predates the mandatory readiness-audit splits. T-5b is now three PRs, and the remaining over-budget rows above will increase the final count as their cards are written. Use the current rows/cards rather than a historical total when planning work.
+Each PR should reach green with at most one red CI run (each run is about 3–5 minutes). If a PR needs a third red run,
 the agent stops and reports (PLAYBOOK Step 8).
 
 ### BP — proposed business integration from the consultant briefing
