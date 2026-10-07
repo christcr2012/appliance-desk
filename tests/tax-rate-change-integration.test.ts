@@ -6,6 +6,7 @@ import {
   applyTaxRateChanges,
   retrySubscriptionTaxUpdate,
   subscriptionTaxUpdateKey,
+  syncSubscriptionTaxRatesForAgreement,
 } from "@/domains/tax/rate-changes";
 import { businessDateFromKey } from "@/lib/business-date";
 import { prisma } from "@/lib/prisma";
@@ -274,6 +275,54 @@ describe.skipIf(!enabled)("Batch T rate-change automation (real Postgres)", () =
     await prisma.user.deleteMany({
       where: { id: { in: [ownerId, taxedUserId, exemptUserId] } },
     });
+  });
+
+
+  it("marks a zero-item Stripe subscription as drift instead of already current", async () => {
+    const emptyAgreementId = `tax-rate-empty-agreement-${tag}`;
+    const emptySubscriptionId = `sub_tax_rate_empty_${tag}`;
+
+    await prisma.rentalAgreement.create({
+      data: {
+        id: emptyAgreementId,
+        customerId: taxedCustomerId,
+        serviceAddressId: taxedAddressId,
+        status: "ACTIVE",
+        termMonths: 12,
+        stripeSubscriptionId: emptySubscriptionId,
+      },
+    });
+    subscriptions.set(emptySubscriptionId, { id: emptySubscriptionId, items: { data: [] } });
+
+    try {
+      expect(
+        await syncSubscriptionTaxRatesForAgreement(
+          emptyAgreementId,
+          newRateVersionId,
+          effectiveFrom,
+        ),
+      ).toBe("pending");
+
+      const operation = await prisma.providerOperation.findUniqueOrThrow({
+        where: {
+          idempotencyKey: subscriptionTaxUpdateKey(
+            emptyAgreementId,
+            newRateVersionId,
+          ),
+        },
+      });
+      expect(operation.status).toBe("DRIFT");
+      expect(updateCalls.some((call) => call.subscriptionId === emptySubscriptionId)).toBe(false);
+    } finally {
+      await prisma.providerOperation.deleteMany({
+        where: {
+          kind: "SUBSCRIPTION_TAX_UPDATE",
+          subjectId: emptyAgreementId,
+        },
+      });
+      await prisma.rentalAgreement.delete({ where: { id: emptyAgreementId } });
+      subscriptions.delete(emptySubscriptionId);
+    }
   });
 
   it("updates affected taxable subscriptions once, reconciles an ambiguous write, and leaves exempt rent untouched", async () => {
