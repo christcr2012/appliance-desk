@@ -19,17 +19,25 @@ export function LoginForm() {
     setError(null);
     setSubmitting(true);
 
-    const { error: signInError } = await signIn.email({ email, password });
+    const nextPath = searchParams.get("next");
+    window.sessionStorage.setItem("appliance-desk-post-2fa-next", nextPath ?? "");
+    const { data, error: signInError } = await signIn.email({ email, password });
 
     setSubmitting(false);
     if (signInError) {
+      window.sessionStorage.removeItem("appliance-desk-post-2fa-next");
       setError(
         signInError.message ?? "That email and password don't match. Please try again.",
       );
       return;
     }
 
-    const destination = await getPostLoginDestination(searchParams.get("next"));
+    if ((data as { twoFactorRedirect?: boolean } | null)?.twoFactorRedirect) {
+      return;
+    }
+
+    window.sessionStorage.removeItem("appliance-desk-post-2fa-next");
+    const destination = await getPostLoginDestination(nextPath);
     router.push(destination);
     router.refresh();
   }
