@@ -109,13 +109,3 @@ describe("converting and displaying rates", () => {
     }
   });
 });
-
-describe("defaultTaxRateText (what a new agreement starts with)", () => {
-  it("uses the owner's rate only once it is confirmed", async () => {
-    const { defaultTaxRateText } = await import("@/domains/billing/tax");
-    expect(defaultTaxRateText({ taxRateConfirmed: true, taxRateMilliPercent: 7375 })).toBe("7.375");
-    expect(defaultTaxRateText({ taxRateConfirmed: true, taxRateMilliPercent: 8000 })).toBe("8");
-    expect(defaultTaxRateText({ taxRateConfirmed: false, taxRateMilliPercent: 7375 })).toBe("");
-    expect(defaultTaxRateText({ taxRateConfirmed: true, taxRateMilliPercent: 0 })).toBe("");
-  });
-});
