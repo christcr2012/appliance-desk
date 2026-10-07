@@ -159,6 +159,7 @@ tests most likely to break, so the agent updates them in the same PR instead of 
 | T-5b | Amendment C WU-TC1: automatic official rate updates with guardrails and undo, look-ahead to Jan 1 / Jul 1, official page watch (`BATCH-T.md` section 13) | automation/provider (read-only) | automation run tests, cron route auth tests, rate-change (D-T9) tests |
 | T-6a | WU-T7 filing accounts + Amendment A WU-TA1: filing calendar, due dates and holidays, Today tasks (11.11 exception rules)/email prompts, owner alerts, calendar file (`BATCH-T.md` section 11) | schema + automation | migration check, automation run tests, cron route auth tests, messaging delivery tests |
 | T-6b | WU-T7 worksheet → Amendment A WU-TA2 SUTS entry packet, use tax (+ appliance form field, purchase-order hook), mark filed, amended returns (11.12) | money | purchasing/receipt tests, appliance form tests |
+| T-6d | Amendment D WU-TD1: appliance intake "Sales tax when you bought it", per-appliance rental exemption, automatic annual/monthly use-tax frequency, DR 0252 filled PDF or worksheet (`BATCH-T.md` section 15) | money + screens | inventory/intake tests, engine tests, readiness tests, purchase-order receiving tests |
 | T-6c | Amendment B WU-TB1: Colorado retail delivery fee — automatic status, delivery-completion records, customer line or pay-myself, RDF return packet (`BATCH-T.md` section 12) | money | job completion tests, invoice/statement tests, Stripe invoice-item provider-operation tests, readiness tests |
 | T-7 | WU-T8 screens organized by `BATCH-T.md` section 14 (screen map: one Sales tax nav entry, six tabs, return page, Today routing, setup checklist) + WU-T9 docs | screens | route inventory (every new page), axe light/dark, `e2e/sales-tax.spec.ts` shard assignment |
 
@@ -204,6 +205,6 @@ tests most likely to break, so the agent updates them in the same PR instead of 
 | O-3 | WU-O3 approvals | money + permissions | refund/credit/write-off integration tests |
 | O-4 | WU-O4 scheduled prices + WU-O5 goals and alerts + docs | settings/automation | pricing tests, Today tests |
 
-**38 PRs in all** (Batch S adds 2; T-6 split into T-6a/T-6b by Amendment A, T-6c added by Amendment B and T-5b by Amendment C, 2026-10-07) (a few more if G-2 or T-4 split). At two merged PRs per session that is roughly 19 working sessions;
+**39 PRs in all** (Batch S adds 2; T-6d by Amendment D; T-6 split into T-6a/T-6b by Amendment A, T-6c added by Amendment B and T-5b by Amendment C, 2026-10-07) (a few more if G-2 or T-4 split). At two merged PRs per session that is roughly 20 working sessions;
 each PR should reach green with at most one red CI run (each run is about 3–5 minutes). If a PR needs a third red run,
 the agent stops and reports (PLAYBOOK Step 8).

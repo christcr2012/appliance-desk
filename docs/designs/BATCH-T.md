@@ -120,8 +120,9 @@ start billing (D-T7).
 `BusinessSettings.shortTermLeaseElection`: `UNDECIDED` (starting value) | `PAY_ON_ACQUISITION` | `COLLECT_ON_RENTALS`.
 
 - `PAY_ON_ACQUISITION`: rent (category `RENTAL`, and `LATE_RETURN`, which is rent) is **exempt** in every
-  *state-collected* jurisdiction, for leases of 36 months or less; use tax is due on appliances bought untaxed
-  (section 3.6).
+  *state-collected* jurisdiction, for leases of 36 months or less, **for each appliance whose purchase tax was paid or
+  is being paid as use tax** (Amendment D, 15.3 — the exemption is per appliance); use tax is due on appliances bought
+  untaxed (section 3.6).
 - `COLLECT_ON_RENTALS`: rent is **taxable** in every state-collected jurisdiction; appliance purchases owe no use tax
   (the owner records the Department's permission number in the setting's note).
 - `UNDECIDED`: billing is blocked.
@@ -605,7 +606,8 @@ Uses the current business-location `AddressTaxLocation`. For each jurisdiction: 
 rate)`; vendor tax is split across jurisdictions in proportion to their rates (`allocateAcrossLines`); due =
 max(0, expected − allocated vendor tax). Status `NOT_DUE` when due is 0, or when `isRentalInventory` and the election
 is `COLLECT_ON_RENTALS` (rental inventory bought for re-lease under that election). Called when an appliance's
-acquisition cost is saved (new optional field on the add/edit appliance form: "Sales tax the seller charged"), when a
+acquisition cost is saved (the add/edit appliance form's "Sales tax when you bought it" section — **Amendment D,
+section 15**), when a
 purchase order is marked received (per line with a known cost; vendor tax entered once per order and split across
 lines by amount), and by Batch K's expenses. Idempotent per `(sourceType, sourceId, jurisdictionId)`; a cost change
 updates the row; if its status is `FILED` the change makes that period need an amended return (11.12).
@@ -1630,3 +1632,125 @@ Money is always shown as dollars with cents; dates in Colorado time ("Oct 20, 20
 opens its target; the setup checklist step links land on the right anchor; return page at 360 px with copy buttons;
 axe clean on every tab at 360/1440, light and dark. Unit: `tests/desk-navigation.test.ts` gains the Sales tax entry and
 the STAFF exclusion; the 14.3 targets are a table test in `tests/exceptions-tax.test.ts`.
+
+---
+
+## 15. Amendment D (2026-10-07) — Appliance intake records purchase tax; each appliance decides its own rental tax; use tax is filed
+
+Status: **APPROVED** (Chris, 2026-10-07: the appliance entry form should record whether sales tax was paid when the
+appliance was bought and how much; if it was not (for example a private-party purchase), the use tax owed should be
+logged there, the form to pay it should be prepared — printed ready to sign, or a process for filing it electronically —
+and rental tax should follow from all of this). Supersedes the single "Sales tax the seller charged" field in 3.6 and
+refines D-T4 and 3.2 rule 3.
+
+### 15.1 Rules this relies on (researched 2026-10-07; CPA confirms under IN-33)
+
+| # | Rule | Source |
+|---|---|---|
+| D-F1 | The short-term lease exemption (36 months or less) applies **only if the lessor paid Colorado sales or use tax on the acquisition of that leased property** — it is decided **per appliance**, not once for the business. | C.R.S. 39-26-713; Department "Sales & Use Tax Topics: Leases" |
+| D-F2 | The alternative — buying tax-free and collecting tax on every lease payment — needs the Department's permission, requested on **DR 0440 (Lessor Registration for Sales Tax Collection)**. | Department leases guidance |
+| D-F3 | Use tax on business purchases made without Colorado tax is reported on the **Consumer Use Tax Return (DR 0252)** for the **state and state-administered special districts** (RTD, Cultural District, RTAs), filed on **Revenue Online** (which also covers RTA use tax) or on paper. Due January 20 for the year while the year's use tax stays at $300 or less; once the year's cumulative use tax passes $300 at the end of a month, a return is due by the 20th of the next month. | DR 0252 instructions |
+| D-F4 | The Department does **not** administer city or county use taxes: Greeley's city use tax (and any county use tax) is filed with that jurisdiction (or through SUTS if it participates for use tax — IN-43). | DR 0252 instructions |
+| D-F5 | If the seller charged some Colorado sales tax but less than the combined rate where the appliance is used, use tax is owed on the difference. | Department consumer use tax guidance (already in 3.6) |
+
+### 15.2 The intake form (Inventory → Add appliance, and the edit form)
+
+New section **"Sales tax when you bought it"** (required for new appliances; explained on screen in plain words):
+
+1. **"The seller charged Colorado sales tax"** → *Tax paid ($)* (total for the quantity entered; split across units with
+   `allocateAcrossLines`), optional *Where you bought it* (city), optional receipt photo (existing private photo upload).
+   The app compares it with the tax due at the business location (3.6): if it is less, it shows "You still owe $Y use tax
+   on the difference" and records that.
+2. **"No sales tax was charged"** (private seller, out-of-state or online store) → the app shows "You owe Colorado use
+   tax of $X on this appliance: state $a, RTD $b, Greeley $c … It will go on your next use tax return (due Jan 20, 2027)"
+   and records it. Optional *Seller* (free text) and receipt photo.
+3. **"Bought tax-free under my lessor permission (DR 0440)"** — offered only when the election is `COLLECT_ON_RENTALS`;
+   no use tax; rent on this appliance is taxed (D-T4).
+4. **"I'll fill this in later"** — allowed so intake is never blocked, but the appliance cannot go on a rental until it
+   is answered (15.4), and a Today task lists such appliances.
+
+Schema (additive, migration in T-6d): `enum AcquisitionTaxStatus { UNKNOWN SALES_TAX_PAID USE_TAX_DUE USE_TAX_PAID
+BOUGHT_TAX_FREE_FOR_LEASE }`; `Appliance.acquisitionTaxStatus AcquisitionTaxStatus @default(UNKNOWN)`,
+`acquisitionTaxPaidCents Int?`, `acquisitionSellerNote String?`, `acquisitionReceiptPhotoId String?`. Existing
+appliances start `UNKNOWN` (populated-upgrade drill). `SALES_TAX_PAID` with a remaining difference also has
+`USE_TAX_DUE`-style rows in `PurchaseUseTax` (3.6) — the status shown is "Sales tax paid + $Y use tax due" until those
+rows are filed, then "Tax fully paid". When every `PurchaseUseTax` row of an appliance is `FILED` its status becomes
+`USE_TAX_PAID` automatically (audit row). Purchase-order receiving (3.6) asks the same question once per order and
+applies it to every appliance created from it.
+
+### 15.3 Rental tax follows the appliance (refines D-T4 and 3.2 rule 3)
+
+`EngineLine` gains `acquisitionTaxStatus` for rent lines (the appliance assigned to the line at the start of the billed
+period; a swap mid-period uses the outgoing appliance until the next period, and a card notes it). Rule 3 becomes, for
+`RENTAL`/`LATE_RETURN` in a state-collected jurisdiction with a lease of 36 months or less:
+
+| Election | Appliance status | Rent is |
+|---|---|---|
+| `PAY_ON_ACQUISITION` | `SALES_TAX_PAID`, `USE_TAX_PAID`, or `USE_TAX_DUE` (the use tax is on a return being prepared) | **EXEMPT** — reason "Tax paid when this appliance was bought (C.R.S. 39-26-713)" |
+| `PAY_ON_ACQUISITION` | `UNKNOWN` | **UNDECIDED** → blocks billing for that rental with "Tell us whether you paid tax on appliance A-104" |
+| `PAY_ON_ACQUISITION` | `BOUGHT_TAX_FREE_FOR_LEASE` | impossible (option hidden); treated as TAXABLE with a card |
+| `COLLECT_ON_RENTALS` | any | **TAXABLE** (IN-33 follow-up asks whether a unit you did pay tax on is exempt under this option) |
+
+Self-collected cities (Greeley) still use only their own rule (Greeley taxes rent either way). If a use-tax return that
+contains an appliance's use tax becomes **overdue** (11.4 `OVERDUE`), the rentals stay exempt but a `high` Sales tax Today
+task says "Pay the use tax on A-104 — its rentals are tax-free only because that tax is paid".
+
+### 15.4 Readiness
+
+`UNKNOWN` appliances are a blocker only when they are on an agreement being sent for signature or billed (D-T7 list
+item "Tell us whether you paid sales tax on: A-104, A-117"). Intake, inventory and repairs are never blocked.
+
+### 15.5 Filing the use tax (DR 0252 and city use tax)
+
+- Filing accounts (11.3, kind `USE_TAX_RETURN`): **"Colorado — Consumer use tax (DR 0252, Revenue Online)"** covers the
+  state and state-administered special districts; each self-collected city with use tax (Greeley) gets its own account
+  or the SUTS account, per the SUTS setup (11.13, IN-43). The setup checklist (14.4 step 3) offers to create them.
+- **Frequency is automatic for the state account** (D-F3): annual (due January 20) while the calendar year's use tax is
+  $300 or less; when the cumulative total passes $300 at the end of a month, the account switches to monthly from the
+  next return and a Sales tax notice explains why. The $300 threshold is an owner setting (starting value 30000 cents,
+  "the amount in Colorado's instructions as of 2026", restore button).
+- **The return page (11.11 / 14.2)** for a use-tax account shows, per jurisdiction: purchases subject to use tax, rate,
+  use tax due, and the list of appliances and purchases included (asset number, date, price, tax paid to seller).
+  Checklist for Revenue Online: "Sign in to Revenue Online → File a return → Consumer Use Tax → period …", each number
+  with a copy button; "I filed it" records confirmation, dates and amount (11.4), which flips those appliances to
+  `USE_TAX_PAID`.
+- **Paper option — printable DR 0252, filled in:** the page offers "Print the completed form" which fills the
+  Department's official fillable DR 0252 PDF for that year with the business name, account number, period and amounts,
+  ready to sign and mail. Implementation gate (S-T14): the PR adds the official PDF for the current year (from
+  tax.colorado.gov — a public form) to `src/domains/tax/forms/` with its field-name map, using `pdf-lib` (the one new
+  library this amendment allows); each new form year is a small PR. Until a year's official PDF is added, the button
+  prints a **use-tax worksheet** laid out like the form's boxes to copy onto the paper form. Revenue Online stays the
+  recommended path (immediate confirmation, covers RTA); the screen says so.
+- The app never submits to Revenue Online (no filing interface exists for small businesses) and never stores Revenue
+  Online credentials.
+
+### 15.6 Existing appliances
+
+A Sales tax Today task "Tell us about sales tax on 23 appliances you already own" opens an Inventory list filtered to
+`UNKNOWN` with a quick per-row picker (the four 15.2 choices and the amount). For appliances bought before the business
+registered, the screen links to the CPA note (IN-33 follow-up) instead of guessing.
+
+### 15.7 Screens (adds to section 14)
+
+- **Inventory → Add/Edit appliance:** the 15.2 section, placed after "Cost each" and "Purchase date".
+- **Appliance detail:** a "Tax at purchase" panel (status, amounts, which return it is on, receipt photo).
+- **Inventory list:** filter "Tax at purchase not recorded".
+- **Sales tax → Returns:** the use-tax accounts appear in the calendar like the others; "Use tax purchases" filter
+  (14.2) lists these appliances.
+
+### 15.8 Tests and PR
+
+New PR **T-6d — WU-TD1** (after T-6b, which owns the use-tax rows of 3.6): schema, intake form section, per-unit engine
+rule, readiness item, automatic annual/monthly switch, DR 0252 fill (if the official PDF is added) or worksheet.
+Tests: `tests/tax-engine.test.ts` additions (each row of the 15.3 table), ★ `tests/appliance-intake-tax-integration.test.ts`
+(private-party purchase records use tax and makes rent exempt; seller charged less than the local rate records the
+difference; "fill in later" blocks only the agreement that uses it; filing the use-tax return flips status to
+`USE_TAX_PAID`; quantity 3 splits the tax paid), `tests/use-tax-frequency.test.ts` (annual → monthly at $300.01 at month
+end; owner threshold), `tests/dr0252-fill.test.ts` (field map fills every amount; worksheet fallback), browser: intake
+form section at 360 px, axe clean.
+
+### 15.9 Stop-and-ask
+
+- **S-T14** The official fillable DR 0252 cannot be obtained or has no form fields → ship the worksheet only.
+- **S-T15** The CPA says the exemption needs the use tax actually *paid* before the first rent (not just recorded as due)
+  → make `USE_TAX_DUE` block billing instead of exempting, and ask Chris.

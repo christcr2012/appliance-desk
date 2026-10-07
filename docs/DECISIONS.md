@@ -509,3 +509,14 @@ Sixth Codex review fixes: prepaid rent and standalone delivery-fee invoices are 
 pay local invoices yet; roadmap); prepaid reporting follows the chosen basis and the fee's sale date is the recorded
 payment date; Batch S issue details are built only from allowlisted typed fields (raw error text never leaves the app)
 and people-written notes are redacted; stale-automation detection uses a per-rule expected interval.
+
+## 2026-10-07 — Amendment D: purchase tax recorded at appliance intake; rental exemption per appliance; DR 0252 filing
+
+Chris asked that the appliance entry form record whether sales tax was paid at purchase (and how much), log use tax for
+private-party/untaxed purchases, prepare the state form, and drive rental tax from it. Research showed Colorado's
+short-term lease exemption is conditioned on tax having been paid on *that* leased property (C.R.S. 39-26-713), so the
+exemption is now decided per appliance (`Appliance.acquisitionTaxStatus`), refining the business-wide election. Use
+tax goes on the Consumer Use Tax Return (DR 0252) via Revenue Online (recommended) or a filled official PDF / worksheet
+for paper; city use tax (Greeley) is filed separately; the state account switches from annual to monthly automatically
+past $300 a year. Intake is never blocked ("fill in later"), but an appliance with unknown purchase tax cannot be put on
+a rental being signed or billed. New PR T-6d; `pdf-lib` is the one new library allowed, only for filling the official form.

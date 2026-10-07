@@ -71,8 +71,12 @@ Revisit this if you ever sell appliances outright, expand outside Colorado, or e
   for rentals under option (a), and small businesses are exempt), warns you before you could lose the exemption, and if
   it ever applies it adds the separate fee line (or records it as paid by you) and prepares that return too. The app never logs in to SUTS or moves money — SUTS has
   no filing connection for small businesses — so the last step (typing, paying) stays yours.
-- **Use tax:** when you buy an appliance from a private seller or an out-of-state store without tax, the app works out
-  the use tax you owe the state and Greeley and puts it on the right return.
+- **Use tax, from the moment you enter an appliance (updated 2026-10-07):** the add-appliance form asks "Sales tax when
+  you bought it": the seller charged tax (enter the amount), no tax was charged (private seller, online, out of state),
+  or bought tax-free under a state permit. If you owe use tax, the app shows how much (state, RTD, Greeley …) and puts
+  it on your use-tax return — filed on the state's Revenue Online site, or printed already filled in for you to sign and
+  mail. Each appliance's answer decides whether renting *that* appliance is taxed, because Colorado's rental tax break
+  depends on tax having been paid on that specific unit. Appliances you already own get a one-time Today task to fill in.
 
 ### Where it all lives in the app
 
@@ -97,6 +101,9 @@ These are tracked as IN-33 to IN-39 in `docs/OWNER-INPUTS.md`.
 1. **(IN-33) Rental option:** Should I (a) pay sales or use tax when I buy each appliance, so rent is exempt from state
    and state-run local tax, or (b) buy tax-free with the state's permission and charge tax on every rent payment? (C.R.S.
    39-26-713; also, does the Department's draft "Special Rule 47" from February 2026 change anything?)
+   Follow-ups: Colorado's rental tax break is per appliance — if I record use tax on a private-party appliance and pay
+   it on my next DR 0252, is the rental tax-free from its first day? Under option (b) (DR 0440 permission), is a unit I
+   did pay tax on still taxed? How should I treat appliances I bought before I registered?
 2. **(IN-34) What's taxable** — in state-run areas and in Greeley (and any other home-rule city I serve): rent, late-return
    rent, delivery fee, installation fee, removal fee, damage waiver, early-ending fee, late-payment fee? And when I give a customer a credit (for example, an item delivered late), should that lower the taxable rent, or is it just money credited to their account?
 3. **(IN-35) Cash or accrual** reporting for my state and Greeley returns? Monthly, quarterly or annual filing?
