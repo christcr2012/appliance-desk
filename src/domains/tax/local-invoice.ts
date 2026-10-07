@@ -44,8 +44,34 @@ export async function applyLocalInvoiceTaxInTx(
     },
   });
 
+  const agreement = await tx.rentalAgreement.findUniqueOrThrow({
+    where: { id: input.agreementId },
+    select: { serviceAddressId: true },
+  });
+  const location = await tx.addressTaxLocation.findFirst({
+    where: { serviceAddressId: agreement.serviceAddressId, isCurrent: true },
+    select: {
+      status: true,
+      jurisdictions: {
+        select: {
+          jurisdiction: { select: { name: true, reviewStatus: true } },
+        },
+      },
+    },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+  });
+  const readinessProblems: string[] = [];
+  if (!location || location.status !== "VERIFIED") {
+    readinessProblems.push("Confirm the tax areas for this service address before billing.");
+  }
+  for (const row of location?.jurisdictions ?? []) {
+    if (row.jurisdiction.reviewStatus !== "REVIEWED") {
+      readinessProblems.push(`Review ${row.jurisdiction.name} before billing.`);
+    }
+  }
+
   const context = await getAgreementTaxContext(tx, input.agreementId, input.taxDate);
-  const result = computeTax({
+  const engineResult = computeTax({
     ...context,
     lines: invoice.lineItems.map((line) => ({
       key: line.id,
@@ -53,6 +79,18 @@ export async function applyLocalInvoiceTaxInTx(
       amountCents: line.amountCents,
     })),
   });
+  const result =
+    readinessProblems.length > 0
+      ? {
+          ok: false as const,
+          problems: [
+            ...new Set([
+              ...readinessProblems,
+              ...(engineResult.ok ? [] : engineResult.problems),
+            ]),
+          ],
+        }
+      : engineResult;
 
   // A recalculation replaces only engine-owned evidence and the single visible
   // tax total. Stripe evidence is never edited here.
