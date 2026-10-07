@@ -18,6 +18,7 @@ import {
 } from "./webhook-evidence";
 import { appliedBalanceCreditCents, creditLinesForAppliedBalance } from "./applied-credit-lines";
 import { LATE_DELIVERY_CREDIT_SOURCE } from "./pickup-billing";
+import { mirrorStripeInvoiceTax } from "@/domains/tax/invoice-tax";
 import {
   HELD_CONFLICT_STATUS,
   HELD_PAYMENT_STATUS,
@@ -59,6 +60,19 @@ function extractPaymentIntentId(invoice: Stripe.Invoice): string | null {
 
 function extractTaxCents(invoice: Stripe.Invoice): number {
   return (invoice.total_taxes ?? []).reduce((sum, entry) => sum + entry.amount, 0);
+}
+
+function stripeTaxTotals(invoice: Stripe.Invoice) {
+  return (invoice.total_taxes ?? []).map((entry) => ({
+    taxRateId: entry.tax_rate_details?.tax_rate ?? null,
+    amountCents: entry.amount,
+    taxableCents: entry.taxable_amount,
+  }));
+}
+
+function stripeInvoiceTaxDate(invoice: Stripe.Invoice): Date {
+  const seconds = invoice.period_start ?? invoice.created;
+  return new Date(seconds * 1000);
 }
 
 /**
@@ -234,6 +248,18 @@ async function recordPaidInvoice(
           lineItems: { createMany: { data: lineItemsData } },
         },
       });
+
+  await mirrorStripeInvoiceTax(db, {
+    invoiceId: invoice.id,
+    agreementId,
+    taxDate: stripeInvoiceTaxDate(stripeInvoice),
+    lines: stripeInvoice.lines.data.map((line) => ({
+      key: line.id,
+      kind: inferLineItemKind(line.description),
+      amountCents: line.amount,
+    })),
+    stripeTaxes: stripeTaxTotals(stripeInvoice),
+  });
 
   for (const shown of shownCredits) {
     await db.customerCredit.update({
@@ -723,6 +749,18 @@ async function handleInvoicePaymentFailed(
       dueDate: stripeInvoice.due_date ? new Date(stripeInvoice.due_date * 1000) : null,
       stripeInvoiceId: stripeInvoice.id,
     },
+  });
+
+  await mirrorStripeInvoiceTax(db, {
+    invoiceId: invoice.id,
+    agreementId: agreement.id,
+    taxDate: stripeInvoiceTaxDate(stripeInvoice),
+    lines: stripeInvoice.lines.data.map((line) => ({
+      key: line.id,
+      kind: inferLineItemKind(line.description),
+      amountCents: line.amount,
+    })),
+    stripeTaxes: stripeTaxTotals(stripeInvoice),
   });
 
   await recordFailedPaymentAttempt(db, {
