@@ -81,7 +81,7 @@ export async function listCustomerTaxExemptions(
   customerId: string,
 ) {
   return prisma.$transaction(async (tx) => {
-    await assertActiveTeamActor(tx, actorUserId, ["OWNER"]);
+    await assertActiveTeamActor(tx, actorUserId, ["OWNER", "ADMIN"]);
     await tx.customer.findUniqueOrThrow({
       where: { id: customerId },
       select: { id: true },
@@ -90,6 +90,50 @@ export async function listCustomerTaxExemptions(
       where: { customerId },
       orderBy: [{ validFrom: "desc" }, { createdAt: "desc" }, { id: "desc" }],
     });
+  });
+}
+
+export async function listCustomerTaxExemptionJurisdictions(
+  actorUserId: string,
+  customerId: string,
+): Promise<Array<{ id: string; name: string; level: string }>> {
+  return prisma.$transaction(async (tx) => {
+    await assertActiveTeamActor(tx, actorUserId, ["OWNER", "ADMIN"]);
+    const addresses = await tx.serviceAddress.findMany({
+      where: { customerId },
+      select: {
+        taxLocations: {
+          where: { isCurrent: true },
+          select: {
+            jurisdictions: {
+              select: {
+                jurisdiction: {
+                  select: { id: true, name: true, level: true },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+    const unique = new Map<string, { id: string; name: string; level: string }>();
+    for (const address of addresses) {
+      for (const location of address.taxLocations) {
+        for (const row of location.jurisdictions) {
+          unique.set(row.jurisdiction.id, {
+            id: row.jurisdiction.id,
+            name: row.jurisdiction.name,
+            level: row.jurisdiction.level,
+          });
+        }
+      }
+    }
+    return [...unique.values()].sort(
+      (left, right) =>
+        left.level.localeCompare(right.level) ||
+        left.name.localeCompare(right.name) ||
+        left.id.localeCompare(right.id),
+    );
   });
 }
 
