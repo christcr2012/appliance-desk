@@ -21,6 +21,7 @@ const SHARED_SETTINGS_TESTS = [
   "tests/agreement-estimate-concurrency-integration.test.ts",
   "tests/billing-subscription-renewal-integration.test.ts",
   "tests/tax-readiness-integration.test.ts",
+  "tests/tax-migration-integration.test.ts",
 ];
 
 export default defineConfig({
