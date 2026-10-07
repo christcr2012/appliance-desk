@@ -665,6 +665,46 @@ export async function getAgreementTaxContext(
   };
 }
 
+export async function taxRateVersionIdsForAgreement(
+  tx: Prisma.TransactionClient,
+  agreementId: string,
+  taxDate: Date,
+  category: TaxChargeCategory,
+): Promise<string[]> {
+  const context = await getAgreementTaxContext(tx, agreementId, taxDate);
+  const problems: string[] = [];
+  const rateVersionIds: string[] = [];
+
+  for (const jurisdiction of context.jurisdictions) {
+    const resolution = resolveTaxability(jurisdiction, category, context);
+    if (resolution.taxability === "UNDECIDED") {
+      problems.push(
+        `${category.replaceAll("_", " ").toLowerCase()} in ${jurisdiction.name}: decide whether it is taxable before billing.`,
+      );
+      continue;
+    }
+    if (resolution.taxability !== "TAXABLE" || context.exemptJurisdictionIds.has(jurisdiction.id)) {
+      continue;
+    }
+    if (!jurisdiction.rate) {
+      problems.push(
+        `Enter a tax rate for ${jurisdiction.name} effective on ${businessDateKey(taxDate)}.`,
+      );
+      continue;
+    }
+    rateVersionIds.push(jurisdiction.rate.versionId);
+  }
+
+  const uniqueRateVersionIds = [...new Set(rateVersionIds)];
+  if (uniqueRateVersionIds.length > 5) {
+    problems.push(
+      `${category.replaceAll("_", " ").toLowerCase()} resolves to ${uniqueRateVersionIds.length} taxable jurisdictions; Stripe supports at most 5 tax rates on one line. Review this address before billing.`,
+    );
+  }
+  if (problems.length > 0) throw new TaxNotReadyError([...new Set(problems)]);
+  return uniqueRateVersionIds;
+}
+
 export async function assertTaxReadyForAgreement(
   tx: Prisma.TransactionClient,
   agreementId: string,
@@ -722,11 +762,23 @@ export async function assertTaxReadyForAgreement(
   if (location?.status === "VERIFIED" && location.jurisdictions.length > 0) {
     const context = await getAgreementTaxContext(tx, agreementId, taxDate);
     for (const category of chargeCategoriesForAgreement(agreement)) {
+      let taxableJurisdictions = 0;
       for (const jurisdiction of context.jurisdictions) {
         const resolution = resolveTaxability(jurisdiction, category, context);
         if (resolution.taxability === "UNDECIDED") {
           problems.push(`${category.replaceAll("_", " ").toLowerCase()} in ${jurisdiction.name}: decide whether it is taxable before billing.`);
+        } else if (
+          resolution.taxability === "TAXABLE" &&
+          jurisdiction.rate &&
+          !context.exemptJurisdictionIds.has(jurisdiction.id)
+        ) {
+          taxableJurisdictions += 1;
         }
+      }
+      if (taxableJurisdictions > 5) {
+        problems.push(
+          `${category.replaceAll("_", " ").toLowerCase()} resolves to ${taxableJurisdictions} taxable jurisdictions; Stripe supports at most 5 tax rates on one line. Review this address before billing.`,
+        );
       }
     }
   }
