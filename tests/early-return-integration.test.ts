@@ -122,7 +122,13 @@ describe.skipIf(!enabled)("early returns (real Postgres)", () => {
       const id = `er-unit-${applianceIds.length}-${tag}`;
       applianceIds.push(id);
       await prisma.appliance.create({ data: { id, assetNumber: `ER${applianceIds.length}-${tag.slice(0, 8)}`, applianceTypeId: typeId, status: "RENTED" } });
-      await prisma.applianceAssignment.create({ data: { rentalLineId: line.id, applianceId: id } });
+      await prisma.applianceAssignment.create({
+        data: {
+          rentalLineId: line.id,
+          applianceId: id,
+          assignedAt: new Date("2025-10-01T06:00:00Z"),
+        },
+      });
       await prisma.$transaction((tx) =>
         openCustodyEpisodeInTx(tx, { applianceId: id, customerId, serviceAddressId: addressId, agreementId, startedOn: new Date("2025-10-01T06:00:00Z"), startJobId: setupId }),
       );
@@ -482,8 +488,8 @@ describe.skipIf(!enabled)("early returns (real Postgres)", () => {
     await removeUndeliveredItem(ownerId, pending.id, businessDateFromKey("2026-09-20")!);
     const row = await prisma.pendingDelivery.findUniqueOrThrow({ where: { id: pending.id } });
     expect(row.creditId).toBeNull();
-    expect([row.refundedCents, row.refundByHandCents]).toEqual([0, 3210]); // everything that was paid goes back by hand
-    expect((await prisma.refund.findMany({ where: { invoice: { agreementId } } })).map((r) => r.amountCents)).toEqual([3210]);
+    expect([row.refundedCents, row.refundByHandCents]).toEqual([0, 1605]); // this appliance's historical half goes back by hand
+    expect((await prisma.refund.findMany({ where: { invoice: { agreementId } } })).map((r) => r.amountCents)).toEqual([1605]);
   });
 
   it("dst-pickup-day-with-actual-days-in-month", async () => {
