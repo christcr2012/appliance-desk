@@ -55,6 +55,16 @@ export function getColoradoRateSource(): ColoradoRateSource {
   return sourceForTests ?? manualOnlySource;
 }
 
+/**
+ * Automatic re-checks must never run against the manual fallback because an
+ * UNAVAILABLE response would replace owner-verified tax areas with a review
+ * state. Production remains false until the authenticated SUTS contract is
+ * implemented; injected test sources are automatic by definition.
+ */
+export function hasAutomaticColoradoRateSource(): boolean {
+  return getColoradoRateSource() !== manualOnlySource;
+}
+
 /** Test seam only. Production callers always receive the configured source. */
 export function __setColoradoRateSourceForTests(
   source: ColoradoRateSource | null,
