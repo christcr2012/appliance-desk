@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
 import { formatCents } from "@/domains/pricing/money";
 import { lockCustomerLedger } from "./ledger";
-import { sumTax } from "./tax";
+import { taxCentsForLine } from "./tax";
 
 /**
  * "Who caused the delay?" When the business, not the customer, made a pickup late, the owner or an admin waives the
@@ -50,8 +50,11 @@ export async function recordLateReturnWaiverInTx(
     where: { id: invoiceId },
     include: {
       lineItems: true,
+      taxLines: {
+        where: { source: "ENGINE" },
+        include: { rateVersion: { select: { rateMilliPercent: true } } },
+      },
       payments: { select: { status: true } },
-      agreement: { select: { taxRateMilliPercent: true } },
     },
   });
   if (invoice.status !== "OPEN" && invoice.status !== "DELINQUENT") {
@@ -82,25 +85,98 @@ export async function recordLateReturnWaiverInTx(
   const waivedCents = waiveLines.reduce((sum, w) => sum + w.cents, 0);
   const everyChargeFullyWaived = waiveLines.length === charged.length && waiveLines.every((w) => w.cents === w.line.amountCents);
   const existingTax = invoice.lineItems.filter((l) => l.kind === "TAX").reduce((sum, l) => sum + l.amountCents, 0);
-  const waivedTaxCents = everyChargeFullyWaived
-    ? existingTax
-    : Math.min(existingTax, sumTax(waiveLines.map((w) => w.cents), invoice.agreement?.taxRateMilliPercent ?? 0));
 
-  await tx.invoiceLineItem.createMany({
-    data: [
-      ...waiveLines.map((w) => ({
+  // Create the negative charge lines first so their jurisdiction reversals can
+  // point at the exact persisted line item that caused them.
+  const createdWaivers = new Map<string, string>();
+  for (const w of waiveLines) {
+    const row = await tx.invoiceLineItem.create({
+      data: {
         invoiceId: invoice.id,
-        kind: "LATE_RETURN_WAIVER" as const,
+        kind: "LATE_RETURN_WAIVER",
         description: `Waived (our delay): ${w.line.description}`,
         amountCents: -w.cents,
         quantity: 1,
         rentalLineId: w.line.rentalLineId,
-      })),
-      ...(waivedTaxCents > 0
-        ? [{ invoiceId: invoice.id, kind: "TAX" as const, description: "Sales tax on waived late days", amountCents: -waivedTaxCents, quantity: 1, rentalLineId: null }]
-        : []),
-    ],
-  });
+      },
+      select: { id: true },
+    });
+    createdWaivers.set(w.line.id, row.id);
+  }
+
+  let waivedTaxCents = 0;
+  const taxReversals: Array<{
+    invoiceId: string;
+    invoiceLineItemId: string;
+    jurisdictionId: string;
+    rateVersionId: string;
+    category: "LATE_RETURN";
+    taxableCents: number;
+    exemptCents: number;
+    exemptReason: string | null;
+    taxCents: number;
+    source: "ENGINE";
+  }> = [];
+
+  if (invoice.taxLines.length > 0) {
+    for (const w of waiveLines) {
+      const waiverLineId = createdWaivers.get(w.line.id);
+      if (!waiverLineId) continue;
+      for (const taxLine of invoice.taxLines.filter((line) => line.invoiceLineItemId === w.line.id)) {
+        const fullyWaived = w.cents === w.line.amountCents;
+        const taxableCents =
+          taxLine.taxableCents === 0 ? 0 : -w.cents;
+        const exemptCents =
+          taxLine.exemptCents === 0 ? 0 : -w.cents;
+        const taxCents =
+          taxLine.taxCents === 0
+            ? 0
+            : fullyWaived
+              ? -taxLine.taxCents
+              : -Math.min(
+                  Math.abs(taxLine.taxCents),
+                  Math.abs(taxCentsForLine(w.cents, taxLine.rateVersion.rateMilliPercent)),
+                );
+        waivedTaxCents += Math.abs(taxCents);
+        taxReversals.push({
+          invoiceId: invoice.id,
+          invoiceLineItemId: waiverLineId,
+          jurisdictionId: taxLine.jurisdictionId,
+          rateVersionId: taxLine.rateVersionId,
+          category: "LATE_RETURN",
+          taxableCents,
+          exemptCents,
+          exemptReason: taxLine.exemptReason,
+          taxCents,
+          source: "ENGINE",
+        });
+      }
+    }
+  } else if (existingTax > 0) {
+    // Legacy late-return invoices created before Batch T have no jurisdiction
+    // evidence. Preserve their old combined tax without reading the deprecated
+    // agreement snapshot for new arithmetic.
+    const chargedCents = charged.reduce((sum, line) => sum + line.amountCents, 0);
+    waivedTaxCents = everyChargeFullyWaived
+      ? existingTax
+      : Math.min(existingTax, Math.round((existingTax * waivedCents) / Math.max(1, chargedCents)));
+  }
+
+  if (taxReversals.length > 0) {
+    await tx.invoiceTaxLine.createMany({ data: taxReversals });
+  }
+  if (waivedTaxCents > 0) {
+    await tx.invoiceLineItem.create({
+      data: {
+        invoiceId: invoice.id,
+        kind: "TAX",
+        description: "Sales tax on waived late days",
+        amountCents: -waivedTaxCents,
+        quantity: 1,
+        rentalLineId: null,
+      },
+    });
+  }
   const amountDueCents = invoice.amountDueCents - waivedCents - waivedTaxCents;
   await tx.invoice.update({
     where: { id: invoice.id },
