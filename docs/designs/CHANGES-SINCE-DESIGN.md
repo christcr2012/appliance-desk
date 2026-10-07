@@ -156,3 +156,14 @@ All customer-addressed email goes through `sendCustomerEmail` (owner master swit
 - Normal CI now deliberately fails on skipped tests. The two database-heavy F capacity specs therefore join the existing Batch E perf spec on the explicit allow-list **only because all three run in the dedicated performance workflow**; the pure regression-guard tests still run in ordinary CI.
 - Current owner reads are `getCustomerProperties` + the active-appliance query; the billing screen uses `getInvoicesCount` + bounded `getInvoicesPage`. F1-c measures those real read paths rather than raw SQL or a synthetic endpoint.
 - Current recovery/provider contracts map cleanly to WU-F5: Stripe ambiguity is visible at `/desk/billing/reconciliation`, provider/message reconciliation runs in the 15:30 billing-reconcile pass, password reset has `revokeSessionsOnPasswordReset: true`, and staff deactivation deletes sessions transactionally. No decision-level drift was found.
+
+
+## 2026-10-06 — Batch G start drift reconciliation
+
+- F-part-1 does not change Batch G's agreement earnings, auth/session, or dark-token targets.
+- Installed dependencies are still Next 16.3.6 and Better Auth 1.7.6. The lock still contains vulnerable `sharp 0.35.4` and `source-map-js 1.2.1`; their parent ranges permit patched point releases, so WU-G1 remains applicable and must not use a forced/major upgrade.
+- Better Auth's 1.7.6-era two-factor schema is newer than BATCH-G section 2: verified enrollment and account-level lockout require `verified`, `failedVerificationCount`, and `lockedUntil`. BATCH-G now has a dated amendment matching the installed library and preserving its default lockout.
+- Master Roadmap §7 assigns the batch's one migration to G-1 while G-2 owns two-step behavior. G-1 therefore creates all additive G schema but does not activate 2FA behavior; G-2 remains migration-free.
+- `TwoFactor` is credential material and is deliberately excluded from F's recovery export alongside Account/Session/Verification; restored users must recover authentication instead of receiving restored TOTP secrets/backup codes.
+- G-A6 was wording drift only: `store_...` is outside the repo scanner's infrastructure-ID pattern, so no preview-store secret allowlist change is required.
+- Current close paths still match G-A2: `closeAgreementInTx` closes ENDED/CANCELLED, while renewal start directly ends the old agreement. Current earnings still cap only at `endDate`/as-of. Current dark semantic success/danger tokens still have no dark overrides. No other decision-level drift was found.

@@ -33,6 +33,7 @@ export async function getEarningsReport(asOf: Date = new Date()): Promise<Earnin
       id: true,
       billingStartedAt: true,
       endDate: true,
+      closedAt: true,
       customer: { select: { id: true, user: { select: { name: true, email: true } } } },
       lines: { select: { monthlyPriceCents: true } },
       invoices: { select: { amountPaidCents: true, refunds: { select: { amountCents: true } } } },
@@ -52,6 +53,7 @@ export async function getEarningsReport(asOf: Date = new Date()): Promise<Earnin
       {
         billingStartedAt: agreement.billingStartedAt,
         endDate: agreement.endDate,
+        closedAt: agreement.closedAt,
         lines: agreement.lines,
         invoicePaidCents,
       },

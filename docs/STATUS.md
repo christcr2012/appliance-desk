@@ -5,7 +5,7 @@
 `docs/archive/STATUS-LOG.md`. The long history before 2026-10-02 is in
 `docs/archive/HANDOFF-2026-09-26-to-2026-10-02.md`.
 
-Last updated: 2026-10-06 · F-part-1 is at its final PR (#273); **Batch G is next after #273 merges**. Chris authorized #262 to merge but judged the public-site visual result unsatisfactory / insufficiently different from the existing site, so a stronger public-site visual pass is explicitly deferred. O32 Google Workspace is also explicitly deferred until its app-side service-account/delegation, Drive OAuth, and live-walkthrough prerequisites are proven. **Review session 2026-10-06 (later):** docs audited against code and fixed; new ordered plan `docs/MASTER-ROADMAP.md` (F-part-1 now, then G → T → V → F-part-2; Chris approved the designs and the F split the same day — IN-40/41/42 answered); redesign concept proposed as Batch V.
+Last updated: 2026-10-06 · **F-part-1 is merged complete (#268, #269, #273). Batch G is in progress at G-1.** F-part-2 remains intentionally after G → T → V. Chris judged the earlier E2 public-site visual result insufficiently different, so the stronger Evergreen Signature redesign remains Batch V. O32 Google Workspace remains explicitly deferred until its app-side service-account/delegation, Drive OAuth, and live-walkthrough prerequisites are proven.
 
 ## Batch table
 
@@ -20,8 +20,8 @@ Last updated: 2026-10-06 · F-part-1 is at its final PR (#273); **Batch G is nex
 | D — Owner/customer control plane, website, evidence & privacy | **MERGED** | #214, merge `a6c9c9a` (2026-10-05) | Exact-head CI green; Vercel preview READY; zero unresolved review threads | Final D implementation contracts and the mandatory E/E2/F reconciliation live in `docs/designs/POST-BATCH-D-RECONCILIATION-2026-10-05.md`. |
 | E — Communications, reporting, growth, branding & accessibility | **MERGED** | #215–#218, #221, #222 | Durable messaging/automation ledgers, reconciliation, growth/reporting, Evergreen tokens, generated accessibility coverage; exact-head CI at merge gates | Live customer email/SMS/marketing remain OFF unless separately approved. Accessibility checks are engineering evidence, not certification. |
 | E2 — Visual redesign (owner desk, public site, customer portal; desktop, phone, dark) | **COMPLETE with #263** | E2 implementation stack through #263 | Shared UI/tokens, phone/desktop/dark route coverage, print cleanup, exact-head CI/preview gates | Public-site technical scope is complete, but Chris rejected the visual result as the final desired quality; a stronger public-site visual redesign remains explicitly deferred. |
-| F — Integrated verification, recovery, owner handoff & launch ledger | **F-PART-1 IN REVIEW — F1-c final** | #268/#269 merged; #273 / `ai/chatgpt/batch-f1c-capacity-runbooks-final` | F1 DB restore + F2 privacy-safe media recovery merged; F4 stable CI baselines 11.94 ms/op (50 properties/200 appliances) and 4.42 ms/op (5,000 invoices); F5 runbooks audited | #273 closes F-part-1 after exact-head CI/perf/Preview. F-part-2 remains after G → T → V; O32 stays explicitly deferred. |
-| G — Audit fixes and owner-account security | DESIGN APPROVED 2026-10-06 — not started | — | — | `docs/designs/BATCH-G.md`; from `docs/reviews/2026-10-06-owner-audit-and-recommendations.md`. Before F (Chris to approve the design). |
+| F — Integrated verification, recovery, owner handoff & launch ledger | **F-PART-1 COMPLETE** | #268, #269, #273 merged | Repeatable-read DB restore drill; privacy-safe media recovery; stable capacity baselines 11.94 ms/op (50 properties/200 appliances) and 4.42 ms/op (5,000 invoices); recovery/provider/account/privacy runbooks audited | F-part-2 (scenarios, screenshots, owner guide, launch/review ledger) remains intentionally after G → T → V. |
+| G — Audit fixes and owner-account security | **IN PROGRESS — G-1 IMPLEMENTED / PRE-PR PROOF GREEN** | `ai/chatgpt/batch-g1-foundation-final` | Production audit 0 high/critical (`npm audit --omit=dev`); Prisma validate/typecheck/lint green; 33/33 targeted unit tests; PostgreSQL 18 closure tests 3/3; populated 62-migration upgrade drill green | G-1 adds patched dependencies, `closedAt`, Better Auth 1.7.6 schema foundation, credential-safe backup exclusion, and dark semantic contrast. G-2 wires two-step login/session controls; no live auth policy is enabled by G-1. |
 | T — Colorado sales and use tax | DESIGN APPROVED 2026-10-06 — not started | — | — | `docs/designs/BATCH-T.md`; launch blocker; CPA answers IN-33 … IN-38; Chris to obtain the Colorado GIS API key (IN-40). |
 | K — Books, expenses, P&L, accounting exports | DESIGN APPROVED 2026-10-06 — not started | — | — | `docs/designs/BATCH-K.md`; after T. |
 | V — "Evergreen Signature" visual redesign | DESIGN APPROVED 2026-10-06 — not started | — | — | `docs/designs/BATCH-V.md`; answers Chris's rejection of E2's public-site look; IN-42. |
@@ -41,7 +41,7 @@ deny-by-default (#131), CI parallelized and sharded (#136, #137).
 
 - CI: parallel full run with 4 browser groups (`browser-a`…`browser-d` in `e2e/shards.json`); about 2.5 min warm
   (PR #266). CI uses Node 24, the same as Vercel production. Any skipped test fails CI (only the perf baseline may
-  skip; it runs in `perf.yml`). Docs-only pushes skip the Vercel build (`scripts/vercel-ignore-build.sh`). Details:
+  skip; it runs in `perf.yml`). Pull-request heads always build an exact-head Vercel Preview; docs-only non-PR pushes may skip the build (`scripts/vercel-ignore-build.sh`). Details:
   `docs/ARCHITECTURE.md` → "CI layout and speed" and "Vercel builds".
 - Preview deployments use an isolated Neon branch and a Preview-only private
   file store; preview photo-upload and backup APIs are deliberately disabled.
@@ -77,6 +77,9 @@ rate, real public contact/launch details, and explicit live Stripe/email/SMS/lau
 authorization. None of those blocks Batch F engineering; live provider actions stay OFF.
 
 ## Session log (last two batches only)
+
+- **2026-10-06 — Batch G-1 pre-PR proof:** production dependency audit is clean with `sharp 0.35.5` / `source-map-js 1.2.2`; Better Auth 1.7.6 schema drift was reconciled; closure lifecycle tests passed 3/3 on disposable PostgreSQL 18; the populated 62-migration upgrade drill passed including the `closedAt` backfill and retry; static/type/unit/contrast/backup-policy checks are green.
+- **2026-10-06 — F-part-1 complete (#268/#269/#273):** database restore, privacy-safe media recovery, capacity regression guards and required recovery/provider/account/privacy runbooks are merged. Product-wide F proof remains after G → T → V by approved design.
 
 - **2026-10-06 — Batch F1-a merged (#268):** database backup now uses one repeatable-read snapshot with migration/app metadata and provider replay evidence; restore is fail-closed to an empty local DB or API-verified Neon `restore-*` branch, with schema-derived load order. CI run 37545036997 is green and includes the real restore drill; one earlier red run caught and fixed migration-seed replacement plus a test-mock typing issue. Codex review was unavailable due usage limits; no review threads are open.
 - **2026-10-06 — CI and build health (after #266):** CI moved to Node 24 to match production; `allowScripts` added so npm 12 keeps running Prisma's engine download; skipped tests now fail CI; Vercel skips docs-only builds. Warnings reviewed: ESLint 9 end-of-support and a database-driver deprecation (via Prisma) are recorded in `docs/ROADMAP.md`, neither affects the live site today.

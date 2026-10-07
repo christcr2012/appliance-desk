@@ -210,8 +210,10 @@
   --color-accent-soft: #152e22;
   --color-on-accent: #123c2d;
 
+  --color-success: #7fd39a;
   --color-warning-bg: #3a2c0e;
   --color-warning-ink: #f0c96b;
+  --color-danger: #ff9b8f;
 
   --color-focus-ring: #b9e66b;
 
