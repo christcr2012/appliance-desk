@@ -410,20 +410,18 @@ async function applyLookup(
 
 async function locateTarget(
   target: Target,
-  opts: { force?: boolean } = {},
+  opts: { force?: boolean; preserveExistingOnUnavailable?: boolean } = {},
 ): Promise<{ status: TaxAddressStatus }> {
   const now = new Date();
   const force = opts.force ?? false;
+  const existing = await prisma.addressTaxLocation.findFirst({
+    where: currentWhere(target),
+    select: { status: true, lookedUpAt: true },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+  });
 
-  if (!force) {
-    const existing = await prisma.addressTaxLocation.findFirst({
-      where: currentWhere(target),
-      select: { status: true, lookedUpAt: true },
-      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-    });
-    if (existing && isFresh(existing.lookedUpAt, now)) {
-      return { status: existing.status };
-    }
+  if (!force && existing && isFresh(existing.lookedUpAt, now)) {
+    return { status: existing.status };
   }
 
   const source = getColoradoRateSource();
@@ -438,12 +436,20 @@ async function locateTarget(
     };
   }
 
+  if (
+    opts.preserveExistingOnUnavailable &&
+    existing &&
+    lookup.status === "UNAVAILABLE"
+  ) {
+    return { status: existing.status };
+  }
+
   return applyLookup(target, lookup, source, now, force);
 }
 
 export async function locateServiceAddress(
   serviceAddressId: string,
-  opts: { force?: boolean } = {},
+  opts: { force?: boolean; preserveExistingOnUnavailable?: boolean } = {},
 ): Promise<{ status: TaxAddressStatus }> {
   const address = await prisma.serviceAddress.findUnique({
     where: { id: serviceAddressId },
