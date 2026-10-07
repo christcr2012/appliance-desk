@@ -18,7 +18,6 @@ export function renewalCreateData(
     | "lateFeeGraceDays"
     | "lateFeeCents"
     | "lateFeePercent"
-    | "taxRateMilliPercent"
     | "endDate"
     | "id"
     | "continuityRootId"
@@ -47,7 +46,6 @@ export function renewalCreateData(
     lateFeeGraceDays: old.lateFeeGraceDays,
     lateFeeCents: old.lateFeeCents,
     lateFeePercent: old.lateFeePercent,
-    taxRateMilliPercent: old.taxRateMilliPercent,
     paidInFullInAdvance: false,
     freeMonthGranted: false,
     renewedFromAgreementId: old.id,

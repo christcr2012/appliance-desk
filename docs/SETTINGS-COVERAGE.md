@@ -13,8 +13,7 @@ editable; **deprecated** = nothing reads it (kept in the database; dropped in a 
 | `oneTimeDeliveryFeeCents`, `oneTimeInstallationFeeCents`, `oneTimeRemovalFeeCents`, `damageWaiverEnabled`, `depositEnabled` | editable (Rental policies) |
 | `defaultJobDurationMinutes`, `staffMayWorkUnassignedJobs` | editable (Visits and scheduling) |
 | `lateFeeGraceDays`, `lateFeeFlatCents`, `lateFeePercent` | editable (Rental policies) |
-| `taxRateMilliPercent`, `taxRateConfirmed` | editable (Rental policies); the exact tax rate |
-| `taxRatePermille` | deprecated (replaced by `taxRateMilliPercent`; kept in step by a database rule) |
+| `taxRateMilliPercent`, `taxRateConfirmed`, `taxRatePermille` | legacy/deprecated tax columns; no Settings reader or editor after Batch T T-4a3. Address/jurisdiction tax setup lives in Sales tax; columns remain only until the later schema cleanup in `docs/ROADMAP.md`. |
 | `announcementBannerText`, `announcementBannerOn` | deprecated (no reader) |
 | `sixMonthPrepay…`, `twelveMonthPrepay…` (five discount columns) | editable (Rental policies) |
 | `referralRewardCents` | editable (Rental policies) |

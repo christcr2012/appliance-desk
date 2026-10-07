@@ -371,7 +371,7 @@ describe.skipIf(!enabled)("fixed-term termination, renewal and auto-renew in dis
       expect(renewal.lateFeeGraceDays).toBe(7);
       expect(renewal.lateFeeCents).toBe(1500);
       expect(renewal.lateFeePercent).toBe(2);
-      expect(renewal.taxRateMilliPercent).toBe(7300);
+      expect(renewal.taxRateMilliPercent).toBe(0);
       expect(renewal.paidInFullInAdvance).toBe(false);
       expect(renewal.freeMonthGranted).toBe(false);
       expect(renewal.stripeSubscriptionId).toBeNull();

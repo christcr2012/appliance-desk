@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
+import { sendForSignature } from "@/domains/agreements";
 import { assertTaxReadyForAgreement, TaxNotReadyError } from "@/domains/tax/locations";
 import { businessDateFromKey, businessDateKey } from "@/lib/business-date";
 import { prisma } from "@/lib/prisma";
@@ -37,6 +38,14 @@ describe.skipIf(!enabled)("Batch T tax readiness (real Postgres)", () => {
     await prisma.rentalAgreement.create({
       data: { id: agreementId, customerId, serviceAddressId: addressId, status: "DRAFT" },
     });
+    await prisma.rentalLine.create({
+      data: {
+        agreementId,
+        label: "Synthetic washer",
+        listPriceCents: 4_000,
+        monthlyPriceCents: 4_000,
+      },
+    });
     await prisma.taxJurisdiction.create({
       data: {
         id: jurisdictionId,
@@ -54,9 +63,16 @@ describe.skipIf(!enabled)("Batch T tax readiness (real Postgres)", () => {
       where: { id: "singleton" },
       data: { shortTermLeaseElection: "COLLECT_ON_RENTALS" },
     });
+    await prisma.signatureRecord.deleteMany({ where: { agreementId } });
     await prisma.rentalAgreement.update({
       where: { id: agreementId },
-      data: { damageWaiverCents: 0, lateFeeCents: 0, lateFeePercent: 0 },
+      data: {
+        status: "DRAFT",
+        taxRateMilliPercent: 0,
+        damageWaiverCents: 0,
+        lateFeeCents: 0,
+        lateFeePercent: 0,
+      },
     });
     await prisma.taxJurisdiction.update({
       where: { id: jurisdictionId },
@@ -89,9 +105,12 @@ describe.skipIf(!enabled)("Batch T tax readiness (real Postgres)", () => {
     await prisma.taxRateVersion.deleteMany({ where: { jurisdictionId } });
     await prisma.taxabilityRule.deleteMany({ where: { jurisdictionId } });
     await prisma.taxJurisdiction.deleteMany({ where: { id: jurisdictionId } });
+    await prisma.signatureRecord.deleteMany({ where: { agreementId } });
+    await prisma.rentalLine.deleteMany({ where: { agreementId } });
     await prisma.rentalAgreement.deleteMany({ where: { id: agreementId } });
     await prisma.serviceAddress.deleteMany({ where: { id: addressId } });
     await prisma.customer.deleteMany({ where: { id: customerId } });
+    await prisma.auditLog.deleteMany({ where: { userId } });
     await prisma.user.deleteMany({ where: { id: userId } });
     await prisma.businessSettings.update({
       where: { id: "singleton" },
@@ -108,6 +127,32 @@ describe.skipIf(!enabled)("Batch T tax readiness (real Postgres)", () => {
       return (error as TaxNotReadyError).problems;
     }
   }
+
+  it("snapshots the verified address rental rate when sent, ignoring the obsolete global rate", async () => {
+    const settings = await prisma.businessSettings.findUniqueOrThrow({
+      where: { id: "singleton" },
+      select: { taxRateMilliPercent: true },
+    });
+    await prisma.businessSettings.update({
+      where: { id: "singleton" },
+      data: { taxRateMilliPercent: 9_999 },
+    });
+
+    try {
+      await sendForSignature(userId, agreementId);
+      const agreement = await prisma.rentalAgreement.findUniqueOrThrow({
+        where: { id: agreementId },
+        select: { status: true, taxRateMilliPercent: true },
+      });
+      expect(agreement.status).toBe("AWAITING_SIGNATURE");
+      expect(agreement.taxRateMilliPercent).toBe(1_000);
+    } finally {
+      await prisma.businessSettings.update({
+        where: { id: "singleton" },
+        data: { taxRateMilliPercent: settings.taxRateMilliPercent },
+      });
+    }
+  });
 
   it("passes when election, address, jurisdiction, rate and rental policy are ready", async () => {
     await expect(

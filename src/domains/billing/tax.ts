@@ -78,14 +78,3 @@ export function parseTaxRatePercent(text: string): number {
   return milli;
 }
 
-/**
- * The tax-rate text a new agreement starts with: the owner's rate only once a
- * CPA has confirmed it (never guess a rate); otherwise blank.
- */
-export function defaultTaxRateText(settings: {
-  taxRateConfirmed: boolean;
-  taxRateMilliPercent: number;
-}): string {
-  if (!settings.taxRateConfirmed || settings.taxRateMilliPercent <= 0) return "";
-  return formatTaxRate(settings.taxRateMilliPercent).replace("%", "");
-}

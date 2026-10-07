@@ -331,7 +331,7 @@ describe.skipIf(!enabled)("subscription start and renewal against disposable Pos
         customerId,
         depositCents: 0,
         damageWaiverCents: 300,
-        taxRateMilliPercent: 7300,
+        taxRateMilliPercent: 0,
         paidInFullInAdvance: false,
         stripeSubscriptionId: null,
         billingStartedAt: null,
