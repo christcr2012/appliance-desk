@@ -78,5 +78,12 @@ export async function seedTaxReadyContext(
     },
   });
 
-  return { jurisdictionId, rateVersionId, locationId: location.id };
+  async function cleanup() {
+    await prisma.addressTaxLocation.deleteMany({ where: { serviceAddressId } });
+    await prisma.taxabilityRule.deleteMany({ where: { jurisdictionId } });
+    await prisma.taxRateVersion.deleteMany({ where: { jurisdictionId } });
+    await prisma.taxJurisdiction.deleteMany({ where: { id: jurisdictionId } });
+  }
+
+  return { jurisdictionId, rateVersionId, locationId: location.id, cleanup };
 }
