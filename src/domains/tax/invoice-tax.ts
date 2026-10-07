@@ -2,7 +2,11 @@ import type { InvoiceLineItemKind as PrismaInvoiceLineItemKind, Prisma } from "@
 
 import { computeTax, type EngineResult } from "@/domains/tax/engine";
 import { getAgreementTaxContext } from "@/domains/tax/locations";
-import type { InvoiceLineItemKind } from "@/domains/tax/categories";
+import {
+  categoryForLineKind,
+  type InvoiceLineItemKind,
+  type TaxChargeCategory,
+} from "@/domains/tax/categories";
 import { businessDateFromKey, businessDateKey } from "@/lib/business-date";
 import { lockCustomerLedger } from "@/domains/billing/ledger";
 
@@ -118,6 +122,238 @@ type LocalTaxedInvoiceLine = {
   quantity?: number;
   rentalLineId?: string | null;
 };
+
+export type StripeTaxTotal = {
+  taxRateId: string | null;
+  amountCents: number;
+  taxableCents: number | null;
+};
+
+export async function mirrorStripeInvoiceTax(
+  tx: Prisma.TransactionClient,
+  input: {
+    invoiceId: string;
+    agreementId: string;
+    taxDate: Date;
+    lines: AgreementInvoiceTaxLine[];
+    stripeTaxes: StripeTaxTotal[];
+  },
+): Promise<{
+  expectedTaxCents: number | null;
+  stripeTaxCents: number;
+  problems: string[];
+}> {
+  await tx.invoiceTaxLine.deleteMany({
+    where: { invoiceId: input.invoiceId, source: { in: ["STRIPE", "ENGINE"] } },
+  });
+
+  const stripeTaxCents = input.stripeTaxes.reduce(
+    (sum, line) => sum + line.amountCents,
+    0,
+  );
+  const result = await computeAgreementInvoiceTax(tx, {
+    agreementId: input.agreementId,
+    taxDate: input.taxDate,
+    lines: input.lines,
+  });
+  const problems: string[] = [];
+
+  if (!result.ok) {
+    problems.push(...result.problems.map((problem) => `Engine check: ${problem}`));
+  }
+
+  const rateIds = [
+    ...new Set(
+      input.stripeTaxes
+        .map((line) => line.taxRateId)
+        .filter((id): id is string => Boolean(id)),
+    ),
+  ];
+  const versions =
+    rateIds.length > 0
+      ? await tx.taxRateVersion.findMany({
+          where: { stripeTaxRateId: { in: rateIds } },
+          select: {
+            id: true,
+            stripeTaxRateId: true,
+            jurisdictionId: true,
+          },
+        })
+      : [];
+  const versionByStripeId = new Map(
+    versions
+      .filter((version) => version.stripeTaxRateId)
+      .map((version) => [version.stripeTaxRateId!, version]),
+  );
+
+  const engineByJurisdiction = new Map<
+    string,
+    Extract<EngineResult, { ok: true }>["lines"]
+  >();
+  if (result.ok) {
+    for (const line of result.lines) {
+      const rows = engineByJurisdiction.get(line.jurisdictionId) ?? [];
+      rows.push(line);
+      engineByJurisdiction.set(line.jurisdictionId, rows);
+    }
+
+    const exemptRows = result.lines.filter((line) => line.exemptCents !== 0);
+    if (exemptRows.length > 0) {
+      await tx.invoiceTaxLine.createMany({
+        data: exemptRows.map((line) => ({
+          invoiceId: input.invoiceId,
+          invoiceLineItemId: null,
+          jurisdictionId: line.jurisdictionId,
+          rateVersionId: line.rateVersionId,
+          category: line.category,
+          taxableCents: 0,
+          exemptCents: line.exemptCents,
+          exemptReason: line.exemptReason,
+          taxCents: 0,
+          source: "ENGINE" as const,
+        })),
+      });
+    }
+  }
+
+  const stripeRows: Array<{
+    invoiceId: string;
+    invoiceLineItemId: null;
+    jurisdictionId: string;
+    rateVersionId: string;
+    category: TaxChargeCategory;
+    taxableCents: number;
+    exemptCents: number;
+    exemptReason: null;
+    taxCents: number;
+    source: "STRIPE";
+  }> = [];
+  const stripeByJurisdiction = new Map<string, number>();
+
+  for (const stripeTax of input.stripeTaxes) {
+    if (!stripeTax.taxRateId) {
+      problems.push(
+        `Stripe tax of ${stripeTax.amountCents} cents did not identify a tax rate.`,
+      );
+      continue;
+    }
+    const version = versionByStripeId.get(stripeTax.taxRateId);
+    if (!version) {
+      problems.push(
+        `Stripe tax rate ${stripeTax.taxRateId} is not linked to a local tax-rate version.`,
+      );
+      continue;
+    }
+
+    const engineRows = engineByJurisdiction.get(version.jurisdictionId) ?? [];
+    const categories = [
+      ...new Set(
+        engineRows
+          .filter((line) => line.taxableCents !== 0 || line.taxCents !== 0)
+          .map((line) => line.category),
+      ),
+    ];
+    let category: TaxChargeCategory | null =
+      categories.length === 1 ? categories[0]! : null;
+    if (!category) {
+      const directCategories = [
+        ...new Set(
+          input.lines
+            .map((line) => categoryForLineKind(line.kind, line.amountCents))
+            .filter(
+              (value): value is TaxChargeCategory =>
+                value !== "NOT_TAXABLE" && value !== "FOLLOWS_PARENT",
+            ),
+        ),
+      ];
+      if (directCategories.length === 1) category = directCategories[0]!;
+    }
+    if (!category) {
+      problems.push(
+        `Stripe tax rate ${stripeTax.taxRateId} covers more than one local tax category, so the jurisdiction detail could not be classified safely.`,
+      );
+      continue;
+    }
+
+    const expectedTaxableCents = engineRows.reduce(
+      (sum, line) => sum + line.taxableCents,
+      0,
+    );
+    stripeRows.push({
+      invoiceId: input.invoiceId,
+      invoiceLineItemId: null,
+      jurisdictionId: version.jurisdictionId,
+      rateVersionId: version.id,
+      category,
+      taxableCents: stripeTax.taxableCents ?? expectedTaxableCents,
+      exemptCents: 0,
+      exemptReason: null,
+      taxCents: stripeTax.amountCents,
+      source: "STRIPE",
+    });
+    stripeByJurisdiction.set(
+      version.jurisdictionId,
+      (stripeByJurisdiction.get(version.jurisdictionId) ?? 0) +
+        stripeTax.amountCents,
+    );
+  }
+
+  if (stripeRows.length > 0) {
+    await tx.invoiceTaxLine.createMany({ data: stripeRows });
+  }
+
+  if (result.ok) {
+    const jurisdictionIds = new Set([
+      ...engineByJurisdiction.keys(),
+      ...stripeByJurisdiction.keys(),
+    ]);
+    for (const jurisdictionId of jurisdictionIds) {
+      const expected = (engineByJurisdiction.get(jurisdictionId) ?? []).reduce(
+        (sum, line) => sum + line.taxCents,
+        0,
+      );
+      const stripe = stripeByJurisdiction.get(jurisdictionId) ?? 0;
+      if (Math.abs(expected - stripe) >= 1) {
+        problems.push(
+          `Jurisdiction ${jurisdictionId}: Stripe charged ${stripe} cents; the engine expected ${expected} cents.`,
+        );
+      }
+    }
+  }
+
+  if (problems.length > 0) {
+    const existing = await tx.auditLog.findFirst({
+      where: {
+        entityType: "Invoice",
+        entityId: input.invoiceId,
+        action: "billing.tax_mismatch",
+      },
+      select: { id: true },
+    });
+    if (!existing) {
+      await tx.auditLog.create({
+        data: {
+          userId: null,
+          action: "billing.tax_mismatch",
+          entityType: "Invoice",
+          entityId: input.invoiceId,
+          newValue: {
+            stripeTaxCents,
+            expectedTaxCents: result.ok ? result.totalTaxCents : null,
+            problems,
+          },
+        },
+      });
+    }
+  }
+
+  return {
+    expectedTaxCents: result.ok ? result.totalTaxCents : null,
+    stripeTaxCents,
+    problems,
+  };
+}
+
 
 export async function createLocalTaxedInvoice(
   tx: Prisma.TransactionClient,
