@@ -619,7 +619,7 @@ categories) use the same `ensureStripeTaxRate` ids per line.
 
 ---
 
-## 4. Screens (Desk → Money → **Sales tax**; OWNER and ADMIN)
+## 4. Screens (Desk → Money → **Sales tax**; OWNER and ADMIN) — organized by section 14 (screen map)
 
 Every screen follows AGENTS.md's "explained in the screen" rule: what the setting does, what each choice means for a
 customer, the starting value and why, who can change it, and (where a recommended value exists) a restore button.
@@ -1065,7 +1065,7 @@ Visible to OWNER and ADMIN (ADMIN sees "Ask the owner to file" instead of the bu
 Unit tests in `tests/exceptions-tax.test.ts` (pure: appears the day after period end; severity switches; disappears
 when FILED; zero return wording; not-ready ordering).
 
-**Guided page** `/desk/money/sales-tax/returns/<periodId>/file` (OWNER; ADMIN read-only). One screen, top to bottom,
+**Guided page** `/desk/sales-tax/returns/<periodId>/file` (OWNER; ADMIN read-only). One screen, top to bottom,
 built for a phone or a half-width window next to the SUTS tab:
 
 1. **Check** — green "Ready to file" or the list of problems with a fix link each (same as `TAX_FILING_NOT_READY`).
@@ -1145,7 +1145,7 @@ Chris: "is there a way you can build this into the system as a way I can update 
 changes?" IN-43 is therefore **entered by the owner in the app**, not sent to a developer, and can be changed at any
 time.
 
-**Screen:** Desk → Money → Sales tax → **Filing accounts → <account> → SUTS setup** (OWNER edits, ADMIN views). Each
+**Screen:** Desk → Sales tax → Setup → **Filing accounts → <account>** (SUTS setup) (OWNER edits, ADMIN views). Each
 field is explained on screen per AGENTS.md (what it does, example, who can change it):
 
 | Field | Stored in | Used by |
@@ -1208,7 +1208,7 @@ introduction. Built in PRs T-6c and T-7 (12.8).
 4. `UNDECIDED` — election still `UNDECIDED`, or the status would be `APPLIES` but `rdfHandling` or the CPA confirmation
    (below) is missing.
 
-Owner settings on Desk → Money → Sales tax → **Your tax decisions** (OWNER; explained on screen with the rules above):
+Owner settings on Desk → Sales tax → Setup → **Your tax decisions** (OWNER; explained on screen with the rules above):
 - `rdfThresholdCents` (starting value 50,000,000 = $500,000, "the amount in Colorado law as of 2026; change it only if
   the law changes"; restore button).
 - `rdfHandling`: `UNDECIDED` | `COLLECT_FROM_CUSTOMER` | `PAY_MYSELF` — only asked when the status is or may become
@@ -1417,7 +1417,7 @@ model OfficialSourceWatch {
 - **Starting list** (seeded inactive until the T-5b PR verifies each URL still exists; the PR records the verified
   list): Colorado "Sales Tax Rate Changes" (DR 1002 updates) page; DR 1002 publication page; Retail Delivery Fee
   retailers page; SUTS participating jurisdictions page; Colorado sales-tax news/announcements page; City of Greeley
-  sales tax page. The owner can add, pause or remove entries (Desk → Money → Sales tax → **Official sources**).
+  sales tax page. The owner can add, pause or remove entries (Desk → Sales tax → Setup → **Official sources**).
 - **Fetch safety** (server-side fetch of owner-entered URLs): `https` only; host must end in `.gov` or `.co.us` or be in
   a short reviewed allowlist in code; no IP literals, no redirects to another host, 10-second timeout, 2 MB cap, no
   cookies or credentials; text extracted by stripping tags/scripts and collapsing whitespace before hashing (so page
@@ -1457,3 +1457,126 @@ network in CI.
 
 - **T-5b — WU-TC1:** 13.2–13.5 (after T-5, which builds D-T9's `tax-rate-changes` and `tax-address-recheck`). Risk area:
   automation/provider (read-only). Screens for the switch, limit, undo and official-sources list ride T-7.
+
+---
+
+## 14. Screen map — how all of Batch T is organized in the desk (Chris, 2026-10-07: "make sure this is all properly organized in the UI")
+
+**This section is the single source for where every tax screen lives.** It supersedes the screen lists in section 4,
+11.8 (T-7), 11.11, 11.13, 12.2, 13.2 and 13.3 wherever they disagree; those sections still define *what* each screen
+does. Build it with the components the desk already uses: `PageHeader` + `FilterBar` link tabs (as on Billing),
+`AttentionList` for Today, `DataList`, `Card`, `StatusPill`, form controls from `src/components/ui`, Evergreen tokens.
+
+### 14.1 Navigation
+
+- One new entry in `src/lib/desk-navigation.ts`, group **Money**, after Billing: `["sales-tax", "Sales tax",
+  "finance"]` (OWNER and ADMIN; STAFF never sees it, enforced server-side as for every finance link).
+- Routes follow the existing flat pattern: **`/desk/sales-tax/...`** (replace every `/desk/sales-tax/...` path in
+  this document).
+- Phone bottom tabs are unchanged; on a phone the way in is **Today** (14.3) or the menu.
+- Old entry points redirect: the single tax-rate field on Settings is removed in T-4/T-7 and replaced by a card "Sales
+  tax now has its own section → Sales tax → Setup".
+
+### 14.2 The Sales tax section — six tabs
+
+`PageHeader` title "Sales tax", one-line description "Colorado sales tax: what to charge, what to file, and when".
+`FilterBar` tabs (same order everywhere; horizontally scrollable on phones):
+
+| Tab | Route | What is on it | Edits |
+|---|---|---|---|
+| **Overview** | `/desk/sales-tax` | (1) the **setup checklist** until complete (14.4); (2) **Next return** card: account, period, due date, total to pay or "zero return", big button **File this return**; (3) "Needs you" list — the same tax items Today shows (14.3); (4) "Recently changed by itself" — automatic rate updates with Undo (13.2); (5) next three due dates with link to Returns | — |
+| **Returns** | `/desk/sales-tax/returns` | Filing calendar for the next 12 months and filed history, filterable by account (Sales tax, Delivery fee, Use tax) and status (Upcoming · Ready · Due soon · Overdue · Filed · Amend); **Add to my calendar**; filter **Use tax purchases** shows the purchase list (3.6) that feeds the use-tax return | OWNER files |
+| **Areas & addresses** | `/desk/sales-tax/areas` | Tax areas (rates now and upcoming, history with "changed automatically" badges and Undo, review queue for new areas and failed guardrails); filter **Addresses to check** (needing review / failed, bulk file import, re-check) | OWNER/ADMIN confirm addresses and enter rates; OWNER undoes and approves |
+| **What's taxed** | `/desk/sales-tax/taxability` | The matrix (D-T5) with "CPA confirmed on" per cell and the "Fill in common Colorado starting answers" button | OWNER |
+| **Exemptions** | `/desk/sales-tax/exemptions` | Exempt customers, certificates, expiry | OWNER |
+| **Setup** | `/desk/sales-tax/setup` | One page with an in-page contents list (anchors), in this order: **Your tax decisions** (lease election, reporting basis, automatic rate updates switch and limit — 13.2); **Delivery fee** (status the app computed with the reason, handling, CPA confirmation, threshold, yearly amounts — 12.2/12.4); **Filing accounts** (list; each opens `/desk/sales-tax/setup/accounts/[id]` with the SUTS setup of 11.13, reminder days and email switch); **Official sources** (watch list — 13.3); **Business location for use tax** | OWNER (ADMIN read-only) |
+
+Return pages (no tab of their own; reached from Today, Overview or Returns; breadcrumb "Sales tax › Returns ›
+September 2026"):
+- `/desk/sales-tax/returns/[periodId]` — **one** page that is both the return and the guided filing flow of 11.11
+  (check → open SUTS → type these in → pay → done). Filed periods show the frozen numbers, confirmation, dates paid and
+  filed, and the CSV download; the five steps collapse into a "Filed" summary.
+- `/desk/sales-tax/returns/[periodId]/amend` — the amended-return mode of 11.12 (same layout: previously reported /
+  corrected / difference).
+- The Delivery fee and Use tax returns use the same page with their simpler rows (12.5, 3.6).
+
+### 14.3 Today — every tax item, one place, one click
+
+All tax Today items appear in one **"Sales tax"** group: Today's `AttentionList` groups by `ExceptionCategory`, so every
+tax item uses the single category **`SALES_TAX`**, and the names used in 11.11, 11.13, 12 and 13 (`TAX_RETURN_DUE`,
+`TAX_SOURCE_CHANGED`, …) become an item `kind` inside it. Items are ordered: overdue returns → amendments owing tax
+→ due soon → not ready → setup → information. Each item opens the exact screen that resolves it:
+
+| Today item | Opens | Clears when |
+|---|---|---|
+| File your <Month> return (`TAX_RETURN_DUE`) | return page | marked filed |
+| Amend your <Month> return (`TAX_AMENDMENT_DUE`) | amend page | amendment filed / handled with CPA |
+| Return not ready (`TAX_FILING_NOT_READY`) | the first fixing screen (Addresses to check, a rate, What's taxed, or Setup) | nothing blocks the return |
+| Finish tax setup (`TAX_SETUP_INCOMPLETE`) | Overview → setup checklist, scrolled to the open step | step complete |
+| Check your SUTS setup (`TAX_SETUP_CHECK`) | Setup → the filing account | "I checked this" |
+| License renews soon (`TAX_LICENSE_RENEWAL`) | Setup → the filing account | new expiry entered |
+| Colorado changed a page (`TAX_SOURCE_CHANGED`) | Setup → Official sources, that entry expanded with the excerpt | "I looked at it" |
+| Rate changed by itself (13.2 notice) | Areas & addresses → that area's history (Undo there) | acknowledged |
+| Rate change needs you (13.2 guardrail) | the same history row with "Apply this rate" | applied or dismissed with reason |
+| Delivery fee decision / amount / exemption ending (12.2, 12.4, 12.6) | Setup → Delivery fee | decided / amount entered / acknowledged |
+| Exemption certificate expiring (D-T10) | Exemptions → that customer | renewed or ended |
+
+STAFF never sees tax items; ADMIN sees them with "Ask the owner" where only the OWNER can act.
+
+### 14.4 Setup checklist (Overview, until finished)
+
+Ordered steps with a done tick, a one-line "why", and a **Start** button to the exact place:
+1. Your tax decisions (lease election, reporting basis) — needs CPA answers IN-33/IN-35.
+2. What's taxed — every cell decided (IN-34).
+3. Filing accounts — Colorado sales tax account with license number, frequency, first period; SUTS setup (IN-43).
+4. Tax areas reviewed — every area in use reviewed and on a filing account.
+5. Delivery fee — status confirmed by the CPA (IN-37); amount entered if it applies.
+6. Reminders — one test reminder email received; calendar file downloaded.
+7. Official sources — every watched page checked successfully once.
+
+When all are done the checklist collapses to "Setup complete ✓ — review" and the Overview leads with the next return.
+Steps 1–5 are also the billing-readiness blockers (D-T7), so the checklist and the blocking list always say the same
+thing in the same words.
+
+### 14.5 Tax elsewhere in the desk and portal (small, linked, never duplicated)
+
+- **Customer record:** a "Tax" panel (OWNER/ADMIN) — the service address's tax areas and combined rate, exemption
+  status with link to Exemptions. No editing here.
+- **Agreement and rental builder:** the address's tax areas and rate in the price summary; a blocking notice links to
+  the exact fix (14.3 targets).
+- **Appliance form / purchase order receiving:** "Sales tax the seller charged" field (3.6) with a hint linking to
+  Returns → Use tax purchases.
+- **Invoices, statements, customer portal:** tax lines by area name and the separate "Colorado retail delivery fee"
+  line (12.4); customers never see filing information.
+- **Automations page:** the new rules (`tax-rate-changes`, `tax-address-recheck`, `tax-filing-calendar`,
+  `tax-rate-watch`, `tax-source-watch`) appear in the existing health list with plain explanations.
+
+### 14.6 Words used on screen (one glossary)
+
+| Say on screen | Never on screen |
+|---|---|
+| return, amended return, zero return | worksheet, packet, period ID |
+| tax area | jurisdiction |
+| filing account | — |
+| Colorado's official address lookup | GIS, API |
+| Colorado retail delivery fee (short: delivery fee) | RDF |
+| What's taxed | taxability matrix |
+| Due date (and "Colorado accepts it until Monday …" when moved) | legalDueOn |
+
+Money is always shown as dollars with cents; dates in Colorado time ("Oct 20, 2026").
+
+### 14.7 Layout rules for these screens
+
+- Every tab works at 360 px: tables become `DataList` cards; the return page keeps one column with the copy buttons
+  at thumb reach; the total to pay is always visible at the top of the return page.
+- Copy buttons have labels like "Copy Greeley tax, $123.45" and announce "Copied" in a live region.
+- One primary button per screen (File this return / Save); destructive or legal actions (mark filed, undo a rate,
+  handled with CPA) ask for confirmation with the consequence in plain words.
+- Empty states say what will appear and when ("Your first return appears the day after October ends").
+
+### 14.8 Tests (add to T-7)
+
+`e2e/sales-tax.spec.ts`: the nav shows Sales tax to OWNER and ADMIN only; each of the six tabs loads; a Today tax item
+opens its target; the setup checklist step links land on the right anchor; return page at 360 px with copy buttons;
+axe clean on every tab at 360/1440, light and dark. Unit: `tests/desk-navigation.test.ts` gains the Sales tax entry and
+the STAFF exclusion; the 14.3 targets are a table test in `tests/exceptions-tax.test.ts`.

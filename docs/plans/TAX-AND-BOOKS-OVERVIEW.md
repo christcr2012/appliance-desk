@@ -74,6 +74,14 @@ Revisit this if you ever sell appliances outright, expand outside Colorado, or e
 - **Use tax:** when you buy an appliance from a private seller or an out-of-state store without tax, the app works out
   the use tax you owe the state and Greeley and puts it on the right return.
 
+### Where it all lives in the app
+
+Everything is under **Money → Sales tax**, with six tabs: **Overview** (a setup checklist first, then your next return
+with a big "File this return" button), **Returns** (calendar and history), **Areas & addresses**, **What's taxed**,
+**Exemptions**, and **Setup** (your decisions, the delivery fee, filing accounts and SUTS setup, official pages watched).
+Anything that needs you also shows on **Today** under "Sales tax", and tapping it takes you straight to the screen that
+fixes it.
+
 ### What you need to do for Batch T
 
 1. Register on Colorado's **SUTS** website (if you haven't) and get the free **GIS API key**. I'll give you click-by-click

@@ -630,6 +630,7 @@ IN-17 (rate check), IN-33 … IN-38 (`docs/OWNER-INPUTS.md`). IN-43 and IN-44 (A
 - [ ] (Amendment B) Colorado retail delivery fee: the app decides automatically whether it applies (lease election, small-business exemption), counts one fee per qualifying delivery, charges it as a separate untaxed line or records it as paid by the business, and prepares its return on the same calendar.
 - [ ] Customer exemptions with certificate photo, scope and expiry.
 - [ ] OWNER-only policy edits and filing; ADMIN limits enforced server-side; screens explained in plain words; axe clean.
+- [ ] (Section 14) All tax screens live under one "Sales tax" entry in Money with six tabs (Overview, Returns, Areas & addresses, What's taxed, Exemptions, Setup); every tax Today item opens the exact screen that resolves it; the setup checklist matches the billing blockers word for word; on-screen wording follows the 14.6 glossary.
 - [ ] No tax rate or taxability answer is written into code, seeds or docs as fact.
 - [ ] Every item in "Rules that apply to every batch".
 

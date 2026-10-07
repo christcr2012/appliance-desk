@@ -482,3 +482,8 @@ Third Codex review fixes: free repair swaps never owe the retail delivery fee (C
 setting was removed); the fee amount and reporting period follow the sale's first-payment date (`saleOn`); an
 undecided record resolves to PENDING_RATE when no amount exists; the rate/page watch route runs daily so the two-days
 rule can be met; the page watch keeps the previous text so it can show what actually changed.
+Also 2026-10-07 (Chris: "make sure this is all properly organized in the UI"): BATCH-T section 14 is the single screen
+map — one "Sales tax" entry in the Money nav group (`/desk/sales-tax`, OWNER/ADMIN), six tabs (Overview, Returns, Areas
+& addresses, What's taxed, Exemptions, Setup), one combined return/filing page, every tax Today item routed to its fixing
+screen, a setup checklist identical to the billing blockers, and an on-screen glossary (no "jurisdiction", "packet",
+"GIS" or "RDF" in the UI).

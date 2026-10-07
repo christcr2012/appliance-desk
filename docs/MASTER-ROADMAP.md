@@ -160,7 +160,7 @@ tests most likely to break, so the agent updates them in the same PR instead of 
 | T-6a | WU-T7 filing accounts + Amendment A WU-TA1: filing calendar, due dates and holidays, Today tasks (11.11 exception rules)/email prompts, owner alerts, calendar file (`BATCH-T.md` section 11) | schema + automation | migration check, automation run tests, cron route auth tests, messaging delivery tests |
 | T-6b | WU-T7 worksheet → Amendment A WU-TA2 SUTS entry packet, use tax (+ appliance form field, purchase-order hook), mark filed, amended returns (11.12) | money | purchasing/receipt tests, appliance form tests |
 | T-6c | Amendment B WU-TB1: Colorado retail delivery fee — automatic status, delivery-completion records, customer line or pay-myself, RDF return packet (`BATCH-T.md` section 12) | money | job completion tests, invoice/statement tests, Stripe invoice-item provider-operation tests, readiness tests |
-| T-7 | WU-T8 screens (incl. Amendment A filing calendar, return packet and guided "File this return" pages) + WU-T9 docs | screens | route inventory (every new page), axe light/dark, `e2e/sales-tax.spec.ts` shard assignment |
+| T-7 | WU-T8 screens organized by `BATCH-T.md` section 14 (screen map: one Sales tax nav entry, six tabs, return page, Today routing, setup checklist) + WU-T9 docs | screens | route inventory (every new page), axe light/dark, `e2e/sales-tax.spec.ts` shard assignment |
 
 ### V — "Evergreen Signature" redesign
 | PR | Work units | Risk area | CI watch |
