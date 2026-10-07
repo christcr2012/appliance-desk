@@ -105,12 +105,36 @@ describe("POST /api/uploads/photo", () => {
     ["jobs/job-1/photo.jpg", PRIVATE_TOKEN],
     ["appliances/appliance-1/photo.jpg", PRIVATE_TOKEN],
     ["maintenance-requests/customer-1/photo.jpg", PRIVATE_TOKEN],
+    ["tax-exemptions/customer-1/certificate.jpg", PRIVATE_TOKEN],
     ["appliance-types/photo.jpg", PUBLIC_TOKEN],
   ])("never crosses storage credentials for %s", async (pathname, token) => {
     getServerSession.mockResolvedValue({ user: { id: "owner-1", role: "OWNER" } });
     successfulProviderResponse();
     expect((await POST(uploadRequest(pathname))).status).toBe(200);
     expect(handleUpload).toHaveBeenCalledWith(expect.objectContaining({ token }));
+  });
+
+  it("allows only an OWNER to upload a private tax-exemption certificate for an existing customer", async () => {
+    successfulProviderResponse();
+
+    getServerSession.mockResolvedValue({ user: { id: "owner-1", role: "OWNER" } });
+    expect(
+      (await POST(uploadRequest("tax-exemptions/customer-1/certificate.jpg"))).status,
+    ).toBe(200);
+    expect(customer).toHaveBeenCalledWith({
+      where: { id: "customer-1", archivedAt: null },
+      select: { id: true },
+    });
+    expect(handleUpload).toHaveBeenCalledWith(
+      expect.objectContaining({ token: PRIVATE_TOKEN }),
+    );
+
+    handleUpload.mockClear();
+    getServerSession.mockResolvedValue({ user: { id: "admin-1", role: "ADMIN" } });
+    expect(
+      (await POST(uploadRequest("tax-exemptions/customer-1/certificate.jpg"))).status,
+    ).toBe(403);
+    expect(handleUpload).not.toHaveBeenCalled();
   });
 
   it("fails closed when private storage is unavailable instead of falling back to the public token", async () => {
@@ -153,6 +177,7 @@ describe("POST /api/uploads/photo", () => {
     "jobs/job-1/photo.jpg",
     "appliances/a-1/photo.jpg",
     "backups/photo.jpg",
+    "tax-exemptions/customer-1/certificate.jpg",
   ])("customer cannot upload to %s", async (pathname) => {
     getServerSession.mockResolvedValue({ user: { id: "u-1", role: "CUSTOMER" } });
     expect((await POST(uploadRequest(pathname))).status).toBe(403);
@@ -203,7 +228,7 @@ describe("POST /api/uploads/photo", () => {
     expect(handleUpload).toHaveBeenCalledWith(expect.objectContaining({ token: PRIVATE_TOKEN }));
 
     handleUpload.mockClear();
-    for (const pathname of ["appliance-types/photo.jpg", "appliances/a-1/photo.jpg"]) {
+    for (const pathname of ["appliance-types/photo.jpg", "appliances/a-1/photo.jpg", "tax-exemptions/customer-1/certificate.jpg"]) {
       expect((await POST(uploadRequest(pathname))).status).toBe(403);
     }
     expect(handleUpload).not.toHaveBeenCalled();
