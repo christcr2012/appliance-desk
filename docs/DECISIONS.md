@@ -500,3 +500,8 @@ Today "System" group for high issues, and a private `/api/ops/issues` endpoint (
 owner-created, hashed, revocable key. The scheduled agent is a Claude Routine by default (it runs with the repository
 attached and can open fix PRs, never merge unattended); any agent with scheduled tasks can use the same endpoint.
 Rejected: writing issues to GitHub automatically (the repository is public), and giving the agent database access.
+Fifth Codex review fixes (PR #282): new D-T14 — prepaid rent gets one local invoice at signing so its sales tax reaches
+the returns (before, prepaid rent was collected outside the app and its tax would never be reported); retail delivery
+fees are filed by delivery date while the amount follows the sale date; a collected fee is credited only after the
+customer is refunded in full; rate versions found on or after their start date are pushed to Stripe immediately; only
+the real tax decisions (and the delivery fee when it applies) block billing — filing setup never does.

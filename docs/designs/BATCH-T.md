@@ -219,6 +219,17 @@ With `COLORADO_GIS_API_KEY` unset, the lookup source is "manual": address saves 
 the owner/admin picks jurisdictions from a list (or imports the state's bulk-lookup result file). Nothing else
 changes. The key is never logged, never sent to the browser and never stored in the database.
 
+### D-T14 — Prepaid rent is invoiced so its tax is recorded (review fix, 2026-10-07)
+
+Today a `paidInFullInAdvance` agreement creates no subscription and no rent invoice (Chris collects the lump sum outside
+the app), so its rent and sales tax would never reach `InvoiceTaxLine`, the returns or the retail delivery fee. From
+WU-T5 on: when a prepaid agreement is signed, the app creates **one local invoice for the full prepaid rent** (the
+agreed prepaid amount after the prepaid discount, with `computeTax` lines for the address on the signing date), issued
+on the signing date and due on receipt. Chris marks it paid with the **existing manual-payment action** (cash, check,
+bank transfer) or the customer pays it in the portal like any local invoice. Its issue date is the sale date used by the
+returns and by the delivery fee (12.4). Idempotent per agreement (`prepaid-rent-<agreementId>`). Stop-and-ask S-T13 if
+the signing/checkout flow already collects prepaid rent some other way that WU-T5's drift check finds.
+
 ---
 
 ## 2. Schema changes (additive only) — migration `<timestamp>_batch_t_sales_tax`
@@ -767,6 +778,8 @@ ADMIN cannot change the election; axe clean at 360/1440 light/dark. Unit tests f
 - **S-T5** Production has real agreements when WU-T5 starts (backfilling tax lines for past invoices is not designed).
 - **S-T6** Amending a filed period needs anything beyond 11.12 (for example SUTS requires a form or field the
   amended packet does not produce, or a refund claim must go through a separate process the CPA describes).
+- **S-T13** Prepaid rent turns out to be collected through a flow D-T14 does not describe (for example a Stripe
+  Checkout line added after this design), or the prepaid amount cannot be read from the agreement.
 - **S-T7** Stripe rejects `jurisdiction`/`tax_type` values or the API version in `src/lib/stripe.ts` lacks
   `invoice.total_taxes[].tax_rate_details`; do not guess a different mapping.
 
@@ -1259,6 +1272,8 @@ model RetailDeliveryFeeRecord {
                                          // Stripe or local — that charges rent for this sale (for a normal rental the
                                          // first invoice anchored to firstDeliveredOn; for a prepaid one the signing
                                          // payment date); null until that charge exists. Selects amount and period.
+  customerRefundedAt  DateTime?          // collected fees: set when the customer was refunded in full (credit gate)
+  customerRefundRef   String?
   creditAppliedPeriodId String?          // set when an over-reported fee is claimed as a credit on a later RDF return;
                                          // frozen when that return is filed, so the credit can never be claimed twice
   status              RdfRecordStatus
@@ -1290,8 +1305,8 @@ model RetailDeliveryFeeRecord {
 - **Amount:** the `RetailDeliveryFeeRate` in effect on **`saleOn`** — the date of the sale's **first rent charge**
   (Colorado charges a lease's fee once, at the first payment, at the amount in effect when the sale takes place). It is
   *not* the agreement's `startDate`, which is the signing date: recurring billing starts from `firstDeliveredOn`, so a
-  rental signed in June and first charged in July uses July's amount, while a `paidInFullInAdvance` rental paid at
-  signing in June uses June's. `saleOn` is filled when that first rent invoice is recorded (local invoice creation or
+  rental signed in June and first charged in July uses July's amount, while a `paidInFullInAdvance` rental uses the
+  issue date of its prepaid rent invoice (D-T14). `saleOn` is filled when that first rent invoice is recorded (local invoice creation or
   the Stripe invoice mirror); until then the record stays `PENDING_RATE` with the reason "first rent charge not yet
   made". If no rate exists for `saleOn` → the completion still succeeds,
   the record is `PENDING_RATE` (rate and amount empty) and is completed in place when the rate is entered; a `high`
@@ -1318,13 +1333,20 @@ delivery fee" filing account (prefilled: kind `RETAIL_DELIVERY_FEE_RETURN`, freq
 Colorado sales tax account, B-F6). It then uses the same calendar, Today task, email reminders, guided page and amended
 return flow as sales tax (11.4–11.12) with a simpler packet: number of retail deliveries, fee per delivery (one row per
 rate if the period crosses July 1), total fee; zero return when there were none. Records attach to the period by
-`saleOn`. **Corrections (review fix):** fees *added* to an already-filed period open an amendment (11.12); fees
+**`deliveredOn`** (review fix: the return reports retail deliveries made during the period; `saleOn` only chooses the
+fee amount — a prepaid rental invoiced June 30 and delivered July 2 is on the July return at June's amount). **Corrections (review fix):** fees *added* to an already-filed period open an amendment (11.12); fees
 *over-reported* on a filed period (a record later found `NOT_DUE`, or a cancelled sale) are claimed as a **credit on the
 current open RDF return** (DR 1786 tells filers to claim prior-period overpayments that way instead of amending): the
 RDF packet has a `priorPeriodCreditCents` line with the source period named, and no amendment is opened. A credit is
 offered only by records whose `creditAppliedPeriodId` is empty or equals the open period; it is set to the open period
 when the packet is built and frozen when that return is marked filed, so a later return can never claim it again
-(review fix; DR 1786 forbids reusing a credit already taken on another return).
+(review fix; DR 1786 forbids reusing a credit already taken on another return). **Refund first (review fix):** a
+record whose fee was collected from the customer becomes credit-eligible only after that customer has been refunded the
+full fee (Colorado allows the credit for an erroneously collected fee only then; otherwise collected fees are remitted).
+New column `customerRefundedAt DateTime?` plus `customerRefundRef String?` (the local credit/refund record id) on
+`RetailDeliveryFeeRecord`; until set, a Today task under Sales tax says "Refund the 31¢ delivery fee to <customer> (or it
+must still be paid to Colorado)" linking to the customer's billing page, and the fee stays in the return's total.
+`PAY_MYSELF` records need no refund.
 
 ### 12.6 Watching the exemption
 
@@ -1341,7 +1363,8 @@ rate switch; one fee per sale with several appliances and with a partial deliver
 grace until the first period starting 90+ days after crossing; state-exempt delivery charges nothing; undecided status
 blocks readiness),
 ★ `tests/retail-delivery-fee-integration.test.ts` (completion writes one record under retry; collected line is untaxed
-and on the next invoice; a prepaid agreement gets a standalone fee invoice; a rental signed in June and first charged in
+and on the next invoice; a prepaid agreement gets a standalone fee invoice; a prepaid rental invoiced June 30 and delivered
+July 2 is on the July return at June's amount; a collected fee is not credited before the customer refund is recorded; a rental signed in June and first charged in
 July uses July's amount; a credit claimed on one filed return is not offered on the next; PAY_MYSELF adds no line; rate missing leaves a PENDING_RATE record completed later; undecided
 leaves PENDING_DECISION resolved later — to PENDING_RATE when no amount exists yet; a free repair swap creates no
 record; a sale paid before July 1 and delivered after uses the earlier amount; added fee after filing opens an amendment; over-reported fee
@@ -1392,7 +1415,12 @@ New automation `tax-rate-watch` (inside the `tax-address-recheck` cron route as 
      starting value 1000 = one percentage point — "a bigger jump is more likely a lookup problem than a real change");
      the effective date is today or later (never backdated).
    - **Applied:** create `TaxRateVersion` (`source = COLORADO_GIS`, `effectiveOn`, `autoApplied = true`), which D-T9's
-     existing automation then pushes to Stripe subscriptions the day before it starts. Today task (informational,
+     existing automation then pushes to Stripe subscriptions the day before it starts. **Same-day discovery (review
+     fix):** a version whose `effectiveOn` is today or earlier (found by the current check because the look-ahead was
+     unavailable, or approved later from a guardrail task) is pushed **immediately** through the same
+     `SUBSCRIPTION_TAX_UPDATE` operations and idempotency keys D-T9 uses (D-T9's automation is extended to process
+     "starting tomorrow **or already started and not yet pushed**"); invoices Stripe created before the push are caught
+     by D-T8's difference check and listed on Today. Today task (informational,
      clears when acknowledged): "Weld County rate changes January 1: 1.000% → 1.200% — applied automatically from
      Colorado's official lookup. Stripe will be updated December 31." with **Undo** (OWNER; allowed until the day before
      it starts; audit row).
@@ -1551,8 +1579,9 @@ Ordered steps with a done tick, a one-line "why", and a **Start** button to the 
 7. Official sources — every watched page checked successfully once.
 
 When all are done the checklist collapses to "Setup complete ✓ — review" and the Overview leads with the next return.
-Steps 1–5 are also the billing-readiness blockers (D-T7), so the checklist and the blocking list always say the same
-thing in the same words.
+Only steps 1 and 2 (and step 5 *when the delivery fee would apply* — 12.2) are billing-readiness blockers (D-T7);
+those steps use exactly the same words as the blocking list. Steps 3, 4, 6 and 7 are filing setup: they never block
+signing or billing (IN-43/IN-44 never block — `PLAN.md`), they only make returns and reminders complete (review fix).
 
 ### 14.5 Tax elsewhere in the desk and portal (small, linked, never duplicated)
 
