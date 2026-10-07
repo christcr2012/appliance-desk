@@ -7,7 +7,8 @@ import { PrintDocumentButton } from "@/components/print-document-button";
 import { prisma } from "@/lib/prisma";
 import { getSpendableCredits } from "@/domains/billing/money-decisions";
 import { MoneyDecisionForm } from "@/components/desk/money-decision-form";
-import { applyCreditAction, refundInvoiceAction } from "@/app/desk/billing/money-actions";
+import { applyCreditAction, recalculateInvoiceTaxAction, refundInvoiceAction } from "@/app/desk/billing/money-actions";
+import { Button } from "@/components/ui/button";
 import { formatCents } from "@/domains/pricing";
 
 export const metadata = { title: "Invoice" };
@@ -40,6 +41,18 @@ export default async function DeskInvoicePage({
   const outstanding = money ? Math.max(0, money.amountDueCents - money.amountPaidCents) : 0;
   const isOpen = money ? ["OPEN", "PARTIALLY_PAID", "DELINQUENT"].includes(money.status) : false;
   const credits = isOpen && outstanding > 0 ? await getSpendableCredits(id) : [];
+  const taxBlock =
+    money?.status === "DRAFT"
+      ? await prisma.auditLog.findFirst({
+          where: { action: "billing.invoice_tax_blocked", entityType: "Invoice", entityId: invoiceId },
+          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+          select: { newValue: true },
+        })
+      : null;
+  const taxBlockValue = taxBlock?.newValue as { problems?: unknown } | null | undefined;
+  const taxProblems = Array.isArray(taxBlockValue?.problems)
+    ? taxBlockValue.problems.filter((problem): problem is string => typeof problem === "string")
+    : [];
 
   return (
     <div className="max-w-3xl">
@@ -60,6 +73,33 @@ export default async function DeskInvoicePage({
           <PrintDocumentButton />
         </div>
       </div>
+
+      {money?.status === "DRAFT" && taxBlock && (
+        <section
+          aria-labelledby="tax-blocked-heading"
+          className="mt-4 rounded-xl border border-warning/40 bg-warning/10 p-4 print:hidden"
+        >
+          <h2 id="tax-blocked-heading" className="font-semibold text-ink">
+            Sales tax needs a decision before this bill can be sent
+          </h2>
+          <p className="mt-1 text-sm text-ink-soft">
+            The pickup or return was completed normally. This bill stayed in draft so an uncertain tax amount was not
+            sent to the customer.
+          </p>
+          {taxProblems.length > 0 && (
+            <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-ink">
+              {taxProblems.map((problem) => (
+                <li key={problem}>{problem}</li>
+              ))}
+            </ul>
+          )}
+          <form action={recalculateInvoiceTaxAction.bind(null, invoiceId)} className="mt-4">
+            <Button type="submit" variant="secondary">
+              Recalculate tax
+            </Button>
+          </form>
+        </section>
+      )}
 
       <div className="mt-4 print:mt-0">
         <InvoiceDocument invoice={invoice} />
