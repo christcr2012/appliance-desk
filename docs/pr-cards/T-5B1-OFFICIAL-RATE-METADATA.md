@@ -1,6 +1,8 @@
 # T-5b1 — official-rate metadata and source registry
 
-Base branch: main · Risk area: tax metadata persistence · Migration: `20261007193000_t5b_official_rate_metadata` · Budget estimate: ~320 production lines / 7 files
+Base branch: main · Risk area: tax metadata persistence · Migration: `20261010020000_t5b_official_rate_metadata` · Budget estimate: ~320 production lines / 7 files
+
+> Drift correction (2026-10-07 implementation): the original card timestamp `20261007193000` sorted before merged Batch T migration `20261010010000_batch_t_sales_tax`, which would fail on a fresh database by altering tables before they exist. The safe next slot `20261010020000` is authoritative.
 Design: `docs/designs/BATCH-T.md` sections 13.2–13.3 (schema/persistence only) and 13.5 (reasons only — this card is the build spec)
 
 ## Read only these (in this order)
@@ -71,7 +73,7 @@ model OfficialSourceWatch {
 }
 ```
 
-Migration `20261007193000_t5b_official_rate_metadata` is additive only. It must:
+Migration `20261010020000_t5b_official_rate_metadata` is additive only. It must:
 - add the fields/models/indexes above;
 - leave existing rate versions/settings untouched except Prisma defaults;
 - seed the six rows below with `active = false` and no hash/text/check timestamps:
