@@ -12,6 +12,7 @@ import {
   convertEstimateToAgreements,
   requestEstimateChanges,
 } from "@/domains/estimates";
+import { seedTaxReadyContext } from "./helpers/tax-ready";
 
 const target = new URL(
   process.env.DATABASE_URL ?? "postgresql://localhost/unset",
@@ -28,6 +29,7 @@ describe.skipIf(!enabled)("agreement + estimate lifecycle concurrency", () => {
   let customerId: string;
   let addressId: string;
   let applianceTypeId: string;
+  let taxReady: Awaited<ReturnType<typeof seedTaxReadyContext>> | null = null;
   const estimateIds: string[] = [];
   const agreementIds: string[] = [];
   const applianceIds: string[] = [];
@@ -65,6 +67,7 @@ describe.skipIf(!enabled)("agreement + estimate lifecycle concurrency", () => {
         },
       })
     ).id;
+    taxReady = await seedTaxReadyContext(addressId);
     applianceTypeId = (
       await prisma.applianceType.create({
         data: {
@@ -125,6 +128,7 @@ describe.skipIf(!enabled)("agreement + estimate lifecycle concurrency", () => {
     await prisma.estimate.deleteMany({ where: { id: { in: estimateIds } } });
     await prisma.appliance.deleteMany({ where: { id: { in: applianceIds } } });
     await prisma.applianceType.deleteMany({ where: { id: applianceTypeId } });
+    await taxReady?.cleanup();
     await prisma.serviceAddress.deleteMany({ where: { id: addressId } });
     await prisma.customer.deleteMany({ where: { id: customerId } });
     await prisma.user.deleteMany({ where: { id: customerUserId } });
