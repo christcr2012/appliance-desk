@@ -7,7 +7,10 @@ import {
   recomputeForAgreementInTx,
 } from "@/domains/billing/subscription-end";
 import { createSignedAgreementArtifactInTx } from "@/domains/documents/artifacts";
-import { assertTaxReadyForAgreement } from "@/domains/tax/locations";
+import {
+  assertTaxReadyForAgreement,
+  combinedRentalRateMilliPercentForAgreement,
+} from "@/domains/tax/locations";
 import { prisma } from "@/lib/prisma";
 import type {
   Prisma,
@@ -452,6 +455,12 @@ export async function sendForSignature(userId: string, agreementId: string) {
     }
 
     await assertTaxReadyForAgreement(tx, agreementId);
+    const taxRateMilliPercent =
+      await combinedRentalRateMilliPercentForAgreement(
+        tx,
+        agreementId,
+        new Date(),
+      );
 
     const signature = await tx.signatureRecord.create({
       data: { agreementId, provider: "typed_signature" },
@@ -468,7 +477,11 @@ export async function sendForSignature(userId: string, agreementId: string) {
     }
     await tx.rentalAgreement.update({
       where: { id: agreementId },
-      data: { status: "AWAITING_SIGNATURE", ...(termsSnapshot ? { termsSnapshot } : {}) },
+      data: {
+        status: "AWAITING_SIGNATURE",
+        taxRateMilliPercent,
+        ...(termsSnapshot ? { termsSnapshot } : {}),
+      },
     });
     await tx.auditLog.create({
       data: {
