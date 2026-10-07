@@ -1,10 +1,23 @@
 import Link from "next/link";
 import { formatCents } from "@/domains/pricing/money";
 import { getCustomerBillingContext } from "@/domains/customers/workspace";
+import {
+  listCustomerTaxExemptionJurisdictions,
+  listCustomerTaxExemptions,
+} from "@/domains/tax/exemptions";
+import { businessDateKey } from "@/lib/business-date";
+import { requireRole } from "@/lib/session";
+import { TaxExemptionsPanel } from "./tax-exemptions-panel";
 
 export async function BillingContext({ id }: { id: string }) {
+  const session = await requireRole("OWNER", "ADMIN");
   const customer = await getCustomerBillingContext(id);
   if (!customer) return null;
+  const [exemptions, jurisdictions] = await Promise.all([
+    listCustomerTaxExemptions(session.user.id, id),
+    listCustomerTaxExemptionJurisdictions(session.user.id, id),
+  ]);
+  const canEdit = (session.user as { role?: string }).role === "OWNER";
   return (
     <>
       <Link
@@ -78,6 +91,30 @@ export async function BillingContext({ id }: { id: string }) {
           </div>
         )}
       </div>
+      <TaxExemptionsPanel
+        customerId={id}
+        canEdit={canEdit}
+        jurisdictions={jurisdictions}
+        exemptions={exemptions.map((exemption) => ({
+          id: exemption.id,
+          reason: exemption.reason,
+          certificateNumber: exemption.certificateNumber,
+          certificatePhotoId: exemption.certificatePhotoId,
+          jurisdictionIds: Array.isArray(exemption.jurisdictionIds)
+            ? exemption.jurisdictionIds.filter(
+                (value): value is string => typeof value === "string",
+              )
+            : [],
+          validFrom: businessDateKey(exemption.validFrom),
+          expiresOn: exemption.expiresOn
+            ? businessDateKey(exemption.expiresOn)
+            : null,
+          revokedAt: exemption.revokedAt
+            ? exemption.revokedAt.toISOString()
+            : null,
+          notes: exemption.notes,
+        }))}
+      />
     </>
   );
 }
