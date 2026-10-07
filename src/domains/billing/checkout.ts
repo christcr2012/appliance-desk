@@ -6,6 +6,7 @@ import {
 } from "./subscription-end";
 import { getStripeClient } from "@/lib/stripe";
 import { fixedTermEndDate } from "@/lib/business-date";
+import { assertTaxReadyForAgreement } from "@/domains/tax/locations";
 import type { HandoffWorkOutcome } from "./handoff-outcome";
 import {
   RetryLater,
@@ -255,6 +256,7 @@ export async function createCheckoutSessionForAgreement(agreementId: string): Pr
     damageWaiverCents: agreement.damageWaiverCents,
   });
   const oneTimeItems = plan.filter((item) => !item.recurring);
+  await prisma.$transaction((tx) => assertTaxReadyForAgreement(tx, agreement.id));
   const stripeCustomerId = await ensureStripeCustomer(agreement.customerId);
   const stripe = getStripeClient();
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
@@ -463,6 +465,8 @@ export async function startRecurringBillingForAgreement(
         }
         return { done: true, outcome: { state: "DONE" }, subscriptionEndIds: [] };
       }
+
+      await assertTaxReadyForAgreement(tx, agreementId);
 
       const plan = buildCheckoutLinePlan(agreement).filter((item) => item.recurring);
       if (plan.length === 0) return { done: true, outcome: { state: "DONE" }, subscriptionEndIds: [] };
