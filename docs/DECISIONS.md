@@ -442,3 +442,119 @@ step now skips them using CI's docs-only rule, building whenever unsure. Rejecte
 `next build` (8 s; it is the only check between a deployment and CI finishing), and upgrading to ESLint 10 (our
 accessibility lint plugin does not support it yet — `docs/ROADMAP.md`).
 
+## 2026-10-07 — Sales tax filing: SUTS entry packet and filing calendar (Batch T Amendment A)
+
+Chris asked that the system handle as much of filing as possible, and otherwise give him exactly what to type into
+SUTS, with scheduling so he is always prompted on time. Decisions (`docs/designs/BATCH-T.md` section 11): each return
+becomes an entry packet in SUTS's order with copy buttons and a plain checklist; a daily automation keeps a filing
+calendar (monthly/quarterly/annual, Colorado weekend/holiday rule, license renewal) and prompts on Today and by
+owner-only email until the return is marked filed; a calendar file is downloadable. Rejected for now: automatic filing
+(SUTS XML filing is for certified software vendors) and generating SUTS's Excel upload file (account-specific template,
+a new spreadsheet library and possible Department approval, for a return with only a handful of rows — revisit above
+about 8 rows). Research corrections: Greeley is a SUTS participating city (code 030057, since 2023-08-01), correcting
+the 2026-10-06 note above that it is not; the state vendor fee ended 2026-01-01 (HB25B-1005). Reminders count from the
+plain due date, never the holiday-shifted one, so a holiday can never make a reminder late. New owner inputs: IN-43
+(SUTS screen details after registration), IN-44 (CPA: how to report non-taxed amounts).
+Same day, follow-up: an unfiled return is a computed Today task (exception categories `TAX_RETURN_DUE`,
+`TAX_FILING_NOT_READY`, `TAX_LICENSE_RENEWAL`) rather than a stored task, so nothing but marking the return filed can
+clear it; it opens a guided "File this return" page (11.11). Chosen over a `StaffTask` because a task can be ticked off
+without the return actually being filed.
+Review fixes the same day (Codex on PR #282): a change to a filed period is reported on an **amended return for that
+period** (`TaxFilingAmendment`, 11.12), not netted into the next return — this also corrects the original D-T11; a
+local service fee is shown only for on-time returns and never on amended additional tax; overdue starts only after the
+holiday-shifted legal deadline; IN-43/IN-44 never block billing; SUTS Bulk XML eligibility is checked rather than ruled
+out.
+Also 2026-10-07 (Chris): the SUTS setup (IN-43) is entered and updated by the owner in the app (11.13), with a yearly
+check task, instead of being sent to a developer. Amendment B (section 12) handles Colorado's Retail Delivery Fee:
+status decided automatically from the lease election and the $500,000 small-business exemption, one record per
+qualifying delivery at job completion, a separate untaxed customer line or "pay it myself", owner-entered July 1
+amounts, and its own return on the shared filing calendar. Replaces stop-and-ask S-T4.
+Also 2026-10-07 (Chris: "monitor the correct official places and update tax changes automatically"): Amendment C
+(section 13). Rate changes from Colorado's official GIS lookup are applied automatically for already-reviewed areas
+when seen on two different days, within a one-percentage-point limit and never backdated, with a Today notice and
+undo; this reverses the 2026-10-06 rule that every GIS rate change needs manual review, by owner request, with the
+switch starting ON. Law and rule changes are only watched (official page text hashes) and alerted, never applied.
+Second Codex review (PR #282) fixes: retail delivery fee counted once per sale (not per trip); new-business 90-day
+grace; undecided fee status blocks readiness and deliveries are kept as pending records; pending records allowed when
+the year's amount is missing; RDF over-reporting is a credit on the current return (DR 1786) while added fees amend;
+service-fee eligibility uses the payment date as well as the filing date.
+Third Codex review fixes: free repair swaps never owe the retail delivery fee (Colorado's regulation; the owner
+setting was removed); the fee amount and reporting period follow the sale's first-payment date (`saleOn`); an
+undecided record resolves to PENDING_RATE when no amount exists; the rate/page watch route runs daily so the two-days
+rule can be met; the page watch keeps the previous text so it can show what actually changed.
+Also 2026-10-07 (Chris: "make sure this is all properly organized in the UI"): BATCH-T section 14 is the single screen
+map — one "Sales tax" entry in the Money nav group (`/desk/sales-tax`, OWNER/ADMIN), six tabs (Overview, Returns, Areas
+& addresses, What's taxed, Exemptions, Setup), one combined return/filing page, every tax Today item routed to its fixing
+screen, a setup checklist identical to the billing blockers, and an on-screen glossary (no "jurisdiction", "packet",
+"GIS" or "RDF" in the UI).
+Fourth Codex review fixes: the delivery fee's sale date is the first rent charge (not the signing date); prepaid or
+ended agreements get a standalone fee invoice so a collected fee is never only reported; a prior-period fee credit is
+tied to the return that claims it so it cannot be reused; the page watch counts consecutive failures.
+
+## 2026-10-07 — Batch S: one place for system problems, checked every morning by an AI agent
+
+Chris asked for problems the system detects (failed automations, moved pages, …) to be recorded where an AI agent can
+check them on a schedule and work out fixes. Decided (`docs/designs/BATCH-S.md`): one `SystemIssue` table with
+fingerprint de-duplication and auto-resolve, strict redaction (no customer data or secrets), a System health page and a
+Today "System" group for high issues, and a private `/api/ops/issues` endpoint (read + notes only) authenticated by an
+owner-created, hashed, revocable key. The scheduled agent is a Claude Routine by default (it runs with the repository
+attached and can open fix PRs, never merge unattended); any agent with scheduled tasks can use the same endpoint.
+Rejected: writing issues to GitHub automatically (the repository is public), and giving the agent database access.
+Fifth Codex review fixes (PR #282): new D-T14 — prepaid rent gets one local invoice at signing so its sales tax reaches
+the returns (before, prepaid rent was collected outside the app and its tax would never be reported); retail delivery
+fees are filed by delivery date while the amount follows the sale date; a collected fee is credited only after the
+customer is refunded in full; rate versions found on or after their start date are pushed to Stripe immediately; only
+the real tax decisions (and the delivery fee when it applies) block billing — filing setup never does.
+Sixth Codex review fixes: prepaid rent and standalone delivery-fee invoices are manual-payment-only (the portal cannot
+pay local invoices yet; roadmap); prepaid reporting follows the chosen basis and the fee's sale date is the recorded
+payment date; Batch S issue details are built only from allowlisted typed fields (raw error text never leaves the app)
+and people-written notes are redacted; stale-automation detection uses a per-rule expected interval.
+
+## 2026-10-07 — Amendment D: purchase tax recorded at appliance intake; rental exemption per appliance; DR 0252 filing
+
+Chris asked that the appliance entry form record whether sales tax was paid at purchase (and how much), log use tax for
+private-party/untaxed purchases, prepare the state form, and drive rental tax from it. Research showed Colorado's
+short-term lease exemption is conditioned on tax having been paid on *that* leased property (C.R.S. 39-26-713), so the
+exemption is now decided per appliance (`Appliance.acquisitionTaxStatus`), refining the business-wide election. Use
+tax goes on the Consumer Use Tax Return (DR 0252) via Revenue Online (recommended) or a filled official PDF / worksheet
+for paper; city use tax (Greeley) is filed separately; the state account switches from annual to monthly automatically
+past $300 a year. Intake is never blocked ("fill in later"), but an appliance with unknown purchase tax cannot be put on
+a rental being signed or billed. New PR T-6d; `pdf-lib` is the one new library allowed, only for filling the official form.
+
+## 2026-10-07 — Batch M: shop sales and what happens to retired appliances
+
+Chris plans to resell small items (hoses, cords) and sometimes sell, scrap or dispose of retired appliances. Decided
+(`docs/designs/BATCH-M.md`): sellable items reuse the parts stock ledger (one inventory, new `SALE` movement); resale
+stock is bought tax-free and owes use tax only if used on a repair; a sale is a local invoice taxed by where the goods
+go (shop pickup vs delivered) with the delivery fee rules applying to delivered taxable sales; a retired appliance
+records one ending — sold (a taxed sale), scrapped (scrap trips split one payment across appliances by book value,
+untaxed by default pending the CPA), thrown away (dump fee as an expense) or other — feeding revenue reports and Batch K
+gain/loss. Card payment for local invoices becomes PR M-3. Placement after K by default, earlier if Chris sells before
+launch (IN-47).
+
+## 2026-10-07 — Batch M revised: selling after launch; retired appliances get a "what's next" plan, no per-item fees
+
+Chris answered IN-47: no selling before launch, so Batch M stays after Batch K. He also described the retire process he
+wants: retiring takes the unit out of rental (already true — RETIRED is final and never rentable), then he decides
+what's next: sell it, strip it for parts (working parts back into parts stock, the rest scrapped or thrown away), scrap
+it or throw it away; he does not want to track scrap or dump amounts per appliance. Decided (BATCH-M D-M4, replacing
+the per-appliance "endings" and scrap trips split by book value): one changeable plan per retired appliance
+(`RetiredAppliancePlan`), parts kept enter stock as `SALVAGE` movements at $0 cost (their cost is already in the
+appliance), scrap checks are lump `ScrapPayment` income entries and dump fees are ordinary Batch K expenses — the money
+still reaches the books for income tax, just not per item. A done plan writes off the remaining book value; a sale
+records gain/loss. One Today follow-up after 30 days (owner setting). The CPA confirms lump scrap income and $0
+salvaged parts (IN-46).
+
+## 2026-10-07 — PR cards and stall-proof rules for medium-effort implementers
+
+Chris implements mostly with Sol 5.6 at medium effort, which stalls on broad reads, broad searches and commands that
+never finish. Decided: (1) AGENTS.md gains "Working without stalling" — read by section, narrow capped searches,
+only self-terminating non-interactive commands, capped output, two strikes, a 10-read explore budget, commit per work
+unit. (2) A readiness audit of BATCH-T sections 11–15, BATCH-S and BATCH-M found most of their PRs over budget and some
+details open, so those sections carry an "Implementation gate" and each PR gets a self-contained card in
+`docs/pr-cards/` (template in its README) that fits the budget, names every file/signature/test, lists exactly what to
+read, and wins over the design where they differ. Same day, Codex's review of Batch M fixed: one built-in walk-in
+customer (no login, never emailed), the delivery-fee record allows shop sales (`invoiceId`, nullable agreement/job),
+resale tracked per purchase-order line with a fixed unit-order rule, no cost of goods sold (parts are expensed when
+bought), and the retirement-day write-off stays Batch K's only disposal entry (plans post nothing).
+

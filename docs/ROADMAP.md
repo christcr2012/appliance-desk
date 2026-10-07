@@ -638,7 +638,7 @@ controls → Batch O. Summary: `docs/plans/TAX-AND-BOOKS-OVERVIEW.md`. Still onl
 - Passkey login (after Batch G's two-step login).
 - Mileage log for vehicle deductions; route ordering and run sheets; customer self-service card update and delivery
   windows; card-expiry reminders; parts reorder alerts; review requests after delivery.
-- Revisit Stripe Tax if the business sells goods outright, leaves Colorado, or serves more than ~15 tax areas (BATCH-T D-T1).
+- Revisit Stripe Tax if the business sells goods outright, leaves Colorado, or serves more than ~15 tax areas (BATCH-T D-T1). (2026-10-07: small in-state shop sales — Batch M — use the same engine; this trigger means selling goods at scale or shipping out of state.)
 - Remove the unused `taxRateConfirmed` / `taxRatePermille` columns and the old accounting CSV route after T and K ship.
 - Collecting Colorado's Retail Delivery Fee, if the CPA says it applies (BATCH-T S-T4).
 
@@ -658,3 +658,12 @@ controls → Batch O. Summary: `docs/plans/TAX-AND-BOOKS-OVERVIEW.md`. Still onl
 - **`scmp` deprecated** (a dependency of `twilio`): Twilio's to fix; harmless.
 - **Node 24 everywhere:** if Vercel's Node version setting changes, change `.github/actions/setup-deps/action.yml` too.
 
+## 2026-10-07 — Sales tax filing ideas not built in Batch T Amendment A
+
+- **SUTS Excel upload file:** owner uploads one blank template from SUTS, maps each column once, the app fills a copy
+  each period. Worth it when the return regularly has more than about 8 rows (`BATCH-T.md` 11.7).
+- **Bulk XML filing file:** SUTS offers Bulk XML to "bulk filers"; whether Chris's account may use it is an open check (BATCH-T WU-TA0 / IN-43). If yes, generating the XML from the return packet replaces typing (its own design amendment).
+- **SMS tax reminders:** after live SMS is approved.
+- **(Now designed as Batch M PR M-3, 2026-10-07)** **Card payment of local invoices in the customer portal** (prepaid rent invoices and standalone delivery-fee invoices
+  are manual-payment-only in Batch T, D-T14) — would need a Checkout session or Stripe one-off invoice per local invoice
+  plus webhook reconciliation.

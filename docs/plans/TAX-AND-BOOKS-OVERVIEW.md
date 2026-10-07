@@ -23,9 +23,9 @@ launch if you want the profit numbers sooner.
    39-26-713), a rental of 3 years or less is exempt from *state* sales tax if you paid sales or use tax when you
    bought the appliance. The other option is to buy appliances tax-free (with the state's permission) and charge tax on
    every rent payment. You must pick one. This is the most important question for your CPA.
-2. **Greeley plays by its own rules.** Greeley is a "home-rule" city. It collects its own 4.11% city tax, taxes rentals
-   no matter which state option you choose, and isn't part of the state's SUTS filing website, so you file Greeley
-   separately. Customers in Evans, Windsor or unincorporated Weld County get different rates — sometimes very different.
+2. **Greeley plays by its own rules.** Greeley is a "home-rule" city. It sets its own 4.11% city tax and taxes rentals
+   no matter which state option you choose. (Corrected 2026-10-07: Greeley *does* take returns through the state's SUTS
+   website, so you file it in the same SUTS session as the state — not separately.) Customers in Evans, Windsor or unincorporated Weld County get different rates — sometimes very different.
 3. **The 7.375% example in your notes (IN-17) doesn't match what I can find.** Public sources say Greeley is 7.01% (2.9% state +
    4.11% city). Under option 1 above, a Greeley customer might pay only the 4.11% city tax on rent. Your CPA should
    check this, and the app will stop guessing either way.
@@ -53,19 +53,46 @@ Revisit this if you ever sell appliances outright, expand outside Colorado, or e
 - **Stripe charges exactly what the app calculated.** If Stripe's number ever differs by even a cent, you get a warning.
 - **Tax-exempt customers** (resale, government, charities) keep a photo of their certificate on file, with an expiry
   reminder.
-- **Monthly returns:** for "Colorado — SUTS" and "City of Greeley" (and any other city you register with), the app shows
-  gross sales, exempt sales, taxable sales and tax for each area, reminds you before the due date, and records when you
-  filed, the confirmation number and what you paid. Once a month is marked filed, its numbers never change; later
-  corrections show up on the next month.
-- **Use tax:** when you buy an appliance from a private seller or an out-of-state store without tax, the app works out
-  the use tax you owe the state and Greeley and puts it on the right return.
+- **Returns (updated 2026-10-07):** Greeley, Evans and Windsor take returns through **SUTS**, so one SUTS session
+  covers the state, Weld County and those cities. For each return the app shows an **entry packet**: every number to
+  type, area by area in the same order as the SUTS screens, each with a copy button, plus a short "In SUTS, do this"
+  checklist and the total to pay (or "file a zero return" when nothing was sold). It keeps a **filing calendar**
+  (monthly, quarterly or yearly, license renewals too), reminds you on Today and by email from the day a period ends
+  until you press "I filed it", and gives you a calendar file for your phone. An unfiled return sits on **Today** as a task you cannot dismiss; tap it
+  and a step-by-step "File this return" page walks you through check → open SUTS → type these in → pay → confirmation. Once a period is marked filed its numbers
+  never change; if something in a filed month changes later, the app prepares an **amended return** for that month and
+  puts "Amend your September return" on Today.
+- **Staying up to date by itself:** the app re-checks Colorado's official rate lookup every month and looks ahead
+  before January 1 and July 1 (when local rates change). A normal rate change is applied automatically and you get a
+  note on Today with an Undo button; anything unusual waits for you. It also watches the state's official tax pages
+  (rate changes, the delivery fee page, the SUTS city list, Greeley's tax page) and tells you when they change — new
+  laws still need you or your CPA to decide what they mean.
+- **Retail delivery fee:** the app decides on its own whether Colorado's per-delivery fee applies (it normally does not
+  for rentals under option (a), and small businesses are exempt), warns you before you could lose the exemption, and if
+  it ever applies it adds the separate fee line (or records it as paid by you) and prepares that return too. The app never logs in to SUTS or moves money — SUTS has
+  no filing connection for small businesses — so the last step (typing, paying) stays yours.
+- **Use tax, from the moment you enter an appliance (updated 2026-10-07):** the add-appliance form asks "Sales tax when
+  you bought it": the seller charged tax (enter the amount), no tax was charged (private seller, online, out of state),
+  or bought tax-free under a state permit. If you owe use tax, the app shows how much (state, RTD, Greeley …) and puts
+  it on your use-tax return — filed on the state's Revenue Online site, or printed already filled in for you to sign and
+  mail. Each appliance's answer decides whether renting *that* appliance is taxed, because Colorado's rental tax break
+  depends on tax having been paid on that specific unit. Appliances you already own get a one-time Today task to fill in.
+
+### Where it all lives in the app
+
+Everything is under **Money → Sales tax**, with six tabs: **Overview** (a setup checklist first, then your next return
+with a big "File this return" button), **Returns** (calendar and history), **Areas & addresses**, **What's taxed**,
+**Exemptions**, and **Setup** (your decisions, the delivery fee, filing accounts and SUTS setup, official pages watched).
+Anything that needs you also shows on **Today** under "Sales tax", and tapping it takes you straight to the screen that
+fixes it.
 
 ### What you need to do for Batch T
 
 1. Register on Colorado's **SUTS** website (if you haven't) and get the free **GIS API key**. I'll give you click-by-click
    steps when we start. Copy the key into Vercel yourself — never paste it into a chat.
 2. Take the questions below to your CPA.
-3. Enter your Colorado sales tax license number and your City of Greeley license number in the app.
+3. In the app, open Sales tax → Filing accounts → SUTS setup and enter your license number and what your SUTS return
+   screen lists (IN-43). You can update it any time it changes.
 
 ## Questions for your CPA (copy this list)
 
@@ -74,17 +101,30 @@ These are tracked as IN-33 to IN-39 in `docs/OWNER-INPUTS.md`.
 1. **(IN-33) Rental option:** Should I (a) pay sales or use tax when I buy each appliance, so rent is exempt from state
    and state-run local tax, or (b) buy tax-free with the state's permission and charge tax on every rent payment? (C.R.S.
    39-26-713; also, does the Department's draft "Special Rule 47" from February 2026 change anything?)
+   Follow-ups: Colorado's rental tax break is per appliance — if I record use tax on a private-party appliance and pay
+   it on my next DR 0252, is the rental tax-free from its first day? Under option (b) (DR 0440 permission), is a unit I
+   did pay tax on still taxed? How should I treat appliances I bought before I registered?
 2. **(IN-34) What's taxable** — in state-run areas and in Greeley (and any other home-rule city I serve): rent, late-return
    rent, delivery fee, installation fee, removal fee, damage waiver, early-ending fee, late-payment fee? And when I give a customer a credit (for example, an item delivered late), should that lower the taxable rent, or is it just money credited to their account?
 3. **(IN-35) Cash or accrual** reporting for my state and Greeley returns? Monthly, quarterly or annual filing?
 4. **(IN-36)** If one customer keeps the same appliance more than 3 years through renewals, does the rental rule change?
-5. **(IN-37) Retail delivery fee:** does Colorado's per-delivery fee apply to me (given the small-business exemption under
-   $500,000 a year and that rentals may not count as taxable deliveries)?
+5. **(IN-37) Retail delivery fee:** the app says whether Colorado's 31¢-per-delivery fee applies to me (it should not
+   under option (a) of question 1, and I am exempt while my prior-year Colorado sales are $500,000 or less). Is that
+   right? If it ever applies, should I charge customers or pay it myself? (Free repair swaps never owe it.)
 6. **(IN-38)** My rental agreement will say "sales tax for your address, currently X%" instead of a fixed rate — is that
    fine? (Also ask your attorney.)
 7. **(IN-39)** When I write off a bill a customer never paid, can I take back the sales tax I already reported on it?
-8. **(IN-17, still open)** Is the Greeley combined rate 7.01% (2.9% + 4.11%)?
-9. **(For Batch K)** Are 60-month straight-line depreciation and "expense parts when bought" fine for my own profit
+8. **(IN-17, still open)** Is the Greeley combined rate 7.01% (2.9% + 4.11%)? (Some 2026 rate sites show a higher
+   combined rate with a special district; the app uses the state's address lookup, but please confirm.)
+9. **(IN-44) Reporting non-taxed amounts on SUTS:** rent that is exempt under the short-term lease rule, sales to exempt
+   customers, and charges that are not taxable — do I include them in gross sales and deduct them (under which
+   deduction name), or leave them out of gross sales?
+11. **(IN-46, for Batch M) Selling items and old appliances:** are hose/cord and used-appliance sales taxed like other
+    goods? What do I give suppliers to buy resale stock tax-free, and do I owe use tax if I use a resale item on a
+    repair? Is selling scrap metal to a scrap yard tax-free, and is one lump amount per scrap check fine (not split per
+    appliance)? Anything special about selling an appliance I rented out? Parts I strip from a retired appliance go into
+    stock at $0 cost because their cost was already in the appliance — is that right?
+10. **(For Batch K)** Are 60-month straight-line depreciation and "expense parts when bought" fine for my own profit
    reports? And is $2,000 the right 1099 threshold for 2026?
 
 ## How the books work (Batch K)

@@ -69,8 +69,16 @@ Previews and test copies never send email, even with the key and the switch on (
 ## 6b. Coming with the proposed batches (2026-10-06 — these lines become real when each batch is built)
 
 - [ ] **Sales tax (Batch T):** CPA has answered IN-17 and IN-33 … IN-38; the answers are entered in Desk → Money → Sales
-      tax and every rule in use shows "CPA confirmed"; Colorado and City of Greeley license numbers entered; every tax area
-      you serve has its rate and start date. Until this is done, **do not bill real customers**.
+      tax and every rule in use shows "CPA confirmed"; Colorado license number entered as a filing account (plus a City
+      of Greeley one only if Greeley issued a separate account — Greeley files through SUTS); every tax area you serve
+      has its rate and start date. Until this is done, **do not bill real customers**.
+- [ ] **Tax filing prompts (Batch T Amendment A) — recommended, not a launch blocker (tick or mark "skipped — after launch"):** each filing account has its frequency, first period and license
+      expiry; the SUTS codes and order match your SUTS return (IN-43); the deduction names are filled in from your
+      CPA's answer (IN-44); you received one test reminder email and downloaded the calendar file to your phone; the retail
+      delivery fee status in the app is confirmed by your CPA (IN-37), and if it applies, this year's fee amount is entered;
+      the official-sources list shows every page checked successfully at least once.
+- [ ] **System health and AI check-up (Batch S):** System health shows no unexplained high issues; optional: AI
+      check-up key created, stored in your Claude environment, and the morning routine created (IN-45).
 - [ ] **Two-step login (Batch G):** you and every admin have enrolled; backup codes stored away from your phone.
 - [ ] **Website look (Batch V):** you have accepted the redesigned public site and checked the editable home-page text.
 - [ ] **Books (Batch K, can be after launch):** books start date set; accounts mapped to your accounting software; one

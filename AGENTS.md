@@ -17,12 +17,42 @@ Reading order at the start of every session (about 10 minutes total):
    Then `docs/MASTER-ROADMAP.md` — the one ordered list of every remaining step, what
    must be true before each starts, and what only Chris can do.
 4. `docs/PLAN.md` — the section for the batch you are working on.
-5. `docs/designs/BATCH-<X>.md` — the approved design for that batch (how).
+5. Your PR's card in `docs/pr-cards/` if it has one, then only the design sections it names in
+   `docs/designs/BATCH-<X>.md` (find them with `grep -n "^## \|^### "`; never read a large design top to bottom).
 6. `docs/PLAYBOOK.md` — the step-by-step procedure for doing a batch.
 
 Then open only the reference docs the batch section names. Do not read
 `docs/DECISIONS.md`, `docs/archive/`, or the audit reports end to end — search
 them when a specific question comes up.
+
+## Working without stalling (every model; written with Sol at medium effort in mind — Chris, 2026-10-07)
+
+Sessions stall when a model reads something huge, searches too broadly, or runs a command that never ends. These rules
+are mandatory:
+
+1. **Read by section, never whole files over ~300 lines.** Big files: `prisma/schema.prisma` (~2,600 lines),
+   `docs/designs/BATCH-T.md` (~1,800), `docs/PLAN.md`, `docs/DECISIONS.md`, `docs/designs/BATCH-C-LITERAL-SPEC-*.md`,
+   `docs/designs/BATCH-B2.md`. First list headings (`grep -n "^## \|^### " FILE`) or find the name
+   (`grep -n "model Invoice " prisma/schema.prisma`), then read at most 150 lines (`sed -n '120,270p' FILE`).
+2. **Search narrowly, always with a path and a cap.** `grep -rn "recordPartUsage" src/domains/purchasing | head -30`.
+   Never search the repo root, `node_modules`, `.next`, `coverage` or `playwright-report`; never `ls -R` or `find .`
+   without `-maxdepth 3`. If a search returns more than ~50 lines, narrow it instead of reading it.
+3. **Every command must finish by itself.** Never run `npm run dev`, `npm run test:watch`, bare `vitest`/`npx vitest`
+   (watch mode), `playwright test --ui`, `playwright show-report`, `tail -f`, `gh run watch`, or sleep/poll loops. Use
+   `npx vitest run <file>`; wrap anything that might be slow in `timeout 600`.
+4. **Nothing interactive.** Set `GIT_PAGER=cat PAGER=cat GH_PAGER=cat CI=1` (or use `git --no-pager`); use `npx --yes`;
+   `prisma migrate dev` always with `--name <name>` (and `--create-only` when only writing the SQL); never a command that
+   asks a question.
+5. **Cap output.** Pipe long output through `| tail -80` (failures are at the end). One failing test:
+   `npx vitest run tests/x.test.ts -t "name" 2>&1 | tail -80`.
+6. **Two strikes.** If the same command fails or hangs twice, do not run it a third time: change approach, or write the
+   blocker in `docs/STATUS.md` and move to the next work unit.
+7. **Explore budget: 10 reads/searches, then edit.** The design or PR card is the spec — you are not auditing the
+   codebase. After about 10 reads or searches without an edit, stop exploring, write down what you know, and make the
+   smallest next edit. If the spec truly does not say, that is a stop-and-ask point, not a reason to keep searching.
+8. **Small checkpoints.** One work unit at a time; commit after each (local commit, push at the end), so a stall never
+   loses work. Before a long step, note in one line what you are about to do.
+9. **External waits** follow the anti-stall rule below: check once, act, move on, never watch.
 
 ## What this is
 
@@ -237,6 +267,7 @@ resulting behavior are verified.
 | Product behavior spec | `docs/PRODUCT-SPEC.md` |
 | The work plan (batches, acceptance, launch gates) | `docs/PLAN.md` |
 | How each batch is built (decisions, schema, work units, tests) | `docs/designs/BATCH-<X>.md` — implement only from an approved design |
+| Exactly what one PR builds (files, signatures, tests, what to read) | `docs/pr-cards/<PR>.md` — wins over the design where they differ |
 | Current state | `docs/STATUS.md` |
 | Owner decisions needed | `docs/OWNER-INPUTS.md` |
 | Dated decisions and reasons | `docs/DECISIONS.md` (append a dated entry when you make a design decision) |

@@ -611,7 +611,7 @@ Replace the single business-wide tax rate with address-exact Colorado tax: state
 
 ### Owner inputs / gates
 
-IN-17 (rate check), IN-33 … IN-38 (`docs/OWNER-INPUTS.md`). Everything starts "Not decided yet" and blocks billing until answered; the batch can be built and merged before the answers arrive.
+IN-17 (rate check), IN-33 … IN-38 (`docs/OWNER-INPUTS.md`). IN-43 and IN-44 (Amendment A) only refine the return packet's wording and deduction names; they never block billing or launch. Everything starts "Not decided yet" and blocks billing until answered; the batch can be built and merged before the answers arrive.
 
 ### Acceptance checklist
 
@@ -620,11 +620,42 @@ IN-17 (rate check), IN-33 … IN-38 (`docs/OWNER-INPUTS.md`). Everything starts 
 - [ ] The lease election applies only to state-collected areas; home-rule cities use only their own rules (engine tests).
 - [ ] Stripe subscription items carry one Stripe tax rate per taxable area; Stripe-mirrored invoices record per-area tax lines; a 1-cent difference from the engine raises a card.
 - [ ] A rate change entered with a future date reaches every affected live subscription the day before it starts, exactly once.
-- [ ] Per-filing-account worksheets (accrual or cash per the owner's setting); marking a period filed freezes it; later corrections appear on the next worksheet.
+- [ ] (Amendment C) Rate changes found in Colorado's official lookup are applied automatically when they pass the guardrails (reviewed area, seen on two days, within the size limit, never backdated), with a Today notice and undo; other differences become review tasks; watched official pages raise a Today task when they change.
+- [ ] Per-filing-account worksheets (accrual or cash per the owner's setting); marking a period filed freezes it; a later change to a filed period opens an amended return for that same period (Amendment A 11.12).
+- [ ] (Amendment A, 2026-10-07) Each return is a SUTS entry packet: per tax area in SUTS order, the exact numbers to type with copy buttons, a zero-return path, and a total equal to the tax customers were charged.
+- [ ] (Amendment A) Every filing account has its periods, due dates (with Colorado's weekend/holiday rule) and license renewal on a calendar; the owner is prompted on Today and by email from the day a period closes until it is marked filed; a calendar file can be downloaded.
+- [ ] (Amendment A 11.11) An unfiled return is a Today task that cannot be dismissed and disappears only when the return is marked filed; clicking it opens the guided "File this return" page (check → open SUTS → type these in with copy buttons and saved ticks → pay → confirmation).
 - [ ] Use tax computed for appliances and purchase-order lines bought without (enough) tax.
+- [ ] (Amendment D) The appliance entry form records whether sales tax was paid at purchase and how much; untaxed or under-taxed purchases record the use tax owed; each appliance's status decides whether its rent is exempt; the use-tax return (DR 0252 on Revenue Online, city use tax separately) is on the calendar with automatic annual/monthly frequency and a filled printable form or worksheet.
+- [ ] (Amendment A 11.13) The owner enters and updates the SUTS setup (areas, codes, order, screen names, deduction names, frequency, license expiry) in the app; changes apply to open returns, are audited, and a yearly "check your SUTS setup" task appears.
+- [ ] (Amendment B) Colorado retail delivery fee: the app decides automatically whether it applies (lease election, small-business exemption), counts one fee per qualifying delivery, charges it as a separate untaxed line or records it as paid by the business, and prepares its return on the same calendar.
 - [ ] Customer exemptions with certificate photo, scope and expiry.
+- [ ] (D-T14) A prepaid agreement gets one local invoice for its prepaid rent with sales tax at signing, so prepaid rent appears on returns.
 - [ ] OWNER-only policy edits and filing; ADMIN limits enforced server-side; screens explained in plain words; axe clean.
+- [ ] (Section 14) All tax screens live under one "Sales tax" entry in Money with six tabs (Overview, Returns, Areas & addresses, What's taxed, Exemptions, Setup); every tax Today item opens the exact screen that resolves it; the setup checklist matches the billing blockers word for word; on-screen wording follows the 14.6 glossary.
 - [ ] No tax rate or taxability answer is written into code, seeds or docs as fact.
+- [ ] Every item in "Rules that apply to every batch".
+
+---
+
+## Batch S — System issues inbox and the AI check-up
+
+**Design: `docs/designs/BATCH-S.md`** (approved by Chris 2026-10-07). After Batch T, before Batch V.
+
+### Purpose
+
+One place where the system records its own problems (failed automations, stuck provider operations, unreachable or
+changed official pages, tax lookup outages, missing configuration) in plain words, a private read-only door so a
+scheduled AI agent (a Claude Routine by default) can check it every morning, investigate, and open fix PRs or write
+owner instructions, and a System health page plus Today group for Chris.
+
+### Acceptance checklist
+
+- [ ] Every D-S1 source records one de-duplicated issue and auto-resolves when the source recovers (integration tests).
+- [ ] No customer data, keys or raw provider responses can be stored in an issue or note (redaction test with planted values).
+- [ ] `/api/ops/issues` works only with a live owner-created key (stored hashed, revocable); the agent can read and add notes, never change data or resolve.
+- [ ] System health page and Today "System" group (high only) render, axe clean, OWNER/ADMIN only.
+- [ ] `docs/runbooks/AI-CHECKUP.md` contains the owner setup steps and the exact routine prompt; GO-LIVE-CHECKLIST has the setup lines.
 - [ ] Every item in "Rules that apply to every batch".
 
 ---
@@ -734,6 +765,34 @@ do not start deferred features.
 - [ ] Straight-line book depreciation with owner-set life and salvage.
 - [ ] Profit & loss (accrual and cash), balance snapshot, appliance payback, 90-day cash forecast, customer health, year-end package — each number in the METRICS registry.
 - [ ] Deterministic exports for QuickBooks Online, Xero, generic journal and cash-movements formats, daily-summary or detail, blocked until accounts are mapped.
+- [ ] Every item in "Rules that apply to every batch".
+
+---
+
+## Batch M — Shop sales and appliance endings
+
+**Design: `docs/designs/BATCH-M.md`** (approved by Chris 2026-10-07). After Batch K — Chris will not sell before launch
+(IN-47, answered 2026-10-07).
+
+### Purpose
+
+Sell small items (hoses, cords …) and used appliances with correct Colorado sales tax (shop pickup vs delivered),
+stock tracking, resale-certificate buying and use tax when resale stock is used; after an appliance is retired (which
+already takes it out of rental), record what's next for it — sell it, strip it for parts (working parts go into parts
+stock), scrap it, throw it away or other. Scrap checks and dump fees are recorded as lump amounts, not per appliance.
+
+### Acceptance checklist
+
+- [ ] Items marked "sold to customers" share the parts stock ledger; sales, refunds and repairs move stock exactly once (integration tests).
+- [ ] A pickup sale is taxed at the shop's tax areas and a delivered sale at the customer's; delivered taxable sales follow the delivery-fee rules.
+- [ ] Resale is recorded per purchase-order line; resale units create no use tax when bought and record use tax only when used or lost (tax-paid units in the same stock never do), following the fixed unit-order rule.
+- [ ] Walk-in sales belong to the one built-in walk-in customer (cannot sign in, never emailed, hidden from customer lists); delivered sales need a real customer.
+- [ ] Item and used-appliance sales post income only (no cost of goods sold — parts are expensed when bought).
+- [ ] Retiring still removes the unit from everything rentable; every retired appliance can get a plan (sell / strip for parts / scrap / throw away / other), changeable until done; a sale completes its plan automatically.
+- [ ] Parts kept from a stripped appliance enter parts stock at $0 cost exactly once and list on the appliance page.
+- [ ] Scrap checks are lump "Scrap money received" entries (scrap income); dump fees are normal expenses; no per-appliance fees are asked; a done plan writes off the remaining book value in Batch K.
+- [ ] One Today follow-up item for retired appliances undecided or not done after the owner-set days (starting 30, 0 = off).
+- [ ] Shop sales appear on the SUTS return and as "Shop sales" in revenue reports; screens explained in plain words; axe clean.
 - [ ] Every item in "Rules that apply to every batch".
 
 ---

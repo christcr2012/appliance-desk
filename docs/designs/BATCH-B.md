@@ -6,9 +6,11 @@ decisions below are made; do not re-decide them. Where this document is
 silent, stop and ask (see "Stop-and-ask points"). Scope and acceptance are in
 `docs/PLAN.md` → Batch B; this document says *how*.
 
-Read in this order: this file top to bottom (20 min) → `docs/PLAYBOOK.md`
-Step 2 → the work units in order. Do not read the audit reports end to end;
-each work unit names the finding it closes and quotes what matters.
+Read this design by section under the current `AGENTS.md` / `docs/PLAYBOOK.md`
+anti-stall rules: list the headings first, then read only the decisions, assumptions,
+work unit and tests needed for the current PR, in bounded chunks. Do not read the
+audit reports end to end; each work unit names the finding it closes and quotes
+what matters.
 
 ## 0. Verify these assumptions before starting (10 min)
 
