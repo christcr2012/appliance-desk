@@ -62,6 +62,11 @@ Revisit this if you ever sell appliances outright, expand outside Colorado, or e
   and a step-by-step "File this return" page walks you through check → open SUTS → type these in → pay → confirmation. Once a period is marked filed its numbers
   never change; if something in a filed month changes later, the app prepares an **amended return** for that month and
   puts "Amend your September return" on Today.
+- **Staying up to date by itself:** the app re-checks Colorado's official rate lookup every month and looks ahead
+  before January 1 and July 1 (when local rates change). A normal rate change is applied automatically and you get a
+  note on Today with an Undo button; anything unusual waits for you. It also watches the state's official tax pages
+  (rate changes, the delivery fee page, the SUTS city list, Greeley's tax page) and tells you when they change — new
+  laws still need you or your CPA to decide what they mean.
 - **Retail delivery fee:** the app decides on its own whether Colorado's per-delivery fee applies (it normally does not
   for rentals under option (a), and small businesses are exempt), warns you before you could lose the exemption, and if
   it ever applies it adds the separate fee line (or records it as paid by you) and prepares that return too. The app never logs in to SUTS or moves money — SUTS has

@@ -180,7 +180,9 @@ subscription items' `tax_rates` (proration `none`) through a `ProviderOperation`
 midday is in place for the next morning's invoices. Reminders: Today cards on **November 15** and **May 15**:
 "Check Colorado's list of local rate changes for January 1 / July 1 and enter any that affect your areas" (link to
 the state's rate-change page from site settings). On January 1 and July 1, and monthly, a re-check job re-runs the GIS
-lookup for every current address and raises a card for any difference.
+lookup for every current address and raises a card for any difference. **Extended by Amendment C (section 13):** rate
+changes found in Colorado's official lookup are applied automatically within guardrails, upcoming January 1 / July 1
+rates are looked up in advance when the lookup supports a date, and official pages are watched for law changes.
 
 ### D-T10 — Exemptions are per customer, with a certificate on file
 
@@ -1308,3 +1310,110 @@ existing readiness suite.
 
 - **S-T4** The CPA says the fee applies to something the app does not model as a completed delivery job (for example
   pickups or installation-only visits), or the Department requires per-delivery detail the record does not hold.
+
+---
+
+## 13. Amendment C (2026-10-07) — Watching official sources and applying rate changes automatically
+
+Status: **APPROVED** (Chris, 2026-10-07: "Is there a way to cause the app to monitor the correct official places and
+update tax changes automatically?"). Extends D-T9 and WU-T6; built in PR T-5b (13.7).
+
+### 13.1 What can and cannot be automatic
+
+| Kind of change | Official source | What the app does |
+|---|---|---|
+| A tax area's **rate** changes (state-collected changes only start January 1 or July 1; home-rule cities can change any time) | Colorado's GIS address lookup (D-T3, 3.3) — the same source SUTS uses | **Applies automatically** within the guardrails in 13.2, tells the owner, allows undo before it starts |
+| An address is now in a **different set of tax areas** (annexation, new special district) | GIS lookup | Review task — the new area needs a taxability column (D-T5) and a filing account (11.13) |
+| **Laws and rules** (what is taxable, lease rule, vendor fee, filing rules, the yearly retail delivery fee amount) | Department pages, DR 1002 "Sales/Use Tax Rates", Sales Tax Rate Changes page, city pages | **Watches the pages and alerts** with what changed; never auto-applies — these need the owner's or CPA's judgement |
+
+### 13.2 Automatic rate updates
+
+New automation `tax-rate-watch` (inside the `tax-address-recheck` cron route as a second `runAutomation` call):
+
+1. **Look-ahead:** from **December 1** and **June 1**, weekly, look up every jurisdiction in use (one representative
+   reviewed address per jurisdiction combination, not every customer) **as of the coming January 1 / July 1**, if the GIS
+   contract supports an effective date (runbook gate; the public bulk-lookup format already accepts a `Date` column). If
+   it does not, the look-ahead is skipped and the existing November 15 / May 15 reminder plus the page watch (13.3)
+   cover it.
+2. **Current check:** daily at 00:20 Denver on January 1 and July 1, and on the 1st of every month, the same lookups for
+   today (replaces D-T9's monthly re-check wording; per-address differences still raise the existing review task).
+3. For each difference in a jurisdiction that is already `REVIEWED`:
+   - **Guardrails (all must hold to apply automatically):** same jurisdiction code and level; the new rate was returned
+     by **two lookups on different days**; the change is within `autoRateChangeMaxMilliPercent` (owner setting,
+     starting value 1000 = one percentage point — "a bigger jump is more likely a lookup problem than a real change");
+     the effective date is today or later (never backdated).
+   - **Applied:** create `TaxRateVersion` (`source = COLORADO_GIS`, `effectiveOn`, `autoApplied = true`), which D-T9's
+     existing automation then pushes to Stripe subscriptions the day before it starts. Today task (informational,
+     clears when acknowledged): "Weld County rate changes January 1: 1.000% → 1.200% — applied automatically from
+     Colorado's official lookup. Stripe will be updated December 31." with **Undo** (OWNER; allowed until the day before
+     it starts; audit row).
+   - **Not applied (a guardrail failed):** a `high` review task with both rates, the dates and a one-click "Apply this
+     rate" (OWNER).
+4. Owner switch `autoApplyOfficialRateChanges` (starting **ON**, because Chris asked for it; off = every change becomes a
+   review task). Explained on the "Your tax decisions" screen with the guardrails in plain words.
+
+Schema (additive, migration in T-5b): `TaxRateVersion.autoApplied Boolean @default(false)`, `autoAppliedUndoneAt
+DateTime?`; `BusinessSettings.autoApplyOfficialRateChanges Boolean @default(true)`,
+`autoRateChangeMaxMilliPercent Int @default(1000)`; `TaxRateObservation(id, jurisdictionId, asOf DateTime,
+rateMilliPercent Int, observedAt DateTime @default(now()))` with `@@index([jurisdictionId, asOf])` to prove the
+two-days rule (rows older than a year are deleted by the same automation).
+
+### 13.3 Official page watch (alerts only)
+
+New automation `tax-source-watch` (weekly, same cron route). Model:
+
+```prisma
+model OfficialSourceWatch {
+  id            String    @id @default(cuid())
+  label         String    // "Colorado — Sales tax rate changes"
+  url           String    @unique
+  active        Boolean   @default(true)
+  lastHash      String?   // sha256 of the normalised page text
+  lastExcerpt   String?   // first ~600 characters of what changed, plain text
+  lastCheckedAt DateTime?
+  lastChangedAt DateTime?
+  lastError     String?
+  reviewedAt    DateTime?
+  createdAt     DateTime  @default(now())
+}
+```
+
+- **Starting list** (seeded inactive until the T-5b PR verifies each URL still exists; the PR records the verified
+  list): Colorado "Sales Tax Rate Changes" (DR 1002 updates) page; DR 1002 publication page; Retail Delivery Fee
+  retailers page; SUTS participating jurisdictions page; Colorado sales-tax news/announcements page; City of Greeley
+  sales tax page. The owner can add, pause or remove entries (Desk → Money → Sales tax → **Official sources**).
+- **Fetch safety** (server-side fetch of owner-entered URLs): `https` only; host must end in `.gov` or `.co.us` or be in
+  a short reviewed allowlist in code; no IP literals, no redirects to another host, 10-second timeout, 2 MB cap, no
+  cookies or credentials; text extracted by stripping tags/scripts and collapsing whitespace before hashing (so page
+  chrome changes rarely trigger).
+- **Change found:** Today task `TAX_SOURCE_CHANGED` "Colorado updated *Sales tax rate changes* — here is what's new"
+  (excerpt + link), cleared by "I looked at it" (sets `reviewedAt`). An owner email goes out with the same text (11.6).
+  Three failed fetches in a row → task "We couldn't check <label> — the page may have moved".
+- **Yearly CPA check:** each December a Today task "Ask your CPA whether anything in Colorado sales tax changes on
+  January 1 for you" (laws are not machine-readable; this is the safety net).
+
+### 13.4 Retail delivery fee amount
+
+The June reminder (12.4) also shows the latest excerpt from the Retail Delivery Fee page if it changed since the last
+July. The amount is still entered (or confirmed) by the owner — the page is not a structured source.
+
+### 13.5 Tests
+
+`tests/tax-rate-watch.test.ts` (pure guardrails: two-day rule, size limit, never backdated, reviewed jurisdictions
+only), ★ `tests/tax-rate-watch-integration.test.ts` (auto-applied version created once; undo before start removes it
+and D-T9 does not push it; guardrail failure creates a review task; switch off → review only),
+`tests/official-source-watch.test.ts` (URL validation rejects http, IP literals, other-host redirects; normalisation
+ignores whitespace; change produces one task; fetch failures counted), all with fake fetch and fake GIS — never real
+network in CI.
+
+### 13.6 Stop-and-ask
+
+- **S-T11** The GIS contract has no effective-date parameter and no way to learn upcoming rates: ship the current-day
+  check and page watch only; record it in the runbook.
+- **S-T12** A watched official page blocks automated requests (robots or terms of use): deactivate it and say so in the
+  PR.
+
+### 13.7 PR
+
+- **T-5b — WU-TC1:** 13.2–13.5 (after T-5, which builds D-T9's `tax-rate-changes` and `tax-address-recheck`). Risk area:
+  automation/provider (read-only). Screens for the switch, limit, undo and official-sources list ride T-7.

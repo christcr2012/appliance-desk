@@ -469,3 +469,8 @@ check task, instead of being sent to a developer. Amendment B (section 12) handl
 status decided automatically from the lease election and the $500,000 small-business exemption, one record per
 qualifying delivery at job completion, a separate untaxed customer line or "pay it myself", owner-entered July 1
 amounts, and its own return on the shared filing calendar. Replaces stop-and-ask S-T4.
+Also 2026-10-07 (Chris: "monitor the correct official places and update tax changes automatically"): Amendment C
+(section 13). Rate changes from Colorado's official GIS lookup are applied automatically for already-reviewed areas
+when seen on two different days, within a one-percentage-point limit and never backdated, with a Today notice and
+undo; this reverses the 2026-10-06 rule that every GIS rate change needs manual review, by owner request, with the
+switch starting ON. Law and rule changes are only watched (official page text hashes) and alerted, never applied.

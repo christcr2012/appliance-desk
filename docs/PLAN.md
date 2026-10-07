@@ -620,6 +620,7 @@ IN-17 (rate check), IN-33 … IN-38 (`docs/OWNER-INPUTS.md`). IN-43 and IN-44 (A
 - [ ] The lease election applies only to state-collected areas; home-rule cities use only their own rules (engine tests).
 - [ ] Stripe subscription items carry one Stripe tax rate per taxable area; Stripe-mirrored invoices record per-area tax lines; a 1-cent difference from the engine raises a card.
 - [ ] A rate change entered with a future date reaches every affected live subscription the day before it starts, exactly once.
+- [ ] (Amendment C) Rate changes found in Colorado's official lookup are applied automatically when they pass the guardrails (reviewed area, seen on two days, within the size limit, never backdated), with a Today notice and undo; other differences become review tasks; watched official pages raise a Today task when they change.
 - [ ] Per-filing-account worksheets (accrual or cash per the owner's setting); marking a period filed freezes it; a later change to a filed period opens an amended return for that same period (Amendment A 11.12).
 - [ ] (Amendment A, 2026-10-07) Each return is a SUTS entry packet: per tax area in SUTS order, the exact numbers to type with copy buttons, a zero-return path, and a total equal to the tax customers were charged.
 - [ ] (Amendment A) Every filing account has its periods, due dates (with Colorado's weekend/holiday rule) and license renewal on a calendar; the owner is prompted on Today and by email from the day a period closes until it is marked filed; a calendar file can be downloaded.
