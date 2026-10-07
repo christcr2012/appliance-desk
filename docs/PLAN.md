@@ -625,6 +625,8 @@ IN-17 (rate check), IN-33 … IN-38 (`docs/OWNER-INPUTS.md`). IN-43 and IN-44 (A
 - [ ] (Amendment A) Every filing account has its periods, due dates (with Colorado's weekend/holiday rule) and license renewal on a calendar; the owner is prompted on Today and by email from the day a period closes until it is marked filed; a calendar file can be downloaded.
 - [ ] (Amendment A 11.11) An unfiled return is a Today task that cannot be dismissed and disappears only when the return is marked filed; clicking it opens the guided "File this return" page (check → open SUTS → type these in with copy buttons and saved ticks → pay → confirmation).
 - [ ] Use tax computed for appliances and purchase-order lines bought without (enough) tax.
+- [ ] (Amendment A 11.13) The owner enters and updates the SUTS setup (areas, codes, order, screen names, deduction names, frequency, license expiry) in the app; changes apply to open returns, are audited, and a yearly "check your SUTS setup" task appears.
+- [ ] (Amendment B) Colorado retail delivery fee: the app decides automatically whether it applies (lease election, small-business exemption), counts one fee per qualifying delivery, charges it as a separate untaxed line or records it as paid by the business, and prepares its return on the same calendar.
 - [ ] Customer exemptions with certificate photo, scope and expiry.
 - [ ] OWNER-only policy edits and filing; ADMIN limits enforced server-side; screens explained in plain words; axe clean.
 - [ ] No tax rate or taxability answer is written into code, seeds or docs as fact.

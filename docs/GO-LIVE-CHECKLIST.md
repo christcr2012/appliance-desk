@@ -74,7 +74,8 @@ Previews and test copies never send email, even with the key and the switch on (
       has its rate and start date. Until this is done, **do not bill real customers**.
 - [ ] **Tax filing prompts (Batch T Amendment A):** each filing account has its frequency, first period and license
       expiry; the SUTS codes and order match your SUTS return (IN-43); the deduction names are filled in from your
-      CPA's answer (IN-44); you received one test reminder email and downloaded the calendar file to your phone.
+      CPA's answer (IN-44); you received one test reminder email and downloaded the calendar file to your phone; the retail
+      delivery fee status in the app is confirmed by your CPA (IN-37), and if it applies, this year's fee amount is entered.
 - [ ] **Two-step login (Batch G):** you and every admin have enrolled; backup codes stored away from your phone.
 - [ ] **Website look (Batch V):** you have accepted the redesigned public site and checked the editable home-page text.
 - [ ] **Books (Batch K, can be after launch):** books start date set; accounts mapped to your accounting software; one

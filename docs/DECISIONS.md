@@ -464,3 +464,8 @@ period** (`TaxFilingAmendment`, 11.12), not netted into the next return — this
 local service fee is shown only for on-time returns and never on amended additional tax; overdue starts only after the
 holiday-shifted legal deadline; IN-43/IN-44 never block billing; SUTS Bulk XML eligibility is checked rather than ruled
 out.
+Also 2026-10-07 (Chris): the SUTS setup (IN-43) is entered and updated by the owner in the app (11.13), with a yearly
+check task, instead of being sent to a developer. Amendment B (section 12) handles Colorado's Retail Delivery Fee:
+status decided automatically from the lease election and the $500,000 small-business exemption, one record per
+qualifying delivery at job completion, a separate untaxed customer line or "pay it myself", owner-entered July 1
+amounts, and its own return on the shared filing calendar. Replaces stop-and-ask S-T4.

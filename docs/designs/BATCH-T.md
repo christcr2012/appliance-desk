@@ -42,8 +42,10 @@ Colorado is one of the hardest US states for sales tax:
    in February 2026 — the CPA should say whether it changes anything.
 4. **Use tax.** Under the "paid on acquisition" election, every appliance bought without Colorado tax (private
    sellers, out-of-state online stores) owes **use tax** to the state and to Greeley, reported on separate returns.
-5. **Retail Delivery Fee** (a flat ~30¢ per delivery containing a *taxable* item). Businesses with $500,000 or less of
-   Colorado retail sales in the prior year are exempt. Likely not applicable — CPA confirms (IN-37).
+5. **Retail Delivery Fee** (31¢ per delivery from July 2026, only when the delivery includes an item subject to state
+   sales tax). Rentals under the "pay tax on acquisition" election are not subject to it; businesses with $500,000 or
+   less of Colorado retail sales in the prior year are exempt. The app works out which case applies and handles
+   collecting, counting and filing — **Amendment B, section 12**. CPA confirms (IN-37).
 
 Colorado's free **GIS rate lookup** (Department of Revenue) answers "which jurisdictions and rates apply at this exact
 address", including counties, cities and special districts, through an API with a key obtained after registering on
@@ -757,8 +759,7 @@ ADMIN cannot change the election; axe clean at 360/1440 light/dark. Unit tests f
   jurisdiction list). Stop: write a stronger-model prompt; manual entry still ships.
 - **S-T2** Any test or screen would need a real tax answer to pass. Stop and ask Chris.
 - **S-T3** An address in the service area has more than 5 taxable jurisdictions.
-- **S-T4** Retail delivery fee answer is `COLLECT`. Collecting it is not designed here; stop and ask for a design
-  amendment (Stripe supports it as a flat-amount tax; the app would need a per-delivery line).
+- **S-T4** Replaced by Amendment B (section 12.9).
 - **S-T5** Production has real agreements when WU-T5 starts (backfilling tax lines for past invoices is not designed).
 - **S-T6** Amending a filed period needs anything beyond 11.12 (for example SUTS requires a form or field the
   amended packet does not produce, or a refund claim must go through a separate process the CPA describes).
@@ -1129,3 +1130,181 @@ model TaxFilingAmendment {
 Tests: in `tests/tax-filing-packet.test.ts` and the integration tests listed in 11.8 (detection, one OPEN amendment per
 period, mark filed freezes, overpayment path requires a reason, ADMIN refused).
 
+
+### 11.13 SUTS setup is entered and updated in the app (Chris, 2026-10-07: IN-43)
+
+Chris: "is there a way you can build this into the system as a way I can update the system when I have it or if it
+changes?" IN-43 is therefore **entered by the owner in the app**, not sent to a developer, and can be changed at any
+time.
+
+**Screen:** Desk → Money → Sales tax → **Filing accounts → <account> → SUTS setup** (OWNER edits, ADMIN views). Each
+field is explained on screen per AGENTS.md (what it does, example, who can change it):
+
+| Field | Stored in | Used by |
+|---|---|---|
+| License / account number, portal link, frequency, first period, license expiry | existing + 11.3 columns | calendar, reminders, checklist step 1 |
+| Areas on my SUTS return: pick each tax area, type the code SUTS shows, drag into SUTS's order | `TaxJurisdiction.filingAccountId`, `filingCode`, `filingOrder` | packet rows and order |
+| Names SUTS uses on its screens: "Gross sales", "Taxable sales", "Tax", "File a zero return", "Amend" … (blank = the app's default wording) | `TaxFilingAccount.screenLabels Json @default("{}")` | checklist and packet labels |
+| Deduction names and "include in gross sales?" (IN-44 answer) | `deductionLabels` (11.4) | packet deductions |
+| Service fee each area allows | `serviceFeeMilliPercent` | packet |
+| My filing-day notes (free text, e.g. "use the Greeley tab second") | `TaxFilingAccount.filingNotes String?` | top of the guided page |
+| SUTS offers me: Excel upload / Bulk XML (yes / no / don't know) | `excelUploadAvailable Boolean?`, `bulkXmlAvailable Boolean?` | information only; drives the 11.7 roadmap decision |
+| Which account takes Greeley (and each city's) use tax | `TaxJurisdiction.useTaxFilingAccountId` | use-tax packet |
+| "I checked this matches SUTS on" (button sets today) | `setupCheckedOn DateTime?` | yearly check task |
+
+All new columns join the 11.3 migration. Every save writes an `AuditLog` row (`entityType` `TaxFilingAccount`, old/new),
+and a change to labels or order applies to OPEN periods' packets immediately (FILED packets stay frozen).
+
+**Keeping it current (Today tasks, computed like 11.11):**
+- `TAX_SETUP_INCOMPLETE` — an active account without frequency, first period or license number, or a tax area used on an
+  invoice that is on no filing account ("New tax area: Town of Milliken — add it to your SUTS setup"). `high` once a
+  period that needs it has closed.
+- `TAX_SETUP_CHECK` — each January (and 12 months after `setupCheckedOn`): "Check your SUTS setup still matches SUTS".
+  Clears when the owner presses "I checked this".
+
+Tests: `tests/tax-filing-setup.test.ts` (labels fall back to defaults; order drives rows; audit row on save; ADMIN
+refused) and the exception rules in `tests/exceptions-tax.test.ts`. IN-43 in `OWNER-INPUTS.md` now reads "enter it in the
+app"; WU-TA0's runbook becomes optional notes, not a dependency.
+
+---
+
+## 12. Amendment B (2026-10-07) — Colorado Retail Delivery Fee, handled automatically
+
+Status: **APPROVED** (Chris, 2026-10-07: "make sure the colorado required delivery tax is handled properly as well").
+Replaces stop-and-ask S-T4 ("collecting it is not designed here") and the "likely not applicable" wording in the
+introduction. Built in PRs T-6c and T-7 (12.8).
+
+### 12.1 Rules (researched 2026-10-07; CPA confirms under IN-37)
+
+| # | Rule | Source / confidence |
+|---|---|---|
+| B-F1 | A fee per **retail delivery**: a retail sale delivered by motor vehicle to a Colorado location that includes at least one item of tangible personal property **subject to state sales tax**. One fee per delivery (not per item). | Department "Retail Delivery Fee Retailers" page; Colorado regulation on retail delivery fees. High. |
+| B-F2 | **Leases:** if the lessor bought the property tax-free with the Department's permission and collects sales tax on lease payments (our `COLLECT_ON_RENTALS`), the short-term lease is a retail sale and the fee applies to its delivery. If the lessor did not get that permission (our `PAY_ON_ACQUISITION`), the short-term lease is **not** subject to the fee whether or not it is delivered. | Department guidance quoted in search results. High — this is why the lease election (IN-33) decides most of this. |
+| B-F3 | **Small-business exemption:** a retailer with $500,000 or less of Colorado retail sales in the **previous calendar year** is exempt; a new business is exempt until its current-year retail sales pass $500,000. | Department press release on the small/new business exemption. High. |
+| B-F4 | A retailer may **pay the fee itself** instead of collecting it from the customer. If collected, it must be shown separately on the receipt/invoice as "Retail delivery fees"; it is not subject to sales tax. | Department retailer page and regulation. High. |
+| B-F5 | Amount changes each **July 1** (2026-07-01 to 2027-06-30: $0.31). | Department announcements via search. Medium — the owner enters each year's amount; never hard-coded. |
+| B-F6 | Reported on the Retail Delivery Fee return (DR 1786), **same frequency and due date as the sales tax return**, and filed **even with no deliveries** while the retailer is required to collect. | DR 1786 instructions via search. High. |
+
+### 12.2 What the app decides by itself
+
+`retailDeliveryFeeStatus(today)` (pure, `src/domains/tax/retail-delivery-fee.ts`) returns one of:
+
+1. `NOT_APPLICABLE_LEASE_ELECTION` — election is `PAY_ON_ACQUISITION` (B-F2). Nothing is charged, counted or filed.
+2. `EXEMPT_SMALL_BUSINESS` — previous calendar year's Colorado retail sales ≤ threshold, or (first year) current-year
+   sales ≤ threshold (B-F3). Retail sales = charges on invoices to Colorado addresses, excluding tax, deposits and the fee
+   itself, from `InvoiceTaxLine`/invoice lines (the same totals the packet uses).
+3. `APPLIES` — otherwise.
+4. `UNDECIDED` — election still `UNDECIDED`, or the CPA confirmation (below) not given while the status would be
+   `APPLIES`.
+
+Owner settings on Desk → Money → Sales tax → **Your tax decisions** (OWNER; explained on screen with the rules above):
+- `rdfThresholdCents` (starting value 50,000,000 = $500,000, "the amount in Colorado law as of 2026; change it only if
+  the law changes"; restore button).
+- `rdfHandling`: `UNDECIDED` | `COLLECT_FROM_CUSTOMER` | `PAY_MYSELF` — only asked when the status is or may become
+  `APPLIES`; explained with the customer consequence ("customers see a separate 31¢ line" vs "you pay it; customers see
+  nothing").
+- `rdfCpaConfirmedOn` (date) — the CPA has confirmed the status the app shows (IN-37).
+- `rdfCountsReplacementDeliveries`: `UNDECIDED` | `YES` | `NO` — whether delivering a replacement appliance on an
+  existing rental (repair swap) is a new retail delivery (IN-37 follow-up). Initial deliveries and deliveries of an
+  added appliance always count.
+
+**Readiness (extends D-T7):** while the status is `APPLIES` and `rdfHandling` or `rdfCpaConfirmedOn` is missing,
+send-for-signature and billing setup show "Decide how to handle Colorado's retail delivery fee" — the same blocking list,
+same wording style. In every other status nothing blocks.
+
+### 12.3 Schema (additive; same migration as 11.3)
+
+```prisma
+enum RdfHandling { UNDECIDED COLLECT_FROM_CUSTOMER PAY_MYSELF }
+enum RdfReplacementRule { UNDECIDED YES NO }
+
+// BusinessSettings additions
+//   rdfThresholdCents Int @default(50000000)
+//   rdfHandling RdfHandling @default(UNDECIDED)
+//   rdfCpaConfirmedOn DateTime?
+//   rdfCountsReplacementDeliveries RdfReplacementRule @default(UNDECIDED)
+
+model RetailDeliveryFeeRate {
+  id              String   @id @default(cuid())
+  effectiveOn     DateTime @unique   // a July 1 in practice; owner-entered
+  amountCents     Int                // e.g. 31
+  enteredByUserId String
+  createdAt       DateTime @default(now())
+}
+
+model RetailDeliveryFeeRecord {
+  id                  String   @id @default(cuid())
+  jobId               String   @unique   // the completed delivery job; one fee per delivery
+  agreementId         String
+  deliveredOn         DateTime
+  rateId              String
+  rate                RetailDeliveryFeeRate @relation(fields: [rateId], references: [id])
+  amountCents         Int
+  collectedFromCustomer Boolean
+  invoiceLineId       String?            // the customer line when collected
+  filingPeriodId      String?
+  filingPeriod        TaxFilingPeriod? @relation(fields: [filingPeriodId], references: [id])
+  createdAt           DateTime @default(now())
+}
+```
+
+`TaxFilingAccountKind` gains `RETAIL_DELIVERY_FEE_RETURN`. Backup and schema-health coverage for both tables.
+
+### 12.4 Counting and charging
+
+- **When:** a delivery job is marked completed (existing completion command, inside its transaction) for an agreement
+  whose delivery address is in Colorado. If the status on the delivery date is `APPLIES` and the delivery contains at
+  least one appliance whose RENTAL charge is taxable for the **state** jurisdiction at that address and date (the engine,
+  D-T5), write one `RetailDeliveryFeeRecord` (idempotent on `jobId`). Replacement deliveries count only when
+  `rdfCountsReplacementDeliveries = YES`; while it is `UNDECIDED` they are not counted and a Today task asks the owner
+  to decide (once per replacement delivery, listing it).
+- **Amount:** the `RetailDeliveryFeeRate` in effect on the delivery date; none entered → the completion still succeeds,
+  the record waits as "rate missing" and a `high` Today task says "Enter the retail delivery fee amount for July 2026 –
+  June 2027". A June Today task (from June 1) reminds the owner to enter the next July's amount.
+- **Charging the customer** (`COLLECT_FROM_CUSTOMER`): one invoice line category `RETAIL_DELIVERY_FEE`, label "Colorado
+  retail delivery fee", never taxed (the engine skips it; add it to the 3.1 category map as non-taxable by law, not by
+  matrix), on the next invoice for that agreement. Stripe-billed agreements: a one-time invoice item on the next
+  subscription invoice through the existing provider-operation pattern (`ProviderOperation` kind
+  `RDF_INVOICE_ITEM`, key `rdf-<recordId>`); local invoices: a line on the next local invoice. Shown separately on the
+  invoice, statement and customer portal (B-F4).
+- **Paying it yourself** (`PAY_MYSELF`): no customer line; the record still counts for the return; Batch K posts it as
+  an expense ("Retail delivery fees").
+- Agreements and estimates mention the fee only when the status is `APPLIES` and handling is `COLLECT_FROM_CUSTOMER`
+  ("Colorado charges a retail delivery fee of $0.31 per delivery"), wording confirmed with IN-38.
+
+### 12.5 Filing
+
+When the status first becomes `APPLIES`, a `TAX_SETUP_INCOMPLETE` task asks the owner to create the "Colorado — Retail
+delivery fee" filing account (prefilled: kind `RETAIL_DELIVERY_FEE_RETURN`, frequency and due day copied from the
+Colorado sales tax account, B-F6). It then uses the same calendar, Today task, email reminders, guided page and amended
+return flow as sales tax (11.4–11.12) with a simpler packet: number of retail deliveries, fee per delivery (one row per
+rate if the period crosses July 1), total fee; zero return when there were none. Records attach to the period by
+`deliveredOn`; a record created after its period was filed opens an amendment (11.12).
+
+### 12.6 Watching the exemption
+
+- `RDF_EXEMPTION_ENDING` Today task (computed): when current-year Colorado retail sales pass 80% of the threshold (only
+  while status is `EXEMPT_SMALL_BUSINESS`): "You may lose the small-business delivery-fee exemption next year (or this
+  year if this is your first year) — talk to your CPA and decide how to handle the fee". `high` when passed.
+- On January 1 the status is recomputed from the year just ended; if it becomes `APPLIES`, readiness (12.2) and the
+  filing-account task (12.5) appear.
+
+### 12.7 Tests
+
+`tests/retail-delivery-fee.test.ts` (pure: each status; threshold boundary at exactly $500,000; first-year rule; July 1
+rate switch; one fee per delivery with several appliances; state-exempt delivery charges nothing),
+★ `tests/retail-delivery-fee-integration.test.ts` (completion writes one record under retry; collected line is untaxed
+and on the next invoice; PAY_MYSELF adds no line; rate missing does not block completion; replacement rule; record after
+filing opens an amendment), packet tests for the RDF return in `tests/tax-filing-packet.test.ts`, readiness test in the
+existing readiness suite.
+
+### 12.8 PRs
+
+- **T-6c — WU-TB1:** 12.2–12.6 domain logic, schema (rides the 11.3 migration if T-6a has not merged; otherwise its own
+  additive migration), completion hook, Stripe/local invoice line, packet kind. Risk area: money.
+- **T-7** adds the settings fields, rate entry and the RDF return page variant.
+
+### 12.9 Stop-and-ask (replaces S-T4)
+
+- **S-T4** The CPA says the fee applies to something the app does not model as a completed delivery job (for example
+  pickups or installation-only visits), or the Department requires per-delivery detail the record does not hold.

@@ -158,6 +158,7 @@ tests most likely to break, so the agent updates them in the same PR instead of 
 | T-5 | WU-T6 exemptions + rate-change and re-check automations | money/automation | automation run tests, cron route auth tests |
 | T-6a | WU-T7 filing accounts + Amendment A WU-TA1: filing calendar, due dates and holidays, Today tasks (11.11 exception rules)/email prompts, owner alerts, calendar file (`BATCH-T.md` section 11) | schema + automation | migration check, automation run tests, cron route auth tests, messaging delivery tests |
 | T-6b | WU-T7 worksheet → Amendment A WU-TA2 SUTS entry packet, use tax (+ appliance form field, purchase-order hook), mark filed, amended returns (11.12) | money | purchasing/receipt tests, appliance form tests |
+| T-6c | Amendment B WU-TB1: Colorado retail delivery fee — automatic status, delivery-completion records, customer line or pay-myself, RDF return packet (`BATCH-T.md` section 12) | money | job completion tests, invoice/statement tests, Stripe invoice-item provider-operation tests, readiness tests |
 | T-7 | WU-T8 screens (incl. Amendment A filing calendar, return packet and guided "File this return" pages) + WU-T9 docs | screens | route inventory (every new page), axe light/dark, `e2e/sales-tax.spec.ts` shard assignment |
 
 ### V — "Evergreen Signature" redesign
@@ -196,6 +197,6 @@ tests most likely to break, so the agent updates them in the same PR instead of 
 | O-3 | WU-O3 approvals | money + permissions | refund/credit/write-off integration tests |
 | O-4 | WU-O4 scheduled prices + WU-O5 goals and alerts + docs | settings/automation | pricing tests, Today tests |
 
-**34 PRs in all** (T-6 split into T-6a/T-6b by Amendment A, 2026-10-07) (a few more if G-2 or T-4 split). At two merged PRs per session that is roughly 17 working sessions;
+**35 PRs in all** (T-6 split into T-6a/T-6b by Amendment A and T-6c added by Amendment B, 2026-10-07) (a few more if G-2 or T-4 split). At two merged PRs per session that is roughly 17 working sessions;
 each PR should reach green with at most one red CI run (each run is about 3–5 minutes). If a PR needs a third red run,
 the agent stops and reports (PLAYBOOK Step 8).

@@ -61,7 +61,10 @@ Revisit this if you ever sell appliances outright, expand outside Colorado, or e
   until you press "I filed it", and gives you a calendar file for your phone. An unfiled return sits on **Today** as a task you cannot dismiss; tap it
   and a step-by-step "File this return" page walks you through check → open SUTS → type these in → pay → confirmation. Once a period is marked filed its numbers
   never change; if something in a filed month changes later, the app prepares an **amended return** for that month and
-  puts "Amend your September return" on Today. The app never logs in to SUTS or moves money — SUTS has
+  puts "Amend your September return" on Today.
+- **Retail delivery fee:** the app decides on its own whether Colorado's per-delivery fee applies (it normally does not
+  for rentals under option (a), and small businesses are exempt), warns you before you could lose the exemption, and if
+  it ever applies it adds the separate fee line (or records it as paid by you) and prepares that return too. The app never logs in to SUTS or moves money — SUTS has
   no filing connection for small businesses — so the last step (typing, paying) stays yours.
 - **Use tax:** when you buy an appliance from a private seller or an out-of-state store without tax, the app works out
   the use tax you owe the state and Greeley and puts it on the right return.
@@ -71,8 +74,8 @@ Revisit this if you ever sell appliances outright, expand outside Colorado, or e
 1. Register on Colorado's **SUTS** website (if you haven't) and get the free **GIS API key**. I'll give you click-by-click
    steps when we start. Copy the key into Vercel yourself — never paste it into a chat.
 2. Take the questions below to your CPA.
-3. Enter your Colorado sales tax license number (and a City of Greeley number only if Greeley gave you a separate one)
-   in the app, then tell me what your SUTS return screen lists (IN-43).
+3. In the app, open Sales tax → Filing accounts → SUTS setup and enter your license number and what your SUTS return
+   screen lists (IN-43). You can update it any time it changes.
 
 ## Questions for your CPA (copy this list)
 
@@ -85,8 +88,10 @@ These are tracked as IN-33 to IN-39 in `docs/OWNER-INPUTS.md`.
    rent, delivery fee, installation fee, removal fee, damage waiver, early-ending fee, late-payment fee? And when I give a customer a credit (for example, an item delivered late), should that lower the taxable rent, or is it just money credited to their account?
 3. **(IN-35) Cash or accrual** reporting for my state and Greeley returns? Monthly, quarterly or annual filing?
 4. **(IN-36)** If one customer keeps the same appliance more than 3 years through renewals, does the rental rule change?
-5. **(IN-37) Retail delivery fee:** does Colorado's per-delivery fee apply to me (given the small-business exemption under
-   $500,000 a year and that rentals may not count as taxable deliveries)?
+5. **(IN-37) Retail delivery fee:** the app says whether Colorado's 31¢-per-delivery fee applies to me (it should not
+   under option (a) of question 1, and I am exempt while my prior-year Colorado sales are $500,000 or less). Is that
+   right? If it ever applies, should I charge customers or pay it myself? Does a replacement appliance delivered for a
+   repair count as a new delivery?
 6. **(IN-38)** My rental agreement will say "sales tax for your address, currently X%" instead of a fixed rate — is that
    fine? (Also ask your attorney.)
 7. **(IN-39)** When I write off a bill a customer never paid, can I take back the sales tax I already reported on it?
