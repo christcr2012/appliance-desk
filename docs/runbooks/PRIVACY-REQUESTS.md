@@ -4,21 +4,16 @@ This is the operating procedure for Appliance Desk privacy export and deletion r
 
 ## Intake and verification
 
-Signed-in customers can open a request from Account → Settings → Privacy requests. Their active customer session verifies identity immediately.
-
-A public requester uses the form under `/privacy`. The public response is deliberately identical whether or not the email matches a customer. Known customer emails receive a single-use verification link when customer email is enabled; the link expires after 48 hours. If email is disabled or delivery is not attempted, the request stays **Received** and the owner verifies the person by phone before proceeding. Never disclose whether an email exists in Appliance Desk from the public form.
-
-Public intake is limited to five attempts per IP-derived key per hour. The stored limiter key is hashed; clear-text IP addresses are not stored by the limiter.
+1. A signed-in customer opens **Account → Settings → Privacy requests**. Their active customer session verifies identity immediately.
+2. A public requester uses `/privacy`. Keep the response identical whether or not the email matches a customer. When customer email is enabled, a known customer email receives a single-use verification link that expires after 48 hours; otherwise leave the request **Received** for owner phone verification. Never disclose whether an email exists from the public form.
+3. Leave the public rate limit in place: five attempts per IP-derived key per hour. The limiter stores only the hashed key, not the clear-text IP.
 
 ## Owner processing
 
-Use Desk → Privacy requests. Only the OWNER can process these requests.
-
-For a **data export**, verify the request first, then download the JSON export. The export uses a fixed set of customer-owned records and does not include authentication credentials or sessions. Downloading the export marks that request fulfilled.
-
-For a **deletion**, verify identity first. Read the retained-evidence warning, type `DELETE`, and submit. The operation is idempotent: repeating an already fulfilled deletion does not erase additional evidence.
-
-A request may be rejected only with a recorded reason. Do not reject a request merely because financial or signed evidence must be retained; explain what can and cannot be deleted instead.
+1. Open **Desk → Privacy requests**. Only the OWNER may process a request.
+2. For a **data export**, verify the request first, then download the JSON export. It excludes authentication credentials and sessions; downloading it marks the request fulfilled.
+3. For a **deletion**, verify identity first, read the retained-evidence warning, type `DELETE`, and submit. Repeating an already fulfilled deletion must remain idempotent and must not erase additional evidence.
+4. Reject only with a recorded reason. Do not reject merely because financial or signed evidence must be retained; explain what can and cannot be deleted instead.
 
 ## What deletion changes
 
