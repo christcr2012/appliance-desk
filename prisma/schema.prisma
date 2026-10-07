@@ -1897,6 +1897,7 @@ model TaxJurisdiction {
   reviewedAt       DateTime?
   notes            String?
   rates            TaxRateVersion[]
+  rateObservations TaxRateObservation[]
   rules            TaxabilityRule[]
   addresses        AddressTaxJurisdiction[]
   invoiceTaxLines  InvoiceTaxLine[]
@@ -1911,15 +1912,46 @@ model TaxRateVersion {
   jurisdiction     TaxJurisdiction @relation(fields: [jurisdictionId], references: [id])
   rateMilliPercent Int
   effectiveFrom    DateTime
-  source           TaxRateSource
-  sourceNote       String?
-  recordedByUserId String?
-  stripeTaxRateId  String?         @unique
+  source             TaxRateSource
+  sourceNote         String?
+  recordedByUserId   String?
+  stripeTaxRateId    String?         @unique
+  autoApplied        Boolean         @default(false)
+  autoAppliedUndoneAt DateTime?
   invoiceTaxLines  InvoiceTaxLine[]
   useTaxRows       PurchaseUseTax[]
   createdAt        DateTime        @default(now())
 
   @@unique([jurisdictionId, effectiveFrom])
+}
+
+model TaxRateObservation {
+  id               String          @id @default(cuid())
+  jurisdictionId   String
+  jurisdiction     TaxJurisdiction @relation(fields: [jurisdictionId], references: [id])
+  asOf             DateTime
+  rateMilliPercent Int
+  observedAt       DateTime        @default(now())
+
+  @@index([jurisdictionId, asOf])
+  @@index([observedAt])
+}
+
+model OfficialSourceWatch {
+  id                  String   @id @default(cuid())
+  label               String
+  url                 String   @unique
+  active              Boolean  @default(true)
+  lastHash            String?
+  lastText            String?
+  lastExcerpt         String?
+  lastCheckedAt       DateTime?
+  lastChangedAt       DateTime?
+  lastError           String?
+  consecutiveFailures Int      @default(0)
+  reviewedAt          DateTime?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 }
 
 model TaxabilityRule {
@@ -2081,8 +2113,10 @@ model BusinessSettings {
   // Batch T: tax policy starts undecided; rates/rules are entered and reviewed separately.
   shortTermLeaseElection     ShortTermLeaseElection @default(UNDECIDED)
   shortTermLeaseElectionNote String?
-  retailDeliveryFeeDecision  String @default("UNDECIDED")
-  businessTaxAddress         Json   @default("{}")
+  retailDeliveryFeeDecision       String  @default("UNDECIDED")
+  businessTaxAddress              Json    @default("{}")
+  autoApplyOfficialRateChanges    Boolean @default(true)
+  autoRateChangeMaxMilliPercent   Int     @default(1000)
 
   announcementBannerText String?
   announcementBannerOn   Boolean @default(false)
