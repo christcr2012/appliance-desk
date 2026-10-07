@@ -391,16 +391,7 @@ full reasoning behind the pattern.
 - **Daily database backup** (added 2026-09-29, part of a proactive
   scaling/hardening pass) — a Vercel Cron job (`vercel.json`, once a
   day at 09:00 UTC) hits `src/app/api/cron/backup/route.ts`, which calls
-  `exportDatabaseBackup()` (`src/domains/backup/index.ts`). Exports
-  every business-critical table (customers, leads, agreements, billing,
-  appliances, notes, audit history — everything except the
-  authentication session tables and the Stripe webhook log, which are
-  ephemeral/regenerable, not business records) to one JSON file and
-  uploads it to the same Vercel Blob store the photos use, under a
-  `backups/` prefix, with **private** access (unlike photos, this file
-  is full customer PII/billing data and must never be publicly
-  reachable by URL). Backups older than 30 days are deleted
-  automatically on every run so storage cost doesn't grow forever. This
+  `exportDatabaseBackup()` (`src/domains/backup/index.ts`). Exports one repeatable-read snapshot of every business-critical table (customers, leads, agreements, billing, appliances, notes, audit history and provider idempotency evidence such as `WebhookEvent`) while intentionally excluding reusable authentication credential/session rows. The format records the migration and app commit and is restored by `scripts/restore-backup.ts`. It uploads under `backups/` with private access and prunes database backups older than 30 days. F1-b then records a paired media manifest and content-addressed recovery copies for private photos; privacy-deletion tombstones are authoritative during recovery. This
   exists on top of — not instead of — Neon's own built-in point-in-time
   recovery; Neon's free-tier plan only keeps a 6-hour recovery window,
   so this is the second, independent copy that reaches further back and
@@ -543,8 +534,7 @@ browser) plus 1–1.5 minutes of tests. Measured 2026-10-06 on PR #266: **2 min 
 - **No silent skips.** Real-database tests skip themselves outside a throwaway CI database, and several browser specs
   skip when a CI fixture is missing. In CI both would be green no-ops, so `scripts/check-no-skipped-tests.mjs` (unit
   shards, from vitest's JSON report) and `scripts/e2e-shard.mjs` (browser shards, from Playwright's JSON report) fail
-  the run if any test was skipped. The only allowed skip is `tests/perf/batch-e-large-lists.test.ts`, which runs in
-  `perf.yml`.
+  the run if any test was skipped. The only allowed skips are the database-heavy dedicated performance specs (`batch-e-large-lists`, `large-account`, and `large-invoices`), which run in `perf.yml`; the pure performance regression-guard tests still run in normal CI.
 
 ### When CI runs
 

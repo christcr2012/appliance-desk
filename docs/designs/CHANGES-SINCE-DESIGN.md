@@ -148,3 +148,11 @@ All customer-addressed email goes through `sendCustomerEmail` (owner master swit
 - E's low-level email/SMS senders do not expose test injection hooks. BATCH-F A4 already tells the implementer to add them if absent; because F-part-1 does not run provider-send scenarios, that work stays with F-part-2/WU-F3 instead of broadening F1-a.
 - E2's final generated route/accessibility coverage and public-site acceptance disposition are already recorded above. They do not alter F1-a; F-part-2 screenshots/walkthroughs remain intentionally after G, T and V.
 - The post-Batch-D recovery amendment remains binding: database restore preserves D control-plane rows; F1-b separately implements private-media recovery without resurrecting privacy-deleted bytes.
+
+
+## 2026-10-06 — F1-c capacity/runbook drift reconciliation
+
+- WU-F4's older file list says to “extend `tests/perf/fixtures.ts`”, but the merged Batch E implementation consolidated its original harness into `tests/perf/batch-e-large-lists.test.ts` and the dedicated `.github/workflows/perf.yml`. F1-c creates `fixtures.ts` for the new shared F capacity fixtures while preserving the existing Batch E harness.
+- Normal CI now deliberately fails on skipped tests. The two database-heavy F capacity specs therefore join the existing Batch E perf spec on the explicit allow-list **only because all three run in the dedicated performance workflow**; the pure regression-guard tests still run in ordinary CI.
+- Current owner reads are `getCustomerProperties` + the active-appliance query; the billing screen uses `getInvoicesCount` + bounded `getInvoicesPage`. F1-c measures those real read paths rather than raw SQL or a synthetic endpoint.
+- Current recovery/provider contracts map cleanly to WU-F5: Stripe ambiguity is visible at `/desk/billing/reconciliation`, provider/message reconciliation runs in the 15:30 billing-reconcile pass, password reset has `revokeSessionsOnPasswordReset: true`, and staff deactivation deletes sessions transactionally. No decision-level drift was found.
