@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   providerOp: vi.fn(),
   raw: vi.fn(),
   earlyResolution: vi.fn(),
+  audit: vi.fn(),
 }));
 vi.mock("@/lib/session", () => ({ requireRole: mocks.requireRole }));
 vi.mock("@/lib/prisma", () => ({
@@ -25,6 +26,7 @@ vi.mock("@/lib/prisma", () => ({
     pendingDelivery: { findMany: mocks.pendingDelivery },
     earlyReturnResolution: { findMany: mocks.earlyResolution },
     providerOperation: { findMany: mocks.providerOp, count: vi.fn().mockResolvedValue(0) },
+    auditLog: { findMany: mocks.audit },
     // R17: term-ended agreements and maintenance-due appliances are found with set-based SQL.
     $queryRaw: mocks.raw,
   },
@@ -46,6 +48,7 @@ beforeEach(() => {
     mocks.providerOp,
     mocks.raw,
     mocks.earlyResolution,
+    mocks.audit,
   ]) {
     fn.mockResolvedValue([]);
   }
@@ -86,19 +89,23 @@ describe("Today server-side visibility", () => {
     "retains finance exceptions for %s",
     async (role) => {
       mocks.requireRole.mockResolvedValue({ user: { role } });
-      mocks.invoice.mockResolvedValue([
-        {
-          id: "inv-1",
-          customerId: "c-1",
-          dueDate: new Date(0),
-          amountDueCents: 6000,
-          amountPaidCents: 0,
-          customer: { user: { name: "Customer", email: "c@example.test" } },
-        },
-      ]);
+      mocks.invoice.mockImplementation(async (query) =>
+        query.where?.status === "DRAFT"
+          ? []
+          : [
+              {
+                id: "inv-1",
+                customerId: "c-1",
+                dueDate: new Date(0),
+                amountDueCents: 6000,
+                amountPaidCents: 0,
+                customer: { user: { name: "Customer", email: "c@example.test" } },
+              },
+            ],
+      );
       const result = await getExceptions();
       expect(result.some((x) => x.category === "PAST_DUE_INVOICE")).toBe(true);
-      expect(mocks.invoice).toHaveBeenCalledOnce();
+      expect(mocks.invoice).toHaveBeenCalledTimes(2);
       expect(mocks.job).toHaveBeenCalledTimes(2);
     },
   );
@@ -126,7 +133,7 @@ describe("Today server-side visibility", () => {
     const calls = [mocks.agreement, mocks.invoice, mocks.job, mocks.request, mocks.appliance, mocks.notice, mocks.pendingDelivery, mocks.providerOp].flatMap(
       (fn) => fn.mock.calls.map(([query]) => query),
     );
-    expect(calls.length).toBe(16); // the three notice-problem categories (missed, uncertain, failed) each have their own capped read
+    expect(calls.length).toBe(17); // includes the bounded Sales tax draft-invoice read
     for (const query of calls) {
       expect(query.take).toBe(50);
       expect(query.orderBy.at(-1)).toEqual({ id: "asc" });
