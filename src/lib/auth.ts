@@ -1,5 +1,6 @@
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
+import { twoFactor } from "better-auth/plugins";
 import { prisma } from "./prisma";
 import { sendEmail } from "./email";
 import { sendPasswordEmail } from "./password-email";
@@ -13,6 +14,12 @@ export const auth = betterAuth({
   database: prismaAdapter(prisma, {
     provider: "postgresql",
   }),
+  plugins: [
+    twoFactor({
+      issuer: "Appliance Desk",
+      backupCodeOptions: { amount: 10 },
+    }),
+  ],
   secret: process.env.BETTER_AUTH_SECRET,
   // Vercel's production domain (appliance-desk.vercel.app) and every
   // preview deployment's own generated domain are all different
