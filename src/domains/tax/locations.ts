@@ -695,7 +695,7 @@ export async function taxRateVersionIdsForAgreement(
     rateVersionIds.push(jurisdiction.rate.versionId);
   }
 
-  const uniqueRateVersionIds = [...new Set(rateVersionIds)];
+  const uniqueRateVersionIds = [...new Set(rateVersionIds)].sort();
   if (uniqueRateVersionIds.length > 5) {
     problems.push(
       `${category.replaceAll("_", " ").toLowerCase()} resolves to ${uniqueRateVersionIds.length} taxable jurisdictions; Stripe supports at most 5 tax rates on one line. Review this address before billing.`,
