@@ -35,6 +35,8 @@ import { formatTaxRate } from "@/domains/billing/tax";
 import { profileExtrasDefaults } from "@/domains/settings/profile-extras";
 import { twoFactorRolesFromSetting } from "@/domains/security/two-factor";
 import { updateTwoFactorRequiredRolesAction } from "./actions";
+import { listOwnSessions } from "@/domains/security/sessions";
+import { SessionControls } from "./session-controls";
 export const metadata = {
   title: "Settings",
   robots: { index: false, follow: false },
@@ -129,6 +131,7 @@ export default async function DeskSettingsPage({
     content = (
       <Card title="Staff accounts">
         <StaffAccountsSection
+          canSignOutEverywhere={session.user.role === "OWNER"}
           accounts={accounts.map((a) => ({
             id: a.id,
             name: a.name,
@@ -175,6 +178,7 @@ export default async function DeskSettingsPage({
       select: { twoFactorEnabled: true },
     });
     const canChange = session.user.role === "OWNER";
+    const ownSessions = await listOwnSessions(session.user.id, session.session.token);
     content = (
       <Card
         title="Security"
@@ -236,6 +240,13 @@ export default async function DeskSettingsPage({
           )}
           <p className="text-xs text-ink-soft">Customer accounts can never be required by this setting.</p>
         </form>
+        <SessionControls
+          sessions={ownSessions.map((row) => ({
+            ...row,
+            createdAt: row.createdAt.toISOString(),
+            lastActiveAt: row.lastActiveAt.toISOString(),
+          }))}
+        />
       </Card>
     );
   } else if (section === "notifications" || section === "integrations") {

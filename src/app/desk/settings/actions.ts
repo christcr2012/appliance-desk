@@ -522,3 +522,39 @@ export async function updateTwoFactorRequiredRolesAction(formData: FormData): Pr
   await setTwoFactorRequiredRoles(session.user.id, roles);
   revalidatePath("/desk/settings");
 }
+
+
+/** Keeps the caller's current session and revokes every other active/stale session row. */
+export async function signOutOtherSessionsAction(): Promise<
+  | { status: "success"; revokedCount: number }
+  | { status: "error"; message: string }
+> {
+  const session = await requireRole("OWNER", "ADMIN", "STAFF");
+  const { revokeOtherSessions } = await import("@/domains/security/sessions");
+  try {
+    const revokedCount = await revokeOtherSessions(session.user.id, session.session.token);
+    revalidatePath("/desk/settings");
+    return { status: "success", revokedCount };
+  } catch {
+    return { status: "error", message: "Other sessions could not be signed out." };
+  }
+}
+
+/** Owner-only immediate sign-out for one Staff account. */
+export async function signOutStaffEverywhereAction(
+  staffUserId: string,
+): Promise<SettingsActionState & { revokedCount?: number }> {
+  const session = await requireRole("OWNER");
+  const { revokeStaffSessionsByOwner } = await import("@/domains/security/sessions");
+  try {
+    const revokedCount = await revokeStaffSessionsByOwner(session.user.id, staffUserId);
+    revalidatePath("/desk/settings");
+    revalidatePath("/desk/activity");
+    return { status: "success", revokedCount };
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "That account could not be signed out.",
+    };
+  }
+}
