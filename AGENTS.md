@@ -71,6 +71,13 @@ are mandatory:
 13. **Progress checkpoint every 6 tool actions.** Within any block of roughly 6 tool actions there must be a durable
     result: code/docs committed to the branch, a targeted failing gate repaired, a PR opened/merged, or an explicit
     blocker returned to Chris. If none exists, stop the current approach immediately rather than continuing to explore.
+14. **Keep connector calls small.** One external-tool call should do one bounded thing. Do not batch several large
+    file reads, long logs, or unrelated GitHub operations into one connector script. Prefer one file/one failed job at a
+    time; at most 2 small reads when they are tightly related. Request narrow line ranges and emit only the excerpt needed.
+    If a connector call does not return, abandon that exact call shape instead of retrying it unchanged; split it smaller.
+15. **Do not hide future work inside one script.** Connector orchestration may combine a few trivial dependent writes,
+    but never encode the next several implementation steps into one long loop. Each returned tool result must leave a
+    clear next action so the session can continue even if the following call fails.
 
 ## What this is
 
