@@ -809,6 +809,20 @@ async function handleInvoicePaymentFailed(
     },
   });
 
+  const mirrored = await mirrorStripeInvoiceLines(
+    db,
+    stripeInvoice,
+    agreement.id,
+    agreement.customerId,
+    invoice.id,
+  );
+  if (invoice.subtotalCents !== mirrored.subtotalCents) {
+    await db.invoice.update({
+      where: { id: invoice.id },
+      data: { subtotalCents: mirrored.subtotalCents },
+    });
+  }
+
   await recordFailedPaymentAttempt(db, {
     invoiceId: invoice.id,
     amountCents: stripeInvoice.amount_due,
