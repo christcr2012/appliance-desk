@@ -18,6 +18,11 @@ const SHARED_SETTINGS_TESTS = [
   "tests/tax-rate-columns-sync-integration.test.ts",
   "tests/tax-rate-storage.test.ts",
   "tests/documents-artifacts.test.ts",
+  "tests/agreement-estimate-concurrency-integration.test.ts",
+  "tests/billing-subscription-renewal-integration.test.ts",
+  "tests/tax-readiness-integration.test.ts",
+  "tests/tax-migration-integration.test.ts",
+  "tests/tax-locations-integration.test.ts",
 ];
 
 export default defineConfig({

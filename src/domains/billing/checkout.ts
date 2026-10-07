@@ -6,6 +6,11 @@ import {
 } from "./subscription-end";
 import { getStripeClient } from "@/lib/stripe";
 import { fixedTermEndDate } from "@/lib/business-date";
+import {
+  assertTaxReadyForAgreement,
+  taxRateVersionIdsForAgreement,
+} from "@/domains/tax/locations";
+import { ensureStripeTaxRate } from "@/domains/tax/stripe-rates";
 import type { HandoffWorkOutcome } from "./handoff-outcome";
 import {
   RetryLater,
@@ -200,38 +205,6 @@ export async function ensureStripeCustomer(customerId: string): Promise<string> 
   return finalId;
 }
 
-/** Reuse a matching exclusive Stripe tax rate; 0% needs no Stripe object. */
-async function getOrCreateTaxRate(taxRateMilliPercent: number): Promise<string | null> {
-  if (taxRateMilliPercent <= 0) return null;
-
-  const stripe = getStripeClient();
-  const percentage = taxRateMilliPercent / 1000;
-  let match: { id: string } | undefined;
-  let startingAfter: string | undefined;
-  for (let pageNumber = 0; pageNumber < 100 && !match; pageNumber += 1) {
-    const page = await stripe.taxRates.list({
-      limit: 100,
-      active: true,
-      ...(startingAfter ? { starting_after: startingAfter } : {}),
-    });
-    match = page.data.find(
-      (rate) => !rate.inclusive && Math.abs(rate.percentage - percentage) < 0.00005,
-    );
-    if (!page.has_more || page.data.length === 0) break;
-    startingAfter = page.data[page.data.length - 1].id;
-  }
-  if (match) return match.id;
-
-  const created = await stripe.taxRates.create({
-    display_name: "Sales tax",
-    percentage,
-    inclusive: false,
-    country: "US",
-    state: "CO",
-  });
-  return created.id;
-}
-
 const SUCCESS_URL_PATH = "/account?billing=success";
 const CANCEL_URL_PATH = "/account?billing=cancelled";
 
@@ -255,6 +228,14 @@ export async function createCheckoutSessionForAgreement(agreementId: string): Pr
     damageWaiverCents: agreement.damageWaiverCents,
   });
   const oneTimeItems = plan.filter((item) => !item.recurring);
+  const damageWaiverRateVersionIds = await prisma.$transaction(async (tx) => {
+    await assertTaxReadyForAgreement(tx, agreement.id);
+    if (!oneTimeItems.some((item) => item.kind === "DAMAGE_WAIVER")) return [];
+    return taxRateVersionIdsForAgreement(tx, agreement.id, new Date(), "DAMAGE_WAIVER");
+  });
+  const damageWaiverTaxRateIds = await Promise.all(
+    damageWaiverRateVersionIds.map((rateVersionId) => ensureStripeTaxRate(rateVersionId)),
+  );
   const stripeCustomerId = await ensureStripeCustomer(agreement.customerId);
   const stripe = getStripeClient();
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
@@ -269,6 +250,10 @@ export async function createCheckoutSessionForAgreement(agreementId: string): Pr
             payment_method_types: ["card", "us_bank_account"],
             line_items: oneTimeItems.map((item) => ({
               quantity: 1,
+              tax_rates:
+                item.kind === "DAMAGE_WAIVER" && damageWaiverTaxRateIds.length > 0
+                  ? damageWaiverTaxRateIds
+                  : undefined,
               price_data: {
                 currency: "usd",
                 unit_amount: item.amountCents,
@@ -394,7 +379,7 @@ export async function startRecurringBillingForAgreement(
           firstDeliveredOn: Date;
           termMonths: number | null;
           endDate: Date | null;
-          taxRateMilliPercent: number;
+          taxRateVersionIds: string[];
           customer: {
             stripeCustomerId: string;
             stripeDefaultPaymentMethodId: string;
@@ -464,6 +449,30 @@ export async function startRecurringBillingForAgreement(
         return { done: true, outcome: { state: "DONE" }, subscriptionEndIds: [] };
       }
 
+      await assertTaxReadyForAgreement(tx, agreementId);
+      const taxRateVersionIds = await taxRateVersionIdsForAgreement(
+        tx,
+        agreementId,
+        firstDeliveredOn,
+        "RENTAL",
+      );
+      const currentTaxRateVersionIds = await taxRateVersionIdsForAgreement(
+        tx,
+        agreementId,
+        new Date(),
+        "RENTAL",
+      );
+      if (
+        taxRateVersionIds.length !== currentTaxRateVersionIds.length ||
+        taxRateVersionIds.some(
+          (rateVersionId, index) => rateVersionId !== currentTaxRateVersionIds[index],
+        )
+      ) {
+        throw new Error(
+          "A sales-tax rate changed after delivery. Automatic backdated billing is blocked so Stripe cannot apply the wrong rate to earlier rental periods.",
+        );
+      }
+
       const plan = buildCheckoutLinePlan(agreement).filter((item) => item.recurring);
       if (plan.length === 0) return { done: true, outcome: { state: "DONE" }, subscriptionEndIds: [] };
 
@@ -507,7 +516,7 @@ export async function startRecurringBillingForAgreement(
           firstDeliveredOn,
           termMonths: agreement.termMonths,
           endDate,
-          taxRateMilliPercent: agreement.taxRateMilliPercent,
+          taxRateVersionIds,
           customer: {
             stripeCustomerId: agreement.customer.stripeCustomerId,
             stripeDefaultPaymentMethodId:
@@ -526,8 +535,8 @@ export async function startRecurringBillingForAgreement(
           : "Recurring billing is already being started by another request. Try again after it finishes."
         : `Couldn't start recurring billing: ${error instanceof Error ? error.message : "Unexpected error."}`;
     await prisma.rentalAgreement
-      .update({
-        where: { id: agreementId },
+      .updateMany({
+        where: { id: agreementId, stripeSubscriptionId: null },
         data: { billingBlockedReason: detail },
       })
       .catch(() => undefined);
@@ -540,10 +549,13 @@ export async function startRecurringBillingForAgreement(
   }
 
   const stripe = getStripeClient();
-  let taxRateId: string | null;
   let items;
   try {
-    taxRateId = await getOrCreateTaxRate(claimed.agreement.taxRateMilliPercent);
+    const taxRateIds = await Promise.all(
+      claimed.agreement.taxRateVersionIds.map((rateVersionId) =>
+        ensureStripeTaxRate(rateVersionId),
+      ),
+    );
     items = await Promise.all(
       claimed.agreement.plan.map(async (item) => {
         const product = await stripe.products.create(
@@ -559,7 +571,7 @@ export async function startRecurringBillingForAgreement(
         );
         return {
           quantity: 1,
-          tax_rates: taxRateId ? [taxRateId] : undefined,
+          tax_rates: taxRateIds.length > 0 ? taxRateIds : undefined,
           price_data: {
             currency: "usd",
             unit_amount: item.amountCents,

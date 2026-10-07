@@ -6,6 +6,8 @@ import type {
 } from "@prisma/client";
 
 import { MAX_TAX_RATE_MILLI_PERCENT } from "@/domains/billing/tax";
+import type { TaxChargeCategory } from "@/domains/tax/categories";
+import { resolveTaxability, type EngineInput, type EngineJurisdiction } from "@/domains/tax/engine";
 import {
   getColoradoRateSource,
   type ColoradoRateSource,
@@ -572,4 +574,214 @@ export async function confirmAddressLocation(
       },
     });
   });
+}
+
+export class TaxNotReadyError extends Error {
+  readonly problems: string[];
+
+  constructor(problems: string[]) {
+    super(problems.join(" "));
+    this.name = "TaxNotReadyError";
+    this.problems = problems;
+  }
+}
+
+function chargeCategoriesForAgreement(agreement: {
+  damageWaiverCents: number;
+  lateFeeCents: number;
+  lateFeePercent: number;
+}): TaxChargeCategory[] {
+  const categories: TaxChargeCategory[] = ["RENTAL"];
+  if (agreement.damageWaiverCents > 0) categories.push("DAMAGE_WAIVER");
+  if (agreement.lateFeeCents > 0 || agreement.lateFeePercent > 0) {
+    categories.push("LATE_PAYMENT_FEE");
+  }
+  return categories;
+}
+
+export async function getAgreementTaxContext(
+  tx: Prisma.TransactionClient,
+  agreementId: string,
+  taxDate: Date,
+): Promise<Omit<EngineInput, "lines">> {
+  const agreement = await tx.rentalAgreement.findUniqueOrThrow({
+    where: { id: agreementId },
+    select: { termMonths: true, customerId: true, serviceAddressId: true },
+  });
+  const settings = await tx.businessSettings.findUniqueOrThrow({
+    where: { id: "singleton" },
+    select: { shortTermLeaseElection: true },
+  });
+  const defaultRows = await tx.taxabilityRule.findMany({
+    where: { jurisdictionId: null },
+    select: { category: true, taxability: true },
+  });
+  const defaultRules = Object.fromEntries(
+    defaultRows.map((row) => [row.category, row.taxability]),
+  ) as EngineInput["defaultRules"];
+  const location = await tx.addressTaxLocation.findFirst({
+    where: { serviceAddressId: agreement.serviceAddressId, isCurrent: true },
+    include: {
+      jurisdictions: {
+        include: {
+          jurisdiction: {
+            include: {
+              rules: { select: { category: true, taxability: true } },
+              rates: {
+                where: { effectiveFrom: { lte: taxDate } },
+                orderBy: [{ effectiveFrom: "desc" }, { id: "desc" }],
+                take: 1,
+              },
+            },
+          },
+        },
+      },
+    },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+  });
+  const jurisdictions: EngineJurisdiction[] =
+    location?.jurisdictions.map(({ jurisdiction }) => ({
+      id: jurisdiction.id,
+      code: jurisdiction.code,
+      name: jurisdiction.name,
+      administration: jurisdiction.administration,
+      rate: jurisdiction.rates[0]
+        ? {
+            versionId: jurisdiction.rates[0].id,
+            rateMilliPercent: jurisdiction.rates[0].rateMilliPercent,
+          }
+        : null,
+      rules: Object.fromEntries(
+        jurisdiction.rules.map((row) => [row.category, row.taxability]),
+      ) as EngineJurisdiction["rules"],
+    })) ?? [];
+  return {
+    taxDate,
+    leaseTermMonths: agreement.termMonths,
+    election: settings.shortTermLeaseElection,
+    defaultRules,
+    jurisdictions,
+    exemptJurisdictionIds: new Set<string>(),
+  };
+}
+
+export async function taxRateVersionIdsForAgreement(
+  tx: Prisma.TransactionClient,
+  agreementId: string,
+  taxDate: Date,
+  category: TaxChargeCategory,
+): Promise<string[]> {
+  const context = await getAgreementTaxContext(tx, agreementId, taxDate);
+  const problems: string[] = [];
+  const rateVersionIds: string[] = [];
+
+  for (const jurisdiction of context.jurisdictions) {
+    const resolution = resolveTaxability(jurisdiction, category, context);
+    if (resolution.taxability === "UNDECIDED") {
+      problems.push(
+        `${category.replaceAll("_", " ").toLowerCase()} in ${jurisdiction.name}: decide whether it is taxable before billing.`,
+      );
+      continue;
+    }
+    if (resolution.taxability !== "TAXABLE" || context.exemptJurisdictionIds.has(jurisdiction.id)) {
+      continue;
+    }
+    if (!jurisdiction.rate) {
+      problems.push(
+        `Enter a tax rate for ${jurisdiction.name} effective on ${businessDateKey(taxDate)}.`,
+      );
+      continue;
+    }
+    rateVersionIds.push(jurisdiction.rate.versionId);
+  }
+
+  const uniqueRateVersionIds = [...new Set(rateVersionIds)].sort();
+  if (uniqueRateVersionIds.length > 5) {
+    problems.push(
+      `${category.replaceAll("_", " ").toLowerCase()} resolves to ${uniqueRateVersionIds.length} taxable jurisdictions; Stripe supports at most 5 tax rates on one line. Review this address before billing.`,
+    );
+  }
+  if (problems.length > 0) throw new TaxNotReadyError([...new Set(problems)]);
+  return uniqueRateVersionIds;
+}
+
+export async function assertTaxReadyForAgreement(
+  tx: Prisma.TransactionClient,
+  agreementId: string,
+): Promise<void> {
+  const taxDate = new Date();
+  const agreement = await tx.rentalAgreement.findUniqueOrThrow({
+    where: { id: agreementId },
+    select: {
+      serviceAddressId: true,
+      damageWaiverCents: true,
+      lateFeeCents: true,
+      lateFeePercent: true,
+    },
+  });
+  const settings = await tx.businessSettings.findUniqueOrThrow({
+    where: { id: "singleton" },
+    select: { shortTermLeaseElection: true },
+  });
+  const location = await tx.addressTaxLocation.findFirst({
+    where: { serviceAddressId: agreement.serviceAddressId, isCurrent: true },
+    include: {
+      jurisdictions: {
+        include: {
+          jurisdiction: {
+            include: {
+              rates: {
+                where: { effectiveFrom: { lte: taxDate } },
+                orderBy: [{ effectiveFrom: "desc" }, { id: "desc" }],
+                take: 1,
+              },
+            },
+          },
+        },
+      },
+    },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+  });
+  const problems: string[] = [];
+  if (settings.shortTermLeaseElection === "UNDECIDED") {
+    problems.push("Choose the short-term rental tax treatment before billing.");
+  }
+  if (!location || location.status !== "VERIFIED") {
+    problems.push("Confirm the tax areas for this service address before billing.");
+  }
+  if (location) {
+    for (const row of location.jurisdictions) {
+      if (row.jurisdiction.reviewStatus !== "REVIEWED") {
+        problems.push(`Review ${row.jurisdiction.name} before billing.`);
+      }
+      if (!row.jurisdiction.rates[0]) {
+        problems.push(`Enter a tax rate for ${row.jurisdiction.name} effective on ${businessDateKey(taxDate)}.`);
+      }
+    }
+  }
+  if (location?.status === "VERIFIED" && location.jurisdictions.length > 0) {
+    const context = await getAgreementTaxContext(tx, agreementId, taxDate);
+    for (const category of chargeCategoriesForAgreement(agreement)) {
+      let taxableJurisdictions = 0;
+      for (const jurisdiction of context.jurisdictions) {
+        const resolution = resolveTaxability(jurisdiction, category, context);
+        if (resolution.taxability === "UNDECIDED") {
+          problems.push(`${category.replaceAll("_", " ").toLowerCase()} in ${jurisdiction.name}: decide whether it is taxable before billing.`);
+        } else if (
+          resolution.taxability === "TAXABLE" &&
+          jurisdiction.rate &&
+          !context.exemptJurisdictionIds.has(jurisdiction.id)
+        ) {
+          taxableJurisdictions += 1;
+        }
+      }
+      if (taxableJurisdictions > 5) {
+        problems.push(
+          `${category.replaceAll("_", " ").toLowerCase()} resolves to ${taxableJurisdictions} taxable jurisdictions; Stripe supports at most 5 tax rates on one line. Review this address before billing.`,
+        );
+      }
+    }
+  }
+  const uniqueProblems = [...new Set(problems)];
+  if (uniqueProblems.length > 0) throw new TaxNotReadyError(uniqueProblems);
 }

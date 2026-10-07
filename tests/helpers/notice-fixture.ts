@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { cancelAtSecondsFor } from "@/domains/billing/subscription-term";
+import { seedTaxReadyContext } from "./tax-ready";
 
 /** A throwaway customer with active 12-month, auto-renew agreements, for the real-Postgres notice tests. */
 export const termEnd = new Date("2027-11-08T06:59:59Z");
@@ -24,6 +25,7 @@ export function createNoticeFixture(stripeState: Map<string, number | null>) {
   const addressId = `nf-address-${tag}`;
   const ids: string[] = [];
   const extraUserIds: string[] = [];
+  let taxReady: Awaited<ReturnType<typeof seedTaxReadyContext>> | null = null;
 
   async function setup() {
     await prisma.user.create({
@@ -31,6 +33,7 @@ export function createNoticeFixture(stripeState: Map<string, number | null>) {
     });
     await prisma.customer.create({ data: { id: customerId, userId, referralCode: `N${tag.slice(0, 18)}`, smsOptInAt: null } });
     await prisma.serviceAddress.create({ data: { id: addressId, customerId, line1: "1 Test St", city: "Greeley", zip: "80631" } });
+    taxReady = await seedTaxReadyContext(addressId);
   }
 
   async function agreement(options: { endDate?: Date } = {}) {
@@ -99,6 +102,7 @@ export function createNoticeFixture(stripeState: Map<string, number | null>) {
     await prisma.rentalLine.deleteMany({ where: { agreementId: { in: all } } });
     await prisma.rentalAgreement.deleteMany({ where: { id: { in: renewals.map((r) => r.id) } } });
     await prisma.rentalAgreement.deleteMany({ where: { id: { in: ids } } });
+    await taxReady?.cleanup();
     await prisma.serviceAddress.deleteMany({ where: { id: addressId } });
     await prisma.customer.deleteMany({ where: { id: customerId } });
     await prisma.user.deleteMany({ where: { id: { in: [userId, ...extraUserIds] } } });

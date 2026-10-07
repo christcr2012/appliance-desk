@@ -13,6 +13,10 @@ const rentalAgreementFindUniqueOrThrow = vi.fn();
 const customerFindUniqueOrThrow = vi.fn();
 const checkoutSessionsCreate = vi.fn();
 const depositCount = vi.fn();
+const taxMocks = vi.hoisted(() => ({
+  rateVersionIds: vi.fn(),
+  ensureStripeTaxRate: vi.fn(),
+}));
 
 async function runTransaction(callback: (tx: unknown) => Promise<unknown>) {
   const customer = await customerFindUniqueOrThrow();
@@ -26,6 +30,15 @@ async function runTransaction(callback: (tx: unknown) => Promise<unknown>) {
     },
   });
 }
+
+vi.mock("@/domains/tax/locations", () => ({
+  assertTaxReadyForAgreement: vi.fn(async () => undefined),
+  taxRateVersionIdsForAgreement: (...args: unknown[]) => taxMocks.rateVersionIds(...args),
+}));
+
+vi.mock("@/domains/tax/stripe-rates", () => ({
+  ensureStripeTaxRate: (...args: unknown[]) => taxMocks.ensureStripeTaxRate(...args),
+}));
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
@@ -78,6 +91,10 @@ describe("createCheckoutSessionForAgreement — mode selection", () => {
     });
     checkoutSessionsCreate.mockReset().mockResolvedValue({ url: "https://checkout.stripe.test/fake" });
     depositCount.mockReset().mockResolvedValue(0);
+    taxMocks.rateVersionIds.mockReset().mockResolvedValue([]);
+    taxMocks.ensureStripeTaxRate
+      .mockReset()
+      .mockImplementation(async (rateVersionId: string) => `txr_${rateVersionId}`);
   });
 
   it("uses 'setup' mode (no charge) when there's no deposit or damage waiver", async () => {
@@ -106,6 +123,7 @@ describe("createCheckoutSessionForAgreement — mode selection", () => {
   });
 
   it("charges the deposit and damage waiver but never the recurring rental line at signing", async () => {
+    taxMocks.rateVersionIds.mockResolvedValue(["rate-waiver"]);
     rentalAgreementFindUniqueOrThrow.mockResolvedValue(
       baseAgreement({ depositCents: 15000, damageWaiverCents: 5000 }),
     );
@@ -118,6 +136,14 @@ describe("createCheckoutSessionForAgreement — mode selection", () => {
     const names = params.line_items.map((li: { price_data: { product_data: { name: string } } }) => li.price_data.product_data.name);
     expect(names).toEqual(["Security deposit", "Damage waiver"]);
     expect(names).not.toContain("Washer");
+    expect(params.line_items[0].tax_rates).toBeUndefined();
+    expect(params.line_items[1].tax_rates).toEqual(["txr_rate-waiver"]);
+    expect(taxMocks.rateVersionIds).toHaveBeenCalledWith(
+      expect.anything(),
+      "agr-1",
+      expect.any(Date),
+      "DAMAGE_WAIVER",
+    );
   });
 
   it("still refuses an agreement with nothing at all to charge (no rental lines)", async () => {

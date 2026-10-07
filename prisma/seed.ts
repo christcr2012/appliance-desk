@@ -13,6 +13,7 @@
  */
 import { prisma } from "../src/lib/prisma";
 import { generateReferralCode } from "../src/domains/referrals/code";
+import { TAX_CHARGE_CATEGORIES } from "../src/domains/tax/categories";
 import {
   createTrustedCredentialUserInTx,
   normalizeAccountEmail,
@@ -99,6 +100,74 @@ async function seedOwnerAccount() {
   console.log(`Created OWNER account for ${email}.`);
 }
 
+async function seedCiTaxReadyAddress(serviceAddressId: string) {
+  const target = new URL(process.env.DATABASE_URL ?? "");
+  if (
+    process.env.CI !== "true" ||
+    !["localhost", "127.0.0.1"].includes(target.hostname) ||
+    target.pathname !== "/appliance_desk_test"
+  ) {
+    return;
+  }
+
+  const jurisdictionId = "ci-tax-ready-jurisdiction";
+  const rateVersionId = "ci-tax-ready-rate";
+  const effectiveFrom = new Date("2020-01-01T07:00:00.000Z");
+
+  await prisma.taxJurisdiction.upsert({
+    where: { id: jurisdictionId },
+    update: {
+      name: "Synthetic CI tax jurisdiction",
+      administration: "STATE_COLLECTED",
+      reviewStatus: "REVIEWED",
+    },
+    create: {
+      id: jurisdictionId,
+      code: "CI-TAX-READY",
+      name: "Synthetic CI tax jurisdiction",
+      level: "CITY",
+      administration: "STATE_COLLECTED",
+      reviewStatus: "REVIEWED",
+    },
+  });
+  await prisma.taxRateVersion.upsert({
+    where: { id: rateVersionId },
+    update: { rateMilliPercent: 1000, effectiveFrom, source: "MANUAL" },
+    create: {
+      id: rateVersionId,
+      jurisdictionId,
+      rateMilliPercent: 1000,
+      effectiveFrom,
+      source: "MANUAL",
+    },
+  });
+  for (const category of TAX_CHARGE_CATEGORIES) {
+    await prisma.taxabilityRule.upsert({
+      where: { jurisdictionId_category: { jurisdictionId, category } },
+      update: { taxability: "TAXABLE", reason: "Synthetic CI fixture" },
+      create: {
+        jurisdictionId,
+        category,
+        taxability: "TAXABLE",
+        reason: "Synthetic CI fixture",
+      },
+    });
+  }
+  await prisma.addressTaxLocation.updateMany({
+    where: { serviceAddressId, isCurrent: true },
+    data: { isCurrent: false },
+  });
+  await prisma.addressTaxLocation.create({
+    data: {
+      serviceAddressId,
+      status: "VERIFIED",
+      source: "MANUAL",
+      lookedUpAt: new Date(),
+      jurisdictions: { create: { jurisdictionId } },
+    },
+  });
+}
+
 async function seedTestCustomerFixture() {
   const rawEmail = process.env.TEST_CUSTOMER_EMAIL;
   const password = process.env.TEST_CUSTOMER_PASSWORD;
@@ -140,6 +209,7 @@ async function seedTestCustomerFixture() {
       zip: "80201",
     },
   });
+  await seedCiTaxReadyAddress(serviceAddress.id);
 
   const agreement = await prisma.rentalAgreement.create({
     data: {

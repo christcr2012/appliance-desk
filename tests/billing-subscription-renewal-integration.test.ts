@@ -86,6 +86,7 @@ vi.mock("@/domains/referrals", () => ({ rewardReferralIfEligible: vi.fn() }));
 import { prisma } from "@/lib/prisma";
 import { startRecurringBillingForAgreement } from "@/domains/billing/checkout";
 import { renewAgreement } from "@/domains/agreements/term";
+import { seedTaxReadyContext } from "./helpers/tax-ready";
 
 const url = new URL(process.env.DATABASE_URL ?? "postgresql://localhost/unset");
 const enabled =
@@ -104,6 +105,7 @@ describe.skipIf(!enabled)("subscription start and renewal against disposable Pos
   const deliveredOn = new Date("2026-10-01T06:00:00Z");
   const agreementIds: string[] = [];
   const opKeys: string[] = [];
+  let taxReady: Awaited<ReturnType<typeof seedTaxReadyContext>> | null = null;
 
   async function newAgreement(overrides: Record<string, unknown> = {}) {
     const agreement = await prisma.rentalAgreement.create({
@@ -146,6 +148,7 @@ describe.skipIf(!enabled)("subscription start and renewal against disposable Pos
     await prisma.serviceAddress.create({
       data: { id: addressId, customerId, line1: "2 Test St", city: "Greeley", zip: "80631" },
     });
+    taxReady = await seedTaxReadyContext(addressId);
   });
 
   beforeEach(() => {
@@ -163,6 +166,7 @@ describe.skipIf(!enabled)("subscription start and renewal against disposable Pos
     await prisma.deposit.deleteMany({ where: { agreementId: { in: ids } } });
     await prisma.rentalLine.deleteMany({ where: { agreementId: { in: ids } } });
     await prisma.rentalAgreement.deleteMany({ where: { id: { in: ids } } });
+    await taxReady?.cleanup();
     await prisma.serviceAddress.deleteMany({ where: { id: addressId } });
     await prisma.customer.deleteMany({ where: { id: customerId } });
     await prisma.user.deleteMany({ where: { id: { in: [ownerId, customerUserId] } } });
@@ -182,7 +186,7 @@ describe.skipIf(!enabled)("subscription start and renewal against disposable Pos
       expect(stripeSim.state.subscriptionCreateCalls).toHaveLength(1);
       expect(stripeSim.state.subscriptionCreateCalls[0]!.key).toBe(key);
       expect(stripeSim.state.subscriptionsByKey.size).toBe(1);
-      expect(stripeSim.state.otherCalls).toEqual([]);
+      expect(stripeSim.state.otherCalls).toEqual(["taxRates.create"]);
 
       const [{ params }] = stripeSim.state.subscriptionCreateCalls;
       expect(params).toMatchObject({
@@ -230,13 +234,16 @@ describe.skipIf(!enabled)("subscription start and renewal against disposable Pos
       const agreement = await newAgreement();
       const key = `subscription-create-${agreement.id}`;
 
-      // Fail the second transaction of the first run: the reconcile that stores
-      // the subscription id. Stripe has already created the subscription by then.
+      // Fail the first local transaction after Stripe has created the subscription:
+      // this targets subscription finalization semantically even when tax-rate
+      // preparation adds its own transactions before the provider call.
       const realTransaction = prisma.$transaction.bind(prisma) as (...args: unknown[]) => Promise<unknown>;
-      let transactionCalls = 0;
+      let failedFinalization = false;
       vi.spyOn(prisma, "$transaction").mockImplementation(((...args: unknown[]) => {
-        transactionCalls += 1;
-        if (transactionCalls === 2) return Promise.reject(new Error("simulated local database failure"));
+        if (!failedFinalization && stripeSim.state.subscriptionCreateCalls.length === 1) {
+          failedFinalization = true;
+          return Promise.reject(new Error("simulated local database failure"));
+        }
         return realTransaction(...args);
       }) as never);
 
