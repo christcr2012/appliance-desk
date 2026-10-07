@@ -29,8 +29,6 @@ type FormValues = ProfileExtrasForm & {
   lateFeeGraceDays: number;
   lateFeeFlatDollars: number;
   lateFeePercent: number;
-  taxRatePercentText: string;
-  taxRateConfirmed: boolean;
   sixMonthPrepaySetDollars: number;
   sixMonthPrepaySingleDollars: number;
   twelveMonthPrepaySetDollars: number;
@@ -337,28 +335,6 @@ export function SettingsForm({
             min={1}
             max={90}
             {...register("draftReservationHoldDays", { valueAsNumber: true })}
-          />
-        </fieldset>
-      )}
-
-      {(!section || section === "policies") && (
-        <fieldset className="space-y-4">
-          <legend className="text-base font-semibold text-ink">
-            Sales tax
-          </legend>
-          <p className="text-sm text-ink-soft">
-            Defaults to 0% until confirmed with a CPA — never guess a tax rate
-            (see docs/BUSINESS-RULES.md).
-          </p>
-          <LabeledInput
-            label="Tax rate (%, up to three decimals — e.g. 7.375)"
-            type="text"
-            inputMode="decimal"
-            {...register("taxRatePercentText")}
-          />
-          <Checkbox
-            label="A CPA has confirmed this rate is correct"
-            {...register("taxRateConfirmed")}
           />
         </fieldset>
       )}
