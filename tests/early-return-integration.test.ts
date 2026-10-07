@@ -161,7 +161,32 @@ describe.skipIf(!enabled)("early returns (real Postgres)", () => {
         amountPaidCents: paidCents,
         billingPeriodStart: businessDateFromKey(periodStart),
         dueDate: businessDateFromKey(periodStart),
-        lineItems: { create: { kind: "RENTAL", description: "Washer", amountCents: 3000, quantity: 1 } },
+      },
+    });
+    const rentalLine = await prisma.rentalLine.findFirstOrThrow({
+      where: { agreementId },
+      select: { id: true },
+    });
+    const invoiceLine = await prisma.invoiceLineItem.create({
+      data: {
+        invoiceId: invoice.id,
+        kind: "RENTAL",
+        description: "Washer",
+        amountCents: 3000,
+        quantity: 1,
+        rentalLineId: rentalLine.id,
+      },
+    });
+    await prisma.invoiceTaxLine.create({
+      data: {
+        invoiceId: invoice.id,
+        invoiceLineItemId: invoiceLine.id,
+        jurisdictionId: taxFixture.jurisdictionId,
+        rateVersionId: taxFixture.rateVersionId,
+        category: "RENTAL",
+        taxableCents: 3000,
+        taxCents: 210,
+        source: "STRIPE",
       },
     });
     const charge = via === "STRIPE" ? `ch_${randomUUID().replaceAll("-", "")}` : null;
