@@ -144,6 +144,62 @@ describe.skipIf(!enabled)("Batch T tax readiness (real Postgres)", () => {
     expect((await problems()).some((problem) => problem.startsWith("Enter a tax rate for Synthetic Ready Jurisdiction"))).toBe(true);
   });
 
+  it("blocks more than five taxable jurisdictions on a Stripe line", async () => {
+    const location = await prisma.addressTaxLocation.findFirstOrThrow({
+      where: { serviceAddressId: addressId, isCurrent: true },
+    });
+    const extraJurisdictionIds = Array.from(
+      { length: 5 },
+      (_, index) => `tax-ready-extra-${index}-${tag}`,
+    );
+    const effectiveFrom = businessDateFromKey(businessDateKey(new Date())) ?? new Date();
+
+    try {
+      for (const [index, extraId] of extraJurisdictionIds.entries()) {
+        await prisma.taxJurisdiction.create({
+          data: {
+            id: extraId,
+            code: `TRX-${index}-${tag.slice(0, 6)}`,
+            name: `Synthetic Extra Jurisdiction ${index + 1}`,
+            level: "CITY",
+            administration: "STATE_COLLECTED",
+            reviewStatus: "REVIEWED",
+          },
+        });
+        await prisma.taxRateVersion.create({
+          data: {
+            jurisdictionId: extraId,
+            rateMilliPercent: 1000 + index,
+            effectiveFrom,
+            source: "MANUAL",
+          },
+        });
+        await prisma.addressTaxJurisdiction.create({
+          data: {
+            addressTaxLocationId: location.id,
+            jurisdictionId: extraId,
+          },
+        });
+      }
+
+      expect(
+        (await problems()).some((problem) =>
+          problem.includes("rental resolves to 6 taxable jurisdictions"),
+        ),
+      ).toBe(true);
+    } finally {
+      await prisma.addressTaxJurisdiction.deleteMany({
+        where: { jurisdictionId: { in: extraJurisdictionIds } },
+      });
+      await prisma.taxRateVersion.deleteMany({
+        where: { jurisdictionId: { in: extraJurisdictionIds } },
+      });
+      await prisma.taxJurisdiction.deleteMany({
+        where: { id: { in: extraJurisdictionIds } },
+      });
+    }
+  });
+
   it("blocks an agreement fee whose taxability is undecided", async () => {
     await prisma.rentalAgreement.update({
       where: { id: agreementId },
