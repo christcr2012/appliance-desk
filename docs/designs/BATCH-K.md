@@ -588,7 +588,7 @@ Named tests (real Postgres where marked ★):
 - **S-K3** Uploads cannot store a standalone receipt photo (K-A8).
 - **S-K4** A Stripe balance transaction type not named in 3.2 appears in test data — list it; do not invent a rule.
 - **S-K5** `INVOICE_RECOGNIZED` mismatches appear for invoices created by existing code paths (a real data-model gap).
-- **S-K6** Selling a retired appliance (proceeds) or manual journal entries are requested — out of scope.
+- **S-K6** Manual journal entries are requested — out of scope. (Retired-appliance proceeds, scrap income and disposal fees are now designed in `BATCH-M.md` D-M4; K posts them from `ApplianceEndingRecord` when M is merged.)
 - **S-K7** Any accounting-software import format cannot be confirmed from the vendor's public documentation.
 
 ## 9. Later phase (NOT approved by this design): direct QuickBooks Online sync

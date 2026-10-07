@@ -197,6 +197,13 @@ tests most likely to break, so the agent updates them in the same PR instead of 
 | K-7 | WU-K8 P&L, balance, payback | reports | METRICS registry tests, reports page specs |
 | K-8 | WU-K9 forecast, customers, year-end + WU-K10 docs | reports | same; `e2e/books.spec.ts` shard |
 
+### M — shop sales and appliance endings (`docs/designs/BATCH-M.md`, approved 2026-10-07; after K by default, or right after T if IN-47 says Chris sells before launch)
+| PR | Work units | Risk area | CI watch |
+|---|---|---|---|
+| M-1 | WU-M1 items for sale on the parts ledger, resale stock and use tax on withdrawals, Sales page (pickup vs delivered tax, delivery fee), revenue split | money + screens | parts ledger tests, invoice/tax tests, delivery-fee tests, new browser spec shard |
+| M-2 | WU-M2 appliance endings (sold / scrapped / disposed / other), scrap trips, K postings | money | inventory status tests, K posting tests if K merged |
+| M-3 | WU-M3 card payment for local invoices (Stripe Checkout per local invoice) | money + provider | checkout/webhook tests, provider-operation idempotency tests |
+
 ### O — owner controls
 | PR | Work units | Risk area | CI watch |
 |---|---|---|---|
@@ -205,6 +212,6 @@ tests most likely to break, so the agent updates them in the same PR instead of 
 | O-3 | WU-O3 approvals | money + permissions | refund/credit/write-off integration tests |
 | O-4 | WU-O4 scheduled prices + WU-O5 goals and alerts + docs | settings/automation | pricing tests, Today tests |
 
-**39 PRs in all** (Batch S adds 2; T-6d by Amendment D; T-6 split into T-6a/T-6b by Amendment A, T-6c added by Amendment B and T-5b by Amendment C, 2026-10-07) (a few more if G-2 or T-4 split). At two merged PRs per session that is roughly 20 working sessions;
+**42 PRs in all** (Batch M adds 3; Batch S adds 2; T-6d by Amendment D; T-6 split into T-6a/T-6b by Amendment A, T-6c added by Amendment B and T-5b by Amendment C, 2026-10-07) (a few more if G-2 or T-4 split). At two merged PRs per session that is roughly 21 working sessions;
 each PR should reach green with at most one red CI run (each run is about 3–5 minutes). If a PR needs a third red run,
 the agent stops and reports (PLAYBOOK Step 8).

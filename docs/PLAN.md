@@ -769,6 +769,29 @@ do not start deferred features.
 
 ---
 
+## Batch M — Shop sales and appliance endings
+
+**Design: `docs/designs/BATCH-M.md`** (approved by Chris 2026-10-07). After Batch K by default; right after Batch T if
+Chris sells items before launch (IN-47).
+
+### Purpose
+
+Sell small items (hoses, cords …) and used appliances with correct Colorado sales tax (shop pickup vs delivered),
+stock tracking, resale-certificate buying and use tax when resale stock is used; record how every retired appliance
+ends — sold, scrapped (scrap-yard payments for several appliances at once), thrown away (dump fees) or other — with
+the money flowing to revenue reports and the books.
+
+### Acceptance checklist
+
+- [ ] Items marked "sold to customers" share the parts stock ledger; sales, refunds and repairs move stock exactly once (integration tests).
+- [ ] A pickup sale is taxed at the shop's tax areas and a delivered sale at the customer's; delivered taxable sales follow the delivery-fee rules.
+- [ ] Resale stock creates no use tax when bought and records use tax when used on a repair.
+- [ ] Every retired appliance can record its ending; scrap-trip payments split across appliances by book value; disposal fees are expenses; endings feed Batch K.
+- [ ] Shop sales appear on the SUTS return and as "Shop sales" in revenue reports; screens explained in plain words; axe clean.
+- [ ] Every item in "Rules that apply to every batch".
+
+---
+
 ## Batch O — Owner controls
 
 **Design: `docs/designs/BATCH-O.md`** (approved by Chris 2026-10-06). After K. Every control starts in the position that changes nothing.

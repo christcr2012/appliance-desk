@@ -119,6 +119,9 @@ These are tracked as IN-33 to IN-39 in `docs/OWNER-INPUTS.md`.
 9. **(IN-44) Reporting non-taxed amounts on SUTS:** rent that is exempt under the short-term lease rule, sales to exempt
    customers, and charges that are not taxable — do I include them in gross sales and deduct them (under which
    deduction name), or leave them out of gross sales?
+11. **(IN-46, for Batch M) Selling items and old appliances:** are hose/cord and used-appliance sales taxed like other
+    goods? What do I give suppliers to buy resale stock tax-free, and do I owe use tax if I use a resale item on a
+    repair? Is selling scrap metal to a scrap yard tax-free? Anything special about selling an appliance I rented out?
 10. **(For Batch K)** Are 60-month straight-line depreciation and "expense parts when bought" fine for my own profit
    reports? And is $2,000 the right 1099 threshold for 2026?
 

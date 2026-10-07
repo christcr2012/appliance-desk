@@ -520,3 +520,14 @@ tax goes on the Consumer Use Tax Return (DR 0252) via Revenue Online (recommende
 for paper; city use tax (Greeley) is filed separately; the state account switches from annual to monthly automatically
 past $300 a year. Intake is never blocked ("fill in later"), but an appliance with unknown purchase tax cannot be put on
 a rental being signed or billed. New PR T-6d; `pdf-lib` is the one new library allowed, only for filling the official form.
+
+## 2026-10-07 — Batch M: shop sales and what happens to retired appliances
+
+Chris plans to resell small items (hoses, cords) and sometimes sell, scrap or dispose of retired appliances. Decided
+(`docs/designs/BATCH-M.md`): sellable items reuse the parts stock ledger (one inventory, new `SALE` movement); resale
+stock is bought tax-free and owes use tax only if used on a repair; a sale is a local invoice taxed by where the goods
+go (shop pickup vs delivered) with the delivery fee rules applying to delivered taxable sales; a retired appliance
+records one ending — sold (a taxed sale), scrapped (scrap trips split one payment across appliances by book value,
+untaxed by default pending the CPA), thrown away (dump fee as an expense) or other — feeding revenue reports and Batch K
+gain/loss. Card payment for local invoices becomes PR M-3. Placement after K by default, earlier if Chris sells before
+launch (IN-47).
