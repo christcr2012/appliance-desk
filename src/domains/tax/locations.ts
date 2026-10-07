@@ -705,6 +705,39 @@ export async function taxRateVersionIdsForAgreement(
   return uniqueRateVersionIds;
 }
 
+export async function combinedRentalRateMilliPercentForAgreement(
+  tx: Prisma.TransactionClient,
+  agreementId: string,
+  taxDate: Date,
+): Promise<number> {
+  const rateVersionIds = await taxRateVersionIdsForAgreement(
+    tx,
+    agreementId,
+    taxDate,
+    "RENTAL",
+  );
+  if (rateVersionIds.length === 0) return 0;
+
+  const versions = await tx.taxRateVersion.findMany({
+    where: { id: { in: rateVersionIds } },
+    select: { id: true, rateMilliPercent: true },
+  });
+  if (versions.length !== rateVersionIds.length) {
+    throw new TaxNotReadyError([
+      "One of the rental tax rates disappeared before the agreement could be sent.",
+    ]);
+  }
+
+  const total = versions.reduce(
+    (sum, version) => sum + version.rateMilliPercent,
+    0,
+  );
+  if (!Number.isSafeInteger(total) || total < 0) {
+    throw new Error("Combined rental tax rate is invalid.");
+  }
+  return total;
+}
+
 export async function assertTaxReadyForAgreement(
   tx: Prisma.TransactionClient,
   agreementId: string,
