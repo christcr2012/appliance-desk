@@ -17,7 +17,7 @@ This is the operating procedure for Appliance Desk privacy export and deletion r
 
 ## What deletion changes
 
-Deletion archives the customer login, revokes its sessions, clears stored authentication credentials/tokens, and pseudonymizes personal fields on the User, Customer, ServiceAddress, CustomerContact and associated Lead records. Optional address fields are cleared. Because the current database requires `ServiceAddress.line1`, `city`, `state` and `zip`, those required fields are replaced with non-identifying placeholders rather than `null`.
+Deletion archives the customer login, revokes its sessions, clears stored authentication credentials/tokens, and pseudonymizes personal fields on the User, Customer, ServiceAddress, AddressTaxLocation, CustomerContact and associated Lead records. Optional address fields are cleared; tax-location normalized-address and review-note text are cleared as customer-specific location data. Because the current database requires `ServiceAddress.line1`, `city`, `state` and `zip`, those required fields are replaced with non-identifying placeholders rather than `null`.
 
 Photos attached only to that customer's maintenance request are deleted. Before bytes are removed, the private-media recovery layer writes a deterministic privacy tombstone and removes known recovery copies; restore code checks the live tombstone and will not resurrect the photo. A photo also tied to a job or appliance is retained as operational evidence.
 
