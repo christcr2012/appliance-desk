@@ -19,6 +19,10 @@ import {
 import { appliedBalanceCreditCents, creditLinesForAppliedBalance } from "./applied-credit-lines";
 import { LATE_DELIVERY_CREDIT_SOURCE } from "./pickup-billing";
 import {
+  recordStripeInvoiceTaxEvidenceInTx,
+  type MirroredStripeChargeLine,
+} from "@/domains/tax/stripe-invoice-mirror";
+import {
   HELD_CONFLICT_STATUS,
   HELD_PAYMENT_STATUS,
   HELD_REFUNDED_STATUS,
@@ -107,6 +111,132 @@ async function holdPaymentForClosedInvoice(
   });
 }
 
+async function mirrorStripeInvoiceLines(
+  db: Prisma.TransactionClient,
+  stripeInvoice: Stripe.Invoice,
+  agreementId: string,
+  customerId: string,
+  invoiceId: string,
+): Promise<{ subtotalCents: number; depositLineAmountCents: number | null }> {
+  const existingLines = await db.invoiceLineItem.findMany({
+    where: { invoiceId },
+    select: { kind: true, amountCents: true },
+  });
+  if (existingLines.length > 0) {
+    return {
+      subtotalCents: existingLines
+        .filter((item) => item.kind !== "TAX")
+        .reduce((sum, item) => sum + item.amountCents, 0),
+      depositLineAmountCents:
+        existingLines.find((item) => item.kind === "DEPOSIT")?.amountCents ?? null,
+    };
+  }
+
+  const agreementLines = await db.rentalLine.findMany({
+    where: { agreementId },
+    select: { id: true, label: true },
+  });
+  const providerLines = stripeInvoice.lines.data.map((line) => ({
+    stripeLine: line,
+    kind: inferLineItemKind(line.description),
+    description: line.description ?? "Charge",
+    amountCents: line.amount,
+    rentalLineId: matchRentalLineId(line.description, agreementLines),
+  }));
+
+  const appliedCreditCents = appliedBalanceCreditCents(stripeInvoice);
+  let creditLines: Array<{
+    kind: "CREDIT";
+    description: string;
+    amountCents: number;
+    rentalLineId: null;
+  }> = [];
+  let shownCredits: Array<{ id: string; cents: number; complete: boolean }> = [];
+  if (appliedCreditCents > 0) {
+    await lockCustomerLedger(db, customerId);
+    const unshown = await db.customerCredit.findMany({
+      where: {
+        customerId,
+        sourceType: LATE_DELIVERY_CREDIT_SOURCE,
+        appliedViaStripeAt: { not: null },
+        shownOnInvoiceId: null,
+      },
+      orderBy: { appliedViaStripeAt: "asc" },
+      select: { id: true, amountCents: true, shownCents: true, reason: true },
+    });
+    const split = creditLinesForAppliedBalance(
+      appliedCreditCents,
+      unshown.filter((credit) => credit.shownCents < credit.amountCents),
+    );
+    creditLines = split.lines;
+    shownCredits = split.shown;
+  }
+
+  const mirroredChargeLines: MirroredStripeChargeLine[] = [];
+  for (const line of providerLines) {
+    const created = await db.invoiceLineItem.create({
+      data: {
+        invoiceId,
+        kind: line.kind,
+        description: line.description,
+        amountCents: line.amountCents,
+        rentalLineId: line.rentalLineId,
+      },
+      select: { id: true },
+    });
+    mirroredChargeLines.push({
+      stripeLine: line.stripeLine,
+      invoiceLineItemId: created.id,
+      kind: line.kind,
+      amountCents: line.amountCents,
+    });
+  }
+
+  const taxCents = extractTaxCents(stripeInvoice);
+  if (taxCents > 0) {
+    await db.invoiceLineItem.create({
+      data: {
+        invoiceId,
+        kind: "TAX",
+        description: "Sales tax",
+        amountCents: taxCents,
+      },
+    });
+  }
+  if (creditLines.length > 0) {
+    await db.invoiceLineItem.createMany({
+      data: creditLines.map((line) => ({ invoiceId, ...line })),
+    });
+  }
+
+  await recordStripeInvoiceTaxEvidenceInTx(db, {
+    invoiceId,
+    agreementId,
+    stripeInvoice,
+    chargeLines: mirroredChargeLines,
+  });
+
+  for (const shown of shownCredits) {
+    await db.customerCredit.update({
+      where: { id: shown.id },
+      data: {
+        shownCents: { increment: shown.cents },
+        ...(shown.complete ? { shownOnInvoiceId: invoiceId } : {}),
+      },
+    });
+  }
+
+  const subtotalCents =
+    providerLines.reduce((sum, item) => sum + item.amountCents, 0) +
+    creditLines.reduce((sum, item) => sum + item.amountCents, 0);
+
+  return {
+    subtotalCents,
+    depositLineAmountCents:
+      providerLines.find((item) => item.kind === "DEPOSIT")?.amountCents ?? null,
+  };
+}
+
 async function recordPaidInvoice(
   db: Prisma.TransactionClient,
   evidence: WebhookEvidence,
@@ -149,51 +279,6 @@ async function recordPaidInvoice(
     }
   }
 
-  const agreementLines = await db.rentalLine.findMany({
-    where: { agreementId },
-    select: { id: true, label: true },
-  });
-
-  const lineItemsData = stripeInvoice.lines.data.map((line) => ({
-    kind: inferLineItemKind(line.description),
-    description: line.description ?? "Charge",
-    amountCents: line.amount,
-    rentalLineId: matchRentalLineId(line.description, agreementLines),
-  }));
-  const taxCents = extractTaxCents(stripeInvoice);
-  if (taxCents > 0) {
-    lineItemsData.push({
-      kind: "TAX" as InvoiceLineItemKind,
-      description: "Sales tax",
-      amountCents: taxCents,
-      rentalLineId: null,
-    });
-  }
-  // Credit Stripe took off this bill from the customer's account balance shows
-  // as labeled lines, so the customer can see what each credit was for.
-  const appliedCreditCents = appliedBalanceCreditCents(stripeInvoice);
-  let shownCredits: Array<{ id: string; cents: number; complete: boolean }> = [];
-  if (appliedCreditCents > 0) {
-    // Serialize with any other bill of this customer being recorded, so two bills cannot both show (and both
-    // consume) the same credit. The lock is re-entrant: it is a no-op when the paid-invoice path already holds it.
-    await lockCustomerLedger(db, customerId);
-    // Only this feature's credits, oldest first, each with what is still unshown.
-    const unshown = await db.customerCredit.findMany({
-      where: { customerId, sourceType: LATE_DELIVERY_CREDIT_SOURCE, appliedViaStripeAt: { not: null }, shownOnInvoiceId: null },
-      orderBy: { appliedViaStripeAt: "asc" },
-      select: { id: true, amountCents: true, shownCents: true, reason: true },
-    });
-    const creditLines = creditLinesForAppliedBalance(
-      appliedCreditCents,
-      unshown.filter((c) => c.shownCents < c.amountCents),
-    );
-    lineItemsData.push(...creditLines.lines);
-    shownCredits = creditLines.shown;
-  }
-  const subtotalCents = lineItemsData
-    .filter((item) => item.kind !== "TAX")
-    .reduce((sum, item) => sum + item.amountCents, 0);
-
   const cashEvents = evidence.cashEvents(stripeInvoice.id as string);
   const nextBillingDate = stripeInvoice.period_end
     ? new Date(stripeInvoice.period_end * 1000)
@@ -210,7 +295,7 @@ async function recordPaidInvoice(
     billingPeriodEnd: stripeInvoice.period_end
       ? new Date(stripeInvoice.period_end * 1000)
       : null,
-    subtotalCents,
+    subtotalCents: stripeInvoice.subtotal,
     taxCents,
     amountDueCents: stripeInvoice.amount_due,
     amountPaidCents: 0,
@@ -220,10 +305,7 @@ async function recordPaidInvoice(
   const invoice = targetInvoiceId
     ? await db.invoice.update({
         where: { id: targetInvoiceId },
-        data: {
-          ...invoiceFields,
-          lineItems: { createMany: { data: lineItemsData } },
-        },
+        data: invoiceFields,
       })
     : await db.invoice.create({
         data: {
@@ -231,17 +313,20 @@ async function recordPaidInvoice(
           agreementId,
           ...invoiceFields,
           stripeInvoiceId: stripeInvoice.id,
-          lineItems: { createMany: { data: lineItemsData } },
         },
       });
 
-  for (const shown of shownCredits) {
-    await db.customerCredit.update({
-      where: { id: shown.id },
-      data: {
-        shownCents: { increment: shown.cents },
-        ...(shown.complete ? { shownOnInvoiceId: invoice.id } : {}),
-      },
+  const mirrored = await mirrorStripeInvoiceLines(
+    db,
+    stripeInvoice,
+    agreementId,
+    customerId,
+    invoice.id,
+  );
+  if (invoice.subtotalCents !== mirrored.subtotalCents) {
+    await db.invoice.update({
+      where: { id: invoice.id },
+      data: { subtotalCents: mirrored.subtotalCents },
     });
   }
 
@@ -267,14 +352,13 @@ async function recordPaidInvoice(
     allocatedToInvoiceCents += appliedCents;
   }
 
-  const depositLine = lineItemsData.find((item) => item.kind === "DEPOSIT");
-  if (depositLine) {
+  if (mirrored.depositLineAmountCents !== null) {
     const existingDeposit = await db.deposit.findFirst({ where: { agreementId } });
     if (!existingDeposit) {
       await db.deposit.create({
         data: {
           agreementId,
-          amountCents: depositLine.amountCents,
+          amountCents: mirrored.depositLineAmountCents,
           refundable: true,
         },
       });
