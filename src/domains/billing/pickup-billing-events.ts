@@ -6,11 +6,7 @@ import { formatCents } from "@/domains/pricing/money";
 import { applyLocalInvoiceTaxInTx } from "@/domains/tax/local-invoice";
 import { runPreparedInvoiceRefund, type ClaimedRefund } from "./refunds";
 import { lockCustomerLedger } from "./ledger";
-import {
-  billedRentalLineEvidenceInTx,
-  refundAcrossPaidInvoicesInTx,
-} from "./refund-across-invoices";
-import { allocateAcrossLines } from "@/domains/tax/allocate";
+import { refundRentalItemAcrossPaidInvoicesInTx } from "./refund-across-invoices";
 import { assertActiveTeamActor } from "@/lib/team-actor";
 import { closeAgreementInTx, lockRentalAgreementInTx, runCloseAgreementContinuation, type CloseAgreementResult } from "@/domains/agreements";
 import { dropSubstituteInTx } from "@/domains/jobs/substitution";
@@ -597,29 +593,18 @@ export async function removeUndeliveredItem(userId: string, pendingDeliveryId: s
     } else if (agreement.paidInFullInAdvance) {
       note = `${item.label}: paid in full in advance, the owner settles the refund by hand.`;
     } else {
-      const billed = await billedRentalLineEvidenceInTx(tx, {
-        agreementId: agreement.id,
-        rentalLineId: item.rentalLineId,
-      });
-      if (!billed.evidenceComplete) {
-        throw new Error(
-          "This rental has older paid tax that is missing line-level tax evidence. Review the historical bill before removing this never-delivered item.",
-        );
-      }
-      const otherShareCents = Math.max(
-        0,
-        item.lineMonthlyPriceCents - item.monthlyPriceCents,
+      const refunded = await refundRentalItemAcrossPaidInvoicesInTx(
+        tx,
+        userId,
+        {
+          agreementId: agreement.id,
+          rentalLineId: item.rentalLineId,
+          applianceId: item.applianceId,
+          reason: "BILLING_ERROR",
+          notes: `Never delivered: ${item.label} taken off the agreement.`,
+        },
       );
-      const weights = [item.monthlyPriceCents, otherShareCents] as const;
-      const owedCents =
-        allocateAcrossLines(billed.baseCents, weights)[0] +
-        allocateAcrossLines(billed.taxCents, weights)[0];
-      const refunded = await refundAcrossPaidInvoicesInTx(tx, userId, {
-        agreementId: agreement.id,
-        amountCents: owedCents,
-        reason: "BILLING_ERROR",
-        notes: `Never delivered: ${item.label} taken off the agreement.`,
-      });
+      const owedCents = refunded.requestedCents;
       refundedCents = refunded.refundedCents;
       refundByHandCents = refunded.refundByHandCents;
       refundRuns.push(...refunded.runs);
