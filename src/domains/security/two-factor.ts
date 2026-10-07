@@ -22,6 +22,18 @@ export function twoFactorRolesFromSetting(value: unknown): TwoFactorRequiredRole
   return TEAM_ROLES.filter((role) => selected.has(role));
 }
 
+export function isTwoFactorEnrollmentExemptPath(pathname: string | null): boolean {
+  if (!pathname) return false;
+  return (
+    pathname === "/desk/security/setup" ||
+    pathname === "/login" ||
+    pathname === "/login/two-factor" ||
+    pathname === "/forgot-password" ||
+    pathname === "/reset-password" ||
+    pathname.startsWith("/api/auth/")
+  );
+}
+
 export function roleRequiresTwoFactor(role: Role | string, setting: unknown): boolean {
   if (role === "CUSTOMER") return false;
   return twoFactorRolesFromSetting(setting).includes(
