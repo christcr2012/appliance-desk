@@ -7,7 +7,10 @@ import {
   recomputeForAgreementInTx,
 } from "@/domains/billing/subscription-end";
 import { createSignedAgreementArtifactInTx } from "@/domains/documents/artifacts";
-import { assertTaxReadyForAgreement } from "@/domains/tax/locations";
+import {
+  assertTaxReadyForAgreement,
+  combinedRentalTaxRateMilliPercentForAgreement,
+} from "@/domains/tax/locations";
 import { createPrepaidRentInvoiceInTx } from "@/domains/tax/prepaid-invoice";
 import { prisma } from "@/lib/prisma";
 import type {
@@ -141,7 +144,6 @@ export type NewAgreementInput = {
   lateFeeGraceDays?: number;
   lateFeeCents?: number;
   lateFeePercent?: number;
-  taxRateMilliPercent?: number;
   paidInFullInAdvance?: boolean;
 };
 
@@ -216,7 +218,6 @@ export async function createDraftAgreementInTx(
       lateFeeGraceDays: input.lateFeeGraceDays ?? 5,
       lateFeeCents: input.lateFeeCents ?? 0,
       lateFeePercent: input.lateFeePercent ?? 0,
-      taxRateMilliPercent: input.taxRateMilliPercent ?? 0,
       paidInFullInAdvance,
       freeMonthGranted,
       reservationExpiresAt: addDays(
@@ -262,7 +263,6 @@ export async function createDraftAgreement(
     lateFeeGraceDays: input.lateFeeGraceDays ?? 5,
     lateFeeCents: input.lateFeeCents ?? 0,
     lateFeePercent: input.lateFeePercent ?? 0,
-    taxRateMilliPercent: input.taxRateMilliPercent ?? 0,
     paidInFullInAdvance,
   };
 
@@ -453,6 +453,12 @@ export async function sendForSignature(userId: string, agreementId: string) {
     }
 
     await assertTaxReadyForAgreement(tx, agreementId);
+    const taxRateMilliPercent =
+      await combinedRentalTaxRateMilliPercentForAgreement(
+        tx,
+        agreementId,
+        new Date(),
+      );
 
     const signature = await tx.signatureRecord.create({
       data: { agreementId, provider: "typed_signature" },
@@ -469,7 +475,11 @@ export async function sendForSignature(userId: string, agreementId: string) {
     }
     await tx.rentalAgreement.update({
       where: { id: agreementId },
-      data: { status: "AWAITING_SIGNATURE", ...(termsSnapshot ? { termsSnapshot } : {}) },
+      data: {
+        status: "AWAITING_SIGNATURE",
+        taxRateMilliPercent,
+        ...(termsSnapshot ? { termsSnapshot } : {}),
+      },
     });
     await tx.auditLog.create({
       data: {
