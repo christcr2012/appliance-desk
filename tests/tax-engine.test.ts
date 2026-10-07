@@ -18,7 +18,7 @@ function jurisdiction(
   return {
     code: overrides.id.toUpperCase(),
     administration: "STATE_COLLECTED",
-    rate: { versionId: \`rate-\${overrides.id}\`, rateMilliPercent: 1000 },
+    rate: { versionId: `rate-${overrides.id}`, rateMilliPercent: 1000 },
     rules: {},
     ...overrides,
   };

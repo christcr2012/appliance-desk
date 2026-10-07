@@ -73,14 +73,14 @@ export function resolveTaxability(
   if (specific && specific !== "UNDECIDED") {
     return {
       taxability: specific,
-      reason: \`Tax rule configured for \${jurisdiction.name}\`,
+      reason: `Tax rule configured for ${jurisdiction.name}`,
     };
   }
 
   if (jurisdiction.administration === "SELF_COLLECTED") {
     return {
       taxability: "UNDECIDED",
-      reason: \`Tax rule for \${jurisdiction.name} is not decided yet\`,
+      reason: `Tax rule for ${jurisdiction.name} is not decided yet`,
     };
   }
 
@@ -161,14 +161,14 @@ export function computeTax(input: EngineInput): EngineResult {
     for (const jurisdiction of input.jurisdictions) {
       if (!jurisdiction.rate) {
         problems.add(
-          \`No rate entered for \${jurisdiction.name} on \${dateLabel(input.taxDate)}\`,
+          `No rate entered for ${jurisdiction.name} on ${dateLabel(input.taxDate)}`,
         );
       }
 
       const resolution = resolveTaxability(jurisdiction, category, input);
       if (resolution.taxability === "UNDECIDED") {
         problems.add(
-          \`\${CATEGORY_WORDS[category]} in \${jurisdiction.name}: not decided yet\`,
+          `${CATEGORY_WORDS[category]} in ${jurisdiction.name}: not decided yet`,
         );
       }
 

@@ -1,6 +1,6 @@
 function assertSafeInteger(value: number, label: string): void {
   if (!Number.isSafeInteger(value)) {
-    throw new Error(\`\${label} must be a whole number.\`);
+    throw new Error(`${label} must be a whole number.`);
   }
 }
 

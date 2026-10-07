@@ -19,21 +19,21 @@ const migration = readFileSync(
 
 describe.skipIf(!enabled)("Batch T tax migration (real Postgres)", () => {
   const tag = randomUUID().replaceAll("-", "");
-  const userId = \`tax-migration-user-\${tag}\`;
-  const customerId = \`tax-migration-customer-\${tag}\`;
-  const addressId = \`tax-migration-address-\${tag}\`;
-  const currentLocationId = \`tax-migration-current-\${tag}\`;
-  const businessLocationId = \`tax-migration-business-\${tag}\`;
+  const userId = `tax-migration-user-${tag}`;
+  const customerId = `tax-migration-customer-${tag}`;
+  const addressId = `tax-migration-address-${tag}`;
+  const currentLocationId = `tax-migration-current-${tag}`;
+  const businessLocationId = `tax-migration-business-${tag}`;
 
   beforeAll(async () => {
     await prisma.user.create({
-      data: { id: userId, email: \`\${tag}@example.test\`, role: "CUSTOMER" },
+      data: { id: userId, email: `${tag}@example.test`, role: "CUSTOMER" },
     });
     await prisma.customer.create({
       data: {
         id: customerId,
         userId,
-        referralCode: \`TX\${tag.slice(0, 10)}\`,
+        referralCode: `TX${tag.slice(0, 10)}`,
       },
     });
     await prisma.serviceAddress.create({
@@ -54,9 +54,9 @@ describe.skipIf(!enabled)("Batch T tax migration (real Postgres)", () => {
         id: {
           in: [
             currentLocationId,
-            \`\${currentLocationId}-duplicate\`,
+            `${currentLocationId}-duplicate`,
             businessLocationId,
-            \`\${businessLocationId}-duplicate\`,
+            `${businessLocationId}-duplicate`,
           ],
         },
       },
@@ -116,7 +116,7 @@ describe.skipIf(!enabled)("Batch T tax migration (real Postgres)", () => {
     await expect(
       prisma.taxabilityRule.create({
         data: {
-          id: \`tax-duplicate-default-\${tag}\`,
+          id: `tax-duplicate-default-${tag}`,
           jurisdictionId: null,
           category: "RENTAL",
           taxability: "UNDECIDED",
@@ -139,7 +139,7 @@ describe.skipIf(!enabled)("Batch T tax migration (real Postgres)", () => {
     await expect(
       prisma.addressTaxLocation.create({
         data: {
-          id: \`\${currentLocationId}-duplicate\`,
+          id: `${currentLocationId}-duplicate`,
           serviceAddressId: addressId,
           status: "NEEDS_REVIEW",
           source: "MANUAL",
@@ -163,7 +163,7 @@ describe.skipIf(!enabled)("Batch T tax migration (real Postgres)", () => {
     await expect(
       prisma.addressTaxLocation.create({
         data: {
-          id: \`\${businessLocationId}-duplicate\`,
+          id: `${businessLocationId}-duplicate`,
           forBusinessLocation: true,
           status: "NEEDS_REVIEW",
           source: "MANUAL",
