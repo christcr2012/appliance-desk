@@ -47,6 +47,16 @@ export async function recordTaxRateObservationInTx(
   const observedAt = input.observedAt ?? new Date();
   const bounds = businessDayBounds(observedAt);
 
+  const jurisdiction = await tx.$queryRaw<Array<{ id: string }>>`
+    SELECT "id"
+    FROM "TaxJurisdiction"
+    WHERE "id" = ${input.jurisdictionId}
+    FOR UPDATE
+  `;
+  if (jurisdiction.length !== 1) {
+    throw new Error("Couldn't find that tax jurisdiction.");
+  }
+
   const existing = await tx.taxRateObservation.findFirst({
     where: {
       jurisdictionId: input.jurisdictionId,
