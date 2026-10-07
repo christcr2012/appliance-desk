@@ -5,6 +5,7 @@ import { requireRole } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { decideDepositRefund, issueInvoiceRefund } from "@/domains/billing/refunds";
 import { applyCreditDecision } from "@/domains/billing/money-decisions";
+import { recalculateDraftInvoiceTax } from "@/domains/tax/invoice-tax";
 
 export type MoneyActionState = { status: "success"; message: string } | { status: "error"; message: string };
 
@@ -112,5 +113,29 @@ export async function applyCreditAction(
     return { status: "success", message: "Credit applied. The invoice balance went down by that amount." };
   } catch (error) {
     return { status: "error", message: plainError(error) };
+  }
+}
+
+
+/** Retry a DRAFT local bill after the owner fixes its tax policy/address. */
+export async function recalculateInvoiceTaxAction(invoiceId: string): Promise<void> {
+  const session = await requireRole("OWNER", "ADMIN");
+  await prisma.$transaction((tx) =>
+    recalculateDraftInvoiceTax(tx, {
+      invoiceId,
+      userId: session.user.id,
+    }),
+  );
+  const invoice = await prisma.invoice.findUnique({
+    where: { id: invoiceId },
+    select: { customerId: true },
+  });
+  revalidatePath("/desk/today");
+  revalidatePath("/desk/billing");
+  if (invoice) {
+    revalidatePath(`/desk/billing/customer/${invoice.customerId}`);
+    revalidatePath(
+      `/desk/billing/customer/${invoice.customerId}/invoice/${invoiceId}`,
+    );
   }
 }
