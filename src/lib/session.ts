@@ -2,8 +2,20 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
 import { auth } from "./auth";
+import { prisma } from "./prisma";
+import { isTwoFactorRequired } from "@/domains/security/two-factor-policy";
 
 export type Role = "OWNER" | "ADMIN" | "STAFF" | "CUSTOMER";
+
+const TWO_FACTOR_SETUP_PATH = "/desk/security/setup";
+
+const readTwoFactorRequiredRoles = cache(async () => {
+  const settings = await prisma.businessSettings.findUnique({
+    where: { id: "singleton" },
+    select: { twoFactorRequiredRoles: true },
+  });
+  return settings?.twoFactorRequiredRoles;
+});
 
 function isRole(value: unknown): value is Role {
   return value === "OWNER" || value === "ADMIN" || value === "STAFF" || value === "CUSTOMER";
@@ -64,5 +76,15 @@ export async function requireRole(...roles: Role[]) {
   if (!roles.includes(role)) {
     redirect("/");
   }
+
+  if (isTwoFactorRequired(role, await readTwoFactorRequiredRoles())) {
+    const enrolled =
+      (session.user as { twoFactorEnabled?: boolean }).twoFactorEnabled === true;
+    const pathname = (await headers()).get("x-appliance-pathname");
+    if (!enrolled && pathname !== TWO_FACTOR_SETUP_PATH) {
+      redirect(TWO_FACTOR_SETUP_PATH);
+    }
+  }
+
   return session;
 }
