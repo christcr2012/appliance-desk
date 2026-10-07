@@ -87,8 +87,8 @@ describe("exception builders", () => {
 
   it("uses Denver calendar days for the exemption warning across spring DST", () => {
     const now = new Date("2026-02-07T18:00:00.000Z");
-    expect(taxExemptionExpiryWindow(now).through.toISOString()).toBe(
-      "2026-03-10T05:59:59.999Z",
+    expect(taxExemptionExpiryWindow(now).throughExclusive.toISOString()).toBe(
+      "2026-03-10T06:00:00.000Z",
     );
     expect(
       taxExemptionWarningSince(new Date("2026-03-10T05:59:59.999Z")).toISOString(),
@@ -97,8 +97,8 @@ describe("exception builders", () => {
 
   it("uses Denver calendar days for the exemption warning across fall DST", () => {
     const now = new Date("2026-10-05T18:00:00.000Z");
-    expect(taxExemptionExpiryWindow(now).through.toISOString()).toBe(
-      "2026-11-05T06:59:59.999Z",
+    expect(taxExemptionExpiryWindow(now).throughExclusive.toISOString()).toBe(
+      "2026-11-05T07:00:00.000Z",
     );
     expect(
       taxExemptionWarningSince(new Date("2026-11-05T06:59:59.999Z")).toISOString(),
