@@ -43,6 +43,7 @@ export type StatementInvoice = {
   amountDueCents: number;
   amountPaidCents: number;
   balanceCents: number;
+  isLocalInvoice: boolean;
   lineItems: StatementLineItem[];
 };
 
@@ -273,6 +274,7 @@ export async function getCustomerStatement(
       amountDueCents: invoice.amountDueCents,
       amountPaidCents: invoice.amountPaidCents,
       balanceCents,
+      isLocalInvoice: invoice.stripeInvoiceId === null,
       lineItems: invoice.lineItems.map((li) => ({
         id: li.id,
         kind: li.kind,
