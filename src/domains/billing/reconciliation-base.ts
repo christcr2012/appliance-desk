@@ -1,4 +1,4 @@
-import type { ProviderOperationStatus } from "@prisma/client";
+import type { ProviderOperationKind, ProviderOperationStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { HELD_CONFLICT_STATUS, HELD_PAYMENT_STATUS, SUCCESSFUL_PAYMENT_STATUSES } from "./payment-status";
 import { getStripeClient } from "@/lib/stripe";
@@ -55,19 +55,17 @@ type RecoverableOperation = {
   requestedAt: Date;
 };
 
-const RECOVERABLE_OPERATION_KINDS: RecoverableOperation["kind"][] = [
-  "CUSTOMER_CREATE",
-  "SUBSCRIPTION_CREATE",
-  "SUBSCRIPTION_CANCEL",
-  "SUBSCRIPTION_UPDATE",
-  "BALANCE_CREDIT",
-  "REFUND_CREATE",
-];
-
 function isRecoverableOperationKind(
-  kind: string,
+  kind: ProviderOperationKind,
 ): kind is RecoverableOperation["kind"] {
-  return (RECOVERABLE_OPERATION_KINDS as string[]).includes(kind);
+  return (
+    kind === "CUSTOMER_CREATE" ||
+    kind === "SUBSCRIPTION_CREATE" ||
+    kind === "SUBSCRIPTION_CANCEL" ||
+    kind === "SUBSCRIPTION_UPDATE" ||
+    kind === "BALANCE_CREDIT" ||
+    kind === "REFUND_CREATE"
+  );
 }
 
 const PROVIDER_LOOKBACK_SECONDS = 300;
@@ -575,7 +573,6 @@ export async function finishPendingProviderOperations(
         { status: "UNKNOWN" },
         { status: "FAILED" },
       ],
-      kind: { in: RECOVERABLE_OPERATION_KINDS },
     },
     select: {
       id: true,
@@ -595,7 +592,6 @@ export async function finishPendingProviderOperations(
   let stillUnknown = 0;
   for (const operation of operations) {
     if (!isRecoverableOperationKind(operation.kind)) continue;
-
     const recoverable: RecoverableOperation = {
       ...operation,
       kind: operation.kind,
@@ -606,15 +602,15 @@ export async function finishPendingProviderOperations(
         completed += 1;
       } else {
         stillUnknown += 1;
-        await rotateUnresolvedProviderOperation(recoverable.id);
+        await rotateUnresolvedProviderOperation(operation.id);
       }
     } catch (error) {
       console.error(
-        `[billing-reconcile] Could not reconcile ${recoverable.kind} ${recoverable.id}`,
+        `[billing-reconcile] Could not reconcile ${operation.kind} ${operation.id}`,
         error instanceof Error ? error.message : "unknown error",
       );
       stillUnknown += 1;
-      await rotateUnresolvedProviderOperation(recoverable.id);
+      await rotateUnresolvedProviderOperation(operation.id);
     }
   }
 
