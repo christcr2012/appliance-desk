@@ -99,23 +99,29 @@ export async function listCustomerTaxExemptionJurisdictions(
 ): Promise<Array<{ id: string; name: string; level: string }>> {
   return prisma.$transaction(async (tx) => {
     await assertActiveTeamActor(tx, actorUserId, ["OWNER", "ADMIN"]);
-    const addresses = await tx.serviceAddress.findMany({
-      where: { customerId },
-      select: {
-        taxLocations: {
-          where: { isCurrent: true },
-          select: {
-            jurisdictions: {
-              select: {
-                jurisdiction: {
-                  select: { id: true, name: true, level: true },
+    const [addresses, exemptions] = await Promise.all([
+      tx.serviceAddress.findMany({
+        where: { customerId },
+        select: {
+          taxLocations: {
+            where: { isCurrent: true },
+            select: {
+              jurisdictions: {
+                select: {
+                  jurisdiction: {
+                    select: { id: true, name: true, level: true },
+                  },
                 },
               },
             },
           },
         },
-      },
-    });
+      }),
+      tx.customerTaxExemption.findMany({
+        where: { customerId },
+        select: { jurisdictionIds: true },
+      }),
+    ]);
     const unique = new Map<string, { id: string; name: string; level: string }>();
     for (const address of addresses) {
       for (const location of address.taxLocations) {
@@ -126,6 +132,30 @@ export async function listCustomerTaxExemptionJurisdictions(
             level: row.jurisdiction.level,
           });
         }
+      }
+    }
+    const historicalIds = [
+      ...new Set(
+        exemptions.flatMap((exemption) =>
+          Array.isArray(exemption.jurisdictionIds)
+            ? exemption.jurisdictionIds.filter(
+                (value): value is string => typeof value === "string",
+              )
+            : [],
+        ),
+      ),
+    ].filter((id) => !unique.has(id));
+    if (historicalIds.length > 0) {
+      const historical = await tx.taxJurisdiction.findMany({
+        where: { id: { in: historicalIds } },
+        select: { id: true, name: true, level: true },
+      });
+      for (const jurisdiction of historical) {
+        unique.set(jurisdiction.id, {
+          id: jurisdiction.id,
+          name: jurisdiction.name,
+          level: jurisdiction.level,
+        });
       }
     }
     return [...unique.values()].sort(
