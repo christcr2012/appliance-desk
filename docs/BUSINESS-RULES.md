@@ -26,25 +26,21 @@ Update this file in the same PR that changes a rule.
     type.
   - Late fee: configurable grace period (days) + flat fee and/or
     percentage.
-  - Sales tax: configurable rate, applied at invoice time. **Defaults to
-    0% with a visible warning** until Chris confirms the real rate with
-    a CPA. Never guess a tax rate. Stored in the database as
-    `taxRateMilliPercent` — thousandths of one percent, so **7.375% is
-    stored as the number 7375** (7.3% is 7300), not `7.375` or `0.07375`.
-    `/desk/settings` and the rental builder show and accept a normal
-    percent with up to three decimals; conversion happens only through
-    `parseTaxRatePercent` / `formatTaxRate` in `src/domains/billing/tax.ts`,
-    and `getOrCreateTaxRate` in `src/domains/billing/checkout.ts` sends
-    Stripe the exact percentage. The old `taxRatePermille` columns are
-    deprecated: code never reads them, and a database trigger keeps them in
-    step with the exact column so a deploy or rollback can never leave tax at zero.
-    **Known gap (2026-10-06 audit, F3):** this is one rate for every customer,
-    but Colorado tax depends on the exact delivery address, rentals of 3 years or
-    less may be exempt from *state* tax (C.R.S. 39-26-713), and home-rule cities
-    such as Greeley write their own rules. The `taxRateConfirmed` tick box changes
-    pricing-page wording only; it does not block billing. Replacement design:
-    `docs/designs/BATCH-T.md` (proposed). Until Batch T ships, do not take real
-    customers.
+  - Sales tax: Batch T uses the exact service address, its verified taxing
+    jurisdictions, effective rate versions, and the configured taxability rules.
+    There is no business-wide rate field in Settings or the rental builder, and
+    the public pricing page never promises one fixed percentage. Undecided tax
+    policy fails closed before an agreement is sent or recurring billing is set
+    up; a local operational bill instead stays DRAFT until its tax decision is
+    fixed, so a delivery/pickup workflow is not rolled back by tax setup.
+    Invoice arithmetic uses the jurisdiction engine and persisted
+    `InvoiceTaxLine` evidence. `RentalAgreement.taxRateMilliPercent` is retained
+    only as the combined taxable RENTAL rate snapshotted from the verified address
+    when an agreement is sent for signature, for contract display; billing must
+    never use that snapshot for arithmetic. The old global
+    `BusinessSettings.taxRateMilliPercent`, `taxRateConfirmed`, and
+    `taxRatePermille` columns remain only for additive/rollback-safe schema
+    compatibility until the later cleanup named in `docs/ROADMAP.md`.
 - **Prepaid-term discount** (Chris's explicit request — see
   `docs/DECISIONS.md` for the dated design decision this section
   summarizes): signing a 6- or 12-month term automatically lowers a rental
@@ -1036,8 +1032,9 @@ is never replaced by a default.
   notice, emailed when live customer email is on, or marked delivered by hand by the owner.
 - **Agreed early endings (nightly):** requesting an early ending sets Stripe's end
   date to one second before the agreed ending date. On that date the fee (if any) is
-  invoiced once as an OPEN invoice with an "Early ending fee" line (no tax added yet,
-  IN-25; never charged automatically) and the rental ends with its last day as the end
+  invoiced once with an "Early ending fee" line and tax from the jurisdiction engine
+  when tax is ready (otherwise the bill stays DRAFT for recovery; it is never charged
+  automatically) and the rental ends with its last day as the end
   date. Rentals paid in advance are not ended automatically; they appear in "Needs your
   attention" (owner and admin only) for the owner to settle the unused months.
 - **Sales tax rounding** (owner decision IN-17): rates are exact to 0.001
@@ -1046,9 +1043,9 @@ is never replaced by a default.
   invoice's tax can differ by a cent or two from taxing the subtotal once. The
   old tenths-of-a-percent rates were copied across exactly by migration
   `20261003180000_tax_rate_milli_percent` (73 became 7300). Helpers are in
-  `src/domains/billing/tax.ts`; storage, the settings screen, the rental
-  builder, the public pricing page, agreement snapshots and Stripe tax-rate
-  creation all use thousandths of a percent.
+  `src/domains/billing/tax.ts`. Tax rate versions and the agreement's
+  display-only combined snapshot use thousandths of a percent; invoice arithmetic
+  uses the per-jurisdiction engine rather than a business-wide or agreement rate.
 - **Reports and statements read the ledger** (Batch B, WU-B11). "Collected"
   means money actually received (`Receipt`, by the Colorado day it was
   received, including any overpayment) minus cash refunds (`collectedBetween`
