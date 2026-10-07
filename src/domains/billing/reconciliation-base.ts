@@ -555,6 +555,16 @@ export async function finishPendingProviderOperations(
   const staleBefore = new Date(Date.now() - 120_000);
   const operations = await prisma.providerOperation.findMany({
     where: {
+      kind: {
+        in: [
+          "CUSTOMER_CREATE",
+          "SUBSCRIPTION_CREATE",
+          "SUBSCRIPTION_CANCEL",
+          "SUBSCRIPTION_UPDATE",
+          "BALANCE_CREDIT",
+          "REFUND_CREATE",
+        ],
+      },
       OR: [
         { status: "PENDING", updatedAt: { lte: staleBefore } },
         { status: "UNKNOWN" },

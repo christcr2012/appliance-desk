@@ -30,9 +30,9 @@ export function allocateAcrossLines(
 
   const totalWeight = weights.reduce(
     (sum, weight) => sum + BigInt(weight),
-    0n,
+    BigInt(0),
   );
-  if (totalWeight === 0n) {
+  if (totalWeight === BigInt(0)) {
     throw new Error("Cannot allocate a non-zero total when every weight is zero.");
   }
 
@@ -46,7 +46,7 @@ export function allocateAcrossLines(
     };
   });
 
-  let allocated = shares.reduce((sum, share) => sum + share.cents, 0n);
+  let allocated = shares.reduce((sum, share) => sum + share.cents, BigInt(0));
   let remaining = magnitude - allocated;
 
   const byRemainder = [...shares].sort((a, b) => {
@@ -55,14 +55,14 @@ export function allocateAcrossLines(
   });
 
   for (const share of byRemainder) {
-    if (remaining === 0n) break;
-    if (share.remainder === 0n) continue;
-    shares[share.index]!.cents += 1n;
-    allocated += 1n;
-    remaining -= 1n;
+    if (remaining === BigInt(0)) break;
+    if (share.remainder === BigInt(0)) continue;
+    shares[share.index]!.cents += BigInt(1);
+    allocated += BigInt(1);
+    remaining -= BigInt(1);
   }
 
-  if (allocated !== magnitude || remaining !== 0n) {
+  if (allocated !== magnitude || remaining !== BigInt(0)) {
     throw new Error("Allocation did not consume the full total.");
   }
 
