@@ -1,10 +1,9 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getStripeClient } from "@/lib/stripe";
-import { businessDateFromKey, businessDateKey, businessDayBounds, businessDaysBetween, formatBusinessDate } from "@/lib/business-date";
+import { billingPeriodFor, businessDateFromKey, businessDateKey, businessDayBounds, businessDaysBetween, formatBusinessDate } from "@/lib/business-date";
 import { formatCents } from "@/domains/pricing/money";
-import { taxCentsForLine } from "./tax";
-import { createLocalTaxedInvoice } from "@/domains/tax/invoice-tax";
+import { computeAgreementInvoiceTax, createLocalTaxedInvoice } from "@/domains/tax/invoice-tax";
 import { runPreparedInvoiceRefund, type ClaimedRefund } from "./refunds";
 import { lockCustomerLedger } from "./ledger";
 import { refundAcrossPaidInvoicesInTx } from "./refund-across-invoices";
@@ -582,7 +581,27 @@ export async function removeUndeliveredItem(userId: string, pendingDeliveryId: s
       note = `${item.label}: paid in full in advance, the owner settles the refund by hand.`;
     } else {
       const periods = periodsBilledThrough(agreement.billingStartedAt, now);
-      const owedCents = (item.monthlyPriceCents + taxCentsForLine(item.monthlyPriceCents, agreement.taxRateMilliPercent)) * periods;
+      let owedCents = 0;
+      for (let index = 0; index < periods; index += 1) {
+        const period = billingPeriodFor(agreement.billingStartedAt, index);
+        const taxResult = await computeAgreementInvoiceTax(tx, {
+          agreementId: agreement.id,
+          taxDate: period.start,
+          lines: [
+            {
+              key: `never-delivered-${pending.id}-${index}`,
+              kind: "RENTAL",
+              amountCents: item.monthlyPriceCents,
+            },
+          ],
+        });
+        if (!taxResult.ok) {
+          throw new Error(
+            `Tax needs a decision before this never-delivered item can be refunded. ${taxResult.problems.join(" ")}`,
+          );
+        }
+        owedCents += item.monthlyPriceCents + taxResult.totalTaxCents;
+      }
       const refunded = await refundAcrossPaidInvoicesInTx(tx, userId, {
         agreementId: agreement.id,
         amountCents: owedCents,
