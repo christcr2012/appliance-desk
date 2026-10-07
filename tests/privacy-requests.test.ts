@@ -60,6 +60,10 @@ describe.skipIf(!enabled)("Batch D privacy requests (real Postgres)", () => {
       { id: addressA, customerId: customerA, line1: `111 A ${tag}`, city: "Greeley", state: "CO", zip: "80631" },
       { id: addressB, customerId: customerB, line1: `222 B ${tag}`, city: "Greeley", state: "CO", zip: "80631" },
     ] });
+    await prisma.addressTaxLocation.createMany({ data: [
+      { serviceAddressId: addressA, status: "NEEDS_REVIEW", source: "MANUAL", normalizedAddress: `Normalized A ${tag}`, reviewNote: `Private tax note A ${tag}`, lookedUpAt: new Date() },
+      { serviceAddressId: addressB, status: "NEEDS_REVIEW", source: "MANUAL", normalizedAddress: `Normalized B ${tag}`, reviewNote: `Private tax note B ${tag}`, lookedUpAt: new Date() },
+    ] });
     await prisma.customerContact.create({ data: { customerId: customerA, name: `Contact ${tag}`, phone: "9705550199", email: `${tag}-contact@example.test`, notes: "private note" } });
     await prisma.lead.create({ data: { contactName: `Lead ${tag}`, phone: "9705550188", email: `${tag}-a@example.test`, addressLine1: `333 Lead ${tag}`, convertedCustomerId: customerA } });
     await prisma.session.create({ data: { userId: userA, token: `privacy-session-${tag}`, expiresAt: new Date(Date.now() + 86_400_000) } });
@@ -97,6 +101,7 @@ describe.skipIf(!enabled)("Batch D privacy requests (real Postgres)", () => {
     await prisma.customerContact.deleteMany({ where: { customerId: { in: [customerA, customerB] } } });
     await prisma.lead.deleteMany({ where: { OR: [{ convertedCustomerId: customerA }, { convertedCustomerId: customerB }, { email: { contains: tag } }] } });
     await prisma.session.deleteMany({ where: { userId: { in: [userA, userB] } } });
+    await prisma.addressTaxLocation.deleteMany({ where: { serviceAddress: { customerId: { in: [customerA, customerB] } } } });
     await prisma.serviceAddress.deleteMany({ where: { customerId: { in: [customerA, customerB] } } });
     await prisma.customer.deleteMany({ where: { id: { in: [customerA, customerB] } } });
     await prisma.user.deleteMany({ where: { id: { in: [ownerId, userA, userB] } } });
@@ -106,8 +111,10 @@ describe.skipIf(!enabled)("Batch D privacy requests (real Postgres)", () => {
     const json = JSON.parse((await buildPrivacyExport(ownerId, exportRequest)).toString("utf8"));
     expect(json.customer.id).toBe(customerB);
     expect(JSON.stringify(json)).toContain(`B-only-${tag}`);
+    expect(JSON.stringify(json)).toContain(`Normalized B ${tag}`);
     expect(JSON.stringify(json)).not.toContain(`A invoice ${tag}`);
     expect(JSON.stringify(json)).not.toContain(`111 A ${tag}`);
+    expect(JSON.stringify(json)).not.toContain(`Normalized A ${tag}`);
   });
 
   it("recovers from Blob failure, then pseudonymizes personal data and retains evidence", async () => {
@@ -141,6 +148,7 @@ describe.skipIf(!enabled)("Batch D privacy requests (real Postgres)", () => {
     expect((await prisma.user.findUniqueOrThrow({ where: { id: userA } })).email).toBe(`deleted-${userA}@invalid`);
     expect((await prisma.customer.findUniqueOrThrow({ where: { id: customerA } })).phone).toBeNull();
     expect((await prisma.serviceAddress.findUniqueOrThrow({ where: { id: addressA } })).line1).toBe("Deleted address");
+    expect(await prisma.addressTaxLocation.findFirstOrThrow({ where: { serviceAddressId: addressA, isCurrent: true } })).toMatchObject({ normalizedAddress: null, reviewNote: null });
     expect((await prisma.customerContact.findFirstOrThrow({ where: { customerId: customerA } })).name).toBe("Deleted customer");
     expect((await prisma.lead.findFirstOrThrow({ where: { convertedCustomerId: customerA } })).contactName).toBe("Deleted customer");
     expect(await prisma.photo.count({ where: { maintenanceRequestId: maintenanceA } })).toBe(0);

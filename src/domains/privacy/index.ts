@@ -260,6 +260,7 @@ export async function buildPrivacyExport(userId: string, requestId: string): Pro
   const invoiceIds = invoices.map((row) => row.id);
   const data = await Promise.all([
     prisma.serviceAddress.findMany({ where: { customerId }, orderBy: { createdAt: "asc" } }),
+    prisma.addressTaxLocation.findMany({ where: { serviceAddress: { customerId } }, orderBy: { createdAt: "asc" }, include: { jurisdictions: { include: { jurisdiction: true } } } }),
     prisma.rentalLine.findMany({ where: { agreementId: { in: agreementIds } }, orderBy: { createdAt: "asc" } }),
     prisma.signatureRecord.findMany({ where: { agreementId: { in: agreementIds } }, orderBy: { createdAt: "asc" } }),
     prisma.maintenanceRequest.findMany({ where: { customerId }, orderBy: { createdAt: "asc" } }),
@@ -277,13 +278,14 @@ export async function buildPrivacyExport(userId: string, requestId: string): Pro
     prisma.documentArtifact.findMany({ where: { customerId }, orderBy: { generatedAt: "asc" }, select: { id: true, kind: true, subjectType: true, subjectId: true, version: true, payload: true, sha256: true, rendererVersion: true, generatedAt: true } }),
     prisma.privacyRequest.findMany({ where: { customerId }, orderBy: { createdAt: "asc" }, select: { id: true, kind: true, status: true, createdAt: true, verifiedAt: true, fulfilledAt: true, rejectedReason: true } }),
   ]);
-  const [serviceAddresses, rentalLines, signatures, maintenanceRequests, invoiceLineItems, payments, refunds, receipts, credits, consents, notices, contacts, notes, jobs, estimates, artifacts, privacyRequests] = data;
+  const [serviceAddresses, addressTaxLocations, rentalLines, signatures, maintenanceRequests, invoiceLineItems, payments, refunds, receipts, credits, consents, notices, contacts, notes, jobs, estimates, artifacts, privacyRequests] = data;
 
   const exportObject = {
     exportedAt: new Date().toISOString(),
     request: { kind: request.kind, requestedAt: request.createdAt, requesterEmail: request.requesterEmail },
     customer,
     serviceAddresses,
+    addressTaxLocations,
     rentalAgreements: agreements,
     rentalLines,
     signatures,
@@ -306,7 +308,7 @@ export async function buildPrivacyExport(userId: string, requestId: string): Pro
   return Buffer.from(JSON.stringify(exportObject, null, 2), "utf8");
 }
 
-const PSEUDONYMIZED = ["User", "Customer", "ServiceAddress", "CustomerContact", "Lead"];
+const PSEUDONYMIZED = ["User", "Customer", "ServiceAddress", "AddressTaxLocation", "CustomerContact", "Lead"];
 const RETAINED = ["Invoice", "Payment", "Receipt", "Refund", "CustomerCredit", "SignatureRecord", "DocumentArtifact", "CustomerNotice", "AuditLog"];
 
 type PrivacyDeletionClaim = {
@@ -460,6 +462,10 @@ export async function fulfillPrivacyDeletion(
     await tx.customer.update({
       where: { id: customer.id },
       data: { phone: null, companyName: null, smsOptInAt: null, archivedAt: now },
+    });
+    await tx.addressTaxLocation.updateMany({
+      where: { serviceAddress: { customerId: customer.id } },
+      data: { normalizedAddress: null, reviewNote: null },
     });
     await tx.serviceAddress.updateMany({
       where: { customerId: customer.id },
