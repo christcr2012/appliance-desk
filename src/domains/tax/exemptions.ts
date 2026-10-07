@@ -54,6 +54,24 @@ async function assertJurisdictionsExist(
   }
 }
 
+async function lockCustomerTaxExemptionInTx(
+  tx: Prisma.TransactionClient,
+  exemptionId: string,
+) {
+  const rows = await tx.$queryRaw<Array<{ id: string }>>`
+    SELECT "id"
+    FROM "CustomerTaxExemption"
+    WHERE "id" = ${exemptionId}
+    FOR UPDATE
+  `;
+  if (rows.length !== 1) {
+    throw new Error("Couldn't find that tax exemption.");
+  }
+  return tx.customerTaxExemption.findUniqueOrThrow({
+    where: { id: exemptionId },
+  });
+}
+
 async function exemptionDataInTx(
   tx: Prisma.TransactionClient,
   actorUserId: string,
@@ -63,11 +81,15 @@ async function exemptionDataInTx(
   validateDates(input.validFrom, expiresOn);
   const jurisdictionIds = normalizeJurisdictionIds(input.jurisdictionIds);
   await assertJurisdictionsExist(tx, jurisdictionIds);
+  const certificatePhotoId = normalizeOptionalText(input.certificatePhotoId);
+  if (!certificatePhotoId) {
+    throw new Error("Add a private photo of the tax-exemption certificate before saving it.");
+  }
 
   return {
     reason: input.reason,
     certificateNumber: normalizeOptionalText(input.certificateNumber),
-    certificatePhotoId: normalizeOptionalText(input.certificatePhotoId),
+    certificatePhotoId,
     jurisdictionIds,
     validFrom: input.validFrom,
     expiresOn,
@@ -209,9 +231,7 @@ export async function updateCustomerTaxExemption(
 ) {
   return prisma.$transaction(async (tx) => {
     await assertActiveTeamActor(tx, actorUserId, ["OWNER"]);
-    const existing = await tx.customerTaxExemption.findUniqueOrThrow({
-      where: { id: exemptionId },
-    });
+    const existing = await lockCustomerTaxExemptionInTx(tx, exemptionId);
     if (existing.revokedAt) {
       throw new Error("A revoked tax exemption cannot be edited. Add a new exemption instead.");
     }
@@ -254,9 +274,7 @@ export async function revokeCustomerTaxExemption(
   }
   return prisma.$transaction(async (tx) => {
     await assertActiveTeamActor(tx, actorUserId, ["OWNER"]);
-    const existing = await tx.customerTaxExemption.findUniqueOrThrow({
-      where: { id: exemptionId },
-    });
+    const existing = await lockCustomerTaxExemptionInTx(tx, exemptionId);
     if (existing.revokedAt) return existing;
     const row = await tx.customerTaxExemption.update({
       where: { id: exemptionId },
