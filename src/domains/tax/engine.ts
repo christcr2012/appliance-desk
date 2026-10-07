@@ -1,4 +1,5 @@
 import { taxCentsForLine } from "@/domains/billing/tax";
+import { businessDateKey } from "@/lib/business-date";
 import {
   categoryForLineKind,
   type InvoiceLineItemKind,
@@ -146,7 +147,7 @@ function resolveLineCategory(
 }
 
 function dateLabel(date: Date): string {
-  return date.toISOString().slice(0, 10);
+  return businessDateKey(date);
 }
 
 export function computeTax(input: EngineInput): EngineResult {

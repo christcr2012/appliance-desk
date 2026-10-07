@@ -262,7 +262,7 @@ describe("computeTax", () => {
 
   it("returns all policy problems instead of stopping at the first one", () => {
     const result = computeTax({
-      taxDate,
+      taxDate: new Date("2026-10-07T01:00:00.000Z"),
       leaseTermMonths: 12,
       election: "COLLECT_ON_RENTALS",
       defaultRules: {},
