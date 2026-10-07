@@ -453,7 +453,7 @@ export async function applyEarlyReturnInTx(
         where: { id: existing.feeInvoiceId },
         select: { id: true, status: true, amountPaidCents: true },
       });
-      if (feeInvoice && (feeInvoice.amountPaidCents > 0 || !["OPEN", "DELINQUENT", "VOID"].includes(feeInvoice.status))) {
+      if (feeInvoice && (feeInvoice.amountPaidCents > 0 || !["DRAFT", "OPEN", "DELINQUENT", "VOID"].includes(feeInvoice.status))) {
         throw new Error("The early-ending fee has already been paid, so this can't be changed here.");
       }
       if (feeInvoice && feeInvoice.status !== "VOID") feeInvoiceToVoid = feeInvoice.id;
