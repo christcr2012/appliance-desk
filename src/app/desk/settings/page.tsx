@@ -31,7 +31,6 @@ import { jobSchedulingDefaults } from "@/domains/settings/job-scheduling";
 import { pickupBillingDefaults } from "@/domains/settings/pickup-billing";
 import { pickupBillingSettingsFrom } from "@/domains/billing/pickup-billing";
 import { termsPolicyDefaults, termsPolicyStatus } from "@/domains/settings/terms-policy";
-import { formatTaxRate } from "@/domains/billing/tax";
 import { profileExtrasDefaults } from "@/domains/settings/profile-extras";
 import { twoFactorRolesFromSetting } from "@/domains/security/two-factor";
 import { updateTwoFactorRequiredRolesAction } from "./actions";
@@ -310,15 +309,6 @@ export default async function DeskSettingsPage({
             </div>
           </div>
         )}
-        {section === "policies" && !settings.taxRateConfirmed && (
-          <p
-            role="status"
-            className="mb-4 rounded-card bg-subtle p-3 text-sm text-ink"
-          >
-            Sales tax is not confirmed. Keep the current approval process before
-            using a rate with customers.
-          </p>
-        )}
         <SettingsForm
           key={section}
           section={section}
@@ -342,8 +332,6 @@ export default async function DeskSettingsPage({
             lateFeeGraceDays: settings.lateFeeGraceDays,
             lateFeeFlatDollars: settings.lateFeeFlatCents / 100,
             lateFeePercent: settings.lateFeePercent,
-            taxRatePercentText: formatTaxRate(settings.taxRateMilliPercent).replace("%", ""),
-            taxRateConfirmed: settings.taxRateConfirmed,
             sixMonthPrepaySetDollars:
               settings.sixMonthPrepayDiscountSetCents / 100,
             sixMonthPrepaySingleDollars:
