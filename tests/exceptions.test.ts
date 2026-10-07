@@ -13,6 +13,8 @@ import {
   taxExemptionExpiryException,
   taxExemptionExpiryWindow,
   taxExemptionWarningSince,
+  taxAddressChangedException,
+  taxRateReviewReminderException,
   uninspectedReturnException,
   unreviewedMaintenanceRequestException,
   type ExceptionItem,
@@ -103,6 +105,30 @@ describe("exception builders", () => {
     expect(
       taxExemptionWarningSince(new Date("2026-11-05T06:59:59.999Z")).toISOString(),
     ).toBe("2026-10-05T06:00:00.000Z");
+  });
+
+  it("taxAddressChangedException links to the affected customer property review", () => {
+    const item = taxAddressChangedException({
+      customerId: "cust-tax-change",
+      customerName: "Jane Doe",
+      addressLabel: "100 Main St, Greeley",
+      since: new Date("2026-11-01T13:20:00.000Z"),
+    });
+    expect(item.category).toBe("SALES_TAX");
+    expect(item.severity).toBe("high");
+    expect(item.title).toContain("Jane Doe");
+    expect(item.href).toBe("/desk/customers/cust-tax-change?tab=properties");
+  });
+
+  it("taxRateReviewReminderException stays in the shared Sales tax category", () => {
+    const item = taxRateReviewReminderException({
+      nextEffectiveDateLabel: "January 1",
+      since: new Date("2026-11-15T07:00:00.000Z"),
+    });
+    expect(item.category).toBe("SALES_TAX");
+    expect(item.severity).toBe("medium");
+    expect(item.title).toContain("January 1");
+    expect(item.href).toBe("/desk/settings");
   });
 
   it("staleReservationException links to the draft agreement", () => {
