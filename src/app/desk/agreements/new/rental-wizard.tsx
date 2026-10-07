@@ -10,7 +10,6 @@ import {
   sendForSignatureAction,
 } from "../actions";
 import { createCustomerAction } from "../../customers/actions";
-import { formatTaxRate } from "@/domains/billing/tax";
 
 // ---------------------------------------------------------------------------
 // Guided rental builder wizard (2026-09-28) — walks Chris through setting
@@ -45,7 +44,6 @@ const EMPTY_TERM_FIELDS = {
   lateFeeGraceDays: "5",
   lateFeeDollars: "",
   lateFeePercent: "",
-  taxRatePercent: "",
   paidInFullInAdvance: false,
 };
 
@@ -80,7 +78,6 @@ type SavedDraft = {
   lateFeeGraceDays: number;
   lateFeeCents: number;
   lateFeePercent: number;
-  taxRateMilliPercent: number;
   paidInFullInAdvance: boolean;
   lines: AddedLine[];
 };
@@ -92,7 +89,6 @@ export function RentalWizard({
   initialServiceAddressId,
   initialDraft,
   initialRequestKey,
-  defaultTaxRatePercent = "",
 }: {
   customers: CustomerOption[];
   availableAppliances: ApplianceOption[];
@@ -100,7 +96,6 @@ export function RentalWizard({
   initialServiceAddressId?: string;
   initialDraft?: SavedDraft;
   initialRequestKey?: string;
-  defaultTaxRatePercent?: string;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -232,12 +227,9 @@ export function RentalWizard({
           lateFeeGraceDays: initialDraft.lateFeeGraceDays.toString(),
           lateFeeDollars: (initialDraft.lateFeeCents / 100).toString(),
           lateFeePercent: initialDraft.lateFeePercent.toString(),
-          taxRatePercent: initialDraft.taxRateMilliPercent
-            ? formatTaxRate(initialDraft.taxRateMilliPercent).replace("%", "")
-            : "",
           paidInFullInAdvance: initialDraft.paidInFullInAdvance,
         }
-      : { ...EMPTY_TERM_FIELDS, taxRatePercent: defaultTaxRatePercent },
+      : { ...EMPTY_TERM_FIELDS },
   );
   const [agreementId, setAgreementId] = useState<string | null>(
     initialDraft?.id ?? null,
@@ -813,24 +805,6 @@ export function RentalWizard({
                 onChange={(e) =>
                   updateTerm("damageWaiverDollars", e.target.value)
                 }
-                className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
-              />
-            </div>
-            <div>
-              <label
-                htmlFor="taxRatePercent"
-                className="block text-sm font-medium text-ink-soft"
-              >
-                Tax rate (%, optional)
-              </label>
-              <input
-                disabled={isPending}
-                id="taxRatePercent"
-                type="text"
-                inputMode="decimal"
-                placeholder="e.g. 7.375"
-                value={termFields.taxRatePercent}
-                onChange={(e) => updateTerm("taxRatePercent", e.target.value)}
                 className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
               />
             </div>
