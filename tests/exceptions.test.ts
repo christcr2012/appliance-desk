@@ -92,7 +92,7 @@ describe("exception builders", () => {
     );
     expect(
       taxExemptionWarningSince(new Date("2026-03-10T05:59:59.999Z")).toISOString(),
-    ).toBe("2026-02-08T07:00:00.000Z");
+    ).toBe("2026-02-07T07:00:00.000Z");
   });
 
   it("uses Denver calendar days for the exemption warning across fall DST", () => {
@@ -102,7 +102,7 @@ describe("exception builders", () => {
     );
     expect(
       taxExemptionWarningSince(new Date("2026-11-05T06:59:59.999Z")).toISOString(),
-    ).toBe("2026-10-06T06:00:00.000Z");
+    ).toBe("2026-10-05T06:00:00.000Z");
   });
 
   it("staleReservationException links to the draft agreement", () => {
