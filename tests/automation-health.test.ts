@@ -26,6 +26,12 @@ describe("automation rule registry", () => {
     ]);
   });
 
+  it("tracks both Batch T tax automations", () => {
+    const keys = AUTOMATION_RULES.map((rule) => rule.ruleKey);
+    expect(keys).toContain("tax-rate-changes");
+    expect(keys).toContain("tax-address-recheck");
+  });
+
   it("has one unique key and a plain explanation for every displayed rule", () => {
     const keys = AUTOMATION_RULES.map((rule) => rule.ruleKey);
     expect(new Set(keys).size).toBe(keys.length);
