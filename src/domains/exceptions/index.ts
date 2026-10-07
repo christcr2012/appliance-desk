@@ -602,7 +602,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
   const truncated: ExceptionTruncation[] = (
     [
       ["BILLING_BLOCKED", billingBlockedAgreements],
-      ["INVOICE_TAX_BLOCKED", taxBlockedInvoices],
+      ["SALES_TAX", taxBlockedInvoices],
       ["STALE_RESERVATION", staleReservations],
       ["PAST_DUE_INVOICE", pastDueInvoices],
       ["OVERDUE_JOB", overdueJobs],
