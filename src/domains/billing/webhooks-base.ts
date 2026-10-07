@@ -18,7 +18,10 @@ import {
 } from "./webhook-evidence";
 import { appliedBalanceCreditCents, creditLinesForAppliedBalance } from "./applied-credit-lines";
 import { LATE_DELIVERY_CREDIT_SOURCE } from "./pickup-billing";
-import { mirrorStripeInvoiceTax } from "@/domains/tax/invoice-tax";
+import {
+  computeAgreementInvoiceTax,
+  mirrorStripeInvoiceTax,
+} from "@/domains/tax/invoice-tax";
 import {
   HELD_CONFLICT_STATUS,
   HELD_PAYMENT_STATUS,
@@ -381,28 +384,114 @@ async function recordOneTimeSigningCharge(
   }
   if (lineItemsData.length === 0) return;
 
-  const amountCents = lineItemsData.reduce((sum, item) => sum + item.amountCents, 0);
+  const principalCents = lineItemsData.reduce(
+    (sum, item) => sum + item.amountCents,
+    0,
+  );
   const paymentDetails = evidence.paymentDetails(paymentIntentId);
+  const providerTotalCents = paymentDetails.amountReceivedCents;
+  if (providerTotalCents === null) {
+    throw new Error(
+      "Stripe did not return the amount received for this signing payment.",
+    );
+  }
+  if (providerTotalCents < principalCents) {
+    throw new Error(
+      "Stripe reports a signing payment smaller than the recorded signing charges.",
+    );
+  }
+  const actualTaxCents = providerTotalCents - principalCents;
+
+  const taxResult =
+    agreement.damageWaiverCents > 0
+      ? await computeAgreementInvoiceTax(db, {
+          agreementId,
+          taxDate: paymentDetails.receivedOn,
+          lines: [
+            {
+              key: "signing-damage-waiver",
+              kind: "DAMAGE_WAIVER",
+              amountCents: agreement.damageWaiverCents,
+            },
+          ],
+        })
+      : ({ ok: true, lines: [], totalTaxCents: 0 } as const);
+
+  const invoiceLines = [
+    ...lineItemsData,
+    ...(actualTaxCents !== 0
+      ? [
+          {
+            kind: "TAX" as const,
+            description: "Sales tax",
+            amountCents: actualTaxCents,
+            rentalLineId: null,
+          },
+        ]
+      : []),
+  ];
   const invoice = await db.invoice.create({
     data: {
       customerId,
       agreementId,
       status: "OPEN",
-      subtotalCents: amountCents,
-      amountDueCents: amountCents,
+      subtotalCents: principalCents,
+      taxCents: actualTaxCents,
+      amountDueCents: providerTotalCents,
       amountPaidCents: 0,
-      lineItems: { createMany: { data: lineItemsData } },
+      lineItems: { createMany: { data: invoiceLines } },
     },
   });
+
+  if (taxResult.ok && taxResult.lines.length > 0) {
+    await db.invoiceTaxLine.createMany({
+      data: taxResult.lines.map((line) => ({
+        invoiceId: invoice.id,
+        invoiceLineItemId: null,
+        jurisdictionId: line.jurisdictionId,
+        rateVersionId: line.rateVersionId,
+        category: line.category,
+        taxableCents: line.taxableCents,
+        exemptCents: line.exemptCents,
+        exemptReason: line.exemptReason,
+        taxCents: line.taxCents,
+        source: "ENGINE" as const,
+      })),
+    });
+  }
+
+  const expectedTaxCents = taxResult.ok ? taxResult.totalTaxCents : null;
+  const taxProblems = taxResult.ok
+    ? expectedTaxCents === actualTaxCents
+      ? []
+      : [
+          `Stripe charged ${actualTaxCents} cents of signing tax; the engine expected ${expectedTaxCents} cents.`,
+        ]
+    : taxResult.problems.map((problem) => `Engine check: ${problem}`);
+  if (taxProblems.length > 0) {
+    await db.auditLog.create({
+      data: {
+        userId: null,
+        action: "billing.tax_mismatch",
+        entityType: "Invoice",
+        entityId: invoice.id,
+        newValue: {
+          stripeTaxCents: actualTaxCents,
+          expectedTaxCents,
+          problems: taxProblems,
+        },
+      },
+    });
+  }
 
   const { receiptId } = await createReceiptWithAllocations(db, {
     customerId,
     source: "STRIPE",
-    amountCents,
+    amountCents: providerTotalCents,
     method: paymentDetails.method ?? "other",
     receivedOn: paymentDetails.receivedOn,
     stripeChargeId: paymentDetails.stripeChargeId ?? undefined,
-    allocations: [{ invoiceId: invoice.id, amountCents }],
+    allocations: [{ invoiceId: invoice.id, amountCents: providerTotalCents }],
   });
   await attachProviderIdsToReceiptPayments(db, {
     receiptId,
