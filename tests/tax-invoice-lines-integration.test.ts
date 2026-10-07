@@ -224,6 +224,9 @@ describe.skipIf(!enabled)("Batch T local invoice tax evidence (real Postgres)", 
 
   it("keeps the field operation successful when tax is undecided, then opens the draft after recalculation", async () => {
     const fixture = await lateReturnFixture(3);
+    await prisma.taxabilityRule.deleteMany({
+      where: { jurisdictionId: taxFixture.jurisdictionId, category: "LATE_RETURN" },
+    });
     await prisma.businessSettings.update({
       where: { id: "singleton" },
       data: { shortTermLeaseElection: "UNDECIDED" },
