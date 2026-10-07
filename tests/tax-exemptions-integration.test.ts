@@ -237,7 +237,10 @@ describe.skipIf(!enabled)("Batch T customer tax exemptions (real Postgres)", () 
       expiresOn: new Date("2026-09-30T23:59:59.000Z"),
     });
 
-    expect((await rentalTaxCents()).totalTaxCents).toBe(730);
+    expect(
+      (await rentalTaxCents(new Date("2026-10-09T18:00:00.000Z")))
+        .totalTaxCents,
+    ).toBe(730);
 
     await revokeCustomerTaxExemption(ownerId, expired.id, taxDate);
   });
