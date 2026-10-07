@@ -12,7 +12,8 @@ import { getBusinessSettings, parseServiceArea } from "@/domains/settings";
 import { generateUniqueReferralCode, linkReferralIfCodeProvided } from "@/domains/referrals";
 import { scoreLead } from "./scoring";
 import { getLeadScoringPolicy, parseLeadScoringPolicy } from "./scoring-policy";
-import { recordRealContactInTx } from "./contact";\nimport { locateServiceAddress } from "@/domains/tax/locations";
+import { recordRealContactInTx } from "./contact";
+import { locateServiceAddress } from "@/domains/tax/locations";
 import type { LeadFormInput } from "./schema";
 import type { Lead, LeadStatus, Prisma } from "@prisma/client";
 

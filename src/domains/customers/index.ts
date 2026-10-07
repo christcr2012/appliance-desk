@@ -7,7 +7,8 @@ import {
 } from "@/lib/account-provisioning";
 import { getActiveApplianceOptionsForCustomer } from "@/domains/agreements/active-appliances";
 import { sendCustomerActivationEmail } from "@/domains/leads";
-import { generateUniqueReferralCode } from "@/domains/referrals";\nimport { locateServiceAddress } from "@/domains/tax/locations";
+import { generateUniqueReferralCode } from "@/domains/referrals";
+import { locateServiceAddress } from "@/domains/tax/locations";
 
 export { getCustomerTimeline, getCustomerContacts } from "./timeline";
 export type { TimelineEntry } from "./timeline";
