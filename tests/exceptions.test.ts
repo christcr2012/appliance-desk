@@ -11,6 +11,8 @@ import {
   stripeTaxMismatchException,
   stripeTaxUnverifiedException,
   taxExemptionExpiryException,
+  taxExemptionExpiryWindow,
+  taxExemptionWarningSince,
   uninspectedReturnException,
   unreviewedMaintenanceRequestException,
   type ExceptionItem,
@@ -81,6 +83,26 @@ describe("exception builders", () => {
     expect(item.detail).toContain("2026-11-06");
     expect(item.href).toBe("/desk/customers/cust-exempt-1?tab=billing");
     expect(item.since.toISOString()).toBe("2026-10-07T06:59:59.000Z");
+  });
+
+  it("uses Denver calendar days for the exemption warning across spring DST", () => {
+    const now = new Date("2026-02-07T18:00:00.000Z");
+    expect(taxExemptionExpiryWindow(now).through.toISOString()).toBe(
+      "2026-03-10T05:59:59.999Z",
+    );
+    expect(
+      taxExemptionWarningSince(new Date("2026-03-10T05:59:59.999Z")).toISOString(),
+    ).toBe("2026-02-08T07:00:00.000Z");
+  });
+
+  it("uses Denver calendar days for the exemption warning across fall DST", () => {
+    const now = new Date("2026-10-05T18:00:00.000Z");
+    expect(taxExemptionExpiryWindow(now).through.toISOString()).toBe(
+      "2026-11-05T06:59:59.999Z",
+    );
+    expect(
+      taxExemptionWarningSince(new Date("2026-11-05T06:59:59.999Z")).toISOString(),
+    ).toBe("2026-10-06T06:00:00.000Z");
   });
 
   it("staleReservationException links to the draft agreement", () => {
