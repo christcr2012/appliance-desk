@@ -823,8 +823,9 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
           stripeTaxReviewAudits.total +
           taxExemptionsExpiring.total +
           taxAddressChanges.total +
+          (canViewFinance &&
           (businessDateKey(now).endsWith("-05-15") ||
-          businessDateKey(now).endsWith("-11-15")
+            businessDateKey(now).endsWith("-11-15"))
             ? 1
             : 0),
       }],
@@ -838,54 +839,3 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
       ["APPLIANCE_MAINTENANCE_DUE", maintenanceDue],
       ["RENEWAL_NOT_STARTED", stuckRenewals],
       ["EARLY_ENDING_NOT_DONE", stuckEndings],
-      ["NOTICE_WAITING", waitingNotices],
-      ["NOTICE_MISSED", missedNotices],
-      ["NOTICE_UNCERTAIN", uncertainNotices],
-      ["NOTICE_FAILED", failedNotices],
-      ["ITEM_NOT_DELIVERED", itemsNotDelivered],
-      ["RETURNED_EARLY", returnedEarly],
-      ["CUSTODY_UNKNOWN", custodyGaps],
-      ["SUBSCRIPTION_UPDATE_PENDING", pendingLineReductions],
-    ] as Array<[ExceptionCategory, Capped<unknown>]>
-  )
-    .filter(([, c]) => c.total > c.rows.length)
-    .map(([category, c]) => ({ category, total: c.total, shown: c.rows.length }));
-
-  return { items: sortExceptions(visibleItems), truncated };
-}
-
-export async function getExceptions(): Promise<ExceptionItem[]> {
-  return (await getExceptionOverview()).items;
-}
-
-type TermExpiredRow = { id: string; termMonths: number; termEnd: Date; customerName: string };
-
-/**
- * Active term agreements whose term has ended, oldest first, found in the database. The term end is the
- * agreement's own end date, or its start plus its term in calendar months (a month-end start clamps to
- * the last day of the shorter month, so 31 Jan + 1 month is 28 Feb).
- */
-async function termExpiredAgreements(now: Date): Promise<Capped<TermExpiredRow>> {
-  const nowText = utc(now);
-  const rows = await prisma.$queryRaw<Array<{ id: string; termMonths: number; termEnd: Date }>>`
-    SELECT a."id", a."termMonths",
-           COALESCE(a."endDate", a."startDate" + (a."termMonths" * INTERVAL '1 month')) AS "termEnd"
-    FROM "RentalAgreement" a
-    WHERE a."status" = 'ACTIVE' AND a."termMonths" IS NOT NULL AND a."startDate" IS NOT NULL
-      AND COALESCE(a."endDate", a."startDate" + (a."termMonths" * INTERVAL '1 month')) < CAST(${nowText} AS timestamp)
-    ORDER BY "termEnd" ASC, a."id" ASC
-    LIMIT ${EXCEPTION_CATEGORY_CAP}
-  `;
-  let total = rows.length;
-  if (rows.length >= EXCEPTION_CATEGORY_CAP) {
-    const [{ n }] = await prisma.$queryRaw<Array<{ n: number }>>`
-      SELECT COUNT(*)::int AS "n"
-      FROM "RentalAgreement" a
-      WHERE a."status" = 'ACTIVE' AND a."termMonths" IS NOT NULL AND a."startDate" IS NOT NULL
-        AND COALESCE(a."endDate", a."startDate" + (a."termMonths" * INTERVAL '1 month')) < CAST(${nowText} AS timestamp)
-    `;
-    total = n;
-  }
-  if (rows.length === 0) return { rows: [], total };
-  const names = await prisma.rentalAgreement.findMany({
-    where: { id: { in: rows.map((r) => r.id) } },
