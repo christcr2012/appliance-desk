@@ -132,11 +132,11 @@ export function stripeTaxUnverifiedException(invoice: {
 
 export function taxExemptionExpiryWindow(now: Date): {
   from: Date;
-  through: Date;
+  throughExclusive: Date;
 } {
   return {
     from: now,
-    through: businessDayBounds(addBusinessDays(now, 30)).end,
+    throughExclusive: businessDayBounds(addBusinessDays(now, 30)).end,
   };
 }
 
