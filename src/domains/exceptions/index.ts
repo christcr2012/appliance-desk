@@ -13,6 +13,7 @@ import {
   earlyEndingNotDoneException,
   itemNotDeliveredException,
   invoiceTaxBlockedException,
+  stripeTaxMismatchException,
   returnedEarlyException,
   EARLY_RETURN_DEFAULTS_REVIEW_DAYS,
   subscriptionUpdatePendingException,
@@ -150,6 +151,11 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     agreementId: { not: null },
     lineItems: { some: { kind: { in: ["LATE_RETURN", "EARLY_TERMINATION_FEE", "RENTAL"] } } },
   } satisfies Prisma.InvoiceWhereInput;
+  const taxMismatchAuditWhere = {
+    action: "billing.stripe_tax_mismatch",
+    entityType: "Invoice",
+    entityId: { not: null },
+  } satisfies Prisma.AuditLogWhereInput;
   const staleWhere = {
     status: { in: ["DRAFT", "AWAITING_SIGNATURE"] },
     reservationExpiresAt: { lt: now },
@@ -210,6 +216,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
   const [
     billingBlockedAgreements,
     taxBlockedInvoices,
+    taxMismatchAudits,
     staleReservations,
     pastDueInvoices,
     overdueJobs,
@@ -255,6 +262,17 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
             take,
           }),
           () => prisma.invoice.count({ where: taxBlockedInvoiceWhere }),
+        )
+      : empty<never>(),
+    canViewFinance
+      ? capped(
+          (take) => prisma.auditLog.findMany({
+            where: taxMismatchAuditWhere,
+            select: { entityId: true, newValue: true, createdAt: true },
+            orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+            take,
+          }),
+          () => prisma.auditLog.count({ where: taxMismatchAuditWhere }),
         )
       : empty<never>(),
     capped(
@@ -432,6 +450,28 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     taxProblemsByInvoice.set(audit.entityId, { problems, since: audit.createdAt });
   }
 
+  const taxMismatchInvoiceIds = [
+    ...new Set(
+      taxMismatchAudits.rows.flatMap((audit) =>
+        typeof audit.entityId === "string" ? [audit.entityId] : [],
+      ),
+    ),
+  ];
+  const taxMismatchInvoices = taxMismatchInvoiceIds.length
+    ? await prisma.invoice.findMany({
+        where: { id: { in: taxMismatchInvoiceIds } },
+        select: {
+          id: true,
+          invoiceNumber: true,
+          customerId: true,
+          customer: { select: { user: { select: { name: true, email: true } } } },
+        },
+      })
+    : [];
+  const taxMismatchInvoiceById = new Map(
+    taxMismatchInvoices.map((invoice) => [invoice.id, invoice]),
+  );
+
   const pendingItems = pendingLineReductions.rows.length
     ? await prisma.pendingDelivery.findMany({
         where: {
@@ -503,6 +543,32 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
           customerName: customerDisplayName(a.customer),
         }),
       ),
+    ...taxMismatchAudits.rows.flatMap((audit) => {
+      if (!audit.entityId) return [];
+      const invoice = taxMismatchInvoiceById.get(audit.entityId);
+      if (!invoice) return [];
+      const value = audit.newValue as {
+        stripeTaxCents?: unknown;
+        engineTaxCents?: unknown;
+      } | null;
+      if (
+        typeof value?.stripeTaxCents !== "number" ||
+        typeof value.engineTaxCents !== "number"
+      ) {
+        return [];
+      }
+      return [
+        stripeTaxMismatchException({
+          id: invoice.id,
+          invoiceNumber: invoice.invoiceNumber,
+          customerId: invoice.customerId,
+          customerName: customerDisplayName(invoice.customer),
+          since: audit.createdAt,
+          stripeTaxCents: value.stripeTaxCents,
+          engineTaxCents: value.engineTaxCents,
+        }),
+      ];
+    }),
     ...taxBlockedInvoices.rows.map((invoice) => {
       const taxProblem = taxProblemsByInvoice.get(invoice.id);
       return invoiceTaxBlockedException({
@@ -602,7 +668,13 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
   const truncated: ExceptionTruncation[] = (
     [
       ["BILLING_BLOCKED", billingBlockedAgreements],
-      ["SALES_TAX", taxBlockedInvoices],
+      ["SALES_TAX", {
+        rows: [...taxBlockedInvoices.rows, ...taxMismatchAudits.rows].slice(
+          0,
+          EXCEPTION_CATEGORY_CAP,
+        ),
+        total: taxBlockedInvoices.total + taxMismatchAudits.total,
+      }],
       ["STALE_RESERVATION", staleReservations],
       ["PAST_DUE_INVOICE", pastDueInvoices],
       ["OVERDUE_JOB", overdueJobs],
