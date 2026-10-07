@@ -37,10 +37,11 @@ Legend: ✅ done · ▶ next · ⏳ waiting on Chris · ○ not started. "Design
 | 6 | ○ **F-part-2** — end-to-end scenarios, owner guide with screenshots, review-thread discharge, launch ledger, rollback plan (WU-F3, F6–F9) | ✅ approved | steps 3–5 merged (so the proof covers the final product) | nothing | 3 |
 | 7 | ⏳ **Launch** — Chris's go-live checklist | `docs/GO-LIVE-CHECKLIST.md` | step 6 done | CPA answers IN-17, IN-33…IN-38 entered; attorney wording; live Stripe/email decisions; launch authorization | — |
 | 8 | ○ **K** — books: journal, expenses, Stripe fees, P&L, QuickBooks/Xero/other exports | ✅ approved (`BATCH-K.md`) | launch (or earlier if Chris asks; needs T merged) | nothing to start; IN-39 later | 5 |
-| 9 | ○ **O** — owner controls: settings undo, per-person permissions, approvals, dated prices, goals, switches page | ✅ approved (`BATCH-O.md`) | K merged | nothing | 4–5 |
-| 9a | ○ **BP** — business offers, permission/installation evidence and property-manager partnerships | proposed (`BATCH-BP.md`), docs created 2026-10-07 | K, M and O complete; accepted design and bounded cards | IN-48/49/50 before affected offer/program activation | 16 estimated |
-| 10 | ○ **P** — customer self-service and growth (section 5) | **no design yet** — a stronger model writes it when Chris picks items | after O, or earlier for a single picked item | pick items | — |
-| 11 | ○ Conditional/deferred: Google Workspace integration (O32), CSV import (O29), direct QuickBooks sync (`BATCH-K.md` §9) | deferred | prerequisites in their docs | provide accounts/data | — |
+| 9 | ○ **M** — shop sales and appliance endings | ✅ approved (`BATCH-M.md`) | K merged; IN-47 keeps sales after launch | IN-46 before affected sales-tax policy activation | 3 estimated |
+| 10 | ○ **O** — owner controls: settings undo, per-person permissions, approvals, dated prices, goals, switches page | ✅ approved (`BATCH-O.md`) | K merged | nothing | 4–5 |
+| 11 | ○ **BP** — business offers, permission/installation evidence and property-manager partnerships | proposed (`BATCH-BP.md`), docs created 2026-10-07 | K, M and O complete; accepted design and bounded cards | IN-48/49/50 before affected offer/program activation | 16 estimated |
+| 12 | ○ **P** — customer self-service and growth (section 5) | **no design yet** — a stronger model writes it when Chris picks items | after O, or earlier for a single picked item | pick items | — |
+| 13 | ○ Conditional/deferred: Google Workspace integration (O32), CSV import (O29), direct QuickBooks sync (`BATCH-K.md` §9) | deferred | prerequisites in their docs | provide accounts/data | — |
 
 **Why F is split (approved by Chris 2026-10-06, IN-41):** F proves the finished product. If F runs completely now, the
 tax, security and redesign work that follows would make its scenarios and screenshots stale. Its infrastructure parts

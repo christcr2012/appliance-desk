@@ -27,7 +27,7 @@ Propose starting with a modest fixed commission, such as $5 per eligible set-mon
 
 Identify a specific partner legal entity, agreement version, code, qualifying period, eligible rent definition, payout threshold and termination terms. Collect tax/payment information in private records, not this folder. Any disclosure required to residents is approved with counsel before activation.
 
-Earn commissions only against allocated, settled rental receipts for the eligible service period, excluding tax, deposit, setup/delivery fees, penalties and refunded or disputed amounts. For a flat monthly commission, earned amount is the configured monthly commission multiplied by eligible net rent collected divided by the contractual eligible month's rent, capped at the monthly commission. Percentage commissions use eligible collected rent directly. Advance payments accrue commission into their respective service periods, not as twelve immediate monthly rewards.
+Earn commissions only against deterministically attributed, settled rental receipts for the eligible service period, excluding tax, deposit, setup/delivery fees, penalties and refunded or disputed amounts. For a flat monthly commission, earned amount is the configured monthly commission multiplied by eligible net rent collected divided by the contractual eligible month's rent, capped at the monthly commission. Percentage commissions use eligible collected rent directly. Advance payments accrue commission into their respective service periods, not as twelve immediate monthly rewards.
 
 Refunds or disputes create compensating negative ledger entries. If the partner was already paid, show the recoverable balance and offset it only as permitted by the signed partner terms. Do not rewrite paid history or debit the partner's bank account automatically.
 
@@ -42,3 +42,7 @@ A future payout integration requires its own design, recipient verification, app
 Robinson Appliance Rentals is preparing a local washer and dryer rental service for Greeley-area properties. We can discuss a property-paid equipment program or a resident referral arrangement, with clear pricing, scheduled installation and a single contact for service. Could we review the number of units, hookups and service expectations to prepare a proposal?
 
 This is draft copy. It contains no guaranteed savings, response time or inventory claim and has not been sent.
+
+## Payment attribution and partner document versions
+
+For a mixed invoice, partial cash and invoice-level refunds use the fixed pro-rata commission attribution defined in Batch BP D-BP8; tax and non-rent buckets never earn a commission. The partner agreement discloses that convention. Every signed partner document has its own frozen artifact. A stable public program code identifies the partner across revised agreement terms; existing rentals keep their accepted revision.
