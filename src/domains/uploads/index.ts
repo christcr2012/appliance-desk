@@ -38,6 +38,14 @@ export async function canUploadPhoto(
       })) !== null
     );
   }
+  if (segments[0] === "tax-exemptions" && user.role === "OWNER") {
+    return (
+      (await prisma.customer.findFirst({
+        where: { id, archivedAt: null },
+        select: { id: true },
+      })) !== null
+    );
+  }
   if (segments[0] === "maintenance-requests") {
     if (manager) {
       return (
