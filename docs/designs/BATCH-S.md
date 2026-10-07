@@ -31,7 +31,7 @@ for an AI agent or developer. Sources wired in this batch:
 | Source | Kind | Fingerprint | Severity | Auto-resolves when |
 |---|---|---|---|---|
 | `runAutomation` failure or overrun | `AUTOMATION_FAILED` | `automation:<ruleKey>` | high for billing/backup rules, else medium | that rule's next run succeeds |
-| Automation never ran / stale beyond 2× its schedule (health state `failing`/`never-ran` for a configured rule) | `AUTOMATION_STALE` | `automation-stale:<ruleKey>` | medium | it runs |
+| A configured rule has had **no successful run for more than 2× its expected interval** (new `expectedEveryHours` on each `AUTOMATION_RULES` entry: 24 daily, 168 weekly, 744 monthly), and is not already reported as `AUTOMATION_FAILED` | `AUTOMATION_STALE` | `automation-stale:<ruleKey>` | medium | it succeeds |
 | `ProviderOperation` still PENDING/uncertain after 24 h | `PROVIDER_OPERATION_STUCK` | `provider-op:<kind>` (one issue per kind, count = rows) | high | none left stuck |
 | Colorado address lookup `UNAVAILABLE` 3 days in a row (T 3.3) | `TAX_LOOKUP_UNAVAILABLE` | `tax-lookup` | medium | a lookup succeeds |
 | Official page fetch failures ≥ 3 (T 13.3) | `SOURCE_PAGE_UNREACHABLE` | `source-page:<watchId>` | low | a fetch succeeds |
@@ -42,14 +42,20 @@ for an AI agent or developer. Sources wired in this batch:
 
 New sources later only add a row to this table in code (`src/domains/system-issues/sources.ts`), never a new place.
 
-### D-S2 — Nothing private leaves the app
+### D-S2 — Nothing private leaves the app (allowlisted, structured detail — review fix)
 
-`summary` (owner words) and `detail` (technical) are written by code from a fixed template per kind. They may contain
-rule keys, counts, error class/messages from our own code, internal record ids, public official URLs and timestamps.
-They must **never** contain customer names, emails, phone numbers, street addresses, payment data, tokens, keys or raw
-provider responses. `recordSystemIssue` runs the same redaction helper used for logs before saving (strip emails, phone
-numbers, long digit runs, `sk_`/`whsec_`/bearer patterns) and caps `detail` at 4 KB. Test: a planted email/phone/key in
-an error message is removed.
+`summary` (owner words) and `detail` are **built only from typed fields**, never from free text: each kind has a
+template that takes an allowlisted object such as `{ ruleKey, runId, startedAt, errorName, errorCode, count,
+watchId, officialUrl, jurisdictionCode }`. Raw error **messages**, provider responses, addresses, names and amounts are
+never passed in; the full error stays only in the existing private `AutomationRun.error` / `ProviderOperation.lastError`
+(not exposed by the API). `errorName`/`errorCode` are the exception's class/code (e.g. `TaxLookupUnavailable`,
+`STRIPE_TIMEOUT`), validated against `^[A-Za-z0-9_.:-]{1,80}$`; `officialUrl` must be an allowlisted watch URL.
+Free-text fields that people write — `SystemIssueNote.body` and `resolvedReason` — go through a new shared
+`redactForOps()` (strips emails, phone numbers, street-address patterns (number + street word), card-like and long digit
+runs, `sk_`/`rk_`/`whsec_`/`Bearer` tokens, and anything matching a customer name or address in the database is **not**
+attempted — instead the screen warns "Do not include customer details") and are capped at 2 KB. Tests: planted emails,
+phones, a street address, a card number, a provider JSON blob and a key are removed from notes and resolution reasons;
+an issue's `detail` cannot be constructed from an arbitrary string (type test).
 
 ### D-S3 — A private, read-mostly door for an AI agent
 
@@ -156,10 +162,12 @@ unconfigured sources in D-S1 and resolves ones that cleared.
 
 ## 4. Work units and PRs
 
-- **S-1 — WU-S1:** schema, `recordSystemIssue`/`resolveSystemIssue`, redaction, writers for every D-S1 source that exists,
+- **S-1 — WU-S1:** schema, `recordSystemIssue`/`resolveSystemIssue`, typed detail templates and `redactForOps`,
+  `expectedEveryHours` on every `AUTOMATION_RULES` entry (and on Batch T's rules), writers for every D-S1 source that exists,
   sweep rule, System health page section, Today `SYSTEM_ISSUE` group. Tests: `tests/system-issues.test.ts` (pure:
   fingerprints, reopen, redaction of planted PII/keys), ★ `tests/system-issues-integration.test.ts` (automation failure
-  records then success resolves; stuck provider op counted once; concurrency: two writers same fingerprint → one row,
+  records then success resolves; a daily rule with no success for 49 h and a weekly rule for 15 days become stale, a
+failing rule is not double-reported as stale; stuck provider op counted once; concurrency: two writers same fingerprint → one row,
   occurrences 2), browser: System health renders issues, axe clean at 360/1440 light/dark.
 - **S-2 — WU-S2:** `OpsAgentKey`, key screen, `/api/ops/issues` GET and notes POST, rate limit, `docs/runbooks/AI-CHECKUP.md`
   (owner setup steps + the routine prompt), OWNER-GUIDE section "System health and the AI check-up". Tests:

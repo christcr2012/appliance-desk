@@ -664,3 +664,6 @@ controls → Batch O. Summary: `docs/plans/TAX-AND-BOOKS-OVERVIEW.md`. Still onl
   each period. Worth it when the return regularly has more than about 8 rows (`BATCH-T.md` 11.7).
 - **Automatic filing:** only through SUTS's XML channel for certified software vendors — not available to us.
 - **SMS tax reminders:** after live SMS is approved.
+- **Card payment of local invoices in the customer portal** (prepaid rent invoices and standalone delivery-fee invoices
+  are manual-payment-only in Batch T, D-T14) — would need a Checkout session or Stripe one-off invoice per local invoice
+  plus webhook reconciliation.

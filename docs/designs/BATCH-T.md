@@ -225,9 +225,13 @@ Today a `paidInFullInAdvance` agreement creates no subscription and no rent invo
 the app), so its rent and sales tax would never reach `InvoiceTaxLine`, the returns or the retail delivery fee. From
 WU-T5 on: when a prepaid agreement is signed, the app creates **one local invoice for the full prepaid rent** (the
 agreed prepaid amount after the prepaid discount, with `computeTax` lines for the address on the signing date), issued
-on the signing date and due on receipt. Chris marks it paid with the **existing manual-payment action** (cash, check,
-bank transfer) or the customer pays it in the portal like any local invoice. Its issue date is the sale date used by the
-returns and by the delivery fee (12.4). Idempotent per agreement (`prepaid-rent-<agreementId>`). Stop-and-ask S-T13 if
+on the signing date and due on receipt. It is **manual-payment-only** (review fix: today's customer portal can only pay
+Stripe invoices, so a local invoice cannot be paid by card there): Chris records the payment with the **existing
+manual-payment action** (cash, check, bank transfer, or a card taken outside the app), and the portal shows the invoice
+as "Pay as arranged with Robinson Appliance Rentals". Reporting follows D-T11: the accrual basis counts it on its issue
+date, the cash basis on the recorded payment date. For the delivery fee (12.4) its `saleOn` is the **recorded payment
+date** (the first rent payment); while it is unpaid the fee record waits as `PENDING_RATE` ("prepaid rent not yet
+paid"). Card payment of local invoices is a roadmap item. Idempotent per agreement (`prepaid-rent-<agreementId>`). Stop-and-ask S-T13 if
 the signing/checkout flow already collects prepaid rent some other way that WU-T5's drift check finds.
 
 ---
@@ -1306,7 +1310,7 @@ model RetailDeliveryFeeRecord {
   (Colorado charges a lease's fee once, at the first payment, at the amount in effect when the sale takes place). It is
   *not* the agreement's `startDate`, which is the signing date: recurring billing starts from `firstDeliveredOn`, so a
   rental signed in June and first charged in July uses July's amount, while a `paidInFullInAdvance` rental uses the
-  issue date of its prepaid rent invoice (D-T14). `saleOn` is filled when that first rent invoice is recorded (local invoice creation or
+  recorded payment date of its prepaid rent invoice (D-T14). `saleOn` is filled when that first rent invoice is recorded (local invoice creation or
   the Stripe invoice mirror); until then the record stays `PENDING_RATE` with the reason "first rent charge not yet
   made". If no rate exists for `saleOn` → the completion still succeeds,
   the record is `PENDING_RATE` (rate and amount empty) and is completed in place when the rate is entered; a `high`
@@ -1315,9 +1319,9 @@ model RetailDeliveryFeeRecord {
 - **Charging the customer** (`COLLECT_FROM_CUSTOMER`): one invoice line category `RETAIL_DELIVERY_FEE`, label "Colorado
   retail delivery fee", never taxed (the engine skips it; add it to the 3.1 category map as non-taxable by law, not by
   matrix), on the next invoice for that agreement. **When the agreement will have no next invoice** — a
-  `paidInFullInAdvance` agreement (no subscription is created for it) or one already ended — the app issues a
-  **standalone local invoice** for the fee alone, due on receipt and payable in the customer portal like any local
-  invoice, idempotent per record (review fix: otherwise the fee would be reported but never collected). Stripe-billed agreements: a one-time invoice item on the next
+  `paidInFullInAdvance` agreement (no subscription is created for it) or one already ended — the fee is added to the
+  agreement's prepaid rent invoice if that is still unpaid, otherwise the app issues a **standalone local invoice** for
+  the fee alone, due on receipt, **manual-payment-only** like D-T14, idempotent per record (review fix: otherwise the fee would be reported but never collected). Stripe-billed agreements: a one-time invoice item on the next
   subscription invoice through the existing provider-operation pattern (`ProviderOperation` kind
   `RDF_INVOICE_ITEM`, key `rdf-<recordId>`); local invoices: a line on the next local invoice. Shown separately on the
   invoice, statement and customer portal (B-F4).
@@ -1365,7 +1369,8 @@ blocks readiness),
 ★ `tests/retail-delivery-fee-integration.test.ts` (completion writes one record under retry; collected line is untaxed
 and on the next invoice; a prepaid agreement gets a standalone fee invoice; a prepaid rental invoiced June 30 and delivered
 July 2 is on the July return at June's amount; a collected fee is not credited before the customer refund is recorded; a rental signed in June and first charged in
-July uses July's amount; a credit claimed on one filed return is not offered on the next; PAY_MYSELF adds no line; rate missing leaves a PENDING_RATE record completed later; undecided
+July uses July's amount; a prepaid invoice issued June 30 and paid July 2 uses July's fee amount and lands in July on a
+cash-basis return; a credit claimed on one filed return is not offered on the next; PAY_MYSELF adds no line; rate missing leaves a PENDING_RATE record completed later; undecided
 leaves PENDING_DECISION resolved later — to PENDING_RATE when no amount exists yet; a free repair swap creates no
 record; a sale paid before July 1 and delivered after uses the earlier amount; added fee after filing opens an amendment; over-reported fee
 becomes a credit on the current return), packet tests for the RDF return in `tests/tax-filing-packet.test.ts`, readiness test in the

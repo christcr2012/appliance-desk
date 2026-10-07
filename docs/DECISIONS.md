@@ -505,3 +505,7 @@ the returns (before, prepaid rent was collected outside the app and its tax woul
 fees are filed by delivery date while the amount follows the sale date; a collected fee is credited only after the
 customer is refunded in full; rate versions found on or after their start date are pushed to Stripe immediately; only
 the real tax decisions (and the delivery fee when it applies) block billing — filing setup never does.
+Sixth Codex review fixes: prepaid rent and standalone delivery-fee invoices are manual-payment-only (the portal cannot
+pay local invoices yet; roadmap); prepaid reporting follows the chosen basis and the fee's sale date is the recorded
+payment date; Batch S issue details are built only from allowlisted typed fields (raw error text never leaves the app)
+and people-written notes are redacted; stale-automation detection uses a per-rule expected interval.
