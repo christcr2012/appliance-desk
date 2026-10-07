@@ -171,7 +171,7 @@ function addressLabel(a: { line1: string; line2: string | null; city: string; st
  */
 export async function getCustomerStatement(
   customerId: string,
-  options?: { periodStart?: Date; periodEnd?: Date },
+  options?: { periodStart?: Date; periodEnd?: Date; customerVisible?: boolean },
 ): Promise<CustomerStatement | null> {
   const customer = await prisma.customer.findUnique({
     where: { id: customerId },
@@ -181,12 +181,17 @@ export async function getCustomerStatement(
       user: { select: { name: true, email: true } },
       invoices: {
         where:
-          options?.periodStart || options?.periodEnd
+          options?.periodStart || options?.periodEnd || options?.customerVisible
             ? {
-                billingPeriodStart: {
-                  gte: options.periodStart,
-                  lte: options.periodEnd,
-                },
+                ...(options?.customerVisible ? { status: { not: "DRAFT" as const } } : {}),
+                ...(options?.periodStart || options?.periodEnd
+                  ? {
+                      billingPeriodStart: {
+                        gte: options.periodStart,
+                        lte: options.periodEnd,
+                      },
+                    }
+                  : {}),
               }
             : undefined,
         include: {
@@ -227,8 +232,11 @@ export async function getCustomerStatement(
   );
 
   const groups = new Map<string, StatementProperty>();
+  const statementInvoices = options?.customerVisible
+    ? customer.invoices.filter((invoice) => invoice.status !== "DRAFT")
+    : customer.invoices;
 
-  for (const invoice of customer.invoices) {
+  for (const invoice of statementInvoices) {
     const address = invoice.agreement?.serviceAddress ?? null;
     const groupKey = address?.id ?? "no-property";
 
@@ -284,12 +292,12 @@ export async function getCustomerStatement(
     a.addressLabel.localeCompare(b.addressLabel),
   );
 
-  const openInvoiceCount = customer.invoices.filter((inv) =>
+  const openInvoiceCount = statementInvoices.filter((inv) =>
     ["OPEN", "PARTIALLY_PAID", "DELINQUENT"].includes(inv.status),
   ).length;
 
   const reconciliation = reconcileStatement(
-    customer.invoices.map((inv) => ({
+    statementInvoices.map((inv) => ({
       status: inv.status,
       amountDueCents: inv.amountDueCents,
       amountPaidCents: inv.amountPaidCents,
