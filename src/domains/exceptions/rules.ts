@@ -17,7 +17,7 @@
 
 export type ExceptionCategory =
   | "BILLING_BLOCKED"
-  | "INVOICE_TAX_BLOCKED"
+  | "SALES_TAX"
   | "STALE_RESERVATION"
   | "PAST_DUE_INVOICE"
   | "OVERDUE_JOB"
@@ -75,7 +75,7 @@ export function invoiceTaxBlockedException(invoice: {
   problems: string[];
 }): ExceptionItem {
   return {
-    category: "INVOICE_TAX_BLOCKED",
+    category: "SALES_TAX",
     severity: "high",
     title: `Bill #${invoice.invoiceNumber} needs a tax decision before it can be sent`,
     detail:
