@@ -35,7 +35,6 @@ const draft = {
   lateFeeGraceDays: 5,
   lateFeeCents: 0,
   lateFeePercent: 0,
-  taxRateMilliPercent: 0,
   paidInFullInAdvance: false,
   lines: [
     {
