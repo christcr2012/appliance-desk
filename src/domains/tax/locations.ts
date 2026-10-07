@@ -751,8 +751,8 @@ export async function taxRateVersionIdsForAgreement(
 export async function assertTaxReadyForAgreement(
   tx: Prisma.TransactionClient,
   agreementId: string,
+  taxDate = new Date(),
 ): Promise<void> {
-  const taxDate = new Date();
   const agreement = await tx.rentalAgreement.findUniqueOrThrow({
     where: { id: agreementId },
     select: {
