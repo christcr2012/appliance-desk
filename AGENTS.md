@@ -173,9 +173,17 @@ resulting behavior are verified.
   precision move", "signing-page terms and consent"): not one item per PR, and
   not a whole batch in one PR. Size it so the work in it can be done properly,
   with its tests and docs, and reviewed in one sitting. **Concrete budget (Chris, 2026-10-06):** about 500 lines of
-  production code (tests not counted), about 15 files, at most one migration, one risk area, at most one red CI run expected,
-  at most two merged PRs per session — `docs/PLAYBOOK.md` Step 3a. The PR list for every remaining batch is
-  `docs/MASTER-ROADMAP.md` section 7.
+  production code (tests not counted), about 15 files, at most one migration, one risk area, at most one red CI run expected.
+  There is **no numeric merge-per-session limit**. Merge ready PRs in dependency order whenever their exact-head
+  CI/performance/preview/review gates are satisfied. Keep at most two unmerged implementation PRs open in one dependency
+  chain so later work cannot drift far ahead of a changing base. If the lower PR changes after its successor was branched,
+  freeze the successor and sync/rebase it onto the lower PR's final reviewed head before opening another implementation PR.
+  Dependent card/docs work must stack on the top prerequisite branch instead of targeting stale `main`.
+  **The authoritative design, PR card, STATUS and roadmap are the context anchor**: re-read the applicable current docs
+  at PR boundaries and after any base change. Session length alone is not a stop condition when those sources remain current
+  and exact-head gates are clean. Stop advancing only when the next PR needs a patch, has a failed/pending blocking gate,
+  exposes a review finding, hits an approval gate, or verified context is no longer sufficient to continue safely.
+  See `docs/PLAYBOOK.md` Step 3a. The PR list for every remaining batch is `docs/MASTER-ROADMAP.md` section 7.
 - **CI is free and fast, so lean on it** (Chris, 2026-10-03; details in the
   "CI" section below). Do not drop tests to save minutes, and do keep CI fast
   (the "Keeping CI fast" checklist in `docs/ARCHITECTURE.md`).
