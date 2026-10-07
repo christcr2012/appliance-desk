@@ -7,7 +7,9 @@ export type ProviderOpKind =
   | "SUBSCRIPTION_CANCEL"
   | "SUBSCRIPTION_UPDATE"
   | "BALANCE_CREDIT"
-  | "REFUND_CREATE";
+  | "REFUND_CREATE"
+  | "TAX_RATE_CREATE"
+  | "SUBSCRIPTION_TAX_UPDATE";
 
 type ProviderOpStatus =
   | "PENDING"
