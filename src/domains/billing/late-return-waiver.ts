@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
 import { formatCents } from "@/domains/pricing/money";
 import { lockCustomerLedger } from "./ledger";
-import { sumTax } from "./tax";
+import { computeTax, type EngineJurisdiction } from "@/domains/tax/engine";
 
 /**
  * "Who caused the delay?" When the business, not the customer, made a pickup late, the owner or an admin waives the
@@ -50,8 +50,19 @@ export async function recordLateReturnWaiverInTx(
     where: { id: invoiceId },
     include: {
       lineItems: true,
+      taxLines: {
+        where: { source: "ENGINE" },
+        include: {
+          jurisdiction: {
+            select: { id: true, code: true, name: true, administration: true },
+          },
+          rateVersion: {
+            select: { id: true, rateMilliPercent: true },
+          },
+        },
+      },
       payments: { select: { status: true } },
-      agreement: { select: { taxRateMilliPercent: true } },
+      agreement: { select: { termMonths: true } },
     },
   });
   if (invoice.status !== "OPEN" && invoice.status !== "DELINQUENT") {
@@ -80,27 +91,118 @@ export async function recordLateReturnWaiverInTx(
   if (waiveLines.length === 0) throw new Error("There is nothing to waive on this invoice.");
 
   const waivedCents = waiveLines.reduce((sum, w) => sum + w.cents, 0);
-  const everyChargeFullyWaived = waiveLines.length === charged.length && waiveLines.every((w) => w.cents === w.line.amountCents);
-  const existingTax = invoice.lineItems.filter((l) => l.kind === "TAX").reduce((sum, l) => sum + l.amountCents, 0);
-  const waivedTaxCents = everyChargeFullyWaived
-    ? existingTax
-    : Math.min(existingTax, sumTax(waiveLines.map((w) => w.cents), invoice.agreement?.taxRateMilliPercent ?? 0));
 
-  await tx.invoiceLineItem.createMany({
-    data: [
-      ...waiveLines.map((w) => ({
-        invoiceId: invoice.id,
-        kind: "LATE_RETURN_WAIVER" as const,
-        description: `Waived (our delay): ${w.line.description}`,
-        amountCents: -w.cents,
-        quantity: 1,
-        rentalLineId: w.line.rentalLineId,
-      })),
-      ...(waivedTaxCents > 0
-        ? [{ invoiceId: invoice.id, kind: "TAX" as const, description: "Sales tax on waived late days", amountCents: -waivedTaxCents, quantity: 1, rentalLineId: null }]
-        : []),
-    ],
+  const originalTaxByJurisdiction = new Map<
+    string,
+    (typeof invoice.taxLines)[number]
+  >();
+  for (const taxLine of invoice.taxLines) {
+    if (
+      taxLine.category === "LATE_RETURN" &&
+      taxLine.invoiceLineItemId &&
+      charged.some((line) => line.id === taxLine.invoiceLineItemId) &&
+      !originalTaxByJurisdiction.has(taxLine.jurisdictionId)
+    ) {
+      originalTaxByJurisdiction.set(taxLine.jurisdictionId, taxLine);
+    }
+  }
+  if (originalTaxByJurisdiction.size === 0) {
+    throw new Error(
+      "This late-return bill has no jurisdiction tax detail, so its tax cannot be waived safely.",
+    );
+  }
+
+  const persistedWaivers = [];
+  for (const waiver of waiveLines) {
+    persistedWaivers.push(
+      await tx.invoiceLineItem.create({
+        data: {
+          invoiceId: invoice.id,
+          kind: "LATE_RETURN_WAIVER",
+          description: `Waived (our delay): ${waiver.line.description}`,
+          amountCents: -waiver.cents,
+          quantity: 1,
+          rentalLineId: waiver.line.rentalLineId,
+        },
+      }),
+    );
+  }
+
+  const jurisdictions: EngineJurisdiction[] = [
+    ...originalTaxByJurisdiction.values(),
+  ].map((taxLine) => ({
+    id: taxLine.jurisdiction.id,
+    code: taxLine.jurisdiction.code,
+    name: taxLine.jurisdiction.name,
+    administration: taxLine.jurisdiction.administration,
+    rate: {
+      versionId: taxLine.rateVersion.id,
+      rateMilliPercent: taxLine.rateVersion.rateMilliPercent,
+    },
+    rules: {
+      LATE_RETURN:
+        taxLine.taxableCents !== 0 ? ("TAXABLE" as const) : ("EXEMPT" as const),
+    },
+  }));
+  const exemptJurisdictionIds = new Set(
+    [...originalTaxByJurisdiction.values()]
+      .filter((line) => line.exemptReason === "Customer exemption certificate")
+      .map((line) => line.jurisdictionId),
+  );
+  const taxResult = computeTax({
+    taxDate: invoice.dueDate ?? invoice.billingPeriodEnd ?? invoice.createdAt,
+    leaseTermMonths: invoice.agreement?.termMonths ?? null,
+    election: "COLLECT_ON_RENTALS",
+    defaultRules: {},
+    jurisdictions,
+    exemptJurisdictionIds,
+    // A waiver follows the original LATE_RETURN category. Feeding the
+    // negative amounts as LATE_RETURN here deliberately reuses that frozen
+    // category/rate snapshot instead of today's policy.
+    lines: persistedWaivers.map((line) => ({
+      key: line.id,
+      kind: "LATE_RETURN",
+      amountCents: line.amountCents,
+    })),
   });
+  if (!taxResult.ok) {
+    throw new Error(
+      `The original tax detail could not be reversed safely: ${taxResult.problems.join(" ")}`,
+    );
+  }
+  const waivedTaxCents = -taxResult.totalTaxCents;
+  if (waivedTaxCents < 0) {
+    throw new Error("The tax waiver calculation returned an invalid amount.");
+  }
+
+  if (taxResult.lines.length > 0) {
+    await tx.invoiceTaxLine.createMany({
+      data: taxResult.lines.map((line) => ({
+        invoiceId: invoice.id,
+        invoiceLineItemId: line.lineKey,
+        jurisdictionId: line.jurisdictionId,
+        rateVersionId: line.rateVersionId,
+        category: line.category,
+        taxableCents: line.taxableCents,
+        exemptCents: line.exemptCents,
+        exemptReason: line.exemptReason,
+        taxCents: line.taxCents,
+        source: "ENGINE" as const,
+      })),
+    });
+  }
+  if (waivedTaxCents > 0) {
+    await tx.invoiceLineItem.create({
+      data: {
+        invoiceId: invoice.id,
+        kind: "TAX",
+        description: "Sales tax on waived late days",
+        amountCents: -waivedTaxCents,
+        quantity: 1,
+        rentalLineId: null,
+      },
+    });
+  }
   const amountDueCents = invoice.amountDueCents - waivedCents - waivedTaxCents;
   await tx.invoice.update({
     where: { id: invoice.id },
