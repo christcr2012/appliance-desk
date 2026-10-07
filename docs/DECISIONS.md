@@ -490,3 +490,13 @@ screen, a setup checklist identical to the billing blockers, and an on-screen gl
 Fourth Codex review fixes: the delivery fee's sale date is the first rent charge (not the signing date); prepaid or
 ended agreements get a standalone fee invoice so a collected fee is never only reported; a prior-period fee credit is
 tied to the return that claims it so it cannot be reused; the page watch counts consecutive failures.
+
+## 2026-10-07 — Batch S: one place for system problems, checked every morning by an AI agent
+
+Chris asked for problems the system detects (failed automations, moved pages, …) to be recorded where an AI agent can
+check them on a schedule and work out fixes. Decided (`docs/designs/BATCH-S.md`): one `SystemIssue` table with
+fingerprint de-duplication and auto-resolve, strict redaction (no customer data or secrets), a System health page and a
+Today "System" group for high issues, and a private `/api/ops/issues` endpoint (read + notes only) authenticated by an
+owner-created, hashed, revocable key. The scheduled agent is a Claude Routine by default (it runs with the repository
+attached and can open fix PRs, never merge unattended); any agent with scheduled tasks can use the same endpoint.
+Rejected: writing issues to GitHub automatically (the repository is public), and giving the agent database access.

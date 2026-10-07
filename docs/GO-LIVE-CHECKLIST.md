@@ -77,6 +77,8 @@ Previews and test copies never send email, even with the key and the switch on (
       CPA's answer (IN-44); you received one test reminder email and downloaded the calendar file to your phone; the retail
       delivery fee status in the app is confirmed by your CPA (IN-37), and if it applies, this year's fee amount is entered;
       the official-sources list shows every page checked successfully at least once.
+- [ ] **System health and AI check-up (Batch S):** System health shows no unexplained high issues; optional: AI
+      check-up key created, stored in your Claude environment, and the morning routine created (IN-45).
 - [ ] **Two-step login (Batch G):** you and every admin have enrolled; backup codes stored away from your phone.
 - [ ] **Website look (Batch V):** you have accepted the redesigned public site and checked the editable home-page text.
 - [ ] **Books (Batch K, can be after launch):** books start date set; accounts mapped to your accounting software; one

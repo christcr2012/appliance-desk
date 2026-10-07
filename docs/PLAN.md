@@ -636,6 +636,28 @@ IN-17 (rate check), IN-33 … IN-38 (`docs/OWNER-INPUTS.md`). IN-43 and IN-44 (A
 
 ---
 
+## Batch S — System issues inbox and the AI check-up
+
+**Design: `docs/designs/BATCH-S.md`** (approved by Chris 2026-10-07). After Batch T, before Batch V.
+
+### Purpose
+
+One place where the system records its own problems (failed automations, stuck provider operations, unreachable or
+changed official pages, tax lookup outages, missing configuration) in plain words, a private read-only door so a
+scheduled AI agent (a Claude Routine by default) can check it every morning, investigate, and open fix PRs or write
+owner instructions, and a System health page plus Today group for Chris.
+
+### Acceptance checklist
+
+- [ ] Every D-S1 source records one de-duplicated issue and auto-resolves when the source recovers (integration tests).
+- [ ] No customer data, keys or raw provider responses can be stored in an issue or note (redaction test with planted values).
+- [ ] `/api/ops/issues` works only with a live owner-created key (stored hashed, revocable); the agent can read and add notes, never change data or resolve.
+- [ ] System health page and Today "System" group (high only) render, axe clean, OWNER/ADMIN only.
+- [ ] `docs/runbooks/AI-CHECKUP.md` contains the owner setup steps and the exact routine prompt; GO-LIVE-CHECKLIST has the setup lines.
+- [ ] Every item in "Rules that apply to every batch".
+
+---
+
 ## Batch V — "Evergreen Signature" visual redesign
 
 **Design: `docs/designs/BATCH-V.md`** (approved by Chris 2026-10-06). Concept: `docs/design-mockups/signature-2026-10-06/` and the private artifact "Evergreen Signature". Follows Chris's 2026-10-06 judgement that E2's public site looked too similar to the old one.

@@ -162,6 +162,12 @@ tests most likely to break, so the agent updates them in the same PR instead of 
 | T-6c | Amendment B WU-TB1: Colorado retail delivery fee — automatic status, delivery-completion records, customer line or pay-myself, RDF return packet (`BATCH-T.md` section 12) | money | job completion tests, invoice/statement tests, Stripe invoice-item provider-operation tests, readiness tests |
 | T-7 | WU-T8 screens organized by `BATCH-T.md` section 14 (screen map: one Sales tax nav entry, six tabs, return page, Today routing, setup checklist) + WU-T9 docs | screens | route inventory (every new page), axe light/dark, `e2e/sales-tax.spec.ts` shard assignment |
 
+### S — System issues inbox and the AI check-up (`docs/designs/BATCH-S.md`, approved 2026-10-07)
+| PR | Work units | Risk area | CI watch |
+|---|---|---|---|
+| S-1 | WU-S1 `SystemIssue` table, redaction, writers (automations, stuck provider operations, tax lookup/page/rate sources), sweep rule, System health page, Today "System" group | schema + automation | automation run tests, health page browser spec, backup coverage test |
+| S-2 | WU-S2 AI check-up keys, `/api/ops/issues` (read + notes only), rate limit, `docs/runbooks/AI-CHECKUP.md` with the Claude Routine prompt | auth (non-session API) | API auth tests, secret scan (no key in fixtures) |
+
 ### V — "Evergreen Signature" redesign
 | PR | Work units | Risk area | CI watch |
 |---|---|---|---|
@@ -198,6 +204,6 @@ tests most likely to break, so the agent updates them in the same PR instead of 
 | O-3 | WU-O3 approvals | money + permissions | refund/credit/write-off integration tests |
 | O-4 | WU-O4 scheduled prices + WU-O5 goals and alerts + docs | settings/automation | pricing tests, Today tests |
 
-**36 PRs in all** (T-6 split into T-6a/T-6b by Amendment A, T-6c added by Amendment B and T-5b by Amendment C, 2026-10-07) (a few more if G-2 or T-4 split). At two merged PRs per session that is roughly 17 working sessions;
+**38 PRs in all** (Batch S adds 2; T-6 split into T-6a/T-6b by Amendment A, T-6c added by Amendment B and T-5b by Amendment C, 2026-10-07) (a few more if G-2 or T-4 split). At two merged PRs per session that is roughly 17 working sessions;
 each PR should reach green with at most one red CI run (each run is about 3–5 minutes). If a PR needs a third red run,
 the agent stops and reports (PLAYBOOK Step 8).
