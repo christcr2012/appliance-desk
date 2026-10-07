@@ -25,6 +25,12 @@ describe("allocateAcrossLines", () => {
     expect(allocateAcrossLines(0, [0, 0])).toEqual([0, 0]);
   });
 
+  it("stays exact at the safe-integer boundary without BigInt", () => {
+    const max = Number.MAX_SAFE_INTEGER;
+    expect(allocateAcrossLines(max, [max - 1, 1])).toEqual([max - 1, 1]);
+    expect(allocateAcrossLines(-max, [max - 1, 1])).toEqual([-(max - 1), -1]);
+  });
+
   it("rejects impossible or invalid allocations", () => {
     expect(() => allocateAcrossLines(1, [0, 0])).toThrow(
       "every weight is zero",
