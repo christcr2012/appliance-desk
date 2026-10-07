@@ -114,10 +114,6 @@ async function seedCiTaxReadyAddress(serviceAddressId: string) {
   const rateVersionId = "ci-tax-ready-rate";
   const effectiveFrom = new Date("2020-01-01T07:00:00.000Z");
 
-  await prisma.businessSettings.update({
-    where: { id: "singleton" },
-    data: { shortTermLeaseElection: "COLLECT_ON_RENTALS" },
-  });
   await prisma.taxJurisdiction.upsert({
     where: { id: jurisdictionId },
     update: {
