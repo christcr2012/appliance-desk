@@ -1,7 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import { computeAgreementInvoiceTax } from "@/domains/tax/invoice-tax";
+import {
+  computeAgreementInvoiceTax,
+  recalculateDraftInvoiceTax,
+} from "@/domains/tax/invoice-tax";
 import { recordLateReturnOnRemoval } from "@/domains/billing/pickup-billing-events";
 import { businessDateEnd, businessDateFromKey } from "@/lib/business-date";
 import { prisma } from "@/lib/prisma";
@@ -79,6 +82,10 @@ describe.skipIf(!enabled)("Batch T invoice tax lines (real Postgres)", () => {
   });
 
   beforeEach(async () => {
+    await prisma.businessSettings.update({
+      where: { id: "singleton" },
+      data: { shortTermLeaseElection: "COLLECT_ON_RENTALS" },
+    });
     await prisma.addressTaxLocation.updateMany({
       where: { serviceAddressId: addressId, isCurrent: true },
       data: { status: "VERIFIED" },
@@ -216,6 +223,61 @@ describe.skipIf(!enabled)("Batch T invoice tax lines (real Postgres)", () => {
         exemptCents: expect.any(Number),
         exemptReason: expect.stringMatching(/tax paid when the appliance was bought/i),
         taxCents: 0,
+        source: "ENGINE",
+      }),
+    ]);
+  });
+
+  it("keeps a tax-blocked late-return bill DRAFT and opens it after recalculation", async () => {
+    await prisma.taxJurisdiction.update({
+      where: { id: taxReady.jurisdictionId },
+      data: { administration: "SELF_COLLECTED" },
+    });
+
+    const draft = await makeLateReturnInvoice();
+
+    expect(draft.status).toBe("DRAFT");
+    expect(draft.taxCents).toBe(0);
+    expect(draft.lineItems.some((line) => line.kind === "TAX")).toBe(false);
+    expect(draft.taxLines).toHaveLength(0);
+    expect(
+      await prisma.auditLog.count({
+        where: {
+          entityType: "Invoice",
+          entityId: draft.id,
+          action: "billing.tax_decision_needed",
+        },
+      }),
+    ).toBe(1);
+
+    await prisma.taxabilityRule.create({
+      data: {
+        jurisdictionId: taxReady.jurisdictionId,
+        category: "LATE_RETURN",
+        taxability: "TAXABLE",
+        reason: "Synthetic owner decision",
+      },
+    });
+
+    const recalculated = await prisma.$transaction((tx) =>
+      recalculateDraftInvoiceTax(tx, {
+        invoiceId: draft.id,
+        userId,
+      }),
+    );
+    expect(recalculated.result.ok).toBe(true);
+
+    const opened = await prisma.invoice.findUniqueOrThrow({
+      where: { id: draft.id },
+      include: { lineItems: true, taxLines: true },
+    });
+    expect(opened.status).toBe("OPEN");
+    expect(opened.taxCents).toBeGreaterThan(0);
+    expect(opened.lineItems.filter((line) => line.kind === "TAX")).toHaveLength(1);
+    expect(opened.taxLines).toEqual([
+      expect.objectContaining({
+        jurisdictionId: taxReady.jurisdictionId,
+        category: "LATE_RETURN",
         source: "ENGINE",
       }),
     ]);
