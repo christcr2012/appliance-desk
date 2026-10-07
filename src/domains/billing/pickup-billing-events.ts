@@ -184,7 +184,6 @@ const AGREEMENT_SELECT = {
   terminationEffectiveOn: true,
   billingStartedAt: true,
   paidInFullInAdvance: true,
-  taxRateMilliPercent: true,
 } as const;
 
 /**
