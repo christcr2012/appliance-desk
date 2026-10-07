@@ -3,6 +3,41 @@ import { prepareInvoiceRefundInTx, type ClaimedRefund } from "./refunds";
 
 export type RefundAcrossRun = { refundId: string; claim: ClaimedRefund; invoiceId: string; amountCents: number };
 
+export async function billedRentalLineChargeCentsInTx(
+  tx: Prisma.TransactionClient,
+  input: { agreementId: string; rentalLineId: string },
+): Promise<number> {
+  const lines = await tx.invoiceLineItem.findMany({
+    where: {
+      rentalLineId: input.rentalLineId,
+      kind: "RENTAL",
+      invoice: {
+        agreementId: input.agreementId,
+        status: { notIn: ["VOID", "DRAFT"] },
+      },
+    },
+    select: {
+      amountCents: true,
+      taxLines: {
+        select: { taxCents: true },
+      },
+    },
+  });
+
+  return lines.reduce(
+    (sum, line) =>
+      sum +
+      line.amountCents +
+      line.taxLines.reduce((taxSum, taxLine) => taxSum + taxLine.taxCents, 0),
+    0,
+  );
+}
+
+/**
+ * Actual historical billed amount for one agreement line. This deliberately
+ * reads persisted invoice/tax evidence instead of rebuilding history from the
+ * agreement's display-only tax snapshot or today's tax rules.
+ */
 /**
  * Pay money back to a customer for an agreement: the newest paid invoices first. A Stripe-paid invoice is refunded to
  * the original card or bank through Stripe (the caller runs the returned `runs` after the transaction commits);
