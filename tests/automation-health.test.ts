@@ -26,6 +26,12 @@ describe("automation rule registry", () => {
     ]);
   });
 
+  it("tracks the Batch T rate-change job", () => {
+    expect(AUTOMATION_RULES.map((rule) => rule.ruleKey)).toContain(
+      "tax-rate-changes",
+    );
+  });
+
   it("tracks the Batch T address re-check", () => {
     expect(AUTOMATION_RULES.map((rule) => rule.ruleKey)).toContain(
       "tax-address-recheck",
