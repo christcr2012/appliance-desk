@@ -17,5 +17,5 @@ export function subscriptionTaxUpdateKey(
   agreementId: string,
   rateVersionId: string,
 ): string {
-  return `subscription-tax-${agreementId}-${rateVersionId}`;
+  return `sub-tax-${agreementId}-${rateVersionId}`;
 }
