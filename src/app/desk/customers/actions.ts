@@ -5,6 +5,10 @@ import { z } from "zod";
 import { requireRole } from "@/lib/session";
 import { businessDateEnd, businessDateFromKey } from "@/lib/business-date";
 import {
+  getPrivatePhotoStore,
+  privatePhotoPathFromUrl,
+} from "@/lib/photo-storage";
+import {
   createCustomerTaxExemption,
   revokeCustomerTaxExemption,
   updateCustomerTaxExemption,
@@ -306,21 +310,31 @@ export async function deleteCustomerContactAction(
   }
 }
 
-const taxExemptionInputSchema = z.object({
-  exemptionId: z.string().trim().min(1).optional(),
-  reason: z.enum(["RESALE", "GOVERNMENT", "CHARITABLE", "OTHER"]),
-  certificateNumber: z.string().trim().max(200).optional().or(z.literal("")),
-  certificatePhotoId: z.string().trim().max(2000).optional().or(z.literal("")),
-  validFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Choose a valid start date."),
-  expiresOn: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, "Choose a valid expiration date.")
-    .optional()
-    .or(z.literal("")),
-  allJurisdictions: z.boolean(),
-  jurisdictionIds: z.array(z.string().trim().min(1)).max(50),
-  notes: z.string().trim().max(2000).optional().or(z.literal("")),
-});
+const taxExemptionInputSchema = z
+  .object({
+    exemptionId: z.string().trim().min(1).optional(),
+    reason: z.enum(["RESALE", "GOVERNMENT", "CHARITABLE", "OTHER"]),
+    certificateNumber: z.string().trim().max(200).optional().or(z.literal("")),
+    certificatePhotoId: z.string().trim().max(2000).min(1, "Add a private photo of the exemption certificate."),
+    validFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Choose a valid start date."),
+    expiresOn: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "Choose a valid expiration date.")
+      .optional()
+      .or(z.literal("")),
+    allJurisdictions: z.boolean(),
+    jurisdictionIds: z.array(z.string().trim().min(1)).max(50),
+    notes: z.string().trim().max(2000).optional().or(z.literal("")),
+  })
+  .superRefine((value, context) => {
+    if (!value.allJurisdictions && value.jurisdictionIds.length === 0) {
+      context.addIssue({
+        code: "custom",
+        path: ["jurisdictionIds"],
+        message: "Select at least one tax jurisdiction, or choose all jurisdictions.",
+      });
+    }
+  });
 
 export type TaxExemptionActionInput = z.infer<typeof taxExemptionInputSchema>;
 export type TaxExemptionActionState =
@@ -337,6 +351,24 @@ export async function saveCustomerTaxExemptionAction(
     return {
       status: "error",
       message: parsed.error.issues[0]?.message ?? "Check the exemption and try again.",
+    };
+  }
+
+  const privateStore = getPrivatePhotoStore();
+  const certificatePath = privateStore
+    ? privatePhotoPathFromUrl(
+        parsed.data.certificatePhotoId,
+        privateStore.storeId,
+      )
+    : null;
+  if (
+    !certificatePath ||
+    !certificatePath.startsWith(`tax-exemptions/${customerId}/`)
+  ) {
+    return {
+      status: "error",
+      message:
+        "Upload the certificate photo through this customer's private tax-exemption uploader before saving.",
     };
   }
 
