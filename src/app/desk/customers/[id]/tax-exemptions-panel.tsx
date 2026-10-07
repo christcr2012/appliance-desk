@@ -165,7 +165,8 @@ function TaxExemptionForm({
             access="private"
             label={input.certificatePhotoId ? "Replace certificate photo" : "Add certificate photo"}
             disabled={pending}
-            onUploaded={(storageUrl) => {
+            onUploaded={(storageUrl, previewUrl) => {
+              URL.revokeObjectURL(previewUrl);
               set("certificatePhotoId", storageUrl);
               setMessage("Certificate photo uploaded. Save the exemption to attach it.");
             }}
