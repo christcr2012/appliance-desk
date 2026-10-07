@@ -26,6 +26,7 @@ describe.skipIf(!enabled)("Batch T customer tax exemptions (real Postgres)", () 
   const addressId = `tax-ex-address-${tag}`;
   const agreementId = `tax-ex-agreement-${tag}`;
   const taxDate = new Date("2026-10-07T18:00:00.000Z");
+  const certificatePhotoId = `tax-exemptions/${customerId}/certificate.jpg`;
   let taxFixture: Awaited<ReturnType<typeof seedTaxReadyContext>>;
   let exemptionId: string;
 
@@ -127,12 +128,14 @@ describe.skipIf(!enabled)("Batch T customer tax exemptions (real Postgres)", () 
     await expect(
       createCustomerTaxExemption(staffId, customerId, {
         reason: "RESALE",
+        certificatePhotoId,
         validFrom: new Date("2026-01-01T07:00:00.000Z"),
       }),
     ).rejects.toThrow(/no longer has access/i);
 
     const exemption = await createCustomerTaxExemption(ownerId, customerId, {
       reason: "RESALE",
+      certificatePhotoId,
       certificateNumber: "  RESALE-123  ",
       jurisdictionIds: [],
       validFrom: new Date("2026-01-01T07:00:00.000Z"),
@@ -150,6 +153,7 @@ describe.skipIf(!enabled)("Batch T customer tax exemptions (real Postgres)", () 
 
     const updated = await updateCustomerTaxExemption(ownerId, exemption.id, {
       reason: "RESALE",
+      certificatePhotoId,
       certificateNumber: "RESALE-124",
       jurisdictionIds: [taxFixture.jurisdictionId],
       validFrom: new Date("2026-01-01T07:00:00.000Z"),
@@ -175,6 +179,7 @@ describe.skipIf(!enabled)("Batch T customer tax exemptions (real Postgres)", () 
     await expect(
       updateCustomerTaxExemption(ownerId, exemptionId, {
         reason: "RESALE",
+        certificatePhotoId,
         validFrom: new Date("2026-01-01T07:00:00.000Z"),
       }),
     ).rejects.toThrow(/revoked/i);
@@ -183,6 +188,7 @@ describe.skipIf(!enabled)("Batch T customer tax exemptions (real Postgres)", () 
   it("serializes a concurrent edit and revocation so no edit can commit after revocation", async () => {
     const race = await createCustomerTaxExemption(ownerId, customerId, {
       reason: "OTHER",
+      certificatePhotoId,
       certificateNumber: "RACE-ORIGINAL",
       validFrom: new Date("2026-01-01T07:00:00.000Z"),
       expiresOn: new Date("2026-12-31T06:59:59.999Z"),
@@ -191,6 +197,7 @@ describe.skipIf(!enabled)("Batch T customer tax exemptions (real Postgres)", () 
     const [updated, revoked] = await Promise.allSettled([
       updateCustomerTaxExemption(ownerId, race.id, {
         reason: "OTHER",
+        certificatePhotoId,
         certificateNumber: "RACE-UPDATED",
         validFrom: new Date("2026-01-01T07:00:00.000Z"),
         expiresOn: new Date("2026-12-31T06:59:59.999Z"),
@@ -233,6 +240,7 @@ describe.skipIf(!enabled)("Batch T customer tax exemptions (real Postgres)", () 
   it("ignores an exemption after its expiration date", async () => {
     const expired = await createCustomerTaxExemption(ownerId, customerId, {
       reason: "GOVERNMENT",
+      certificatePhotoId,
       validFrom: new Date("2026-01-01T07:00:00.000Z"),
       expiresOn: new Date("2026-09-30T23:59:59.000Z"),
     });
