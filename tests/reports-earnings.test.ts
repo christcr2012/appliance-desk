@@ -18,6 +18,7 @@ describe("computeEstimatedEarningsCents", () => {
       {
         billingStartedAt: new Date("2026-09-01"),
         endDate: null,
+        closedAt: null,
         lines: [{ monthlyPriceCents: 6000 }],
       },
       new Date("2026-09-16"), // 15 days in
@@ -30,6 +31,7 @@ describe("computeEstimatedEarningsCents", () => {
       {
         billingStartedAt: new Date("2026-09-01"),
         endDate: null,
+        closedAt: null,
         lines: [{ monthlyPriceCents: 6000 }, { monthlyPriceCents: 4000 }],
       },
       new Date("2026-10-01"), // 30 days
@@ -42,6 +44,7 @@ describe("computeEstimatedEarningsCents", () => {
       {
         billingStartedAt: new Date("2026-08-01"),
         endDate: new Date("2026-08-31"), // 30 days
+        closedAt: null,
         lines: [{ monthlyPriceCents: 6000 }],
       },
       new Date("2026-09-28"), // well after it ended
@@ -49,11 +52,42 @@ describe("computeEstimatedEarningsCents", () => {
     expect(cents).toBe(6000);
   });
 
+  it("stops proration at closedAt for a cancelled month-to-month rental", () => {
+    const closedAt = new Date("2026-09-16T00:00:00Z");
+    const agreement = {
+      billingStartedAt: new Date("2026-09-01T00:00:00Z"),
+      endDate: null,
+      closedAt,
+      lines: [{ monthlyPriceCents: 6000 }],
+    };
+    expect(computeEstimatedEarningsCents(agreement, closedAt)).toBe(3000);
+    expect(
+      computeEstimatedEarningsCents(
+        agreement,
+        new Date("2026-10-16T00:00:00Z"),
+      ),
+    ).toBe(3000);
+  });
+
+  it("uses the earliest of endDate and closedAt", () => {
+    const cents = computeEstimatedEarningsCents(
+      {
+        billingStartedAt: new Date("2026-09-01T00:00:00Z"),
+        endDate: new Date("2026-09-11T00:00:00Z"),
+        closedAt: new Date("2026-09-20T00:00:00Z"),
+        lines: [{ monthlyPriceCents: 6000 }],
+      },
+      new Date("2026-10-01T00:00:00Z"),
+    );
+    expect(cents).toBe(2000);
+  });
+
   it("never goes negative for a nonsensical date range", () => {
     const cents = computeEstimatedEarningsCents(
       {
         billingStartedAt: new Date("2026-09-28"),
         endDate: new Date("2026-09-01"), // end before start — shouldn't happen, but don't blow up
+        closedAt: null,
         lines: [{ monthlyPriceCents: 6000 }],
       },
       new Date("2026-09-30"),
@@ -68,6 +102,7 @@ describe("computeAgreementEarnings", () => {
       {
         billingStartedAt: new Date("2026-09-01"),
         endDate: null,
+        closedAt: null,
         lines: [{ monthlyPriceCents: 6000 }],
         invoicePaidCents: 1000,
       },
@@ -83,6 +118,7 @@ describe("computeAgreementEarnings", () => {
       {
         billingStartedAt: new Date("2026-09-01"),
         endDate: null,
+        closedAt: null,
         lines: [{ monthlyPriceCents: 6000 }],
         invoicePaidCents: 6000,
       },
