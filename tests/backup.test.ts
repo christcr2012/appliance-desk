@@ -17,7 +17,7 @@ vi.mock("@vercel/blob", () => ({
 // Derive fixtures independently from the schema, not the export's table list.
 const SCHEMA_MODELS = [...readFileSync("prisma/schema.prisma", "utf8").matchAll(/^model (\w+) \{/gm)]
   .map((match) => match[1]!);
-const EXCLUDED_MODELS = ["Session", "Account", "Verification"];
+const EXCLUDED_MODELS = ["Session", "Account", "Verification", "TwoFactor"];
 const BACKUP_TABLES = SCHEMA_MODELS.filter((model) => !EXCLUDED_MODELS.includes(model))
   .map((model) => model[0]!.toLowerCase() + model.slice(1));
 const ALL_TABLES = SCHEMA_MODELS.map((model) => model[0]!.toLowerCase() + model.slice(1));
