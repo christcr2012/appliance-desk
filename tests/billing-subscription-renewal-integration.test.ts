@@ -234,13 +234,16 @@ describe.skipIf(!enabled)("subscription start and renewal against disposable Pos
       const agreement = await newAgreement();
       const key = `subscription-create-${agreement.id}`;
 
-      // Fail the second transaction of the first run: the reconcile that stores
-      // the subscription id. Stripe has already created the subscription by then.
+      // Fail the first local transaction after Stripe has created the subscription:
+      // this targets subscription finalization semantically even when tax-rate
+      // preparation adds its own transactions before the provider call.
       const realTransaction = prisma.$transaction.bind(prisma) as (...args: unknown[]) => Promise<unknown>;
-      let transactionCalls = 0;
+      let failedFinalization = false;
       vi.spyOn(prisma, "$transaction").mockImplementation(((...args: unknown[]) => {
-        transactionCalls += 1;
-        if (transactionCalls === 2) return Promise.reject(new Error("simulated local database failure"));
+        if (!failedFinalization && stripeSim.state.subscriptionCreateCalls.length === 1) {
+          failedFinalization = true;
+          return Promise.reject(new Error("simulated local database failure"));
+        }
         return realTransaction(...args);
       }) as never);
 
