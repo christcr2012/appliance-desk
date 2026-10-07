@@ -55,6 +55,21 @@ type RecoverableOperation = {
   requestedAt: Date;
 };
 
+const RECOVERABLE_OPERATION_KINDS: RecoverableOperation["kind"][] = [
+  "CUSTOMER_CREATE",
+  "SUBSCRIPTION_CREATE",
+  "SUBSCRIPTION_CANCEL",
+  "SUBSCRIPTION_UPDATE",
+  "BALANCE_CREDIT",
+  "REFUND_CREATE",
+];
+
+function isRecoverableOperationKind(
+  kind: string,
+): kind is RecoverableOperation["kind"] {
+  return (RECOVERABLE_OPERATION_KINDS as string[]).includes(kind);
+}
+
 const PROVIDER_LOOKBACK_SECONDS = 300;
 const MAX_PROVIDER_PAGES = 50;
 
@@ -560,6 +575,7 @@ export async function finishPendingProviderOperations(
         { status: "UNKNOWN" },
         { status: "FAILED" },
       ],
+      kind: { in: RECOVERABLE_OPERATION_KINDS },
     },
     select: {
       id: true,
@@ -578,20 +594,27 @@ export async function finishPendingProviderOperations(
   let completed = 0;
   let stillUnknown = 0;
   for (const operation of operations) {
+    if (!isRecoverableOperationKind(operation.kind)) continue;
+
+    const recoverable: RecoverableOperation = {
+      ...operation,
+      kind: operation.kind,
+    };
+
     try {
-      if (await reconcileOne(operation)) {
+      if (await reconcileOne(recoverable)) {
         completed += 1;
       } else {
         stillUnknown += 1;
-        await rotateUnresolvedProviderOperation(operation.id);
+        await rotateUnresolvedProviderOperation(recoverable.id);
       }
     } catch (error) {
       console.error(
-        `[billing-reconcile] Could not reconcile ${operation.kind} ${operation.id}`,
+        `[billing-reconcile] Could not reconcile ${recoverable.kind} ${recoverable.id}`,
         error instanceof Error ? error.message : "unknown error",
       );
       stillUnknown += 1;
-      await rotateUnresolvedProviderOperation(operation.id);
+      await rotateUnresolvedProviderOperation(recoverable.id);
     }
   }
 
