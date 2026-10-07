@@ -124,6 +124,15 @@ resulting behavior are verified.
 - **CI is free and fast, so lean on it** (Chris, 2026-10-03; details in the
   "CI" section below). Do not drop tests to save minutes, and do keep CI fast
   (the "Keeping CI fast" checklist in `docs/ARCHITECTURE.md`).
+- **Anti-stall rule (Chris, 2026-10-06): external waits are checkpoints, never the work loop.**
+  Check CI/reviewer/deployment state once, act on any new result, then immediately do other runnable work.
+  Never make back-to-back status checks when the first check produced no actionable change. Re-check only after
+  substantive work has been completed, the user asks for status, or the result is now the only remaining dependency.
+  Do not tail/watch live logs. On a failure, read the smallest root-cause set first (for example static/build plus one
+  genuinely failing test shard); do not inspect four browser logs that all failed because the same build failed.
+  After two tool/API failures on the same operation, change approach or record the blocker instead of retrying the
+  same call. If nothing useful remains while an external job is still running, write the exact handoff/status and
+  stop the turn rather than polling until it finishes.
 - **Use the web.** Chris encourages (and expects) you to search the web for
   current documentation, best practices and modern solutions whenever that
   beats your training data (framework versions, Stripe, Colorado/tax rules,

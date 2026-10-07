@@ -130,6 +130,29 @@ the next PR in the stack from that PR's branch. Automated reviewers: if Codex re
 or no review has posted 20 minutes after `ci` went green and no Copilot review run is in progress, record "automated
 review unavailable — waived" (AGENTS.md) with your own diff inspection, and continue.
 
+### Anti-stall protocol
+
+This protocol is mandatory whenever work depends on CI, Vercel, GitHub review, or another external system:
+
+1. **One status check, then move.** Check the external state once. If it is still pending and produced no new actionable
+   information, do not query it again immediately. Work on the next runnable PR, tests, docs, review reconciliation,
+   or handoff instead.
+2. **No live watching.** Never tail build logs, repeatedly fetch workflow jobs, or loop on deployment/reviewer state.
+   A second check is allowed only after substantive work occurred, Chris explicitly asks for current status, or that
+   result is the only remaining dependency.
+3. **Collapse duplicate failures.** If several browser shards fail during the same build step, read static/build output
+   and at most one representative browser log first. Treat the other build failures as downstream until evidence says
+   they are independent.
+4. **Two identical tool failures maximum.** After two failed attempts at the same API/tool operation, switch to a
+   different supported path or record the blocker. Do not keep retrying the same call.
+5. **Prefer actionable logs.** Fetch failed-job logs/annotations, not an in-progress live stream. Fix all visible root
+   causes together and push once.
+6. **End cleanly instead of polling.** If merge/session limits, owner gates, or dependency ordering leave no useful
+   work while an external job is pending, update STATUS/PR evidence with the exact head and pending run, tell Chris
+   what remains, and stop the turn. The next turn resumes from that recorded state.
+7. **User updates are progress checkpoints.** During a long tool sequence, give Chris a short update after roughly
+   2–3 tool calls or when a meaningful result changes. Do not let a long external wait appear as a silent stall.
+
 **Report what the budget cost.** Put "CI runs used: N (red: R)" in each PR description and in the STATUS handoff. If two
 PRs in a row needed three red runs, split every remaining PR of that batch one step smaller and say so in STATUS.
 
@@ -389,15 +412,16 @@ requested or its waiver recorded. Then merge with the expected-head SHA:
 resp=$(gh api -X PUT repos/<owner>/<repo>/pulls/<n>/merge-async \
   -f merge_method=merge -f merge_action=direct_merge -f sha=<head-sha>)
 echo "$resp" | jq -r '.status, .details.message'
-# Only "pending" carries a uuid. Poll it until it is no longer pending:
+# Only "pending" carries a uuid. Check it once; do not enter a polling loop.
 uuid=$(echo "$resp" | jq -r '.details.uuid // empty')
-while [ -n "$uuid" ]; do
+if [ -n "$uuid" ]; then
   r=$(gh api repos/<owner>/<repo>/pulls/<n>/merge-async/$uuid)
-  [ "$(echo "$r" | jq -r .status)" != "pending" ] && { echo "$r" | jq -r '.status, .details.message'; break; }
-  sleep 5
-done
+  echo "$r" | jq -r '.status, .details.message'
+fi
 # "merged" = done. "failed" = read details.message (closed, draft, or head moved).
-# "enqueued" = in a merge queue: NOT merged yet; confirm separately.
+# "pending"/"enqueued" = not merged yet. Record the uuid/status, do other runnable
+# work, and re-check at the next anti-stall checkpoint (or next turn if nothing
+# else remains). Never sleep/poll in a loop waiting for it.
 ```
 
 Before merging, confirm the reviewers have finished: the `Running Copilot Code

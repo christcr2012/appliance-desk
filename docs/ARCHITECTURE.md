@@ -590,10 +590,12 @@ own cache), migration check + `prisma migrate deploy` + schema health 4 s, `next
 8 s, 88 static pages 1 s), upload 8 s. After the site is live Vercel spends another ~40 s saving its ~1 GB build cache;
 that does not delay the deployment. The build machine is Vercel's standard 4-core one; there is nothing paid to turn on.
 
-- **Docs-only pushes are not built.** `vercel.json` → `ignoreCommand` runs `scripts/vercel-ignore-build.sh`, which
-  skips the build only when every file changed since the branch's last successful deployment
-  (`VERCEL_GIT_PREVIOUS_SHA`) is Markdown or under `docs/` — the same rule as CI's `classify` job. No earlier
-  deployment, a base commit outside Vercel's shallow clone, an empty diff or any git error → it builds.
+- **Pull-request heads always build.** GitHub's merge rule requires a successful Vercel Preview on the exact PR head,
+  so `scripts/vercel-ignore-build.sh` builds whenever `VERCEL_GIT_PULL_REQUEST_ID` is present. This prevents a
+  docs-only follow-up commit on an otherwise-code PR from removing the required exact-head Preview.
+- **Docs-only non-PR pushes can still skip Vercel.** Outside a pull request, `vercel.json` → `ignoreCommand` skips
+  only when every file changed since the branch's last successful deployment (`VERCEL_GIT_PREVIOUS_SHA`) is Markdown
+  or under `docs/`. No earlier deployment, a missing base commit, an empty diff or any git error → it builds.
 - **TypeScript runs inside `next build` as well as in CI.** Kept on purpose: Vercel can finish a deployment before CI,
   and the 8 s check stops a broken build from ever being promoted.
 - **Known build-log messages:** "Update available 7.10.0 -> 8.0.0-rc" is Prisma advertising a pre-release (ignore
