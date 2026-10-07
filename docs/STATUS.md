@@ -5,7 +5,7 @@
 `docs/archive/STATUS-LOG.md`. The long history before 2026-10-02 is in
 `docs/archive/HANDOFF-2026-09-26-to-2026-10-02.md`.
 
-Last updated: 2026-10-06 · **F-part-1 is merged complete (#268, #269, #273). Batch G is in progress at G-1.** F-part-2 remains intentionally after G → T → V. Chris judged the earlier E2 public-site visual result insufficiently different, so the stronger Evergreen Signature redesign remains Batch V. O32 Google Workspace remains explicitly deferred until its app-side service-account/delegation, Drive OAuth, and live-walkthrough prerequisites are proven.
+Last updated: 2026-10-06 · **Batch G is in progress: G-1 (#275) and G-2 (#276) are open; G-3 session controls are implemented and awaiting exact-head CI proof.** F-part-1 is merged complete (#268, #269, #273). F-part-2 remains intentionally after G → T → V. O32 Google Workspace remains explicitly deferred until its prerequisites are proven.
 
 ## Batch table
 
@@ -21,7 +21,7 @@ Last updated: 2026-10-06 · **F-part-1 is merged complete (#268, #269, #273). Ba
 | E — Communications, reporting, growth, branding & accessibility | **MERGED** | #215–#218, #221, #222 | Durable messaging/automation ledgers, reconciliation, growth/reporting, Evergreen tokens, generated accessibility coverage; exact-head CI at merge gates | Live customer email/SMS/marketing remain OFF unless separately approved. Accessibility checks are engineering evidence, not certification. |
 | E2 — Visual redesign (owner desk, public site, customer portal; desktop, phone, dark) | **COMPLETE with #263** | E2 implementation stack through #263 | Shared UI/tokens, phone/desktop/dark route coverage, print cleanup, exact-head CI/preview gates | Public-site technical scope is complete, but Chris rejected the visual result as the final desired quality; a stronger public-site visual redesign remains explicitly deferred. |
 | F — Integrated verification, recovery, owner handoff & launch ledger | **F-PART-1 COMPLETE** | #268, #269, #273 merged | Repeatable-read DB restore drill; privacy-safe media recovery; stable capacity baselines 11.94 ms/op (50 properties/200 appliances) and 4.42 ms/op (5,000 invoices); recovery/provider/account/privacy runbooks audited | F-part-2 (scenarios, screenshots, owner guide, launch/review ledger) remains intentionally after G → T → V. |
-| G — Audit fixes and owner-account security | **IN PROGRESS — G-1 OPEN / G-2 IMPLEMENTED** | #275 G-1 open; `ai/chatgpt/batch-g2-two-factor-final` stacked | G-1 pre-PR proof green; G-2 Better Auth TOTP + 10 encrypted backup codes, server-side required-role enforcement, setup/login UI, owner Security policy, recovery script, CI Owner enrollment, and browser spec implemented | G-2 exact-head typecheck passed; earlier targeted policy/integration suite 14/14 passed. Browser proof and final exact-head lint/tests run in PR CI because the disposable sandbox expired after its local Chromium dependencies were unavailable. G-3 session controls follows. |
+| G — Audit fixes and owner-account security | **IN PROGRESS — G-1 #275 / G-2 #276 OPEN; G-3 IMPLEMENTED** | #275, #276 + `ai/chatgpt/batch-g3-session-control` | G-1 pre-PR audit/schema/closure proof green; G-2 static + targeted real-Postgres proof green with browser proof delegated to normal CI; G-3 typecheck/lint green locally and adds auditable own/staff session revocation + real-Postgres test | G-3 disposable local Postgres install was blocked by sandbox safety policy, so its integration test must prove green in exact-head GitHub CI before merge. |
 | T — Colorado sales and use tax | DESIGN APPROVED 2026-10-06 — not started | — | — | `docs/designs/BATCH-T.md`; launch blocker; CPA answers IN-33 … IN-38; Chris to obtain the Colorado GIS API key (IN-40). |
 | K — Books, expenses, P&L, accounting exports | DESIGN APPROVED 2026-10-06 — not started | — | — | `docs/designs/BATCH-K.md`; after T. |
 | V — "Evergreen Signature" visual redesign | DESIGN APPROVED 2026-10-06 — not started | — | — | `docs/designs/BATCH-V.md`; answers Chris's rejection of E2's public-site look; IN-42. |
@@ -77,6 +77,8 @@ rate, real public contact/launch details, and explicit live Stripe/email/SMS/lau
 authorization. None of those blocks Batch F engineering; live provider actions stay OFF.
 
 ## Session log (last two batches only)
+
+- **2026-10-06 — Batch G-3 session controls:** added current-user session listing, keep-current-session revoke-others, Owner-only Staff revoke-all with audit evidence, and the required real-Postgres integration test. Typecheck/lint are green. The disposable sandbox blocked PostgreSQL package installation, so the database test remains an explicit exact-head CI gate rather than being run against shared preview/production data.
 
 - **2026-10-06 — Batch G-2 implementation:** Better Auth 1.7.6 TOTP is wired with ten encrypted single-use backup codes; Owner/Admin are required by default, Staff is optional, Customer is never eligible; ordinary server actions fail closed before enrollment while `/desk/security/setup` and auth/recovery paths remain explicit exemptions. CI global setup enrolls the fresh Owner before saving auth state. Exact-head type generation passed; PR CI owns the final browser/static gate after the disposable sandbox expired.
 
