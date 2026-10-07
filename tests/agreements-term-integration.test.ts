@@ -10,6 +10,7 @@ import {
 } from "@/domains/agreements/term";
 import { sendForSignature, signAgreement } from "@/domains/agreements";
 import { buildTermsSnapshot, type TermsValues } from "@/domains/agreements/terms-snapshot";
+import { seedTaxReadyContext } from "./helpers/tax-ready";
 
 const url = new URL(process.env.DATABASE_URL ?? "postgresql://localhost/unset");
 const enabled =
@@ -58,6 +59,7 @@ describe.skipIf(!enabled)("fixed-term termination, renewal and auto-renew in dis
   const addressId = `term-address-${tag}`;
   const agreementIds: string[] = [];
   let originalSettings: Record<string, unknown> = {};
+  let taxReady: Awaited<ReturnType<typeof seedTaxReadyContext>> | null = null;
 
   async function newAgreement(overrides: Record<string, unknown> = {}) {
     const agreement = await prisma.rentalAgreement.create({
@@ -131,6 +133,7 @@ describe.skipIf(!enabled)("fixed-term termination, renewal and auto-renew in dis
     await prisma.serviceAddress.create({
       data: { id: addressId, customerId, line1: "1 Test St", city: "Greeley", zip: "80631" },
     });
+    taxReady = await seedTaxReadyContext(addressId);
   });
 
   afterAll(async () => {
@@ -146,6 +149,7 @@ describe.skipIf(!enabled)("fixed-term termination, renewal and auto-renew in dis
     await prisma.rentalLine.deleteMany({ where: { agreementId: { in: ids } } });
     await prisma.rentalAgreement.deleteMany({ where: { renewedFromAgreementId: { in: ids } } });
     await prisma.rentalAgreement.deleteMany({ where: { id: { in: ids } } });
+    await taxReady?.cleanup();
     await prisma.serviceAddress.deleteMany({ where: { id: addressId } });
     await prisma.customer.deleteMany({ where: { id: { in: [customerId, otherCustomerId] } } });
     await prisma.user.deleteMany({ where: { id: { in: [ownerId, staffId, customerUserId, otherUserId] } } });
