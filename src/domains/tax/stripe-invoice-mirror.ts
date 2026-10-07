@@ -105,6 +105,11 @@ export async function recordStripeInvoiceTaxEvidenceInTx(
         `Stripe Tax Rate ${rateId} is not linked to a TaxRateVersion; refusing to guess tax provenance.`,
       );
     }
+    if (tax.taxable_amount === null) {
+      throw new Error(
+        "Stripe invoice tax is missing its taxable amount; tax evidence cannot be recorded safely.",
+      );
+    }
     return {
       invoiceId: input.invoiceId,
       invoiceLineItemId: line.invoiceLineItemId,
