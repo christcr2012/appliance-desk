@@ -81,11 +81,15 @@ async function exemptionDataInTx(
   validateDates(input.validFrom, expiresOn);
   const jurisdictionIds = normalizeJurisdictionIds(input.jurisdictionIds);
   await assertJurisdictionsExist(tx, jurisdictionIds);
+  const certificatePhotoId = normalizeOptionalText(input.certificatePhotoId);
+  if (!certificatePhotoId) {
+    throw new Error("Add a private photo of the tax-exemption certificate before saving it.");
+  }
 
   return {
     reason: input.reason,
     certificateNumber: normalizeOptionalText(input.certificateNumber),
-    certificatePhotoId: normalizeOptionalText(input.certificatePhotoId),
+    certificatePhotoId,
     jurisdictionIds,
     validFrom: input.validFrom,
     expiresOn,
