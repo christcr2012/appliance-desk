@@ -18,6 +18,7 @@
 export type ExceptionCategory =
   | "BILLING_BLOCKED"
   | "TAX_DECISION_NEEDED"
+  | "TAX_MISMATCH"
   | "STALE_RESERVATION"
   | "PAST_DUE_INVOICE"
   | "OVERDUE_JOB"
@@ -82,6 +83,31 @@ export function taxDecisionNeededException(invoice: {
       invoice.problems.length > 0
         ? invoice.problems.join(" ")
         : "Review the tax setup for this bill, then recalculate tax.",
+    href: `/desk/billing/customer/${invoice.customerId}/invoice/${invoice.id}`,
+    since: invoice.createdAt,
+  };
+}
+
+export function taxMismatchException(invoice: {
+  id: string;
+  invoiceNumber: number;
+  customerId: string;
+  customerName: string;
+  problems: string[];
+  stripeTaxCents: number | null;
+  expectedTaxCents: number | null;
+  createdAt: Date;
+}): ExceptionItem {
+  const amounts =
+    invoice.stripeTaxCents !== null && invoice.expectedTaxCents !== null
+      ? ` Stripe charged ${(invoice.stripeTaxCents / 100).toFixed(2)}; the engine expected ${(invoice.expectedTaxCents / 100).toFixed(2)}.`
+      : "";
+  return {
+    category: "TAX_MISMATCH",
+    severity: "high",
+    title: `Stripe charged different tax than expected on Bill #${invoice.invoiceNumber}`,
+    detail:
+      `${amounts}${invoice.problems.length > 0 ? ` ${invoice.problems.join(" ")}` : ""}`.trim(),
     href: `/desk/billing/customer/${invoice.customerId}/invoice/${invoice.id}`,
     since: invoice.createdAt,
   };
