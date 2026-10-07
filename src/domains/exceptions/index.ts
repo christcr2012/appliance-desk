@@ -13,6 +13,8 @@ import {
   earlyEndingNotDoneException,
   itemNotDeliveredException,
   invoiceTaxBlockedException,
+  stripeTaxMismatchException,
+  stripeTaxUnverifiedException,
   returnedEarlyException,
   EARLY_RETURN_DEFAULTS_REVIEW_DAYS,
   subscriptionUpdatePendingException,
@@ -150,6 +152,13 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     agreementId: { not: null },
     lineItems: { some: { kind: { in: ["LATE_RETURN", "EARLY_TERMINATION_FEE", "RENTAL"] } } },
   } satisfies Prisma.InvoiceWhereInput;
+  const stripeTaxReviewAuditWhere = {
+    action: {
+      in: ["billing.stripe_tax_mismatch", "billing.stripe_tax_unverified"],
+    },
+    entityType: "Invoice",
+    entityId: { not: null },
+  } satisfies Prisma.AuditLogWhereInput;
   const staleWhere = {
     status: { in: ["DRAFT", "AWAITING_SIGNATURE"] },
     reservationExpiresAt: { lt: now },
@@ -210,6 +219,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
   const [
     billingBlockedAgreements,
     taxBlockedInvoices,
+    stripeTaxReviewAudits,
     staleReservations,
     pastDueInvoices,
     overdueJobs,
@@ -255,6 +265,22 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
             take,
           }),
           () => prisma.invoice.count({ where: taxBlockedInvoiceWhere }),
+        )
+      : empty<never>(),
+    canViewFinance
+      ? capped(
+          (take) => prisma.auditLog.findMany({
+            where: stripeTaxReviewAuditWhere,
+            select: {
+              action: true,
+              entityId: true,
+              newValue: true,
+              createdAt: true,
+            },
+            orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+            take,
+          }),
+          () => prisma.auditLog.count({ where: stripeTaxReviewAuditWhere }),
         )
       : empty<never>(),
     capped(
@@ -432,6 +458,28 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     taxProblemsByInvoice.set(audit.entityId, { problems, since: audit.createdAt });
   }
 
+  const stripeTaxReviewInvoiceIds = [
+    ...new Set(
+      stripeTaxReviewAudits.rows.flatMap((audit) =>
+        typeof audit.entityId === "string" ? [audit.entityId] : [],
+      ),
+    ),
+  ];
+  const stripeTaxReviewInvoices = stripeTaxReviewInvoiceIds.length
+    ? await prisma.invoice.findMany({
+        where: { id: { in: stripeTaxReviewInvoiceIds } },
+        select: {
+          id: true,
+          invoiceNumber: true,
+          customerId: true,
+          customer: { select: { user: { select: { name: true, email: true } } } },
+        },
+      })
+    : [];
+  const stripeTaxReviewInvoiceById = new Map(
+    stripeTaxReviewInvoices.map((invoice) => [invoice.id, invoice]),
+  );
+
   const pendingItems = pendingLineReductions.rows.length
     ? await prisma.pendingDelivery.findMany({
         where: {
@@ -503,6 +551,52 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
           customerName: customerDisplayName(a.customer),
         }),
       ),
+    ...stripeTaxReviewAudits.rows.flatMap((audit) => {
+      if (!audit.entityId) return [];
+      const invoice = stripeTaxReviewInvoiceById.get(audit.entityId);
+      if (!invoice) return [];
+
+      if (audit.action === "billing.stripe_tax_unverified") {
+        const value = audit.newValue as { problems?: unknown } | null;
+        const problems = Array.isArray(value?.problems)
+          ? value.problems.filter(
+              (problem): problem is string => typeof problem === "string",
+            )
+          : [];
+        return [
+          stripeTaxUnverifiedException({
+            id: invoice.id,
+            invoiceNumber: invoice.invoiceNumber,
+            customerId: invoice.customerId,
+            customerName: customerDisplayName(invoice.customer),
+            since: audit.createdAt,
+            problems,
+          }),
+        ];
+      }
+
+      const value = audit.newValue as {
+        stripeTaxCents?: unknown;
+        engineTaxCents?: unknown;
+      } | null;
+      if (
+        typeof value?.stripeTaxCents !== "number" ||
+        typeof value.engineTaxCents !== "number"
+      ) {
+        return [];
+      }
+      return [
+        stripeTaxMismatchException({
+          id: invoice.id,
+          invoiceNumber: invoice.invoiceNumber,
+          customerId: invoice.customerId,
+          customerName: customerDisplayName(invoice.customer),
+          since: audit.createdAt,
+          stripeTaxCents: value.stripeTaxCents,
+          engineTaxCents: value.engineTaxCents,
+        }),
+      ];
+    }),
     ...taxBlockedInvoices.rows.map((invoice) => {
       const taxProblem = taxProblemsByInvoice.get(invoice.id);
       return invoiceTaxBlockedException({
@@ -599,10 +693,22 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     ),
   ];
 
+  const salesTaxItems = items
+    .filter((item) => item.category === "SALES_TAX")
+    .sort((left, right) => left.since.getTime() - right.since.getTime());
+  const cappedSalesTaxItems = salesTaxItems.slice(0, EXCEPTION_CATEGORY_CAP);
+  const visibleItems = [
+    ...items.filter((item) => item.category !== "SALES_TAX"),
+    ...cappedSalesTaxItems,
+  ];
+
   const truncated: ExceptionTruncation[] = (
     [
       ["BILLING_BLOCKED", billingBlockedAgreements],
-      ["SALES_TAX", taxBlockedInvoices],
+      ["SALES_TAX", {
+        rows: cappedSalesTaxItems,
+        total: taxBlockedInvoices.total + stripeTaxReviewAudits.total,
+      }],
       ["STALE_RESERVATION", staleReservations],
       ["PAST_DUE_INVOICE", pastDueInvoices],
       ["OVERDUE_JOB", overdueJobs],
@@ -626,7 +732,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     .filter(([, c]) => c.total > c.rows.length)
     .map(([category, c]) => ({ category, total: c.total, shown: c.rows.length }));
 
-  return { items: sortExceptions(items), truncated };
+  return { items: sortExceptions(visibleItems), truncated };
 }
 
 export async function getExceptions(): Promise<ExceptionItem[]> {
@@ -738,5 +844,3 @@ export async function getTodaysJobs(now = new Date()) {
     orderBy: [{ scheduledAt: "asc" }, { id: "asc" }],
   });
 }
-
-

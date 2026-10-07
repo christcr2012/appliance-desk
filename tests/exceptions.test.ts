@@ -8,6 +8,8 @@ import {
   pastDueInvoiceException,
   sortExceptions,
   staleReservationException,
+  stripeTaxMismatchException,
+  stripeTaxUnverifiedException,
   uninspectedReturnException,
   unreviewedMaintenanceRequestException,
   type ExceptionItem,
@@ -28,6 +30,41 @@ describe("exception builders", () => {
     expect(item.severity).toBe("high");
     expect(item.detail).toBe("Couldn't start billing: Your card was declined.");
     expect(item.href).toBe("/desk/agreements/agr-1");
+  });
+
+  it("stripeTaxMismatchException keeps the mismatch in the shared Sales tax category and links to the bill", () => {
+    const item = stripeTaxMismatchException({
+      id: "inv-tax-1",
+      invoiceNumber: 42,
+      customerId: "cust-tax-1",
+      customerName: "Jane Doe",
+      since: new Date("2026-10-07"),
+      stripeTaxCents: 291,
+      engineTaxCents: 292,
+    });
+    expect(item.category).toBe("SALES_TAX");
+    expect(item.severity).toBe("high");
+    expect(item.title).toContain("Bill #42");
+    expect(item.detail).toContain("291");
+    expect(item.detail).toContain("292");
+    expect(item.href).toBe("/desk/billing/customer/cust-tax-1/invoice/inv-tax-1");
+  });
+
+  it("stripeTaxUnverifiedException explains that Stripe money recorded but tax needs review", () => {
+    const item = stripeTaxUnverifiedException({
+      id: "inv-tax-2",
+      invoiceNumber: 43,
+      customerId: "cust-tax-1",
+      customerName: "Jane Doe",
+      since: new Date("2026-10-07"),
+      problems: ["Tax setup was not ready for this invoice date."],
+    });
+    expect(item.category).toBe("SALES_TAX");
+    expect(item.severity).toBe("high");
+    expect(item.title).toContain("Bill #43");
+    expect(item.title).toContain("could not be verified");
+    expect(item.detail).toContain("not ready");
+    expect(item.href).toBe("/desk/billing/customer/cust-tax-1/invoice/inv-tax-2");
   });
 
   it("staleReservationException links to the draft agreement", () => {

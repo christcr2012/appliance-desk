@@ -47,12 +47,37 @@ are mandatory:
    `npx vitest run tests/x.test.ts -t "name" 2>&1 | tail -80`.
 6. **Two strikes.** If the same command fails or hangs twice, do not run it a third time: change approach, or write the
    blocker in `docs/STATUS.md` and move to the next work unit.
-7. **Explore budget: 10 reads/searches, then edit.** The design or PR card is the spec — you are not auditing the
-   codebase. After about 10 reads or searches without an edit, stop exploring, write down what you know, and make the
-   smallest next edit. If the spec truly does not say, that is a stop-and-ask point, not a reason to keep searching.
+7. **Explore budget: 3 consecutive reads/searches, then edit or stop.** The design or PR card is the spec — you are
+   not auditing the codebase. After 3 reads/searches without a repository write, you must do exactly one of these:
+   make the smallest justified edit, state the concrete blocker and return control, or abandon that tangent and return
+   to the active work unit. Never start a fourth exploratory read just because another question appeared.
 8. **Small checkpoints.** One work unit at a time; commit after each (local commit, push at the end), so a stall never
    loses work. Before a long step, note in one line what you are about to do.
 9. **External waits** follow the anti-stall rule below: check once, act, move on, never watch.
+10. **CI/review gate loop — validated on PRs #283–#285 (2026-10-07), tightened after the next observed stall.**
+    Check the exact PR head once. If a gate fails, fetch the job list once, read only the failed job/review evidence,
+    make the smallest targeted patch, then verify the new exact head once. While a gate is still running, you may advance
+    **one** genuinely independent work unit on its own branch. That side work gets the same 3-read budget and must produce
+    a concrete repository write before any further exploration. It may not spawn another side task. If it cannot make a
+    justified edit within that budget, stop the side task and return control instead of exploring further. Never replace
+    this loop with broad repo rescans, repeated status checks, sleep loops or watching live logs. The two-strikes rule
+    still applies to the targeted fix itself.
+11. **No nested detours.** Keep one active implementation objective. A CI-wait side task is the only allowed second
+    objective, and it cannot branch into planning another PR, auditing a neighboring subsystem, researching a future
+    batch, or “mapping” more work. Finish/write the current objective or stop.
+12. **Never end on a read.** A read/search/log inspection is not progress by itself. After the final allowed read, the
+    next action must be a repository write, a targeted test/verification of a write already made, or a plain-English
+    blocker/status returned to Chris. Do not go silent after gathering information.
+13. **Progress checkpoint every 6 tool actions.** Within any block of roughly 6 tool actions there must be a durable
+    result: code/docs committed to the branch, a targeted failing gate repaired, a PR opened/merged, or an explicit
+    blocker returned to Chris. If none exists, stop the current approach immediately rather than continuing to explore.
+14. **Keep connector calls small.** One external-tool call should do one bounded thing. Do not batch several large
+    file reads, long logs, or unrelated GitHub operations into one connector script. Prefer one file/one failed job at a
+    time; at most 2 small reads when they are tightly related. Request narrow line ranges and emit only the excerpt needed.
+    If a connector call does not return, abandon that exact call shape instead of retrying it unchanged; split it smaller.
+15. **Do not hide future work inside one script.** Connector orchestration may combine a few trivial dependent writes,
+    but never encode the next several implementation steps into one long loop. Each returned tool result must leave a
+    clear next action so the session can continue even if the following call fails.
 
 ## What this is
 
