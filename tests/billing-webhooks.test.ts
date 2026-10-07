@@ -275,7 +275,7 @@ describe("processStripeWebhookEvent — checkout.session.completed", () => {
 
     const invoice = await prisma.invoice.findUnique({
       where: { stripeInvoiceId: "in_fake_1" },
-      include: { lineItems: true, payments: true },
+      include: { lineItems: true, payments: true, taxLines: true },
     });
     expect(invoice).not.toBeNull();
     expect(invoice!.status).toBe("PAID");
@@ -306,6 +306,18 @@ describe("processStripeWebhookEvent — checkout.session.completed", () => {
     expect(rentalLine?.rentalLineId).toBe(lineId);
     expect(invoice!.lineItems.find((item) => item.kind === "DEPOSIT")?.amountCents).toBe(15000);
     expect(invoice!.lineItems.find((item) => item.kind === "TAX")?.amountCents).toBe(292);
+    expect(invoice!.taxLines).toEqual([
+      expect.objectContaining({
+        invoiceLineItemId: rentalLine?.id,
+        jurisdictionId: taxFixture.jurisdictionId,
+        rateVersionId: taxFixture.rateVersionId,
+        category: "RENTAL",
+        taxableCents: 4000,
+        exemptCents: 0,
+        taxCents: 292,
+        source: "STRIPE",
+      }),
+    ]);
     expect(invoice!.payments[0].status).toBe("succeeded");
     expect(invoice!.payments[0].method).toBe("card");
 
@@ -356,11 +368,22 @@ describe("processStripeWebhookEvent — invoice.payment_failed", () => {
 
     const invoice = await prisma.invoice.findUnique({
       where: { stripeInvoiceId: "in_fake_failed_1" },
-      include: { payments: true },
+      include: { payments: true, lineItems: true, taxLines: true },
     });
     expect(invoice?.status).toBe("DELINQUENT");
     expect(invoice?.payments[0]?.status).toBe("failed");
     expect(invoice?.payments[0]?.receiptId).toBeNull();
+    expect(invoice?.lineItems.filter((item) => item.kind === "RENTAL")).toHaveLength(1);
+    expect(invoice?.lineItems.filter((item) => item.kind === "TAX")).toHaveLength(1);
+    expect(invoice?.taxLines).toEqual([
+      expect.objectContaining({
+        jurisdictionId: taxFixture.jurisdictionId,
+        rateVersionId: taxFixture.rateVersionId,
+        taxableCents: 4000,
+        taxCents: 292,
+        source: "STRIPE",
+      }),
+    ]);
     expect(await prisma.receipt.count({ where: { customerId } })).toBe(receiptsBefore);
     expect(await prisma.deposit.count({ where: { agreementId } })).toBe(1);
   });
@@ -404,11 +427,13 @@ describe("processStripeWebhookEvent — invoice.payment_failed", () => {
 
     const invoice = await prisma.invoice.findUnique({
       where: { stripeInvoiceId: "in_fake_failed_1" },
-      include: { payments: true, lineItems: true },
+      include: { payments: true, lineItems: true, taxLines: true },
     });
     expect(invoice?.status).toBe("PAID");
     expect(invoice?.amountPaidCents).toBe(4292);
-    expect(invoice?.lineItems.length).toBeGreaterThan(0);
+    expect(invoice?.lineItems.filter((item) => item.kind === "RENTAL")).toHaveLength(1);
+    expect(invoice?.lineItems.filter((item) => item.kind === "TAX")).toHaveLength(1);
+    expect(invoice?.taxLines).toHaveLength(1);
     expect(invoice?.payments).toHaveLength(2);
     expect(invoice?.payments.some((payment) => payment.status === "failed")).toBe(true);
     expect(invoice?.payments.some((payment) => payment.status === "succeeded")).toBe(true);
