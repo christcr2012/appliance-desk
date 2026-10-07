@@ -5,7 +5,6 @@ import {
   type EditableSettingsSection,
 } from "./section-config";
 import { dollarsToCents } from "@/domains/pricing/money";
-import { parseTaxRatePercent } from "@/domains/billing/tax";
 import { profileExtrasUpdate } from "./profile-extras";
 export function settingsSectionUpdate(
   section: string,
@@ -51,7 +50,6 @@ export function settingsSectionUpdate(
     twelveMonthPrepaySetDollars,
     twelveMonthPrepaySingleDollars,
     referralRewardDollars,
-    taxRatePercentText,
     ...rest
   } = parsed.data;
   const update: BusinessSettingsUpdate = { ...rest };
@@ -65,9 +63,6 @@ export function settingsSectionUpdate(
       .split(",")
       .map((v) => v.trim())
       .filter(Boolean);
-  // The owner types an ordinary percentage; it is stored exactly as thousandths of a percent.
-  if (taxRatePercentText !== undefined)
-    update.taxRateMilliPercent = parseTaxRatePercent(taxRatePercentText);
   if (serviceAreaCities !== undefined)
     update.serviceAreaCities = list(serviceAreaCities);
   if (serviceAreaZips !== undefined)
