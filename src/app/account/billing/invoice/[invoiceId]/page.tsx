@@ -55,6 +55,15 @@ export default async function AccountInvoicePage({
         </div>
       </div>
 
+      {invoice.isLocalInvoice && invoice.balanceCents > 0 && (
+        <div className="mt-4 rounded-xl border border-line bg-surface-subtle p-4 text-sm text-ink print:hidden">
+          <p className="font-semibold">Pay as arranged with Robinson Appliance Rentals.</p>
+          <p className="mt-1 text-ink-soft">
+            This invoice is recorded in Appliance Desk, but card payment for local invoices is not enabled yet.
+          </p>
+        </div>
+      )}
+
       <div className="mt-4 print:mt-0">
         <InvoiceDocument invoice={invoice} />
       </div>
