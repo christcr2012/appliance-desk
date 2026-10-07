@@ -39,6 +39,7 @@ const DEFAULT_SETTINGS = {
   referralRewardCents: 2500,
   draftReservationHoldDays: 7,
   customerEmailEnabled: false,
+  twoFactorRequiredRoles: ["OWNER", "ADMIN"] as unknown,
   autoRenewEnabled: false,
   inspectionChecklist: [] as unknown,
   // Batch B policy fields: null means the owner has not decided yet.

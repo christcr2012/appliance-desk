@@ -24,7 +24,15 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  return NextResponse.next();
+  // Server layouts may need the current pathname, but client-supplied
+  // pathname headers are not trusted. Proxy overwrites it on every protected
+  // request so /desk/security/setup can be the one UI-only enrollment
+  // exemption without creating a spoofable server-action bypass.
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-appliance-pathname", request.nextUrl.pathname);
+  return NextResponse.next({
+    request: { headers: requestHeaders },
+  });
 }
 
 export const config = {

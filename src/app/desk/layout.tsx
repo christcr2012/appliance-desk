@@ -1,4 +1,8 @@
-import { requireRole } from "@/lib/session";
+import { headers } from "next/headers";
+import {
+  enforceTwoFactorForDeskPage,
+  requireRoleForTwoFactorSetup,
+} from "@/lib/session";
 import { AppShell } from "@/components/ui";
 import { IdleLogout } from "@/components/idle-logout";
 import { deskNavigation } from "@/lib/desk-navigation";
@@ -10,8 +14,12 @@ export default async function DeskLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const session = await requireRole("OWNER", "ADMIN", "STAFF");
-  const role = (session.user as { role?: string }).role ?? "";
+  const session = await requireRoleForTwoFactorSetup("OWNER", "ADMIN", "STAFF");
+  const role = session.user.role;
+  const pathname = (await headers()).get("x-appliance-pathname");
+  if (pathname !== "/desk/security/setup") {
+    await enforceTwoFactorForDeskPage(session);
+  }
   const groups = deskNavigation(role);
   return (
     <>
