@@ -33,6 +33,10 @@
     {
       "path": "/api/cron/estimate-follow-ups",
       "schedule": "0 16 * * *"
+    },
+    {
+      "path": "/api/cron/tax-address-recheck",
+      "schedule": "20 13 * * *"
     }
   ]
 }
