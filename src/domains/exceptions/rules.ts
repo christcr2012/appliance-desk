@@ -17,6 +17,7 @@
 
 export type ExceptionCategory =
   | "BILLING_BLOCKED"
+  | "TAX_DECISION_NEEDED"
   | "STALE_RESERVATION"
   | "PAST_DUE_INVOICE"
   | "OVERDUE_JOB"
@@ -64,6 +65,27 @@ export const EARLY_RETURN_DEFAULTS_REVIEW_DAYS = 14;
 // appliance with no logged maintenance visit — not a manufacturer service
 // schedule, since none is tracked per appliance type today.
 export const APPLIANCE_MAINTENANCE_DUE_DAYS = 180;
+
+export function taxDecisionNeededException(invoice: {
+  id: string;
+  invoiceNumber: number;
+  customerId: string;
+  customerName: string;
+  problems: string[];
+  createdAt: Date;
+}): ExceptionItem {
+  return {
+    category: "TAX_DECISION_NEEDED",
+    severity: "high",
+    title: `Bill #${invoice.invoiceNumber} needs a tax decision before it can be sent`,
+    detail:
+      invoice.problems.length > 0
+        ? invoice.problems.join(" ")
+        : "Review the tax setup for this bill, then recalculate tax.",
+    href: `/desk/billing/customer/${invoice.customerId}/invoice/${invoice.id}`,
+    since: invoice.createdAt,
+  };
+}
 
 export function billingBlockedException(agreement: {
   id: string;
