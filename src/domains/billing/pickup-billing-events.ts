@@ -623,7 +623,7 @@ export async function removeUndeliveredItem(userId: string, pendingDeliveryId: s
       if (owedCents === 0) {
         note = `${item.label}: taken off the agreement before anything was billed for it.`;
       } else {
-        note = `${item.label}: taken off the agreement. Billed for ${periods} month(s), ${formatCents(owedCents)} with tax.`;
+        note = `${item.label}: taken off the agreement. Historical billed amount to reverse: ${formatCents(owedCents)} including recorded tax.`;
         if (refundedCents > 0) note += ` ${formatCents(refundedCents)} is being refunded to the card or bank it was paid with.`;
         if (refundByHandCents > 0) note += ` ${formatCents(refundByHandCents)} was paid another way, so you pay that back by hand.`;
         if (remaining > 0) note += ` ${formatCents(remaining)} was billed but never paid, so there is nothing to refund for it.`;
