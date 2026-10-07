@@ -852,6 +852,7 @@ model TaxFilingPeriod {
   dueOnEditedByUserId String?    // set when the owner overrides dueOn (audit row too)
   zeroReturn          Boolean    @default(false) // true when filed with no sales and no tax
   confirmationPhotoId String?    // optional screenshot of the SUTS confirmation (existing private photo store)
+  entryProgress       Json       @default("{}") // "Entered" ticks on the guided page (11.11); convenience only
 }
 ```
 
