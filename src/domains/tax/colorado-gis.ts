@@ -55,6 +55,15 @@ export function getColoradoRateSource(): ColoradoRateSource {
   return sourceForTests ?? manualOnlySource;
 }
 
+/**
+ * Scheduled re-checks must never treat the manual fallback as an automatic
+ * provider. Production remains false until the authenticated SUTS contract is
+ * implemented; injected test sources are automatic by definition.
+ */
+export function hasAutomaticColoradoRateSource(): boolean {
+  return getColoradoRateSource() !== manualOnlySource;
+}
+
 /** Test seam only. Production callers always receive the configured source. */
 export function __setColoradoRateSourceForTests(
   source: ColoradoRateSource | null,

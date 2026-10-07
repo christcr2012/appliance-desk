@@ -1,4 +1,5 @@
-import { businessDayBounds } from "@/lib/business-date";
+import { businessDateKey, businessDayBounds } from "@/lib/business-date";
+import { TAX_ADDRESS_CHANGE_REVIEW_NOTE } from "@/domains/tax/address-recheck";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
 import type { Prisma } from "@prisma/client";
@@ -18,6 +19,8 @@ import {
   taxExemptionExpiryException,
   taxExemptionExpiryWindow,
   taxExemptionWarningSince,
+  taxAddressChangedException,
+  taxRateReviewReminderException,
   returnedEarlyException,
   EARLY_RETURN_DEFAULTS_REVIEW_DAYS,
   subscriptionUpdatePendingException,
@@ -170,6 +173,12 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
       lt: exemptionExpiryWindow.throughExclusive,
     },
   } satisfies Prisma.CustomerTaxExemptionWhereInput;
+  const taxAddressChangeWhere = {
+    isCurrent: true,
+    status: "NEEDS_REVIEW",
+    serviceAddressId: { not: null },
+    reviewNote: TAX_ADDRESS_CHANGE_REVIEW_NOTE,
+  } satisfies Prisma.AddressTaxLocationWhereInput;
   const staleWhere = {
     status: { in: ["DRAFT", "AWAITING_SIGNATURE"] },
     reservationExpiresAt: { lt: now },
@@ -232,6 +241,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     taxBlockedInvoices,
     stripeTaxReviewAudits,
     taxExemptionsExpiring,
+    taxAddressChanges,
     staleReservations,
     pastDueInvoices,
     overdueJobs,
@@ -316,6 +326,33 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
             prisma.customerTaxExemption.count({
               where: taxExemptionExpiryWhere,
             }),
+        )
+      : empty<never>(),
+    canViewFinance
+      ? capped(
+          (take) =>
+            prisma.addressTaxLocation.findMany({
+              where: taxAddressChangeWhere,
+              select: {
+                lookedUpAt: true,
+                serviceAddress: {
+                  select: {
+                    line1: true,
+                    city: true,
+                    customerId: true,
+                    customer: {
+                      select: {
+                        user: { select: { name: true, email: true } },
+                      },
+                    },
+                  },
+                },
+              },
+              orderBy: [{ lookedUpAt: "asc" }, { id: "asc" }],
+              take,
+            }),
+          () =>
+            prisma.addressTaxLocation.count({ where: taxAddressChangeWhere }),
         )
       : empty<never>(),
     capped(
@@ -632,6 +669,33 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
         }),
       ];
     }),
+    ...(canViewFinance && businessDateKey(now).endsWith("-05-15")
+      ? [
+          taxRateReviewReminderException({
+            nextEffectiveDateLabel: "July 1",
+            since: businessDayBounds(now).start,
+          }),
+        ]
+      : canViewFinance && businessDateKey(now).endsWith("-11-15")
+        ? [
+            taxRateReviewReminderException({
+              nextEffectiveDateLabel: "January 1",
+              since: businessDayBounds(now).start,
+            }),
+          ]
+        : []),
+    ...taxAddressChanges.rows.flatMap((location) => {
+      const address = location.serviceAddress;
+      if (!address) return [];
+      return [
+        taxAddressChangedException({
+          customerId: address.customerId,
+          customerName: customerDisplayName(address.customer),
+          addressLabel: `${address.line1}, ${address.city}`,
+          since: location.lookedUpAt,
+        }),
+      ];
+    }),
     ...taxExemptionsExpiring.rows
       .filter(
         (exemption): exemption is typeof exemption & { expiresOn: Date } =>
@@ -758,7 +822,13 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
         total:
           taxBlockedInvoices.total +
           stripeTaxReviewAudits.total +
-          taxExemptionsExpiring.total,
+          taxExemptionsExpiring.total +
+          taxAddressChanges.total +
+          (canViewFinance &&
+          (businessDateKey(now).endsWith("-05-15") ||
+            businessDateKey(now).endsWith("-11-15"))
+            ? 1
+            : 0),
       }],
       ["STALE_RESERVATION", staleReservations],
       ["PAST_DUE_INVOICE", pastDueInvoices],

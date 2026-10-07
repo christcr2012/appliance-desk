@@ -162,6 +162,37 @@ export function taxExemptionExpiryException(exemption: {
   };
 }
 
+export function taxAddressChangedException(address: {
+  customerId: string;
+  customerName: string;
+  addressLabel: string;
+  since: Date;
+}): ExceptionItem {
+  return {
+    category: "SALES_TAX",
+    severity: "high",
+    title: `Tax areas changed for ${address.customerName}`,
+    detail: `${address.addressLabel} now resolves to different tax jurisdictions. Review and confirm the address before relying on the new tax areas.`,
+    href: `/desk/customers/${address.customerId}?tab=properties`,
+    since: address.since,
+  };
+}
+
+export function taxRateReviewReminderException(input: {
+  nextEffectiveDateLabel: "January 1" | "July 1";
+  since: Date;
+}): ExceptionItem {
+  return {
+    category: "SALES_TAX",
+    severity: "medium",
+    title: `Check Colorado tax-rate changes for ${input.nextEffectiveDateLabel}`,
+    detail:
+      "Review Colorado's local rate-change list and enter any new rates that affect the areas you serve.",
+    href: "/desk/settings",
+    since: input.since,
+  };
+}
+
 export function billingBlockedException(agreement: {
   id: string;
   billingBlockedReason: string;
