@@ -45,6 +45,7 @@ describe.skipIf(!enabled)("pickup billing end: late returns, waiver and closing 
   const applianceIds: string[] = [];
   const jobIds: string[] = [];
   const octEnd = new Date("2025-11-01T05:59:59Z"); // the end of Colorado's October 31, 2025
+  let taxFixture: Awaited<ReturnType<typeof seedTaxReadyContext>>;
 
   async function rental(opts: { endDate?: Date | null; termMonths?: number | null; terminationEffectiveOn?: Date; units?: number } = {}) {
     const agreementId = `pb-ag-${agreementIds.length}-${tag}`;
