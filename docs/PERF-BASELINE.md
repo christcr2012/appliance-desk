@@ -17,13 +17,13 @@ Each F measurement gets one warm-up and five samples; the committed value is the
 
 | Metric key | Baseline | Fixture / operation |
 |---|---:|---|
-| f-large-account-owner-read | 1000 ms | Bootstrap ceiling for first F1-c CI measurement; **replace with the first green runner median before merge** |
-| f-large-invoices-billing-page | 1000 ms | Bootstrap ceiling for first F1-c CI measurement; **replace with the first green runner median before merge** |
+| f-large-account-owner-read | 13.5 ms | 50 properties / 200 active appliances; owner property workspace + active-equipment query |
+| f-large-invoices-billing-page | 3.3 ms | 5,000 invoices; billing count + first 50-row page |
 
 The two 1000 ms values above are intentionally temporary first-run ceilings, not claimed measurements. **F1-c must not merge with them.** After its first green `Performance Baselines` run, replace them with that exact runner's printed medians and record the tested commit/run below. Subsequent runs enforce the +20% rule against those measured values.
 
 ## Baseline evidence
 
-Pending the first green F1-c performance run. Record: commit SHA, workflow run ID, both medians, PostgreSQL 17 / Ubuntu 24.04 / Node 24.
+Baseline source: commit `ee1370a`, workflow run `37548514814`, job `112558203896`, PostgreSQL 17 / Ubuntu 24.04 / Node 24. The run passed 4 perf files / 6 tests in 6.33 s. Measured medians: `f-large-account-owner-read` 13.5 ms; `f-large-invoices-billing-page` 3.3 ms.
 
 Do not copy timings from a developer laptop or production. If a regression appears, inspect the query/query-plan and fixture first; do not add an index simply to silence the guard.
