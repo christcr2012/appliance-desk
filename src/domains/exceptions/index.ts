@@ -1,4 +1,5 @@
-import { businessDayBounds } from "@/lib/business-date";
+import { businessDateKey, businessDayBounds } from "@/lib/business-date";
+import { TAX_ADDRESS_CHANGE_REVIEW_NOTE } from "@/domains/tax/address-recheck";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
 import type { Prisma } from "@prisma/client";
@@ -16,6 +17,8 @@ import {
   stripeTaxMismatchException,
   stripeTaxUnverifiedException,
   taxExemptionExpiryException,
+  taxAddressChangedException,
+  taxRateReviewReminderException,
   returnedEarlyException,
   EARLY_RETURN_DEFAULTS_REVIEW_DAYS,
   subscriptionUpdatePendingException,
@@ -167,6 +170,12 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
       lte: addDays(now, 30),
     },
   } satisfies Prisma.CustomerTaxExemptionWhereInput;
+  const taxAddressChangeWhere = {
+    isCurrent: true,
+    status: "NEEDS_REVIEW",
+    serviceAddressId: { not: null },
+    reviewNote: TAX_ADDRESS_CHANGE_REVIEW_NOTE,
+  } satisfies Prisma.AddressTaxLocationWhereInput;
   const staleWhere = {
     status: { in: ["DRAFT", "AWAITING_SIGNATURE"] },
     reservationExpiresAt: { lt: now },
@@ -229,6 +238,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     taxBlockedInvoices,
     stripeTaxReviewAudits,
     taxExemptionsExpiring,
+    taxAddressChanges,
     staleReservations,
     pastDueInvoices,
     overdueJobs,
@@ -312,6 +322,35 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
           () =>
             prisma.customerTaxExemption.count({
               where: taxExemptionExpiryWhere,
+            }),
+        )
+      : empty<never>(),
+    canViewFinance
+      ? capped(
+          (take) => prisma.addressTaxLocation.findMany({
+            where: taxAddressChangeWhere,
+            select: {
+              lookedUpAt: true,
+              serviceAddress: {
+                select: {
+                  id: true,
+                  line1: true,
+                  city: true,
+                  customerId: true,
+                  customer: {
+                    select: {
+                      user: { select: { name: true, email: true } },
+                    },
+                  },
+                },
+              },
+            },
+            orderBy: [{ lookedUpAt: "asc" }, { id: "asc" }],
+            take,
+          }),
+          () =>
+            prisma.addressTaxLocation.count({
+              where: taxAddressChangeWhere,
             }),
         )
       : empty<never>(),
@@ -629,6 +668,33 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
         }),
       ];
     }),
+    ...(canViewFinance && businessDateKey(now).endsWith("-05-15")
+      ? [
+          taxRateReviewReminderException({
+            nextEffectiveDateLabel: "July 1",
+            since: businessDayBounds(now).start,
+          }),
+        ]
+      : canViewFinance && businessDateKey(now).endsWith("-11-15")
+        ? [
+            taxRateReviewReminderException({
+              nextEffectiveDateLabel: "January 1",
+              since: businessDayBounds(now).start,
+            }),
+          ]
+        : []),
+    ...taxAddressChanges.rows.flatMap((location) => {
+      const address = location.serviceAddress;
+      if (!address) return [];
+      return [
+        taxAddressChangedException({
+          customerId: address.customerId,
+          customerName: customerDisplayName(address.customer),
+          addressLabel: `${address.line1}, ${address.city}`,
+          since: location.lookedUpAt,
+        }),
+      ];
+    }),
     ...taxExemptionsExpiring.rows
       .filter(
         (exemption): exemption is typeof exemption & { expiresOn: Date } =>
@@ -755,7 +821,12 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
         total:
           taxBlockedInvoices.total +
           stripeTaxReviewAudits.total +
-          taxExemptionsExpiring.total,
+          taxExemptionsExpiring.total +
+          taxAddressChanges.total +
+          (businessDateKey(now).endsWith("-05-15") ||
+          businessDateKey(now).endsWith("-11-15")
+            ? 1
+            : 0),
       }],
       ["STALE_RESERVATION", staleReservations],
       ["PAST_DUE_INVOICE", pastDueInvoices],
@@ -818,31 +889,3 @@ async function termExpiredAgreements(now: Date): Promise<Capped<TermExpiredRow>>
   if (rows.length === 0) return { rows: [], total };
   const names = await prisma.rentalAgreement.findMany({
     where: { id: { in: rows.map((r) => r.id) } },
-    select: { id: true, customer: { select: { user: { select: { name: true, email: true } } } } },
-  });
-  const nameById = new Map(names.map((n) => [n.id, customerDisplayName(n.customer)]));
-  return {
-    rows: rows.map((r) => ({
-      id: r.id,
-      termMonths: r.termMonths,
-      termEnd: r.termEnd,
-      customerName: nameById.get(r.id) ?? "A customer",
-    })),
-    total,
-  };
-}
-
-type MaintenanceDueRow = { id: string; assetNumber: string; typeName: string; since: Date };
-
-/**
- * Rented appliances with no completed maintenance visit (or none since they went into service) for
- * longer than APPLIANCE_MAINTENANCE_DUE_DAYS, oldest first. The last visit is found in the database
- * (latest completed maintenance visit, else purchase date, else the day it was added), not by loading
- * every visit of every rented appliance.
- */
-async function maintenanceDueAppliances(cutoffText: string): Promise<Capped<MaintenanceDueRow>> {
-  const rows = await prisma.$queryRaw<MaintenanceDueRow[]>`
-    SELECT a."id", a."assetNumber", t."name" AS "typeName",
-           COALESCE(m."lastDone", a."purchaseDate", a."createdAt") AS "since"
-    FROM "Appliance" a
-    JOIN "ApplianceType" t ON t."id" = a."applianceTypeId"
