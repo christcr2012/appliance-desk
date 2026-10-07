@@ -53,6 +53,27 @@ describe.skipIf(!enabled)("T-5b1 official rate metadata (real Postgres)", () => 
     });
   });
 
+  it("rejects a negative candidate rate before writing", async () => {
+    const asOf = businessDateFromKey("2027-01-02")!;
+
+    await expect(
+      prisma.$transaction((tx) =>
+        recordTaxRateObservationInTx(tx, {
+          jurisdictionId,
+          asOf,
+          rateMilliPercent: -1,
+          observedAt: new Date("2026-10-06T15:00:00.000Z"),
+        }),
+      ),
+    ).rejects.toThrow("rateMilliPercent must be a non-negative integer");
+
+    expect(
+      await prisma.taxRateObservation.count({
+        where: { jurisdictionId, asOf },
+      }),
+    ).toBe(0);
+  });
+
   it("records repeated same-day observations idempotently", async () => {
     const asOf = businessDateFromKey("2027-01-01")!;
     const firstObservedAt = new Date("2026-10-06T15:00:00.000Z");
@@ -138,22 +159,21 @@ describe.skipIf(!enabled)("T-5b1 official rate metadata (real Postgres)", () => 
       });
     });
 
-    const results = await prisma.$transaction(async (tx) =>
-      Promise.all([
-        hasTwoDayRateConfirmationInTx(tx, {
-          jurisdictionId,
-          asOf,
-          rateMilliPercent: 7_700,
-          now: new Date("2026-10-07T23:00:00.000Z"),
-        }),
-        hasTwoDayRateConfirmationInTx(tx, {
-          jurisdictionId,
-          asOf,
-          rateMilliPercent: 7_800,
-          now: new Date("2026-10-07T23:00:00.000Z"),
-        }),
-      ]),
-    );
+    const results = await prisma.$transaction(async (tx) => {
+      const firstRate = await hasTwoDayRateConfirmationInTx(tx, {
+        jurisdictionId,
+        asOf,
+        rateMilliPercent: 7_700,
+        now: new Date("2026-10-07T23:00:00.000Z"),
+      });
+      const secondRate = await hasTwoDayRateConfirmationInTx(tx, {
+        jurisdictionId,
+        asOf,
+        rateMilliPercent: 7_800,
+        now: new Date("2026-10-07T23:00:00.000Z"),
+      });
+      return [firstRate, secondRate];
+    });
     expect(results).toEqual([false, false]);
   });
 
@@ -204,38 +224,64 @@ describe.skipIf(!enabled)("T-5b1 official rate metadata (real Postgres)", () => 
 
   it("seeds the six official sources inactive with unique URLs", async () => {
     const expected = [
-      ["Colorado — Sales Tax Rate Changes", "https://tax.colorado.gov/sales-tax-rate-changes"],
-      ["Colorado — DR 1002", "https://tax.colorado.gov/DR1002"],
-      ["Colorado — Retail Delivery Fee", "https://tax.colorado.gov/retail-delivery-fee"],
-      ["Colorado — SUTS Participating Jurisdictions", "https://tax.colorado.gov/SUTS-Jurisdictions"],
-      ["Colorado — Sales Tax Changes", "https://tax.colorado.gov/sales-tax-changes"],
-      ["City of Greeley — Sales Tax", "https://greeleyco.gov/business/business-operations/sales-tax/"],
-    ] as const;
+      {
+        label: "Colorado — DR 1002",
+        url: "https://tax.colorado.gov/DR1002",
+      },
+      {
+        label: "Colorado — Retail Delivery Fee",
+        url: "https://tax.colorado.gov/retail-delivery-fee",
+      },
+      {
+        label: "Colorado — SUTS Participating Jurisdictions",
+        url: "https://tax.colorado.gov/SUTS-Jurisdictions",
+      },
+      {
+        label: "Colorado — Sales Tax Changes",
+        url: "https://tax.colorado.gov/sales-tax-changes",
+      },
+      {
+        label: "Colorado — Sales Tax Rate Changes",
+        url: "https://tax.colorado.gov/sales-tax-rate-changes",
+      },
+      {
+        label: "City of Greeley — Sales Tax",
+        url: "https://greeleyco.gov/business/business-operations/sales-tax/",
+      },
+    ];
 
     const rows = await prisma.officialSourceWatch.findMany({
-      where: { url: { in: expected.map(([, url]) => url) } },
+      where: { url: { in: expected.map((row) => row.url) } },
       select: {
         label: true,
         url: true,
         active: true,
         lastHash: true,
         lastText: true,
+        lastExcerpt: true,
         lastCheckedAt: true,
+        lastChangedAt: true,
+        lastError: true,
+        reviewedAt: true,
       },
       orderBy: { url: "asc" },
     });
 
     expect(rows).toHaveLength(expected.length);
-    expect(
-      rows.map((row) => [row.label, row.url]).sort((a, b) => a[1].localeCompare(b[1])),
-    ).toEqual([...expected].sort((a, b) => a[1].localeCompare(b[1])));
+    expect(rows.map(({ label, url }) => ({ label, url }))).toEqual(
+      [...expected].sort((a, b) => a.url.localeCompare(b.url)),
+    );
     expect(
       rows.every(
         (row) =>
           row.active === false &&
           row.lastHash === null &&
           row.lastText === null &&
-          row.lastCheckedAt === null,
+          row.lastExcerpt === null &&
+          row.lastCheckedAt === null &&
+          row.lastChangedAt === null &&
+          row.lastError === null &&
+          row.reviewedAt === null,
       ),
     ).toBe(true);
   });
