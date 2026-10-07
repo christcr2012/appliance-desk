@@ -5,9 +5,9 @@ launch and beyond, written so an implementing model (for example Sol 5.6) can pi
 It does not replace the batch acceptance lists (`docs/PLAN.md`) or the designs (`docs/designs/BATCH-<X>.md`): it points
 to them and says **what comes next, what must be true before it starts, and what only Chris can do.**
 
-Last reconciled with the code: 2026-10-06 at `main` 0a52c98 (Batch E2 complete; docs audited against code the same day,
-see "Documentation audit" at the end). Keep this file current: when a step finishes, tick it, add the PR numbers, and
-move the "▶ Next" marker.
+Last reconciled with the code: 2026-10-07 after #287. F-part-1 and G are complete; Batch T is in progress. Batch S is
+approved and runs after T, before V. Keep this file current: when a step finishes, tick it, add the PR numbers, and move
+the "▶ Next" marker.
 
 ---
 
@@ -18,10 +18,11 @@ delivery/pickup/repair visits, inventory and parts, billing through Stripe (test
 month-to-month rentals, notices, the website editor, privacy requests, messaging records, reports and the redesign
 (E2). Live payments, customer email and SMS are switched **off** on purpose until Chris approves them.
 
-What is missing before real customers: **correct Colorado sales tax** (Batch T), a few **audit fixes and two-step login**
-(Batch G), a **public website that looks clearly premium** (Batch V — Chris rejected E2's public-site look), and the
-**final launch proof** (Batch F). After launch: **books and accounting exports** (K), **more owner controls** (O), and
-**customer self-service and growth** ideas (P).
+What is missing before real customers: finish **Colorado sales tax** (Batch T), add the **system issues/AI check-up**
+foundation (Batch S), complete the **Evergreen Signature** redesign (Batch V), and run the **final launch proof**
+(Batch F-part-2). F-part-1 and the security/audit work in Batch G are already complete. After launch: **books and
+accounting exports** (K), **shop sales/appliance endings** (M), **more owner controls** (O), then the proposed
+configurable business-offer/partnership work (BP).
 
 ## 2. The order
 
@@ -30,25 +31,26 @@ Legend: ✅ done · ▶ next · ⏳ waiting on Chris · ○ not started. "Design
 | # | Step | Design | Can start when | Chris must do first | PRs (approx.) |
 |---|---|---|---|---|---|
 | 1 | ✅ Batches A, B, B2, C, R, D, E, E2 | approved, built | — | — | merged |
-| 2 | ▶ **F-part-1** — backups that restore, media second copy, capacity numbers, runbooks (Batch F WU-F1, F2, F4, F5) | ✅ approved (`BATCH-F.md`) | now | nothing | 2–3 |
-| 3 | ○ **G** — audit fixes, dark-mode contrast fix, two-step login, session control | ✅ approved (`BATCH-G.md`) | F-part-1 merged | nothing | 2 |
-| 4 | ○ **T** — Colorado sales and use tax | ✅ approved (`BATCH-T.md`) | G merged | nothing to start (register on SUTS for the free GIS key when ready — manual entry works without it) | 4 |
-| 5 | ○ **V** — "Evergreen Signature" public-site redesign + desk/portal polish | ✅ approved (`BATCH-V.md`, concept artifact) | T merged | accept the before/after screenshots before each public-site PR merges | 3–4 |
-| 6 | ○ **F-part-2** — end-to-end scenarios, owner guide with screenshots, review-thread discharge, launch ledger, rollback plan (WU-F3, F6–F9) | ✅ approved | steps 3–5 merged (so the proof covers the final product) | nothing | 3 |
-| 7 | ⏳ **Launch** — Chris's go-live checklist | `docs/GO-LIVE-CHECKLIST.md` | step 6 done | CPA answers IN-17, IN-33…IN-38 entered; attorney wording; live Stripe/email decisions; launch authorization | — |
-| 8 | ○ **K** — books: journal, expenses, Stripe fees, P&L, QuickBooks/Xero/other exports | ✅ approved (`BATCH-K.md`) | launch (or earlier if Chris asks; needs T merged) | nothing to start; IN-39 later | 5 |
-| 9 | ○ **M** — shop sales and appliance endings | ✅ approved (`BATCH-M.md`) | K merged; IN-47 keeps sales after launch | IN-46 before affected sales-tax policy activation | 3 estimated |
-| 10 | ○ **O** — owner controls: settings undo, per-person permissions, approvals, dated prices, goals, switches page | ✅ approved (`BATCH-O.md`) | K merged | nothing | 4–5 |
-| 11 | ○ **BP** — business offers, permission/installation evidence and property-manager partnerships | proposed (`BATCH-BP.md`), docs created 2026-10-07 | K, M and O complete; accepted design and bounded cards | IN-48/49/50 before affected offer/program activation | 16 estimated |
-| 12 | ○ **P** — customer self-service and growth (section 5) | **no design yet** — a stronger model writes it when Chris picks items | after O, or earlier for a single picked item | pick items | — |
-| 13 | ○ Conditional/deferred: Google Workspace integration (O32), CSV import (O29), direct QuickBooks sync (`BATCH-K.md` §9) | deferred | prerequisites in their docs | provide accounts/data | — |
+| 2 | ✅ **F-part-1** — restore/media/capacity/runbooks | ✅ approved (`BATCH-F.md`) | — | — | #268, #269, #273 |
+| 3 | ✅ **G** — audit fixes, two-step login and session control | ✅ approved (`BATCH-G.md`) | — | — | #275, #276, #277 |
+| 4 | ▶ **T** — Colorado sales and use tax | ✅ approved (`BATCH-T.md`) | G merged | nothing to keep building; CPA answers still gate live billing | #279–#285 merged; T-4b current |
+| 5 | ○ **S** — system issues inbox, health page and AI check-up | ✅ approved (`BATCH-S.md`) | T merged and bounded PR cards exist | nothing | 2 estimated |
+| 6 | ○ **V** — "Evergreen Signature" public-site redesign + desk/portal polish | ✅ approved (`BATCH-V.md`, concept artifact) | S merged | accept the before/after screenshots before each public-site PR merges | 3–4 |
+| 7 | ○ **F-part-2** — end-to-end scenarios, owner guide with screenshots, review-thread discharge, launch ledger, rollback plan (WU-F3, F6–F9) | ✅ approved | S and V merged (so the proof covers the final product) | nothing | 3 |
+| 8 | ⏳ **Launch** — Chris's go-live checklist | `docs/GO-LIVE-CHECKLIST.md` | step 7 done | CPA answers IN-17, IN-33…IN-38 entered; attorney wording; live Stripe/email decisions; launch authorization | — |
+| 9 | ○ **K** — books: journal, expenses, Stripe fees, P&L, QuickBooks/Xero/other exports | ✅ approved (`BATCH-K.md`) | launch (or earlier if Chris asks; needs T merged) | nothing to start; IN-39 later | 5 |
+| 10 | ○ **M** — shop sales and appliance endings | ✅ approved (`BATCH-M.md`) | K merged; IN-47 keeps sales after launch | IN-46 before affected sales-tax policy activation | 3 estimated |
+| 11 | ○ **O** — owner controls: settings undo, per-person permissions, approvals, dated prices, goals, switches page | ✅ approved (`BATCH-O.md`) | K merged | nothing | 4–5 |
+| 12 | ○ **BP** — configurable business offers/templates, permission/installation evidence and property-manager/partner programs | proposed (`BATCH-BP.md`), docs created 2026-10-07 | K, M and O complete; accepted design and bounded cards | IN-48/49/50 before affected offer/program activation | 16 estimated |
+| 13 | ○ **P** — customer self-service and growth (section 5) | **no design yet** — a stronger model writes it when Chris picks items | after O/BP as applicable, or earlier for a single picked item | pick items | — |
+| 14 | ○ Conditional/deferred: Google Workspace integration (O32), CSV import (O29), direct QuickBooks sync (`BATCH-K.md` §9) | deferred | prerequisites in their docs | provide accounts/data | — |
 
 **Why F is split (approved by Chris 2026-10-06, IN-41):** F proves the finished product. If F runs completely now, the
 tax, security and redesign work that follows would make its scenarios and screenshots stale. Its infrastructure parts
 (backup/restore, media copy, capacity, runbooks) do not depend on those batches, so they run now; its product-wide
 proof runs last. If Chris prefers, F can run whole now and the scenario/screenshot work units are re-run after V.
 
-**Approval record:** Chris approved designs G, T, V, K, O and the F split on 2026-10-06 ("I love all of this! Update the repo!"). Work them strictly in the order above, one batch at a time. A design marked PROPOSED or DRAFT must never be started.
+**Approval record:** Chris approved designs G, T, V, K, O and the F split on 2026-10-06, and Batch S on 2026-10-07. Work the approved batches in the order above. Batch BP remains PROPOSED until separately accepted; a design marked PROPOSED or DRAFT must never be started.
 
 ## 3. How an implementing model runs a step
 
