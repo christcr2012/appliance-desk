@@ -24,6 +24,7 @@ const SHARED_SETTINGS_TESTS = [
   "tests/tax-migration-integration.test.ts",
   "tests/tax-locations-integration.test.ts",
   "tests/tax-invoice-lines-integration.test.ts",
+  "tests/pickup-billing-end-integration.test.ts",
 ];
 
 export default defineConfig({
