@@ -4,7 +4,7 @@ import { assertActiveTeamActor } from "@/lib/team-actor";
 import { addBusinessDays, businessDaysBetween, businessEndOfDay, formatBusinessDate } from "@/lib/business-date";
 import { formatCents } from "@/domains/pricing";
 import { lockCustomerLedger } from "@/domains/billing/ledger";
-import { sumTax } from "@/domains/billing/tax";
+import { createLocalTaxedInvoice, computeAgreementInvoiceTax } from "@/domains/tax/invoice-tax";
 import {
   billingPeriodContaining,
   lastChargeableDayKey,
@@ -379,7 +379,24 @@ async function planInTx(
     }
   }
   const unusedCents = unusedLines.reduce((sum, l) => sum + l.amountCents, 0);
-  const unusedTaxCents = sumTax(unusedLines, agreement.taxRateMilliPercent);
+  let unusedTaxCents = 0;
+  if (unusedCents > 0) {
+    const taxResult = await computeAgreementInvoiceTax(tx, {
+      agreementId,
+      taxDate: pickup.pickupDate,
+      lines: unusedLines.map((line, index) => ({
+        key: `unused-${index}`,
+        kind: "RENTAL",
+        amountCents: line.amountCents,
+      })),
+    });
+    if (!taxResult.ok) {
+      throw new Error(
+        `Tax needs a decision before unused paid rent can be refunded or credited. ${taxResult.problems.join(" ")}`,
+      );
+    }
+    unusedTaxCents = taxResult.totalTaxCents;
+  }
   const refundOrCreditCents = choice.unusedDays === "KEEP" ? 0 : unusedCents + unusedTaxCents;
   return {
     preview: emptyPreview({
@@ -452,7 +469,7 @@ export async function applyEarlyReturnInTx(
         where: { id: existing.feeInvoiceId },
         select: { id: true, status: true, amountPaidCents: true },
       });
-      if (feeInvoice && (feeInvoice.amountPaidCents > 0 || !["OPEN", "DELINQUENT", "VOID"].includes(feeInvoice.status))) {
+      if (feeInvoice && (feeInvoice.amountPaidCents > 0 || !["DRAFT", "OPEN", "DELINQUENT", "VOID"].includes(feeInvoice.status))) {
         throw new Error("The early-ending fee has already been paid, so this can't be changed here.");
       }
       if (feeInvoice && feeInvoice.status !== "VOID") feeInvoiceToVoid = feeInvoice.id;
@@ -505,24 +522,20 @@ export async function applyEarlyReturnInTx(
 
   if (plan.endAtPickup) {
     if (plan.fee.feeCents > 0) {
-      const invoice = await tx.invoice.create({
-        data: {
-          customerId: agreement.customerId,
-          agreementId: input.agreementId,
-          status: "OPEN",
-          subtotalCents: plan.fee.feeCents,
-          taxCents: 0,
-          amountDueCents: plan.fee.feeCents,
-          dueDate: input.pickupDate,
-          lineItems: {
-            create: {
-              kind: "EARLY_TERMINATION_FEE",
-              description: `Early ending fee — equipment returned ${formatBusinessDate(input.pickupDate)}, before the end of its ${agreement.termMonths}-month term`,
-              amountCents: plan.fee.feeCents,
-              quantity: 1,
-            },
+      const { invoice, result: taxResult } = await createLocalTaxedInvoice(tx, {
+        userId: actor.userId,
+        agreementId: input.agreementId,
+        customerId: agreement.customerId,
+        taxDate: input.pickupDate,
+        dueDate: input.pickupDate,
+        lines: [
+          {
+            kind: "EARLY_TERMINATION_FEE",
+            description: `Early ending fee — equipment returned ${formatBusinessDate(input.pickupDate)}, before the end of its ${agreement.termMonths}-month term`,
+            amountCents: plan.fee.feeCents,
+            quantity: 1,
           },
-        },
+        ],
       });
       feeInvoiceId = invoice.id;
       await tx.auditLog.create({
@@ -531,7 +544,14 @@ export async function applyEarlyReturnInTx(
           action: "agreement.termination_fee_invoiced",
           entityType: "Invoice",
           entityId: invoice.id,
-          newValue: { agreementId: input.agreementId, feeCents: plan.fee.feeCents, fee: formatCents(plan.fee.feeCents), taxed: false, earlyReturn: true },
+          newValue: {
+            agreementId: input.agreementId,
+            feeCents: plan.fee.feeCents,
+            fee: formatCents(plan.fee.feeCents),
+            invoiceStatus: invoice.status,
+            tax: taxResult.ok ? formatCents(taxResult.totalTaxCents) : "Needs a tax decision",
+            earlyReturn: true,
+          },
         },
       });
     }
