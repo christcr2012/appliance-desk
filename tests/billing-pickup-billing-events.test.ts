@@ -9,6 +9,55 @@ vi.mock("@/lib/prisma", () => ({ prisma: {} }));
 vi.mock("@/lib/stripe", () => ({ getStripeClient: () => ({}) }));
 vi.mock("@/lib/team-actor", () => ({ assertActiveTeamActor: vi.fn() }));
 
+vi.mock("@/domains/tax/invoice-tax", () => ({
+  createLocalTaxedInvoice: vi.fn(async (tx, input) => {
+    const subtotalCents = input.lines.reduce(
+      (sum: number, line: { amountCents: number }) => sum + line.amountCents,
+      0,
+    );
+    const taxCents = input.lines.reduce(
+      (sum: number, line: { amountCents: number }) =>
+        sum + Math.floor((line.amountCents * 7_375 + 50_000) / 100_000),
+      0,
+    );
+    const data = {
+      customerId: input.customerId,
+      agreementId: input.agreementId,
+      status: "OPEN",
+      billingPeriodStart: input.billingPeriodStart ?? null,
+      billingPeriodEnd: input.billingPeriodEnd ?? null,
+      subtotalCents,
+      taxCents,
+      amountDueCents: subtotalCents + taxCents,
+      amountPaidCents: 0,
+      dueDate: input.dueDate ?? null,
+      lineItems: {
+        createMany: {
+          data: [
+            ...input.lines,
+            ...(taxCents > 0
+              ? [
+                  {
+                    kind: "TAX",
+                    description: "Sales tax",
+                    amountCents: taxCents,
+                    quantity: 1,
+                    rentalLineId: null,
+                  },
+                ]
+              : []),
+          ],
+        },
+      },
+    };
+    const invoice = await tx.invoice.create({ data });
+    return {
+      invoice: { ...data, ...invoice },
+      result: { ok: true, lines: [], totalTaxCents: taxCents },
+    };
+  }),
+}));
+
 import {
   jobServiceDate,
   parsePerformedOn,
@@ -55,7 +104,7 @@ function fakeTx(input: {
     invoice: {
       create: vi.fn(async (args: { data: unknown }) => {
         writes.invoices.push(args.data);
-        return { id: `inv-${writes.invoices.length}` };
+        return { id: `inv-${writes.invoices.length}`, ...(args.data as object) };
       }),
     },
     customerCredit: {
