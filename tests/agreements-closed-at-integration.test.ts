@@ -82,6 +82,14 @@ describe.skipIf(!enabled)("Batch G agreement closure evidence (real Postgres)", 
   });
 
   afterAll(async () => {
+    await prisma.auditLog.deleteMany({
+      where: {
+        OR: [
+          { userId: ownerId },
+          { entityId: { in: agreementIds } },
+        ],
+      },
+    });
     await prisma.rentalLine.deleteMany({ where: { agreementId: { in: agreementIds } } });
     await prisma.rentalAgreement.deleteMany({ where: { id: { in: agreementIds } } });
     await prisma.serviceAddress.deleteMany({ where: { id: addressId } });
