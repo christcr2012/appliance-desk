@@ -293,6 +293,25 @@ describe("computeTax", () => {
     expect(result.problems).toHaveLength(2);
   });
 
+  it("reports a missing rate using the Colorado business date, not UTC", () => {
+    const result = computeTax({
+      taxDate: new Date("2026-10-07T01:00:00.000Z"),
+      leaseTermMonths: 12,
+      election: "COLLECT_ON_RENTALS",
+      defaultRules: {},
+      exemptJurisdictionIds: new Set(),
+      jurisdictions: [
+        jurisdiction({ id: "missing-rate", name: "No Rate County", rate: null }),
+      ],
+      lines: [{ key: "rent", kind: "RENTAL", amountCents: 1_000 }],
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      problems: ["No rate entered for No Rate County on 2026-10-06"],
+    });
+  });
+
   it("deduplicates the same policy problem across multiple lines", () => {
     const result = computeTax({
       taxDate,
