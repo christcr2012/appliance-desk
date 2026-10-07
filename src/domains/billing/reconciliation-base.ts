@@ -1,4 +1,4 @@
-import type { ProviderOperationStatus } from "@prisma/client";
+import type { ProviderOperationKind, ProviderOperationStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { HELD_CONFLICT_STATUS, HELD_PAYMENT_STATUS, SUCCESSFUL_PAYMENT_STATUSES } from "./payment-status";
 import { getStripeClient } from "@/lib/stripe";
@@ -54,6 +54,19 @@ type RecoverableOperation = {
   attempts: number;
   requestedAt: Date;
 };
+
+function isRecoverableOperationKind(
+  kind: ProviderOperationKind,
+): kind is RecoverableOperation["kind"] {
+  return (
+    kind === "CUSTOMER_CREATE" ||
+    kind === "SUBSCRIPTION_CREATE" ||
+    kind === "SUBSCRIPTION_CANCEL" ||
+    kind === "SUBSCRIPTION_UPDATE" ||
+    kind === "BALANCE_CREDIT" ||
+    kind === "REFUND_CREATE"
+  );
+}
 
 const PROVIDER_LOOKBACK_SECONDS = 300;
 const MAX_PROVIDER_PAGES = 50;
@@ -578,8 +591,14 @@ export async function finishPendingProviderOperations(
   let completed = 0;
   let stillUnknown = 0;
   for (const operation of operations) {
+    if (!isRecoverableOperationKind(operation.kind)) continue;
+    const recoverable: RecoverableOperation = {
+      ...operation,
+      kind: operation.kind,
+    };
+
     try {
-      if (await reconcileOne(operation)) {
+      if (await reconcileOne(recoverable)) {
         completed += 1;
       } else {
         stillUnknown += 1;
