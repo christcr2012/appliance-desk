@@ -23,9 +23,9 @@ launch if you want the profit numbers sooner.
    39-26-713), a rental of 3 years or less is exempt from *state* sales tax if you paid sales or use tax when you
    bought the appliance. The other option is to buy appliances tax-free (with the state's permission) and charge tax on
    every rent payment. You must pick one. This is the most important question for your CPA.
-2. **Greeley plays by its own rules.** Greeley is a "home-rule" city. It collects its own 4.11% city tax, taxes rentals
-   no matter which state option you choose, and isn't part of the state's SUTS filing website, so you file Greeley
-   separately. Customers in Evans, Windsor or unincorporated Weld County get different rates — sometimes very different.
+2. **Greeley plays by its own rules.** Greeley is a "home-rule" city. It sets its own 4.11% city tax and taxes rentals
+   no matter which state option you choose. (Corrected 2026-10-07: Greeley *does* take returns through the state's SUTS
+   website, so you file it in the same SUTS session as the state — not separately.) Customers in Evans, Windsor or unincorporated Weld County get different rates — sometimes very different.
 3. **The 7.375% example in your notes (IN-17) doesn't match what I can find.** Public sources say Greeley is 7.01% (2.9% state +
    4.11% city). Under option 1 above, a Greeley customer might pay only the 4.11% city tax on rent. Your CPA should
    check this, and the app will stop guessing either way.

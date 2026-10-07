@@ -474,3 +474,7 @@ Also 2026-10-07 (Chris: "monitor the correct official places and update tax chan
 when seen on two different days, within a one-percentage-point limit and never backdated, with a Today notice and
 undo; this reverses the 2026-10-06 rule that every GIS rate change needs manual review, by owner request, with the
 switch starting ON. Law and rule changes are only watched (official page text hashes) and alerted, never applied.
+Second Codex review (PR #282) fixes: retail delivery fee counted once per sale (not per trip); new-business 90-day
+grace; undecided fee status blocks readiness and deliveries are kept as pending records; pending records allowed when
+the year's amount is missing; RDF over-reporting is a credit on the current return (DR 1786) while added fees amend;
+service-fee eligibility uses the payment date as well as the filing date.

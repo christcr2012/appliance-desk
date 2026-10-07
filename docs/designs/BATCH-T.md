@@ -855,6 +855,7 @@ model TaxFilingPeriod {
   legalDueOn          DateTime?  // after the next-business-day rule; display only
   dueOnEditedByUserId String?    // set when the owner overrides dueOn (audit row too)
   zeroReturn          Boolean    @default(false) // true when filed with no sales and no tax
+  paidOn              DateTime?  // date the payment was made in SUTS (service-fee eligibility)
   confirmationPhotoId String?    // optional screenshot of the SUTS confirmation (existing private photo store)
   entryProgress       Json       @default("{}") // "Entered" ticks on the guided page (11.11); convenience only
 }
@@ -929,8 +930,10 @@ export async function loadFilingPacket(periodId: string): Promise<FilingPacket |
 - **Rounding check:** if a row's tax (sum of per-bill tax lines, D-T6) differs from its net taxable × rate rounded once,
   the packet shows both and explains that the few-cent difference comes from rounding each bill. The amount to report
   is the tax actually collected (the row's tax) unless the CPA says otherwise — never silently adjust either number.
-- `markPeriodFiled` (3.5) additionally requires `amountPaidCents`; the expected amount is `remitIfOnTimeCents` when
-  `filedOn` ≤ `legalDueOn`, otherwise `remitIfLateCents` (penalty and interest may make the paid amount higher); if the
+- `markPeriodFiled` (3.5) additionally requires `amountPaidCents` and **`paidOn`** (review fix: the service fee depends
+  on when the tax was remitted, not only when the return was filed; new column `TaxFilingPeriod.paidOn DateTime?`, and
+  the same on `TaxFilingAmendment`). The guided form asks "Date you paid" (defaults to today). The expected amount is
+  `remitIfOnTimeCents` when both `filedOn` and `paidOn` are ≤ `legalDueOn`, otherwise `remitIfLateCents` (penalty and interest may make the paid amount higher); if the
   paid amount differs from the expected one the owner must type a reason (stored in `notes`). It sets `zeroReturn`, freezes the packet JSON into `worksheet`, writes an audit row,
   and accepts an optional `confirmationPhotoId` (screenshot) through the existing private photo upload.
 
@@ -1072,7 +1075,7 @@ built for a phone or a half-width window next to the SUTS tab:
    row and field) so Chris can stop and come back; ticks are convenience only and never block anything.
 4. **Pay** — "SUTS should now show <$total>. Pay it in SUTS." with a copy button. If SUTS shows a different total:
    "Use SUTS's total and note it below; do not change anything here."
-5. **Done** — "I filed it": confirmation number (required), date filed (defaults to today, Denver), amount paid
+5. **Done** — "I filed it": confirmation number (required), date filed and date paid (both default to today, Denver), amount paid
    (pre-filled with the packet total; a different amount needs a one-line reason), optional screenshot. Saving runs
    `markPeriodFiled`; the Today task disappears; the page shows "Filed — next return due <date>".
 
@@ -1105,6 +1108,7 @@ model TaxFilingAmendment {
   filedOn            DateTime?
   confirmationNumber String?
   amountPaidCents    Int?
+  paidOn             DateTime?
   filedByUserId      String?
   notes              String?
   createdAt          DateTime           @default(now())
@@ -1123,7 +1127,7 @@ model TaxFilingAmendment {
   <$additional>; SUTS adds any interest" (no service fee on the additional tax); overpaid → "Colorado returns overpaid
   tax through a refund claim — ask your CPA how to file it" and a "Handled with my CPA" button (OWNER, reason
   required) instead of "I filed it".
-- `markAmendmentFiled(actorUserId, { amendmentId, filedOn, confirmationNumber, amountPaidCents })` — OWNER; row-locks
+- `markAmendmentFiled(actorUserId, { amendmentId, filedOn, paidOn, confirmationNumber, amountPaidCents })` — OWNER; row-locks
   the amendment; freezes its packet; audit row. The original period's frozen worksheet is never edited.
 - The **next** period's packet never contains earlier-period corrections (the old `correctionsToEarlierPeriods` field
   is removed from the shape).
@@ -1192,12 +1196,15 @@ introduction. Built in PRs T-6c and T-7 (12.8).
 `retailDeliveryFeeStatus(today)` (pure, `src/domains/tax/retail-delivery-fee.ts`) returns one of:
 
 1. `NOT_APPLICABLE_LEASE_ELECTION` — election is `PAY_ON_ACQUISITION` (B-F2). Nothing is charged, counted or filed.
-2. `EXEMPT_SMALL_BUSINESS` — previous calendar year's Colorado retail sales ≤ threshold, or (first year) current-year
-   sales ≤ threshold (B-F3). Retail sales = charges on invoices to Colorado addresses, excluding tax, deposits and the fee
+2. `EXEMPT_SMALL_BUSINESS` — previous calendar year's Colorado retail sales ≤ threshold; or, for a business with no
+   prior-year Colorado retail sales, until the **first filing period that begins at least 90 days after** current-year
+   sales first exceed the threshold (Department guidance on new businesses — review fix; the date the threshold was
+   crossed is stored as `rdfThresholdCrossedOn` the first time it happens, and the start period is derived from the
+   Colorado sales tax account's frequency) (B-F3). Retail sales = charges on invoices to Colorado addresses, excluding tax, deposits and the fee
    itself, from `InvoiceTaxLine`/invoice lines (the same totals the packet uses).
 3. `APPLIES` — otherwise.
-4. `UNDECIDED` — election still `UNDECIDED`, or the CPA confirmation (below) not given while the status would be
-   `APPLIES`.
+4. `UNDECIDED` — election still `UNDECIDED`, or the status would be `APPLIES` but `rdfHandling` or the CPA confirmation
+   (below) is missing.
 
 Owner settings on Desk → Money → Sales tax → **Your tax decisions** (OWNER; explained on screen with the rules above):
 - `rdfThresholdCents` (starting value 50,000,000 = $500,000, "the amount in Colorado law as of 2026; change it only if
@@ -1210,9 +1217,12 @@ Owner settings on Desk → Money → Sales tax → **Your tax decisions** (OWNER
   existing rental (repair swap) is a new retail delivery (IN-37 follow-up). Initial deliveries and deliveries of an
   added appliance always count.
 
-**Readiness (extends D-T7):** while the status is `APPLIES` and `rdfHandling` or `rdfCpaConfirmedOn` is missing,
-send-for-signature and billing setup show "Decide how to handle Colorado's retail delivery fee" — the same blocking list,
-same wording style. In every other status nothing blocks.
+**Readiness (extends D-T7; review fix):** while the status is `UNDECIDED` because the fee would apply but `rdfHandling`
+or `rdfCpaConfirmedOn` is missing, send-for-signature and billing setup show "Decide how to handle Colorado's retail
+delivery fee" — the same blocking list, same wording style. (`UNDECIDED` because the lease election is undecided is
+already blocked by D-T7.) `NOT_APPLICABLE_LEASE_ELECTION`, `EXEMPT_SMALL_BUSINESS` and a fully decided `APPLIES` never
+block. Deliveries completed while undecided (for example on agreements signed earlier) are still recorded as
+`PENDING_DECISION` (12.4), so nothing owed is lost.
 
 ### 12.3 Schema (additive; same migration as 11.3)
 
@@ -1225,6 +1235,9 @@ enum RdfReplacementRule { UNDECIDED YES NO }
 //   rdfHandling RdfHandling @default(UNDECIDED)
 //   rdfCpaConfirmedOn DateTime?
 //   rdfCountsReplacementDeliveries RdfReplacementRule @default(UNDECIDED)
+//   rdfThresholdCrossedOn DateTime?   // first day current-year sales passed the threshold with no prior-year sales
+
+enum RdfRecordStatus { PENDING_DECISION PENDING_RATE READY NOT_DUE }
 
 model RetailDeliveryFeeRate {
   id              String   @id @default(cuid())
@@ -1236,13 +1249,16 @@ model RetailDeliveryFeeRate {
 
 model RetailDeliveryFeeRecord {
   id                  String   @id @default(cuid())
-  jobId               String   @unique   // the completed delivery job; one fee per delivery
+  saleKey             String   @unique   // one fee per retail SALE (review fix): "agreement:<id>",
+                                         // "addition:<amendmentId>", "replacement:<jobId>" (only when counted)
+  firstJobId          String             // the delivery job that first fulfilled the sale (later partial trips dedupe)
   agreementId         String
-  deliveredOn         DateTime
-  rateId              String
-  rate                RetailDeliveryFeeRate @relation(fields: [rateId], references: [id])
-  amountCents         Int
-  collectedFromCustomer Boolean
+  deliveredOn         DateTime           // first delivery of the sale
+  status              RdfRecordStatus
+  rateId              String?            // null while PENDING_DECISION / PENDING_RATE (review fix)
+  rate                RetailDeliveryFeeRate? @relation(fields: [rateId], references: [id])
+  amountCents         Int?
+  collectedFromCustomer Boolean?
   invoiceLineId       String?            // the customer line when collected
   filingPeriodId      String?
   filingPeriod        TaxFilingPeriod? @relation(fields: [filingPeriodId], references: [id])
@@ -1257,11 +1273,17 @@ model RetailDeliveryFeeRecord {
 - **When:** a delivery job is marked completed (existing completion command, inside its transaction) for an agreement
   whose delivery address is in Colorado. If the status on the delivery date is `APPLIES` and the delivery contains at
   least one appliance whose RENTAL charge is taxable for the **state** jurisdiction at that address and date (the engine,
-  D-T5), write one `RetailDeliveryFeeRecord` (idempotent on `jobId`). Replacement deliveries count only when
-  `rdfCountsReplacementDeliveries = YES`; while it is `UNDECIDED` they are not counted and a Today task asks the owner
-  to decide (once per replacement delivery, listing it).
+  D-T5), write one `RetailDeliveryFeeRecord` keyed by the **sale**, not the trip (review fix: Colorado counts one
+  retail sale as one delivery however many trips it takes): the agreement's first delivery uses `agreement:<id>`, an
+  appliance added to an existing agreement uses `addition:<amendmentId>`, and later partial-delivery trips for the
+  same sale find the existing key and add nothing. Replacement deliveries count only when
+  `rdfCountsReplacementDeliveries = YES` (key `replacement:<jobId>`); while it is `UNDECIDED` they are not counted and a
+  Today task asks the owner to decide (once per replacement delivery, listing it). If the overall status is `UNDECIDED`
+  at delivery time, the record is written as `PENDING_DECISION`; once decided it becomes `READY` (charged/counted) or
+  `NOT_DUE` (status turned out not to apply), with an audit row.
 - **Amount:** the `RetailDeliveryFeeRate` in effect on the delivery date; none entered → the completion still succeeds,
-  the record waits as "rate missing" and a `high` Today task says "Enter the retail delivery fee amount for July 2026 –
+  the record is `PENDING_RATE` (rate and amount empty) and is completed in place when the rate is entered; a `high`
+  Today task says "Enter the retail delivery fee amount for July 2026 –
   June 2027". A June Today task (from June 1) reminds the owner to enter the next July's amount.
 - **Charging the customer** (`COLLECT_FROM_CUSTOMER`): one invoice line category `RETAIL_DELIVERY_FEE`, label "Colorado
   retail delivery fee", never taxed (the engine skips it; add it to the 3.1 category map as non-taxable by law, not by
@@ -1281,7 +1303,10 @@ delivery fee" filing account (prefilled: kind `RETAIL_DELIVERY_FEE_RETURN`, freq
 Colorado sales tax account, B-F6). It then uses the same calendar, Today task, email reminders, guided page and amended
 return flow as sales tax (11.4–11.12) with a simpler packet: number of retail deliveries, fee per delivery (one row per
 rate if the period crosses July 1), total fee; zero return when there were none. Records attach to the period by
-`deliveredOn`; a record created after its period was filed opens an amendment (11.12).
+`deliveredOn`. **Corrections (review fix):** fees *added* to an already-filed period open an amendment (11.12); fees
+*over-reported* on a filed period (a record later found `NOT_DUE`, or a cancelled sale) are claimed as a **credit on the
+current open RDF return** (DR 1786 tells filers to claim prior-period overpayments that way instead of amending): the
+RDF packet has a `priorPeriodCreditCents` line with the source period named, and no amendment is opened.
 
 ### 12.6 Watching the exemption
 
@@ -1294,10 +1319,13 @@ rate if the period crosses July 1), total fee; zero return when there were none.
 ### 12.7 Tests
 
 `tests/retail-delivery-fee.test.ts` (pure: each status; threshold boundary at exactly $500,000; first-year rule; July 1
-rate switch; one fee per delivery with several appliances; state-exempt delivery charges nothing),
+rate switch; one fee per sale with several appliances and with a partial delivery finished on a later trip; new-business
+grace until the first period starting 90+ days after crossing; state-exempt delivery charges nothing; undecided status
+blocks readiness),
 ★ `tests/retail-delivery-fee-integration.test.ts` (completion writes one record under retry; collected line is untaxed
-and on the next invoice; PAY_MYSELF adds no line; rate missing does not block completion; replacement rule; record after
-filing opens an amendment), packet tests for the RDF return in `tests/tax-filing-packet.test.ts`, readiness test in the
+and on the next invoice; PAY_MYSELF adds no line; rate missing leaves a PENDING_RATE record completed later; undecided
+leaves PENDING_DECISION resolved later; replacement rule; added fee after filing opens an amendment; over-reported fee
+becomes a credit on the current return), packet tests for the RDF return in `tests/tax-filing-packet.test.ts`, readiness test in the
 existing readiness suite.
 
 ### 12.8 PRs
