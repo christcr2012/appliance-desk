@@ -7,7 +7,7 @@ import { computeEstimatedEarningsCents, computeAgreementEarnings } from "@/domai
 describe("computeEstimatedEarningsCents", () => {
   it("is $0 for an agreement that never started billing", () => {
     const cents = computeEstimatedEarningsCents(
-      { billingStartedAt: null, endDate: null, lines: [{ monthlyPriceCents: 6000 }] },
+      { billingStartedAt: null, endDate: null, closedAt: null, lines: [{ monthlyPriceCents: 6000 }] },
       new Date("2026-09-28"),
     );
     expect(cents).toBe(0);
