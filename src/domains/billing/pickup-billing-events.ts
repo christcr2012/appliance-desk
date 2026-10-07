@@ -3,7 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { getStripeClient } from "@/lib/stripe";
 import { businessDateFromKey, businessDateKey, businessDayBounds, businessDaysBetween, formatBusinessDate } from "@/lib/business-date";
 import { formatCents } from "@/domains/pricing/money";
-import { sumTax, taxCentsForLine } from "./tax";
+import { taxCentsForLine } from "./tax";
+import { createLocalTaxedInvoice } from "@/domains/tax/invoice-tax";
 import { runPreparedInvoiceRefund, type ClaimedRefund } from "./refunds";
 import { lockCustomerLedger } from "./ledger";
 import { refundAcrossPaidInvoicesInTx } from "./refund-across-invoices";
@@ -249,31 +250,17 @@ export async function recordLateReturnOnRemoval(
     rentalLineId: item.rentalLineId,
   }));
   const subtotalCents = lines.reduce((sum, l) => sum + l.amountCents, 0);
-  const taxCents = sumTax(lines, agreement.taxRateMilliPercent);
-  const invoice = await tx.invoice.create({
-    data: {
-      customerId: agreement.customerId,
-      agreementId: agreement.id,
-      status: "OPEN",
-      billingPeriodStart: agreedEnd,
-      billingPeriodEnd: input.pickupDate,
-      subtotalCents,
-      taxCents,
-      amountDueCents: subtotalCents + taxCents,
-      amountPaidCents: 0,
-      dueDate: input.pickupDate,
-      lineItems: {
-        createMany: {
-          data: [
-            ...lines,
-            ...(taxCents > 0
-              ? [{ kind: "TAX" as const, description: "Sales tax", amountCents: taxCents, quantity: 1, rentalLineId: null }]
-              : []),
-          ],
-        },
-      },
-    },
+  const { invoice, result: taxResult } = await createLocalTaxedInvoice(tx, {
+    userId: input.userId,
+    agreementId: agreement.id,
+    customerId: agreement.customerId,
+    taxDate: input.pickupDate,
+    billingPeriodStart: agreedEnd,
+    billingPeriodEnd: input.pickupDate,
+    dueDate: input.pickupDate,
+    lines,
   });
+  const taxCents = taxResult.ok ? taxResult.totalTaxCents : 0;
   await tx.auditLog.create({
     data: {
       userId: input.userId,
@@ -296,16 +283,21 @@ export async function recordLateReturnOnRemoval(
           firstChargedDay: charge.firstChargedDayKey,
           lastChargedDay: charge.lastChargedDayKey,
         })),
-        tax: formatCents(taxCents),
-        total: formatCents(subtotalCents + taxCents),
+        invoiceStatus: invoice.status,
+        tax: taxResult.ok ? formatCents(taxCents) : "Needs a tax decision",
+        total: formatCents(invoice.amountDueCents),
       },
     },
   });
   return {
     ...EMPTY,
     lateReturnInvoiceId: invoice.id,
-    lateReturnCents: subtotalCents + taxCents,
-    notes: [`Late return billed: ${formatCents(subtotalCents + taxCents)} on one invoice.`],
+    lateReturnCents: invoice.amountDueCents,
+    notes: [
+      taxResult.ok
+        ? `Late return billed: ${formatCents(invoice.amountDueCents)} on one invoice.`
+        : `Late return bill saved as a draft for ${formatCents(subtotalCents)}; tax needs a decision before it can be sent.`,
+    ],
   };
 }
 
