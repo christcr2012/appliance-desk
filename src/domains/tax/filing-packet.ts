@@ -4,6 +4,8 @@ import { addBusinessDays, businessDateKey } from "@/lib/business-date";
 import { allocateAcrossLines } from "@/domains/tax/allocate";
 import { taxCentsForLine } from "@/domains/billing/tax";
 import { assignDueUseTaxRowsToPeriod } from "./use-tax";
+import { SUCCESSFUL_PAYMENT_STATUSES, isSuccessfulPaymentStatus } from "@/domains/billing/payment-status";
+import { legalDueOn } from "./filing-calendar";
 
 export type FilingPacketRow = {
   jurisdictionId: string;
@@ -279,11 +281,39 @@ export async function loadFilingPacket(periodId: string, now = new Date()): Prom
   const useTax = [...useTaxMap.values()].sort((a,b) => a.jurisdictionId.localeCompare(b.jurisdictionId));
   const evidence: Array<{ tax: TaxEvidence; taxableCents: number; exemptCents: number; taxCents: number }> = [];
   if (account.kind === "SALES_RETURN") {
-    const where = account.basis === "ACCRUAL"
-      ? { invoice: { createdAt: { gte: period.periodStart, lt: endExclusive } } }
-      : { invoice: { payments: { some: {
-          status: "succeeded", receipt: { receivedOn: { gte: period.periodStart, lt: endExclusive } },
-        } } } };
+    if (basis === "ACCRUAL") {
+      const missingProviderDates = await prisma.invoiceTaxLine.count({
+        where: {
+          jurisdiction: { filingAccountId: account.id },
+          invoice: {
+            stripeInvoiceId: { not: null },
+            issuedAt: null,
+            status: { notIn: ["DRAFT", "VOID"] },
+          },
+        },
+      });
+      if (missingProviderDates > 0) {
+        return { status: "BLOCKED", problems: [
+          "Some historical Stripe invoice issue dates are unverified. Verify their provider finalization dates before accrual filing.",
+        ] };
+      }
+    }
+    const issued = { status: { notIn: ["DRAFT", "VOID"] as const } };
+    const where = basis === "ACCRUAL"
+      ? { invoice: {
+          ...issued,
+          OR: [
+            { stripeInvoiceId: null, createdAt: { gte: period.periodStart, lt: endExclusive } },
+            { stripeInvoiceId: { not: null }, issuedAt: { gte: period.periodStart, lt: endExclusive } },
+          ],
+        } }
+      : { invoice: {
+          ...issued,
+          payments: { some: {
+            status: { in: [...SUCCESSFUL_PAYMENT_STATUSES] },
+            receipt: { receivedOn: { gte: period.periodStart, lt: endExclusive } },
+          } },
+        } };
     const lines = await prisma.invoiceTaxLine.findMany({
       where: { jurisdiction: { filingAccountId: account.id }, ...where },
       include: {
@@ -299,11 +329,6 @@ export async function loadFilingPacket(periodId: string, now = new Date()): Prom
       orderBy: [{ createdAt: "asc" }, { id: "asc" }],
     });
     for (const line of lines) {
-      if (line.invoice.refunds.length > 0) {
-        problems.push("A refund on invoice " + line.invoice.invoiceNumber +
-          " needs explicit tax allocation before filing.");
-        continue;
-      }
       const amount = line.invoice.amountDueCents;
       if (account.basis === "ACCRUAL") {
         evidence.push({ tax: line, taxableCents: line.taxableCents,
@@ -315,7 +340,7 @@ export async function loadFilingPacket(periodId: string, now = new Date()): Prom
         continue;
       }
       const payments = line.invoice.payments
-        .filter(p => p.status === "succeeded")
+        .filter(p => isSuccessfulPaymentStatus(p.status))
         .sort((a, b) => a.id.localeCompare(b.id));
       if (payments.some(p => !p.receipt || p.amountCents <= 0)) {
         problems.push("Invoice " + line.invoice.invoiceNumber + " has a receipt without dated allocation evidence.");
@@ -368,7 +393,7 @@ export async function loadFilingPacket(periodId: string, now = new Date()): Prom
   const packet = buildFilingPacket({
     account, period: {
       start: period.periodStart, end: period.periodEnd,
-      dueOn: period.dueOn, legalDueOn: period.legalDueOn ?? period.dueOn,
+      dueOn: period.dueOn, legalDueOn: period.legalDueOn ?? legalDueOn(period.dueOn),
     },
     basis, rows: aggregate(evidence), useTax, viewedOn: now,
   });
