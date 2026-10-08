@@ -292,20 +292,6 @@ function requestPinnedOfficialSource(
           return;
         }
 
-        const rawEncoding = response.headers["content-encoding"];
-        const contentEncoding = (
-          Array.isArray(rawEncoding) ? rawEncoding[0] : rawEncoding
-        )?.trim().toLowerCase();
-        if (contentEncoding && contentEncoding !== "identity") {
-          response.destroy();
-          request?.destroy();
-          finish({
-            ok: false,
-            error: new Error("Official source response used unsupported content encoding."),
-          });
-          return;
-        }
-
         const rawContentType = response.headers["content-type"];
         const contentType = mediaType(
           Array.isArray(rawContentType) ? rawContentType[0] ?? null : rawContentType ?? null,
