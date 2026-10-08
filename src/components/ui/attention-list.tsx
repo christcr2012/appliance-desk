@@ -37,16 +37,27 @@ export function AttentionList({ groups }: { groups: AttentionGroup[] }) {
               {group.items.map((item) => (
                 <li
                   key={`${item.category}:${item.href}:${item.since.toISOString()}`}
+                  className="py-3"
                 >
                   <Link
                     href={item.href}
-                    className="block min-h-11 py-3 hover:bg-subtle"
+                    className="block min-h-11 hover:bg-subtle"
                   >
                     <span className="font-medium text-ink">{item.title}</span>
                     <span className="mt-1 block text-sm text-ink-soft">
                       {item.detail}
                     </span>
                   </Link>
+                  {item.sourceHref ? (
+                    <a
+                      href={item.sourceHref}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-2 inline-flex min-h-11 items-center text-sm font-medium text-link underline-offset-2 hover:underline"
+                    >
+                      {item.sourceLabel ?? "Open source"}
+                    </a>
+                  ) : null}
                 </li>
               ))}
             </ul>
