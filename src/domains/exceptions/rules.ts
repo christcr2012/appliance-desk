@@ -51,6 +51,11 @@ export type ExceptionItem = {
   /** Optional separate public source link; only HTTPS is surfaced. */
   sourceHref?: string;
   sourceLabel?: string;
+  action?: {
+    type: "ACK_TAX_SOURCE_CHANGE";
+    id: string;
+    label: string;
+  };
   /** For sorting oldest-first within a category. */
   since: Date;
 };
@@ -206,6 +211,7 @@ function httpsSourceHref(url: string): string | undefined {
 }
 
 export function taxSourceChangedException(input: {
+  id: string;
   label: string;
   excerpt: string | null;
   url: string;
@@ -221,6 +227,11 @@ export function taxSourceChangedException(input: {
     href: "/desk/today",
     sourceHref: httpsSourceHref(input.url),
     sourceLabel: "Open official source",
+    action: {
+      type: "ACK_TAX_SOURCE_CHANGE",
+      id: input.id,
+      label: "I looked at it",
+    },
     since: input.since,
   };
 }
