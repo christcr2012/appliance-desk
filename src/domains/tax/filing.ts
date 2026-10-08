@@ -286,6 +286,21 @@ export async function detectTaxFilingAmendments(now = new Date()): Promise<numbe
         where: { periodId: period.id, status: "OPEN" },
         orderBy: [{ sequence: "desc" }, { id: "desc" }],
       });
+      // HANDLED_OUTSIDE is an explicit Owner decision, not a filed tax
+      // amendment. Do not generate the identical alert again every day; if
+      // recorded evidence changes, compare against the latest filed packet.
+      if (!open) {
+        const handled = await tx.taxFilingAmendment.findFirst({
+          where: { periodId: period.id, status: "HANDLED_OUTSIDE" },
+          orderBy: [{ sequence: "desc" }, { id: "desc" }],
+        });
+        if (handled) {
+          const handledPacket = parseAmendment(handled.packet).corrected;
+          if (buildFilingAmendmentPacket(handledPacket, refreshed.packet).differences.length === 0) {
+            return null;
+          }
+        }
+      }
       if (!amendment.differences.length) {
         if (open) {
           await tx.taxFilingAmendment.delete({ where: { id: open.id } });

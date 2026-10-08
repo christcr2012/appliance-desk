@@ -118,6 +118,7 @@ describe("T-6b2 original filing and amendments (real Postgres)", () => {
       await markAmendmentHandledOutside(owner.id, {
         amendmentId: amendments[1].id, reason: "Credit verified in state portal",
       });
+      expect(await detectTaxFilingAmendments(day("2026-11-25"))).toBe(0);
       expect((await prisma.taxFilingPeriod.findUniqueOrThrow({ where: { id: periodId } })).worksheet)
         .toEqual(frozen.worksheet);
       expect(await prisma.taxFilingAmendment.count({
