@@ -163,26 +163,49 @@ export async function deliverMessage(
     throw new Error("A message recipient is required.");
   }
 
-  const claim = await claimDelivery(input);
-  if (!claim.ownsSend) return asResult(claim.row);
-  const delivery = claim.row;
+  // Preserve idempotency without creating a new PENDING row before pre-send
+  // checks that can safely fail without ever invoking a provider.
+  const existing = await prisma.messageDelivery.findUnique({
+    where: { idempotencyKey: input.idempotencyKey },
+  });
+  if (
+    existing &&
+    existing.state !== "FAILED" &&
+    existing.state !== "NOT_SENT"
+  ) {
+    return asResult(existing);
+  }
 
   const suppression = await getMarketingSuppression(
     input.channel,
     input.recipient.address,
   );
-  if (input.purpose === "MARKETING" && suppression) {
+
+  const nonProduction = isNonProductionDeployment();
+  const blockedMarketing = input.purpose === "MARKETING" && suppression;
+  const blockedBounce =
+    input.channel === "EMAIL" &&
+    input.purpose === "TRANSACTIONAL" &&
+    suppression?.reason === "bounce";
+
+  // Rendering is also guaranteed to happen before claiming PENDING. If it
+  // throws, a new delivery has not been created and a retryable FAILED /
+  // NOT_SENT row has not been reclaimed.
+  const rendered =
+    nonProduction || blockedMarketing || blockedBounce ? null : input.render();
+
+  const claim = await claimDelivery(input);
+  if (!claim.ownsSend) return asResult(claim.row);
+  const delivery = claim.row;
+
+  if (blockedMarketing) {
     return asResult(
       await finish(delivery.id, "SUPPRESSED", {
-        lastError: `suppressed: ${suppression.reason}`,
+        lastError: `suppressed: ${suppression!.reason}`,
       }),
     );
   }
-  if (
-    input.channel === "EMAIL" &&
-    input.purpose === "TRANSACTIONAL" &&
-    suppression?.reason === "bounce"
-  ) {
+  if (blockedBounce) {
     return asResult(
       await finish(delivery.id, "FAILED", {
         lastError: "hard bounce on file",
@@ -190,7 +213,7 @@ export async function deliverMessage(
     );
   }
 
-  if (isNonProductionDeployment()) {
+  if (nonProduction) {
     return asResult(
       await finish(delivery.id, "NOT_SENT", {
         lastError: "previews never send",
@@ -198,8 +221,10 @@ export async function deliverMessage(
     );
   }
 
-  const rendered = input.render();
   const invoke = async (): Promise<LowLevelResult> => {
+    if (!rendered) {
+      throw new Error("Message content was not rendered before provider invocation.");
+    }
     if (input.channel === "SMS") {
       return sendSms({
         to: delivery.recipientAddress,
