@@ -757,6 +757,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
       )
       .map((watch) =>
         taxSourceChangedException({
+          id: watch.id,
           label: watch.label,
           excerpt: watch.lastExcerpt,
           url: watch.url,
