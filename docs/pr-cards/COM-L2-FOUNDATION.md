@@ -234,7 +234,7 @@ SQL:
 - BusinessPhoneNumber partial unique accountId WHERE isPrimary AND retiredAt IS NULL.
 - MessageAttempt CHECK attemptNumber>0; ProviderEvent CHECK attempts>=0; ContactPoint CHECK suppressionVersion>=0; BusinessSettings CHECK communicationsPolicyVersion>0.
 - ContactPoint CHECK channel='SMS' for launch.
-- ProviderEvent processedAt history remains untouched. Backfill disposition=APPLIED for existing processedAt non-null rows, RECEIVED otherwise. No PENDING_MATCH invention without source inspection.
+- ProviderEvent `processedAt` history remains untouched. Do **not** backfill existing processed rows as APPLIED: legacy handlers also marked ignored/unrecognized and some unmatched events processed. Add/use an explicit `LEGACY_HANDLED` disposition for every pre-migration row with non-null `processedAt`; use RECEIVED only where `processedAt` is null. Later reconciliation may promote a legacy row only when current evidence proves a more specific disposition. No APPLIED/PENDING_MATCH invention without source inspection.
 - No data migration that infers consent, normalizes existing phone columns, creates phone numbers, labels historical data PRODUCTION, or generates financial facts.
 - CurrentAttempt cross-row linkage to its own delivery is validated by the later transactional command; test that command at L4. This card does not claim the FK proves that invariant.
 - Future schema additions are L3/L7/L10 only after cards name exact text.
