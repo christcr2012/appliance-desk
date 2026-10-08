@@ -36,7 +36,7 @@ export function AttentionList({ groups }: { groups: AttentionGroup[] }) {
             <ul className="mt-2 divide-y divide-line">
               {group.items.map((item) => (
                 <li
-                  key={`${item.category}:${item.href}:${item.since.toISOString()}`}
+                  key={`${item.category}:${item.title}:${item.href}:${item.since.toISOString()}`}
                   className="py-3"
                 >
                   <Link
