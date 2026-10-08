@@ -142,6 +142,26 @@ describe.skipIf(!enabled)("T-6D1 appliance purchase-tax evidence on real Postgre
     })).toBe(0);
   });
 
+  it("replays pending-context evidence without changing its revision or audit history", async () => {
+    const [unit] = await add(1, {
+      applianceTypeId: typeId, quantity: 1, acquisitionCostCents: 1000,
+      purchaseTax: { choice: "NONE_CHARGED", vendorTaxCents: 0 },
+    });
+    const first = await prisma.appliance.findUniqueOrThrow({ where: { id: unit.id } });
+    const before = await prisma.auditLog.count({
+      where: { entityType: "Appliance", entityId: unit.id, action: "appliance.acquisition_tax.record" },
+    });
+    const replay = await recordApplianceAcquisitionTax(userId, {
+      applianceId: unit.id, expectedRecordedAt: null, choice: "NONE_CHARGED", vendorTaxCents: 0,
+    });
+    expect(replay.status).toBe("UNKNOWN");
+    const after = await prisma.appliance.findUniqueOrThrow({ where: { id: unit.id } });
+    expect(after.acquisitionTaxRecordedAt).toEqual(first.acquisitionTaxRecordedAt);
+    expect(await prisma.auditLog.count({
+      where: { entityType: "Appliance", entityId: unit.id, action: "appliance.acquisition_tax.record" },
+    })).toBe(before);
+  });
+
   it("rejects receipt evidence belonging to another appliance without an audit write", async () => {
     const [owner, target] = await add(2);
     const photo = await prisma.photo.create({
