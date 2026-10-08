@@ -65,6 +65,6 @@ export const THEME_INIT_SCRIPT = `
     var pref = localStorage.getItem("${STORAGE_KEY}") || "system";
     var isDark = pref === "dark" || (pref === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
     if (isDark) document.documentElement.classList.add("dark");
-  } catch (e) {}
+  } catch {}
 })();
 `;
