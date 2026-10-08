@@ -11,7 +11,7 @@ export default async function UseTaxWorksheetPage({
 }: {
   params: Promise<{ periodId: string }>;
 }) {
-  await requireRole("OWNER");
+  await requireRole("OWNER", "ADMIN");
   const { periodId } = await params;
   // Check account ownership/type before asking the packet loader to read or change data.
   const period = await prisma.taxFilingPeriod.findUnique({
