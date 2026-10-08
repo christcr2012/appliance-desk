@@ -381,7 +381,17 @@ export async function markAmendmentFiled(
       latest(data.filedOn, data.paidOn), { allowFiled: true });
     if (current.status !== "READY") throw new Error("The corrected filing packet is blocked.");
     const currentDifference = buildFilingAmendmentPacket(previous.previouslyReported, current.packet);
-    if (JSON.stringify(currentDifference.differences) !== JSON.stringify(previous.differences)) {
+    const sameDifferences = currentDifference.differences.length === previous.differences.length &&
+      currentDifference.differences.every((diff, index) => {
+        const saved = previous.differences[index];
+        return saved?.key === diff.key &&
+          saved.previouslyReportedCents === diff.previouslyReportedCents &&
+          saved.correctedCents === diff.correctedCents &&
+          saved.differenceCents === diff.differenceCents;
+      });
+    // PostgreSQL JSONB is free to reorder object keys; compare actual
+    // amounts instead of stringifying object property order.
+    if (!sameDifferences) {
       throw new Error("Filing evidence changed since this amendment was prepared. Re-run amendment review.");
     }
     const expected = Math.max(0, amendment.additionalTaxCents);
