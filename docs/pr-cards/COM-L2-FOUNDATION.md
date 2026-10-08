@@ -1,6 +1,6 @@
 # COM-L2 — Telecom foundation schema
 
-**PROPOSED; requires COM acceptance, L1a/L1b and refreshed schema drift check.**
+**Batch COM approved 2026-10-08; L2 becomes implementation-eligible only after final reviewed L1a/L1b and its refreshed schema drift check.**
 Base: final L1b branch or current main with L1a/L1b merged.
 Risk: schema · Migration: one additive `<next_timestamp>_com_foundation` · Budget: ~400 production lines/<10 files.
 Design: BATCH-COM sections 2.1/2.4. No runtime sends, UI, new adapter or provider configuration.
