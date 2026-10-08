@@ -457,3 +457,8 @@ The same migration adds launch-confirmation timestamps/token hash fields, `Lead.
 ## Colorado filing-workspace upgrade (Batch T-6a1, October 2026)
 
 The additive `20261010120000_batch_t_filing_workspace` migration retains existing filing records and marks existing accounts as `SALES_RETURN`. Filing accounts now store configurable filing start, reminders, labels and license/check dates. Sales-tax and use-tax filing-account relations on jurisdictions are separate. Filing periods retain legal due dates, due-date edit attribution, payment evidence, zero-return status and entry progress. `TaxFilingAmendment` captures ordered correction packets with status and payment/filing evidence; it is included in the recovery manifest. No tax provider is activated by this migration. The separate Denver-local calendar helpers compute monthly, quarterly and annual boundaries, next-month base due dates and legal holiday rollovers; one-off proclamation/agency exceptions require owner verification and an explicit due-date override.
+
+
+### Invoice issue-date evidence for Colorado tax filings (T-6b1)
+
+`Invoice.issuedAt` stores an issue date independently of record creation. Stripe invoices record the provider's actual `status_transitions.finalized_at`, never webhook-receipt time, and missing provider evidence remains null. The additive `20261010130000_batch_t_invoice_issued_at` migration backfills non-draft/non-void local invoices from their creation time only; historical Stripe invoice dates must be verified and populated from provider records before accrual returns can be prepared. This is a filing-evidence integrity rule, not a change to customer charges or tax calculation.

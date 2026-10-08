@@ -1,0 +1,215 @@
+import { randomUUID } from "node:crypto";
+import { afterEach, describe, expect, it, vi } from "vitest";
+const mocks = vi.hoisted(() => ({
+  role: "OWNER" as "OWNER" | "ADMIN" | "STAFF",
+  requireRole: vi.fn(async (...roles: string[]) => {
+    if (!roles.includes(mocks.role)) throw new Error("Access denied");
+    return { user: { id: "test-owner", role: mocks.role } };
+  }),
+}));
+vi.mock("@/lib/session", () => ({ requireRole: mocks.requireRole }));
+import { businessDateFromKey } from "@/lib/business-date";
+import { prisma } from "@/lib/prisma";
+import { loadFilingPacket } from "@/domains/tax/filing-packet";
+const target = new URL(process.env.DATABASE_URL ?? "postgresql://localhost/unset");
+const enabled = process.env.CI === "true" &&
+  ["localhost", "127.0.0.1"].includes(target.hostname) &&
+  target.pathname === "/appliance_desk_test";
+const day = (s: string) => businessDateFromKey(s)!;
+
+describe.skipIf(!enabled)("T-6b1 filing load (real Postgres)", () => {
+  const token = randomUUID();
+  const tag = token.slice(0, 9);
+  const accountId = "t6-packet-account-"+token;
+  const jurisdictionId = "t6-packet-jurisdiction-"+token;
+  const userId = "t6-packet-user-"+token;
+  const customerId = "t6-packet-customer-"+token;
+  const invoiceId = "t6-packet-invoice-"+token;
+  let periodId = "";
+  let rateId = "";
+  let receiptId = "";
+  const extraReceiptIds: string[] = [];
+
+  afterEach(() => { mocks.role = "OWNER"; });
+
+  it("uses saved invoice tax in accrual, receipt allocations in cash, and refuses guessed basis or STAFF access", async () => {
+    try {
+      await prisma.user.create({
+        data: { id: userId, email: "t6packet-"+token+"@example.test", role: "CUSTOMER" },
+      });
+      await prisma.customer.create({
+        data: { id: customerId, userId, referralCode: "T6-"+tag },
+      });
+      await prisma.taxFilingAccount.create({
+        data: { id: accountId, name: "Test filing "+tag, kind: "SALES_RETURN", basis: "ACCRUAL" },
+      });
+      await prisma.taxJurisdiction.create({
+        data: {
+          id: jurisdictionId, code: "TXPK-"+tag, name: "Test Tax Jurisdiction",
+          level: "CITY", administration: "SELF_COLLECTED",
+          reviewStatus: "REVIEWED", filingAccountId: accountId,
+        },
+      });
+      const rate = await prisma.taxRateVersion.create({
+        data: { jurisdictionId, rateMilliPercent: 2900,
+          effectiveFrom: day("2026-01-01"), source: "MANUAL" },
+      });
+      rateId = rate.id;
+      const period = await prisma.taxFilingPeriod.create({
+        data: {
+          filingAccountId: accountId, periodStart: day("2026-10-01"),
+          periodEnd: day("2026-10-31"), dueOn: day("2026-11-20"),
+        },
+      });
+      periodId = period.id;
+      await prisma.invoice.create({
+        data: {
+          id: invoiceId, customerId, status: "OPEN", subtotalCents: 10000,
+          taxCents: 290, amountDueCents: 10290,
+        },
+      });
+      const line = await prisma.invoiceTaxLine.create({
+        data: {
+          invoiceId, jurisdictionId, rateVersionId: rateId,
+          category: "RENTAL", taxableCents: 10000, exemptCents: 0,
+          taxCents: 290, source: "ENGINE",
+        },
+      });
+      const accrual = await loadFilingPacket(periodId, day("2026-11-15"));
+      expect(accrual.status).toBe("READY");
+      if (accrual.status !== "READY") throw new Error("Unexpected block");
+      expect(accrual.packet.rows).toHaveLength(1);
+      expect(accrual.packet.rows[0].taxCents).toBe(290);
+      expect(accrual.packet.rows[0].grossSalesCents).toBe(10000);
+      expect(accrual.packet.totals.taxCents).toBe(290);
+
+      // VOID and DRAFT invoices are not issued tax obligations.
+      await prisma.invoice.update({ where: { id: invoiceId }, data: { status: "VOID" } });
+      const voided = await loadFilingPacket(periodId);
+      expect(voided.status).toBe("READY");
+      if (voided.status === "READY") expect(voided.packet.rows).toHaveLength(0);
+      await prisma.invoice.update({ where: { id: invoiceId }, data: { status: "OPEN" } });
+
+      // Stripe invoice issue evidence is independent of when the webhook
+      // created this local row. Missing provider dates must block filing.
+      await prisma.invoice.update({
+        where: { id: invoiceId }, data: {
+          stripeInvoiceId: "in_T6_"+tag, issuedAt: day("2026-09-30"),
+        },
+      });
+      const otherMonth = await loadFilingPacket(periodId);
+      expect(otherMonth.status).toBe("READY");
+      if (otherMonth.status === "READY") expect(otherMonth.packet.rows).toHaveLength(0);
+      await prisma.invoice.update({
+        where: { id: invoiceId }, data: { issuedAt: day("2026-10-05") },
+      });
+      const issuedHere = await loadFilingPacket(periodId);
+      expect(issuedHere.status).toBe("READY");
+      if (issuedHere.status === "READY") expect(issuedHere.packet.rows).toHaveLength(1);
+      await prisma.invoice.update({ where: { id: invoiceId }, data: { issuedAt: null } });
+      const unknownIssue = await loadFilingPacket(periodId);
+      expect(unknownIssue.status).toBe("BLOCKED");
+      await prisma.invoice.update({
+        where: { id: invoiceId }, data: { stripeInvoiceId: null },
+      });
+
+      await prisma.taxFilingAccount.update({ where: { id: accountId }, data: { basis: "CASH" } });
+      const noReceipt = await loadFilingPacket(periodId, day("2026-11-15"));
+      expect(noReceipt.status).toBe("READY");
+      if (noReceipt.status !== "READY") throw new Error("Unexpected cash block");
+      expect(noReceipt.packet.rows).toHaveLength(0);
+
+      const receipt = await prisma.receipt.create({
+        data: {
+          customerId, source: "MANUAL", method: "check",
+          amountCents: 10290, receivedOn: day("2026-10-15"),
+        },
+      });
+      receiptId = receipt.id;
+      await prisma.payment.create({
+        data: {
+          invoiceId, receiptId, amountCents: 10290,
+          method: "check", status: "SUCCEEDED",
+        },
+      });
+      const cash = await loadFilingPacket(periodId, day("2026-11-15"));
+      expect(cash.status).toBe("READY");
+      if (cash.status !== "READY") throw new Error("Unexpected cash block");
+      expect(cash.packet.rows).toHaveLength(1);
+      expect(cash.packet.rows[0].taxCents).toBe(290);
+      expect(cash.packet.rows[0].netTaxableCents).toBe(10000);
+
+      // Three installments in three months must distribute exactly the
+      // original 290-cent tax, not round it to 291 cents.
+      await prisma.payment.updateMany({ where: { invoiceId }, data: { amountCents: 3430 } });
+      await prisma.receipt.update({ where: { id: receiptId }, data: { amountCents: 3430 } });
+      for (const month of ["2026-11-15", "2026-12-15"]) {
+        const receipt = await prisma.receipt.create({
+          data: { customerId, source: "MANUAL", method: "check",
+            amountCents: 3430, receivedOn: day(month) },
+        });
+        extraReceiptIds.push(receipt.id);
+        await prisma.payment.create({
+          data: { invoiceId, receiptId: receipt.id,
+            amountCents: 3430, method: "check", status: "succeeded" },
+        });
+      }
+      const periods = [periodId];
+      for (const month of [11, 12]) {
+        const record = await prisma.taxFilingPeriod.create({
+          data: { filingAccountId: accountId, periodStart: day(`2026-${month}-01`),
+            periodEnd: day(`2026-${month}-${month === 11 ? "30" : "31"}`),
+            dueOn: day(month === 11 ? "2026-12-20" : "2027-01-20") },
+        });
+        periods.push(record.id);
+      }
+      const totals = [];
+      const gross = [];
+      for (const id of periods) {
+        const result = await loadFilingPacket(id, day("2027-01-15"));
+        expect(result.status).toBe("READY");
+        if (result.status !== "READY") throw new Error("Cash packet was blocked");
+        totals.push(result.packet.totals.taxCents);
+        gross.push(result.packet.rows[0]?.grossSalesCents ?? 0);
+      }
+      expect(totals.reduce((a,b) => a+b,0)).toBe(290);
+      expect(gross.reduce((a,b) => a+b,0)).toBe(10000);
+
+      await prisma.taxFilingAccount.update({ where: { id: accountId }, data: { basis: "ACCRUAL" } });
+      await prisma.invoice.update({ where: { id: invoiceId }, data: { amountPaidCents: 10290 } });
+      await prisma.refund.create({
+        data: { invoiceId, amountCents: 10290, reason: "OTHER" },
+      });
+      const refunded = await loadFilingPacket(periodId, day("2026-11-15"));
+      expect(refunded.status).toBe("READY");
+      if (refunded.status !== "READY") throw new Error("Refund adjustment was blocked");
+      expect(refunded.packet.totals.taxCents).toBe(0);
+      expect(refunded.packet.rows[0].netTaxableCents).toBe(0);
+
+      await prisma.taxFilingAccount.update({ where: { id: accountId }, data: { basis: "UNDECIDED" } });
+      const blocked = await loadFilingPacket(periodId);
+      expect(blocked.status).toBe("BLOCKED");
+      if (blocked.status === "BLOCKED") expect(blocked.problems.join(" ")).toMatch(/CPA/i);
+
+      mocks.role = "STAFF";
+      await expect(loadFilingPacket(periodId)).rejects.toThrow("Access denied");
+      mocks.role = "ADMIN";
+      const admin = await loadFilingPacket(periodId);
+      expect(admin.status).toBe("BLOCKED");
+      expect(mocks.requireRole).toHaveBeenCalledWith("OWNER", "ADMIN");
+      await prisma.invoiceTaxLine.delete({ where: { id: line.id } });
+    } finally {
+      await prisma.payment.deleteMany({ where: { invoiceId } });
+      await prisma.refund.deleteMany({ where: { invoiceId } });
+      await prisma.receipt.deleteMany({ where: { id: { in: [receiptId, ...extraReceiptIds].filter(Boolean) } } });
+      await prisma.invoiceTaxLine.deleteMany({ where: { invoiceId } });
+      await prisma.invoice.deleteMany({ where: { id: invoiceId } });
+      await prisma.taxFilingPeriod.deleteMany({ where: { filingAccountId: accountId } });
+      if (rateId) await prisma.taxRateVersion.deleteMany({ where: { id: rateId } });
+      await prisma.taxJurisdiction.deleteMany({ where: { id: jurisdictionId } });
+      await prisma.taxFilingAccount.deleteMany({ where: { id: accountId } });
+      await prisma.customer.deleteMany({ where: { id: customerId } });
+      await prisma.user.deleteMany({ where: { id: userId } });
+    }
+  });
+});

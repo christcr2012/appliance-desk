@@ -1801,3 +1801,8 @@ form section at 360 px, axe clean.
 - **S-T14** The official fillable DR 0252 cannot be obtained or has no form fields → ship the worksheet only.
 - **S-T15** The CPA says the exemption needs the use tax actually *paid* before the first rent (not just recorded as due)
   → make `USE_TAX_DUE` block billing instead of exempting, and ask Chris.
+
+
+### T-6b1 review-required evidence correction (2026-10-08)
+
+The pre-T-6b1 Invoice model had no provider issue timestamp. Accurate accrual filing must **not** use Prisma invoice creation time to place delayed Stripe webhook invoices in a filing month. Add one nullable `Invoice.issuedAt` timestamp and the additive `20261010130000_batch_t_invoice_issued_at` migration. Populate it only from Stripe invoice `status_transitions.finalized_at`; leave historical Stripe timestamps null until independently confirmed. Existing non-draft/non-void local invoices may safely backfill from their creation time. Block accrual packets if unverified Stripe invoice issue dates might affect the return. This repair is required by the independent P1 review on #309 and must have real-Postgres and replay tests; it does not change billed or collected tax.

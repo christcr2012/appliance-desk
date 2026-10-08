@@ -1757,6 +1757,9 @@ model Invoice {
   writtenOffReason String?
 
   stripeInvoiceId    String? @unique
+  // Stripe: finalized_at from the signed provider invoice, never webhook-receipt time.
+  // Local: issue time is its original creation time. Null means evidence is incomplete.
+  issuedAt           DateTime?
   lineItems           InvoiceLineItem[]
   taxLines            InvoiceTaxLine[]
   payments            Payment[]
@@ -1769,6 +1772,7 @@ model Invoice {
   @@index([status])
   @@index([customerId])
   @@index([agreementId])
+  @@index([issuedAt])
 }
 
 model InvoiceLineItem {
