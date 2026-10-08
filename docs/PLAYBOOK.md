@@ -127,6 +127,16 @@ Tests are not budgeted — write as many as the change needs. A PR that is mostl
 
 The approved design, applicable PR card, `docs/STATUS.md` and `docs/MASTER-ROADMAP.md` are the persistent context anchor. Re-read the current applicable pieces at each PR boundary and after a base changes; do not rely on an earlier session's remembered state. Session length by itself is not a stop condition. After each predecessor merges, retarget the next PR to current `main`, verify exact-head CI/performance/preview/reviews once, and merge it if clean. Continue while the next step is authorized and verified; stop at a required patch, failed/pending blocking gate, review finding, approval gate, or insufficient verified context. Never skip exact-head gates.
 
+**Merge conveyor (Chris, 2026-10-08):** when implementation is complete, stop changing scope. Before the first
+merge attempt, perform one focused diff self-review and collect all currently open automated-review threads. Resolve every
+valid finding in one patch batch rather than one commit/review cycle per finding. Then run the exact-head gates and request
+one exact-head automated re-review. If that pass is clean, merge immediately when CI/performance/preview are green; do not
+request an additional ceremonial "final review." If that pass finds issues, batch the entire pass, patch once, self-review
+those edits and rerun gates. A further automated review is required only when the new patch changes a high-risk semantic
+boundary (security, auth, money/billing, schema, provider behavior) or the repository ruleset explicitly requires it.
+Pure retarget/rebase operations with an unchanged diff get fresh exact-head CI/performance/preview but do not restart the
+review loop. Keep the successor frozen while its predecessor is changing, then rebase it once after the predecessor merges.
+
 **The cheapest way to avoid CI rounds:** for any PR in the schema, money/billing or auth risk area, run the integration
 tests you added or changed against the local throwaway Postgres (Step 4b, only those files) before the first push. It
 costs a few minutes once per session and usually saves a whole red CI round. For screen PRs, run the one browser spec
