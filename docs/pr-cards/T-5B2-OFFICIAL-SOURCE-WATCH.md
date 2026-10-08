@@ -1,5 +1,7 @@
 # T-5b2 — official tax source page watch
 
+> **Execution split (2026-10-08):** implementation proved this single card exceeds the repository PR budget once the SSRF boundary is made production-grade. Do not ship it as one PR. Use `T-5B2A-SAFE-OFFICIAL-SOURCE-FETCH.md` first, then `T-5B2B-OFFICIAL-SOURCE-WATCH-LIFECYCLE.md`. Together they preserve every requirement below; the parent card remains the acceptance contract.
+
 Base branch: ai/chatgpt/t5b1-official-rate-metadata · Risk area: external-source monitoring / SSRF safety · Migration: none · Budget estimate: ~470 production lines / 11 files
 Design: `docs/designs/BATCH-T.md` section 13.3 plus the T-5b boundaries in 13.1/13.6 (reasons only — this card is the build spec)
 
