@@ -4,7 +4,7 @@ Updated October 8, 2026. Acquisition work T-6D1…3 (#313–#315) is merged; #31
 
 ## Next
 
-After T-6C4 CI, review and merge, start **T-7A**, then T-7B…D. Keep the owner/legal/CPA and live payment gates. Refresh each card against its actual merged prerequisite. [MASTER-ROADMAP](MASTER-ROADMAP.md) remains the single handoff; [PLAN](PLAN.md) owns acceptance. No extra handoff document is needed.
+T-6C4 merged as #321. T-7A owner-only tax workspace setup and taxability UI is implementing; next T-7B, T-7C and T-7D. Keep owner/legal/CPA and live payment gates. Refresh each card against its actual merged prerequisite. [MASTER-ROADMAP](MASTER-ROADMAP.md) remains the single handoff; [PLAN](PLAN.md) owns acceptance. No extra handoff document is needed.
 
 ## Built
 

@@ -14,6 +14,14 @@ Read AGENTS, STATUS and this card first. Find the named heading/function with `r
 4. `src/domains/tax/exemptions.ts` — existing commands
 5. `src/domains/settings/index.ts` — locked settings saves
 
+### Actual T-7A drift and execution checkpoint (2026-10-08)
+
+- Started from merged T-6C4 (#321), `6f31f72013f0a1dcc1597160af32d329b27fa53e`, rather than the original planning SHA. The RDF filing, credit and conditional-billing blockers are preserved.
+- Existing finance access uses `requireRole("OWNER", "ADMIN")`, while each mutation needs `requireRole("OWNER")` **and** `assertActiveTeamActor` inside its transaction. STAFF receives no tax workspace routes or navigation.
+- `BusinessSettings.updatedAt` and `TaxFilingAccount.updatedAt` support optimistic concurrency; preserve signed/finalized periods when editing an account. Existing `TaxabilityRule` and immutable `TaxRateVersion` models are reused.
+- New six-section shell presents enabled Setup and What's taxed first. Remaining planned views (Overview, Returns, Areas, Exemptions) are labeled not yet released until T-7B/C/D; no dead links represented as working controls.
+- No new database migration or production billing/filing activation. Browser spec `e2e/sales-tax-setup.spec.ts` assigned to `browser-a`. Test-only ADMIN browser credentials are optional/conditional; domain-level owner-only admin denial is covered by real PostgreSQL tests.
+
 ## Drift check — every implementation, not only batch start
 
 Follow `docs/implementation-contracts/DRIFT-PROTOCOL.md`. Compare the latest main/predecessor against this baseline and each named contract. Capture actual head, relevant changed files, schema/signature/guard/test differences, and the disposition in the PR and `docs/designs/CHANGES-SINCE-DESIGN.md`. A prior card's merge is a new baseline, never evidence this card still matches.
