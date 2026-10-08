@@ -152,7 +152,10 @@ export async function recordApplianceAcquisitionTaxInTx(
           where: { sourceType: "APPLIANCE", sourceId: appliance.id },
           select: { useTaxDueCents: true, status: true },
         });
-        taxDue = rows.filter(row => row.status === "DUE" || row.status === "FILED").reduce((sum, row) => sum + row.useTaxDueCents, 0);
+        const priorFiled = relatedTax.filter(row => row.status === "FILED").reduce((sum, row) => sum + row.useTaxDueCents, 0);
+        const correctedFiled = rows.filter(row => row.status === "FILED").reduce((sum, row) => sum + row.useTaxDueCents, 0);
+        taxDue = rows.filter(row => row.status === "DUE").reduce((sum, row) => sum + row.useTaxDueCents, 0)
+          + Math.max(0, correctedFiled - priorFiled);
         status = taxDue > 0 ? "USE_TAX_DUE" : input.choice === "SELLER_CHARGED" && input.vendorTaxCents > 0
           ? "SALES_TAX_PAID" : "USE_TAX_PAID";
       } catch (error) {
