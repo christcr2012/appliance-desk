@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
 import { addBusinessDays, businessDateKey } from "@/lib/business-date";
@@ -142,6 +143,9 @@ export function buildFilingPacket(input: {
       ". If different, record the official amount; never silently change saved tax.",
     "Pay in the official portal, keep the confirmation number, and return to Appliance Desk to record filing.",
   ];
+  if (taxCents < 0) warnings.push(
+    "Refunds exceed collected tax for this period. Ask your CPA how to claim the credit; do not submit a negative payment.",
+  );
   if (!onTime) warnings.push(
     "After " + legal + " the return may carry penalty and interest. Use the amount shown by the filing portal.",
   );
@@ -298,7 +302,7 @@ export async function loadFilingPacket(periodId: string, now = new Date()): Prom
         ] };
       }
     }
-    const issued = { status: { notIn: ["DRAFT", "VOID"] as const } };
+    const issued: Prisma.InvoiceWhereInput = { status: { notIn: ["DRAFT", "VOID"] } };
     const where = basis === "ACCRUAL"
       ? { invoice: {
           ...issued,
@@ -386,6 +390,69 @@ export async function loadFilingPacket(periodId: string, now = new Date()): Prom
         countExempt += exemptShares[i]!;
       }
       evidence.push({ tax: line, taxableCents: countTaxable, exemptCents: countExempt, taxCents: countTax });
+    }
+    // A refund belongs to its OWN reporting period, which may differ from
+    // the original invoice's issue/receipt month. Never block future returns
+    // just because an old invoice was refunded.
+    const refunds = await prisma.refund.findMany({
+      where: {
+        createdAt: { gte: period.periodStart, lt: endExclusive },
+        invoice: {
+          taxLines: { some: { jurisdiction: { filingAccountId: account.id } } },
+        },
+      },
+      include: {
+        invoice: {
+          include: {
+            refunds: true,
+            taxLines: { include: { jurisdiction: true, rateVersion: true } },
+          },
+        },
+      },
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    });
+    for (const refund of refunds) {
+      const invoice = refund.invoice;
+      const lines = invoice.taxLines;
+      const totalTax = sum(lines.map(t => t.taxCents));
+      const invoiceAmount = invoice.amountDueCents;
+      const allRefunds = [...invoice.refunds].sort((a,b) => a.id.localeCompare(b.id));
+      const totalRefunds = sum(allRefunds.map(r => r.amountCents));
+      if (invoiceAmount <= 0 || totalTax < 0 || totalTax > invoiceAmount ||
+          lines.some(t => t.taxCents < 0 || t.taxableCents < 0 || t.exemptCents < 0) ||
+          totalRefunds > invoiceAmount || totalRefunds <= 0) {
+        problems.push("Refund invoice " + invoice.invoiceNumber +
+          " needs reconciliation before tax may be reported.");
+        continue;
+      }
+      const refundIndex = allRefunds.findIndex(r => r.id === refund.id);
+      if (refundIndex < 0) {
+        problems.push("Refund evidence could not be matched to its invoice.");
+        continue;
+      }
+      const weights = allRefunds.map(r => r.amountCents);
+      const totalTaxRefund = allocateAcrossLines(totalRefunds,
+        [totalTax, invoiceAmount - totalTax])[0]!;
+      const perLineTax = allocateAcrossLines(totalTaxRefund, lines.map(l => l.taxCents));
+      for (const [index, line] of lines.entries()) {
+        if (line.jurisdiction.filingAccountId !== account.id) continue;
+        const tax = allocateAcrossLines(perLineTax[index]!, weights)[refundIndex]!;
+        const principal = line.taxableCents + line.exemptCents;
+        if (principal > invoiceAmount) {
+          problems.push("Refund invoice " + invoice.invoiceNumber +
+            " has principal that cannot be allocated.");
+          continue;
+        }
+        const grossRefund = allocateAcrossLines(totalRefunds,
+          [principal, invoiceAmount - principal])[0]!;
+        const [totalTaxable, totalExempt] = principal > 0
+          ? allocateAcrossLines(grossRefund, [line.taxableCents, line.exemptCents])
+          : [0, 0];
+        const taxable = allocateAcrossLines(totalTaxable, weights)[refundIndex]!;
+        const exempt = allocateAcrossLines(totalExempt, weights)[refundIndex]!;
+        evidence.push({ tax: line, taxableCents: -taxable,
+          exemptCents: -exempt, taxCents: -tax });
+      }
     }
   }
   if (problems.length > 0) return { status: "BLOCKED", problems: [...new Set(problems)] };
