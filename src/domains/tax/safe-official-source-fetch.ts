@@ -58,11 +58,6 @@ function isUnsafeIpv4(address: string): boolean {
   );
 }
 
-function mappedIpv4(address: string): string | null {
-  const match = address.toLowerCase().match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/);
-  return match?.[1] ?? null;
-}
-
 function ipv6Segments(address: string): number[] | null {
   const normalized = address.toLowerCase();
   if (normalized.includes(".")) return null;
@@ -297,6 +292,20 @@ function requestPinnedOfficialSource(
           return;
         }
 
+        const rawEncoding = response.headers["content-encoding"];
+        const contentEncoding = (
+          Array.isArray(rawEncoding) ? rawEncoding[0] : rawEncoding
+        )?.trim().toLowerCase();
+        if (contentEncoding && contentEncoding !== "identity") {
+          response.destroy();
+          request?.destroy();
+          finish({
+            ok: false,
+            error: new Error("Official source response used unsupported content encoding."),
+          });
+          return;
+        }
+
         const rawContentType = response.headers["content-type"];
         const contentType = mediaType(
           Array.isArray(rawContentType) ? rawContentType[0] ?? null : rawContentType ?? null,
@@ -316,6 +325,7 @@ function requestPinnedOfficialSource(
         const declaredLength = Number(lengthValue);
         if (Number.isFinite(declaredLength) && declaredLength > maxBytes) {
           response.destroy();
+          request?.destroy();
           finish({
             ok: false,
             error: new Error("Official source response exceeded the size limit."),
