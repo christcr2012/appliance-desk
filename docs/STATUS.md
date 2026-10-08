@@ -1,6 +1,6 @@
 # STATUS — current work, blockers and next action
 
-Updated October 8, 2026. Audited code baseline: `b2a06c2` (#310). Documentation refresh branch: `ai/codex/documentation-reset-20261008`; publication/checks pending. No runtime changes in this refresh.
+Updated October 8, 2026. Audited code baseline: `b2a06c2` (#310). Documentation refresh branch: `ai/codex/documentation-reset-20261008`; published as PR #311; exact-head CI/review gates pending. No runtime changes in this refresh.
 
 ## Built
 

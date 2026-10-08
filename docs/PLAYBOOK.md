@@ -169,18 +169,15 @@ This protocol is mandatory whenever work depends on CI, Vercel, GitHub review, o
    several small related calls is encouraged.
 
 **Report what the budget cost.** Put "CI runs used: N (red: R)" in each PR description and in the STATUS handoff. If two
-PRs in a row needed three red runs, split every remaining PR of that batch one step smaller and say so in STATUS.
+PRs in a row needed three red runs, diagnose the shared cause before proceeding.
+Split later capabilities only when scope/coupling caused the failures; repair
+shared fixtures or environment assumptions once when those caused them.
 
-**Ripple check before coding (5 minutes, saves a CI round):** grep `tests/` and `e2e/` for every function, route,
-setting and fixture you are about to change, and list the tests that will need updating in the same PR. Two known
-ripples in the remaining batches:
-
-- **Batch T's readiness gate** (billing blocked until tax is decided) makes every existing test that signs an
-  agreement or sets up billing fail unless its fixture is tax-ready. The PR that wires the gate must also add a
-  `seedTaxReadyContext()` test helper (reviewed synthetic jurisdiction, synthetic rate, election and rules for the
-  test address) and extend the CI seed in `prisma/seed.ts` so browser flows stay green.
-- **Batch G's two-step login** changes how test accounts sign in. The same PR must update `scripts/create-ci-login.ts`
-  and `e2e/global-setup.ts` so the saved browser sessions complete the second step.
+**Ripple check before coding:** use narrow `rg` over tests/e2e for changed
+functions, routes, settings and fixtures. Update affected regressions in the
+same PR. T readiness and G two-step login are already wired at the audited
+baseline: reuse their current helpers and session setup; do not recreate them
+from old prospective instructions. No fixed five-minute reading period.
 
 Any new page must be added to `e2e/route-inventory.ts` in the same PR (`tests/accessibility-route-inventory.test.ts`
 fails otherwise), and any new browser spec to the lightest group in `e2e/shards.json`.

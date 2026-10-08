@@ -1828,3 +1828,19 @@ Official primary references: [Colorado leases](https://tax.colorado.gov/sites/ta
 [retail delivery fee](https://tax.colorado.gov/retail-delivery-fee).
 Do not seed a guessed current fee or promise automated DR 0252 completion without
 verified field mapping; the acquisition worksheet/manual filing remains usable.
+
+### Acquisition evidence schema reconciliation
+
+T-6D1 owns the Amendment D acquisition enum/four fields plus nullable
+`Appliance.acquisitionTaxRecordedAt DateTime?` and
+`acquisitionTaxRecordedByUserId String?`. The timestamp is the evidence revision
+for compare-and-set, not proof of payment. Receipt uses the existing scoped
+Photo relation; define delete behavior consistently with privacy/retention.
+Migration must not infer historic payment from a missing field. The public
+`PurchaseTaxChoice` is the four-value union named in T-6D1. Server role/receipt
+guards and acquisition audit must run in the same transaction as inventory.
+Reuse `recordUseTaxForPurchase(tx,input)` with that transaction client; its
+current signature already accepts a transaction. Missing configured context is
+a typed pending-review outcome; do not catch arbitrary DB errors and commit a
+partial tax write. Prove inventory/tax/audit rollback together on unexpected
+failure and no tax write for incomplete acquisition context.

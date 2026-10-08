@@ -240,3 +240,16 @@ blind resend. No new background writer, spending action or activation button.
 Prove role-shaped links, missing source fallback, duplicate issue suppression,
 partial-page non-resolution and provider-unknown guidance. Reuse existing S
 source lifecycle, not a second alert engine.
+
+### S schema and API reconciliation
+
+S-1A adds `SystemIssue.version Int @default(1)` for stale owner action rejection.
+Notes use nullable `authorUserId String?` and `authorKeyId String?`, with a
+constraint forbidding both identities; staff author scope remains private.
+S-2 owns OpsAgentKey and the authorKey relation, so S-1A must not reference a
+not-yet-created key table. Revocable key hashes are excluded from backup/restore
+and external exports. The external notes DTO and status/version conflict rules
+are exactly S-2's structured contract; allowlisted recommendation rendering
+replaces API free text. Human note redaction is a mitigation, not an anonymity
+claim. Source writer failure never rolls back an unrelated completed business
+transaction, and partial scans never resolve issues they have not inspected.
