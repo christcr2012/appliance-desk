@@ -5,6 +5,7 @@ import { getAgreementTaxContext } from "./locations";
 import { resolveTaxability } from "./engine";
 import { rdfRateForSale, retailDeliveryFeeStatus } from "./retail-delivery-fee";
 import { SUCCESSFUL_PAYMENT_STATUSES } from "@/domains/billing/payment-status";
+import { recordedRetailSales } from "./rdf-sales-evidence";
 
 type Tx = Prisma.TransactionClient;
 type Result = { recordId: string | null; status: RdfRecordStatus | null };
@@ -41,37 +42,6 @@ const pending = (
   amountCents: null,
   collectedFromCustomer: null,
 });
-
-/** Count one issued Colorado retail invoice line once, never one per tax jurisdiction. */
-async function recordedRetailSales(tx: Tx, year: number): Promise<number> {
-  const lines = await tx.invoiceLineItem.findMany({
-    where: {
-      kind: {
-        notIn: [
-          "DEPOSIT",
-          "TAX",
-          "RETAIL_DELIVERY_FEE",
-          "CREDIT",
-          "PREPAY_DISCOUNT",
-          "LATE_RETURN_WAIVER",
-        ],
-      },
-      invoice: {
-        agreement: { serviceAddress: { state: "CO" } },
-        status: { notIn: ["DRAFT", "VOID", "WRITTEN_OFF"] },
-        issuedAt: {
-          gte: new Date(Date.UTC(year, 0, 1)),
-          lt: new Date(Date.UTC(year + 1, 0, 1)),
-        },
-      },
-    },
-    select: { amountCents: true },
-  });
-  const total = lines.reduce((sum, line) => sum + line.amountCents, 0);
-  if (!Number.isSafeInteger(total))
-    throw new Error("Sales total is outside integer cents range.");
-  return Math.max(0, total);
-}
 
 async function firstRentSaleDate(
   tx: Tx,

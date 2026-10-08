@@ -20,6 +20,8 @@ import {
 } from "@/lib/business-date";
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
+import { recordedRetailSales } from "./rdf-sales-evidence";
+import { retailDeliveryFeeStatus } from "./retail-delivery-fee";
 
 const LOOKUP_REUSE_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -802,6 +804,7 @@ export async function assertTaxReadyForAgreement(
     where: { id: agreementId },
     select: {
       serviceAddressId: true,
+      serviceAddress: { select: { state: true } },
       damageWaiverCents: true,
       lateFeeCents: true,
       lateFeePercent: true,
@@ -809,7 +812,10 @@ export async function assertTaxReadyForAgreement(
   });
   const settings = await tx.businessSettings.findUniqueOrThrow({
     where: { id: "singleton" },
-    select: { shortTermLeaseElection: true },
+    select: {
+      shortTermLeaseElection: true, rdfThresholdCents: true,
+      rdfThresholdCrossedOn: true, rdfHandling: true, rdfCpaConfirmedOn: true,
+    },
   });
   const location = await tx.addressTaxLocation.findFirst({
     where: { serviceAddressId: agreement.serviceAddressId, isCurrent: true },
@@ -852,6 +858,42 @@ export async function assertTaxReadyForAgreement(
   }
   if (location?.status === "VERIFIED" && location.jurisdictions.length > 0) {
     const context = await getAgreementTaxContext(tx, agreementId, taxDate);
+    // Only a Colorado delivery containing a state-taxable rental item can
+    // trigger RDF readiness. Do not block an exempt or out-of-state customer.
+    if (agreement.serviceAddress.state === "CO" &&
+        settings.shortTermLeaseElection === "COLLECT_ON_RENTALS") {
+      const stateJurisdictions = await tx.taxJurisdiction.findMany({
+        where: {
+          id: { in: context.jurisdictions.map(row => row.id) },
+          level: "STATE",
+        },
+        select: { id: true },
+      });
+      if (stateJurisdictions.some(state =>
+        !context.exemptJurisdictionIds.has(state.id) &&
+        context.jurisdictions.some(j => j.id === state.id &&
+          resolveTaxability(j, "RENTAL", context).taxability === "TAXABLE"))) {
+        const year = Number(businessDateKey(taxDate).slice(0, 4));
+        const [priorRetail, currentRetail, filingAccount] = await Promise.all([
+          recordedRetailSales(tx, year - 1),
+          recordedRetailSales(tx, year),
+          tx.taxFilingAccount.findFirst({
+            where: { kind: "SALES_RETURN", jurisdictions: { some: { level: "STATE" } } },
+            select: { frequency: true },
+          }),
+        ]);
+        const decision = retailDeliveryFeeStatus({
+          today: taxDate, saleType: "RENTAL", election: settings.shortTermLeaseElection,
+          previousYearRetailCents: priorRetail, currentYearRetailCents: currentRetail,
+          thresholdCents: settings.rdfThresholdCents,
+          thresholdCrossedOn: settings.rdfThresholdCrossedOn,
+          handling: settings.rdfHandling, cpaConfirmedOn: settings.rdfCpaConfirmedOn,
+          frequency: filingAccount?.frequency ?? "MONTHLY",
+        });
+        if (decision.status === "UNDECIDED")
+          problems.push("Colorado retail delivery fee: " + decision.reason);
+      }
+    }
     for (const category of chargeCategoriesForAgreement(agreement)) {
       let taxableJurisdictions = 0;
       for (const jurisdiction of context.jurisdictions) {

@@ -34,6 +34,20 @@ authorizes collection/go-live; this does not override CPA/Stripe/production
 gates. T-6C4 uses `RetailDeliveryFeeRecord.invoiceLineId` for customer-collected
 evidence, `deliveredOn` for filing period, and `saleOn` for rate selection.
 
+### T-6C4 implementation — 2026-10-08 (based on merged #320)
+
+A standalone `RdfPacket` and `TaxFilingPeriod.worksheet.rdf` preserve
+original statutory delivery fee evidence separately from sales/use tax.
+`deliveredOn` selects the return; T-6C2's `saleOn` chose the frozen
+rate. Worksheets freeze source amounts and whether the customer paid,
+because a later `NOT_DUE` correction may clear mutable money fields.
+Only a later open RDF return can credit a prior filed liability, and only
+after a collected fee has a matching recorded customer refund. A preview
+cannot reserve credits; filing and amendments lock/recheck original evidence.
+Readiness calls the same recorded-retail-sales logic as the fee decision;
+only applicable state-taxable Colorado rentals block on missing
+handling/CPA confirmation. No paid resources or live filing activated.
+
 ## Current checkpoint — 2026-10-08, main b2a06c2 (#310)
 
 A/B/C/R/B2/D/E/E2, F-part-1 and G are built; T is built through filing

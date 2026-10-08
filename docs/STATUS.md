@@ -1,10 +1,10 @@
 # STATUS — current work, blockers and next action
 
-Updated October 8, 2026. Acquisition work T-6D1…3 (#313–#315) is merged; #315 includes the reviewed ADMIN read-only worksheet correction. T-6C1 (#317) merged as main 7acc04a. T-6C2 (#319) is merged on main `1432585`. T-6C3 is implementing customer fee line generation and Stripe recovery behind a separate default-off `RDF_CUSTOMER_CHARGING_ENABLED` switch. No customer charging, live payments or fee collection have been activated. No live payments, customer messages or fee charging are activated.
+Updated October 8, 2026. Acquisition work T-6D1…3 (#313–#315) is merged; #315 includes the reviewed ADMIN read-only worksheet correction. T-6C1 (#317) merged as main 7acc04a. T-6C2 (#319) is merged on main `1432585`. T-6C3 (#320) has merged into main. T-6C4 adds RDF filing, credits and conditional billing readiness without enabling live money operations. No customer charging, live payments or fee collection have been activated. No live payments, customer messages or fee charging are activated.
 
 ## Next
 
-After the exact-head T-6C3 CI/review/merge gates, start **T-6C4**, then T-7A…D. Refresh each card against its actual merged prerequisite. [MASTER-ROADMAP](MASTER-ROADMAP.md) remains the single handoff; [PLAN](PLAN.md) owns acceptance. No extra handoff document is needed.
+After T-6C4 CI, review and merge, start **T-7A**, then T-7B…D. Keep the owner/legal/CPA and live payment gates. Refresh each card against its actual merged prerequisite. [MASTER-ROADMAP](MASTER-ROADMAP.md) remains the single handoff; [PLAN](PLAN.md) owns acceptance. No extra handoff document is needed.
 
 ## Built
 
