@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { runAutomation } from "@/domains/automation/runs";
 import { recheckCurrentTaxAddresses } from "@/domains/tax/address-recheck";
+import { runOfficialSourceWatch } from "@/domains/tax/official-source-watch";
 
 export async function GET(request: Request): Promise<NextResponse> {
   const authHeader = request.headers.get("authorization");
@@ -16,8 +17,8 @@ export async function GET(request: Request): Promise<NextResponse> {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
-  return NextResponse.json(
-    await runAutomation({
+  const [addressRecheck, taxRateWatch] = await Promise.all([
+    runAutomation({
       ruleKey: "tax-address-recheck",
       work: async () => {
         const result = await recheckCurrentTaxAddresses();
@@ -32,5 +33,13 @@ export async function GET(request: Request): Promise<NextResponse> {
         };
       },
     }),
-  );
+    runAutomation({
+      ruleKey: "tax-rate-watch",
+      work: async () => ({
+        counts: await runOfficialSourceWatch(),
+      }),
+    }),
+  ]);
+
+  return NextResponse.json({ addressRecheck, taxRateWatch });
 }
