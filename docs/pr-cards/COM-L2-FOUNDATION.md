@@ -77,6 +77,7 @@ enum ProviderEventDisposition {
   APPLIED
   IGNORED
   FAILED
+  LEGACY_HANDLED
 }
 enum CommunicationOrigin {
   AUTOMATION
