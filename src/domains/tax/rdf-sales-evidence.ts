@@ -1,4 +1,5 @@
 import type { Prisma } from "@prisma/client";
+import { businessDateFromKey } from "@/lib/business-date";
 
 type Tx = Prisma.TransactionClient;
 
@@ -20,8 +21,9 @@ export async function recordedRetailSales(tx: Tx, year: number): Promise<number>
         agreement: { serviceAddress: { state: "CO" } },
         status: { notIn: ["DRAFT", "VOID", "WRITTEN_OFF"] },
         issuedAt: {
-          gte: new Date(Date.UTC(year, 0, 1)),
-          lt: new Date(Date.UTC(year + 1, 0, 1)),
+          gte: businessDateFromKey(`${year}-01-01`)!,
+          lt: businessDateFromKey(`${year + 1}-01-01`)!,
+
         },
       },
     },

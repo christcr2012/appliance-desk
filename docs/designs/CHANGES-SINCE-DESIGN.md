@@ -34,6 +34,15 @@ authorizes collection/go-live; this does not override CPA/Stripe/production
 gates. T-6C4 uses `RetailDeliveryFeeRecord.invoiceLineId` for customer-collected
 evidence, `deliveredOn` for filing period, and `saleOn` for rate selection.
 
+### T-6C4 review corrections (PR #321)
+
+Amendments now count new original RDF record IDs, not net fee difference
+(which could offset a future-return credit); refund capacity is consumed
+across all prior claim periods using frozen fee evidence; retail-sales year
+ranges use America/Denver midnight, not UTC. The existing Today SALES_TAX
+group gains an owner-facing customer-refund-needed item that links directly
+to the customer's billing page. These findings were fixed before merge.
+
 ### T-6C4 implementation — 2026-10-08 (based on merged #320)
 
 A standalone `RdfPacket` and `TaxFilingPeriod.worksheet.rdf` preserve

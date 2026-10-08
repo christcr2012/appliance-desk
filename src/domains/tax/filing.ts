@@ -223,7 +223,9 @@ function amountsByKey(packet: FilingPacket): Map<string, number> {
   }
   // A corrected RDF return can create a positive amendment. A removal is
   // handled through a credit on a subsequent open RDF return instead.
-  if (packet.rdf) add("RDF:LIABILITY", packet.rdf.rows.reduce((n, row) => n + row.totalCents, 0));
+  if (packet.rdf) for (const id of packet.rdf.sourceRecordIds) {
+    add("RDF:SALE:" + id, packet.rdf.sourceAmountCents[id] ?? 0);
+  }
   for (const row of packet.rows) {
     const key = "SALES:" + row.jurisdictionId + ":" + row.rateMilliPercent;
     add(key + ":GROSS", row.grossSalesCents);
@@ -255,9 +257,12 @@ export function buildFilingAmendmentPacket(previous: FilingPacket, corrected: Fi
     previouslyReported: previous,
     corrected,
     differences,
+    // RDF amendments add ONLY previously unreported sales; previously
+    // over-reported fees are credited separately on a later open return.
     additionalTaxCents: previous.rdf
-      ? Math.max(0, (corrected.rdf?.rows.reduce((n, row) => n + row.totalCents, 0) ?? 0) -
-        previous.rdf.rows.reduce((n, row) => n + row.totalCents, 0))
+      ? (corrected.rdf?.sourceRecordIds ?? [])
+          .filter(id => !previous.rdf!.sourceRecordIds.includes(id))
+          .reduce((total, id) => total + (corrected.rdf!.sourceAmountCents[id] ?? 0), 0)
       : corrected.totals.taxCents - previous.totals.taxCents,
   };
 }

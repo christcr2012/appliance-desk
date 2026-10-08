@@ -167,7 +167,24 @@ export async function buildRdfPacketInTx(tx: Tx, periodId: string): Promise<RdfP
   }) : [];
   const creditRecordIds: string[] = [];
   let priorPeriodCreditCents = 0;
+  // A refund may be referenced by corrections claimed in DIFFERENT
+  // return periods. Include those frozen, previously claimed cents in
+  // the refund budget so one customer refund can never fund two credits.
+  const previouslyClaimed = reported.size ? await tx.retailDeliveryFeeRecord.findMany({
+    where: {
+      id: { in: [...reported.keys()] },
+      creditAppliedPeriodId: { not: null, notIn: [periodId] },
+      customerRefundRef: { not: null },
+    },
+    select: { id: true, customerRefundRef: true },
+  }) : [];
   const assignedRefundCents = new Map<string, number>();
+  for (const item of previouslyClaimed) {
+    const source = reported.get(item.id);
+    if (!source?.collected || !item.customerRefundRef) continue;
+    assignedRefundCents.set(item.customerRefundRef,
+      (assignedRefundCents.get(item.customerRefundRef) ?? 0) + source.cents);
+  }
   for (const record of candidates) {
     const source = reported.get(record.id);
     if (!source || source.cents <= 0) continue;

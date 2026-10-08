@@ -6,6 +6,7 @@ import { businessDateFromKey } from "@/lib/business-date";
 import { buildRdfPacketInTx, reserveRdfCreditsInTx } from "@/domains/tax/rdf-filing";
 import { loadFilingPacketInTx } from "@/domains/tax/filing-packet";
 import { buildFilingAmendmentPacket } from "@/domains/tax/filing";
+import { recordedRetailSales } from "@/domains/tax/rdf-sales-evidence";
 
 const uri = new URL(process.env.DATABASE_URL ?? "postgresql://localhost/unset");
 const enabled = process.env.CI === "true" &&
@@ -220,6 +221,96 @@ describe.skipIf(!enabled)("T-6C4 RDF filing with isolated PostgreSQL", () => {
       const amendment = buildFilingAmendmentPacket(previous.packet, corrected.packet);
       expect(amendment.additionalTaxCents).toBe(31);
       expect(amendment.differences.some(row => row.differenceCents > 0)).toBe(true);
+    });
+  });
+
+  it("a replacement fee is an additional 31-cent amendment even when original over-report falls away", async () => {
+    await withEvidence(async f => {
+      const period = await f.period("2026-08-01", "2026-08-31");
+      const removed = await f.record("2026-08-03", "2026-08-01");
+      const previous = await loadFilingPacketInTx(f.tx, period.id);
+      expect(previous.status).toBe("READY");
+      if (previous.status !== "READY") return;
+      await f.tx.retailDeliveryFeeRecord.update({
+        where: { id: removed.id }, data: { status: "NOT_DUE", amountCents: null, rateId: null },
+      });
+      await f.record("2026-08-04", "2026-08-02");
+      const corrected = await loadFilingPacketInTx(f.tx, period.id);
+      expect(corrected.status).toBe("READY");
+      if (corrected.status !== "READY") return;
+      const amendment = buildFilingAmendmentPacket(previous.packet, corrected.packet);
+      expect(amendment.additionalTaxCents).toBe(31);
+      expect(amendment.differences).toHaveLength(2);
+    });
+  });
+
+  it("Colorado's December 31 evening invoices count in the old calendar year", async () => {
+    await withEvidence(async f => {
+      const before2025 = await recordedRetailSales(f.tx, 2025);
+      const before2026 = await recordedRetailSales(f.tx, 2026);
+      await f.tx.invoice.create({
+        data: {
+          customerId: f.customerId, agreementId: f.agreementId,
+          status: "OPEN", issuedAt: new Date("2026-01-01T01:00:00Z"),
+          amountDueCents: 130,
+          lineItems: { create: {
+            kind: "RENTAL", description: "December 31 Colorado rental", amountCents: 130,
+          } },
+        },
+      });
+      expect((await recordedRetailSales(f.tx, 2025)) - before2025).toBe(130);
+      expect((await recordedRetailSales(f.tx, 2026)) - before2026).toBe(0);
+    });
+  });
+
+  it("a previously credited fee consumes its refund across subsequent return periods", async () => {
+    await withEvidence(async f => {
+      const old = await f.period("2026-08-01", "2026-08-31");
+      const september = await f.period("2026-09-01", "2026-09-30");
+      const october = await f.period("2026-10-01", "2026-10-31");
+      const a = await f.record("2026-08-03", "2026-08-01", "READY", { collected: true });
+      const b = await f.record("2026-08-04", "2026-08-01", "READY", { collected: true });
+      await f.frozenOriginal(a.id, old.id);
+      await f.tx.retailDeliveryFeeRecord.update({
+        where: { id: b.id }, data: { filingPeriodId: old.id },
+      });
+      // Rebuild frozen worksheet so both original sales are actually reported.
+      const original = await loadFilingPacketInTx(f.tx, old.id, new Date(), { allowFiled: true });
+      if (original.status !== "READY") throw new Error("RDF original blocked");
+      await f.tx.taxFilingPeriod.update({
+        where: { id: old.id }, data: { worksheet: JSON.parse(JSON.stringify(original.packet)) },
+      });
+      const invoice = await f.tx.invoice.create({ data: {
+        customerId: f.customerId, agreementId: f.agreementId,
+        status: "OPEN", amountDueCents: 62,
+        lineItems: { create: [
+          { kind: "RETAIL_DELIVERY_FEE", description: "Colorado retail delivery fee", amountCents: 31 },
+          { kind: "RETAIL_DELIVERY_FEE", description: "Colorado retail delivery fee", amountCents: 31 },
+        ] },
+      }, include: { lineItems: true } });
+      const refund = await f.tx.refund.create({ data: {
+        invoiceId: invoice.id, amountCents: 31, reason: "OTHER",
+      } });
+      const date = new Date(refund.createdAt.getTime() + 1000);
+      await f.tx.retailDeliveryFeeRecord.update({
+        where: { id: a.id }, data: { status: "NOT_DUE", amountCents: null,
+          collectedFromCustomer: null, rateId: null, invoiceLineId: invoice.lineItems[0]!.id,
+          customerRefundRef: refund.id, customerRefundedAt: date },
+      });
+      await f.tx.retailDeliveryFeeRecord.update({
+        where: { id: b.id }, data: { status: "NOT_DUE", amountCents: null,
+          collectedFromCustomer: null, rateId: null, invoiceLineId: invoice.lineItems[1]!.id },
+      });
+      await f.record("2026-09-03", "2026-09-01");
+      await f.record("2026-10-03", "2026-10-01");
+      expect((await buildRdfPacketInTx(f.tx, september.id)).creditRecordIds).toEqual([a.id]);
+      await reserveRdfCreditsInTx(f.tx, september.id, [a.id]);
+      await f.tx.retailDeliveryFeeRecord.update({
+        where: { id: b.id }, data: { customerRefundRef: refund.id, customerRefundedAt: date },
+      });
+      const later = await buildRdfPacketInTx(f.tx, october.id);
+      expect(later.creditRecordIds).not.toContain(b.id);
+      expect(later.blockers.join(" ")).toMatch(/does not cover all credits/);
     });
   });
 
