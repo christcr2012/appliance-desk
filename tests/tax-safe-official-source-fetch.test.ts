@@ -120,6 +120,41 @@ describe("T-5b2 safe official-source fetch", () => {
       fetchOfficialSourcePage("https://linklocal.example.gov/page"),
     ).rejects.toThrow("non-public address");
 
+    mocks.lookup.mockResolvedValueOnce([
+      { address: "100.64.0.10", family: 4 },
+    ]);
+    await expect(
+      fetchOfficialSourcePage("https://cgnat.example.gov/page"),
+    ).rejects.toThrow("non-public address");
+
+    mocks.lookup.mockResolvedValueOnce([
+      { address: "::1", family: 6 },
+    ]);
+    await expect(
+      fetchOfficialSourcePage("https://ipv6-loopback.example.gov/page"),
+    ).rejects.toThrow("non-public address");
+
+    mocks.lookup.mockResolvedValueOnce([
+      { address: "fe80::1", family: 6 },
+    ]);
+    await expect(
+      fetchOfficialSourcePage("https://ipv6-linklocal.example.gov/page"),
+    ).rejects.toThrow("non-public address");
+
+    mocks.lookup.mockResolvedValueOnce([
+      { address: "fd00::1", family: 6 },
+    ]);
+    await expect(
+      fetchOfficialSourcePage("https://ipv6-ula.example.gov/page"),
+    ).rejects.toThrow("non-public address");
+
+    mocks.lookup.mockResolvedValueOnce([
+      { address: "::ffff:7f00:1", family: 6 },
+    ]);
+    await expect(
+      fetchOfficialSourcePage("https://ipv4-mapped.example.gov/page"),
+    ).rejects.toThrow("non-public address");
+
     expect(mocks.request).not.toHaveBeenCalled();
   });
 
