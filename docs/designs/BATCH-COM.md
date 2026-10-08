@@ -305,7 +305,7 @@ This is a dependency plan, not a promise every cluster fits budget. Mandatory in
 
 | PR / unit | Risk area and deliverable | Dependencies / evidence |
 |---|---|---|
-| COM-L1a | Sender safety: no UNKNOWN SMS replay; all-SMS STOP; explicit production+owner activation fence | Current E; real DB timeout/STOP/isolation tests; no schema |
+| COM-L1a | Sender safety: no UNKNOWN SMS replay; all-SMS STOP; explicit production+owner activation fence | Current E; one additive `BusinessSettings.customerSmsEnabled Boolean @default(false)` migration; real DB timeout/STOP/isolation tests |
 | COM-L1b | Event integrity: serialized finalization/status reducer, unmatched callback replay | L1a; early-callback/concurrent state tests; no schema, existing processedAt=null/summary identifies replayable events |
 | COM-L2 | Foundation schema: account/number/contact/binding/attempt, ProviderEvent/ConsentRecord extensions, communicationsPolicy; migration/backup coverage | L1; populated additive upgrade + restore; draft policy only |
 | COM-L3 | Inbox/template schema: thread/message/link/template revision, MessagePurpose addition, payload snapshots | L2; one migration; stable cursor fixtures; no live behavior |
