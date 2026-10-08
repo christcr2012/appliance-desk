@@ -403,9 +403,9 @@ push to a pull request, with a goal of results in about 3 minutes
    above). Push a PR when its cluster is coherent, not after every edit — a new
    push cancels the running CI. When CI fails, read the **full** logs (CI's
    summary shows only the first 10 failures per step; fetch the job log through
-   the API), fix everything you can see, and push once. **At most 3 red CI runs per
+   the API), fix everything you can see, and push once. **Three-red diagnosis checkpoint per
    PR:** after a second red run on the same failure, reproduce locally instead of
-   guessing; after a third, stop and report (`docs/PLAYBOOK.md` Step 8, which also
+   guessing; after a third, diagnose with evidence before any further push (`docs/PLAYBOOK.md` Step 8, which also
    covers keeping a stack current as `main` moves and updating tests a design
    deliberately changes).
 2. **The `ci` check is the single gate.** It needs the secret scan, type-check
