@@ -22,7 +22,7 @@ See `.env.example` for the full list with comments. The short version:
 - `STRIPE_WEBHOOK_SECRET` — **set (2026-09-27)**, the test-mode webhook signing secret, registered in the Stripe dashboard and set in Vercel. See "Payments (Stripe)" below.
 - `BLOB_READ_WRITE_TOKEN` — **set (2026-09-28)**, auto-injected by Vercel when the `appliance-desk-photos` Blob store was created and linked to this project. Used only server-side, by `src/app/api/uploads/photo/route.ts`, to mint short-lived upload tokens for every photo-upload button in the app — desk (Settings, jobs, appliance units) and the customer portal (maintenance requests) alike. See "Photo uploads (Vercel Blob)" below.
 - `CRON_SECRET` — **set (2026-09-28)**, a random token set in Vercel and checked by every `/api/cron/*` route (billing reminders, job reminders, late fees, and the daily backup added 2026-09-29). Vercel signs every Cron-triggered request with this same value as a bearer token (`Authorization: Bearer <CRON_SECRET>`), so a request without it is refused — otherwise the URL would be triggerable by anyone who found it. See "Automation rules" below.
-- `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` — **set (2026-09-28)**, Chris's real Twilio account credentials, used by `src/lib/sms.ts`. `TWILIO_PHONE_NUMBER` is **deliberately not set yet** — Chris can't buy a real Twilio number until his LLC's A2P 10DLC business-texting registration is done (a carrier requirement, not a bug here). Every SMS-sending code path is fully built and wired up regardless; `sendSms` no-ops safely without a phone number configured, so sending turns on with no code change the moment that one env var is added. See "SMS notifications" below.
+- `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` — historically configured (2026-09-28); verify current deployment privately. `TWILIO_PHONE_NUMBER` was deliberately unset. Acquiring/porting a number and voice setup are separate from A2P business texting approval. Configuration never grants activation permission. Proposed `docs/designs/BATCH-COM.md` extends dormant SMS with sender readiness, scoped consent, owner activation and environment isolation.
 - `RESEND_API_KEY` — **set**, a sending-only key created via the Resend MCP connector for the now-verified `robinsonappliancerentals.com` domain.
 - `RESEND_FROM_EMAIL` / `LEAD_NOTIFICATION_EMAIL` / `MAINTENANCE_NOTIFICATION_EMAIL` — **set (2026-09-28, Task #69)**, real `robinsonappliancerentals.com` addresses. See "Email addresses (Google Workspace)" below.
 - `BILLING_NOTIFICATION_EMAIL` — **set (2026-09-28, Task #72)**, `billing@robinsonappliancerentals.com` (an alias reserved since Task #69 but unused until now). Where the automated-late-fee digest email goes — see docs/BUSINESS-RULES.md's "Consolidated statements, manual payments, and automated late fees."
@@ -431,9 +431,10 @@ Vercel Cron job (`/api/cron/job-reminders`, `vercel.json`, `CRON_SECRET`-
 protected same as the billing-reminders cron). `Job.dayOfReminderSentAt`
 stops a job from being texted twice in one day.
 
-**Dormant until `TWILIO_PHONE_NUMBER` is set** — see "Environment
-variables" above for why. Nothing else needs to change when it is;
-sending just turns on.
+**Dormant by the owner release decision.** Do not activate by adding `TWILIO_PHONE_NUMBER`.
+The current sender can attempt sends when configured in a permitted runtime; dedicated SMS activation and stronger
+unmarked-local isolation are remaining COM-L1a/L4 work, not already installed safeguards. A2P, consent, permanent
+identity and explicit live approval remain required. See `docs/runbooks/COMMUNICATIONS-TWILIO.md`.
 
 ## Database access pattern (Prisma + Neon)
 
