@@ -406,6 +406,36 @@ describe.skipIf(!enabled)("Batch T rate-change automation (real Postgres)", () =
     expect(retry.pending).toBe(0);
     expect(retry.skipped).toBe(1);
     expect(updateCalls).toHaveLength(2);
+  });
+
+  it("recovers an already-effective rate even when the day-before cron never created an operation", async () => {
+    const key = subscriptionTaxUpdateKey(agreementId, newRateVersionId);
+    await prisma.providerOperation.deleteMany({
+      where: { idempotencyKey: key },
+    });
+    putSubscription(subscriptionId, [oldStripeRateId]);
+    const writesBefore = updateCalls.length;
+
+    const result = await applyTaxRateChanges(
+      new Date("2026-10-10T18:05:00.000Z"),
+    );
+
+    expect(result.versions).toBeGreaterThanOrEqual(1);
+    expect(result.pending).toBe(0);
+    expect(
+      subscriptions
+        .get(subscriptionId)!
+        .items.data[0]!.tax_rates.map((rate) => rate.id),
+    ).toEqual([newStripeRateId]);
+    expect(updateCalls).toHaveLength(writesBefore + 1);
+    expect(
+      (
+        await prisma.providerOperation.findUniqueOrThrow({
+          where: { idempotencyKey: key },
+        })
+      ).status,
+    ).toBe("SUCCEEDED");
+  });
 
   it("recovers an already-effective rate when durable provider evidence is unresolved", async () => {
     const key = subscriptionTaxUpdateKey(agreementId, newRateVersionId);
@@ -486,6 +516,5 @@ describe.skipIf(!enabled)("Batch T rate-change automation (real Postgres)", () =
     } finally {
       await prisma.taxRateVersion.deleteMany({ where: { id: undoneId } });
     }
-  });
   });
 });
