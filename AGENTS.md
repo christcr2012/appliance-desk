@@ -220,8 +220,8 @@ full CI/secret checks, preview where applicable and required semantic review.
   Dependent card/docs work must stack on the top prerequisite branch instead of targeting stale `main`.
   **The authoritative design, PR card, STATUS and roadmap are the context anchor**: re-read the applicable current docs
   at PR boundaries and after any base change. Session length alone is not a stop condition when those sources remain current
-  and exact-head gates are clean. Stop advancing only when the next PR needs a patch, has a failed/pending blocking gate,
-  exposes a review finding, hits an approval gate, or verified context is no longer sufficient to continue safely.
+  and exact-head gates are clean. When a gate blocks the next PR, address the gate or move to the immediate eligible successor while its base stays stable;
+  a pending check, actionable failure or review finding is work to manage, not by itself an instruction to end the chat.
   See `docs/PLAYBOOK.md` Step 3a. The PR list for every remaining batch is `docs/MASTER-ROADMAP.md` Work coverage and `docs/pr-cards/work-index.json`.
 - **CI is free and fast, so lean on it** (Chris, 2026-10-03; details in the
   "CI" section below). Do not drop tests to save minutes, and do keep CI fast
@@ -311,12 +311,17 @@ full CI/secret checks, preview where applicable and required semantic review.
   and never claim a review ran that did not. Codex reviews every PR
   automatically when it is opened, so it is normally available: read its
   comments before writing "unavailable". Never write "waived" without checking.
-- **Review fixes ride the next planned PR (Chris, 2026-10-03).** Do not open or
-  push a separate PR just to fix review comments — each push costs a CI run.
-  Collect valid findings from all open PRs, fix them (with regression tests)
-  inside the next planned PR of the stack, and record each disposition there.
-  Exception: a finding that is a security or money-correctness hole in code
-  already merged to `main` gets fixed immediately.
+- **Review findings have one owner; defer only when safe.** Fix any finding that affects
+  security, permissions, money, data integrity, contractual behavior, or the PR's
+  required acceptance before merging. Green CI alone does not override a valid
+  blocking review finding. Low-risk nonblocking findings may move into the immediate
+  next planned implementation PR when the present PR's required gates are green:
+  record the precise finding, why deferral is safe, its successor PR/card owner,
+  and the required regression or verification in a comment on the original PR.
+  Resolve the original thread only after the successor's fix is verified, then
+  link that proof back. Start the successor by correcting its inherited findings
+  before developing its new capability. If no suitable next PR is approved,
+  fix the finding now rather than leave an unowned loose end.
 
 ## Review continuity — before each PR
 
@@ -328,21 +333,19 @@ full CI/secret checks, preview where applicable and required semantic review.
    and unresolved threads. The historical inventory is
    `docs/reviews/2026-10-01-review-reconciliation.md`. "Merged" or "outdated"
    is not proof a finding was resolved.
-3. Fix valid findings that touch your batch's area, with regression tests, in
-   the same PR. Record a disposition for every finding you looked at:
+3. Fix blocking findings on their source PR; address documented low-risk
+   predecessor findings first in the named successor PR, with regression tests
+   where relevant. Record a disposition for every finding you looked at:
    *fixed (evidence)*, *already fixed (evidence)*, *superseded (by what)*, or
    *still open (why, next step)*. Never silently drop one.
 4. Resolve a review thread only after verifying the fix at the exact head.
-5. **Reviewer waiting follows the merge-conveyor rule above.** Always wait for the
-   initial automated review and for the one exact-head re-review requested after
-   batching its valid findings. After that reviewed fix batch, a low-risk cleanup
-   push (for example test deduplication, lint-only cleanup, docs/status alignment,
-   or a pure rebase/retarget with unchanged production semantics) does **not** start
-   another mandatory reviewer-wait cycle: fresh exact-head CI/performance/preview
-   gates are sufficient. Any later push that changes security, auth, money/billing,
-   schema, provider/runtime semantics, or another high-risk boundary requires a new
-   automated review before merge. If the repository ruleset itself marks a reviewer
-   as required, that ruleset remains blocking.
+5. **Review only when there is new evidence to review.** Read the initial automated
+   review when available, or document its permitted waiver after checking actual
+   review state. After batching valid findings, request a further exact-head review
+   only for changed security, auth, money/billing, schema or provider semantics, or
+   when branch protection requires it. A docs-only, formatting or pure retarget
+   change does not trigger another discretionary reviewer-wait cycle. Always rerun
+   exact-head CI/preview checks as applicable; required branch reviews cannot be waived.
 
 ## Where the rules live (one source of truth each)
 
@@ -406,9 +409,9 @@ push to a pull request, with a goal of results in about 3 minutes
    above). Push a PR when its cluster is coherent, not after every edit — a new
    push cancels the running CI. When CI fails, read the **full** logs (CI's
    summary shows only the first 10 failures per step; fetch the job log through
-   the API), fix everything you can see, and push once. **At most 3 red CI runs per
+   the API), fix everything you can see, and push once. **Three-red diagnosis checkpoint per
    PR:** after a second red run on the same failure, reproduce locally instead of
-   guessing; after a third, stop and report (`docs/PLAYBOOK.md` Step 8, which also
+   guessing; after a third, diagnose with evidence before any further push (`docs/PLAYBOOK.md` Step 8, which also
    covers keeping a stack current as `main` moves and updating tests a design
    deliberately changes).
 2. **The `ci` check is the single gate.** It needs the secret scan, type-check
