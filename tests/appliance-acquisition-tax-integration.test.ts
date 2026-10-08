@@ -227,6 +227,7 @@ describe.skipIf(!enabled)("T-6D1 appliance purchase-tax evidence on real Postgre
     });
     const filed = await prisma.taxFilingPeriod.findUniqueOrThrow({ where: { id: period.id } });
     expect(filed.status).toBe("FILED");
+    expect((await prisma.appliance.findUniqueOrThrow({ where: { id: unit.id } })).acquisitionTaxStatus).toBe("USE_TAX_PAID");
     const updated = await recordApplianceAcquisitionTax(userId, {
       applianceId: unit.id, expectedRecordedAt: unit.acquisitionTaxRecordedAt,
       choice: "SELLER_CHARGED", vendorTaxCents: 200,

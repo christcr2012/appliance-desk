@@ -200,3 +200,9 @@ All customer-addressed email goes through `sendCustomerEmail` (owner master swit
   `PurchaseTaxContextPendingError` with specific reason; arbitrary SQL failures
   still roll back. D2 should reuse the same typed review boundary.
 - Do not mark this unit delivered until its PR has exact-head gates.
+
+## 2026-10-08 — T-6D2 implementation drift (PR #314)
+- Base is merged T-6D1 at `526de9a`, replacing the original design's pre-acquisition schema. Appliance acquisition evidence now exists, but invoices retain only `rentalLineId`; the billing-period-start assignment is therefore the canonical appliance lineage, not a client-provided exemption flag.
+- Existing recurring Stripe setup applied the same tax rates to all items. T-6D2 now derives item-specific rates before provider creation. A mixed taxable/exempt asset set within one Stripe item is explicitly blocked rather than silently undercharged; separate items are required for that case.
+- Existing prepaid invoices lacked `billingPeriodStart`; the signed date is now recorded as the period anchor. If no appliance is assigned at that instant, tax readiness blocks only the invoice rather than assuming an exemption.
+- Filing previously marked purchase use-tax rows FILED without changing the appliance. The new status promotion requires an exact fully paid return and explicit sourceType=APPLIANCE mapping; underpayment and other-period rows cannot prove payment.

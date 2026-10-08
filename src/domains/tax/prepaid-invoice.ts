@@ -105,6 +105,7 @@ export async function createPrepaidRentInvoiceInTx(
       lateFeeCents: 0,
       amountDueCents: subtotalCents,
       dueDate: signedAt,
+      billingPeriodStart: signedAt,
       lineItems: {
         create: lines.map((line) => ({
           kind: "RENTAL",

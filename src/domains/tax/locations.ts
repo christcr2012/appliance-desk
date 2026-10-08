@@ -876,3 +876,45 @@ export async function assertTaxReadyForAgreement(
   const uniqueProblems = [...new Set(problems)];
   if (uniqueProblems.length > 0) throw new TaxNotReadyError(uniqueProblems);
 }
+
+
+/**
+ * Canonical appliance evidence for a rental invoice at the start of its
+ * billing period. The assignment covering that instant owns the period;
+ * a later swap must not rewrite the historical basis.
+ */
+export async function loadRentalAcquisitionBasis(
+  tx: Prisma.TransactionClient,
+  agreementId: string,
+  periodStart: Date | null,
+  lines: readonly { key: string; kind: string; rentalLineId?: string | null }[],
+): Promise<Map<string, NonNullable<EngineInput["lines"][number]["acquisitionBasis"]>>> {
+  const result = new Map<string, NonNullable<EngineInput["lines"][number]["acquisitionBasis"]>>();
+  const rentalLines = lines.filter(line => line.kind === "RENTAL" || line.kind === "LATE_RETURN");
+  if (!rentalLines.length) return result;
+  if (!periodStart) return result;
+  const ids = [...new Set(rentalLines.map(line => line.rentalLineId).filter((id): id is string => !!id))];
+  const records = await tx.rentalLine.findMany({
+    where: { id: { in: ids }, agreementId },
+    select: {
+      id: true,
+      assignments: {
+        where: { assignedAt: { lte: periodStart }, OR: [{ unassignedAt: null }, { unassignedAt: { gt: periodStart } }] },
+        select: { appliance: { select: { id: true, acquisitionTaxStatus: true, acquisitionTaxPaidCents: true } } },
+        orderBy: [{ assignedAt: "asc" }, { id: "asc" }],
+      },
+    },
+  });
+  const byId = new Map(records.map(record => [record.id, record]));
+  for (const line of rentalLines) {
+    const record = line.rentalLineId ? byId.get(line.rentalLineId) : undefined;
+    if (!record) continue;
+    result.set(line.key, record.assignments.map(({ appliance }) => ({
+      applianceId: appliance.id,
+      status: appliance.acquisitionTaxStatus,
+      verifiedTaxPaid: appliance.acquisitionTaxStatus === "SALES_TAX_PAID" ||
+        appliance.acquisitionTaxStatus === "USE_TAX_PAID",
+    })));
+  }
+  return result;
+}

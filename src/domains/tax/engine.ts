@@ -1,3 +1,5 @@
+import { allocateAcrossLines } from "@/domains/tax/allocate";
+import type { AcquisitionTaxStatus } from "@prisma/client";
 import { taxCentsForLine } from "@/domains/billing/tax";
 import { businessDateKey } from "@/lib/business-date";
 import {
@@ -34,6 +36,7 @@ export type EngineInput = {
     kind: InvoiceLineItemKind;
     amountCents: number;
     parentKey?: string;
+    acquisitionBasis?: { applianceId: string; status: AcquisitionTaxStatus; verifiedTaxPaid: boolean }[];
   }[];
 };
 
@@ -185,6 +188,45 @@ export function computeTax(input: EngineInput): EngineResult {
           exemptCents: line.amountCents,
           exemptReason: "Customer exemption certificate",
           taxCents: 0,
+        });
+        continue;
+      }
+
+      // State rental exemption is asset-specific, never an invoice-wide election.
+      // Each unit receives a deterministic integer-cent share. Self-collected
+      // home-rule tax remains governed by its independently configured rules.
+      if (
+        (category === "RENTAL" || category === "LATE_RETURN") &&
+        jurisdiction.administration === "STATE_COLLECTED" &&
+        input.election === "PAY_ON_ACQUISITION" &&
+        (input.leaseTermMonths === null || input.leaseTermMonths <= 36)
+      ) {
+        const basis = line.acquisitionBasis;
+        if (!basis?.length) {
+          problems.add(`Rental line ${line.key}: appliance acquisition evidence is missing`);
+          continue;
+        }
+        if (basis.some(asset => asset.status === "UNKNOWN" || asset.status === "USE_TAX_DUE")) {
+          problems.add(`Rental line ${line.key}: verify acquisition tax before applying the short-term exemption`);
+          continue;
+        }
+        if (new Set(basis.map(asset => asset.applianceId)).size !== basis.length) {
+          problems.add(`Rental line ${line.key}: duplicate appliance acquisition evidence`);
+          continue;
+        }
+        const shares = allocateAcrossLines(line.amountCents, basis.map(() => 1));
+        const exemptCents = shares.reduce((sum, cents, index) =>
+          sum + (basis[index]!.verifiedTaxPaid ? cents : 0), 0);
+        const taxableCents = line.amountCents - exemptCents;
+        resultLines.push({
+          lineKey: line.key,
+          jurisdictionId: jurisdiction.id,
+          rateVersionId: jurisdiction.rate.versionId,
+          category,
+          taxableCents,
+          exemptCents,
+          exemptReason: exemptCents ? "Verified acquisition tax paid for qualifying appliance(s)" : null,
+          taxCents: taxCentsForLine(taxableCents, jurisdiction.rate.rateMilliPercent),
         });
         continue;
       }

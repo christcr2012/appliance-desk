@@ -9,7 +9,10 @@ import { fixedTermEndDate } from "@/lib/business-date";
 import {
   assertTaxReadyForAgreement,
   taxRateVersionIdsForAgreement,
+  getAgreementTaxContext,
+  loadRentalAcquisitionBasis,
 } from "@/domains/tax/locations";
+import { computeTax } from "@/domains/tax/engine";
 import { ensureStripeTaxRate } from "@/domains/tax/stripe-rates";
 import type { HandoffWorkOutcome } from "./handoff-outcome";
 import {
@@ -380,6 +383,7 @@ export async function startRecurringBillingForAgreement(
           termMonths: number | null;
           endDate: Date | null;
           taxRateVersionIds: string[];
+          lineTaxRateVersionIds: Record<string, string[]>;
           customer: {
             stripeCustomerId: string;
             stripeDefaultPaymentMethodId: string;
@@ -476,6 +480,29 @@ export async function startRecurringBillingForAgreement(
       const plan = buildCheckoutLinePlan(agreement).filter((item) => item.recurring);
       if (plan.length === 0) return { done: true, outcome: { state: "DONE" }, subscriptionEndIds: [] };
 
+      const basis = await loadRentalAcquisitionBasis(tx, agreementId, firstDeliveredOn,
+        plan.map((item, index) => ({ key: String(index), kind: item.kind, rentalLineId: item.rentalLineId })));
+      const taxContext = await getAgreementTaxContext(tx, agreementId, firstDeliveredOn);
+      const lineTaxRateVersionIds: Record<string, string[]> = {};
+      for (const [index, item] of plan.entries()) {
+        const key = String(index);
+        const taxResult = computeTax({
+          ...taxContext,
+          lines: [{ key, kind: item.kind, amountCents: item.amountCents,
+            acquisitionBasis: basis.get(key) }],
+        });
+        if (!taxResult.ok) throw new Error("Rental tax evidence is not ready: " + taxResult.problems.join("; "));
+        const mixed = taxResult.lines.some(line => line.taxableCents !== 0 && line.exemptCents !== 0);
+        if (mixed) throw new Error("A mixed-tax appliance set requires separate Stripe billing lines before billing can start.");
+        lineTaxRateVersionIds[key] = [...new Set(taxResult.lines
+          .filter(line => line.taxableCents !== 0)
+          .map(line => line.rateVersionId))].sort();
+        if (lineTaxRateVersionIds[key]!.length > 5) {
+          throw new Error("Stripe supports at most five tax rates on one rental line.");
+        }
+      }
+
+
       if (
         !agreement.customer.stripeCustomerId ||
         !agreement.customer.stripeDefaultPaymentMethodId
@@ -517,6 +544,7 @@ export async function startRecurringBillingForAgreement(
           termMonths: agreement.termMonths,
           endDate,
           taxRateVersionIds,
+          lineTaxRateVersionIds,
           customer: {
             stripeCustomerId: agreement.customer.stripeCustomerId,
             stripeDefaultPaymentMethodId:
@@ -551,13 +579,11 @@ export async function startRecurringBillingForAgreement(
   const stripe = getStripeClient();
   let items;
   try {
-    const taxRateIds = await Promise.all(
-      claimed.agreement.taxRateVersionIds.map((rateVersionId) =>
-        ensureStripeTaxRate(rateVersionId),
-      ),
-    );
     items = await Promise.all(
-      claimed.agreement.plan.map(async (item) => {
+      claimed.agreement.plan.map(async (item, index) => {
+        const itemRateIds = await Promise.all(
+          (claimed.agreement.lineTaxRateVersionIds[String(index)] ?? []).map(rateVersionId => ensureStripeTaxRate(rateVersionId)),
+        );
         const product = await stripe.products.create(
           {
             name: item.description,
@@ -571,7 +597,7 @@ export async function startRecurringBillingForAgreement(
         );
         return {
           quantity: 1,
-          tax_rates: taxRateIds.length > 0 ? taxRateIds : undefined,
+          tax_rates: itemRateIds.length > 0 ? itemRateIds : undefined,
           price_data: {
             currency: "usd",
             unit_amount: item.amountCents,
