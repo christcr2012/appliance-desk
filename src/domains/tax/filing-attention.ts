@@ -85,3 +85,56 @@ export async function listTaxFilingAttention(
     },
   };
 }
+
+/** Unrefunded customer-collected over-reports cannot become state credits.
+ * Show the owner exactly where to resolve them, without an extra cron. */
+export async function listRdfRefundAttention(limit = 50): Promise<ExceptionItem[]> {
+  const count = Math.min(Math.max(1, limit), TAX_FILING_ATTENTION_CAP);
+  const records = await prisma.retailDeliveryFeeRecord.findMany({
+    where: {
+      status: "NOT_DUE", filingPeriodId: { not: null },
+      creditAppliedPeriodId: null,
+      OR: [{ customerRefundRef: null }, { customerRefundedAt: null }],
+    },
+    select: {
+      id: true, deliveredOn: true, filingPeriodId: true,
+      agreement: { select: { customerId: true } },
+    },
+    orderBy: [{ deliveredOn: "asc" }, { id: "asc" }], take: count,
+  });
+  const periodIds = [...new Set(records.map(r => r.filingPeriodId).filter((id): id is string => !!id))];
+  const periods = await prisma.taxFilingPeriod.findMany({
+    where: { id: { in: periodIds }, status: "FILED" },
+    select: {
+      id: true, worksheet: true,
+      amendments: {
+        where: { status: "FILED" }, orderBy: [{ sequence: "desc" }, { id: "desc" }],
+        take: 1, select: { packet: true },
+      },
+    },
+  });
+  const frozenByPeriod = new Map(periods.map(period => {
+    const amended = period.amendments[0]?.packet;
+    const corrected = amended && typeof amended === "object" && !Array.isArray(amended)
+      && "corrected" in amended ? amended.corrected : null;
+    const source = (corrected ?? period.worksheet) as {
+      rdf?: { sourceCollectedFromCustomer?: Record<string, boolean>;
+        sourceAmountCents?: Record<string, number> };
+    } | null;
+    return [period.id, source?.rdf] as const;
+  }));
+  return records.flatMap(record => {
+    const frozen = frozenByPeriod.get(record.filingPeriodId ?? "");
+    if (!frozen?.sourceCollectedFromCustomer?.[record.id] || !record.agreement?.customerId) return [];
+    const cents = frozen.sourceAmountCents?.[record.id];
+    return [{
+      category: "SALES_TAX" as const, severity: "high" as const,
+      title: "Refund an over-collected Colorado delivery fee",
+      detail: "Refund the customer " +
+        (Number.isSafeInteger(cents) ? "$" + (cents! / 100).toFixed(2) : "the full recorded fee") +
+        " before claiming a credit on the Colorado return.",
+      href: "/desk/customers/" + record.agreement.customerId,
+      since: record.deliveredOn,
+    }];
+  });
+}

@@ -5,6 +5,7 @@ import { businessDateKey } from "@/lib/business-date";
 import { getPrivatePhotoStore, privatePhotoPathFromUrl } from "@/lib/photo-storage";
 import { loadFilingPacketInTx, type FilingPacket } from "./filing-packet";
 import { sendOwnerAlert } from "@/domains/messaging/owner-alerts";
+import { reserveRdfCreditsInTx } from "./rdf-filing";
 
 function validDate(date: Date, label: string): void {
   if (!(date instanceof Date) || !Number.isFinite(date.getTime())) {
@@ -123,6 +124,20 @@ export async function markPeriodFiled(
       throw new Error("Explain why the amount paid differs from the calculated return.");
     }
     const photo = await assertFilingPhoto(tx, input.periodId, input.confirmationPhotoId);
+    if (packet.rdf) {
+      await reserveRdfCreditsInTx(tx, input.periodId, packet.rdf.creditRecordIds);
+      for (const recordId of packet.rdf.sourceRecordIds) {
+        const count = await tx.retailDeliveryFeeRecord.updateMany({
+          where: {
+            id: recordId,
+            status: "READY",
+            OR: [{ filingPeriodId: null }, { filingPeriodId: input.periodId }],
+          },
+          data: { filingPeriodId: input.periodId },
+        });
+        if (count.count !== 1) throw new Error("Retail delivery fee source changed during filing.");
+      }
+    }
     const serviceFeeRetainedCents = expected === packet.totals.remitIfOnTimeCents &&
       businessDateKey(data.filedOn) <= packet.legalDueOn &&
       businessDateKey(data.paidOn) <= packet.legalDueOn
@@ -206,6 +221,11 @@ function amountsByKey(packet: FilingPacket): Map<string, number> {
   function add(key: string, cents: number) {
     values.set(key, (values.get(key) ?? 0) + cents);
   }
+  // A corrected RDF return can create a positive amendment. A removal is
+  // handled through a credit on a subsequent open RDF return instead.
+  if (packet.rdf) for (const id of packet.rdf.sourceRecordIds) {
+    add("RDF:SALE:" + id, packet.rdf.sourceAmountCents[id] ?? 0);
+  }
   for (const row of packet.rows) {
     const key = "SALES:" + row.jurisdictionId + ":" + row.rateMilliPercent;
     add(key + ":GROSS", row.grossSalesCents);
@@ -237,7 +257,13 @@ export function buildFilingAmendmentPacket(previous: FilingPacket, corrected: Fi
     previouslyReported: previous,
     corrected,
     differences,
-    additionalTaxCents: corrected.totals.taxCents - previous.totals.taxCents,
+    // RDF amendments add ONLY previously unreported sales; previously
+    // over-reported fees are credited separately on a later open return.
+    additionalTaxCents: previous.rdf
+      ? (corrected.rdf?.sourceRecordIds ?? [])
+          .filter(id => !previous.rdf!.sourceRecordIds.includes(id))
+          .reduce((total, id) => total + (corrected.rdf!.sourceAmountCents[id] ?? 0), 0)
+      : corrected.totals.taxCents - previous.totals.taxCents,
   };
 }
 function parseStoredPacket(value: Prisma.JsonValue): FilingPacket {
@@ -350,7 +376,10 @@ export async function detectTaxFilingAmendments(now = new Date()): Promise<numbe
           }
         }
       }
-      if (!amendment.differences.length) {
+      // Correcting an over-reported RDF fee is a credit on a subsequent
+      // return, not an amendment to the original filed period.
+      if (!amendment.differences.length ||
+          (previous.rdf && amendment.additionalTaxCents <= 0)) {
         if (open) {
           await tx.taxFilingAmendment.delete({ where: { id: open.id } });
           await tx.auditLog.create({
@@ -456,9 +485,34 @@ export async function markAmendmentFiled(
     if (!sameDifferences) {
       throw new Error("Filing evidence changed since this amendment was prepared. Re-run amendment review.");
     }
+    // Amount-only comparisons are insufficient for RDF: a different sale
+    // with the same 31-cent amount must never replace the reviewed source.
+    if (current.packet.rdf) {
+      const reviewed = previous.corrected.rdf;
+      const actual = current.packet.rdf;
+      if (!reviewed ||
+          JSON.stringify([...reviewed.sourceRecordIds].sort()) !==
+            JSON.stringify([...actual.sourceRecordIds].sort()) ||
+          JSON.stringify(reviewed.sourceAmountCents) !== JSON.stringify(actual.sourceAmountCents)) {
+        throw new Error("Retail delivery fee source sales changed; re-review the amendment.");
+      }
+    }
     const expected = Math.max(0, amendment.additionalTaxCents);
     if (expected !== data.amountPaidCents && !data.reason) {
       throw new Error("Explain any difference between the additional tax and the amount paid.");
+    }
+    if (current.packet.rdf) {
+      const original = new Set(previous.previouslyReported.rdf?.sourceRecordIds ?? []);
+      for (const recordId of current.packet.rdf.sourceRecordIds.filter(id => !original.has(id))) {
+        const assigned = await tx.retailDeliveryFeeRecord.updateMany({
+          where: {
+            id: recordId, status: "READY",
+            OR: [{ filingPeriodId: null }, { filingPeriodId: amendment.periodId }],
+          },
+          data: { filingPeriodId: amendment.periodId },
+        });
+        if (assigned.count !== 1) throw new Error("RDF amendment source changed while filing.");
+      }
     }
     await tx.taxFilingAmendment.update({
       where: { id: amendment.id },

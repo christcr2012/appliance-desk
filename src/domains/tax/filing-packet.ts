@@ -7,6 +7,7 @@ import { taxCentsForLine } from "@/domains/billing/tax";
 import { assignDueUseTaxRowsToPeriod } from "./use-tax";
 import { SUCCESSFUL_PAYMENT_STATUSES, isSuccessfulPaymentStatus } from "@/domains/billing/payment-status";
 import { legalDueOn } from "./filing-calendar";
+import { buildRdfPacketInTx, type RdfPacket } from "./rdf-filing";
 
 export type FilingPacketRow = {
   jurisdictionId: string;
@@ -26,7 +27,7 @@ export type FilingPacket = {
   account: {
     id: string;
     name: string;
-    kind: "SALES_RETURN" | "USE_TAX_RETURN";
+    kind: "SALES_RETURN" | "USE_TAX_RETURN" | "RETAIL_DELIVERY_FEE_RETURN";
     accountNumber: string | null;
     portalUrl: string | null;
   };
@@ -37,6 +38,8 @@ export type FilingPacket = {
   basis: "ACCRUAL" | "CASH";
   zeroReturn: boolean;
   rows: FilingPacketRow[];
+  /** Separate statutory return packet; never treat RDF as a tax jurisdiction. */
+  rdf?: RdfPacket;
   useTax: Array<{
     jurisdictionId: string;
     name: string;
@@ -262,20 +265,45 @@ export async function loadFilingPacketInTx(
     where: { id: periodId }, include: { filingAccount: true },
   });
   if (!period) return { status: "BLOCKED", problems: ["Filing period was not found."] };
-  if (period.filingAccount.basis === "UNDECIDED") {
-    return { status: "BLOCKED", problems: ["Ask your CPA to choose cash or accrual before filing."] };
-  }
   if (period.status === "FILED" && !options.allowFiled) {
     return { status: "BLOCKED", problems: ["The return has been filed; use its frozen packet or amendment review."] };
   }
   const endExclusive = addBusinessDays(period.periodEnd, 1);
   const account = period.filingAccount;
-  // Keep this discriminant stable across async provider/ledger reads.
+  // RDF is a separate statutory return: no invented sales/use-tax jurisdictions
+  // and no cash/accrual choice needed to count delivery events.
   const accountKind = account.kind;
   if (accountKind === "RETAIL_DELIVERY_FEE_RETURN") {
-    return { status: "BLOCKED", problems: [
-      "Retail-delivery-fee returns use their own filing workflow; sales/use-tax packet is not applicable.",
-    ] };
+    const rdf = await buildRdfPacketInTx(tx, periodId);
+    if (rdf.blockers.length) return { status: "BLOCKED", problems: rdf.blockers };
+    const taxCents = rdf.taxDueCents;
+    const due = period.legalDueOn ?? legalDueOn(period.dueOn);
+    return {
+      status: "READY",
+      packet: {
+        account: {
+          id: account.id, name: account.name, kind: accountKind,
+          accountNumber: account.accountNumber, portalUrl: account.portalUrl,
+        },
+        periodStart: businessDateKey(period.periodStart),
+        periodEnd: businessDateKey(period.periodEnd),
+        dueOn: businessDateKey(period.dueOn),
+        legalDueOn: businessDateKey(due),
+        basis: "ACCRUAL",
+        zeroReturn: rdf.deliveries === 0 && rdf.creditRecordIds.length === 0,
+        rows: [], useTax: [], rdf,
+        totals: {
+          taxCents, serviceFeeCents: 0, remitIfOnTimeCents: taxCents,
+          remitIfLateCents: taxCents, remitCents: taxCents,
+        },
+        steps: ["Review Colorado retail deliveries, fees and prior-period credits.",
+          "File your Colorado Retail Delivery Fee return and record the confirmation."],
+        warnings: [],
+      },
+    };
+  }
+  if (period.filingAccount.basis === "UNDECIDED") {
+    return { status: "BLOCKED", problems: ["Ask your CPA to choose cash or accrual before filing."] };
   }
   const basis = account.basis;
   if (basis !== "CASH" && basis !== "ACCRUAL") {

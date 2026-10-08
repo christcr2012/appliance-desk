@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
   taxAddressLocation: vi.fn(),
   officialSourceWatch: vi.fn(),
   officialRateAttention: vi.fn(async () => []),
+  rdfRefundAttention: vi.fn(async () => []),
   filingAttention: vi.fn(async () => ({ returns: { rows: [], total: 0 }, licenses: { rows: [], total: 0 } })),
   amendmentAttention: vi.fn(async () => ({ amendments: { rows: [], total: 0 }, readiness: { rows: [], total: 0 } })),
   acquisitionAttention: vi.fn(async () => []),
@@ -29,6 +30,7 @@ vi.mock("@/domains/tax/amendment-attention", () => ({
 }));
 vi.mock("@/domains/tax/filing-attention", () => ({
   listTaxFilingAttention: mocks.filingAttention,
+  listRdfRefundAttention: mocks.rdfRefundAttention,
 }));
 vi.mock("@/domains/tax/official-rate-auto-apply", () => ({
   listOfficialRateAttention: mocks.officialRateAttention,
@@ -84,6 +86,7 @@ beforeEach(() => {
     mocks.taxAddressLocation,
     mocks.officialSourceWatch,
     mocks.officialRateAttention,
+    mocks.rdfRefundAttention,
   ]) {
     fn.mockResolvedValue([]);
   }
@@ -102,6 +105,7 @@ describe("Today server-side visibility", () => {
     const result = await getExceptions();
     expect(result.map((x) => x.category)).toEqual(["OVERDUE_JOB"]);
     expect(mocks.filingAttention).not.toHaveBeenCalled();
+    expect(mocks.rdfRefundAttention).not.toHaveBeenCalled();
     expect(mocks.amendmentAttention).not.toHaveBeenCalled();
     expect(mocks.acquisitionAttention).not.toHaveBeenCalled();
     expect(mocks.invoice).not.toHaveBeenCalled();
@@ -146,6 +150,7 @@ describe("Today server-side visibility", () => {
       expect(mocks.invoice).toHaveBeenCalledTimes(2);
       expect(mocks.job).toHaveBeenCalledTimes(2);
       expect(mocks.acquisitionAttention).toHaveBeenCalledTimes(1);
+      expect(mocks.rdfRefundAttention).toHaveBeenCalledTimes(1);
     },
   );
 

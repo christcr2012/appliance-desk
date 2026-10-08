@@ -1,7 +1,7 @@
 import { businessDateKey, businessDayBounds } from "@/lib/business-date";
 import { TAX_ADDRESS_CHANGE_REVIEW_NOTE } from "@/domains/tax/address-recheck";
 import { listOfficialRateAttention } from "@/domains/tax/official-rate-auto-apply";
-import { listTaxFilingAttention } from "@/domains/tax/filing-attention";
+import { listTaxFilingAttention, listRdfRefundAttention } from "@/domains/tax/filing-attention";
 import { listTaxAmendmentAttention } from "@/domains/tax/amendment-attention";
 import { listAcquisitionTaxAttention } from "@/domains/tax/acquisition-attention";
 import { prisma } from "@/lib/prisma";
@@ -917,6 +917,8 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     ? await listTaxFilingAttention(now, (session.user as { role?: string }).role === "ADMIN")
     : { returns: { rows: [], total: 0 }, licenses: { rows: [], total: 0 } };
 
+  const rdfRefundAttention = canViewFinance ? await listRdfRefundAttention() : [];
+
   const amendmentAttention = canViewFinance
     ? await listTaxAmendmentAttention(now)
     : { amendments: { rows: [], total: 0 }, readiness: { rows: [], total: 0 } };
@@ -932,6 +934,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     ...cappedSalesTaxItems,
     ...filingAttention.returns.rows,
     ...filingAttention.licenses.rows,
+    ...rdfRefundAttention,
     ...amendmentAttention.amendments.rows,
     ...amendmentAttention.readiness.rows,
     ...acquisitionAttention,
