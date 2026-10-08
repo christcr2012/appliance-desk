@@ -59,7 +59,7 @@ export async function listTaxAmendmentAttention(now = new Date()): Promise<TaxAm
   const seen = new Set<string>();
   const blockedIds: string[] = [];
   for (const state of auditStates) {
-    if (seen.has(state.entityId)) continue;
+    if (!state.entityId || seen.has(state.entityId)) continue;
     seen.add(state.entityId);
     if (state.action === "tax.amendment_scan_blocked") blockedIds.push(state.entityId);
   }

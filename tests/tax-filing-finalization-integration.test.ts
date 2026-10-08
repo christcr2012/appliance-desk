@@ -16,7 +16,7 @@ const enabled = process.env.CI === "true" &&
   target.pathname === "/appliance_desk_test";
 const day = (s: string) => businessDateFromKey(s)!;
 
-describe("T-6b2 original filing and amendments (real Postgres)", () => {
+describe.skipIf(!enabled)("T-6b2 original filing and amendments (real Postgres)", () => {
   it("freezes an owner-approved return, reviews later changes without mutating it, and records corrections", async () => {
     const tag = randomUUID();
     const userId = "t6b2-customer-"+tag, customerId = "t6b2-cust-"+tag;
