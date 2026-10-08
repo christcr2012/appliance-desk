@@ -1,7 +1,7 @@
 # COM-L1A — SMS send safety
 
 **PROPOSED card; runtime waits for Batch COM acceptance.**
-Base: current main after acceptance · Risk: provider · Migration: none · Estimate: 150–250 production lines, <10 files.
+Base: current main after acceptance · Risk: provider · Migration: one additive `BusinessSettings.customerSmsEnabled Boolean @default(false)` migration; assign its timestamp during the execution drift check so it sorts after the then-current latest migration · Estimate: 175–300 production lines, <10 files.
 Design: BATCH-COM sections 0, 1, 4.1/4.3, 8. Existing E remains authoritative for email.
 
 ## Read only
@@ -18,14 +18,14 @@ Design: BATCH-COM sections 0, 1, 4.1/4.3, 8. Existing E remains authoritative fo
 - No conflicting communication implementation PR; exact current base and approved design recorded.
 
 ## Build
-No schema/UI/cron/provider configuration changes.
+One schema change only: add `BusinessSettings.customerSmsEnabled Boolean @default(false)` as the dedicated SMS master switch. No SMS UI/cron/provider configuration changes in L1a; the later communications settings UI exposes this switch without coupling it to email.
 - deliverMessage: retry UNKNOWN once only for EMAIL where the existing sender's documented idempotency contract applies. SMS UNKNOWN stays UNKNOWN after one physical submission.
 - SMS dispatch refuses every SMS when MarketingSuppression reason=stop for canonical address, regardless of TRANSACTIONAL/MARKETING. Existing marketing suppression behavior for other reasons stays.
 - sendSms and getSmsProviderState require VERCEL_ENV=production AND VERCEL=1 before any SDK request. Unmarked local/CI and unknown environment never contact Twilio. Test injected adapter remains test-only.
-- sendSms also reads the existing BusinessSettings.customerEmailEnabled owner master switch (its schema comment says every customer message; currently false). Missing/OFF => NOT_ATTEMPTED. COM-L4 replaces this temporary coupling with the separately approved SMS policy, still OFF by default.
-- Add src/domains/messaging/sms-activation.ts:
-  export async function isLegacySmsDispatchEnabled(): Promise<boolean>;
-  reads only singleton customerEmailEnabled, returns false if absent. Configuration existence never substitutes permission.
+- SMS authorization is completely separate from email. `sendSms` reads only the dedicated `BusinessSettings.customerSmsEnabled` master switch added by this PR; it defaults OFF. `customerEmailEnabled` must never authorize SMS. Missing/OFF => NOT_ATTEMPTED. Later communications policy may add narrower SMS rules, but this master switch remains an outer hard gate.
+- Add `src/domains/messaging/sms-activation.ts`:
+  `export async function isLegacySmsDispatchEnabled(): Promise<boolean>;`
+  reads only singleton `customerSmsEnabled`, returns false if absent. Configuration existence never substitutes permission.
 - Keep sendSms/getSmsProviderState public return types. No safe retry claim for SMS.
 - UNKNOWN lastError says provider outcome unknown, held for review; remove “after one retry” for SMS.
 - Preserve day reminder claim on UNKNOWN; clear failure and NOT_SENT paths retain current behavior.
@@ -41,7 +41,7 @@ Update existing tests that assume unmarked runtime can use Twilio or UNKNOWN SMS
   “email safe retry behavior remains independent of SMS”
 - tests/sms.test.ts:
   “unmarked local runtime never sends despite copied production credentials”
-  “production requires owner master activation”
+  “production requires the dedicated SMS owner master activation”
   “missing settings never activates SMS”
   “production with owner switch on still requires number and credentials”
 - tests/deployment-safety.test.ts: preview/non-production no outbound SMS or Twilio lookup.
@@ -57,4 +57,4 @@ No merge before exact-head CI, applicable preview and reviews.
 The owner has not accepted COM, another branch is modifying these paths, or preserving existing legal/email rules requires changing notice semantics. Do not request provider activation to run tests.
 
 ## Done
-One uncertain SMS invokes Twilio once; STOP blocks both purposes; every non-production/unmarked environment and OFF owner state yields no SDK request. Email regressions remain green. No live activation.
+One uncertain SMS invokes Twilio once; STOP blocks both purposes; every non-production/unmarked environment and `customerSmsEnabled = false` yields no SDK request. Enabling customer email alone never enables SMS. Email regressions remain green. No live activation.
