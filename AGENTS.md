@@ -40,6 +40,8 @@ are mandatory:
 3. **Every command must finish by itself.** Never run `npm run dev`, `npm run test:watch`, bare `vitest`/`npx vitest`
    (watch mode), `playwright test --ui`, `playwright show-report`, `tail -f`, `gh run watch`, or sleep/poll loops. Use
    `npx vitest run <file>`; wrap anything that might be slow in `timeout 600`.
+   Exception: when finite CI is the only remaining dependency, PLAYBOOK's quiet, bounded completion wait is allowed;
+   this is not an infinite watcher or a reason to end the turn.
 4. **Nothing interactive.** Set `GIT_PAGER=cat PAGER=cat GH_PAGER=cat CI=1` (or use `git --no-pager`); use `npx --yes`;
    `prisma migrate dev` always with `--name <name>` (and `--create-only` when only writing the SQL); never a command that
    asks a question.
@@ -247,8 +249,11 @@ full CI/secret checks, preview where applicable and required semantic review.
   Do not tail/watch live logs. On a failure, read the smallest root-cause set first (for example static/build plus one
   genuinely failing test shard); do not inspect four browser logs that all failed because the same build failed.
   After two tool/API failures on the same operation, change approach or record the blocker instead of retrying the
-  same call. If nothing useful remains while an external job is still running, write the exact handoff/status and
-  stop the turn rather than polling until it finishes.
+  same call. If ordinary finite CI is the only remaining dependency, remain in the active turn and use the
+  quiet bounded completion wait in PLAYBOOK (up to 60 seconds per wait, 10 minutes total). Do not end with
+  “waiting for CI” while that completion window is available. If the budget expires, diagnose the queue/job once;
+  end only for a verified external blocker or actual session/tool limit, with exact head and next action.
+  Commentary updates are checkpoints, not final responses. An ended turn cannot restart itself from repo instructions.
 - **Use the web.** Chris encourages (and expects) you to search the web for
   current documentation, best practices and modern solutions whenever that
   beats your training data (framework versions, Stripe, Colorado/tax rules,

@@ -4,7 +4,7 @@ Audited baseline: main `b2a06c2` (#310), October 8. [STATUS](STATUS.md) holds cu
 
 ## What is next
 
-**Next: T-6D1** — acquisition evidence. Tax filing finalization #310 is already merged. T then finishes per-appliance tax, acquisition UI/frequency, delivery fees and the Sales tax workspace. Build current tax cards in dependency order; refresh each against actual predecessor code. No customer billing/filing is activated by this plan.
+**Next after this T-6C1 PR merges: T-6C2** — delivery-fee records with stable sale identity. Acquisition work T-6D1…3 (#313–#315) is merged; this PR completes the RDF schema/decision foundation. T then finishes per-appliance tax, acquisition UI/frequency, delivery fees and the Sales tax workspace. Build current tax cards in dependency order; refresh each against actual predecessor code. No customer billing/filing is activated by this plan.
 
 ## Approved sequence and owner gates
 
@@ -18,7 +18,7 @@ Audited baseline: main `b2a06c2` (#310), October 8. [STATUS](STATUS.md) holds cu
 
 ## Implementing agent — paste this
 
-> Read AGENTS, STATUS, this roadmap and the next card only. Find the cited design headings and named code/tests in bounded sections. Run the per-card drift protocol against latest main and the prerequisite's final reviewed head. If no execution card exists, write one short card from the approved design with exact current paths, transaction/permissions/provider boundaries, meaningful tests and completion evidence. Routine details are yours to implement; missing money/security/schema/provider decisions require a reviewed contract amendment first, not an unsafe guess or a mandatory model switch. Implement a coherent capability, run the cheap targeted checks, push once. While checks run, implement only the eligible immediate successor in the same chain. Batch valid findings/failures, refresh exact-head gates, merge immediately when authorized and green. Update the existing card and STATUS; update the shared contract log only for downstream-relevant contract changes. Do not create a new handoff file. Continue while eligible work exists; stop only for a real gate, with committed work and the exact next action.
+> Read AGENTS, STATUS, this roadmap and the next card only. Find the cited design headings and named code/tests in bounded sections. Run the per-card drift protocol against latest main and the prerequisite's final reviewed head. If no execution card exists, write one short card from the approved design with exact current paths, transaction/permissions/provider boundaries, meaningful tests and completion evidence. Routine details are yours to implement; missing money/security/schema/provider decisions require a reviewed contract amendment first, not an unsafe guess or a mandatory model switch. Implement a coherent capability, run the cheap targeted checks, push once. While checks run, implement only the eligible immediate successor in the same chain. Batch blocking findings/failures, assign only safe low-risk follow-ups under PLAYBOOK, refresh exact-head gates, and merge when authorized and green. When finite CI is the only dependency, keep the turn active with PLAYBOOK’s bounded quiet completion wait. Update the existing card and STATUS; update the shared contract log only for downstream-relevant contract changes. Do not create a new handoff file. Continue while eligible work exists; stop only for a real gate, with committed work and the exact next action.
 
 ## Work coverage
 

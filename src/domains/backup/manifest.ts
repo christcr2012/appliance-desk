@@ -73,6 +73,8 @@ export const BACKUP_MODEL_POLICY = {
   TaxFilingPeriod: "taxFilingPeriod",
   TaxFilingAmendment: "taxFilingAmendment",
   PurchaseUseTax: "purchaseUseTax",
+  RetailDeliveryFeeRate: "retailDeliveryFeeRate",
+  RetailDeliveryFeeRecord: "retailDeliveryFeeRecord",
   BusinessSettings: "businessSettings",
   MonthToMonthTermsVersion: "monthToMonthTermsVersion",
   SiteContent: "siteContent",
