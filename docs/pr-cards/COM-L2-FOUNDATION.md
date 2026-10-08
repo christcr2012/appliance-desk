@@ -255,3 +255,9 @@ No browser test or provider API.
 
 ## Done
 Migration checker, Prisma validation/generation, typecheck/lint, real DB schema/upgrade/backup tests and exact-head CI green; STATUS/DATABASE updated. Settings remain empty, no activation, historical consent untouched.
+
+## Current-base reconciliation
+
+Follow `docs/implementation-contracts/DRIFT-PROTOCOL.md` before implementation
+and every changed prerequisite. Record actual schema/signatures/guards and
+update this card and CHANGES-SINCE-DESIGN in the same PR.

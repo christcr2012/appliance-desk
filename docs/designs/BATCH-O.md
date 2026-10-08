@@ -167,3 +167,17 @@ edges); browser `e2e/owner-controls.spec.ts` (approve a refund on phone width; a
 - **S-O1** O-A2's guards are not uniform enough to swap for `requireCapability` without changing who can do what today.
 - **S-O2** A money action cannot be re-run safely from stored input (it depends on browser state or a provider session).
 - **S-O3** Undo would need to change data other than `BusinessSettings` (for example rows of another table).
+
+## 2026-10-08 addition — ENH-O settings impact preview
+
+O-1 uses the existing settings validation/save path to show a pure before/after
+preview for supported consequential settings. State the effective date, affected
+new transactions and preserved signed agreements. Preview does not write data,
+call providers, change prices or reserve approvals. Persisted save revalidates
+actor capability and the expected settings revision; stale preview returns a
+refresh conflict instead of overwriting another owner's edit. Undo uses the
+normal audited save/approval path, never bypasses authorization or activation.
+Start with settings whose effects can be derived from existing contracts; label
+unsupported impact as unavailable. Test preview purity, stale revision, changed
+role, signed-snapshot preservation and required approval. Safe invariants remain
+code constraints; configurable templates cannot disable them.

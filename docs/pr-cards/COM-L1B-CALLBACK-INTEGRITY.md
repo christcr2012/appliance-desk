@@ -57,3 +57,9 @@ No browser change.
 Targeted typecheck/lint/run-mode tests + real DB. Full CI/preview/reviews at exact head.
 Current STATUS records callbacks pending-match honestly. No SID-less UNKNOWN send is relabelled success or automatically replayed.
 If implementation exceeds budget, split callback replay from reducer with separate complete cards before coding.
+
+## Current-base reconciliation
+
+Before implementation and any changed prerequisite, follow
+`docs/implementation-contracts/DRIFT-PROTOCOL.md`; adapt mechanical differences
+in this card and record actual schema/guards/signatures for the successor.

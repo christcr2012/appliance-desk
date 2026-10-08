@@ -9,7 +9,7 @@ looking things up, never for instructions. The repo — not chat history — is
 the memory: if it isn't written down here or in `docs/`, the next session
 won't know it.
 
-Reading order at the start of every session (about 10 minutes total):
+Reading order once per session; refresh only changed sections:
 
 1. This file.
 2. `docs/START-HERE.md` — what the project is, where everything lives.
@@ -161,13 +161,16 @@ resulting behavior are verified.
 
 ## How work is organized
 
-- **Implement only from an approved design.** Every batch has
-  `docs/designs/BATCH-<X>.md` written by a heavy-reasoning model after
-  reading the code: decisions, schema, signatures, work units, tests,
-  stop-and-ask points. The implementing model follows it literally, does
-  not re-decide, does not add tables/columns/libraries/patterns the design
-  does not name, and stops to ask where the design is silent. No design,
-  or a DRAFT one → stop and report; do not start.
+- **Approved contracts, just-in-time execution cards.** The selected implementing
+  model may write a short card for the current capability and its eligible immediate
+  successor from the approved design and actual code. Sol 5.6 at light/medium effort
+  is the intended routine workflow, not a guarantee of model performance. Reserve
+  deeper analysis for a concrete unresolved semantic conflict. Ordinary names,
+  imports, fixtures and implementation details do not require owner approval.
+  Money, permissions, signed evidence, state transitions and provider replay must
+  follow the reviewed contract; propose a dated amendment when it cannot work.
+  A missing execution card means write it before coding, not stop for another model.
+  Unapproved/DRAFT business scope still requires acceptance.
 - **One agent, one batch at a time, one stack per batch.** (Chris, 2026-10-03,
   replacing every earlier PR-size rule.) Each batch is built as a *stack* of
   PRs: an ordered chain where each PR is based on the branch below it and the
@@ -193,7 +196,7 @@ resulting behavior are verified.
   at PR boundaries and after any base change. Session length alone is not a stop condition when those sources remain current
   and exact-head gates are clean. Stop advancing only when the next PR needs a patch, has a failed/pending blocking gate,
   exposes a review finding, hits an approval gate, or verified context is no longer sufficient to continue safely.
-  See `docs/PLAYBOOK.md` Step 3a. The PR list for every remaining batch is `docs/MASTER-ROADMAP.md` section 7.
+  See `docs/PLAYBOOK.md` Step 3a. The PR list for every remaining batch is `docs/MASTER-ROADMAP.md` Work coverage and `docs/pr-cards/work-index.json`.
 - **CI is free and fast, so lean on it** (Chris, 2026-10-03; details in the
   "CI" section below). Do not drop tests to save minutes, and do keep CI fast
   (the "Keeping CI fast" checklist in `docs/ARCHITECTURE.md`).
@@ -230,17 +233,14 @@ resulting behavior are verified.
   choice means for a customer, the starting value and why it was chosen, who
   can change it, and a way to restore the recommended value. No jargon, no
   "see the docs".
-- **Design drift check at the start of every batch.** Approved designs for later
-  batches were written before earlier batches changed the code. Before coding a
-  batch, follow the drift check in `docs/designs/README.md`: read
-  `docs/designs/CHANGES-SINCE-DESIGN.md`, verify the design against the code,
-  record and amend differences, and stop with a written stronger-model prompt only
-  for decision-level conflicts (money, statuses, permissions, database design).
-  When your batch merges, add its changes to `CHANGES-SINCE-DESIGN.md`.
-- **Do not switch models; ask for a stronger one in writing.** If a task needs
-  a heavier-reasoning model (for example writing an approved batch design),
-  stop on that task, and give Chris a complete, self-contained prompt to run
-  in a separate chat, then continue with other work.
+- **Drift check before every card and changed prerequisite.** Follow
+  `docs/implementation-contracts/DRIFT-PROTOCOL.md`. Adapt mechanical drift in
+  the same PR; record actual schema/signatures/guards and successor implications
+  in `CHANGES-SINCE-DESIGN.md`. Freeze only the affected successor after a base
+  change, sync once, and repeat checks for the changed contracts.
+- **No mandatory model handoff.** The selected model can write and review a
+  design amendment under the existing review rules. Stop only the dependent
+  slice for an unresolved decision or explicit owner gate; continue eligible work.
 - **Model:** whichever model Chris has selected does the work. Older documents
   that assign cards to "Luna" or "Sol" or schedule model switches are
   historical. Do not stop to ask for a model switch.
@@ -248,7 +248,7 @@ resulting behavior are verified.
   Branch from current `main`, or from the previous unmerged PR's branch when
   stacking; retarget `main` once the predecessor merges.
 - **Quick local checks, then let CI do the heavy lifting** (agent's call,
-  approved by Chris 2026-10-03). Before each push run the cheap checks:
+  approved by Chris 2026-10-03). For code changes, before each push run the cheap checks:
   `npm run typecheck`, `npm run lint`, and `vitest` on the tests you touched
   or that cover the code you changed (seconds). Do **not** build a local
   Postgres and run the whole suite or the browser specs by default: CI runs
@@ -257,6 +257,13 @@ resulting behavior are verified.
   guessing: a migration or SQL change (prove it on a scratch database), a
   failure you cannot understand from CI output, or a browser spec you are
   actively iterating on. The full recipe stays in `docs/PLAYBOOK.md`.
+- **Documentation-only checks:** validate changed links, work-index dependencies,
+  contract consistency and `git diff --check`; do not run application tests that
+  cannot exercise a prose-only change. CI and secret scanning still apply.
+- **Bounded diagnosis:** after two unsuccessful speculative fixes, inspect the
+  failure evidence and change the hypothesis. This is a diagnosis checkpoint,
+  not an automatic session stop. Record a real blocker only when evidence is
+  unavailable or a gated decision is required. Continue independent eligible work.
 - **Merging:** Chris has authorized agents to merge their own PRs (2026-10-01)
   when all of these are true: the `ci` check green at the exact head being
   merged (CI runs on every push; check it is the latest head),

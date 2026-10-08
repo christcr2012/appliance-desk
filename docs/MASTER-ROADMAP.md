@@ -1,252 +1,193 @@
-# MASTER ROADMAP — everything left, in order
+# MASTER ROADMAP — the one handoff
 
-**Read this after `AGENTS.md` and `docs/STATUS.md`.** It is the single ordered list of remaining work from today to
-launch and beyond, written so an implementing model (for example Sol 5.6) can pick the next step without re-planning.
-It does not replace the batch acceptance lists (`docs/PLAN.md`) or the designs (`docs/designs/BATCH-<X>.md`): it points
-to them and says **what comes next, what must be true before it starts, and what only Chris can do.**
+Audited baseline: main `b2a06c2` (#310), October 8. [STATUS](STATUS.md) holds current state; [PLAN](PLAN.md) holds remaining acceptance. Original documentation reset: [PR #138](https://github.com/christcr2012/appliance-desk/pull/138). This reset preserves history and the current two-lane process.
 
-Last reconciled with the code: 2026-10-08 after #309. F-part-1 and G are complete; T-5b1/T-5b2 are merged; T-5b3 #306 is merged; T-6a1 #307 is merged; T-6a2 #308 merged; T-6b1 #309 merged; T-6b2 active. Batch S is approved after T; COM-L is approved after T/S and before V/F-part-2.
-Keep this file current: when a step finishes, tick it, add the PR numbers, and move
-the "▶ Next" marker.
+## What is next
 
----
+**Next: T-6D1** — acquisition evidence. Tax filing finalization #310 is already merged. T then finishes per-appliance tax, acquisition UI/frequency, delivery fees and the Sales tax workspace. Build current tax cards in dependency order; refresh each against actual predecessor code. No customer billing/filing is activated by this plan.
 
-## 1. Where things stand (plain English)
+## Approved sequence and owner gates
 
-Most day-to-day rental workflows are built and tested: leads, estimates, agreements and e-signature,
-delivery/pickup/repair visits, inventory and parts, billing through Stripe (test mode), late fees, renewals,
-month-to-month rentals, notices, the website editor, privacy requests, messaging records, reports and the redesign
-(E2). Live payments, customer email and SMS are switched **off** on purpose until Chris approves them.
-
-What is missing before real customers: finish **Colorado sales tax** (Batch T), add the **system issues/AI check-up**
-foundation (Batch S), complete the **Evergreen Signature** redesign (Batch V), and run the **final launch proof**
-(Batch F-part-2). F-part-1 and the security/audit work in Batch G are already complete. After launch: **books and
-accounting exports** (K), **shop sales/appliance endings** (M), **more owner controls** (O), then the proposed
-configurable business-offer/partnership work (BP).
-
-Owner-commissioned COM architecture is ready for review: two-way SMS, permanent phone identity, calls/voicemail,
-consent/templates and measured telecom cost. Recommended COM-L placement after S, before V/F-part-2 on acceptance;
-COM-N after K/O. Design approved 2026-10-08; runtime not started.
-
-## 2. The order
-
-Legend: ✅ done · ▶ next · ⏳ waiting on Chris · ○ not started. "Design" says whether the build instructions are approved.
-
-| # | Step | Design | Can start when | Chris must do first | PRs (approx.) |
-|---|---|---|---|---|---|
-| 1 | ✅ Batches A, B, B2, C, R, D, E, E2 | approved, built | — | — | merged |
-| 2 | ✅ **F-part-1** — restore/media/capacity/runbooks | ✅ approved (`BATCH-F.md`) | — | — | #268, #269, #273 |
-| 3 | ✅ **G** — audit fixes, two-step login and session control | ✅ approved (`BATCH-G.md`) | — | — | #275, #276, #277 |
-| 4 | ▶ **T** — Colorado sales and use tax | ✅ approved (`BATCH-T.md`) | G merged | nothing to keep building; CPA answers still gate live billing | #279–#309 merged through T-6b1; T-6b2 active |
-| 5 | ○ **S** — system issues inbox, health page and AI check-up | ✅ approved (`BATCH-S.md`) | T merged and bounded PR cards exist | nothing | 2 estimated |
-| 5a | ○ **COM-L** — launch communications and telecom cost | **APPROVED 2026-10-08** (`BATCH-COM.md` + L1a/L1b/L2 cards) | T/S merged; applicable cards exist | no live setup to engineer; IN-03/09/51/52/53 before activation | 16 units; split large cards to budget |
-| 6 | ○ **V** — "Evergreen Signature" public-site redesign + desk/portal polish | ✅ approved (`BATCH-V.md`, concept artifact) | S and COM-L merged | accept the before/after screenshots before each public-site PR merges | 3–4 |
-| 7 | ○ **F-part-2** — end-to-end scenarios, owner guide with screenshots, review-thread discharge, launch ledger, rollback plan (WU-F3, F6–F9) | ✅ approved | S and V merged (so the proof covers the final product) | nothing | 3 |
-| 8 | ⏳ **Launch** — Chris's go-live checklist | `docs/GO-LIVE-CHECKLIST.md` | step 7 done | CPA answers IN-17, IN-33…IN-38 entered; attorney wording; live Stripe/email decisions; launch authorization | — |
-| 9 | ○ **K** — books: journal, expenses, Stripe fees, P&L, QuickBooks/Xero/other exports | ✅ approved (`BATCH-K.md`) | launch (or earlier if Chris asks; needs T merged) | nothing to start; IN-39 later | 5 |
-| 10 | ○ **M** — shop sales and appliance endings | ✅ approved (`BATCH-M.md`) | K merged; IN-47 keeps sales after launch | IN-46 before affected sales-tax policy activation | 3 estimated |
-| 11 | ○ **O** — owner controls: settings undo, per-person permissions, approvals, dated prices, goals, switches page | ✅ approved (`BATCH-O.md`) | K merged | nothing | 4–5 |
-| 11a | ○ **COM-N** — workflow SMS, click-to-call, books bridge and observed unit economics | proposed COM continuation | COM-L, K/O and bounded cards; release scope accepted | affected legal/paid choices only | 4 groups; bounded cards required |
-| 12 | ○ **BP** — configurable business offers/templates, permission/installation evidence and property-manager/partner programs | proposed (`BATCH-BP.md`), docs created 2026-10-07 | K, M and O complete; accepted design and bounded cards | IN-48/49/50 before affected offer/program activation | 16 estimated |
-| 13 | ○ **P** — customer self-service and growth (section 5) | **no design yet** — a stronger model writes it when Chris picks items | after O/BP as applicable, or earlier for a single picked item | pick items | — |
-| 14 | ○ Conditional/deferred: Google Workspace integration (O32), CSV import (O29), direct QuickBooks sync (`BATCH-K.md` §9) | deferred | prerequisites in their docs | provide accounts/data | — |
-
-**Why F is split (approved by Chris 2026-10-06, IN-41):** F proves the finished product. If F runs completely now, the
-tax, security and redesign work that follows would make its scenarios and screenshots stale. Its infrastructure parts
-(backup/restore, media copy, capacity, runbooks) do not depend on those batches, so they run now; its product-wide
-proof runs last. If Chris prefers, F can run whole now and the scenario/screenshot work units are re-run after V.
-
-**Approval record:** Chris approved designs G, T, V, K, O and the F split on 2026-10-06, and Batch S on 2026-10-07. Work the approved batches in the order above. Batch BP remains PROPOSED until separately accepted; a design marked PROPOSED or DRAFT must never be started. Chris approved COM design and placement on 2026-10-08. V/F-part-2 and launch require selected COM-L evidence;
-otherwise explicit owner de-scoping must record excluded communications behavior.
-
-## 3. How an implementing model runs a step
-
-Paste into a new session (replace `<X>`):
-
-> Read AGENTS.md, docs/START-HERE.md, docs/STATUS.md, docs/MASTER-ROADMAP.md, then docs/designs/BATCH-<X>.md in full.
-> Do the design drift check (section 0 of the design and docs/designs/README.md) and record it in the first PR. Build
-> the work units in order as a stack of PRs, one PR per group the design names, following docs/PLAYBOOK.md. Do not
-> re-decide anything in the design's Decisions section, do not add anything it does not name, and stop and ask Chris at
-> every stop-and-ask point. Never enter a tax rate, a tax answer, a price or a legal promise yourself. After each PR:
-> exact-head CI green, review threads read and dispositioned, then merge per AGENTS.md. Use the PR list in
-> docs/MASTER-ROADMAP.md section 7, keep each PR within docs/PLAYBOOK.md Step 3a's budget, follow Step 8 for CI
-> (at most 3 red CI runs per PR, then stop and report). There is no numeric merge-per-session limit: use the current design/card/STATUS/roadmap as the context anchor, keep dependent PRs in lockstep, and merge ready work in order under PLAYBOOK Step 3a’s exact-head gates. At the end update
-> docs/STATUS.md and tick the step in docs/MASTER-ROADMAP.md, and report to Chris in plain English.
-
-For F-part-1 use the same prompt with `BATCH-F.md` and add: "Build only WU-F1, WU-F2, WU-F4 and WU-F5 now."
-
-## 4. Chris's action queue (only Chris can do these; nothing here is urgent unless a step is waiting)
-
-| ID | What | Blocks |
+| Stage | Engineering order | Owner gate |
 |---|---|---|
-| IN-33 … IN-38, IN-17 | CPA and attorney answers for sales tax (questions in the overview) | **billing real customers** (not building) |
-| — | Register on Colorado SUTS; put the GIS key in Vercel yourself | automatic address lookup (manual works without it) |
-| IN-39 | CPA: tax on written-off bills, depreciation and 1099 starting values | nothing (conservative defaults) |
-| IN-21, IN-31 | Month-to-month notice wording; live customer email approval | turning on customer email |
-| Go-live list | Everything in `docs/GO-LIVE-CHECKLIST.md` | launch day |
+| Finish launch product | T → S → COM-L → V → F-part-2 | CPA/legal tax answers; COM sender/retention/activation; V rendered visual acceptance |
+| Launch | GO-LIVE-CHECKLIST after final evidence | Chris authorizes live operation; engineering evidence is not activation |
+| After launch | K → M → O → COM-N | K earlier only if Chris schedules; M IN-47 after launch; affected CPA/telecom decisions |
+| Proposed later | BP after K/M/O, and relevant COM-N | Explicit runtime design acceptance; IN-48/49/50 for affected offers/programs |
+| Deferred | O32, O29, direct QBO, P and COM-A | Actual accounts/data/selected scope and accepted design; never fake-ready |
 
-## 5. Ideas beyond the current designs (Batch P candidates — Chris picks, then a design is written)
+## Implementing agent — paste this
 
-These come from Chris's original goals (the September "complete operating platform" brief and the growth brainstorm in
-`docs/reviews/`) and are **not built**. Each needs an owner decision first because today's rule is "Chris approves
-everything at launch" (`docs/BUSINESS-RULES.md`).
+> Read AGENTS, STATUS, this roadmap and the next card only. Find the cited design headings and named code/tests in bounded sections. Run the per-card drift protocol against latest main and the prerequisite's final reviewed head. If no execution card exists, write one short card from the approved design with exact current paths, transaction/permissions/provider boundaries, meaningful tests and completion evidence. Routine details are yours to implement; missing money/security/schema/provider decisions require a reviewed contract amendment first, not an unsafe guess or a mandatory model switch. Implement a coherent capability, run the cheap targeted checks, push once. While checks run, implement only the eligible immediate successor in the same chain. Batch valid findings/failures, refresh exact-head gates, merge immediately when authorized and green. Update the existing card, STATUS and shared contract log, not a new handoff file. Continue while eligible work exists; stop only for a real gate, with committed work and the exact next action.
 
-**Customer self-service**
-1. **Online "Rent now"**: address check → choose appliances and term → see the exact monthly price with tax for that
-   address (after T) → create an account → sign → save a card → pick a delivery window. Chris still confirms
-   hookups before the visit is booked (an approval step, not a phone call).
-2. **Delivery-window picker** from the dispatch calendar's free slots, with owner-set windows per day.
-3. **Moving? Transfer my rental** request: new address check, pickup + delivery pair created for Chris to approve.
-4. **Card-expiring reminders** a month before the saved card expires (needs live email approval).
-5. **Text-message visit updates** ("on our way") once SMS is approved.
+## Work coverage
 
-**Operations**
-6. **Route order for the day** (group by area first; map-based ordering later, a paid provider needs approval).
-7. **Parts reorder alerts** from the existing reorder thresholds.
-8. **Offline-tolerant driver view** for spotty connections (B16 follow-up).
-9. **Mileage log** for vehicle costs (feeds Batch K).
+`work-index.json` is the compact machine-readable coverage list. Existing cards are linked below; **JIT** rows are covered by the approved design and need their execution card written when their prerequisite is real. These rows are coherent capability boundaries, not a requirement to create artificially small PRs. Adjacent compatible work may share a reviewed PR within AGENTS' budget, while preserving acceptance/IDs/migration ownership. Proposed BP rows are planned scope, not approval.
 
-**Growth**
-10. **Review requests** after a successful delivery (needs live email/SMS).
-11. **Referral program dashboard** (referrals already exist in the data).
-12. **Demand forecast and "buy more washers" signal** (B26 follow-up, from fleet utilization).
-13. **Annual price-review prompts** for long rentals (never automatic).
+### T
 
-**Platform**
-14. **Passkey login** after two-step login (G).
-15. **Direct QuickBooks Online sync** after the K file exports have been used for a quarter.
-16. **Error and uptime alerts to Chris's phone** (Sentry monitoring exists; confirm which alerts are configured and where they go).
-
-## 6. Documentation audit (2026-10-06)
-
-Checked every file path cited in the working docs against the repository, every database table against
-`docs/DATABASE.md`, every scheduled job against `docs/ARCHITECTURE.md`, every environment variable read by the code,
-and every desk screen against `docs/OWNER-GUIDE.md`. Fixed the same day:
-
-- `docs/DESIGN-SYSTEM.md` named a removed `desk-sidebar.tsx` → now the E2 app shell and bottom tab bar.
-- `docs/PRODUCT-SPEC.md` and `docs/ROADMAP.md` named a removed accessibility spec → now the generated route specs.
-- `docs/ARCHITECTURE.md` was missing the `billing-reconcile` nightly job (four recovery passes), the private
-  photo/preview store variables and the build-only Sentry variables → added, plus a schedule table matching `vercel.json`.
-- `docs/DATABASE.md` was missing `CustomerContact` → added.
-- `docs/OWNER-GUIDE.md` was missing Notices, Automations, Privacy requests and the Launch list in its desk tour, and
-  described Revenue numbers as "not estimates" (they are estimates from agreed prices) → corrected.
-- `docs/BUSINESS-RULES.md` presented one sales-tax rate as sufficient → known gap noted with a pointer to Batch T.
-
-Found in code, not docs (scheduled into batches): dark-mode success/error text contrast 2.0–2.7:1 (Batch G, D-G6);
-hard-coded, partly unverified marketing promises on the home page (Batch V, V-3); tax-confirmed tick box gates nothing
-(Batch T, D-T7); cancelled rentals inflate estimated earnings (Batch G, D-G2).
-
-## 7. PR plan for every remaining batch (Chris, 2026-10-06)
-
-This table **overrides the "PR …" grouping lines inside the designs**; the work units, their order and their tests are
-unchanged. Each row is one PR, sized to the budget in `docs/PLAYBOOK.md` Step 3a (about 500 lines of production code,
-one risk area, at most one migration, at most one red CI run expected). Stack them in order; merge bottom-up. A row
-that still turns out over budget is split inside its work unit as Step 3a describes (G-2 and T-4 are the likely ones). "CI watch" names the
-tests most likely to break, so the agent updates them in the same PR instead of discovering them in CI.
-
-### F-part-1 (now)
-| PR | Work units | Risk area | CI watch |
+| Unit | Scope | Execution card | Prerequisite |
 |---|---|---|---|
-| F1-a | WU-F1 consistent backup export, restore script, restore drill | data/backup | backup manifest and table-order tests; schema-health |
-| F1-b | WU-F2 media inventory and second copy | storage | private-media and privacy-deletion tests (a deleted file must never come back) |
-| F1-c | WU-F4 capacity fixtures and regression guard + WU-F5 runbooks | performance/docs | `tests/perf/*`; keep fixture creation fast (unit shard under ~2 min) |
+| T-6D1 | Acquisition evidence and safe purchase recording | [card](pr-cards/T-6D1.md) | T-6b2 |
+| T-6D2 | Per-appliance rent tax and purchase-tax completion | [card](pr-cards/T-6D2.md) | T-6D1 |
+| T-6D3 | Acquisition UI, use-tax frequency and worksheet | [card](pr-cards/T-6D3.md) | T-6D2 |
+| T-6C1 | Retail delivery fee schema and decision engine | [card](pr-cards/T-6C1.md) | T-6D3 |
+| T-6C2 | Record delivery fees with stable sale identity | [card](pr-cards/T-6C2.md) | T-6C1 |
+| T-6C3 | Customer fee charging and provider recovery | [card](pr-cards/T-6C3.md) | T-6C2 |
+| T-6C4 | Fee filing, credits and readiness | [card](pr-cards/T-6C4.md) | T-6C3 |
+| T-7A | Tax setup, account and rule editing | [card](pr-cards/T-7A.md) | T-6C4 |
+| T-7B | Areas, official sources and exemption navigation | [card](pr-cards/T-7B.md) | T-7A |
+| T-7C | Guided filing and private evidence | [card](pr-cards/T-7C.md) | T-7B |
+| T-7D | Tax overview, attention routing and acceptance closeout | [card](pr-cards/T-7D.md) | T-7C |
 
-### G — audit fixes and owner security
-| PR | Work units | Risk area | CI watch |
+### S
+
+| Unit | Scope | Execution card | Prerequisite |
 |---|---|---|---|
-| G-1 | WU-G1 dependency fix, WU-G6 dark-mode colours + `tests/theme-contrast.test.ts`, WU-G2 `closedAt` (the batch's one migration), WU-G5 STATUS | schema (small) | earnings tests (`tests/reports-earnings.test.ts`, `tests/earnings-not-cash.test.ts`); dark-mode axe spec; build (sharp) |
-| G-2 | WU-G3 two-step login **with** CI login and saved-session updates | auth | **every browser spec** (saved sessions), `staff-security`, `session-deactivation`; route inventory for `/desk/security/setup` |
-| G-3 | WU-G4 session control | auth | session tests; staff screen spec |
+| S-1A | System issue schema and typed safe event writers | [card](pr-cards/S-1A.md) | T-7D |
+| S-1B | Bounded source sweep and lifecycle integration | [card](pr-cards/S-1B.md) | S-1A |
+| S-1C | System health page and Today system group | [card](pr-cards/S-1C.md) | S-1B |
+| S-2 | Private ops keys, safe API and checkup runbook | [card](pr-cards/S-2.md) | S-1C |
 
-### T — Colorado sales and use tax
-| PR | Work units | Risk area | CI watch |
+### COM-L
+
+| Unit | Scope | Execution card | Prerequisite |
 |---|---|---|---|
-| — | WU-T0 is Chris's SUTS registration plus the GIS runbook; the runbook (docs only) rides with T-2. WU-TA0 (Amendment A): once registered, record the SUTS return screens in `docs/runbooks/suts-filing.md` (IN-43) | — | — |
-| T-1 | WU-T1 migration, seeds, backup/schema-health + WU-T2 pure engine, categories, allocator | schema + pure logic | migration check, populated-upgrade drill, backup coverage test |
-| T-2 | WU-T3 GIS adapter (fake source; real client only if the runbook exists) + address locating hooks | provider (read-only) | customer/address and rental-builder tests (locating runs after address saves) |
-| T-3 | WU-T4 readiness gate + Stripe tax rates **+ `seedTaxReadyContext()` helper and CI seed update** | money | **every test that signs an agreement or sets up billing**, checkout/webhook integration tests, rental-builder and signing browser specs |
-| T-4 | WU-T5 local invoices and the Stripe mirror use the engine; old single-rate assertions updated | money | pickup/late-return/early-return/waiver tests, webhook mirror tests, statements |
-| T-5 | WU-T6 exemptions + rate-change and re-check automations | money/automation | automation run tests, cron route auth tests |
-| T-5b1 | Amendment C metadata/source registry — `docs/pr-cards/T-5B1-OFFICIAL-RATE-METADATA.md` | tax metadata persistence | migration/schema-health, observation confirmation/pruning tests |
-| T-5b2a | Amendment C safe official-source transport — `docs/pr-cards/T-5B2A-SAFE-OFFICIAL-SOURCE-FETCH.md` | SSRF / external network boundary | DNS/public-address/pinned-HTTPS adversarial tests, exact-head build |
-| T-5b2b | Amendment C official-page watch lifecycle — `docs/pr-cards/T-5B2B-OFFICIAL-SOURCE-WATCH-LIFECYCLE.md` (parent acceptance: `T-5B2-OFFICIAL-SOURCE-WATCH.md`) | external-source monitoring / durable notifications | watch lifecycle, cron auth/isolation, messaging/Today tests |
-| T-5b3 | Amendment C guarded official-rate observation/auto-apply + D-T9 extension — `docs/pr-cards/T-5B3-GUARDED-OFFICIAL-RATE-AUTO-APPLY.md` | tax-rate money correctness / provider synchronization | real-Postgres guardrail tests, Today actions, rate-change durable-provider tests |
-| T-6a1 | Filing workspace schema + Colorado filing calendar — `docs/pr-cards/T-6A1-FILING-WORKSPACE-SCHEMA-CALENDAR.md` | schema + filing dates | migration/populated-upgrade, backup/schema-health, calendar/date tests |
-| T-6a2 | Filing periods, reminders, owner alerts, Today items + ICS — `docs/pr-cards/T-6A2-FILING-REMINDERS-CALENDAR.md` | automation + owner notifications | reminder integration, cron isolation/auth, exceptions, calendar-file tests |
-| T-6b1 | SUTS filing packet + use-tax recording/period assignment — `docs/pr-cards/T-6B1-SUTS-FILING-PACKET.md` | filing money correctness | packet/integration/use-tax tests |
-| T-6b2 | Filing finalization + amended-return evidence — `docs/pr-cards/T-6B2-FILING-FINALIZATION-AMENDMENTS.md` | filing finalization + amendment integrity | filing/amendment/exception/reminder tests |
-| T-6d | Amendment D WU-TD1: appliance intake "Sales tax when you bought it", per-appliance rental exemption, automatic annual/monthly use-tax frequency, DR 0252 filled PDF or worksheet (`BATCH-T.md` section 15) | money + screens | inventory/intake tests, engine tests, readiness tests, purchase-order receiving tests |
-| T-6c | Amendment B WU-TB1: Colorado retail delivery fee — automatic status, delivery-completion records, customer line or pay-myself, RDF return packet (`BATCH-T.md` section 12) | money | job completion tests, invoice/statement tests, Stripe invoice-item provider-operation tests, readiness tests |
-| T-7 | WU-T8 screens organized by `BATCH-T.md` section 14 (screen map: one Sales tax nav entry, six tabs, return page, Today routing, setup checklist) + WU-T9 docs | screens | route inventory (every new page), axe light/dark, `e2e/sales-tax.spec.ts` shard assignment |
+| COM-L3 | Threads, message links and template revisions schema | JIT — `COM-L3.md` | COM-L2 |
+| COM-L4A | Policy, consent eligibility and immutable communication intent | JIT — `COM-L4A.md` | COM-L3 |
+| COM-L4B | Account adapter, claimed SMS dispatch and recovery | JIT — `COM-L4B.md` | COM-L4A |
+| COM-L5A | Verified inbound SMS and deterministic contact resolution | JIT — `COM-L5A.md` | COM-L4B |
+| COM-L5B | Scoped consent actions and mandatory disclosure preservation | JIT — `COM-L5B.md` | COM-L5A |
+| COM-L6A | Template validation, segment preview and reminder migration | JIT — `COM-L6A.md` | COM-L5B |
+| COM-L6B | Authorized SMS inbox and per-user read cursors | JIT — `COM-L6B.md` | COM-L6A |
+| COM-L7 | Call legs, private media and retention schema | JIT — `COM-L7.md` | COM-L6B |
+| COM-L8 | Deterministic call routing, acceptance and callback reducer | JIT — `COM-L8.md` | COM-L7 |
+| COM-L9 | Optional voicemail private ingest and missed-call inbox | JIT — `COM-L9.md` | COM-L8 |
+| COM-L10 | Exact decimal telecom cost and cursor persistence | JIT — `COM-L10.md` | COM-L9 |
+| COM-L11 | Read-only usage, rate and readiness sync | JIT — `COM-L11.md` | COM-L10 |
+| COM-L12 | Spend reconciliation, estimates and configurable alert rules | JIT — `COM-L12.md` | COM-L11 |
+| COM-L13A | Owner telecom setup, templates and private statement evidence | JIT — `COM-L13A.md` | COM-L12 |
+| COM-L13B | Evidence-labelled costs in existing reports, Today and health | JIT — `COM-L13B.md` | COM-L13A |
+| COM-L14A | Customer and lead communication timelines | JIT — `COM-L14A.md` | COM-L13B |
+| COM-L14B | Job, maintenance and billing contextual communications | JIT — `COM-L14B.md` | COM-L14A |
+| COM-L15 | Launch communications proof and truthful owner setup handoff | JIT — `COM-L15.md` | COM-L14B |
+| COM-L1A | COM-L1A | [card](pr-cards/COM-L1A-SMS-SEND-SAFETY.md) | S-2 |
+| COM-L1B | COM-L1B | [card](pr-cards/COM-L1B-CALLBACK-INTEGRITY.md) | COM-L1A |
+| COM-L2 | COM-L2 | [card](pr-cards/COM-L2-FOUNDATION.md) | COM-L1B |
 
-### S — System issues inbox and the AI check-up (`docs/designs/BATCH-S.md`, approved 2026-10-07)
-| PR | Work units | Risk area | CI watch |
+### V
+
+| Unit | Scope | Execution card | Prerequisite |
 |---|---|---|---|
-| S-1 | WU-S1 `SystemIssue` table, redaction, writers (automations, stuck provider operations, tax lookup/page/rate sources), sweep rule, System health page, Today "System" group | schema + automation | automation run tests, health page browser spec, backup coverage test |
-| S-2 | WU-S2 AI check-up keys, `/api/ops/issues` (read + notes only), rate limit, `docs/runbooks/AI-CHECKUP.md` with the Claude Routine prompt | auth (non-session API) | API auth tests, secret scan (no key in fixtures) |
+| V-1 | Signature tokens and editable marketing fields | JIT — `V-1.md` | COM-L15 |
+| V-2 | Signature homepage and safe service-area check | JIT — `V-2.md` | V-1 |
+| V-3 | Remaining public pages with editable copy | JIT — `V-3.md` | V-2 |
+| V-4 | Desk and portal signature polish and evidence | JIT — `V-4.md` | V-3 |
 
-### V — "Evergreen Signature" redesign
-| PR | Work units | Risk area | CI watch |
+### F2
+
+| Unit | Scope | Execution card | Prerequisite |
 |---|---|---|---|
-| V-1 | V-2 tokens + contrast test, V-3 site-content fields + `tests/public-copy-from-settings.test.ts` | screens (foundation) | lint guard (`scripts/check-e2-ui-tokens.mjs`), website-editor tests |
-| V-2 | V-4 home page + V-6 address check (pure check, action, rate limit) | screens + public form | public axe routes, lead-form spec, rate-limit tests; Chris's before/after screenshot gate |
-| V-3 | V-5 remaining public pages | screens | public axe routes, 360px overflow assertions |
-| V-4 | V-7 desk Today timeline, sidebar search trigger, portal home + V-8 docs and screenshots | screens | desk/portal axe routes, `desk-workspace`, `owner-portal-workspaces`, `e2e/signature-focus.spec.ts` |
+| F2-A | Integrated rental and financial scenarios 1–5 | JIT — `F2-A.md` | V-4 |
+| F2-B | Integrated security, messages, privacy and continuing rentals | JIT — `F2-B.md` | F2-A |
+| F2-C | Current owner guide and reproducible screenshots | JIT — `F2-C.md` | F2-B |
+| F2-D | Review discharge, launch ledger and rollback | JIT — `F2-D.md` | F2-C |
 
-### F-part-2 (after G, T and V merge)
-| PR | Work units | Risk area | CI watch |
+### K
+
+| Unit | Scope | Execution card | Prerequisite |
 |---|---|---|---|
-| F2-a | WU-F3 scenarios 1–5 (include tax-ready fixtures from T-3) | cross-cutting tests | unit shard time — add a vitest shard if any shard passes ~2 min |
-| F2-b | WU-F3 scenarios 6–10 | cross-cutting tests | same |
-| F2-c | WU-F6 owner guide rewrite and screenshots | docs/browser | screenshot spec shard assignment |
-| F2-d | WU-F7 review-thread discharge, WU-F8 launch ledger, WU-F9 rollback plan and STATUS | docs/scripts | launch-ledger test |
+| K-1A | Accounting schema, system accounts and restoration | JIT — `K-1A.md` | F2-D |
+| K-1B | Pure balanced posting rules and evidence adapters | JIT — `K-1B.md` | K-1A |
+| K-2A | Journal poster, periods, opening balances and concurrency | JIT — `K-2A.md` | K-1B |
+| K-2B | Accounts, opening setup and journal browser | JIT — `K-2B.md` | K-2A |
+| K-3 | Stripe balance paging, clearing and nightly books | JIT — `K-3.md` | K-2B |
+| K-4A | Expense lifecycle and private receipt uploads | JIT — `K-4A.md` | K-3 |
+| K-4B | Expense phone workflow and recurring drafts | JIT — `K-4B.md` | K-4A |
+| K-5 | Immutable accounting export batches | JIT — `K-5.md` | K-4B |
+| K-6 | Depreciation and retirement value evidence | JIT — `K-6.md` | K-5 |
+| K-7 | Profit, balance and appliance payback | JIT — `K-7.md` | K-6 |
+| K-8 | Forecast, customer health and year-end package | JIT — `K-8.md` | K-7 |
 
-### K — books (after launch unless Chris asks sooner)
-| PR | Work units | Risk area | CI watch |
+### M
+
+| Unit | Scope | Execution card | Prerequisite |
 |---|---|---|---|
-| K-1 | WU-K1 migration + seeded accounts + WU-K2 account map and posting rules (pure) | schema + pure logic | migration drill, backup coverage |
-| K-2 | WU-K3 poster, periods, integrity check, opening balance | money (journal) | concurrency tests (two posters at once) |
-| K-3 | WU-K4 Stripe balance sync and clearing check | provider | fake Stripe client tests; automation tests |
-| K-4 | WU-K5 expenses, recurring drafts, receipt photo, use-tax hook | money + uploads | upload/private-media tests, STAFF permission tests |
-| K-5 | WU-K6 exports + accounts/mapping screen | money + screens | route inventory, CSV formula-injection test |
-| K-6 | WU-K7 depreciation | money | appliance retirement tests |
-| K-7 | WU-K8 P&L, balance, payback | reports | METRICS registry tests, reports page specs |
-| K-8 | WU-K9 forecast, customers, year-end + WU-K10 docs | reports | same; `e2e/books.spec.ts` shard |
+| M-1A | Shop and resale stock schema | JIT — `M-1A.md` | K-8 |
+| M-1B | Resale movement costs and use-tax withdrawals | JIT — `M-1B.md` | M-1A |
+| M-1C | Atomic local shop sale and refund domain | JIT — `M-1C.md` | M-1B |
+| M-1D | Sales and items-for-sale screens | JIT — `M-1D.md` | M-1C |
+| M-2A | Retired plans, salvage and lump scrap ledger | JIT — `M-2A.md` | M-1D |
+| M-2B | Retired workflow and scrap receipts | JIT — `M-2B.md` | M-2A |
+| M-2C | Used-appliance sale integration | JIT — `M-2C.md` | M-2B |
+| M-3 | Hosted card payment for local invoices | JIT — `M-3.md` | M-2C |
 
-### M — shop sales and appliance endings (`docs/designs/BATCH-M.md`, approved 2026-10-07; after K — Chris will not sell before launch, IN-47 answered 2026-10-07)
-| PR | Work units | Risk area | CI watch |
+### O
+
+| Unit | Scope | Execution card | Prerequisite |
 |---|---|---|---|
-| M-1 | WU-M1 items for sale on the parts ledger, resale stock and use tax on withdrawals, Sales page (pickup vs delivered tax, delivery fee), revenue split | money + screens | parts ledger tests, invoice/tax tests, delivery-fee tests, new browser spec shard |
-| M-2 | WU-M2 retired appliances — "what's next" (sell / strip for parts / scrap / throw away / other), parts kept into stock, lump scrap money, K postings | money + inventory | inventory status tests, parts ledger tests, K posting tests |
-| M-3 | WU-M3 card payment for local invoices (Stripe Checkout per local invoice) | money + provider | checkout/webhook tests, provider-operation idempotency tests |
+| O-1 | Settings history, guarded undo and live-switch inventory | JIT — `O-1.md` | M-3 |
+| O-2A | Capability defaults and scoped domain guards | JIT — `O-2A.md` | O-1 |
+| O-2B | Per-person permissions UI and adversarial DTO proof | JIT — `O-2B.md` | O-2A |
+| O-3A | Durable approvals and transactional command preparation | JIT — `O-3A.md` | O-2B |
+| O-3B | Approval command adapters and Today decision workflow | JIT — `O-3B.md` | O-3A |
+| O-4 | Scheduled price changes with frozen accepted terms | JIT — `O-4.md` | O-3B |
+| O-5 | Goals, utilization attention and final control handoff | JIT — `O-5.md` | O-4 |
 
-### O — owner controls
-| PR | Work units | Risk area | CI watch |
+### COM-N
+
+| Unit | Scope | Execution card | Prerequisite |
 |---|---|---|---|
-| O-1 | WU-O1 settings history and undo + WU-O6 switches page (the batch's migration) | settings | settings save tests, route inventory |
-| O-2 | WU-O2 capabilities (behaviour must not change: table test of today's guards) | permissions | **every permission test**; staff-security spec |
-| O-3 | WU-O3 approvals | money + permissions | refund/credit/write-off integration tests |
-| O-4 | WU-O4 scheduled prices + WU-O5 goals and alerts + docs | settings/automation | pricing tests, Today tests |
+| COM-N1A | Lead, estimate and signature SMS | JIT — `COM-N1A.md` | O-5, COM-L15 |
+| COM-N1B | Job and maintenance SMS | JIT — `COM-N1B.md` | COM-N1A |
+| COM-N1C | Billing, renewal and refund SMS | JIT — `COM-N1C.md` | COM-N1B |
+| COM-N2 | Verified click-to-call and assigned staff actions | JIT — `COM-N2.md` | COM-N1C |
+| COM-N3 | Verified telecom statement to existing books expense | JIT — `COM-N3.md` | COM-N2, K-8 |
+| COM-N4 | Observed service metrics, unit economics and forecasts | JIT — `COM-N4.md` | COM-N3 |
 
-**Being re-sized (updated 2026-10-08):** T-5b is split into bounded T-5b1/T-5b2/T-5b3 cards; T-6a/T-6b are now split into executable T-6a1/T-6a2/T-6b1/T-6b2 cards. T-6c, T-6d, T-7, S-1, M-1 and M-2 remain over the
-PR budget and must be split as their cards are written in `docs/pr-cards/`. The
-designs for those PRs carry an "Implementation gate": no card, no start. Earlier T PRs (T-3, T-4, T-5) are unaffected.
+### BP
 
-**PR count:** the old fixed estimate predates the mandatory readiness-audit splits. T-5b is now three PRs, and the remaining over-budget rows above will increase the final count as their cards are written. Use the current rows/cards rather than a historical total when planning work.
-Each PR should reach green with at most one red CI run (each run is about 3–5 minutes). If a PR needs a third red run,
-the agent stops and reports (PLAYBOOK Step 8).
+| Unit | Scope | Execution card | Prerequisite |
+|---|---|---|---|
+| BP-1 | Commercial template, quote, campaign and promotion schema | JIT — `BP-1.md` | COM-N4, O-5 |
+| BP-2A | Template validation and pure configurable offer quoting | JIT — `BP-2A.md` | BP-1 |
+| BP-2B | Issued quote acceptance and promotion cap integrity | JIT — `BP-2B.md` | BP-2A |
+| BP-3 | Template and offer editors with full price disclosure | JIT — `BP-3.md` | BP-2B |
+| BP-4 | Verified-unused and first deployment schema | JIT — `BP-4.md` | BP-3 |
+| BP-5 | Unused qualification, reservation and substitution integrity | JIT — `BP-5.md` | BP-4 |
+| BP-6 | Property authorization and installation evidence schema | JIT — `BP-6.md` | BP-5 |
+| BP-7A | Scoped permission issue, signature and revocation | JIT — `BP-7A.md` | BP-6 |
+| BP-7B | Minimal private permission-signing page | JIT — `BP-7B.md` | BP-7A |
+| BP-8 | Installation assessments and guarded completion | JIT — `BP-8.md` | BP-7B |
+| BP-9 | Property evidence and phone installation workflow | JIT — `BP-9.md` | BP-8 |
+| BP-10 | Portfolio master contract schema | JIT — `BP-10.md` | BP-9 |
+| BP-11A | Commercial schedule quoting and portfolio volume policy | JIT — `BP-11A.md` | BP-10 |
+| BP-11B | Portfolio master and schedule signing workflow | JIT — `BP-11B.md` | BP-11A |
+| BP-12 | Stable partner programs and append-only commission schema | JIT — `BP-12.md` | BP-11B |
+| BP-13A | Partner signed artifacts and code effective-version resolution | JIT — `BP-13A.md` | BP-12 |
+| BP-13B | Deterministic cash attribution and commission accrual | JIT — `BP-13B.md` | BP-13A |
+| BP-14 | Owner manual settlements and books liability | JIT — `BP-14.md` | BP-13B |
+| BP-15A | Partner membership and restricted summary APIs | JIT — `BP-15A.md` | BP-14 |
+| BP-15B | Owner partner workflow and private partner portal | JIT — `BP-15B.md` | BP-15A |
+| BP-16 | Campaign cost, business metrics and owner handoff | JIT — `BP-16.md` | BP-15B |
 
-### BP — proposed business integration from the consultant briefing
+## Owner-facing handoff stays small
 
-`docs/designs/BATCH-BP.md` section 6 owns the proposed BP-1…BP-16 slice list and dependencies. These are additional
-proposed slices, **not included in the earlier approved-work PR counts** and not permission to interrupt T.
-`docs/business/SOURCE-DISPOSITION.md` maps 31 source concepts to existing work, new scope or explicit deferral.
-The business folder is ready to review; pricing, tax positions, contracts and commissions are not activated.
-Before coding BP, create its bounded cards against the merged prerequisite code and record design acceptance.
-### COM — approved owner-commissioned communications work (2026-10-08)
+Use STATUS and this roadmap. Detailed cards/designs are for the coding agent; no per-PR handoff documents, separate attachment packs or copied schema books. The final owner guide is rewritten only when the final product is verified (F2-C). Remaining choices retain their existing OWNER-INPUTS IDs.
 
-BATCH-COM section 9 defines L1a/L1b sender/callback safety → L2/L3 foundation → L4–L6 SMS/inbox;
-L7–L9 voice; L10–L13 cost/usage/owner reporting; L14 contextual surfaces; L15 final proof.
-First three cards exist at docs/pr-cards/COM-*. Later bounded cards are required before each unit starts.
-Approved COM-L after S before V/F-part-2; COM-N after K/O; COM-A unscheduled.
-These are additional work, not completed E, and not authorization for provider purchase/configuration/activation.
+## Improvements folded into the existing work
+
+These are acceptance refinements, not four new workstreams or new launch gates.
+The implementing agent includes them in the named capability, or splits only
+when its measured budget requires it. Check current code first; do not rebuild
+already proved behavior.
+
+| ID | Existing unit | Improvement and proof |
+|---|---|---|
+| ENH-S | S-1C | Actionable, role-scoped alert recovery links; explicit stale/unknown evidence; no blind provider resend |
+| ENH-F | F2-D | Post-commit notification failure cannot falsely fail a durable estimate approval; retry proof without duplicate accounts/agreements |
+| ENH-K | K-6 | Profitability/payback shows incomplete cost evidence, source/as-of and safe unknown results |
+| ENH-O | O-1 | Pure settings impact preview, stale-revision protection and authorized undo; preserve signed customer facts |
+
+Exact contracts and named cases are appended to the existing S/F/K/O designs.
+Broader ideas wait for evidence from real use rather than expanding launch scope.

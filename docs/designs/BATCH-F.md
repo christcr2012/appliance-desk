@@ -163,3 +163,16 @@ scenarios and ledger. Order and PR boundaries (F1-a … F1-c, F2-a … F2-d): `d
 **2026-10-06 — F-part-1 drift check against main `e640b75`.** A1–A3 and A5–A8 still match the implemented code. A4's Stripe test hook exists; the email/SMS sender injection hooks do not. That is the contingency already described by A4 and is deferred to F-part-2/WU-F3, where provider-failure scenarios actually need it; F1-a does not touch provider sending. E2's final route/accessibility changes are recorded in CHANGES-SINCE-DESIGN and do not affect F1-a's database-only work. The mandatory post-Batch-D recovery amendment remains in force: F1-a restores D's database control-plane rows as ordinary backed-up tables; F1-b owns private-media deletion/tombstone recovery semantics. No decision-level drift was found, so F-part-1 may proceed.
 
 (Dated entries only.)
+
+## 2026-10-08 addition — ENH-F post-commit outcome proof
+
+F2-D must review every Package 1 finding against current code/tests, then inspect
+post-commit notification paths. In `estimates/index-base.ts`, approval commits
+before awaiting `sendCustomerActivationEmail`; inspect the sender's actual error
+contract before claiming a defect. A provider failure after durable approval
+must not tell the customer approval failed or create a second account/agreement
+on retry. Use the existing message ledger/recovery contracts; committed approval
+is success with notification pending when appropriate. Keep genuine transaction
+failure distinct. Test a thrown sender, a disabled sender, retry after commit,
+and successful send with account/agreement counts. If already proved, cite the
+regression and omit duplicate implementation. No new generic outbox by default.

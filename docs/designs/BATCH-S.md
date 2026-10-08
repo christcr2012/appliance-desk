@@ -220,3 +220,23 @@ failing rule is not double-reported as stale; stuck provider op counted once; co
 - **S-S2** The existing rate limiter or auth helpers cannot protect a non-session API route without new libraries.
 - **S-S3** Routines in Chris's Claude plan cannot reach the production domain (network policy) — document the manual
   alternative (Chris starts the check-up session by hand) instead of weakening D-S3.
+
+## 2026-10-08 amendment — bounded privacy and actionable recovery
+
+S-2's external API accepts structured recommendation keys/repository references,
+not arbitrary note bodies. GET excludes staff free text and person identities.
+The prior regex/name-scan proposal cannot prove arbitrary prose is free of PII;
+keep staff notes internal, length-limited and screened, and do not export them.
+Typed issue details must use an explicit code allowlist, not merely a regex that
+could accept a name or secret shaped like an error code. Planted free-text names,
+addresses, tokens and raw provider responses must fail external API tests.
+
+ENH-S is part of S-1C: each issue kind maps to an allowlisted desk route and a
+short recovery instruction with required role, last verified timestamp and
+manual fallback. Links are generated server-side from typed identifiers; no raw
+URL from an error. Show UNKNOWN and stale evidence explicitly. Provider timeout
+recovery must inspect the provider operation/reconciliation screen; never offer
+blind resend. No new background writer, spending action or activation button.
+Prove role-shaped links, missing source fallback, duplicate issue suppression,
+partial-page non-resolution and provider-unknown guidance. Reuse existing S
+source lifecycle, not a second alert engine.

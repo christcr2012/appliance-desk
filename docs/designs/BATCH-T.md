@@ -1806,3 +1806,25 @@ form section at 360 px, axe clean.
 ### T-6b1 review-required evidence correction (2026-10-08)
 
 The pre-T-6b1 Invoice model had no provider issue timestamp. Accurate accrual filing must **not** use Prisma invoice creation time to place delayed Stripe webhook invoices in a filing month. Add one nullable `Invoice.issuedAt` timestamp and the additive `20261010130000_batch_t_invoice_issued_at` migration. Populate it only from Stripe invoice `status_transitions.finalized_at`; leave historical Stripe timestamps null until independently confirmed. Existing non-draft/non-void local invoices may safely backfill from their creation time. Block accrual packets if unverified Stripe invoice issue dates might affect the return. This repair is required by the independent P1 review on #309 and must have real-Postgres and replay tests; it does not change billed or collected tax.
+
+## 2026-10-08 safety reconciliation — acquisition and delivery cards
+
+This narrows unsafe assumptions pending IN-33; it does not activate a tax policy.
+`USE_TAX_DUE` is liability evidence, not proof that purchase tax was paid. T-6D2
+must derive paid-evidence status on the server and retain the conservative taxable/
+manual-review path until applicable CPA-confirmed rules and evidence permit an
+exemption. Unknown historic acquisition basis is explicit, never assumed exempt.
+State-collected and independent home-rule policies stay distinct.
+
+Retail delivery fee eligibility for a taxable goods sale must be evaluated
+independently of a rental election; use stable sale identity across partial
+shipments, and preserve original charge and filing timestamps separately. Return
+preview is pure; reserve a credit only in the finalization transaction. Customer
+refund confirmation precedes credit claims. These contracts are reflected in
+T-6D2 and T-6C1…4; later rate/source changes require the normal source/owner gates.
+
+Official primary references: [Colorado leases](https://tax.colorado.gov/sites/tax/files/Sales%20Tax%20Topics%20-%20Leases.pdf),
+[consumer use tax](https://tax.colorado.gov/consumer-use-tax),
+[retail delivery fee](https://tax.colorado.gov/retail-delivery-fee).
+Do not seed a guessed current fee or promise automated DR 0252 completion without
+verified field mapping; the acquisition worksheet/manual filing remains usable.
