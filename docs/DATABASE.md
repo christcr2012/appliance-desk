@@ -47,6 +47,16 @@ in UTC and only converted to Mountain Time for display.
 
 ## Inventory
 
+T-6D1 (October 8): Each Appliance now stores explicit purchase-tax evidence:
+`acquisitionTaxStatus` defaults to `UNKNOWN` on historical rows; optional seller
+tax cents, seller note, scoped receipt Photo ID, timestamp and actor identify
+subsequent evidence. A single additive migration leaves prior rental records
+untouched. The existing Prisma-model-driven backup and schema-health traversal
+automatically includes these scalar fields. Purchase tax rows and AuditLog
+entries are written within the same inventory transaction; FILED worksheets
+remain frozen and corrections are reviewed via the filing-amendment detector.
+
+
 - **ApplianceType** — a category Chris rents (Washer, Dryer,
   Refrigerator, ...) and its *current* published price. Adding a new
   category is a data change, never a code change.

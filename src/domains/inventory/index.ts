@@ -3,6 +3,8 @@ import { jobPartsCosts } from "@/domains/purchasing/ledger";
 import { requireRole } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
+import { allocateAcrossLines } from "@/domains/tax/allocate";
+import { recordApplianceAcquisitionTaxInTx, type PurchaseTaxChoice } from "@/domains/tax/acquisition";
 import type { ApplianceStatus } from "@prisma/client";
 import { assertStatusChangeKeepsCustody } from "./custody";
 import {
@@ -165,6 +167,12 @@ export type NewApplianceUnitInput = {
   condition?: string | null;
   purchaseDate?: Date | null;
   acquisitionCostCents?: number | null;
+  purchaseTax?: {
+    choice: PurchaseTaxChoice;
+    vendorTaxCents: number;
+    sellerNote?: string;
+    receiptPhotoId?: string;
+  };
   currentLocation?: string | null;
   notes?: string | null;
 };
@@ -188,9 +196,20 @@ export async function createApplianceUnits(
       where: { id: input.applianceTypeId },
     });
     const prefix = assetNumberPrefix(applianceType.name);
+    if (input.purchaseTax?.receiptPhotoId && input.quantity !== 1) {
+      throw new Error("Attach a receipt separately to each appliance in a bulk intake.");
+    }
+    if (input.purchaseTax && (!Number.isSafeInteger(input.purchaseTax.vendorTaxCents) ||
+      input.purchaseTax.vendorTaxCents < 0 ||
+      input.purchaseTax.vendorTaxCents > 2_147_483_647)) {
+      throw new Error("Total seller tax must be nonnegative whole cents.");
+    }
     const assetNumbers = await allocateAssetNumbers(tx, prefix, input.quantity);
+    const taxShares = input.purchaseTax
+      ? allocateAcrossLines(input.purchaseTax.vendorTaxCents, assetNumbers.map(() => 1))
+      : [];
     const created = [];
-    for (const assetNumber of assetNumbers) {
+    for (const [index, assetNumber] of assetNumbers.entries()) {
       const unit = await tx.appliance.create({
         data: {
           assetNumber,
@@ -222,7 +241,18 @@ export async function createApplianceUnits(
         },
       });
 
-      created.push(unit);
+      if (input.purchaseTax) {
+        await recordApplianceAcquisitionTaxInTx(tx, userId, {
+          applianceId: unit.id, expectedRecordedAt: null,
+          choice: input.purchaseTax.choice,
+          vendorTaxCents: taxShares[index]!,
+          sellerNote: input.purchaseTax.sellerNote,
+          receiptPhotoId: input.purchaseTax.receiptPhotoId,
+        });
+        created.push(await tx.appliance.findUniqueOrThrow({ where: { id: unit.id } }));
+      } else {
+        created.push(unit);
+      }
     }
     return created;
   });
