@@ -79,7 +79,14 @@ export function retailDeliveryFeeStatus(input: {
     }
   }
   let startsOn: Date | null = null;
-  if (input.thresholdCrossedOn) {
+  if (input.previousYearRetailCents > input.thresholdCents) {
+    startsOn = fromKey(today.slice(0, 4) + "-01-01");
+  } else if (input.previousYearRetailCents > 0 || input.currentYearRetailCents <= input.thresholdCents) {
+    return {
+      status: "EXEMPT_SMALL_BUSINESS", startsOn: null,
+      reason: "Retail sales did not exceed the applicable small-business threshold.",
+    };
+  } else if (input.thresholdCrossedOn) {
     startsOn = rdfNewBusinessStartsOn(input.thresholdCrossedOn, input.frequency);
     if (today < businessDateKey(startsOn)) {
       return {
@@ -87,13 +94,6 @@ export function retailDeliveryFeeStatus(input: {
         reason: "New-business exemption continues until the first qualifying filing period after 90 days.",
       };
     }
-  } else if (input.previousYearRetailCents > input.thresholdCents) {
-    startsOn = fromKey(today.slice(0, 4) + "-01-01");
-  } else if (input.previousYearRetailCents > 0 || input.currentYearRetailCents <= input.thresholdCents) {
-    return {
-      status: "EXEMPT_SMALL_BUSINESS", startsOn: null,
-      reason: "Retail sales did not exceed the applicable small-business threshold.",
-    };
   } else {
     return {
       status: "UNDECIDED", startsOn: null,

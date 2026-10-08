@@ -35,6 +35,37 @@ describe("T-6C1 Colorado retail-delivery-fee decision engine", () => {
     }).status).toBe("APPLIES");
   });
 
+  it("re-evaluates the annual exemption despite a persisted crossing date", () => {
+    for (const previousYearRetailCents of [1, 50000000]) {
+      const result = retailDeliveryFeeStatus({
+        ...input, previousYearRetailCents, currentYearRetailCents: 60000000,
+        thresholdCrossedOn: day("2025-01-15"),
+      });
+      expect(result.status).toBe("EXEMPT_SMALL_BUSINESS");
+      expect(result.startsOn).toBeNull();
+    }
+    const applicable = retailDeliveryFeeStatus({
+      ...input, thresholdCrossedOn: day("2026-10-01"),
+    });
+    expect(applicable.status).toBe("APPLIES");
+    expect(businessDateKey(applicable.startsOn!)).toBe("2026-01-01");
+  });
+
+  it("ignores crossing evidence when sales no longer exceed the configured threshold", () => {
+    for (const previousYearRetailCents of [0, 50000001]) {
+      const result = retailDeliveryFeeStatus({
+        ...input, previousYearRetailCents, currentYearRetailCents: 50000001,
+        thresholdCents: 60000000, thresholdCrossedOn: day("2025-01-15"),
+      });
+      expect(result.status).toBe("EXEMPT_SMALL_BUSINESS");
+      expect(result.startsOn).toBeNull();
+    }
+    expect(retailDeliveryFeeStatus({
+      ...input, previousYearRetailCents: 0, currentYearRetailCents: 50000000,
+      thresholdCrossedOn: day("2025-01-15"),
+    }).status).toBe("EXEMPT_SMALL_BUSINESS");
+  });
+
   it("starts a new business on the first filing period at least 90 days after crossing", () => {
     const crossing = day("2026-01-15");
     expect(businessDateKey(rdfNewBusinessStartsOn(crossing, "MONTHLY"))).toBe("2026-05-01");
