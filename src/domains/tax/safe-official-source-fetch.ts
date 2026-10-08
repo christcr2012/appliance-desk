@@ -258,6 +258,7 @@ function requestPinnedOfficialSource(
         lookup: createPinnedLookup(selected.address, selected.family),
         headers: {
           accept: "text/html,text/plain;q=0.9",
+          "accept-encoding": "identity",
           "user-agent": "ApplianceDesk-OfficialTaxSourceWatch/1.0",
         },
       },
@@ -278,6 +279,20 @@ function requestPinnedOfficialSource(
           finish({
             ok: false,
             error: new Error(`Official source returned HTTP ${status}.`),
+          });
+          return;
+        }
+
+        const rawEncoding = response.headers["content-encoding"];
+        const contentEncoding = (
+          Array.isArray(rawEncoding) ? rawEncoding[0] ?? "" : rawEncoding ?? ""
+        ).trim().toLowerCase();
+        if (contentEncoding && contentEncoding !== "identity") {
+          response.destroy();
+          request?.destroy();
+          finish({
+            ok: false,
+            error: new Error("Official source response used unsupported content encoding."),
           });
           return;
         }
