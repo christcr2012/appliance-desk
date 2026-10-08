@@ -60,9 +60,12 @@ describe.skipIf(!enabled)("T-6a2 owner filing reminders (real Postgres)", () => 
     __setFilingAmendmentDetectorForTests(null);
     delete process.env.VERCEL;
     delete process.env.VERCEL_ENV;
+    const periodIds = (await prisma.taxFilingPeriod.findMany({
+      where: { filingAccountId: { startsWith: prefix } }, select: { id: true },
+    })).map(row => row.id);
     await prisma.messageDelivery.deleteMany({
       where: { OR: [
-        { idempotencyKey: { startsWith: `tax-reminder:${prefix}` } },
+        ...periodIds.map(id => ({ idempotencyKey: { startsWith: `tax-reminder:${id}:` } })),
         { idempotencyKey: { startsWith: `tax-license:${prefix}` } },
         { idempotencyKey: { startsWith: `owner-test:${prefix}` } },
       ] },
@@ -103,7 +106,12 @@ describe.skipIf(!enabled)("T-6a2 owner filing reminders (real Postgres)", () => 
   it("honors email switch off while still creating periods and never sending in preview", async () => {
     await account("off", { firstPeriodStart: day("2026-09-01"), emailReminders: false });
     expect((await runTaxFilingCalendar(day("2026-10-01"))).periodsCreated).toBe(2);
-    expect(await prisma.messageDelivery.count({ where: { idempotencyKey: { startsWith: "tax-reminder:" } } })).toBeGreaterThanOrEqual(0);
+    const disabledPeriodIds = (await prisma.taxFilingPeriod.findMany({
+      where: { filingAccountId: `${prefix}-off` }, select: { id: true },
+    })).map(row => row.id);
+    for (const id of disabledPeriodIds) {
+      expect(await prisma.messageDelivery.count({ where: { idempotencyKey: { startsWith: `tax-reminder:${id}:` } } })).toBe(0);
+    }
 
     await account("preview", { firstPeriodStart: day("2026-09-01") });
     process.env.VERCEL = "1";

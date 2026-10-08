@@ -1,4 +1,4 @@
-import { addBusinessDays, businessDateKey } from "@/lib/business-date";
+import { addBusinessDays, businessDateKey, businessDayBounds } from "@/lib/business-date";
 import { prisma } from "@/lib/prisma";
 import { legalDueOn } from "@/domains/tax/filing-calendar";
 import {
@@ -18,16 +18,15 @@ export async function listTaxFilingAttention(
   now = new Date(),
   readOnly = false,
 ): Promise<FilingAttentionSet> {
-  const tomorrow = addBusinessDays(now, 1);
   const licensesUntil = addBusinessDays(now, 60);
   const returnWhere = {
     status: "OPEN" as const,
-    periodEnd: { lt: tomorrow },
+    periodEnd: { lt: businessDayBounds(now).start },
     filingAccount: { active: true },
   };
   const licenseWhere = {
     active: true,
-    licenseExpiresOn: { not: null, lt: licensesUntil },
+    licenseExpiresOn: { not: null, lte: licensesUntil },
   };
   const [returns, licenses, returnCount, licenseCount] = await Promise.all([
     prisma.taxFilingPeriod.findMany({
