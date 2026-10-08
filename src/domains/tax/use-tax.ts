@@ -29,7 +29,7 @@ export async function recordUseTaxForPurchase(
   requireCents(input.vendorTaxCents, "Vendor tax");
 
   // Serialize concurrent updates for the same purchase.
-  await tx.$queryRaw\`SELECT pg_advisory_xact_lock(hashtext(\${input.sourceType + ":" + input.sourceId}))\`;
+  await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${input.sourceType + ":" + input.sourceId}))`;
   const settings = await tx.businessSettings.findUnique({
     where: { id: "singleton" },
     select: { shortTermLeaseElection: true },
@@ -136,9 +136,9 @@ export async function assignDueUseTaxRowsToPeriod(
   tx: Prisma.TransactionClient,
   filingPeriodId: string,
 ): Promise<number> {
-  const locked = await tx.$queryRaw<Array<{ id: string }>>\`
-    SELECT "id" FROM "TaxFilingPeriod" WHERE "id" = \${filingPeriodId} FOR UPDATE
-  \`;
+  const locked = await tx.$queryRaw<Array<{ id: string }>>`
+    SELECT "id" FROM "TaxFilingPeriod" WHERE "id" = ${filingPeriodId} FOR UPDATE
+  `;
   if (!locked.length) throw new Error("Tax filing period not found.");
   const period = await tx.taxFilingPeriod.findUniqueOrThrow({
     where: { id: filingPeriodId },
