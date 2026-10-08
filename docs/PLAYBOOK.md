@@ -321,9 +321,9 @@ check OK.
    the full findings, and fix valid issues *in that PR before merging* with a
    regression test. Check the predecessor for late comments when beginning its
    successor; carry only genuinely post-merge findings into the next planned PR.
-   Use the available GitHub review-thread connector to list/resolve threads;
-   where unavailable, use the documented GitHub pull-review and review-comment
-   APIs for inspection. Do not assume an undocumented `ccr/` endpoint works.
+   Use the GitHub review-thread connector to inspect and resolve thread state. If unavailable,
+   use authorized GitHub GraphQL reviewThreads/resolveReviewThread or GitHub's web review UI.
+   REST review comments alone cannot prove thread resolution; leave the gate open if unverifiable.
    Resolve only findings proven fixed at the reviewed head. Record dispositions
    together, not in separate review passes for every push.
 
@@ -368,7 +368,7 @@ not your PR's: fix it in a tiny separate PR first (allowed alongside AGENTS.md's
 next PR", because a red `main` blocks every PR), or port
 an existing fix into your PR and say so. Never debug someone else's red for hours inside your PR.
 
-**The CI round budget.** At most **3 red CI runs** caused by your change, per PR (a green run after merging the base
+**CI diagnosis checkpoint.** Three change-caused red CI runs require evidence-based diagnosis before another push, not an automatic session stop. For each PR (a green run after merging the base
 branch, or one infra re-run, does not count). After the second red run on the *same* failure, stop pushing
 speculative fixes: set up the full local suite (Step 4b) or the browser recipe (4c) and reproduce it. After the third red
 run, stop speculative CI pushes, not the session: reproduce the failing path
@@ -414,7 +414,7 @@ Never weaken an assertion, skip a test, or delete a check to get green.
 
 ## Step 9 — Preview
 
-Vercel builds a preview for every PR. For changes to customer-facing screens,
+Vercel builds a preview for every PR. For changes to any user-facing UI, including owner, staff and customer screens,
 click through the affected flow at phone width (360), tablet (768) and desktop
 (1440), in light and dark. For backend-only changes, confirm preview build and
 relevant API/behavior evidence; for docs-only work, do not require a manual UI
