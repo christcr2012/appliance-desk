@@ -1932,6 +1932,8 @@ model TaxJurisdiction {
   useTaxRows       PurchaseUseTax[]
   createdAt        DateTime                  @default(now())
   updatedAt        DateTime                  @updatedAt
+
+  @@index([useTaxFilingAccountId])
 }
 
 model TaxRateVersion {
