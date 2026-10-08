@@ -1,0 +1,21 @@
+import fs from "node:fs";
+import { test, expect } from "@playwright/test";
+import AxeBuilder from "@axe-core/playwright";
+const owner = "e2e/.auth/owner.json";
+test.use({ storageState: fs.existsSync(owner) ? owner : undefined });
+test("owner sees purchase-tax choices and evidence guidance on mobile", async ({ page }) => {
+  test.skip(!fs.existsSync(owner), "Authenticated owner fixture required");
+  await page.setViewportSize({ width: 360, height: 780 });
+  await page.goto("/desk/inventory");
+  const choice = page.getByLabel("Purchase tax evidence");
+  await expect(choice).toBeVisible();
+  await expect(choice.locator("option")).toHaveCount(4);
+  await choice.selectOption("SELLER_CHARGED");
+  await expect(page.getByLabel("Total seller sales tax for all units ($)")).toBeVisible();
+  await expect(page.getByText(/purchase date or cost is missing/i)).toBeVisible();
+  const light = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
+  expect(light.violations).toEqual([]);
+  await page.emulateMedia({ colorScheme: "dark" });
+  const dark = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
+  expect(dark.violations).toEqual([]);
+});
