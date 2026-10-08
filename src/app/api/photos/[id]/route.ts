@@ -2,7 +2,7 @@ import { get } from "@vercel/blob";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "@/lib/session";
-import { getPrivatePhotoStore } from "@/lib/photo-storage";
+import { getPrivatePhotoStore, privatePhotoPathFromUrl } from "@/lib/photo-storage";
 
 function expectedPrivateHost(storeId: string): string {
   return `${storeId.slice("store_".length).toLowerCase()}.private.blob.vercel-storage.com`;
@@ -56,6 +56,17 @@ export async function GET(
       { error: "Private photo storage is not configured for this environment." },
       { status: 503 },
     );
+  }
+
+  // Tax-filing confirmations are finance evidence, unlike ordinary job
+  // photos. A STAFF user who learns the Photo id cannot read the blob.
+  const privatePath = privatePhotoPathFromUrl(photo.url, store.storeId);
+  const taxFilingPhoto = privatePath?.startsWith("tax-filings/") ||
+    (await prisma.taxFilingPeriod.findFirst({
+      where: { confirmationPhotoId: photo.id }, select: { id: true },
+    })) !== null;
+  if (taxFilingPhoto && role !== "OWNER" && role !== "ADMIN") {
+    return NextResponse.json({ error: "Photo not found." }, { status: 404 });
   }
 
   let url: URL;

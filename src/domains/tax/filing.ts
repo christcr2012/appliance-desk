@@ -261,6 +261,30 @@ async function lockAmendment(tx: Prisma.TransactionClient, id: string) {
  * competing cron runs; a single OPEN amendment is refreshed in place.
  * The originally filed worksheet is never edited.
  */
+const AMENDMENT_SCAN_BLOCKED = "tax.amendment_scan_blocked";
+const AMENDMENT_SCAN_RECOVERED = "tax.amendment_scan_recovered";
+
+/** Audit events are the durable per-period signal for a failed comparison.
+ * An unchanged blocked state is not written again on every daily scan. */
+async function recordAmendmentScanState(periodId: string, blocked: boolean): Promise<void> {
+  const latest = await prisma.auditLog.findFirst({
+    where: {
+      entityType: "TaxFilingPeriod", entityId: periodId,
+      action: { in: [AMENDMENT_SCAN_BLOCKED, AMENDMENT_SCAN_RECOVERED] },
+    },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+  });
+  const action = blocked ? AMENDMENT_SCAN_BLOCKED : AMENDMENT_SCAN_RECOVERED;
+  if ((latest?.action ?? null) === action) return;
+  if (!blocked && !latest) return;
+  await prisma.auditLog.create({
+    data: {
+      action, entityType: "TaxFilingPeriod", entityId: periodId,
+      newValue: { state: blocked ? "BLOCKED" : "RECOVERED" },
+    },
+  });
+}
+
 export async function detectTaxFilingAmendments(now = new Date()): Promise<number> {
   const periods = await prisma.taxFilingPeriod.findMany({
     where: { status: "FILED", worksheet: { not: Prisma.DbNull } },
@@ -268,8 +292,11 @@ export async function detectTaxFilingAmendments(now = new Date()): Promise<numbe
     orderBy: [{ filedOn: "asc" }, { id: "asc" }],
   });
   let changed = 0;
+  let blockedCount = 0;
   for (const period of periods) {
-    const result = await prisma.$transaction(async tx => {
+    let result: { id: string; first: boolean; detectedAt: Date } | null;
+    try {
+      result = await prisma.$transaction(async tx => {
       const locked = await lockPeriod(tx, period.id);
       if (locked.status !== "FILED" || !locked.worksheet) return null;
       const latestFiled = await tx.taxFilingAmendment.findFirst({
@@ -318,7 +345,7 @@ export async function detectTaxFilingAmendments(now = new Date()): Promise<numbe
       if (open) {
         await tx.taxFilingAmendment.update({
           where: { id: open.id },
-          data: { packet, additionalTaxCents: amendment.additionalTaxCents, detectedAt: now },
+          data: { packet, additionalTaxCents: amendment.additionalTaxCents },
         });
         return { id: open.id, first: false, detectedAt: open.detectedAt };
       }
@@ -341,7 +368,16 @@ export async function detectTaxFilingAmendments(now = new Date()): Promise<numbe
         },
       });
       return { id: created.id, first: true, detectedAt: now };
-    }, { timeout: 20000 });
+      }, { timeout: 20000 });
+      await recordAmendmentScanState(period.id, false);
+    } catch (error) {
+      // A single historical/undecided return cannot suppress newer
+      // corrections. Record a durable, finance-only Today exception.
+      console.error("[tax] Amendment scan failed for period " + period.id, error);
+      await recordAmendmentScanState(period.id, true);
+      blockedCount += 1;
+      continue;
+    }
     if (!result) continue;
     changed += 1;
     // First detection; weekly follow-up after that while OPEN. Per-owner
@@ -357,6 +393,10 @@ export async function detectTaxFilingAmendments(now = new Date()): Promise<numbe
         href: "/desk/today",
       });
     }
+  }
+  if (blockedCount) {
+    throw new Error("Amendment scan could not verify " + blockedCount +
+      " filed return(s); remaining periods were scanned. Check Today.");
   }
   return changed;
 }

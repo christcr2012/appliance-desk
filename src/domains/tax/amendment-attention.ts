@@ -36,7 +36,7 @@ export async function listTaxAmendmentAttention(now = new Date()): Promise<TaxAm
           })) },
           { OR: [
             { periodEnd: { lt: businessDayBounds(now).start } },
-            { dueOn: { lte: addBusinessDays(now, 5) } },
+            { periodEnd: { lte: addBusinessDays(now, 5) } },
           ] },
         ],
       },
@@ -45,7 +45,38 @@ export async function listTaxAmendmentAttention(now = new Date()): Promise<TaxAm
       take: 12, // limit expensive packet calculations on every Today request
     }) : Promise.resolve([]),
   ]);
-  const readiness: ExceptionItem[] = [];
+  // Audit-based blocked status survives failed cron runs without requiring a
+  // schema migration, and a later successful scan supersedes the blocked event.
+  const auditStates = await prisma.auditLog.findMany({
+    where: {
+      entityType: "TaxFilingPeriod",
+      action: { in: ["tax.amendment_scan_blocked", "tax.amendment_scan_recovered"] },
+    },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    take: 200,
+    select: { action: true, entityId: true },
+  });
+  const seen = new Set<string>();
+  const blockedIds: string[] = [];
+  for (const state of auditStates) {
+    if (seen.has(state.entityId)) continue;
+    seen.add(state.entityId);
+    if (state.action === "tax.amendment_scan_blocked") blockedIds.push(state.entityId);
+  }
+  const blockedFiledPeriods = blockedIds.length
+    ? await prisma.taxFilingPeriod.findMany({
+        where: { id: { in: blockedIds.slice(0, 50) }, status: "FILED" },
+        include: { filingAccount: { select: { name: true } } },
+        orderBy: [{ filedOn: "asc" }, { id: "asc" }],
+      })
+    : [];
+  const readiness: ExceptionItem[] = blockedFiledPeriods.map(period => taxFilingNotReadyException({
+    accountName: period.filingAccount.name,
+    periodEnd: period.periodEnd,
+    dueOn: period.dueOn,
+    problems: ["Previously filed return could not be checked for new corrections; review the tax filing evidence."],
+    now,
+  }));
   for (const period of periods) {
     // Closed periods stay visible when unready, even before the final week.
     // A not-yet-closed period only needs attention in its last five days.
