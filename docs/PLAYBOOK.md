@@ -56,9 +56,11 @@ test fixtures. If an existing implementation is wrong, fix it in place.
 
 **The design's work units are the commit order.** One work unit = one
 commit, named `WU-<X><n>: <name>`. Inside a work unit, order the changes as
-below. Do not re-decide anything in the design's "Decisions" section; when
-the design is silent on something that matters, stop and ask (its
-"Stop-and-ask" list) instead of inventing.
+below. Do not re-decide approved semantic contracts. Follow established code patterns
+for ordinary naming, imports and implementation details. If an unresolved choice
+would alter money, permissions, signed evidence, state transitions or provider
+replay, document the conflict and obtain the normal reviewed amendment before
+that slice; continue other approved work rather than ending the whole session.
 
 Within a work unit, order the work so a reviewer can read it:
 
@@ -124,8 +126,9 @@ The approved design, applicable PR card, `docs/STATUS.md` and `docs/MASTER-ROADM
 
 **Merge conveyor (Chris, 2026-10-08):** when implementation is complete, stop changing scope. Before the first
 merge attempt, perform one focused diff self-review and collect all currently open automated-review threads. Resolve every
-valid finding in one patch batch rather than one commit/review cycle per finding. Then run the exact-head gates and request
-one exact-head automated re-review. If that pass is clean, merge immediately when CI/performance/preview are green; do not
+valid finding in one patch batch rather than one commit/review cycle per finding. Then run exact-head gates; request one
+further exact-head automated review only for high-risk semantic changes or an actual required-review gate. If that pass is
+clean or a permitted waiver is recorded, merge promptly when CI/performance/preview are green; do not
 request an additional ceremonial "final review." If that pass finds issues, batch the entire pass, patch once, self-review
 those edits and rerun gates. A further automated review is required only when the new patch changes a high-risk semantic
 boundary (security, auth, money/billing, schema, provider behavior) or the repository ruleset explicitly requires it.
@@ -161,9 +164,11 @@ This protocol is mandatory whenever work depends on CI, Vercel, GitHub review, o
    different supported path or record the blocker. Do not keep retrying the same call.
 5. **Prefer actionable logs.** Fetch failed-job logs/annotations, not an in-progress live stream. Fix all visible root
    causes together and push once.
-6. **End cleanly instead of polling.** If owner gates or dependency ordering leave no useful
-   work while an external job is pending, update STATUS/PR evidence with the exact head and pending run, tell Chris
-   what remains, and stop the turn. The next turn resumes from that recorded state.
+6. **Finish all eligible work before ending.** If an external job is pending, continue
+   the immediate eligible successor or finish useful checks on the existing chain.
+   Only when every authorized action is blocked, record exact head, pending run
+   and the next command in STATUS. A finished chat turn cannot restart itself;
+   do not imply automatic background continuation or keep polling to simulate it.
 7. **User updates are progress checkpoints.** Report a meaningful commit, merge, defect fix or blocking
    finding as it happens and avoid long silent waits. Tool-call count alone is not progress; batching
    several small related calls is encouraged.
@@ -311,16 +316,16 @@ check OK.
 2. For every review finding or audit item you addressed, write its
    disposition (fixed / already fixed / superseded / still open) with the
    evidence. This also goes in the PR description.
-3. **Do this at the START of every new PR, not the end** (Chris, 2026-10-03):
-   list the unresolved threads on the previous PR and every PR below it in the
-   stack, read each comment in full, fix the valid ones in the new PR with a
-   regression test, and put a disposition table in the new PR's description.
-   GraphQL is blocked in agent sessions, so use REST:
-   `gh api repos/<o>/<r>/pulls/<n>/ccr/review_threads` (threads and comment ids),
-   `gh api repos/<o>/<r>/pulls/comments/<comment-id> --jq .body` (full text), and
-   `gh api -X POST repos/<o>/<r>/pulls/<n>/ccr/comments/<comment-id>/resolve`
-   (only after the fix is verified green at the exact head). Also re-read new
-   comments on the PR you just opened: Codex keeps commenting after each push.
+3. **Do this once per PR at review/merge time, with a brief predecessor check
+   when starting the next PR.** Gather unresolved threads on the current PR, read
+   the full findings, and fix valid issues *in that PR before merging* with a
+   regression test. Check the predecessor for late comments when beginning its
+   successor; carry only genuinely post-merge findings into the next planned PR.
+   Use the available GitHub review-thread connector to list/resolve threads;
+   where unavailable, use the documented GitHub pull-review and review-comment
+   APIs for inspection. Do not assume an undocumented `ccr/` endpoint works.
+   Resolve only findings proven fixed at the reviewed head. Record dispositions
+   together, not in separate review passes for every push.
 
 ## Step 6 — Update docs, then push once
 
@@ -366,9 +371,11 @@ an existing fix into your PR and say so. Never debug someone else's red for hour
 **The CI round budget.** At most **3 red CI runs** caused by your change, per PR (a green run after merging the base
 branch, or one infra re-run, does not count). After the second red run on the *same* failure, stop pushing
 speculative fixes: set up the full local suite (Step 4b) or the browser recipe (4c) and reproduce it. After the third red
-run, stop: write the failure, what you tried and your best explanation into `docs/STATUS.md` and report to Chris (the
-existing "If you get stuck" rule). If debugging has taken longer than writing the change, the PR was too big — split
-what is left along work-unit lines.
+run, stop speculative CI pushes, not the session: reproduce the failing path
+locally or use one exact failed-job trace, change the hypothesis and make an
+evidence-based fix. If verification is genuinely unavailable, record the blocker
+in `docs/STATUS.md` and continue the next eligible approved unit. Split only if
+scope or coupling actually caused repeated failure; do not slice unrelated PRs.
 
 **When an old test breaks because the design changes behaviour on purpose** (for example Batch T replacing the single
 tax rate): update the old assertion **in the same commit as the code**, list every changed assertion in the PR with the
@@ -407,9 +414,11 @@ Never weaken an assertion, skip a test, or delete a check to get green.
 
 ## Step 9 — Preview
 
-Vercel builds a preview for every PR. Open it and click through the flow
-the batch delivers at phone width (360), tablet (768) and desktop (1440),
-light and dark. Previews use the isolated preview database and never send
+Vercel builds a preview for every PR. For changes to customer-facing screens,
+click through the affected flow at phone width (360), tablet (768) and desktop
+(1440), in light and dark. For backend-only changes, confirm preview build and
+relevant API/behavior evidence; for docs-only work, do not require a manual UI
+walkthrough unrelated to the change. Previews use the isolated preview database and never send
 real messages or charge real cards; the proof of that isolation is in
 `docs/plans/overhaul/PREVIEW-ISOLATION-PROOF.md`.
 
@@ -436,10 +445,11 @@ fi
 # else remains). Never sleep/poll in a loop waiting for it.
 ```
 
-Before merging, confirm the reviewers have finished: the `Running Copilot Code
-Review` workflow run is completed and a Codex review exists for the current head;
-then list the threads once more (see Step 5.3). Late comments on a merged PR go
-into the next PR.
+Before merging, check whether any *required* reviewer is still running or has
+blocking findings. Read available automated reviews once and use the documented
+waiver if unavailable and not required by branch rules; do not wait indefinitely
+for a discretionary exact-head re-review on a low-risk patch. Inspect the current
+threads together (Step 5.3). Late comments on merged work go into the next PR.
 
 Merge a stack **from the bottom up**, one PR at a time. After each merge the
 next PR's base may still name the merged branch: set it to `main`
