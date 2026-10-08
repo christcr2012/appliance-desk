@@ -244,8 +244,10 @@ function aggregate(
  * the period lock so the packet and filing evidence commit together.
  */
 export async function loadFilingPacket(periodId: string, now = new Date()): Promise<FilingPacketLoad> {
-  await requireRole("OWNER", "ADMIN");
-  return prisma.$transaction(tx => loadFilingPacketInTx(tx, periodId, now));
+  const session = await requireRole("OWNER", "ADMIN");
+  return prisma.$transaction(tx => loadFilingPacketInTx(tx, periodId, now, {
+    assignUseTaxRows: session.user.role === "OWNER",
+  }));
 }
 
 /** Internal transactional loader. For filed periods, rebuild from current evidence
@@ -254,7 +256,7 @@ export async function loadFilingPacketInTx(
   tx: Prisma.TransactionClient,
   periodId: string,
   now = new Date(),
-  options: { allowFiled?: boolean } = {},
+  options: { allowFiled?: boolean; assignUseTaxRows?: boolean } = {},
 ): Promise<FilingPacketLoad> {
   const period = await tx.taxFilingPeriod.findUnique({
     where: { id: periodId }, include: { filingAccount: true },
@@ -275,7 +277,7 @@ export async function loadFilingPacketInTx(
   const problems: string[] = [];
 
   // Never mutate a filed period or confuse use tax with sales tax.
-  if (account.kind === "USE_TAX_RETURN" && period.status === "OPEN") {
+  if (account.kind === "USE_TAX_RETURN" && period.status === "OPEN" && options.assignUseTaxRows !== false) {
     await assignDueUseTaxRowsToPeriod(tx, periodId);
   }
   const useRows = account.kind === "USE_TAX_RETURN"
@@ -287,7 +289,14 @@ export async function loadFilingPacketInTx(
               purchasedOn: { gte: period.periodStart, lt: endExclusive },
               OR: [{ filingPeriodId: periodId }, { filingPeriodId: null }],
             }
-          : { filingPeriodId: periodId, status: "DUE" },
+          : period.status === "OPEN" && options.assignUseTaxRows === false
+            ? {
+                status: "DUE",
+                jurisdiction: { useTaxFilingAccountId: account.id },
+                purchasedOn: { gte: period.periodStart, lt: endExclusive },
+                OR: [{ filingPeriodId: periodId }, { filingPeriodId: null }],
+              }
+            : { filingPeriodId: periodId, status: "DUE" },
         include: { jurisdiction: true },
         orderBy: [{ purchasedOn: "asc" }, { id: "asc" }],
       })
