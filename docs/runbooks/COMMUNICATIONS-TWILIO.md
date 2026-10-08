@@ -1,6 +1,6 @@
 # Twilio communications readiness and activation
 
-**Planned subsystem; not proof of setup or production readiness.** Design: ../designs/BATCH-COM.md. Runtime COM is PROPOSED. Current legacy SMS is dormant according to STATUS; credentials/number/account state must be verified read-only rather than assumed from old docs.
+**Approved subsystem design; runtime is not yet implemented and this runbook is not proof of setup or production readiness.** Design: ../designs/BATCH-COM.md. Batch COM was approved 2026-10-08, but implementation still follows the approved batch order and live telecom activation remains a separate hard-limit approval. Current legacy SMS is dormant according to STATUS; credentials/number/account state must be verified read-only rather than assumed from old docs.
 
 ## 1. Prepare business facts (no paid submission)
 
