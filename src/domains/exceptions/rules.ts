@@ -1,4 +1,8 @@
-import { addBusinessDays, businessDayBounds } from "@/lib/business-date";
+import {
+  addBusinessDays,
+  businessDateKey,
+  businessDayBounds,
+} from "@/lib/business-date";
 
 // ---------------------------------------------------------------------------
 // Exception inbox (2026-09-28) — one place that surfaces anything stuck or
@@ -51,12 +55,23 @@ export type ExceptionItem = {
   /** Optional separate public source link; only HTTPS is surfaced. */
   sourceHref?: string;
   sourceLabel?: string;
-  action?: {
-    type: "ACK_TAX_SOURCE_CHANGE";
-    id: string;
-    version: string;
-    label: string;
-  };
+  action?:
+    | {
+        type: "ACK_TAX_SOURCE_CHANGE";
+        id: string;
+        version: string;
+        label: string;
+      }
+    | {
+        type: "UNDO_OFFICIAL_RATE";
+        id: string;
+        label: string;
+      }
+    | {
+        type: "APPLY_OFFICIAL_RATE";
+        id: string;
+        label: string;
+      };
   /** For sorting oldest-first within a category. */
   since: Date;
 };
@@ -234,6 +249,83 @@ export function taxSourceChangedException(input: {
       id: input.id,
       version: input.version,
       label: "I looked at it",
+    },
+    since: input.since,
+  };
+}
+
+function milliPercentLabel(value: number | null): string {
+  return value === null ? "unknown" : `${(value / 1000).toFixed(3)}%`;
+}
+
+function officialRateReasonLabel(reason: string): string {
+  const labels: Record<string, string> = {
+    AUTO_APPLY_DISABLED: "automatic official-rate changes are turned off",
+    DELTA_EXCEEDS_LIMIT: "the rate jump exceeds your automatic-change limit",
+    EFFECTIVE_DATE_CONFLICT: "another rate already uses that effective date",
+    JURISDICTION_NOT_REVIEWED: "the tax jurisdiction has not been reviewed",
+    NO_CURRENT_RATE: "there is no reviewed current rate to compare against",
+  };
+  return labels[reason] ?? reason.toLowerCase().replaceAll("_", " ");
+}
+
+export function officialRateScheduledException(input: {
+  rateVersionId: string;
+  jurisdictionName: string;
+  oldRateMilliPercent: number | null;
+  newRateMilliPercent: number;
+  effectiveFrom: Date;
+  since: Date;
+  undoAllowed: boolean;
+}): ExceptionItem {
+  return {
+    category: "SALES_TAX",
+    severity: "medium",
+    title: "Official tax rate scheduled",
+    detail: `${input.jurisdictionName}: ${milliPercentLabel(
+      input.oldRateMilliPercent,
+    )} → ${milliPercentLabel(input.newRateMilliPercent)} effective ${businessDateKey(
+      input.effectiveFrom,
+    )} · Colorado official lookup`,
+    href: "/desk/today",
+    ...(input.undoAllowed
+      ? {
+          action: {
+            type: "UNDO_OFFICIAL_RATE" as const,
+            id: input.rateVersionId,
+            label: "Undo",
+          },
+        }
+      : {}),
+    since: input.since,
+  };
+}
+
+export function officialRateReviewException(input: {
+  observationId: string;
+  jurisdictionName: string;
+  oldRateMilliPercent: number | null;
+  newRateMilliPercent: number;
+  effectiveFrom: Date;
+  reasons: string[];
+  since: Date;
+}): ExceptionItem {
+  return {
+    category: "SALES_TAX",
+    severity: "high",
+    title: "Official rate needs review",
+    detail: `${input.jurisdictionName}: ${milliPercentLabel(
+      input.oldRateMilliPercent,
+    )} → ${milliPercentLabel(input.newRateMilliPercent)} effective ${businessDateKey(
+      input.effectiveFrom,
+    )}. Review needed because ${input.reasons
+      .map(officialRateReasonLabel)
+      .join("; ")}.`,
+    href: "/desk/today",
+    action: {
+      type: "APPLY_OFFICIAL_RATE",
+      id: input.observationId,
+      label: "Apply this rate",
     },
     since: input.since,
   };
