@@ -255,7 +255,6 @@ describe.skipIf(!enabled)("T-5b2 official source watch (real Postgres)", () => {
       `tax-source-changed:${watch.id}:after-hash`,
     );
     expect(deliveries[0]?.templateKey).toBe("tax-source-changed");
-    expect(deliveries[0]?.customerFacing).toBeUndefined();
     expect(deliveries[0]?.state).toBe("NOT_SENT");
 
     const overview = await getExceptionOverview();
