@@ -33,6 +33,7 @@ enum Role {
 }
 
 model User {
+  enteredRdfRates RetailDeliveryFeeRate[] @relation("RdfRateEditor")
   id            String    @id @default(cuid())
   email         String    @unique
   emailVerified Boolean   @default(false)
@@ -719,6 +720,7 @@ enum RentalAgreementStatus {
 }
 
 model RentalAgreement {
+  rdfRecords RetailDeliveryFeeRecord[] @relation("RdfAgreement")
   id         String                 @id @default(cuid())
   customerId String
   customer   Customer               @relation(fields: [customerId], references: [id])
@@ -1030,6 +1032,7 @@ enum JobStatus {
 }
 
 model Job {
+  firstRdfRecords RetailDeliveryFeeRecord[] @relation("RdfFirstJob")
   id         String    @id @default(cuid())
   type       JobType
   status     JobStatus @default(SCHEDULED)
@@ -1497,6 +1500,7 @@ enum InvoiceStatus {
 }
 
 enum InvoiceLineItemKind {
+  RETAIL_DELIVERY_FEE
   RENTAL
   DELIVERY_FEE
   INSTALLATION_FEE
@@ -1600,6 +1604,7 @@ enum TaxFilingStatus {
 enum TaxFilingAccountKind {
   SALES_RETURN
   USE_TAX_RETURN
+  RETAIL_DELIVERY_FEE_RETURN
 }
 
 enum TaxAmendmentStatus {
@@ -1620,6 +1625,19 @@ enum TaxLineSource {
   STRIPE
 }
 
+enum RdfHandling {
+  UNDECIDED
+  COLLECT_FROM_CUSTOMER
+  PAY_MYSELF
+}
+
+enum RdfRecordStatus {
+  PENDING_DECISION
+  PENDING_RATE
+  READY
+  NOT_DUE
+}
+
 enum UseTaxStatus {
   DUE
   NOT_DUE
@@ -1628,6 +1646,7 @@ enum UseTaxStatus {
 
 // Batch B — provider operations (docs/designs/BATCH-B.md D1/D2)
 enum ProviderOperationKind {
+  RDF_INVOICE_ITEM
   CUSTOMER_CREATE
   SUBSCRIPTION_CREATE
   SUBSCRIPTION_CANCEL
@@ -1748,6 +1767,7 @@ model CreditApplication {
 }
 
 model Invoice {
+  rdfShopRecords RetailDeliveryFeeRecord[] @relation("RdfShopInvoice")
   id          String        @id @default(cuid())
   invoiceNumber Int         @unique @default(autoincrement())
   customerId  String
@@ -1793,6 +1813,7 @@ model Invoice {
 }
 
 model InvoiceLineItem {
+  rdfRecord RetailDeliveryFeeRecord? @relation("RdfInvoiceLine")
   id          String   @id @default(cuid())
   invoiceId   String
   invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
@@ -2086,6 +2107,8 @@ model CustomerTaxExemption {
 }
 
 model TaxFilingPeriod {
+  rdfRecords RetailDeliveryFeeRecord[] @relation("RdfFilingPeriod")
+  rdfCredits RetailDeliveryFeeRecord[] @relation("RdfCreditPeriod")
   id                      String               @id @default(cuid())
   filingAccountId         String
   filingAccount           TaxFilingAccount     @relation(fields: [filingAccountId], references: [id])
@@ -2112,6 +2135,49 @@ model TaxFilingPeriod {
   updatedAt               DateTime             @updatedAt
 
   @@unique([filingAccountId, periodStart])
+}
+
+model RetailDeliveryFeeRate {
+  id              String @id @default(cuid())
+  effectiveOn     DateTime @unique
+  amountCents     Int
+  enteredByUserId String
+  enteredBy       User @relation("RdfRateEditor", fields: [enteredByUserId], references: [id], onDelete: Restrict)
+  records         RetailDeliveryFeeRecord[]
+  createdAt       DateTime @default(now())
+}
+
+model RetailDeliveryFeeRecord {
+  id                       String @id @default(cuid())
+  saleKey                  String @unique
+  firstJobId               String?
+  firstJob                 Job? @relation("RdfFirstJob", fields: [firstJobId], references: [id], onDelete: Restrict)
+  agreementId              String?
+  agreement                RentalAgreement? @relation("RdfAgreement", fields: [agreementId], references: [id], onDelete: Restrict)
+  invoiceId                String?
+  invoice                  Invoice? @relation("RdfShopInvoice", fields: [invoiceId], references: [id], onDelete: Restrict)
+  deliveredOn              DateTime
+  saleOn                   DateTime?
+  customerRefundedAt       DateTime?
+  customerRefundRef        String?
+  creditAppliedPeriodId    String?
+  creditAppliedPeriod      TaxFilingPeriod? @relation("RdfCreditPeriod", fields: [creditAppliedPeriodId], references: [id], onDelete: Restrict)
+  status                   RdfRecordStatus
+  rateId                   String?
+  rate                     RetailDeliveryFeeRate? @relation(fields: [rateId], references: [id], onDelete: Restrict)
+  amountCents              Int?
+  collectedFromCustomer    Boolean?
+  invoiceLineId            String? @unique
+  invoiceLine              InvoiceLineItem? @relation("RdfInvoiceLine", fields: [invoiceLineId], references: [id], onDelete: Restrict)
+  filingPeriodId           String?
+  filingPeriod             TaxFilingPeriod? @relation("RdfFilingPeriod", fields: [filingPeriodId], references: [id], onDelete: Restrict)
+  createdAt                DateTime @default(now())
+
+  @@index([agreementId])
+  @@index([firstJobId])
+  @@index([invoiceId])
+  @@index([status, deliveredOn])
+  @@index([filingPeriodId])
 }
 
 model TaxFilingAmendment {
@@ -2195,6 +2261,10 @@ model BusinessSettings {
   shortTermLeaseElectionNote      String?
   useTaxMonthlyThresholdCents     Int @default(30000)
   retailDeliveryFeeDecision       String                 @default("UNDECIDED")
+  rdfThresholdCents               Int                    @default(50000000)
+  rdfHandling                     RdfHandling            @default(UNDECIDED)
+  rdfCpaConfirmedOn               DateTime?
+  rdfThresholdCrossedOn           DateTime?
   businessTaxAddress              Json                   @default("{}")
   autoApplyOfficialRateChanges    Boolean                @default(true)
   autoRateChangeMaxMilliPercent   Int                    @default(1000)
