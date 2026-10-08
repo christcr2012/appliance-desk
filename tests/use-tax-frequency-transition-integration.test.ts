@@ -58,6 +58,37 @@ describe.skipIf(!enabled)("T-6D3 use-tax frequency migration on real Postgres", 
           },
         });
       }
+      // A filing transaction holds the same period row lock and commits FILED
+      // while the calendar is attempting its month-end partition.
+      let signalLocked!: () => void;
+      let releaseFiling!: () => void;
+      const locked = new Promise<void>(resolve => { signalLocked = resolve; });
+      const release = new Promise<void>(resolve => { releaseFiling = resolve; });
+      const filing = prisma.$transaction(async tx => {
+        await tx.$queryRaw`SELECT "id" FROM "TaxFilingPeriod" WHERE "id" = ${annual.id} FOR UPDATE`;
+        signalLocked();
+        await release;
+        await tx.taxFilingPeriod.update({
+          where: { id: annual.id }, data: { status: "FILED" },
+        });
+      });
+      await locked;
+      const racingTransition = advanceColoradoUseTaxFrequency(accountId, day("2026-10-08"));
+      // Give the concurrent reader an opportunity to reach the row lock;
+      // correctness must hold even when it reaches the row after FILED.
+      await new Promise(resolve => setTimeout(resolve, 75));
+      releaseFiling();
+      await filing;
+      await expect(racingTransition).rejects.toThrow(/filed annual return/i);
+      const preserved = await prisma.taxFilingPeriod.findUniqueOrThrow({ where: { id: annual.id } });
+      expect(businessDateKey(preserved.periodEnd)).toBe("2026-12-31");
+      expect(preserved.status).toBe("FILED");
+      expect((await prisma.taxFilingAccount.findUniqueOrThrow({ where: { id: accountId } })).frequency)
+        .toBe("ANNUAL");
+      await prisma.taxFilingPeriod.update({
+        where: { id: annual.id }, data: { status: "OPEN" },
+      });
+
       expect(await advanceColoradoUseTaxFrequency(accountId, day("2026-10-08"))).toBe(true);
       const saved = await prisma.taxFilingPeriod.findUniqueOrThrow({ where: { id: annual.id } });
       expect(businessDateKey(saved.periodEnd)).toBe("2026-09-30");
