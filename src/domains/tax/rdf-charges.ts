@@ -116,16 +116,33 @@ export async function prepareRdfChargeInTx(
     return { kind: "PROVIDER", operationId: claim.opId };
   }
 
-  // Only unissued, unpaid local drafts may be edited. OPEN, paid, finalized
-  // and provider-mirrored invoices are immutable even when still outstanding.
-  const draft = await tx.invoice.findFirst({
+  // A prepaid rent invoice can be OPEN while still unissued/unpaid. Only
+  // such an unfinalized prepaid bill, or an ordinary unissued DRAFT, may be
+  // amended. Never modify a provider invoice, a settled balance, or a
+  // document already frozen for the customer.
+  const candidate = await tx.invoice.findFirst({
     where: {
-      agreementId, status: "DRAFT", stripeInvoiceId: null, issuedAt: null,
-      amountPaidCents: 0,
+      agreementId,
+      OR: [
+        { status: "DRAFT" },
+        ...(agreement.paidInFullInAdvance ? [{
+          status: "OPEN" as const,
+          lineItems: { some: {
+            kind: "RENTAL" as const,
+            description: { startsWith: "Prepaid rent —" },
+          } },
+        }] : []),
+      ],
+      stripeInvoiceId: null, issuedAt: null, amountPaidCents: 0,
     },
     orderBy: [{ createdAt: "asc" }, { id: "asc" }],
     select: { id: true },
   });
+  const frozen = candidate ? await tx.documentArtifact.findFirst({
+    where: { kind: "INVOICE", subjectType: "Invoice", subjectId: candidate.id },
+    select: { id: true },
+  }) : null;
+  const draft = frozen ? null : candidate;
   const now = new Date();
   let invoiceId: string;
   let lineId: string;

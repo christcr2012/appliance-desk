@@ -9,6 +9,16 @@ running answer to "does the design still match the code?"; the design drift chec
 
 Last updated: 2026-10-05. **The D, E and F designs were rewritten on 2026-10-05 against `main` 47bd833 with everything below already folded in**, and B2/E2 were written fresh against the same code. From now on, add a dated entry here when a batch merges (B2's section 8 lists what to add for it).
 
+### 2026-10-08 T-6C3 code review fixes (#320)
+
+Stripe fee webhook replay now joins each RDF line by `rdf_record_id`
+→ `RetailDeliveryFeeRecord.invoiceLineId` rather than matching identical
+fee amounts; description without durable metadata remains a normal rental
+line. An unissued/untouched prepaid `OPEN` invoice may receive the RDF
+fee, provided no customer-facing invoice artifact is frozen and no
+payment exists. Added cases to the isolated PostgreSQL suite. These
+adjustments are in the same PR to prevent a known money regression.
+
 ### 2026-10-08 T-6C3 engineering handoff (predecessor #319, main `1432585`)
 
 New `rdf-charges.ts` prepares one collected fee from a `READY` original-sale

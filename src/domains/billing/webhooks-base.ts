@@ -40,8 +40,8 @@ async function markProcessed(db: Prisma.TransactionClient, event: Stripe.Event):
   await db.webhookEvent.create({ data: { id: event.id, type: event.type } });
 }
 
-function inferLineItemKind(description: string | null): InvoiceLineItemKind {
-  if (description === RDF_LINE_DESCRIPTION) return "RETAIL_DELIVERY_FEE";
+export function inferLineItemKind(description: string | null, rdfRecordId?: string): InvoiceLineItemKind {
+  if (rdfRecordId) return "RETAIL_DELIVERY_FEE";
   if (description === "Security deposit") return "DEPOSIT";
   if (description === "Damage waiver") return "DAMAGE_WAIVER";
   if (description?.startsWith("Late return – ")) return "LATE_RETURN";
@@ -61,9 +61,10 @@ export async function attachRdfInvoiceLineInTx(
   agreementId: string,
   invoiceId: string,
 ): Promise<void> {
-  if (stripeLine.description !== RDF_LINE_DESCRIPTION) return;
   const recordId = stripeLine.metadata?.rdf_record_id;
-  if (!recordId) throw new Error("Stripe delivery-fee line has no original RDF sale key.");
+  if (!recordId) return;
+  if (stripeLine.description !== RDF_LINE_DESCRIPTION)
+    throw new Error("Stripe RDF line description does not match its provider intent.");
   const op = await db.providerOperation.findUnique({
     where: { idempotencyKey: `rdf-${recordId}` },
     select: { id: true, kind: true, subjectId: true, providerObjectId: true },
@@ -164,7 +165,7 @@ async function holdPaymentForClosedInvoice(
   });
 }
 
-async function mirrorStripeInvoiceLines(
+export async function mirrorStripeInvoiceLines(
   db: Prisma.TransactionClient,
   stripeInvoice: Stripe.Invoice,
   agreementId: string,
@@ -176,13 +177,24 @@ async function mirrorStripeInvoiceLines(
     select: { id: true, kind: true, amountCents: true },
   });
   if (existingLines.length > 0) {
+    // Amounts and labels are not unique: two separately delivered taxable
+    // sales can both have the same statutory fee on one invoice. Their
+    // immutable record IDs, not a .find(amount), own the local mirror lines.
+    const seen = new Set<string>();
     for (const stripeLine of stripeInvoice.lines.data) {
-      if (stripeLine.description !== RDF_LINE_DESCRIPTION) continue;
-      const id = stripeLine.metadata?.rdf_record_id;
-      const matching = existingLines.find(line => line.kind === "RETAIL_DELIVERY_FEE" &&
+      const recordId = stripeLine.metadata?.rdf_record_id;
+      if (!recordId) continue;
+      if (seen.has(recordId)) throw new Error("Duplicate Stripe RDF sale on one invoice.");
+      seen.add(recordId);
+      const record = await db.retailDeliveryFeeRecord.findUnique({
+        where: { id: recordId }, select: { invoiceLineId: true },
+      });
+      const matching = existingLines.find(line =>
+        line.id === record?.invoiceLineId &&
+        line.kind === "RETAIL_DELIVERY_FEE" &&
         line.amountCents === stripeLine.amount);
-      if (!id || !matching)
-        throw new Error("Existing Stripe invoice lost its delivery-fee mirror.");
+      if (!matching)
+        throw new Error("Existing Stripe invoice lost its original delivery-fee mirror.");
       await attachRdfInvoiceLineInTx(db, stripeLine, matching.id, agreementId, invoiceId);
     }
     return {
@@ -200,7 +212,7 @@ async function mirrorStripeInvoiceLines(
   });
   const providerLines = stripeInvoice.lines.data.map((line) => ({
     stripeLine: line,
-    kind: inferLineItemKind(line.description),
+    kind: inferLineItemKind(line.description, line.metadata?.rdf_record_id),
     description: line.description ?? "Charge",
     amountCents: line.amount,
     rentalLineId: matchRentalLineId(line.description, agreementLines),

@@ -7,7 +7,7 @@ import {
   dispatchRdfCharge,
   prepareRdfChargeInTx,
 } from "@/domains/tax/rdf-charges";
-import { attachRdfInvoiceLineInTx } from "@/domains/billing/webhooks-base";
+import { attachRdfInvoiceLineInTx, inferLineItemKind, mirrorStripeInvoiceLines } from "@/domains/billing/webhooks-base";
 
 const stripeFake = vi.hoisted(() => ({ create: vi.fn() }));
 vi.mock("@/lib/stripe", () => ({
@@ -268,6 +268,126 @@ describe.skipIf(!enabled)("T-6C3 delivery fee customer charge, real PostgreSQL",
       expect(op.providerObjectId).toBe("ii_rdf3_" + f.token);
       expect(stripeFake.create).toHaveBeenCalledTimes(1);
     });
+  });
+
+  it("reuses an unpaid unissued prepaid OPEN bill instead of issuing a second invoice", async () => {
+    await withFixture({ prepaid: true }, async f => {
+      const existing = await prisma.invoice.create({
+        data: {
+          agreementId: f.agreementId, customerId: f.customerId, status: "OPEN",
+          amountDueCents: 4000, subtotalCents: 4000, amountPaidCents: 0,
+          dueDate: new Date("2026-08-02T12:00:00Z"),
+          lineItems: { create: {
+            kind: "RENTAL", description: "Prepaid rent — Washer (12 months)",
+            amountCents: 4000,
+          } },
+        },
+      });
+      const result = await prisma.$transaction(tx => prepareRdfChargeInTx(tx, f.recordId));
+      expect(result).toMatchObject({ kind: "LOCAL", invoiceId: existing.id });
+      const all = await prisma.invoice.findMany({
+        where: { agreementId: f.agreementId },
+        include: { lineItems: true },
+      });
+      expect(all).toHaveLength(1);
+      expect(all[0]!.lineItems.map(x => x.kind).sort()).toContain("RETAIL_DELIVERY_FEE");
+      expect(all[0]!.subtotalCents).toBe(4031);
+      expect(all[0]!.taxCents).toBe(0);
+      expect(all[0]!.amountDueCents).toBe(4031);
+      expect((await prisma.$transaction(tx => prepareRdfChargeInTx(tx, f.recordId))).kind).toBe("NONE");
+    });
+  });
+
+  it("two same-price delivery-fee lines replay to their individual record IDs", async () => {
+    await withFixture({ subscription: true }, async f => {
+      const first = await prisma.$transaction(tx => prepareRdfChargeInTx(tx, f.recordId));
+      expect(first.kind).toBe("PROVIDER");
+      const secondId = f.recordId + "-addition";
+      const secondKey = "addition:" + f.agreementId;
+      const itemOne = "ii_rdf3_first_" + f.token;
+      const itemTwo = "ii_rdf3_second_" + f.token;
+      const invoice = await prisma.invoice.create({
+        data: {
+          agreementId: f.agreementId, customerId: f.customerId,
+          stripeInvoiceId: "in_two_rdf3_" + f.token,
+          status: "OPEN", subtotalCents: 62, amountDueCents: 62,
+        },
+      });
+      const [firstLine, secondLine] = await Promise.all([
+        prisma.invoiceLineItem.create({
+          data: { invoiceId: invoice.id, kind: "RETAIL_DELIVERY_FEE",
+            description: RDF_LINE_DESCRIPTION, amountCents: 31 },
+        }),
+        prisma.invoiceLineItem.create({
+          data: { invoiceId: invoice.id, kind: "RETAIL_DELIVERY_FEE",
+            description: RDF_LINE_DESCRIPTION, amountCents: 31 },
+        }),
+      ]);
+      await prisma.retailDeliveryFeeRecord.update({
+        where: { id: f.recordId }, data: { invoiceLineId: firstLine.id },
+      });
+      await prisma.retailDeliveryFeeRecord.create({
+        data: {
+          id: secondId, saleKey: secondKey, agreementId: f.agreementId,
+          firstJobId: f.jobId, status: "READY", amountCents: 31,
+          rateId: f.rateId, collectedFromCustomer: true,
+          invoiceLineId: secondLine.id, deliveredOn: new Date("2026-08-03"),
+          saleOn: new Date("2026-08-01"),
+        },
+      });
+      await prisma.providerOperation.create({
+        data: {
+          kind: "RDF_INVOICE_ITEM", status: "PENDING",
+          subjectType: "RetailDeliveryFeeRecord", subjectId: secondId,
+          idempotencyKey: "rdf-" + secondId,
+        },
+      });
+      const lineFor = (id: string, itemId: string) => ({
+        description: RDF_LINE_DESCRIPTION, amount: 31,
+        metadata: { rdf_record_id: id },
+        parent: { invoice_item_details: { invoice_item: itemId } },
+      });
+      const invoiceEvidence = {
+        lines: { data: [lineFor(secondId, itemTwo), lineFor(f.recordId, itemOne)] },
+      } as unknown as Stripe.Invoice;
+      try {
+        for (let pass = 0; pass < 2; pass++) {
+          await prisma.$transaction(tx => mirrorStripeInvoiceLines(
+            tx, invoiceEvidence, f.agreementId, f.customerId, invoice.id,
+          ));
+        }
+        expect((await prisma.retailDeliveryFeeRecord.findUniqueOrThrow({
+          where: { id: f.recordId },
+        })).invoiceLineId).toBe(firstLine.id);
+        expect((await prisma.retailDeliveryFeeRecord.findUniqueOrThrow({
+          where: { id: secondId },
+        })).invoiceLineId).toBe(secondLine.id);
+        const ops = await prisma.providerOperation.findMany({
+          where: { subjectId: { in: [f.recordId, secondId] } },
+          orderBy: { subjectId: "asc" },
+        });
+        expect(ops).toHaveLength(2);
+        expect(new Set(ops.map(x => x.providerObjectId))).toEqual(new Set([itemOne,itemTwo]));
+        expect(ops.every(x => x.status === "SUCCEEDED")).toBe(true);
+      } finally {
+        await prisma.retailDeliveryFeeRecord.deleteMany({ where: { id: secondId } });
+        const secondOp = await prisma.providerOperation.findUnique({
+          where: { idempotencyKey: "rdf-" + secondId },
+        });
+        if (secondOp) await prisma.auditLog.deleteMany({
+          where: { entityType: "ProviderOperation", entityId: secondOp.id },
+        });
+        await prisma.providerOperation.deleteMany({ where: { subjectId: secondId } });
+        await prisma.auditLog.deleteMany({
+          where: { entityType: "RetailDeliveryFeeRecord", entityId: secondId },
+        });
+      }
+    });
+  });
+
+  it("customer-defined rental label never impersonates RDF metadata", () => {
+    expect(inferLineItemKind(RDF_LINE_DESCRIPTION)).toBe("RENTAL");
+    expect(inferLineItemKind(RDF_LINE_DESCRIPTION, "real-rdf-record")).toBe("RETAIL_DELIVERY_FEE");
   });
 
   it("pay myself never creates a customer line or provider operation", async () => {
