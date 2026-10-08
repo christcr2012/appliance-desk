@@ -311,12 +311,17 @@ full CI/secret checks, preview where applicable and required semantic review.
   and never claim a review ran that did not. Codex reviews every PR
   automatically when it is opened, so it is normally available: read its
   comments before writing "unavailable". Never write "waived" without checking.
-- **Review findings have one owner.** Fix valid findings on an open PR before merging
-  that PR, using one batched patch and regression tests. Do not knowingly merge a
-  defective predecessor and hope its successor fixes it. Findings posted only after
-  a merge belong in the next relevant planned PR with recorded dispositions.
-  Fix a security or money-correctness hole already on `main` immediately; do not
-  create cosmetic review-only PRs when the planned PR can safely carry the fix.
+- **Review findings have one owner; defer only when safe.** Fix any finding that affects
+  security, permissions, money, data integrity, contractual behavior, or the PR's
+  required acceptance before merging. Green CI alone does not override a valid
+  blocking review finding. Low-risk nonblocking findings may move into the immediate
+  next planned implementation PR when the present PR's required gates are green:
+  record the precise finding, why deferral is safe, its successor PR/card owner,
+  and the required regression or verification in a comment on the original PR.
+  Resolve the original thread only after the successor's fix is verified, then
+  link that proof back. Start the successor by correcting its inherited findings
+  before developing its new capability. If no suitable next PR is approved,
+  fix the finding now rather than leave an unowned loose end.
 
 ## Review continuity — before each PR
 
@@ -328,8 +333,9 @@ full CI/secret checks, preview where applicable and required semantic review.
    and unresolved threads. The historical inventory is
    `docs/reviews/2026-10-01-review-reconciliation.md`. "Merged" or "outdated"
    is not proof a finding was resolved.
-3. Fix valid findings that touch your batch's area, with regression tests, in
-   the same PR. Record a disposition for every finding you looked at:
+3. Fix blocking findings on their source PR; address documented low-risk
+   predecessor findings first in the named successor PR, with regression tests
+   where relevant. Record a disposition for every finding you looked at:
    *fixed (evidence)*, *already fixed (evidence)*, *superseded (by what)*, or
    *still open (why, next step)*. Never silently drop one.
 4. Resolve a review thread only after verifying the fix at the exact head.
