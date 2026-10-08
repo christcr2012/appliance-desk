@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { lookup } from "node:dns/promises";
+import { request as httpsRequest } from "node:https";
 import { isIP } from "node:net";
 
 const DEFAULT_TIMEOUT_MS = 10_000;
@@ -63,8 +64,10 @@ function mappedIpv4(address: string): string | null {
 
 function isUnsafeIpv6(address: string): boolean {
   const normalized = address.toLowerCase();
-  const mapped = mappedIpv4(normalized);
-  if (mapped) return isUnsafeIpv4(mapped);
+  if (normalized.startsWith("::ffff:")) {
+    const mapped = mappedIpv4(normalized);
+    return mapped ? isUnsafeIpv4(mapped) : true;
+  }
 
   return (
     normalized === "::" ||
@@ -140,6 +143,151 @@ function boundedOption(
   return value;
 }
 
+function requestPinnedOfficialSource(
+  parsed: URL,
+  addresses: ResolvedAddress[],
+  timeoutMs: number,
+  maxBytes: number,
+): Promise<{ contentType: "text/html" | "text/plain"; body: string }> {
+  const selected = addresses[0];
+  if (!selected) {
+    throw new Error("Official source host did not resolve.");
+  }
+
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    let timedOut = false;
+    let request: ReturnType<typeof httpsRequest>;
+
+    const finish = (
+      result:
+        | { ok: true; value: { contentType: "text/html" | "text/plain"; body: string } }
+        | { ok: false; error: Error },
+    ) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      if (result.ok) resolve(result.value);
+      else reject(result.error);
+    };
+
+    const timer = setTimeout(() => {
+      timedOut = true;
+      request.destroy();
+    }, timeoutMs);
+
+    request = httpsRequest(
+      parsed,
+      {
+        method: "GET",
+        family: selected.family,
+        lookup: (_hostname, _options, callback) => {
+          callback(null, selected.address, selected.family);
+        },
+        headers: {
+          accept: "text/html,text/plain;q=0.9",
+          "user-agent": "ApplianceDesk-OfficialTaxSourceWatch/1.0",
+        },
+      },
+      (response) => {
+        const status = response.statusCode ?? 0;
+        if (status >= 300 && status < 400) {
+          response.resume();
+          finish({
+            ok: false,
+            error: new Error("Official source redirects are not followed."),
+          });
+          return;
+        }
+        if (status < 200 || status >= 300) {
+          response.resume();
+          finish({
+            ok: false,
+            error: new Error(`Official source returned HTTP ${status}.`),
+          });
+          return;
+        }
+
+        const rawContentType = response.headers["content-type"];
+        const contentType = mediaType(
+          Array.isArray(rawContentType) ? rawContentType[0] ?? null : rawContentType ?? null,
+        );
+        if (!contentType) {
+          response.resume();
+          finish({
+            ok: false,
+            error: new Error("Official source response was not HTML or plain text."),
+          });
+          return;
+        }
+
+        const rawLength = response.headers["content-length"];
+        const lengthValue = Array.isArray(rawLength) ? rawLength[0] : rawLength;
+        const declaredLength = Number(lengthValue);
+        if (Number.isFinite(declaredLength) && declaredLength > maxBytes) {
+          response.destroy();
+          finish({
+            ok: false,
+            error: new Error("Official source response exceeded the size limit."),
+          });
+          return;
+        }
+
+        const chunks: Buffer[] = [];
+        let bytes = 0;
+        response.on("data", (chunk: Buffer | Uint8Array | string) => {
+          if (settled) return;
+          const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+          bytes += buffer.byteLength;
+          if (bytes > maxBytes) {
+            response.destroy();
+            request.destroy();
+            finish({
+              ok: false,
+              error: new Error("Official source response exceeded the size limit."),
+            });
+            return;
+          }
+          chunks.push(buffer);
+        });
+        response.on("end", () => {
+          if (settled) return;
+          finish({
+            ok: true,
+            value: {
+              contentType,
+              body: Buffer.concat(chunks).toString("utf8"),
+            },
+          });
+        });
+        response.on("error", (cause) => {
+          if (settled) return;
+          finish({
+            ok: false,
+            error:
+              cause instanceof Error
+                ? cause
+                : new Error("Official source response failed."),
+          });
+        });
+      },
+    );
+
+    request.on("error", (cause) => {
+      if (settled) return;
+      finish({
+        ok: false,
+        error: timedOut
+          ? new Error("Official source request timed out.")
+          : cause instanceof Error
+            ? cause
+            : new Error("Official source request failed."),
+      });
+    });
+    request.end();
+  });
+}
+
 export async function fetchOfficialSourcePage(
   url: string,
   options: { timeoutMs?: number; maxBytes?: number } = {},
@@ -152,8 +300,7 @@ export async function fetchOfficialSourcePage(
     throw new Error("Official source URLs cannot include credentials.");
   }
 
-  await resolvePublicAddresses(parsed.hostname);
-
+  const addresses = await resolvePublicAddresses(parsed.hostname);
   const timeoutMs = boundedOption(
     options.timeoutMs,
     DEFAULT_TIMEOUT_MS,
@@ -164,79 +311,20 @@ export async function fetchOfficialSourcePage(
     DEFAULT_MAX_BYTES,
     "maxBytes",
   );
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
 
-  try {
-    const response = await fetch(parsed, {
-      redirect: "manual",
-      signal: controller.signal,
-      headers: {
-        accept: "text/html,text/plain;q=0.9",
-        "user-agent": "ApplianceDesk-OfficialTaxSourceWatch/1.0",
-      },
-    });
+  const response = await requestPinnedOfficialSource(
+    parsed,
+    addresses,
+    timeoutMs,
+    maxBytes,
+  );
+  const normalized = normalizeText(response.body);
+  const hash = createHash("sha256").update(normalized, "utf8").digest("hex");
 
-    if (response.status >= 300 && response.status < 400) {
-      throw new Error("Official source redirects are not followed.");
-    }
-    if (!response.ok) {
-      throw new Error(`Official source returned HTTP ${response.status}.`);
-    }
-
-    const contentType = mediaType(response.headers.get("content-type"));
-    if (!contentType) {
-      throw new Error("Official source response was not HTML or plain text.");
-    }
-
-    const declaredLength = Number(response.headers.get("content-length"));
-    if (Number.isFinite(declaredLength) && declaredLength > maxBytes) {
-      controller.abort();
-      throw new Error("Official source response exceeded the size limit.");
-    }
-
-    if (!response.body) {
-      throw new Error("Official source returned an empty response body.");
-    }
-
-    const reader = response.body.getReader();
-    const chunks: Uint8Array[] = [];
-    let bytes = 0;
-    try {
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        if (!value) continue;
-        bytes += value.byteLength;
-        if (bytes > maxBytes) {
-          await reader.cancel();
-          controller.abort();
-          throw new Error("Official source response exceeded the size limit.");
-        }
-        chunks.push(value);
-      }
-    } finally {
-      reader.releaseLock();
-    }
-
-    const body = Buffer.concat(chunks.map((chunk) => Buffer.from(chunk))).toString(
-      "utf8",
-    );
-    const normalized = normalizeText(body);
-    const hash = createHash("sha256").update(normalized, "utf8").digest("hex");
-
-    return {
-      finalUrl: parsed.toString(),
-      contentType,
-      text: truncateUtf8(normalized, STORED_TEXT_MAX_BYTES),
-      hash,
-    };
-  } catch (cause) {
-    if (controller.signal.aborted && cause instanceof Error && cause.name === "AbortError") {
-      throw new Error("Official source request timed out.");
-    }
-    throw cause;
-  } finally {
-    clearTimeout(timer);
-  }
+  return {
+    finalUrl: parsed.toString(),
+    contentType: response.contentType,
+    text: truncateUtf8(normalized, STORED_TEXT_MAX_BYTES),
+    hash,
+  };
 }
