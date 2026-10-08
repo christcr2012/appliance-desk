@@ -262,7 +262,7 @@ bash scripts/local-postgres-test.sh --all
 ```
 
 The script never uses a pre-existing `DATABASE_URL`, Neon, preview or
-production data, and clears inherited Vercel runtime flags. No production
+production data, and clears inherited Vercel runtime flags. It also forces dummy CI-only OWNER/CUSTOMER/STAFF fixture identities, so test setup never reads real account credentials. The test connection uses the literal hostname `localhost` because the staff security-fixture guard requires it (the Postgres listener itself is bound only to `127.0.0.1`). No production
 database reset or production seed is permitted. If setup fails, inspect the
 precise error and `ls /usr/lib/postgresql/*/bin/initdb` before declaring
 the environment unsuitable. For Prisma binary-download restrictions,

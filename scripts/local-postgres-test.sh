@@ -51,9 +51,16 @@ PORT=$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1", 0)); p
 "$BIN/pg_ctl" -D "$PGDATA" -o "-h 127.0.0.1 -p $PORT -k $WORKDIR/socket" -l "$WORKDIR/server.log" -w start > "$WORKDIR/start.log"
 started=1
 
-export DATABASE_URL="postgresql://test@127.0.0.1:${PORT}/appliance_desk_test"
+export DATABASE_URL="postgresql://test@localhost:${PORT}/appliance_desk_test"
 export DIRECT_URL="$DATABASE_URL"
 export CI=true
+# Use CI's disposable test-only account fixtures, never inherited production logins.
+export OWNER_EMAIL=ci-owner@example.test
+export OWNER_PASSWORD='FixtureOnlyNotARealCredential123!'
+export TEST_CUSTOMER_EMAIL=ci-customer@example.test
+export TEST_CUSTOMER_PASSWORD='FixtureOnlyNotARealCredential123!'
+export TEST_STAFF_EMAIL=ci-staff@example.test
+export TEST_STAFF_PASSWORD='FixtureOnlyNotARealCredential123!'
 # Never allow an inherited deployment setting to activate a real provider.
 unset VERCEL VERCEL_ENV
 psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p "$PORT" -U test -d postgres -c 'CREATE DATABASE appliance_desk_test OWNER test;' > /dev/null

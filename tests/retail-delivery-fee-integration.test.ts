@@ -395,7 +395,14 @@ describe.skipIf(!enabled)(
           const before = await recordRentalDeliveryFeeInTx(f.tx, input);
           expect(before.status).toBe("PENDING_DECISION");
           await f.setLocation();
-          const after = await recordRentalDeliveryFeeInTx(f.tx, input);
+          // A later partial delivery can resolve the original sale without
+          // shifting its first-delivery applicability date.
+          const secondJob = await f.createJob("DELIVERY");
+          const after = await recordRentalDeliveryFeeInTx(f.tx, {
+            ...input,
+            jobId: secondJob,
+            deliveredOn: day("2026-09-14"),
+          });
           expect(after.recordId).toBe(before.recordId);
           const row = await f.tx.retailDeliveryFeeRecord.findUniqueOrThrow({
             where: { id: after.recordId! },

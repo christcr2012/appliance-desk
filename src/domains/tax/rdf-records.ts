@@ -259,11 +259,9 @@ export async function recordRentalDeliveryFeeInTx(
   });
   if (prior && (prior.status === "READY" || prior.status === "NOT_DUE"))
     return { recordId: prior.id, status: prior.status };
-  const decision = await decide(
-    tx,
-    input.agreementId,
-    coDate(input.deliveredOn),
-  );
+  // Later partial-delivery trips must not change the original delivery date.
+  const firstDeliveredOn = prior?.deliveredOn ?? coDate(input.deliveredOn);
+  const decision = await decide(tx, input.agreementId, firstDeliveredOn);
   const data = {
     status: decision.status,
     rateId: decision.rateId,
@@ -277,7 +275,7 @@ export async function recordRentalDeliveryFeeInTx(
       saleKey,
       agreementId: input.agreementId,
       firstJobId: input.jobId,
-      deliveredOn: coDate(input.deliveredOn),
+      deliveredOn: firstDeliveredOn,
       ...data,
     },
     update: data,

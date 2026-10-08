@@ -102,6 +102,7 @@ describe.skipIf(!enabled)("late-delivery credit safety (real Postgres)", () => {
     });
     await prisma.applianceAssignment.deleteMany({ where: { applianceId: { in: allApplianceIds } } });
     await prisma.jobAppliance.deleteMany({ where: { jobId: { in: allJobIds } } });
+    await prisma.retailDeliveryFeeRecord.deleteMany({ where: { firstJobId: { in: allJobIds } } });
     await prisma.job.deleteMany({ where: { id: { in: allJobIds } } });
     await prisma.rentalLine.deleteMany({ where: { agreementId } });
     await prisma.rentalAgreement.deleteMany({ where: { id: agreementId } });

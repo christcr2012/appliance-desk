@@ -147,6 +147,7 @@ describe.skipIf(!enabled)("Remediation R1 delivery facts and handoff leases (rea
       },
     });
     await prisma.jobAppliance.deleteMany({ where: { jobId: { in: jobIds } } });
+    await prisma.retailDeliveryFeeRecord.deleteMany({ where: { firstJobId: { in: jobIds } } });
     await prisma.job.deleteMany({ where: { id: { in: jobIds } } });
     await prisma.applianceAssignment.deleteMany({ where: { applianceId: { in: applianceIds } } });
     await prisma.rentalLine.deleteMany({ where: { agreementId: { in: agreementIds } } });

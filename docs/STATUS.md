@@ -1,6 +1,6 @@
 # STATUS — current work, blockers and next action
 
-Updated October 8, 2026. Acquisition work T-6D1…3 (#313–#315) is merged; #315 includes the reviewed ADMIN read-only worksheet correction. T-6C1 (#317) merged as main 7acc04a. T-6C2 work is open in PR #319 with a corrected publication in progress; it awaits exact-head CI and final review. No customer charging has been enabled. No live payments, customer messages or fee charging are activated.
+Updated October 8, 2026. Acquisition work T-6D1…3 (#313–#315) is merged; #315 includes the reviewed ADMIN read-only worksheet correction. T-6C1 (#317) merged as main 7acc04a. T-6C2 is open in PR #319; this branch also repairs inherited integration-fixture cleanup, preserving new RDF foreign keys, and freezes the first delivery date. Exact-head CI/review is required before merge. No customer charging has been enabled. No live payments, customer messages or fee charging are activated.
 
 ## Next
 
