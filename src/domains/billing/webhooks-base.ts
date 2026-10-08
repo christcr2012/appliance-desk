@@ -285,7 +285,15 @@ async function recordPaidInvoice(
     ? new Date(stripeInvoice.period_end * 1000)
     : null;
 
+  // An invoice's reporting/issue date is NOT the webhook arrival time or
+  // the subscription service-period start. Only finalized provider evidence
+  // can establish the Stripe issue date; missing evidence stays nullable.
+  const finalizedSeconds = stripeInvoice.status_transitions?.finalized_at;
+  const issuedAt = typeof finalizedSeconds === "number" && Number.isFinite(finalizedSeconds)
+    ? new Date(finalizedSeconds * 1000)
+    : null;
   const invoiceFields = {
+    issuedAt,
     status:
       cashEvents.length === 0 || stripeInvoice.amount_due === 0
         ? ("PAID" as const)
