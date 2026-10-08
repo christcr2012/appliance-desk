@@ -14,19 +14,7 @@ Robinson Appliance Rentals is Chris's Colorado appliance rental business. Applia
 
 `src/app` routes; `src/domains` rules/transactions; `src/lib` shared/provider/access boundaries; `src/components` UI; `prisma` schema/additive migrations; `tests` behavior and real Postgres; `e2e` browser/axe/shards; `scripts` CI/operations. Domains are singular `automation` and existing purchasing receives parts, not magically appliances. Confirm actual path before editing.
 
-## One authority per fact
+## Fast path to real-database testing
 
-| Fact | Authority |
-|---|---|
-| Workflow/hard limits | AGENTS; PLAYBOOK for command recipes |
-| Current state / ordered work | STATUS / MASTER-ROADMAP |
-| Remaining acceptance | PLAN |
-| Business/domain design | designs/BATCH-* (targeted headings); next card for exact execution |
-| Card coverage / drift | pr-cards/work-index.json; shared DRIFT-PROTOCOL |
-| Owner-only inputs / release gates | OWNER-INPUTS / GO-LIVE-CHECKLIST |
-| Runtime facts | code/schema/tests; BUSINESS-RULES, DATABASE, ARCHITECTURE updated as behavior ships |
-| Product/look/owner operation | PRODUCT-SPEC, DESIGN-SYSTEM, OWNER-GUIDE |
-| Proposed business policy | business/README and BP design; not automatically active |
-| Historical evidence | archive, audits, reviews and dated DECISIONS; never current instructions |
-
-Preserve all stable finding/O-card/B/IN IDs. All future work starts default-off where it could create commitments. Keep signed customer terms immutable. Do not turn a proposed plan or passing test into a claim of live readiness.
+Vercel Sandbox already has PostgreSQL server binaries at
+`/usr/lib/postgresql/18/bin` (not necessarily on PATH). For transactions,¶»§q«^

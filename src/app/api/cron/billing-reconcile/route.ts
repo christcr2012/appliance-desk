@@ -5,6 +5,7 @@ import { finishPendingProviderOperations } from "@/domains/billing/reconciliatio
 import { runPendingHandoffs } from "@/domains/jobs/completion";
 import { freezeFinalInvoiceArtifacts } from "@/domains/documents/artifacts";
 import { reconcileUnknownDeliveries } from "@/domains/messaging/deliver";
+import { resolvePendingRdfRecords } from "@/domains/tax/rdf-records";
 
 /** Daily recovery pass for durable provider intents. */
 export async function GET(request: Request): Promise<NextResponse> {
@@ -28,15 +29,4 @@ export async function GET(request: Request): Promise<NextResponse> {
     work: async () => ({ counts: automationCounts(await runPendingHandoffs()) }),
   });
   const invoiceArtifacts = await runAutomation({
-    ruleKey: "billing-reconcile:invoice-artifacts",
-    work: async () => ({ counts: automationCounts(await freezeFinalInvoiceArtifacts(200)) }),
-  });
-  // Batch E adds one genuinely new pass: UNKNOWN email/SMS outcomes that have
-  // a provider id can be reconciled without blindly re-sending the message.
-  const messageDeliveries = await runAutomation({
-    ruleKey: "billing-reconcile:message-deliveries",
-    work: async () => ({ counts: automationCounts(await reconcileUnknownDeliveries(50)) }),
-  });
-
-  return NextResponse.json({ providerOps, handoffs, invoiceArtifacts, messageDeliveries });
-}
+  ¶»§q«^

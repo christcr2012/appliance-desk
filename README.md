@@ -28,21 +28,10 @@ Open http://localhost:3000.
 npm run typecheck        # generates Next.js route types, then tsc --noEmit
 npm run lint              # eslint
 npm test                   # unit tests (vitest)
+# Real Postgres integration tests in Vercel Sandbox:
+# bash scripts/local-postgres-test.sh tests/<spec>.test.ts
 npm run test:e2e            # Playwright + axe accessibility tests (needs a running build)
 npm run build                 # production build
 npm run db:migrate:dev          # create + apply a migration locally
 npm run db:migrate:deploy         # apply pending migrations (used by CI/production)
-npm run db:seed                    # one-time: creates the OWNER account (see prisma/seed.ts)
-```
-
-## Deployment
-
-`main` deploys to production automatically on push (Vercel). Every pull
-request gets its own preview deployment. CI (GitHub Actions) must pass
-before merging â€” see `.github/workflows/ci.yml`.
-
-## Documentation
-
-Everything else â€” architecture, database design, business rules, design
-system/accessibility rules, dated decisions, the roadmap, and current
-project state â€” lives in `docs/`. Start with `AGENTS.md`.
+npm run db:seed                    # one-time: creates the OWNER account (see prisma/see¶»§q«^
