@@ -10,25 +10,11 @@ const transaction = vi.fn();
 const deliverMessage = vi.fn();
 const getBusinessSettings = vi.fn();
 
-vi.mock("@/lib/prisma", () => {
-  const tx = {
-    $queryRaw: (...args: unknown[]) => queryRaw(...args),
-    invoice: {
-      findMany: (...args: unknown[]) => invoiceFindMany(...args),
-      findUniqueOrThrow: (...args: unknown[]) => invoiceFindUniqueOrThrow(...args),
-      update: (...args: unknown[]) => invoiceUpdate(...args),
-    },
-    invoiceLineItem: {
-      create: (...args: unknown[]) => invoiceLineItemCreate(...args),
-    },
-    auditLog: { create: (...args: unknown[]) => auditLogCreate(...args) },
-  };
-  return {
-    prisma: {
-      $transaction: (...args: unknown[]) => transaction(...args),
-    },
-  };
-});
+vi.mock("@/lib/prisma", () => ({
+  prisma: {
+    $transaction: (...args: unknown[]) => transaction(...args),
+  },
+}));
 
 vi.mock("@/domains/messaging/deliver", () => ({
   deliverMessage: (...args: unknown[]) => deliverMessage(...args),

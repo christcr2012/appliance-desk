@@ -21,6 +21,8 @@ import {
   taxExemptionWarningSince,
   taxAddressChangedException,
   taxRateReviewReminderException,
+  taxSourceChangedException,
+  taxSourceUnreachableException,
   returnedEarlyException,
   EARLY_RETURN_DEFAULTS_REVIEW_DAYS,
   subscriptionUpdatePendingException,
@@ -179,6 +181,15 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     serviceAddressId: { not: null },
     reviewNote: TAX_ADDRESS_CHANGE_REVIEW_NOTE,
   } satisfies Prisma.AddressTaxLocationWhereInput;
+  const taxSourceChangedWhere = {
+    active: true,
+    lastChangedAt: { not: null },
+    reviewedAt: null,
+  } satisfies Prisma.OfficialSourceWatchWhereInput;
+  const taxSourceUnreachableWhere = {
+    active: true,
+    consecutiveFailures: { gte: 3 },
+  } satisfies Prisma.OfficialSourceWatchWhereInput;
   const staleWhere = {
     status: { in: ["DRAFT", "AWAITING_SIGNATURE"] },
     reservationExpiresAt: { lt: now },
@@ -242,6 +253,8 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     stripeTaxReviewAudits,
     taxExemptionsExpiring,
     taxAddressChanges,
+    taxSourceChanges,
+    taxSourceFailures,
     staleReservations,
     pastDueInvoices,
     overdueJobs,
@@ -353,6 +366,46 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
             }),
           () =>
             prisma.addressTaxLocation.count({ where: taxAddressChangeWhere }),
+        )
+      : empty<never>(),
+    canViewFinance
+      ? capped(
+          (take) =>
+            prisma.officialSourceWatch.findMany({
+              where: taxSourceChangedWhere,
+              select: {
+                id: true,
+                label: true,
+                url: true,
+                lastHash: true,
+                lastExcerpt: true,
+                lastChangedAt: true,
+              },
+              orderBy: [{ lastChangedAt: "asc" }, { id: "asc" }],
+              take,
+            }),
+          () =>
+            prisma.officialSourceWatch.count({ where: taxSourceChangedWhere }),
+        )
+      : empty<never>(),
+    canViewFinance
+      ? capped(
+          (take) =>
+            prisma.officialSourceWatch.findMany({
+              where: taxSourceUnreachableWhere,
+              select: {
+                id: true,
+                label: true,
+                url: true,
+                lastCheckedAt: true,
+              },
+              orderBy: [{ lastCheckedAt: "asc" }, { id: "asc" }],
+              take,
+            }),
+          () =>
+            prisma.officialSourceWatch.count({
+              where: taxSourceUnreachableWhere,
+            }),
         )
       : empty<never>(),
     capped(
@@ -696,6 +749,32 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
         }),
       ];
     }),
+    ...taxSourceChanges.rows
+      .filter(
+        (
+          watch,
+        ): watch is typeof watch & {
+          lastChangedAt: Date;
+          lastHash: string;
+        } => watch.lastChangedAt !== null && watch.lastHash !== null,
+      )
+      .map((watch) =>
+        taxSourceChangedException({
+          id: watch.id,
+          version: `${watch.lastHash}:${watch.lastChangedAt.getTime()}`,
+          label: watch.label,
+          excerpt: watch.lastExcerpt,
+          url: watch.url,
+          since: watch.lastChangedAt,
+        }),
+      ),
+    ...taxSourceFailures.rows.map((watch) =>
+      taxSourceUnreachableException({
+        label: watch.label,
+        url: watch.url,
+        since: watch.lastCheckedAt ?? now,
+      }),
+    ),
     ...taxExemptionsExpiring.rows
       .filter(
         (exemption): exemption is typeof exemption & { expiresOn: Date } =>
@@ -824,6 +903,8 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
           stripeTaxReviewAudits.total +
           taxExemptionsExpiring.total +
           taxAddressChanges.total +
+          taxSourceChanges.total +
+          taxSourceFailures.total +
           (canViewFinance &&
           (businessDateKey(now).endsWith("-05-15") ||
             businessDateKey(now).endsWith("-11-15"))

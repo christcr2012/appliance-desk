@@ -9,8 +9,6 @@ import {
 } from "@/lib/business-date";
 import { lockRentalAgreementInTx } from "./index";
 import {
-  autoRenewPolicyReady,
-  loadTerminationPolicy,
   type TerminationPolicy,
   type UnusedTermTreatment,
 } from "./term-policy";
