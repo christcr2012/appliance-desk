@@ -52,6 +52,9 @@ const newApplianceUnitSchema = z.object({
   condition: z.string().trim().max(200).optional().or(z.literal("")),
   purchaseDate: z.string().trim().optional().or(z.literal("")),
   acquisitionCostDollars: z.coerce.number().min(0).max(1000000).optional(),
+  purchaseTaxChoice: z.enum(["SELLER_CHARGED", "NONE_CHARGED", "LESSOR_PERMISSION", "LATER"]).optional(),
+  vendorTaxDollars: z.coerce.number().min(0).max(1000000).optional(),
+  sellerTaxNote: z.string().trim().max(500).optional(),
   currentLocation: z.string().trim().max(300).optional().or(z.literal("")),
   notes: z.string().trim().max(2000).optional().or(z.literal("")),
 });
@@ -70,6 +73,9 @@ export async function createApplianceUnitsAction(
   }
 
   const data = parsed.data;
+  if (data.purchaseTaxChoice && session.user.role !== "OWNER") {
+    return { status: "error", message: "Only the owner can record purchase-tax evidence." };
+  }
   const purchaseDate = parseOptionalBusinessDate(data.purchaseDate);
   if (!purchaseDate.ok) {
     return {
@@ -93,6 +99,11 @@ export async function createApplianceUnitsAction(
         data.acquisitionCostDollars !== undefined
           ? dollarsToCents(data.acquisitionCostDollars)
           : null,
+      purchaseTax: data.purchaseTaxChoice ? {
+        choice: data.purchaseTaxChoice,
+        vendorTaxCents: data.vendorTaxDollars !== undefined ? dollarsToCents(data.vendorTaxDollars) : 0,
+        sellerNote: data.sellerTaxNote || undefined,
+      } : undefined,
       currentLocation: data.currentLocation || null,
       notes: data.notes || null,
     });
