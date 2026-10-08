@@ -80,7 +80,7 @@ export async function listTaxAmendmentAttention(now = new Date()): Promise<TaxAm
   for (const period of periods) {
     // Closed periods stay visible when unready, even before the final week.
     // A not-yet-closed period only needs attention in its last five days.
-    if (businessDaysBetween(now, period.dueOn) > 5 &&
+    if (businessDaysBetween(now, period.periodEnd) > 5 &&
         businessDayBounds(now).start <= period.periodEnd) continue;
     const result = await loadFilingPacket(period.id, now);
     if (result.status === "READY") continue;

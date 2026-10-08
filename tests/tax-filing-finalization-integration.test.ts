@@ -91,10 +91,11 @@ describe("T-6b2 original filing and amendments (real Postgres)", () => {
 
       await prisma.invoiceTaxLine.update({ where: { id: taxLineId }, data: { taxCents: 300 } });
       expect(await detectTaxFilingAmendments(day("2026-11-22"))).toBe(1);
-      expect(await detectTaxFilingAmendments(day("2026-11-22"))).toBe(1);
+      expect(await detectTaxFilingAmendments(day("2026-11-23"))).toBe(1);
       let amendments = await prisma.taxFilingAmendment.findMany({ where: { periodId } });
       expect(amendments).toHaveLength(1);
       expect(amendments[0].additionalTaxCents).toBe(10);
+      expect(amendments[0].detectedAt.toISOString()).toBe(day("2026-11-22").toISOString());
       amendIds.push(amendments[0].id);
       await expect(markAmendmentHandledOutside(owner.id, {
         amendmentId: amendments[0].id, reason: "Not eligible",
