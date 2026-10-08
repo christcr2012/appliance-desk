@@ -174,6 +174,71 @@ describe.skipIf(!enabled)("message delivery ledger (real Postgres)", () => {
     expect(row.attempts).toBe(2);
   });
 
+  it("does not create a PENDING delivery when rendering fails before provider invocation", async () => {
+    const key = "render-failure-new";
+    const failing = {
+      ...input(key),
+      render: () => {
+        throw new Error("render failed");
+      },
+    };
+
+    await expect(deliverMessage(failing)).rejects.toThrow("render failed");
+    expect(
+      await prisma.messageDelivery.findUnique({
+        where: { idempotencyKey: `${prefix}-${key}` },
+      }),
+    ).toBeNull();
+    expect(mocks.customerEmail).not.toHaveBeenCalled();
+
+    const retry = await deliverMessage(input(key));
+    expect(retry.state).toBe("ACCEPTED");
+    expect(mocks.customerEmail).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps an existing retryable delivery retryable until pre-send rendering succeeds", async () => {
+    const key = `${prefix}-render-failure-retryable`;
+    const existing = await prisma.messageDelivery.create({
+      data: {
+        idempotencyKey: key,
+        channel: "EMAIL",
+        purpose: "TRANSACTIONAL",
+        templateKey: "test-message",
+        recipientType: "Customer",
+        recipientId: `customer-${tag}`,
+        recipientAddress: `${tag}@example.test`,
+        subjectType: "Customer",
+        subjectId: `customer-${tag}`,
+        state: "NOT_SENT",
+        lastError: "previous safe failure",
+      },
+    });
+
+    await expect(
+      deliverMessage({
+        ...input("unused"),
+        idempotencyKey: key,
+        render: () => {
+          throw new Error("render failed");
+        },
+      }),
+    ).rejects.toThrow("render failed");
+
+    const afterFailure = await prisma.messageDelivery.findUniqueOrThrow({
+      where: { id: existing.id },
+    });
+    expect(afterFailure.state).toBe("NOT_SENT");
+    expect(afterFailure.attempts).toBe(existing.attempts);
+    expect(mocks.customerEmail).not.toHaveBeenCalled();
+
+    const retry = await deliverMessage({
+      ...input("unused"),
+      idempotencyKey: key,
+    });
+    expect(retry.state).toBe("ACCEPTED");
+    expect(mocks.customerEmail).toHaveBeenCalledTimes(1);
+  });
+
   it("records previews as NOT_SENT without rendering or calling a provider", async () => {
     process.env.VERCEL = "1";
     process.env.VERCEL_ENV = "preview";
