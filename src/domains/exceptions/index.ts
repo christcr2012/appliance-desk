@@ -3,6 +3,7 @@ import { TAX_ADDRESS_CHANGE_REVIEW_NOTE } from "@/domains/tax/address-recheck";
 import { listOfficialRateAttention } from "@/domains/tax/official-rate-auto-apply";
 import { listTaxFilingAttention } from "@/domains/tax/filing-attention";
 import { listTaxAmendmentAttention } from "@/domains/tax/amendment-attention";
+import { listAcquisitionTaxAttention } from "@/domains/tax/acquisition-attention";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
 import type { Prisma } from "@prisma/client";
@@ -920,6 +921,8 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     ? await listTaxAmendmentAttention(now)
     : { amendments: { rows: [], total: 0 }, readiness: { rows: [], total: 0 } };
 
+  const acquisitionAttention = canViewFinance ? await listAcquisitionTaxAttention(now) : [];
+
   const salesTaxItems = items
     .filter((item) => item.category === "SALES_TAX")
     .sort((left, right) => left.since.getTime() - right.since.getTime());
@@ -931,6 +934,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     ...filingAttention.licenses.rows,
     ...amendmentAttention.amendments.rows,
     ...amendmentAttention.readiness.rows,
+    ...acquisitionAttention,
   ];
 
   const truncated: ExceptionTruncation[] = (
