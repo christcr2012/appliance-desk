@@ -109,12 +109,13 @@ export const auth = betterAuth({
     },
   },
   rateLimit: {
-    enabled: true,
+    // Better Auth additionally applies a stricter sign-in-route limiter.
+    // Four sequential CI-only accounts share one loopback IP, exhausting it
+    // even with the global max raised. Disable limits ONLY when CI explicitly
+    // uses the disposable localhost/appliance_desk_test database.
+    enabled: !isDisposableCiAuthFixture(),
     window: 60,
-    // Four CI browser roles enroll/sign in on the same loopback IP.
-    // Preserve the strict production limit; only isolated throwaway CI
-    // PostgreSQL gets a larger budget for authenticated browser setup.
-    max: isDisposableCiAuthFixture() ? 60 : 10,
+    max: 10,
   },
   user: {
     additionalFields: {
