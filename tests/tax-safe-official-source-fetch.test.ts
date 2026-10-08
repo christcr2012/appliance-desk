@@ -361,6 +361,54 @@ describe("T-5b2 safe official-source fetch", () => {
     expect(requestRef.destroy).toHaveBeenCalled();
   });
 
+  it("requests identity encoding and rejects encoded response bodies", async () => {
+    installResponse({
+      contentType: "text/plain",
+      chunks: ["compressed bytes"],
+    });
+
+    const resultPromise = fetchOfficialSourcePage(
+      "https://encoded.example.gov/page",
+    );
+    const options = mocks.request.mock.calls[0]?.[1] as {
+      headers?: Record<string, string>;
+    };
+    expect(options.headers?.["accept-encoding"]).toBe("identity");
+
+    // Replace the installed response for a second request with an encoded body.
+    await resultPromise;
+
+    mocks.request.mockImplementationOnce(
+      (
+        _url: URL,
+        _requestOptions: Record<string, unknown>,
+        callback: (response: Readable & {
+          statusCode?: number;
+          headers: Record<string, string>;
+        }) => void,
+      ) => {
+        const response = Readable.from(["compressed bytes"]) as Readable & {
+          statusCode?: number;
+          headers: Record<string, string>;
+        };
+        response.statusCode = 200;
+        response.headers = {
+          "content-type": "text/plain",
+          "content-encoding": "gzip",
+        };
+        const request = requestObject();
+        request.end.mockImplementation(() => {
+          queueMicrotask(() => callback(response));
+        });
+        return request;
+      },
+    );
+
+    await expect(
+      fetchOfficialSourcePage("https://encoded.example.gov/page"),
+    ).rejects.toThrow("unsupported content encoding");
+  });
+
   it("rejects oversized and non-text responses", async () => {
     installResponse({ chunks: ["abcdef"] });
     await expect(
