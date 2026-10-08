@@ -126,7 +126,8 @@ The approved design, applicable PR card, `docs/STATUS.md` and `docs/MASTER-ROADM
 
 **Merge conveyor (Chris, 2026-10-08):** when implementation is complete, stop changing scope. Before the first
 merge attempt, perform one focused diff self-review and collect all currently open automated-review threads. Resolve every
-valid finding in one patch batch rather than one commit/review cycle per finding. Then run exact-head gates; request one
+blocking finding in one patch batch; document and assign low-risk nonblocking
+findings to the immediate successor before merging, without a separate CI cycle. Then run exact-head gates; request one
 further exact-head automated review only for high-risk semantic changes or an actual required-review gate. If that pass is
 clean or a permitted waiver is recorded, merge promptly when CI/performance/preview are green; do not
 request an additional ceremonial "final review." If that pass finds issues, batch the entire pass, patch once, self-review
@@ -316,11 +317,13 @@ check OK.
 2. For every review finding or audit item you addressed, write its
    disposition (fixed / already fixed / superseded / still open) with the
    evidence. This also goes in the PR description.
-3. **Do this once per PR at review/merge time, with a brief predecessor check
-   when starting the next PR.** Gather unresolved threads on the current PR, read
-   the full findings, and fix valid issues *in that PR before merging* with a
-   regression test. Check the predecessor for late comments when beginning its
-   successor; carry only genuinely post-merge findings into the next planned PR.
+3. **Review once per PR; distinguish blockers from deferrable findings.** Gather
+   current PR threads and fix security, billing, data-integrity, permission and
+   acceptance blockers before merging, regardless of green CI. For low-risk
+   findings, leave a source-PR comment with explicit rationale, successor PR/card
+   ID and verification plan. Begin that successor with the inherited fixes and
+   tests, before its new feature work. Keep unresolved threads open until proven
+   fixed in the successor, then link the evidence and resolve them.
    Use the GitHub review-thread connector to inspect and resolve thread state. If unavailable,
    use authorized GitHub GraphQL reviewThreads/resolveReviewThread or GitHub's web review UI.
    REST review comments alone cannot prove thread resolution; leave the gate open if unverifiable.
