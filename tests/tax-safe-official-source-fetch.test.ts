@@ -85,6 +85,9 @@ describe("T-5b2 safe official-source fetch", () => {
     await expect(
       fetchOfficialSourcePage("http://tax.example.gov/page"),
     ).rejects.toThrow("HTTPS");
+    await expect(
+      fetchOfficialSourcePage("https://user:secret@tax.example.gov/page"),
+    ).rejects.toThrow("credentials");
 
     installResponse({ status: 302 });
     await expect(
