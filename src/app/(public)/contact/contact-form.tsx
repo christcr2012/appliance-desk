@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Button,
@@ -43,7 +43,7 @@ export function ContactForm({
   const {
     register,
     handleSubmit,
-    watch,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<LeadFormInput>({
     resolver: zodResolver(leadFormSchemaForCatalog(applianceTypes.length > 0)),
@@ -57,7 +57,7 @@ export function ContactForm({
     },
   });
 
-  const accountType = watch("accountType");
+  const accountType = useWatch({ control, name: "accountType" });
 
   async function onSubmit(values: LeadFormInput) {
     setServerMessage(null);
