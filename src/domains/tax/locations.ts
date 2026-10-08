@@ -246,6 +246,7 @@ async function resolveJurisdiction(
     where: {
       jurisdictionId: jurisdiction.id,
       effectiveFrom: { lte: now },
+      autoAppliedUndoneAt: null,
     },
     orderBy: [{ effectiveFrom: "desc" }, { id: "desc" }],
   });
@@ -646,7 +647,10 @@ export async function getAgreementTaxContext(
             include: {
               rules: { select: { category: true, taxability: true } },
               rates: {
-                where: { effectiveFrom: { lte: taxDate } },
+                where: {
+                  effectiveFrom: { lte: taxDate },
+                  autoAppliedUndoneAt: null,
+                },
                 orderBy: [{ effectiveFrom: "desc" }, { id: "desc" }],
                 take: 1,
               },
@@ -815,7 +819,10 @@ export async function assertTaxReadyForAgreement(
           jurisdiction: {
             include: {
               rates: {
-                where: { effectiveFrom: { lte: taxDate } },
+                where: {
+                  effectiveFrom: { lte: taxDate },
+                  autoAppliedUndoneAt: null,
+                },
                 orderBy: [{ effectiveFrom: "desc" }, { id: "desc" }],
                 take: 1,
               },
