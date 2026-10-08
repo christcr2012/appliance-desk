@@ -16,6 +16,10 @@ const mocks = vi.hoisted(() => ({
   taxExemption: vi.fn(),
   taxAddressLocation: vi.fn(),
   officialSourceWatch: vi.fn(),
+  officialRateAttention: vi.fn(async () => []),
+}));
+vi.mock("@/domains/tax/official-rate-auto-apply", () => ({
+  listOfficialRateAttention: mocks.officialRateAttention,
 }));
 vi.mock("@/lib/session", () => ({ requireRole: mocks.requireRole }));
 vi.mock("@/lib/prisma", () => ({
@@ -67,6 +71,7 @@ beforeEach(() => {
     mocks.taxExemption,
     mocks.taxAddressLocation,
     mocks.officialSourceWatch,
+    mocks.officialRateAttention,
   ]) {
     fn.mockResolvedValue([]);
   }
