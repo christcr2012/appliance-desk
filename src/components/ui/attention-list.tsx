@@ -76,7 +76,7 @@ export function AttentionList({
                         />
                         <button
                           type="submit"
-                          className="min-h-11 rounded-md px-3 text-sm font-medium text-ink underline-offset-2 hover:bg-subtle hover:underline"
+                          className="min-h-11 rounded-control px-3 text-sm font-medium text-ink underline-offset-2 hover:bg-subtle hover:underline"
                         >
                           {item.action.label}
                         </button>
