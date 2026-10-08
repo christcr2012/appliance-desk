@@ -28,7 +28,7 @@ describe("Colorado filing ICS calendar", () => {
     expect(ics).toContain("\\;");
     expect(ics).toContain("\\\\");
     expect(ics).toContain("\\n");
-    expect(ics.replaceAll("\r\n ", "").split("\r\n")
+    expect(ics.split("\r\n")
       .every(line => Buffer.byteLength(line, "utf8") <= 75)).toBe(true);
   });
 });

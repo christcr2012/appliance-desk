@@ -1,9 +1,15 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({
-  email: vi.fn(async () => ({ sent: true, outcome: "SENT" as const, providerMessageId: "owner-notice-test" })),
-}));
+const mocks = vi.hoisted(() => {
+  let nextMessage = 0;
+  return {
+    email: vi.fn(async () => ({
+      sent: true, outcome: "SENT" as const,
+      providerMessageId: `owner-notice-${++nextMessage}`,
+    })),
+  };
+});
 vi.mock("@/lib/email", () => ({ sendEmail: mocks.email }));
 vi.mock("@/lib/customer-email", () => ({
   sendCustomerEmail: vi.fn(async () => { throw new Error("Owner alerts must never use customer transport"); }),

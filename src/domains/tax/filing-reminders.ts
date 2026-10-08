@@ -1,4 +1,3 @@
-import { Prisma } from "@prisma/client";
 import { sendOwnerAlert } from "@/domains/messaging/owner-alerts";
 import { businessDateKey, businessDaysBetween } from "@/lib/business-date";
 import { prisma } from "@/lib/prisma";
@@ -34,10 +33,6 @@ export function licenseReminderStage(expiry: Date, now: Date): string | null {
   }
   return null;
 }
-function isUniqueViolation(cause: unknown): boolean {
-  return cause instanceof Prisma.PrismaClientKnownRequestError && cause.code === "P2002";
-}
-
 /** Idempotency lives in both filing-period unique keys and MessageDelivery. */
 export async function runTaxFilingCalendar(now = new Date()): Promise<FilingReminderRun> {
   const totals: FilingReminderRun = {
@@ -53,22 +48,21 @@ export async function runTaxFilingCalendar(now = new Date()): Promise<FilingRemi
     // Legacy accounts remain dormant until the Owner sets the first filing period.
     if (account.firstPeriodStart) {
       const ranges = periodsFor(account, now);
-      for (const range of ranges) {
+      const data = ranges.map((range) => {
         const dueOn = dueOnFor(range.end, account.dueDayOfFollowingMonth);
-        try {
-          await prisma.taxFilingPeriod.create({
-            data: {
-              filingAccountId: account.id,
-              periodStart: range.start,
-              periodEnd: range.end,
-              dueOn,
-              legalDueOn: legalDueOn(dueOn),
-            },
-          });
-          totals.periodsCreated += 1;
-        } catch (cause) {
-          if (!isUniqueViolation(cause)) throw cause;
-        }
+        return {
+          filingAccountId: account.id,
+          periodStart: range.start,
+          periodEnd: range.end,
+          dueOn,
+          legalDueOn: legalDueOn(dueOn),
+        };
+      });
+      if (data.length) {
+        // The unique account/start key makes races and daily retries harmless;
+        // bulk creation avoids one round trip and P2002 log per old period.
+        const created = await prisma.taxFilingPeriod.createMany({ data, skipDuplicates: true });
+        totals.periodsCreated += created.count;
       }
 
       const periods = await prisma.taxFilingPeriod.findMany({
