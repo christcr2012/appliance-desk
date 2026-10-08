@@ -214,7 +214,23 @@ export function computeTax(input: EngineInput): EngineResult {
           problems.add(`Rental line ${line.key}: duplicate appliance acquisition evidence`);
           continue;
         }
-        const shares = alloc...[truncated]
+        const shares = allocateAcrossLines(line.amountCents, basis.map(() => 1));
+        const exemptCents = shares.reduce((sum, cents, index) =>
+          sum + (basis[index]!.verifiedTaxPaid ? cents : 0), 0);
+        const taxableCents = line.amountCents - exemptCents;
+        resultLines.push({
+          lineKey: line.key,
+          jurisdictionId: jurisdiction.id,
+          rateVersionId: jurisdiction.rate.versionId,
+          category,
+          taxableCents,
+          exemptCents,
+          exemptReason: exemptCents ? "Verified acquisition tax paid for qualifying appliance(s)" : null,
+          taxCents: taxCentsForLine(taxableCents, jurisdiction.rate.rateMilliPercent),
+        });
+        continue;
+      }
+
       if (resolution.taxability === "EXEMPT") {
         resultLines.push({
           lineKey: line.key,

@@ -909,4 +909,12 @@ export async function loadRentalAcquisitionBasis(
   for (const line of rentalLines) {
     const record = line.rentalLineId ? byId.get(line.rentalLineId) : undefined;
     if (!record) continue;
-    result.set(line.ke...[truncated]
+    result.set(line.key, record.assignments.map(({ appliance }) => ({
+      applianceId: appliance.id,
+      status: appliance.acquisitionTaxStatus,
+      verifiedTaxPaid: appliance.acquisitionTaxStatus === "SALES_TAX_PAID" ||
+        appliance.acquisitionTaxStatus === "USE_TAX_PAID",
+    })));
+  }
+  return result;
+}

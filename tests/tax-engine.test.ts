@@ -393,4 +393,24 @@ describe("T-6D2 appliance-level acquisition basis", () => {
     expect([city.exemptCents, city.taxableCents]).toEqual([0, 101]);
   });
 
-  it("blocks unknown and use-tax-due acquisition evidence", (...[truncated]
+  it("blocks unknown and use-tax-due acquisition evidence", () => {
+    for (const status of ["UNKNOWN", "USE_TAX_DUE"] as const) {
+      const result = computeTax({
+        ...base,
+        lines: [{ key: "rent", kind: "RENTAL", amountCents: 100,
+          acquisitionBasis: [{ applianceId: "unverified", status, verifiedTaxPaid: false }] }],
+      });
+      expect(result.ok).toBe(false);
+    }
+  });
+
+  it("taxes a long lease without a short-term acquisition exemption", () => {
+    const result = computeTax({
+      ...base,
+      leaseTermMonths: 37,
+      lines: [{ key: "rent", kind: "RENTAL", amountCents: 100, acquisitionBasis: [paid] }],
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.lines.find(line => line.jurisdictionId === "state")?.taxableCents).toBe(100);
+  });
+});
