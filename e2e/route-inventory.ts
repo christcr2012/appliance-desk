@@ -197,6 +197,15 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
   },
   { path: "/desk/suppliers/new", role: "OWNER", fixture: "/desk/suppliers/new" },
   { path: "/desk/suppliers", role: "OWNER", fixture: "/desk/suppliers" },
+  { path: "/desk/tax/use-tax-settings", role: "OWNER", fixture: "/desk/tax/use-tax-settings" },
+  { path: "/desk/tax/use-tax-worksheets", role: "OWNER", fixture: "/desk/tax/use-tax-worksheets" },
+  {
+    path: "/desk/tax/use-tax-worksheets/[periodId]",
+    role: "OWNER",
+    fixture: "A generated consumer-use-tax filing period with a valid state account",
+    manualOnlyReason:
+      "A current private worksheet requires a generated consumer use-tax period id; its server-side authorization and packet behavior are verified separately.",
+  },
   { path: "/desk/tasks", role: "OWNER", fixture: "/desk/tasks" },
   { path: "/desk/today", role: "OWNER", fixture: "/desk/today" },
 ];
