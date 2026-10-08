@@ -18,7 +18,7 @@ Audited baseline: main `b2a06c2` (#310), October 8. [STATUS](STATUS.md) holds cu
 
 ## Implementing agent — paste this
 
-> Read AGENTS, STATUS, this roadmap and the next card only. Find the cited design headings and named code/tests in bounded sections. Run the per-card drift protocol against latest main and the prerequisite's final reviewed head. If no execution card exists, write one short card from the approved design with exact current paths, transaction/permissions/provider boundaries, meaningful tests and completion evidence. Routine details are yours to implement; missing money/security/schema/provider decisions require a reviewed contract amendment first, not an unsafe guess or a mandatory model switch. Implement a coherent capability, run the cheap targeted checks, push once. While checks run, implement only the eligible immediate successor in the same chain. Batch valid findings/failures, refresh exact-head gates, merge immediately when authorized and green. Update the existing card, STATUS and shared contract log, not a new handoff file. Continue while eligible work exists; stop only for a real gate, with committed work and the exact next action.
+> Read AGENTS, STATUS, this roadmap and the next card only. Find the cited design headings and named code/tests in bounded sections. Run the per-card drift protocol against latest main and the prerequisite's final reviewed head. If no execution card exists, write one short card from the approved design with exact current paths, transaction/permissions/provider boundaries, meaningful tests and completion evidence. Routine details are yours to implement; missing money/security/schema/provider decisions require a reviewed contract amendment first, not an unsafe guess or a mandatory model switch. Implement a coherent capability, run the cheap targeted checks, push once. While checks run, implement only the eligible immediate successor in the same chain. Batch valid findings/failures, refresh exact-head gates, merge immediately when authorized and green. Update the existing card and STATUS; update the shared contract log only for downstream-relevant contract changes. Do not create a new handoff file. Continue while eligible work exists; stop only for a real gate, with committed work and the exact next action.
 
 ## Work coverage
 
@@ -214,3 +214,32 @@ shortcuts and saved filtered queues. Existing O/BP/COM units gain contextual
 help, effective-date/impact previews and configurable templates without a second
 policy engine. All runtime additions remain to implement; this PR designs them.
 Keep mandatory Today work visible and preserve signed facts/activation gates.
+
+## Delivery forecast — October 8, 2026 (planning estimate)
+
+GitHub creation: September 26, 15:05:48 UTC (09:05:48 Denver). Through main #310,
+276 PRs merged; 217 touched src/prisma/operational scripts. In the preceding
+48 hours, 31 such PRs merged, about 15.5/day. Their median open-to-merge was
+53 minutes; this excludes pre-PR implementation and overlaps stacked work.
+Classification is path-based, not a verified measure of delivered features or
+model identity. Diff line totals include rework and are not useful work volume.
+
+Current finite scope: 49 launch-stage card groups, 34 later approved groups,
+21 proposed BP groups. Groups may combine/split while retaining pinned acceptance.
+PR counts are **not** completion counts for the roadmap groups. No reliable
+PR-to-group ratio has been measured, and the groups differ sharply in scope.
+Consequently the historic 15.5 PRs/day cannot support a delivery date or a
+numeric remaining-work estimate. The earlier October 13–25 estimates are
+withdrawn rather than presented as a forecast.
+
+**Forecast calibration:** After three representative approved implementation
+groups merge, record the group IDs, implementation start and merge timestamps,
+production scope, CI/review rework and blockers. Use that evidence to build
+separate observed rates for small/medium/high-risk groups and then publish
+conditional calendar ranges for launch, all approved work, and BP if accepted.
+Do not equate a PR to a group when cards were combined or split.
+
+The work counts (49 launch, 34 later approved, 21 proposed) describe scope,
+not remaining days. Owner decisions, CPA/legal review, telecom sender setup,
+visual approval and final launch authorization can impose additional waiting
+regardless of engineering throughput. The deferred scope has no forecast.

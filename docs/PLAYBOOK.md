@@ -496,3 +496,37 @@ After the next three implementation PRs, use their existing CI/review history
 to compare time to merge, failed CI runs, substantive review defects and rebase
 work. Put one short finding in STATUS. Keep faster rules only if quality holds;
 no separate metrics report, extra work lane or recurring approval ceremony.
+
+## Avoid repeated setup and broad debugging (Sol-first delivery)
+
+1. Once per session, inspect the available authenticated publication interface,
+   installed dependencies/client generation and verified disposable test setup.
+   Preserve them across cards. Revalidate only after lockfile/schema/environment
+   changes; run all required checks for the new code head. No install or full
+   database reset merely because a new card starts. Never reuse production data.
+2. If CLI publishing fails for missing authentication, use an available authorized
+   repository connector; do not repeatedly try the same unauthenticated push.
+   Keep parent/ref leases, preserve untouched files and verify published/local
+   tree equality. Save the known route in existing STATUS, without credentials.
+3. Reuse real predecessor regression fixtures/helpers. Run the changed high-risk
+   integration cases on the already-available disposable DB before pushing;
+   include direct callers and changed fixtures. If setup is unavailable, use the
+   documented CI route and carry required evidence; do not call unrun tests passed.
+   This reconciles quick checks in AGENTS with Step 3a's targeted integration proof.
+4. After a failure, classify it: implementation, stale fixture/contract, setup,
+   or external dependency. Inspect the smallest evidence that distinguishes them.
+   Change a hypothesis after two unsuccessful identical attempts; do not keep
+   broad reruns or speculative edits. Fix all confirmed causes in one patch.
+5. Choose effort by risk: light for routine existing patterns, medium for new
+   transactional/security/provider/schema boundaries. A focused Sonnet second
+   opinion may settle a specific ambiguity, with the normal reviewed amendment.
+   Most cards remain owned by Sol; there is no model handoff gate or extra stream.
+6. Keep handoff updates proportional: record next item/gate, actual changed
+   interfaces and meaningful tests. “No shared contract change” is one PR line,
+   not another document. Do not restart whole-batch orientation at each card.
+
+Measure improvements from the next three existing PR descriptions: time to merge,
+failed CI, substantive defects and rebase work. The historical PR cycle begins
+at PR creation, after much implementation already occurred; it is not total
+agent work time. Do not convert fewer reasoning tokens or fewer tests into a
+claim of higher quality. Retain changes only when evidence supports them.

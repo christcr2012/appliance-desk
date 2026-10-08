@@ -1,6 +1,6 @@
 # STATUS — current work, blockers and next action
 
-Updated October 8, 2026. Audited code baseline: `b2a06c2` (#310). Documentation refresh branch: `ai/codex/documentation-reset-20261008`; published as PR #311; review fixes and owner content/workspace architecture published; final exact-head gates pending. No runtime changes in this refresh.
+Updated October 8, 2026. Audited code baseline: `b2a06c2` (#310). Documentation refresh #311 merged as `778b197f`; its exact-head CI/deployment passed and both review threads are resolved. Sol-first throughput refinement branch: `ai/codex/sol-throughput-20261008`. No runtime changes in this refresh.
 
 ## Built
 
@@ -36,3 +36,11 @@ Published predecessor head: `60f3a9c` in PR #311. Two Codex findings are fixed:
 restore active cross-batch acceptance rules and pin independent required unit IDs.
 User-added content-control/owner-workspace design is folded into V/O, not a new
 handoff file. Runtime remains unimplemented; next runtime item remains T-6D1.
+
+## Throughput refinement — October 8
+
+Forecast and assumptions are in MASTER-ROADMAP, not a separate report. Routine
+cards use Sol light/medium by risk; Sonnet is optional for one disputed contract.
+Reuse verified disposable setup and authenticated publishing, inspect only changed
+contracts, and avoid duplicate no-change handoff entries. Runtime next remains
+T-6D1. Historical pace does not prove either model’s speed/quality.

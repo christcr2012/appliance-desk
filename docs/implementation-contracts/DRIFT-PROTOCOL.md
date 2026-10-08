@@ -8,7 +8,7 @@ This is an implementation procedure, not a new approval gate. Existing new cards
 2. Read STATUS, the immediate predecessor's final PR description and review dispositions, and only relevant dated CHANGES-SINCE-DESIGN entries. If a review exposed an unfixed issue in this area, carry it with a named test.
 3. `git diff --name-status b2a06c2..HEAD -- <card's domain paths> prisma/schema.prisma` (use the card's later recorded checked base on repeat). Inspect changed named functions and tests in ≤150-line sections. Map renamed/moved paths using narrow `rg --files <domain>`, not a fresh repository audit.
 4. Compare: schema fields/defaults/unique constraints; exported signatures/result unions; caller transaction and lock order; role/capability/storage scope; persisted event and timestamp sources; exact money ownership and rounding; runtime/provider activation fence; test fixtures and current route/shard registry.
-5. Fill the following table in the PR and add a short dated contract handoff to CHANGES-SINCE-DESIGN. Update the card's affected paragraphs before implementation; keep the original rationale in the design and decision log.
+5. Fill the following table in the PR. Add a short dated handoff to CHANGES-SINCE-DESIGN only when a downstream contract changed; a match/mechanical-only result needs no duplicate shared-log entry. Update the card's affected paragraphs before implementation; keep the original rationale in the design and decision log.
 
 | Assumption | Actual code/test at head | Disposition | Card correction / proof |
 |---|---|---|---|
@@ -26,7 +26,7 @@ This is an implementation procedure, not a new approval gate. Existing new cards
 
 A predecessor fix/rebase/retarget invalidates the drift record: freeze successor, sync once to final prerequisite, repeat only checks for changed contracts. Never maintain divergent copies of a shared domain/helper. Don't rewrite merged migrations: use the next unique additive migration and its populated-upgrade drill.
 
-Each implementation PR hands off actual schema/migration ownership, public signatures/result union changes, guards, locking, new setting/default and activation gate, fixture/test changes, unresolved review IDs, remaining acceptance, and successor cards requiring updates. Update those successor pointers in the same PR when known; never mark a future card already re-verified. STATUS points at the next eligible card and exact head. The card registry remains the authoritative coverage list; cardinality may change when a coherent over-budget card is split, but no acceptance unit may disappear.
+Every implementation PR must hand off unresolved review IDs with dispositions, remaining acceptance, and any necessary successor card updates, even if no contract changed. When a downstream contract changes, also record actual schema/migration ownership, public signatures/result-union changes, guards, locking, settings/defaults and activation gates, and fixture/test changes in the shared contract log. Update those successor pointers in the same PR when known; never mark a future card already re-verified. STATUS points at the next eligible card and exact head. The card registry remains the authoritative coverage list; cardinality may change when a coherent over-budget card is split, but no acceptance unit may disappear.
 
 ## Drift is checked, not wished away
 

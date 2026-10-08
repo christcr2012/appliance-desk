@@ -29,6 +29,20 @@ Use exact current paths and relevant design headings. Usually 40–100 lines:
 Use `docs/implementation-contracts/DRIFT-PROTOCOL.md` on every implementation
 and changed base. Mechanical drift is fixed inline. Semantic uncertainty gets a
 reviewed amendment; block only that dependent slice. Update the same card,
-work-index, STATUS and CHANGES-SINCE-DESIGN; do not create another handoff file.
+work-index/STATUS as needed and CHANGES-SINCE-DESIGN for actual downstream
+contract changes; do not create another handoff file.
 
 Validate coverage with `python docs/pr-cards/validate-index.py`.
+
+## Fast authoring with Sol 5.6
+
+Use light effort for an already-proved bounded contract, medium for transactional,
+auth/provider/schema or unfamiliar behavior. Author the current card during its
+bounded orientation, not as a separate planning session. Cite unchanged schema/
+signatures by precise heading/path; spell out changed interfaces, invariants,
+permissions and replay/failure tests. After that pass, edit and verify unless a
+concrete unresolved decision remains. A Sonnet second opinion is optional and
+limited to that question; no mandatory model handoff or parallel planning lane.
+
+If every contract matches the predecessor, record that once in the PR. Update
+CHANGES-SINCE-DESIGN only when later work inherits an actual contract change.
