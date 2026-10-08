@@ -6,7 +6,7 @@ import { formatBusinessDate } from "@/lib/business-date";
 export const metadata = { title: "Use-tax worksheets", robots: { index: false, follow: false } };
 
 export default async function UseTaxWorksheetsPage() {
-  await requireRole("OWNER");
+  await requireRole("OWNER", "ADMIN");
   const periods = await prisma.taxFilingPeriod.findMany({
     where: { filingAccount: { kind: "USE_TAX_RETURN" } },
     select: {
