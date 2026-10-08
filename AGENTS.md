@@ -220,8 +220,8 @@ full CI/secret checks, preview where applicable and required semantic review.
   Dependent card/docs work must stack on the top prerequisite branch instead of targeting stale `main`.
   **The authoritative design, PR card, STATUS and roadmap are the context anchor**: re-read the applicable current docs
   at PR boundaries and after any base change. Session length alone is not a stop condition when those sources remain current
-  and exact-head gates are clean. Stop advancing only when the next PR needs a patch, has a failed/pending blocking gate,
-  exposes a review finding, hits an approval gate, or verified context is no longer sufficient to continue safely.
+  and exact-head gates are clean. When a gate blocks the next PR, address the gate or move to the immediate eligible successor while its base stays stable;
+  a pending check, actionable failure or review finding is work to manage, not by itself an instruction to end the chat.
   See `docs/PLAYBOOK.md` Step 3a. The PR list for every remaining batch is `docs/MASTER-ROADMAP.md` Work coverage and `docs/pr-cards/work-index.json`.
 - **CI is free and fast, so lean on it** (Chris, 2026-10-03; details in the
   "CI" section below). Do not drop tests to save minutes, and do keep CI fast
@@ -311,12 +311,12 @@ full CI/secret checks, preview where applicable and required semantic review.
   and never claim a review ran that did not. Codex reviews every PR
   automatically when it is opened, so it is normally available: read its
   comments before writing "unavailable". Never write "waived" without checking.
-- **Review fixes ride the next planned PR (Chris, 2026-10-03).** Do not open or
-  push a separate PR just to fix review comments — each push costs a CI run.
-  Collect valid findings from all open PRs, fix them (with regression tests)
-  inside the next planned PR of the stack, and record each disposition there.
-  Exception: a finding that is a security or money-correctness hole in code
-  already merged to `main` gets fixed immediately.
+- **Review findings have one owner.** Fix valid findings on an open PR before merging
+  that PR, using one batched patch and regression tests. Do not knowingly merge a
+  defective predecessor and hope its successor fixes it. Findings posted only after
+  a merge belong in the next relevant planned PR with recorded dispositions.
+  Fix a security or money-correctness hole already on `main` immediately; do not
+  create cosmetic review-only PRs when the planned PR can safely carry the fix.
 
 ## Review continuity — before each PR
 
@@ -333,16 +333,13 @@ full CI/secret checks, preview where applicable and required semantic review.
    *fixed (evidence)*, *already fixed (evidence)*, *superseded (by what)*, or
    *still open (why, next step)*. Never silently drop one.
 4. Resolve a review thread only after verifying the fix at the exact head.
-5. **Reviewer waiting follows the merge-conveyor rule above.** Always wait for the
-   initial automated review and for the one exact-head re-review requested after
-   batching its valid findings. After that reviewed fix batch, a low-risk cleanup
-   push (for example test deduplication, lint-only cleanup, docs/status alignment,
-   or a pure rebase/retarget with unchanged production semantics) does **not** start
-   another mandatory reviewer-wait cycle: fresh exact-head CI/performance/preview
-   gates are sufficient. Any later push that changes security, auth, money/billing,
-   schema, provider/runtime semantics, or another high-risk boundary requires a new
-   automated review before merge. If the repository ruleset itself marks a reviewer
-   as required, that ruleset remains blocking.
+5. **Review only when there is new evidence to review.** Read the initial automated
+   review when available, or document its permitted waiver after checking actual
+   review state. After batching valid findings, request a further exact-head review
+   only for changed security, auth, money/billing, schema or provider semantics, or
+   when branch protection requires it. A docs-only, formatting or pure retarget
+   change does not trigger another discretionary reviewer-wait cycle. Always rerun
+   exact-head CI/preview checks as applicable; required branch reviews cannot be waived.
 
 ## Where the rules live (one source of truth each)
 
