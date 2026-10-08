@@ -2,6 +2,33 @@
 
 Reconciled against main `b2a06c2` (#310), 2026-10-08. Current sequence is in [MASTER-ROADMAP](MASTER-ROADMAP.md); current head/blockers in [STATUS](STATUS.md). AGENTS owns workflow rules. This file owns acceptance, designs own semantic decisions, cards own the next bounded implementation. Do not read completed specifications as a work queue.
 
+## Rules that apply to every batch
+
+These are the acceptance requirements every batch inherits (the old plan
+called this "gate G"):
+
+- Focused behavioral tests for every new rule, permission and failure path;
+  real-Postgres tests for anything concurrent or transactional.
+- Applicable code checks and full CI green (throwaway Postgres, migrations,
+  upgrade drill, build, browser/axe), and a Vercel preview that is clicked
+  through.
+- UI work is checked at 360 / 768 / 1440 px widths, by keyboard, and in light
+  and dark themes; axe reports no violations.
+- New tables or columns are added to backup/export coverage and the
+  schema-health check, with the populated-upgrade drill asserting old rows
+  keep sane defaults.
+- No customer fixtures, test emails, or reset scripts against the live
+  database. Stripe stays in test mode. No live message sending.
+- The batch's PR description carries the acceptance checklist with evidence.
+- Owner policy items (listed per batch) are inputs, not things to invent.
+  Build the mechanism; leave the policy-dependent behavior switched off and
+  listed in `docs/OWNER-INPUTS.md` until Chris answers.
+- Business time is America/Denver (store UTC); DST edges are tested.
+- Reuse what exists. The "Already shipped" list below is not to be rebuilt.
+
+Documentation-only changes use AGENTS’ documentation checks; application/UI/
+DST/migration proofs above apply to the behavior actually changed.
+
 ## Built — do not rebuild
 
 A, B, C, R, B2, D, E, E2, F-part-1 and G are merged. T is built through T-6b2 (#310): acquisition evidence/per-unit rules, RDF and tax workspace screens remain. E2's public visual result was rejected as final quality, so V remains. Live payments/customer email/SMS remain separately gated. Complete historical deliverables and acceptance are preserved in [the pre-reset plan](archive/reset-2026-10-08/PLAN.md), not discarded.
@@ -105,6 +132,25 @@ Design: `docs/designs/BATCH-V.md`; work coverage and prerequisites: work-index.
 - [ ] Desk Today day-timeline and severity words; Actual/Estimate tags from the METRICS registry; no behaviour change.
 - [ ] Every item in "Rules that apply to every batch".
 
+### Website content control acceptance — V-C1…V-C5
+
+- [ ] Every public content item (all routes/variants, header/footer, metadata,
+  form labels/messages, photos, links, descriptions, introductions and supported
+  ad slots) has an editable content binding or one explicit source ownership.
+- [ ] Owner edits from the real rendered page/section, sees location and shared
+  usage, can replace a photo from a phone, and reviews exact text/photo/link diffs.
+- [ ] Draft/preview/live are distinct; anonymous users cannot access draft HTML
+  or media; stale/duplicate publish and post-commit failure outcomes are safe.
+- [ ] Contact/catalog/pricing use one domain source; changing website prose never
+  changes a charged amount or signed agreement. Promotion schedules are clear,
+  default off and tested at Denver DST boundaries.
+- [ ] Intentional empty/hide/default are distinct; restoration creates a reviewed
+  draft and tells the owner which external-source facts it does not restore.
+- [ ] Customized text/photos/links survive redesign and compatible rollback;
+  new content types upgrade the editor before deployment, with coverage proof.
+- [ ] Old revision codec, asset storage, populated-upgrade/backup/restore, active
+  role/privacy boundaries, keyboard/phone/dark/light/axe and final F proof pass.
+
 ## Batch F-part-2 — final product proof (F-part-1 already complete)
 
 Design: `docs/designs/BATCH-F.md`; work coverage and prerequisites: work-index.
@@ -176,6 +222,17 @@ Design: `docs/designs/BATCH-O.md`; work coverage and prerequisites: work-index.
 - [ ] Goals with pace on Today; idle-appliance and utilization alerts.
 - [ ] Read-only page of every live switch with links.
 - [ ] Every item in "Rules that apply to every batch".
+
+### Owner workspace additions — O-6/O-7
+
+- [ ] Manage my business offers task-oriented search, existing authorized routes
+  and truthful source-specific readiness, preserving direct bookmarks.
+- [ ] Pin tasks/save typed filtered views/reset with preview; per-user scope,
+  stale revision, revoked role and malformed filter tests pass.
+- [ ] Mandatory Today obligations cannot be hidden; empty filtered results do not
+  claim no work exists. Setup help never exposes secrets or pretends provisioning.
+- [ ] Settings/templates explain effects and effective dates in the screen, reuse
+  domain validation and immutable customer facts, and provide safe restore paths.
 
 ## Batch BP — Business offers operations and partnerships — PROPOSED
 

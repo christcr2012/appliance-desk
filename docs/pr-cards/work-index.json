@@ -401,10 +401,10 @@
     },
     {
       "id": "V-1",
-      "title": "Signature tokens and editable marketing fields",
+      "title": "Signature tokens and reuse of editable content registry",
       "batch": "V",
       "dependencies": [
-        "COM-L15"
+        "V-C5"
       ],
       "status": "APPROVED",
       "migration": "none",
@@ -1750,7 +1750,7 @@
       "title": "Lead, estimate and signature SMS",
       "batch": "COM-N",
       "dependencies": [
-        "O-5",
+        "O-7",
         "COM-L15"
       ],
       "status": "APPROVED",
@@ -2505,6 +2505,153 @@
         "docs/designs/BATCH-T.md"
       ],
       "tests": []
+    },
+    {
+      "id": "V-C1",
+      "title": "Typed website content registry and historical compatibility",
+      "batch": "V",
+      "dependencies": [
+        "COM-L15"
+      ],
+      "status": "APPROVED",
+      "migration": "website_revision_content_version",
+      "budget": 500,
+      "units": [
+        "V-C1"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-V.md"
+      ],
+      "tests": [],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/V-C1.md",
+      "risk": "schema"
+    },
+    {
+      "id": "V-C2",
+      "title": "Website photo library and private-draft publication boundary",
+      "batch": "V",
+      "dependencies": [
+        "V-C1"
+      ],
+      "status": "APPROVED",
+      "migration": "website_assets",
+      "budget": 500,
+      "units": [
+        "V-C2"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-V.md"
+      ],
+      "tests": [],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/V-C2.md",
+      "risk": "media"
+    },
+    {
+      "id": "V-C3",
+      "title": "Complete public content bindings and scheduled promotions",
+      "batch": "V",
+      "dependencies": [
+        "V-C2"
+      ],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 500,
+      "units": [
+        "V-C3"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-V.md"
+      ],
+      "tests": [],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/V-C3.md",
+      "risk": "content"
+    },
+    {
+      "id": "V-C4",
+      "title": "Owner content editor review publish and restore UX",
+      "batch": "V",
+      "dependencies": [
+        "V-C3"
+      ],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 500,
+      "units": [
+        "V-C4"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-V.md"
+      ],
+      "tests": [],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/V-C4.md",
+      "risk": "screens"
+    },
+    {
+      "id": "V-C5",
+      "title": "Redesign compatibility and comprehensive content proof",
+      "batch": "V",
+      "dependencies": [
+        "V-C4"
+      ],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 500,
+      "units": [
+        "V-C5"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-V.md"
+      ],
+      "tests": [],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/V-C5.md",
+      "risk": "verification"
+    },
+    {
+      "id": "O-6",
+      "title": "Owner control center and task-oriented readiness navigation",
+      "batch": "O",
+      "dependencies": [
+        "O-5"
+      ],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 500,
+      "units": [
+        "O-6"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-O.md"
+      ],
+      "tests": [],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/O-6.md",
+      "risk": "screens"
+    },
+    {
+      "id": "O-7",
+      "title": "Personal saved work queues and protected Today workspace",
+      "batch": "O",
+      "dependencies": [
+        "O-6"
+      ],
+      "status": "APPROVED",
+      "migration": "owner_workspace_preferences",
+      "budget": 500,
+      "units": [
+        "O-7"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-O.md"
+      ],
+      "tests": [],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/O-7.md",
+      "risk": "schema"
     }
   ],
   "enhancements": [

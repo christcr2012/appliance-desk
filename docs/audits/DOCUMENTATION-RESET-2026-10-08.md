@@ -82,3 +82,19 @@ changed active relative links checked by `docs/pr-cards/validate-index.py`;
 contract reconciliation, not a full security review, full-suite execution or
 production/provider test. Historical archives intentionally retain original
 relative references as evidence; their current landing page links are validated.
+
+## Resumed owner expansion and review corrections
+
+Recovered local generation/cleanup scripts, publication JSON and clean committed
+branch in addition to remote PR state. Codex found two valid omissions: active
+cross-batch acceptance disappeared, and terminal acceptance coverage was not
+pinned. Restored the live rules and an independently reviewed required-unit set.
+Negative deletion and regrouping checks prove scope survives card grouping.
+
+Current website reader/editor supports selected string fields/draft/history but
+static hero/footer/header content and image sources remain. New V amendment
+designs typed complete content coverage, image library, context editor, explicit
+source ownership and compatible future redesigns. O amendment adds owner control
+center and saved queues. These are future runtime contracts, not a claim those
+features are already available. Primary W3C/OWASP/WordPress references are linked
+in V for input/review/media design rationale. Final handoff remains the roadmap.

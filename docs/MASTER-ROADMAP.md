@@ -79,7 +79,12 @@ Audited baseline: main `b2a06c2` (#310), October 8. [STATUS](STATUS.md) holds cu
 
 | Unit | Scope | Execution card | Prerequisite |
 |---|---|---|---|
-| V-1 | Signature tokens and editable marketing fields | JIT — `V-1.md` | COM-L15 |
+| V-C1 | Typed content registry and historical compatibility | JIT — `V-C1.md` | COM-L15 |
+| V-C2 | Photo library with private drafts and explicit publication | JIT — `V-C2.md` | V-C1 |
+| V-C3 | Every public content binding and scheduled promotions | JIT — `V-C3.md` | V-C2 |
+| V-C4 | Clear owner editing, preview, publish and restore | JIT — `V-C4.md` | V-C3 |
+| V-C5 | Redesign compatibility and full content coverage proof | JIT — `V-C5.md` | V-C4 |
+| V-1 | Signature tokens using the shared content registry | JIT — `V-1.md` | V-C5 |
 | V-2 | Signature homepage and safe service-area check | JIT — `V-2.md` | V-1 |
 | V-3 | Remaining public pages with editable copy | JIT — `V-3.md` | V-2 |
 | V-4 | Desk and portal signature polish and evidence | JIT — `V-4.md` | V-3 |
@@ -133,12 +138,14 @@ Audited baseline: main `b2a06c2` (#310), October 8. [STATUS](STATUS.md) holds cu
 | O-3B | Approval command adapters and Today decision workflow | JIT — `O-3B.md` | O-3A |
 | O-4 | Scheduled price changes with frozen accepted terms | JIT — `O-4.md` | O-3B |
 | O-5 | Goals, utilization attention and final control handoff | JIT — `O-5.md` | O-4 |
+| O-6 | Manage my business: task search, controls and truthful readiness | JIT — `O-6.md` | O-5 |
+| O-7 | Personal saved queues and workspace; mandatory Today tasks preserved | JIT — `O-7.md` | O-6 |
 
 ### COM-N
 
 | Unit | Scope | Execution card | Prerequisite |
 |---|---|---|---|
-| COM-N1A | Lead, estimate and signature SMS | JIT — `COM-N1A.md` | O-5, COM-L15 |
+| COM-N1A | Lead, estimate and signature SMS | JIT — `COM-N1A.md` | O-7, COM-L15 |
 | COM-N1B | Job and maintenance SMS | JIT — `COM-N1B.md` | COM-N1A |
 | COM-N1C | Billing, renewal and refund SMS | JIT — `COM-N1C.md` | COM-N1B |
 | COM-N2 | Verified click-to-call and assigned staff actions | JIT — `COM-N2.md` | COM-N1C |
@@ -191,3 +198,19 @@ already proved behavior.
 
 Exact contracts and named cases are appended to the existing S/F/K/O designs.
 Broader ideas wait for evidence from real use rather than expanding launch scope.
+
+## Owner content and control additions — October 8
+
+Website control is broader than today's selected-text editor. V-C1…V-C5 extends
+the existing Website screen to all public copy/photos/links and supported ad
+slots, with clear location, draft/live comparison, phone preview and reviewed
+publishing. Contact/catalog/prices use their existing authoritative editors
+within that workspace. Future redesigns must preserve customized content and
+upgrade the registry/editor alongside any new content type. Full contract and
+proof are in the existing V design; no second CMS or layout builder.
+
+O-6/O-7 adds a task-oriented control center, safe setup/readiness links, pinned
+shortcuts and saved filtered queues. Existing O/BP/COM units gain contextual
+help, effective-date/impact previews and configurable templates without a second
+policy engine. All runtime additions remain to implement; this PR designs them.
+Keep mandatory Today work visible and preserve signed facts/activation gates.

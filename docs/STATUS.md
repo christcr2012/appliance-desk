@@ -1,6 +1,6 @@
 # STATUS — current work, blockers and next action
 
-Updated October 8, 2026. Audited code baseline: `b2a06c2` (#310). Documentation refresh branch: `ai/codex/documentation-reset-20261008`; published as PR #311; exact-head CI/review gates pending. No runtime changes in this refresh.
+Updated October 8, 2026. Audited code baseline: `b2a06c2` (#310). Documentation refresh branch: `ai/codex/documentation-reset-20261008`; published as PR #311; review fixes and owner content/workspace architecture update in progress. No runtime changes in this refresh.
 
 ## Built
 
@@ -28,3 +28,11 @@ A/B/C/R/B2/D/E/E2, F-part-1 and G are merged. T through T-6b2 (#310) is merged, 
 - Audit is a static code/document/contract reconciliation, not a complete runtime security certification or a new full-suite run. The attached October 1 findings were sampled against current source/tests; final all-finding review discharge remains F2-D.
 
 History and full prior acceptance: [retired working snapshot](archive/reset-2026-10-08/README.md). Do not use historical unchecked boxes as today's work queue.
+
+## Recovered interruption — October 8
+
+Local staged generation/publication scripts and committed changes were recovered.
+Published predecessor head: `60f3a9c` in PR #311. Two Codex findings are being fixed:
+restore active cross-batch acceptance rules and pin independent required unit IDs.
+User-added content-control/owner-workspace design is folded into V/O, not a new
+handoff file. Runtime remains unimplemented; next runtime item remains T-6D1.

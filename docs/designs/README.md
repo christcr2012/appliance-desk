@@ -21,11 +21,11 @@ the points where the implementer must stop and ask instead of guessing.
 | F — Integrated verification, recovery, owner handoff & launch ledger | `BATCH-F.md` + **`POST-BATCH-D-RECONCILIATION-2026-10-05.md`** | Approved. **Split 2026-10-06 (IN-41):** F-part-1 (WU-F1, F2, F4, F5) built; F-part-2 (WU-F3, F6–F9) after G, T and V — see the design's Amendments. Starts after E2; recovery must respect D privacy deletion and must never resurrect intentionally deleted private media. |
 | G — Audit fixes and owner-account security | `BATCH-G.md` | **Approved 2026-10-06** (Chris). Built and merged. |
 | T — Colorado sales and use tax | `BATCH-T.md` | **Approved 2026-10-06** (Chris). Before F (launch blocker). Policy answers come from Chris's CPA (IN-33 … IN-38). |
-| V — "Evergreen Signature" visual redesign | `BATCH-V.md` | **Approved 2026-10-06** (Chris). After T, before F-part-2. Concept in `docs/design-mockups/signature-2026-10-06/`. |
+| V — "Evergreen Signature" visual redesign | `BATCH-V.md` | **Approved 2026-10-06** (Chris). After S/COM-L, before F-part-2; includes V-C1…C5 full content controls and redesign compatibility. Concept in `docs/design-mockups/signature-2026-10-06/`. |
 | S — System issues inbox and the AI check-up | `BATCH-S.md` | **Approved 2026-10-07** (Chris). Four bounded capabilities after T, before COM-L/V. |
 | M — Shop sales (merchandise) and retired appliances (sell, strip for parts, scrap, throw away) | `BATCH-M.md` | **Approved 2026-10-07** (Chris). After K (Chris will not sell before launch, IN-47). Retired appliances: "what's next" plan, revised 2026-10-07. |
 | K — Books, expenses, P&L, accounting exports | `BATCH-K.md` | **Approved 2026-10-06** (Chris). After T; may run after launch. |
-| O — Owner controls | `BATCH-O.md` | **Approved 2026-10-06** (Chris). After K. |
+| O — Owner controls | `BATCH-O.md` | **Approved 2026-10-06** (Chris). After K; includes O-6/O-7 control center and saved workspace. |
 
 **2026-10-05 post-D reconciliation.** D, E and F had been designed/reworked against code that predated the actual
 Batch D implementation. Before any E code is written, read

@@ -21,6 +21,15 @@ predecessors. Later work has compact coverage, not re-verified execution cards.
 The S/F/K/O acceptance refinements are in the existing designs; keep signed
 facts/provider recovery/activation gates and verify them at implementation.
 
+### Owner request after interrupted publication — October 8
+
+V gains V-C1…V-C5 before visual composition: typed content/old-code adapter,
+website assets, complete bindings/promotions, clear editor/publication/restore,
+and compatibility proof. Existing D revisions/pointer remain; separate prices/
+profile/catalog sources remain authoritative. O gains O-6/O-7 control center and
+saved workspace; new O-7 preferences schema is future, not deployed. Required
+acceptance IDs are pinned independently of card grouping. Runtime next remains T.
+
 ## Rules a later batch must follow
 
 | Change (Batch B) | What a later design must do about it |
