@@ -199,7 +199,7 @@ function amountsByKey(packet: FilingPacket): Map<string, number> {
   }
   return values;
 }
-function diffPackets(previous: FilingPacket, corrected: FilingPacket): FilingAmendmentPacket {
+export function buildFilingAmendmentPacket(previous: FilingPacket, corrected: FilingPacket): FilingAmendmentPacket {
   const before = amountsByKey(previous);
   const after = amountsByKey(corrected);
   const differences = [...new Set([...before.keys(), ...after.keys()])].sort()
@@ -281,7 +281,7 @@ export async function detectTaxFilingAmendments(now = new Date()): Promise<numbe
       if (refreshed.status !== "READY") {
         throw new Error("Amendment review blocked for period " + period.id + ": " + refreshed.problems.join(" "));
       }
-      const amendment = diffPackets(previous, refreshed.packet);
+      const amendment = buildFilingAmendmentPacket(previous, refreshed.packet);
       const open = await tx.taxFilingAmendment.findFirst({
         where: { periodId: period.id, status: "OPEN" },
         orderBy: [{ sequence: "desc" }, { id: "desc" }],
@@ -365,7 +365,7 @@ export async function markAmendmentFiled(
     const current = await loadFilingPacketInTx(tx, amendment.periodId,
       latest(data.filedOn, data.paidOn), { allowFiled: true });
     if (current.status !== "READY") throw new Error("The corrected filing packet is blocked.");
-    const currentDifference = diffPackets(previous.previouslyReported, current.packet);
+    const currentDifference = buildFilingAmendmentPacket(previous.previouslyReported, current.packet);
     if (JSON.stringify(currentDifference.differences) !== JSON.stringify(previous.differences)) {
       throw new Error("Filing evidence changed since this amendment was prepared. Re-run amendment review.");
     }
