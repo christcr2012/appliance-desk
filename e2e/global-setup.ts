@@ -73,7 +73,14 @@ export default async function globalSetup(config: FullConfig): Promise<void> {
   const staffPassword = process.env.TEST_STAFF_PASSWORD;
   if (staffEmail && staffPassword) {
     const page = await browser.newPage({ baseURL });
-    await loginAs(page, staffEmail, staffPassword);
+    try {
+      await loginAs(page, staffEmail, staffPassword);
+    } catch (error) {
+      // Browser fixture diagnosis only: never log the credential itself.
+      console.error("STAFF E2E LOGIN", page.url(),
+        await page.locator('[role="alert"]').allTextContents());
+      throw error;
+    }
     await page.context().storageState({ path: "e2e/.auth/staff.json" });
     await page.close();
   }
