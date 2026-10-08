@@ -304,15 +304,18 @@ export async function acknowledgeOfficialSourceChange(
         id: string;
         lastChangedAt: Date | null;
         reviewedAt: Date | null;
+        active: boolean;
       }>
     >`
-      SELECT "id", "lastChangedAt", "reviewedAt"
+      SELECT "id", "lastChangedAt", "reviewedAt", "active"
       FROM "OfficialSourceWatch"
       WHERE "id" = ${watchId}
       FOR UPDATE
     `;
     const current = rows[0];
-    if (!current || !current.lastChangedAt || current.reviewedAt) return false;
+    if (!current || !current.active || !current.lastChangedAt || current.reviewedAt) {
+      return false;
+    }
 
     await tx.officialSourceWatch.update({
       where: { id: watchId },
