@@ -91,6 +91,8 @@ export async function recordApplianceAcquisitionTaxInTx(
 
   const equivalentChoice =
     (input.choice === "LATER" && appliance.acquisitionTaxStatus === "UNKNOWN") ||
+    (appliance.acquisitionTaxStatus === "UNKNOWN" && appliance.acquisitionTaxChoice === input.choice &&
+      appliance.acquisitionTaxPaidCents === input.vendorTaxCents) ||
     (input.choice === "LESSOR_PERMISSION" && appliance.acquisitionTaxStatus === "BOUGHT_TAX_FREE_FOR_LEASE") ||
     (input.choice === "SELLER_CHARGED" &&
       ["SALES_TAX_PAID", "USE_TAX_PAID"].includes(appliance.acquisitionTaxStatus) &&
@@ -102,7 +104,7 @@ export async function recordApplianceAcquisitionTaxInTx(
       appliance.acquisitionReceiptPhotoId === photoId) {
     return {
       status: appliance.acquisitionTaxStatus,
-      useTaxDueCents: relatedTax.reduce((sum, row) => sum + (row.status === "DUE" ? row.useTaxDueCents : 0), 0),
+      useTaxDueCents: relatedTax.reduce((sum, row) => sum + ((row.status === "DUE" || row.status === "FILED") ? row.useTaxDueCents : 0), 0),
     };
   }
 
@@ -150,7 +152,7 @@ export async function recordApplianceAcquisitionTaxInTx(
           where: { sourceType: "APPLIANCE", sourceId: appliance.id },
           select: { useTaxDueCents: true, status: true },
         });
-        taxDue = rows.filter(row => row.status === "DUE").reduce((sum, row) => sum + row.useTaxDueCents, 0);
+        taxDue = rows.filter(row => row.status === "DUE" || row.status === "FILED").reduce((sum, row) => sum + row.useTaxDueCents, 0);
         status = input.choice === "SELLER_CHARGED" && input.vendorTaxCents > 0
           ? "SALES_TAX_PAID" : taxDue > 0 ? "USE_TAX_DUE" : "USE_TAX_PAID";
       } catch (error) {
@@ -169,6 +171,7 @@ export async function recordApplianceAcquisitionTaxInTx(
     where: { id: appliance.id },
     data: {
       acquisitionTaxStatus: status,
+      acquisitionTaxChoice: input.choice,
       acquisitionTaxPaidCents: input.choice === "LATER" ? null : input.vendorTaxCents,
       acquisitionSellerNote: note,
       acquisitionReceiptPhotoId: photoId,

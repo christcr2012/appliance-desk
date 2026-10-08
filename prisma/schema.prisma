@@ -430,7 +430,9 @@ model Appliance {
   acquisitionTaxStatus AcquisitionTaxStatus @default(UNKNOWN)
   acquisitionTaxPaidCents Int?
   acquisitionSellerNote String?
-  acquisitionReceiptPhotoId String?
+  acquisitionReceiptPhotoId String? @unique
+  acquisitionReceiptPhoto Photo? @relation("AcquisitionReceipt", fields: [acquisitionReceiptPhotoId], references: [id], onDelete: SetNull)
+  acquisitionTaxChoice String?
   acquisitionTaxRecordedAt DateTime?
   acquisitionTaxRecordedByUserId String?
   status           ApplianceStatus @default(AVAILABLE)
@@ -2370,6 +2372,7 @@ model SiteContent {
 
 model Photo {
   id      String   @id @default(cuid())
+  acquisitionReceiptFor Appliance? @relation("AcquisitionReceipt")
   url     String
   altText String?
 
