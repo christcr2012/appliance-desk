@@ -561,7 +561,7 @@ export async function applyTaxRateChanges(
         const result = await syncSubscriptionTaxRatesForAgreement(
           agreement.id,
           version.id,
-          version.effectiveFrom,
+          tomorrow,
         );
         if (result === "updated") updated += 1;
         else if (result === "already_current") alreadyCurrent += 1;
