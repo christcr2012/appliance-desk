@@ -5,8 +5,8 @@ launch and beyond, written so an implementing model (for example Sol 5.6) can pi
 It does not replace the batch acceptance lists (`docs/PLAN.md`) or the designs (`docs/designs/BATCH-<X>.md`): it points
 to them and says **what comes next, what must be true before it starts, and what only Chris can do.**
 
-Last reconciled with the code: 2026-10-07 after #300. F-part-1 and G are complete; Batch T is in progress with T-5b1 merged and T-5b2 next. Batch S is approved after T; COM-L is approved after T/S and before V/F-part-2.
-approved and runs after T, before V. Keep this file current: when a step finishes, tick it, add the PR numbers, and move
+Last reconciled with the code: 2026-10-08 after #302. F-part-1 and G are complete; T-5b1 and T-5b2a are merged; T-5b2b #303 is in final exact-head gates. Batch S is approved after T; COM-L is approved after T/S and before V/F-part-2.
+Keep this file current: when a step finishes, tick it, add the PR numbers, and move
 the "▶ Next" marker.
 
 ---
@@ -37,7 +37,7 @@ Legend: ✅ done · ▶ next · ⏳ waiting on Chris · ○ not started. "Design
 | 1 | ✅ Batches A, B, B2, C, R, D, E, E2 | approved, built | — | — | merged |
 | 2 | ✅ **F-part-1** — restore/media/capacity/runbooks | ✅ approved (`BATCH-F.md`) | — | — | #268, #269, #273 |
 | 3 | ✅ **G** — audit fixes, two-step login and session control | ✅ approved (`BATCH-G.md`) | — | — | #275, #276, #277 |
-| 4 | ▶ **T** — Colorado sales and use tax | ✅ approved (`BATCH-T.md`) | G merged | nothing to keep building; CPA answers still gate live billing | #279–#300 merged through T-5b1; T-5b2 next |
+| 4 | ▶ **T** — Colorado sales and use tax | ✅ approved (`BATCH-T.md`) | G merged | nothing to keep building; CPA answers still gate live billing | #279–#302 merged through T-5b2a; #303 final gate for T-5b2b |
 | 5 | ○ **S** — system issues inbox, health page and AI check-up | ✅ approved (`BATCH-S.md`) | T merged and bounded PR cards exist | nothing | 2 estimated |
 | 5a | ○ **COM-L** — launch communications and telecom cost | **APPROVED 2026-10-08** (`BATCH-COM.md` + L1a/L1b/L2 cards) | T/S merged; applicable cards exist | no live setup to engineer; IN-03/09/51/52/53 before activation | 16 units; split large cards to budget |
 | 6 | ○ **V** — "Evergreen Signature" public-site redesign + desk/portal polish | ✅ approved (`BATCH-V.md`, concept artifact) | S and COM-L merged | accept the before/after screenshots before each public-site PR merges | 3–4 |
@@ -168,7 +168,8 @@ tests most likely to break, so the agent updates them in the same PR instead of 
 | T-4 | WU-T5 local invoices and the Stripe mirror use the engine; old single-rate assertions updated | money | pickup/late-return/early-return/waiver tests, webhook mirror tests, statements |
 | T-5 | WU-T6 exemptions + rate-change and re-check automations | money/automation | automation run tests, cron route auth tests |
 | T-5b1 | Amendment C metadata/source registry — `docs/pr-cards/T-5B1-OFFICIAL-RATE-METADATA.md` | tax metadata persistence | migration/schema-health, observation confirmation/pruning tests |
-| T-5b2 | Amendment C official-page watch + SSRF-safe fetch — `docs/pr-cards/T-5B2-OFFICIAL-SOURCE-WATCH.md` | external-source monitoring / SSRF safety | safe-fetch, automation, cron auth, messaging tests |
+| T-5b2a | Amendment C safe official-source transport — `docs/pr-cards/T-5B2A-SAFE-OFFICIAL-SOURCE-FETCH.md` | SSRF / external network boundary | DNS/public-address/pinned-HTTPS adversarial tests, exact-head build |
+| T-5b2b | Amendment C official-page watch lifecycle — `docs/pr-cards/T-5B2B-OFFICIAL-SOURCE-WATCH-LIFECYCLE.md` (parent acceptance: `T-5B2-OFFICIAL-SOURCE-WATCH.md`) | external-source monitoring / durable notifications | watch lifecycle, cron auth/isolation, messaging/Today tests |
 | T-5b3 | Amendment C guarded official-rate observation/auto-apply + D-T9 extension — `docs/pr-cards/T-5B3-GUARDED-OFFICIAL-RATE-AUTO-APPLY.md` | tax-rate money correctness / provider synchronization | real-Postgres guardrail tests, Today actions, rate-change durable-provider tests |
 | T-6a | WU-T7 filing accounts + Amendment A WU-TA1: filing calendar, due dates and holidays, Today tasks (11.11 exception rules)/email prompts, owner alerts, calendar file (`BATCH-T.md` section 11) | schema + automation | migration check, automation run tests, cron route auth tests, messaging delivery tests |
 | T-6b | WU-T7 worksheet → Amendment A WU-TA2 SUTS entry packet, use tax (+ appliance form field, purchase-order hook), mark filed, amended returns (11.12) | money | purchasing/receipt tests, appliance form tests |
