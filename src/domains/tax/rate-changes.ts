@@ -168,7 +168,7 @@ async function markSuperseded(operationId: string): Promise<void> {
   await prisma.providerOperation.updateMany({
     where: {
       id: operationId,
-      status: { in: ["PENDING", "FAILED", "UNKNOWN"] },
+      status: { in: ["PENDING", "FAILED", "UNKNOWN", "DRIFT"] },
     },
     data: {
       status: "SUPERSEDED",
@@ -183,6 +183,24 @@ export type SubscriptionTaxSyncResult =
   | "already_current"
   | "skipped"
   | "pending";
+
+export async function supersedeSubscriptionTaxUpdatesForRateVersion(
+  rateVersionId: string,
+): Promise<number> {
+  const result = await prisma.providerOperation.updateMany({
+    where: {
+      kind: "SUBSCRIPTION_TAX_UPDATE",
+      idempotencyKey: { endsWith: `-${rateVersionId}` },
+      status: { in: ["PENDING", "FAILED", "UNKNOWN", "DRIFT"] },
+    },
+    data: {
+      status: "SUPERSEDED",
+      completedAt: new Date(),
+      lastError: null,
+    },
+  });
+  return result.count;
+}
 
 /**
  * Initial day-before rate-change attempt. The durable operation is claimed
@@ -342,9 +360,16 @@ export async function retrySubscriptionTaxUpdate(
   }
   const version = await prisma.taxRateVersion.findUnique({
     where: { id: rateVersionId },
-    select: { effectiveFrom: true },
+    select: {
+      effectiveFrom: true,
+      autoApplied: true,
+      autoAppliedUndoneAt: true,
+    },
   });
-  if (!version) {
+  if (
+    !version ||
+    (version.autoApplied && version.autoAppliedUndoneAt !== null)
+  ) {
     await markSuperseded(operation.id);
     return true;
   }
@@ -427,6 +452,7 @@ export async function retrySubscriptionTaxUpdate(
 
 export async function applyTaxRateChanges(
   now = new Date(),
+  options: { includeRateVersionIds?: readonly string[] } = {},
 ): Promise<{
   versions: number;
   agreements: number;
@@ -436,13 +462,15 @@ export async function applyTaxRateChanges(
   pending: number;
 }> {
   const tomorrow = addBusinessDays(now, 1);
-  const bounds = businessDayBounds(tomorrow);
-  const versions = await prisma.taxRateVersion.findMany({
+  const tomorrowBounds = businessDayBounds(tomorrow);
+
+  const tomorrowVersions = await prisma.taxRateVersion.findMany({
     where: {
       effectiveFrom: {
-        gte: bounds.start,
-        lt: bounds.end,
+        gte: tomorrowBounds.start,
+        lt: tomorrowBounds.end,
       },
+      autoAppliedUndoneAt: null,
     },
     select: {
       id: true,
@@ -451,6 +479,59 @@ export async function applyTaxRateChanges(
     },
     orderBy: [{ effectiveFrom: "asc" }, { id: "asc" }],
   });
+
+  // Once a version has started, only revisit it when durable provider evidence
+  // says its subscription update is still unresolved. This heals outages
+  // without scanning/reprocessing every historical current rate each day.
+  const recoverableOperations = await prisma.providerOperation.findMany({
+    where: {
+      kind: "SUBSCRIPTION_TAX_UPDATE",
+      status: { in: ["PENDING", "FAILED", "UNKNOWN", "DRIFT"] },
+    },
+    select: {
+      subjectId: true,
+      idempotencyKey: true,
+    },
+    orderBy: { requestedAt: "asc" },
+  });
+  const recoverableRateVersionIds = new Set<string>();
+  for (const operation of recoverableOperations) {
+    const id = parseRateVersionId(operation.subjectId, operation.idempotencyKey);
+    if (id) recoverableRateVersionIds.add(id);
+  }
+
+  const requestedIds = new Set<string>([
+    ...recoverableRateVersionIds,
+    ...(options.includeRateVersionIds ?? []),
+  ]);
+  const catchUpVersions = requestedIds.size
+    ? await prisma.taxRateVersion.findMany({
+        where: {
+          id: { in: [...requestedIds] },
+          effectiveFrom: { lt: tomorrowBounds.end },
+          autoAppliedUndoneAt: null,
+        },
+        select: {
+          id: true,
+          jurisdictionId: true,
+          effectiveFrom: true,
+        },
+        orderBy: [{ effectiveFrom: "asc" }, { id: "asc" }],
+      })
+    : [];
+
+  const versionsById = new Map<
+    string,
+    { id: string; jurisdictionId: string; effectiveFrom: Date }
+  >();
+  for (const version of [...tomorrowVersions, ...catchUpVersions]) {
+    versionsById.set(version.id, version);
+  }
+  const versions = [...versionsById.values()].sort(
+    (left, right) =>
+      left.effectiveFrom.getTime() - right.effectiveFrom.getTime() ||
+      left.id.localeCompare(right.id),
+  );
 
   let agreements = 0;
   let updated = 0;
