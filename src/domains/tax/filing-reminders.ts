@@ -1,4 +1,5 @@
 import { sendOwnerAlert } from "@/domains/messaging/owner-alerts";
+import { detectTaxFilingAmendments } from "./filing";
 import { businessDateKey, businessDaysBetween } from "@/lib/business-date";
 import { prisma } from "@/lib/prisma";
 import { dueOnFor, legalDueOn, periodsFor, reminderStages } from "./filing-calendar";
@@ -11,11 +12,11 @@ export type FilingReminderRun = {
 };
 export type FilingAmendmentDetector = (now: Date) => Promise<number>;
 
-// This integration point is installed with the real detector by T-6b2. Before
-// then, return zero and never pretend that amendment comparison has run.
-let amendmentDetector: FilingAmendmentDetector = async () => 0;
+// Tests may inject a deterministic detector, while production always runs
+// the real persisted-evidence comparison through the existing daily cron.
+let amendmentDetector: FilingAmendmentDetector = detectTaxFilingAmendments;
 export function __setFilingAmendmentDetectorForTests(detector: FilingAmendmentDetector | null): void {
-  amendmentDetector = detector ?? (async () => 0);
+  amendmentDetector = detector ?? detectTaxFilingAmendments;
 }
 
 function daysAfter(start: Date, now: Date): number {
