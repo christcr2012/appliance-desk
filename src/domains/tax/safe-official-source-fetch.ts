@@ -204,6 +204,19 @@ function boundedOption(
   return value;
 }
 
+export function createPinnedLookup(
+  address: string,
+  family: number,
+): (
+  hostname: string,
+  options: unknown,
+  callback: (error: NodeJS.ErrnoException | null, address: string, family: number) => void,
+) => void {
+  return (_hostname, _options, callback) => {
+    queueMicrotask(() => callback(null, address, family));
+  };
+}
+
 function requestPinnedOfficialSource(
   parsed: URL,
   addresses: ResolvedAddress[],
@@ -242,9 +255,7 @@ function requestPinnedOfficialSource(
       {
         method: "GET",
         family: selected.family,
-        lookup: (_hostname, _options, callback) => {
-          callback(null, selected.address, selected.family);
-        },
+        lookup: createPinnedLookup(selected.address, selected.family),
         headers: {
           accept: "text/html,text/plain;q=0.9",
           "user-agent": "ApplianceDesk-OfficialTaxSourceWatch/1.0",
