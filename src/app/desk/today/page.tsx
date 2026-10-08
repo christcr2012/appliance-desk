@@ -230,7 +230,9 @@ export default async function TodayPage() {
         >
           <AttentionList
             groups={attentionGroups}
-            acknowledgeTaxSourceAction={acknowledgeTaxSourceAction}
+            acknowledgeTaxSourceAction={
+              role === "OWNER" ? acknowledgeTaxSourceAction : undefined
+            }
           />
         </Card>
       </div>
