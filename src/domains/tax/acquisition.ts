@@ -153,8 +153,8 @@ export async function recordApplianceAcquisitionTaxInTx(
           select: { useTaxDueCents: true, status: true },
         });
         taxDue = rows.filter(row => row.status === "DUE" || row.status === "FILED").reduce((sum, row) => sum + row.useTaxDueCents, 0);
-        status = input.choice === "SELLER_CHARGED" && input.vendorTaxCents > 0
-          ? "SALES_TAX_PAID" : taxDue > 0 ? "USE_TAX_DUE" : "USE_TAX_PAID";
+        status = taxDue > 0 ? "USE_TAX_DUE" : input.choice === "SELLER_CHARGED" && input.vendorTaxCents > 0
+          ? "SALES_TAX_PAID" : "USE_TAX_PAID";
       } catch (error) {
         // The purchase helper validates ALL jurisdiction/rate context before
         // writing rows. Do not reclassify operational/DB errors as "unknown".
