@@ -1,6 +1,8 @@
 import type Stripe from "stripe";
 import type { InvoiceLineItemKind, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { RDF_LINE_DESCRIPTION } from "@/domains/tax/rdf-charges";
+import { completeProviderOperation } from "./provider-ops";
 import { rewardReferralOnFirstPaidInvoice } from "@/domains/referrals";
 import {
   attachProviderIdsToReceiptPayments,
@@ -38,12 +40,64 @@ async function markProcessed(db: Prisma.TransactionClient, event: Stripe.Event):
   await db.webhookEvent.create({ data: { id: event.id, type: event.type } });
 }
 
-function inferLineItemKind(description: string | null): InvoiceLineItemKind {
+export function inferLineItemKind(description: string | null, rdfRecordId?: string): InvoiceLineItemKind {
+  if (rdfRecordId) return "RETAIL_DELIVERY_FEE";
   if (description === "Security deposit") return "DEPOSIT";
   if (description === "Damage waiver") return "DAMAGE_WAIVER";
   if (description?.startsWith("Late return – ")) return "LATE_RETURN";
   if (description?.startsWith("Credit – ")) return "CREDIT";
   return "RENTAL";
+}
+
+/**
+ * The fee is independently reconciled with the original sale. A signed Stripe
+ * callback may precede invoiceItems.create's HTTP response; the invoice-item
+ * parent is evidence of the exact provider object without a second send.
+ */
+export async function attachRdfInvoiceLineInTx(
+  db: Prisma.TransactionClient,
+  stripeLine: Stripe.InvoiceLineItem,
+  localLineId: string,
+  agreementId: string,
+  invoiceId: string,
+): Promise<void> {
+  const recordId = stripeLine.metadata?.rdf_record_id;
+  if (!recordId) return;
+  if (stripeLine.description !== RDF_LINE_DESCRIPTION)
+    throw new Error("Stripe RDF line description does not match its provider intent.");
+  const op = await db.providerOperation.findUnique({
+    where: { idempotencyKey: `rdf-${recordId}` },
+    select: { id: true, kind: true, subjectId: true, providerObjectId: true },
+  });
+  const record = await db.retailDeliveryFeeRecord.findUnique({
+    where: { id: recordId },
+    select: { agreementId: true, status: true, amountCents: true,
+      collectedFromCustomer: true, invoiceLineId: true },
+  });
+  if (!op || op.kind !== "RDF_INVOICE_ITEM" || op.subjectId !== recordId ||
+      !record || record.agreementId !== agreementId ||
+      record.status !== "READY" || record.collectedFromCustomer !== true ||
+      record.amountCents !== stripeLine.amount ||
+      (record.invoiceLineId && record.invoiceLineId !== localLineId))
+    throw new Error("Stripe delivery-fee line does not match its original sale or provider operation.");
+  const providerId = stripeLine.parent?.invoice_item_details?.invoice_item;
+  if (providerId && op.providerObjectId && op.providerObjectId !== providerId)
+    throw new Error("Stripe delivery-fee provider id conflicts with the original request.");
+  await db.retailDeliveryFeeRecord.update({
+    where: { id: recordId }, data: { invoiceLineId: localLineId },
+  });
+  if (providerId) {
+    await completeProviderOperation(db, op.id, {
+      status: "SUCCEEDED", providerObjectId: providerId,
+    });
+  }
+  await db.auditLog.create({
+    data: {
+      action: "tax.rdf.provider_invoice_mirrored",
+      entityType: "RetailDeliveryFeeRecord", entityId: recordId,
+      newValue: { invoiceId, localLineId, providerId: providerId ?? null },
+    },
+  });
 }
 
 function matchRentalLineId(
@@ -111,7 +165,7 @@ async function holdPaymentForClosedInvoice(
   });
 }
 
-async function mirrorStripeInvoiceLines(
+export async function mirrorStripeInvoiceLines(
   db: Prisma.TransactionClient,
   stripeInvoice: Stripe.Invoice,
   agreementId: string,
@@ -120,9 +174,29 @@ async function mirrorStripeInvoiceLines(
 ): Promise<{ subtotalCents: number; depositLineAmountCents: number | null }> {
   const existingLines = await db.invoiceLineItem.findMany({
     where: { invoiceId },
-    select: { kind: true, amountCents: true },
+    select: { id: true, kind: true, amountCents: true },
   });
   if (existingLines.length > 0) {
+    // Amounts and labels are not unique: two separately delivered taxable
+    // sales can both have the same statutory fee on one invoice. Their
+    // immutable record IDs, not a .find(amount), own the local mirror lines.
+    const seen = new Set<string>();
+    for (const stripeLine of stripeInvoice.lines.data) {
+      const recordId = stripeLine.metadata?.rdf_record_id;
+      if (!recordId) continue;
+      if (seen.has(recordId)) throw new Error("Duplicate Stripe RDF sale on one invoice.");
+      seen.add(recordId);
+      const record = await db.retailDeliveryFeeRecord.findUnique({
+        where: { id: recordId }, select: { invoiceLineId: true },
+      });
+      const matching = existingLines.find(line =>
+        line.id === record?.invoiceLineId &&
+        line.kind === "RETAIL_DELIVERY_FEE" &&
+        line.amountCents === stripeLine.amount);
+      if (!matching)
+        throw new Error("Existing Stripe invoice lost its original delivery-fee mirror.");
+      await attachRdfInvoiceLineInTx(db, stripeLine, matching.id, agreementId, invoiceId);
+    }
     return {
       subtotalCents: existingLines
         .filter((item) => item.kind !== "TAX")
@@ -138,7 +212,7 @@ async function mirrorStripeInvoiceLines(
   });
   const providerLines = stripeInvoice.lines.data.map((line) => ({
     stripeLine: line,
-    kind: inferLineItemKind(line.description),
+    kind: inferLineItemKind(line.description, line.metadata?.rdf_record_id),
     description: line.description ?? "Charge",
     amountCents: line.amount,
     rentalLineId: matchRentalLineId(line.description, agreementLines),
@@ -184,6 +258,7 @@ async function mirrorStripeInvoiceLines(
       },
       select: { id: true },
     });
+    await attachRdfInvoiceLineInTx(db, line.stripeLine, created.id, agreementId, invoiceId);
     mirroredChargeLines.push({
       stripeLine: line.stripeLine,
       invoiceLineItemId: created.id,

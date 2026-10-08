@@ -2,6 +2,7 @@ import type { ProviderOperationKind, ProviderOperationStatus } from "@prisma/cli
 import { prisma } from "@/lib/prisma";
 import { HELD_CONFLICT_STATUS, HELD_PAYMENT_STATUS, SUCCESSFUL_PAYMENT_STATUSES } from "./payment-status";
 import { getStripeClient } from "@/lib/stripe";
+import { rdfChargingEnabled } from "@/domains/tax/rdf-charges";
 import {
   claimProviderOperation,
   completeProviderOperation,
@@ -42,6 +43,7 @@ export type DriftRow = {
 type RecoverableOperation = {
   id: string;
   kind:
+    | "RDF_INVOICE_ITEM"
     | "CUSTOMER_CREATE"
     | "SUBSCRIPTION_CREATE"
     | "SUBSCRIPTION_CANCEL"
@@ -61,6 +63,7 @@ function isRecoverableOperationKind(
   kind: ProviderOperationKind,
 ): kind is RecoverableOperation["kind"] {
   return (
+    kind === "RDF_INVOICE_ITEM" ||
     kind === "CUSTOMER_CREATE" ||
     kind === "SUBSCRIPTION_CREATE" ||
     kind === "SUBSCRIPTION_CANCEL" ||
@@ -541,8 +544,55 @@ async function reconcileRefund(operation: RecoverableOperation): Promise<boolean
   return retryDefiniteRefundFailure(operation);
 }
 
+/**
+ * A timed-out one-time fee write is not a reason to send another request.
+ * Look for the durable RDF metadata on existing Stripe invoice items. A
+ * bounded absence is inconclusive: leave UNKNOWN for owner inspection.
+ */
+async function reconcileRdfInvoiceItem(
+  operation: RecoverableOperation,
+): Promise<boolean> {
+  if (!rdfChargingEnabled()) return false;
+  const evidence = await prisma.auditLog.findFirst({
+    where: {
+      action: "tax.rdf.provider_intent", entityType: "ProviderOperation",
+      entityId: operation.id,
+    },
+    select: { newValue: true },
+  });
+  const payload = evidence?.newValue as {
+    recordId?: string; customerId?: string; cents?: number; hash?: string;
+  } | null;
+  if (!payload?.recordId || !payload.customerId || !payload.hash ||
+      payload.recordId !== operation.subjectId || !payload.cents)
+    throw new Error("RDF operation has no immutable provider intent for inspection.");
+
+  let examined = 0;
+  for await (const item of getStripeClient().invoiceItems.list({
+    customer: payload.customerId, limit: 100,
+  })) {
+    if (++examined > 300) break; // bounded; absence cannot justify a resend
+    if (item.metadata?.rdf_record_id !== payload.recordId) continue;
+    if (item.metadata.rdf_payload_hash !== payload.hash ||
+        item.amount !== payload.cents) {
+      await prisma.$transaction(tx => completeProviderOperation(tx, operation.id, {
+        status: "DRIFT", providerObjectId: item.id,
+        note: "Provider RDF item exists with unexpected original money evidence.",
+      }));
+      return true;
+    }
+    await prisma.$transaction(tx => completeProviderOperation(tx, operation.id, {
+      status: "SUCCEEDED", providerObjectId: item.id,
+    }));
+    return true;
+  }
+  return false;
+}
+
 async function reconcileOne(operation: RecoverableOperation): Promise<boolean> {
   switch (operation.kind) {
+    case "RDF_INVOICE_ITEM":
+      return reconcileRdfInvoiceItem(operation);
     case "CUSTOMER_CREATE":
       return reconcileCustomerCreate(operation);
     case "SUBSCRIPTION_CREATE":

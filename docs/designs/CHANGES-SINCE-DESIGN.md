@@ -9,6 +9,31 @@ running answer to "does the design still match the code?"; the design drift chec
 
 Last updated: 2026-10-05. **The D, E and F designs were rewritten on 2026-10-05 against `main` 47bd833 with everything below already folded in**, and B2/E2 were written fresh against the same code. From now on, add a dated entry here when a batch merges (B2's section 8 lists what to add for it).
 
+### 2026-10-08 T-6C3 code review fixes (#320)
+
+Stripe fee webhook replay now joins each RDF line by `rdf_record_id`
+→ `RetailDeliveryFeeRecord.invoiceLineId` rather than matching identical
+fee amounts; description without durable metadata remains a normal rental
+line. An unissued/untouched prepaid `OPEN` invoice may receive the RDF
+fee, provided no customer-facing invoice artifact is frozen and no
+payment exists. Added cases to the isolated PostgreSQL suite. These
+adjustments are in the same PR to prevent a known money regression.
+
+### 2026-10-08 T-6C3 engineering handoff (predecessor #319, main `1432585`)
+
+New `rdf-charges.ts` prepares one collected fee from a `READY` original-sale
+record; no new schema or tax rule. Local unsettled unissued drafts may receive
+the fee; every immutable/paid/finalized/no-future-bill case gets a separate
+manual-only invoice. Stripe subscriptions use durable `RDF_INVOICE_ITEM`
+intents (`rdf-<recordId>`), SHA-256 payload evidence in `AuditLog`, explicit
+zero fee tax rates, and metadata-linked invoice-line mirrors. Ambiguous writes
+stay UNKNOWN and are inspected, not resent. Completion's agreement-before-RDF
+lock order is preserved. The separately controlled
+`RDF_CUSTOMER_CHARGING_ENABLED` switch is **off by default** until the owner
+authorizes collection/go-live; this does not override CPA/Stripe/production
+gates. T-6C4 uses `RetailDeliveryFeeRecord.invoiceLineId` for customer-collected
+evidence, `deliveredOn` for filing period, and `saleOn` for rate selection.
+
 ## Current checkpoint — 2026-10-08, main b2a06c2 (#310)
 
 A/B/C/R/B2/D/E/E2, F-part-1 and G are built; T is built through filing
