@@ -1,14 +1,14 @@
 # STATUS — current work, blockers and next action
 
-Updated October 8, 2026. Acquisition work T-6D1…3 (#313–#315) is merged; #315 includes the reviewed ADMIN read-only worksheet correction. T-6C1 (#317) merged as main 7acc04a. T-6C2 is open in PR #319; this branch also repairs inherited integration-fixture cleanup, preserving new RDF foreign keys, and freezes the first delivery date. Exact-head CI/review is required before merge. No customer charging has been enabled. No live payments, customer messages or fee charging are activated.
+Updated October 8, 2026. Acquisition work T-6D1…3 (#313–#315) is merged; #315 includes the reviewed ADMIN read-only worksheet correction. T-6C1 (#317) merged as main 7acc04a. T-6C2 (#319) is merged on main `1432585`. T-6C3 is implementing customer fee line generation and Stripe recovery behind a separate default-off `RDF_CUSTOMER_CHARGING_ENABLED` switch. No customer charging, live payments or fee collection have been activated. No live payments, customer messages or fee charging are activated.
 
 ## Next
 
-After #319 merges, start **T-6C3**, then T-6C4 and T-7A…D. Refresh each card against its actual merged prerequisite. [MASTER-ROADMAP](MASTER-ROADMAP.md) remains the single handoff; [PLAN](PLAN.md) owns acceptance. No extra handoff document is needed.
+After the exact-head T-6C3 CI/review/merge gates, start **T-6C4**, then T-7A…D. Refresh each card against its actual merged prerequisite. [MASTER-ROADMAP](MASTER-ROADMAP.md) remains the single handoff; [PLAN](PLAN.md) owns acceptance. No extra handoff document is needed.
 
 ## Built
 
-A/B/C/R/B2/D/E/E2, F-part-1 and G are merged. T through acquisition UI/frequency/worksheet is merged; T-6C1 added the RDF schema and decision foundation; T-6C2 is in review. Existing operations, financial evidence, renewals, custody, parts, messaging, backups and security must not be rebuilt. E2’s public visual result was rejected as final quality; V remains. Website content controls and owner workspace additions remain designed future work.
+A/B/C/R/B2/D/E/E2, F-part-1 and G are merged. T through acquisition UI/frequency/worksheet is merged; T-6C1 added the RDF schema and decision foundation; T-6C2 finalized immutable RDF delivery and sale evidence. Existing operations, financial evidence, renewals, custody, parts, messaging, backups and security must not be rebuilt. E2’s public visual result was rejected as final quality; V remains. Website content controls and owner workspace additions remain designed future work.
 
 ## Remaining stages
 
