@@ -35,4 +35,761 @@ export type ExceptionCategory =
   | "STALE_RESERVATION"
   | "PAST_DUE_INVOICE"
   | "OVERDUE_JOB"
-  | "UNREVIEWED_���q�^
+  | "UNREVIEWED_MAINTENANCE_REQUEST"
+  | "UNINSPECTED_RETURN"
+  | "MISSING_REPAIR_COST"
+  | "AGREEMENT_TERM_EXPIRED"
+  | "APPLIANCE_MAINTENANCE_DUE"
+  | "RENEWAL_NOT_STARTED"
+  | "EARLY_ENDING_NOT_DONE"
+  | "NOTICE_WAITING"
+  | "NOTICE_MISSED"
+  | "NOTICE_UNCERTAIN"
+  | "NOTICE_FAILED"
+  | "ITEM_NOT_DELIVERED"
+  | "RETURNED_EARLY"
+  | "SUBSCRIPTION_UPDATE_PENDING"
+  | "CUSTODY_UNKNOWN";
+
+export type ExceptionSeverity = "high" | "medium";
+
+export type ExceptionItem = {
+  category: ExceptionCategory;
+  severity: ExceptionSeverity;
+  title: string;
+  detail: string;
+  /** Where "Fix this" should send Chris. */
+  href: string;
+  /** Optional separate public source link; only HTTPS is surfaced. */
+  sourceHref?: string;
+  sourceLabel?: string;
+  action?:
+    | {
+        type: "ACK_TAX_SOURCE_CHANGE";
+        id: string;
+        version: string;
+        label: string;
+      }
+    | {
+        type: "UNDO_OFFICIAL_RATE";
+        id: string;
+        label: string;
+      }
+    | {
+        type: "APPLY_OFFICIAL_RATE";
+        id: string;
+        label: string;
+      };
+  /** For sorting oldest-first within a category. */
+  since: Date;
+};
+
+// Thresholds — deliberately simple, explainable numbers (docs/BUSINESS-
+// RULES.md's lead-scoring section sets the same expectation for any rule
+// like this: no hidden math, a number Chris could recite back). Not tied
+// to BusinessSettings since these are about Chris's own workflow, not a
+// customer-facing policy like lateFeeGraceDays.
+export const UNREVIEWED_MAINTENANCE_REQUEST_DAYS = 2;
+export const UNINSPECTED_RETURN_DAYS = 3;
+// How long a rental whose early return was settled by the owner's standard choices stays on Today for a second look.
+export const EARLY_RETURN_DEFAULTS_REVIEW_DAYS = 14;
+// Automation rules (Task #67, docs/DECISIONS.md 2026-09-28, Chris's pick
+// of the three most useful checks to run automatically). 180 days (~6
+// months) is a simple, explainable "it's been a while" bar for a rented
+// appliance with no logged maintenance visit — not a manufacturer service
+// schedule, since none is tracked per appliance type today.
+export const APPLIANCE_MAINTENANCE_DUE_DAYS = 180;
+
+export function invoiceTaxBlockedException(invoice: {
+  id: string;
+  invoiceNumber: number;
+  customerId: string;
+  customerName: string;
+  since: Date;
+  problems: string[];
+}): ExceptionItem {
+  return {
+    category: "SALES_TAX",
+    severity: "high",
+    title: `Bill #${invoice.invoiceNumber} needs a tax decision before it can be sent`,
+    detail:
+      invoice.problems.length > 0
+        ? invoice.problems.join(" ")
+        : "Finish the sales-tax setup for this address, then recalculate tax on the bill.",
+    href: `/desk/billing/customer/${invoice.customerId}/invoice/${invoice.id}`,
+    since: invoice.since,
+  };
+}
+
+export function stripeTaxMismatchException(invoice: {
+  id: string;
+  invoiceNumber: number;
+  customerId: string;
+  customerName: string;
+  since: Date;
+  stripeTaxCents: number;
+  engineTaxCents: number;
+}): ExceptionItem {
+  return {
+    category: "SALES_TAX",
+    severity: "high",
+    title: `Bill #${invoice.invoiceNumber} has a Stripe tax mismatch`,
+    detail:
+      `Stripe recorded ${invoice.stripeTaxCents} cents of tax, while Appliance Desk expected ${invoice.engineTaxCents} cents. Review the bill before relying on it for filing or a refund.`,
+    href: `/desk/billing/customer/${invoice.customerId}/invoice/${invoice.id}`,
+    since: invoice.since,
+  };
+}
+
+export function stripeTaxUnverifiedException(invoice: {
+  id: string;
+  invoiceNumber: number;
+  customerId: string;
+  customerName: string;
+  since: Date;
+  problems: string[];
+}): ExceptionItem {
+  return {
+    category: "SALES_TAX",
+    severity: "high",
+    title: `Bill #${invoice.invoiceNumber} tax could not be verified`,
+    detail:
+      invoice.problems.length > 0
+        ? invoice.problems.join(" ")
+        : "Review this Stripe bill's tax evidence before relying on it for filing or a refund.",
+    href: `/desk/billing/customer/${invoice.customerId}/invoice/${invoice.id}`,
+    since: invoice.since,
+  };
+}
+
+export function taxExemptionExpiryWindow(now: Date): {
+  from: Date;
+  throughExclusive: Date;
+} {
+  return {
+    from: now,
+    throughExclusive: businessDayBounds(addBusinessDays(now, 30)).end,
+  };
+}
+
+export function taxExemptionWarningSince(expiresOn: Date): Date {
+  return businessDayBounds(addBusinessDays(expiresOn, -30)).start;
+}
+
+export function taxExemptionExpiryException(exemption: {
+  customerId: string;
+  customerName: string;
+  expiresOn: Date;
+  warningSince: Date;
+}): ExceptionItem {
+  return {
+    category: "SALES_TAX",
+    severity: "medium",
+    title: `${exemption.customerName}'s tax exemption expires soon`,
+    detail: `The exemption expires ${exemption.expiresOn
+      .toISOString()
+      .slice(0, 10)}. Review or replace the certificate before it expires.`,
+    href: `/desk/customers/${exemption.customerId}?tab=billing`,
+    since: exemption.warningSince,
+  };
+}
+
+export function taxAddressChangedException(address: {
+  customerId: string;
+  customerName: string;
+  addressLabel: string;
+  since: Date;
+}): ExceptionItem {
+  return {
+    category: "SALES_TAX",
+    severity: "high",
+    title: `Tax areas changed for ${address.customerName}`,
+    detail: `${address.addressLabel} now resolves to different tax jurisdictions. Review and confirm the address before relying on the new tax areas.`,
+    href: `/desk/customers/${address.customerId}?tab=properties`,
+    since: address.since,
+  };
+}
+
+export function taxRateReviewReminderException(input: {
+  nextEffectiveDateLabel: "January 1" | "July 1";
+  since: Date;
+}): ExceptionItem {
+  return {
+    category: "SALES_TAX",
+    severity: "medium",
+    title: `Check Colorado tax-rate changes for ${input.nextEffectiveDateLabel}`,
+    detail:
+      "Review Colorado's local rate-change list and enter any new rates that affect the areas you serve.",
+    href: "/desk/settings",
+    since: input.since,
+  };
+}
+
+function httpsSourceHref(url: string): string | undefined {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "https:" ? parsed.toString() : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+export function taxSourceChangedException(input: {
+  id: string;
+  version: string;
+  label: string;
+  excerpt: string | null;
+  url: string;
+  since: Date;
+}): ExceptionItem {
+  return {
+    category: "SALES_TAX",
+    severity: "medium",
+    title: `Colorado updated ${input.label} — here is what's new`,
+    detail:
+      input.excerpt?.trim() ||
+      "The official page changed. Review the source; Appliance Desk did not interpret the change as a tax rule or rate change.",
+    href: "/desk/today",
+    sourceHref: httpsSourceHref(input.url),
+    sourceLabel: "Open official source",
+    action: {
+      type: "ACK_TAX_SOURCE_CHANGE",
+      id: input.id,
+      version: input.version,
+      label: "I looked at it",
+    },
+    since: input.since,
+  };
+}
+
+function milliPercentLabel(value: number | null): string {
+  return value === null ? "unknown" : `${(value / 1000).toFixed(3)}%`;
+}
+
+function officialRateReasonLabel(reason: string): string {
+  const labels: Record<string, string> = {
+    AUTO_APPLY_DISABLED: "automatic official-rate changes are turned off",
+    DELTA_EXCEEDS_LIMIT: "the rate jump exceeds your automatic-change limit",
+    EFFECTIVE_DATE_CONFLICT: "another rate already uses that effective date",
+    JURISDICTION_NOT_REVIEWED: "the tax jurisdiction has not been reviewed",
+    NO_CURRENT_RATE: "there is no reviewed current rate to compare against",
+  };
+  return labels[reason] ?? reason.toLowerCase().replaceAll("_", " ");
+}
+
+export function officialRateScheduledException(input: {
+  rateVersionId: string;
+  jurisdictionName: string;
+  oldRateMilliPercent: number | null;
+  newRateMilliPercent: number;
+  effectiveFrom: Date;
+  since: Date;
+  undoAllowed: boolean;
+}): ExceptionItem {
+  return {
+    category: "SALES_TAX",
+    severity: "medium",
+    title: "Official tax rate scheduled",
+    detail: `${input.jurisdictionName}: ${milliPercentLabel(
+      input.oldRateMilliPercent,
+    )} → ${milliPercentLabel(input.newRateMilliPercent)} effective ${businessDateKey(
+      input.effectiveFrom,
+    )} · Colorado official lookup`,
+    href: "/desk/today",
+    ...(input.undoAllowed
+      ? {
+          action: {
+            type: "UNDO_OFFICIAL_RATE" as const,
+            id: input.rateVersionId,
+            label: "Undo",
+          },
+        }
+      : {}),
+    since: input.since,
+  };
+}
+
+export function officialRateReviewException(input: {
+  observationId: string;
+  jurisdictionName: string;
+  oldRateMilliPercent: number | null;
+  newRateMilliPercent: number;
+  effectiveFrom: Date;
+  reasons: string[];
+  since: Date;
+}): ExceptionItem {
+  return {
+    category: "SALES_TAX",
+    severity: "high",
+    title: "Official rate needs review",
+    detail: `${input.jurisdictionName}: ${milliPercentLabel(
+      input.oldRateMilliPercent,
+    )} → ${milliPercentLabel(input.newRateMilliPercent)} effective ${businessDateKey(
+      input.effectiveFrom,
+    )}. Review needed because ${input.reasons
+      .map(officialRateReasonLabel)
+      .join("; ")}.`,
+    href: "/desk/today",
+    action: {
+      type: "APPLY_OFFICIAL_RATE",
+      id: input.observationId,
+      label: "Apply this rate",
+    },
+    since: input.since,
+  };
+}
+
+export function taxSourceUnreachableException(input: {
+  label: string;
+  url: string;
+  since: Date;
+}): ExceptionItem {
+  return {
+    category: "SALES_TAX",
+    severity: "medium",
+    title: `We couldn't check ${input.label} — the page may have moved`,
+    detail:
+      "The automatic check has failed at least three times. Verify the official page before relying on this source.",
+    href: "/desk/today",
+    sourceHref: httpsSourceHref(input.url),
+    sourceLabel: "Open official source",
+    since: input.since,
+  };
+}
+
+export function billingBlockedException(agreement: {
+  id: string;
+  billingBlockedReason: string;
+  updatedAt: Date;
+  customerName: string;
+}): ExceptionItem {
+  return {
+    category: "BILLING_BLOCKED",
+    severity: "high",
+    title: `Billing couldn't start for ${agreement.customerName}`,
+    detail: agreement.billingBlockedReason,
+    href: `/desk/agreements/${agreement.id}`,
+    since: agreement.updatedAt,
+  };
+}
+
+/** A signed renewal whose start date passed over a day ago but that has not started (the nightly job could not start it). */
+export const RENEWAL_START_GRACE_DAYS = 1;
+
+export function renewalNotStartedException(agreement: {
+  id: string;
+  startDate: Date;
+  customerName: string;
+}): ExceptionItem {
+  return {
+    category: "RENEWAL_NOT_STARTED",
+    severity: "high",
+    title: `${agreement.customerName}'s renewal did not start on its start date`,
+    detail:
+      "The renewal is signed but could not take over from the rental it renews (that rental may have been ended or cancelled early). Open it to cancel or fix it.",
+    href: `/desk/agreements/${agreement.id}`,
+    since: agreement.startDate,
+  };
+}
+
+/**
+ * An agreement item was not on the delivery visit that started billing and is
+ * still waiting (owner decision IN-26). The customer is being billed for it, so
+ * it must never be forgotten: schedule a delivery job for it, and when that job
+ * is completed the credit for the missing days is worked out automatically.
+ */
+export function itemNotDeliveredException(item: {
+  originalJobId: string;
+  itemLabel: string;
+  originalDeliveryDate: Date;
+  customerName: string;
+}): ExceptionItem {
+  return {
+    category: "ITEM_NOT_DELIVERED",
+    severity: "high",
+    title: `${item.itemLabel} has not been delivered to ${item.customerName} yet`,
+    detail:
+      "The customer is billed for it from the original delivery date. Schedule a delivery job for it; completing that job credits the customer for the days it was missing.",
+    href: `/desk/jobs/${item.originalJobId}`,
+    since: item.originalDeliveryDate,
+  };
+}
+
+/**
+ * Everything came back before the agreed ending (docs/designs/BATCH-B2.md B2-19). Until the owner chooses, billing
+ * carries on; with "apply my defaults" the choice was already made and can still be changed for a short while.
+ */
+export function returnedEarlyException(item: {
+  agreementId: string;
+  customerName: string;
+  since: Date;
+  settled: boolean;
+}): ExceptionItem {
+  return {
+    category: "RETURNED_EARLY",
+    severity: item.settled ? "medium" : "high",
+    title: item.settled
+      ? `${item.customerName}'s equipment came back early — your standard choices were applied`
+      : `${item.customerName}'s equipment came back early — choose what to do`,
+    detail: item.settled
+      ? "Check what was done. You can still change it while no money has been refunded or credited and no fee has been paid."
+      : "Billing continues until you decide. Choose whether billing stops now or runs to the agreed ending, what happens to days already paid for, and whether an early-ending fee applies.",
+    href: `/desk/agreements/${item.agreementId}/early-return`,
+    since: item.since,
+  };
+}
+
+/**
+ * An item was cancelled (never delivered, taken off the agreement) but Stripe has not yet lowered the
+ * customer's monthly subscription. The system keeps retrying; this keeps the owner aware until it is done.
+ */
+export function subscriptionUpdatePendingException(item: {
+  originalJobId: string;
+  itemLabel: string;
+  customerName: string;
+  since: Date;
+}): ExceptionItem {
+  return {
+    category: "SUBSCRIPTION_UPDATE_PENDING",
+    severity: "high",
+    title: `${item.customerName}'s monthly bill has not been lowered yet for cancelled ${item.itemLabel}`,
+    detail:
+      "The item was cancelled and the customer was credited, but Stripe still has the old monthly amount. The system keeps retrying and the Billing check screen shows it until it is done.",
+    href: `/desk/jobs/${item.originalJobId}`,
+    since: item.since,
+  };
+}
+
+/**
+ * An appliance is marked as out with a customer (or waiting to be picked up) but the system cannot tell
+ * which customer has it. The owner records who has it (a manual custody entry) on the appliance page.
+ */
+export function custodyUnknownException(appliance: { id: string; label: string; since: Date }): ExceptionItem {
+  return {
+    category: "CUSTODY_UNKNOWN",
+    severity: "medium",
+    title: `We don't know which customer has ${appliance.label}`,
+    detail:
+      "It is marked as rented, but no delivery record says who has it. Open it and record which customer it is with, so pickups and repairs can find it.",
+    href: `/desk/inventory/${appliance.id}`,
+    since: appliance.since,
+  };
+}
+
+/** An agreed early-ending date passed but the rental is still active (prepaid months to settle, or the nightly job could not end it). */
+export function earlyEndingNotDoneException(agreement: {
+  id: string;
+  terminationEffectiveOn: Date;
+  customerName: string;
+  prepaid: boolean;
+}): ExceptionItem {
+  return {
+    category: "EARLY_ENDING_NOT_DONE",
+    severity: "high",
+    title: `${agreement.customerName}'s early ending has not been carried out`,
+    detail: agreement.prepaid
+      ? "This rental was paid in advance, so the unused months need your decision (refund, credit or keep) before it can end. Open it to settle that and end the rental."
+      : "The agreed ending date has passed but the rental is still active. Open it to end it.",
+    href: `/desk/agreements/${agreement.id}`,
+    since: agreement.terminationEffectiveOn,
+  };
+}
+
+/** A message the customer is owed that has not been delivered (live email is off, or the owner has not marked it sent). */
+export function noticeWaitingException(notice: {
+  id: string;
+  customerName: string;
+  createdAt: Date;
+  kind?: string;
+}): ExceptionItem {
+  if (notice.kind === "ANNUAL_REMINDER" || notice.kind === "TERMS_CHANGE") {
+    return {
+      category: "NOTICE_WAITING",
+      severity: "high",
+      title: `${notice.customerName} has ${notice.kind === "ANNUAL_REMINDER" ? "a yearly reminder" : "a notice about changed terms"} waiting to be sent`,
+      detail:
+        "Billing is not affected. Send it yourself and mark it as delivered, or turn on live customer email.",
+      href: "/desk/notices",
+      since: notice.createdAt,
+    };
+  }
+  return {
+    category: "NOTICE_WAITING",
+    severity: "high",
+    title: `${notice.customerName} has a renewal reminder waiting to be sent`,
+    detail:
+      "Their automatic renewal will not start until this reminder is delivered. Send it yourself and mark it as delivered, or turn on live customer email.",
+    href: "/desk/notices",
+    since: notice.createdAt,
+  };
+}
+
+/**
+ * A reminder that did not reach the customer cleanly. All three open the same "Fix a missed reminder" screen,
+ * which offers every option (docs/designs/BATCH-B2.md B2-18).
+ */
+export function noticeProblemException(
+  status: "MISSED" | "UNCERTAIN" | "FAILED",
+  notice: { id: string; customerName: string; createdAt: Date; kind?: string },
+): ExceptionItem {
+  const label =
+    notice.kind === "ANNUAL_REMINDER" ? "yearly reminder" : notice.kind === "TERMS_CHANGE" ? "notice about changed terms" : "renewal reminder";
+  const copy = {
+    MISSED: {
+      category: "NOTICE_MISSED" as const,
+      title: `${notice.customerName}'s ${label} was not delivered in time`,
+      detail:
+        notice.kind === "ANNUAL_REMINDER" || notice.kind === "TERMS_CHANGE"
+          ? "The last day to send it passed, so it will not be sent now. Billing carries on as normal. Open it to record that you delivered it another way, or to leave it."
+          : "The last day to send it passed. It will never be sent now (it would promise a renewal that cannot start), the automatic renewal will not start on its own, and billing ends on the current end date. Open it to choose what happens next.",
+    },
+    UNCERTAIN: {
+      category: "NOTICE_UNCERTAIN" as const,
+      title: `${notice.customerName}'s ${label} may or may not have gone out`,
+      detail:
+        "The email service did not give a clear answer. Check whether it was delivered, then say so on the next screen. Nothing is sent again by itself.",
+    },
+    FAILED: {
+      category: "NOTICE_FAILED" as const,
+      title: `${notice.customerName}'s ${label} was refused three times`,
+      detail:
+        "The email service refused it every time (often a wrong email address). Fix the address and try again, or deliver it another way.",
+    },
+  }[status];
+  return {
+    category: copy.category,
+    severity: "high",
+    title: copy.title,
+    detail: copy.detail,
+    href: `/desk/notices/${notice.id}/resolve`,
+    since: notice.createdAt,
+  };
+}
+
+export function staleReservationException(agreement: {
+  id: string;
+  reservationExpiresAt: Date;
+  customerName: string;
+}): ExceptionItem {
+  return {
+    category: "STALE_RESERVATION",
+    severity: "medium",
+    title: `${agreement.customerName}'s reservation hold has expired`,
+    detail:
+      "This draft is holding equipment that could go to someone else — sign it, extend the hold, or cancel it.",
+    href: `/desk/agreements/${agreement.id}`,
+    since: agreement.reservationExpiresAt,
+  };
+}
+
+export function pastDueInvoiceException(invoice: {
+  id: string;
+  customerId: string;
+  customerName: string;
+  dueDate: Date;
+  amountDueCents: number;
+  amountPaidCents: number;
+}): ExceptionItem {
+  const owedCents = invoice.amountDueCents - invoice.amountPaidCents;
+  return {
+    category: "PAST_DUE_INVOICE",
+    severity: "high",
+    title: `${invoice.customerName} has a past-due invoice`,
+    detail: `$${(owedCents / 100).toFixed(2)} owed, due ${invoice.dueDate.toLocaleDateString("en-US")}.`,
+    href: `/desk/customers/${invoice.customerId}`,
+    since: invoice.dueDate,
+  };
+}
+
+export function overdueJobException(job: {
+  id: string;
+  type: string;
+  scheduledAt: Date;
+  customerName: string | null;
+}): ExceptionItem {
+  return {
+    category: "OVERDUE_JOB",
+    severity: "medium",
+    title: `${job.type.replace(/_/g, " ").toLowerCase()} job is overdue`,
+    detail: `Scheduled for ${job.scheduledAt.toLocaleDateString("en-US")}${job.customerName ? ` (${job.customerName})` : ""} but never marked in progress or completed.`,
+    href: `/desk/jobs/${job.id}`,
+    since: job.scheduledAt,
+  };
+}
+
+export function unreviewedMaintenanceRequestException(request: {
+  id: string;
+  openedAt: Date;
+  customerName: string;
+  problem: string;
+}): ExceptionItem {
+  return {
+    category: "UNREVIEWED_MAINTENANCE_REQUEST",
+    severity: "medium",
+    title: `${request.customerName}'s repair request hasn't been reviewed`,
+    detail: request.problem,
+    href: `/desk/maintenance/${request.id}`,
+    since: request.openedAt,
+  };
+}
+
+export function uninspectedReturnException(appliance: {
+  id: string;
+  assetNumber: string;
+  applianceTypeName: string;
+  updatedAt: Date;
+}): ExceptionItem {
+  return {
+    category: "UNINSPECTED_RETURN",
+    severity: "medium",
+    title: `${appliance.applianceTypeName} (${appliance.assetNumber}) is back but hasn't been inspected`,
+    detail: "It's sitting AWAITING_INSPECTION — it can't go back out to another customer until it's checked over.",
+    href: `/desk/inventory/${appliance.id}`,
+    since: appliance.updatedAt,
+  };
+}
+
+export function missingRepairCostException(job: {
+  id: string;
+  completedAt: Date;
+  applianceLabel: string | null;
+}): ExceptionItem {
+  return {
+    category: "MISSING_REPAIR_COST",
+    severity: "medium",
+    title: `Repair cost not logged${job.applianceLabel ? ` (${job.applianceLabel})` : ""}`,
+    detail:
+      "This repair job is marked Completed but has no parts/labor cost entered — appliance profitability (Fleet page) is undercounting it as $0 until you add it.",
+    href: `/desk/jobs/${job.id}`,
+    since: job.completedAt,
+  };
+}
+
+/** A fixed-term agreement (e.g. 12 months) whose term end date has
+ * passed but is still marked ACTIVE — nobody recorded a renewal, a
+ * switch to month-to-month, or an end. Purely a "someone should look at
+ * this" flag; it never changes the agreement itself. */
+export function agreementTermExpiredException(agreement: {
+  id: string;
+  customerName: string;
+  termMonths: number;
+  termEndDate: Date;
+}): ExceptionItem {
+  return {
+    category: "AGREEMENT_TERM_EXPIRED",
+    severity: "medium",
+    title: `${agreement.customerName}'s ${agreement.termMonths}-month term has ended`,
+    detail: `Term ended ${agreement.termEndDate.toLocaleDateString("en-US")} but the agreement is still marked active — check whether they're renewing, going month-to-month, or returning the equipment.`,
+    href: `/desk/agreements/${agreement.id}`,
+    since: agreement.termEndDate,
+  };
+}
+
+/** A currently-rented appliance with no logged maintenance visit (or
+ * none since it went into service) in over
+ * APPLIANCE_MAINTENANCE_DUE_DAYS. */
+export function applianceMaintenanceDueException(appliance: {
+  id: string;
+  assetNumber: string;
+  applianceTypeName: string;
+  sinceDate: Date;
+}): ExceptionItem {
+  return {
+    category: "APPLIANCE_MAINTENANCE_DUE",
+    severity: "medium",
+    title: `${appliance.applianceTypeName} (${appliance.assetNumber}) may be due for a maintenance check`,
+    detail: `No completed maintenance visit logged since ${appliance.sinceDate.toLocaleDateString("en-US")} — worth scheduling a routine check-in with the customer.`,
+    href: `/desk/inventory/${appliance.id}`,
+    since: appliance.sinceDate,
+  };
+}
+
+/** Oldest first within a category, but overall sorted high severity
+ * first, then by how long it's been sitting. */
+/** Filing attention is computed from OPEN periods, never stored or dismissed. */
+export function taxReturnDueException(input: {
+  accountName: string;
+  periodEnd: Date;
+  dueOn: Date;
+  legalDueOn: Date;
+  reminderDaysBefore: number[];
+  zeroReturn: boolean;
+  readOnly: boolean;
+  now: Date;
+}): ExceptionItem {
+  const daysUntilLegalDue = businessDaysBetween(input.now, input.legalDueOn);
+  const daysUntilBaseDue = businessDaysBetween(input.now, input.dueOn);
+  const nearestWindow = Math.min(
+    ...input.reminderDaysBefore.filter((days) => Number.isInteger(days) && days > 0),
+    Number.POSITIVE_INFINITY,
+  );
+  const urgent =
+    daysUntilLegalDue < 0 ||
+    daysUntilBaseDue <= 0 ||
+    (Number.isFinite(nearestWindow) && daysUntilBaseDue <= nearestWindow);
+  return {
+    category: "TAX_RETURN_DUE",
+    severity: urgent ? "high" : "medium",
+    title: `${input.accountName} return ${daysUntilLegalDue < 0 ? "overdue" : "due"}`,
+    detail: `${input.zeroReturn ? "A zero return may still be required. " : ""}` +
+      `Filing period ended ${businessDateKey(input.periodEnd)}. Legal deadline: ${businessDateKey(input.legalDueOn)}.` +
+      (input.readOnly ? " Only the Owner can change filing details." : " Open the filing workspace to review the return."),
+    href: "/desk/today",
+    since: input.periodEnd,
+  };
+}
+
+export function taxLicenseRenewalException(input: {
+  accountName: string;
+  expiresOn: Date;
+  now: Date;
+  readOnly: boolean;
+}): ExceptionItem {
+  const daysLeft = businessDaysBetween(input.now, input.expiresOn);
+  return {
+    category: "TAX_LICENSE_RENEWAL",
+    severity: daysLeft <= 7 ? "high" : "medium",
+    title: `Tax license ${daysLeft < 0 ? "expired" : "renewal"} — ${input.accountName}`,
+    detail: `License expiration: ${businessDateKey(input.expiresOn)}.` +
+      (input.readOnly ? " Ask an Owner to update the license." : " Check and renew the license."),
+    href: "/desk/today",
+    since: input.expiresOn,
+  };
+}
+
+export function taxAmendmentDueException(input: {
+  id: string; accountName: string; detectedAt: Date; additionalTaxCents: number;
+}): ExceptionItem {
+  return {
+    category: "TAX_AMENDMENT_DUE",
+    severity: input.additionalTaxCents > 0 ? "high" : "medium",
+    title: "Amended tax return needs review — " + input.accountName,
+    detail: input.additionalTaxCents > 0
+      ? "A correction shows additional tax owed. Review the amendment before filing."
+      : "Review the correction or credit and record how it was handled.",
+    since: input.detectedAt,
+    href: "/desk/today",
+  };
+}
+export function taxFilingNotReadyException(input: {
+  accountName: string;
+  dueOn: Date;
+  periodEnd: Date;
+  problems: string[];
+  now: Date;
+}): ExceptionItem {
+  return {
+    category: "TAX_FILING_NOT_READY",
+    severity: businessDaysBetween(input.now, input.dueOn) <= 7 ? "high" : "medium",
+    title: "Tax return needs setup before filing — " + input.accountName,
+    detail: "Resolve filing blockers: " + input.problems.slice(0, 3).join("; "),
+    since: input.periodEnd,
+    href: "/desk/today",
+  };
+}
+export function sortExceptions(items: ExceptionItem[]): ExceptionItem[] {
+  return [...items].sort((a, b) => {
+    if (a.severity !== b.severity) return a.severity === "high" ? -1 : 1;
+    return a.since.getTime() - b.since.getTime();
+  });
+}

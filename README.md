@@ -34,4 +34,17 @@ npm run test:e2e            # Playwright + axe accessibility tests (needs a runn
 npm run build                 # production build
 npm run db:migrate:dev          # create + apply a migration locally
 npm run db:migrate:deploy         # apply pending migrations (used by CI/production)
-npm run db:seed                    # one-time: creates the OWNER account (see prisma/see¶»§q«^
+npm run db:seed                    # one-time: creates the OWNER account (see prisma/seed.ts)
+```
+
+## Deployment
+
+`main` deploys to production automatically on push (Vercel). Every pull
+request gets its own preview deployment. CI (GitHub Actions) must pass
+before merging â€” see `.github/workflows/ci.yml`.
+
+## Documentation
+
+Everything else â€” architecture, database design, business rules, design
+system/accessibility rules, dated decisions, the roadmap, and current
+project state â€” lives in `docs/`. Start with `AGENTS.md`.

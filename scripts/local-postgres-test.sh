@@ -44,4 +44,26 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
-# Ask the OS for a currently unused loopback port¶»§q«^
+# Ask the OS for a currently unused loopback port. The Postgres bind
+# immediately afterwards is authoritative; if that races, fail safely.
+PORT=$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1]); s.close()')
+"$BIN/initdb" -D "$PGDATA" -A trust -U test --no-instructions > "$WORKDIR/init.log"
+"$BIN/pg_ctl" -D "$PGDATA" -o "-h 127.0.0.1 -p $PORT -k $WORKDIR/socket" -l "$WORKDIR/server.log" -w start > "$WORKDIR/start.log"
+started=1
+
+export DATABASE_URL="postgresql://test@127.0.0.1:${PORT}/appliance_desk_test"
+export DIRECT_URL="$DATABASE_URL"
+export CI=true
+# Never allow an inherited deployment setting to activate a real provider.
+unset VERCEL VERCEL_ENV
+psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p "$PORT" -U test -d postgres -c 'CREATE DATABASE appliance_desk_test OWNER test;' > /dev/null
+
+echo "Running against NEW localhost-only PostgreSQL on port $PORT (disposable appliance_desk_test)."
+npm run db:migrate:deploy
+npm run db:seed
+if [ "$1" = "--all" ]; then
+  shift
+  npx vitest run "$@"
+else
+  npx vitest run "$@"
+fi

@@ -17,4 +17,29 @@ Robinson Appliance Rentals is Chris's Colorado appliance rental business. Applia
 ## Fast path to real-database testing
 
 Vercel Sandbox already has PostgreSQL server binaries at
-`/usr/lib/postgresql/18/bin` (not necessarily on PATH). For transactions,¶»§q«^
+`/usr/lib/postgresql/18/bin` (not necessarily on PATH). For transactions,
+tax, billing, migrations, permissions and idempotency, use
+`bash scripts/local-postgres-test.sh tests/<relevant-spec>.test.ts`
+from the repository root. It runs against a freshly created, disposable
+**localhost-only** `appliance_desk_test`. Read
+[PLAYBOOK Â§4b](PLAYBOOK.md#4b-local-real-postgresql-testing-in-vercel-sandbox)
+for the exact procedure, safeguards and fallback. Never use a Neon
+preview/production database for these tests. CI's independent PostgreSQL 17
+suite remains required for merging.
+
+## One authority per fact
+
+| Fact | Authority |
+|---|---|
+| Workflow/hard limits | AGENTS; PLAYBOOK for command recipes |
+| Current state / ordered work | STATUS / MASTER-ROADMAP |
+| Remaining acceptance | PLAN |
+| Business/domain design | designs/BATCH-* (targeted headings); next card for exact execution |
+| Card coverage / drift | pr-cards/work-index.json; shared DRIFT-PROTOCOL |
+| Owner-only inputs / release gates | OWNER-INPUTS / GO-LIVE-CHECKLIST |
+| Runtime facts | code/schema/tests; BUSINESS-RULES, DATABASE, ARCHITECTURE updated as behavior ships |
+| Product/look/owner operation | PRODUCT-SPEC, DESIGN-SYSTEM, OWNER-GUIDE |
+| Proposed business policy | business/README and BP design; not automatically active |
+| Historical evidence | archive, audits, reviews and dated DECISIONS; never current instructions |
+
+Preserve all stable finding/O-card/B/IN IDs. All future work starts default-off where it could create commitments. Keep signed customer terms immutable. Do not turn a proposed plan or passing test into a claim of live readiness.

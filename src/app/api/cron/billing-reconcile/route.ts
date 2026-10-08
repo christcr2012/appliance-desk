@@ -29,4 +29,20 @@ export async function GET(request: Request): Promise<NextResponse> {
     work: async () => ({ counts: automationCounts(await runPendingHandoffs()) }),
   });
   const invoiceArtifacts = await runAutomation({
-  ¶»§q«^
+    ruleKey: "billing-reconcile:invoice-artifacts",
+    work: async () => ({ counts: automationCounts(await freezeFinalInvoiceArtifacts(200)) }),
+  });
+  // Batch E adds one genuinely new pass: UNKNOWN email/SMS outcomes that have
+  // a provider id can be reconciled without blindly re-sending the message.
+  const messageDeliveries = await runAutomation({
+    ruleKey: "billing-reconcile:message-deliveries",
+    work: async () => ({ counts: automationCounts(await reconcileUnknownDeliveries(50)) }),
+  });
+
+  const retailDeliveryFees = await runAutomation({
+    ruleKey: "billing-reconcile:retail-delivery-fees",
+    work: async () => ({ counts: automationCounts(await resolvePendingRdfRecords(new Date(), 50)) }),
+  });
+
+  return NextResponse.json({ providerOps, handoffs, invoiceArtifacts, messageDeliveries, retailDeliveryFees });
+}
