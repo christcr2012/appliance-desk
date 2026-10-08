@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { EventEmitter } from "node:events";
+import { createServer } from "node:net";
 import { Readable } from "node:stream";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -15,7 +16,10 @@ vi.mock("node:https", () => ({
   request: mocks.request,
 }));
 
-import { fetchOfficialSourcePage } from "@/domains/tax/safe-official-source-fetch";
+import {
+  createPinnedLookup,
+  fetchOfficialSourcePage,
+} from "@/domains/tax/safe-official-source-fetch";
 
 type MockResponseOptions = {
   status?: number;
@@ -208,6 +212,8 @@ describe("T-5b2 safe official-source fetch", () => {
     expect(requestOptions.family).toBe(4);
     const callback = vi.fn();
     requestOptions.lookup?.("tax.example.gov", {}, callback);
+    expect(callback).not.toHaveBeenCalled();
+    await Promise.resolve();
     expect(callback).toHaveBeenCalledWith(null, "93.184.216.34", 4);
   });
 
@@ -230,11 +236,68 @@ describe("T-5b2 safe official-source fetch", () => {
     expect(requestOptions.family).toBe(6);
     const callback = vi.fn();
     requestOptions.lookup?.("ipv6.example.gov", {}, callback);
+    expect(callback).not.toHaveBeenCalled();
+    await Promise.resolve();
     expect(callback).toHaveBeenCalledWith(
       null,
       "2606:4700:4700::1111",
       6,
     );
+  });
+
+  it("uses the deferred pinned lookup through Node's real HTTPS socket setup", async () => {
+    const server = createServer((socket) => socket.destroy());
+    await new Promise<void>((resolve, reject) => {
+      server.once("error", reject);
+      server.listen(0, "127.0.0.1", () => resolve());
+    });
+    const address = server.address();
+    if (!address || typeof address === "string") {
+      server.close();
+      throw new Error("Could not allocate the local transport test port.");
+    }
+
+    const { request: realHttpsRequest } =
+      await vi.importActual<typeof import("node:https")>("node:https");
+
+    try {
+      await new Promise<void>((resolve, reject) => {
+        let request: ReturnType<typeof realHttpsRequest>;
+        try {
+          request = realHttpsRequest(
+            {
+              hostname: "pinned.example.test",
+              port: address.port,
+              method: "GET",
+              lookup: createPinnedLookup("127.0.0.1", 4),
+              rejectUnauthorized: false,
+            },
+            (response) => {
+              response.resume();
+              resolve();
+            },
+          );
+        } catch (cause) {
+          reject(cause);
+          return;
+        }
+
+        request.once("error", (cause) => {
+          if (
+            cause instanceof TypeError &&
+            cause.message.includes("setServername")
+          ) {
+            reject(cause);
+            return;
+          }
+          // The local plain TCP peer intentionally cannot complete TLS.
+          resolve();
+        });
+        request.end();
+      });
+    } finally {
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+    }
   });
 
   it("includes DNS resolution in the request deadline", async () => {
