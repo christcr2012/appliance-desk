@@ -1,5 +1,6 @@
 import { addBusinessDays, businessDateKey, businessDayBounds } from "@/lib/business-date";
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
 import { legalDueOn } from "@/domains/tax/filing-calendar";
 import {
   taxReturnDueException,
@@ -19,28 +20,39 @@ export async function listTaxFilingAttention(
   readOnly = false,
 ): Promise<FilingAttentionSet> {
   const licensesUntil = addBusinessDays(now, 60);
-  const returnWhere = {
-    status: "OPEN" as const,
+  // Re-check the Owner's CURRENT start setting. Previously created periods
+  // may remain in the ledger after the start is moved forward; they must not
+  // produce reminders or Today attention.
+  const activeStarts = await prisma.taxFilingAccount.findMany({
+    where: { active: true, firstPeriodStart: { not: null } },
+    select: { id: true, firstPeriodStart: true },
+  });
+  const returnWhere: Prisma.TaxFilingPeriodWhereInput = {
+    status: "OPEN",
     periodEnd: { lt: businessDayBounds(now).start },
     filingAccount: { active: true },
+    OR: activeStarts.map((account) => ({
+      filingAccountId: account.id,
+      periodStart: { gte: account.firstPeriodStart! },
+    })),
   };
   const licenseWhere = {
     active: true,
     licenseExpiresOn: { not: null, lte: licensesUntil },
   };
   const [returns, licenses, returnCount, licenseCount] = await Promise.all([
-    prisma.taxFilingPeriod.findMany({
+    activeStarts.length ? prisma.taxFilingPeriod.findMany({
       where: returnWhere,
-      include: { filingAccount: { select: { name: true } } },
+      include: { filingAccount: { select: { name: true, reminderDaysBefore: true } } },
       orderBy: [{ periodEnd: "asc" }, { id: "asc" }],
       take: TAX_FILING_ATTENTION_CAP,
-    }),
+    }) : Promise.resolve([]),
     prisma.taxFilingAccount.findMany({
       where: licenseWhere,
       orderBy: [{ licenseExpiresOn: "asc" }, { id: "asc" }],
       take: TAX_FILING_ATTENTION_CAP,
     }),
-    prisma.taxFilingPeriod.count({ where: returnWhere }),
+    activeStarts.length ? prisma.taxFilingPeriod.count({ where: returnWhere }) : Promise.resolve(0),
     prisma.taxFilingAccount.count({ where: licenseWhere }),
   ]);
 
@@ -53,6 +65,7 @@ export async function listTaxFilingAttention(
           periodEnd: period.periodEnd,
           dueOn: period.dueOn,
           legalDueOn: period.legalDueOn ?? legalDueOn(period.dueOn),
+          reminderDaysBefore: period.filingAccount.reminderDaysBefore,
           zeroReturn: period.zeroReturn,
           readOnly,
           now,

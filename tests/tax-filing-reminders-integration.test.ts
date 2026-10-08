@@ -23,6 +23,7 @@ import { businessDateFromKey } from "@/lib/business-date";
 import { prisma } from "@/lib/prisma";
 import { __setFilingAmendmentDetectorForTests, licenseReminderStage, overdueReminderDue, runTaxFilingCalendar } from "@/domains/tax/filing-reminders";
 import { sendOwnerAlert } from "@/domains/messaging/owner-alerts";
+import { listTaxFilingAttention } from "@/domains/tax/filing-attention";
 
 const url = new URL(process.env.DATABASE_URL ?? "postgresql://localhost/unset");
 const enabled = process.env.CI === "true" &&
@@ -141,6 +142,23 @@ describe.skipIf(!enabled)("T-6a2 owner filing reminders (real Postgres)", () => 
     expect(licenseReminderStage(day("2026-11-01"), day("2026-11-02"))).toBe("OVERDUE_2026-11-02");
     const result = await runTaxFilingCalendar(day("2026-04-01"));
     expect(result.periodsCreated).toBe(0);
+  });
+
+  it("ignores previously generated returns after Owner moves the first filing period forward", async () => {
+    const original = await account("moved", { firstPeriodStart: day("2026-09-01") });
+    await runTaxFilingCalendar(day("2026-10-01"));
+    const oldPeriod = await prisma.taxFilingPeriod.findFirstOrThrow({
+      where: { filingAccountId: original.id, periodStart: day("2026-09-01") },
+    });
+    await prisma.taxFilingAccount.update({
+      where: { id: original.id }, data: { firstPeriodStart: day("2026-10-01") },
+    });
+    await runTaxFilingCalendar(day("2026-10-18"));
+    expect(await prisma.messageDelivery.count({
+      where: { idempotencyKey: { startsWith: `tax-reminder:${oldPeriod.id}:DUE_IN_2:` } },
+    })).toBe(0);
+    const attention = await listTaxFilingAttention(day("2026-10-18"));
+    expect(attention.returns.rows.some(item => item.title.includes("moved"))).toBe(false);
   });
 
   it("does not lose the calendar run when the amendment detector is installed", async () => {

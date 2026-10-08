@@ -707,15 +707,25 @@ export function taxReturnDueException(input: {
   periodEnd: Date;
   dueOn: Date;
   legalDueOn: Date;
+  reminderDaysBefore: number[];
   zeroReturn: boolean;
   readOnly: boolean;
   now: Date;
 }): ExceptionItem {
-  const daysLeft = businessDaysBetween(input.now, input.legalDueOn);
+  const daysUntilLegalDue = businessDaysBetween(input.now, input.legalDueOn);
+  const daysUntilBaseDue = businessDaysBetween(input.now, input.dueOn);
+  const nearestWindow = Math.min(
+    ...input.reminderDaysBefore.filter((days) => Number.isInteger(days) && days > 0),
+    Number.POSITIVE_INFINITY,
+  );
+  const urgent =
+    daysUntilLegalDue < 0 ||
+    daysUntilBaseDue <= 0 ||
+    (Number.isFinite(nearestWindow) && daysUntilBaseDue <= nearestWindow);
   return {
     category: "TAX_RETURN_DUE",
-    severity: daysLeft <= 7 ? "high" : "medium",
-    title: `${input.accountName} return ${daysLeft < 0 ? "overdue" : "due"}`,
+    severity: urgent ? "high" : "medium",
+    title: `${input.accountName} return ${daysUntilLegalDue < 0 ? "overdue" : "due"}`,
     detail: `${input.zeroReturn ? "A zero return may still be required. " : ""}` +
       `Filing period ended ${businessDateKey(input.periodEnd)}. Legal deadline: ${businessDateKey(input.legalDueOn)}.` +
       (input.readOnly ? " Only the Owner can change filing details." : " Open the filing workspace to review the return."),

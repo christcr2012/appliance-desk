@@ -66,7 +66,7 @@ export async function runTaxFilingCalendar(now = new Date()): Promise<FilingRemi
       }
 
       const periods = await prisma.taxFilingPeriod.findMany({
-        where: { filingAccountId: account.id, status: "OPEN", periodEnd: { lt: now } },
+        where: { filingAccountId: account.id, status: "OPEN", periodStart: { gte: account.firstPeriodStart }, periodEnd: { lt: now } },
         orderBy: [{ periodStart: "asc" }, { id: "asc" }],
       });
       for (const period of periods) {
