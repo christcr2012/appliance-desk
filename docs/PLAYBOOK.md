@@ -130,8 +130,9 @@ blocking finding in one patch batch; document and assign low-risk nonblocking
 findings to the immediate successor before merging, without a separate CI cycle. Then run exact-head gates; request one
 further exact-head automated review only for high-risk semantic changes or an actual required-review gate. If that pass is
 clean or a permitted waiver is recorded, merge promptly when CI/performance/preview are green; do not
-request an additional ceremonial "final review." If that pass finds issues, batch the entire pass, patch once, self-review
-those edits and rerun gates. A further automated review is required only when the new patch changes a high-risk semantic
+request an additional ceremonial "final review." If that pass finds blocking issues, batch those blockers, patch once,
+self-review those edits and rerun gates. Low-risk nonblocking findings from any pass use the same accountable successor
+assignment in Step 5; never defer security, billing, integrity, permissions, contractual behavior or required acceptance. A further automated review is required only when the new patch changes a high-risk semantic
 boundary (security, auth, money/billing, schema, provider behavior) or the repository ruleset explicitly requires it.
 Pure retarget/rebase operations with an unchanged diff get fresh exact-head CI/performance/preview but do not restart the
 review loop. Keep the successor frozen while its predecessor is changing, then rebase it once after the predecessor merges.
