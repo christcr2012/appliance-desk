@@ -14,6 +14,7 @@ export type LedgerCategory =
   | "FEES"
   | "DEPOSIT"
   | "TAX"
+  | "RETAIL_DELIVERY_FEE"
   | "LATE_FEE"
   | "DISCOUNT"
   | "CREDIT"
@@ -28,6 +29,8 @@ const CATEGORY_BY_KIND: Record<InvoiceLineItemKind, LedgerCategory> = {
   DAMAGE_WAIVER: "FEES",
   DEPOSIT: "DEPOSIT",
   TAX: "TAX",
+  // Separate statutory remittance liability, never sales-tax revenue or delivery-service income.
+  RETAIL_DELIVERY_FEE: "RETAIL_DELIVERY_FEE",
   LATE_FEE: "LATE_FEE",
   PREPAY_DISCOUNT: "DISCOUNT",
   CREDIT: "CREDIT",
@@ -51,6 +54,7 @@ export const LEDGER_CATEGORY_LABELS: Record<LedgerCategory, string> = {
   FEES: "Fees (delivery, installation, removal, damage waiver)",
   DEPOSIT: "Deposit",
   TAX: "Sales tax",
+  RETAIL_DELIVERY_FEE: "Colorado retail delivery fee",
   LATE_FEE: "Late fees",
   DISCOUNT: "Discounts",
   CREDIT: "Credits applied",

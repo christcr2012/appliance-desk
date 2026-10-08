@@ -270,6 +270,13 @@ export async function loadFilingPacketInTx(
   }
   const endExclusive = addBusinessDays(period.periodEnd, 1);
   const account = period.filingAccount;
+  // Keep this discriminant stable across async provider/ledger reads.
+  const accountKind = account.kind;
+  if (accountKind === "RETAIL_DELIVERY_FEE_RETURN") {
+    return { status: "BLOCKED", problems: [
+      "Retail-delivery-fee returns use their own filing workflow; sales/use-tax packet is not applicable.",
+    ] };
+  }
   const basis = account.basis;
   if (basis !== "CASH" && basis !== "ACCRUAL") {
     return { status: "BLOCKED", problems: ["Ask your CPA to choose cash or accrual before filing."] };
@@ -488,7 +495,7 @@ export async function loadFilingPacketInTx(
   if (problems.length > 0) return { status: "BLOCKED", problems: [...new Set(problems)] };
 
   const packet = buildFilingPacket({
-    account, period: {
+    account: { ...account, kind: accountKind }, period: {
       start: period.periodStart, end: period.periodEnd,
       dueOn: period.dueOn, legalDueOn: period.legalDueOn ?? legalDueOn(period.dueOn),
     },

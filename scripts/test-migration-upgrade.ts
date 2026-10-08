@@ -120,6 +120,7 @@ async function main() {
       return result.rows[0];
     }
 
+    await fixtureClient.query(`UPDATE "BusinessSettings" SET "publicBusinessName"='Upgrade preserved business', "oneTimeDeliveryFeeCents"=749 WHERE id='singleton'`);
     const before = await snapshot();
     for (const migration of [
       "20260926151500_verification_updated_at",
@@ -194,6 +195,15 @@ async function main() {
       acquisitionTaxRecordedAt: null,
       acquisitionTaxRecordedByUserId: null,
     }, "T-6D1 must never infer tax payment for existing appliances");
+
+    const upgradedSettings = await fixtureClient.query(
+      `SELECT "publicBusinessName", "oneTimeDeliveryFeeCents", "useTaxMonthlyThresholdCents", "rdfThresholdCents", "rdfHandling", "rdfCpaConfirmedOn", "rdfThresholdCrossedOn" FROM "BusinessSettings" WHERE id='singleton'`,
+    );
+    assert.deepEqual(upgradedSettings.rows[0], {
+      publicBusinessName: "Upgrade preserved business", oneTimeDeliveryFeeCents: 749,
+      useTaxMonthlyThresholdCents: 30000, rdfThresholdCents: 50000000,
+      rdfHandling: "UNDECIDED", rdfCpaConfirmedOn: null, rdfThresholdCrossedOn: null,
+    }, "Tax migrations preserve configured business facts and leave RDF undecided");
 
     const after = await snapshot();
     assert.deepEqual(after, { ...before, emailVerified: true });

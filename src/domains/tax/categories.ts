@@ -14,6 +14,7 @@ export type TaxChargeCategory = (typeof TAX_CHARGE_CATEGORIES)[number];
 
 export type InvoiceLineItemKind =
   | "RENTAL"
+  | "RETAIL_DELIVERY_FEE"
   | "DELIVERY_FEE"
   | "INSTALLATION_FEE"
   | "REMOVAL_FEE"
@@ -67,6 +68,7 @@ export function categoryForLineKind(
       if (amountCents > 0) return "OTHER_CHARGE";
       return "NOT_TAXABLE";
     case "CREDIT":
+    case "RETAIL_DELIVERY_FEE":
     case "DEPOSIT":
     case "TAX":
       return "NOT_TAXABLE";

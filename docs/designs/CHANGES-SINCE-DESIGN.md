@@ -213,3 +213,12 @@ All customer-addressed email goes through `sendCustomerEmail` (owner master swit
 - OWNER-only intake choices with whole-quantity seller-tax amount; non-owner submissions omit evidence and server authorization rejects attempts.
 - Configurable threshold default 30000 cents, prospective month-end frequency decision, and an explicitly non-official DR 0252 worksheet. Filing-account mutation and period partition remain future integration, not claimed as complete.
 - Browser acquisition-intake accessibility coverage assigned to browser-a.
+
+## T-6C1 completion baseline — October 8, 2026
+
+Final prerequisite is merged #315 (`7ba2abd1`). Preserve its ADMIN read-only
+packet projection and OWNER assignment/filing behavior while rejecting RDF
+accounts from the sales/use-tax packet. New RDF enums also require the billing
+ledger map, tax category map, backup manifest and actual populated upgrade/restore
+proof. Downstream T-6C2 uses these current models/signatures; refresh its card at
+the final #317 merge, not the earlier #310 baseline.

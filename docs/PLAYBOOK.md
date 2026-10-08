@@ -156,9 +156,9 @@ This protocol is mandatory whenever work depends on CI, Vercel, GitHub review, o
 1. **One status check, then move.** Check the external state once. If it is still pending and produced no new actionable
    information, do not query it again immediately. Work on the next runnable PR, tests, docs, review reconciliation,
    or handoff instead.
-2. **No live watching.** Never tail build logs, repeatedly fetch workflow jobs, or loop on deployment/reviewer state.
+2. **No live watching or unbounded polling.** Never tail build logs or start an indefinite status loop.
    A second check is allowed only after substantive work occurred, Chris explicitly asks for current status, or that
-   result is the only remaining dependency.
+   result is the only remaining dependency. In that last case use the quiet bounded completion wait below.
 3. **Collapse duplicate failures.** If several browser shards fail during the same build step, read static/build output
    and at most one representative browser log first. Treat the other build failures as downstream until evidence says
    they are independent.
@@ -168,9 +168,12 @@ This protocol is mandatory whenever work depends on CI, Vercel, GitHub review, o
    causes together and push once.
 6. **Finish all eligible work before ending.** If an external job is pending, continue
    the immediate eligible successor or finish useful checks on the existing chain.
-   Only when every authorized action is blocked, record exact head, pending run
-   and the next command in STATUS. A finished chat turn cannot restart itself;
-   do not imply automatic background continuation or keep polling to simulate it.
+   When ordinary finite CI is the only remaining dependency, use the bounded
+   completion window below while keeping the turn active; do not hand waiting
+   back to Chris. End only after the work is complete or a verified external,
+   owner, session or tool limit prevents continuation. Record exact head and
+   next action in STATUS for that genuine blocker. A finished turn cannot
+   restart itself; never claim instructions guarantee background continuation.
 7. **User updates are progress checkpoints.** Report a meaningful commit, merge, defect fix or blocking
    finding as it happens and avoid long silent waits. Tool-call count alone is not progress; batching
    several small related calls is encouraged.
@@ -188,6 +191,29 @@ from old prospective instructions. No fixed five-minute reading period.
 
 Any new page must be added to `e2e/route-inventory.ts` in the same PR (`tests/accessibility-route-inventory.test.ts`
 fails otherwise), and any new browser spec to the lightest group in `e2e/shards.json`.
+
+### Quiet completion wait — only when useful work is exhausted
+
+Keep the active turn alive for an ordinary running CI gate. Prefer a supported
+job-completion wait. With authenticated `gh`, a finite quiet waiter is allowed:
+`timeout 300 gh run watch <run-id> --exit-status --interval 60 > /tmp/appliance-ci-wait.log 2>&1`.
+Yield long commands as resumable tool sessions; wait at most 60 seconds per tool
+call and give a commentary progress update at least once a minute. Expose the
+exit status; timeout means pending, not passed. Do not stream the log.
+If only the repository connector works, wait up to 60 seconds before each
+completion snapshot, at most once per minute, with the same 10-minute total
+budget; no rapid refreshes, repeated review requests or extra workstreams.
+After completion, act on failure or verify exact head and merge immediately.
+If the diff is reviewed, findings are resolved and only enforced CI/deployment
+checks remain, the supported GitHub auto-merge interface may arm that merge.
+Freeze the head; new code invalidates review evidence and requires renewed
+verification. Auto-merge obeys repository gates and does not resume an ended
+coding session or authorize skipping acceptance.
+After the budget, inspect scheduling/failure evidence once and diagnose the
+external blocker. Normal CI waits are not owner approvals. Use the existing
+review-unavailable rules for review outages; do not invent a waiver for a
+required reviewer. Host usage limits or an ended/disconnected session still
+need a real resume mechanism; this recipe does not promise one.
 
 ## Step 4 — Verify locally before any push
 
@@ -520,7 +546,10 @@ no separate metrics report, extra work lane or recurring approval ceremony.
    database reset merely because a new card starts. Never reuse production data.
 2. If CLI publishing fails for missing authentication, use an available authorized
    repository connector; do not repeatedly try the same unauthenticated push.
-   Publish the complete checked tree atomically: one normal git push, or Git Data
+   Before publication, refresh the target base and verify ancestry. A main-targeting
+   PR behind current main must sync once before preflight; green checks on an old
+   base may not satisfy strict merge/deployment rules. Freeze the successor during
+   that sync. Publish the complete checked tree atomically: one normal git push, or Git Data
    `create_tree` with **all** changed paths on the verified base tree →
    `create_commit` → one leased `update_ref` (or create the new branch at that
    complete commit). Include deletions/modes where applicable; preserve untouched
