@@ -53,7 +53,14 @@ export default async function globalSetup(config: FullConfig): Promise<void> {
   const adminPassword = process.env.TEST_ADMIN_PASSWORD;
   if (adminEmail && adminPassword) {
     const page = await browser.newPage({ baseURL });
-    await loginAs(page, adminEmail, adminPassword);
+    try {
+      await loginAs(page, adminEmail, adminPassword);
+    } catch (error) {
+      // CI-only diagnosis of browser fixture readiness. Never log passwords.
+      console.error("ADMIN E2E LOGIN", page.url(),
+        await page.locator('[role="alert"]').allTextContents());
+      throw error;
+    }
     await page.goto("/desk/today");
     if (new URL(page.url()).pathname === "/desk/security/setup") {
       await completeTwoFactorSetup(page, adminPassword);

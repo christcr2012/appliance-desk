@@ -5,6 +5,14 @@ import { prisma } from "./prisma";
 import { sendEmail } from "./email";
 import { sendPasswordEmail } from "./password-email";
 
+function isDisposableCiAuthFixture(): boolean {
+  try {
+    const url = new URL(process.env.DATABASE_URL ?? "");
+    return process.env.CI === "true" && url.hostname === "localhost" &&
+      url.pathname === "/appliance_desk_test";
+  } catch { return false; }
+}
+
 // Central auth configuration. Roles are OWNER / ADMIN / CUSTOMER — see
 // docs/BUSINESS-RULES.md for what each role can do. Every owner/admin
 // route and every customer-ownership check is enforced on the SERVER
@@ -103,7 +111,10 @@ export const auth = betterAuth({
   rateLimit: {
     enabled: true,
     window: 60,
-    max: 10,
+    // Four CI browser roles enroll/sign in on the same loopback IP.
+    // Preserve the strict production limit; only isolated throwaway CI
+    // PostgreSQL gets a larger budget for authenticated browser setup.
+    max: isDisposableCiAuthFixture() ? 60 : 10,
   },
   user: {
     additionalFields: {
