@@ -137,6 +137,9 @@ export async function listActiveOfficialSourceWatches(): Promise<
     lastHash: string | null;
     lastText: string | null;
     lastCheckedAt: Date | null;
+    lastChangedAt: Date | null;
+    lastExcerpt: string | null;
+    reviewedAt: Date | null;
     consecutiveFailures: number;
   }>
 > {
@@ -149,6 +152,9 @@ export async function listActiveOfficialSourceWatches(): Promise<
       lastHash: true,
       lastText: true,
       lastCheckedAt: true,
+      lastChangedAt: true,
+      lastExcerpt: true,
+      reviewedAt: true,
       consecutiveFailures: true,
     },
     orderBy: [{ label: "asc" }, { id: "asc" }],
