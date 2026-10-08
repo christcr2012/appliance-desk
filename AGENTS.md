@@ -47,37 +47,44 @@ are mandatory:
    `npx vitest run tests/x.test.ts -t "name" 2>&1 | tail -80`.
 6. **Two strikes.** If the same command fails or hangs twice, do not run it a third time: change approach, or write the
    blocker in `docs/STATUS.md` and move to the next work unit.
-7. **Explore budget: 3 consecutive reads/searches, then edit or stop.** The design or PR card is the spec — you are
-   not auditing the codebase. After 3 reads/searches without a repository write, you must do exactly one of these:
-   make the smallest justified edit, state the concrete blocker and return control, or abandon that tangent and return
-   to the active work unit. Never start a fourth exploratory read just because another question appeared.
-8. **Small checkpoints.** One work unit at a time; commit after each (local commit, push at the end), so a stall never
-   loses work. Before a long step, note in one line what you are about to do.
-9. **External waits** follow the anti-stall rule below: check once, act, move on, never watch.
-10. **CI/review gate loop — validated on PRs #283–#285 (2026-10-07), tightened after the next observed stall.**
-    Check the exact PR head once. If a gate fails, fetch the job list once, read only the failed job/review evidence,
-    make the smallest targeted patch, then verify the new exact head once. While a gate is still running, you may advance
-    **one** genuinely independent work unit on its own branch. That side work gets the same 3-read budget and must produce
-    a concrete repository write before any further exploration. It may not spawn another side task. If it cannot make a
-    justified edit within that budget, stop the side task and return control instead of exploring further. Never replace
-    this loop with broad repo rescans, repeated status checks, sleep loops or watching live logs. The two-strikes rule
-    still applies to the targeted fix itself.
-11. **No nested detours.** Keep one active implementation objective. A CI-wait side task is the only allowed second
-    objective, and it cannot branch into planning another PR, auditing a neighboring subsystem, researching a future
-    batch, or “mapping” more work. Finish/write the current objective or stop.
-12. **Never end on a read.** A read/search/log inspection is not progress by itself. After the final allowed read, the
-    next action must be a repository write, a targeted test/verification of a write already made, or a plain-English
-    blocker/status returned to Chris. Do not go silent after gathering information.
-13. **Progress checkpoint every 6 tool actions.** Within any block of roughly 6 tool actions there must be a durable
-    result: code/docs committed to the branch, a targeted failing gate repaired, a PR opened/merged, or an explicit
-    blocker returned to Chris. If none exists, stop the current approach immediately rather than continuing to explore.
-14. **Keep connector calls small.** One external-tool call should do one bounded thing. Do not batch several large
-    file reads, long logs, or unrelated GitHub operations into one connector script. Prefer one file/one failed job at a
-    time; at most 2 small reads when they are tightly related. Request narrow line ranges and emit only the excerpt needed.
-    If a connector call does not return, abandon that exact call shape instead of retrying it unchanged; split it smaller.
-15. **Do not hide future work inside one script.** Connector orchestration may combine a few trivial dependent writes,
-    but never encode the next several implementation steps into one long loop. Each returned tool result must leave a
-    clear next action so the session can continue even if the following call fails.
+7. **Explore budget: about 10 purposeful reads/searches, then edit.** Restore the working rule from PRs
+   #283–#285. Read the approved design/card and relevant code/tests; do not launch a broad audit. If the next
+   edit is still uncertain after about 10 focused inspections, write down the concrete question, make the
+   smallest justified implementation edit with its test, or report a true design/authorization blocker.
+   Three reads is *not* a stop condition; never make an unsafe guess to satisfy a tool-call quota.
+8. **Meaningful work checkpoints.** Complete a coherent work unit with its tests, commit locally, and
+   push a reviewed logical PR once. Don't turn every function, tiny migration detail, or single test into
+   a separate PR. A short checkpoint note precedes long steps; the durable git commit is the checkpoint.
+9. **External waits are checkpoints, not a work loop.** Inspect exact-head CI/review/preview once,
+   act on new evidence, and work on another eligible item without polling or watching live logs.
+10. **Two-lane conveyor, not extra workstreams.** Lane A implements the currently approved batch and
+    its immediate successor; Lane B processes review/CI/merge of the predecessor. These are phases
+    of ONE ordered work chain, not independent projects or extra planning streams. Keep at most two
+    unmerged implementation PRs. When predecessor code changes, freeze its successor until the predecessor
+    merges, then sync the successor ONCE onto final `main`. Resume that successor's same approved work;
+    never create a third PR or a fresh planning workstream merely to fill CI time.
+11. **Use the parallelism already available.** While a completed PR's checks run, build the immediate
+    successor if the base is stable. If the predecessor needs a fix, batch every actionable failure/review
+    item into one patch, confirm targeted tests, push once, then continue. Do not open unrelated branches,
+    repeatedly restart review, or stop implementing just because a non-blocking gate is pending.
+12. **Batch bounded connector work by purpose, not by arbitrary call count.** Fetch several related
+    PR metadata records, small code sections, review states or independent status checks together when
+    this eliminates round trips. Emit compact summaries; exclude giant diffs and long unfiltered logs.
+    Keep sequential ordering for dependent writes and expose their results. Splitting an efficient
+    batch into one tiny connector call per file is NOT an anti-stall strategy.
+13. **Failure recovery.** Use non-interactive commands, output/time bounds, and at most two identical
+    failed attempts. For tool failure switch to a proven alternate interface, smaller payload, or
+    exact-file operation. Preserve committed work and continue the active objective if possible.
+14. **One-pass review and merge.** Freeze scope when implemented; inspect the diff and all current
+    review findings together, fix every valid one in a single regression-tested patch, verify
+    exact-head CI/performance/preview, and merge immediately when gates are clean. Do not request
+    ceremonial re-reviews or repeatedly fetch unchanged thread state. For high-risk semantic changes
+    and mandatory branch rules keep the applicable review gate.
+15. **Quality-aware throughput tuning.** After the next 2–3 PRs, compare elapsed time, useful code
+    and tests delivered, review defects, red CI rounds, rebase/replacement PRs and merges. Improve
+    the existing two-lane process based on observed bottlenecks; do not optimize by dropping tests,
+    creating more streams, or making PRs artificially small. Continue until a genuine owner,
+    design, external or verification gate blocks productive work.
 
 ## What this is
 
@@ -172,8 +179,11 @@ resulting behavior are verified.
   together** (for example "ledger statements and reports", "tax-rate
   precision move", "signing-page terms and consent"): not one item per PR, and
   not a whole batch in one PR. Size it so the work in it can be done properly,
-  with its tests and docs, and reviewed in one sitting. **Concrete budget (Chris, 2026-10-06):** about 500 lines of
-  production code (tests not counted), about 15 files, at most one migration, one risk area, at most one red CI run expected.
+  with its tests and docs, and reviewed in one sitting. **Concrete sizing guide:** target about 500 production-code lines and 15 production files,
+  with an exceptional hard stop around 800 production-code lines, at most one migration and
+  one risk area. Combine adjacent already-approved work units when they form one testable,
+  reviewable capability within this guide; avoid arbitrary one-function/one-PR fragmentation.
+  Do not combine unrelated money, auth and provider changes just to inflate PR size.
   There is **no numeric merge-per-session limit**. Merge ready PRs in dependency order whenever their exact-head
   CI/performance/preview/review gates are satisfied. Keep at most two unmerged implementation PRs open in one dependency
   chain so later work cannot drift far ahead of a changing base. If the lower PR changes after its successor was branched,

@@ -5,7 +5,7 @@ launch and beyond, written so an implementing model (for example Sol 5.6) can pi
 It does not replace the batch acceptance lists (`docs/PLAN.md`) or the designs (`docs/designs/BATCH-<X>.md`): it points
 to them and says **what comes next, what must be true before it starts, and what only Chris can do.**
 
-Last reconciled with the code: 2026-10-08 after #303. F-part-1 and G are complete; T-5b1/T-5b2 are merged; T-5b3 #306 is active. Batch S is approved after T; COM-L is approved after T/S and before V/F-part-2.
+Last reconciled with the code: 2026-10-08 after #303. F-part-1 and G are complete; T-5b1/T-5b2 are merged; T-5b3 #306 is merged; T-6a1 #307 is active. Batch S is approved after T; COM-L is approved after T/S and before V/F-part-2.
 Keep this file current: when a step finishes, tick it, add the PR numbers, and move
 the "▶ Next" marker.
 
@@ -37,7 +37,7 @@ Legend: ✅ done · ▶ next · ⏳ waiting on Chris · ○ not started. "Design
 | 1 | ✅ Batches A, B, B2, C, R, D, E, E2 | approved, built | — | — | merged |
 | 2 | ✅ **F-part-1** — restore/media/capacity/runbooks | ✅ approved (`BATCH-F.md`) | — | — | #268, #269, #273 |
 | 3 | ✅ **G** — audit fixes, two-step login and session control | ✅ approved (`BATCH-G.md`) | — | — | #275, #276, #277 |
-| 4 | ▶ **T** — Colorado sales and use tax | ✅ approved (`BATCH-T.md`) | G merged | nothing to keep building; CPA answers still gate live billing | #279–#303 merged through T-5b2; #306 active T-5b3 |
+| 4 | ▶ **T** — Colorado sales and use tax | ✅ approved (`BATCH-T.md`) | G merged | nothing to keep building; CPA answers still gate live billing | #279–#306 merged through T-5b3; #307 active T-6a1 |
 | 5 | ○ **S** — system issues inbox, health page and AI check-up | ✅ approved (`BATCH-S.md`) | T merged and bounded PR cards exist | nothing | 2 estimated |
 | 5a | ○ **COM-L** — launch communications and telecom cost | **APPROVED 2026-10-08** (`BATCH-COM.md` + L1a/L1b/L2 cards) | T/S merged; applicable cards exist | no live setup to engineer; IN-03/09/51/52/53 before activation | 16 units; split large cards to budget |
 | 6 | ○ **V** — "Evergreen Signature" public-site redesign + desk/portal polish | ✅ approved (`BATCH-V.md`, concept artifact) | S and COM-L merged | accept the before/after screenshots before each public-site PR merges | 3–4 |

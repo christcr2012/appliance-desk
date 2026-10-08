@@ -5,7 +5,7 @@
 `docs/archive/STATUS-LOG.md`. The long history before 2026-10-02 is in
 `docs/archive/HANDOFF-2026-09-26-to-2026-10-02.md`.
 
-Last updated: 2026-10-08 · **F-part-1 and Batch G are merged complete. Batch T is in progress: T-5b1 #300 and T-5b2 #302/#303 are merged; T-5b3 #306 is active. COM design #301 is merged; runtime remains intentionally later after T/S.** Batch S remains approved after T and before COM-L/V; F-part-2 remains after V. #287 remains docs-only/proposed BP; O32 remains explicitly deferred.
+Last updated: 2026-10-08 · **F-part-1 and Batch G are merged complete. Batch T is in progress: T-5b1 #300 and T-5b2 #302/#303 are merged; T-5b3 #306 is merged; T-6a1 #307 is active. COM design #301 is merged; runtime remains intentionally later after T/S.** Batch S remains approved after T and before COM-L/V; F-part-2 remains after V. #287 remains docs-only/proposed BP; O32 remains explicitly deferred.
 
 ## Batch table
 
@@ -81,6 +81,9 @@ rate, real public contact/launch details, and explicit live Stripe/email/SMS/lau
 authorization. None of those blocks Batch F engineering; live provider actions stay OFF.
 
 ## Session log (last two batches only)
+
+- **2026-10-08 — restored high-throughput two-lane workflow and resumed T-6a1:** #306 merged green at exact head with all review threads resolved. #307 is the single implementation successor, rebuilt on merged main. The PR #283-era ~10-read heuristic and purpose-batched connector calls replace the later three-read cutoff/tiny-call rules; safety gates, two-PR dependency limit, quality tests and no-live-activation rules remain. Measure actual results after 2–3 subsequent PRs.
+
 
 - **2026-10-08 — T-5b2 merged; T-5b3 active; filing gate prepared:** #303 merged the official-source watch lifecycle. #306 is implementing guarded official-rate observation/auto-apply. T-6a/T-6b are split into bounded T-6a1/T-6a2/T-6b1/T-6b2 cards, including recipient-specific Owner alert keys and the use-tax recording/filing-period assignment seam required before T-6d intake hooks.
 

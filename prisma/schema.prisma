@@ -1580,6 +1580,17 @@ enum TaxFilingStatus {
   FILED
 }
 
+enum TaxFilingAccountKind {
+  SALES_RETURN
+  USE_TAX_RETURN
+}
+
+enum TaxAmendmentStatus {
+  OPEN
+  FILED
+  HANDLED_OUTSIDE
+}
+
 enum TaxExemptionReason {
   RESALE
   GOVERNMENT
@@ -1870,18 +1881,30 @@ model WebhookEvent {
 // ---------------------------------------------------------------------------
 
 model TaxFilingAccount {
-  id                     String             @id @default(cuid())
-  name                   String
-  accountNumber          String?
-  frequency              TaxFilingFrequency @default(MONTHLY)
-  dueDayOfFollowingMonth Int                @default(20)
-  basis                  TaxReportingBasis  @default(UNDECIDED)
-  portalUrl              String?
-  active                 Boolean            @default(true)
-  jurisdictions          TaxJurisdiction[]
-  periods                TaxFilingPeriod[]
-  createdAt              DateTime           @default(now())
-  updatedAt              DateTime           @updatedAt
+  id                       String                @id @default(cuid())
+  name                     String
+  accountNumber            String?
+  kind                     TaxFilingAccountKind  @default(SALES_RETURN)
+  frequency                TaxFilingFrequency    @default(MONTHLY)
+  dueDayOfFollowingMonth   Int                   @default(20)
+  basis                    TaxReportingBasis     @default(UNDECIDED)
+  portalUrl                String?
+  active                   Boolean               @default(true)
+  firstPeriodStart         DateTime?
+  licenseExpiresOn         DateTime?
+  reminderDaysBefore       Int[]                 @default([7, 2])
+  emailReminders           Boolean               @default(true)
+  deductionLabels          Json                  @default("{}")
+  screenLabels             Json                  @default("{}")
+  filingNotes              String?
+  excelUploadAvailable     Boolean?
+  bulkXmlAvailable         Boolean?
+  setupCheckedOn           DateTime?
+  jurisdictions            TaxJurisdiction[]     @relation("SalesTaxFilingAccount")
+  useTaxJurisdictions      TaxJurisdiction[]     @relation("UseTaxFilingAccount")
+  periods                  TaxFilingPeriod[]
+  createdAt                DateTime              @default(now())
+  updatedAt                DateTime              @updatedAt
 }
 
 model TaxJurisdiction {
@@ -1890,9 +1913,14 @@ model TaxJurisdiction {
   name             String
   level            TaxJurisdictionLevel
   administration   TaxAdministration
-  filingAccountId  String?
-  filingAccount    TaxFilingAccount?         @relation(fields: [filingAccountId], references: [id])
-  reviewStatus     TaxReviewStatus           @default(NEEDS_REVIEW)
+  filingAccountId     String?
+  filingAccount       TaxFilingAccount?         @relation("SalesTaxFilingAccount", fields: [filingAccountId], references: [id])
+  filingCode          String?
+  filingOrder         Int                       @default(0)
+  serviceFeeMilliPercent Int                    @default(0)
+  useTaxFilingAccountId String?
+  useTaxFilingAccount TaxFilingAccount?         @relation("UseTaxFilingAccount", fields: [useTaxFilingAccountId], references: [id])
+  reviewStatus        TaxReviewStatus           @default(NEEDS_REVIEW)
   reviewedByUserId String?
   reviewedAt       DateTime?
   notes            String?
@@ -2035,25 +2063,54 @@ model CustomerTaxExemption {
 }
 
 model TaxFilingPeriod {
-  id                      String           @id @default(cuid())
+  id                      String               @id @default(cuid())
   filingAccountId         String
-  filingAccount           TaxFilingAccount @relation(fields: [filingAccountId], references: [id])
+  filingAccount           TaxFilingAccount     @relation(fields: [filingAccountId], references: [id])
   periodStart             DateTime
   periodEnd               DateTime
   dueOn                   DateTime
-  status                  TaxFilingStatus  @default(OPEN)
+  legalDueOn              DateTime?
+  dueOnEditedByUserId     String?
+  status                  TaxFilingStatus      @default(OPEN)
+  zeroReturn              Boolean              @default(false)
   worksheet               Json?
   filedOn                 DateTime?
+  paidOn                  DateTime?
   confirmationNumber      String?
+  confirmationPhotoId     String?
   amountPaidCents         Int?
   serviceFeeRetainedCents Int?
   filedByUserId           String?
   notes                   String?
+  entryProgress           Json                 @default("{}")
   useTaxRows              PurchaseUseTax[]
-  createdAt               DateTime         @default(now())
-  updatedAt               DateTime         @updatedAt
+  amendments              TaxFilingAmendment[]
+  createdAt               DateTime             @default(now())
+  updatedAt               DateTime             @updatedAt
 
   @@unique([filingAccountId, periodStart])
+}
+
+model TaxFilingAmendment {
+  id                 String             @id @default(cuid())
+  periodId           String
+  period             TaxFilingPeriod    @relation(fields: [periodId], references: [id])
+  sequence           Int
+  status             TaxAmendmentStatus @default(OPEN)
+  packet             Json
+  additionalTaxCents Int
+  detectedAt         DateTime           @default(now())
+  filedOn            DateTime?
+  paidOn             DateTime?
+  confirmationNumber String?
+  amountPaidCents    Int?
+  filedByUserId      String?
+  notes              String?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  @@unique([periodId, sequence])
+  @@index([status, detectedAt])
 }
 
 model PurchaseUseTax {

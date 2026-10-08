@@ -92,14 +92,16 @@ Rules while implementing:
 
 ## Step 3a — Size each PR before you start it (Chris, 2026-10-06)
 
-The goal: **more time implementing than testing or debugging, and no PR bigger than one agent can finish well.**
-`docs/MASTER-ROADMAP.md` section 7 gives the exact PR list for every remaining batch; it overrides the coarser PR
-grouping lines inside the designs (the work units and their order do not change). If you think a PR there is still
-too big, split it further along work-unit boundaries and say so in the PR — never merge two of them. When a single
-work unit is itself over budget (likely: WU-G3 two-step login, WU-T5 invoices on the engine), split it inside the work
-unit at a point where each part is complete and tested on its own — for example G-2a "plugin, schema, enrolment page
-and CI login support, enforcement not yet on" then G-2b "enforcement"; or T-4a "local invoices" then T-4b "Stripe
-mirror". Never ship a half-built path that tests cannot exercise.
+The goal: **ship coherent, tested features with fewer CI/review/rebase cycles.**
+The PR outline in `docs/MASTER-ROADMAP.md` is a planning baseline, not a mandate to
+split every implementation into tiny cards. Follow the design's work-unit order.
+Combine adjacent approved cards only when they share a risk area, make one complete
+reviewable capability, and stay within the hard limits below. Split only when a
+concrete safety, dependency, review or size reason requires it. Keep tests with
+the affected behavior; never ship a half-built path or a feature without real
+integration coverage where required. The fast #283–#285 and #291–#297 delivery
+windows show the value of focused work and prompt merge gates, not a reason
+to cut test coverage or create more parallel branches.
 
 **How to measure the budget** (run before opening the PR; lockfile, generated files, tests, browser specs and docs are
 not counted):
@@ -109,12 +111,12 @@ git diff --shortstat origin/<base>...HEAD -- src prisma/schema.prisma prisma/mig
 git diff --name-only origin/<base>...HEAD -- src prisma scripts | wc -l
 ```
 
-**The budget for one PR** (all must hold; if a planned PR will break one, split it before writing code):
+**The PR sizing guardrails** (cohesion and safety first; do not split just to reduce individual connector calls):
 
 | Limit | Budget | Why |
 |---|---|---|
 | Production code changed (not tests, not docs) | about **500 lines**, hard stop around 800 | A reviewer (and the next agent) can read it in one sitting |
-| Production files touched | about **15** | Fewer places for an unrelated test to break |
+| Production files touched | target about **15**; allow cohesive exceptions with focused review | Fewer unrelated changes mean fewer regressions |
 | Migrations | **at most one**, and only in the first PR of a batch unless the design says otherwise | One schema change per CI cycle; easy rollback |
 | Risk areas | **one** of: schema, money/billing, auth/permissions, provider (Stripe/email/SMS), screens | Mixing two makes a red CI hard to diagnose |
 | New browser spec files | **at most one** | Browser shards are the slowest part of CI |
@@ -142,10 +144,10 @@ tests you added or changed against the local throwaway Postgres (Step 4b, only t
 costs a few minutes once per session and usually saves a whole red CI round. For screen PRs, run the one browser spec
 you touched with the 4c recipe.
 
-**Never sit idle.** While a PR waits on CI, on a reviewer, or on Chris (Batch V's before/after screenshot gate), you may
-start **only its immediate successor**, and only if that creates no more than two unmerged implementation PRs in the
-dependency chain. If a successor already exists, use the wait for independent docs/review/self-audit work instead of
-starting a third dependent implementation PR. Automated reviewers: if Codex replies that its usage limit is reached,
+**Use the existing two-lane conveyor.** While a predecessor PR waits on CI or review,
+build only its immediate successor, provided the base is stable and at most two implementation PRs remain unmerged.
+If the successor already exists, finish targeted tests, defects, review reconciliation or merge evidence for
+those same two PRs; do not spin up a third workstream or unrelated documentation PR. Automated reviewers: if Codex replies that its usage limit is reached,
 or no review has posted 20 minutes after `ci` went green and no Copilot review run is in progress, record "automated
 review unavailable — waived" (AGENTS.md) with your own diff inspection, and continue.
 
@@ -169,8 +171,9 @@ This protocol is mandatory whenever work depends on CI, Vercel, GitHub review, o
 6. **End cleanly instead of polling.** If merge/session limits, owner gates, or dependency ordering leave no useful
    work while an external job is pending, update STATUS/PR evidence with the exact head and pending run, tell Chris
    what remains, and stop the turn. The next turn resumes from that recorded state.
-7. **User updates are progress checkpoints.** During a long tool sequence, give Chris a short update after roughly
-   2–3 tool calls or when a meaningful result changes. Do not let a long external wait appear as a silent stall.
+7. **User updates are progress checkpoints.** Report a meaningful commit, merge, defect fix or blocking
+   finding as it happens and avoid long silent waits. Tool-call count alone is not progress; batching
+   several small related calls is encouraged.
 
 **Report what the budget cost.** Put "CI runs used: N (red: R)" in each PR description and in the STATUS handoff. If two
 PRs in a row needed three red runs, split every remaining PR of that batch one step smaller and say so in STATUS.
