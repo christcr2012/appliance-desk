@@ -6,6 +6,7 @@ import {
 } from "@/lib/business-date";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
+import { assertActiveTeamActor } from "@/lib/team-actor";
 
 import { listActiveOfficialSourceWatches } from "./official-rate-metadata";
 import { fetchOfficialSourcePage } from "./safe-official-source-fetch";
@@ -297,6 +298,7 @@ export async function acknowledgeOfficialSourceChange(
   const session = await requireRole("OWNER");
 
   return prisma.$transaction(async (tx) => {
+    await assertActiveTeamActor(tx, session.user.id, ["OWNER"]);
     const rows = await tx.$queryRaw<
       Array<{
         id: string;
