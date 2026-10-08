@@ -66,7 +66,7 @@ export async function advanceColoradoUseTaxFrequency(
     });
     if (decision.frequency !== "MONTHLY") return false;
 
-    const annualPeriod = await tx.taxFilingPeriod.findFirst({
+    const annualCandidate = await tx.taxFilingPeriod.findFirst({
       where: {
         filingAccountId: accountId,
         periodStart: { lte: monthEnd },
@@ -76,7 +76,13 @@ export async function advanceColoradoUseTaxFrequency(
     });
     // No annual period has been generated yet. Keep the account annual until
     // the calendar establishes one; never create overlapping inferred periods.
-    if (!annualPeriod) return false;
+    if (!annualCandidate) return false;
+    // markPeriodFiled() locks this same row before capturing the final packet.
+    // Lock and re-read *before* detaching purchase evidence or editing dates.
+    await tx.$queryRaw`SELECT "id" FROM "TaxFilingPeriod" WHERE "id" = ${annualCandidate.id} FOR UPDATE`;
+    const annualPeriod = await tx.taxFilingPeriod.findUniqueOrThrow({
+      where: { id: annualCandidate.id },
+    });
     if (annualPeriod.status === "FILED" &&
         annualPeriod.periodEnd.getTime() > monthEnd.getTime()) {
       throw new Error("A filed annual return overlaps the proposed monthly transition.");
@@ -109,10 +115,11 @@ export async function advanceColoradoUseTaxFrequency(
         data: { filingPeriodId: null },
       });
       const dueOn = dueOnFor(monthEnd, 20);
-      await tx.taxFilingPeriod.update({
-        where: { id: annualPeriod.id },
+      const updated = await tx.taxFilingPeriod.updateMany({
+        where: { id: annualPeriod.id, status: "OPEN" },
         data: { periodEnd: monthEnd, dueOn, legalDueOn: legalDueOn(dueOn) },
       });
+      if (updated.count !== 1) throw new Error("The annual filing period was filed concurrently; no transition was applied.");
     }
     await tx.taxFilingAccount.update({
       where: { id: accountId },
