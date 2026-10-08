@@ -157,7 +157,7 @@ function requestPinnedOfficialSource(
   return new Promise((resolve, reject) => {
     let settled = false;
     let timedOut = false;
-    let request: ReturnType<typeof httpsRequest>;
+    let request: ReturnType<typeof httpsRequest> | null = null;
 
     const finish = (
       result:
@@ -173,7 +173,7 @@ function requestPinnedOfficialSource(
 
     const timer = setTimeout(() => {
       timedOut = true;
-      request.destroy(new Error("Official source request timed out."));
+      request?.destroy(new Error("Official source request timed out."));
     }, timeoutMs);
 
     request = httpsRequest(
@@ -241,7 +241,7 @@ function requestPinnedOfficialSource(
           bytes += buffer.byteLength;
           if (bytes > maxBytes) {
             response.destroy();
-            request.destroy();
+            request?.destroy();
             finish({
               ok: false,
               error: new Error("Official source response exceeded the size limit."),
