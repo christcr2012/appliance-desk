@@ -24,6 +24,7 @@ import {
 type MockResponseOptions = {
   status?: number;
   contentType?: string;
+  contentEncoding?: string;
   contentLength?: number;
   chunks?: Array<string | Buffer>;
 };
@@ -58,6 +59,9 @@ function installResponse(options: MockResponseOptions = {}) {
       response.statusCode = options.status ?? 200;
       response.headers = {
         "content-type": options.contentType ?? "text/plain",
+        ...(options.contentEncoding === undefined
+          ? {}
+          : { "content-encoding": options.contentEncoding }),
         ...(options.contentLength === undefined
           ? {}
           : { "content-length": String(options.contentLength) }),
@@ -203,6 +207,7 @@ describe("T-5b2 safe official-source fetch", () => {
 
     const requestOptions = mocks.request.mock.calls[0]?.[1] as {
       family?: number;
+      headers?: Record<string, string>;
       lookup?: (
         hostname: string,
         options: unknown,
@@ -210,6 +215,7 @@ describe("T-5b2 safe official-source fetch", () => {
       ) => void;
     };
     expect(requestOptions.family).toBe(4);
+    expect(requestOptions.headers?.["accept-encoding"]).toBe("identity");
     const callback = vi.fn();
     requestOptions.lookup?.("tax.example.gov", {}, callback);
     expect(callback).not.toHaveBeenCalled();
@@ -403,6 +409,18 @@ describe("T-5b2 safe official-source fetch", () => {
         return request;
       },
     );
+
+    await expect(
+      fetchOfficialSourcePage("https://encoded.example.gov/page"),
+    ).rejects.toThrow("unsupported content encoding");
+  });
+
+  it("requests identity encoding and rejects encoded response bodies", async () => {
+    installResponse({
+      contentType: "text/html",
+      contentEncoding: "gzip",
+      chunks: [Buffer.from([0x1f, 0x8b, 0x08, 0x00])],
+    });
 
     await expect(
       fetchOfficialSourcePage("https://encoded.example.gov/page"),
