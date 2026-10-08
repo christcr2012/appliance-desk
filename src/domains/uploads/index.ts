@@ -38,6 +38,13 @@ export async function canUploadPhoto(
       })) !== null
     );
   }
+  if (segments[0] === "tax-filings" && user.role === "OWNER") {
+    return (
+      (await prisma.taxFilingPeriod.findFirst({
+        where: { id, status: "OPEN" }, select: { id: true },
+      })) !== null
+    );
+  }
   if (segments[0] === "tax-exemptions" && user.role === "OWNER") {
     return (
       (await prisma.customer.findFirst({
