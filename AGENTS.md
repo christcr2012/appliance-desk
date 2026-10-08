@@ -159,6 +159,32 @@ IDs. Check there before asking. Ask only for inputs the current batch needs,
 not everything at once. An answer is not applied until the setting and the
 resulting behavior are verified.
 
+## Sol-first implementation profile — owner request, 2026-10-08
+
+Sol 5.6 is the routine implementer and execution-card author. Use light effort
+for a bounded adaptation using an already-tested contract; use medium for schema,
+money, authorization, provider recovery and unfamiliar multi-file behavior.
+Effort is chosen by actual risk, not the card's length. Missing semantic decisions
+are not solved by guessing at light effort. A focused deeper pass or occasional
+Sonnet 5.5 second opinion can answer one concrete disputed contract with named
+code/tests; it is optional, creates no extra workstream, and never approves an
+owner-only choice. No forced model switch and no claim of benchmarked performance.
+
+Before editing, name the invariants and their meaningful regression cases. Keep
+routine card authoring within the existing bounded exploration pass; link an
+unchanged approved contract instead of transcribing the whole schema/design.
+Spend reasoning on changed behavior, failure paths and producer/consumer updates.
+Reuse verified session setup and fixtures; never rebuild a local test environment
+per card. Current dependencies/generated client/schema and isolated disposable
+storage/database must still match the branch. Record only useful environment
+facts in existing STATUS, with no secrets; invalidate stale facts after changes.
+
+At each PR boundary refresh only changed card/base contracts and relevant review
+findings. Update shared CHANGES-SINCE-DESIGN only for downstream-relevant contract
+changes; mechanical path corrections and “no contract change” belong in the card/
+PR, not repeated design amendments. Preserve current acceptance, targeted tests,
+full CI/secret checks, preview where applicable and required semantic review.
+
 ## How work is organized
 
 - **Approved contracts, just-in-time execution cards.** The selected implementing

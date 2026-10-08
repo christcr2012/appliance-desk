@@ -214,3 +214,37 @@ shortcuts and saved filtered queues. Existing O/BP/COM units gain contextual
 help, effective-date/impact previews and configurable templates without a second
 policy engine. All runtime additions remain to implement; this PR designs them.
 Keep mandatory Today work visible and preserve signed facts/activation gates.
+
+## Delivery forecast — October 8, 2026 (planning estimate)
+
+GitHub creation: September 26, 15:05:48 UTC (09:05:48 Denver). Through main #310,
+276 PRs merged; 217 touched src/prisma/operational scripts. In the preceding
+48 hours, 31 such PRs merged, about 15.5/day. Their median open-to-merge was
+53 minutes; this excludes pre-PR implementation and overlaps stacked work.
+Classification is path-based, not a verified measure of delivered features or
+model identity. Diff line totals include rework and are not useful work volume.
+
+Current finite scope: 49 launch-stage card groups, 34 later approved groups,
+21 proposed BP groups. Groups may combine/split while retaining pinned acceptance.
+At roughly 15.5 groups/day, raw extrapolation is about 3.2/5.4/6.7 days for
+launch/all-approved/including-BP. Use 1.5–2.5× allowance for different grouping,
+communications/media/accounting complexity, card authoring, integration proof
+and defects rather than pretending every remaining group equals a historic PR.
+
+| Scope | Working engineering estimate at recent activity | Calendar implication if daily pace continues |
+|---|---|---|
+| Launch-stage product (T/S/COM-L/V/F2) | 5–8 more days | About October 13–16 |
+| All approved finite work, including later K/M/O/COM-N | 8–12 more days | About October 16–20 |
+| Full finite roadmap including BP once accepted | 10–17 more days | About October 18–25 |
+
+These are ranges, not deadlines. They assume similar ongoing session availability,
+no further scope growth and prompt prerequisite decisions. BP is still proposed;
+K/M launch ordering, legal/CPA answers, sender/onboarding, rendered visual approval
+and final launch authorization can add unbounded calendar wait. Budget roughly
+2–4 calendar weeks for the full roadmap if those gates move promptly; longer
+with pauses. Explicitly deferred P/COM-A/import/QBO/Workspace scope has no fixed
+completion date until selected/designed. Agent active hours and historical model
+identity are unavailable, so this is not a Sol/Sonnet performance benchmark.
+Reforecast after three representative implementation PRs using actual accepted
+units delivered and remaining scope. No speed gain from the new rules is assumed
+in this estimate before measurement.
