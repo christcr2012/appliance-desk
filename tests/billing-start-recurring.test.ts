@@ -21,6 +21,7 @@ const mocks = vi.hoisted(() => {
     completeProviderOperation: vi.fn(),
     runProviderCall: vi.fn(),
     taxRateVersionIdsForAgreement: vi.fn(),
+    engineRateIds: [] as string[],
     ensureStripeTaxRate: vi.fn(),
     taxRatesList: vi.fn(),
     taxRatesCreate: vi.fn(),
@@ -38,7 +39,17 @@ vi.mock("@/domains/billing/subscription-end", async (importOriginal) => ({
   applySubscriptionEnds: vi.fn(async () => undefined),
 }));
 
+vi.mock("@/domains/tax/engine", () => ({
+  computeTax: (input: { lines: { key: string; amountCents: number }[] }) => ({
+    ok: true, totalTaxCents: 0, lines: input.lines.flatMap(line => mocks.engineRateIds.map(rateVersionId => ({
+      lineKey: line.key, rateVersionId, taxableCents: line.amountCents, exemptCents: 0, taxCents: 0,
+    }))),
+  }),
+}));
+
 vi.mock("@/domains/tax/locations", () => ({
+  getAgreementTaxContext: vi.fn(async () => ({})),
+  loadRentalAcquisitionBasis: vi.fn(async () => new Map()),
   assertTaxReadyForAgreement: vi.fn(async () => undefined),
   taxRateVersionIdsForAgreement: (...args: unknown[]) =>
     mocks.taxRateVersionIdsForAgreement(...args),
@@ -139,6 +150,7 @@ describe("startRecurringBillingForAgreement", () => {
     }));
     mocks.subscriptionsCreate.mockResolvedValue({ id: "sub_fake_1" });
     mocks.taxRateVersionIdsForAgreement.mockResolvedValue([]);
+    mocks.engineRateIds = [];
     mocks.ensureStripeTaxRate.mockImplementation(async (rateVersionId: string) => `txr_${rateVersionId}`);
     mocks.runProviderCall.mockImplementation(async (call: () => Promise<unknown>) => {
       try {
@@ -506,15 +518,16 @@ describe("startRecurringBillingForAgreement", () => {
   describe("jurisdiction tax rates sent to Stripe", () => {
     it("applies every resolved rental jurisdiction rate to each recurring item", async () => {
       mocks.taxRateVersionIdsForAgreement.mockResolvedValue(["rate-state", "rate-city"]);
+      mocks.engineRateIds = ["rate-state", "rate-city"];
       const { startRecurringBillingForAgreement } = await import("@/domains/billing/checkout");
 
       await startRecurringBillingForAgreement("agr-1");
 
       expect(mocks.ensureStripeTaxRate).toHaveBeenCalledTimes(2);
-      expect(mocks.ensureStripeTaxRate).toHaveBeenNthCalledWith(1, "rate-state");
-      expect(mocks.ensureStripeTaxRate).toHaveBeenNthCalledWith(2, "rate-city");
+      expect(mocks.ensureStripeTaxRate).toHaveBeenNthCalledWith(1, "rate-city");
+      expect(mocks.ensureStripeTaxRate).toHaveBeenNthCalledWith(2, "rate-state");
       const [params] = mocks.subscriptionsCreate.mock.calls[0]!;
-      expect(params.items[0].tax_rates).toEqual(["txr_rate-state", "txr_rate-city"]);
+      expect(params.items[0].tax_rates).toEqual(["txr_rate-city", "txr_rate-state"]);
     });
 
     it("blocks automatic backdating when the rental tax rate changed after delivery", async () => {

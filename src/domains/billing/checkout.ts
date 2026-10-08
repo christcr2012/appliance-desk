@@ -582,7 +582,7 @@ export async function startRecurringBillingForAgreement(
     items = await Promise.all(
       claimed.agreement.plan.map(async (item, index) => {
         const itemRateIds = await Promise.all(
-          (claimed.agreement.lineTaxRateVersionIds[String(index)] ?? []).map(ensureStripeTaxRate),
+          (claimed.agreement.lineTaxRateVersionIds[String(index)] ?? []).map(rateVersionId => ensureStripeTaxRate(rateVersionId)),
         );
         const product = await stripe.products.create(
           {
