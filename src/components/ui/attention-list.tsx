@@ -11,9 +11,13 @@ export type AttentionGroup = {
 export function AttentionList({
   groups,
   acknowledgeTaxSourceAction,
+  undoOfficialRateAction,
+  applyOfficialRateAction,
 }: {
   groups: AttentionGroup[];
   acknowledgeTaxSourceAction?: (formData: FormData) => Promise<void>;
+  undoOfficialRateAction?: (formData: FormData) => Promise<void>;
+  applyOfficialRateAction?: (formData: FormData) => Promise<void>;
 }) {
   if (groups.length === 0) {
     return (
@@ -73,6 +77,38 @@ export function AttentionList({
                           type="hidden"
                           name="watchVersion"
                           value={item.action.version}
+                        />
+                        <button
+                          type="submit"
+                          className="min-h-11 rounded-control px-3 text-sm font-medium text-ink underline-offset-2 hover:bg-subtle hover:underline"
+                        >
+                          {item.action.label}
+                        </button>
+                      </form>
+                    ) : null}
+                    {item.action?.type === "UNDO_OFFICIAL_RATE" &&
+                    undoOfficialRateAction ? (
+                      <form action={undoOfficialRateAction}>
+                        <input
+                          type="hidden"
+                          name="rateVersionId"
+                          value={item.action.id}
+                        />
+                        <button
+                          type="submit"
+                          className="min-h-11 rounded-control px-3 text-sm font-medium text-ink underline-offset-2 hover:bg-subtle hover:underline"
+                        >
+                          {item.action.label}
+                        </button>
+                      </form>
+                    ) : null}
+                    {item.action?.type === "APPLY_OFFICIAL_RATE" &&
+                    applyOfficialRateAction ? (
+                      <form action={applyOfficialRateAction}>
+                        <input
+                          type="hidden"
+                          name="observationId"
+                          value={item.action.id}
                         />
                         <button
                           type="submit"
