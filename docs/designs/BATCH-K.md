@@ -603,3 +603,14 @@ app. Revisit once the file export has been used for at least one quarter.
 
 - Report numbers about money come from the journal (`JournalLine`), not from re-adding invoices.
 - Expenses exist and carry use tax; Batch O's approvals can gate `postExpense` and refunds without changing posting.
+
+## 2026-10-08 addition — ENH-K explain report completeness
+
+K-6 may extend existing METRICS/payback reports with evidence completeness:
+which cost components are included, which are unavailable, as-of timestamp and
+source drill-down links scoped to the viewer. Missing acquisition/repair/fee
+costs must display UNKNOWN/incomplete, never $0 or a confident payback date.
+Reuse the designed journal and appliance analytics; do not create a second P&L.
+No new tax calculation or automatic retire/replace decision. Test a missing
+purchase basis, missing fee feed, two-appliance allocation, refunds and complete
+evidence; payback must never divide by zero or imply a profit from missing cost.

@@ -220,3 +220,36 @@ failing rule is not double-reported as stale; stuck provider op counted once; co
 - **S-S2** The existing rate limiter or auth helpers cannot protect a non-session API route without new libraries.
 - **S-S3** Routines in Chris's Claude plan cannot reach the production domain (network policy) — document the manual
   alternative (Chris starts the check-up session by hand) instead of weakening D-S3.
+
+## 2026-10-08 amendment — bounded privacy and actionable recovery
+
+S-2's external API accepts structured recommendation keys/repository references,
+not arbitrary note bodies. GET excludes staff free text and person identities.
+The prior regex/name-scan proposal cannot prove arbitrary prose is free of PII;
+keep staff notes internal, length-limited and screened, and do not export them.
+Typed issue details must use an explicit code allowlist, not merely a regex that
+could accept a name or secret shaped like an error code. Planted free-text names,
+addresses, tokens and raw provider responses must fail external API tests.
+
+ENH-S is part of S-1C: each issue kind maps to an allowlisted desk route and a
+short recovery instruction with required role, last verified timestamp and
+manual fallback. Links are generated server-side from typed identifiers; no raw
+URL from an error. Show UNKNOWN and stale evidence explicitly. Provider timeout
+recovery must inspect the provider operation/reconciliation screen; never offer
+blind resend. No new background writer, spending action or activation button.
+Prove role-shaped links, missing source fallback, duplicate issue suppression,
+partial-page non-resolution and provider-unknown guidance. Reuse existing S
+source lifecycle, not a second alert engine.
+
+### S schema and API reconciliation
+
+S-1A adds `SystemIssue.version Int @default(1)` for stale owner action rejection.
+Notes use nullable `authorUserId String?` and `authorKeyId String?`, with a
+constraint forbidding both identities; staff author scope remains private.
+S-2 owns OpsAgentKey and the authorKey relation, so S-1A must not reference a
+not-yet-created key table. Revocable key hashes are excluded from backup/restore
+and external exports. The external notes DTO and status/version conflict rules
+are exactly S-2's structured contract; allowlisted recommendation rendering
+replaces API free text. Human note redaction is a mitigation, not an anonymity
+claim. Source writer failure never rolls back an unrelated completed business
+transaction, and partial scans never resolve issues they have not inspected.

@@ -167,3 +167,142 @@ edges); browser `e2e/owner-controls.spec.ts` (approve a refund on phone width; a
 - **S-O1** O-A2's guards are not uniform enough to swap for `requireCapability` without changing who can do what today.
 - **S-O2** A money action cannot be re-run safely from stored input (it depends on browser state or a provider session).
 - **S-O3** Undo would need to change data other than `BusinessSettings` (for example rows of another table).
+
+## 2026-10-08 addition — ENH-O settings impact preview
+
+O-1 uses the existing settings validation/save path to show a pure before/after
+preview for supported consequential settings. State the effective date, affected
+new transactions and preserved signed agreements. Preview does not write data,
+call providers, change prices or reserve approvals. Persisted save revalidates
+actor capability and the expected settings revision; stale preview returns a
+refresh conflict instead of overwriting another owner's edit. Undo uses the
+normal audited save/approval path, never bypasses authorization or activation.
+Start with settings whose effects can be derived from existing contracts; label
+unsupported impact as unavailable. Test preview purity, stale revision, changed
+role, signed-snapshot preservation and required approval. Safe invariants remain
+code constraints; configurable templates cannot disable them.
+
+## 2026-10-08 amendment — owner workspace, discoverable controls and reusable work queues
+
+Owner request: manage most business work inside Appliance Desk with clear,
+accessible navigation and meaningful configurability. Extend the existing Desk,
+Today, search, settings, domain actions and capability model. No second business
+console or generic workflow engine. These engineering additions are authorized;
+existing money/legal/provider/launch inputs still gate affected actions.
+
+### D-O7 — owner control center, not a wall of switches (O-6)
+
+Add `/desk/control-center` linked for OWNER/ADMIN as **Manage my business**.
+Group tasks by owner intention: Website & promotions; Prices & agreements;
+Customers & service; Equipment & purchasing; Money & tax; Communications;
+Team & permissions; Health & recovery. Each group uses existing routes, with
+plain descriptions, current state, unresolved prerequisite and one next step.
+OWNER-only cards are absent from ADMIN DTOs, not merely visually hidden.
+
+A code-owned `OWNER_ACTIONS` registry in `src/lib/owner-actions.ts` maps stable
+IDs to label, synonyms, task group, existing route/anchor, required capability,
+read-only readiness loader and help key. It is a navigation registry, never a
+permission store or alternate command executor. Reuse `deskNavigation` and
+current action guards. Search by intention ("change website picture", "change
+rent", "fix failed payment", "stop reminders") uses these bounded registry terms
+and existing search, not a new AI service. A result says what will change before
+opening the actual authorized screen. Existing bookmarks/routes continue to work.
+
+Readiness states are READY, NEEDS_SETUP, WAITING_FOR_OWNER, UNAVAILABLE and OFF;
+show a timestamp and reason with a safe action link. Missing evidence is unknown,
+not a green check. Health status comes from S, live switches from O-5, source
+prices from pricing, website status from content revisions. Compose read-only
+DTOs rather than aggregating private errors/customer records into the dashboard.
+Partial source outage labels that card unavailable without breaking other cards.
+
+Owner environment setup stays in the app where secure APIs exist: account
+connection state, key metadata/test/revoke, business settings and manual evidence.
+Never display secret values, database URLs or production infrastructure IDs. If a
+credential must be entered in a provider dashboard/environment, explain exactly
+where, show a safe connection check and link back to the task. Do not pretend the
+app can administer unsupported provider features. External paid/provisioning
+steps remain explicit owner decisions. O-6 is read-only navigation/readiness:
+no new mutation API, automation or data schema.
+
+### D-O8 — saved work queues and focused home (O-7)
+
+Add `OwnerWorkspacePreference` in one additive O-7 migration:
+`userId String @id` (User relation, Cascade on account deletion),
+`version Int @default(1)`, `preferences Json`, `updatedAt DateTime @updatedAt`.
+`preferences` is a strict versioned DTO: pinnedActionIds (max 12 from registry),
+hiddenOptionalCardIds, and savedViews (max 20, each stable ID, private label max
+60 chars, registered routeKey and typed allowlisted filters/sort). No arbitrary
+URL/SQL, customer name/ID/search prose or secret is stored in these preferences.
+Allowed saved-view filters initially: inventory status/type, jobs state/business
+date range, tasks state and known Today category. Filters never weaken current
+actor scope; a saved link is not authorization. Permission changes remove stale
+pinned destinations from reads and block old direct URLs in the domain.
+
+`getOwnerWorkspace(actorId)` returns role-shaped DTO; `saveOwnerWorkspace(actorId,
+expectedVersion,input)` revalidates the active actor and registry in one
+transaction, increments CAS version and writes metadata-only audit. OWNER and
+ADMIN have their own personal preferences, no access to someone else's. Staff
+personalization is deferred until its scope is explicitly designed. Include
+backup/schema health and privacy deletion handling consistent with User data.
+
+UI offers **Pin this task**, **Save this view**, **Reset my workspace** with a
+preview. Today remains the actionable source: preferences cannot hide mandatory
+billing, tax, safety or owner approval tasks. Optional pinned shortcuts can be
+reordered; there is always a clear All tasks/settings route. Show filter chips
+and a reset button so a saved view never conceals why records are missing. Empty
+states say "No items match these filters" vs "No work remaining" truthfully.
+Saved queues do not dispatch jobs, make bulk money changes or schedule messages.
+
+### D-O9 — common interaction contract across existing work units
+
+Refine O-1…O-5 and BP/COM settings rather than adding separate tools:
+
+| Owner need | Required experience / existing owner |
+|---|---|
+| Understand a setting | Current value, plain effect, recommended value, affected customers/effective date, permissions, restore preview — O-1 |
+| Reuse business terms | Named configurable templates, version comparison, actual customer quote/agreement preview, immutable signed copy — BP |
+| Know what is awaiting a decision | One Today approval/setup item with reason and next action; existing IN IDs/readiness source, no duplicate inbox — O-3/S |
+| Change prices confidently | Effective-date preview using real pricing; show preserved signed/current estimate facts, audit and approval path — O-4 |
+| Control messages/ads | Template preview, consent/eligibility, schedule/visible status, cost where measured, test vs live clearly shown — COM/V |
+| Recover a problem | Safe domain-specific retry/reconcile action, status/evidence and manual fallback; never blind resend after UNKNOWN — S/billing/COM |
+| Operate from a phone | Short task-oriented groups, search, back link, sticky relevant action, readable validation and unsaved-value recovery — all UI |
+
+A shared `SettingPresentation` metadata contract is optional-field extension of
+existing section config: effect text, recommended-value label, affected-scope
+explanation and related action IDs. Domain validation/defaults remain in their
+existing source; presentation cannot create a separate configurable money rule.
+Conditional options show why they are unavailable. No contradictory settings,
+hidden fee stacks or arbitrary toggles for invariant security/financial behavior.
+Advanced details are progressively disclosed; essential consequences remain
+visible. Support help in context, not an instruction to read developer docs.
+
+For bulk operations reuse existing domain batch APIs only. Add selection count,
+permitted-state preflight and per-item success/conflict/error feedback. Never
+claim all succeeded after partial completion. New bulk refunds/credits, dispatch
+optimization and unattended agent changes are separate deferred semantic designs,
+not implied by a configurable workspace. Accessibility and role fixtures cover
+both shortcuts and direct destinations.
+
+### Implementation and evidence
+
+Order: existing O-5 → O-6 → O-7 → COM-N1A. O-6 can expose existing content controls
+without BP being complete; proposed offers are labeled unavailable until accepted.
+Implementer writes JIT cards; O-7 owns its migration and unique acceptance IDs.
+Named meaningful regressions: registry coverage/broken routes, role-shaped search
+and revoked capability, partial readiness failure, cross-user preference denial,
+stale preference CAS, malformed filter rejection, mandatory Today items cannot
+hide, saved empty states and keyboard/phone reset. Reuse one registered browser
+spec per coherent UI PR; no account/provider cost is required for navigation.
+
+### Approval/price command transaction clarification
+
+The O-3A/O-3B command registry executes the same validated domain operation via
+an explicit transaction-client command helper, not a public wrapper that starts
+an independent transaction. Request lock, current active owner/capability check,
+current business preconditions, mutation/audit/result reference and executedAt
+commit together. External provider work uses the existing durable operation
+intent/recovery fence; approval cannot claim provider completion after intent
+only. Requester attribution never replaces the approving actor guard. Scheduled
+price adapters similarly use the existing guarded save contract with an explicit
+transaction boundary and unique applied marker. Prove rollback/no duplicate
+execution, revoked actor, expired/stale request and UNKNOWN provider recovery.

@@ -61,3 +61,9 @@ The owner has not accepted COM, another branch is modifying these paths, or pres
 
 ## Done
 One uncertain SMS invokes Twilio once; STOP and dispatch serialize on the same canonical address so STOP blocks both purposes unless that exact message already won the durable in-flight claim; every non-production/unmarked environment and `customerSmsEnabled = false` yields no SDK request. Enabling customer email alone never enables SMS. Email regressions remain green. No live activation.
+
+## Current-base reconciliation
+
+Before implementation and any changed prerequisite, follow
+`docs/implementation-contracts/DRIFT-PROTOCOL.md`; adapt mechanical differences
+in this card and record actual schema/guards/signatures for the successor.

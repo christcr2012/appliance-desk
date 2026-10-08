@@ -1,0 +1,2683 @@
+{
+  "version": 1,
+  "auditedBase": "b2a06c2",
+  "updated": "2026-10-08",
+  "process": "Just-in-time cards from approved contracts; each card includes drift verification and a successor handoff.",
+  "cards": [
+    {
+      "id": "T-6D1",
+      "title": "Acquisition evidence and safe purchase recording",
+      "batch": "T",
+      "dependencies": [
+        "T-6b2"
+      ],
+      "card": "docs/pr-cards/T-6D1.md",
+      "status": "APPROVED",
+      "migration": "batch_t_acquisition_evidence",
+      "budget": 450,
+      "units": [
+        "T-6D1"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-T.md",
+        "prisma/schema.prisma",
+        "src/domains/inventory/index.ts",
+        "src/domains/purchasing/index.ts",
+        "src/domains/tax/use-tax.ts"
+      ],
+      "tests": [
+        "tests/appliance-acquisition-tax-integration.test.ts"
+      ],
+      "readiness": "READY_AFTER_PREREQUISITE"
+    },
+    {
+      "id": "T-6D2",
+      "title": "Per-appliance rent tax and purchase-tax completion",
+      "batch": "T",
+      "dependencies": [
+        "T-6D1"
+      ],
+      "card": "docs/pr-cards/T-6D2.md",
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 500,
+      "units": [
+        "T-6D2"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-T.md",
+        "src/domains/tax/engine.ts",
+        "src/domains/tax/locations.ts",
+        "src/domains/tax/local-invoice.ts",
+        "src/domains/tax/stripe-invoice-mirror.ts",
+        "src/domains/tax/filing.ts"
+      ],
+      "tests": [
+        "tests/tax-engine.test.ts",
+        "tests/appliance-intake-tax-integration.test.ts"
+      ],
+      "readiness": "READY_AFTER_PREREQUISITE"
+    },
+    {
+      "id": "T-6D3",
+      "title": "Acquisition UI, use-tax frequency and worksheet",
+      "batch": "T",
+      "dependencies": [
+        "T-6D2"
+      ],
+      "card": "docs/pr-cards/T-6D3.md",
+      "status": "APPROVED",
+      "migration": "batch_t_use_tax_frequency",
+      "budget": 480,
+      "units": [
+        "T-6D3"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-T.md",
+        "src/app/desk/inventory/actions.ts",
+        "src/domains/tax/filing-calendar.ts",
+        "src/domains/tax/filing-packet.ts",
+        "src/domains/exceptions/index.ts"
+      ],
+      "tests": [
+        "tests/use-tax-frequency.test.ts",
+        "tests/dr0252-fill.test.ts",
+        "e2e/appliance-acquisition-tax.spec.ts"
+      ],
+      "readiness": "READY_AFTER_PREREQUISITE"
+    },
+    {
+      "id": "T-6C1",
+      "title": "Retail delivery fee schema and decision engine",
+      "batch": "T",
+      "dependencies": [
+        "T-6D3"
+      ],
+      "card": "docs/pr-cards/T-6C1.md",
+      "status": "APPROVED",
+      "migration": "batch_t_retail_delivery_fee",
+      "budget": 420,
+      "units": [
+        "T-6C1"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-T.md",
+        "prisma/schema.prisma",
+        "src/domains/tax/categories.ts",
+        "src/domains/tax/filing-calendar.ts"
+      ],
+      "tests": [
+        "tests/retail-delivery-fee.test.ts",
+        "tests/rdf-migration-integration.test.ts"
+      ],
+      "readiness": "READY_AFTER_PREREQUISITE"
+    },
+    {
+      "id": "T-6C2",
+      "title": "Record delivery fees with stable sale identity",
+      "batch": "T",
+      "dependencies": [
+        "T-6C1"
+      ],
+      "card": "docs/pr-cards/T-6C2.md",
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 450,
+      "units": [
+        "T-6C2"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-T.md",
+        "src/domains/jobs/completion.ts",
+        "src/domains/tax/prepaid-invoice.ts",
+        "src/domains/tax/stripe-invoice-mirror.ts"
+      ],
+      "tests": [
+        "tests/retail-delivery-fee-integration.test.ts"
+      ],
+      "readiness": "READY_AFTER_PREREQUISITE"
+    },
+    {
+      "id": "T-6C3",
+      "title": "Customer fee charging and provider recovery",
+      "batch": "T",
+      "dependencies": [
+        "T-6C2"
+      ],
+      "card": "docs/pr-cards/T-6C3.md",
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 470,
+      "units": [
+        "T-6C3"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-T.md",
+        "src/domains/billing/provider-ops.ts",
+        "src/domains/tax/local-invoice.ts",
+        "src/domains/billing/stripe-invoice-payments.ts"
+      ],
+      "tests": [
+        "tests/rdf-charge-integration.test.ts"
+      ],
+      "readiness": "READY_AFTER_PREREQUISITE"
+    },
+    {
+      "id": "T-6C4",
+      "title": "Fee filing, credits and readiness",
+      "batch": "T",
+      "dependencies": [
+        "T-6C3"
+      ],
+      "card": "docs/pr-cards/T-6C4.md",
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 500,
+      "units": [
+        "T-6C4"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-T.md",
+        "src/domains/tax/filing-packet.ts",
+        "src/domains/tax/filing.ts",
+        "src/domains/tax/locations.ts",
+        "src/domains/tax/filing-attention.ts"
+      ],
+      "tests": [
+        "tests/rdf-filing-integration.test.ts",
+        "tests/tax-readiness-integration.test.ts"
+      ],
+      "readiness": "READY_AFTER_PREREQUISITE"
+    },
+    {
+      "id": "T-7A",
+      "title": "Tax setup, account and rule editing",
+      "batch": "T",
+      "dependencies": [
+        "T-6C4"
+      ],
+      "card": "docs/pr-cards/T-7A.md",
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 500,
+      "units": [
+        "T-7A"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-T.md",
+        "src/lib/desk-navigation.ts",
+        "src/domains/tax/locations.ts",
+        "src/domains/tax/exemptions.ts",
+        "src/domains/settings/index.ts"
+      ],
+      "tests": [
+        "tests/tax-setup-actions-integration.test.ts",
+        "e2e/sales-tax-setup.spec.ts"
+      ],
+      "readiness": "READY_AFTER_PREREQUISITE"
+    },
+    {
+      "id": "T-7B",
+      "title": "Areas, official sources and exemption navigation",
+      "batch": "T",
+      "dependencies": [
+        "T-7A"
+      ],
+      "card": "docs/pr-cards/T-7B.md",
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 450,
+      "units": [
+        "T-7B"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-T.md",
+        "src/domains/tax/official-rate-auto-apply.ts",
+        "src/domains/tax/official-source-watch.ts",
+        "src/app/desk/customers/[id]/tax-exemptions-panel.tsx"
+      ],
+      "tests": [
+        "tests/tax-workspace-queries.test.ts",
+        "e2e/sales-tax-areas.spec.ts"
+      ],
+      "readiness": "READY_AFTER_PREREQUISITE"
+    },
+    {
+      "id": "T-7C",
+      "title": "Guided filing and private evidence",
+      "batch": "T",
+      "dependencies": [
+        "T-7B"
+      ],
+      "card": "docs/pr-cards/T-7C.md",
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 480,
+      "units": [
+        "T-7C"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-T.md",
+        "src/domains/tax/filing.ts",
+        "src/domains/tax/filing-packet.ts",
+        "src/domains/tax/calendar-file.ts",
+        "src/domains/documents/artifacts.ts"
+      ],
+      "tests": [
+        "tests/tax-return-actions-integration.test.ts",
+        "e2e/sales-tax-returns.spec.ts"
+      ],
+      "readiness": "READY_AFTER_PREREQUISITE"
+    },
+    {
+      "id": "T-7D",
+      "title": "Tax overview, attention routing and acceptance closeout",
+      "batch": "T",
+      "dependencies": [
+        "T-7C"
+      ],
+      "card": "docs/pr-cards/T-7D.md",
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 450,
+      "units": [
+        "T-7D"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-T.md",
+        "src/domains/exceptions/index.ts",
+        "src/domains/tax/filing-attention.ts",
+        "src/app/desk/today/page.tsx"
+      ],
+      "tests": [
+        "tests/tax-overview.test.ts",
+        "e2e/sales-tax.spec.ts"
+      ],
+      "readiness": "READY_AFTER_PREREQUISITE"
+    },
+    {
+      "id": "S-1A",
+      "title": "System issue schema and typed safe event writers",
+      "batch": "S",
+      "dependencies": [
+        "T-7D"
+      ],
+      "card": "docs/pr-cards/S-1A.md",
+      "status": "APPROVED",
+      "migration": "batch_s_system_issues",
+      "budget": 440,
+      "units": [
+        "S-1A"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-S.md",
+        "src/domains/automation/runs.ts",
+        "src/domains/automation/health.ts",
+        "src/domains/exceptions/index.ts"
+      ],
+      "tests": [
+        "tests/system-issues-integration.test.ts",
+        "tests/ops-redaction.test.ts"
+      ],
+      "readiness": "READY_AFTER_PREREQUISITE"
+    },
+    {
+      "id": "S-1B",
+      "title": "Bounded source sweep and lifecycle integration",
+      "batch": "S",
+      "dependencies": [
+        "S-1A"
+      ],
+      "card": "docs/pr-cards/S-1B.md",
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 480,
+      "units": [
+        "S-1B"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-S.md",
+        "src/domains/automation/runs.ts",
+        "src/domains/automation/health.ts",
+        "src/domains/exceptions/index.ts"
+      ],
+      "tests": [
+        "tests/system-issue-sweep-integration.test.ts"
+      ],
+      "readiness": "READY_AFTER_PREREQUISITE"
+    },
+    {
+      "id": "S-1C",
+      "title": "System health page and Today system group",
+      "batch": "S",
+      "dependencies": [
+        "S-1B"
+      ],
+      "card": "docs/pr-cards/S-1C.md",
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 430,
+      "units": [
+        "S-1C",
+        "ENH-S"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-S.md",
+        "src/domains/automation/runs.ts",
+        "src/domains/automation/health.ts",
+        "src/domains/exceptions/index.ts"
+      ],
+      "tests": [
+        "tests/system-issue-actions-integration.test.ts",
+        "e2e/system-health.spec.ts"
+      ],
+      "readiness": "READY_AFTER_PREREQUISITE"
+    },
+    {
+      "id": "S-2",
+      "title": "Private ops keys, safe API and checkup runbook",
+      "batch": "S",
+      "dependencies": [
+        "S-1C"
+      ],
+      "card": "docs/pr-cards/S-2.md",
+      "status": "APPROVED",
+      "migration": "batch_s_ops_keys",
+      "budget": 470,
+      "units": [
+        "S-2"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-S.md",
+        "src/domains/automation/runs.ts",
+        "src/domains/automation/health.ts",
+        "src/domains/exceptions/index.ts"
+      ],
+      "tests": [
+        "tests/ops-api-integration.test.ts",
+        "e2e/system-health-keys.spec.ts"
+      ],
+      "readiness": "READY_AFTER_PREREQUISITE"
+    },
+    {
+      "id": "V-1",
+      "title": "Signature tokens and reuse of editable content registry",
+      "batch": "V",
+      "dependencies": [
+        "V-C5"
+      ],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 440,
+      "units": [
+        "V-1"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-V.md",
+        "src/domains/site-content/fields.ts",
+        "src/lib/desk-navigation.ts",
+        "src/app/globals.css"
+      ],
+      "tests": [
+        "tests/theme-contrast.test.ts",
+        "tests/public-copy-from-settings.test.ts",
+        "e2e/website-editor.spec.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/V-1.md"
+    },
+    {
+      "id": "V-2",
+      "title": "Signature homepage and safe service-area check",
+      "batch": "V",
+      "dependencies": [
+        "V-1"
+      ],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 500,
+      "units": [
+        "V-2"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-V.md",
+        "src/domains/site-content/fields.ts",
+        "src/lib/desk-navigation.ts",
+        "src/app/globals.css"
+      ],
+      "tests": [
+        "tests/service-area-check.test.ts",
+        "tests/check-address-action.test.ts",
+        "e2e/signature-home.spec.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/V-2.md"
+    },
+    {
+      "id": "V-3",
+      "title": "Remaining public pages with editable copy",
+      "batch": "V",
+      "dependencies": [
+        "V-2"
+      ],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 480,
+      "units": [
+        "V-3"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-V.md",
+        "src/domains/site-content/fields.ts",
+        "src/lib/desk-navigation.ts",
+        "src/app/globals.css"
+      ],
+      "tests": [
+        "tests/public-copy-from-settings.test.ts",
+        "e2e/signature-public.spec.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/V-3.md"
+    },
+    {
+      "id": "V-4",
+      "title": "Desk and portal signature polish and evidence",
+      "batch": "V",
+      "dependencies": [
+        "V-3"
+      ],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 450,
+      "units": [
+        "V-4"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-V.md",
+        "src/domains/site-content/fields.ts",
+        "src/lib/desk-navigation.ts",
+        "src/app/globals.css"
+      ],
+      "tests": [
+        "tests/day-timeline.test.tsx",
+        "e2e/signature-focus.spec.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/V-4.md"
+    },
+    {
+      "id": "F2-A",
+      "title": "Integrated rental and financial scenarios 1\u20135",
+      "batch": "F2",
+      "dependencies": [
+        "V-4"
+      ],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 180,
+      "units": [
+        "F2-A"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-F.md",
+        "tests/helpers/tax-ready.ts",
+        "docs/AI-PR-READ-FIRST.md"
+      ],
+      "tests": [
+        "tests/scenarios/01-lead-to-recurring-billing.test.ts",
+        "tests/scenarios/02-provider-failure-retry.test.ts",
+        "tests/scenarios/03-maintenance-to-inspection.test.ts",
+        "tests/scenarios/04-manual-payment-overpayment-refund-statement.test.ts",
+        "tests/scenarios/05-term-end-renew-terminate-autorenew.test.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/F2-A.md"
+    },
+    {
+      "id": "F2-B",
+      "title": "Integrated security, messages, privacy and continuing rentals",
+      "batch": "F2",
+      "dependencies": [
+        "F2-A"
+      ],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 200,
+      "units": [
+        "F2-B"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-F.md",
+        "tests/helpers/tax-ready.ts",
+        "docs/AI-PR-READ-FIRST.md"
+      ],
+      "tests": [
+        "tests/scenarios/06-staff-lifecycle-inflight.test.ts",
+        "tests/scenarios/07-message-send-failure-reconcile.test.ts",
+        "tests/scenarios/08-privacy-request-retention.test.ts",
+        "tests/scenarios/09-restore-and-media-recovery.test.ts",
+        "tests/scenarios/11-month-to-month-continuation-and-online-end.test.ts",
+        "tests/scenarios/12-late-pickup-company-waiver.test.ts",
+        "e2e/scenarios/10-owner-workflow.spec.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/F2-B.md"
+    },
+    {
+      "id": "F2-C",
+      "title": "Current owner guide and reproducible screenshots",
+      "batch": "F2",
+      "dependencies": [
+        "F2-B"
+      ],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 120,
+      "units": [
+        "F2-C"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-F.md",
+        "tests/helpers/tax-ready.ts",
+        "docs/AI-PR-READ-FIRST.md"
+      ],
+      "tests": [
+        "tests/owner-guide-coverage.test.ts",
+        "e2e/owner-guide-screenshots.spec.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/F2-C.md"
+    },
+    {
+      "id": "F2-D",
+      "title": "Review discharge, launch ledger and rollback",
+      "batch": "F2",
+      "dependencies": [
+        "F2-C"
+      ],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 300,
+      "units": [
+        "F2-D",
+        "ENH-F"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-F.md",
+        "tests/helpers/tax-ready.ts",
+        "docs/AI-PR-READ-FIRST.md"
+      ],
+      "tests": [
+        "tests/launch-ledger.test.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/F2-D.md"
+    },
+    {
+      "id": "K-1A",
+      "title": "Accounting schema, system accounts and restoration",
+      "batch": "K",
+      "dependencies": [
+        "F2-D"
+      ],
+      "status": "APPROVED",
+      "migration": "batch_k_books",
+      "budget": 490,
+      "units": [
+        "K-1A"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-K.md",
+        "prisma/schema.prisma",
+        "src/domains/billing/ledger.ts",
+        "src/domains/tax/filing-packet.ts"
+      ],
+      "tests": [
+        "tests/books-migration-integration.test.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/K-1A.md"
+    },
+    {
+      "id": "K-1B",
+      "title": "Pure balanced posting rules and evidence adapters",
+      "batch": "K",
+      "dependencies": [
+        "K-1A"
+      ],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 480,
+      "units": [
+        "K-1B"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-K.md",
+        "prisma/schema.prisma",
+        "src/domains/billing/ledger.ts",
+        "src/domains/tax/filing-packet.ts"
+      ],
+      "tests": [
+        "tests/books-posting-rules.test.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/K-1B.md"
+    },
+    {
+      "id": "K-2A",
+      "title": "Journal poster, periods, opening balances and concurrency",
+      "batch": "K",
+      "dependencies": [
+        "K-1B"
+      ],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 500,
+      "units": [
+        "K-2A"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-K.md",
+        "prisma/schema.prisma",
+        "src/domains/billing/ledger.ts",
+        "src/domains/tax/filing-packet.ts"
+      ],
+      "tests": [
+        "tests/books-poster-integration.test.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/K-2A.md"
+    },
+    {
+      "id": "K-2B",
+      "title": "Accounts, opening setup and journal browser",
+      "batch": "K",
+      "dependencies": [
+        "K-2A"
+      ],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 450,
+      "units": [
+        "K-2B"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-K.md",
+        "prisma/schema.prisma",
+        "src/domains/billing/ledger.ts",
+        "src/domains/tax/filing-packet.ts"
+      ],
+      "tests": [
+        "tests/books-setup-integration.test.ts",
+        "e2e/books-setup.spec.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/K-2B.md"
+    },
+    {
+      "id": "K-3",
+      "title": "Stripe balance paging, clearing and nightly books",
+      "batch": "K",
+      "dependencies": [
+        "K-2B"
+      ],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 470,
+      "units": [
+        "K-3"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-K.md",
+        "prisma/schema.prisma",
+        "src/domains/billing/ledger.ts",
+        "src/domains/tax/filing-packet.ts"
+      ],
+      "tests": [
+        "tests/books-stripe-sync-integration.test.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/K-3.md"
+    },
+    {
+      "id": "K-4A",
+      "title": "Expense lifecycle and private receipt uploads",
+      "batch": "K",
+      "dependencies": [
+        "K-3"
+      ],
+      "status": "APPROVED",
+      "migration": "batch_k_expense_photo_scope_if_needed",
+      "budget": 470,
+      "units": [
+        "K-4A"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-K.md",
+        "prisma/schema.prisma",
+        "src/domains/billing/ledger.ts",
+        "src/domains/tax/filing-packet.ts"
+      ],
+      "tests": [
+        "tests/books-expenses-integration.test.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/K-4A.md"
+    },
+    {
+      "id": "K-4B",
+      "title": "Expense phone workflow and recurring drafts",
+      "batch": "K",
+      "dependencies": [
+        "K-4A"
+      ],
+      "status": "APPROVED",
+      "migration": "batch_k_recurring_expense_identity",
+      "budget": 450,
+      "units": [
+        "K-4B"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-K.md",
+        "prisma/schema.prisma",
+        "src/domains/billing/ledger.ts",
+        "src/domains/tax/filing-packet.ts"
+      ],
+      "tests": [
+        "tests/books-recurring.test.ts",
+        "e2e/books-expenses.spec.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/K-4B.md"
+    },
+    {
+      "id": "K-5",
+      "title": "Immutable accounting export batches",
+      "batch": "K",
+      "dependencies": [
+        "K-4B"
+      ],
+      "status": "APPROVED",
+      "migration": "batch_k_export_provenance",
+      "budget": 470,
+      "units": [
+        "K-5"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-K.md",
+        "prisma/schema.prisma",
+        "src/domains/billing/ledger.ts",
+        "src/domains/tax/filing-packet.ts"
+      ],
+      "tests": [
+        "tests/books-exports.test.ts",
+        "e2e/books-export.spec.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/K-5.md"
+    },
+    {
+      "id": "K-6",
+      "title": "Depreciation and retirement value evidence",
+      "batch": "K",
+      "dependencies": [
+        "K-5"
+      ],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 430,
+      "units": [
+        "K-6",
+        "ENH-K"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-K.md",
+        "prisma/schema.prisma",
+        "src/domains/billing/ledger.ts",
+        "src/domains/tax/filing-packet.ts"
+      ],
+      "tests": [
+        "tests/books-depreciation.test.ts",
+        "tests/books-depreciation-integration.test.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/K-6.md"
+    },
+    {
+      "id": "K-7",
+      "title": "Profit, balance and appliance payback",
+      "batch": "K",
+      "dependencies": [
+        "K-6"
+      ],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 500,
+      "units": [
+        "K-7"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-K.md",
+        "prisma/schema.prisma",
+        "src/domains/billing/ledger.ts",
+        "src/domains/tax/filing-packet.ts"
+      ],
+      "tests": [
+        "tests/books-reports-integration.test.ts",
+        "e2e/books-reports.spec.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/K-7.md"
+    },
+    {
+      "id": "K-8",
+      "title": "Forecast, customer health and year-end package",
+      "batch": "K",
+      "dependencies": [
+        "K-7"
+      ],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 470,
+      "units": [
+        "K-8"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-K.md",
+        "prisma/schema.prisma",
+        "src/domains/billing/ledger.ts",
+        "src/domains/tax/filing-packet.ts"
+      ],
+      "tests": [
+        "tests/books-reports.test.ts",
+        "e2e/books.spec.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/K-8.md"
+    },
+    {
+      "id": "M-1A",
+      "title": "Shop and resale stock schema",
+      "batch": "M",
+      "dependencies": [
+        "K-8"
+      ],
+      "status": "APPROVED",
+      "migration": "batch_m_shop_stock",
+      "budget": 400,
+      "units": [
+        "M-1A"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-M.md",
+        "src/domains/purchasing/ledger.ts",
+        "src/domains/purchasing/index.ts",
+        "src/domains/inventory/guided-actions.ts"
+      ],
+      "tests": [
+        "tests/shop-schema-integration.test.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/M-1A.md"
+    },
+    {
+      "id": "M-1B",
+      "title": "Resale movement costs and use-tax withdrawals",
+      "batch": "M",
+      "dependencies": [
+        "M-1A"
+      ],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 470,
+      "units": [
+        "M-1B"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-M.md",
+        "src/domains/purchasing/ledger.ts",
+        "src/domains/purchasing/index.ts",
+        "src/domains/inventory/guided-actions.ts"
+      ],
+      "tests": [
+        "tests/resale-withdrawal-integration.test.ts",
+        "tests/parts-ledger-integration.test.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/M-1B.md"
+    },
+    {
+      "id": "M-1C",
+      "title": "Atomic local shop sale and refund domain",
+      "batch": "M",
+      "dependencies": [
+        "M-1B"
+      ],
+      "status": "APPROVED",
+      "migration": "batch_m_sale_return_evidence",
+      "budget": 500,
+      "units": [
+        "M-1C"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-M.md",
+        "src/domains/purchasing/ledger.ts",
+        "src/domains/purchasing/index.ts",
+        "src/domains/inventory/guided-actions.ts"
+      ],
+      "tests": [
+        "tests/shop-sale-integration.test.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/M-1C.md"
+    },
+    {
+      "id": "M-1D",
+      "title": "Sales and items-for-sale screens",
+      "batch": "M",
+      "dependencies": [
+        "M-1C"
+      ],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 470,
+      "units": [
+        "M-1D"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-M.md",
+        "src/domains/purchasing/ledger.ts",
+        "src/domains/purchasing/index.ts",
+        "src/domains/inventory/guided-actions.ts"
+      ],
+      "tests": [
+        "tests/walkin-scope.test.ts",
+        "e2e/shop-sales.spec.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/M-1D.md"
+    },
+    {
+      "id": "M-2A",
+      "title": "Retired plans, salvage and lump scrap ledger",
+      "batch": "M",
+      "dependencies": [
+        "M-1D"
+      ],
+      "status": "APPROVED",
+      "migration": "batch_m_retired_plans",
+      "budget": 470,
+      "units": [
+        "M-2A"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-M.md",
+        "src/domains/purchasing/ledger.ts",
+        "src/domains/purchasing/index.ts",
+        "src/domains/inventory/guided-actions.ts"
+      ],
+      "tests": [
+        "tests/retired-appliance-plan-integration.test.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/M-2A.md"
+    },
+    {
+      "id": "M-2B",
+      "title": "Retired workflow and scrap receipts",
+      "batch": "M",
+      "dependencies": [
+        "M-2A"
+      ],
+      "status": "APPROVED",
+      "migration": "batch_m_scrap_cash_source",
+      "budget": 480,
+      "units": [
+        "M-2B"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-M.md",
+        "src/domains/purchasing/ledger.ts",
+        "src/domains/purchasing/index.ts",
+        "src/domains/inventory/guided-actions.ts"
+      ],
+      "tests": [
+        "tests/scrap-payment-integration.test.ts",
+        "tests/retired-follow-up.test.ts",
+        "e2e/retired-appliances.spec.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/M-2B.md"
+    },
+    {
+      "id": "M-2C",
+      "title": "Used-appliance sale integration",
+      "batch": "M",
+      "dependencies": [
+        "M-2B"
+      ],
+      "status": "APPROVED",
+      "migration": "batch_m_used_asset_sale_claim",
+      "budget": 450,
+      "units": [
+        "M-2C"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-M.md",
+        "src/domains/purchasing/ledger.ts",
+        "src/domains/purchasing/index.ts",
+        "src/domains/inventory/guided-actions.ts"
+      ],
+      "tests": [
+        "tests/used-appliance-sale-integration.test.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/M-2C.md"
+    },
+    {
+      "id": "M-3",
+      "title": "Hosted card payment for local invoices",
+      "batch": "M",
+      "dependencies": [
+        "M-2C"
+      ],
+      "status": "APPROVED",
+      "migration": "batch_m_local_invoice_checkout",
+      "budget": 500,
+      "units": [
+        "M-3"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-M.md",
+        "src/domains/purchasing/ledger.ts",
+        "src/domains/purchasing/index.ts",
+        "src/domains/inventory/guided-actions.ts"
+      ],
+      "tests": [
+        "tests/local-invoice-checkout-integration.test.ts",
+        "e2e/local-invoice-card.spec.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/M-3.md"
+    },
+    {
+      "id": "O-1",
+      "title": "Settings history, guarded undo and live-switch inventory",
+      "batch": "O",
+      "dependencies": [
+        "M-3"
+      ],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 460,
+      "units": [
+        "O-1",
+        "ENH-O"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-O.md",
+        "src/domains/settings/index.ts",
+        "src/domains/settings/section-config.ts",
+        "src/app/desk/settings/actions.ts"
+      ],
+      "tests": [
+        "tests/settings-undo-integration.test.ts",
+        "e2e/owner-switches.spec.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/O-1.md"
+    },
+    {
+      "id": "O-2A",
+      "title": "Capability defaults and scoped domain guards",
+      "batch": "O",
+      "dependencies": [
+        "O-1"
+      ],
+      "status": "APPROVED",
+      "migration": "batch_o_capabilities",
+      "budget": 500,
+      "units": [
+        "O-2A"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-O.md",
+        "src/domains/settings/index.ts",
+        "src/domains/settings/section-config.ts",
+        "src/app/desk/settings/actions.ts"
+      ],
+      "tests": [
+        "tests/capabilities.test.ts",
+        "tests/capabilities-integration.test.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/O-2A.md"
+    },
+    {
+      "id": "O-2B",
+      "title": "Per-person permissions UI and adversarial DTO proof",
+      "batch": "O",
+      "dependencies": [
+        "O-2A"
+      ],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 400,
+      "units": [
+        "O-2B"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-O.md",
+        "src/domains/settings/index.ts",
+        "src/domains/settings/section-config.ts",
+        "src/app/desk/settings/actions.ts"
+      ],
+      "tests": [
+        "tests/capability-dto-scope.test.ts",
+        "e2e/owner-capabilities.spec.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/O-2B.md"
+    },
+    {
+      "id": "O-3A",
+      "title": "Durable approvals and transactional command preparation",
+      "batch": "O",
+      "dependencies": [
+        "O-2B"
+      ],
+      "status": "APPROVED",
+      "migration": "batch_o_approval_requests",
+      "budget": 500,
+      "units": [
+        "O-3A"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-O.md",
+        "src/domains/settings/index.ts",
+        "src/domains/settings/section-config.ts",
+        "src/app/desk/settings/actions.ts"
+      ],
+      "tests": [
+        "tests/approvals-integration.test.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/O-3A.md"
+    },
+    {
+      "id": "O-3B",
+      "title": "Approval command adapters and Today decision workflow",
+      "batch": "O",
+      "dependencies": [
+        "O-3A"
+      ],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 500,
+      "units": [
+        "O-3B"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-O.md",
+        "src/domains/settings/index.ts",
+        "src/domains/settings/section-config.ts",
+        "src/app/desk/settings/actions.ts"
+      ],
+      "tests": [
+        "tests/approval-command-adapters-integration.test.ts",
+        "e2e/owner-approvals.spec.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/O-3B.md"
+    },
+    {
+      "id": "O-4",
+      "title": "Scheduled price changes with frozen accepted terms",
+      "batch": "O",
+      "dependencies": [
+        "O-3B"
+      ],
+      "status": "APPROVED",
+      "migration": "batch_o_scheduled_prices",
+      "budget": 450,
+      "units": [
+        "O-4"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-O.md",
+        "src/domains/settings/index.ts",
+        "src/domains/settings/section-config.ts",
+        "src/app/desk/settings/actions.ts"
+      ],
+      "tests": [
+        "tests/scheduled-price-integration.test.ts",
+        "e2e/scheduled-prices.spec.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/O-4.md"
+    },
+    {
+      "id": "O-5",
+      "title": "Goals, utilization attention and final control handoff",
+      "batch": "O",
+      "dependencies": [
+        "O-4"
+      ],
+      "status": "APPROVED",
+      "migration": "batch_o_goals",
+      "budget": 450,
+      "units": [
+        "O-5"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-O.md",
+        "src/domains/settings/index.ts",
+        "src/domains/settings/section-config.ts",
+        "src/app/desk/settings/actions.ts"
+      ],
+      "tests": [
+        "tests/goals-pace.test.ts",
+        "tests/owner-goals-integration.test.ts",
+        "e2e/owner-controls.spec.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/O-5.md"
+    },
+    {
+      "id": "COM-L3",
+      "title": "Threads, message links and template revisions schema",
+      "batch": "COM-L",
+      "dependencies": [
+        "COM-L2"
+      ],
+      "status": "APPROVED",
+      "migration": "com_threads_templates",
+      "budget": 440,
+      "units": [
+        "COM-L3"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-COM.md",
+        "src/domains/messaging/deliver.ts",
+        "src/domains/messaging/events.ts",
+        "src/lib/sms.ts"
+      ],
+      "tests": [
+        "tests/communication-schema-integration.test.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/COM-L3.md"
+    },
+    {
+      "id": "COM-L4A",
+      "title": "Policy, consent eligibility and immutable communication intent",
+      "batch": "COM-L",
+      "dependencies": [
+        "COM-L3"
+      ],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 500,
+      "units": [
+        "COM-L4A"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-COM.md",
+        "src/domains/messaging/deliver.ts",
+        "src/domains/messaging/events.ts",
+        "src/lib/sms.ts"
+      ],
+      "tests": [
+        "tests/communication-intent-integration.test.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/COM-L4A.md"
+    },
+    {
+      "id": "COM-L4B",
+      "title": "Account adapter, claimed SMS dispatch and recovery",
+      "batch": "COM-L",
+      "dependencies": [
+        "COM-L4A"
+      ],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 500,
+      "units": [
+        "COM-L4B"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-COM.md",
+        "src/domains/messaging/deliver.ts",
+        "src/domains/messaging/events.ts",
+        "src/lib/sms.ts"
+      ],
+      "tests": [
+        "tests/communication-dispatch-integration.test.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/COM-L4B.md"
+    },
+    {
+      "id": "COM-L5A",
+      "title": "Verified inbound SMS and deterministic contact resolution",
+      "batch": "COM-L",
+      "dependencies": [
+        "COM-L4B"
+      ],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 500,
+      "units": [
+        "COM-L5A"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-COM.md",
+        "src/domains/messaging/deliver.ts",
+        "src/domains/messaging/events.ts",
+        "src/lib/sms.ts"
+      ],
+      "tests": [
+        "tests/communication-inbound-integration.test.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/COM-L5A.md"
+    },
+    {
+      "id": "COM-L5B",
+      "title": "Scoped consent actions and mandatory disclosure preservation",
+      "batch": "COM-L",
+      "dependencies": [
+        "COM-L5A"
+      ],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 430,
+      "units": [
+        "COM-L5B"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-COM.md",
+        "src/domains/messaging/deliver.ts",
+        "src/domains/messaging/events.ts",
+        "src/lib/sms.ts"
+      ],
+      "tests": [
+        "tests/communication-consent-integration.test.ts",
+        "e2e/sms-consent.spec.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/COM-L5B.md"
+    },
+    {
+      "id": "COM-L6A",
+      "title": "Template validation, segment preview and reminder migration",
+      "batch": "COM-L",
+      "dependencies": [
+        "COM-L5B"
+      ],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 450,
+      "units": [
+        "COM-L6A"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-COM.md",
+        "src/domains/messaging/deliver.ts",
+        "src/domains/messaging/events.ts",
+        "src/lib/sms.ts"
+      ],
+      "tests": [
+        "tests/communication-templates.test.ts",
+        "tests/job-day-of-reminders.test.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/COM-L6A.md"
+    },
+    {
+      "id": "COM-L6B",
+      "title": "Authorized SMS inbox and per-user read cursors",
+      "batch": "COM-L",
+      "dependencies": [
+        "COM-L6A"
+      ],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 500,
+      "units": [
+        "COM-L6B"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-COM.md",
+        "src/domains/messaging/deliver.ts",
+        "src/domains/messaging/events.ts",
+        "src/lib/sms.ts"
+      ],
+      "tests": [
+        "tests/communication-inbox-scope.test.ts",
+        "e2e/communications-inbox.spec.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/COM-L6B.md"
+    },
+    {
+      "id": "COM-L7",
+      "title": "Call legs, private media and retention schema",
+      "batch": "COM-L",
+      "dependencies": [
+        "COM-L6B"
+      ],
+      "status": "APPROVED",
+      "migration": "com_voice_media",
+      "budget": 400,
+      "units": [
+        "COM-L7"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-COM.md",
+        "src/domains/messaging/deliver.ts",
+        "src/domains/messaging/events.ts",
+        "src/lib/sms.ts"
+      ],
+      "tests": [
+        "tests/communication-voice-schema-integration.test.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/COM-L7.md"
+    },
+    {
+      "id": "COM-L8",
+      "title": "Deterministic call routing, acceptance and callback reducer",
+      "batch": "COM-L",
+      "dependencies": [
+        "COM-L7"
+      ],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 500,
+      "units": [
+        "COM-L8"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-COM.md",
+        "src/domains/messaging/deliver.ts",
+        "src/domains/messaging/events.ts",
+        "src/lib/sms.ts"
+      ],
+      "tests": [
+        "tests/communication-voice-integration.test.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/COM-L8.md"
+    },
+    {
+      "id": "COM-L9",
+      "title": "Optional voicemail private ingest and missed-call inbox",
+      "batch": "COM-L",
+      "dependencies": [
+        "COM-L8"
+      ],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 480,
+      "units": [
+        "COM-L9"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-COM.md",
+        "src/domains/messaging/deliver.ts",
+        "src/domains/messaging/events.ts",
+        "src/lib/sms.ts"
+      ],
+      "tests": [
+        "tests/communication-voicemail-integration.test.ts",
+        "e2e/communication-calls.spec.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/COM-L9.md"
+    },
+    {
+      "id": "COM-L10",
+      "title": "Exact decimal telecom cost and cursor persistence",
+      "batch": "COM-L",
+      "dependencies": [
+        "COM-L9"
+      ],
+      "status": "APPROVED",
+      "migration": "com_telecom_cost_evidence",
+      "budget": 450,
+      "units": [
+        "COM-L10"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-COM.md",
+        "src/domains/messaging/deliver.ts",
+        "src/domains/messaging/events.ts",
+        "src/lib/sms.ts"
+      ],
+      "tests": [
+        "tests/telecom-cost-schema-integration.test.ts",
+        "tests/telecom-decimal.test.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/COM-L10.md"
+    },
+    {
+      "id": "COM-L11",
+      "title": "Read-only usage, rate and readiness sync",
+      "batch": "COM-L",
+      "dependencies": [
+        "COM-L10"
+      ],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 500,
+      "units": [
+        "COM-L11"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-COM.md",
+        "src/domains/messaging/deliver.ts",
+        "src/domains/messaging/events.ts",
+        "src/lib/sms.ts"
+      ],
+      "tests": [
+        "tests/telecom-sync-integration.test.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/COM-L11.md"
+    },
+    {
+      "id": "COM-L12",
+      "title": "Spend reconciliation, estimates and configurable alert rules",
+      "batch": "COM-L",
+      "dependencies": [
+        "COM-L11"
+      ],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 480,
+      "units": [
+        "COM-L12"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-COM.md",
+        "src/domains/messaging/deliver.ts",
+        "src/domains/messaging/events.ts",
+        "src/lib/sms.ts"
+      ],
+      "tests": [
+        "tests/telecom-costs.test.ts",
+        "tests/telecom-alerts-integration.test.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/COM-L12.md"
+    },
+    {
+      "id": "COM-L13A",
+      "title": "Owner telecom setup, templates and private statement evidence",
+      "batch": "COM-L",
+      "dependencies": [
+        "COM-L12"
+      ],
+      "status": "APPROVED",
+      "migration": "com_statement_photo_scope_if_needed",
+      "budget": 500,
+      "units": [
+        "COM-L13A"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-COM.md",
+        "src/domains/messaging/deliver.ts",
+        "src/domains/messaging/events.ts",
+        "src/lib/sms.ts"
+      ],
+      "tests": [
+        "tests/telecom-policy-integration.test.ts",
+        "tests/telecom-statement-integration.test.ts",
+        "e2e/telecom-settings.spec.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/COM-L13A.md"
+    },
+    {
+      "id": "COM-L13B",
+      "title": "Evidence-labelled costs in existing reports, Today and health",
+      "batch": "COM-L",
+      "dependencies": [
+        "COM-L13A"
+      ],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 450,
+      "units": [
+        "COM-L13B"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-COM.md",
+        "src/domains/messaging/deliver.ts",
+        "src/domains/messaging/events.ts",
+        "src/lib/sms.ts"
+      ],
+      "tests": [
+        "tests/telecom-metric-definitions.test.ts",
+        "tests/telecom-attention.test.ts",
+        "e2e/telecom-reports.spec.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/COM-L13B.md"
+    },
+    {
+      "id": "COM-L14A",
+      "title": "Customer and lead communication timelines",
+      "batch": "COM-L",
+      "dependencies": [
+        "COM-L13B"
+      ],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 440,
+      "units": [
+        "COM-L14A"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-COM.md",
+        "src/domains/messaging/deliver.ts",
+        "src/domains/messaging/events.ts",
+        "src/lib/sms.ts"
+      ],
+      "tests": [
+        "tests/communication-timeline-integration.test.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/COM-L14A.md"
+    },
+    {
+      "id": "COM-L14B",
+      "title": "Job, maintenance and billing contextual communications",
+      "batch": "COM-L",
+      "dependencies": [
+        "COM-L14A"
+      ],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 430,
+      "units": [
+        "COM-L14B"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-COM.md",
+        "src/domains/messaging/deliver.ts",
+        "src/domains/messaging/events.ts",
+        "src/lib/sms.ts"
+      ],
+      "tests": [
+        "tests/communication-context-scope.test.ts",
+        "e2e/communication-context.spec.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/COM-L14B.md"
+    },
+    {
+      "id": "COM-L15",
+      "title": "Launch communications proof and truthful owner setup handoff",
+      "batch": "COM-L",
+      "dependencies": [
+        "COM-L14B"
+      ],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 250,
+      "units": [
+        "COM-L15"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-COM.md",
+        "src/domains/messaging/deliver.ts",
+        "src/domains/messaging/events.ts",
+        "src/lib/sms.ts"
+      ],
+      "tests": [
+        "tests/communication-launch-integration.test.ts",
+        "e2e/communication-launch.spec.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/COM-L15.md"
+    },
+    {
+      "id": "COM-N1A",
+      "title": "Lead, estimate and signature SMS",
+      "batch": "COM-N",
+      "dependencies": [
+        "O-7",
+        "COM-L15"
+      ],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 440,
+      "units": [
+        "COM-N1A"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-COM.md",
+        "src/domains/messaging/deliver.ts",
+        "src/domains/messaging/events.ts",
+        "src/lib/sms.ts"
+      ],
+      "tests": [
+        "tests/com-n1a-workflow-integration.test.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/COM-N1A.md"
+    },
+    {
+      "id": "COM-N1B",
+      "title": "Job and maintenance SMS",
+      "batch": "COM-N",
+      "dependencies": [
+        "COM-N1A"
+      ],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 440,
+      "units": [
+        "COM-N1B"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-COM.md",
+        "src/domains/messaging/deliver.ts",
+        "src/domains/messaging/events.ts",
+        "src/lib/sms.ts"
+      ],
+      "tests": [
+        "tests/com-n1b-workflow-integration.test.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/COM-N1B.md"
+    },
+    {
+      "id": "COM-N1C",
+      "title": "Billing, renewal and refund SMS",
+      "batch": "COM-N",
+      "dependencies": [
+        "COM-N1B"
+      ],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 440,
+      "units": [
+        "COM-N1C"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-COM.md",
+        "src/domains/messaging/deliver.ts",
+        "src/domains/messaging/events.ts",
+        "src/lib/sms.ts"
+      ],
+      "tests": [
+        "tests/com-n1c-workflow-integration.test.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/COM-N1C.md"
+    },
+    {
+      "id": "COM-N2",
+      "title": "Verified click-to-call and assigned staff actions",
+      "batch": "COM-N",
+      "dependencies": [
+        "COM-N1C"
+      ],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 480,
+      "units": [
+        "COM-N2"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-COM.md",
+        "src/domains/messaging/deliver.ts",
+        "src/domains/messaging/events.ts",
+        "src/lib/sms.ts"
+      ],
+      "tests": [
+        "tests/job-click-to-call-integration.test.ts",
+        "e2e/job-communications.spec.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/COM-N2.md"
+    },
+    {
+      "id": "COM-N3",
+      "title": "Verified telecom statement to existing books expense",
+      "batch": "COM-N",
+      "dependencies": [
+        "COM-N2",
+        "K-8"
+      ],
+      "status": "APPROVED",
+      "migration": "com_books_statement_link",
+      "budget": 450,
+      "units": [
+        "COM-N3"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-COM.md",
+        "src/domains/messaging/deliver.ts",
+        "src/domains/messaging/events.ts",
+        "src/lib/sms.ts"
+      ],
+      "tests": [
+        "tests/telecom-books-bridge-integration.test.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/COM-N3.md"
+    },
+    {
+      "id": "COM-N4",
+      "title": "Observed service metrics, unit economics and forecasts",
+      "batch": "COM-N",
+      "dependencies": [
+        "COM-N3"
+      ],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 480,
+      "units": [
+        "COM-N4"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-COM.md",
+        "src/domains/messaging/deliver.ts",
+        "src/domains/messaging/events.ts",
+        "src/lib/sms.ts"
+      ],
+      "tests": [
+        "tests/telecom-unit-economics.test.ts",
+        "e2e/telecom-economics.spec.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/COM-N4.md"
+    },
+    {
+      "id": "BP-1",
+      "title": "Commercial template, quote, campaign and promotion schema",
+      "batch": "BP",
+      "dependencies": [
+        "COM-N4",
+        "O-5"
+      ],
+      "status": "PROPOSED \u2014 runtime design acceptance required",
+      "migration": "batch_bp_commercial_records",
+      "budget": 470,
+      "units": [
+        "BP-1"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-BP.md",
+        "src/domains/agreements/terms-snapshot.ts",
+        "src/domains/pricing/index.ts",
+        "src/domains/documents/artifacts.ts"
+      ],
+      "tests": [
+        "tests/commercial-schema.integration.test.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/BP-1.md"
+    },
+    {
+      "id": "BP-2A",
+      "title": "Template validation and pure configurable offer quoting",
+      "batch": "BP",
+      "dependencies": [
+        "BP-1"
+      ],
+      "status": "PROPOSED \u2014 runtime design acceptance required",
+      "migration": "none",
+      "budget": 480,
+      "units": [
+        "BP-2A"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-BP.md",
+        "src/domains/agreements/terms-snapshot.ts",
+        "src/domains/pricing/index.ts",
+        "src/domains/documents/artifacts.ts"
+      ],
+      "tests": [
+        "tests/commercial-pricing.test.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/BP-2A.md"
+    },
+    {
+      "id": "BP-2B",
+      "title": "Issued quote acceptance and promotion cap integrity",
+      "batch": "BP",
+      "dependencies": [
+        "BP-2A"
+      ],
+      "status": "PROPOSED \u2014 runtime design acceptance required",
+      "migration": "none",
+      "budget": 500,
+      "units": [
+        "BP-2B"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-BP.md",
+        "src/domains/agreements/terms-snapshot.ts",
+        "src/domains/pricing/index.ts",
+        "src/domains/documents/artifacts.ts"
+      ],
+      "tests": [
+        "tests/promotions.integration.test.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/BP-2B.md"
+    },
+    {
+      "id": "BP-3",
+      "title": "Template and offer editors with full price disclosure",
+      "batch": "BP",
+      "dependencies": [
+        "BP-2B"
+      ],
+      "status": "PROPOSED \u2014 runtime design acceptance required",
+      "migration": "none",
+      "budget": 470,
+      "units": [
+        "BP-3"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-BP.md",
+        "src/domains/agreements/terms-snapshot.ts",
+        "src/domains/pricing/index.ts",
+        "src/domains/documents/artifacts.ts"
+      ],
+      "tests": [
+        "e2e/commercial-offers.spec.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/BP-3.md"
+    },
+    {
+      "id": "BP-4",
+      "title": "Verified-unused and first deployment schema",
+      "batch": "BP",
+      "dependencies": [
+        "BP-3"
+      ],
+      "status": "PROPOSED \u2014 runtime design acceptance required",
+      "migration": "batch_bp_first_use",
+      "budget": 250,
+      "units": [
+        "BP-4"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-BP.md",
+        "src/domains/agreements/terms-snapshot.ts",
+        "src/domains/pricing/index.ts",
+        "src/domains/documents/artifacts.ts"
+      ],
+      "tests": [
+        "tests/appliance-first-use.integration.test.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/BP-4.md"
+    },
+    {
+      "id": "BP-5",
+      "title": "Unused qualification, reservation and substitution integrity",
+      "batch": "BP",
+      "dependencies": [
+        "BP-4"
+      ],
+      "status": "PROPOSED \u2014 runtime design acceptance required",
+      "migration": "none",
+      "budget": 450,
+      "units": [
+        "BP-5"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-BP.md",
+        "src/domains/agreements/terms-snapshot.ts",
+        "src/domains/pricing/index.ts",
+        "src/domains/documents/artifacts.ts"
+      ],
+      "tests": [
+        "tests/appliance-first-use.integration.test.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/BP-5.md"
+    },
+    {
+      "id": "BP-6",
+      "title": "Property authorization and installation evidence schema",
+      "batch": "BP",
+      "dependencies": [
+        "BP-5"
+      ],
+      "status": "PROPOSED \u2014 runtime design acceptance required",
+      "migration": "batch_bp_property_evidence",
+      "budget": 400,
+      "units": [
+        "BP-6"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-BP.md",
+        "src/domains/agreements/terms-snapshot.ts",
+        "src/domains/pricing/index.ts",
+        "src/domains/documents/artifacts.ts"
+      ],
+      "tests": [
+        "tests/property-evidence-schema.integration.test.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/BP-6.md"
+    },
+    {
+      "id": "BP-7A",
+      "title": "Scoped permission issue, signature and revocation",
+      "batch": "BP",
+      "dependencies": [
+        "BP-6"
+      ],
+      "status": "PROPOSED \u2014 runtime design acceptance required",
+      "migration": "none",
+      "budget": 480,
+      "units": [
+        "BP-7A"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-BP.md",
+        "src/domains/agreements/terms-snapshot.ts",
+        "src/domains/pricing/index.ts",
+        "src/domains/documents/artifacts.ts"
+      ],
+      "tests": [
+        "tests/property-authorization.integration.test.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/BP-7A.md"
+    },
+    {
+      "id": "BP-7B",
+      "title": "Minimal private permission-signing page",
+      "batch": "BP",
+      "dependencies": [
+        "BP-7A"
+      ],
+      "status": "PROPOSED \u2014 runtime design acceptance required",
+      "migration": "none",
+      "budget": 420,
+      "units": [
+        "BP-7B"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-BP.md",
+        "src/domains/agreements/terms-snapshot.ts",
+        "src/domains/pricing/index.ts",
+        "src/domains/documents/artifacts.ts"
+      ],
+      "tests": [
+        "tests/property-authorization-route.test.ts",
+        "e2e/property-authorization.spec.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/BP-7B.md"
+    },
+    {
+      "id": "BP-8",
+      "title": "Installation assessments and guarded completion",
+      "batch": "BP",
+      "dependencies": [
+        "BP-7B"
+      ],
+      "status": "PROPOSED \u2014 runtime design acceptance required",
+      "migration": "none",
+      "budget": 480,
+      "units": [
+        "BP-8"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-BP.md",
+        "src/domains/agreements/terms-snapshot.ts",
+        "src/domains/pricing/index.ts",
+        "src/domains/documents/artifacts.ts"
+      ],
+      "tests": [
+        "tests/installation-assessment.integration.test.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/BP-8.md"
+    },
+    {
+      "id": "BP-9",
+      "title": "Property evidence and phone installation workflow",
+      "batch": "BP",
+      "dependencies": [
+        "BP-8"
+      ],
+      "status": "PROPOSED \u2014 runtime design acceptance required",
+      "migration": "none",
+      "budget": 440,
+      "units": [
+        "BP-9"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-BP.md",
+        "src/domains/agreements/terms-snapshot.ts",
+        "src/domains/pricing/index.ts",
+        "src/domains/documents/artifacts.ts"
+      ],
+      "tests": [
+        "e2e/installation-evidence.spec.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/BP-9.md"
+    },
+    {
+      "id": "BP-10",
+      "title": "Portfolio master contract schema",
+      "batch": "BP",
+      "dependencies": [
+        "BP-9"
+      ],
+      "status": "PROPOSED \u2014 runtime design acceptance required",
+      "migration": "batch_bp_portfolio_contracts",
+      "budget": 300,
+      "units": [
+        "BP-10"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-BP.md",
+        "src/domains/agreements/terms-snapshot.ts",
+        "src/domains/pricing/index.ts",
+        "src/domains/documents/artifacts.ts"
+      ],
+      "tests": [
+        "tests/portfolio-contracts.integration.test.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/BP-10.md"
+    },
+    {
+      "id": "BP-11A",
+      "title": "Commercial schedule quoting and portfolio volume policy",
+      "batch": "BP",
+      "dependencies": [
+        "BP-10"
+      ],
+      "status": "PROPOSED \u2014 runtime design acceptance required",
+      "migration": "none",
+      "budget": 450,
+      "units": [
+        "BP-11A"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-BP.md",
+        "src/domains/agreements/terms-snapshot.ts",
+        "src/domains/pricing/index.ts",
+        "src/domains/documents/artifacts.ts"
+      ],
+      "tests": [
+        "tests/portfolio-contracts.integration.test.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/BP-11A.md"
+    },
+    {
+      "id": "BP-11B",
+      "title": "Portfolio master and schedule signing workflow",
+      "batch": "BP",
+      "dependencies": [
+        "BP-11A"
+      ],
+      "status": "PROPOSED \u2014 runtime design acceptance required",
+      "migration": "none",
+      "budget": 470,
+      "units": [
+        "BP-11B"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-BP.md",
+        "src/domains/agreements/terms-snapshot.ts",
+        "src/domains/pricing/index.ts",
+        "src/domains/documents/artifacts.ts"
+      ],
+      "tests": [
+        "tests/portfolio-signature-integration.test.ts",
+        "e2e/portfolio-contract.spec.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/BP-11B.md"
+    },
+    {
+      "id": "BP-12",
+      "title": "Stable partner programs and append-only commission schema",
+      "batch": "BP",
+      "dependencies": [
+        "BP-11B"
+      ],
+      "status": "PROPOSED \u2014 runtime design acceptance required",
+      "migration": "batch_bp_partner_programs",
+      "budget": 430,
+      "units": [
+        "BP-12"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-BP.md",
+        "src/domains/agreements/terms-snapshot.ts",
+        "src/domains/pricing/index.ts",
+        "src/domains/documents/artifacts.ts"
+      ],
+      "tests": [
+        "tests/partner-schema.integration.test.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/BP-12.md"
+    },
+    {
+      "id": "BP-13A",
+      "title": "Partner signed artifacts and code effective-version resolution",
+      "batch": "BP",
+      "dependencies": [
+        "BP-12"
+      ],
+      "status": "PROPOSED \u2014 runtime design acceptance required",
+      "migration": "none",
+      "budget": 470,
+      "units": [
+        "BP-13A"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-BP.md",
+        "src/domains/agreements/terms-snapshot.ts",
+        "src/domains/pricing/index.ts",
+        "src/domains/documents/artifacts.ts"
+      ],
+      "tests": [
+        "tests/partner-artifact.integration.test.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/BP-13A.md"
+    },
+    {
+      "id": "BP-13B",
+      "title": "Deterministic cash attribution and commission accrual",
+      "batch": "BP",
+      "dependencies": [
+        "BP-13A"
+      ],
+      "status": "PROPOSED \u2014 runtime design acceptance required",
+      "migration": "none",
+      "budget": 500,
+      "units": [
+        "BP-13B"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-BP.md",
+        "src/domains/agreements/terms-snapshot.ts",
+        "src/domains/pricing/index.ts",
+        "src/domains/documents/artifacts.ts"
+      ],
+      "tests": [
+        "tests/partner-commissions.integration.test.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/BP-13B.md"
+    },
+    {
+      "id": "BP-14",
+      "title": "Owner manual settlements and books liability",
+      "batch": "BP",
+      "dependencies": [
+        "BP-13B"
+      ],
+      "status": "PROPOSED \u2014 runtime design acceptance required",
+      "migration": "batch_bp_partner_books_settlement",
+      "budget": 500,
+      "units": [
+        "BP-14"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-BP.md",
+        "src/domains/agreements/terms-snapshot.ts",
+        "src/domains/pricing/index.ts",
+        "src/domains/documents/artifacts.ts"
+      ],
+      "tests": [
+        "tests/partner-settlements.integration.test.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/BP-14.md"
+    },
+    {
+      "id": "BP-15A",
+      "title": "Partner membership and restricted summary APIs",
+      "batch": "BP",
+      "dependencies": [
+        "BP-14"
+      ],
+      "status": "PROPOSED \u2014 runtime design acceptance required",
+      "migration": "none",
+      "budget": 420,
+      "units": [
+        "BP-15A"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-BP.md",
+        "src/domains/agreements/terms-snapshot.ts",
+        "src/domains/pricing/index.ts",
+        "src/domains/documents/artifacts.ts"
+      ],
+      "tests": [
+        "tests/partner-scope.integration.test.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/BP-15A.md"
+    },
+    {
+      "id": "BP-15B",
+      "title": "Owner partner workflow and private partner portal",
+      "batch": "BP",
+      "dependencies": [
+        "BP-15A"
+      ],
+      "status": "PROPOSED \u2014 runtime design acceptance required",
+      "migration": "none",
+      "budget": 450,
+      "units": [
+        "BP-15B"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-BP.md",
+        "src/domains/agreements/terms-snapshot.ts",
+        "src/domains/pricing/index.ts",
+        "src/domains/documents/artifacts.ts"
+      ],
+      "tests": [
+        "e2e/partner-portal.spec.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/BP-15B.md"
+    },
+    {
+      "id": "BP-16",
+      "title": "Campaign cost, business metrics and owner handoff",
+      "batch": "BP",
+      "dependencies": [
+        "BP-15B"
+      ],
+      "status": "PROPOSED \u2014 runtime design acceptance required",
+      "migration": "none",
+      "budget": 450,
+      "units": [
+        "BP-16"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-BP.md",
+        "src/domains/agreements/terms-snapshot.ts",
+        "src/domains/pricing/index.ts",
+        "src/domains/documents/artifacts.ts"
+      ],
+      "tests": [
+        "tests/business-metrics.test.ts",
+        "e2e/business-metrics.spec.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/BP-16.md"
+    },
+    {
+      "id": "COM-L1A",
+      "title": "COM-L1A",
+      "batch": "COM-L",
+      "dependencies": [
+        "S-2"
+      ],
+      "card": "docs/pr-cards/COM-L1A-SMS-SEND-SAFETY.md",
+      "status": "APPROVED",
+      "readiness": "READY_AFTER_PREREQUISITE",
+      "migration": "see card",
+      "budget": 500,
+      "units": [
+        "COM-L1A"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-COM.md"
+      ],
+      "tests": []
+    },
+    {
+      "id": "COM-L1B",
+      "title": "COM-L1B",
+      "batch": "COM-L",
+      "dependencies": [
+        "COM-L1A"
+      ],
+      "card": "docs/pr-cards/COM-L1B-CALLBACK-INTEGRITY.md",
+      "status": "APPROVED",
+      "readiness": "READY_AFTER_PREREQUISITE",
+      "migration": "see card",
+      "budget": 500,
+      "units": [
+        "COM-L1B"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-COM.md"
+      ],
+      "tests": []
+    },
+    {
+      "id": "COM-L2",
+      "title": "COM-L2",
+      "batch": "COM-L",
+      "dependencies": [
+        "COM-L1B"
+      ],
+      "card": "docs/pr-cards/COM-L2-FOUNDATION.md",
+      "status": "APPROVED",
+      "readiness": "READY_AFTER_PREREQUISITE",
+      "migration": "see card",
+      "budget": 500,
+      "units": [
+        "COM-L2"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-COM.md"
+      ],
+      "tests": []
+    },
+    {
+      "id": "T-6b2",
+      "title": "T-6b2",
+      "batch": "T",
+      "dependencies": [],
+      "card": "docs/pr-cards/T-6B2-FILING-FINALIZATION-AMENDMENTS.md",
+      "status": "MERGED",
+      "readiness": "MERGED",
+      "migration": "see card",
+      "budget": 500,
+      "units": [
+        "T-6b2"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-T.md"
+      ],
+      "tests": []
+    },
+    {
+      "id": "V-C1",
+      "title": "Typed website content registry and historical compatibility",
+      "batch": "V",
+      "dependencies": [
+        "COM-L15"
+      ],
+      "status": "APPROVED",
+      "migration": "website_revision_content_version",
+      "budget": 500,
+      "units": [
+        "V-C1"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-V.md"
+      ],
+      "tests": [],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/V-C1.md",
+      "risk": "schema"
+    },
+    {
+      "id": "V-C2",
+      "title": "Website photo library and private-draft publication boundary",
+      "batch": "V",
+      "dependencies": [
+        "V-C1"
+      ],
+      "status": "APPROVED",
+      "migration": "website_assets",
+      "budget": 500,
+      "units": [
+        "V-C2"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-V.md"
+      ],
+      "tests": [],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/V-C2.md",
+      "risk": "media"
+    },
+    {
+      "id": "V-C3",
+      "title": "Complete public content bindings and scheduled promotions",
+      "batch": "V",
+      "dependencies": [
+        "V-C2"
+      ],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 500,
+      "units": [
+        "V-C3"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-V.md"
+      ],
+      "tests": [],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/V-C3.md",
+      "risk": "content"
+    },
+    {
+      "id": "V-C4",
+      "title": "Owner content editor review publish and restore UX",
+      "batch": "V",
+      "dependencies": [
+        "V-C3"
+      ],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 500,
+      "units": [
+        "V-C4"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-V.md"
+      ],
+      "tests": [],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/V-C4.md",
+      "risk": "screens"
+    },
+    {
+      "id": "V-C5",
+      "title": "Redesign compatibility and comprehensive content proof",
+      "batch": "V",
+      "dependencies": [
+        "V-C4"
+      ],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 500,
+      "units": [
+        "V-C5"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-V.md"
+      ],
+      "tests": [],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/V-C5.md",
+      "risk": "verification"
+    },
+    {
+      "id": "O-6",
+      "title": "Owner control center and task-oriented readiness navigation",
+      "batch": "O",
+      "dependencies": [
+        "O-5"
+      ],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 500,
+      "units": [
+        "O-6"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-O.md"
+      ],
+      "tests": [],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/O-6.md",
+      "risk": "screens"
+    },
+    {
+      "id": "O-7",
+      "title": "Personal saved work queues and protected Today workspace",
+      "batch": "O",
+      "dependencies": [
+        "O-6"
+      ],
+      "status": "APPROVED",
+      "migration": "owner_workspace_preferences",
+      "budget": 500,
+      "units": [
+        "O-7"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-O.md"
+      ],
+      "tests": [],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/O-7.md",
+      "risk": "schema"
+    }
+  ],
+  "enhancements": [
+    {
+      "id": "ENH-S",
+      "owner": "S-1C",
+      "status": "ACCEPTANCE_REFINEMENT",
+      "cardAtImplementation": true
+    },
+    {
+      "id": "ENH-F",
+      "owner": "F2-D",
+      "status": "ACCEPTANCE_REFINEMENT",
+      "cardAtImplementation": true
+    },
+    {
+      "id": "ENH-K",
+      "owner": "K-6",
+      "status": "ACCEPTANCE_REFINEMENT",
+      "cardAtImplementation": true
+    },
+    {
+      "id": "ENH-O",
+      "owner": "O-1",
+      "status": "ACCEPTANCE_REFINEMENT",
+      "cardAtImplementation": true
+    }
+  ]
+}

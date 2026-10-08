@@ -4,34 +4,27 @@ Follow these steps in order. Each step says what to do, what "done" looks
 like, and what to do if it fails. The rules behind the steps are in
 `AGENTS.md`; the work itself is in `docs/PLAN.md`.
 
-## Step 0 — Orient (every session, ~10 minutes)
+## Step 0 — Orient once; refresh only what changed
 
-1. Read `AGENTS.md`, `docs/START-HERE.md`, `docs/STATUS.md`.
-2. In `docs/STATUS.md`, find the row marked **NEXT**. That is your batch.
-   If a row is **IN PROGRESS** with a branch name, continue that branch
-   instead of starting over — check it out and read its latest commits.
-3. Read that batch's section in `docs/PLAN.md` end to end.
-4. If your PR has a card in `docs/pr-cards/`, read the card and only the design sections it names (by heading, a
-   section at a time). If it has no card, read the batch's design, `docs/designs/BATCH-<X>.md`, by sections: list its
-   headings (`grep -n "^## \|^### "`), then read the decisions, the schema, your work unit and its tests — never more
-   than ~150 lines per read (AGENTS.md "Working without stalling"). A design section marked "Implementation gate"
-   needs a card first. Run every check in its "Verify before starting" table. **If the design
-   is missing, marked DRAFT, or any check is false: stop and report.** You
-   do not implement without an approved design (`docs/designs/README.md`).
-5. Open only the reference docs the batch section and the design list.
-6. Sync: `git fetch origin && git checkout main && git pull --ff-only`.
-7. Check for open PRs (`gh pr list`). Do not duplicate work that is open.
+1. Read AGENTS, START-HERE and STATUS. Resume the recorded branch/PR before
+   opening a new one. Inspect local changes before switching branches.
+2. Read the next roadmap/card and its relevant acceptance, design headings and
+   named code/tests in bounded sections. Do not read an entire batch by default.
+3. Fetch origin, inspect current main and open PRs; preserve unrelated local work.
+   Do not blindly checkout/pull main over an active stack.
+4. If no card exists, write it using `docs/pr-cards/README.md` from the approved
+   contract and current code. A missing card is work, not a model-switch gate.
+5. Check only owner inputs this capability needs; keep gated behavior off.
 
-Done when: you can say in eight lines what the batch delivers, how it will
-be accepted, and which existing files you will touch.
+Done when the scope, acceptance, touched contracts and next action are clear.
+There is no required ten-minute reading period.
 
-## Step 0b — Design drift check (start of every batch)
+## Step 0b — Drift check before every card and changed base
 
-Before the first line of a batch's code, do the design drift check in
-`docs/designs/README.md` (read `docs/designs/CHANGES-SINCE-DESIGN.md`, verify the
-design's "Verify before starting" table against the code, write the dated drift
-section, amend small differences, and stop with a stronger-model prompt for
-decision-level conflicts).
+Follow `docs/implementation-contracts/DRIFT-PROTOCOL.md`. Record the actual
+base and prerequisite head. Adapt mechanical differences in the current PR.
+For a semantic conflict, write a dated contract amendment and apply normal
+review before implementing that slice. No compulsory stronger-model session.
 
 ## Step 1 — Branch
 
@@ -45,7 +38,7 @@ retarget to `main` once the predecessor merges.
 
 ## Step 2 — Before writing code: inventory what exists
 
-The batches build on a lot of shipped work. For each item in the batch:
+The batches build on a lot of shipped work. For each item in the current capability:
 
 1. `grep` the domain (`src/domains/<name>/`), its actions, and its tests.
 2. Read `docs/BUSINESS-RULES.md` for every rule the item touches.
@@ -168,7 +161,7 @@ This protocol is mandatory whenever work depends on CI, Vercel, GitHub review, o
    different supported path or record the blocker. Do not keep retrying the same call.
 5. **Prefer actionable logs.** Fetch failed-job logs/annotations, not an in-progress live stream. Fix all visible root
    causes together and push once.
-6. **End cleanly instead of polling.** If merge/session limits, owner gates, or dependency ordering leave no useful
+6. **End cleanly instead of polling.** If owner gates or dependency ordering leave no useful
    work while an external job is pending, update STATUS/PR evidence with the exact head and pending run, tell Chris
    what remains, and stop the turn. The next turn resumes from that recorded state.
 7. **User updates are progress checkpoints.** Report a meaningful commit, merge, defect fix or blocking
@@ -176,18 +169,15 @@ This protocol is mandatory whenever work depends on CI, Vercel, GitHub review, o
    several small related calls is encouraged.
 
 **Report what the budget cost.** Put "CI runs used: N (red: R)" in each PR description and in the STATUS handoff. If two
-PRs in a row needed three red runs, split every remaining PR of that batch one step smaller and say so in STATUS.
+PRs in a row needed three red runs, diagnose the shared cause before proceeding.
+Split later capabilities only when scope/coupling caused the failures; repair
+shared fixtures or environment assumptions once when those caused them.
 
-**Ripple check before coding (5 minutes, saves a CI round):** grep `tests/` and `e2e/` for every function, route,
-setting and fixture you are about to change, and list the tests that will need updating in the same PR. Two known
-ripples in the remaining batches:
-
-- **Batch T's readiness gate** (billing blocked until tax is decided) makes every existing test that signs an
-  agreement or sets up billing fail unless its fixture is tax-ready. The PR that wires the gate must also add a
-  `seedTaxReadyContext()` test helper (reviewed synthetic jurisdiction, synthetic rate, election and rules for the
-  test address) and extend the CI seed in `prisma/seed.ts` so browser flows stay green.
-- **Batch G's two-step login** changes how test accounts sign in. The same PR must update `scripts/create-ci-login.ts`
-  and `e2e/global-setup.ts` so the saved browser sessions complete the second step.
+**Ripple check before coding:** use narrow `rg` over tests/e2e for changed
+functions, routes, settings and fixtures. Update affected regressions in the
+same PR. T readiness and G two-step login are already wired at the audited
+baseline: reuse their current helpers and session setup; do not recreate them
+from old prospective instructions. No fixed five-minute reading period.
 
 Any new page must be added to `e2e/route-inventory.ts` in the same PR (`tests/accessibility-route-inventory.test.ts`
 fails otherwise), and any new browser spec to the lightest group in `e2e/shards.json`.
@@ -475,12 +465,14 @@ re-verify first. Merging never covers the "Hard limits" in `AGENTS.md`.
    batches into `docs/archive/STATUS-LOG.md`.
 2. Report to Chris: what changed, how verified, what he needs to decide
    (IN-xx), what is next. Plain English, no jargon.
-3. Stop. Do not start the next batch unless Chris says to continue.
+3. Continue the next eligible approved capability while the user’s authorization
+   remains active. Checkpoint only for a real gate or session boundary; include
+   committed work, exact head, pending gates and next action in existing STATUS.
 
 ## If you get stuck
 
-- Same failure after two focused fix attempts: stop making speculative
-  edits. Write down the error, what you tried, and the diff, in
+- Same failure after two focused fix attempts: stop speculative edits and
+  inspect evidence/change the hypothesis. This does not require ending the session. Write down the error, what you tried, and the diff, in
   `docs/STATUS.md` under the batch row, and report to Chris.
 - A decision that could reasonably go either way and cannot be undone
   (schema, money, data deletion, public promises): do the preparatory work,
@@ -491,5 +483,16 @@ re-verify first. Merging never covers the "Hard limits" in `AGENTS.md`.
   `docs/STATUS.md` and fix the doc in your PR.
 - The design is wrong (a decision cannot work against the real code): stop.
   Do not replace the decision in code. Record exactly what is wrong in
-  `docs/STATUS.md` and the PR; a heavy-model session amends the design
-  (dated "Amendments" section) and you resume from the amended text.
+  `docs/STATUS.md` and the PR; the selected model proposes a dated contract amendment, obtains the normal
+  review, and resumes the affected slice. Continue eligible independent work.
+
+## Commands and speed evidence
+
+Use `set -o pipefail` before commands piped through `tail`; truncated output
+must not hide a failed test. For prose-only PRs use the work-doc validator and
+`git diff --check`; retain CI/secret scan and applicable review gates.
+
+After the next three implementation PRs, use their existing CI/review history
+to compare time to merge, failed CI runs, substantive review defects and rebase
+work. Put one short finding in STATUS. Keep faster rules only if quality holds;
+no separate metrics report, extra work lane or recurring approval ceremony.
