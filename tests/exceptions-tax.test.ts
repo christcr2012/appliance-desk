@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { businessDateFromKey } from "@/lib/business-date";
+import { taxAmendmentDueException, taxFilingNotReadyException } from "@/domains/exceptions/rules";
 import { taxReturnDueException, taxLicenseRenewalException } from "@/domains/exceptions/rules";
 const day = (s: string): Date => businessDateFromKey(s)!;
 
@@ -33,5 +34,23 @@ describe("filing Today exception rules", () => {
     expect(item.category).toBe("TAX_LICENSE_RENEWAL");
     expect(item.severity).toBe("high");
     expect(item.detail).toContain("Ask an Owner");
+  });
+});
+
+
+describe("T-6b2 filing amendment and readiness attention", () => {
+  const day = (key: string) => businessDateFromKey(key)!;
+  it("escalates additional tax and preserves original amendment age", () => {
+    const input = { id: "am-1", accountName: "Greeley", detectedAt: day("2026-10-05") };
+    expect(taxAmendmentDueException({ ...input, additionalTaxCents: 43 }).severity).toBe("high");
+    expect(taxAmendmentDueException({ ...input, additionalTaxCents: -8 }).severity).toBe("medium");
+    expect(taxAmendmentDueException({ ...input, additionalTaxCents: 0 }).href).toBe("/desk/today");
+  });
+  it("escalates blocked returns near due date", () => {
+    const data = { accountName: "State", periodEnd: day("2026-09-30"),
+      dueOn: day("2026-10-20"), problems: ["CPA basis is undecided"] };
+    expect(taxFilingNotReadyException({ ...data, now: day("2026-10-01") }).severity).toBe("medium");
+    expect(taxFilingNotReadyException({ ...data, now: day("2026-10-18") }).severity).toBe("high");
+    expect(taxFilingNotReadyException({ ...data, now: day("2026-10-18") }).detail).toContain("CPA basis");
   });
 });

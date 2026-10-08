@@ -16,7 +16,7 @@ export function isPublicPhotoPath(pathname: string): boolean {
 
 /** Every persisted operational/customer evidence path is private. */
 export function isPrivatePhotoPath(pathname: string): boolean {
-  return /^(jobs|appliances|maintenance-requests|tax-exemptions)\/[A-Za-z0-9_-]+\/[^/]+$/.test(
+  return /^(jobs|appliances|maintenance-requests|tax-exemptions|tax-filings)\/[A-Za-z0-9_-]+\/[^/]+$/.test(
     pathname,
   );
 }

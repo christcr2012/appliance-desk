@@ -27,6 +27,8 @@ export type ExceptionCategory =
   | "SALES_TAX"
   | "TAX_RETURN_DUE"
   | "TAX_LICENSE_RENEWAL"
+  | "TAX_AMENDMENT_DUE"
+  | "TAX_FILING_NOT_READY"
   | "STALE_RESERVATION"
   | "PAST_DUE_INVOICE"
   | "OVERDUE_JOB"
@@ -752,6 +754,36 @@ export function taxLicenseRenewalException(input: {
   };
 }
 
+export function taxAmendmentDueException(input: {
+  id: string; accountName: string; detectedAt: Date; additionalTaxCents: number;
+}): ExceptionItem {
+  return {
+    category: "TAX_AMENDMENT_DUE",
+    severity: input.additionalTaxCents > 0 ? "high" : "medium",
+    title: "Amended tax return needs review — " + input.accountName,
+    detail: input.additionalTaxCents > 0
+      ? "A correction shows additional tax owed. Review the amendment before filing."
+      : "Review the correction or credit and record how it was handled.",
+    since: input.detectedAt,
+    href: "/desk/today",
+  };
+}
+export function taxFilingNotReadyException(input: {
+  accountName: string;
+  dueOn: Date;
+  periodEnd: Date;
+  problems: string[];
+  now: Date;
+}): ExceptionItem {
+  return {
+    category: "TAX_FILING_NOT_READY",
+    severity: businessDaysBetween(input.now, input.dueOn) <= 7 ? "high" : "medium",
+    title: "Tax return needs setup before filing — " + input.accountName,
+    detail: "Resolve filing blockers: " + input.problems.slice(0, 3).join("; "),
+    since: input.periodEnd,
+    href: "/desk/today",
+  };
+}
 export function sortExceptions(items: ExceptionItem[]): ExceptionItem[] {
   return [...items].sort((a, b) => {
     if (a.severity !== b.severity) return a.severity === "high" ? -1 : 1;

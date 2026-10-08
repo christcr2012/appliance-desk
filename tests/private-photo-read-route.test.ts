@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const getServerSession = vi.fn();
 const photoFindUnique = vi.fn();
 const blobGet = vi.fn();
+const filingPhotoFindFirst = vi.fn();
 
 vi.mock("@/lib/session", () => ({
   getServerSession: (...args: unknown[]) => getServerSession(...args),
@@ -11,6 +12,7 @@ vi.mock("@/lib/session", () => ({
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     photo: { findUnique: (...args: unknown[]) => photoFindUnique(...args) },
+    taxFilingPeriod: { findFirst: (...args: unknown[]) => filingPhotoFindFirst(...args) },
   },
 }));
 
@@ -20,6 +22,16 @@ vi.mock("@vercel/blob", () => ({
 
 vi.mock("@/lib/photo-storage", () => ({
   getPrivatePhotoStore: () => ({ token: "private-token", storeId: "store_teststore" }),
+  privatePhotoPathFromUrl: (source: string, storeId: string) => {
+    try {
+      const url = new URL(source);
+      if (storeId === "store_teststore" &&
+          url.hostname === "teststore.private.blob.vercel-storage.com") {
+        return url.pathname.slice(1);
+      }
+    } catch { /* Invalid URL has no trusted private pathname. */ }
+    return null;
+  },
 }));
 
 import { GET } from "@/app/api/photos/[id]/route";
@@ -66,6 +78,7 @@ describe("GET /api/photos/[id]", () => {
   beforeEach(() => {
     getServerSession.mockReset();
     photoFindUnique.mockReset();
+    filingPhotoFindFirst.mockReset().mockResolvedValue(null);
     blobGet.mockReset();
   });
 
@@ -108,6 +121,41 @@ describe("GET /api/photos/[id]", () => {
       );
     },
   );
+
+  it.each(["STAFF", "CUSTOMER"] as const)(
+    "refuses %s access to a private tax filing image with a known Photo ID",
+    async role => {
+      getServerSession.mockResolvedValue({ user: { id: role.toLowerCase(), role } });
+      photoFindUnique.mockResolvedValue(photoRow({
+        url: "https://teststore.private.blob.vercel-storage.com/tax-filings/period123/confirmation.jpg",
+        jobId: null,
+      }));
+      expect((await requestPhoto()).status).toBe(404);
+      expect(blobGet).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["OWNER", "ADMIN"] as const)(
+    "allows %s to read a private tax filing confirmation image",
+    async role => {
+      getServerSession.mockResolvedValue({ user: { id: role.toLowerCase(), role } });
+      photoFindUnique.mockResolvedValue(photoRow({
+        url: "https://teststore.private.blob.vercel-storage.com/tax-filings/period123/confirmation.jpg",
+        jobId: null,
+      }));
+      successfulBlob();
+      expect((await requestPhoto()).status).toBe(200);
+      expect(blobGet).toHaveBeenCalledOnce();
+    },
+  );
+
+  it("denies STAFF access to a historically linked tax photo even under another private prefix", async () => {
+    getServerSession.mockResolvedValue({ user: { id: "staff", role: "STAFF" } });
+    photoFindUnique.mockResolvedValue(photoRow());
+    filingPhotoFindFirst.mockResolvedValue({ id: "period-legacy" });
+    expect((await requestPhoto()).status).toBe(404);
+    expect(blobGet).not.toHaveBeenCalled();
+  });
 
   it("allows a customer to read only evidence attached to their own maintenance request", async () => {
     getServerSession.mockResolvedValue({ user: { id: "customer-user-1", role: "CUSTOMER" } });
