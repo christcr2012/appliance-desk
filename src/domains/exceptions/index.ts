@@ -1,6 +1,7 @@
 import { businessDateKey, businessDayBounds } from "@/lib/business-date";
 import { TAX_ADDRESS_CHANGE_REVIEW_NOTE } from "@/domains/tax/address-recheck";
 import { listOfficialRateAttention } from "@/domains/tax/official-rate-auto-apply";
+import { listTaxFilingAttention } from "@/domains/tax/filing-attention";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
 import type { Prisma } from "@prisma/client";
@@ -910,6 +911,10 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     ),
   ];
 
+  const filingAttention = canViewFinance
+    ? await listTaxFilingAttention(now, (session.user as { role?: string }).role === "ADMIN")
+    : { returns: { rows: [], total: 0 }, licenses: { rows: [], total: 0 } };
+
   const salesTaxItems = items
     .filter((item) => item.category === "SALES_TAX")
     .sort((left, right) => left.since.getTime() - right.since.getTime());
@@ -917,6 +922,8 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
   const visibleItems = [
     ...items.filter((item) => item.category !== "SALES_TAX"),
     ...cappedSalesTaxItems,
+    ...filingAttention.returns.rows,
+    ...filingAttention.licenses.rows,
   ];
 
   const truncated: ExceptionTruncation[] = (
@@ -938,6 +945,8 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
             ? 1
             : 0),
       }],
+      ["TAX_RETURN_DUE", filingAttention.returns],
+      ["TAX_LICENSE_RENEWAL", filingAttention.licenses],
       ["STALE_RESERVATION", staleReservations],
       ["PAST_DUE_INVOICE", pastDueInvoices],
       ["OVERDUE_JOB", overdueJobs],

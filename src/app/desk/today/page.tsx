@@ -79,6 +79,8 @@ async function applyOfficialRateAction(formData: FormData) {
 const CATEGORIES: Record<ExceptionCategory, string> = {
   BILLING_BLOCKED: "Billing blocked",
   SALES_TAX: "Sales tax",
+  TAX_RETURN_DUE: "Tax returns to file",
+  TAX_LICENSE_RENEWAL: "Tax licenses to renew",
   STALE_RESERVATION: "Reservation expired",
   PAST_DUE_INVOICE: "Past due",
   OVERDUE_JOB: "Overdue job",
