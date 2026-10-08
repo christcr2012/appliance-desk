@@ -177,8 +177,10 @@ model MessageAttempt {
 ## Existing model extensions (exact fields; keep everything existing)
 ```prisma
 // BusinessSettings
+// customerSmsEnabled Boolean @default(false) already exists from COM-L1a and remains the one outer SMS master gate.
 communicationsPolicy Json @default("{}")
 communicationsPolicyVersion Int @default(1)
+// Do not duplicate customerSmsEnabled inside communicationsPolicy; this JSON holds only narrower policy controls.
 // Customer
 contactBindings ContactBinding[]
 // CustomerContact
