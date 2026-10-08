@@ -5,7 +5,7 @@ launch and beyond, written so an implementing model (for example Sol 5.6) can pi
 It does not replace the batch acceptance lists (`docs/PLAN.md`) or the designs (`docs/designs/BATCH-<X>.md`): it points
 to them and says **what comes next, what must be true before it starts, and what only Chris can do.**
 
-Last reconciled with the code: 2026-10-07 after #297. F-part-1 and G are complete; Batch T is in progress. Batch S is
+Last reconciled with the code: 2026-10-07 after #300. F-part-1 and G are complete; Batch T is in progress with T-5b1 merged and T-5b2 next. Batch S is approved after T; COM-L is approved after T/S and before V/F-part-2.
 approved and runs after T, before V. Keep this file current: when a step finishes, tick it, add the PR numbers, and move
 the "▶ Next" marker.
 
@@ -13,7 +13,7 @@ the "▶ Next" marker.
 
 ## 1. Where things stand (plain English)
 
-Everything a rental business needs day to day is built and tested: leads, estimates, agreements and e-signature,
+Most day-to-day rental workflows are built and tested: leads, estimates, agreements and e-signature,
 delivery/pickup/repair visits, inventory and parts, billing through Stripe (test mode), late fees, renewals,
 month-to-month rentals, notices, the website editor, privacy requests, messaging records, reports and the redesign
 (E2). Live payments, customer email and SMS are switched **off** on purpose until Chris approves them.
@@ -24,6 +24,10 @@ foundation (Batch S), complete the **Evergreen Signature** redesign (Batch V), a
 accounting exports** (K), **shop sales/appliance endings** (M), **more owner controls** (O), then the proposed
 configurable business-offer/partnership work (BP).
 
+Owner-commissioned COM architecture is ready for review: two-way SMS, permanent phone identity, calls/voicemail,
+consent/templates and measured telecom cost. Recommended COM-L placement after S, before V/F-part-2 on acceptance;
+COM-N after K/O. Design approved 2026-10-08; runtime not started.
+
 ## 2. The order
 
 Legend: ✅ done · ▶ next · ⏳ waiting on Chris · ○ not started. "Design" says whether the build instructions are approved.
@@ -33,14 +37,16 @@ Legend: ✅ done · ▶ next · ⏳ waiting on Chris · ○ not started. "Design
 | 1 | ✅ Batches A, B, B2, C, R, D, E, E2 | approved, built | — | — | merged |
 | 2 | ✅ **F-part-1** — restore/media/capacity/runbooks | ✅ approved (`BATCH-F.md`) | — | — | #268, #269, #273 |
 | 3 | ✅ **G** — audit fixes, two-step login and session control | ✅ approved (`BATCH-G.md`) | — | — | #275, #276, #277 |
-| 4 | ▶ **T** — Colorado sales and use tax | ✅ approved (`BATCH-T.md`) | G merged | nothing to keep building; CPA answers still gate live billing | #279–#285 merged; T-4b current |
+| 4 | ▶ **T** — Colorado sales and use tax | ✅ approved (`BATCH-T.md`) | G merged | nothing to keep building; CPA answers still gate live billing | #279–#300 merged through T-5b1; T-5b2 next |
 | 5 | ○ **S** — system issues inbox, health page and AI check-up | ✅ approved (`BATCH-S.md`) | T merged and bounded PR cards exist | nothing | 2 estimated |
+| 5a | ○ **COM-L** — launch communications and telecom cost | **APPROVED 2026-10-08** (`BATCH-COM.md` + L1a/L1b/L2 cards) | T/S merged; applicable cards exist | no live setup to engineer; IN-03/09/51/52/53 before activation | 16 units; split large cards to budget |
 | 6 | ○ **V** — "Evergreen Signature" public-site redesign + desk/portal polish | ✅ approved (`BATCH-V.md`, concept artifact) | S merged | accept the before/after screenshots before each public-site PR merges | 3–4 |
 | 7 | ○ **F-part-2** — end-to-end scenarios, owner guide with screenshots, review-thread discharge, launch ledger, rollback plan (WU-F3, F6–F9) | ✅ approved | S and V merged (so the proof covers the final product) | nothing | 3 |
 | 8 | ⏳ **Launch** — Chris's go-live checklist | `docs/GO-LIVE-CHECKLIST.md` | step 7 done | CPA answers IN-17, IN-33…IN-38 entered; attorney wording; live Stripe/email decisions; launch authorization | — |
 | 9 | ○ **K** — books: journal, expenses, Stripe fees, P&L, QuickBooks/Xero/other exports | ✅ approved (`BATCH-K.md`) | launch (or earlier if Chris asks; needs T merged) | nothing to start; IN-39 later | 5 |
 | 10 | ○ **M** — shop sales and appliance endings | ✅ approved (`BATCH-M.md`) | K merged; IN-47 keeps sales after launch | IN-46 before affected sales-tax policy activation | 3 estimated |
 | 11 | ○ **O** — owner controls: settings undo, per-person permissions, approvals, dated prices, goals, switches page | ✅ approved (`BATCH-O.md`) | K merged | nothing | 4–5 |
+| 11a | ○ **COM-N** — workflow SMS, click-to-call, books bridge and observed unit economics | proposed COM continuation | COM-L, K/O and bounded cards; release scope accepted | affected legal/paid choices only | 4 groups; bounded cards required |
 | 12 | ○ **BP** — configurable business offers/templates, permission/installation evidence and property-manager/partner programs | proposed (`BATCH-BP.md`), docs created 2026-10-07 | K, M and O complete; accepted design and bounded cards | IN-48/49/50 before affected offer/program activation | 16 estimated |
 | 13 | ○ **P** — customer self-service and growth (section 5) | **no design yet** — a stronger model writes it when Chris picks items | after O/BP as applicable, or earlier for a single picked item | pick items | — |
 | 14 | ○ Conditional/deferred: Google Workspace integration (O32), CSV import (O29), direct QuickBooks sync (`BATCH-K.md` §9) | deferred | prerequisites in their docs | provide accounts/data | — |
@@ -50,7 +56,8 @@ tax, security and redesign work that follows would make its scenarios and screen
 (backup/restore, media copy, capacity, runbooks) do not depend on those batches, so they run now; its product-wide
 proof runs last. If Chris prefers, F can run whole now and the scenario/screenshot work units are re-run after V.
 
-**Approval record:** Chris approved designs G, T, V, K, O and the F split on 2026-10-06, and Batch S on 2026-10-07. Work the approved batches in the order above. Batch BP remains PROPOSED until separately accepted; a design marked PROPOSED or DRAFT must never be started.
+**Approval record:** Chris approved designs G, T, V, K, O and the F split on 2026-10-06, and Batch S on 2026-10-07. Work the approved batches in the order above. Batch BP remains PROPOSED until separately accepted; a design marked PROPOSED or DRAFT must never be started. Chris approved COM design and placement on 2026-10-08. V/F-part-2 and launch require selected COM-L evidence;
+otherwise explicit owner de-scoping must record excluded communications behavior.
 
 ## 3. How an implementing model runs a step
 
@@ -233,3 +240,10 @@ proposed slices, **not included in the earlier approved-work PR counts** and not
 `docs/business/SOURCE-DISPOSITION.md` maps 31 source concepts to existing work, new scope or explicit deferral.
 The business folder is ready to review; pricing, tax positions, contracts and commissions are not activated.
 Before coding BP, create its bounded cards against the merged prerequisite code and record design acceptance.
+### COM — approved owner-commissioned communications work (2026-10-08)
+
+BATCH-COM section 9 defines L1a/L1b sender/callback safety → L2/L3 foundation → L4–L6 SMS/inbox;
+L7–L9 voice; L10–L13 cost/usage/owner reporting; L14 contextual surfaces; L15 final proof.
+First three cards exist at docs/pr-cards/COM-*. Later bounded cards are required before each unit starts.
+Approved COM-L after S before V/F-part-2; COM-N after K/O; COM-A unscheduled.
+These are additional work, not completed E, and not authorization for provider purchase/configuration/activation.
