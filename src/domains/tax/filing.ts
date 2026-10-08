@@ -146,6 +146,28 @@ export async function markPeriodFiled(
       where: { filingPeriodId: input.periodId, status: "DUE" },
       data: { status: "FILED" },
     });
+    // A filed return is not itself proof of tax payment. Only a fully
+    // remitted return can settle its mapped appliance acquisition liability.
+    if (data.amountPaidCents === expected) {
+      const filedAssets = await tx.purchaseUseTax.findMany({
+        where: { filingPeriodId: input.periodId, sourceType: "APPLIANCE", status: "FILED" },
+        select: { sourceId: true },
+      });
+      for (const assetId of new Set(filedAssets.map(row => row.sourceId))) {
+        const allRows = await tx.purchaseUseTax.findMany({
+          where: { sourceType: "APPLIANCE", sourceId: assetId },
+          select: { status: true, useTaxDueCents: true, filingPeriodId: true },
+        });
+        if (allRows.length && allRows.every(row => row.status === "NOT_DUE" ||
+              (row.status === "FILED" && row.filingPeriodId === input.periodId)) &&
+            allRows.some(row => row.useTaxDueCents > 0)) {
+          await tx.appliance.updateMany({
+            where: { id: assetId, acquisitionTaxStatus: "USE_TAX_DUE" },
+            data: { acquisitionTaxStatus: "USE_TAX_PAID" },
+          });
+        }
+      }
+    }
     await tx.auditLog.create({
       data: {
         userId: actorUserId, action: "tax.return_filed",
