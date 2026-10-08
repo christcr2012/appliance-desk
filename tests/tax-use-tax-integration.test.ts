@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { businessDateFromKey } from "@/lib/business-date";
 import { recordUseTaxForPurchase, assignDueUseTaxRowsToPeriod } from "@/domains/tax/use-tax";

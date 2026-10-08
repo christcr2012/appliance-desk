@@ -29,7 +29,7 @@ export async function recordUseTaxForPurchase(
   requireCents(input.vendorTaxCents, "Vendor tax");
 
   // Serialize concurrent updates for the same purchase.
-  await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${input.sourceType + ":" + input.sourceId}))`;
+  await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${input.sourceType + ":" + input.sourceId}))::text AS locked`;
   const settings = await tx.businessSettings.findUnique({
     where: { id: "singleton" },
     select: { shortTermLeaseElection: true },
