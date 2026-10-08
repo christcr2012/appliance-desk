@@ -43,7 +43,7 @@ describe.skipIf(!enabled)("T-6b1 purchase use tax on real Postgres", () => {
           useTaxFilingAccountId: accountId,
         },
       });
-      const rate = await prisma.taxRateVersion.create({
+      await prisma.taxRateVersion.create({
         data: {
           jurisdictionId, rateMilliPercent: 5000,
           effectiveFrom: day("2026-01-01"), source: "MANUAL",

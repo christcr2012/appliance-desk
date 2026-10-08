@@ -40,8 +40,8 @@ describe("T-6b1 filing packet from persisted integer-cent evidence", () => {
   it("keeps per-invoice rounding and mid-period rates rather than combining versions", () => {
     const p = buildFilingPacket(input({
       rows: [
-        row({ taxableCents: 1001, grossSalesCents: 1001, taxCents: 30, serviceFeeCents: 0 }),
-        row({ taxableCents: 1000, grossSalesCents: 1000, rateMilliPercent: 3000, taxCents: 30, serviceFeeCents: 0 }),
+        row({ netTaxableCents: 1001, grossSalesCents: 1001, taxCents: 30, serviceFeeCents: 0 }),
+        row({ netTaxableCents: 1000, grossSalesCents: 1000, rateMilliPercent: 3000, taxCents: 30, serviceFeeCents: 0 }),
       ],
     }));
     expect(p.rows.map(x => x.rateMilliPercent)).toEqual([2900, 3000]);
@@ -59,6 +59,21 @@ describe("T-6b1 filing packet from persisted integer-cent evidence", () => {
     expect(p.rows[0].deductions[0].label).toContain("ask your CPA");
     expect(p.totals.taxCents).toBe(290);
     expect(p.warnings.join(" ")).toContain("EXEMPT_SHORT_TERM_RENTAL");
+  });
+
+  it("honors LEAVE_OUT_OF_GROSS without changing stored taxable tax", () => {
+    const p = buildFilingPacket(input({
+      account: { ...input().account, deductionLabels: {
+        EXEMPT_SHORT_TERM_RENTAL: { label: "Exclusion", reportAs: "LEAVE_OUT_OF_GROSS" },
+      } },
+      rows: [row({
+        grossSalesCents: 15000, netTaxableCents: 10000,
+        deductions: [{ key: "EXEMPT_SHORT_TERM_RENTAL", label: "prior", cents: 5000 }],
+      })],
+    }));
+    expect(p.rows[0].grossSalesCents).toBe(10000);
+    expect(p.rows[0].deductions).toHaveLength(0);
+    expect(p.rows[0].taxCents).toBe(290);
   });
 
   it("accepts a configured label and builds a use-tax-only return", () => {

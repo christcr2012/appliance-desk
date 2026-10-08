@@ -91,19 +91,27 @@ export function buildFilingPacket(input: {
       .every(Number.isSafeInteger)) {
       throw new Error("Filing packet requires recorded integer-cent amounts.");
     }
-    const deductions = row.deductions.map(d => {
+    let excludedFromGross = 0;
+    const deductions = row.deductions.flatMap(d => {
       const mapped = config[d.key];
       if (!mapped) warnings.push(
         "Deduction " + d.key + " not decided — ask your CPA how it appears in SUTS.",
       );
-      return { ...d, label: mapped?.label ?? "Not decided — ask your CPA" };
+      if (mapped?.reportAs === "LEAVE_OUT_OF_GROSS") {
+        excludedFromGross += d.cents;
+        return [];
+      }
+      return [{ ...d, label: mapped?.label ?? "Not decided — ask your CPA" }];
     });
+    if (excludedFromGross > row.grossSalesCents) {
+      throw new Error("Amounts excluded from gross exceed recorded gross sales.");
+    }
     if (taxCentsForLine(row.netTaxableCents, row.rateMilliPercent) !== row.taxCents) {
       warnings.push("Stored per-bill rounding differs from whole-period arithmetic for " +
         row.name + ". Report the recorded tax; confirm with your CPA.");
     }
     return {
-      ...row, deductions,
+      ...row, deductions, grossSalesCents: row.grossSalesCents - excludedFromGross,
       remitCents: row.taxCents - (onTime ? row.serviceFeeCents : 0),
     };
   });
@@ -238,6 +246,10 @@ export async function loadFilingPacket(periodId: string, now = new Date()): Prom
   }
   const endExclusive = addBusinessDays(period.periodEnd, 1);
   const account = period.filingAccount;
+  const basis = account.basis;
+  if (basis !== "CASH" && basis !== "ACCRUAL") {
+    return { status: "BLOCKED", problems: ["Ask your CPA to choose cash or accrual before filing."] };
+  }
   const problems: string[] = [];
 
   // Never mutate a filed period or confuse use tax with sales tax.
@@ -302,37 +314,51 @@ export async function loadFilingPacket(periodId: string, now = new Date()): Prom
         problems.push("Invoice " + line.invoice.invoiceNumber + " has no positive allocation base.");
         continue;
       }
-      const payments = line.invoice.payments.filter(p =>
-        p.status === "succeeded" && p.receipt &&
-        p.receipt.receivedOn >= period.periodStart && p.receipt.receivedOn < endExclusive,
-      );
-      const taxLines = line.invoice.taxLines;
-      const allTax = sum(taxLines.map(t => t.taxCents));
-      if (allTax < 0 || allTax > amount || taxLines.some(t => t.taxCents < 0)) {
-        problems.push("Invoice " + line.invoice.invoiceNumber + " has tax allocation that needs review.");
+      const payments = line.invoice.payments
+        .filter(p => p.status === "succeeded")
+        .sort((a, b) => a.id.localeCompare(b.id));
+      if (payments.some(p => !p.receipt || p.amountCents <= 0)) {
+        problems.push("Invoice " + line.invoice.invoiceNumber + " has a receipt without dated allocation evidence.");
         continue;
       }
+      const totalPaid = sum(payments.map(p => p.amountCents));
+      const taxLines = line.invoice.taxLines;
+      const allTax = sum(taxLines.map(t => t.taxCents));
+      const principal = line.taxableCents + line.exemptCents;
+      if (totalPaid > amount || allTax < 0 || allTax > amount ||
+          principal < 0 || principal > amount ||
+          line.taxableCents < 0 || line.exemptCents < 0 ||
+          taxLines.some(t => t.taxCents < 0)) {
+        problems.push("Invoice " + line.invoice.invoiceNumber + " has tax or principal needing allocation review.");
+        continue;
+      }
+      const taxIndex = taxLines.findIndex(t => t.id === line.id);
+      if (taxIndex < 0) {
+        problems.push("Invoice " + line.invoice.invoiceNumber + " has a missing tax-line allocation.");
+        continue;
+      }
+      // First allocate the TOTAL amount collected for this invoice, then
+      // distribute its saved tax/principal across actual receipts. Rounding
+      // each installment independently could exceed the stored invoice tax.
+      const paidTax = allocateAcrossLines(totalPaid, [allTax, amount - allTax])[0]!;
+      const linePaidTax = allocateAcrossLines(paidTax, taxLines.map(t => t.taxCents))[taxIndex]!;
+      const paidPrincipal = allocateAcrossLines(totalPaid, [principal, amount - principal])[0]!;
+      const [paidTaxable, paidExempt] = principal
+        ? allocateAcrossLines(paidPrincipal, [line.taxableCents, line.exemptCents])
+        : [0, 0];
+      const weights = payments.map(p => p.amountCents);
+      const taxShares = allocateAcrossLines(linePaidTax, weights);
+      const taxableShares = allocateAcrossLines(paidTaxable, weights);
+      const exemptShares = allocateAcrossLines(paidExempt, weights);
       let countTax = 0;
       let countTaxable = 0;
       let countExempt = 0;
-      for (const payment of payments) {
-        if (payment.amountCents <= 0 || payment.amountCents > amount) {
-          problems.push("Invoice " + line.invoice.invoiceNumber + " has an invalid receipt allocation.");
-          continue;
-        }
-        const paidTax = allocateAcrossLines(payment.amountCents, [allTax, amount - allTax])[0]!;
-        const taxIndex = taxLines.findIndex(t => t.id === line.id);
-        if (taxIndex < 0) {
-          problems.push("An invoice tax line is missing from its payment allocation.");
-          continue;
-        }
-        const taxShares = allTax > 0 ? allocateAcrossLines(paidTax, taxLines.map(t => t.taxCents)) : taxLines.map(() => 0);
-        const principalShare = allocateAcrossLines(payment.amountCents,
-          [line.taxableCents + line.exemptCents, Math.max(0, amount - line.taxableCents - line.exemptCents)])[0]!;
-        countTax += taxShares[taxIndex]!;
-        const [taxable, exempt] = allocateAcrossLines(principalShare, [Math.max(0,line.taxableCents), Math.max(0,line.exemptCents)]);
-        countTaxable += taxable!;
-        countExempt += exempt!;
+      for (const [i, payment] of payments.entries()) {
+        const receivedOn = payment.receipt!.receivedOn;
+        if (receivedOn < period.periodStart || receivedOn >= endExclusive) continue;
+        countTax += taxShares[i]!;
+        countTaxable += taxableShares[i]!;
+        countExempt += exemptShares[i]!;
       }
       evidence.push({ tax: line, taxableCents: countTaxable, exemptCents: countExempt, taxCents: countTax });
     }
@@ -344,7 +370,7 @@ export async function loadFilingPacket(periodId: string, now = new Date()): Prom
       start: period.periodStart, end: period.periodEnd,
       dueOn: period.dueOn, legalDueOn: period.legalDueOn ?? period.dueOn,
     },
-    basis: account.basis, rows: aggregate(evidence), useTax, viewedOn: now,
+    basis, rows: aggregate(evidence), useTax, viewedOn: now,
   });
   return { status: "READY", packet };
 }
