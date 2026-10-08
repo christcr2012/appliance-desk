@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
 import { allocateAcrossLines } from "@/domains/tax/allocate";
 import { recordApplianceAcquisitionTaxInTx, type PurchaseTaxChoice } from "@/domains/tax/acquisition";
-import type { ApplianceStatus } from "@prisma/client";
+import type { ApplianceStatus, AcquisitionTaxStatus } from "@prisma/client";
 import { assertStatusChangeKeepsCustody } from "./custody";
 import {
   ALL_APPLIANCE_STATUSES,
@@ -99,9 +99,10 @@ export async function getAppliances(filter?: { status?: ApplianceStatus }) {
  * page's rows (src/domains/pagination.ts). */
 export async function getAppliancesCount(filter?: {
   status?: ApplianceStatus;
+  taxStatus?: AcquisitionTaxStatus;
 }): Promise<number> {
   return prisma.appliance.count({
-    where: filter?.status ? { status: filter.status } : undefined,
+    where: { ...(filter?.status ? { status: filter.status } : {}), ...(filter?.taxStatus ? { acquisitionTaxStatus: filter.taxStatus } : {}) },
   });
 }
 
@@ -110,12 +111,12 @@ export async function getAppliancesCount(filter?: {
  * for the callers that need every matching unit at once (the rental
  * builder wizard's/agreement page's "available appliances" picker). */
 export async function getAppliancesPage(
-  filter: { status?: ApplianceStatus } | undefined,
+  filter: { status?: ApplianceStatus; taxStatus?: AcquisitionTaxStatus } | undefined,
   skip: number,
   pageSize: number,
 ) {
   return prisma.appliance.findMany({
-    where: filter?.status ? { status: filter.status } : undefined,
+    where: { ...(filter?.status ? { status: filter.status } : {}), ...(filter?.taxStatus ? { acquisitionTaxStatus: filter.taxStatus } : {}) },
     select: {
       id: true,
       assetNumber: true,

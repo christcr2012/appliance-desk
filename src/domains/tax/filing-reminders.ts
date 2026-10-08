@@ -3,6 +3,7 @@ import { detectTaxFilingAmendments } from "./filing";
 import { businessDateKey, businessDaysBetween } from "@/lib/business-date";
 import { prisma } from "@/lib/prisma";
 import { dueOnFor, legalDueOn, periodsFor, reminderStages } from "./filing-calendar";
+import { advanceColoradoUseTaxFrequency } from "./use-tax-frequency-transition";
 
 export type FilingReminderRun = {
   periodsCreated: number;
@@ -48,9 +49,24 @@ export async function runTaxFilingCalendar(now = new Date()): Promise<FilingRemi
   for (const account of accounts) {
     // Legacy accounts remain dormant until the Owner sets the first filing period.
     if (account.firstPeriodStart) {
-      const ranges = periodsFor(account, now);
+      const transitioned = await advanceColoradoUseTaxFrequency(account.id, now);
+      const effectiveAccount = transitioned
+        ? { ...account, frequency: "MONTHLY" as const, dueDayOfFollowingMonth: 20 }
+        : account;
+      // An annual period shortened at the transition boundary remains
+      // authoritative for its dates. Never create new monthly periods which
+      // overlap that existing, possibly filed, history.
+      const existing = await prisma.taxFilingPeriod.findMany({
+        where: { filingAccountId: account.id },
+        select: { periodStart: true, periodEnd: true },
+      });
+      const ranges = periodsFor(effectiveAccount, now).filter(range =>
+        !existing.some(period =>
+          range.start <= period.periodEnd && range.end >= period.periodStart,
+        ),
+      );
       const data = ranges.map((range) => {
-        const dueOn = dueOnFor(range.end, account.dueDayOfFollowingMonth);
+        const dueOn = dueOnFor(range.end, effectiveAccount.dueDayOfFollowingMonth);
         return {
           filingAccountId: account.id,
           periodStart: range.start,

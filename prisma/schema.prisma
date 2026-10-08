@@ -2193,6 +2193,7 @@ model BusinessSettings {
   // Batch T: tax policy starts undecided; rates/rules are entered and reviewed separately.
   shortTermLeaseElection          ShortTermLeaseElection @default(UNDECIDED)
   shortTermLeaseElectionNote      String?
+  useTaxMonthlyThresholdCents     Int @default(30000)
   retailDeliveryFeeDecision       String                 @default("UNDECIDED")
   businessTaxAddress              Json                   @default("{}")
   autoApplyOfficialRateChanges    Boolean                @default(true)

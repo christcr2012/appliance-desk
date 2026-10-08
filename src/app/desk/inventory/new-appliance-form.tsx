@@ -16,14 +16,19 @@ const EMPTY_FIELDS = {
   condition: "",
   purchaseDate: "",
   acquisitionCostDollars: "",
+  purchaseTaxChoice: "LATER",
+  vendorTaxDollars: "",
+  sellerTaxNote: "",
   currentLocation: "",
   notes: "",
 };
 
 export function NewApplianceForm({
   applianceTypes,
+  canRecordTax,
 }: {
   applianceTypes: ApplianceTypeOption[];
+  canRecordTax: boolean;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -68,6 +73,9 @@ export function NewApplianceForm({
         acquisitionCostDollars: fields.acquisitionCostDollars
           ? parseFloat(fields.acquisitionCostDollars)
           : undefined,
+        purchaseTaxChoice: canRecordTax ? fields.purchaseTaxChoice : undefined,
+        vendorTaxDollars: fields.vendorTaxDollars ? parseFloat(fields.vendorTaxDollars) : 0,
+        sellerTaxNote: fields.sellerTaxNote,
         currentLocation: fields.currentLocation,
         notes: fields.notes,
       });
@@ -126,6 +134,41 @@ export function NewApplianceForm({
           }
         />
       </div>
+
+      {canRecordTax && <div className="space-y-3 rounded-lg border border-border p-4">
+        <Select
+          id="purchaseTaxChoice"
+          label="Purchase tax evidence"
+          value={fields.purchaseTaxChoice}
+          onChange={(event) => update("purchaseTaxChoice", event.target.value)}
+        >
+          <option value="SELLER_CHARGED">Seller charged sales tax</option>
+          <option value="NONE_CHARGED">Seller did not charge tax</option>
+          <option value="LESSOR_PERMISSION">Lessor purchase permission (requires review)</option>
+          <option value="LATER">Record or verify purchase tax later</option>
+        </Select>
+        <p className="text-xs text-ink-soft">
+          The amount below is the total tax for the entire quantity, not tax per appliance.
+          If the purchase date or cost is missing, the tax remains pending owner review.
+        </p>
+        {fields.purchaseTaxChoice === "SELLER_CHARGED" && (
+          <Field
+            id="vendorTaxDollars"
+            label="Total seller sales tax for all units ($)"
+            type="number"
+            min={0}
+            step="0.01"
+            value={fields.vendorTaxDollars}
+            onChange={(event) => update("vendorTaxDollars", event.target.value)}
+          />
+        )}
+        <Field
+          id="sellerTaxNote"
+          label="Seller or purchase-tax note (optional)"
+          value={fields.sellerTaxNote}
+          onChange={(event) => update("sellerTaxNote", event.target.value)}
+        />
+      </div>}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field

@@ -19,6 +19,10 @@ const mocks = vi.hoisted(() => ({
   officialRateAttention: vi.fn(async () => []),
   filingAttention: vi.fn(async () => ({ returns: { rows: [], total: 0 }, licenses: { rows: [], total: 0 } })),
   amendmentAttention: vi.fn(async () => ({ amendments: { rows: [], total: 0 }, readiness: { rows: [], total: 0 } })),
+  acquisitionAttention: vi.fn(async () => []),
+}));
+vi.mock("@/domains/tax/acquisition-attention", () => ({
+  listAcquisitionTaxAttention: mocks.acquisitionAttention,
 }));
 vi.mock("@/domains/tax/amendment-attention", () => ({
   listTaxAmendmentAttention: mocks.amendmentAttention,
@@ -99,6 +103,7 @@ describe("Today server-side visibility", () => {
     expect(result.map((x) => x.category)).toEqual(["OVERDUE_JOB"]);
     expect(mocks.filingAttention).not.toHaveBeenCalled();
     expect(mocks.amendmentAttention).not.toHaveBeenCalled();
+    expect(mocks.acquisitionAttention).not.toHaveBeenCalled();
     expect(mocks.invoice).not.toHaveBeenCalled();
     expect(mocks.notice).not.toHaveBeenCalled();
     // The Stripe-update-pending read is money: STAFF never trigger it.
@@ -140,6 +145,7 @@ describe("Today server-side visibility", () => {
       expect(result.some((x) => x.category === "PAST_DUE_INVOICE")).toBe(true);
       expect(mocks.invoice).toHaveBeenCalledTimes(2);
       expect(mocks.job).toHaveBeenCalledTimes(2);
+      expect(mocks.acquisitionAttention).toHaveBeenCalledTimes(1);
     },
   );
 

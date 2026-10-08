@@ -32,6 +32,65 @@ describe.skipIf(!enabled)("T-6b1 filing load (real Postgres)", () => {
 
   afterEach(() => { mocks.role = "OWNER"; });
 
+  it("ADMIN previews unassigned use tax without writes; OWNER still assigns and STAFF is denied", async () => {
+    const suffix = randomUUID();
+    const readAccountId = "packet-read-" + suffix;
+    const readJurisdictionId = "packet-read-jur-" + suffix;
+    try {
+      await prisma.taxFilingAccount.create({ data: {
+        id: readAccountId, name: "Read-only use tax", kind: "USE_TAX_RETURN", basis: "ACCRUAL",
+      } });
+      await prisma.taxJurisdiction.create({ data: {
+        id: readJurisdictionId, code: "READ-" + suffix, name: "Read-only jurisdiction",
+        level: "CITY", administration: "SELF_COLLECTED", reviewStatus: "REVIEWED",
+        useTaxFilingAccountId: readAccountId,
+      } });
+      const rate = await prisma.taxRateVersion.create({ data: {
+        jurisdictionId: readJurisdictionId, rateMilliPercent: 5000,
+        effectiveFrom: day("2026-01-01"), source: "MANUAL",
+      } });
+      const period = await prisma.taxFilingPeriod.create({ data: {
+        filingAccountId: readAccountId, periodStart: day("2026-09-01"),
+        periodEnd: day("2026-09-30"), dueOn: day("2026-10-20"),
+      } });
+      const otherPeriod = await prisma.taxFilingPeriod.create({ data: {
+        filingAccountId: readAccountId, periodStart: day("2026-10-01"),
+        periodEnd: day("2026-10-31"), dueOn: day("2026-11-20"),
+      } });
+      const row = { sourceType: "APPLIANCE", purchasedOn: day("2026-09-18"),
+        purchaseAmountCents: 10000, vendorTaxCents: 0, useTaxDueCents: 500,
+        jurisdictionId: readJurisdictionId, rateVersionId: rate.id, status: "DUE" as const };
+      const unassigned = await prisma.purchaseUseTax.create({ data: { ...row, sourceId: suffix + "-unassigned" } });
+      await prisma.purchaseUseTax.create({ data: { ...row, sourceId: suffix + "-assigned", filingPeriodId: period.id } });
+      await prisma.purchaseUseTax.create({ data: { ...row, sourceId: suffix + "-other", filingPeriodId: otherPeriod.id } });
+      await prisma.purchaseUseTax.create({ data: { ...row, sourceId: suffix + "-outside", purchasedOn: day("2026-10-01") } });
+      const before = await prisma.purchaseUseTax.findMany({ where: { jurisdictionId: readJurisdictionId }, orderBy: { id: "asc" } });
+      mocks.role = "ADMIN";
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const preview = await loadFilingPacket(period.id, day("2026-10-21"));
+        expect(preview.status).toBe("READY");
+        if (preview.status !== "READY") throw new Error(preview.problems.join(" "));
+        expect(preview.packet.useTax).toEqual([expect.objectContaining({ purchaseCents: 20000, useTaxCents: 1000 })]);
+        expect(await prisma.purchaseUseTax.findMany({ where: { jurisdictionId: readJurisdictionId }, orderBy: { id: "asc" } })).toEqual(before);
+      }
+      mocks.role = "STAFF";
+      await expect(loadFilingPacket(period.id)).rejects.toThrow("Access denied");
+      mocks.role = "OWNER";
+      const owner = await loadFilingPacket(period.id, day("2026-10-21"));
+      expect(owner.status).toBe("READY");
+      if (owner.status !== "READY") throw new Error(owner.problems.join(" "));
+      expect(owner.packet.useTax[0].useTaxCents).toBe(1000);
+      expect((await prisma.purchaseUseTax.findUniqueOrThrow({ where: { id: unassigned.id } })).filingPeriodId).toBe(period.id);
+    } finally {
+      mocks.role = "OWNER";
+      await prisma.purchaseUseTax.deleteMany({ where: { jurisdictionId: readJurisdictionId } });
+      await prisma.taxFilingPeriod.deleteMany({ where: { filingAccountId: readAccountId } });
+      await prisma.taxRateVersion.deleteMany({ where: { jurisdictionId: readJurisdictionId } });
+      await prisma.taxJurisdiction.deleteMany({ where: { id: readJurisdictionId } });
+      await prisma.taxFilingAccount.deleteMany({ where: { id: readAccountId } });
+    }
+  });
+
   it("uses saved invoice tax in accrual, receipt allocations in cash, and refuses guessed basis or STAFF access", async () => {
     try {
       await prisma.user.create({

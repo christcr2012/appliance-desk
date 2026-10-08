@@ -206,3 +206,10 @@ All customer-addressed email goes through `sendCustomerEmail` (owner master swit
 - Existing recurring Stripe setup applied the same tax rates to all items. T-6D2 now derives item-specific rates before provider creation. A mixed taxable/exempt asset set within one Stripe item is explicitly blocked rather than silently undercharged; separate items are required for that case.
 - Existing prepaid invoices lacked `billingPeriodStart`; the signed date is now recorded as the period anchor. If no appliance is assigned at that instant, tax readiness blocks only the invoice rather than assuming an exemption.
 - Filing previously marked purchase use-tax rows FILED without changing the appliance. The new status promotion requires an exact fully paid return and explicit sourceType=APPLIANCE mapping; underpayment and other-period rows cannot prove payment.
+
+
+## 2026-10-08 — T-6D3 acquisition UI and consumer use-tax worksheet
+- Baseline: merged T-6D2 at 5334e7d; the purchase-tax DTO and evidence fields exist. Inventory create supported optional purchaseTax but its owner UI did not expose it.
+- OWNER-only intake choices with whole-quantity seller-tax amount; non-owner submissions omit evidence and server authorization rejects attempts.
+- Configurable threshold default 30000 cents, prospective month-end frequency decision, and an explicitly non-official DR 0252 worksheet. Filing-account mutation and period partition remain future integration, not claimed as complete.
+- Browser acquisition-intake accessibility coverage assigned to browser-a.

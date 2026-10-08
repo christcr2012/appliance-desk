@@ -83,6 +83,8 @@ const CATEGORIES: Record<ExceptionCategory, string> = {
   TAX_LICENSE_RENEWAL: "Tax licenses to renew",
   TAX_AMENDMENT_DUE: "Tax amendments requiring review",
   TAX_FILING_NOT_READY: "Tax returns not ready to file",
+  ACQUISITION_TAX_REVIEW: "Appliance purchase tax needs review",
+  PURCHASE_USE_TAX_DUE: "Consumer use tax to file",
   STALE_RESERVATION: "Reservation expired",
   PAST_DUE_INVOICE: "Past due",
   OVERDUE_JOB: "Overdue job",
