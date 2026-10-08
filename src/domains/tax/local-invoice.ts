@@ -4,7 +4,7 @@ import { assertActiveTeamActor } from "@/lib/team-actor";
 import { businessDateKey } from "@/lib/business-date";
 import { lockCustomerLedger } from "@/domains/billing/ledger";
 import { computeTax } from "./engine";
-import { getAgreementTaxContext } from "./locations";
+import { getAgreementTaxContext, loadRentalAcquisitionBasis } from "./locations";
 import type { InvoiceLineItemKind } from "./categories";
 
 export type LocalInvoiceTaxResult =
@@ -33,13 +33,14 @@ export async function applyLocalInvoiceTaxInTx(
   const invoice = await tx.invoice.findUniqueOrThrow({
     where: { id: input.invoiceId },
     select: {
+      billingPeriodStart: true,
       subtotalCents: true,
       discountCents: true,
       lateFeeCents: true,
       lineItems: {
         where: { kind: { not: "TAX" } },
         orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-        select: { id: true, kind: true, amountCents: true },
+        select: { id: true, kind: true, amountCents: true, rentalLineId: true },
       },
     },
   });
@@ -71,12 +72,14 @@ export async function applyLocalInvoiceTaxInTx(
   }
 
   const context = await getAgreementTaxContext(tx, input.agreementId, input.taxDate);
+  const acquisitionBasis = await loadRentalAcquisitionBasis(tx, input.agreementId, invoice.billingPeriodStart, invoice.lineItems.map(line => ({ key: line.id, kind: line.kind, rentalLineId: line.rentalLineId })));
   const engineResult = computeTax({
     ...context,
     lines: invoice.lineItems.map((line) => ({
       key: line.id,
       kind: line.kind as InvoiceLineItemKind,
       amountCents: line.amountCents,
+      acquisitionBasis: acquisitionBasis.get(line.id),
     })),
   });
   const result =

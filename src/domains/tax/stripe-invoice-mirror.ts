@@ -7,7 +7,7 @@ import type {
 
 import { categoryForLineKind } from "@/domains/tax/categories";
 import { computeTax } from "@/domains/tax/engine";
-import { getAgreementTaxContext } from "@/domains/tax/locations";
+import { getAgreementTaxContext, loadRentalAcquisitionBasis } from "@/domains/tax/locations";
 
 export type MirroredStripeChargeLine = {
   stripeLine: Stripe.InvoiceLineItem;
@@ -165,12 +165,19 @@ export async function recordStripeInvoiceTaxEvidenceInTx(
       input.agreementId,
       taxDate,
     );
+    const invoiceLines = await tx.invoiceLineItem.findMany({
+      where: { id: { in: input.chargeLines.map(line => line.invoiceLineItemId) }, invoiceId: input.invoiceId },
+      select: { id: true, kind: true, rentalLineId: true },
+    });
+    const invoice = await tx.invoice.findUniqueOrThrow({ where: { id: input.invoiceId }, select: { billingPeriodStart: true } });
+    const acquisitionBasis = await loadRentalAcquisitionBasis(tx, input.agreementId, invoice.billingPeriodStart, invoiceLines.map(line => ({ key: line.id, kind: line.kind, rentalLineId: line.rentalLineId })));
     engine = computeTax({
       ...context,
       lines: input.chargeLines.map((line) => ({
         key: line.invoiceLineItemId,
         kind: line.kind,
         amountCents: line.amountCents,
+        acquisitionBasis: acquisitionBasis.get(line.invoiceLineItemId),
       })),
     });
     if (!engine.ok) {
