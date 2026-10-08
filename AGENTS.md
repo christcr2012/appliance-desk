@@ -54,7 +54,9 @@ are mandatory:
    Three reads is *not* a stop condition; never make an unsafe guess to satisfy a tool-call quota.
 8. **Meaningful work checkpoints.** Complete a coherent work unit with its tests, commit locally, and
    push a reviewed logical PR once. Don't turn every function, tiny migration detail, or single test into
-   a separate PR. A short checkpoint note precedes long steps; the durable git commit is the checkpoint.
+   a separate PR. Publish only the complete validated tree, with one branch-ref update per coherent batch;
+   never publish intermediate per-file reconstruction/rebase heads. A short checkpoint note precedes long
+   steps; the durable local git commit is the checkpoint. See PLAYBOOK publication recipe.
 9. **External waits are checkpoints, not a work loop.** Inspect exact-head CI/review/preview once,
    act on new evidence, and work on another eligible item without polling or watching live logs.
 10. **Two-lane conveyor, not extra workstreams.** Lane A implements the currently approved batch and
@@ -76,8 +78,10 @@ are mandatory:
     failed attempts. For tool failure switch to a proven alternate interface, smaller payload, or
     exact-file operation. Preserve committed work and continue the active objective if possible.
 14. **One-pass review and merge.** Freeze scope when implemented; inspect the diff and all current
-    review findings together, fix every valid one in a single regression-tested patch, verify
-    exact-head CI/performance/preview, and merge immediately when gates are clean. Do not request
+    review findings together, fix blocking findings in one regression-tested patch, and assign only
+    low-risk nonblocking findings to the immediate successor with rationale and verification plan
+    (PLAYBOOK Step 5). Never defer security, money correctness, data integrity, required acceptance or
+    a required gate. Verify exact-head CI/performance/preview and merge when gates are clean. Do not request
     ceremonial re-reviews or repeatedly fetch unchanged thread state. For high-risk semantic changes
     and mandatory branch rules keep the applicable review gate.
 15. **Quality-aware throughput tuning.** After the next 2–3 PRs, compare elapsed time, useful code
@@ -228,10 +232,11 @@ full CI/secret checks, preview where applicable and required semantic review.
   (the "Keeping CI fast" checklist in `docs/ARCHITECTURE.md`).
 - **Merge conveyor — batch findings, then merge (Chris, 2026-10-08).** Once a PR is implementation-complete,
   freeze feature scope. Do one focused self-review plus one collection of all currently open automated-review findings,
-  fix every valid finding in a single batch, then run the exact-head gates once. Request at most one exact-head automated
-  re-review after that batch; do not request ritual "final reviews" after a clean pass. A rebase/retarget that changes no
+  fix blocking findings in a single batch. Only low-risk nonblocking findings may carry to the immediate successor
+  under PLAYBOOK Step 5; inherited fixes precede new feature work. Run exact-head gates once; request a further automated
+  review only for high-risk semantic changes or an actual required-review gate; do not request ritual "final reviews" after a clean pass. A rebase/retarget that changes no
   diff requires fresh exact-head CI/performance/preview but not another discretionary review. If the required exact-head
-  re-review finds a new valid issue, batch all findings from that pass, patch once, self-review the patch, and rerun gates;
+  re-review finds a new blocking issue, batch blocking findings from that pass, patch once, self-review the patch, and rerun gates;
   request another automated review only when the patch changes security, money/billing, auth, schema, provider semantics,
   or the reviewer is required by the ruleset. Merge immediately when required gates are green. Do not hold a green PR
   open to perform extra optional review cycles.
@@ -276,10 +281,13 @@ full CI/secret checks, preview where applicable and required semantic review.
 - **Quick local checks, then let CI do the heavy lifting** (agent's call,
   approved by Chris 2026-10-03). For code changes, before each push run the cheap checks:
   `npm run typecheck`, `npm run lint`, and `vitest` on the tests you touched
-  or that cover the code you changed (seconds). Do **not** build a local
+  or that cover the code you changed. Re-run these on the complete post-rebase/fix tree before publishing;
+  an earlier green head is not proof for a changed tree. Schema/enum changes must include generated-client
+  freshness, exhaustive consumers and required fixture fields; new domain calls must include caller mocks.
+  Do **not** build a local
   Postgres and run the whole suite or the browser specs by default: CI runs
-  them for free in about 3 minutes, and setting them up costs far more agent
-  effort than one CI round trip. Do run more locally when it is cheaper than
+  them on disposable infrastructure; measured duration varies by head and runner. Reuse verified local
+  setup rather than rebuilding it for each card. Do run more locally when it is cheaper than
   guessing: a migration or SQL change (prove it on a scratch database), a
   failure you cannot understand from CI output, or a browser spec you are
   actively iterating on. The full recipe stays in `docs/PLAYBOOK.md`.
