@@ -122,7 +122,7 @@ Tests are not budgeted — write as many as the change needs. A PR that is mostl
 
 **Stack lockstep / context anchor (Chris, 2026-10-07):** keep at most two unmerged implementation PRs open in one dependency chain. Do not keep building a third PR while the bottom PR is still changing. If the bottom PR receives a patch after its successor was branched, freeze the successor, finish/review the bottom PR, then sync/rebase the successor onto that final head before further implementation. Any dependent card or documentation PR stacks on the top prerequisite branch rather than stale `main`.
 
-The approved design, applicable PR card, `docs/STATUS.md` and `docs/MASTER-ROADMAP.md` are the persistent context anchor. Re-read the current applicable pieces at each PR boundary and after a base changes; do not rely on an earlier session's remembered state. Session length by itself is not a stop condition. After each predecessor merges, retarget the next PR to current `main`, verify exact-head CI/performance/preview/reviews once, and merge it if clean. Continue while the next step is authorized and verified; stop at a required patch, failed/pending blocking gate, review finding, approval gate, or insufficient verified context. Never skip exact-head gates.
+The approved design, applicable PR card, `docs/STATUS.md` and `docs/MASTER-ROADMAP.md` are the persistent context anchor. Re-read the current applicable pieces at each PR boundary and after a base changes; do not rely on an earlier session's remembered state. Session length by itself is not a stop condition. After each predecessor merges, retarget the next PR to current `main`, verify exact-head CI/performance/preview/reviews once, and merge it if clean. Continue while the next step is authorized and verified; manage a required patch, failed/pending blocking gate or review finding within the conveyor; stop only when no authorized useful work remains, an approval is required, or verified context is insufficient. Never skip exact-head gates.
 
 **Merge conveyor (Chris, 2026-10-08):** when implementation is complete, stop changing scope. Before the first
 merge attempt, perform one focused diff self-review and collect all currently open automated-review threads. Resolve every
@@ -519,8 +519,15 @@ no separate metrics report, extra work lane or recurring approval ceremony.
    database reset merely because a new card starts. Never reuse production data.
 2. If CLI publishing fails for missing authentication, use an available authorized
    repository connector; do not repeatedly try the same unauthenticated push.
-   Keep parent/ref leases, preserve untouched files and verify published/local
-   tree equality. Save the known route in existing STATUS, without credentials.
+   Publish the complete checked tree atomically: one normal git push, or Git Data
+   `create_tree` with **all** changed paths on the verified base tree →
+   `create_commit` → one leased `update_ref` (or create the new branch at that
+   complete commit). Include deletions/modes where applicable; preserve untouched
+   base files and verify published/local tree equality. Never update the branch
+   once per file or expose intermediate rebase commits. A rejected lease means
+   inspect concurrent changes before retrying, not overwrite another agent.
+   Local commits may be incremental; remote publication is one coherent batch.
+   Save the known route in existing STATUS, without credentials.
 3. Reuse real predecessor regression fixtures/helpers. Run the changed high-risk
    integration cases on the already-available disposable DB before pushing;
    include direct callers and changed fixtures. If setup is unavailable, use the
@@ -529,7 +536,12 @@ no separate metrics report, extra work lane or recurring approval ceremony.
 4. After a failure, classify it: implementation, stale fixture/contract, setup,
    or external dependency. Inspect the smallest evidence that distinguishes them.
    Change a hypothesis after two unsuccessful identical attempts; do not keep
-   broad reruns or speculative edits. Fix all confirmed causes in one patch.
+   broad reruns or speculative edits. Fix all confirmed blocking causes in one
+   patch, then run Step 4a on the complete post-fix/post-rebase tree before one
+   publication. Check schema/enum consumers, required fixture fields and new
+   caller mocks together, not one CI round per compiler or test error. If local
+   verification is genuinely unavailable, state the missing check and reason in
+   the PR and publish one complete candidate for CI; never claim it passed.
 5. Choose effort by risk: light for routine existing patterns, medium for new
    transactional/security/provider/schema boundaries. A focused Sonnet second
    opinion may settle a specific ambiguity, with the normal reviewed amendment.
@@ -539,7 +551,7 @@ no separate metrics report, extra work lane or recurring approval ceremony.
    not another document. Do not restart whole-batch orientation at each card.
 
 Measure improvements from the next three existing PR descriptions: time to merge,
-failed CI, substantive defects and rebase work. The historical PR cycle begins
+failed CI, cancelled superseded runs, substantive defects and rebase work. The historical PR cycle begins
 at PR creation, after much implementation already occurred; it is not total
 agent work time. Do not convert fewer reasoning tokens or fewer tests into a
 claim of higher quality. Retain changes only when evidence supports them.
