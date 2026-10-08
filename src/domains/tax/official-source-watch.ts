@@ -57,7 +57,7 @@ function excerptWindow(value: string, center: number, maxLength = 300): string {
 
   const half = Math.floor(maxLength / 2);
   let start = Math.max(0, center - half);
-  let end = Math.min(value.length, start + maxLength);
+  const end = Math.min(value.length, start + maxLength);
   if (end - start < maxLength) start = Math.max(0, end - maxLength);
 
   return `${start > 0 ? "…" : ""}${value.slice(start, end).trim()}${
