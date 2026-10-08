@@ -480,9 +480,17 @@ describe.skipIf(!enabled)("Batch T rate-change automation (real Postgres)", () =
     });
 
     try {
-      await expect(
-        applyTaxRateChanges(new Date("2026-10-20T18:05:00.000Z")),
-      ).resolves.toMatchObject({ versions: 0, agreements: 0 });
+      const result = await applyTaxRateChanges(
+        new Date("2026-10-20T18:05:00.000Z"),
+      );
+      expect(result.pending).toBe(0);
+      expect(
+        await prisma.providerOperation.findUnique({
+          where: {
+            idempotencyKey: subscriptionTaxUpdateKey(agreementId, undoneId),
+          },
+        }),
+      ).toBeNull();
     } finally {
       await prisma.taxRateVersion.deleteMany({ where: { id: undoneId } });
     }
