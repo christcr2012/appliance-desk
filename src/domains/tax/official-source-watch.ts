@@ -1,5 +1,3 @@
-import { Prisma } from "@prisma/client";
-
 import { deliverMessage } from "@/domains/messaging/deliver";
 import { getBusinessSettings } from "@/domains/settings";
 import {
