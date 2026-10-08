@@ -594,3 +594,14 @@ equipment, access, relocation and purchase-path examples; FTC guidance informs c
 domain support and compatible structured/text policies before a choice can be published or signed. Future flows
 are explicit roadmap work, not new unchecked toggles that pretend to function. Research URLs and limits are in
 OPTIONS-CATALOG.md. Publication approval from the same turn continues to cover the updated business package.
+
+
+## 2026-10-07 — Communications subsystem commissioned; COM proposed
+
+Chris supplied a Twilio subsystem brief and asked it be inspiration reconciled with the actual application/roadmap.
+BATCH-COM extends E rather than replacing delivery/history, keeps Twilio behind a telecom adapter, adds two-way
+SMS/calls/consent/templates and distinct estimate/provider/invoice evidence, and connects METRICS/Today/S and future
+K Expense. First corrections cover uncertain SMS replay, state/callback races, matching/suppression and production
+activation/isolation. Proposed T → S → COM-L → V → F-part-2 → launch; COM-N after K/O; advanced features later.
+New architecture/first three cards are ready for review, not recorded as accepted or activated. IN-03/09 reused;
+IN-51/52/53 cover routing/media/budgets. No paid/provider/live changes in this documentation work.

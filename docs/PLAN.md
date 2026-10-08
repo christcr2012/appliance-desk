@@ -660,6 +660,46 @@ owner instructions, and a System health page plus Today group for Chris.
 
 ---
 
+## Batch COM — Business communications and telecom costs — APPROVED 2026-10-08
+
+Design: `docs/designs/BATCH-COM.md`; first cards: `docs/pr-cards/COM-L1A-SMS-SEND-SAFETY.md`,
+`COM-L1B-CALLBACK-INTEGRITY.md`, `COM-L2-FOUNDATION.md`; setup: `docs/runbooks/COMMUNICATIONS-TWILIO.md`.
+
+Owner requested 2026-10-07: Appliance Desk becomes the operating interface for a permanent company phone identity,
+two-way SMS/calls, contextual history, transactional templates, consent and measured provider expense.
+Extend shipped E messaging/automation/reporting instead of rebuilding it.
+
+Approved order: T → S → COM-L → V → F-part-2 → launch.
+Chris approved the design and this order on 2026-10-08; runtime remains unimplemented. COM-N runs after K/O; COM-A needs a later design.
+No paid/live setup is authorized.
+
+### Launch acceptance (COM-L)
+
+- [ ] UNKNOWN SMS never auto-replays; finalization/status/reconciliation serialize; early callbacks replay; STOP blocks every ordinary SMS purpose.
+- [ ] Missing/unmarked/preview runtime, OFF activation, missing number, consent or A2P readiness cannot submit production SMS/calls.
+- [ ] Account/number/contact/attempt/event evidence scoped and durable; one verified Voice/SMS identity, never invented or bought automatically.
+- [ ] Two-way inbox/history works; shared/unknown numbers unresolved; explicit subject links, role-shaped queries/actions/private media.
+- [ ] Editable versioned templates/disclosures, safe variables, rendered encoding/segments/cost preview and dispatch limits; existing job reminder migrated.
+- [ ] Forwarding/human acceptance, parent/child legs, after-hours/missed calls; voicemail only if selected and privacy/recording approved.
+- [ ] Paged retry-safe cost/usage/rate sync; estimates/provider-reported/invoice-reconciled totals distinct; no double-counted layers/categories/periods.
+- [ ] Monthly spend/budgets/anomalies extend reports/dashboard/Today/S/automations; stale/unknown data visible; no blanket contact cutoff.
+- [ ] Customer/lead/job/maintenance/billing/renewal surfaces share evidence; CustomerNotice legal gates preserved.
+- [ ] Real-Postgres race/rollback/isolation, cost fixtures, browser/axe/restore and final F scenarios pass with evidence.
+- [ ] IN-03/09/51/52/53 and applicable live/legal decisions resolved; runbook complete; provider behavior remains OFF until explicit activation.
+
+### Near-term acceptance (COM-N)
+
+- [ ] Workflow templates/rules activated individually; click-to-call/STAFF job-scoped actions preserve actor and legal boundaries.
+- [ ] Verified paid statement links to one existing K Expense; no usage/top-up/invoice double posting; K closed-period correction.
+- [ ] Service metrics, reliable linked-cost unit economics/forecasts registered in METRICS; sparse data is unavailable, no invented causal attribution.
+- [ ] O controls and BP business scenarios consume existing evidence.
+
+Section 9 defines 16 launch PR units (L1a/L1b plus L2–L15); large later units need bounded cards/splits before
+implementation. Runtime boxes stay unchecked. Ordinary recordings/transcription, softphone, queues and AI reception
+are later separately gated work.
+
+---
+
 ## Batch V — "Evergreen Signature" visual redesign
 
 **Design: `docs/designs/BATCH-V.md`** (approved by Chris 2026-10-06). Concept: `docs/design-mockups/signature-2026-10-06/` and the private artifact "Evergreen Signature". Follows Chris's 2026-10-06 judgement that E2's public site looked too similar to the old one.
