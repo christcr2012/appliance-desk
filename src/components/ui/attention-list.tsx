@@ -8,7 +8,13 @@ export type AttentionGroup = {
   items: ExceptionItem[];
 };
 
-export function AttentionList({ groups }: { groups: AttentionGroup[] }) {
+export function AttentionList({
+  groups,
+  acknowledgeTaxSourceAction,
+}: {
+  groups: AttentionGroup[];
+  acknowledgeTaxSourceAction?: (formData: FormData) => Promise<void>;
+}) {
   if (groups.length === 0) {
     return (
       <p className="text-sm text-ink-soft">
@@ -48,16 +54,30 @@ export function AttentionList({ groups }: { groups: AttentionGroup[] }) {
                       {item.detail}
                     </span>
                   </Link>
-                  {item.sourceHref ? (
-                    <a
-                      href={item.sourceHref}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="mt-2 inline-flex min-h-11 items-center text-sm font-medium text-link underline-offset-2 hover:underline"
-                    >
-                      {item.sourceLabel ?? "Open source"}
-                    </a>
-                  ) : null}
+                  <div className="mt-2 flex flex-wrap items-center gap-3">
+                    {item.sourceHref ? (
+                      <a
+                        href={item.sourceHref}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex min-h-11 items-center text-sm font-medium text-link underline-offset-2 hover:underline"
+                      >
+                        {item.sourceLabel ?? "Open source"}
+                      </a>
+                    ) : null}
+                    {item.action?.type === "ACK_TAX_SOURCE_CHANGE" &&
+                    acknowledgeTaxSourceAction ? (
+                      <form action={acknowledgeTaxSourceAction}>
+                        <input type="hidden" name="watchId" value={item.action.id} />
+                        <button
+                          type="submit"
+                          className="min-h-11 rounded-md px-3 text-sm font-medium text-ink underline-offset-2 hover:bg-subtle hover:underline"
+                        >
+                          {item.action.label}
+                        </button>
+                      </form>
+                    ) : null}
+                  </div>
                 </li>
               ))}
             </ul>
