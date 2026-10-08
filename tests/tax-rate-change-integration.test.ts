@@ -8,6 +8,7 @@ import {
   subscriptionTaxUpdateKey,
   syncSubscriptionTaxRatesForAgreement,
 } from "@/domains/tax/rate-changes";
+import { taxRateVersionIdsForAgreement } from "@/domains/tax/locations";
 import { businessDateFromKey } from "@/lib/business-date";
 import { prisma } from "@/lib/prisma";
 import { __setStripeClientForTests } from "@/lib/stripe";
@@ -405,5 +406,86 @@ describe.skipIf(!enabled)("Batch T rate-change automation (real Postgres)", () =
     expect(retry.pending).toBe(0);
     expect(retry.skipped).toBe(1);
     expect(updateCalls).toHaveLength(2);
+
+  it("recovers an already-effective rate when durable provider evidence is unresolved", async () => {
+    const key = subscriptionTaxUpdateKey(agreementId, newRateVersionId);
+    await prisma.providerOperation.update({
+      where: { idempotencyKey: key },
+      data: {
+        status: "FAILED",
+        completedAt: null,
+        lastError: "synthetic prior outage",
+      },
+    });
+    const writesBefore = updateCalls.length;
+
+    const result = await applyTaxRateChanges(
+      new Date("2026-10-10T18:05:00.000Z"),
+    );
+
+    expect(result.versions).toBe(1);
+    expect(result.pending).toBe(0);
+    expect(
+      (
+        await prisma.providerOperation.findUniqueOrThrow({
+          where: { idempotencyKey: key },
+        })
+      ).status,
+    ).toBe("SUCCEEDED");
+    expect(updateCalls).toHaveLength(writesBefore);
+  });
+
+  it("ignores an undone auto-applied version at the day-before scheduler boundary", async () => {
+    const undoneId = `tax-rate-undone-${tag}`;
+    await prisma.taxRateVersion.create({
+      data: {
+        id: undoneId,
+        jurisdictionId: taxFixture.jurisdictionId,
+        rateMilliPercent: 8_250,
+        effectiveFrom: businessDateFromKey("2026-10-21")!,
+        source: "COLORADO_GIS",
+        autoApplied: true,
+        autoAppliedUndoneAt: new Date("2026-10-19T18:00:00.000Z"),
+      },
+    });
+
+    try {
+      await expect(
+        applyTaxRateChanges(new Date("2026-10-20T18:05:00.000Z")),
+      ).resolves.toMatchObject({ versions: 0, agreements: 0 });
+    } finally {
+      await prisma.taxRateVersion.deleteMany({ where: { id: undoneId } });
+    }
+  });
+
+  it("ignores an undone auto-applied rate in agreement current-rate selection", async () => {
+    const undoneId = `tax-rate-undone-selection-${tag}`;
+    await prisma.taxRateVersion.create({
+      data: {
+        id: undoneId,
+        jurisdictionId: taxFixture.jurisdictionId,
+        rateMilliPercent: 9_900,
+        effectiveFrom: businessDateFromKey("2026-10-06")!,
+        source: "COLORADO_GIS",
+        autoApplied: true,
+        autoAppliedUndoneAt: new Date("2026-10-06T18:00:00.000Z"),
+      },
+    });
+
+    try {
+      const ids = await prisma.$transaction((tx) =>
+        taxRateVersionIdsForAgreement(
+          tx,
+          agreementId,
+          businessDateFromKey("2026-10-07")!,
+          "RENTAL",
+        ),
+      );
+      expect(ids).toContain(taxFixture.rateVersionId);
+      expect(ids).not.toContain(undoneId);
+    } finally {
+      await prisma.taxRateVersion.deleteMany({ where: { id: undoneId } });
+    }
+  });
   });
 });
