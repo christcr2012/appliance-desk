@@ -1,15 +1,72 @@
 import { createHash } from "node:crypto";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { EventEmitter } from "node:events";
+import { Readable } from "node:stream";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   lookup: vi.fn(),
+  request: vi.fn(),
 }));
 
 vi.mock("node:dns/promises", () => ({
   lookup: mocks.lookup,
 }));
+vi.mock("node:https", () => ({
+  request: mocks.request,
+}));
 
 import { fetchOfficialSourcePage } from "@/domains/tax/safe-official-source-fetch";
+
+type MockResponseOptions = {
+  status?: number;
+  contentType?: string;
+  contentLength?: number;
+  chunks?: Array<string | Buffer>;
+};
+
+function requestObject(onDestroy?: () => void) {
+  const request = new EventEmitter() as EventEmitter & {
+    end: ReturnType<typeof vi.fn>;
+    destroy: ReturnType<typeof vi.fn>;
+  };
+  request.end = vi.fn();
+  request.destroy = vi.fn(() => {
+    onDestroy?.();
+    queueMicrotask(() => request.emit("error", new Error("request destroyed")));
+  });
+  return request;
+}
+
+function installResponse(options: MockResponseOptions = {}) {
+  mocks.request.mockImplementationOnce(
+    (
+      _url: URL,
+      _requestOptions: Record<string, unknown>,
+      callback: (response: Readable & {
+        statusCode?: number;
+        headers: Record<string, string>;
+      }) => void,
+    ) => {
+      const response = Readable.from(options.chunks ?? ["ok"]) as Readable & {
+        statusCode?: number;
+        headers: Record<string, string>;
+      };
+      response.statusCode = options.status ?? 200;
+      response.headers = {
+        "content-type": options.contentType ?? "text/plain",
+        ...(options.contentLength === undefined
+          ? {}
+          : { "content-length": String(options.contentLength) }),
+      };
+
+      const request = requestObject();
+      request.end.mockImplementation(() => {
+        queueMicrotask(() => callback(response));
+      });
+      return request;
+    },
+  );
+}
 
 function publicDns() {
   mocks.lookup.mockResolvedValue([
@@ -20,12 +77,8 @@ function publicDns() {
 describe("T-5b2 safe official-source fetch", () => {
   beforeEach(() => {
     mocks.lookup.mockReset();
+    mocks.request.mockReset();
     publicDns();
-    vi.stubGlobal("fetch", vi.fn());
-  });
-
-  afterEach(() => {
-    vi.unstubAllGlobals();
   });
 
   it("rejects http and redirect responses", async () => {
@@ -33,26 +86,13 @@ describe("T-5b2 safe official-source fetch", () => {
       fetchOfficialSourcePage("http://tax.example.gov/page"),
     ).rejects.toThrow("HTTPS");
 
-    const fetchMock = vi.mocked(fetch);
-    fetchMock.mockResolvedValueOnce(
-      new Response(null, {
-        status: 302,
-        headers: { location: "https://other.example.gov/page" },
-      }),
-    );
-
+    installResponse({ status: 302 });
     await expect(
       fetchOfficialSourcePage("https://tax.example.gov/page"),
     ).rejects.toThrow("redirects are not followed");
-    expect(fetchMock).toHaveBeenCalledWith(
-      expect.any(URL),
-      expect.objectContaining({ redirect: "manual" }),
-    );
   });
 
-  it("rejects loopback private link-local local and internal destinations before fetch", async () => {
-    const fetchMock = vi.mocked(fetch);
-
+  it("rejects loopback private link-local local and internal destinations before request", async () => {
     await expect(
       fetchOfficialSourcePage("https://localhost/page"),
     ).rejects.toThrow("public hostname");
@@ -80,7 +120,7 @@ describe("T-5b2 safe official-source fetch", () => {
       fetchOfficialSourcePage("https://linklocal.example.gov/page"),
     ).rejects.toThrow("non-public address");
 
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(mocks.request).not.toHaveBeenCalled();
   });
 
   it("rejects an unsafe address when DNS returns mixed public and private answers", async () => {
@@ -92,20 +132,30 @@ describe("T-5b2 safe official-source fetch", () => {
     await expect(
       fetchOfficialSourcePage("https://mixed.example.gov/page"),
     ).rejects.toThrow("non-public address");
-    expect(fetch).not.toHaveBeenCalled();
+    expect(mocks.request).not.toHaveBeenCalled();
+  });
+
+  it("pins the HTTPS connection to the validated public address", async () => {
+    installResponse({ chunks: ["Official page"] });
+
+    await fetchOfficialSourcePage("https://tax.example.gov/page");
+
+    const requestOptions = mocks.request.mock.calls[0]?.[1] as {
+      family?: number;
+      lookup?: (
+        hostname: string,
+        options: unknown,
+        callback: (error: Error | null, address: string, family: number) => void,
+      ) => void;
+    };
+    expect(requestOptions.family).toBe(4);
+    const callback = vi.fn();
+    requestOptions.lookup?.("tax.example.gov", {}, callback);
+    expect(callback).toHaveBeenCalledWith(null, "93.184.216.34", 4);
   });
 
   it("times out a stalled response", async () => {
-    vi.mocked(fetch).mockImplementationOnce(
-      async (_input, init) =>
-        new Promise<Response>((_resolve, reject) => {
-          init?.signal?.addEventListener(
-            "abort",
-            () => reject(new DOMException("Aborted", "AbortError")),
-            { once: true },
-          );
-        }),
-    );
+    mocks.request.mockImplementationOnce(() => requestObject());
 
     await expect(
       fetchOfficialSourcePage("https://slow.example.gov/page", {
@@ -115,26 +165,17 @@ describe("T-5b2 safe official-source fetch", () => {
   });
 
   it("rejects oversized and non-text responses", async () => {
-    vi.mocked(fetch)
-      .mockResolvedValueOnce(
-        new Response("abcdef", {
-          status: 200,
-          headers: { "content-type": "text/plain" },
-        }),
-      )
-      .mockResolvedValueOnce(
-        new Response("binary", {
-          status: 200,
-          headers: { "content-type": "application/octet-stream" },
-        }),
-      );
-
+    installResponse({ chunks: ["abcdef"] });
     await expect(
       fetchOfficialSourcePage("https://large.example.gov/page", {
         maxBytes: 4,
       }),
     ).rejects.toThrow("size limit");
 
+    installResponse({
+      contentType: "application/octet-stream",
+      chunks: ["binary"],
+    });
     await expect(
       fetchOfficialSourcePage("https://binary.example.gov/page"),
     ).rejects.toThrow("not HTML or plain text");
@@ -144,12 +185,10 @@ describe("T-5b2 safe official-source fetch", () => {
     const longTail = "x".repeat(205 * 1024);
     const body = `  First\t line  \r\nSecond   line\r\n${longTail}END\r\n\r\n`;
     const normalized = `First line\nSecond line\n${longTail}END`;
-    vi.mocked(fetch).mockResolvedValueOnce(
-      new Response(body, {
-        status: 200,
-        headers: { "content-type": "text/html; charset=utf-8" },
-      }),
-    );
+    installResponse({
+      contentType: "text/html; charset=utf-8",
+      chunks: [body],
+    });
 
     const result = await fetchOfficialSourcePage(
       "https://content.example.gov/page",
