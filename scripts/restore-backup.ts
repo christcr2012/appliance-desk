@@ -271,16 +271,33 @@ async function restore(file: string, target: string): Promise<void> {
       await delegate.deleteMany();
     }
 
+    const receiptLinks: Array<{ id: string; receiptPhotoId: string }> = [];
     for (const table of order) {
       const rows = payload.tables[table] ?? [];
       if (rows.length === 0) continue;
       const delegate = delegates[table];
       if (!delegate?.createMany) throw new Error(`Restore delegate "${table}" is unavailable.`);
       const data = reviveRows(table, rows, dateFields, nullableJsonFields);
+      if (table === "appliance") {
+        for (const row of data) {
+          if (typeof row.acquisitionReceiptPhotoId === "string") {
+            receiptLinks.push({ id: String(row.id), receiptPhotoId: row.acquisitionReceiptPhotoId });
+            row.acquisitionReceiptPhotoId = null;
+          }
+        }
+      }
       const result = await delegate.createMany({ data });
       if (result.count !== rows.length) {
         throw new Error(`Restore count mismatch for "${table}": expected ${rows.length}, wrote ${result.count}.`);
       }
+    }
+
+    // Restore the nullable Appliance -> Photo edge after both tables exist.
+    for (const link of receiptLinks) {
+      await prisma.appliance.update({
+        where: { id: link.id },
+        data: { acquisitionReceiptPhotoId: link.receiptPhotoId },
+      });
     }
 
     await resetAutoincrementSequences(sql, schema);

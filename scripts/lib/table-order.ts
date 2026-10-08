@@ -49,6 +49,7 @@ export function relationDependencies(schema: string): RelationDependency[] {
         names.has(field.type) &&
         field.attributes.includes("@relation") &&
         /fields\s*:/.test(field.attributes)
+        && !field.attributes.includes('@relation("AcquisitionReceipt"')
       ) {
         dependencies.push({ model: block.name, dependsOn: field.type });
       }
