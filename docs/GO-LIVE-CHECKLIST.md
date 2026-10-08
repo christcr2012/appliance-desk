@@ -110,3 +110,17 @@ These are conditional release checks for Batch BP, not new blockers for unrelate
 - [ ] Before new permission/master templates: IN-49 counsel review and exact template-version approval; lawful-access procedure understood; signature and installation gates demonstrated.
 - [ ] Before partner commissions: IN-50 signed policy, disclosures and margin approved; settled-rent/reversal tests and owner manual-payment walkthrough passed; no automatic transfers enabled.
 - [ ] Before relying on acquisition-tax exemption: resolve IN-33's unpaid-use-tax question and IN-36 continuity treatment as applicable; the consultant's document is not approval evidence.
+
+
+## Proposed COM communications subsystem — not built or activated
+
+Design `docs/designs/BATCH-COM.md`; setup `docs/runbooks/COMMUNICATIONS-TWILIO.md`. Engineering and live approval are separate.
+
+- [ ] Accept design/order and selected launch scope; COM-L/F evidence complete.
+- [ ] IN-03/09/51: verify account/permanent Voice+SMS number, entity/EIN/campaign/consent; explicit purchase/port/A2P/provider edit/live-send/publication approvals where applicable.
+- [ ] Production+owner SMS/voice activation fences verified; preview/local/tests never use production account/number or contaminate costs.
+- [ ] Canonical signed inbound/status/voice URLs, account/number checks, Advanced Opt-Out, callback replay, UNKNOWN holding and tested provider outage fallback.
+- [ ] IN-52: voicemail/privacy/retention policy approved if selected; ordinary recordings/transcription independently OFF.
+- [ ] IN-53: budget/destination/feature/alert rules accepted; Today/S and independent alert path proven.
+- [ ] Monthly provider usage vs estimate vs verified invoice distinct; stale/unknown/unallocated costs visible; no K posting until statement/payment verified.
+- [ ] Controlled production proof only consenting owner phones after explicit live approval; activate workflows separately; no automatic public number replacement.
