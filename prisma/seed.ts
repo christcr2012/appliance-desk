@@ -287,6 +287,24 @@ async function seedTestCustomerFixture() {
   );
 }
 
+async function seedTestAdminFixture() {
+  const rawEmail = process.env.TEST_ADMIN_EMAIL;
+  const password = process.env.TEST_ADMIN_PASSWORD;
+  if (!rawEmail || !password) return;
+  const target = new URL(process.env.DATABASE_URL ?? "");
+  if (process.env.CI !== "true" || target.hostname !== "localhost" ||
+      target.pathname !== "/appliance_desk_test")
+    throw new Error("Admin fixture requires CI's disposable localhost database.");
+  const email = normalizeAccountEmail(rawEmail);
+  if (!(await prisma.user.findUnique({ where: { email } }))) {
+    await prisma.$transaction(tx => createTrustedCredentialUserInTx(tx, {
+      email, password, name: "CI Admin", role: "ADMIN", emailVerified: true,
+    }));
+  }
+  await prisma.user.update({ where: { email }, data: { role: "ADMIN", emailVerified: true } });
+  console.log("Created CI-only ADMIN authentication fixture.");
+}
+
 async function seedStaffSecurityFixture() {
   const rawEmail = process.env.TEST_STAFF_EMAIL;
   const password = process.env.TEST_STAFF_PASSWORD;
@@ -398,6 +416,7 @@ async function main() {
   await seedBusinessContent();
   await seedOwnerAccount();
   await seedTestCustomerFixture();
+  await seedTestAdminFixture();
   await seedStaffSecurityFixture();
 }
 

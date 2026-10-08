@@ -215,6 +215,8 @@ jobs:
       TEST_CUSTOMER_PASSWORD: Ci-Test-Customer-Password-Not-Real-1!
       TEST_STAFF_EMAIL: ci-staff@example.test
       TEST_STAFF_PASSWORD: Ci-Test-Staff-Password-Not-Real-1!
+      TEST_ADMIN_EMAIL: ci-admin@example.test
+      TEST_ADMIN_PASSWORD: Ci-Test-Admin-Password-Not-Real-1!
 
     steps:
       - uses: actions/checkout@v5
@@ -292,6 +294,8 @@ jobs:
       TEST_CUSTOMER_PASSWORD: Ci-Test-Customer-Password-Not-Real-1!
       TEST_STAFF_EMAIL: ci-staff@example.test
       TEST_STAFF_PASSWORD: Ci-Test-Staff-Password-Not-Real-1!
+      TEST_ADMIN_EMAIL: ci-admin@example.test
+      TEST_ADMIN_PASSWORD: Ci-Test-Admin-Password-Not-Real-1!
 
     steps:
       - uses: actions/checkout@v5

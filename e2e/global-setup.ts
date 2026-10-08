@@ -49,6 +49,19 @@ export default async function globalSetup(config: FullConfig): Promise<void> {
     await page.close();
   }
 
+  const adminEmail = process.env.TEST_ADMIN_EMAIL;
+  const adminPassword = process.env.TEST_ADMIN_PASSWORD;
+  if (adminEmail && adminPassword) {
+    const page = await browser.newPage({ baseURL });
+    await loginAs(page, adminEmail, adminPassword);
+    await page.goto("/desk/today");
+    if (new URL(page.url()).pathname === "/desk/security/setup") {
+      await completeTwoFactorSetup(page, adminPassword);
+    }
+    await page.context().storageState({ path: "e2e/.auth/admin.json" });
+    await page.close();
+  }
+
   const staffEmail = process.env.TEST_STAFF_EMAIL;
   const staffPassword = process.env.TEST_STAFF_PASSWORD;
   if (staffEmail && staffPassword) {
