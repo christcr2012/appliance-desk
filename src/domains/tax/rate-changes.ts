@@ -464,12 +464,15 @@ export async function applyTaxRateChanges(
   const tomorrow = addBusinessDays(now, 1);
   const tomorrowBounds = businessDayBounds(tomorrow);
 
-  const tomorrowVersions = await prisma.taxRateVersion.findMany({
+  // Discover the latest non-undone rate that is already effective (or starts
+  // tomorrow) for every jurisdiction. This intentionally does not depend on an
+  // existing ProviderOperation: if the day-before cron was missed entirely,
+  // there is no durable operation to recover from yet. The downstream sync is
+  // read-before-write/idempotent, so already-reconciled subscriptions remain
+  // no-op while missed rates heal automatically.
+  const applicableVersions = await prisma.taxRateVersion.findMany({
     where: {
-      effectiveFrom: {
-        gte: tomorrowBounds.start,
-        lt: tomorrowBounds.end,
-      },
+      effectiveFrom: { lt: tomorrowBounds.end },
       autoAppliedUndoneAt: null,
     },
     select: {
@@ -477,34 +480,24 @@ export async function applyTaxRateChanges(
       jurisdictionId: true,
       effectiveFrom: true,
     },
-    orderBy: [{ effectiveFrom: "asc" }, { id: "asc" }],
+    orderBy: [
+      { jurisdictionId: "asc" },
+      { effectiveFrom: "desc" },
+      { id: "desc" },
+    ],
   });
-
-  // Once a version has started, only revisit it when durable provider evidence
-  // says its subscription update is still unresolved. This heals outages
-  // without scanning/reprocessing every historical current rate each day.
-  const recoverableOperations = await prisma.providerOperation.findMany({
-    where: {
-      kind: "SUBSCRIPTION_TAX_UPDATE",
-      status: { in: ["PENDING", "FAILED", "UNKNOWN", "DRIFT"] },
-    },
-    select: {
-      subjectId: true,
-      idempotencyKey: true,
-    },
-    orderBy: { requestedAt: "asc" },
-  });
-  const recoverableRateVersionIds = new Set<string>();
-  for (const operation of recoverableOperations) {
-    const id = parseRateVersionId(operation.subjectId, operation.idempotencyKey);
-    if (id) recoverableRateVersionIds.add(id);
+  const latestByJurisdiction = new Map<
+    string,
+    { id: string; jurisdictionId: string; effectiveFrom: Date }
+  >();
+  for (const version of applicableVersions) {
+    if (!latestByJurisdiction.has(version.jurisdictionId)) {
+      latestByJurisdiction.set(version.jurisdictionId, version);
+    }
   }
 
-  const requestedIds = new Set<string>([
-    ...recoverableRateVersionIds,
-    ...(options.includeRateVersionIds ?? []),
-  ]);
-  const catchUpVersions = requestedIds.size
+  const requestedIds = new Set(options.includeRateVersionIds ?? []);
+  const explicitlyRequested = requestedIds.size
     ? await prisma.taxRateVersion.findMany({
         where: {
           id: { in: [...requestedIds] },
@@ -524,7 +517,10 @@ export async function applyTaxRateChanges(
     string,
     { id: string; jurisdictionId: string; effectiveFrom: Date }
   >();
-  for (const version of [...tomorrowVersions, ...catchUpVersions]) {
+  for (const version of [
+    ...latestByJurisdiction.values(),
+    ...explicitlyRequested,
+  ]) {
     versionsById.set(version.id, version);
   }
   const versions = [...versionsById.values()].sort(
