@@ -706,18 +706,27 @@ export async function manuallyApplyObservedRate(input: {
 
     const observation = await tx.taxRateObservation.findUniqueOrThrow({
       where: { id: input.observationId },
-      include: {
-        jurisdiction: {
-          select: {
-            id: true,
-            code: true,
-            level: true,
-            reviewStatus: true,
-          },
-        },
+      select: {
+        id: true,
+        jurisdictionId: true,
+        asOf: true,
+        rateMilliPercent: true,
       },
     });
     await lockJurisdiction(tx, observation.jurisdictionId);
+
+    // Re-read money-critical jurisdiction policy after the row lock. Address
+    // rechecks/owner edits can reset a jurisdiction to NEEDS_REVIEW, and a
+    // stale pre-lock relation must never authorize a rate application.
+    const jurisdiction = await tx.taxJurisdiction.findUniqueOrThrow({
+      where: { id: observation.jurisdictionId },
+      select: {
+        id: true,
+        code: true,
+        level: true,
+        reviewStatus: true,
+      },
+    });
 
     const effectiveFrom = normalizedBusinessDate(observation.asOf);
     if (isPastBusinessDate(effectiveFrom, now)) {
@@ -726,7 +735,7 @@ export async function manuallyApplyObservedRate(input: {
     if (!validRate(observation.rateMilliPercent)) {
       throw new Error("The observed rate is invalid.");
     }
-    if (observation.jurisdiction.reviewStatus !== "REVIEWED") {
+    if (jurisdiction.reviewStatus !== "REVIEWED") {
       throw new Error("Review this jurisdiction before applying its official rate.");
     }
 
@@ -776,7 +785,7 @@ export async function manuallyApplyObservedRate(input: {
     await auditDecision(tx, {
       action: "OFFICIAL_RATE_MANUAL_APPLIED",
       actorUserId: input.actorUserId,
-      jurisdiction: observation.jurisdiction,
+      jurisdiction,
       oldRateMilliPercent: previous?.rateMilliPercent ?? null,
       newRateMilliPercent: observation.rateMilliPercent,
       effectiveFrom,
