@@ -2,6 +2,7 @@ import {
   addBusinessDays,
   businessDateKey,
   businessDayBounds,
+  businessDaysBetween,
 } from "@/lib/business-date";
 
 // ---------------------------------------------------------------------------
@@ -24,6 +25,8 @@ import {
 export type ExceptionCategory =
   | "BILLING_BLOCKED"
   | "SALES_TAX"
+  | "TAX_RETURN_DUE"
+  | "TAX_LICENSE_RENEWAL"
   | "STALE_RESERVATION"
   | "PAST_DUE_INVOICE"
   | "OVERDUE_JOB"
@@ -698,6 +701,57 @@ export function applianceMaintenanceDueException(appliance: {
 
 /** Oldest first within a category, but overall sorted high severity
  * first, then by how long it's been sitting. */
+/** Filing attention is computed from OPEN periods, never stored or dismissed. */
+export function taxReturnDueException(input: {
+  accountName: string;
+  periodEnd: Date;
+  dueOn: Date;
+  legalDueOn: Date;
+  reminderDaysBefore: number[];
+  zeroReturn: boolean;
+  readOnly: boolean;
+  now: Date;
+}): ExceptionItem {
+  const daysUntilLegalDue = businessDaysBetween(input.now, input.legalDueOn);
+  const daysUntilBaseDue = businessDaysBetween(input.now, input.dueOn);
+  const nearestWindow = Math.min(
+    ...input.reminderDaysBefore.filter((days) => Number.isInteger(days) && days > 0),
+    Number.POSITIVE_INFINITY,
+  );
+  const urgent =
+    daysUntilLegalDue < 0 ||
+    daysUntilBaseDue <= 0 ||
+    (Number.isFinite(nearestWindow) && daysUntilBaseDue <= nearestWindow);
+  return {
+    category: "TAX_RETURN_DUE",
+    severity: urgent ? "high" : "medium",
+    title: `${input.accountName} return ${daysUntilLegalDue < 0 ? "overdue" : "due"}`,
+    detail: `${input.zeroReturn ? "A zero return may still be required. " : ""}` +
+      `Filing period ended ${businessDateKey(input.periodEnd)}. Legal deadline: ${businessDateKey(input.legalDueOn)}.` +
+      (input.readOnly ? " Only the Owner can change filing details." : " Open the filing workspace to review the return."),
+    href: "/desk/today",
+    since: input.periodEnd,
+  };
+}
+
+export function taxLicenseRenewalException(input: {
+  accountName: string;
+  expiresOn: Date;
+  now: Date;
+  readOnly: boolean;
+}): ExceptionItem {
+  const daysLeft = businessDaysBetween(input.now, input.expiresOn);
+  return {
+    category: "TAX_LICENSE_RENEWAL",
+    severity: daysLeft <= 7 ? "high" : "medium",
+    title: `Tax license ${daysLeft < 0 ? "expired" : "renewal"} — ${input.accountName}`,
+    detail: `License expiration: ${businessDateKey(input.expiresOn)}.` +
+      (input.readOnly ? " Ask an Owner to update the license." : " Check and renew the license."),
+    href: "/desk/today",
+    since: input.expiresOn,
+  };
+}
+
 export function sortExceptions(items: ExceptionItem[]): ExceptionItem[] {
   return [...items].sort((a, b) => {
     if (a.severity !== b.severity) return a.severity === "high" ? -1 : 1;

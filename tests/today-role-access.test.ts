@@ -17,6 +17,10 @@ const mocks = vi.hoisted(() => ({
   taxAddressLocation: vi.fn(),
   officialSourceWatch: vi.fn(),
   officialRateAttention: vi.fn(async () => []),
+  filingAttention: vi.fn(async () => ({ returns: { rows: [], total: 0 }, licenses: { rows: [], total: 0 } })),
+}));
+vi.mock("@/domains/tax/filing-attention", () => ({
+  listTaxFilingAttention: mocks.filingAttention,
 }));
 vi.mock("@/domains/tax/official-rate-auto-apply", () => ({
   listOfficialRateAttention: mocks.officialRateAttention,
@@ -89,6 +93,7 @@ describe("Today server-side visibility", () => {
     ]);
     const result = await getExceptions();
     expect(result.map((x) => x.category)).toEqual(["OVERDUE_JOB"]);
+    expect(mocks.filingAttention).not.toHaveBeenCalled();
     expect(mocks.invoice).not.toHaveBeenCalled();
     expect(mocks.notice).not.toHaveBeenCalled();
     // The Stripe-update-pending read is money: STAFF never trigger it.
