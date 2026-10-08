@@ -1,6 +1,7 @@
 import { requireRole } from "@/lib/session";
 import { notFound } from "next/navigation";
 import { OperationalAppliance } from "./operational-appliance";
+import { AppliancePurchaseTaxPanel } from "./appliance-purchase-tax-panel";
 import Link from "next/link";
 import {
   getApplianceById,
@@ -110,6 +111,22 @@ export default async function ApplianceDetailPage({
           status={appliance.status}
           inspectionChecklist={inspectionChecklist}
         />
+        {session.user.role === "OWNER" && (
+          <AppliancePurchaseTaxPanel appliance={{
+            id: appliance.id,
+            acquisitionTaxStatus: appliance.acquisitionTaxStatus,
+            acquisitionTaxChoice: appliance.acquisitionTaxChoice,
+            acquisitionTaxPaidCents: appliance.acquisitionTaxPaidCents,
+            acquisitionSellerNote: appliance.acquisitionSellerNote,
+            acquisitionReceiptPhotoId: appliance.acquisitionReceiptPhotoId,
+            acquisitionTaxRecordedAt: appliance.acquisitionTaxRecordedAt?.toISOString() ?? null,
+            hasPurchaseContext: appliance.purchaseDate !== null && appliance.acquisitionCostCents !== null,
+            photos: appliance.photos.map((photo, index) => ({
+              id: photo.id,
+              description: photo.altText || `Appliance photo ${index + 1}`,
+            })),
+          }} />
+        )}
         <ApplianceDetailPanel
           appliance={{
             ...appliance,
