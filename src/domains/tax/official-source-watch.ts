@@ -102,17 +102,25 @@ export async function ensureAnnualTaxCpaReminder(
   const [year, month] = key.split("-");
   if (month !== "12") return false;
 
-  const owner = await prisma.user.findFirst({
-    where: { role: "OWNER", archivedAt: null },
-    select: { id: true },
-    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-  });
-  if (!owner) {
-    throw new Error("An active Owner is required for the annual tax CPA reminder.");
-  }
-
   const sourceKey = `tax-cpa-annual-review:${year}`;
   return prisma.$transaction(async (tx) => {
+    const candidate = await tx.user.findFirst({
+      where: { role: "OWNER", archivedAt: null },
+      select: { id: true },
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    });
+    if (!candidate) {
+      throw new Error("An active Owner is required for the annual tax CPA reminder.");
+    }
+    await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${candidate.id} FOR SHARE`;
+    const owner = await tx.user.findFirst({
+      where: { id: candidate.id, role: "OWNER", archivedAt: null },
+      select: { id: true },
+    });
+    if (!owner) {
+      throw new Error("An active Owner is required for the annual tax CPA reminder.");
+    }
+
     const created = await tx.staffTask.createMany({
       data: [
         {
