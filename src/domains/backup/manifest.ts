@@ -71,6 +71,7 @@ export const BACKUP_MODEL_POLICY = {
   InvoiceTaxLine: "invoiceTaxLine",
   CustomerTaxExemption: "customerTaxExemption",
   TaxFilingPeriod: "taxFilingPeriod",
+  TaxFilingAmendment: "taxFilingAmendment",
   PurchaseUseTax: "purchaseUseTax",
   BusinessSettings: "businessSettings",
   MonthToMonthTermsVersion: "monthToMonthTermsVersion",

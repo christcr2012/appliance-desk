@@ -17,6 +17,11 @@ const migration = readFileSync(
   "utf8",
 );
 
+const filingMigration = readFileSync(
+  "prisma/migrations/20261010120000_batch_t_filing_workspace/migration.sql",
+  "utf8",
+);
+
 describe.skipIf(!enabled)("Batch T tax migration (real Postgres)", () => {
   const tag = randomUUID().replaceAll("-", "");
   const userId = `tax-migration-user-${tag}`;
@@ -173,6 +178,51 @@ describe.skipIf(!enabled)("Batch T tax migration (real Postgres)", () => {
     ).rejects.toThrow();
   });
 
+  it("creates new filing records with safe upgrade defaults and an amendment ledger", async () => {
+    expect(filingMigration).toContain('ADD COLUMN "kind"');
+    expect(filingMigration).toContain('ADD COLUMN "reminderDaysBefore"');
+    expect(filingMigration).toContain('CREATE TABLE "TaxFilingAmendment"');
+    expect(filingMigration).not.toMatch(/DROP TABLE|DROP COLUMN|TRUNCATE/i);
+
+    const account = await prisma.taxFilingAccount.create({
+      data: { name: `Filing upgrade ${tag}` },
+    });
+    try {
+      expect(account.kind).toBe("SALES_RETURN");
+      expect(account.reminderDaysBefore).toEqual([7, 2]);
+      expect(account.emailReminders).toBe(true);
+      expect(account.deductionLabels).toEqual({});
+      expect(account.screenLabels).toEqual({});
+      expect(account.firstPeriodStart).toBeNull();
+
+      const period = await prisma.taxFilingPeriod.create({
+        data: {
+          filingAccountId: account.id,
+          periodStart: new Date("2026-08-01T06:00:00Z"),
+          periodEnd: new Date("2026-09-01T06:00:00Z"),
+          dueOn: new Date("2026-09-20T06:00:00Z"),
+        },
+      });
+      try {
+        expect(period.zeroReturn).toBe(false);
+        expect(period.entryProgress).toEqual({});
+        expect(period.legalDueOn).toBeNull();
+        const amendment = await prisma.taxFilingAmendment.create({
+          data: { periodId: period.id, sequence: 1, packet: { reason: "adjustment" }, additionalTaxCents: 125 },
+        });
+        expect(amendment.status).toBe("OPEN");
+        await expect(prisma.taxFilingAmendment.create({
+          data: { periodId: period.id, sequence: 1, packet: {}, additionalTaxCents: 125 },
+        })).rejects.toThrow();
+      } finally {
+        await prisma.taxFilingAmendment.deleteMany({ where: { periodId: period.id } });
+        await prisma.taxFilingPeriod.delete({ where: { id: period.id } });
+      }
+    } finally {
+      await prisma.taxFilingAccount.delete({ where: { id: account.id } });
+    }
+  });
+
   it("backs up every Batch T table and schema health sees generated tax models", () => {
     expect(BACKUP_TABLES).toEqual(
       expect.arrayContaining([
@@ -185,6 +235,7 @@ describe.skipIf(!enabled)("Batch T tax migration (real Postgres)", () => {
         "invoiceTaxLine",
         "customerTaxExemption",
         "taxFilingPeriod",
+        "taxFilingAmendment",
         "purchaseUseTax",
       ]),
     );
@@ -200,6 +251,7 @@ describe.skipIf(!enabled)("Batch T tax migration (real Postgres)", () => {
         "InvoiceTaxLine",
         "CustomerTaxExemption",
         "TaxFilingPeriod",
+        "TaxFilingAmendment",
         "PurchaseUseTax",
       ]),
     );
