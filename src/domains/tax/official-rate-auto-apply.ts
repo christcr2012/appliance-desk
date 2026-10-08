@@ -95,6 +95,85 @@ async function lockJurisdiction(
   }
 }
 
+type ObservedJurisdictionIdentity = {
+  code: string;
+  level: TaxJurisdictionLevel;
+};
+
+function parseObservedJurisdictionIdentity(
+  value: Prisma.JsonValue | null,
+): ObservedJurisdictionIdentity | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const record = value as Record<string, Prisma.JsonValue>;
+  const code = record.jurisdictionCode;
+  const level = record.jurisdictionLevel;
+  if (
+    typeof code !== "string" ||
+    !["STATE", "COUNTY", "CITY", "SPECIAL"].includes(String(level))
+  ) {
+    return null;
+  }
+  return {
+    code,
+    level: level as TaxJurisdictionLevel,
+  };
+}
+
+async function ensureObservationIdentityInTx(
+  tx: Prisma.TransactionClient,
+  input: {
+    observationId: string;
+    jurisdictionCode: string;
+    jurisdictionLevel: TaxJurisdictionLevel;
+  },
+): Promise<boolean> {
+  const existing = await tx.auditLog.findFirst({
+    where: {
+      action: "OFFICIAL_RATE_OBSERVED",
+      entityType: "TaxRateObservation",
+      entityId: input.observationId,
+    },
+    select: { newValue: true },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+  });
+  if (existing) {
+    const identity = parseObservedJurisdictionIdentity(existing.newValue);
+    return (
+      identity?.code === input.jurisdictionCode &&
+      identity.level === input.jurisdictionLevel
+    );
+  }
+
+  await tx.auditLog.create({
+    data: {
+      action: "OFFICIAL_RATE_OBSERVED",
+      entityType: "TaxRateObservation",
+      entityId: input.observationId,
+      newValue: {
+        jurisdictionCode: input.jurisdictionCode,
+        jurisdictionLevel: input.jurisdictionLevel,
+      },
+    },
+  });
+  return true;
+}
+
+async function observationIdentityInTx(
+  tx: Prisma.TransactionClient,
+  observationId: string,
+): Promise<ObservedJurisdictionIdentity | null> {
+  const audit = await tx.auditLog.findFirst({
+    where: {
+      action: "OFFICIAL_RATE_OBSERVED",
+      entityType: "TaxRateObservation",
+      entityId: observationId,
+    },
+    select: { newValue: true },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+  });
+  return audit ? parseObservedJurisdictionIdentity(audit.newValue) : null;
+}
+
 async function decisionContext(
   tx: Prisma.TransactionClient,
   input: {
@@ -217,6 +296,18 @@ export async function processOfficialRateCandidate(
       rateMilliPercent: candidate.rateMilliPercent,
       observedAt: now,
     });
+    if (
+      !(await ensureObservationIdentityInTx(tx, {
+        observationId: observation.id,
+        jurisdictionCode: candidate.jurisdictionCode,
+        jurisdictionLevel: candidate.jurisdictionLevel,
+      }))
+    ) {
+      return {
+        kind: "IGNORED" as const,
+        reason: OFFICIAL_RATE_REASON.JURISDICTION_IDENTITY_MISMATCH,
+      };
+    }
     const confirmed = await hasTwoDayRateConfirmationInTx(tx, {
       jurisdictionId: jurisdiction.id,
       asOf: effectiveFrom,
@@ -713,6 +804,12 @@ export async function manuallyApplyObservedRate(input: {
         rateMilliPercent: true,
       },
     });
+    const observedIdentity = await observationIdentityInTx(tx, observation.id);
+    if (!observedIdentity) {
+      throw new Error(
+        "This official rate observation has no durable jurisdiction identity evidence.",
+      );
+    }
     await lockJurisdiction(tx, observation.jurisdictionId);
 
     // Re-read money-critical jurisdiction policy after the row lock. Address
@@ -734,6 +831,14 @@ export async function manuallyApplyObservedRate(input: {
     }
     if (!validRate(observation.rateMilliPercent)) {
       throw new Error("The observed rate is invalid.");
+    }
+    if (
+      jurisdiction.code !== observedIdentity.code ||
+      jurisdiction.level !== observedIdentity.level
+    ) {
+      throw new Error(
+        "This official rate observation no longer matches the jurisdiction identity that was observed.",
+      );
     }
     if (jurisdiction.reviewStatus !== "REVIEWED") {
       throw new Error("Review this jurisdiction before applying its official rate.");
@@ -759,6 +864,9 @@ export async function manuallyApplyObservedRate(input: {
       },
     });
     const reasons: string[] = [];
+    if (!previous) {
+      reasons.push(OFFICIAL_RATE_REASON.NO_CURRENT_RATE);
+    }
     if (!settings.autoApplyOfficialRateChanges) {
       reasons.push(OFFICIAL_RATE_REASON.AUTO_APPLY_DISABLED);
     }
