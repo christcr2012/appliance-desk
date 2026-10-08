@@ -9,7 +9,10 @@ import { fixedTermEndDate } from "@/lib/business-date";
 import {
   assertTaxReadyForAgreement,
   taxRateVersionIdsForAgreement,
+  getAgreementTaxContext,
+  loadRentalAcquisitionBasis,
 } from "@/domains/tax/locations";
+import { computeTax } from "@/domains/tax/engine";
 import { ensureStripeTaxRate } from "@/domains/tax/stripe-rates";
 import type { HandoffWorkOutcome } from "./handoff-outcome";
 import {
@@ -380,6 +383,7 @@ export async function startRecurringBillingForAgreement(
           termMonths: number | null;
           endDate: Date | null;
           taxRateVersionIds: string[];
+          lineTaxRateVersionIds: Record<string, string[]>;
           customer: {
             stripeCustomerId: string;
             stripeDefaultPaymentMethodId: string;
@@ -476,6 +480,18 @@ export async function startRecurringBillingForAgreement(
       const plan = buildCheckoutLinePlan(agreement).filter((item) => item.recurring);
       if (plan.length === 0) return { done: true, outcome: { state: "DONE" }, subscriptionEndIds: [] };
 
+      const basis = await loadRentalAcquisitionBasis(tx, agreementId, firstDeliveredOn,
+        plan.map((item, index) => ({ key: String(index), kind: item.kind, rentalLineId: item.rentalLineId })));
+      const taxContext = await getAgreementTaxContext(tx, agreementId, firstDeliveredOn);
+      const lineTaxRateVersionIds: Record<string, string[]> = {};
+      for (const [index, item] of plan.entries()) {
+        const key = String(index);
+        const taxResult = computeTax({
+          ...taxContext,
+          lines: [{ key, kind: item.kind, amountCents: item.amountCents,
+            acquisitionBasis: basis.get(key) }],
+        });
+        if (!taxResult.ok) throw new Error("Rental tax evidence is not ready: " + taxResult.probl...[truncated]
       if (
         !agreement.customer.stripeCustomerId ||
         !agreement.customer.stripeDefaultPaymentMethodId
