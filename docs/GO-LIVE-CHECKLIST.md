@@ -112,11 +112,11 @@ These are conditional release checks for Batch BP, not new blockers for unrelate
 - [ ] Before relying on acquisition-tax exemption: resolve IN-33's unpaid-use-tax question and IN-36 continuity treatment as applicable; the consultant's document is not approval evidence.
 
 
-## Proposed COM communications subsystem — not built or activated
+## Approved COM communications subsystem — not yet built or activated
 
 Design `docs/designs/BATCH-COM.md`; setup `docs/runbooks/COMMUNICATIONS-TWILIO.md`. Engineering and live approval are separate.
 
-- [ ] Accept design/order and selected launch scope; COM-L/F evidence complete.
+- [x] Design/order approved by Chris 2026-10-08. Selected launch-scope implementation and COM-L/F evidence still remain before activation.
 - [ ] IN-03/09/51: verify account/permanent Voice+SMS number, entity/EIN/campaign/consent; explicit purchase/port/A2P/provider edit/live-send/publication approvals where applicable.
 - [ ] Production+owner SMS/voice activation fences verified; preview/local/tests never use production account/number or contaminate costs.
 - [ ] Canonical signed inbound/status/voice URLs, account/number checks, Advanced Opt-Out, callback replay, UNKNOWN holding and tested provider outage fallback.
