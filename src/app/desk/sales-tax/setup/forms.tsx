@@ -19,7 +19,7 @@ export function TaxActionForm({
       {state.error && <p role="alert" className="text-sm font-medium text-destructive">{state.error}</p>}
       {state.success && <p role="status" className="text-sm text-foreground">{state.success}</p>}
       <button type="submit" disabled={pending}
-        className="rounded-lg bg-primary px-4 py-2 font-semibold text-primary-foreground disabled:opacity-50">
+        className="rounded-lg bg-foreground px-4 py-2 font-semibold text-background disabled:opacity-50">
         {pending ? "Saving…" : submitLabel}
       </button>
     </form>

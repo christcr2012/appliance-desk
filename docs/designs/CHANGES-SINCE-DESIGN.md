@@ -1,3 +1,14 @@
+### T-7A PR #322 review corrections
+
+Saving a business tax address now invalidates prior current tax-area
+evidence; re-verification is mandatory before purchase use-tax assessment.
+Nullable "All state-collected areas" taxability defaults are editable by
+OWNER. The account editor now covers §11.13 SUTS license expiry, account
+area assignment/code/order/service fees, use-tax account routing,
+deduction/screen wording, export capabilities, and review confirmation.
+Filed-return area reassignment is guarded. The UI color-contrast and
+mobile-menu inventory were corrected after first CI.
+
 ### T-7A implementation checkpoint (2026-10-08)
 
 The new private `/desk/sales-tax` shell begins the six-tab finance navigation;

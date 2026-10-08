@@ -8,6 +8,11 @@ const css = "w-full rounded border border-input bg-background p-2 text-sm";
 const label = "grid gap-1 text-sm font-medium";
 export default async function TaxabilityMatrixPage() {
   const session = await requireRole("OWNER", "ADMIN");
+  const defaults = await prisma.taxabilityRule.findMany({
+    where: { jurisdictionId: null },
+    select: { id: true, category: true, taxability: true, cpaConfirmedOn: true },
+    orderBy: { category: "asc" },
+  });
   const jurisdictions = await prisma.taxJurisdiction.findMany({
     select: {
       id: true, name: true, level: true, administration: true,
@@ -24,6 +29,7 @@ export default async function TaxabilityMatrixPage() {
         <label className={label}>Tax area
           <select name="jurisdictionId" required className={css}>
             <option value="">Choose a jurisdiction</option>
+            <option value="__DEFAULT_STATE__">All state-collected areas (default rules)</option>
             {jurisdictions.map(j => <option value={j.id} key={j.id}>{j.name} ({j.level})</option>)}
           </select>
         </label>
@@ -70,7 +76,12 @@ export default async function TaxabilityMatrixPage() {
       <div className="overflow-x-auto rounded border border-border">
         <table className="min-w-full divide-y divide-border text-left text-sm">
           <thead className="bg-muted"><tr><th className="p-3">Jurisdiction</th><th className="p-3">Category</th><th className="p-3">Status</th><th className="p-3">CPA date</th></tr></thead>
-          <tbody>{jurisdictions.flatMap(j => j.rules.length ? j.rules.map(r => (
+          <tbody>{defaults.map(r => <tr key={r.id} className="border-t border-border">
+            <td className="p-3">All state-collected areas (default)</td>
+            <td className="p-3">{r.category.replaceAll("_", " ")}</td>
+            <td className="p-3">{r.taxability}</td>
+            <td className="p-3">{r.cpaConfirmedOn?.toISOString().slice(0, 10) ?? "Not confirmed"}</td>
+          </tr>)}{jurisdictions.flatMap(j => j.rules.length ? j.rules.map(r => (
             <tr key={r.id} className="border-t border-border">
               <td className="p-3">{j.name}</td>
               <td className="p-3">{r.category.replaceAll("_"," ")}</td>

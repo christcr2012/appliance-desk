@@ -60,10 +60,26 @@ export async function saveTaxSettings(
     const before = await tx.businessSettings.findUniqueOrThrow({
       where: { id: "singleton" },
       select: { updatedAt: true, shortTermLeaseElection: true, rdfHandling: true,
-        rdfThresholdCents: true, rdfCpaConfirmedOn: true },
+        rdfThresholdCents: true, rdfCpaConfirmedOn: true, businessTaxAddress: true },
     });
     if (before.updatedAt.getTime() !== expectedUpdatedAt.getTime())
       throw new Error("Settings changed in another session. Refresh before saving.");
+    const priorAddress = JSON.stringify(before.businessTaxAddress ?? {});
+    if (priorAddress !== JSON.stringify(changed.businessTaxAddress)) {
+      // Never carry the old jurisdictions forward after an address edit.
+      // A manual/verified re-location must be completed before use tax resumes.
+      await tx.addressTaxLocation.updateMany({
+        where: { forBusinessLocation: true, isCurrent: true },
+        data: { isCurrent: false },
+      });
+      await tx.addressTaxLocation.create({
+        data: {
+          forBusinessLocation: true, isCurrent: true, status: "NEEDS_REVIEW",
+          source: "MANUAL", lookedUpAt: new Date(),
+          reviewNote: "Business tax address changed; confirm jurisdictions before purchase use tax.",
+        },
+      });
+    }
     await tx.businessSettings.update({ where: { id: "singleton" }, data: changed });
     await tx.auditLog.create({
       data: { userId: actorId, action: "tax.setup.settings_updated",
@@ -72,7 +88,8 @@ export async function saveTaxSettings(
           rdfThresholdCents: before.rdfThresholdCents, rdfCpaConfirmedOn: before.rdfCpaConfirmedOn?.toISOString() ?? null },
         newValue: { leaseElection: changed.shortTermLeaseElection, rdfHandling: changed.rdfHandling,
           rdfThresholdCents: changed.rdfThresholdCents,
-          rdfCpaConfirmedOn: changed.rdfCpaConfirmedOn?.toISOString() ?? null } },
+          rdfCpaConfirmedOn: changed.rdfCpaConfirmedOn?.toISOString() ?? null,
+          businessAddressChanged: priorAddress !== JSON.stringify(changed.businessTaxAddress) } },
     });
   });
 }
@@ -91,7 +108,45 @@ export type FilingAccountInput = {
   reminderDaysBefore: number[];
   active: boolean;
   filingNotes: string | null;
+  licenseExpiresOn?: Date | null;
+  screenLabels?: Record<string, string>;
+  deductionLabels?: Record<string, { label: string; reportAs: "DEDUCTION" | "LEAVE_OUT_OF_GROSS" }>;
+  excelUploadAvailable?: boolean | null;
+  bulkXmlAvailable?: boolean | null;
+  setupCheckedOn?: Date | null;
+  areaAssignments?: Array<{
+    jurisdictionId: string; mode: "SALES" | "USE" | "NONE";
+    filingCode: string | null; filingOrder: number; serviceFeeMilliPercent: number;
+  }>;
 };
+
+function safeScreenLabels(value: FilingAccountInput["screenLabels"]) {
+  if (value === undefined) return undefined;
+  if (!value || Array.isArray(value) || Object.keys(value).length > 35)
+    throw new Error("Invalid filing screen labels.");
+  const out: Record<string, string> = {};
+  for (const [key, label] of Object.entries(value)) {
+    if (!/^[a-zA-Z][a-zA-Z0-9_]{0,49}$/.test(key) || typeof label !== "string")
+      throw new Error("Invalid filing screen label key or value.");
+    out[key] = textField(label, 120, "screen label") ?? "";
+  }
+  return out;
+}
+function safeDeductionLabels(value: FilingAccountInput["deductionLabels"]) {
+  if (value === undefined) return undefined;
+  if (!value || Array.isArray(value) || Object.keys(value).length > 35)
+    throw new Error("Invalid SUTS deduction labels.");
+  const out: Record<string, { label: string; reportAs: "DEDUCTION" | "LEAVE_OUT_OF_GROSS" }> = {};
+  for (const [key, row] of Object.entries(value)) {
+    if (!/^[A-Z][A-Z0-9_]{0,49}$/.test(key) || !row ||
+      !["DEDUCTION", "LEAVE_OUT_OF_GROSS"].includes(row.reportAs))
+      throw new Error("Invalid deduction SUTS mapping.");
+    const label = textField(row.label, 120, "deduction label");
+    if (!label) throw new Error("Enter a deduction label.");
+    out[key] = { label, reportAs: row.reportAs };
+  }
+  return out;
+}
 
 export async function saveTaxFilingAccount(
   actorId: string, input: FilingAccountInput, expectedUpdatedAt: Date | null,
@@ -111,6 +166,12 @@ export async function saveTaxFilingAccount(
     reminderDaysBefore: [...input.reminderDaysBefore],
     active: input.active === true,
     filingNotes: textField(input.filingNotes, 1000, "filing notes"),
+    licenseExpiresOn: input.licenseExpiresOn === undefined ? undefined : date(input.licenseExpiresOn, "license expiry"),
+    screenLabels: safeScreenLabels(input.screenLabels),
+    deductionLabels: safeDeductionLabels(input.deductionLabels),
+    excelUploadAvailable: input.excelUploadAvailable,
+    bulkXmlAvailable: input.bulkXmlAvailable,
+    setupCheckedOn: input.setupCheckedOn === undefined ? undefined : date(input.setupCheckedOn, "setup confirmation"),
   };
   if (data.dueDayOfFollowingMonth < 1 ||
       data.reminderDaysBefore.length > 10 ||
@@ -150,11 +211,71 @@ export async function saveTaxFilingAccount(
       if (expectedUpdatedAt) throw new Error("A new account cannot have an old version.");
       id = (await tx.taxFilingAccount.create({ data, select: { id: true } })).id;
     }
+    if (input.areaAssignments !== undefined) {
+      const assignments = [...input.areaAssignments].sort((a, b) => a.jurisdictionId.localeCompare(b.jurisdictionId));
+      if (assignments.length > 100 ||
+          assignments.some((row, i) => !row.jurisdictionId || (i > 0 &&
+            row.jurisdictionId === assignments[i - 1]!.jurisdictionId)))
+        throw new Error("Invalid or repeated filing jurisdiction assignment.");
+      if (assignments.some(row => (row.mode === "SALES" && data.kind !== "SALES_RETURN") ||
+          (row.mode === "USE" && data.kind !== "USE_TAX_RETURN") ||
+          !["SALES", "USE", "NONE"].includes(row.mode)))
+        throw new Error("Jurisdiction assignment does not match the filing account type.");
+      if (assignments.length) {
+        const keys = assignments.map(row => row.jurisdictionId);
+        await tx.$queryRaw`SELECT "id" FROM "TaxJurisdiction" WHERE "id" IN (${Prisma.join(keys)}) ORDER BY "id" FOR UPDATE`;
+        const matched = await tx.taxJurisdiction.findMany({
+          where: { id: { in: keys } },
+          select: { id: true, filingAccountId: true, useTaxFilingAccountId: true,
+            filingCode: true, filingOrder: true, serviceFeeMilliPercent: true },
+        });
+        if (matched.length !== keys.length) throw new Error("A selected tax jurisdiction was not found.");
+        const byId = new Map(matched.map(row => [row.id, row]));
+        const changedAssignments = assignments.flatMap(row => {
+          const before = byId.get(row.jurisdictionId)!;
+          const salesId = row.mode === "SALES" ? id :
+            before.filingAccountId === id ? null : before.filingAccountId;
+          const useId = row.mode === "USE" ? id :
+            before.useTaxFilingAccountId === id ? null : before.useTaxFilingAccountId;
+          if ((row.mode === "SALES" && before.filingAccountId && before.filingAccountId !== id) ||
+              (row.mode === "USE" && before.useTaxFilingAccountId && before.useTaxFilingAccountId !== id))
+            throw new Error("Tax jurisdiction belongs to a different filing account.");
+          const code = textField(row.filingCode, 40, "SUTS filing code");
+          const order = cents(row.filingOrder, 10000, "SUTS filing order");
+          const fee = cents(row.serviceFeeMilliPercent, 100000, "area service fee");
+          const modified = salesId !== before.filingAccountId || useId !== before.useTaxFilingAccountId ||
+            (row.mode !== "NONE" && (code !== before.filingCode || order !== before.filingOrder ||
+              fee !== before.serviceFeeMilliPercent));
+          return modified ? [{ row, salesId, useId, code, order, fee }] : [];
+        });
+        if (changedAssignments.length && await tx.taxFilingPeriod.count({
+          where: { filingAccountId: id, status: "FILED" },
+        })) throw new Error("Filed returns exist; review historical-area effects before changing assignments.");
+        for (const row of changedAssignments) {
+          await tx.taxJurisdiction.update({
+            where: { id: row.row.jurisdictionId },
+            data: {
+              filingAccountId: row.salesId, useTaxFilingAccountId: row.useId,
+              ...(row.row.mode !== "NONE" ? {
+                filingCode: row.code, filingOrder: row.order, serviceFeeMilliPercent: row.fee,
+              } : {}),
+            },
+          });
+        }
+      }
+    }
     await tx.auditLog.create({
       data: { userId: actorId, action: "tax.setup.filing_account_saved",
         entityType: "TaxFilingAccount", entityId: id,
         newValue: { name: data.name, kind: data.kind, frequency: data.frequency,
           basis: data.basis, firstPeriodStart: data.firstPeriodStart?.toISOString() ?? null,
+          licenseExpiresOn: data.licenseExpiresOn?.toISOString() ?? null,
+          screenLabelKeys: Object.keys(data.screenLabels ?? {}),
+          deductionKeys: Object.keys(data.deductionLabels ?? {}),
+          excelUploadAvailable: data.excelUploadAvailable ?? null,
+          bulkXmlAvailable: data.bulkXmlAvailable ?? null,
+          setupCheckedOn: data.setupCheckedOn?.toISOString() ?? null,
+          assignedJurisdictionIds: input.areaAssignments?.filter(row => row.mode !== "NONE").map(row => row.jurisdictionId) ?? [],
           configured: Boolean(data.accountNumber && data.firstPeriodStart && data.basis !== "UNDECIDED") } },
     });
     return { id };
@@ -163,7 +284,7 @@ export async function saveTaxFilingAccount(
 
 export async function saveTaxabilityCell(
   actorId: string,
-  input: { jurisdictionId: string; category: TaxChargeCategory; taxability: Taxability;
+  input: { jurisdictionId: string | null; category: TaxChargeCategory; taxability: Taxability;
     cpaConfirmedOn: Date; reason: string },
 ): Promise<void> {
   enumValue(input.category, TaxChargeCategory, "tax category");
@@ -175,8 +296,14 @@ export async function saveTaxabilityCell(
   if (!reason) throw new Error("Explain the confirmed taxability decision.");
   await prisma.$transaction(async tx => {
     await assertActiveTeamActor(tx, actorId, ["OWNER"]);
-    await tx.$queryRaw`SELECT "id" FROM "TaxJurisdiction" WHERE "id" = ${input.jurisdictionId} FOR UPDATE`;
-    await tx.taxJurisdiction.findUniqueOrThrow({ where: { id: input.jurisdictionId } });
+    if (input.jurisdictionId === null) {
+      // Default all-state rules have NULL jurisdictionId; lock singleton
+      // so two owners cannot create duplicate nullable unique rows.
+      await tx.$queryRaw`SELECT "id" FROM "BusinessSettings" WHERE "id" = 'singleton' FOR UPDATE`;
+    } else {
+      await tx.$queryRaw`SELECT "id" FROM "TaxJurisdiction" WHERE "id" = ${input.jurisdictionId} FOR UPDATE`;
+      await tx.taxJurisdiction.findUniqueOrThrow({ where: { id: input.jurisdictionId } });
+    }
     const existing = await tx.taxabilityRule.findFirst({
       where: { jurisdictionId: input.jurisdictionId, category: input.category },
     });

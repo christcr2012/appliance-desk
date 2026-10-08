@@ -42,6 +42,24 @@ export async function saveTaxAccountAction(_state: TaxActionState, form: FormDat
   try {
     const session = await requireRole("OWNER");
     const raw = v(form, "reminderDaysBefore");
+    const parseMap = (field: string) => {
+      if (!form.has(field)) return undefined;
+      const rawJson = v(form, field);
+      if (rawJson.length > 6000) throw new Error("Filing mapping is too large.");
+      const parsed: unknown = JSON.parse(rawJson || "{}");
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed))
+        throw new Error("Filing mapping must be a JSON object.");
+      return parsed;
+    };
+    const tristate = (field: string): boolean | null | undefined => {
+      if (!form.has(field)) return undefined;
+      const value = v(form, field);
+      if (value === "yes") return true;
+      if (value === "no") return false;
+      if (value === "unknown") return null;
+      throw new Error("Invalid SUTS upload capability.");
+    };
+    const areaIds = form.getAll("jurisdictionId").filter((id): id is string => typeof id === "string");
     const input: FilingAccountInput = {
       id: v(form, "id") || null,
       name: v(form, "name"),
@@ -56,6 +74,21 @@ export async function saveTaxAccountAction(_state: TaxActionState, form: FormDat
       emailReminders: form.get("emailReminders") === "on",
       active: form.get("active") === "on",
       filingNotes: v(form, "filingNotes") || null,
+      licenseExpiresOn: form.has("licenseExpiresOn") ? dt(v(form, "licenseExpiresOn")) : undefined,
+      screenLabels: parseMap("screenLabels") as FilingAccountInput["screenLabels"],
+      deductionLabels: parseMap("deductionLabels") as FilingAccountInput["deductionLabels"],
+      excelUploadAvailable: tristate("excelUploadAvailable"),
+      bulkXmlAvailable: tristate("bulkXmlAvailable"),
+      setupCheckedOn: form.has("setupCheckedOn")
+        ? form.get("confirmSetupToday") === "on" ? new Date() : dt(v(form, "setupCheckedOn"))
+        : undefined,
+      areaAssignments: form.has("jurisdictionIdsPresent") ? areaIds.map(id => ({
+        jurisdictionId: id,
+        mode: v(form, "assignment:" + id) as "SALES" | "USE" | "NONE",
+        filingCode: v(form, "code:" + id) || null,
+        filingOrder: integer(v(form, "order:" + id)),
+        serviceFeeMilliPercent: integer(v(form, "fee:" + id)),
+      })) : undefined,
     };
     const saved = await saveTaxFilingAccount(session.user.id, input, dt(v(form, "expectedUpdatedAt")));
     revalidatePath("/desk/sales-tax/setup");
@@ -67,7 +100,8 @@ export async function saveTaxCellAction(_state: TaxActionState, form: FormData):
   try {
     const session = await requireRole("OWNER");
     await saveTaxabilityCell(session.user.id, {
-      jurisdictionId: v(form, "jurisdictionId"),
+      jurisdictionId: v(form, "jurisdictionId") === "__DEFAULT_STATE__"
+        ? null : v(form, "jurisdictionId"),
       category: v(form, "category") as TaxChargeCategory,
       taxability: v(form, "taxability") as Taxability,
       cpaConfirmedOn: dt(v(form, "cpaConfirmedOn")) ?? new Date("invalid"),
