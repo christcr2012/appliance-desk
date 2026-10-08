@@ -173,7 +173,7 @@ function requestPinnedOfficialSource(
 
     const timer = setTimeout(() => {
       timedOut = true;
-      request.destroy();
+      request.destroy(new Error("Official source request timed out."));
     }, timeoutMs);
 
     request = httpsRequest(
