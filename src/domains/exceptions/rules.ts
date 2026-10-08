@@ -48,6 +48,15 @@ export type ExceptionItem = {
   detail: string;
   /** Where "Fix this" should send Chris. */
   href: string;
+  /** Optional separate public source link; only HTTPS is surfaced. */
+  sourceHref?: string;
+  sourceLabel?: string;
+  action?: {
+    type: "ACK_TAX_SOURCE_CHANGE";
+    id: string;
+    version: string;
+    label: string;
+  };
   /** For sorting oldest-first within a category. */
   since: Date;
 };
@@ -189,6 +198,61 @@ export function taxRateReviewReminderException(input: {
     detail:
       "Review Colorado's local rate-change list and enter any new rates that affect the areas you serve.",
     href: "/desk/settings",
+    since: input.since,
+  };
+}
+
+function httpsSourceHref(url: string): string | undefined {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "https:" ? parsed.toString() : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+export function taxSourceChangedException(input: {
+  id: string;
+  version: string;
+  label: string;
+  excerpt: string | null;
+  url: string;
+  since: Date;
+}): ExceptionItem {
+  return {
+    category: "SALES_TAX",
+    severity: "medium",
+    title: `Colorado updated ${input.label} — here is what's new`,
+    detail:
+      input.excerpt?.trim() ||
+      "The official page changed. Review the source; Appliance Desk did not interpret the change as a tax rule or rate change.",
+    href: "/desk/today",
+    sourceHref: httpsSourceHref(input.url),
+    sourceLabel: "Open official source",
+    action: {
+      type: "ACK_TAX_SOURCE_CHANGE",
+      id: input.id,
+      version: input.version,
+      label: "I looked at it",
+    },
+    since: input.since,
+  };
+}
+
+export function taxSourceUnreachableException(input: {
+  label: string;
+  url: string;
+  since: Date;
+}): ExceptionItem {
+  return {
+    category: "SALES_TAX",
+    severity: "medium",
+    title: `We couldn't check ${input.label} — the page may have moved`,
+    detail:
+      "The automatic check has failed at least three times. Verify the official page before relying on this source.",
+    href: "/desk/today",
+    sourceHref: httpsSourceHref(input.url),
+    sourceLabel: "Open official source",
     since: input.since,
   };
 }
