@@ -188,3 +188,15 @@ All customer-addressed email goes through `sendCustomerEmail` (owner master swit
 - `TwoFactor` is credential material and is deliberately excluded from F's recovery export alongside Account/Session/Verification; restored users must recover authentication instead of receiving restored TOTP secrets/backup codes.
 - G-A6 was wording drift only: `store_...` is outside the repo scanner's infrastructure-ID pattern, so no preview-store secret allowlist change is required.
 - Current close paths still match G-A2: `closeAgreementInTx` closes ENDED/CANCELLED, while renewal start directly ends the old agreement. Current earnings still cap only at `endDate`/as-of. Current dark semantic success/danger tokens still have no dark overrides. No other decision-level drift was found.
+
+
+## 2026-10-08 — T-6D1 acquisition evidence compatibility (in implementation)
+- `recordUseTaxForPurchase(tx, input, options?)` keeps its original default
+  immutable-FILED rejection. Only the audited acquisition transaction opts in
+  to corrected purchase facts while preserving FILED period/status and frozen
+  filing worksheet; the existing amendment detector compares corrected facts
+  to the saved packet. T-6D2 must preserve this explicit narrow opt-in.
+- Incomplete purchase context yields typed
+  `PurchaseTaxContextPendingError` with specific reason; arbitrary SQL failures
+  still roll back. D2 should reuse the same typed review boundary.
+- Do not mark this unit delivered until its PR has exact-head gates.

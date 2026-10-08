@@ -3,6 +3,19 @@ import { addBusinessDays, businessDateFromKey, businessDateKey } from "@/lib/bus
 import { taxCentsForLine } from "@/domains/billing/tax";
 import { allocateAcrossLines } from "./allocate";
 
+/** Configuration missing before any purchase-tax write; unlike a database failure,
+ * this may be recorded as an explicit acquisition-review requirement. */
+export class PurchaseTaxContextPendingError extends Error {
+  constructor(readonly reason: "ELECTION_UNDECIDED" | "BUSINESS_ADDRESS_UNVERIFIED" | "RATES_UNREVIEWED") {
+    super({
+      ELECTION_UNDECIDED: "Choose the rental purchase tax election before recording use tax.",
+      BUSINESS_ADDRESS_UNVERIFIED: "Verify the business purchase-tax address and its tax areas first.",
+      RATES_UNREVIEWED: "Review each business tax jurisdiction and its applicable rate first.",
+    }[reason]);
+    this.name = "PurchaseTaxContextPendingError";
+  }
+}
+
 export type UseTaxPurchase = {
   sourceType: "APPLIANCE" | "PURCHASE_ORDER_LINE" | "EXPENSE";
   sourceId: string;
@@ -22,6 +35,7 @@ function requireCents(value: number, label: string): void {
 export async function recordUseTaxForPurchase(
   tx: Prisma.TransactionClient,
   input: UseTaxPurchase,
+  options: { allowAuditedFiledCorrection?: boolean } = {},
 ): Promise<void> {
   if (!input.sourceId.trim()) throw new Error("A purchase source is required.");
   if (!Number.isFinite(input.purchasedOn.getTime())) throw new Error("Invalid purchase date.");
@@ -35,7 +49,7 @@ export async function recordUseTaxForPurchase(
     select: { shortTermLeaseElection: true },
   });
   if (input.isRentalInventory && (!settings || settings.shortTermLeaseElection === "UNDECIDED")) {
-    throw new Error("Choose the rental purchase tax election before recording use tax.");
+    throw new PurchaseTaxContextPendingError("ELECTION_UNDECIDED");
   }
   const location = await tx.addressTaxLocation.findFirst({
     where: { forBusinessLocation: true, isCurrent: true },
@@ -57,13 +71,13 @@ export async function recordUseTaxForPurchase(
     },
   });
   if (!location || location.status !== "VERIFIED" || !location.jurisdictions.length) {
-    throw new Error("Verify the business purchase-tax address and its tax areas first.");
+    throw new PurchaseTaxContextPendingError("BUSINESS_ADDRESS_UNVERIFIED");
   }
   const jurisdictions = location.jurisdictions
     .map(row => row.jurisdiction)
     .sort((a, b) => a.code.localeCompare(b.code));
   if (jurisdictions.some(j => j.reviewStatus !== "REVIEWED" || j.rates.length !== 1)) {
-    throw new Error("Review each business tax jurisdiction and its applicable rate first.");
+    throw new PurchaseTaxContextPendingError("RATES_UNREVIEWED");
   }
   const rates = jurisdictions.map(j => j.rates[0]!);
   const expected = rates.map(r => taxCentsForLine(input.amountCents, r.rateMilliPercent));
@@ -96,7 +110,18 @@ export async function recordUseTaxForPurchase(
         existing.vendorTaxCents !== data.vendorTaxCents ||
         existing.rateVersionId !== data.rateVersionId ||
         existing.useTaxDueCents !== data.useTaxDueCents;
-      if (changed) throw new Error("This filed purchase changed; an amended return requires review.");
+      if (changed) {
+        if (!options.allowAuditedFiledCorrection) {
+          throw new Error("This filed purchase changed; an amended return requires review.");
+        }
+        // Preserve immutable period worksheet and the FILED relationship. The
+        // filing amendment detector compares that frozen packet to these corrected
+        // facts. Only the audited acquisition workflow may opt in.
+        await tx.purchaseUseTax.update({
+          where: { id: existing.id },
+          data: { ...data, status: "FILED", filingPeriodId: existing.filingPeriodId },
+        });
+      }
       continue;
     }
     if (existing?.filingPeriodId) {

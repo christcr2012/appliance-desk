@@ -185,6 +185,16 @@ async function main() {
       version: 1,
     });
 
+    const historicalAcquisition = await fixtureClient.query(
+      `SELECT "acquisitionTaxStatus", "acquisitionTaxPaidCents", "acquisitionTaxRecordedAt", "acquisitionTaxRecordedByUserId" FROM "Appliance" WHERE id='upgrade-appliance'`,
+    );
+    assert.deepEqual(historicalAcquisition.rows[0], {
+      acquisitionTaxStatus: "UNKNOWN",
+      acquisitionTaxPaidCents: null,
+      acquisitionTaxRecordedAt: null,
+      acquisitionTaxRecordedByUserId: null,
+    }, "T-6D1 must never infer tax payment for existing appliances");
+
     const after = await snapshot();
     assert.deepEqual(after, { ...before, emailVerified: true });
     const unverified = await fixtureClient.query(

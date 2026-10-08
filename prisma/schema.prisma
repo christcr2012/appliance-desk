@@ -427,6 +427,12 @@ model Appliance {
   condition        String?
   purchaseDate     DateTime?
   acquisitionCostCents Int?
+  acquisitionTaxStatus AcquisitionTaxStatus @default(UNKNOWN)
+  acquisitionTaxPaidCents Int?
+  acquisitionSellerNote String?
+  acquisitionReceiptPhotoId String?
+  acquisitionTaxRecordedAt DateTime?
+  acquisitionTaxRecordedByUserId String?
   status           ApplianceStatus @default(AVAILABLE)
   currentLocation  String?
   notes            String?
@@ -1555,6 +1561,15 @@ enum TaxAddressStatus {
   VERIFIED
   NEEDS_REVIEW
   FAILED
+}
+
+// Batch T-6D1: acquisition evidence is unknown until an authorized review.
+enum AcquisitionTaxStatus {
+  UNKNOWN
+  SALES_TAX_PAID
+  USE_TAX_DUE
+  USE_TAX_PAID
+  BOUGHT_TAX_FREE_FOR_LEASE
 }
 
 enum ShortTermLeaseElection {

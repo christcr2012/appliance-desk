@@ -1,6 +1,6 @@
 # STATUS — current work, blockers and next action
 
-Updated October 8, 2026. Audited code baseline: `b2a06c2` (#310). Documentation refresh #311 merged as `778b197f`; its exact-head CI/deployment passed and both review threads are resolved. Sol-first throughput refinement branch: `ai/codex/sol-throughput-20261008`. No runtime changes in this refresh.
+Updated October 8, 2026. #311 and #312 documentation/workflow PRs merged, with exact-head checks satisfied. T-6D1 implementation branch `ai/sol-t6d1-20261008` has six focused real-PostgreSQL tests passing; exact-head CI, Vercel preview and review remain before its merge. Live payment and message activation are unchanged.
 
 ## Built
 
