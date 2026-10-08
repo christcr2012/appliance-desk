@@ -187,6 +187,15 @@ resulting behavior are verified.
 - **CI is free and fast, so lean on it** (Chris, 2026-10-03; details in the
   "CI" section below). Do not drop tests to save minutes, and do keep CI fast
   (the "Keeping CI fast" checklist in `docs/ARCHITECTURE.md`).
+- **Merge conveyor — batch findings, then merge (Chris, 2026-10-08).** Once a PR is implementation-complete,
+  freeze feature scope. Do one focused self-review plus one collection of all currently open automated-review findings,
+  fix every valid finding in a single batch, then run the exact-head gates once. Request at most one exact-head automated
+  re-review after that batch; do not request ritual "final reviews" after a clean pass. A rebase/retarget that changes no
+  diff requires fresh exact-head CI/performance/preview but not another discretionary review. If the required exact-head
+  re-review finds a new valid issue, batch all findings from that pass, patch once, self-review the patch, and rerun gates;
+  request another automated review only when the patch changes security, money/billing, auth, schema, provider semantics,
+  or the reviewer is required by the ruleset. Merge immediately when required gates are green. Do not hold a green PR
+  open to perform extra optional review cycles.
 - **Anti-stall rule (Chris, 2026-10-06): external waits are checkpoints, never the work loop.**
   Check CI/reviewer/deployment state once, act on any new result, then immediately do other runnable work.
   Never make back-to-back status checks when the first check produced no actionable change. Re-check only after
