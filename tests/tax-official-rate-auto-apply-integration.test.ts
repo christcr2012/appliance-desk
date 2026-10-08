@@ -92,20 +92,29 @@ describe.skipIf(!enabled)("T-5b3 guarded official rates (real Postgres)", () => 
     await prisma.providerOperation.deleteMany({
       where: { idempotencyKey: { contains: tag } },
     });
+    const [rateVersionIds, observationIds] = await Promise.all([
+      prisma.taxRateVersion.findMany({
+        where: { jurisdictionId },
+        select: { id: true },
+      }),
+      prisma.taxRateObservation.findMany({
+        where: { jurisdictionId },
+        select: { id: true },
+      }),
+    ]);
     await prisma.auditLog.deleteMany({
       where: {
         OR: [
-          { userId: { in: [ownerId, adminId] } },
-          { action: { startsWith: "OFFICIAL_RATE_" } },
+          {
+            entityType: "TaxRateVersion",
+            entityId: { in: rateVersionIds.map((row) => row.id) },
+          },
+          {
+            entityType: "TaxRateObservation",
+            entityId: { in: observationIds.map((row) => row.id) },
+          },
+          { userId: { in: [ownerId, adminId] }, action: { startsWith: "OFFICIAL_RATE_" } },
         ],
-        entityId: {
-          in: (
-            await prisma.taxRateVersion.findMany({
-              where: { jurisdictionId },
-              select: { id: true },
-            })
-          ).map((row) => row.id),
-        },
       },
     });
     await prisma.taxRateObservation.deleteMany({ where: { jurisdictionId } });
