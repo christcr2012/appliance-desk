@@ -1,5 +1,6 @@
 import { businessDateKey, businessDayBounds } from "@/lib/business-date";
 import { TAX_ADDRESS_CHANGE_REVIEW_NOTE } from "@/domains/tax/address-recheck";
+import { listOfficialRateAttention } from "@/domains/tax/official-rate-auto-apply";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
 import type { Prisma } from "@prisma/client";
@@ -21,6 +22,8 @@ import {
   taxExemptionWarningSince,
   taxAddressChangedException,
   taxRateReviewReminderException,
+  officialRateReviewException,
+  officialRateScheduledException,
   taxSourceChangedException,
   taxSourceUnreachableException,
   returnedEarlyException,
@@ -255,6 +258,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     taxAddressChanges,
     taxSourceChanges,
     taxSourceFailures,
+    officialRateAttention,
     staleReservations,
     pastDueInvoices,
     overdueJobs,
@@ -408,6 +412,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
             }),
         )
       : empty<never>(),
+    canViewFinance ? listOfficialRateAttention(now) : Promise.resolve([]),
     capped(
       (take) => prisma.rentalAgreement.findMany({
         where: staleWhere,
@@ -775,6 +780,27 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
         since: watch.lastCheckedAt ?? now,
       }),
     ),
+    ...officialRateAttention.map((item) =>
+      item.kind === "SCHEDULED"
+        ? officialRateScheduledException({
+            rateVersionId: item.rateVersionId,
+            jurisdictionName: item.jurisdictionName,
+            oldRateMilliPercent: item.oldRateMilliPercent,
+            newRateMilliPercent: item.newRateMilliPercent,
+            effectiveFrom: item.effectiveFrom,
+            since: item.createdAt,
+            undoAllowed: item.undoAllowed,
+          })
+        : officialRateReviewException({
+            observationId: item.observationId,
+            jurisdictionName: item.jurisdictionName,
+            oldRateMilliPercent: item.oldRateMilliPercent,
+            newRateMilliPercent: item.newRateMilliPercent,
+            effectiveFrom: item.effectiveFrom,
+            reasons: item.reasons,
+            since: item.observedAt,
+          }),
+    ),
     ...taxExemptionsExpiring.rows
       .filter(
         (exemption): exemption is typeof exemption & { expiresOn: Date } =>
@@ -905,6 +931,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
           taxAddressChanges.total +
           taxSourceChanges.total +
           taxSourceFailures.total +
+          officialRateAttention.length +
           (canViewFinance &&
           (businessDateKey(now).endsWith("-05-15") ||
             businessDateKey(now).endsWith("-11-15"))

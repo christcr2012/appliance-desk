@@ -99,10 +99,15 @@ describe.skipIf(!enabled)("message delivery ledger (real Postgres)", () => {
 
   it("lets exactly one concurrent invocation own a new business key", async () => {
     let releaseProvider!: () => void;
+    let markProviderStarted!: () => void;
     const providerGate = new Promise<void>((resolve) => {
       releaseProvider = resolve;
     });
+    const providerStarted = new Promise<void>((resolve) => {
+      markProviderStarted = resolve;
+    });
     mocks.customerEmail.mockImplementationOnce(async () => {
+      markProviderStarted();
       await providerGate;
       return {
         sent: true,
@@ -114,11 +119,22 @@ describe.skipIf(!enabled)("message delivery ledger (real Postgres)", () => {
     const first = deliverMessage(input("concurrent"));
     const second = deliverMessage(input("concurrent"));
 
-    // Give both transactions a chance to contend for the unique business key
-    // while the winning provider call is still blocked.
-    await new Promise((resolve) => setTimeout(resolve, 20));
-    expect(mocks.customerEmail).toHaveBeenCalledTimes(1);
-    releaseProvider();
+    try {
+      await Promise.race([
+        providerStarted,
+        new Promise<never>((_, reject) =>
+          setTimeout(
+            () => reject(new Error("provider invocation did not start")),
+            2_000,
+          ),
+        ),
+      ]);
+      expect(mocks.customerEmail).toHaveBeenCalledTimes(1);
+    } finally {
+      // Never leave an in-flight delivery behind to contaminate the next test,
+      // even when the ownership assertion fails.
+      releaseProvider();
+    }
 
     const [a, b] = await Promise.all([first, second]);
     expect(a.deliveryId).toBe(b.deliveryId);

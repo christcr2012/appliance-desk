@@ -14,6 +14,13 @@ const mocks = vi.hoisted(() => ({
     recovered: 0,
     failed: 0,
   })),
+  runRates: vi.fn(async () => ({
+    status: "UNSUPPORTED" as const,
+    observations: 0,
+    autoApplied: 0,
+    reviewRequired: 0,
+    ignored: 0,
+  })),
   runAutomation: vi.fn(async (input: { ruleKey: string; work: () => Promise<unknown> }) => {
     try {
       await input.work();
@@ -31,6 +38,9 @@ vi.mock("@/domains/tax/address-recheck", () => ({
 vi.mock("@/domains/tax/official-source-watch", () => ({
   runOfficialSourceWatch: mocks.runWatch,
 }));
+vi.mock("@/domains/tax/official-rate-auto-apply", () => ({
+  runOfficialRateObservation: mocks.runRates,
+}));
 
 import { GET } from "@/app/api/cron/tax-address-recheck/route";
 
@@ -41,6 +51,14 @@ describe("Batch T tax-address re-check cron route", () => {
     process.env.CRON_SECRET = "tax-address-secret";
     mocks.recheck.mockClear();
     mocks.runWatch.mockClear();
+    mocks.runRates.mockClear();
+    mocks.runRates.mockResolvedValue({
+      status: "UNSUPPORTED",
+      observations: 0,
+      autoApplied: 0,
+      reviewRequired: 0,
+      ignored: 0,
+    });
     mocks.runWatch.mockResolvedValue({
       checked: 0,
       changed: 0,
@@ -72,6 +90,7 @@ describe("Batch T tax-address re-check cron route", () => {
     expect(response.status).toBe(200);
     expect(mocks.recheck).toHaveBeenCalledTimes(1);
     expect(mocks.runWatch).toHaveBeenCalledTimes(1);
+    expect(mocks.runRates).toHaveBeenCalledTimes(1);
     expect(mocks.runAutomation).toHaveBeenCalledTimes(2);
     expect(mocks.runAutomation).toHaveBeenCalledWith(
       expect.objectContaining({ ruleKey: "tax-address-recheck" }),
@@ -89,6 +108,29 @@ describe("Batch T tax-address re-check cron route", () => {
         runId: "run-tax-rate-watch",
       },
     });
+  });
+
+  it("keeps address re-check successful when the official-rate observation fails", async () => {
+    mocks.runRates.mockRejectedValueOnce(new Error("GIS unavailable"));
+
+    const response = await GET(
+      new Request("https://example.test/api/cron/tax-address-recheck", {
+        headers: { authorization: "Bearer tax-address-secret" },
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      addressRecheck: {
+        outcome: "RAN",
+        runId: "run-tax-address-recheck",
+      },
+      taxRateWatch: {
+        outcome: "FAILED",
+        runId: "run-tax-rate-watch",
+      },
+    });
+    expect(mocks.recheck).toHaveBeenCalledTimes(1);
   });
 
   it("keeps address re-check successful when the source-watch automation fails", async () => {

@@ -168,7 +168,7 @@ async function markSuperseded(operationId: string): Promise<void> {
   await prisma.providerOperation.updateMany({
     where: {
       id: operationId,
-      status: { in: ["PENDING", "FAILED", "UNKNOWN"] },
+      status: { in: ["PENDING", "FAILED", "UNKNOWN", "DRIFT"] },
     },
     data: {
       status: "SUPERSEDED",
@@ -183,6 +183,24 @@ export type SubscriptionTaxSyncResult =
   | "already_current"
   | "skipped"
   | "pending";
+
+export async function supersedeSubscriptionTaxUpdatesForRateVersion(
+  rateVersionId: string,
+): Promise<number> {
+  const result = await prisma.providerOperation.updateMany({
+    where: {
+      kind: "SUBSCRIPTION_TAX_UPDATE",
+      idempotencyKey: { endsWith: `-${rateVersionId}` },
+      status: { in: ["PENDING", "FAILED", "UNKNOWN", "DRIFT"] },
+    },
+    data: {
+      status: "SUPERSEDED",
+      completedAt: new Date(),
+      lastError: null,
+    },
+  });
+  return result.count;
+}
 
 /**
  * Initial day-before rate-change attempt. The durable operation is claimed
@@ -342,9 +360,16 @@ export async function retrySubscriptionTaxUpdate(
   }
   const version = await prisma.taxRateVersion.findUnique({
     where: { id: rateVersionId },
-    select: { effectiveFrom: true },
+    select: {
+      effectiveFrom: true,
+      autoApplied: true,
+      autoAppliedUndoneAt: true,
+    },
   });
-  if (!version) {
+  if (
+    !version ||
+    (version.autoApplied && version.autoAppliedUndoneAt !== null)
+  ) {
     await markSuperseded(operation.id);
     return true;
   }
@@ -427,6 +452,7 @@ export async function retrySubscriptionTaxUpdate(
 
 export async function applyTaxRateChanges(
   now = new Date(),
+  options: { includeRateVersionIds?: readonly string[] } = {},
 ): Promise<{
   versions: number;
   agreements: number;
@@ -436,21 +462,72 @@ export async function applyTaxRateChanges(
   pending: number;
 }> {
   const tomorrow = addBusinessDays(now, 1);
-  const bounds = businessDayBounds(tomorrow);
-  const versions = await prisma.taxRateVersion.findMany({
+  const tomorrowBounds = businessDayBounds(tomorrow);
+
+  // Discover the latest non-undone rate that is already effective (or starts
+  // tomorrow) for every jurisdiction. This intentionally does not depend on an
+  // existing ProviderOperation: if the day-before cron was missed entirely,
+  // there is no durable operation to recover from yet. The downstream sync is
+  // read-before-write/idempotent, so already-reconciled subscriptions remain
+  // no-op while missed rates heal automatically.
+  const applicableVersions = await prisma.taxRateVersion.findMany({
     where: {
-      effectiveFrom: {
-        gte: bounds.start,
-        lt: bounds.end,
-      },
+      effectiveFrom: { lt: tomorrowBounds.end },
+      autoAppliedUndoneAt: null,
     },
     select: {
       id: true,
       jurisdictionId: true,
       effectiveFrom: true,
     },
-    orderBy: [{ effectiveFrom: "asc" }, { id: "asc" }],
+    orderBy: [
+      { jurisdictionId: "asc" },
+      { effectiveFrom: "desc" },
+      { id: "desc" },
+    ],
   });
+  const latestByJurisdiction = new Map<
+    string,
+    { id: string; jurisdictionId: string; effectiveFrom: Date }
+  >();
+  for (const version of applicableVersions) {
+    if (!latestByJurisdiction.has(version.jurisdictionId)) {
+      latestByJurisdiction.set(version.jurisdictionId, version);
+    }
+  }
+
+  const requestedIds = new Set(options.includeRateVersionIds ?? []);
+  const explicitlyRequested = requestedIds.size
+    ? await prisma.taxRateVersion.findMany({
+        where: {
+          id: { in: [...requestedIds] },
+          effectiveFrom: { lt: tomorrowBounds.end },
+          autoAppliedUndoneAt: null,
+        },
+        select: {
+          id: true,
+          jurisdictionId: true,
+          effectiveFrom: true,
+        },
+        orderBy: [{ effectiveFrom: "asc" }, { id: "asc" }],
+      })
+    : [];
+
+  const versionsById = new Map<
+    string,
+    { id: string; jurisdictionId: string; effectiveFrom: Date }
+  >();
+  for (const version of [
+    ...latestByJurisdiction.values(),
+    ...explicitlyRequested,
+  ]) {
+    versionsById.set(version.id, version);
+  }
+  const versions = [...versionsById.values()].sort(
+    (left, right) =>
+      left.effectiveFrom.getTime() - right.effectiveFrom.getTime() ||
+      left.id.localeCompare(right.id),
+  );
 
   let agreements = 0;
   let updated = 0;
@@ -484,7 +561,7 @@ export async function applyTaxRateChanges(
         const result = await syncSubscriptionTaxRatesForAgreement(
           agreement.id,
           version.id,
-          version.effectiveFrom,
+          tomorrow,
         );
         if (result === "updated") updated += 1;
         else if (result === "already_current") alreadyCurrent += 1;

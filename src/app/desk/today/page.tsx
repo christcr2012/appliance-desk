@@ -3,6 +3,10 @@ import {
   getTodaysJobs,
   type ExceptionCategory,
 } from "@/domains/exceptions";
+import {
+  manuallyApplyObservedRate,
+  undoAutoAppliedRateVersion,
+} from "@/domains/tax/official-rate-auto-apply";
 import { acknowledgeOfficialSourceChange } from "@/domains/tax/official-source-watch";
 import { getDueTaskSummary } from "@/domains/tasks/workspace";
 import { prisma } from "@/lib/prisma";
@@ -41,6 +45,34 @@ async function acknowledgeTaxSourceAction(formData: FormData) {
     return;
   }
   await acknowledgeOfficialSourceChange(watchId, watchVersion);
+  revalidatePath("/desk/today");
+}
+
+async function undoOfficialRateAction(formData: FormData) {
+  "use server";
+  const session = await requireRole("OWNER");
+  const rateVersionId = formData.get("rateVersionId");
+  if (typeof rateVersionId !== "string" || !rateVersionId || rateVersionId.length > 200) {
+    return;
+  }
+  await undoAutoAppliedRateVersion({
+    rateVersionId,
+    actorUserId: session.user.id,
+  });
+  revalidatePath("/desk/today");
+}
+
+async function applyOfficialRateAction(formData: FormData) {
+  "use server";
+  const session = await requireRole("OWNER");
+  const observationId = formData.get("observationId");
+  if (typeof observationId !== "string" || !observationId || observationId.length > 200) {
+    return;
+  }
+  await manuallyApplyObservedRate({
+    observationId,
+    actorUserId: session.user.id,
+  });
   revalidatePath("/desk/today");
 }
 
@@ -241,6 +273,12 @@ export default async function TodayPage() {
             groups={attentionGroups}
             acknowledgeTaxSourceAction={
               role === "OWNER" ? acknowledgeTaxSourceAction : undefined
+            }
+            undoOfficialRateAction={
+              role === "OWNER" ? undoOfficialRateAction : undefined
+            }
+            applyOfficialRateAction={
+              role === "OWNER" ? applyOfficialRateAction : undefined
             }
           />
         </Card>

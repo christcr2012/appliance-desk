@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { runAutomation } from "@/domains/automation/runs";
 import { recheckCurrentTaxAddresses } from "@/domains/tax/address-recheck";
+import { runOfficialRateObservation } from "@/domains/tax/official-rate-auto-apply";
 import { runOfficialSourceWatch } from "@/domains/tax/official-source-watch";
 
 export async function GET(request: Request): Promise<NextResponse> {
@@ -35,9 +36,27 @@ export async function GET(request: Request): Promise<NextResponse> {
     }),
     runAutomation({
       ruleKey: "tax-rate-watch",
-      work: async () => ({
-        counts: await runOfficialSourceWatch(),
-      }),
+      work: async () => {
+        const [sources, rates] = await Promise.all([
+          runOfficialSourceWatch(),
+          runOfficialRateObservation(),
+        ]);
+        return {
+          counts: {
+            sourceChecked: sources.checked,
+            sourceChanged: sources.changed,
+            sourceRecovered: sources.recovered,
+            sourceFailed: sources.failed,
+            rateObservations: rates.observations,
+            rateAutoApplied: rates.autoApplied,
+            rateReviewRequired: rates.reviewRequired,
+            rateIgnored: rates.ignored,
+            rateProviderSupported: rates.status === "SUPPORTED" ? 1 : 0,
+            rateProviderUnavailable: rates.status === "UNAVAILABLE" ? 1 : 0,
+            rateProviderUnsupported: rates.status === "UNSUPPORTED" ? 1 : 0,
+          },
+        };
+      },
     }),
   ]);
 

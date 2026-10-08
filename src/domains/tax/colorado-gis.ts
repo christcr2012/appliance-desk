@@ -22,6 +22,18 @@ export type GisLookup =
       message: string;
     };
 
+export type ColoradoEffectiveRateObservation = {
+  jurisdictionCode: string;
+  jurisdictionLevel: TaxJurisdictionLevel;
+  effectiveFrom: Date;
+  rateMilliPercent: number;
+};
+
+export type ColoradoEffectiveRateLookup =
+  | { status: "SUPPORTED"; observations: ColoradoEffectiveRateObservation[] }
+  | { status: "UNAVAILABLE"; reason: string }
+  | { status: "UNSUPPORTED" };
+
 export interface ColoradoRateSource {
   lookup(address: {
     line1: string;
@@ -29,6 +41,10 @@ export interface ColoradoRateSource {
     city: string;
     zip: string;
   }): Promise<GisLookup>;
+  lookupEffectiveRates?(input: {
+    asOf: Date;
+    lookAheadThrough: Date;
+  }): Promise<ColoradoEffectiveRateLookup>;
 }
 
 /**
@@ -45,6 +61,10 @@ class ManualOnlySource implements ColoradoRateSource {
       message:
         "Automatic Colorado tax lookup is not configured yet. Review this address manually.",
     };
+  }
+
+  async lookupEffectiveRates(): Promise<ColoradoEffectiveRateLookup> {
+    return { status: "UNSUPPORTED" };
   }
 }
 
