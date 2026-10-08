@@ -296,6 +296,14 @@ full CI/secret checks, preview where applicable and required semantic review.
   guessing: a migration or SQL change (prove it on a scratch database), a
   failure you cannot understand from CI output, or a browser spec you are
   actively iterating on. The full recipe stays in `docs/PLAYBOOK.md`.
+  **Vercel Sandbox local Postgres (2026-10-08):** PostgreSQL 18 server binaries
+  are installed at `/usr/lib/postgresql/18/bin`, outside normal PATH. For
+  money, tax, schema, permissions, transaction and idempotency changes, run
+  `bash scripts/local-postgres-test.sh tests/<target>.test.ts` (PLAYBOOK §4b)
+  when local database proof is appropriate. It creates/destroys a fresh
+  localhost-only `appliance_desk_test` and does not require Neon or sudo.
+  Check installed binaries before claiming local Postgres unavailable. CI on
+  PostgreSQL 17 remains the mandatory exact-head merge gate.
 - **Documentation-only checks:** validate changed links, work-index dependencies,
   contract consistency and `git diff --check`; do not run application tests that
   cannot exercise a prose-only change. CI and secret scanning still apply.

@@ -233,55 +233,45 @@ npm run lint
 npx vitest run <tests you touched>
 ```
 
-### 4b. Full unit/integration suite on a throwaway Postgres
+### 4b. Local real-PostgreSQL testing in Vercel Sandbox
 
-If your sandbox can reach the internet normally, `npm install` and
-`npm run db:migrate:deploy` work and you can skip to "Run" below with a local
-Postgres. If `prisma generate` fails with a 403 from `binaries.prisma.sh`,
-use this approved workaround (Chris, 2026-10-02). It only ever touches a
-local throwaway database.
+**Canonical command:** `bash scripts/local-postgres-test.sh tests/<changed-spec>.test.ts`.
+Use this for tax, money, permissions, migration, concurrency, idempotency and
+data-integrity changes, or to diagnose a CI integration-test failure. Do not
+replace the default fast checks with a needless full local suite for prose/UI work.
+
+PostgreSQL **18** server binaries are preinstalled in the Vercel Sandbox at
+`/usr/lib/postgresql/18/bin`, outside the normal `PATH`. Do not infer
+Postgres is unavailable because `which postgres` or `which initdb` fails.
+The launcher discovers the installed server binaries, runs as the ordinary
+sandbox user (no sudo or Docker), starts a **new** localhost-only Postgres
+cluster at an available port, creates the exact `appliance_desk_test` database
+used by integration-test guards, exports `DATABASE_URL`/`DIRECT_URL` and
+`CI=true` only within the script, migrates and seeds, then runs Vitest and
+stops/removes only its disposable cluster.
 
 ```bash
-# 1. Install without the postinstall that hits the 403
-npm ci --ignore-scripts
+# Targeted real-database regression (recommended):
+bash scripts/local-postgres-test.sh tests/retail-delivery-fee-integration.test.ts
 
-# 2. Generate the Prisma client with a placeholder engine (writes only to node_modules)
-printf '#!/bin/sh\nexit 1\n' > /tmp/fake-engine && chmod +x /tmp/fake-engine
-DATABASE_URL=postgresql://test:test@localhost:5432/x \
-DIRECT_URL=postgresql://test:test@localhost:5432/x \
-PRISMA_SCHEMA_ENGINE_BINARY=/tmp/fake-engine npx prisma generate
+# Related tests share one disposable database:
+bash scripts/local-postgres-test.sh tests/job-completion-integration.test.ts tests/retail-delivery-fee-integration.test.ts
 
-# 3. Start a throwaway Postgres and load the schema by hand
-#    (prisma migrate really does need the blocked engine, so apply the SQL directly)
-mkdir /tmp/pgdata && chown postgres /tmp/pgdata     # NOT inside a /tmp/claude-* dir
-B=/usr/lib/postgresql/16/bin
-su postgres -c "$B/initdb -D /tmp/pgdata -A trust"
-su postgres -c "$B/pg_ctl -D /tmp/pgdata -o '-p 5432 -k /tmp' -l /tmp/pg.log start"
-psql -h localhost -U postgres -c "create role test superuser login password 'test'"
-psql -h localhost -U postgres -c "create database appliance_desk_test owner test"
-for d in $(ls -d prisma/migrations/*/ | sort); do
-  [ -f $d/migration.sql ] && PGPASSWORD=test psql -q -v ON_ERROR_STOP=1 \
-    -h localhost -U test -d appliance_desk_test -f $d/migration.sql
-done
-
-# 4. Export the same environment CI uses (copy the `env:` block of the
-#    `database` job in .github/workflows/ci.yml), then seed and run
-export DATABASE_URL=postgresql://test:test@localhost:5432/appliance_desk_test
-export DIRECT_URL=$DATABASE_URL
-export BETTER_AUTH_SECRET=ci-test-secret-not-for-production-use-only
-export BETTER_AUTH_URL=http://localhost:3000 NEXT_PUBLIC_APP_URL=http://localhost:3000
-export OWNER_EMAIL=ci-owner@example.test OWNER_PASSWORD='Ci-Test-Owner-Password-Not-Real-1!'
-export TEST_CUSTOMER_EMAIL=ci-customer@example.test TEST_CUSTOMER_PASSWORD='Ci-Test-Customer-Password-Not-Real-1!'
-export TEST_STAFF_EMAIL=ci-staff@example.test TEST_STAFF_PASSWORD='Ci-Test-Staff-Password-Not-Real-1!'
-export CI=true
-npm run db:seed
-npx vitest run
+# Full suite only when warranted:
+bash scripts/local-postgres-test.sh --all
 ```
 
-Expect every test to pass. Rules: throwaway local database only (never Neon
-or production); never commit the placeholder engine or the generated client;
-`prisma migrate deploy`, the migration-upgrade drill and the schema-health
-drill stay CI-only.
+The script never uses a pre-existing `DATABASE_URL`, Neon, preview or
+production data, and clears inherited Vercel runtime flags. It also forces dummy CI-only OWNER/CUSTOMER/STAFF fixture identities, so test setup never reads real account credentials. The test connection uses the literal hostname `localhost` because the staff security-fixture guard requires it (the Postgres listener itself is bound only to `127.0.0.1`). No production
+database reset or production seed is permitted. If setup fails, inspect the
+precise error and `ls /usr/lib/postgresql/*/bin/initdb` before declaring
+the environment unsuitable. For Prisma binary-download restrictions,
+generate a client with the approved local placeholder-engine workaround
+only when actually needed; never commit generated clients/engines.
+
+Local PostgreSQL 18 results are useful earlier evidence, **not a substitute
+for exact-head GitHub CI's isolated PostgreSQL 17 gate**. Record real passed
+test counts and never claim skipped integration specs passed.
 
 ### 4c. Browser and accessibility tests locally (required for screen changes)
 

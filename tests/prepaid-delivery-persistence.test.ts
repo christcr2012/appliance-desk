@@ -15,6 +15,7 @@ describe.skipIf(!enabled)("prepaid delivery in disposable Postgres", () => {
     await prisma.applianceCustodyEpisode.deleteMany({ where: { applianceId } });
     await prisma.jobAppliance.deleteMany({ where: { jobId } });
     await prisma.applianceAssignment.deleteMany({ where: { applianceId } });
+    await prisma.retailDeliveryFeeRecord.deleteMany({ where: { firstJobId: jobId } });
     await prisma.job.deleteMany({ where: { id: jobId } });
     await prisma.rentalAgreement.deleteMany({ where: { id: agreementId } });
     await prisma.appliance.deleteMany({ where: { id: applianceId } });

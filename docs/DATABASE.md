@@ -6,6 +6,17 @@ next (human or AI). Money is always stored as **integer cents** (never a
 decimal/float) — see `docs/BUSINESS-RULES.md`. Every timestamp is stored
 in UTC and only converted to Mountain Time for display.
 
+## Local isolated test database
+
+Use `bash scripts/local-postgres-test.sh tests/<spec>.test.ts` for relevant
+money, tax, schema, concurrency and authorization tests. The Vercel Sandbox
+has PostgreSQL 18 binaries at `/usr/lib/postgresql/18/bin` (outside PATH).
+The launcher creates a **new 127.0.0.1-only** `appliance_desk_test`, runs
+migrations and test-only seeding, executes Vitest with `CI=true`, then stops
+and removes only its temporary cluster. See [PLAYBOOK §4b](PLAYBOOK.md#4b-local-real-postgresql-testing-in-vercel-sandbox).
+Never use Neon, Vercel preview or production data; CI's PostgreSQL 17 suite
+is the final merge authority.
+
 ## Auth & people
 
 - **User** — anyone who can log in: Chris (`OWNER`), any staff he adds

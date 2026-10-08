@@ -22,6 +22,7 @@ import { closeCustodyEpisodeInTx, getOpenCustody, openCustodyEpisodeInTx } from 
 import { createTaskInTx } from "@/domains/tasks";
 import { lockMaintenanceRequestInTx, requestAfterVisitEndedInTx } from "@/domains/maintenance/visit-sync";
 import { JobVersionError } from "./scheduling";
+import { recordRentalDeliveryFeeInTx } from "@/domains/tax/rdf-records";
 
 // ---------------------------------------------------------------------------
 // Completing a job (Batch C, slice P2-B). Every appliance in the job's scope gets exactly one result.
@@ -552,6 +553,12 @@ export async function completeJob(userId: string, input: CompleteJobInput): Prom
       },
     });
     if (updated.count !== 1) throw new JobVersionError();
+    if (isDelivery && before.agreementId && deliveredIds.length > 0) {
+      await recordRentalDeliveryFeeInTx(tx, {
+        jobId: before.id, agreementId: before.agreementId,
+        saleKey: "agreement:" + before.agreementId, deliveredOn: serviceDate,
+      });
+    }
     if (before.maintenanceRequestId && before.type === "MAINTENANCE_VISIT") {
       await requestAfterVisitEndedInTx(tx, userId, before.maintenanceRequestId, before.id, jobOutcome === "COMPLETE" ? "REPAIRED" : "NOT_FINISHED");
     }

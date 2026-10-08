@@ -361,6 +361,7 @@ describe.skipIf(!enabled)("a waiting item and the Stripe subscription (real Post
     });
     await prisma.applianceAssignment.deleteMany({ where: { applianceId: { in: applianceIds } } });
     await prisma.jobAppliance.deleteMany({ where: { jobId: { in: jobIds } } });
+    await prisma.retailDeliveryFeeRecord.deleteMany({ where: { firstJobId: { in: jobIds } } });
     await prisma.job.deleteMany({ where: { id: { in: jobIds } } });
     await prisma.rentalLine.deleteMany({ where: { agreementId: { in: agreementIds } } });
     await prisma.rentalAgreement.deleteMany({ where: { id: { in: agreementIds } } });

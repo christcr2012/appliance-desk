@@ -485,6 +485,13 @@ Never rely on hiding a nav link as the only protection for anything.
 `.github/workflows/ci.yml` runs on every PR and on `main`. A tiny `classify` job first decides whether the change touches the application (anything outside `docs/` and `*.md`); documentation-only PRs skip the heavy suites. Application changes then run three independent jobs **in parallel**, each on its own runner:
 
 - **static checks** — install → type-check → lint (no database).
+- **Local Vercel Sandbox integration tests** — run
+  `bash scripts/local-postgres-test.sh tests/<spec>.test.ts` for money,
+  permissions, SQL and idempotency changes. PostgreSQL 18 binaries are
+  preinstalled outside PATH. The script creates/migrates/seeds a new
+  localhost-only `appliance_desk_test` and cleans it up. See PLAYBOOK §4b;
+  never substitute Neon or preview data. CI's PostgreSQL 17 job remains
+  authoritative.
 - **migrations and unit/integration tests** — throwaway Postgres → check for un-reviewed destructive migrations → apply migrations → verify schema health (the same check production runs before building) → prove schema health rejects a missing column → prove a populated historical database upgrades → seed business content and test-only OWNER/CUSTOMER/STAFF accounts → unit and real-Postgres integration tests.
 - **production build and browser acceptance** — sharded across 3 runners. Each shard gets its own throwaway Postgres, applies migrations, verifies schema health, seeds, runs the production build, installs the Playwright browser, then runs the Playwright/axe accessibility, security and end-to-end spec files assigned to it. The assignment lives in `e2e/shards.json` (named groups → spec files) and is run by `scripts/e2e-shard.mjs <group>`. Playwright's own `--shard` was tried first and rejected: it balances by test *count*, and this suite's test durations are so uneven that one runner got ~4x the runtime of the others. The groups are balanced by measured duration instead; after each shard runs, the script prints a per-file duration notice (from Playwright's JSON reporter, CI-only) that is readable from the Checks API — use those numbers to rebalance. The script refuses to run, and the static-checks job fails (`--check`), if any `e2e/*.spec.ts` is unassigned, double-assigned, or missing, so a new spec file can never silently stop running. Every spec still runs exactly once per CI run. Each shard uploads its own Playwright report (`playwright-report-<group>`).
 

@@ -14,6 +14,19 @@ Robinson Appliance Rentals is Chris's Colorado appliance rental business. Applia
 
 `src/app` routes; `src/domains` rules/transactions; `src/lib` shared/provider/access boundaries; `src/components` UI; `prisma` schema/additive migrations; `tests` behavior and real Postgres; `e2e` browser/axe/shards; `scripts` CI/operations. Domains are singular `automation` and existing purchasing receives parts, not magically appliances. Confirm actual path before editing.
 
+## Fast path to real-database testing
+
+Vercel Sandbox already has PostgreSQL server binaries at
+`/usr/lib/postgresql/18/bin` (not necessarily on PATH). For transactions,
+tax, billing, migrations, permissions and idempotency, use
+`bash scripts/local-postgres-test.sh tests/<relevant-spec>.test.ts`
+from the repository root. It runs against a freshly created, disposable
+**localhost-only** `appliance_desk_test`. Read
+[PLAYBOOK §4b](PLAYBOOK.md#4b-local-real-postgresql-testing-in-vercel-sandbox)
+for the exact procedure, safeguards and fallback. Never use a Neon
+preview/production database for these tests. CI's independent PostgreSQL 17
+suite remains required for merging.
+
 ## One authority per fact
 
 | Fact | Authority |

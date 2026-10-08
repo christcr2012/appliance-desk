@@ -28,6 +28,8 @@ Open http://localhost:3000.
 npm run typecheck        # generates Next.js route types, then tsc --noEmit
 npm run lint              # eslint
 npm test                   # unit tests (vitest)
+# Real Postgres integration tests in Vercel Sandbox:
+# bash scripts/local-postgres-test.sh tests/<spec>.test.ts
 npm run test:e2e            # Playwright + axe accessibility tests (needs a running build)
 npm run build                 # production build
 npm run db:migrate:dev          # create + apply a migration locally

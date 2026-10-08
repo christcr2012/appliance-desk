@@ -222,3 +222,7 @@ accounts from the sales/use-tax packet. New RDF enums also require the billing
 ledger map, tax category map, backup manifest and actual populated upgrade/restore
 proof. Downstream T-6C2 uses these current models/signatures; refresh its card at
 the final #317 merge, not the earlier #310 baseline.
+
+### 2026-10-08 — T-6C2 original-sale identity prerequisite
+
+The existing `RentalLineAmendment` is a removal/price-adjustment record, **not** evidence of an accepted new retail sale. T-6C2 records original deliveries once as `agreement:<id>`; it deliberately does not mint `addition:<id>` identities from arbitrary delivery jobs or those removal amendments. Before any later feature makes chargeable additions, the accepted-addition transaction must provide a durable amendment identity and prove its own payment/authorization lineage; T-6C3 must not infer additions from free SWAPs. Prepaid sale date evidence is `Receipt.receivedOn`, **not** the webhook record `Payment.createdAt`. No customer fee charging is active.

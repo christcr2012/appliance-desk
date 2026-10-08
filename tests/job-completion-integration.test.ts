@@ -85,6 +85,7 @@ describe.skipIf(!enabled)("completeJob", () => {
     const creditIds = (await prisma.customerCredit.findMany({ where: { customerId }, select: { id: true } })).map((r) => r.id);
     await prisma.staffTask.deleteMany({ where: { jobId: { in: jobIds } } });
     await prisma.jobBillingHandoff.deleteMany({ where: { jobId: { in: jobIds } } });
+    await prisma.retailDeliveryFeeRecord.deleteMany({ where: { agreementId } });
     await prisma.applianceCustodyEpisode.deleteMany({ where: { applianceId: { in: applianceIds } } });
     await prisma.pendingDelivery.deleteMany({ where: { agreementId } });
     await prisma.customerCredit.deleteMany({ where: { customerId } });
@@ -126,6 +127,12 @@ describe.skipIf(!enabled)("completeJob", () => {
     const j = await job("DELIVERY", [a, b]);
     const out = await finish(j.id, [[a, "DELIVERED"], [b, "DELIVERED"]]);
     expect(out.outcome).toBe("COMPLETE");
+    const rdf = await prisma.retailDeliveryFeeRecord.findUniqueOrThrow({
+      where: { saleKey: "agreement:" + agreementId },
+    });
+    expect(rdf.firstJobId).toBe(j.id);
+    expect(rdf.agreementId).toBe(agreementId);
+    expect(rdf.status).toBe("PENDING_DECISION");
     expect(await status(a)).toBe("RENTED");
     expect(await status(b)).toBe("RENTED");
     expect(await prisma.applianceCustodyEpisode.count({ where: { applianceId: { in: [a, b] }, closedAt: null } })).toBe(2);

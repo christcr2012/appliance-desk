@@ -85,6 +85,7 @@ const CATEGORIES: Record<ExceptionCategory, string> = {
   TAX_FILING_NOT_READY: "Tax returns not ready to file",
   ACQUISITION_TAX_REVIEW: "Appliance purchase tax needs review",
   PURCHASE_USE_TAX_DUE: "Consumer use tax to file",
+  RETAIL_DELIVERY_FEE: "Retail delivery fee needs review",
   STALE_RESERVATION: "Reservation expired",
   PAST_DUE_INVOICE: "Past due",
   OVERDUE_JOB: "Overdue job",

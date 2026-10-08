@@ -5,6 +5,7 @@ import { finishPendingProviderOperations } from "@/domains/billing/reconciliatio
 import { runPendingHandoffs } from "@/domains/jobs/completion";
 import { freezeFinalInvoiceArtifacts } from "@/domains/documents/artifacts";
 import { reconcileUnknownDeliveries } from "@/domains/messaging/deliver";
+import { resolvePendingRdfRecords } from "@/domains/tax/rdf-records";
 
 /** Daily recovery pass for durable provider intents. */
 export async function GET(request: Request): Promise<NextResponse> {
@@ -38,5 +39,10 @@ export async function GET(request: Request): Promise<NextResponse> {
     work: async () => ({ counts: automationCounts(await reconcileUnknownDeliveries(50)) }),
   });
 
-  return NextResponse.json({ providerOps, handoffs, invoiceArtifacts, messageDeliveries });
+  const retailDeliveryFees = await runAutomation({
+    ruleKey: "billing-reconcile:retail-delivery-fees",
+    work: async () => ({ counts: automationCounts(await resolvePendingRdfRecords(new Date(), 50)) }),
+  });
+
+  return NextResponse.json({ providerOps, handoffs, invoiceArtifacts, messageDeliveries, retailDeliveryFees });
 }

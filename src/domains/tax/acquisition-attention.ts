@@ -4,7 +4,9 @@ import type { ExceptionItem } from "@/domains/exceptions/rules";
 import { businessDateFromKey, businessDateKey } from "@/lib/business-date";
 
 /** Two summary rows on Today, not one alert per appliance or purchase line. */
-export async function listAcquisitionTaxAttention(now = new Date()): Promise<ExceptionItem[]> {
+export async function listAcquisitionTaxAttention(
+  now = new Date(),
+): Promise<ExceptionItem[]> {
   await requireRole("OWNER", "ADMIN");
   const todayKey = businessDateKey(now);
   const todayStart = businessDateFromKey(todayKey);
@@ -18,7 +20,8 @@ export async function listAcquisitionTaxAttention(now = new Date()): Promise<Exc
     }),
     prisma.purchaseUseTax.aggregate({
       where: { status: "DUE" },
-      _sum: { useTaxDueCents: true }, _count: { _all: true },
+      _sum: { useTaxDueCents: true },
+      _count: { _all: true },
     }),
     prisma.purchaseUseTax.aggregate({
       where: {
@@ -31,7 +34,8 @@ export async function listAcquisitionTaxAttention(now = new Date()): Promise<Exc
           ],
         },
       },
-      _sum: { useTaxDueCents: true }, _count: { _all: true },
+      _sum: { useTaxDueCents: true },
+      _count: { _all: true },
     }),
   ]);
   const result: ExceptionItem[] = [];
@@ -40,7 +44,8 @@ export async function listAcquisitionTaxAttention(now = new Date()): Promise<Exc
       category: "ACQUISITION_TAX_REVIEW",
       severity: "medium",
       title: `${unknownCount} appliance${unknownCount === 1 ? "" : "s"} need purchase-tax review`,
-      detail: "Confirm seller tax, your purchase evidence and any outstanding information. Review the list before billing decisions depend on the appliance's tax status.",
+      detail:
+        "Confirm seller tax, your purchase evidence and any outstanding information. Review the list before billing decisions depend on the appliance's tax status.",
       href: "/desk/inventory?taxStatus=UNKNOWN",
       since: oldestUnknown?.createdAt ?? now,
     });
@@ -52,12 +57,32 @@ export async function listAcquisitionTaxAttention(now = new Date()): Promise<Exc
       category: "PURCHASE_USE_TAX_DUE",
       severity: overdue._count._all > 0 ? "high" : "medium",
       title: `Consumer use tax to review: $${(dueCents / 100).toFixed(2)}`,
-      detail: `${due._count._all} purchase-tax line${due._count._all === 1 ? "" : "s"} remain due.` +
+      detail:
+        `${due._count._all} purchase-tax line${due._count._all === 1 ? "" : "s"} remain due.` +
         (overdueCents > 0
           ? ` $${(overdueCents / 100).toFixed(2)} is linked to filing periods with past due dates as of ${businessDateKey(now)}.`
           : " Verify the filing deadline for each period."),
       href: "/desk/tax/use-tax-worksheets",
       since: now,
+    });
+  }
+  const rdfPending = await prisma.retailDeliveryFeeRecord.groupBy({
+    by: ["status"],
+    where: { status: { in: ["PENDING_DECISION", "PENDING_RATE"] } },
+    _count: { _all: true },
+    _min: { createdAt: true },
+  });
+  for (const row of rdfPending) {
+    result.push({
+      category: "RETAIL_DELIVERY_FEE",
+      severity: "high",
+      title: row._count._all + " delivery fee records need review",
+      detail:
+        row.status === "PENDING_DECISION"
+          ? "Check the Colorado delivery fee decision and verified location."
+          : "Check the first rent charge date and the fee rate for that date.",
+      href: "/desk/tax",
+      since: row._min.createdAt ?? now,
     });
   }
   return result;
