@@ -238,16 +238,32 @@ function aggregate(
   });
 }
 
+/**
+ * Authenticated owner/admin projection of the current (unfiled) tax return.
+ * Callers that record a return should use loadFilingPacketInTx while holding
+ * the period lock so the packet and filing evidence commit together.
+ */
 export async function loadFilingPacket(periodId: string, now = new Date()): Promise<FilingPacketLoad> {
   await requireRole("OWNER", "ADMIN");
-  const period = await prisma.taxFilingPeriod.findUnique({
+  return prisma.$transaction(tx => loadFilingPacketInTx(tx, periodId, now));
+}
+
+/** Internal transactional loader. For filed periods, rebuild from current evidence
+ * without mutating the immutable original packet. Never expose it as an API. */
+export async function loadFilingPacketInTx(
+  tx: Prisma.TransactionClient,
+  periodId: string,
+  now = new Date(),
+  options: { allowFiled?: boolean } = {},
+): Promise<FilingPacketLoad> {
+  const period = await tx.taxFilingPeriod.findUnique({
     where: { id: periodId }, include: { filingAccount: true },
   });
   if (!period) return { status: "BLOCKED", problems: ["Filing period was not found."] };
   if (period.filingAccount.basis === "UNDECIDED") {
     return { status: "BLOCKED", problems: ["Ask your CPA to choose cash or accrual before filing."] };
   }
-  if (period.status === "FILED") {
+  if (period.status === "FILED" && !options.allowFiled) {
     return { status: "BLOCKED", problems: ["The return has been filed; use its frozen packet or amendment review."] };
   }
   const endExclusive = addBusinessDays(period.periodEnd, 1);
@@ -259,14 +275,19 @@ export async function loadFilingPacket(periodId: string, now = new Date()): Prom
   const problems: string[] = [];
 
   // Never mutate a filed period or confuse use tax with sales tax.
-  if (account.kind === "USE_TAX_RETURN") {
-    await prisma.$transaction(async tx => {
-      await assignDueUseTaxRowsToPeriod(tx, periodId);
-    });
+  if (account.kind === "USE_TAX_RETURN" && period.status === "OPEN") {
+    await assignDueUseTaxRowsToPeriod(tx, periodId);
   }
   const useRows = account.kind === "USE_TAX_RETURN"
-    ? await prisma.purchaseUseTax.findMany({
-        where: { filingPeriodId: periodId, status: "DUE" },
+    ? await tx.purchaseUseTax.findMany({
+        where: period.status === "FILED" && options.allowFiled
+          ? {
+              status: { in: ["DUE", "FILED"] },
+              jurisdiction: { useTaxFilingAccountId: account.id },
+              purchasedOn: { gte: period.periodStart, lt: endExclusive },
+              OR: [{ filingPeriodId: periodId }, { filingPeriodId: null }],
+            }
+          : { filingPeriodId: periodId, status: "DUE" },
         include: { jurisdiction: true },
         orderBy: [{ purchasedOn: "asc" }, { id: "asc" }],
       })
@@ -286,7 +307,7 @@ export async function loadFilingPacket(periodId: string, now = new Date()): Prom
   const evidence: Array<{ tax: TaxEvidence; taxableCents: number; exemptCents: number; taxCents: number }> = [];
   if (account.kind === "SALES_RETURN") {
     if (basis === "ACCRUAL") {
-      const missingProviderDates = await prisma.invoiceTaxLine.count({
+      const missingProviderDates = await tx.invoiceTaxLine.count({
         where: {
           jurisdiction: { filingAccountId: account.id },
           invoice: {
@@ -318,7 +339,7 @@ export async function loadFilingPacket(periodId: string, now = new Date()): Prom
             receipt: { receivedOn: { gte: period.periodStart, lt: endExclusive } },
           } },
         } };
-    const lines = await prisma.invoiceTaxLine.findMany({
+    const lines = await tx.invoiceTaxLine.findMany({
       where: { jurisdiction: { filingAccountId: account.id }, ...where },
       include: {
         jurisdiction: true, rateVersion: true,
@@ -394,7 +415,7 @@ export async function loadFilingPacket(periodId: string, now = new Date()): Prom
     // A refund belongs to its OWN reporting period, which may differ from
     // the original invoice's issue/receipt month. Never block future returns
     // just because an old invoice was refunded.
-    const refunds = await prisma.refund.findMany({
+    const refunds = await tx.refund.findMany({
       where: {
         createdAt: { gte: period.periodStart, lt: endExclusive },
         invoice: {
