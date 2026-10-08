@@ -5,7 +5,7 @@ launch and beyond, written so an implementing model (for example Sol 5.6) can pi
 It does not replace the batch acceptance lists (`docs/PLAN.md`) or the designs (`docs/designs/BATCH-<X>.md`): it points
 to them and says **what comes next, what must be true before it starts, and what only Chris can do.**
 
-Last reconciled with the code: 2026-10-08 after #302. F-part-1 and G are complete; T-5b1 and T-5b2a are merged; T-5b2b #303 is in final exact-head gates. Batch S is approved after T; COM-L is approved after T/S and before V/F-part-2.
+Last reconciled with the code: 2026-10-08 after #303. F-part-1 and G are complete; T-5b1/T-5b2 are merged; T-5b3 #306 is active. Batch S is approved after T; COM-L is approved after T/S and before V/F-part-2.
 Keep this file current: when a step finishes, tick it, add the PR numbers, and move
 the "▶ Next" marker.
 
@@ -37,7 +37,7 @@ Legend: ✅ done · ▶ next · ⏳ waiting on Chris · ○ not started. "Design
 | 1 | ✅ Batches A, B, B2, C, R, D, E, E2 | approved, built | — | — | merged |
 | 2 | ✅ **F-part-1** — restore/media/capacity/runbooks | ✅ approved (`BATCH-F.md`) | — | — | #268, #269, #273 |
 | 3 | ✅ **G** — audit fixes, two-step login and session control | ✅ approved (`BATCH-G.md`) | — | — | #275, #276, #277 |
-| 4 | ▶ **T** — Colorado sales and use tax | ✅ approved (`BATCH-T.md`) | G merged | nothing to keep building; CPA answers still gate live billing | #279–#302 merged through T-5b2a; #303 final gate for T-5b2b |
+| 4 | ▶ **T** — Colorado sales and use tax | ✅ approved (`BATCH-T.md`) | G merged | nothing to keep building; CPA answers still gate live billing | #279–#303 merged through T-5b2; #306 active T-5b3 |
 | 5 | ○ **S** — system issues inbox, health page and AI check-up | ✅ approved (`BATCH-S.md`) | T merged and bounded PR cards exist | nothing | 2 estimated |
 | 5a | ○ **COM-L** — launch communications and telecom cost | **APPROVED 2026-10-08** (`BATCH-COM.md` + L1a/L1b/L2 cards) | T/S merged; applicable cards exist | no live setup to engineer; IN-03/09/51/52/53 before activation | 16 units; split large cards to budget |
 | 6 | ○ **V** — "Evergreen Signature" public-site redesign + desk/portal polish | ✅ approved (`BATCH-V.md`, concept artifact) | S and COM-L merged | accept the before/after screenshots before each public-site PR merges | 3–4 |
@@ -171,8 +171,10 @@ tests most likely to break, so the agent updates them in the same PR instead of 
 | T-5b2a | Amendment C safe official-source transport — `docs/pr-cards/T-5B2A-SAFE-OFFICIAL-SOURCE-FETCH.md` | SSRF / external network boundary | DNS/public-address/pinned-HTTPS adversarial tests, exact-head build |
 | T-5b2b | Amendment C official-page watch lifecycle — `docs/pr-cards/T-5B2B-OFFICIAL-SOURCE-WATCH-LIFECYCLE.md` (parent acceptance: `T-5B2-OFFICIAL-SOURCE-WATCH.md`) | external-source monitoring / durable notifications | watch lifecycle, cron auth/isolation, messaging/Today tests |
 | T-5b3 | Amendment C guarded official-rate observation/auto-apply + D-T9 extension — `docs/pr-cards/T-5B3-GUARDED-OFFICIAL-RATE-AUTO-APPLY.md` | tax-rate money correctness / provider synchronization | real-Postgres guardrail tests, Today actions, rate-change durable-provider tests |
-| T-6a | WU-T7 filing accounts + Amendment A WU-TA1: filing calendar, due dates and holidays, Today tasks (11.11 exception rules)/email prompts, owner alerts, calendar file (`BATCH-T.md` section 11) | schema + automation | migration check, automation run tests, cron route auth tests, messaging delivery tests |
-| T-6b | WU-T7 worksheet → Amendment A WU-TA2 SUTS entry packet, use tax (+ appliance form field, purchase-order hook), mark filed, amended returns (11.12) | money | purchasing/receipt tests, appliance form tests |
+| T-6a1 | Filing workspace schema + Colorado filing calendar — `docs/pr-cards/T-6A1-FILING-WORKSPACE-SCHEMA-CALENDAR.md` | schema + filing dates | migration/populated-upgrade, backup/schema-health, calendar/date tests |
+| T-6a2 | Filing periods, reminders, owner alerts, Today items + ICS — `docs/pr-cards/T-6A2-FILING-REMINDERS-CALENDAR.md` | automation + owner notifications | reminder integration, cron isolation/auth, exceptions, calendar-file tests |
+| T-6b1 | SUTS filing packet + use-tax recording/period assignment — `docs/pr-cards/T-6B1-SUTS-FILING-PACKET.md` | filing money correctness | packet/integration/use-tax tests |
+| T-6b2 | Filing finalization + amended-return evidence — `docs/pr-cards/T-6B2-FILING-FINALIZATION-AMENDMENTS.md` | filing finalization + amendment integrity | filing/amendment/exception/reminder tests |
 | T-6d | Amendment D WU-TD1: appliance intake "Sales tax when you bought it", per-appliance rental exemption, automatic annual/monthly use-tax frequency, DR 0252 filled PDF or worksheet (`BATCH-T.md` section 15) | money + screens | inventory/intake tests, engine tests, readiness tests, purchase-order receiving tests |
 | T-6c | Amendment B WU-TB1: Colorado retail delivery fee — automatic status, delivery-completion records, customer line or pay-myself, RDF return packet (`BATCH-T.md` section 12) | money | job completion tests, invoice/statement tests, Stripe invoice-item provider-operation tests, readiness tests |
 | T-7 | WU-T8 screens organized by `BATCH-T.md` section 14 (screen map: one Sales tax nav entry, six tabs, return page, Today routing, setup checklist) + WU-T9 docs | screens | route inventory (every new page), axe light/dark, `e2e/sales-tax.spec.ts` shard assignment |
@@ -226,7 +228,7 @@ tests most likely to break, so the agent updates them in the same PR instead of 
 | O-3 | WU-O3 approvals | money + permissions | refund/credit/write-off integration tests |
 | O-4 | WU-O4 scheduled prices + WU-O5 goals and alerts + docs | settings/automation | pricing tests, Today tests |
 
-**Being re-sized (2026-10-07):** T-5b is now split into bounded T-5b1/T-5b2/T-5b3 cards. T-6a, T-6b, T-6c, T-6d, T-7, S-1, M-1 and M-2 remain over the
+**Being re-sized (updated 2026-10-08):** T-5b is split into bounded T-5b1/T-5b2/T-5b3 cards; T-6a/T-6b are now split into executable T-6a1/T-6a2/T-6b1/T-6b2 cards. T-6c, T-6d, T-7, S-1, M-1 and M-2 remain over the
 PR budget and must be split as their cards are written in `docs/pr-cards/`. The
 designs for those PRs carry an "Implementation gate": no card, no start. Earlier T PRs (T-3, T-4, T-5) are unaffected.
 
