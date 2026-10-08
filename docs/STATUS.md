@@ -1,6 +1,6 @@
 # STATUS — current work, blockers and next action
 
-Updated October 8, 2026. Audited code baseline: `b2a06c2` (#310). Documentation refresh branch: `ai/codex/documentation-reset-20261008`; published as PR #311; review fixes and owner content/workspace architecture update in progress. No runtime changes in this refresh.
+Updated October 8, 2026. Audited code baseline: `b2a06c2` (#310). Documentation refresh branch: `ai/codex/documentation-reset-20261008`; published as PR #311; review fixes and owner content/workspace architecture published; final exact-head gates pending. No runtime changes in this refresh.
 
 ## Built
 
@@ -32,7 +32,7 @@ History and full prior acceptance: [retired working snapshot](archive/reset-2026
 ## Recovered interruption — October 8
 
 Local staged generation/publication scripts and committed changes were recovered.
-Published predecessor head: `60f3a9c` in PR #311. Two Codex findings are being fixed:
+Published predecessor head: `60f3a9c` in PR #311. Two Codex findings are fixed:
 restore active cross-batch acceptance rules and pin independent required unit IDs.
 User-added content-control/owner-workspace design is folded into V/O, not a new
 handoff file. Runtime remains unimplemented; next runtime item remains T-6D1.

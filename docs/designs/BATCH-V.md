@@ -202,12 +202,16 @@ is editor metadata, not the layout definition. Stable keys name meaning, not
 positions such as `hero.leftColumn`. Keep existing keys via compatibility mapping.
 
 Define new discriminated values in `site-content/types.ts`:
-`SiteValue = TextValue | LinkValue | ImageValue | ItemsValue | HiddenValue`.
+`SiteValue = TextValue | LinkValue | ImageValue | ItemsValue | PromotionValue | HiddenValue`.
 Text has `{kind:'text',text:string}`; a link has
 `{kind:'link',label:string,target:SiteLinkTarget}`; image has
 `{kind:'image',assetId:string,alt:string,decorative:boolean,focalX:number,focalY:number}`;
 items have `{kind:'items',items:{id:string,values:Record<string,SiteValue>}[]}`
-with one allowed nesting level; hidden has `{kind:'hidden'}` only for explicitly
+with one allowed nesting level; promotion has
+`{kind:'promotion',title:string,body:string,image?:ImageValue,cta?:LinkValue,
+enabled:boolean,startsAtUtc?:string,endsAtUtc?:string,offerVersionId?:string}`.
+Validate ISO UTC instants, end after start, and offer existence/readiness before
+publication; owner time entry/preview uses America/Denver. Hidden has `{kind:'hidden'}` only for explicitly
 optional content. Coordinates are integers 0..100. Lists edit content within
 existing slots (FAQ, benefit descriptions, gallery/ad slots); order within such a
 list is content, but adding/reordering page sections is a redesign.

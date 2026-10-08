@@ -84,4 +84,4 @@ for name in changed:
             errors.append(f'{name}: broken relative link {target}')
 if errors:
     raise SystemExit('\n'.join(errors))
-print(f'PASS: {len(CARDS)} unique units; acyclic prerequisites; cards, evidence, enhancement ownership and changed active links verified.')
+print(f'PASS: {len(CARDS)} card groups / {len(actual_units)} pinned acceptance units; acyclic prerequisites; cards, evidence, enhancement ownership and changed active links verified.')
