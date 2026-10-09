@@ -1,7 +1,7 @@
 # Design — Batch W Amendment B: the connected business
 
-Status: **DRAFT — for Chris's approval (IN-69)**, except **W-0C (section 6.1), a confirmed money defect that may start
-now**. Implementing models: do not start any other card from this file until IN-69 says approved. Written 2026-10-09 against `main` 53c1e65 after a read-only audit of intake, tax, the desk and the
+Status: **APPROVED** (Chris, 2026-10-09: "Yes I approve of the plan" — IN-69; IN-70 answered with the set/out-of-service
+rules in D-WB8). W-0C first; then the order in section 8. Written 2026-10-09 against `main` 53c1e65 after a read-only audit of intake, tax, the desk and the
 portal (findings in section 1, with code references).
 
 Chris, 2026-10-09: *"The whole thing should have a system that flows for anything that should be interconnected … so
@@ -142,10 +142,7 @@ the CPA, IN-71), and the app never deletes a receipt that a filed return relies 
 - On a rental agreement a line is either **one appliance** (that type's price) or **a package** (the set price) with
   one appliance assigned per part (a washer and a dryer). The two machines in a set can come from anywhere in the
   fleet; nothing ties a particular washer to a particular dryer.
-- **If one machine of a set comes back early** (or breaks and isn't replaced), the line uses the existing
-  "item taken off" amendment and the remaining machine is priced by an **owner setting**: "single-machine price" or
-  "keep the set price until the term ends" (starting value: single-machine price; IN-70). The customer sees the change
-  before it applies, as today for removed items.
+- **If one machine of a set comes back early or is taken away**, the rules in **D-WB8** apply (Chris, IN-70).
 - Website pricing shows the package next to the single machines ("Washer $35 · Dryer $35 · Set $60 — save $10").
   The quote form and leads ask for "Washer", "Dryer" or "Set". Prepaid-term discounts treat a package line as a set
   (`prepay-discount.ts` already keys on two or more appliances on a line).
@@ -154,6 +151,38 @@ the CPA, IN-71), and the app never deletes a receipt that a filed return relies 
   "Split WDS-0003 into a washer and a dryer" with a guided screen (two rows with their own model/serial; history and
   any rental assignment carried to the right machine). Leads and quotes that asked for a set point at the package.
   Signed agreements keep their signed wording; new ones use the package.
+
+### D-WB8 — Machines that leave a rental early, swaps, and out-of-service credits (Chris, 2026-10-09, IN-70)
+
+Chris: *"if one part of a set is returned early, then they will be charged at the standard rate for one item, unless
+there is an exchange happening. If I brought one back but I don't have a replacement ready, then they should be
+prorated on the next month for any time that they did not have the item."* Three situations, each a recorded choice
+on the visit that takes the machine (never guessed):
+
+1. **Customer keeps the rest, this machine is done** (customer returns one machine of a set, or the owner decides not
+   to replace one): the rental line is amended with the existing "item taken off" amendment. From the day after the
+   pickup, the machine that stays is billed at **its normal single-machine price** (its appliance type's current price,
+   or the price on the agreement's price list if it has one). For the rest of the current billing period the customer
+   is credited on the next bill: (set share − single price share) per day, using the existing per-day setting (monthly
+   price ÷ 30 by default, or ÷ days in the month) — so they pay exactly the single price from that day. The
+   subscription changes from the next period (existing provider-operation path). Prepaid-in-full rentals: the owner
+   decides, as with early endings (existing rule).
+2. **Exchange (swap) — replacement delivered on the same visit:** nothing changes on the bill. This is the existing
+   swap flow.
+3. **Taken away for service, no replacement yet:** the visit can now record "Taken for repair — no replacement
+   yet" (today a swap refuses to take the old unit without delivering a new one). The line keeps its price, an
+   **out-of-service period** starts on that machine's line, and To do shows "Return or replace <customer>'s dryer"
+   (high after 3 days, owner setting). When a repaired or replacement machine of the same type is delivered, the
+   period ends. On the **next bill** the customer gets a line `Credit – dryer out of service – N days`: the machine's
+   share of the line price (a set's price split evenly per machine, as for late delivery) per day, using the same
+   per-day setting, rounded once, never more than was billed for it. If the owner later decides not to replace it,
+   situation 1 applies from that day.
+   The same out-of-service credit applies to **any** rental line, not just sets (a customer whose only washer is taken
+   for repair is credited for the days without it).
+
+The customer always sees it in the portal and on the bill, in words and dollars: "Your dryer has been out for repair
+since Oct 3. You'll get a credit of $11.67 on your next bill." Pickup day counts as a day they did not have it,
+consistent with "the pickup day is not billed"; delivery day of the replacement counts as a day they had it.
 
 ### D-WB4 — The business is one set of connected flows
 
@@ -235,8 +264,11 @@ the place to plug it in.
   `PurchaseUseTax` stays one row per appliance or part (no new source type).
 - **`RentalPackage`** (W-16A): `id`, `name`, `slug`, `monthlyPriceCents`, `showOnWebsite`, `sortOrder`, `isActive`,
   `photoUrl?`; **`RentalPackageComponent`**: `packageId`, `applianceTypeId`, `quantity`. `RentalLine.packageId?` (FK);
-  `EstimateLineItem.packageId?`; `LeadApplianceRequest.packageId?`. Business setting
-  `packagePartialReturnPricing` (`SINGLE_PRICE | KEEP_SET_PRICE`, start `SINGLE_PRICE`).
+  `EstimateLineItem.packageId?`; `LeadApplianceRequest.packageId?`. (Partial returns follow D-WB8 — single-machine
+  price, decided by Chris; no setting needed.)
+- **`OutOfServicePeriod`** (W-21): `rentalLineId`, `applianceId`, `startedOn`, `endedOn?`, `startJobId`, `endJobId?`,
+  `creditedOnInvoiceId?`; business setting `outOfServiceEscalationDays` (start 3). Credits reuse the late-delivery
+  per-day setting and invoice-line machinery.
 - **`ApplianceStatus`** gains `CLEANING` (W-17); lifecycle rules in `BUSINESS-RULES.md` updated in that PR.
 - Backup manifest, schema-health list and `DATABASE.md` updated in each PR (PLAYBOOK 4c).
 
@@ -264,6 +296,7 @@ the place to plug it in.
 | **W-17** | Connected records: Related panel + History on appliance, customer, agreement, purchase, seller, visit, invoice; search by serial/model/seller; `CLEANING` status and inspection → cleaning/repair (E3) | screens | 1 (enum) |
 | **W-19** | Flow gaps not covered by W-4…W-6: S2, S4, S5, S7, M1 (immediate), M2 (pickup requests), E1 (pickup after any ending), progress-card buttons everywhere | operations | none |
 | **W-20** | Portal follows the flows (D-WB6): next-step messages, status timelines, next bill, "Pay now" on overdue invoices via the existing hosted payment page, packages shown as sets | money/screens | none |
+| **W-21** | Machines leaving early (D-WB8): single-price repricing with partial-period credit, "taken for repair — no replacement yet" visit result, out-of-service periods and credits on any line, portal/bill wording, To do to return or replace | money | 1 |
 
 ### 6.1 W-0C — failed automatic charges must reach To do (confirmed 2026-10-09; runs next, before COM-L2)
 
@@ -299,7 +332,9 @@ Equipment and "Records" under Taxes.
   the right proof, returns with confirmation numbers; spreadsheet columns stable; customers and staff without
   permission get 404.
 - Packages: set price + saving shown; line with a washer and a dryer from different purchases; one returns early →
-  setting decides the remaining price; old "set" appliance split keeps its history; website and quote show packages.
+  single price from the day after pickup and the partial-period credit is exact; swap changes nothing; taken for repair
+  without replacement → credit for exactly the days without it (pickup day counted, replacement-delivery day not),
+  never more than billed; same on a single-machine line; old "set" appliance split keeps its history; website and quote show packages.
 - Flows: each ★ row has a test that the trigger creates exactly one To do (idempotent on re-run) with a working
   button (route inventory check), and that nothing is sent or charged.
 - Kit: CI check catches "cents" in a label and a raw `/100`; `<InfoTip>` passes axe and keyboard tests; `<MoneyInput>`
@@ -308,7 +343,7 @@ Equipment and "Records" under Taxes.
 ## 8. Order (replaces the W order in `MASTER-ROADMAP.md`)
 
 **W-0C next** (after the PR in flight) → COM-L … COM-L15 → **W-1 → W-18 → W-14 → W-2 → W-15 → W-3 → W-4 → W-5 →
-W-6 → W-7 → W-8 → W-9 → W-10 → W-16A → W-16B → W-19 → W-17 → W-20** → V → F-part-2. W-11/W-12/W-13 run when their
+W-6 → W-7 → W-8 → W-9 → W-10 → W-16A → W-16B → W-21 → W-19 → W-17 → W-20** → V → F-part-2. W-11/W-12/W-13 run when their
 outside gates clear. (`docs/pr-cards/work-index.json` holds the same chain.)
 
 ## 9. Batch V amendment (screens)
@@ -346,14 +381,13 @@ F-part-2 proves the whole business works as connected flows, through the real sc
   and tax proof); selling a "set" means two machines.
 - **COM-L / COM-N:** customer messages at flow turning points (S6, D1, E1, M2) reuse these triggers; send gates stay.
 - **BP (commercial):** commercial bundles build on rental packages.
-- **O (settings history):** the new settings (partial-return pricing, unsigned follow-up days, retention years)
+- **O (settings history):** the new settings (out-of-service escalation days, unsigned follow-up days, retention years)
   join settings history and undo.
 
 ## 12. Owner decisions
 
 - **IN-69** — approve this amendment (sections 2–11).
-- **IN-70** — when one machine of a set comes back early, the other is priced at the single-machine price (recommended)
-  or keeps the set price until the term ends.
+- **IN-70** — answered 2026-10-09: single-machine price unless it is an exchange; out-of-service days credited (D-WB8).
 - **IN-71** — how long to keep purchase and tax records (starting value 7 years after the appliance leaves the fleet;
   ask the CPA).
 

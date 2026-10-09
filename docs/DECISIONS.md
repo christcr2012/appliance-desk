@@ -783,3 +783,10 @@ three cents inputs, no help component) and a confirmed defect: failed automatic 
 not gated). Designed: Purchase records, tax proof + audit pack, RentalPackage, connected Related/History pages, flow
 rows D-WB4, portal flows, a plain-language kit, plus V and F-part-2 amendments. Restated: Colorado's GIS service only
 looks up rates; it cannot file; the owner submits.
+
+## 2026-10-09 — Amendment B approved; sets and out-of-service credits (IN-69, IN-70)
+
+Chris approved the connected-business plan. Set rule: a machine returned early leaves the other at the single-machine
+price (from the day after pickup, partial period credited) unless it is an exchange; a machine taken away without a
+replacement is credited per day on the next bill until replaced, on any rental line (D-WB8, W-21). Credits reuse the
+late-delivery per-day setting; the old "partial-return pricing" setting is dropped (Chris decided).

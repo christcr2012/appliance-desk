@@ -4,12 +4,12 @@ Updated October 9, 2026 (COM-L2 PR #346 merged as 12bcd837; latest deployment-co
 
 ## Next
 
-**2026-10-09 — Batch W Amendment B (connected business) drafted, waiting on IN-69.** One part does not wait: **W-0C**,
+**2026-10-09 — Batch W Amendment B (connected business) APPROVED (IN-69; IN-70 → D-WB8 set/out-of-service rules).** First: **W-0C**,
 a confirmed defect — a failed automatic card charge never reaches To do (invoice stays OPEN, or is DELINQUENT with no
 due date the Today rule needs). Live payments are off, so no customer is affected. **W-0C is the next card after the
 PR currently in flight** (design `docs/designs/BATCH-W-AMENDMENT-B.md` 6.1). The rest (purchases with serials, tax
-proof and audit pack, washer + dryer sets as packages, connected pages, portal flows, dollars-only and ⓘ) starts after
-IN-69, in the order in that file's section 8.
+proof and audit pack, washer + dryer sets as packages, early-return/out-of-service credits, connected pages, portal
+flows, dollars-only and ⓘ) follows in the order in that file's section 8.
 
 **2026-10-09 — COM-L4A merged (#353), following COM-L3 #352:** strict owner-controlled default-off SMS policy, evidence-based consent, canonical STOP suppression, private encrypted and idempotently prepared message intents. **Next: COM-L4B**, claimed delivery and last-minute sender/consent/readiness verification, then L5 inbound consent/reconciliation. No live sending, phone activation, billing or provider spending.
 
