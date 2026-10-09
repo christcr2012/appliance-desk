@@ -24,6 +24,7 @@
     "test:e2e": "playwright test",
     "hooks:install": "bash scripts/setup-checkout.sh",
     "setup": "bash scripts/setup-checkout.sh",
+    "sandbox:browser": "bash scripts/sandbox-browser-setup.sh",
     "test:db": "node scripts/preflight.mjs --db",
     "test:browser": "node scripts/preflight.mjs --browser",
     "check:quick": "node scripts/preflight.mjs --quick"

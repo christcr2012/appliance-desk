@@ -21,7 +21,7 @@ try {
     process.env.APPLIANCE_DESK_TEST_CHROMIUM = resolve(process.env.LOCAL_TEST_CHROMIUM);
   } else {
     const { chromium } = await import('@playwright/test');
-    if (!existsSync(chromium.executablePath())) throw new Error('No matching installed Chromium. Set LOCAL_TEST_CHROMIUM to the preinstalled sandbox binary; never install a browser in the sandbox.');
+    if (!existsSync(chromium.executablePath())) throw new Error('No matching installed Chromium. In the Vercel Sandbox run `npm run sandbox:browser` once (installs Chromium and its libraries into the saved sandbox). Elsewhere set LOCAL_TEST_CHROMIUM to a preinstalled browser.');
   }
   if (process.env.LOCAL_TEST_FONT) {
     const font = resolve(process.env.LOCAL_TEST_FONT);
