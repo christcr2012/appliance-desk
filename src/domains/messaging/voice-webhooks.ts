@@ -1,10 +1,11 @@
 import twilio from "twilio";
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
 import { decryptCommunicationContent, encryptCommunicationContent } from "./communications-content";
 import { decideVoiceRoute, DEFAULT_VOICE_UNAVAILABLE } from "./voice-routing";
 import type { VerifiedVoice } from "./voice-webhook-verify";
 
-type Tx = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
+type Tx = Prisma.TransactionClient;
 const terminal = new Set(["COMPLETED", "BUSY", "NO_ANSWER", "CANCELED", "FAILED"]);
 const sid = /^CA[0-9a-fA-F]{32}$/;
 
@@ -128,6 +129,25 @@ export async function incomingVoice(v: VerifiedVoice): Promise<string> {
       role: "INBOUND", status: route.kind === "DIAL" ? "RINGING" : "COMPLETED",
       endedAt: route.kind === "DIAL" ? null : new Date(),
     } });
+    // Twilio may deliver a child status before its inbound request; consume
+    // the durable pending receipt now rather than silently dropping it.
+    const pending = await tx.providerEvent.findMany({
+      where: { provider: "twilio", telecomAccountId: v.accountId,
+        type: "voice.status", disposition: "PENDING_MATCH",
+        OR: [
+          { summary: { path: ["parentSid"], equals: v.callSid } },
+          { summary: { path: ["callSid"], equals: v.callSid } },
+        ],
+      }, orderBy: [{ receivedAt: "asc" }, { id: "asc" }], take: 50,
+      select: { eventId: true, summary: true },
+    });
+    for (const item of pending) {
+      const parsed = item.summary as StatusSummary | null;
+      if (parsed && typeof parsed.callSid === "string" &&
+          typeof parsed.state === "string") {
+        await applyStatus(tx, v, item.eventId, parsed);
+      }
+    }
     return event.xml;
   });
 }
@@ -141,17 +161,6 @@ async function getSession(tx: Tx, v: VerifiedVoice, rootSid: string) {
 }
 
 /** Child whisper is never an answered call until the staff member presses 1. */
-export async function acceptVoice(v: VerifiedVoice): Promise<string> {
-  const parentSid = v.form.get("ParentCallSid");
-  if (!parentSid || !sid.test(parentSid)) throw new Error("Voice child has no parent.");
-  const deciding = new URLSearchParams(v.path).size > 0; // overridden by validated form below
-  void deciding;
-  const step = v.form.get("Digits") !== null || v.form.get("_step") === "decision"
-    ? "decision" : "prompt";
-  // The signed request URL stage, not the contents of the form, selects the step.
-  return acceptVoiceStep(v, step);
-}
-
 export async function acceptVoiceStep(v: VerifiedVoice, step: "prompt" | "decision") {
   const parentSid = v.form.get("ParentCallSid");
   if (!parentSid || !sid.test(parentSid)) throw new Error("Uncorrelated call.");
@@ -211,57 +220,80 @@ function countOrNull(value: string | null, max: number) {
   return num;
 }
 
+type StatusSummary = {
+  callSid: string;
+  parentSid: string | null;
+  state: string;
+  seq: number | null;
+  seconds: number | null;
+};
+const rank: Record<string, number> = { QUEUED: 1, RINGING: 2, IN_PROGRESS: 3 };
+
+async function applyStatus(
+  tx: Tx, v: VerifiedVoice, eventId: string, summary: StatusSummary,
+): Promise<boolean> {
+  const state = summary.state as "QUEUED" | "RINGING" | "IN_PROGRESS" |
+    "COMPLETED" | "BUSY" | "NO_ANSWER" | "CANCELED" | "FAILED";
+  if (!Object.values(statuses).includes(state)) return false;
+  const session = await getSession(tx, v, summary.parentSid ?? summary.callSid);
+  if (!session) return false;
+  const leg = await tx.callLeg.findUnique({
+    where: { accountId_providerCallId: {
+      accountId: v.accountId, providerCallId: summary.callSid,
+    } },
+  });
+  if (!leg) {
+    await tx.callLeg.create({ data: {
+      accountId: v.accountId, callSessionId: session.id,
+      providerCallId: summary.callSid, providerParentCallId: summary.parentSid,
+      role: summary.parentSid ? "FORWARD" : "INBOUND",
+      status: state, sequenceNumber: summary.seq,
+      durationSeconds: summary.seconds,
+      endedAt: terminal.has(state) ? new Date() : null,
+    } });
+  } else if (leg.callSessionId !== session.id) {
+    throw new Error("Voice leg belongs to a different call.");
+  } else if (!(summary.seq !== null && leg.sequenceNumber !== null &&
+        summary.seq <= leg.sequenceNumber) &&
+      !terminal.has(leg.status) &&
+      (terminal.has(state) ||
+        (rank[state] ?? 0) >= (rank[leg.status] ?? 0))) {
+    await tx.callLeg.update({ where: { id: leg.id }, data: {
+      status: state, sequenceNumber: summary.seq ?? leg.sequenceNumber,
+      durationSeconds: summary.seconds ?? leg.durationSeconds,
+      endedAt: terminal.has(state) ? new Date() : null,
+    } });
+  }
+  if (!summary.parentSid && terminal.has(state) && session.state !== "ENDED") {
+    await tx.callSession.update({ where: { id: session.id }, data: {
+      state: "ENDED", endedAt: new Date(),
+      outcome: session.outcome ?? "MISSED", version: { increment: 1 },
+    } });
+  }
+  await tx.providerEvent.update({ where: {
+    provider_eventId: { provider: "twilio", eventId },
+  }, data: { disposition: "APPLIED", processedAt: new Date() } });
+  return true;
+}
+
+/** Signed Twilio callbacks may arrive out of order; receipts are durable. */
 export async function voiceStatus(v: VerifiedVoice): Promise<void> {
   const state = statuses[v.form.get("CallStatus") ?? ""];
   if (!state) throw new Error("Unsupported voice call status.");
   const parentSid = v.form.get("ParentCallSid");
-  const root = parentSid ?? v.callSid;
   const seq = countOrNull(v.form.get("SequenceNumber"), 2147483647);
   const seconds = countOrNull(v.form.get("CallDuration"), 31536000);
+  const summary: StatusSummary = { callSid: v.callSid, parentSid, state, seq, seconds };
   const id = key(v, "status", `${v.callSid}:${seq ?? state}`);
   await prisma.$transaction(async (tx) => {
     await lockAccount(tx, v.accountId);
     const stored = await tx.providerEvent.createMany({ data: [{
       provider: "twilio", eventId: id, type: "voice.status",
       telecomAccountId: v.accountId, environment: "PRODUCTION",
-      disposition: "PENDING_MATCH", summary: {
-        callSid: v.callSid, parentSid, state, seq, seconds,
-      },
+      disposition: "PENDING_MATCH", summary,
     }], skipDuplicates: true });
     if (stored.count === 0) return;
-    const session = await getSession(tx, v, root);
-    if (!session) return; // Durable pending receipt; reconciliation will retry.
-    const leg = await tx.callLeg.findUnique({
-      where: { accountId_providerCallId: {
-        accountId: v.accountId, providerCallId: v.callSid,
-      } },
-    });
-    if (!leg) {
-      await tx.callLeg.create({ data: {
-        accountId: v.accountId, callSessionId: session.id,
-        providerCallId: v.callSid, providerParentCallId: parentSid,
-        role: parentSid ? "FORWARD" : "INBOUND", status: state,
-        sequenceNumber: seq, durationSeconds: seconds,
-        endedAt: terminal.has(state) ? new Date() : null,
-      } });
-    } else if (leg.callSessionId === session.id &&
-      !(seq !== null && leg.sequenceNumber !== null && seq <= leg.sequenceNumber) &&
-      !terminal.has(leg.status)) {
-      await tx.callLeg.update({ where: { id: leg.id }, data: {
-        status: state, sequenceNumber: seq ?? leg.sequenceNumber,
-        durationSeconds: seconds ?? leg.durationSeconds,
-        endedAt: terminal.has(state) ? new Date() : null,
-      } });
-    }
-    if (!parentSid && terminal.has(state) && session.state !== "ENDED") {
-      await tx.callSession.update({ where: { id: session.id }, data: {
-        state: "ENDED", endedAt: new Date(),
-        outcome: session.outcome ?? "MISSED", version: { increment: 1 },
-      } });
-    }
-    await tx.providerEvent.update({ where: {
-      provider_eventId: { provider: "twilio", eventId: id },
-    }, data: { disposition: "APPLIED", processedAt: new Date() } });
+    await applyStatus(tx, v, id, summary);
   });
 }
 
@@ -277,8 +309,18 @@ export async function dialResult(v: VerifiedVoice): Promise<string> {
     const session = await getSession(tx, v, v.callSid);
     if (!session || session.routingPolicyVersion < 1) throw new Error("Unknown forwarded call.");
     const eventId = key(v, "dial-result", v.callSid);
+    const existingLeg = await tx.callLeg.findUnique({
+      where: { accountId_providerCallId: {
+        accountId: v.accountId, providerCallId: childSid,
+      } }, select: { answeredByStaffAt: true, callSessionId: true },
+    });
+    if (existingLeg && existingLeg.callSessionId !== session.id) {
+      throw new Error("Cross-call leg collision.");
+    }
+    const connected = bridged && dialStatus === "completed" &&
+      existingLeg?.answeredByStaffAt != null;
     const response = await storeTwiML(tx, v, eventId, "dial-result",
-      speech(DEFAULT_VOICE_UNAVAILABLE));
+      connected ? hangup() : speech(DEFAULT_VOICE_UNAVAILABLE));
     if (!response.fresh) return response.xml;
     const leg = await tx.callLeg.upsert({ where: {
       accountId_providerCallId: { accountId: v.accountId, providerCallId: childSid },
