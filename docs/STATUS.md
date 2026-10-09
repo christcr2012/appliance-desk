@@ -18,9 +18,9 @@ complete:** S-1A #330, S-1B #331, S-1C #332, S-2 #334 (plus the test-fixture dri
   (`workspace-overview.ts`, `sales-tax/page.tsx`, its test, T-7D card, contract log) left after #328 merged. Compare with
   `main`; keep only what main lacks, as part of W-3 (taxes in one place) — or discard if superseded.
   The main sandbox checkout is on that recovery branch: `git checkout main && git pull` before new work.
-- **Carried test fix:** `tests/system-issue-sweep-integration.test.ts` › "health sweep creates no duplicate …" compares
-  global table counts while other test files run in parallel, so it can fail by chance (#337 CI). Make it race-free
-  (assert the sweep's own writes, not global counts) in the next PR that touches Batch S code, or in W-0B.
+- **Test race fixed in #337:** `tests/system-issue-sweep-integration.test.ts` no longer compares global table counts; it
+  records the sweep's own writes (only `systemIssue` allowed). If a similar global-count assertion fails by chance
+  elsewhere, fix it the same way.
 
 **Order after W-0:** COM-L2 … COM-L15 → W-1 … W-8 → V → F-part-2. Keep owner/legal/CPA and live payment
 gates. [MASTER-ROADMAP](MASTER-ROADMAP.md) is the single handoff; [PLAN](PLAN.md) owns acceptance; implementing sessions
