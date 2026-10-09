@@ -9,6 +9,8 @@ describe("automation rule registry", () => {
       "billing-reconcile:job-handoffs",
       "billing-reconcile:invoice-artifacts",
       "billing-reconcile:message-deliveries",
+      "billing-reconcile:retail-delivery-fees",
+      "billing-reconcile:retail-delivery-fee-charges",
     ]);
     expect(keys).not.toContain("billing-reconcile:subscription-ends");
   });
