@@ -476,3 +476,14 @@ activated. COM-L6A inherits the consent rules and owns the richer messaging UI.
   `src/domains/packages/split.ts` (existing row keeps history; new machines join the same rental line and custody stay;
   cost/seller tax split evenly). `OLD_SET_TYPE_SLUG` lives in `pricing.ts`.
 - W-21 inherits: a line's machines are its active assignments; a set line is recognisable by `packageId`.
+
+
+### 2026-10-09 — COM-L6A actual encoding, frozen template and reminder cutover
+The shared SMS renderer handles GSM-7 extension escapes and UCS-2 surrogate
+pairs, variable allowlisting and segment boundaries. Approved revisions compile
+before immutable encrypted preparation and the exact decrypted content is
+rechecked at the final dispatch gate. Read-only owner previews are under
+Notifications. Existing day-of cron no longer invokes the legacy direct SMS
+adapter; it returns held-for-review without a false sent timestamp.
+COM-L6B must implement authenticated operator intent and job/thread approval
+before sending can resume. No migration or live activation.

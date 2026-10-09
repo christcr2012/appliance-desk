@@ -659,3 +659,13 @@ If Today says **Use tax owed with nowhere to file it**, open **Tax → Setup →
 Filing accounts** and link the area to a use-tax account. An open return for
 the applicable period can then include the unpaid tax. This is preparation,
 not government filing or a payment authorization.
+
+
+### SMS templates and day-of reminders (COM-L6A)
+Open Owner Desk → Settings → Notifications for current SMS template and
+standard visit reminder previews. It shows examples, conservative variable
+lengths and segment counts. Carrier pricing remains unknown. These previews
+do not send messages. The old automated day-of reminder sender is safely
+held until COM-L6B supports authenticated owner review, verified customer
+contact, specific job context and sender-scoped consent. No job is marked
+texted until a real message is successfully accepted by a provider.

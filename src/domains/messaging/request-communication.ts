@@ -4,12 +4,14 @@ import { assertActiveTeamActor } from "@/lib/team-actor";
 import { lockCanonicalSmsAddress } from "./sms-address-lock";
 import { evaluateSmsEligibility, type SmsEligibility } from "./communications-policy";
 import { encryptCommunicationContent, hashCommunicationContent } from "./communications-content";
+import { renderSmsTemplate, smsPreview, type VariableRules } from "./sms-template";
 
 export type RequestCommunicationInput = {
   threadId: string;
   operationKey: string;
   expectedThreadVersion: number;
   templateRevisionId?: string;
+  variables?: Record<string, string>;
   body?: string;
 };
 
@@ -25,7 +27,10 @@ function isValidInput(input: RequestCommunicationInput): boolean {
     /^[a-zA-Z0-9:_-]{8,120}$/.test(input.operationKey) &&
     Number.isSafeInteger(input.expectedThreadVersion) &&
     input.expectedThreadVersion > 0 &&
-    (Boolean(input.templateRevisionId) !== Boolean(input.body));
+    (Boolean(input.templateRevisionId) !== Boolean(input.body)) &&
+    (!input.variables || (Boolean(input.templateRevisionId) &&
+      Object.keys(input.variables).length <= 25 &&
+      Object.values(input.variables).every(v => typeof v === "string")));
 }
 
 type PreparedText = { text: string; purpose: "TRANSACTIONAL" | "MARKETING" | "CONVERSATIONAL";
@@ -38,10 +43,16 @@ async function preparedText(tx: Prisma.TransactionClient, input: RequestCommunic
       where: { id: input.templateRevisionId },
     });
     if (!template || !template.isCurrent || !template.approvedAt ||
-      !template.approvedByUserId || template.channel !== "SMS" ||
-      template.body.includes("{{")) return null; // Variables require the L6A renderer.
-    return { text: template.body, purpose: template.purpose,
-      revisionId: template.id, templateKey: template.key };
+      !template.approvedByUserId || template.channel !== "SMS") return null;
+    try {
+      const raw = template.variables;
+      if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+      const rules = raw as VariableRules;
+      const text = renderSmsTemplate(template.body, rules, input.variables ?? {});
+      if (!text.trim() || text.length > 1600) return null;
+      return { text, purpose: template.purpose,
+        revisionId: template.id, templateKey: template.key };
+    } catch { return null; }
   }
   const body = input.body?.trim();
   if (!body || body.length > 1000) return null;
@@ -63,7 +74,7 @@ export async function requestCommunication(
   const key = "com:v1:" + input.operationKey;
   const intentHash = hashCommunicationContent(JSON.stringify({
     actorUserId, threadId: input.threadId, templateRevisionId: input.templateRevisionId ?? null,
-    body: input.body ?? null,
+    variables: input.variables ?? null, body: input.body ?? null,
   }));
 
   return prisma.$transaction(async (tx) => {
@@ -135,7 +146,8 @@ export async function requestCommunication(
     // PRODUCTION environment. Until COM-L4B adds that read-only evidence, the
     // evaluator above fails closed for production. TEST allows schema/logic proof.
     const body = template.text;
-    if (body.length > 67 * result.policy.maxSegments) return { kind: "CONFLICT" } as const;
+    if (smsPreview(body).segments > result.policy.maxSegments ||
+      body.length > 1600) return { kind: "CONFLICT" } as const;
     const bodyHash = hashCommunicationContent(body);
     const encrypted = encryptCommunicationContent(body);
     const delivery = await tx.messageDelivery.create({ data: {

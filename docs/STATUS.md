@@ -4,6 +4,17 @@ Updated October 9, 2026 (W-16A #360 and W-16B #362 rental packages; W-0C #359; C
 
 ## Next
 
+**2026-10-09 — COM-L6A template preview and reminder safety cutover:**
+Approved SMS templates now validate variables, render immutable encrypted text
+and count GSM-7/UCS-2 segments correctly at preparation and final dispatch.
+Owner Settings → Notifications previews template samples, conservative Unicode
+lengths and explicitly unknown costs. The old day-of reminder cron can no longer
+send via the legacy path bypassing COM-L5B consent. It counts held-for-review
+jobs without marking them texted. Automated sending still needs the COM-L6B
+authorized recipient/job workflow and separate owner activation.
+**Next: COM-L6B**, authorized inbox and user read cursors. No live sending.
+Card: docs/pr-cards/COM-L6A.md.
+
 **2026-10-09 — COM-L5B complete (merged by the COM-L5B PR after exact-head CI):**
 Signed STOP/START/HELP events now produce private, replay-safe scoped consent evidence even
 while the inbound inbox is disabled. STOP blocks ordinary SMS to an address (including
