@@ -4,7 +4,9 @@ Updated October 8, 2026. Acquisition work T-6D1…3 (#313–#315) is merged; #31
 
 ## Next
 
-T-6C4 (#321), T-7A (#322) and T-7B (#323) have merged; **T-7C** guided filing is in PR #327 review; **T-7D** overview and acceptance closeout are being implemented. Keep owner/legal/CPA and live payment gates. Refresh each card against its actual merged prerequisite. [MASTER-ROADMAP](MASTER-ROADMAP.md) remains the single handoff; [PLAN](PLAN.md) owns acceptance. No extra handoff document is needed.
+**Current engineering:** Batch T closed with T-7C #327 and T-7D #328 merged. Old draft handoff #326 was closed as superseded rather than merged. S-1A (system issue schema, typed writers, privacy screening) is in implementation review based on main `e8ed91e`; S-1B is its immediate dependent successor. The S-1A local isolated PostgreSQL and static proof is recorded in its card and PR. This does not activate monitoring integrations or grant AI access.
+
+T-6C4 (#321), T-7A (#322) and T-7B (#323) have merged; **T-7C** guided filing and **T-7D** overview/acceptance closeout have merged in #327 and #328. **S-1A** is the active implementation card. Keep owner/legal/CPA and live payment gates. Refresh each card against its actual merged prerequisite. [MASTER-ROADMAP](MASTER-ROADMAP.md) remains the single handoff; [PLAN](PLAN.md) owns acceptance. No extra handoff document is needed.
 
 ## Built
 
@@ -14,7 +16,7 @@ A/B/C/R/B2/D/E/E2, F-part-1 and G are merged. T through acquisition UI/frequency
 
 | Stage | State |
 |---|---|
-| T completion | T-7C in CI/review and T-7D overview/acceptance remain; RDF T-6C and tax setup/areas have merged |
+| T completion | Engineering complete through #328; owner/CPA/provider/go-live gates remain |
 | S → COM-L → V → F-part-2 | Approved remaining launch engineering and final product proof |
 | K → M → O → COM-N | Approved later engineering; K/M after launch unless owner reschedules |
 | BP | Proposed business documents/design; runtime acceptance still required |

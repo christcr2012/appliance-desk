@@ -48,3 +48,19 @@ Use `set -o pipefail` so piping output cannot hide failures. Each command finish
 Stop only the affected card for changed money ownership, missing approved legal/provider contract, new paid resource, destructive production operation, unsupported schema/permission semantics, or exceeding 800 production lines. Record a specific successor split before pushing over budget; no stubs or silently omitted acceptance. Routine file organization within this contract is the implementer's choice.
 
 Done when every named case and batch acceptance mapped to this card passes, applicable phone/dark/keyboard/axe evidence is recorded, current documentation is updated, all valid review findings have dispositions, and exact-head CI/performance/preview/review gates pass. Merge under AGENTS; no ceremonial extra review cycles.
+
+
+## Implementation checkpoint — October 8, 2026
+- Drift checked against merged T-7D #328 and current main `e8ed91e`
+  (after #329). No predecessor system-issue table or writer existed; automation
+  run keys and source watches retain their current signatures. Existing older
+  tax/exception additions are unaffected. One additive migration owned here.
+- S-1A owns schema, backup/restore policy, typed safe templates, occurrence/version
+  writes, source URL validation and private note redaction/name screening only.
+  Connecting automation/provider/source writers is **S-1B**, owner note actions
+  and role-scoped screens are **S-1C**, external keys/API are **S-2**.
+- PostgreSQL integration tests: concurrent deduplication, reopen and resolve
+  idempotency, simulated writer outage after durable business work, invalid
+  official source, note identity/length constraints, database kind enforcement,
+  known-person-name screening; plus pure redaction/export-shaped templates.
+- Do not interpret this as live readiness or permission to expose notes.
