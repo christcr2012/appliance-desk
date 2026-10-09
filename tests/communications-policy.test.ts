@@ -50,6 +50,10 @@ describe("COM-L4A default-off eligibility and immutable content", () => {
     });
     expect(communicationsPolicySchema.safeParse({ ...(value.policyValue as object),
       customerSmsEnabled: true }).success).toBe(false);
+    expect(communicationsPolicySchema.safeParse({ ...(value.policyValue as object),
+      productionWebhookOrigin: "http://insecure.example.test" }).success).toBe(false);
+    expect(communicationsPolicySchema.safeParse({ ...(value.policyValue as object),
+      productionWebhookOrigin: "https://secure.example.test/" }).success).toBe(true);
   });
 
   it("requires one resolved subject and verified account and destination", () => {

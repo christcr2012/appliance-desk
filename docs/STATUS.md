@@ -4,6 +4,10 @@ Updated October 9, 2026 (COM-L2 PR #346 merged as 12bcd837; latest deployment-co
 
 ## Next
 
+**2026-10-09 — COM-L4B PR #354 OPEN, final-head CI not yet generated (COM-L4A #353 merged):** default-off, account-scoped Twilio provider adapter; free Basic Lookup US verification, signed callback correlation, locked single-attempt dispatch, late STOP/policy/actor rechecks and fail-safe UNKNOWN recovery. **Next: COM-L5A verified inbound SMS and deterministic identity resolution**, then L5B consent projection. Existing reminders connect later in COM-L6A; no live sending, phone activation or provider spending authorized.
+
+**Owner override (2026-10-09): Do not implement W-0C or W-OC until specifically authorized.** Existing W Amendment B plan stays approved but execution is paused at that card.
+
 **2026-10-09 — Batch W Amendment B (connected business) APPROVED (IN-69; IN-70 → D-WB8 set/out-of-service rules).** First: **W-0C**,
 a confirmed defect — a failed automatic card charge never reaches To do (invoice stays OPEN, or is DELINQUENT with no
 due date the Today rule needs). Live payments are off, so no customer is affected. **W-0C is the next card after the

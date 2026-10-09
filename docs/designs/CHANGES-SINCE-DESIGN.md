@@ -411,3 +411,8 @@ machines (a "set" is two machines). **COM-L/COM-N** reuse the flow triggers S6, 
 existing send gates. **BP** commercial bundles build on `RentalPackage`. **O** settings history covers the new settings
 (out-of-service escalation days, unsigned follow-up days, record retention). Appliance types are single machines only from
 W-16A on; "Washer + Dryer Set" is a package.
+
+### COM-L4B provider claim and free destination validation (2026-10-09)
+- `src/lib/communications/providers/twilio-sms.ts` uses installed Twilio v6, API key + secret, and an exact account SID match; adapter construction is limited to configured production. Twilio Lookup v2 **Basic** validation makes no paid data-package request (`Fields` never supplied), proves valid US country and E.164 identity; failed/unknown lookup blocks send.
+- `dispatchCommunication` rechecks L4A account/policy/consent/STOP/actor guards immediately before claiming one PREPARED attempt. Status callback includes only the opaque attempt ID with owner-approved HTTPS origin. ACCEPTED/REJECTED/UNKNOWN/NOT_SENT evidence is preserved, monotone reducer prevents terminal downgrades, stale DISPATCHING is UNKNOWN rather than automatic resend. Provider is called after DB commit, not during locks.
+- `communicationsPolicy.productionWebhookOrigin` is an optional strict HTTPS owner-controlled field. Missing field means provider not configured; existing default-off policy and SMS master gate are intact. COM-L5A handles verified inbound identity and callback matching; COM-L6A migrates the existing day reminder. No live activation.
