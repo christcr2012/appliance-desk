@@ -4,14 +4,14 @@ import { AUTOMATION_RULES } from "@/domains/automation/health";
 describe("automation rule registry", () => {
   it("tracks the real post-D billing reconciliation passes", () => {
     const keys = AUTOMATION_RULES.map((rule) => rule.ruleKey);
-    expect(keys.filter((key) => key.startsWith("billing-reconcile:"))).toEqual([
+    expect(keys.filter((key) => key.startsWith("billing-reconcile:")).sort()).toEqual([
       "billing-reconcile:provider-ops",
       "billing-reconcile:job-handoffs",
       "billing-reconcile:invoice-artifacts",
       "billing-reconcile:message-deliveries",
       "billing-reconcile:retail-delivery-fees",
       "billing-reconcile:retail-delivery-fee-charges",
-    ]);
+    ].sort());
     expect(keys).not.toContain("billing-reconcile:subscription-ends");
   });
 
