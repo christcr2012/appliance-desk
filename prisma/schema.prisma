@@ -381,6 +381,11 @@ model LeadApplianceRequest {
   applianceTypeId String
   applianceType ApplianceType @relation(fields: [applianceTypeId], references: [id])
   quantity      Int           @default(1)
+  // Set when the customer asked for a set (W-16A): one row per machine type in the set, all with the same packageId.
+  packageId     String?
+  package       RentalPackage? @relation(fields: [packageId], references: [id], onDelete: Restrict)
+
+  @@index([packageId])
 }
 
 // ---------------------------------------------------------------------------
@@ -414,9 +419,44 @@ model ApplianceType {
   pricingRules PricingRule[]
   leadRequests LeadApplianceRequest[]
   partRecords  PartRecord[]
+  packageComponents RentalPackageComponent[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// A rental set (Batch W Amendment B, D-WB3): an owner-defined bundle of separate machines rented together at a set
+// price, e.g. "Washer + Dryer Set" = 1 Washer + 1 Dryer. Every machine stays its own Appliance; the package only says
+// what goes together and what the set costs. Never hard-deleted once used (retire with isActive=false).
+model RentalPackage {
+  id                String  @id @default(cuid())
+  name              String  @unique
+  slug              String  @unique
+  monthlyPriceCents Int
+  showOnWebsite     Boolean @default(false)
+  sortOrder         Int     @default(0)
+  isActive          Boolean @default(true)
+  photoUrl          String?
+
+  components    RentalPackageComponent[]
+  rentalLines   RentalLine[]
+  estimateLines EstimateLineItem[]
+  leadRequests  LeadApplianceRequest[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model RentalPackageComponent {
+  id              String        @id @default(cuid())
+  packageId       String
+  package         RentalPackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  applianceTypeId String
+  applianceType   ApplianceType @relation(fields: [applianceTypeId], references: [id])
+  quantity        Int           @default(1)
+
+  @@unique([packageId, applianceTypeId])
+  @@index([applianceTypeId])
 }
 
 // Rental lifecycle (2026-09-28) — see docs/BUSINESS-RULES.md "Rental
@@ -934,9 +974,14 @@ model RentalLine {
   assignments ApplianceAssignment[]
   amendments  RentalLineAmendment[]
 
+  // Set when this line rents a package (W-16B builds package lines); null for a line of single machines.
+  packageId String?
+  package   RentalPackage? @relation(fields: [packageId], references: [id], onDelete: Restrict)
+
   createdAt DateTime @default(now())
 
   @@index([agreementId])
+  @@index([packageId])
 }
 
 // A permanent price reduction on a rental line because one of its items was never delivered and was taken off
@@ -1496,9 +1541,14 @@ model EstimateLineItem {
   // if this line is purely recurring.
   oneTimeFeeCents Int @default(0)
 
+  // Set when this line quotes a package (W-16B); null otherwise.
+  packageId String?
+  package   RentalPackage? @relation(fields: [packageId], references: [id], onDelete: Restrict)
+
   createdAt DateTime @default(now())
 
   @@index([estimateId])
+  @@index([packageId])
 }
 
 // ---------------------------------------------------------------------------

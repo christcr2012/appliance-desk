@@ -29,10 +29,14 @@ const TERM_OPTIONS = [
   { value: "12-month", label: "12 months" },
 ] as const;
 
+type PackageOption = ApplianceTypeOption & { contents: string };
+
 export function ContactForm({
   applianceTypes,
+  packages = [],
 }: {
   applianceTypes: ApplianceTypeOption[];
+  packages?: PackageOption[];
 }) {
   const [submitState, setSubmitState] = useState<
     "idle" | "success" | "error"
@@ -46,13 +50,14 @@ export function ContactForm({
     control,
     formState: { errors, isSubmitting },
   } = useForm<LeadFormInput>({
-    resolver: zodResolver(leadFormSchemaForCatalog(applianceTypes.length > 0)),
+    resolver: zodResolver(leadFormSchemaForCatalog(applianceTypes.length + packages.length > 0)),
     defaultValues: {
       accountType: "individual",
       isPropertyManager: false,
       quantity: 1,
       desiredTerm: "month-to-month",
       applianceTypeIds: [],
+      packageIds: [],
       consent: false,
     },
   });
@@ -206,13 +211,25 @@ export function ContactForm({
           <span className="mb-2 block text-sm font-semibold text-ink">
             Appliances you&apos;re interested in
           </span>
-          {applianceTypes.length === 0 && (
+          {applianceTypes.length + packages.length === 0 && (
             <p className="text-sm text-ink-soft">
               No appliance options are listed yet. Tell us what you need in the
               notes below.
             </p>
           )}
           <div className="grid gap-2 sm:grid-cols-2">
+            {packages.map((set) => (
+              <div
+                key={set.id}
+                className="rounded-control border border-line bg-surface px-3"
+              >
+                <Checkbox
+                  label={`${set.name} (${set.contents})`}
+                  value={set.id}
+                  {...register("packageIds")}
+                />
+              </div>
+            ))}
             {applianceTypes.map((type) => (
               <div
                 key={type.id}

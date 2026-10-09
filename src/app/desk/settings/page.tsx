@@ -19,6 +19,8 @@ import { ButtonLink, Card, PageHeader } from "@/components/ui";
 import { formatBusinessDate, formatBusinessTime } from "@/lib/business-date";
 import { SettingsForm } from "./settings-form";
 import { AppliancePricingTable } from "./appliance-pricing-table";
+import { PackageTable } from "./package-table";
+import { listPackagesForSettings } from "@/domains/packages";
 import { StaffAccountsSection } from "./staff-accounts-section";
 import { CustomerEmailSwitch } from "./customer-email-switch";
 import { isNonProductionDeployment } from "@/lib/deployment-safety";
@@ -51,8 +53,34 @@ export default async function DeskSettingsPage({
   const leadScoringPolicy = section === "policies" ? await getLeadScoringPolicy() : null;
   let content: React.ReactNode;
   if (section === "products") {
-    const applianceTypes = await getAllApplianceTypes();
+    const [applianceTypes, packages] = await Promise.all([getAllApplianceTypes(), listPackagesForSettings()]);
     content = (
+      <>
+      <Card
+        title="Sets and packages"
+        description="Machines rented together for one lower monthly price, such as a washer and a dryer."
+        className="mb-6"
+      >
+        <PackageTable
+          packages={packages.map((p) => ({
+            id: p.id,
+            name: p.name,
+            monthlyPriceCents: p.monthlyPriceCents,
+            showOnWebsite: p.showOnWebsite,
+            isActive: p.isActive,
+            components: p.components.map((c) => ({
+              applianceTypeId: c.applianceTypeId,
+              name: c.applianceType.name,
+              quantity: c.quantity,
+              monthlyPriceCents: c.applianceType.monthlyPriceCents,
+              isActive: c.applianceType.isActive,
+            })),
+          }))}
+          types={applianceTypes
+            .filter((t) => t.isActive)
+            .map((t) => ({ id: t.id, name: t.name, monthlyPriceCents: t.monthlyPriceCents }))}
+        />
+      </Card>
       <Card
         title="Products and pricing"
         description="Signed agreements keep their existing prices. Catalog changes apply to new rentals."
@@ -68,6 +96,7 @@ export default async function DeskSettingsPage({
           }))}
         />
       </Card>
+      </>
     );
   } else if (section === "terms") {
     const status = termsPolicyStatus(settings);

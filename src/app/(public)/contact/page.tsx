@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Container } from "@/components/site/container";
-import { getPublishedApplianceTypes } from "@/domains/pricing";
+import { getPublishedCatalog } from "@/domains/pricing";
 import { getBusinessSettings } from "@/domains/settings";
 import { BusinessHours } from "@/components/site/business-hours";
 import { getPublishedContent } from "@/domains/site-content";
@@ -18,8 +18,8 @@ export default async function ContactPage({
 }: {
   searchParams: Promise<{ revision?: string | string[] }>;
 }) {
-  const [applianceTypes, content, settings] = await Promise.all([
-    getPublishedApplianceTypes(),
+  const [catalog, content, settings] = await Promise.all([
+    getPublishedCatalog(),
     searchParams.then(getContentForRequest),
     getBusinessSettings(),
   ]);
@@ -46,11 +46,12 @@ export default async function ContactPage({
 
         <div className="mt-10">
           <ContactForm
-            applianceTypes={applianceTypes.map((t) => ({
-              id: t.id,
-              name: t.name,
-              monthlyPriceCents: t.monthlyPriceCents,
-            }))}
+            applianceTypes={catalog
+              .filter((item) => item.kind === "type")
+              .map((t) => ({ id: t.id, name: t.name, monthlyPriceCents: t.monthlyPriceCents }))}
+            packages={catalog
+              .filter((item) => item.kind === "package")
+              .map((p) => ({ id: p.id, name: p.name, monthlyPriceCents: p.monthlyPriceCents, contents: p.contents ?? "" }))}
           />
         </div>
       </Container>

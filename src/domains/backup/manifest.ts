@@ -23,6 +23,8 @@ export const BACKUP_MODEL_POLICY = {
   LeadNote: "leadNote",
   LeadApplianceRequest: "leadApplianceRequest",
   ApplianceType: "applianceType",
+  RentalPackage: "rentalPackage",
+  RentalPackageComponent: "rentalPackageComponent",
   Appliance: "appliance",
   ApplianceInspection: "applianceInspection",
   PartRecord: "partRecord",

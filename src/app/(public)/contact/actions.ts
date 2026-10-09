@@ -3,7 +3,7 @@
 import { headers } from "next/headers";
 import { createLead } from "@/domains/leads";
 import { leadFormSchemaForCatalog } from "@/domains/leads/schema";
-import { getPublishedApplianceTypes } from "@/domains/pricing";
+import { getPublishedCatalog } from "@/domains/pricing";
 import { isRateLimited } from "@/lib/rate-limit";
 
 export type SubmitLeadState =
@@ -43,15 +43,18 @@ export async function submitLead(
   }
 
   try {
-    const catalog = await getPublishedApplianceTypes();
-    if (catalog.length > 0 && parsed.data.applianceTypeIds.length === 0) {
+    const catalog = await getPublishedCatalog();
+    const packageIds = parsed.data.packageIds ?? [];
+    if (catalog.length > 0 && parsed.data.applianceTypeIds.length + packageIds.length === 0) {
       return { status: "error", message: "Select at least one appliance, then send your request." };
     }
-    const publishedIds = new Set(catalog.map(type => type.id));
-    if (parsed.data.applianceTypeIds.some(id => !publishedIds.has(id))) {
+    const published = (kind: "type" | "package") => new Set(catalog.filter(item => item.kind === kind).map(item => item.id));
+    const publishedTypes = published("type");
+    const publishedPackages = published("package");
+    if (parsed.data.applianceTypeIds.some(id => !publishedTypes.has(id)) || packageIds.some(id => !publishedPackages.has(id))) {
       return { status: "error", message: "The appliance options changed. Refresh this page and try again." };
     }
-    await createLead(parsed.data);
+    await createLead({ ...parsed.data, packageIds });
     return { status: "success" };
   } catch (error) {
     console.error("[leads] Failed to save lead", error);
