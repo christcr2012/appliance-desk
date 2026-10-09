@@ -22,6 +22,7 @@ the points where the implementer must stop and ask instead of guessing.
 | G — Audit fixes and owner-account security | `BATCH-G.md` | **Approved 2026-10-06** (Chris). Built and merged. |
 | T — Colorado sales and use tax | `BATCH-T.md` | **Approved 2026-10-06** (Chris). Before F (launch blocker). Policy answers come from Chris's CPA (IN-33 … IN-38). |
 | V — "Evergreen Signature" visual redesign | `BATCH-V.md` | **Approved 2026-10-06** (Chris). After S/COM-L, before F-part-2; includes V-C1…C5 full content controls and redesign compatibility. Concept in `docs/design-mockups/signature-2026-10-06/`. |
+| W — Workflows that tell the owner what to do (To do list, guided intake/tax/rentals, setup checklist, simpler menu) | `BATCH-W.md` | **Approved 2026-10-09** (Chris). W-0A/W-0B now; W-1…W-8 after COM-L, before V. |
 | S — System issues inbox and the AI check-up | `BATCH-S.md` | **Approved 2026-10-07** (Chris). Four bounded capabilities after T, before COM-L/V. |
 | M — Shop sales (merchandise) and retired appliances (sell, strip for parts, scrap, throw away) | `BATCH-M.md` | **Approved 2026-10-07** (Chris). After K (Chris will not sell before launch, IN-47). Retired appliances: "what's next" plan, revised 2026-10-07. |
 | K-CASH — Cash envelopes, planned costs, bank checks, reports and QBO handoff | `BATCH-K-CASH.md` | Owner-requested 2026-10-08; documentation review pending. Proposed after K-8 before M; launch unchanged. No accounts/provider activation. |

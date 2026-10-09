@@ -4,6 +4,9 @@ Audited baseline: main `b2a06c2` (#310), October 8. [STATUS](STATUS.md) holds cu
 
 ## What is next
 
+**2026-10-09 (Chris approved Batch W):** next are **W-0A** and **W-0B** (purchase use tax that actually works; no dead
+Today links) — cards exist and need no prerequisite — then COM-L resumes at COM-L1B, then W-1…W-8 before V.
+
 Batch T engineering was completed by T-7C #327 and T-7D #328. Older
 draft handoff #326 is closed as superseded. **S-1A** merged in #330; **S-1B** merged in #331; **S-1C** is the next approved
 implementation, followed in order by **S-2**, then COM-L/V/F2.
@@ -15,7 +18,7 @@ current PR/head.
 
 | Stage | Engineering order | Owner gate |
 |---|---|---|
-| Finish launch product | T → S → COM-L → V → F-part-2 | CPA/legal tax answers; COM sender/retention/activation; V rendered visual acceptance |
+| Finish launch product | T → S → **W-0A/W-0B** → COM-L → **W-1…W-8** → V → F-part-2 | CPA/legal tax answers; COM sender/retention/activation; V rendered visual acceptance |
 | Launch | GO-LIVE-CHECKLIST after final evidence | Chris authorizes live operation; engineering evidence is not activation |
 | After launch | K → K-CASH (documentation review pending) → M → O → COM-N | K earlier only if Chris schedules; M IN-47 after launch; affected CPA/telecom decisions |
 | Proposed later | BP after K/M/O, and relevant COM-N | Explicit runtime design acceptance; IN-48/49/50 for affected offers/programs |
@@ -23,7 +26,7 @@ current PR/head.
 
 ## Implementing agent — paste this
 
-> Read AGENTS, STATUS, this roadmap and the next card only. Find the cited design headings and named code/tests in bounded sections. Run the per-card drift protocol against latest main and the prerequisite's final reviewed head. If no execution card exists, write one short card from the approved design with exact current paths, transaction/permissions/provider boundaries, meaningful tests and completion evidence. Routine details are yours to implement; missing money/security/schema/provider decisions require a reviewed contract amendment first, not an unsafe guess or a mandatory model switch. Implement a coherent capability, run the cheap targeted checks, push once. While checks run, implement only the eligible immediate successor in the same chain. Batch blocking findings/failures, assign only safe low-risk follow-ups under PLAYBOOK, refresh exact-head gates, and merge when authorized and green. When finite CI is the only dependency, keep the turn active with PLAYBOOK’s bounded quiet completion wait. Update the existing card and STATUS; update the shared contract log only for downstream-relevant contract changes. Do not create a new handoff file. Continue while eligible work exists; stop only for a real gate, with committed work and the exact next action.
+> Read `docs/SESSION-START.md`, STATUS and the next card (plus its resume note `docs/pr-cards/<ID>.progress.md` if present). Find the cited design headings and named code/tests in bounded sections. Run the per-card drift protocol against latest main and the prerequisite's final reviewed head. If no execution card exists, write one short card from the approved design with exact current paths, transaction/permissions/provider boundaries, meaningful tests and completion evidence. Routine details are yours to implement; missing money/security/schema/provider decisions require a reviewed contract amendment first, not an unsafe guess or a mandatory model switch. Implement a coherent capability, run the cheap targeted checks, push once. While checks run, implement only the eligible immediate successor in the same chain. Batch blocking findings/failures, assign only safe low-risk follow-ups under PLAYBOOK, refresh exact-head gates, and merge when authorized and green. When finite CI is the only dependency, keep the turn active with PLAYBOOK’s bounded quiet completion wait. Update the existing card and STATUS; update the shared contract log only for downstream-relevant contract changes. Do not create a new handoff file. Continue while eligible work exists; stop only for a real gate, with committed work and the exact next action.
 
 ## Work coverage
 
@@ -80,11 +83,26 @@ current PR/head.
 | COM-L1B | COM-L1B | [card](pr-cards/COM-L1B-CALLBACK-INTEGRITY.md) | COM-L1A |
 | COM-L2 | COM-L2 | [card](pr-cards/COM-L2-FOUNDATION.md) | COM-L1B |
 
+### W — workflows that tell the owner what to do (`designs/BATCH-W.md`, approved 2026-10-09)
+
+| Unit | Scope | Execution card | Prerequisite |
+|---|---|---|---|
+| W-0A | Purchase use tax can be calculated, recalculated and filed | [card](pr-cards/W-0A.md) | — |
+| W-0B | No dead Today links; delivery-fee records page | [card](pr-cards/W-0B.md) | — |
+| W-1 | To do list: due date, amount, one button, snooze | JIT — `W-1.md` | COM-L15 |
+| W-2 | Intake and purchase orders say what is owed, to whom, by when | JIT — `W-2.md` | W-1 |
+| W-3 | Taxes in one place, in plain words | JIT — `W-3.md` | W-2 |
+| W-4 | Rental turning points create draft visits and To do items | JIT — `W-4.md` | W-3 |
+| W-5 | Failed, held and deposit payments on To do with buttons | JIT — `W-5.md` | W-4 |
+| W-6 | Leads and quotes create follow-ups | JIT — `W-6.md` | W-5 |
+| W-7 | First-time setup checklist | JIT — `W-7.md` | W-6 |
+| W-8 | Simpler menu, Schedule screen, plain-words check | JIT — `W-8.md` | W-7 |
+
 ### V
 
 | Unit | Scope | Execution card | Prerequisite |
 |---|---|---|---|
-| V-C1 | Typed content registry and historical compatibility | JIT — `V-C1.md` | COM-L15 |
+| V-C1 | Typed content registry and historical compatibility | JIT — `V-C1.md` | W-8 |
 | V-C2 | Photo library with private drafts and explicit publication | JIT — `V-C2.md` | V-C1 |
 | V-C3 | Every public content binding and scheduled promotions | JIT — `V-C3.md` | V-C2 |
 | V-C4 | Clear owner editing, preview, publish and restore | JIT — `V-C4.md` | V-C3 |

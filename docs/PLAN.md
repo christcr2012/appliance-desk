@@ -177,6 +177,27 @@ decisions; production destructive cleanup or reconciliation; the actual
 launch authorization. End the batch by reporting what is deployed vs pending;
 do not start deferred features.
 
+## Batch W — Workflows that tell the owner what to do
+
+**Design: `docs/designs/BATCH-W.md`** (approved by Chris 2026-10-09, IN-57…IN-60). W-0A/W-0B now; W-1…W-8 after COM-L,
+before V.
+
+### Acceptance checklist
+
+- [ ] W-0A: an owner can confirm the business tax address on screen; appliances waiting on setup get their use tax calculated automatically (once); use tax with no linked filing account raises a high To do item; Today and the appliance page say why tax is unknown and link the fix.
+- [ ] W-0B: no Today item links to a page that doesn't exist (test); delivery-fee records waiting on a decision or amount have a page.
+- [ ] Every To do item shows what, why, amount (if any), due date and one button; items sort by due date; snooze with reason.
+- [ ] Saving an appliance (or receiving parts) with no seller tax shows what is owed, to whom and by when, and adds it to To do; "I'll check later" creates a dated To do.
+- [ ] Taxes live in one menu entry; use tax is inside it; the return page starts with "File and pay $X on <site> by <date>"; money is typed in dollars.
+- [ ] Signing creates a draft delivery visit + To do; a rental ending in 30 days asks renew / month-to-month / pickup; a decided ending creates a draft pickup visit; drafts never send or charge anything.
+- [ ] Failed payments, held payments and deposit decisions appear on To do the same day with action buttons.
+- [ ] A new lead appears as "Contact <name>" (same day by default); "contacted" asks for the next follow-up date; an approved quote creates a To do.
+- [ ] A first-time setup checklist on Today (owner) until complete.
+- [ ] About 14 menu entries; Dispatch, Jobs and Driver view are one Schedule screen; the plain-words check runs in CI.
+- [ ] Every item in "Rules that apply to every batch".
+
+---
+
 ## Batch K — Books: journal, expenses, Stripe fees, profit & loss, accounting exports
 
 Design: `docs/designs/BATCH-K.md`; work coverage and prerequisites: work-index.

@@ -1,7 +1,7 @@
 # Design — Batch W: Workflows that tell Chris what to do
 
-Status: **PROPOSED — waiting for Chris's approval** (do not implement until this line says APPROVED and each PR has a
-card in `docs/pr-cards/`). Written 2026-10-09 against `main` aea29ba3 (#335) after a read-only audit of the owner's
+Status: **APPROVED** (Chris, 2026-10-09: "Approved, yes to drafts, same day, combine screens" — IN-57…IN-60). Each PR
+still needs its card in `docs/pr-cards/` before it starts (W-0A and W-0B have cards). Written 2026-10-09 against `main` aea29ba3 (#335) after a read-only audit of the owner's
 journeys (tax and intake, rental lifecycle, navigation and wording).
 
 Chris, 2026-10-09: *"The tax screen in my owner portal is confusing and makes no sense to me, nor does there seem to be
@@ -10,7 +10,7 @@ inventory, and the seller didn't charge me sales and use tax, I don't think it a
 the state, or applicable local government … My robust system isn't useful to me if it isn't intuitive and work the way
 I need it to work."*
 
-**Proposed placement:** right after COM-L, **before V** (visual polish) and F-part-2 (final proof). A beautiful screen
+**Placement (approved):** right after COM-L, **before V** (visual polish) and F-part-2 (final proof). A beautiful screen
 that doesn't tell the owner what to do is still not usable; F-part-2's owner walkthrough should prove these journeys.
 **W-0 (defect fixes) should go first, as soon as approved** — it fixes money/tax behavior that is broken today.
 
@@ -143,12 +143,13 @@ reason in the PR.
 | W-7 | Setup checklist (D-W5) | screens |
 | W-8 | Menu (D-W6) + wording check (D-W7) + wording fixes it finds | screens |
 
-## 4. Decisions Chris needs to make (IN-48 … IN-51 when approved)
+## 4. Chris's decisions (answered 2026-10-09)
 
-- **IN-48** Approve this design and its place (W-0 now; the rest after COM-L, before V)?
-- **IN-49** Should the app create **draft** delivery and pickup visits automatically (recommended), or only remind you?
-- **IN-50** How fast should a new lead be contacted before it nags you (starting value: same day)?
-- **IN-51** Menu: OK to fold Dispatch/Jobs/Driver view into one "Schedule" screen and move rarely used screens under "More"?
+- **IN-57** Design approved; W-0A/W-0B now, ahead of COM-L; W-1 … W-8 after COM-L, before V.
+- **IN-58** Yes — the app creates **draft** delivery and pickup visits automatically (no time, no technician, nothing sent).
+- **IN-59** New-lead response time starting value: **same day** (owner setting).
+- **IN-60** Yes — Dispatch, Jobs and Driver view become one "Schedule" screen with views; rarely used screens move under
+  "More".
 
 ## 5. Stop-and-ask
 

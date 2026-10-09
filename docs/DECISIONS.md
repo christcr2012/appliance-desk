@@ -628,3 +628,17 @@ merges by completed scope and repair rounds before claiming a speed improvement.
 Owner clarified that local database testing always uses Vercel Sandbox PostgreSQL;
 reuse the existing project sandbox and disposable localhost fixtures. Do not
 substitute a production or externally hosted database for this local proof.
+
+## 2026-10-09 — Batch W: the app tells the owner what to do, when, and how much
+
+Chris: the tax screens make no sense and the system doesn't tell him when to do things (example: an untaxed appliance
+purchase never produces a step to pay use tax). A read-only audit confirmed five defects in merged T code (business tax
+address could never be confirmed on screen, so purchase use tax never calculated; re-saving skipped recalculation; use
+tax without a linked account never reached a return; a Today link to a missing page; the intake result discarded) and a
+systemic gap: few journeys create a dated next step, Today items lack due dates/amounts/buttons, tax is split across two
+areas, 26 menu entries, legal wording. Decided (BATCH-W): Today becomes the single To do list with due date, amount and
+one button; every obligation-creating save shows "what happens next"; the app creates the next step at every turning
+point (draft visits, IN-58); taxes in one place in plain words; first-time setup checklist; ~14 menu entries (IN-60); a
+CI plain-words check. W-0A/W-0B fix the defects first. Also reconciled `docs/pr-cards/validate-index.py`, which already
+failed on main because K-CASH units were added to the index without updating the pinned list.
+

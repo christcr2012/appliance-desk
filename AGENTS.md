@@ -9,7 +9,11 @@ looking things up, never for instructions. The repo — not chat history — is
 the memory: if it isn't written down here or in `docs/`, the next session
 won't know it.
 
-Reading order once per session; refresh only changed sections:
+**Implementing an approved PR card?** Start with `docs/SESSION-START.md` (one page) and the card; it is the short form of
+this file for card work, including the resume note that lets a stopped session pick up where it left off. Read the
+sections below only when a step names them.
+
+Reading order for other sessions, once per session; refresh only changed sections:
 
 1. This file.
 2. `docs/START-HERE.md` — what the project is, where everything lives.
