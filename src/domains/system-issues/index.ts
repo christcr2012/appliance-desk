@@ -9,8 +9,8 @@ function logFailure(code: string): void {
   console.error("[system-issues]", code);
 }
 
-/** Best-effort out-of-band issue recording; never fails a business transaction. */
-export async function recordSystemIssue(input: SystemIssueInput): Promise<void> {
+/** Best-effort out-of-band issue recording; never fails a business transaction. True when the issue was written. */
+export async function recordSystemIssue(input: SystemIssueInput): Promise<boolean> {
   try {
     const issue = renderSystemIssue(input);
     if (issue.watch) {
@@ -32,15 +32,17 @@ export async function recordSystemIssue(input: SystemIssueInput): Promise<void> 
         lastSeenAt: new Date(), status: "OPEN", resolvedAt: null, resolvedReason: null,
       },
     });
+    return true;
   } catch {
     logFailure("SYSTEM_ISSUE_RECORD_FAILED");
+    return false;
   }
 }
 
-/** A confirmed source success resolves the source fingerprint, not unrelated issues. */
+/** A confirmed source success resolves the source fingerprint, not unrelated issues. True when the update ran. */
 export async function resolveSystemIssue(
   fingerprint: string, reason: SystemIssueResolution,
-): Promise<void> {
+): Promise<boolean> {
   try {
     if (typeof fingerprint !== "string" || !/^[a-zA-Z0-9_.:-]{1,240}$/.test(fingerprint)) {
       throw new Error("Invalid issue fingerprint");
@@ -52,7 +54,9 @@ export async function resolveSystemIssue(
       where: { fingerprint, status: { not: "RESOLVED" } },
       data: { status: "RESOLVED", resolvedAt: new Date(), resolvedReason: reason, version: { increment: 1 } },
     });
+    return true;
   } catch {
     logFailure("SYSTEM_ISSUE_RESOLVE_FAILED");
+    return false;
   }
 }

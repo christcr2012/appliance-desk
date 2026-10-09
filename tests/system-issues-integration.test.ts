@@ -46,7 +46,8 @@ describe.skipIf(!enabled)("S-1A system issue records on throwaway Postgres", () 
       data: { ruleKey, runKey: ruleKey + ":" + unique(), environment: "test", state: "SUCCEEDED" },
     });
     const spy = vi.spyOn(prisma.systemIssue, "upsert").mockRejectedValueOnce(new Error("simulated inaccessible issue store"));
-    try { await expect(recordSystemIssue(failed(ruleKey))).resolves.toBeUndefined(); }
+    // Never throws; reports that nothing was written (the sweep counts only real writes).
+    try { await expect(recordSystemIssue(failed(ruleKey))).resolves.toBe(false); }
     finally { spy.mockRestore(); }
     expect((await prisma.automationRun.findUniqueOrThrow({ where: { id: run.id } })).state).toBe("SUCCEEDED");
     expect(await prisma.systemIssue.findUnique({ where: { fingerprint: "automation:" + ruleKey } })).toBeNull();
@@ -58,7 +59,7 @@ describe.skipIf(!enabled)("S-1A system issue records on throwaway Postgres", () 
   });
   it("keeps note authors exclusive and enforces the two-kilobyte storage limit", async () => {
     const key = "backup";
-    await recordSystemIssue(failed(key));
+    expect(await recordSystemIssue(failed(key))).toBe(true);
     const issue = await prisma.systemIssue.findUniqueOrThrow({where:{fingerprint:"automation:"+key}});
     await expect(prisma.systemIssueNote.create({data:{
       issueId:issue.id,authorUserId:"staff",authorKeyId:"agent",body:"safe",
