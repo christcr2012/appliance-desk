@@ -248,6 +248,16 @@ merge waiver. Do not publish a partial reconstruction to discover its failures.
 
 ### 4b. Local real-PostgreSQL testing in Vercel Sandbox
 
+**Owner standard: all local database and database-backed browser testing uses
+PostgreSQL inside Vercel Sandbox.** Connect to the existing project sandbox
+`appliance-desk-batch-t1` (project `appliance-desk`) through Vercel tools/CLI,
+resuming its saved environment when stopped. Inspect its installed binaries and
+reuse dependencies in an isolated worktree for the current branch. A ChatGPT
+scratch checkout without Postgres is not evidence the Vercel sandbox lacks it.
+Do not create another paid service or replace it with Neon/production. If actual
+sandbox access/setup fails, record that exact blocker; GitHub CI's independent
+disposable PostgreSQL jobs remain separate required merge proof.
+
 **Canonical command:** `bash scripts/local-postgres-test.sh tests/<changed-spec>.test.ts`.
 Use this for tax, money, permissions, migration, concurrency, idempotency and
 data-integrity changes, or to diagnose a CI integration-test failure. Do not

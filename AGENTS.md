@@ -284,6 +284,11 @@ full CI/secret checks, preview where applicable and required semantic review.
   Branch from current `main`, or from the previous unmerged PR's branch when
   stacking; retarget `main` once the predecessor merges.
 - **Targeted publication preflight (owner, 2026-10-08):** run
+  local database and database-backed browser tests in **Vercel Sandbox PostgreSQL**.
+  Missing binaries in a ChatGPT scratch checkout are not sandbox unavailability:
+  connect to the project's existing sandbox first (PLAYBOOK 4b). Never substitute
+  Neon, a production database or a different external database service.
+  For publication checks use
   `npm run preflight -- --unit tests/<behavior>.test.ts`, use `--db` for
   transaction/money/permission/schema regressions, and `--browser` for affected
   screen/spec tests. Combine selectors so database/browser tests share one fresh

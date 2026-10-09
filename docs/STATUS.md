@@ -59,3 +59,8 @@ browser evidence; actual build/database/browser proof still comes from the named
 local runs or exact-head CI, not the command plan. No launch gate or feature queue
 changes. Assess the next three implementation merges for completed scope and red
 CI rounds rather than raw PR counts; no extra report/workstream.
+
+Local database testing uses Vercel Sandbox PostgreSQL. The shared launcher was
+verified in the existing sandbox with six tax-overview integration tests passing
+and zero skips; its disposable database was cleaned up. Missing PostgreSQL in a
+scratch checkout is not evidence that the project sandbox is unavailable.

@@ -625,3 +625,6 @@ checks. Failed commands, setup blockers and skipped browser results cannot claim
 passing proof. Full exact-head CI/review/preview and owner activation gates stay.
 Do not add workstreams or another report; measure the next three implementation
 merges by completed scope and repair rounds before claiming a speed improvement.
+Owner clarified that local database testing always uses Vercel Sandbox PostgreSQL;
+reuse the existing project sandbox and disposable localhost fixtures. Do not
+substitute a production or externally hosted database for this local proof.

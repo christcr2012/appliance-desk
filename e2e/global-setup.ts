@@ -21,7 +21,7 @@ import { completeTwoFactorSetup } from "./utils/two-factor";
 export default async function globalSetup(config: FullConfig): Promise<void> {
   const baseURL = config.projects[0]?.use?.baseURL ?? "http://localhost:3000";
   fs.mkdirSync("e2e/.auth", { recursive: true });
-  const browser = await chromium.launch();
+  const browser = await chromium.launch(config.projects[0]?.use?.launchOptions);
 
   const ownerEmail = process.env.OWNER_EMAIL;
   const ownerPassword = process.env.OWNER_PASSWORD;
