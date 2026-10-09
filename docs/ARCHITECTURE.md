@@ -697,3 +697,14 @@ Business-message delivery is recorded in `MessageDelivery` before provider calls
 - Missing webhook verification configuration fails closed. Payload bodies are not logged.
 - `RESEND_API_KEY`, Twilio credentials and the customer-message owner switches remain separate from webhook verification. Adding a secret does not authorize live customer messaging.
 
+### Sales tax workspace closeout (Batch T-7D, engineering)
+
+The private `/desk/sales-tax` Overview is a read-only projection from
+`src/domains/tax/workspace-overview.ts`: active team OWNER/ADMIN role
+authorization, bounded upcoming-period and amendment queries, and stable
+attention priority. Navigation points to existing tax domain workflows;
+the Overview neither writes money nor bypasses tax-readiness gates.
+The real return authoring/recording actions remain in the Batch T filing
+domain and are OWNER-only. Unknown purchase tax, official source failures
+and owner/CPA confirmations retain separate resolution gates.
+

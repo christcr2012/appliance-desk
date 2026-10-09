@@ -44,7 +44,8 @@ describe("T-6b2 filing amendment and readiness attention", () => {
     const input = { id: "am-1", accountName: "Greeley", detectedAt: day("2026-10-05") };
     expect(taxAmendmentDueException({ ...input, additionalTaxCents: 43 }).severity).toBe("high");
     expect(taxAmendmentDueException({ ...input, additionalTaxCents: -8 }).severity).toBe("medium");
-    expect(taxAmendmentDueException({ ...input, additionalTaxCents: 0 }).href).toBe("/desk/today");
+    expect(taxAmendmentDueException({ ...input, additionalTaxCents: 0 }).href).toBe("/desk/sales-tax/returns");
+    expect(taxAmendmentDueException({ ...input, periodId: "period-1", additionalTaxCents: 0 }).href).toBe("/desk/sales-tax/returns/period-1/amend");
   });
   it("escalates blocked returns near due date", () => {
     const data = { accountName: "State", periodEnd: day("2026-09-30"),

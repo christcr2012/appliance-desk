@@ -2,7 +2,7 @@ import Link from "next/link";
 import { requireRole } from "@/lib/session";
 export const metadata = { title: "Sales tax", robots: { index: false, follow: false } };
 const sections = [
-  { title: "Overview", href: "/desk/sales-tax", ready: false },
+  { title: "Overview", href: "/desk/sales-tax", ready: true },
   { title: "Returns", href: "/desk/sales-tax/returns", ready: true },
   { title: "Areas", href: "/desk/sales-tax/areas", ready: true },
   { title: "Exemptions", href: "/desk/sales-tax/exemptions", ready: true },

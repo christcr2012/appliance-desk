@@ -107,7 +107,7 @@ describe("exception builders", () => {
     ).toBe("2026-10-05T06:00:00.000Z");
   });
 
-  it("taxAddressChangedException links to the affected customer property review", () => {
+  it("taxAddressChangedException links to the tax area verification workspace", () => {
     const item = taxAddressChangedException({
       customerId: "cust-tax-change",
       customerName: "Jane Doe",
@@ -117,7 +117,7 @@ describe("exception builders", () => {
     expect(item.category).toBe("SALES_TAX");
     expect(item.severity).toBe("high");
     expect(item.title).toContain("Jane Doe");
-    expect(item.href).toBe("/desk/customers/cust-tax-change?tab=properties");
+    expect(item.href).toBe("/desk/sales-tax/areas?status=REVIEW");
   });
 
   it("taxRateReviewReminderException stays in the shared Sales tax category", () => {
@@ -128,7 +128,7 @@ describe("exception builders", () => {
     expect(item.category).toBe("SALES_TAX");
     expect(item.severity).toBe("medium");
     expect(item.title).toContain("January 1");
-    expect(item.href).toBe("/desk/settings");
+    expect(item.href).toBe("/desk/sales-tax/taxability");
   });
 
   it("staleReservationException links to the draft agreement", () => {

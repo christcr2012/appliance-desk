@@ -213,7 +213,7 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
     manualOnlyReason: "A realistic amendment needs an actual filed return and stored correction evidence.",
   },
 
-  { path: "/desk/sales-tax", role: "OWNER", fixture: "/desk/sales-tax/setup" },
+  { path: "/desk/sales-tax", role: "OWNER", fixture: "/desk/sales-tax" },
   { path: "/desk/sales-tax/setup", role: "OWNER", fixture: "/desk/sales-tax/setup" },
   { path: "/desk/sales-tax/taxability", role: "OWNER", fixture: "/desk/sales-tax/taxability" },
   {

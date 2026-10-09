@@ -62,6 +62,7 @@ export async function listTaxFilingAttention(
         .filter((period) => businessDateKey(now) > businessDateKey(period.periodEnd))
         .map((period) => taxReturnDueException({
           accountName: period.filingAccount.name,
+          periodId: period.id,
           periodEnd: period.periodEnd,
           dueOn: period.dueOn,
           legalDueOn: period.legalDueOn ?? legalDueOn(period.dueOn),

@@ -72,6 +72,7 @@ export async function listTaxAmendmentAttention(now = new Date()): Promise<TaxAm
     : [];
   const readiness: ExceptionItem[] = blockedFiledPeriods.map(period => taxFilingNotReadyException({
     accountName: period.filingAccount.name,
+    periodId: period.id,
     periodEnd: period.periodEnd,
     dueOn: period.dueOn,
     problems: ["Previously filed return could not be checked for new corrections; review the tax filing evidence."],
@@ -86,6 +87,7 @@ export async function listTaxAmendmentAttention(now = new Date()): Promise<TaxAm
     if (result.status === "READY") continue;
     readiness.push(taxFilingNotReadyException({
       accountName: period.filingAccount.name,
+      periodId: period.id,
       periodEnd: period.periodEnd,
       dueOn: period.dueOn,
       problems: result.problems,
@@ -95,7 +97,7 @@ export async function listTaxAmendmentAttention(now = new Date()): Promise<TaxAm
   return {
     amendments: {
       rows: openAmendments.map(row => taxAmendmentDueException({
-        id: row.id, detectedAt: row.detectedAt,
+        id: row.id, periodId: row.periodId, detectedAt: row.detectedAt,
         accountName: row.period.filingAccount.name,
         additionalTaxCents: row.additionalTaxCents,
       })),

@@ -133,3 +133,14 @@ Design `docs/designs/BATCH-COM.md`; setup `docs/runbooks/COMMUNICATIONS-TWILIO.m
   income and stale/unknown limitations understood; no automatic payments.
 - [ ] Real period imported/matched without duplicate posting; accounting delivery confirmation saved.
 - [ ] Paid/API/bank-transfer/live Stripe changes retain separate explicit approval.
+
+### Batch T workspace engineering proof (not production activation)
+
+The six-section Sales tax workspace, guided owner filing screens and Today
+attention are an engineering implementation; they do **not** tick the
+live Colorado tax signoff. Verify IN-17 and IN-33–IN-38 with a CPA, the
+actual address-accurate authenticated GIS procedure, filing account details,
+actual live provider credentials and official return/payment evidence.
+IN-43/44 only affect packet wording. Do not equate test-only PostgreSQL,
+fixture uploads or previews with a production GIS, government filing or
+payment smoke test.
