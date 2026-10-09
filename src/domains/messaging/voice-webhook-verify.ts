@@ -105,6 +105,16 @@ export async function verifyVoiceRequest(
     select: { id: true },
   });
   if (!account) return fail(403);
+  if (path === "/api/webhooks/twilio/voice") {
+    const to = form.get("To");
+    if (!to || form.getAll("To").length !== 1 ||
+        !form.get("From") || form.getAll("From").length !== 1) return fail(400);
+    const number = await prisma.businessPhoneNumber.findFirst({
+      where: { accountId: account.id, address: to, retiredAt: null },
+      select: { id: true },
+    });
+    if (!number) return fail(403);
+  }
   return { verified: {
     form, accountId: account.id, accountSid, callSid, path,
     canonicalOrigin: origin, policy: parsed.data,
