@@ -100,7 +100,7 @@ test.describe("staff tax filing isolation", () => {
     test.skip(!fs.existsSync(staff), "Test-only staff is required");
     await page.goto("/desk/sales-tax/returns");
     await expect(page).not.toHaveURL(/\/desk\/sales-tax\/returns(?:\?|$)/);
-    const response = await page.context().request.get("/desk/sales-tax/returns/calendar.ics");
+    const response = await page.context().request.get("/desk/sales-tax/returns/calendar.ics", { maxRedirects: 0 });
     expect(response.status()).not.toBe(200);
   });
 });

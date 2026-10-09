@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/session";
 import { businessDateFromKey } from "@/lib/business-date";
 import { loadFilingPacket } from "@/domains/tax/filing-packet";
+import { filingStepKeys } from "@/domains/tax/filing-step-keys";
 import {
   saveFilingEntryProgress, markPeriodFiled, markAmendmentFiled,
   markAmendmentHandledOutside,
@@ -30,6 +31,10 @@ function errorState(error: unknown): TaxActionState {
   const text = error instanceof Error ? error.message : "";
   return { error: text.length > 250 ? text.slice(0, 250) : text || "Could not save this return.", success: "" };
 }
+function requireIrreversibleConfirmation(form: FormData) {
+  if (val(form, "confirmIrreversible") !== "yes")
+    throw new Error("Confirm the irreversible filing/payment record before saving.");
+}
 const refreshed = (periodId: string) => {
   revalidatePath("/desk/sales-tax/returns");
   revalidatePath(`/desk/sales-tax/returns/${periodId}`);
@@ -44,11 +49,11 @@ export async function saveReturnProgressAction(
     const load = await loadFilingPacket(periodId);
     if (load.status !== "READY") throw new Error("Resolve filing blockers before saving the checklist.");
     const marked = form.getAll("complete").filter((v): v is string => typeof v === "string");
-    const allowed = new Set(load.packet.steps.map((_, index) => "step:" + index));
+    const stepKeys = filingStepKeys(load.packet.steps);
+    const allowed = new Set(stepKeys);
     if (marked.some(key => !allowed.has(key))) throw new Error("Checklist changed. Refresh the return.");
     const entryProgress: Record<string, boolean> = {};
-    load.packet.steps.forEach((_, index) => {
-      const key = "step:" + index;
+    stepKeys.forEach(key => {
       entryProgress[key] = marked.includes(key);
     });
     await saveFilingEntryProgress(session.user.id, { periodId, entryProgress });
@@ -61,6 +66,7 @@ export async function recordFiledReturnAction(
 ): Promise<TaxActionState> {
   try {
     const session = await requireRole("OWNER");
+    requireIrreversibleConfirmation(form);
     const periodId = val(form, "periodId");
     await markPeriodFiled(session.user.id, {
       periodId,
@@ -80,6 +86,7 @@ export async function recordFiledAmendmentAction(
 ): Promise<TaxActionState> {
   try {
     const session = await requireRole("OWNER");
+    requireIrreversibleConfirmation(form);
     const amendmentId = val(form, "amendmentId");
     const periodId = val(form, "periodId");
     await markAmendmentFiled(session.user.id, {
@@ -99,6 +106,7 @@ export async function recordAmendmentHandledAction(
 ): Promise<TaxActionState> {
   try {
     const session = await requireRole("OWNER");
+    requireIrreversibleConfirmation(form);
     await markAmendmentHandledOutside(session.user.id, {
       amendmentId: val(form, "amendmentId"),
       reason: val(form, "reason"),

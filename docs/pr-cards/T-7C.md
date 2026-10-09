@@ -22,6 +22,12 @@ New private OWNER/ADMIN returns index, details, amendments, downloadable authent
 
 Local `npm run typecheck`, `npm run lint`, 3 isolated PostgreSQL `tax-return-actions` tests passed. New browser spec assigned to browser-a; require exact-head GitHub CI and review resolution before merge. No migration or live legal submission.
 
+### PR #327 review corrections (October 8)
+
+Resolved P1/P2 scope findings before merge: positive additional-tax amendments use the actual filed amendment command; credit/zero-tax corrections are restricted in BOTH the UI and domain to documented handled-outside resolution. Display the full corrected packet by named filing area with copyable gross, deductions, tax and total, not only internal delta identifiers. Verify private Blob object existence at the storage-provider boundary BEFORE opening the filing transaction; transactional scope checking and Photo claim still occur with the return lock. Use stable content-derived keys for owner checklist progress so old checkmarks never silently map to changed filing instructions. Explicit consequence-aware owner checkbox is required by the form and server action before irreversible filing, payment and amendment decisions. Include copy controls for original returns.
+
+New isolated PostgreSQL tests assert nonpositive amendment rejection and stable checklist content. Initial CI browser staff-calendar test was following an auth redirect to a 200 login page; test now requests with maxRedirects=0 to check the actual access response. CI must be repeated at exact reviewed head.
+
 ## Drift check — every implementation, not only batch start
 
 Follow `docs/implementation-contracts/DRIFT-PROTOCOL.md`. Compare the latest main/predecessor against this baseline and each named contract. Capture actual head, relevant changed files, schema/signature/guard/test differences, and the disposition in the PR and `docs/designs/CHANGES-SINCE-DESIGN.md`. A prior card's merge is a new baseline, never evidence this card still matches.

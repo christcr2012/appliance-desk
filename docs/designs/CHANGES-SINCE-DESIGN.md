@@ -1,3 +1,7 @@
+### T-7C PR #327 code review closeout
+
+T-7C now treats credit/zero-tax amendments as handled-outside only (domain + UI), displays named full corrected filing totals and safe copy controls, and requires confirmation of irreversible owner filing/payment actions. Checklist keys are derived from step content rather than positional indices. Optional private filing uploads undergo a real Vercel Blob HEAD existence check outside the database lock before transaction-bound period ownership and Photo evidence claim; invalid or missing evidence prevents immutable finalization. The staff calendar denial test no longer follows a redirect to a 200 login response. Production filing/payment switches remain untouched.
+
 ### T-7C — guided tax returns and private evidence (2026-10-08)
 
 After predecessor T-7B (#323), the tax workspace adds private filing list and guided period detail, separate SALES/USE/RDF packet tables, owner-only existing progress/filing/amendment commands, authenticated CSV/ICS exports and optional private evidence claim. Filed worksheets are displayed from immutable stored packets, with original-versus-corrected amendment review separate. The existing T-6C4 domain service owns filing/posting; the UI does not create a new tax calculation or activate filing/payments. Against main after #325, no T filing schema drift was found; unrelated K/M design changes were excluded from this PR.

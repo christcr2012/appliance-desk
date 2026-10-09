@@ -3,6 +3,8 @@ import { requireRole } from "@/lib/session";
 import { getPrivateReturn } from "@/domains/tax/returns-view";
 import { TaxActionForm } from "../../setup/forms";
 import { FilingEvidenceUpload } from "../filing-evidence-upload";
+import { FilingCopyField } from "../filing-copy-field";
+import { filingStepKeys } from "@/domains/tax/filing-step-keys";
 import { saveReturnProgressAction, recordFiledReturnAction } from "../actions";
 
 const money = (value: number) => (value / 100).toFixed(2);
@@ -16,6 +18,7 @@ export default async function ReturnDetailPage({
   const owner = session.user.role === "OWNER";
   const { periodId } = await params;
   const { period, result } = await getPrivateReturn(periodId);
+  const stepKeys = result.status === "READY" ? filingStepKeys(result.packet.steps) : [];
   const saved = period.entryProgress && typeof period.entryProgress === "object" &&
     !Array.isArray(period.entryProgress) ? period.entryProgress as Record<string, unknown> : {};
   return <main className="space-y-6">
@@ -76,18 +79,38 @@ export default async function ReturnDetailPage({
           <ul className="list-disc pl-5 text-sm">{result.packet.warnings.map((w,i) => <li key={i}>{w}</li>)}</ul>
         </section>}
       </section>
+      {period.status === "OPEN" && <section className="space-y-3 rounded-lg border border-border p-4">
+        <h3 className="font-semibold">Copy exact values to the official filing screen</h3>
+        {result.packet.account.accountNumber && <FilingCopyField label="Filing account number" value={result.packet.account.accountNumber} />}
+        {result.packet.rows.map(r => <div key={r.jurisdictionId} className="rounded border border-border p-3">
+          <p className="font-semibold">{r.name}</p>
+          {r.filingCode && <FilingCopyField label={r.name+" filing code"} value={r.filingCode} />}
+          <FilingCopyField label={r.name+" gross sales"} value={money(r.grossSalesCents)} />
+          {r.deductions.map(d => <FilingCopyField key={d.key} label={r.name+" "+d.label} value={money(d.cents)} />)}
+          <FilingCopyField label={r.name+" taxable"} value={money(r.netTaxableCents)} />
+          <FilingCopyField label={r.name+" tax"} value={money(r.taxCents)} />
+        </div>)}
+        {result.packet.useTax.map(r => <div key={r.jurisdictionId}>
+          {r.filingCode && <FilingCopyField label={r.name+" use-tax code"} value={r.filingCode} />}
+          <FilingCopyField label={r.name+" use tax"} value={money(r.useTaxCents)} />
+        </div>)}
+        <FilingCopyField label="Expected on-time remittance" value={money(result.packet.totals.remitIfOnTimeCents)} />
+        <FilingCopyField label="Expected late remittance" value={money(result.packet.totals.remitIfLateCents)} />
+        <p className="text-xs text-muted-foreground">Copying values never files a form or pays the government.</p>
+      </section>}
       {period.status === "OPEN" && <section className="space-y-4">
         <h3 className="font-semibold">Step-by-step filing instructions</h3>
         {owner ? <TaxActionForm action={saveReturnProgressAction} title="Save checklist (not filing)" submitLabel="Save progress">
           <input type="hidden" name="periodId" value={periodId} />
           {result.packet.steps.map((step,i) => <label key={i} className="flex items-start gap-3 text-sm">
-            <input type="checkbox" name="complete" value={"step:"+i} defaultChecked={saved["step:"+i] === true} />
+            <input type="checkbox" name="complete" value={stepKeys[i]} defaultChecked={saved[stepKeys[i]!] === true} />
             <span>{step}</span>
           </label>)}
           <p className="text-xs text-muted-foreground">Checkmarks do not file a return or pay the government.</p>
         </TaxActionForm> : <ol className="list-decimal space-y-2 pl-5 text-sm">{result.packet.steps.map((step,i) => <li key={i}>{step}</li>)}</ol>}
         {owner && <TaxActionForm action={recordFiledReturnAction} title="Record an actual filing AND payment"
-          submitLabel="Record filed and paid">
+          submitLabel="Record filed and paid"
+          confirmText="I already filed this return and paid the government outside Appliance Desk. I understand that recording this will permanently freeze the original return and payment evidence.">
           <input type="hidden" name="periodId" value={periodId} />
           <p className="text-sm text-muted-foreground">Only after completing both steps in the official portal: record dates, exact paid amount and confirmation. Filing freezes this original worksheet.</p>
           <div className="grid gap-3 sm:grid-cols-2">

@@ -3,7 +3,8 @@ import { describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { businessDateFromKey } from "@/lib/business-date";
 import { toCsv } from "@/lib/csv";
-import { markPeriodFiled, saveFilingEntryProgress } from "@/domains/tax/filing";
+import { markPeriodFiled, markAmendmentFiled, saveFilingEntryProgress } from "@/domains/tax/filing";
+import { filingStepKeys } from "@/domains/tax/filing-step-keys";
 
 const db = new URL(process.env.DATABASE_URL ?? "postgresql://localhost/unset");
 const enabled = process.env.CI === "true" && db.pathname === "/appliance_desk_test" &&
@@ -36,6 +37,31 @@ async function fixture(run: (ctx: { ownerId: string; periodId: string }) => Prom
 }
 
 describe.skipIf(!enabled)("T-7C private filing and immutable confirmation (isolated PostgreSQL)", () => {
+  it("checklist keys follow exact filing fields through reordering and changed values", () => {
+    const before = filingStepKeys(["Colorado gross sales 120.00", "Denver tax 6.00"]);
+    const reordered = filingStepKeys(["Denver tax 6.00", "Colorado gross sales 120.00"]);
+    expect(reordered).toEqual([before[1], before[0]]);
+    expect(filingStepKeys(["Denver tax 7.00"])[0]).not.toBe(before[1]);
+    expect(filingStepKeys(["Same step", "Same step"])[0])
+      .not.toBe(filingStepKeys(["Same step", "Same step"])[1]);
+  });
+
+  it("nonpositive credits cannot be misreported as a filed tax amendment", async () =>
+    fixture(async ({ ownerId, periodId }) => {
+      const amendment = await prisma.taxFilingAmendment.create({ data: {
+        periodId, sequence: 1, status: "OPEN", packet: { synthetic: true },
+        additionalTaxCents: 0,
+      } });
+      await expect(markAmendmentFiled(ownerId, {
+        amendmentId: amendment.id, filedOn: date("2026-04-18"),
+        paidOn: date("2026-04-18"), confirmationNumber: "SHOULD-NOT-FILE",
+        amountPaidCents: 0,
+      })).rejects.toThrow(/credit|zero-tax|outside/i);
+      expect((await prisma.taxFilingAmendment.findUniqueOrThrow({
+        where: { id: amendment.id },
+      })).status).toBe("OPEN");
+    }));
+
   it("stale filing progress and second filing cannot overwrite a finalized packet", async () =>
     fixture(async ({ ownerId, periodId }) => {
       await saveFilingEntryProgress(ownerId, {
