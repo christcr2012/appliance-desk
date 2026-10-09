@@ -4,6 +4,8 @@ Updated October 9, 2026 (COM-L2 PR #346 merged as 12bcd837; latest deployment-co
 
 ## Next
 
+**2026-10-09 — COM-L5A implemented locally, focused preflight green:** verified inbound SMS, encrypted/idempotent inbox evidence, fail-closed identity resolution and shared-number privacy. Publish as a stacked PR against COM-L4B, then require exact-head CI before any merge. COM-L4B #354 still lacks a final-head GitHub CI run; owner may need to launch the repository's CI workflow manually. **STOP BEFORE W-0C / W-OC**; do not start either spelling unless explicitly authorized.
+
 **2026-10-09 — COM-L4B PR #354 OPEN, final-head CI not yet generated (COM-L4A #353 merged):** default-off, account-scoped Twilio provider adapter; free Basic Lookup US verification, signed callback correlation, locked single-attempt dispatch, late STOP/policy/actor rechecks and fail-safe UNKNOWN recovery. **Next: COM-L5A verified inbound SMS and deterministic identity resolution**, then L5B consent projection. Existing reminders connect later in COM-L6A; no live sending, phone activation or provider spending authorized.
 
 **2026-10-09 — Batch W Amendment A (tax filing on autopilot) added:** W-9 filing autopilot, W-10 use-tax "File now" + filled DR 0252, W-11 live GIS rates (waits on IN-61, may run early once done), W-12 XML return file (waits on IN-62, IN-44). Nothing ever submits or pays on Chris's behalf (D-WA2, IN-63). **D-WA6:** W-2 now also gives every seller-tax answer one dated next step (`nextPurchaseTaxStep`); W-13 receipt reading waits on IN-64; out-of-state seller tax waits on the CPA (IN-65).
