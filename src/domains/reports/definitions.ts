@@ -1,5 +1,5 @@
 /**
- * Every number on Reports, Revenue, Fleet and Growth is declared once here (docs/designs/BATCH-D.md D3), and the screen
+ * Every number on Reports, Revenue, Fleet and Growth is declared once here (docs/archive/designs-completed/BATCH-D.md D3), and the screen
  * prints the definition next to the number: the date basis, how it is worked out, whether it is an actual or an
  * estimate, which records it comes from, and where to see those records. Read-only; no screen invents its own wording.
  * Cost that is not recorded is shown as "unknown", never as profit.

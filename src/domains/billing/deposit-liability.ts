@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { businessDateKey } from "@/lib/business-date";
 
 /**
- * Deposits the business is holding and still owes a decision on (docs/designs/BATCH-D.md D5). A deposit counts as owed
+ * Deposits the business is holding and still owes a decision on (docs/archive/designs-completed/BATCH-D.md D5). A deposit counts as owed
  * while it is refundable and no refund decision has been made. A decided deposit (full refund, or a refund with a
  * written deduction) is no longer owed. Deposits are never rent. Read-only.
  */

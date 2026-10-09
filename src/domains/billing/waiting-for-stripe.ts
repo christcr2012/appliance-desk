@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 
 /**
- * Things the system has asked Stripe to do that are not finished (docs/designs/BATCH-D.md D5). Read-only: nothing here
+ * Things the system has asked Stripe to do that are not finished (docs/archive/designs-completed/BATCH-D.md D5). Read-only: nothing here
  * retries anything; the nightly pass does that, and the reconciliation workbench shows differences.
  */
 

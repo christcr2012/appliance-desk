@@ -190,7 +190,7 @@ const AGREEMENT_SELECT = {
 
 /**
  * The last day the customer has paid for: the earliest of the term's end date and the day before an agreed early
- * ending takes effect. Null when the rental has neither (nothing can be late). docs/designs/BATCH-B2.md B2-7.
+ * ending takes effect. Null when the rental has neither (nothing can be late). docs/archive/designs-completed/BATCH-B2.md B2-7.
  */
 export function agreedEndFor(agreement: { endDate: Date | null; terminationEffectiveOn?: Date | null }): Date | null {
   const ending = agreement.terminationEffectiveOn ? new Date(agreement.terminationEffectiveOn.getTime() - 1000) : null;

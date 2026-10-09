@@ -29,7 +29,7 @@ import { snapshotTerminationPolicy } from "./terms-snapshot";
 import { cancelWithdrawnAutoRenewals } from "./auto-renew";
 
 /**
- * Early returns (docs/designs/BATCH-B2.md B2-19, owner answer IN-29): everything came back before the agreed ending,
+ * Early returns (docs/archive/designs-completed/BATCH-B2.md B2-19, owner answer IN-29): everything came back before the agreed ending,
  * or with no ending recorded. The owner chooses what happens to billing, to the days already paid for, and to the
  * early-ending fee. Defaults come from his settings; nothing here is a hard-coded policy.
  */

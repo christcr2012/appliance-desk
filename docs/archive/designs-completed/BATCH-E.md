@@ -1,3 +1,9 @@
+> **RETIRED DOCUMENT — reference only.** Moved to `docs/archive/` on 2026-10-09.
+> Nothing in this file is a current instruction; any "current", "next", "approved" or
+> "supersedes" language below is historical. The batch is built: its behavior is in the
+> code and tests. The working documents are `AGENTS.md`, `docs/SESSION-START.md`,
+> `docs/STATUS.md`, `docs/PLAN.md` and `docs/PLAYBOOK.md`.
+
 # Design — Batch E: Communications, automation history, search, growth signals, brand tokens & accessibility
 
 > **Final post-D implementation amendment:** before each E slice, also read `docs/designs/BATCH-E-DRIFT-2026-10-05.md` and `docs/designs/POST-BATCH-D-RECONCILIATION-2026-10-05.md`. They were verified against the merged Batch D baseline `a6c9c9acd2f1d673b6020e1819f60c34d9d9c576` and override pre-D inventory assumptions.

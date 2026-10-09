@@ -1,3 +1,9 @@
+> **RETIRED DOCUMENT — reference only.** Moved to `docs/archive/` on 2026-10-09.
+> Nothing in this file is a current instruction; any "current", "next", "approved" or
+> "supersedes" language below is historical. The prompt was answered; the answer is in the
+> designs it produced. The working documents are `AGENTS.md`, `docs/SESSION-START.md`,
+> `docs/STATUS.md`, `docs/PLAN.md` and `docs/PLAYBOOK.md`.
+
 # Prompt for a stronger model: review the renewal-reminder and auto-renew rules (PR #161)
 
 Copy everything below the line into a new chat with a heavy-reasoning model that can read

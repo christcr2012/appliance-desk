@@ -5,7 +5,7 @@ import { assertActiveTeamActor } from "@/lib/team-actor";
 import { sanitizeSiteFields, siteDefaults, siteFieldByKey } from "./fields";
 
 /**
- * Website text in linear revisions (docs/designs/BATCH-D.md D1). The public site reads exactly one PUBLISHED revision
+ * Website text in linear revisions (docs/archive/designs-completed/BATCH-D.md D1). The public site reads exactly one PUBLISHED revision
  * (named by the single pointer row). A draft is never visible to the public. Publishing and restoring lock the
  * pointer row, so two owners acting at once cannot leave two published revisions.
  */

@@ -4,7 +4,7 @@ Robinson Appliance Rentals is Chris's Colorado appliance rental business. Applia
 
 ## Read only what this work needs
 
-1. AGENTS — workflow and hard limits.
+1. Implementing a card: [SESSION-START](SESSION-START.md) (one page). Otherwise AGENTS — workflow and hard limits.
 2. [STATUS](STATUS.md) — current head/state/next item.
 3. [MASTER-ROADMAP](MASTER-ROADMAP.md) — one owner/agent handoff and work coverage.
 4. Next execution card, then its named design/code/test sections. If JIT, write the short card from approved semantic contracts first; [drift protocol](implementation-contracts/DRIFT-PROTOCOL.md) applies every time.

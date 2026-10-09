@@ -11,7 +11,7 @@ BY_ID = {card['id']: card for card in CARDS}
 errors = []
 if len(BY_ID) != len(CARDS):
     errors.append('duplicate card IDs')
-expected = {'T', 'S', 'COM-L', 'V', 'F2', 'K', 'M', 'O', 'COM-N', 'BP'}
+expected = {'T', 'S', 'COM-L', 'W', 'V', 'F2', 'K', 'K-CASH', 'M', 'O', 'COM-N', 'BP'}
 if {c['batch'] for c in CARDS} != expected:
     errors.append('remaining batch coverage changed; reconcile acceptance explicitly')
 # Intentional acceptance scope changes update this reviewed constant. Card IDs
@@ -31,6 +31,8 @@ O-4 O-5 O-6 O-7 S-1A S-1B S-1C S-2
 T-6C1 T-6C2 T-6C3 T-6C4 T-6D1 T-6D2 T-6D3 T-6b2
 T-7A T-7B T-7C T-7D V-1 V-2 V-3 V-4
 V-C1 V-C2 V-C3 V-C4 V-C5
+W-0A W-0B W-1 W-2 W-3 W-4 W-5 W-6 W-7 W-8
+K-CASH-1 K-CASH-2 K-CASH-3 K-CASH-4A K-CASH-4B K-CASH-5A K-CASH-5B K-CASH-6 K-CASH-7
 """.split())
 actual_units = {unit for card in CARDS for unit in card['units']}
 if actual_units != REQUIRED_UNITS:

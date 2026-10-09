@@ -1,3 +1,9 @@
+> **RETIRED DOCUMENT — reference only.** Moved to `docs/archive/` on 2026-10-09.
+> Nothing in this file is a current instruction; any "current", "next", "approved" or
+> "supersedes" language below is historical. The prompt was answered; the answer is in the
+> designs it produced. The working documents are `AGENTS.md`, `docs/SESSION-START.md`,
+> `docs/STATUS.md`, `docs/PLAN.md` and `docs/PLAYBOOK.md`.
+
 # Prompt — write `docs/designs/BATCH-E2.md` (run in a separate chat with a stronger-reasoning model)
 
 You are writing the implementation design for **Batch E2 — Visual redesign** of Appliance Desk

@@ -1,5 +1,48 @@
 import { randomUUID } from "node:crypto";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+// Records which models are written while `writes.recording` is on. Every write the sweep can make goes
+// through this proxy, so the "no business side effects" check below no longer compares global table
+// counts — those raced with other test files writing to the same shard database (PR #337 CI).
+const writes = vi.hoisted(() => ({ models: [] as string[], recording: false }));
+vi.mock("@/lib/prisma", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/prisma")>();
+  const WRITE_OPS = new Set([
+    "create", "createMany", "createManyAndReturn", "update", "updateMany",
+    "updateManyAndReturn", "upsert", "delete", "deleteMany",
+  ]);
+  type Bag = Record<string | symbol, unknown>;
+  const note = (model: string) => { if (writes.recording) writes.models.push(model); };
+  const wrap = (client: Bag): Bag => new Proxy(client, {
+    get(target, prop) {
+      const value = Reflect.get(target, prop);
+      if (prop === "$transaction" && typeof value === "function") {
+        return (arg: unknown, ...rest: unknown[]) => typeof arg === "function"
+          ? value.call(target, (tx: Bag) => (arg as (tx: Bag) => unknown)(wrap(tx)), ...rest)
+          : value.call(target, arg, ...rest);
+      }
+      if ((prop === "$executeRaw" || prop === "$executeRawUnsafe") && typeof value === "function") {
+        return (...args: unknown[]) => { note("<raw SQL>"); return value.apply(target, args); };
+      }
+      if (typeof prop === "string" && !prop.startsWith("$") && value && typeof value === "object") {
+        const delegate = value as Bag;
+        return new Proxy(delegate, {
+          get(d, op) {
+            const fn = Reflect.get(d, op);
+            if (typeof fn !== "function") return fn;
+            if (typeof op === "string" && WRITE_OPS.has(op)) {
+              return (...args: unknown[]) => { note(prop); return fn.apply(d, args); };
+            }
+            return fn.bind(d);
+          },
+        });
+      }
+      return typeof value === "function" ? value.bind(target) : value;
+    },
+  });
+  return { ...actual, prisma: wrap(actual.prisma as unknown as Bag) as unknown as typeof actual.prisma };
+});
+
 import { prisma } from "@/lib/prisma";
 import { runAutomation } from "@/domains/automation/runs";
 import { collectSystemIssueInputs, sweepSystemIssues } from "@/domains/system-issues/sources";
@@ -37,16 +80,20 @@ describe.skipIf(!enabled)("S-1B source scanning and issue lifecycle on isolated 
   });
 
   it("health sweep creates no duplicate customer/business exceptions or provider actions", async () => {
-    const before = await Promise.all([
-      prisma.providerOperation.count(), prisma.job.count(),
-      prisma.invoice.count(), prisma.maintenanceRequest.count(),
-    ]);
-    await sweepSystemIssues(clock, 100);
-    const after = await Promise.all([
-      prisma.providerOperation.count(), prisma.job.count(),
-      prisma.invoice.count(), prisma.maintenanceRequest.count(),
-    ]);
-    expect(after).toEqual(before);
+    writes.models.length = 0;
+    writes.recording = true;
+    let result: { opened: number; resolved: number };
+    try {
+      result = await sweepSystemIssues(clock, 100);
+    } finally {
+      writes.recording = false;
+    }
+    // Proves the recorder really sees the sweep's writes (one per opened or resolved issue), so the
+    // check below cannot pass vacuously.
+    expect(writes.models.length).toBe(result.opened + result.resolved);
+    // The sweep may only record or resolve system issues — never provider operations, jobs, invoices,
+    // maintenance requests or any other business record, and never raw SQL writes.
+    expect(writes.models.filter((model) => model !== "systemIssue")).toEqual([]);
   });
 
   it("never-run tasks stay distinguishable from stale tasks", async () => {

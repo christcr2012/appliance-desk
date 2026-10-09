@@ -7,7 +7,7 @@ import { REMINDER_MAX_DAYS_BEFORE, REMINDER_MIN_DAYS_BEFORE, windowForRenewalSta
 import { DEFAULT_ANNUAL_REMINDER_TEXT, fillWording } from "./wording";
 
 /**
- * Yearly reminders for month-to-month rentals (docs/designs/BATCH-B2.md B2-12). Colorado's automatic-renewal law
+ * Yearly reminders for month-to-month rentals (docs/archive/designs-completed/BATCH-B2.md B2-12). Colorado's automatic-renewal law
  * asks, for renewals shorter than twelve months, for a reminder 25 to 40 days before the renewal that would carry the
  * contract past each continuous twelve-month period. The twelve-month periods are counted from the rental's first
  * delivery across every agreement record in the unbroken rental (`continuousSince`), so a replacement agreement

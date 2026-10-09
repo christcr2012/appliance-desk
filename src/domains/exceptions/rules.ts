@@ -417,7 +417,7 @@ export function itemNotDeliveredException(item: {
 }
 
 /**
- * Everything came back before the agreed ending (docs/designs/BATCH-B2.md B2-19). Until the owner chooses, billing
+ * Everything came back before the agreed ending (docs/archive/designs-completed/BATCH-B2.md B2-19). Until the owner chooses, billing
  * carries on; with "apply my defaults" the choice was already made and can still be changed for a short while.
  */
 export function returnedEarlyException(item: {
@@ -527,7 +527,7 @@ export function noticeWaitingException(notice: {
 
 /**
  * A reminder that did not reach the customer cleanly. All three open the same "Fix a missed reminder" screen,
- * which offers every option (docs/designs/BATCH-B2.md B2-18).
+ * which offers every option (docs/archive/designs-completed/BATCH-B2.md B2-18).
  */
 export function noticeProblemException(
   status: "MISSED" | "UNCERTAIN" | "FAILED",

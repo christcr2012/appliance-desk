@@ -21,7 +21,9 @@
     "vercel-build": "npm run check:migrations && npm run db:migrate:deploy && npm run db:verify-schema-health && npm run build",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "hooks:install": "git config core.hooksPath .githooks",
+    "check:quick": "node scripts/preflight.mjs --quick"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",

@@ -1,4 +1,4 @@
-// Real-Postgres proof for the money workspace (docs/designs/BATCH-D.md D5). Runs only in CI / the sandbox.
+// Real-Postgres proof for the money workspace (docs/archive/designs-completed/BATCH-D.md D5). Runs only in CI / the sandbox.
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";

@@ -8,7 +8,7 @@ import { applyEarlyReturnInTx, choiceFromSettings, previewEarlyReturnInTx, type 
 import { closeAgreementInTx, lockRentalAgreementInTx, runCloseAgreementContinuation, type CloseAgreementResult } from "./index";
 
 /**
- * Closing a rental once everything has come back (docs/designs/BATCH-B2.md WU-B2-9). Before this, a rental whose
+ * Closing a rental once everything has come back (docs/archive/designs-completed/BATCH-B2.md WU-B2-9). Before this, a rental whose
  * equipment had all been picked up stayed ACTIVE (and kept billing) until someone remembered to end it.
  */
 
