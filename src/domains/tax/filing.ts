@@ -54,7 +54,21 @@ async function assertFilingPhoto(
   tx: Prisma.TransactionClient,
   periodId: string,
   photoId: string | null | undefined,
+  photoUrl?: string | null,
 ): Promise<string | null> {
+  if (photoId && photoUrl) throw new Error("Choose one confirmation photo source.");
+  if (photoUrl) {
+    const store = getPrivatePhotoStore();
+    const path = store ? privatePhotoPathFromUrl(photoUrl, store.storeId) : null;
+    if (!path?.startsWith(`tax-filings/${periodId}/`)) {
+      throw new Error("Choose a private confirmation upload belonging to this exact return.");
+    }
+    const evidence = await tx.photo.create({
+      data: { url: photoUrl, altText: "Private tax filing confirmation" },
+      select: { id: true },
+    });
+    return evidence.id;
+  }
   if (photoId === null || photoId === undefined || photoId === "") return null;
   const record = await tx.photo.findUnique({ where: { id: photoId }, select: { url: true } });
   const store = getPrivatePhotoStore();
@@ -104,6 +118,7 @@ export async function markPeriodFiled(
     amountPaidCents: number;
     amountDifferentReason?: string;
     confirmationPhotoId?: string | null;
+    confirmationPhotoUrl?: string | null;
   },
 ): Promise<void> {
   const data = normalizeEvidence(input);
@@ -123,7 +138,7 @@ export async function markPeriodFiled(
     if (data.amountPaidCents !== expected && !data.reason) {
       throw new Error("Explain why the amount paid differs from the calculated return.");
     }
-    const photo = await assertFilingPhoto(tx, input.periodId, input.confirmationPhotoId);
+    const photo = await assertFilingPhoto(tx, input.periodId, input.confirmationPhotoId, input.confirmationPhotoUrl);
     if (packet.rdf) {
       await reserveRdfCreditsInTx(tx, input.periodId, packet.rdf.creditRecordIds);
       for (const recordId of packet.rdf.sourceRecordIds) {

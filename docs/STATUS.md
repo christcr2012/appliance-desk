@@ -4,7 +4,7 @@ Updated October 8, 2026. Acquisition work T-6D1…3 (#313–#315) is merged; #31
 
 ## Next
 
-T-6C4 (#321), T-7A (#322) and T-7B (#323) have merged; next **T-7C** guided filing and **T-7D** tax overview/acceptance. Keep owner/legal/CPA and live payment gates. Refresh each card against its actual merged prerequisite. [MASTER-ROADMAP](MASTER-ROADMAP.md) remains the single handoff; [PLAN](PLAN.md) owns acceptance. No extra handoff document is needed.
+T-6C4 (#321), T-7A (#322) and T-7B (#323) have merged; **T-7C** guided filing is in PR review; **T-7D** tax overview/acceptance follows. Keep owner/legal/CPA and live payment gates. Refresh each card against its actual merged prerequisite. [MASTER-ROADMAP](MASTER-ROADMAP.md) remains the single handoff; [PLAN](PLAN.md) owns acceptance. No extra handoff document is needed.
 
 ## Built
 
@@ -14,7 +14,7 @@ A/B/C/R/B2/D/E/E2, F-part-1 and G are merged. T through acquisition UI/frequency
 
 | Stage | State |
 |---|---|
-| T completion | T-7C guided filing and T-7D overview/acceptance remain; RDF T-6C and tax setup/areas have merged |
+| T completion | T-7C in CI/review and T-7D overview/acceptance remain; RDF T-6C and tax setup/areas have merged |
 | S → COM-L → V → F-part-2 | Approved remaining launch engineering and final product proof |
 | K → M → O → COM-N | Approved later engineering; K/M after launch unless owner reschedules |
 | BP | Proposed business documents/design; runtime acceptance still required |

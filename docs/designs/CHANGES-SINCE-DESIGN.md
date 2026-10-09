@@ -1,3 +1,7 @@
+### T-7C — guided tax returns and private evidence (2026-10-08)
+
+After predecessor T-7B (#323), the tax workspace adds private filing list and guided period detail, separate SALES/USE/RDF packet tables, owner-only existing progress/filing/amendment commands, authenticated CSV/ICS exports and optional private evidence claim. Filed worksheets are displayed from immutable stored packets, with original-versus-corrected amendment review separate. The existing T-6C4 domain service owns filing/posting; the UI does not create a new tax calculation or activate filing/payments. Against main after #325, no T filing schema drift was found; unrelated K/M design changes were excluded from this PR.
+
 ### T-7B PR #323 review corrections
 
 Owner/admin can verify a failed service-address match in the Areas workspace
