@@ -199,7 +199,21 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
   { path: "/desk/suppliers", role: "OWNER", fixture: "/desk/suppliers" },
   { path: "/desk/sales-tax/areas", role: "OWNER", fixture: "/desk/sales-tax/areas" },
   { path: "/desk/sales-tax/exemptions", role: "OWNER", fixture: "/desk/sales-tax/exemptions" },
-  { path: "/desk/sales-tax", role: "OWNER", fixture: "/desk/sales-tax" },
+  { path: "/desk/sales-tax/returns", role: "OWNER", fixture: "/desk/sales-tax/returns" },
+  {
+    path: "/desk/sales-tax/returns/[periodId]",
+    role: "OWNER",
+    fixture: "A real private tax filing period in isolated PostgreSQL",
+    manualOnlyReason: "The route requires a valid tax filing period ID; a static public ID does not exist.",
+  },
+  {
+    path: "/desk/sales-tax/returns/[periodId]/amend",
+    role: "OWNER",
+    fixture: "A filed tax period with a detected open amendment",
+    manualOnlyReason: "A realistic amendment needs an actual filed return and stored correction evidence.",
+  },
+
+  { path: "/desk/sales-tax", role: "OWNER", fixture: "/desk/sales-tax/setup" },
   { path: "/desk/sales-tax/setup", role: "OWNER", fixture: "/desk/sales-tax/setup" },
   { path: "/desk/sales-tax/taxability", role: "OWNER", fixture: "/desk/sales-tax/taxability" },
   {

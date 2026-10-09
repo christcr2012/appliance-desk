@@ -1,4 +1,5 @@
 import { Prisma } from "@prisma/client";
+import { head } from "@vercel/blob";
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
 import { businessDateKey } from "@/lib/business-date";
@@ -54,7 +55,21 @@ async function assertFilingPhoto(
   tx: Prisma.TransactionClient,
   periodId: string,
   photoId: string | null | undefined,
+  photoUrl?: string | null,
 ): Promise<string | null> {
+  if (photoId && photoUrl) throw new Error("Choose one confirmation photo source.");
+  if (photoUrl) {
+    const store = getPrivatePhotoStore();
+    const path = store ? privatePhotoPathFromUrl(photoUrl, store.storeId) : null;
+    if (!path?.startsWith(`tax-filings/${periodId}/`)) {
+      throw new Error("Choose a private confirmation upload belonging to this exact return.");
+    }
+    const evidence = await tx.photo.create({
+      data: { url: photoUrl, altText: "Private tax filing confirmation" },
+      select: { id: true },
+    });
+    return evidence.id;
+  }
   if (photoId === null || photoId === undefined || photoId === "") return null;
   const record = await tx.photo.findUnique({ where: { id: photoId }, select: { url: true } });
   const store = getPrivatePhotoStore();
@@ -93,6 +108,25 @@ export async function saveFilingEntryProgress(
   });
 }
 
+/** Verify actual private object existence BEFORE opening the database lock/transaction.
+ * The transaction still verifies the exact trusted store and period prefix. */
+async function verifyUploadedFilingPhoto(periodId: string, url: string | null | undefined): Promise<void> {
+  if (!url) return;
+  const store = getPrivatePhotoStore();
+  const path = store ? privatePhotoPathFromUrl(url, store.storeId) : null;
+  if (!path?.startsWith(`tax-filings/${periodId}/`)) {
+    throw new Error("Choose a private confirmation upload for this return.");
+  }
+  try {
+    const blob = await head(url, { token: store!.token });
+    if (!blob || blob.url !== url || blob.pathname !== path || blob.size <= 0) {
+      throw new Error("Confirmation upload was not found.");
+    }
+  } catch {
+    throw new Error("The private confirmation upload could not be verified. Upload it again before filing.");
+  }
+}
+
 /** Freeze exactly one audited return, atomically with its payment evidence. */
 export async function markPeriodFiled(
   actorUserId: string,
@@ -104,9 +138,11 @@ export async function markPeriodFiled(
     amountPaidCents: number;
     amountDifferentReason?: string;
     confirmationPhotoId?: string | null;
+    confirmationPhotoUrl?: string | null;
   },
 ): Promise<void> {
   const data = normalizeEvidence(input);
+  await verifyUploadedFilingPhoto(input.periodId, input.confirmationPhotoUrl);
   await prisma.$transaction(async tx => {
     await assertActiveTeamActor(tx, actorUserId, ["OWNER"]);
     const existing = await lockPeriod(tx, input.periodId);
@@ -123,7 +159,7 @@ export async function markPeriodFiled(
     if (data.amountPaidCents !== expected && !data.reason) {
       throw new Error("Explain why the amount paid differs from the calculated return.");
     }
-    const photo = await assertFilingPhoto(tx, input.periodId, input.confirmationPhotoId);
+    const photo = await assertFilingPhoto(tx, input.periodId, input.confirmationPhotoId, input.confirmationPhotoUrl);
     if (packet.rdf) {
       await reserveRdfCreditsInTx(tx, input.periodId, packet.rdf.creditRecordIds);
       for (const recordId of packet.rdf.sourceRecordIds) {
@@ -467,6 +503,10 @@ export async function markAmendmentFiled(
     await assertActiveTeamActor(tx, actorUserId, ["OWNER"]);
     const amendment = await lockAmendment(tx, input.amendmentId);
     if (amendment.status !== "OPEN") throw new Error("This amendment has already been decided.");
+    if (amendment.additionalTaxCents <= 0) {
+      throw new Error("Credit or zero-tax corrections must use the handled-outside/CPA resolution workflow.");
+    }
+
     const previous = parseAmendment(amendment.packet);
     const current = await loadFilingPacketInTx(tx, amendment.periodId,
       latest(data.filedOn, data.paidOn), { allowFiled: true });
