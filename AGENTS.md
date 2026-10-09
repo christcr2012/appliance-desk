@@ -109,7 +109,8 @@ where, and puts it on his To do list; no Today item may link to a page that does
 - **Before pushing:** `npm run hooks:install` once per checkout; the pre-push hook then runs `npm run check:quick`
   (secrets, migrations, shard check, typecheck, lint) on every push. Add the card's
   `npm run preflight -- --db/--browser` checks (PLAYBOOK 4b), which also run every test importing changed code. Local database testing uses throwaway
-  PostgreSQL in the project's **Vercel Sandbox** (reuse the persistent sandbox named in STATUS; PLAYBOOK 4b) via
+  PostgreSQL in the project's **Vercel Sandbox** (reuse the persistent sandbox named in STATUS; PLAYBOOK 4b; it only runs
+  tests — write code in a checkout that can push, push the branch, fetch it there) via
   `scripts/local-postgres-test.sh` — never Neon or production. Never `--no-verify`.
 - **One push per CI cycle.** A push cancels running CI. After a red run, read all failures, reproduce locally, fix them
   all, push once. Same failure twice → reproduce locally; third red run → evidence-based diagnosis before any push.

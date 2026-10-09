@@ -10,6 +10,10 @@ complete:** S-1A #330, S-1B #331, S-1C #332, S-2 #334 (plus the test-fixture dri
 
 **2026-10-09 — Batch W Amendment A (tax filing on autopilot) added:** W-9 filing autopilot, W-10 use-tax "File now" + filled DR 0252, W-11 live GIS rates (waits on IN-61, may run early once done), W-12 XML return file (waits on IN-62, IN-44). Nothing ever submits or pays on Chris's behalf (D-WA2, IN-63). **D-WA6:** W-2 now also gives every seller-tax answer one dated next step (`nextPurchaseTaxStep`); W-13 receipt reading waits on IN-64; out-of-state seller tax waits on the CPA (IN-65).
 
+**W-0A in progress (Sol, 2026-10-09):** implementation and database tests done, not yet on GitHub. If that code exists
+only in the Vercel Sandbox, move it out with the rescue recipe in PLAYBOOK 4b, then `git merge origin/main` (main moved
+only in docs: #337–#339) and publish.
+
 **Recovered unfinished work (2026-10-09, read before starting anything):** found uncommitted in the Vercel Sandbox
 `appliance-desk-s1c-oct8` and committed there (not on GitHub; the sandbox clone has no push credentials):
 - `/vercel/appliance-desk-com-l2`, branch `ai/gpt6/com-l2-foundation`, commit `02e715a` — **COM-L2 started**: schema

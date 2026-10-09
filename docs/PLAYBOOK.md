@@ -87,6 +87,21 @@ throwaway database — this finds the stale fakes, registries and consumers you 
 any domain change so this runs; `--unit` alone skips it (many importing tests need a database). `--plan` shows the
 commands without running them (a plan is not proof). Use `--base <ref>` when stacked.
 
+**The sandbox runs tests; it never holds the only copy of your code** (2026-10-09: W-0A's finished code got stuck in the
+sandbox, whose clone cannot push to GitHub). Write and commit code in your own checkout, the one that can push. To test it:
+1. `git push -u origin <branch>` — **pushing a branch with no PR open runs no CI** (`ci.yml` runs only on pull requests
+   and `main`), so this costs nothing and is the normal way to get code into the sandbox. The pre-push hook still runs.
+2. In the sandbox worktree: `git fetch origin <branch> && git reset --hard origin/<branch>` (the repo is public, so
+   fetching needs no credentials), then run the checks below.
+3. Fix in your checkout, push the branch again, fetch again. Open the PR only when the checks pass.
+**Rescue — code already stranded in the sandbox:** in the sandbox worktree, commit it, then
+`git format-patch origin/main --stdout > /tmp/rescue.patch && sha256sum /tmp/rescue.patch && split -b 40000 -d
+/tmp/rescue.patch /tmp/rescue.part.` — then read **each** `/tmp/rescue.part.NN` with `read_session_file` (small pieces
+are not cut off; a whole file can be), save them in order in your checkout, `cat rescue.part.* > rescue.patch`, check
+the `sha256sum` matches, `git am rescue.patch` (on a branch from the same base), run 4a, push. Never copy source files
+one by one through tool output. Never give the sandbox GitHub
+credentials.
+
 **Local PostgreSQL = Vercel Sandbox (owner standard).** All local database and database-backed browser testing runs in
 the project's Vercel Sandbox, never Neon, production or another database service. Exact steps (Vercel MCP tools; the
 CLI fallback for each tool is `vercel api /v2/sandboxes/...`):
@@ -109,6 +124,15 @@ CLI fallback for each tool is `vercel api /v2/sandboxes/...`):
    migrates, seeds CI-only fixtures, runs the tests and deletes the cluster; it never reads an existing `DATABASE_URL`.
 5. **Stop the session when the card's local checks are done** (`stop_session`); the persistent sandbox keeps its
    snapshot for next time.
+
+**When checks report failures — the fix-and-retest loop** (2026-10-09: a session stopped after a broad preflight
+reported four failures). Never stop on a red result, and never re-run the whole gate to "see if it still fails":
+1. Write the failing test names into the resume note.
+2. Take one failure at a time: run **only that file** (`npx vitest run tests/x.test.ts -t "<name>" 2>&1 | tail -80`, or
+   `preflight -- --db tests/x-integration.test.ts` if it needs the database), find the cause, fix it, re-run that file
+   until it passes, commit.
+3. A failure not fixed after two focused attempts: record what you know in the resume note and move to the next one.
+4. When every listed failure passes alone, run the full preflight **once**. New failures → back to step 1.
 
 Local PostgreSQL results are earlier evidence, **not** a substitute for CI's PostgreSQL 17 jobs. If the sandbox truly
 can't be used, record the exact failing step and let CI supply the proof — never claim unrun tests passed.
@@ -146,6 +170,12 @@ workaround only when needed; never commit generated clients or engines.
 5. "Flake" is not a cause. Re-run once only if the job died before any test ran. Never skip, retry-loop or quarantine.
 6. Put "CI runs used: N (red: R, cancelled: C)" in the PR description.
 7. The `ci` check is the single gate and must be green **at the exact head** you merge.
+
+**When `main` moves while your PR is open.** If the new commits change only docs
+(`git diff --stat <your-base>..origin/main -- src prisma tests e2e scripts` prints nothing), no drift re-check is needed:
+`git merge origin/main` before your final push. Conflicts in `docs/STATUS.md`, `docs/MASTER-ROADMAP.md` or
+`work-index.json`: keep **both** sides' entries, then re-run `python3 docs/pr-cards/validate-index.py`. If code changed,
+re-check only the parts of drift checklist A that touch your card's paths.
 
 ## Step 6 — Docs as if merged, then open the PR
 
