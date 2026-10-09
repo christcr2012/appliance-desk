@@ -1,3 +1,25 @@
+### T-7B PR #323 review corrections
+
+Owner/admin can verify a failed service-address match in the Areas workspace
+using reviewed jurisdiction choices, an actor-audited existing domain command
+and visible success/error feedback. FAILED official lookups remain in the
+review queue. Official source-watch acknowledgement displays the HTTPS URL,
+immutable change excerpt and exact hash+timestamp version, preventing false
+success. Certificate links open the customer Billing tab and the existing
+exemption panel. Real isolated DB/browser cases guard these corrections.
+
+### T-7B areas and exemptions workspace implementation
+
+OWNER and ADMIN can navigate current address-to-area evidence,
+jurisdiction review, official source failures/changes, and previously
+verified customer exemption certificates. Owner-only actions call the
+existing authoritative manual-rate, automatic-undo and official-source
+acknowledgement workflows. Neither unknown provider status nor
+missing certificate evidence is represented as verified. New domain
+queries use bounded stable keyset cursors and restricted financial DTOs;
+the existing customer tax-exemption panel is the sole mutation surface.
+This work is stacked on the reviewed T-7A head while #322 finishes CI.
+
 ### T-7A PR #322 review corrections
 
 Saving a business tax address now invalidates prior current tax-area

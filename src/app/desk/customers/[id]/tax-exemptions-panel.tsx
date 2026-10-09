@@ -290,7 +290,7 @@ export function TaxExemptionsPanel({
   }
 
   return (
-    <div className="mt-6 rounded-lg border border-line bg-white p-5">
+    <div id="tax-exemptions" className="mt-6 rounded-lg border border-line bg-white p-5">
       <h2 className="font-medium text-ink">Tax exemptions</h2>
       <p className="mt-1 text-sm text-ink-soft">
         Exemptions apply only while valid and only to the jurisdictions covered by the certificate.
