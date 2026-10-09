@@ -687,3 +687,13 @@ minimum in the always-required secret-scan job (`scripts/check-docs-updated.mjs`
 a reasoned "Docs-update: not needed — …" line in the PR description is the escape hatch. Cost accepted: concurrent PRs
 may conflict on STATUS (kept short; resolve by keeping both facts).
 
+
+## 2026-10-09 — Tax filing on autopilot (Batch W Amendment A)
+
+Chris asked for filings to be "handled automatically when applicable", using Colorado's GIS API, the SUTS XML upload and
+Revenue Online. Decided: the app does everything up to "Submit and pay" (period close → dated To do incl. $0 returns →
+reminders → confirmation capture → nightly unfiled check; W-9), a guided Revenue Online hand-off plus filled DR 0252 for
+use tax (W-10), the live GIS client once the key and written API contract exist (W-11, IN-61), and an XML return file
+once Colorado confirms an in-house filer may use it (W-12, IN-62, IN-44). Robot submission is not built (D-WA2): it would
+store logins, sign and pay in Chris's name, and break silently on site changes; IN-63 records Chris's confirmation.
+Sources: tax.colorado.gov/GIS-API, tax.colorado.gov/software-developers-sales-tax, DR 0800, DR 0252 instructions.

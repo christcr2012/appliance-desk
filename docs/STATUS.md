@@ -6,7 +6,9 @@ complete:** S-1A #330, S-1B #331, S-1C #332, S-2 #334 (plus the test-fixture dri
 
 ## Next
 
-**2026-10-09 — Batch W approved (IN-57…IN-60).** Next implementation: **W-0A** then **W-0B** (`docs/pr-cards/W-0A.md`, `W-0B.md`; no prerequisite, no migration) — they fix purchase use tax that could never be calculated and a dead Today link. Then COM-L resumes at COM-L2; W-1…W-8 come after COM-L15 and before V. Design: `docs/designs/BATCH-W.md`.
+**2026-10-09 — Batch W approved (IN-57…IN-60).** Next implementation: **W-0A** then **W-0B** (`docs/pr-cards/W-0A.md`, `W-0B.md`; no prerequisite, no migration) — they fix purchase use tax that could never be calculated and a dead Today link. Then COM-L resumes at COM-L2; W-1…W-12 come after COM-L15 and before V. Design: `docs/designs/BATCH-W.md`.
+
+**2026-10-09 — Batch W Amendment A (tax filing on autopilot) added:** W-9 filing autopilot, W-10 use-tax "File now" + filled DR 0252, W-11 live GIS rates (waits on IN-61, may run early once done), W-12 XML return file (waits on IN-62, IN-44). Nothing ever submits or pays on Chris's behalf (D-WA2, IN-63).
 
 **Recovered unfinished work (2026-10-09, read before starting anything):** found uncommitted in the Vercel Sandbox
 `appliance-desk-s1c-oct8` and committed there (not on GitHub; the sandbox clone has no push credentials):
@@ -22,7 +24,7 @@ complete:** S-1A #330, S-1B #331, S-1C #332, S-2 #334 (plus the test-fixture dri
   records the sweep's own writes (only `systemIssue` allowed). If a similar global-count assertion fails by chance
   elsewhere, fix it the same way.
 
-**Order after W-0:** COM-L2 … COM-L15 → W-1 … W-8 → V → F-part-2. Keep owner/legal/CPA and live payment
+**Order after W-0:** COM-L2 … COM-L15 → W-1 … W-12 (W-11/W-12 when their gates clear) → V → F-part-2. Keep owner/legal/CPA and live payment
 gates. [MASTER-ROADMAP](MASTER-ROADMAP.md) is the single handoff; [PLAN](PLAN.md) owns acceptance; implementing sessions
 start at [SESSION-START](SESSION-START.md).
 

@@ -2763,7 +2763,7 @@
       "title": "Typed website content registry and historical compatibility",
       "batch": "V",
       "dependencies": [
-        "W-8"
+        "W-10"
       ],
       "status": "APPROVED",
       "migration": "website_revision_content_version",
@@ -3129,6 +3129,91 @@
       "tests": [],
       "readiness": "WRITE_CARD_AT_START",
       "plannedCard": "docs/pr-cards/W-8.md"
+    },
+    {
+      "id": "W-9",
+      "title": "Tax filing autopilot: every period becomes a dated To do; confirmation capture; nothing left unfiled",
+      "batch": "W",
+      "dependencies": [
+        "W-8"
+      ],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 450,
+      "units": [
+        "W-9"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-W.md",
+        "src/domains/tax/filing-reminders.ts"
+      ],
+      "tests": [],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/W-9.md"
+    },
+    {
+      "id": "W-10",
+      "title": "Use tax File now panel for Revenue Online and filled official DR 0252",
+      "batch": "W",
+      "dependencies": [
+        "W-9"
+      ],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 450,
+      "units": [
+        "W-10"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-W.md",
+        "src/domains/tax/dr0252-worksheet.ts"
+      ],
+      "tests": [],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/W-10.md"
+    },
+    {
+      "id": "W-11",
+      "title": "Live Colorado GIS tax rates for every address (gate IN-61)",
+      "batch": "W",
+      "dependencies": [
+        "W-0A"
+      ],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 400,
+      "units": [
+        "W-11"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-W.md",
+        "src/domains/tax/colorado-gis.ts",
+        "docs/runbooks/colorado-gis-api.md"
+      ],
+      "tests": [],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/W-11.md"
+    },
+    {
+      "id": "W-12",
+      "title": "Sales tax return XML upload file (gates IN-62, IN-44)",
+      "batch": "W",
+      "dependencies": [
+        "W-10"
+      ],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 500,
+      "units": [
+        "W-12"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-W.md",
+        "src/domains/tax/filing-packet.ts"
+      ],
+      "tests": [],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/W-12.md"
     }
   ],
   "enhancements": [

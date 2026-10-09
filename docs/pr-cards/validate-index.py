@@ -31,7 +31,7 @@ O-4 O-5 O-6 O-7 S-1A S-1B S-1C S-2
 T-6C1 T-6C2 T-6C3 T-6C4 T-6D1 T-6D2 T-6D3 T-6b2
 T-7A T-7B T-7C T-7D V-1 V-2 V-3 V-4
 V-C1 V-C2 V-C3 V-C4 V-C5
-W-0A W-0B W-1 W-2 W-3 W-4 W-5 W-6 W-7 W-8
+W-0A W-0B W-1 W-2 W-3 W-4 W-5 W-6 W-7 W-8 W-9 W-10 W-11 W-12
 K-CASH-1 K-CASH-2 K-CASH-3 K-CASH-4A K-CASH-4B K-CASH-5A K-CASH-5B K-CASH-6 K-CASH-7
 """.split())
 actual_units = {unit for card in CARDS for unit in card['units']}
