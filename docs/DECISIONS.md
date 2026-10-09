@@ -705,3 +705,12 @@ The answer model, partial-tax difference and filing calendar already exist; W-2 
 so every screen shows the same dated step, and unanswered purchases escalate before the covering return closes.
 Out-of-state seller tax is not calculated until the CPA answers IN-65 (saved as `LATER` + note, no schema change).
 Receipt reading (W-13) is optional, gated on IN-64 because it sends receipts to an AI service.
+
+## 2026-10-09 — Sandbox is a test runner; fix-and-retest loop; code before docs
+
+From Sol's W-0A report: finished code was stuck in the Vercel Sandbox (its clone cannot push), a broad preflight with
+four failures stopped progress, and documentation cleanup competed with publishing code. Rules added (PLAYBOOK 4b,
+Step 5, SESSION-START): write code only in a checkout that can push; push the branch (no PR = no CI) and fetch it in
+the sandbox; a rescue recipe (format-patch out of the sandbox); one failing file at a time, then the full check once;
+docs-only moves on `main` need only a merge (keep both sides of STATUS conflicts); implementation PRs edit only the
+docs checklist B names.

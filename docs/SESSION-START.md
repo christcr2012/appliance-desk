@@ -7,7 +7,8 @@ form for card work (Chris, 2026-10-09, after sessions kept stopping during start
 ## 1. Find your place (2 minutes)
 
 Local database testing uses the project's **Vercel Sandbox** (PLAYBOOK 4b has the exact steps; reuse the sandbox named
-in STATUS, never create one per card).
+in STATUS, never create one per card). **Write code only in your own checkout; the sandbox only runs tests** (it can't
+push). Push your branch (no PR yet = no CI) and fetch it in the sandbox.
 
 
 1. `git fetch origin && git status -sb && git log --oneline -5` — and once per checkout `npm run hooks:install` (every
@@ -30,8 +31,11 @@ skipping, disabling or weakening tests; re-enabling public sign-up; secrets anyw
    first). Mechanical drift: fix and note it. A real decision missing: stop that card (§6).
 3. Build one work unit → its tests → `npm run preflight -- --unit/--db/--browser <the card's tests>` (PLAYBOOK 4b; the
    registry table in 4c lists what else to update) →
-   **commit locally** → update the resume note (§4). Repeat.
-4. When the card is complete: update the docs **as if this PR had already merged** (card `MERGED (#n)`, STATUS, living
+   **commit locally** → update the resume note (§4). Repeat. Checks red → the fix-and-retest loop in PLAYBOOK 4b (one
+   failing file at a time, then the full check once) — never stop on a red result.
+4. **Code first, then docs.** Publishing verified code beats polishing documents: in an implementation PR, edit only the
+   docs checklist B names; any other doc cleanup goes in STATUS as a note for later.
+5. When the card is complete: update the docs **as if this PR had already merged** (card `MERGED (#n)`, STATUS, living
    docs — DRIFT-PROTOCOL checklist B; CI fails an app PR that skips STATUS/card), push once (the hook runs the quick gate; never `--no-verify`), open
    the PR, then follow PLAYBOOK Steps 5–9. Checklist B is done inside the PR, not after it. Last PR of a batch: **checklist C** (batch close-out) before the next batch. One push per CI cycle; after a red run read every failure, reproduce it
    locally, fix them all, push once.
