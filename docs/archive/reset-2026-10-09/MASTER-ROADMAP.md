@@ -1,3 +1,5 @@
+> **RETIRED 2026-10-09 — reference only.** Full snapshot of docs/MASTER-ROADMAP.md before the 2026-10-09 reset (completed T/S tables, withdrawn delivery forecast, dated scope notes).
+
 # MASTER ROADMAP — the one handoff
 
 Audited baseline: main `b2a06c2` (#310), October 8. [STATUS](STATUS.md) holds current state; [PLAN](PLAN.md) holds remaining acceptance. Original documentation reset: [PR #138](https://github.com/christcr2012/appliance-desk/pull/138). This reset preserves history and the current two-lane process.
@@ -30,10 +32,30 @@ current PR/head.
 
 `work-index.json` is the compact machine-readable coverage list. Existing cards are linked below; **JIT** rows are covered by the approved design and need their execution card written when their prerequisite is real. These rows are coherent capability boundaries, not a requirement to create artificially small PRs. Adjacent compatible work may share a reviewed PR within AGENTS' budget, while preserving acceptance/IDs/migration ownership. Proposed BP rows are planned scope, not approval.
 
-### T and S — complete
+### T
 
-Batch T (tax) is engineering-complete through T-7D #328 and Batch S (system issues) through S-2 #334. Their cards
-remain in `pr-cards/` as the record of what was built; W-0A/W-0B fix defects found afterwards in T.
+| Unit | Scope | Execution card | Prerequisite |
+|---|---|---|---|
+| T-6D1 | Acquisition evidence and safe purchase recording | [card](pr-cards/T-6D1.md) | T-6b2 |
+| T-6D2 | Per-appliance rent tax and purchase-tax completion | [card](pr-cards/T-6D2.md) | T-6D1 |
+| T-6D3 | Acquisition UI, use-tax frequency and worksheet | [card](pr-cards/T-6D3.md) | T-6D2 |
+| T-6C1 | Retail delivery fee schema and decision engine | [card](pr-cards/T-6C1.md) | T-6D3 |
+| T-6C2 | Record delivery fees with stable sale identity | [card](pr-cards/T-6C2.md) | T-6C1 |
+| T-6C3 | Customer fee charging and provider recovery | [card](pr-cards/T-6C3.md) | T-6C2 |
+| T-6C4 | Fee filing, credits and readiness | [card](pr-cards/T-6C4.md) | T-6C3 |
+| T-7A | Tax setup, account and rule editing | [card](pr-cards/T-7A.md) | T-6C4 |
+| T-7B | Areas, official sources and exemption navigation | [card](pr-cards/T-7B.md) | T-7A |
+| T-7C | Guided filing and private evidence | [card](pr-cards/T-7C.md) | T-7B |
+| T-7D | Tax overview, attention routing and acceptance closeout | [card](pr-cards/T-7D.md) | T-7C |
+
+### S
+
+| Unit | Scope | Execution card | Prerequisite |
+|---|---|---|---|
+| S-1A | System issue schema and typed safe event writers | [card](pr-cards/S-1A.md) | T-7D |
+| S-1B | Bounded source sweep and lifecycle integration | [card](pr-cards/S-1B.md) | S-1A |
+| S-1C | System health page and Today system group | [card](pr-cards/S-1C.md) | S-1B |
+| S-2 | Private ops keys, safe API and checkup runbook | [card](pr-cards/S-2.md) | S-1C |
 
 ### COM-L
 
@@ -234,4 +256,38 @@ help, effective-date/impact previews and configurable templates without a second
 policy engine. All runtime additions remain to implement; this PR designs them.
 Keep mandatory Today work visible and preserve signed facts/activation gates.
 
-Removed 2026-10-09 (withdrawn forecast and dated scope notes; the K-CASH section above is current): [snapshot](archive/reset-2026-10-09/MASTER-ROADMAP.md).
+## Delivery forecast — October 8, 2026 (planning estimate)
+
+GitHub creation: September 26, 15:05:48 UTC (09:05:48 Denver). Through main #310,
+276 PRs merged; 217 touched src/prisma/operational scripts. In the preceding
+48 hours, 31 such PRs merged, about 15.5/day. Their median open-to-merge was
+53 minutes; this excludes pre-PR implementation and overlaps stacked work.
+Classification is path-based, not a verified measure of delivered features or
+model identity. Diff line totals include rework and are not useful work volume.
+
+Current finite scope: 49 launch-stage card groups, 34 later approved groups,
+21 proposed BP groups. Groups may combine/split while retaining pinned acceptance.
+PR counts are **not** completion counts for the roadmap groups. No reliable
+PR-to-group ratio has been measured, and the groups differ sharply in scope.
+Consequently the historic 15.5 PRs/day cannot support a delivery date or a
+numeric remaining-work estimate. The earlier October 13–25 estimates are
+withdrawn rather than presented as a forecast.
+
+**Forecast calibration:** After three representative approved implementation
+groups merge, record the group IDs, implementation start and merge timestamps,
+production scope, CI/review rework and blockers. Use that evidence to build
+separate observed rates for small/medium/high-risk groups and then publish
+conditional calendar ranges for launch, all approved work, and BP if accepted.
+Do not equate a PR to a group when cards were combined or split.
+
+The work counts (49 launch, 34 later approved, 21 proposed) describe scope,
+not remaining days. Owner decisions, CPA/legal review, telecom sender setup,
+visual approval and final launch authorization can impose additional waiting
+regardless of engineering throughput. The deferred scope has no forecast.
+
+## October 8 cash-budget scope addition
+
+Nine owner-requested K-CASH groups added after K-8 before M, subject to documentation review.
+Earlier scope counts above predate this addition and are historical, not current totals/delivery dates.
+No new rental-launch gate, model handoff or runtime implementation. Expected collections are forecast only;
+direct QBO remains deferred. One bank/Free is a tenant-verification candidate, not a proven integration.

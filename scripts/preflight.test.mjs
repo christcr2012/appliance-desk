@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parse, commands, adjacentRegressions, run, verifyBrowserReport } from './preflight.mjs';
+import { parse, commands, adjacentRegressions, relatedSources, run, verifyBrowserReport } from './preflight.mjs';
 
 test('documentation avoids app work but preserves static repository checks', () => {
   const steps = commands(parse([]), ['docs/STATUS.md']);
@@ -20,8 +20,9 @@ test('unit, database and browser checks share one disposable cluster', () => {
   assert.equal(steps.filter(s => s[0] === 'bash').length, 1);
   const child = parse(['--inside', ...steps.at(-1).slice(3)]);
   const checks = commands(child, []);
-  assert.ok(checks[0].includes('tests/tax-integration.test.ts'));
-  assert.ok(checks[0].includes('tests/tax.test.ts'));
+  const vitestRun = checks.find(s => s[3] === 'run');
+  assert.ok(vitestRun.includes('tests/tax-integration.test.ts'));
+  assert.ok(vitestRun.includes('tests/tax.test.ts'));
   assert.deepEqual(checks.at(-1), ['node', 'scripts/local-browser-test.mjs', 'e2e/sales-tax.spec.ts']);
 });
 test('invalid selectors and option injection are rejected', () => {
@@ -60,4 +61,31 @@ test('test/CI drift: route, schema and backup changes retain affected legacy tes
   assert.ok(adjacentRegressions(['src/domains/backup/manifest.ts']).includes('tests/backup-restore-integration.test.ts'));
   assert.ok(adjacentRegressions(['prisma/schema.prisma']).includes('tests/backup.test.ts'));
   assert.deepEqual(adjacentRegressions(['docs/PLAN.md']), []);
+});
+test('quick pre-push gate runs cheap checks without requiring selectors', () => {
+  const steps = commands(parse(['--quick']), ['src/domains/tax/engine.ts']);
+  assert.ok(steps.some(s => s.join(' ') === 'npm run typecheck'));
+  assert.ok(steps.some(s => s.join(' ') === 'npm run lint'));
+  assert.ok(steps.some(s => s.includes('scripts/check-secrets.mjs')));
+  assert.ok(!steps.some(s => s[0] === 'bash'));
+});
+test('quick gate on documentation skips application checks', () => {
+  const steps = commands(parse(['--quick']), ['docs/STATUS.md']);
+  assert.ok(!steps.some(s => s[0] === 'npm' || s.includes('related')));
+});
+test('related sources: changed, existing source files only', () => {
+  assert.deepEqual(relatedSources(['src/a.ts', 'src/gone.ts', 'docs/x.md', 'prisma/schema.prisma', 'src/app/desk/[id]/page.tsx'],
+    p => p !== 'src/gone.ts'), ['src/a.ts', 'src/app/desk/[id]/page.tsx']);
+});
+test('related tests run inside the disposable database, never in the quick gate', () => {
+  assert.ok(!commands(parse(['--quick']), ['src/domains/tax/engine.ts']).some(s => s.includes('related')));
+  const outer = commands(parse(['--db', 'tests/tax-integration.test.ts']), ['src/domains/tax/engine.ts']);
+  const bash = outer.find(s => s[0] === 'bash');
+  assert.ok(bash.join(' ').includes('--related src/domains/tax/engine.ts'));
+  const inside = commands(parse(['--inside', '--related', 'src/domains/tax/engine.ts', '--db', 'tests/tax-integration.test.ts']), []);
+  assert.deepEqual(inside[0], ['npx', '--no-install', 'vitest', 'related', '--run', '--passWithNoTests', 'src/domains/tax/engine.ts']);
+});
+test('related selector rejects paths outside src and traversal', () => {
+  assert.throws(() => parse(['--related', 'tests/x.test.ts']), /Invalid related selector/);
+  assert.throws(() => parse(['--related', 'src/../etc/passwd.ts']), /Invalid related selector/);
 });

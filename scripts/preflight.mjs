@@ -5,16 +5,16 @@ import { existsSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
 export function parse(args) {
-  const result = { base: 'origin/main', unit: [], db: [], browser: [], plan: false, inside: false };
+  const result = { base: 'origin/main', unit: [], db: [], browser: [], related: [], plan: false, inside: false, quick: false };
   for (let i = 0; i < args.length; i++) {
     const flag = args[i];
-    if (flag === '--plan' || flag === '--inside') { result[flag.slice(2)] = true; continue; }
-    if (!['--base', '--unit', '--db', '--browser'].includes(flag) || !args[i + 1] || args[i + 1].startsWith('--'))
-      throw new Error('Usage: npm run preflight -- [--base ref] [--unit tests/file.test.ts] [--db tests/file.test.ts] [--browser e2e/file.spec.ts] [--plan]. Repeat selectors for more files.');
+    if (flag === '--plan' || flag === '--inside' || flag === '--quick') { result[flag.slice(2)] = true; continue; }
+    if (!['--base', '--unit', '--db', '--browser', '--related'].includes(flag) || !args[i + 1] || args[i + 1].startsWith('--'))
+      throw new Error('Usage: npm run preflight -- [--quick] [--base ref] [--unit tests/file.test.ts] [--db tests/file.test.ts] [--browser e2e/file.spec.ts] [--plan]. Repeat selectors for more files.');
     const value = args[++i];
     if (flag === '--base') { if (value.startsWith('-')) throw new Error('Invalid base'); result.base = value; continue; }
     const kind = flag.slice(2);
-    const valid = kind === 'browser' ? /^e2e\/[\w/-]+\.spec\.ts$/ : /^tests\/[\w/-]+\.test\.[cm]?[jt]sx?$/;
+    const valid = kind === 'browser' ? /^e2e\/[\w/-]+\.spec\.ts$/ : kind === 'related' ? /^src\/[\w/.()[\]@-]+\.tsx?$/ : /^tests\/[\w/-]+\.test\.[cm]?[jt]sx?$/;
     if (!valid.test(value) || value.includes('..')) throw new Error(`Invalid ${kind} selector: ${value}`);
     result[kind].push(value);
   }
@@ -37,10 +37,22 @@ export function adjacentRegressions(changed) {
     changed.some(file => re.test(file)) ? specs : []))];
 }
 
+// Changed source files whose importing tests Vitest finds by its import graph. They run inside the
+// disposable database (some importing tests need one), catching stale fakes, registries and consumers.
+export function relatedSources(changed, exists = existsSync) {
+  return changed.filter(p => /^src\/[\w/.()[\]@-]+\.tsx?$/.test(p) && !p.includes('..') && exists(p));
+}
+
 export function commands(options, changed) {
   const application = changed.some(p => !p.startsWith('docs/') && !p.endsWith('.md'));
   const behavior = changed.some(p => /^(src|prisma|tests|e2e)\//.test(p));
   const screen = changed.some(p => /^src\/components\//.test(p) || /^src\/app\/.*\.tsx$/.test(p) || /^src\/app\/(?:.*\/)?(page|layout)\.[jt]s$/.test(p) || /^src\/.*\.css$/.test(p) || /^e2e\/.+\.spec\.ts$/.test(p));
+  if (options.quick) {
+    // The automatic pre-push gate (.githooks/pre-push): cheap checks that caught most red CI runs.
+    const quick = [['node', 'scripts/check-secrets.mjs'], ['node', 'scripts/check-migrations.mjs'], ['node', 'scripts/e2e-shard.mjs', '--check']];
+    if (application) quick.push(['npm', 'run', 'typecheck'], ['npm', 'run', 'lint']);
+    return quick;
+  }
   if (!options.inside && behavior && !options.unit.length && !options.db.length && !options.browser.length)
     throw new Error('Code changed: select its meaningful unit, database or browser regressions. --plan does not count as verification.');
   if (!options.inside && screen && !options.browser.length)
@@ -50,9 +62,10 @@ export function commands(options, changed) {
   const adjacent = options.inside ? [] : adjacentRegressions(changed)
     .filter(file => !options.unit.includes(file) && !options.db.includes(file) && existsSync(file));
   if (!options.inside && (options.db.length || options.browser.length || adjacent.length)) {
-    const selections = [...options.unit.map(p => ['--unit', p]), ...[...options.db, ...adjacent].map(p => ['--db', p]), ...options.browser.map(p => ['--browser', p])].flat();
+    const selections = [...options.unit.map(p => ['--unit', p]), ...[...options.db, ...adjacent].map(p => ['--db', p]), ...options.browser.map(p => ['--browser', p]), ...relatedSources(changed).map(p => ['--related', p])].flat();
     list.push(['bash', 'scripts/local-postgres-test.sh', '--checks', ...selections]);
   } else {
+    if (options.related.length) list.push(['npx', '--no-install', 'vitest', 'related', '--run', '--passWithNoTests', ...options.related]);
     const units = [...new Set([...options.unit, ...options.db, ...adjacent])];
     if (units.length) {
       list.push(['npx', '--no-install', 'vitest', 'run', ...units, '--reporter=default', '--reporter=json', '--outputFile.json=vitest-results.json']);
@@ -91,7 +104,7 @@ function main() {
     if (process.env.CI !== 'true' || url.hostname !== 'localhost' || url.pathname !== '/appliance_desk_test')
       throw new Error('Internal checks require the disposable localhost appliance_desk_test database.');
   }
-  for (const file of [...options.unit, ...options.db, ...options.browser]) if (!existsSync(file)) throw new Error(`Missing selected regression: ${file}`);
+  for (const file of [...options.unit, ...options.db, ...options.browser, ...options.related]) if (!existsSync(file)) throw new Error(`Missing selected regression: ${file}`);
   // Compare to the actual target, plus tracked edits and newly created files.
   const changed = options.inside ? [] : [...new Set([
     ...execFileSync('git', ['diff', '--name-only', `${options.base}...HEAD`], { encoding: 'utf8' }).split('\n'),

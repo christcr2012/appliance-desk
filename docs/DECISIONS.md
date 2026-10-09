@@ -72,7 +72,7 @@ predecessor and retargeted to `main` when the predecessor merges.
 ### 2026-10-03 — Tax rate precision: milli-percent helpers first, storage move later
 
 Owner decision IN-17 requires rates exact to 0.001 percentage point (7.375%).
-`docs/designs/BATCH-B.md` D12 predates it and kept tenths of a percent. The new
+`docs/archive/designs-completed/BATCH-B.md` D12 predates it and kept tenths of a percent. The new
 helpers in `src/domains/billing/tax.ts` use thousandths of a percent and convert
 the existing tenths values exactly. Moving the stored rate (an additive
 migration, the settings screen, the agreement snapshot and Stripe tax-rate
@@ -230,7 +230,7 @@ Chris asked for a dashboard switch for live customer email. Built: `BusinessSett
 - Turning auto-renew off withdraws only a waiting reminder, never one being sent; turning it back on brings the same reminder back.
 - A customer can turn off automatic renewal from "My rentals" (Colorado expects an easy online cancel).
 - With customer email off, an estimate is still marked sent but the owner is told to share the link; estimate follow-ups are not marked as sent.
-- A written prompt for a stronger-model review of these rules is in `docs/prompts/REVIEW-RENEWAL-NOTICES.md` (optional, owner's choice).
+- A written prompt for a stronger-model review of these rules is in `docs/archive/prompts/REVIEW-RENEWAL-NOTICES.md` (optional, owner's choice).
 
 ### 2026-10-03 addendum: second Copilot round and the independent review of PR #161
 - A reminder is never emailed once it can no longer be delivered 25 to 40 days before the renewal; it stays on the owner's Notices list.
@@ -310,7 +310,7 @@ later → the line stays and the replacement takes the item's place; permanently
 cancelled (never delivered, removed from the agreement) → the item comes off
 the subscription from the next period, on top of the credit for everything
 billed. Only the credit side exists today. The subscription change is written
-up as a Batch C work unit (`docs/prompts/DESIGN-BATCH-C-LITERAL-SPECS.md`), with
+up as a Batch C work unit (`docs/archive/prompts/DESIGN-BATCH-C-LITERAL-SPECS.md`), with
 the merge handled by Chris's coding agent, not by Claude in this session.
 
 - **2026-10-03 (Claude, Batch C scheduling)** — Date-time boxes on job forms are Colorado clock time, converted by `businessDateTimeFromLocal`. Reason: `new Date("2026-10-05T09:00")` on the server used UTC, so a 9:00 visit showed as 3:00 or 2:00 in the Denver screens. A time that does not exist (spring-forward gap) is refused; in the repeated fall-back hour the first occurrence is used. Also: a no-show is "cancelled + `noShowAt`" and moves nothing else, as the literal spec says.
@@ -342,8 +342,8 @@ the merge handled by Chris's coding agent, not by Claude in this session.
 ## 2026-10-05 — Remaining work rewritten for lower-cost implementing models (Claude Opus 5.5)
 Chris asked for every remaining piece of work to be written the way the D–F designs are (decisions made, exact schema,
 function signatures, named tests, stop-and-ask), updated for what is now built, so Claude Sonnet 5.5 or ChatGPT Sol 5.6
-can implement it. Done against `main` 47bd833: new `docs/designs/BATCH-B2.md` (renewal lifecycle R1–R7, D1, D2; IN-21
-mechanism; C-09) and `docs/designs/BATCH-E2.md`; drift-checked rewrites of D, E and F. Key B2 decisions: one stored,
+can implement it. Done against `main` 47bd833: new `docs/archive/designs-completed/BATCH-B2.md` (renewal lifecycle R1–R7, D1, D2; IN-21
+mechanism; C-09) and `docs/archive/designs-completed/BATCH-E2.md`; drift-checked rewrites of D, E and F. Key B2 decisions: one stored,
 versioned billing-end answer per Stripe subscription, saved in the same transaction as the decision and applied by one
 leased worker (newest version wins); returning equipment never changes billing by itself — only agreed endings do; a
 month-to-month rental can be ended online with no fee at the first billing date after the notice days; month-to-month
@@ -367,16 +367,16 @@ delivery. Owner questions with built defaults: IN-29 to IN-32. B2 and E2 wait fo
   brand kit's light and dark tokens, so no contrast exception and no extra preview step. (`BATCH-E2.md` E2-7.)
 
 ## 2026-10-05 — Batch B2 and Batch E2 designs approved
-Chris: "I approve e2 and b2." `docs/designs/BATCH-B2.md` and `docs/designs/BATCH-E2.md` are approved for
+Chris: "I approve e2 and b2." `docs/archive/designs-completed/BATCH-B2.md` and `docs/archive/designs-completed/BATCH-E2.md` are approved for
 implementation (including the IN-29/IN-30/IN-32 answers folded in the night before). Next batch to build: B2.
 
 ## 2026-10-05 — Batch B2 built (PRs #205–#207 and PR 4)
-Built as designed. Deliberate differences are in `docs/designs/BATCH-B2.md` → Amendments. Early-return changes of an automatic decision are limited to "no refund, no credit, fee unpaid", and an automatic keep-billing decision is changed by first taking back the ending it recorded.
+Built as designed. Deliberate differences are in `docs/archive/designs-completed/BATCH-B2.md` → Amendments. Early-return changes of an automatic decision are limited to "no refund, no credit, fee unpaid", and an automatic keep-billing decision is changed by first taking back the ending it recorded.
 
 ## 2026-10-06 — Tax, books and owner-control designs proposed (G, T, K, O)
 Chris asked for a Colorado sales/use tax subsystem using the state's free lookup, a decision on Stripe Tax, an
 accounting export system (QuickBooks and others), and designs a cheaper model can implement. Proposed (not approved):
-`docs/designs/BATCH-G.md`, `BATCH-T.md`, `BATCH-K.md`, `BATCH-O.md`; summary `docs/plans/TAX-AND-BOOKS-OVERVIEW.md`.
+`docs/archive/designs-completed/BATCH-G.md`, `BATCH-T.md`, `BATCH-K.md`, `BATCH-O.md`; summary `docs/plans/TAX-AND-BOOKS-OVERVIEW.md`.
 Key recommendations and why: (1) the app calculates tax from Colorado's GIS lookup and owner/CPA-set rules, and Stripe
 only collects through ordinary Tax Rates — Stripe Tax cannot know the short-term lease election (C.R.S. 39-26-713),
 would disagree with the app's own invoices, and costs ~0.5% of taxed volume; (2) every tax policy starts "Not decided
@@ -399,7 +399,7 @@ remaining customer self-service and growth items are listed as Batch P candidate
 
 ## 2026-10-06 (evening) — Designs G, T, V, K, O and the Batch F split approved
 Chris, after reviewing the audit, the tax/books plan, the master roadmap and the Evergreen Signature concept: "I love
-all of this! Update the repo!" Recorded as approval of `docs/designs/BATCH-G.md`, `BATCH-T.md`, `BATCH-V.md`,
+all of this! Update the repo!" Recorded as approval of `docs/archive/designs-completed/BATCH-G.md`, `BATCH-T.md`, `BATCH-V.md`,
 `BATCH-K.md`, `BATCH-O.md` and the F split (IN-40, IN-41, IN-42). Order: F-part-1 → G → T → V → F-part-2 → launch →
 K → O (`docs/MASTER-ROADMAP.md`). Still open and unchanged by this approval: the CPA/attorney tax answers (IN-17,
 IN-33 … IN-39 — billing real customers stays blocked until they are entered), SUTS registration, live payment/email
@@ -641,4 +641,20 @@ one button; every obligation-creating save shows "what happens next"; the app cr
 point (draft visits, IN-58); taxes in one place in plain words; first-time setup checklist; ~14 menu entries (IN-60); a
 CI plain-words check. W-0A/W-0B fix the defects first. Also reconciled `docs/pr-cards/validate-index.py`, which already
 failed on main because K-CASH units were added to the index without updating the pinned list.
+
+## 2026-10-09 — Documentation reset 2 and an automatic pre-push gate
+
+Chris asked that implementing models load only what still applies, and that local testing stop wasting time. Evidence:
+of the last 100 CI runs on PRs, 24 failed and 39 were cancelled by newer pushes; 9 of the 24 failures would have been
+caught in under 2 minutes by typecheck, lint or one test file, 4 repeated one broken browser login, 5 were axe or menu-count
+failures on new screens, and several came from forgotten registries (backup policy, automation rules, route inventory,
+foreign-key cleanup). Decided: (1) `.githooks/pre-push` + `npm run hooks:install` run `npm run check:quick` on every push
+(secrets, migrations, shard check, typecheck, lint); `preflight --db/--browser` also runs `vitest related` for changed
+source files inside its throwaway database (many importing tests need one, so the hook can't run them); never `--no-verify`. (2) PLAYBOOK Step 4 rewritten around the evidence, with a "registries that break CI"
+table and one-push-per-CI-cycle rules. (3) AGENTS.md (510 → ~210 lines) and PLAYBOOK (574 → ~185) rewritten to the rules
+that still apply; full snapshots in `docs/archive/reset-2026-10-09/`. (4) Completed batch designs (B, B2, C×3, D, E×2,
+E2, G, R×3) and answered prompts moved to `docs/archive/`; T and S stay as references for current behavior; the
+post-D reconciliation stays because F-part-2 depends on it. (5) STATUS trimmed to current facts (older entries in
+`docs/archive/STATUS-LOG.md`); roadmap's completed T/S tables and the withdrawn delivery forecast removed (snapshot
+archived). The rules themselves did not change.
 

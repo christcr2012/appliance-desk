@@ -6,7 +6,8 @@ form for card work (Chris, 2026-10-09, after sessions kept stopping during start
 
 ## 1. Find your place (2 minutes)
 
-1. `git fetch origin && git status -sb && git log --oneline -5`
+1. `git fetch origin && git status -sb && git log --oneline -5` — and once per checkout `npm run hooks:install` (every
+   push then runs the quick gate automatically: secrets, typecheck, lint).
 2. `sed -n '1,40p' docs/STATUS.md` → the **Next** section names the card.
 3. Is there a **resume note**? `ls docs/pr-cards/*.progress.md 2>/dev/null` — if your card has one, read it and continue
    from its "Next step". Do not restart work that it lists as done.
@@ -21,11 +22,13 @@ skipping, disabling or weakening tests; re-enabling public sign-up; secrets anyw
 ## 3. The work loop
 
 1. Branch `ai/<tool>/<topic>` from latest `main` (or the card's base).
-2. Run the card's drift check. Mechanical drift: fix and note it. A real decision missing: stop that card (§5).
-3. Build one work unit → its tests → `npm run typecheck`, `npm run lint`, `npx vitest run <the card's tests>` →
+2. Run the card's drift check. Mechanical drift: fix and note it. A real decision missing: stop that card (§6).
+3. Build one work unit → its tests → `npm run preflight -- --unit/--db/--browser <the card's tests>` (PLAYBOOK 4b; the
+   registry table in 4c lists what else to update) →
    **commit locally** → update the resume note (§4). Repeat.
-4. When the card is complete: update `docs/STATUS.md`, push once, open the PR, then follow AGENTS "Merging" and
-   "Review continuity".
+4. When the card is complete: update `docs/STATUS.md`, push once (the hook runs the quick gate; never `--no-verify`), open
+   the PR, then follow PLAYBOOK Steps 5–9. One push per CI cycle; after a red run read every failure, reproduce it
+   locally, fix them all, push once.
 
 ## 4. Resume note — so stopping never loses your place
 

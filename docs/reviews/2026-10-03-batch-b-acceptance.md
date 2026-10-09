@@ -46,7 +46,7 @@ the bottom is empty or accepted by Chris.**
 | #149 | P2 renewal signed ahead shows ACTIVE before its start | **Fixed** in the scheduled-renewals PR: a signed renewal is now SCHEDULED ("signed, starts later") until its start date (`agreements-scheduled-renewal-integration`, `scheduled-renewal-rules`). |
 | #151 | P1 optional renewal described as already on | **Fixed here.** Wording now says renewal is optional and not started unless turned on; unit test and browser test assert "opt out" is gone. |
 | #151 | P1 test the real signing flow in a browser | **Fixed here.** `e2e/signing-waiver-presentation.spec.ts` has a fixed-term snapshot case: sections visible, before the "Sign agreement" button, axe clean at phone width (already assigned to a CI shard). |
-| #152 | P1 approved design contradicts the tax migration | **Fixed here.** `docs/designs/BATCH-B.md` D12 and WU-B10 amended. |
+| #152 | P1 approved design contradicts the tax migration | **Fixed here.** `docs/archive/designs-completed/BATCH-B.md` D12 and WU-B10 amended. |
 | #152 | P2 old/new tax columns can drift during deploy | **Fixed here.** Migration `20261003190000_tax_rate_columns_stay_in_step` adds two-way triggers; `tests/tax-rate-columns-sync-integration.test.ts` (4 cases, real Postgres). |
 | #153 | P2 statements drop legacy `SUCCEEDED` payments | **Fixed here.** One shared rule (`src/domains/billing/payment-status.ts`) used by statements, drift checks, the invoice page and the backfill script; `tests/billing-legacy-payment-status.test.ts` fails without the fix. |
 

@@ -1,0 +1,8 @@
+#!/bin/sh
+# Automatic quick gate before every push (AGENTS.md "Pushing").
+# Install once per checkout: npm run hooks:install
+# Secret scan, migration check, browser-shard check, then (when code changed)
+# typecheck and lint. Related tests run in `npm run preflight -- --db ...` (they need a database).
+# Documentation-only pushes run only the repository checks. Never bypass with --no-verify.
+set -e
+exec node scripts/preflight.mjs --quick
