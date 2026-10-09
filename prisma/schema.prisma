@@ -63,6 +63,9 @@ model User {
   assignedJobs          Job[]           @relation("JobAssignedTo")
 
   @@index([role])
+
+  // COM-L2 additive communication lineage.
+  initiatedMessageDeliveries MessageDelivery[] @relation("MessageDeliveryActor")
 }
 
 model Session {
@@ -187,6 +190,9 @@ model Customer {
   archivedAt DateTime?
 
   @@index([isPropertyManager])
+
+  // COM-L2 additive communication lineage.
+  contactBindings ContactBinding[]
 }
 
 // ---------------------------------------------------------------------------
@@ -333,6 +339,10 @@ model Lead {
 
   @@index([status])
   @@index([score])
+
+  // COM-L2 additive communication lineage.
+  contactBindings ContactBinding[]
+  communicationConsents ConsentRecord[]
 }
 
 // A per-entry contact/communication log for a lead — "called Tuesday, no
@@ -2339,6 +2349,10 @@ model BusinessSettings {
   pickupDayNotBilled        Boolean @default(true)
 
   updatedAt DateTime @updatedAt
+
+  // COM-L2 additive communication lineage.
+  communicationsPolicy Json @default("{}")
+  communicationsPolicyVersion Int @default(1)
 }
 
 model MonthToMonthTermsVersion {
@@ -2506,6 +2520,20 @@ model ConsentRecord {
   kind       String
   details    Json?
   createdAt  DateTime @default(now())
+
+  // COM-L2 additive communication lineage.
+  contactPointId String?
+  contactPoint ContactPoint? @relation(fields:[contactPointId],references:[id],onDelete:Restrict)
+  leadId String?
+  lead Lead? @relation(fields:[leadId],references:[id],onDelete:Restrict)
+  purpose CommunicationConsentPurpose?
+  action CommunicationConsentAction?
+  source CommunicationConsentSource?
+  disclosureVersion String?
+  textHash String?
+  occurredAt DateTime?
+  scope Json?
+  @@index([contactPointId,purpose,occurredAt,id])
 }
 
 model CustomerNote {
@@ -2535,6 +2563,9 @@ model CustomerContact {
   createdAt DateTime @default(now())
 
   @@index([customerId])
+
+  // COM-L2 additive communication lineage.
+  contactBindings ContactBinding[]
 }
 
 enum TaskPriority {
@@ -2714,6 +2745,21 @@ model MessageDelivery {
   @@index([recipientType, recipientId, requestedAt])
   @@index([subjectType, subjectId])
   @@index([state, requestedAt])
+
+  // COM-L2 additive communication lineage.
+  telecomAccountId String?
+  telecomAccount TelecomAccount? @relation(fields:[telecomAccountId],references:[id],onDelete:Restrict)
+  attemptHistory MessageAttempt[] @relation("DeliveryAttempts")
+  currentAttemptId String? @unique
+  currentAttempt MessageAttempt? @relation("CurrentMessageAttempt",fields:[currentAttemptId],references:[id],onDelete:Restrict)
+  requestHash String?
+  renderedBody String?
+  renderedSubject String?
+  actorUserId String?
+  actorUser User? @relation("MessageDeliveryActor",fields:[actorUserId],references:[id],onDelete:Restrict)
+  scheduledFor DateTime?
+  origin CommunicationOrigin?
+  environment TelecomEnvironment?
 }
 
 model ProviderEvent {
@@ -2726,6 +2772,19 @@ model ProviderEvent {
   summary     Json?
 
   @@unique([provider, eventId])
+
+  // COM-L2 additive communication lineage.
+  telecomAccountId String?
+  telecomAccount TelecomAccount? @relation(fields:[telecomAccountId],references:[id],onDelete:Restrict)
+  environment TelecomEnvironment?
+  disposition ProviderEventDisposition @default(RECEIVED)
+  attempts Int @default(0)
+  nextAttemptAt DateTime?
+  lastErrorCode String?
+  responseStepKey String?
+  responseXmlEncrypted String?
+  @@index([disposition,nextAttemptAt])
+  @@index([telecomAccountId,receivedAt])
 }
 
 model MarketingSuppression {
@@ -2805,4 +2864,162 @@ model OpsAgentKey {
   notes           SystemIssueNote[]
 
   @@index([createdByUserId, revokedAt])
+}
+
+
+// COM-L2 — additive telecom foundation, NO provider activation.
+enum TelecomEnvironment {
+  PRODUCTION
+  TEST
+}
+enum TelecomAccountStatus {
+  UNCONFIGURED
+  READY
+  DEGRADED
+  DISABLED
+}
+enum TelecomRegistrationStatus {
+  UNKNOWN
+  PENDING
+  APPROVED
+  REJECTED
+}
+enum ContactSuppressionState {
+  NONE
+  OPTED_OUT
+  REVIEW
+}
+enum ContactBindingSource {
+  LEGACY
+  SELF_SERVICE
+  INBOUND
+  STAFF
+}
+enum CommunicationConsentPurpose {
+  SMS_TRANSACTIONAL
+  SMS_MARKETING
+  SMS_CONVERSATIONAL
+}
+enum CommunicationConsentAction {
+  GRANT
+  REVOKE
+  PROVIDER_REENABLE
+  HELP
+}
+enum CommunicationConsentSource {
+  PORTAL
+  WEB_FORM
+  SIGNED_DISCLOSURE
+  INBOUND_EXCHANGE
+  PROVIDER_KEYWORD
+  STAFF_EVIDENCE
+}
+enum MessageAttemptState {
+  PREPARED
+  DISPATCHING
+  ACCEPTED
+  REJECTED
+  UNKNOWN
+  NOT_SENT
+}
+enum ProviderEventDisposition {
+  RECEIVED
+  PENDING_MATCH
+  APPLIED
+  IGNORED
+  FAILED
+  LEGACY_HANDLED
+}
+enum CommunicationOrigin {
+  AUTOMATION
+  MANUAL
+}
+
+model TelecomAccount {
+  id String @id @default(cuid())
+  provider String
+  environment TelecomEnvironment
+  externalAccountId String
+  label String
+  status TelecomAccountStatus @default(UNCONFIGURED)
+  checkedAt DateTime?
+  readiness Json @default("{}")
+  numbers BusinessPhoneNumber[]
+  deliveries MessageDelivery[]
+  attempts MessageAttempt[]
+  events ProviderEvent[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([provider, environment, externalAccountId])
+}
+model BusinessPhoneNumber {
+  id String @id @default(cuid())
+  accountId String
+  account TelecomAccount @relation(fields:[accountId], references:[id], onDelete:Restrict)
+  address String
+  providerNumberId String
+  messagingServiceId String?
+  capabilities Json @default("{}")
+  registrationStatus TelecomRegistrationStatus @default(UNKNOWN)
+  isPrimary Boolean @default(false)
+  verifiedAt DateTime?
+  retiredAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([accountId,address])
+  @@unique([accountId,providerNumberId])
+}
+model ContactPoint {
+  id String @id @default(cuid())
+  environment TelecomEnvironment
+  channel MessageChannel
+  address String
+  suppressionState ContactSuppressionState @default(NONE)
+  suppressionVersion Int @default(0)
+  stoppedAt DateTime?
+  bindings ContactBinding[]
+  consents ConsentRecord[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([environment,channel,address])
+}
+model ContactBinding {
+  id String @id @default(cuid())
+  contactPointId String
+  contactPoint ContactPoint @relation(fields:[contactPointId], references:[id], onDelete:Restrict)
+  customerId String?
+  customer Customer? @relation(fields:[customerId], references:[id], onDelete:Restrict)
+  leadId String?
+  lead Lead? @relation(fields:[leadId], references:[id], onDelete:Restrict)
+  customerContactId String?
+  customerContact CustomerContact? @relation(fields:[customerContactId], references:[id], onDelete:Restrict)
+  source ContactBindingSource
+  verifiedAt DateTime?
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+  @@index([customerId])
+  @@index([leadId])
+  @@index([customerContactId])
+  @@index([contactPointId,revokedAt])
+}
+model MessageAttempt {
+  id String @id @default(cuid())
+  deliveryId String
+  delivery MessageDelivery @relation("DeliveryAttempts",fields:[deliveryId],references:[id],onDelete:Restrict)
+  accountId String?
+  account TelecomAccount? @relation(fields:[accountId],references:[id],onDelete:Restrict)
+  attemptNumber Int
+  operationKey String @unique
+  state MessageAttemptState @default(PREPARED)
+  providerResourceId String?
+  requestHash String
+  startedAt DateTime @default(now())
+  finishedAt DateTime?
+  errorCode String?
+  nextAttemptAt DateTime?
+  currentFor MessageDelivery? @relation("CurrentMessageAttempt")
+  @@unique([deliveryId,attemptNumber])
+  @@unique([accountId,providerResourceId])
+  @@index([state,startedAt])
+  @@index([deliveryId])
 }

@@ -1,23 +1,19 @@
 # STATUS — current work, blockers and next action
 
-Updated October 9, 2026 (W-0A PR #342 synchronized with main `540799c`, including workflow PR #344). **Batch T is engineering-complete** (through T-7D #328). **Batch S is
+Updated October 9, 2026 (main `ba9794d` after W-0A #342, W-0B #343, browser setup #345). **Batch T is engineering-complete** (through T-7D #328). **Batch S is
 complete:** S-1A #330, S-1B #331, S-1C #332, S-2 #334 (plus the test-fixture drift fix #333). **COM-L1A** (#335) and
 **COM-L1B** (#336) are merged. No live payments, customer messages, fee charging or tax filing are activated.
 
 ## Next
 
-**2026-10-09 — Batch W approved (IN-57…IN-60).** Next implementation: **COM-L2**, after PRs #342 (W-0A) and #343 (W-0B) satisfy merge gates (`docs/pr-cards/W-0A.md`, `W-0B.md`; no prerequisite, no migration) — they fix purchase use tax that could never be calculated and a dead Today link. Then COM-L resumes at COM-L2; W-1…W-12 come after COM-L15 and before V. Design: `docs/designs/BATCH-W.md`.
+**2026-10-09 — W-0A #342 and W-0B #343 merged:** purchase use tax can be recovered after owner tax confirmation; pending retail-delivery-fee records have a working, accessible page. **COM-L2 is under PR #346 CI/review; next COM-L3** after its merge. Batch W follow-up cards W-1…W-12 remain after COM-L15, subject to CPA/owner gates. No live filing, payment or telecom activation.
 
 **2026-10-09 — Batch W Amendment A (tax filing on autopilot) added:** W-9 filing autopilot, W-10 use-tax "File now" + filled DR 0252, W-11 live GIS rates (waits on IN-61, may run early once done), W-12 XML return file (waits on IN-62, IN-44). Nothing ever submits or pays on Chris's behalf (D-WA2, IN-63). **D-WA6:** W-2 now also gives every seller-tax answer one dated next step (`nextPurchaseTaxStep`); W-13 receipt reading waits on IN-64; out-of-state seller tax waits on the CPA (IN-65).
 
-**W-0A PR #342 handoff (2026-10-09):** Purchase use-tax confirmation, catch-up and exceptions complete in the PR, incorporating main through workflow PR #344. Exact-head CI/preview must pass on the synchronized commit before merge. **W-0B PR #343** implements the pending delivery-fee review and Today route correction, stacked on W-0A; retarget to main only after #342 merges. One-command cached checks from #344 are the local validation path. No real filing or payment is activated.
+**COM-L2 implementation (2026-10-09):** recovered branch `ai/gpt6/com-l2-foundation` was synchronized through main `ba9794d`; additive telecom schema, migration and five new backup tables are locally verified with disposable PostgreSQL, schema health, positive restore of populated telecom records and the nullable current-attempt cycle restored in two passes. PR #346 is open as a draft; exact-head CI/review/merge gates are next. Provider accounts remain unconfigured and SMS disabled.
 
 **Recovered unfinished work (2026-10-09, read before starting anything):** found uncommitted in the Vercel Sandbox
 `appliance-desk-s1c-oct8` and committed there (not on GitHub; the sandbox clone originally lacked push credentials; this is resolved as of 2026-10-09):
-- `/vercel/appliance-desk-com-l2`, branch `ai/gpt6/com-l2-foundation`, commit `02e715a` — **COM-L2 started**: schema
-  (+217 lines), migration `20261012130000_com_l2_telecom_foundation`, backup manifest, and
-  `tests/communications-foundation-integration.test.ts`. Unverified. When COM-L2 comes up, run drift checklist A on it
-  against current `main` (rename the migration folder if a later one exists) and finish it instead of starting over.
 - `/vercel/appliance-desk`, branch `recovery/t7d-leftovers-2026-10-09`, commit `691a02f` — edits to the tax overview
   (`workspace-overview.ts`, `sales-tax/page.tsx`, its test, T-7D card, contract log) left after #328 merged. Compare with
   `main`; keep only what main lacks, as part of W-3 (taxes in one place) — or discard if superseded.

@@ -1,5 +1,7 @@
 # COM-L2 — Telecom foundation schema
 
+Status: **MERGED (#346)** after exact-head CI/review gates and merge; no live activation.
+
 **Batch COM approved 2026-10-08; L2 becomes implementation-eligible only after final reviewed L1a/L1b and its refreshed schema drift check.**
 Base: final L1b branch or current main with L1a/L1b merged.
 Risk: schema · Migration: one additive `<next_timestamp>_com_foundation` · Budget: ~400 production lines/<10 files.
@@ -261,3 +263,12 @@ Migration checker, Prisma validation/generation, typecheck/lint, real DB schema/
 Follow `docs/implementation-contracts/DRIFT-PROTOCOL.md` before implementation
 and every changed prerequisite. Record actual schema/signatures/guards and
 update this card and CHANGES-SINCE-DESIGN in the same PR.
+
+
+## Implementation and drift evidence (2026-10-09)
+
+- Recovered original implementation at `02e715a`, merged current `main` through `ba9794d` (#342/#343/#345). Additive migration `20261012130000_com_l2_telecom_foundation` follows the previous L1a migration; no later schema collisions detected.
+- New tables: TelecomAccount, BusinessPhoneNumber, ContactPoint, ContactBinding, MessageAttempt; indexes, ownerless default account configuration and database constraints are enforced. ConsentRecord, MessageDelivery and ProviderEvent gain nullable lineage fields; no historical consent, provider configuration, sends, or financial amounts are fabricated.
+- Legacy ProviderEvent rows with processedAt are explicitly marked LEGACY_HANDLED (not APPLIED); unprocessed rows remain RECEIVED.
+- Backup policy includes all five new tables. The nullable MessageDelivery.currentAttemptId backlink is deferred to a second restore pass after MessageAttempt rows exist, preserving both foreign keys and enabling populated backup recovery.
+- Verification: 6 dedicated telecom constraints tests, real PostgreSQL restore/schema/table-order tests (including populated telecom lineage with a restored currentAttemptId) and `npm run check:quick` passed. Full exact-head GitHub CI, preview and review remain the merge gates.
