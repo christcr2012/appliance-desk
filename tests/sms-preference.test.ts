@@ -7,6 +7,11 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 const customerFindUniqueOrThrow = vi.fn();
 const customerUpdate = vi.fn();
 const consentRecordCreate = vi.fn();
+const consentRecordCreateMany = vi.fn();
+const contactPointUpsert = vi.fn();
+const bindingUpdateMany = vi.fn();
+const bindingFindMany = vi.fn();
+const businessSettingsFindUnique = vi.fn();
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
@@ -15,8 +20,22 @@ vi.mock("@/lib/prisma", () => ({
     },
     $transaction: async (fn: (tx: unknown) => unknown) =>
       fn({
-        customer: { update: (...args: unknown[]) => customerUpdate(...args) },
-        consentRecord: { create: (...args: unknown[]) => consentRecordCreate(...args) },
+        customer: {
+          update: (...args: unknown[]) => customerUpdate(...args),
+          findUniqueOrThrow: (...args: unknown[]) => customerFindUniqueOrThrow(...args),
+        },
+        $queryRaw: vi.fn().mockResolvedValue([]),
+        consentRecord: {
+          create: (...args: unknown[]) => consentRecordCreate(...args),
+          createMany: (...args: unknown[]) => consentRecordCreateMany(...args),
+        },
+        businessSettings: { findUnique: (...args: unknown[]) => businessSettingsFindUnique(...args) },
+        contactPoint: { upsert: (...args: unknown[]) => contactPointUpsert(...args) },
+        contactBinding: {
+          updateMany: (...args: unknown[]) => bindingUpdateMany(...args),
+          findMany: (...args: unknown[]) => bindingFindMany(...args),
+        },
+        $executeRaw: vi.fn().mockResolvedValue(1),
       }),
   },
 }));
@@ -40,6 +59,11 @@ describe("updateSmsPreference", () => {
       Promise.resolve({ phone: data.phone, smsOptInAt: data.smsOptInAt }),
     );
     consentRecordCreate.mockReset().mockResolvedValue({});
+    consentRecordCreateMany.mockReset().mockResolvedValue({ count: 1 });
+    contactPointUpsert.mockReset().mockResolvedValue({ id: "point-test" });
+    bindingUpdateMany.mockReset().mockResolvedValue({ count: 0 });
+    bindingFindMany.mockReset().mockResolvedValue([]);
+    businessSettingsFindUnique.mockReset().mockResolvedValue(null);
   });
 
   it("opts in using the phone number already on file, canonicalizes it, and records consent", async () => {
@@ -47,6 +71,14 @@ describe("updateSmsPreference", () => {
 
     expect(result.phone).toBe("+13035550100");
     expect(result.smsOptInAt).toBeInstanceOf(Date);
+    const scoped = consentRecordCreateMany.mock.calls[0][0].data;
+    expect(scoped).toHaveLength(1);
+    expect(scoped[0]).toMatchObject({
+      purpose: "SMS_TRANSACTIONAL", action: "GRANT", source: "PORTAL",
+      scope: { businessNumberId: null, channel: "SMS" },
+      disclosureVersion: expect.any(String), textHash: expect.any(String),
+    });
+    expect(scoped[0].details.disclosure).toContain("Reply STOP");
     expect(customerUpdate).toHaveBeenCalledWith({
       where: { id: "cust-1" },
       data: { phone: "+13035550100", smsOptInAt: expect.any(Date) },
@@ -71,6 +103,41 @@ describe("updateSmsPreference", () => {
       data: { phone: "+17205551234", smsOptInAt: expect.any(Date) },
     });
     expect(result.phone).toBe("+17205551234");
+  });
+
+  it("cannot use a stranger's verified phone binding to grant outbound texts", async () => {
+    businessSettingsFindUnique.mockResolvedValue({
+      communicationsPolicyVersion: 1,
+      communicationsPolicy: {
+        schemaVersion: 1, manualSmsEnabled: true,
+        primaryAccountId: "account-1", primaryNumberId: "business-number-1",
+        approvedPolicyVersion: 1, maxSegments: 3,
+        supportedCountries: ["US"],
+      },
+    });
+    bindingFindMany.mockResolvedValueOnce([
+      { customerId: "different-customer", leadId: null, customerContact: null },
+    ]);
+    await updateSmsPreference("user-1", { optedIn: true, phone: "+13035550100" });
+    expect(consentRecordCreateMany.mock.calls[0][0].data[0].scope.businessNumberId).toBeNull();
+
+    bindingFindMany.mockResolvedValueOnce([
+      { customerId: "cust-1", leadId: null, customerContact: null },
+    ]);
+    await updateSmsPreference("user-1", { optedIn: true, phone: "+13035550100" });
+    expect(consentRecordCreateMany.mock.calls[1][0].data[0].scope.businessNumberId)
+      .toBe("business-number-1");
+  });
+
+  it("rejects a concurrently changed phone rather than attaching consent to an outdated number", async () => {
+    customerFindUniqueOrThrow
+      .mockResolvedValueOnce({ id: "cust-1", phone: "+13035550100" })
+      .mockResolvedValueOnce({ phone: "+17205550100" });
+    await expect(updateSmsPreference("user-1", {
+      optedIn: true, phone: "+13035550100",
+    })).rejects.toThrow(/phone number changed/i);
+    expect(consentRecordCreateMany).not.toHaveBeenCalled();
+    expect(customerUpdate).not.toHaveBeenCalled();
   });
 
   it("refuses to opt in with no phone number on file and none given", async () => {

@@ -286,10 +286,13 @@ export async function processVerifiedTwilioStop(
     });
     if (!inserted) return { duplicate: true, customerId: null };
 
-    const customer = await tx.customer.findFirst({
+    // A shared or recycled number must never arbitrarily select one
+    // person's consent history. Address-wide STOP remains unconditional.
+    const matches = await tx.customer.findMany({
       where: { phone: { in: aliases } },
-      select: { id: true },
+      select: { id: true }, take: 2,
     });
+    const customer = matches.length === 1 ? matches[0] : null;
 
     await upsertMarketingSuppressionInTx(tx, {
       channel: "SMS",
