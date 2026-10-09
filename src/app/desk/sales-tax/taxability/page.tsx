@@ -73,7 +73,7 @@ export default async function TaxabilityMatrixPage() {
     </TaxActionForm>}
     <section className="space-y-3">
       <h3 className="font-semibold">Reviewed area matrix</h3>
-      <div className="overflow-x-auto rounded border border-border">
+      <div tabIndex={0} role="region" aria-label="Taxability rule matrix" className="overflow-x-auto rounded border border-border">
         <table className="min-w-full divide-y divide-border text-left text-sm">
           <thead className="bg-muted"><tr><th className="p-3">Jurisdiction</th><th className="p-3">Category</th><th className="p-3">Status</th><th className="p-3">CPA date</th></tr></thead>
           <tbody>{defaults.map(r => <tr key={r.id} className="border-t border-border">
