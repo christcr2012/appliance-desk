@@ -128,7 +128,8 @@ where, and puts it on his To do list; no Today item may link to a page that does
   diff yourself and write "automated review unavailable — waived" — never claim a review that didn't run. Record a
   disposition for every finding (fixed / already fixed / superseded / still open). Resolve threads only after verifying
   the fix at the exact head.
-- **Merging (authorized by Chris):** `ci` green at the exact head, acceptance met with evidence, preview checked, reviews
+- **Merging (authorized by Chris):** `ci` green at the exact head, acceptance met with evidence, preview checked when one
+  was built (Vercel builds only when site files changed — every build costs money), reviews
   handled → merge with the expected-head SHA. Stacks merge bottom-up, **retargeting each PR to `main` first**. Tell Chris
   before merging if a money, security or data-loss finding is not fixed in the same PR. Merging never covers a hard limit.
 - **Security or money hole already on `main`:** fix it immediately in its own PR.
