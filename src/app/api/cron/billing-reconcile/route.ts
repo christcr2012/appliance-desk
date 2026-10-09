@@ -6,6 +6,7 @@ import { finishPendingProviderOperations } from "@/domains/billing/reconciliatio
 import { runPendingHandoffs } from "@/domains/jobs/completion";
 import { freezeFinalInvoiceArtifacts } from "@/domains/documents/artifacts";
 import { reconcileUnknownDeliveries } from "@/domains/messaging/deliver";
+import { replayUnmatchedTwilioStatusEvents } from "@/domains/messaging/events";
 import { resolvePendingRdfRecords } from "@/domains/tax/rdf-records";
 import { processReadyRdfCharges } from "@/domains/tax/rdf-charges";
 
@@ -38,7 +39,16 @@ export async function GET(request: Request): Promise<NextResponse> {
   // a provider id can be reconciled without blindly re-sending the message.
   const messageDeliveries = await runAutomation({
     ruleKey: "billing-reconcile:message-deliveries",
-    work: async () => ({ counts: automationCounts(await reconcileUnknownDeliveries(50)) }),
+    work: async () => {
+      const before = await replayUnmatchedTwilioStatusEvents(50);
+      const reconciled = await reconcileUnknownDeliveries(50);
+      const after = await replayUnmatchedTwilioStatusEvents(50);
+      return { counts: automationCounts({
+        ...reconciled,
+        matched: before.matched + after.matched,
+        pending: after.pending,
+      }) };
+    },
   });
 
   const retailDeliveryFees = await runAutomation({

@@ -1,7 +1,7 @@
 import { lockCanonicalSmsAddress } from "./sms-address-lock";
 import type { MessageState, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { recordLeadMessageContactInTx } from "@/domains/leads/contact";
+import { applyDeliveryObservationInTx } from "./delivery-state";
 import {
   normalizeMessageAddress,
   smsAddressAliases,
@@ -29,20 +29,6 @@ type TwilioStopEvent = {
   from: string;
   keyword: string;
 };
-
-const TERMINAL_STATES = new Set<MessageState>([
-  "DELIVERED",
-  "BOUNCED",
-  "COMPLAINED",
-  "SUPPRESSED",
-]);
-
-function nextState(current: MessageState, requested: MessageState): MessageState {
-  if (current === requested) return current;
-  if (TERMINAL_STATES.has(current)) return current;
-  if (requested === "ACCEPTED" && current !== "PENDING" && current !== "UNKNOWN") return current;
-  return requested;
-}
 
 async function recordProviderEvent(
   tx: Prisma.TransactionClient,
@@ -118,29 +104,13 @@ export async function processVerifiedResendEvent(
       return { duplicate: false, matched: false };
     }
 
-    const state = nextState(delivery.state, requested);
-    if (state !== delivery.state) {
-      const changedAt = new Date();
-      const completed = await tx.messageDelivery.update({
-        where: { id: delivery.id },
-        data: {
-          state,
-          ...(state === "ACCEPTED" && !delivery.acceptedAt
-            ? { acceptedAt: changedAt, lastError: null }
-            : {}),
-          ...(state === "DELIVERED" ? { deliveredAt: changedAt, lastError: null } : {}),
-          ...(state === "BOUNCED" ? { lastError: "provider reported a hard bounce" } : {}),
-          ...(state === "COMPLAINED" ? { lastError: "recipient reported this message as spam" } : {}),
-        },
-      });
-      if (state === "ACCEPTED" || state === "DELIVERED") {
-        await recordLeadMessageContactInTx(
-          tx,
-          completed,
-          delivery.acceptedAt ?? changedAt,
-        );
-      }
-    }
+    await applyDeliveryObservationInTx(tx, {
+      deliveryId: delivery.id, state: requested, observedAt: new Date(),
+      lastError: requested === "BOUNCED"
+        ? "provider reported a hard bounce"
+        : requested === "COMPLAINED"
+          ? "recipient reported this message as spam" : undefined,
+    });
 
     if ((requested === "BOUNCED" || requested === "COMPLAINED") && delivery.channel === "EMAIL") {
       await upsertMarketingSuppressionInTx(tx, {
@@ -196,69 +166,108 @@ function twilioRequestedState(status: string): MessageState | null {
   }
 }
 
-/** The caller must validate X-Twilio-Signature before calling this. */
+type TwilioReceiptSummary = {
+  messageId: string;
+  status: string;
+  errorCode?: string;
+  matchState?: "unmatched";
+};
+
+function validTwilioReceiptSummary(raw: unknown): TwilioReceiptSummary | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const data = raw as Record<string, unknown>;
+  if (typeof data.messageId !== "string" || !/^[A-Za-z0-9_-]{4,90}$/.test(data.messageId) ||
+      typeof data.status !== "string" || !/^[A-Za-z_]{2,25}$/.test(data.status) ||
+      (data.errorCode !== undefined &&
+        (typeof data.errorCode !== "string" || !/^[A-Za-z0-9_-]{1,24}$/.test(data.errorCode)))) {
+    return null;
+  }
+  return { messageId: data.messageId, status: data.status,
+    ...(data.errorCode ? { errorCode: data.errorCode as string } : {}) };
+}
+
+/** A receipt lock is always acquired before the delivery lock. */
+async function applyTwilioReceiptInTx(
+  tx: Prisma.TransactionClient, eventId: string,
+): Promise<"matched" | "pending" | "ignored"> {
+  const locked = await tx.$queryRaw<{id: string}[]>`
+    SELECT "id" FROM "ProviderEvent"
+    WHERE "provider" = 'twilio' AND "eventId" = ${eventId} FOR UPDATE
+  `;
+  if (!locked.length) throw new Error("Verified Twilio receipt was not persisted");
+  const receipt = await tx.providerEvent.findUniqueOrThrow({
+    where: { provider_eventId: { provider: "twilio", eventId } },
+  });
+  if (receipt.processedAt) return "ignored";
+  const summary = validTwilioReceiptSummary(receipt.summary);
+  const requested = summary && twilioRequestedState(summary.status);
+  if (!summary || !requested) {
+    await tx.providerEvent.update({ where: { id: receipt.id },
+      data: { processedAt: new Date() } });
+    return "ignored";
+  }
+  const delivery = await tx.messageDelivery.findUnique({
+    where: { providerMessageId: summary.messageId },
+  });
+  if (!delivery || delivery.channel !== "SMS") {
+    await tx.providerEvent.update({
+      where: { id: receipt.id },
+      data: { summary: { ...summary, matchState: "unmatched" } },
+    });
+    return "pending";
+  }
+  await applyDeliveryObservationInTx(tx, {
+    deliveryId: delivery.id, state: requested, observedAt: new Date(),
+    lastError: requested === "FAILED"
+      ? summary.errorCode
+        ? `Twilio delivery failure ${summary.errorCode}`
+        : "Twilio reported delivery failure"
+      : undefined,
+  });
+  await tx.providerEvent.update({ where: { id: receipt.id },
+    data: { processedAt: new Date() } });
+  return "matched";
+}
+
+/** Caller verifies the signed webhook before persisting any receipt. */
 export async function processVerifiedTwilioStatusEvent(
   input: TwilioStatusEvent,
 ): Promise<{ duplicate: boolean; matched: boolean }> {
-  const requested = twilioRequestedState(input.status);
   return prisma.$transaction(async (tx) => {
     const inserted = await recordProviderEvent(tx, {
       provider: "twilio",
       eventId: input.eventId,
-      type: `message.${input.status.toLowerCase()}`,
+      type: `message.${input.status.toLowerCase().slice(0,25)}`,
       summary: {
         messageId: input.messageSid,
         status: input.status,
         ...(input.errorCode ? { errorCode: input.errorCode } : {}),
       },
     });
-    if (!inserted) return { duplicate: true, matched: false };
-
-    const delivery = await tx.messageDelivery.findUnique({
-      where: { providerMessageId: input.messageSid },
-    });
-    if (!delivery || !requested) {
-      await tx.providerEvent.updateMany({
-        where: { provider: "twilio", eventId: input.eventId },
-        data: { processedAt: new Date() },
-      });
-      return { duplicate: false, matched: false };
-    }
-
-    const state = nextState(delivery.state, requested);
-    if (state !== delivery.state) {
-      const changedAt = new Date();
-      const completed = await tx.messageDelivery.update({
-        where: { id: delivery.id },
-        data: {
-          state,
-          ...(state === "ACCEPTED" && !delivery.acceptedAt
-            ? { acceptedAt: changedAt, lastError: null }
-            : {}),
-          ...(state === "DELIVERED" ? { deliveredAt: changedAt, lastError: null } : {}),
-          ...(state === "FAILED"
-            ? {
-                lastError: input.errorCode
-                  ? `Twilio delivery failure ${input.errorCode}`
-                  : "Twilio reported delivery failure",
-              }
-            : {}),
-        },
-      });
-      if (state === "ACCEPTED" || state === "DELIVERED") {
-        await recordLeadMessageContactInTx(
-          tx,
-          completed,
-          delivery.acceptedAt ?? changedAt,
-        );
-      }
-    }
-    await tx.providerEvent.updateMany({
-      where: { provider: "twilio", eventId: input.eventId },
-      data: { processedAt: new Date() },
-    });
-    return { duplicate: false, matched: true };
+    const outcome = await applyTwilioReceiptInTx(tx, input.eventId);
+    return { duplicate: !inserted, matched: outcome === "matched" };
   });
+}
+
+/** Bounded, lock-safe replay for out-of-order verified status callbacks. */
+export async function replayUnmatchedTwilioStatusEvents(
+  limit = 50,
+): Promise<{ matched: number; pending: number }> {
+  const receipts = await prisma.providerEvent.findMany({
+    where: { provider: "twilio", type: { startsWith: "message." }, processedAt: null },
+    select: { eventId: true },
+    orderBy: [{ receivedAt: "asc" }, { id: "asc" }],
+    take: Math.max(1, Math.min(200, limit)),
+  });
+  let matched = 0;
+  let pending = 0;
+  for (const receipt of receipts) {
+    const result = await prisma.$transaction(tx =>
+      applyTwilioReceiptInTx(tx, receipt.eventId));
+    if (result === "matched") matched++;
+    if (result === "pending") pending++;
+  }
+  return { matched, pending };
 }
 
 /** STOP is one atomic privacy/consent operation: preference, evidence and suppression. */

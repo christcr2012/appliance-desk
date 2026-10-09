@@ -3,6 +3,7 @@ import type { MessageDelivery, MessageState, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { isNonProductionDeployment } from "@/lib/deployment-safety";
 import { sendEmail } from "@/lib/email";
+import { applyDeliveryObservationInTx } from "./delivery-state";
 import { lockCanonicalSmsAddress } from "./sms-address-lock";
 import { sendCustomerEmail } from "@/lib/customer-email";
 import { getSmsProviderState, sendSms } from "@/lib/sms";
@@ -114,26 +115,11 @@ async function finish(
     deliveredAt?: Date;
   },
 ) {
-  return prisma.$transaction(async (tx) => {
-    const row = await tx.messageDelivery.update({
-      where: { id },
-      data: {
-        state,
-        providerMessageId: input?.providerMessageId,
-        lastError: input?.lastError,
-        acceptedAt: input?.acceptedAt,
-        deliveredAt: input?.deliveredAt,
-      },
-    });
-    if (state === "ACCEPTED" || state === "DELIVERED") {
-      await recordLeadMessageContactInTx(
-        tx,
-        row,
-        input?.acceptedAt ?? input?.deliveredAt ?? new Date(),
-      );
-    }
-    return row;
-  });
+  return prisma.$transaction(tx => applyDeliveryObservationInTx(tx, {
+    deliveryId: id, state, providerMessageId: input?.providerMessageId,
+    observedAt: input?.acceptedAt ?? input?.deliveredAt ?? new Date(),
+    lastError: input?.lastError,
+  }));
 }
 
 function mapOutcome(
@@ -374,19 +360,11 @@ export async function reconcileUnknownDeliveries(
     const changed = await prisma.$transaction(async (tx) => {
       const current = await tx.messageDelivery.findUnique({ where: { id: row.id } });
       if (!current || current.state !== "UNKNOWN") return 0;
-      const completed = await tx.messageDelivery.update({
-        where: { id: row.id },
-        data: {
-          state,
-          acceptedAt: state === "ACCEPTED" ? resolvedAt : undefined,
-          deliveredAt: state === "DELIVERED" ? resolvedAt : undefined,
-          lastError: state === "FAILED" ? "provider reports failure" : null,
-        },
+      const next = await applyDeliveryObservationInTx(tx, {
+        deliveryId: row.id, state, observedAt: resolvedAt,
+        lastError: state === "FAILED" ? "provider reports failure" : undefined,
       });
-      if (state === "ACCEPTED" || state === "DELIVERED") {
-        await recordLeadMessageContactInTx(tx, completed, resolvedAt);
-      }
-      return 1;
+      return next.state === state ? 1 : 0;
     });
     resolved += changed;
   }
