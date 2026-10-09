@@ -291,7 +291,7 @@ the place to plug it in.
 | **W-18** | Plain-language kit: `<Money>`, `<MoneyInput>`, `<InfoTip>` + `src/lib/glossary.ts`; convert the three cents inputs and hand-formatted panels; extend D-W7 to fail on "cents" and raw `/100`; status labels helper | screens | none |
 | **W-14** | Purchases: `Purchase` + documents + "Record a purchase" flow (seller, receipt, grid with model/serial per appliance, tax split by price, review, what-happens-next); seller page lists purchases | money | 1 |
 | **W-15** | Tax proof panel on appliances; audit pack (range → printable pages + spreadsheet); retention setting with ⓘ; parts purchases (PO receiving) ask the tax question and join the records | compliance | none or 1 |
-| **W-16A** | Rental packages: schema, set price with automatic "saves $X", partial-return pricing setting, migration of the set type, "split into washer and dryer" To do + guided screen | money | 1 |
+| **W-16A** | Rental packages: schema, set price with automatic "saves $X", migration of the set type, "split into washer and dryer" To do + guided screen | money | 1 |
 | **W-16B** | Packages in quotes, agreements (assign one machine per part), leads and the public pricing page | money/screens | none |
 | **W-17** | Connected records: Related panel + History on appliance, customer, agreement, purchase, seller, visit, invoice; search by serial/model/seller; `CLEANING` status and inspection → cleaning/repair (E3) | screens | 1 (enum) |
 | **W-19** | Flow gaps not covered by W-4…W-6: S2, S4, S5, S7, M1 (immediate), M2 (pickup requests), E1 (pickup after any ending), progress-card buttons everywhere | operations | none |
