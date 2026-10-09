@@ -498,6 +498,7 @@ OWNER/ADMIN can assign, and mutations revalidate active team roles
 in the write transaction. Read cursors never move backward or accept
 cross-thread message IDs. Thread actions have optimistic version and
 privacy-safe audit evidence. No schema, live provider or send activation.
+
 ### W-21A out-of-service periods — 2026-10-09 (#365)
 - Migration `20261013110000_out_of_service_periods`: `OutOfServicePeriod` (one open per machine) and
   `BusinessSettings.outOfServiceEscalationDays` (default 3). The period stores `creditId` (design said
@@ -515,8 +516,6 @@ privacy-safe audit evidence. No schema, live provider or send activation.
   `singlePriceStart`); credits `SET_SINGLE_PRICE`; Stripe `subscription-line-reprice-<amendmentId>` operations
   (`claimLineRepriceInTx`/`runLineReprice`/`retryLineReprice` in `subscription-line.ts`, reconciled in
   `reconciliation-base.ts`). W-19/W-20 (portal "next bill") should read these credits and amendments.
-
-
 ### 2026-10-09 — COM-L7 private voice data, schema-only boundary
 New CallSession/CallLeg/CommunicationMedia tables exactly anchor call
 lineage to the COM-L2 account/number and optional COM-L3 thread. Raw

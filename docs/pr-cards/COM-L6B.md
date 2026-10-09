@@ -53,3 +53,7 @@ requires separately scoped safe owner authorization before activation.
 - No customer sends, signatures, provider spending or live activation.
 - Verify with disposable PostgreSQL security tests, quick preflight,
   exact-head GitHub CI/performance and pull request review.
+
+- Navigation regression: OWNER/ADMIN/STAFF all discover the new inbox; private finance destinations stay hidden from STAFF.
+
+- Browser-c fix: E2E owner/staff mobile menu includes Communications; use the shared accessible Button instead of white text on pale brand-green background (WCAG contrast regression).
