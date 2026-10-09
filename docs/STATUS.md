@@ -1,10 +1,10 @@
 # STATUS — current work, blockers and next action
 
-Updated October 9, 2026 (W-16A #360 and W-16B #361 rental packages; COM-L4B #354 and COM-L5A #358 merged; W-0C #359). Batch T and Batch S are engineering-complete. No live payments, customer messages, fee charging or tax filing are activated.
+Updated October 9, 2026 (W-16A #360 and W-16B #362 rental packages; COM-L4B #354 and COM-L5A #358 merged; W-0C #359). Batch T and Batch S are engineering-complete. No live payments, customer messages, fee charging or tax filing are activated.
 
 ## Next
 
-**2026-10-09 — W-16A (#360) and W-16B (#361) merged, built by Claude beside Sol's chain (Chris: "you take W-16A/B and
+**2026-10-09 — W-16A (#360) and W-16B (#362) merged, built by Claude beside Sol's chain (Chris: "you take W-16A/B and
 W-21"):** a washer and dryer set is a **rental package** of separate machines. Sets are managed in Settings → Products
 and pricing → Sets and packages and shown on the website and quote form. Agreements and quotes can now rent a set ("Rent
 as"), with the server checking one machine per part. Old one-record sets show on To do as "Split … into separate

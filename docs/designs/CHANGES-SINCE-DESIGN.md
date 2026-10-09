@@ -453,7 +453,7 @@ activation or customer-messaging changes.
 - Until W-18 builds `<InfoTip>`/`<MoneyInput>`, the Sets screen explains with field help text and uses the existing dollar
   inputs; W-18 converts it with the other screens.
 
-### W-16B set lines and old-set split — 2026-10-09 (#361)
+### W-16B set lines and old-set split — 2026-10-09 (#362)
 - `addRentalLine(..., { packageId })` requires exactly one machine per part (`packagePartsProblem` in
   `src/domains/packages/pricing.ts`); price stays editable; renewals copy `packageId`. `addEstimateLineItem` takes
   `packageId` (active sets). Choices come from `listPackagesForLines()`; UI `src/components/desk/package-line-chooser.tsx`.
