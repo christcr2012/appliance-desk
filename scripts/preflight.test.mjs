@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parse, commands, run, verifyBrowserReport } from './preflight.mjs';
+import { parse, commands, adjacentRegressions, run, verifyBrowserReport } from './preflight.mjs';
 
 test('documentation avoids app work but preserves static repository checks', () => {
   const steps = commands(parse([]), ['docs/STATUS.md']);
@@ -43,4 +43,20 @@ test('missing, empty and skipped browser results fail closed', () => {
   assert.throws(() => verifyBrowserReport(report), /1 skipped/);
   report.suites[0].suites[0].specs[0].tests[0].status = 'expected';
   assert.doesNotThrow(() => verifyBrowserReport(report));
+});
+
+test('test/CI drift: changed diagnostics require existing Today and navigation regressions', () => {
+  assert.deepEqual(adjacentRegressions(['src/domains/system-issues/actions.ts']), [
+    'tests/today-role-access.test.ts', 'tests/desk-navigation.test.ts'
+  ]);
+  const steps = commands(parse(['--db', 'tests/system-issue-actions-integration.test.ts']), [
+    'src/domains/system-issues/actions.ts'
+  ]);
+  assert.ok(steps.some(s => s.includes('tests/today-role-access.test.ts')));
+  assert.ok(steps.some(s => s.includes('tests/desk-navigation.test.ts')));
+});
+test('test/CI drift: route, schema and backup changes retain affected legacy tests', () => {
+  assert.ok(adjacentRegressions(['src/app/desk/test/page.tsx']).includes('tests/accessibility-route-inventory.test.ts'));
+  assert.ok(adjacentRegressions(['src/domains/backup/manifest.ts']).includes('tests/backup-restore-integration.test.ts'));
+  assert.deepEqual(adjacentRegressions(['docs/PLAN.md']), []);
 });

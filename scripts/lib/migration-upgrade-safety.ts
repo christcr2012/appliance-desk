@@ -1,6 +1,7 @@
-/** This drill may only create/drop its own database in CI's disposable Postgres. */
+/** This drill may only create/drop its own database in CI or a launcher-owned loopback Postgres. */
 export function migrationUpgradeTarget(env: {
   CI?: string;
+  APPLIANCE_DESK_DISPOSABLE_PG?: string;
   VERCEL?: string;
   VERCEL_ENV?: string;
   DIRECT_URL?: string;
@@ -19,10 +20,15 @@ export function migrationUpgradeTarget(env: {
       "Migration upgrade drill requires the CI localhost target.",
     );
   }
+  // GitHub uses fixed port 5432. The Vercel Sandbox launcher owns a newly
+  // initialized disposable localhost cluster on an OS-assigned port.
+  const sandboxPort = env.APPLIANCE_DESK_DISPOSABLE_PG === "true" &&
+    /^[0-9]+$/.test(target.port) && Number(target.port) >= 1024 &&
+    Number(target.port) <= 65535;
   if (
     target.protocol !== "postgresql:" ||
     target.hostname !== "localhost" ||
-    target.port !== "5432" ||
+    (target.port !== "5432" && !sandboxPort) ||
     target.pathname !== "/appliance_desk_test" ||
     target.username !== "test" ||
     target.password !== "test" ||

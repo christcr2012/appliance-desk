@@ -8,6 +8,16 @@ it("accepts only the disposable CI target", () => {
   expect(migrationUpgradeTarget(safe).toString()).toBe(url);
 });
 
+it("accepts only explicitly launcher-owned nonstandard loopback ports", () => {
+  const local = url.replace(":5432/", ":28743/");
+  expect(migrationUpgradeTarget({
+    ...safe, DIRECT_URL: local, DATABASE_URL: local, APPLIANCE_DESK_DISPOSABLE_PG: "true",
+  }).toString()).toBe(local);
+  expect(() => migrationUpgradeTarget({
+    ...safe, DIRECT_URL: local, DATABASE_URL: local,
+  })).toThrow(/requires/);
+});
+
 describe("rejects before any database operation", () => {
   it.each([
     { CI: undefined },
@@ -31,6 +41,20 @@ describe("rejects before any database operation", () => {
     expect(() => migrationUpgradeTarget({ ...safe, ...override })).toThrow(
       /requires/,
     );
+  });
+
+  it("does not let the sandbox flag bypass localhost, fixed test database or user", () => {
+    for (const unsafe of [
+      "postgresql://test:test@production.neon.tech:28743/appliance_desk_test",
+      "postgresql://test:test@localhost:28743/production",
+      "postgresql://owner:test@localhost:28743/appliance_desk_test",
+      "postgresql://test:test@localhost:1023/appliance_desk_test",
+    ]) {
+      expect(() => migrationUpgradeTarget({
+        ...safe, DIRECT_URL: unsafe, DATABASE_URL: unsafe,
+        APPLIANCE_DESK_DISPOSABLE_PG: "true",
+      })).toThrow(/requires/);
+    }
   });
 
   it("does not echo supplied credentials in errors", () => {
