@@ -167,6 +167,7 @@ workaround only when needed; never commit generated clients or engines.
 |---|---|---|
 | A Prisma model or column | `BACKUP_MODEL_POLICY` (`src/domains/backup/manifest.ts`), schema-health list | `tests/backup.test.ts`, `tests/schema-health.test.ts` |
 | A foreign key | cleanup order in integration tests that delete the parent | the affected `*-integration.test.ts` via `--db` |
+| A real-database test that writes the business-settings row or creates filing accounts | `SHARED_SETTINGS_TESTS` in `vitest.config.mts` (runs one at a time) | `tests/shared-state-tests-listed.test.ts` |
 | An automation rule | `AUTOMATION_RULES` order/fields (`src/domains/automation/health.ts`) | `tests/automation-health.test.ts` |
 | A desk page | `e2e/route-inventory.ts` | `tests/accessibility-route-inventory.test.ts` |
 | A menu entry | `src/lib/desk-navigation.ts` and the menu-count assertions | `tests/desk-navigation.test.ts`, `e2e/desk-workspace.spec.ts` |

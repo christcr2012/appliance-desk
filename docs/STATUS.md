@@ -86,6 +86,10 @@ outstanding. W-0C resolves the original payment failure defect and does not impl
 
 **COM-L2 merged (#346, 2026-10-09):** the additive telecom account, number, contact-point/binding and send-attempt schema passed exact-head CI and disposable PostgreSQL backup/restore validation. COM-L3 extends its account and delivery lineage. SMS and provider spending remain off.
 
+**2026-10-09 — test interference fixed (#367):** tests that write the one business-settings row or filing accounts now
+run one at a time (guarded by `tests/shared-state-tests-listed.test.ts`), and the health sweep counts only issues it
+actually recorded. The chance failures in tax and health-sweep tests are gone (two full local runs clean).
+
 **Recovered unfinished work (2026-10-09, read before starting anything):** found uncommitted in the Vercel Sandbox
 `appliance-desk-s1c-oct8` and committed there (not on GitHub; the sandbox clone originally lacked push credentials; this is resolved as of 2026-10-09):
 - `/vercel/appliance-desk`, branch `recovery/t7d-leftovers-2026-10-09`, commit `691a02f` — edits to the tax overview

@@ -25,6 +25,34 @@ const SHARED_SETTINGS_TESTS = [
   "tests/tax-migration-integration.test.ts",
   "tests/tax-locations-integration.test.ts",
   "tests/tax-use-tax-integration.test.ts",
+  // Added 2026-10-09: every other real-database test that writes the business-settings row or creates Colorado filing
+  // accounts (which filing reminders, the tax overview and the health sweep read across the whole database).
+  // tests/shared-state-tests-listed.test.ts fails if a new one is missing.
+  "tests/appliance-acquisition-tax-integration.test.ts",
+  "tests/automation-runs-integration.test.ts",
+  "tests/batch-b2-migration-integration.test.ts",
+  "tests/business-tax-address-confirm-integration.test.ts",
+  "tests/communications-intent-integration.test.ts",
+  "tests/job-scheduling-integration.test.ts",
+  "tests/job-scope-integration.test.ts",
+  "tests/purchase-tax-recalculate-integration.test.ts",
+  "tests/rdf-filing-integration.test.ts",
+  "tests/rdf-threshold-integration.test.ts",
+  "tests/retail-delivery-fee-integration.test.ts",
+  "tests/subscription-end-integration.test.ts",
+  "tests/system-issue-sweep-integration.test.ts",
+  "tests/tax-filing-finalization-integration.test.ts",
+  "tests/tax-filing-integration.test.ts",
+  "tests/tax-filing-reminders-integration.test.ts",
+  "tests/tax-invoice-lines-integration.test.ts",
+  "tests/tax-official-rate-auto-apply-integration.test.ts",
+  "tests/tax-overview.test.ts",
+  "tests/tax-return-actions-integration.test.ts",
+  "tests/tax-setup-actions-integration.test.ts",
+  "tests/tax-setup-review-integration.test.ts",
+  "tests/two-factor-enforcement-integration.test.ts",
+  "tests/use-tax-frequency-transition-integration.test.ts",
+  "tests/use-tax-unlinked-account-integration.test.ts",
 ];
 
 export default defineConfig({
@@ -47,11 +75,14 @@ export default defineConfig({
         },
       },
       {
-        // These real-database tests all rewrite the ONE business-settings row
-        // (policy, tax rate), so they must not run at the same time or they
-        // overwrite each other's values. Which runner a file lands on in CI
-        // changes whenever tests are added, so this is enforced here, not by
-        // luck. Add a new test to this list if it writes that row.
+        // These real-database tests share records that exist once for the whole
+        // database — the ONE business-settings row (policy, tax rate, paused
+        // automations) and the Colorado filing accounts/periods that reminders,
+        // the tax overview and the health sweep read across all rows — so they
+        // must not run at the same time or they see and overwrite each other's
+        // data. Which runner a file lands on in CI changes whenever tests are
+        // added, so this is enforced here, not by luck, and checked by
+        // tests/shared-state-tests-listed.test.ts.
         test: {
           name: "node-shared-settings",
           environment: "node",
