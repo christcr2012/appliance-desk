@@ -12,7 +12,7 @@ Audited baseline: main `b2a06c2` (#310), October 8. [STATUS](STATUS.md) holds cu
 |---|---|---|
 | Finish launch product | T → S → COM-L → V → F-part-2 | CPA/legal tax answers; COM sender/retention/activation; V rendered visual acceptance |
 | Launch | GO-LIVE-CHECKLIST after final evidence | Chris authorizes live operation; engineering evidence is not activation |
-| After launch | K → M → O → COM-N | K earlier only if Chris schedules; M IN-47 after launch; affected CPA/telecom decisions |
+| After launch | K → K-CASH (documentation review pending) → M → O → COM-N | K earlier only if Chris schedules; M IN-47 after launch; affected CPA/telecom decisions |
 | Proposed later | BP after K/M/O, and relevant COM-N | Explicit runtime design acceptance; IN-48/49/50 for affected offers/programs |
 | Deferred | O32, O29, direct QBO, P and COM-A | Actual accounts/data/selected scope and accepted design; never fake-ready |
 
@@ -114,11 +114,29 @@ Audited baseline: main `b2a06c2` (#310), October 8. [STATUS](STATUS.md) holds cu
 | K-7 | Profit, balance and appliance payback | JIT — `K-7.md` | K-6 |
 | K-8 | Forecast, customer health and year-end package | JIT — `K-8.md` | K-7 |
 
+### K-CASH — owner-requested design, documentation review pending
+
+Design: `docs/designs/BATCH-K-CASH.md`; [research](research/2026-10-08-startup-banking-quickbooks.md).
+Launch unchanged. K affected units read K-CASH section 9; no application/payment authority.
+JIT cards reflect actual merged K contracts; preserve the existing two-lane workflow.
+
+| Unit | Scope | Execution card | Prerequisite |
+|---|---|---|---|
+| K-CASH-1 | Cash evidence schema, typed events and posting revision | JIT — `K-CASH-1.md` | K-8 |
+| K-CASH-2 | CSV imports and typed cash-event posting | JIT — `K-CASH-2.md` | K-CASH-1 |
+| K-CASH-3 | Bank matches, reconciliation and cash readiness | JIT — `K-CASH-3.md` | K-CASH-2 |
+| K-CASH-4A | Envelope, target and planned-cost schema | JIT — `K-CASH-4A.md` | K-CASH-3 |
+| K-CASH-4B | Protected reserves and atomic envelope movements | JIT — `K-CASH-4B.md` | K-CASH-4A |
+| K-CASH-5A | Recurring plans, targets, settlements and forecast dedupe | JIT — `K-CASH-5A.md` | K-CASH-4B |
+| K-CASH-5B | Budget workspace and contextual source integration | JIT — `K-CASH-5B.md` | K-CASH-5A |
+| K-CASH-6 | QBO detail export, import proof and owner handoff | JIT — `K-CASH-6.md` | K-CASH-5B |
+| K-CASH-7 | Published plans, variance/trend reports and month-end review | JIT — `K-CASH-7.md` | K-CASH-6 |
+
 ### M
 
 | Unit | Scope | Execution card | Prerequisite |
 |---|---|---|---|
-| M-1A | Shop and resale stock schema | JIT — `M-1A.md` | K-8 |
+| M-1A | Shop and resale stock schema | JIT — `M-1A.md` | K-CASH-7 (after design review) |
 | M-1B | Resale movement costs and use-tax withdrawals | JIT — `M-1B.md` | M-1A |
 | M-1C | Atomic local shop sale and refund domain | JIT — `M-1C.md` | M-1B |
 | M-1D | Sales and items-for-sale screens | JIT — `M-1D.md` | M-1C |
@@ -243,3 +261,10 @@ The work counts (49 launch, 34 later approved, 21 proposed) describe scope,
 not remaining days. Owner decisions, CPA/legal review, telecom sender setup,
 visual approval and final launch authorization can impose additional waiting
 regardless of engineering throughput. The deferred scope has no forecast.
+
+## October 8 cash-budget scope addition
+
+Nine owner-requested K-CASH groups added after K-8 before M, subject to documentation review.
+Earlier scope counts above predate this addition and are historical, not current totals/delivery dates.
+No new rental-launch gate, model handoff or runtime implementation. Expected collections are forecast only;
+direct QBO remains deferred. One bank/Free is a tenant-verification candidate, not a proven integration.

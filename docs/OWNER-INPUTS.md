@@ -68,6 +68,9 @@ Only ask for the inputs needed by the next release. Do not ask all at once.
 | IN-52 | Before voicemail/media capture | Approve voicemail announcement, private storage, retention/legal-hold/privacy policy. Ordinary recording/transcription separately OFF pending appropriate legal/operational review. | Media collection/retention | Synthetic test media only; no invented statutory duration |
 | IN-53 | Before telecom alert/circuit activation | Confirm budget/currency, warning tiers, destinations/features and anomaly actions. $50/$75/$100 are suggestions, not expected spend. | Cost alerts and optional automation pause | Notify-only proposal; no global cutoff of inbound/customer/legal communication |
 
+| IN-54 | Before K-CASH account activation | Owner selects bank/edition and personally completes formation/EIN/KYC; verify primary feed or CSV, journal import and zero-difference reconciliation in actual QBO tenant. Bluevine Standard/QBO Free candidate, Axos Basic alternative. No application, paid tier or transfer authorized. | Account-specific verified setup, not synthetic engineering | Build with fixtures; verification UNKNOWN |
+| IN-55 | Before K-CASH budget activation | Owner/bookkeeper confirms opening assets/liabilities/equity, bank/Stripe/card debt, all tax/deposit obligations. CPA confirms physical reserve/interest treatment and income-tax target; owner enters actual costs/dates/goals. No invented percentages/fees. | Truthful cash activation and affected policy | Implement provisional controls; unknown amounts remain unknown |
+
 ## Confirmed facts — do not ask again
 
 - **Items missing from the first delivery and the Stripe subscription (Chris, 2026-10-03):** an item delivered late, or

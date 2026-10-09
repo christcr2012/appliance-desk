@@ -20,6 +20,16 @@ editing the earlier decision away.
 
 ---
 
+### 2026-10-08 — owner-requested K-CASH design (documentation review pending)
+
+Chris requested current startup-bank/QBO research and robust envelopes/planned costs with advance domain/UI/tests
+for Sol 5.6 light/medium. Proposed one operating account, Bluevine Standard first/Axos Basic alternative, QBO Free
+only after actual import/matching/reconciliation proof. Appliance Desk retains customer detail, K journals are the
+accounting source. Only confirmed cash funds envelopes; future receipts are estimates. Targets/occurrences never
+post payments. CSV bank evidence avoids paid APIs. Nine groups after K-8 before M, no launch reorder; K opening/
+export/tax/forecast/source-revision amendments in design section 9. IN-54/55 gate actual setup/policy. No account
+application/spending/activation authorized; researched rates/software limits are dated, not coded constants.
+
 ### 2026-10-04 (later) — IN-28: Stripe billing begins on the real delivery day
 
 Chris: "Billing should begin upon delivery." A new subscription is created with Stripe's

@@ -614,3 +614,14 @@ Reuse the designed journal and appliance analytics; do not create a second P&L.
 No new tax calculation or automatic retire/replace decision. Test a missing
 purchase basis, missing fee feed, two-appliance allocation, refunds and complete
 evidence; payback must never divide by zero or imply a profit from missing cost.
+
+## 2026-10-08 K-CASH amendment — cash, budgeting and bank/export proof
+
+Owner requested researched banking/QBO and robust integrated envelope planning. See
+[BATCH-K-CASH](BATCH-K-CASH.md), especially section 9, for proposed reviewed amendments:
+bank-aware QBO DETAIL export default, explicit import confirmation/provenance, typed owner money/transfers/interest/
+cash deposits/card payments, monotonic posting revision, confirmed opening liability composition, RDF and
+filed-versus-paid tax evidence, and forecast source deduplication. Documentation review precedes affected
+implementation; no account opening, software spending, live providers or bank transfers authorized.
+No customer invoice mirror or direct QBO API added. Proposed K-CASH follows K-8 before M; launch unchanged.
+Existing K cards read section 9 during drift check. Direct-QBO outline remains deferred; recheck provider pricing.
