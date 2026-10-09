@@ -615,3 +615,13 @@ K Expense. First corrections cover uncertain SMS replay, state/callback races, m
 activation/isolation. Proposed T → S → COM-L → V → F-part-2 → launch; COM-N after K/O; advanced features later.
 New architecture/first three cards are ready for review, not recorded as accepted or activated. IN-03/09 reused;
 IN-51/52/53 cover routing/media/budgets. No paid/provider/live changes in this documentation work.
+
+## 2026-10-08 — Targeted publication preflight, without retrospective failure recreation
+
+Owner requested immediate improvements to current implementation speed. Consolidate
+selected static/unit/database/browser proof into one command, resolve conflicting
+browser instructions, and share disposable role fixtures/setup across selected
+checks. Failed commands, setup blockers and skipped browser results cannot claim
+passing proof. Full exact-head CI/review/preview and owner activation gates stay.
+Do not add workstreams or another report; measure the next three implementation
+merges by completed scope and repair rounds before claiming a speed improvement.

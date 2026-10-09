@@ -47,3 +47,15 @@ groups → M, documentation reviewed and owner-approved for planning only. No ru
 protected obligations, annual/recurring costs/targets, bank CSV matching/reconciliation, QBO import evidence and
 contextual screens specified. K opening/export/forecast/posting-revision amendments explicit. IN-54/55 gate
 account-specific activation, not synthetic engineering. No bank/provider/spending/live-money activation.
+
+## Targeted publication checks — October 8
+
+Owner requested immediate throughput improvements without recreating historical
+failures. `npm run preflight` consolidates static checks and selected unit/database/
+browser regressions; shared disposable fixtures now include ADMIN and dummy auth.
+PLAYBOOK Step 4 replaces conflicting browser recipes. Full CI remains mandatory.
+Launcher regression tests exercise failure propagation, selectors and incomplete
+browser evidence; actual build/database/browser proof still comes from the named
+local runs or exact-head CI, not the command plan. No launch gate or feature queue
+changes. Assess the next three implementation merges for completed scope and red
+CI rounds rather than raw PR counts; no extra report/workstream.

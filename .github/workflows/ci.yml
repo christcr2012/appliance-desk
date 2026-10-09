@@ -171,6 +171,9 @@ jobs:
       - name: Every browser spec file is assigned to exactly one CI group
         run: node scripts/e2e-shard.mjs --check
 
+      - name: Publication preflight failure and evidence regressions
+        run: npm run check:preflight
+
       - name: Check for un-reviewed destructive migrations
         run: npm run check:migrations
 

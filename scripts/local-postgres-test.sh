@@ -5,7 +5,7 @@ set -euo pipefail
 
 if [ "$#" -eq 0 ]; then
   echo "Usage: bash scripts/local-postgres-test.sh tests/<spec>.test.ts [more specs or Vitest flags]" >&2
-  echo "Use --all to explicitly run the full Vitest suite." >&2
+  echo "Use --all for full Vitest, or --checks followed by preflight selectors to share one database." >&2
   exit 2
 fi
 
@@ -61,14 +61,24 @@ export TEST_CUSTOMER_EMAIL=ci-customer@example.test
 export TEST_CUSTOMER_PASSWORD='FixtureOnlyNotARealCredential123!'
 export TEST_STAFF_EMAIL=ci-staff@example.test
 export TEST_STAFF_PASSWORD='FixtureOnlyNotARealCredential123!'
+export TEST_ADMIN_EMAIL=ci-admin@example.test
+export TEST_ADMIN_PASSWORD='FixtureOnlyNotARealCredential123!'
+export BETTER_AUTH_SECRET=ci-test-secret-not-for-production-use-only
+export BETTER_AUTH_URL=http://localhost:3000
+export NEXT_PUBLIC_APP_URL=http://localhost:3000
 # Never allow an inherited deployment setting to activate a real provider.
-unset VERCEL VERCEL_ENV
+unset VERCEL VERCEL_ENV STRIPE_SECRET_KEY STRIPE_WEBHOOK_SECRET RESEND_API_KEY
+unset TWILIO_ACCOUNT_SID TWILIO_AUTH_TOKEN TWILIO_PHONE_NUMBER
+unset BLOB_READ_WRITE_TOKEN PRIVATE_BLOB_READ_WRITE_TOKEN RDF_CUSTOMER_CHARGING_ENABLED
 psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p "$PORT" -U test -d postgres -c 'CREATE DATABASE appliance_desk_test OWNER test;' > /dev/null
 
 echo "Running against NEW localhost-only PostgreSQL on port $PORT (disposable appliance_desk_test)."
 npm run db:migrate:deploy
 npm run db:seed
-if [ "$1" = "--all" ]; then
+if [ "$1" = "--checks" ]; then
+  shift
+  node scripts/preflight.mjs --inside "$@"
+elif [ "$1" = "--all" ]; then
   shift
   npx vitest run "$@"
 else

@@ -217,21 +217,34 @@ need a real resume mechanism; this recipe does not promise one.
 
 ## Step 4 — Verify locally before any push
 
-**Default (agent decision, approved by Chris 2026-10-03): run only 4a — the
-cheap checks — before a push, and let CI run the full suite and browser specs.**
-The rest of this step (4b full local suite, 4c browser specs) is for when it is
-cheaper than guessing: migrations/SQL, a CI failure you cannot explain, or a
-spec you are iterating on. Local verification of the full suite takes ~5 minutes
-to set up and can catch failures that would otherwise fail in CI (GitHub shows only the first 10 failures per
-step, so one CI run rarely shows them all, and a red run is noise for Chris).
+Run one targeted publication preflight on the complete tree. Full CI remains the
+exact-head merge gate; do not run the whole local suite by default.
 
-### 4a. Fast checks (every time)
+### 4a. One command, selected regressions
 
 ```bash
-npm run typecheck
-npm run lint
-npx vitest run <tests you touched>
+# Pure behavior change:
+npm run preflight -- --unit tests/customer-direct-create.test.ts
+# Transaction/money/permission change (fresh local database):
+npm run preflight -- --db tests/retail-delivery-fee-integration.test.ts
+# Screen change, including its adjacent database behavior:
+npm run preflight -- --db tests/tax-overview.test.ts --browser e2e/sales-tax.spec.ts
+# Review the selected command plan without running it:
+npm run preflight -- --browser e2e/sales-tax.spec.ts --plan
 ```
+
+Repeat selectors for adjacent regressions, including existing consumers/mocks
+changed by the new contract. Use `--base <prerequisite-ref>` for a stack; refresh
+that ref first. The command checks committed differences, tracked edits and new
+files. It runs repository checks, typecheck/lint, then selected regressions.
+Database and browser selections share one seeded throwaway cluster. A plan is
+not proof. Missing selectors or failed/timed-out commands fail visibly.
+Tooling-only work includes the preflight launcher's own Node regression checks.
+
+Run before the first publication and after each coherent repair/base sync.
+Collect all actionable failures into one patch before pushing again. Keep full
+CI/performance/preview and applicable reviews; passing local checks is not a
+merge waiver. Do not publish a partial reconstruction to discover its failures.
 
 ### 4b. Local real-PostgreSQL testing in Vercel Sandbox
 
@@ -273,57 +286,31 @@ Local PostgreSQL 18 results are useful earlier evidence, **not a substitute
 for exact-head GitHub CI's isolated PostgreSQL 17 gate**. Record real passed
 test counts and never claim skipped integration specs passed.
 
-### 4c. Browser and accessibility tests locally (required for screen changes)
+### 4c. Targeted browser proof, without manual rebuilding
 
-If you touched `src/app/`, `src/components/`, `src/lib/` or `e2e/`, run the
-browser specs that cover those screens **before pushing**. Skipping this is how
-a dark-mode contrast failure reached CI on 2026-10-03 and cost a billed run.
-Cloud sandboxes ship a Chromium and Playwright works there; two sandbox quirks
-need the workaround below (both local-only, nothing is committed):
+Select the specs for changed screens with `--browser`; the command builds once,
+uses CI-only OWNER/ADMIN/STAFF/CUSTOMER fixtures, runs selected specs with saved
+sessions and rejects missing/empty/skipped result reports. It refuses deployment
+`.env` files: use an isolated worktree without them. Provider credentials and live
+activation flags are removed from the disposable launcher's inherited environment.
 
-```bash
-S=<scratchpad dir>   # any scratch folder outside the repo
-
-# 1. The sandbox cannot reach fonts.googleapis.com, so `next build` fails on the
-#    Google font. Mock it (works with webpack, not Turbopack) using any local .woff2:
-cp "$(find / -name '*.woff2' -size +1k 2>/dev/null | head -1)" $S/mock.woff2
-cat > $S/font-mock.js <<EOF2
-const css = `@font-face { font-family: 'Manrope'; font-style: normal; font-weight: 200 800;
-  font-display: swap; src: url($S/mock.woff2) format('woff2'); unicode-range: U+0000-00FF; }`;
-module.exports = new Proxy({}, { get: () => css });
-EOF2
-export NEXT_FONT_GOOGLE_MOCKED_RESPONSES=$S/font-mock.js
-npx next build --webpack          # with the step-4 environment exported and the database seeded
-
-# 2. The preinstalled Chromium is an older build than this repo's Playwright
-#    wants (the error message names the folder, e.g. chromium_headless_shell-1243).
-#    Point Playwright at a shim folder that links to the installed binary:
-D=$S/pw/chromium_headless_shell-1243/chrome-headless-shell-linux64   # use the number from the error
-mkdir -p $D && ln -sf /opt/pw-browsers/chromium_headless_shell-1194/chrome-linux/headless_shell $D/chrome-headless-shell
-export PLAYWRIGHT_BROWSERS_PATH=$S/pw PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
-
-# 3. Run the specs for what you changed (the whole suite is ~6 minutes)
-npx playwright test e2e/owner-portal-workspaces.spec.ts
-```
-
-Never run `playwright install` (the sandbox forbids it). The accessibility
-specs scan every screen in light and dark mode, so a new screen or a new
-coloured box should be added to the relevant scan list and run here first.
-The local run uses a webpack build and a stand-in font, so CI's
-Turbopack/real-font build remains the final authority.
-
-### 4c. Browser tests (when you changed UI or a spec)
-
-`npm run build && npx playwright test <changed specs>` if the sandbox can
-install a browser. If it cannot, say so in the PR: CI is the first real run
-of that spec and it may need one follow-up fix.
+A sandbox may have an older preinstalled Chromium or block Google Fonts. Set
+`LOCAL_TEST_CHROMIUM` to the existing Chromium executable and `LOCAL_TEST_FONT`
+to an existing `.woff2` stand-in, then use the same command. These are optional
+local-only overrides, never installs or production settings. The font override
+uses a webpack build; GitHub's production build/real font remains authoritative.
+Never run `playwright install` in the sandbox. Setup failures are concrete local
+blockers: record the failed command/reason and require CI's real browser evidence,
+never label blocked or skipped tests as passed. Keep implementing the eligible
+successor while checks run; do not repeatedly push guessed setup fixes.
 
 ### 4d. Shard assignment
 
-`node scripts/e2e-shard.mjs --check` — must print OK.
+`node scripts/e2e-shard.mjs --check` runs in preflight. New specs still require
+an explicit group in `e2e/shards.json`; no CI shard or acceptance check is removed.
 
-Done when: typecheck clean, lint clean, full vitest green locally, shard
-check OK.
+Done when selected applicable checks pass, or a real local setup blocker is
+recorded honestly and required exact-head CI supplies the missing proof.
 
 ## Step 5 — Review continuity
 
