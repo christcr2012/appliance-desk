@@ -5,6 +5,7 @@
       "sales-tax-setup.spec.ts",
       "sales-tax-areas.spec.ts",
       "sales-tax-returns.spec.ts",
+      "system-health.spec.ts",
       "appliance-acquisition-tax.spec.ts",
       "owner-portal-workspaces.spec.ts"
     ],

@@ -929,7 +929,21 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     .filter((item) => item.category === "SALES_TAX")
     .sort((left, right) => left.since.getTime() - right.since.getTime());
   const cappedSalesTaxItems = salesTaxItems.slice(0, EXCEPTION_CATEGORY_CAP);
+  // System diagnostics are separate from customer work; only finance roles see them.
+  const systemIssueWhere = { severity: "HIGH" as const,
+    status: { in: ["OPEN" as const, "ACKNOWLEDGED" as const] } };
+  const systemIssueRows = canViewFinance ? await prisma.systemIssue.findMany({
+    where: systemIssueWhere, orderBy: [{ lastSeenAt: "desc" }, { id: "desc" }],
+    take: EXCEPTION_CATEGORY_CAP, select: { summary: true, lastSeenAt: true },
+  }) : [];
+  const systemIssueTotal = canViewFinance
+    ? await prisma.systemIssue.count({ where: systemIssueWhere }) : 0;
   const visibleItems = [
+    ...systemIssueRows.map((issue) => ({
+      category: "SYSTEM_ISSUE" as const, severity: "high" as const,
+      title: issue.summary, detail: "System health needs review.",
+      href: "/desk/automations#system-issues", since: issue.lastSeenAt,
+    })),
     ...items.filter((item) => item.category !== "SALES_TAX"),
     ...cappedSalesTaxItems,
     ...filingAttention.returns.rows,
@@ -942,6 +956,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
 
   const truncated: ExceptionTruncation[] = (
     [
+      ["SYSTEM_ISSUE", { rows: systemIssueRows, total: systemIssueTotal }],
       ["BILLING_BLOCKED", billingBlockedAgreements],
       ["SALES_TAX", {
         rows: cappedSalesTaxItems,

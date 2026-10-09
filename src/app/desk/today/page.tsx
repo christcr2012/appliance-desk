@@ -77,6 +77,7 @@ async function applyOfficialRateAction(formData: FormData) {
 }
 
 const CATEGORIES: Record<ExceptionCategory, string> = {
+  SYSTEM_ISSUE: "System",
   BILLING_BLOCKED: "Billing blocked",
   SALES_TAX: "Sales tax",
   TAX_RETURN_DUE: "Tax returns to file",

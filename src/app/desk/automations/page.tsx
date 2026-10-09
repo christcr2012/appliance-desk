@@ -1,5 +1,7 @@
 import { getAutomationHealth } from "@/domains/automation/health";
 import { requireRole } from "@/lib/session";
+import { listSystemIssues } from "@/domains/system-issues/queries";
+import { SystemIssuesSection } from "./system-issues-section";
 import {
   formatBusinessDate,
   formatBusinessTime,
@@ -13,7 +15,7 @@ import {
 import type { StatusTone } from "@/components/status-badge";
 import { setAutomationPausedAction } from "./actions";
 
-export const metadata = { title: "Automations" };
+export const metadata = { title: "System health" };
 
 const STATE_TONE: Record<string, StatusTone> = {
   healthy: "success",
@@ -35,18 +37,20 @@ function timestamp(value: Date | null) {
   return `${formatBusinessDate(value)} at ${formatBusinessTime(value)}`;
 }
 
-export default async function AutomationsPage() {
+export default async function AutomationsPage({ searchParams }: { searchParams?: Promise<{ issuesCursor?: string }> } = {}) {
   const session = await requireRole("OWNER", "ADMIN");
-  const health = await getAutomationHealth();
+  const cursor = (await searchParams)?.issuesCursor;
+  const [health, issueList] = await Promise.all([getAutomationHealth(), listSystemIssues(session.user.id, { limit: 25, cursor })]);
   const canPause = session.user.role === "OWNER";
 
   return (
     <div className="max-w-5xl">
       <PageHeader
-        title="Automation health"
+        title="System health"
         description="Each row is one durable nightly job. Success is recorded before this page calls a job healthy; missing configuration, failure, uncertainty, or an owner pause stays visible instead of being treated as success."
       />
 
+      <SystemIssuesSection issues={issueList.rows} nextCursor={issueList.nextCursor} canManage={canPause} />
       <div className="space-y-4">
         {health.map((item) => (
           <Card
