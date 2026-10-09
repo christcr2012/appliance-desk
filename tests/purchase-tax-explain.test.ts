@@ -3,7 +3,7 @@ import type { Prisma } from "@prisma/client";
 import { explainPendingPurchaseTax } from "@/domains/tax/purchase-tax-explain";
 
 function fake(
-  opts: { choice?: "LATER" | "NONE_CHARGED"; missingContext?: boolean;
+  opts: { choice?: "LATER" | "NONE_CHARGED"; missingContext?: boolean; gone?: boolean;
     election?: "UNDECIDED" | "PAY_ON_ACQUISITION"; location?: "MISSING" | "VERIFIED";
     reviewed?: boolean; status?: "UNKNOWN" | "USE_TAX_DUE" } = {},
 ) {
@@ -21,7 +21,7 @@ function fake(
     }],
   };
   const tx = {
-    appliance: { findUniqueOrThrow: vi.fn().mockResolvedValue(a) },
+    appliance: { findUnique: vi.fn().mockResolvedValue(opts.gone ? null : a) },
     businessSettings: { findUnique: vi.fn().mockResolvedValue({
       shortTermLeaseElection: opts.election ?? "PAY_ON_ACQUISITION",
     }) },
@@ -42,6 +42,10 @@ describe("W-0A purchase-tax explanation links", () => {
     expect(result).toMatchObject({ reason, fixHref: href });
     expect(result.fixLabel).toBeTruthy();
   });
+  it("has no pending cause, and does not throw, when the appliance was removed meanwhile", async () => {
+    expect(await explainPendingPurchaseTax(fake({ gone: true }), "one")).toEqual({ reason: null, fixHref: null, fixLabel: null });
+  });
+
   it("has no pending cause when the tax is already classified", async () => {
     expect(await explainPendingPurchaseTax(fake({ status: "USE_TAX_DUE" }), "one"))
       .toEqual({ reason: null, fixHref: null, fixLabel: null });
