@@ -121,7 +121,8 @@ export type Item = {
   lineMonthlyPriceCents: number;
 };
 
-const SUPERSEDED_UNASSIGN_PREFIXES = [NEVER_DELIVERED_UNASSIGN_REASON, "Swapped out for repair", "Swapped for", "Replaced by"];
+// "Taken off: customer done with it" (W-21B): the line was repriced to the remaining machines, so it is not a share of it.
+const SUPERSEDED_UNASSIGN_PREFIXES = [NEVER_DELIVERED_UNASSIGN_REASON, "Swapped out for repair", "Swapped for", "Replaced by", "Taken off: customer done with it"];
 
 /** True when an ended assignment was replaced one-for-one (or never delivered), so it is not a priced item of its own. */
 export function isSupersededAssignment(reason: string | null): boolean {

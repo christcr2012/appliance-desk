@@ -2,17 +2,29 @@
 
 import { useState, useTransition } from "react";
 import { Button, Field } from "@/components/ui";
-import { resolveOutOfServiceAction, type ResolveState } from "./actions";
+import { markSetMachineDoneAction, resolveOutOfServiceAction, type ResolveState } from "./actions";
 
-export function ResolveForms({ applianceId, startedOnKey, todayKey }: { applianceId: string; startedOnKey: string; todayKey: string }) {
+export function ResolveForms({
+  applianceId,
+  startedOnKey,
+  todayKey,
+  setDone,
+}: {
+  applianceId: string;
+  startedOnKey: string;
+  todayKey: string;
+  /** Present when the machine is part of a set (W-21B); null for a machine alone on its line. */
+  setDone: { summary: string } | null;
+}) {
+  const [doneOn, setDoneOn] = useState(startedOnKey);
   const [backOn, setBackOn] = useState(todayKey);
   const [closeOn, setCloseOn] = useState(todayKey);
   const [state, setState] = useState<ResolveState>({ status: "idle" });
   const [isPending, startTransition] = useTransition();
-  const run = (how: "SAME_MACHINE_BACK" | "CLOSED_BY_OWNER", date: string) =>
+  const run = (how: "SAME_MACHINE_BACK" | "CLOSED_BY_OWNER" | "SET_DONE", date: string) =>
     startTransition(async () => {
       try {
-        setState(await resolveOutOfServiceAction(applianceId, how, date));
+        setState(how === "SET_DONE" ? await markSetMachineDoneAction(applianceId, date) : await resolveOutOfServiceAction(applianceId, how, date));
       } catch {
         setState({ status: "error", message: "The save was not confirmed. Reload to check before trying again." });
       }
@@ -63,6 +75,34 @@ export function ResolveForms({ applianceId, startedOnKey, todayKey }: { applianc
         />
         <Button type="submit" variant="secondary" disabled={isPending}>Close and credit</Button>
       </form>
+      {setDone && (
+        <form
+          className="space-y-3 rounded-card border border-line p-4 sm:col-span-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            run("SET_DONE", doneOn);
+          }}
+        >
+          <h3 className="font-semibold text-ink">The customer is done with it (part of a set)</h3>
+          <p className="text-sm text-ink-soft">
+            The machines that stay go to their normal single price, as agreed with you: “charged at the standard rate for
+            one item, unless there is an exchange”. {setDone.summary}
+          </p>
+          <div className="max-w-xs">
+            <Field
+              label="Date the customer was done with it"
+              type="date"
+              min={startedOnKey}
+              max={todayKey}
+              value={doneOn}
+              onChange={(e) => setDoneOn(e.target.value)}
+              help="The pickup day if they gave it back for good; a later day if you decided later not to replace it."
+              required
+            />
+          </div>
+          <Button type="submit" variant="secondary" disabled={isPending}>Change to single prices</Button>
+        </form>
+      )}
       {state.status === "error" && <p role="alert" className="text-sm font-medium text-danger sm:col-span-2">{state.message}</p>}
     </div>
   );
