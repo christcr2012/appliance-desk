@@ -24,6 +24,7 @@ const accountId = "com-l9-account", phoneId = "com-l9-phone";
 const root = "CA" + "7".repeat(32);
 const second = "CA" + "8".repeat(32);
 const third = "CA" + "9".repeat(32);
+const fourth = "CA" + "e".repeat(32);
 const child = "CA" + "d".repeat(32);
 const firstRec = "RE" + "b".repeat(32);
 const secondRec = "RE" + "c".repeat(32);
@@ -148,7 +149,7 @@ describe.skipIf(!local)("COM-L9 voicemail gates/private lifecycle (real PostgreS
     const denied = await inbound(request("/api/webhooks/twilio/voice", inboundForm(root)));
     expect(await denied.text()).not.toContain("<Record");
     process.env.VOICE_MEDIA_ACTIVATION_APPROVED = "yes";
-    expect(await prisma.communicationMedia.count()).toBe(0);
+    expect(await prisma.communicationMedia.count({ where: { session: { accountId } } })).toBe(0);
   });
 
   it("announces deliberate message, caches completion, imports private bytes once", async () => {
@@ -228,7 +229,7 @@ describe.skipIf(!local)("COM-L9 voicemail gates/private lifecycle (real PostgreS
 
     const notRecorded = await signedMedia(root, extraRec);
     await expect(ingestVoicemailCallback(notRecorded, importer))
-      .rejects.toThrow("Voicemail parent call not found");
+      .rejects.toThrow("lacks matching approved prompt");
     expect(await prisma.communicationMedia.count({ where: { providerResourceId: extraRec } })).toBe(0);
 
     await prisma.communicationMedia.update({ where: { id: after.id },
@@ -242,16 +243,16 @@ describe.skipIf(!local)("COM-L9 voicemail gates/private lifecycle (real PostgreS
   it("offers voicemail after unsuccessful forwarding without labeling staff connected", async () => {
     await saveRouting(Array.from({ length: 7 }, (_, weekday) =>
       ({ weekday, from: "00:00", to: "23:59" })));
-    const r = await inbound(request("/api/webhooks/twilio/voice", inboundForm(root)));
+    const r = await inbound(request("/api/webhooks/twilio/voice", inboundForm(fourth)));
     expect(await r.text()).toContain("<Dial");
     const response = await dialResult(request("/api/webhooks/twilio/voice/dial-result", {
-      AccountSid: acct, CallSid: root, DialCallSid: child, DialCallStatus: "no-answer",
+      AccountSid: acct, CallSid: fourth, DialCallSid: child, DialCallStatus: "no-answer",
       DialBridged: "false",
     }));
     expect(await response.text()).toContain("<Record");
     const call = await prisma.callSession.findUniqueOrThrow({
       where: { accountId_providerRootCallId: {
-        accountId, providerRootCallId: root,
+        accountId, providerRootCallId: fourth,
       } },
     });
     expect(call.state).toBe("CONNECTED");
