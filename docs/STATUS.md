@@ -1,6 +1,6 @@
 # STATUS — current work, blockers and next action
 
-Updated October 9, 2026 (W-0C #359 merged at 61dc180; COM-L5B follows). Batch T and Batch S are engineering-complete. No live payments, customer messages, fee charging or tax filing are activated.
+Updated October 9, 2026 (W-16A #360 and W-0C #359 merged; COM-L5B in Sol lane). Batch T and Batch S are engineering-complete. No live payments, customer messages, fee charging or tax filing are activated.
 
 ## Next
 
@@ -14,6 +14,13 @@ customer messaging remain off. Tested on isolated disposable PostgreSQL, no migr
 Card: `docs/pr-cards/COM-L5B.md`. **Next: COM-L6A**, validated templates, segment preview,
 and migration of existing reminders. Public lead disclosure text/form choices remain
 explicit follow-up work, not implied by COM-L5B.
+
+**2026-10-09 — W-16A merged (#360), built by Claude beside Sol's chain (Chris: "you take W-16A/B and W-21"):** a washer
+and dryer set is now a **rental package** of two separate machines, not an appliance type. Settings → Products and
+pricing → Sets and packages (any types, including new ones; saving worked out automatically); the website and quote form
+show sets first; quote requests for a set are stored per machine and shown as the set. The old "Washer + Dryer Set" type
+became the package and was retired. **Next on this lane: W-16B** (package lines on agreements with one machine per part,
+estimates, split old set appliances), then **W-21** (early returns and out-of-service credits). Sol's lane is unchanged.
 
 **2026-10-09 — W-0C MERGED (#359), exact-head CI required before merge:**
 After latest `main` c712834 (which includes #356, #357 and the completed in-flight #358),

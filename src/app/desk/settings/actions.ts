@@ -20,6 +20,13 @@ import {
   resendStaffActivationEmail,
 } from "@/domains/staff";
 import { dollarsToCents } from "@/domains/pricing";
+import {
+  createPackage,
+  updatePackage,
+  setPackageVisibility,
+  setPackageActive,
+  PackageInputError,
+} from "@/domains/packages";
 
 // Fee fields are entered on the form as real dollars (e.g. 45.00) — see
 // settings-form.tsx — and converted to integer cents right here, in the
@@ -220,6 +227,74 @@ export async function setApplianceTypeActiveAction(
   revalidatePath("/desk/settings");
 
   return { status: "success" };
+}
+
+// ---------------------------------------------------------------------------
+// Sets and packages (Batch W Amendment B, D-WB3) — OWNER/ADMIN. Prices arrive in dollars and become cents here.
+// ---------------------------------------------------------------------------
+
+const packageFormSchema = z.object({
+  name: z.string().trim().min(1, "Give the set a name.").max(100, "Keep the name under 100 characters."),
+  monthlyPriceDollars: z.coerce.number().min(0, "Enter a monthly price of $0 or more.").max(100000, "Enter a monthly price under $100,000."),
+  components: z
+    .array(z.object({ applianceTypeId: z.string().min(1), quantity: z.coerce.number().int().min(1).max(10) }))
+    .max(20),
+});
+
+async function packageWrite(write: () => Promise<unknown>): Promise<SettingsActionState> {
+  try {
+    await write();
+  } catch (error) {
+    return {
+      status: "error",
+      message:
+        error instanceof PackageInputError || (error instanceof Error && error.message.startsWith("This account"))
+          ? error.message
+          : "The set could not be saved. Your changes are still here; reload to check before trying again.",
+    };
+  }
+  revalidatePath("/", "layout");
+  revalidatePath("/desk/settings");
+  return { status: "success" };
+}
+
+function parsePackageForm(raw: unknown) {
+  const parsed = packageFormSchema.safeParse(raw);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Please fix the highlighted fields." } as const;
+  }
+  return {
+    ok: true,
+    input: {
+      name: parsed.data.name,
+      monthlyPriceCents: dollarsToCents(parsed.data.monthlyPriceDollars),
+      components: parsed.data.components,
+    },
+  } as const;
+}
+
+export async function createPackageAction(raw: unknown): Promise<SettingsActionState> {
+  const session = await requireRole("OWNER", "ADMIN");
+  const form = parsePackageForm(raw);
+  if (!form.ok) return { status: "error", message: form.error };
+  return packageWrite(() => createPackage(session.user.id, form.input));
+}
+
+export async function updatePackageAction(packageId: string, raw: unknown): Promise<SettingsActionState> {
+  const session = await requireRole("OWNER", "ADMIN");
+  const form = parsePackageForm(raw);
+  if (!form.ok) return { status: "error", message: form.error };
+  return packageWrite(() => updatePackage(session.user.id, packageId, form.input));
+}
+
+export async function setPackageVisibilityAction(packageId: string, showOnWebsite: boolean): Promise<SettingsActionState> {
+  const session = await requireRole("OWNER", "ADMIN");
+  return packageWrite(() => setPackageVisibility(session.user.id, packageId, showOnWebsite));
+}
+
+export async function setPackageActiveAction(packageId: string, isActive: boolean): Promise<SettingsActionState> {
+  const session = await requireRole("OWNER", "ADMIN");
+  return packageWrite(() => setPackageActive(session.user.id, packageId, isActive));
 }
 
 // ---------------------------------------------------------------------------

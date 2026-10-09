@@ -4,7 +4,7 @@ import { Container } from "@/components/site/container";
 import { ButtonLink, Card } from "@/components/ui";
 import { ApplianceMedia } from "@/components/site/appliance-icon";
 import { getBusinessSettings } from "@/domains/settings";
-import { getPublishedApplianceTypes, formatCents } from "@/domains/pricing";
+import { getPublishedCatalog, formatCents } from "@/domains/pricing";
 import { getPublishedContent } from "@/domains/site-content";
 import { getContentForRequest } from "@/domains/site-content/request";
 import { catalogAlt } from "@/domains/site-content/fields";
@@ -21,7 +21,7 @@ export default async function PricingPage({
 }) {
   const [settings, applianceTypes, content] = await Promise.all([
     getBusinessSettings(),
-    getPublishedApplianceTypes(),
+    getPublishedCatalog(),
     searchParams.then(getContentForRequest),
   ]);
 
@@ -53,7 +53,7 @@ export default async function PricingPage({
         {applianceTypes.length > 0 ? (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {applianceTypes.map((type) => (
-              <Card key={type.id} className="flex flex-col">
+              <Card key={`${type.kind}-${type.id}`} className="flex flex-col">
                 <ApplianceMedia
                   photoUrl={type.photoUrl}
                   name={type.name}
@@ -71,11 +71,14 @@ export default async function PricingPage({
                     / month
                   </span>
                 </p>
-                {type.slug === "washer-dryer-set" && (
-                  <p className="mt-2 text-sm font-medium text-accent-dark">
-                    Cheaper than renting a washer and dryer separately
-                  </p>
+                {type.contents && (
+                  <p className="mt-2 text-sm text-ink-soft">Includes: {type.contents}</p>
                 )}
+                {type.savingCents ? (
+                  <p className="mt-2 text-sm font-medium text-accent-dark">
+                    Save {formatCents(type.savingCents)} a month compared with renting them separately
+                  </p>
+                ) : null}
                 <div className="mt-6">
                   <ButtonLink href="/contact" variant="secondary" className="w-full">
                     Get this one

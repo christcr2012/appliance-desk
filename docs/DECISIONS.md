@@ -796,3 +796,13 @@ late-delivery per-day setting; the old "partial-return pricing" setting is dropp
 Chris: 7 years after the appliance leaves the fleet, fully configurable, is fine for development and launch; IN-71
 stays on the list of questions for the CPA. Not a launch blocker: no record can reach 7 years until 7 years after
 launch, so a longer CPA answer only changes the setting.
+
+## 2026-10-09 — W-16A/B and W-21 move ahead, built beside Sol's chain; W-16A/W-16B scope swap
+
+Chris: "Let Sol do W-0C, you take W-16A/B and W-21." These three no longer wait for W-10; they touch packages, rental
+lines and billing credits, not the communications or W-0C files, so they run alongside Sol's W-0C → COM-L chain (two
+separate implementers, each with at most two unmerged PRs). Mechanical scope swap between W-16A and W-16B: retiring the
+old "Washer + Dryer Set" type has to land in the same PR that puts the package on the website and quote form, or `main`
+would drop the set from the public site between merges — so W-16A takes website + quote form + leads, and W-16B takes the
+split-an-old-set-appliance To do and guided screen along with agreement and estimate package lines. New appliance types
+stay owner-added data (Chris asked; confirmed: no types in code), and any type can be part of a set.

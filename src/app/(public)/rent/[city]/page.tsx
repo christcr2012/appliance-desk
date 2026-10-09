@@ -4,7 +4,7 @@ import { Container } from "@/components/site/container";
 import { ButtonLink, Card } from "@/components/ui";
 import { ApplianceMedia } from "@/components/site/appliance-icon";
 import { getBusinessSettings, parseServiceArea } from "@/domains/settings";
-import { getPublishedApplianceTypes, formatCents } from "@/domains/pricing";
+import { getPublishedCatalog, formatCents } from "@/domains/pricing";
 
 // ---------------------------------------------------------------------------
 // Simple local-search landing pages (2026-09-28, Task #46 — see
@@ -63,7 +63,7 @@ export default async function CityLandingPage({
 
   const [settings, applianceTypes] = await Promise.all([
     getBusinessSettings(),
-    getPublishedApplianceTypes(),
+    getPublishedCatalog(),
   ]);
 
   return (
@@ -91,7 +91,7 @@ export default async function CityLandingPage({
         {applianceTypes.length > 0 ? (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {applianceTypes.map((type) => (
-              <Card key={type.id} className="flex flex-col">
+              <Card key={`${type.kind}-${type.id}`} className="flex flex-col">
                 <ApplianceMedia
                   photoUrl={type.photoUrl}
                   name={type.name}
@@ -108,6 +108,11 @@ export default async function CityLandingPage({
                     / month
                   </span>
                 </p>
+                {type.savingCents ? (
+                  <p className="mt-2 text-sm font-medium text-accent-dark">
+                    {type.contents} — save {formatCents(type.savingCents)} a month
+                  </p>
+                ) : null}
               </Card>
             ))}
           </div>

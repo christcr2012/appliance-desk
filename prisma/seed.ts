@@ -19,14 +19,9 @@ import {
   normalizeAccountEmail,
 } from "../src/lib/account-provisioning";
 
+// A washer and dryer set is not an appliance type: it is the "Washer + Dryer Set" package of one Washer and one
+// Dryer (Batch W Amendment B, D-WB3), seeded below.
 const STARTER_APPLIANCE_TYPES = [
-  {
-    name: "Washer + Dryer Set",
-    slug: "washer-dryer-set",
-    monthlyPriceCents: 6000,
-    sortOrder: 0,
-    photoUrl: "/appliances/washer-dryer-set.jpg",
-  },
   {
     name: "Washer",
     slug: "washer",
@@ -58,8 +53,31 @@ async function seedBusinessContent() {
     });
   }
 
+  const [washer, dryer] = await Promise.all(
+    ["washer", "dryer"].map((slug) => prisma.applianceType.findUniqueOrThrow({ where: { slug } })),
+  );
+  await prisma.rentalPackage.upsert({
+    where: { slug: "washer-dryer-set" },
+    update: {},
+    create: {
+      id: "rental-package-washer-dryer-set",
+      name: "Washer + Dryer Set",
+      slug: "washer-dryer-set",
+      monthlyPriceCents: 6000,
+      showOnWebsite: true,
+      sortOrder: 0,
+      photoUrl: "/appliances/washer-dryer-set.jpg",
+      components: {
+        create: [
+          { applianceTypeId: washer.id, quantity: 1 },
+          { applianceTypeId: dryer.id, quantity: 1 },
+        ],
+      },
+    },
+  });
+
   console.log(
-    "Business content ready: BusinessSettings singleton + starter appliance types.",
+    "Business content ready: BusinessSettings singleton + starter appliance types and the washer + dryer set.",
   );
 }
 

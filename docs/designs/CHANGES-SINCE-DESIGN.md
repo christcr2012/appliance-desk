@@ -451,3 +451,19 @@ in `ConsentRecord` within the customer preference transaction and revokes old
 number consent on edits. No contacts are marked verified. The portal checkbox
 imports the exact disclosure constant. No providers, live settings or schema
 activated. COM-L6A inherits the consent rules and owns the richer messaging UI.
+
+### W-16A rental packages — 2026-10-09 (#360)
+- Schema (migration `20261013100000_rental_packages`): `RentalPackage` (name/slug unique, `monthlyPriceCents` ≥ 0,
+  `showOnWebsite`, `sortOrder`, `isActive`, `photoUrl`), `RentalPackageComponent` (type, quantity 1–10, unique per type),
+  nullable restrict FKs `RentalLine.packageId`, `EstimateLineItem.packageId`, `LeadApplianceRequest.packageId`. The old
+  "Washer + Dryer Set" type is retired; its id stays on any appliance recorded under it (W-16B's split To do finds them by
+  `applianceType.slug = 'washer-dryer-set'` and `isActive = false`).
+- Code W-16B/W-21 reuse: `src/domains/packages/pricing.ts` (`packageSaving`, `separateTotalCents`, `machineCount`,
+  `packageContents`, `validatePackageInput`), `src/domains/packages/index.ts` (OWNER/ADMIN writes with actor re-check,
+  row lock, audit, `PricingRule` "<name> — set price"), `getPublishedCatalog()` in `src/domains/pricing/index.ts`.
+- Leads: a requested set is one `LeadApplianceRequest` per machine type with the set's `packageId`;
+  `summarizeApplianceRequests()` (`src/domains/leads/requests.ts`) shows it as one set. The lead form sends `packageIds`.
+- Scope moved from the design table: website/quote form/leads came into W-16A (so retiring the set type and showing the
+  package land together); the "split an old set appliance" To do + guided screen moved to W-16B.
+- Until W-18 builds `<InfoTip>`/`<MoneyInput>`, the Sets screen explains with field help text and uses the existing dollar
+  inputs; W-18 converts it with the other screens.

@@ -74,7 +74,7 @@ export async function getLeadWorkspace(
       createdAt: true,
       updatedAt: true,
       applianceRequests: {
-        select: { quantity: true, applianceType: { select: { name: true } } },
+        select: { quantity: true, applianceType: { select: { name: true } }, package: { select: { id: true, name: true } } },
       },
       notesLog: {
         select: { createdAt: true },

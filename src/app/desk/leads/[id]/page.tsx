@@ -1,4 +1,5 @@
 import { requireRole } from "@/lib/session";
+import { summarizeApplianceRequests } from "@/domains/leads/requests";
 import { getLeadEstimates } from "@/domains/leads/workspace";
 import { PageHeader, SectionCard } from "@/components/desk/workspace";
 import {
@@ -177,9 +178,7 @@ export default async function LeadDetailPage({
         <Field
           label="Appliances requested"
           value={
-            lead.applianceRequests
-              .map((r) => `${r.quantity}x ${r.applianceType.name}`)
-              .join(", ") || "(none)"
+            summarizeApplianceRequests(lead.applianceRequests) || "(none)"
           }
         />
         <Field
