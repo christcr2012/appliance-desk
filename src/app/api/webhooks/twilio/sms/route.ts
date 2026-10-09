@@ -6,9 +6,9 @@ import { prisma } from "@/lib/prisma";
 import { communicationsPolicySchema } from "@/domains/messaging/communications-policy";
 import { ingestVerifiedSms } from "@/domains/messaging/inbound-sms";
 import { processVerifiedTwilioStop } from "@/domains/messaging/events";
+import { classifyProviderKeyword, projectVerifiedSmsKeyword } from "@/domains/messaging/consent-commands";
 
 const MAX_BODY_BYTES = 16_384;
-const STOP = new Set(["STOP", "STOPALL", "UNSUBSCRIBE", "CANCEL", "END", "QUIT"]);
 const RESPONSE = '<?xml version="1.0" encoding="UTF-8"?><Response></Response>';
 
 function xml() {
@@ -112,7 +112,9 @@ export async function POST(request: Request): Promise<Response> {
   const body = form.get("Body") ?? "";
   const numMedia = Number(form.get("NumMedia") ?? "0");
   const stopKeyword = body.trim().toUpperCase();
-  const isStop = form.get("OptOutType") === "STOP" || STOP.has(stopKeyword);
+  const optOutType = form.get("OptOutType");
+  const keyword = classifyProviderKeyword(body, optOutType);
+  const isStop = keyword === "STOP";
 
   try {
     // Legal/privacy STOP suppression must work even while the inbox gate is off.
@@ -122,9 +124,17 @@ export async function POST(request: Request): Promise<Response> {
         eventId: messageSid, from, keyword: stopKeyword || "STOP",
       });
     }
+    if (keyword) {
+      await projectVerifiedSmsKeyword({
+        accountSid, businessNumberId: registeredNumber.id, messageSid, from,
+        text: body, optOutType,
+      });
+    }
     if (config?.customerSmsEnabled !== true || !policy.success ||
         policy.data.inboundSmsEnabled !== true) {
-      return isStop ? xml() : fail(503);
+      // Honor verified STOP, START and HELP without turning the inbox on.
+      // Never send duplicate provider confirmations from this application.
+      return keyword ? xml() : fail(503);
     }
     await ingestVerifiedSms({
       accountSid, messageSid, from, to, text: body,

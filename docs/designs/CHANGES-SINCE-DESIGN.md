@@ -437,6 +437,21 @@ and overdue OPEN; its invoice-link destination is
 Later W workflow/screen work inherits these rules. No schema, late-fee clock, provider
 activation or customer-messaging changes.
 
+### 2026-10-09 — COM-L5B scoped consent implementation (no migration)
+
+The already signed Twilio SMS endpoint now persists keyword evidence via
+`projectVerifiedSmsKeyword`, including STOP/START/HELP while the inbox remains
+default-off; app replies remain empty TwiML. Legacy STOP address suppression
+continues; ambiguous customer-phone matches no longer select a random person.
+START only clears provider-originated STOP when Advanced Opt-Out explicitly
+reports START, and never creates GRANT. Existing prepared-send eligibility
+continues to require newest purpose-specific scoped disclosure evidence.
+`recordPortalSmsChoice` stores portal transactional-only version/hash/snapshot
+in `ConsentRecord` within the customer preference transaction and revokes old
+number consent on edits. No contacts are marked verified. The portal checkbox
+imports the exact disclosure constant. No providers, live settings or schema
+activated. COM-L6A inherits the consent rules and owns the richer messaging UI.
+
 ### W-16A rental packages — 2026-10-09 (#360)
 - Schema (migration `20261013100000_rental_packages`): `RentalPackage` (name/slug unique, `monthlyPriceCents` ≥ 0,
   `showOnWebsite`, `sortOrder`, `isActive`, `photoUrl`), `RentalPackageComponent` (type, quantity 1–10, unique per type),

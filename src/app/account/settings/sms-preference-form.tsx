@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Checkbox, Field } from "@/components/ui";
 import { updateSmsPreferenceAction } from "./actions";
+import { PORTAL_SMS_DISCLOSURE } from "@/domains/messaging/portal-disclosure";
 
 export function SmsPreferenceForm({
   initialOptedIn,
@@ -49,10 +50,20 @@ export function SmsPreferenceForm({
 
       <Checkbox
         id="sms-opt-in"
-        label="Text me at the number above for time-sensitive updates, like a reminder on the day of a scheduled delivery or service visit. Message and data rates may apply. Reply STOP at any time to opt out."
+        label={PORTAL_SMS_DISCLOSURE}
         checked={optedIn}
         onChange={(event) => setOptedIn(event.target.checked)}
       />
+
+      <p className="text-xs text-ink-soft">
+        Turning on this preference does not start texts until the business is approved
+        for messaging and your phone can be verified. Your choice is not marketing consent.
+      </p>
+      <p className="text-xs text-ink-soft">
+        <a href="/privacy" className="underline">Privacy policy</a>
+        {" · "}
+        <a href="/terms" className="underline">Terms</a>
+      </p>
 
       {error && (
         <p role="alert" className="text-sm font-semibold text-danger">
