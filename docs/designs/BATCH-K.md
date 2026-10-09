@@ -129,8 +129,7 @@ Each appliance with a known cost depreciates straight-line from the month after 
 `createdAt`) over `ApplianceType.depreciationMonths` (else `BusinessSettings.depreciationMonthsDefault`, starting value
 **60 months** — residential appliances are generally 5-year property; screen says "for your own profit numbers; your
 CPA handles tax depreciation"), down to `depreciationSalvagePercent` of cost (starting value **0%**). The last month
-absorbs rounding. Stops when the appliance is retired/archived (a disposal entry writes off the remaining book value as
-"Loss on retired appliances"; sale proceeds are out of scope — S-K6).
+absorbs rounding. **Book and income-tax depreciation are different:** these settings never determine IRS adjusted basis or §1245 recapture. Depreciation stops when the unit is permanently withdrawn from rentable service; **retirement alone does not necessarily justify immediate full disposal loss**. A SELL or DECIDE_LATER unit retains its book carrying value in an auditable retired/pending-disposition account until the actual sale or supported final disposition. The K-6 implementation card must specify a balanced one-time transfer and a later disposal posting (including any CPA-approved impairment). Do not infer zero tax basis or tax depreciation from book carrying value. See [retired-appliance resale tax design](RETIRED-APPLIANCE-RESALE-TAX-2026-10-08.md), which overrides earlier K/M premature write-off wording.
 
 ### D-K10 — Tax inside refunds and write-offs
 
@@ -412,7 +411,8 @@ Debits equal credits in every result (assert in the function; a test proves it f
 | `EXPENSE_VOIDED` | Expense VOID after posting | `voidedAt` | mirror | mirror |
 | `APPLIANCE_CONTRIBUTED` | Appliance with cost and **no** capitalized expense linked | `purchaseDate ?? createdAt` (not before `booksStartDate`; earlier → `booksStartDate`) | `RENTAL_EQUIPMENT` | `OWNER_CONTRIBUTIONS` |
 | `DEPRECIATION:<YYYY-MM>` | Appliance, one per month | last day of month | `DEPRECIATION` | `ACCUM_DEPRECIATION` |
-| `APPLIANCE_RETIRED` | Appliance retired/archived | that date | `ACCUM_DEPRECIATION` (to date) + `DISPOSAL_LOSS` (rest) | `RENTAL_EQUIPMENT` (cost) |
+| `APPLIANCE_RETIRED` | Removed permanently from rental fleet; plan SELL or DECIDE_LATER | retirement date | Transfer gross rental asset + accumulated depreciation to retired/pending-disposition asset accounts via balanced K-6 ledger mapping; **no automatic loss** | Rental asset and its related contra account, preserving net carrying value; see resale-tax addendum |
+| `APPLIANCE_DISPOSED` | Sale or documented final scrap/disposal of a retired fixed asset | actual supported disposition date | Remove remaining net book carrying value once and recognize book gain/loss net of proceeds; sales tax is a separate liability | Disposition clearing/proceeds accounts using one invoice/asset linkage; K-6 JIT card must fix the exact balanced account mapping and audit/legacy reversal |
 | `USE_TAX_ACCRUED` | PurchaseUseTax with due > 0 | `purchasedOn` | `USE_TAX_EXPENSE` | `USE_TAX:<acct>` |
 | `TAX_FILED` | TaxFilingPeriod FILED | `filedOn` | `SALES_TAX:<acct>` (worksheet sales tax) + `USE_TAX:<acct>` (worksheet use tax) | `BANK` (`amountPaidCents`) + `TAX_SERVICE_FEE_INCOME` (fee retained); any remainder to `TAX_ADJUSTMENTS` (either side) |
 
@@ -588,7 +588,7 @@ Named tests (real Postgres where marked ★):
 - **S-K3** Uploads cannot store a standalone receipt photo (K-A8).
 - **S-K4** A Stripe balance transaction type not named in 3.2 appears in test data — list it; do not invent a rule.
 - **S-K5** `INVOICE_RECOGNIZED` mismatches appear for invoices created by existing code paths (a real data-model gap).
-- **S-K6** Manual journal entries are requested — out of scope. (Retired appliances are now designed in `BATCH-M.md` D-M4. K's `APPLIANCE_RETIRED` write-off on the retirement date stays the only disposal entry — M posts nothing for plans. Once M is merged, a used-appliance sale posts to `RETIRED_APPLIANCE_SALES`, item sales to `MERCHANDISE_INCOME` with no cost of goods sold (parts are expensed when bought, D-K8), lump `ScrapPayment` entries to `SCRAP_INCOME`, and dump fees are ordinary expenses in a seeded "Dump and disposal fees" category.)
+- **S-K6** Manual journal entries remain out of scope. Retired-appliance disposition is **not** an automatic full-value write-off upon marking RETIRED: see [2026-10-08 resale/tax-basis addendum](RETIRED-APPLIANCE-RESALE-TAX-2026-10-08.md). K-6 must preserve pending-for-sale book value and immutable journal evidence; M-2C records actual sale/disposition once without duplicating the asset cost/loss. Used-appliance sale invoice gross proceeds, book gain/loss, sales tax and federal tax depreciation recapture remain separately reportable; scrap checks/dump fees retain the previously approved lump handling. The CPA confirms tax-basis and classification; the app never imposes a maximum resale price based on depreciation.
 - **S-K7** Any accounting-software import format cannot be confirmed from the vendor's public documentation.
 
 ## 9. Later phase (NOT approved by this design): direct QuickBooks Online sync

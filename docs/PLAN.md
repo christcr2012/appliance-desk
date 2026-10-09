@@ -186,7 +186,7 @@ Design: `docs/designs/BATCH-K.md`; work coverage and prerequisites: work-index.
 - [ ] Every money record the app keeps produces balanced double-entry journal entries exactly once (concurrent runs included); closed months never change.
 - [ ] Stripe fees, service fees, disputes and payouts are synced nightly; the Stripe clearing balance is checked against Stripe daily.
 - [ ] Expenses with receipt photos; staff submit, owner/admin post; void, never delete; recurring templates create drafts only; use tax recorded.
-- [ ] Straight-line book depreciation with owner-set life and salvage.
+- [ ] Straight-line **book** depreciation with owner-set life and salvage; preserve retired appliance book value pending actual disposal instead of automatically expensing all remaining value at rental retirement. **Tax depreciation/adjusted basis** (including Section 179 and bonus) require CPA-backed evidence and are not inferred from book settings. [Resale tax and disposition design](designs/RETIRED-APPLIANCE-RESALE-TAX-2026-10-08.md).
 - [ ] Profit & loss (accrual and cash), balance snapshot, appliance payback, 90-day cash forecast, customer health, year-end package — each number in the METRICS registry.
 - [ ] Deterministic exports for QuickBooks Online, Xero, generic journal and cash-movements formats, daily-summary or detail, blocked until accounts are mapped.
 - [ ] Every item in "Rules that apply to every batch".
@@ -228,7 +228,7 @@ Design: `docs/designs/BATCH-M.md`; work coverage and prerequisites: work-index.
 - [ ] Resale is recorded per purchase-order line; resale units create no use tax when bought and record use tax only when used or lost (tax-paid units in the same stock never do), following the fixed unit-order rule.
 - [ ] Walk-in sales belong to the one built-in walk-in customer (cannot sign in, never emailed, hidden from customer lists); delivered sales need a real customer.
 - [ ] Item and used-appliance sales post income only (no cost of goods sold — parts are expensed when bought).
-- [ ] Retiring still removes the unit from everything rentable; every retired appliance can get a plan (sell / strip for parts / scrap / throw away / other), changeable until done; a sale completes its plan automatically.
+- [ ] Retiring still removes the unit from everything rentable; every retired appliance can get a plan (sell / strip for parts / scrap / throw away / other), changeable until done; a sale completes its plan automatically. Used rental-asset sales can be priced at whatever the owner sets, even original cost or higher; show potential §1245 depreciation recapture, source-backed adjusted tax basis and CPA follow-up **rather than a resale-price cap**.
 - [ ] Parts kept from a stripped appliance enter parts stock at $0 cost exactly once and list on the appliance page.
 - [ ] Scrap checks are lump "Scrap money received" entries (scrap income); dump fees are normal expenses; no per-appliance fees are asked; a done plan writes off the remaining book value in Batch K.
 - [ ] One Today follow-up item for retired appliances undecided or not done after the owner-set days (starting 30, 0 = off).
