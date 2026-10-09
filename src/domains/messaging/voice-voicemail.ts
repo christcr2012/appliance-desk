@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getPrivatePhotoStore } from "@/lib/photo-storage";
 import type { Prisma } from "@prisma/client";
 import type { VerifiedVoice } from "./voice-webhook-verify";
+import { encryptCommunicationContent, decryptCommunicationContent } from "./communications-content";
 import type { VoiceRouting } from "./voice-routing";
 
 type Tx = Prisma.TransactionClient;
@@ -82,6 +83,48 @@ export async function recordVoicemailPrompt(
       maxSeconds: policy.maxSeconds, retentionDays: policy.retentionDays,
     },
   }], skipDuplicates: true });
+}
+
+/** Deterministic owner-approved completion step. No media availability claim. */
+export async function completeVoicemailStep(v: VerifiedVoice): Promise<string> {
+  const eventId = `voice:${v.accountId}:${v.callSid}:record-complete`;
+  return prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT "id" FROM "TelecomAccount" WHERE "id" = ${v.accountId} FOR UPDATE`;
+    const session = await tx.callSession.findUnique({
+      where: { accountId_providerRootCallId: {
+        accountId: v.accountId, providerRootCallId: v.callSid,
+      } },
+      select: { id: true },
+    });
+    const prompt = await tx.providerEvent.findUnique({
+      where: { provider_eventId: {
+        provider: "twilio",
+        eventId: `voice:${v.accountId}:${v.callSid}:voicemail-prompt`,
+      } },
+      select: { summary: true, telecomAccountId: true },
+    });
+    if (!session || !prompt || prompt.telecomAccountId !== v.accountId ||
+        (prompt.summary as { sessionId?: string } | null)?.sessionId !== session.id) {
+      throw new Error("Voicemail completion is not authorized for this call.");
+    }
+    const xml = voicemailFinished();
+    const inserted = await tx.providerEvent.createMany({ data: [{
+      provider: "twilio", eventId, type: "voice.voicemail.complete",
+      telecomAccountId: v.accountId, environment: "PRODUCTION",
+      disposition: "APPLIED", processedAt: new Date(),
+      responseStepKey: "record-complete",
+      responseXmlEncrypted: encryptCommunicationContent(xml),
+      summary: { sessionId: session.id, step: "record-complete" },
+    }], skipDuplicates: true });
+    if (inserted.count === 1) return xml;
+    const receipt = await tx.providerEvent.findUniqueOrThrow({
+      where: { provider_eventId: { provider: "twilio", eventId } },
+      select: { telecomAccountId: true, responseXmlEncrypted: true },
+    });
+    if (receipt.telecomAccountId !== v.accountId || !receipt.responseXmlEncrypted)
+      throw new Error("Voicemail completion receipt is not replayable.");
+    return decryptCommunicationContent(receipt.responseXmlEncrypted);
+  });
 }
 
 /**
