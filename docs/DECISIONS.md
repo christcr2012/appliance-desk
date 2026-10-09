@@ -815,3 +815,14 @@ item. They ship as two PRs so each money change is reviewed on its own. Implemen
 "taken without a replacement" on the visit (a swap whose new machine is not delivered, or a partial pickup); the owner
 resolves it (replacement swap, same machine back, or close) — the credit is worked out only then, exactly as a late
 delivery is, so it can never be more than was billed. The pickup day counts as without, the day a machine is back as with.
+
+## 2026-10-09 — Known test interference fixed at the root (Chris: "can you also fix the tests known issues?")
+
+Full local runs failed by chance in tax tests (filing reminders, tax overview, tax migration, purchase tax) and the
+health-sweep test, each passing alone. Causes: (1) 25 real-database tests wrote records that exist once for the whole
+database — the business-settings row or Colorado filing accounts, which reminders, the overview and the sweep read across
+all rows — without being in the run-one-at-a-time project, so they saw each other's data; (2) the health sweep counted an
+issue as recorded even when the write was skipped (its source row disappeared meanwhile). Fix: those tests joined
+`SHARED_SETTINGS_TESTS`, `tests/shared-state-tests-listed.test.ts` keeps new ones from being missed, and
+`sweepSystemIssues` counts only issues actually written (also makes the automation run report accurate). No test was
+skipped, weakened or retried.
