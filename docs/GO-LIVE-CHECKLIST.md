@@ -119,6 +119,8 @@ Design `docs/designs/BATCH-COM.md`; setup `docs/runbooks/COMMUNICATIONS-TWILIO.m
 - [x] Design/order approved by Chris 2026-10-08. Selected launch-scope implementation and COM-L/F evidence still remain before activation.
 - [ ] IN-03/09/51: verify account/permanent Voice+SMS number, entity/EIN/campaign/consent; explicit purchase/port/A2P/provider edit/live-send/publication approvals where applicable.
 - [ ] Production+owner SMS/voice activation fences verified; preview/local/tests never use production account/number or contaminate costs.
+- [ ] For COM-L4B SMS dispatch: set server-side Twilio API key/secret and verify the exact approved HTTPS `communicationsPolicy.productionWebhookOrigin` (never auto-fill it from preview), separate AUTH_TOKEN for signed callbacks; FREE Basic Lookup country validation uses no paid Fields or data packages. Keep both owner master and policy switches off until explicit owner live-send approval.
+- [ ] Verify callback attempt correlation, account-scoped SID tracking and test failure/UNKNOWN replay safety before any real consenting owner-phone smoke test.
 - [ ] Canonical signed inbound/status/voice URLs, account/number checks, Advanced Opt-Out, callback replay, UNKNOWN holding and tested provider outage fallback.
 - [ ] IN-52: voicemail/privacy/retention policy approved if selected; ordinary recordings/transcription independently OFF.
 - [ ] IN-53: budget/destination/feature/alert rules accepted; Today/S and independent alert path proven.
