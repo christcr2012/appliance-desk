@@ -26,6 +26,12 @@ export async function recalculatePendingPurchaseTax(
         if (!a || a.acquisitionTaxStatus !== "UNKNOWN" ||
             (a.acquisitionTaxChoice !== "SELLER_CHARGED" && a.acquisitionTaxChoice !== "NONE_CHARGED") ||
             !a.acquisitionTaxRecordedAt) return "SKIPPED" as const;
+        // Automated catch-up must never revise evidence already included in a filed return.
+        const filed = await tx.purchaseUseTax.findFirst({
+          where: { sourceType: "APPLIANCE", sourceId: a.id, status: "FILED" },
+          select: { id: true },
+        });
+        if (filed) return "PENDING" as const;
         let actor = a.acquisitionTaxRecordedByUserId ? await tx.user.findFirst({
           where: { id: a.acquisitionTaxRecordedByUserId, role: { in: ["OWNER", "ADMIN"] },
             archivedAt: null }, select: { id: true },

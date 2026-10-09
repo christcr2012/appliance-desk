@@ -144,9 +144,7 @@ export async function addManualRateAction(
 }
 
 
-export async function lookUpBusinessTaxAreasAction(
-  _state: TaxActionState, _form: FormData,
-): Promise<TaxActionState> {
+export async function lookUpBusinessTaxAreasAction(): Promise<TaxActionState> {
   try {
     await requireRole("OWNER", "ADMIN");
     const result = await locateBusinessTaxAddress({ force: true });

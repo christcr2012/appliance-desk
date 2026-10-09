@@ -4,7 +4,7 @@ Audited baseline: main `b2a06c2` (#310), October 8. [STATUS](STATUS.md) holds cu
 
 ## What is next
 
-**2026-10-09 (Chris approved Batch W):** next are **W-0A** and **W-0B** (purchase use tax that actually works; no dead
+**2026-10-09 (Chris approved Batch W):** W-0A merged #338; next is **W-0B** (purchase use tax that actually works; no dead
 Today links) — cards exist and need no prerequisite — then COM-L resumes at COM-L2, then W-1…W-8 before V.
 
 Batch T is engineering-complete (T-7D #328); Batch S is complete (S-1A #330 … S-2 #334); COM-L1A (#335) and COM-L1B (#336) are merged.
@@ -65,7 +65,7 @@ remain in `pr-cards/` as the record of what was built; W-0A/W-0B fix defects fou
 
 | Unit | Scope | Execution card | Prerequisite |
 |---|---|---|---|
-| W-0A | Purchase use tax can be calculated, recalculated and filed | [card](pr-cards/W-0A.md) | — |
+| W-0A (merged #338) | Purchase use tax can be calculated, recalculated and filed | [card](pr-cards/W-0A.md) | — |
 | W-0B | No dead Today links; delivery-fee records page | [card](pr-cards/W-0B.md) | — |
 | W-1 | To do list: due date, amount, one button, snooze | JIT — `W-1.md` | COM-L15 |
 | W-2 | Intake and purchase orders say what is owed, to whom, by when; every seller-tax answer gets one dated next step (D-WA6) | JIT — `W-2.md` | W-1 |

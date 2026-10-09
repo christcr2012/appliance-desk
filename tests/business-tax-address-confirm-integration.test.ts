@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { beforeAll, afterAll, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { confirmBusinessTaxAddress } from "@/domains/tax/locations";
+import { saveTaxSettings } from "@/domains/tax/setup";
 
 const u = new URL(process.env.DATABASE_URL ?? "postgresql://localhost/unset");
 const enabled = process.env.CI === "true" && ["localhost", "127.0.0.1"].includes(u.hostname)
@@ -11,6 +12,7 @@ const owner = "w0a-owner-" + tag, staff = "w0a-staff-" + tag, area = "w0a-area-"
 describe.skipIf(!enabled)("W-0A business tax-area confirmation (Postgres)", () => {
   let oldAddress: unknown;
   let oldLocationIds: string[] = [];
+  const addedLocationIds: string[] = [];
   beforeAll(async () => {
     oldAddress = (await prisma.businessSettings.findUniqueOrThrow({
       where: { id: "singleton" }, select: { businessTaxAddress: true },
@@ -33,9 +35,9 @@ describe.skipIf(!enabled)("W-0A business tax-area confirmation (Postgres)", () =
       data: { businessTaxAddress: { line1: "1 Test Way", city: "Greeley", state: "CO", zip: "80631" } } });
   });
   afterAll(async () => {
-    await prisma.auditLog.deleteMany({ where: { userId: owner, action: "tax.business_address.confirm" } });
+    await prisma.auditLog.deleteMany({ where: { userId: owner } });
     await prisma.addressTaxLocation.deleteMany({
-      where: { forBusinessLocation: true, confirmedByUserId: owner },
+      where: { id: { in: addedLocationIds } },
     });
     await prisma.addressTaxLocation.updateMany({
       where: { id: { in: oldLocationIds } }, data: { isCurrent: true },
@@ -52,10 +54,30 @@ describe.skipIf(!enabled)("W-0A business tax-area confirmation (Postgres)", () =
       include: { jurisdictions: true },
     });
     expect(location).toMatchObject({ status: "VERIFIED", source: "MANUAL", confirmedByUserId: owner });
+    addedLocationIds.push(location.id);
     expect(location.jurisdictions.map(j => j.jurisdictionId)).toEqual([area]);
     expect(await prisma.auditLog.count({
       where: { userId: owner, action: "tax.business_address.confirm" },
     })).toBe(1);
+  });
+  it("changing the saved address returns it to needs review", async () => {
+    const settings = await prisma.businessSettings.findUniqueOrThrow({ where: { id: "singleton" } });
+    await saveTaxSettings(owner, {
+      shortTermLeaseElection: settings.shortTermLeaseElection,
+      shortTermLeaseElectionNote: settings.shortTermLeaseElectionNote,
+      rdfHandling: settings.rdfHandling,
+      rdfThresholdCents: settings.rdfThresholdCents,
+      rdfCpaConfirmedOn: settings.rdfCpaConfirmedOn,
+      autoApplyOfficialRateChanges: settings.autoApplyOfficialRateChanges,
+      autoRateChangeMaxMilliPercent: settings.autoRateChangeMaxMilliPercent,
+      businessLocation: { line1: "2 Test Way", city: "Greeley", state: "CO", zip: "80631" },
+    }, settings.updatedAt);
+    const current = await prisma.addressTaxLocation.findFirstOrThrow({
+      where: { forBusinessLocation: true, isCurrent: true },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    });
+    addedLocationIds.push(current.id);
+    expect(current.status).toBe("NEEDS_REVIEW");
   });
   it("staff cannot confirm", async () => {
     await expect(confirmBusinessTaxAddress(staff, { jurisdictionIds: [area] })).rejects.toThrow();

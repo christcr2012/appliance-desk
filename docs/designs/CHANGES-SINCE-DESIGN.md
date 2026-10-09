@@ -372,3 +372,16 @@ Two later RDF reconcile rules are now explicitly registered for
 automation health. The existing authenticated billing-reconcile cron
 runs the bounded diagnostic sweep; no additional cron, database
 migration, provider action, billing mutation or external AI access.
+
+### W-0A purchase use tax — correction to merged T behavior (2026-10-09, #338)
+
+On the verified #337 main baseline, no owner screen could confirm the private
+business address, the same unresolved purchase-tax answer short-circuited, and
+DUE purchases with no use-tax filing account had no resolution path. W-0A adds
+manual owner/admin confirmation after advisory lookup, bounded idempotent tax
+catch-up on setup changes and daily cron, explicit missing-prerequisite links,
+and a high-priority Today alert for unlinked amounts. Account linking assigns
+previously unlinked DUE rows only to OPEN matching periods, not FILED ones.
+There was no migration, legal rate inference, customer message or payment.
+The nonexistent `/desk/sales-tax/setup/accounts` route in the original card
+was corrected to the real `/desk/sales-tax/setup#accounts` section.

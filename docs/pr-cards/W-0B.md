@@ -1,6 +1,6 @@
 # W-0B — No Today item leads nowhere; delivery-fee records get a page to resolve them
 
-Status: **APPROVED** · Baseline inspected: `aea29ba3` (2026-10-09, #335).
+Status: **APPROVED** · Baseline inspected: W-0A #338 (2026-10-09; verify merge SHA at next checklist A).
 Batch: W (`docs/designs/BATCH-W.md` §1, D-W1 last sentence, PR table W-0b) · Prerequisites: none (independent of W-0A;
 either may merge first).
 Base: latest `main`. Migration: **none**. Sizing estimate: ~250 production lines, ≤8 files, risk area: screens.
@@ -54,3 +54,12 @@ still links there. If another PR already fixed it, keep only the href-coverage t
 Stop if resolving a record would need new money behavior (this page only links to existing decision/rate entry and
 re-runs the existing resolver). Done when the named cases pass, the Today item opens the new page, exact-head CI/
 preview/review gates pass, and STATUS is updated.
+
+## W-0A predecessor handoff (2026-10-09)
+
+W-0A updates `src/domains/tax/acquisition-attention.ts` to add purchase-tax
+reason grouping and a high-priority unlinked use-tax filing alert. The RDF
+block still points to the dead `/desk/tax` route; replace just its href in W-0B.
+The owner setup location/actions have also changed, but RDF statuses and
+`resolvePendingRdfRecords` are unchanged. Review W-0A #338 diff/CI before coding.
+No inherited code-review finding has been waived here yet.
