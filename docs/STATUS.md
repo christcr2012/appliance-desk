@@ -4,7 +4,7 @@ Updated October 8, 2026. Acquisition work T-6D1…3 (#313–#315) is merged; #31
 
 ## Next
 
-T-6C4 merged as #321. T-7A owner-only tax workspace setup and taxability UI is implementing; next T-7B, T-7C and T-7D. Keep owner/legal/CPA and live payment gates. Refresh each card against its actual merged prerequisite. [MASTER-ROADMAP](MASTER-ROADMAP.md) remains the single handoff; [PLAN](PLAN.md) owns acceptance. No extra handoff document is needed.
+T-6C4 (#321), T-7A (#322) and T-7B (#323) have merged; next **T-7C** guided filing and **T-7D** tax overview/acceptance. Keep owner/legal/CPA and live payment gates. Refresh each card against its actual merged prerequisite. [MASTER-ROADMAP](MASTER-ROADMAP.md) remains the single handoff; [PLAN](PLAN.md) owns acceptance. No extra handoff document is needed.
 
 ## Built
 
@@ -14,7 +14,7 @@ A/B/C/R/B2/D/E/E2, F-part-1 and G are merged. T through acquisition UI/frequency
 
 | Stage | State |
 |---|---|
-| T completion | RDF recording/charging/filing and tax workspace screens remain |
+| T completion | T-7C guided filing and T-7D overview/acceptance remain; RDF T-6C and tax setup/areas have merged |
 | S → COM-L → V → F-part-2 | Approved remaining launch engineering and final product proof |
 | K → M → O → COM-N | Approved later engineering; K/M after launch unless owner reschedules |
 | BP | Proposed business documents/design; runtime acceptance still required |
@@ -39,3 +39,11 @@ For throughput assessment count **three implementation merges beginning with #31
 - This workspace has generated Prisma clients and reusable dependencies. The existing Vercel Sandbox has PostgreSQL 18 binaries outside PATH; on October 8 an isolated 127.0.0.1-only database named appliance_desk_test was migrated/seeded and 27 real-Postgres targeted integration tests passed. GitHub CI uses PostgreSQL 17 and remains the exact-head gate; no Neon or production database was used.
 
 History and prior acceptance: [retired working snapshot](archive/reset-2026-10-08/README.md). Do not use its old unchecked boxes as the current queue.
+
+## Cash-budget / startup banking design — October 8
+
+Owner-requested documentation-only K-CASH design and dated primary-source research; proposed K-8 → nine K-CASH
+groups → M, documentation reviewed and owner-approved for planning only. No runtime built or launch/T queue change. Confirmed-cash envelopes,
+protected obligations, annual/recurring costs/targets, bank CSV matching/reconciliation, QBO import evidence and
+contextual screens specified. K opening/export/forecast/posting-revision amendments explicit. IN-54/55 gate
+account-specific activation, not synthetic engineering. No bank/provider/spending/live-money activation.

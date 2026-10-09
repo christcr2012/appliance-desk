@@ -24,6 +24,7 @@ the points where the implementer must stop and ask instead of guessing.
 | V — "Evergreen Signature" visual redesign | `BATCH-V.md` | **Approved 2026-10-06** (Chris). After S/COM-L, before F-part-2; includes V-C1…C5 full content controls and redesign compatibility. Concept in `docs/design-mockups/signature-2026-10-06/`. |
 | S — System issues inbox and the AI check-up | `BATCH-S.md` | **Approved 2026-10-07** (Chris). Four bounded capabilities after T, before COM-L/V. |
 | M — Shop sales (merchandise) and retired appliances (sell, strip for parts, scrap, throw away) | `BATCH-M.md` | **Approved 2026-10-07** (Chris). After K (Chris will not sell before launch, IN-47). Retired appliances: "what's next" plan, revised 2026-10-07. |
+| K-CASH — Cash envelopes, planned costs, bank checks, reports and QBO handoff | `BATCH-K-CASH.md` | Owner-requested 2026-10-08; documentation review pending. Proposed after K-8 before M; launch unchanged. No accounts/provider activation. |
 | K — Books, expenses, P&L, accounting exports | `BATCH-K.md` | **Approved 2026-10-06** (Chris). After T; may run after launch. |
 | O — Owner controls | `BATCH-O.md` | **Approved 2026-10-06** (Chris). After K; includes O-6/O-7 control center and saved workspace. |
 

@@ -685,3 +685,10 @@ reversal), automated outage credit (recorded downtime/cap/invoice-tax treatment)
 (prospective notice/consent, never retroactive) and a reviewed rent-to-own ledger (purchase price, cash price/total
 cost, credited payments, return/reinstatement, early purchase, title transfer, tax and signatures). Until built,
 template UI must identify these as unavailable and prevent signable promises of their behavior.
+
+## 2026-10-08 — cash-budget follow-ons
+
+Owner-requested [K-CASH](designs/BATCH-K-CASH.md) tracked in MASTER-ROADMAP/work-index, documentation review pending.
+Full credit-card purchase/payment-envelope mechanics, automatic bank transfers/paid aggregation, unsupported
+loan/payroll adapters, multiaccount savings connector proof and direct QBO API remain separate deferred designs.
+K's quarter-of-file-use prerequisite unchanged; no fake ready cards or new launch requirement.

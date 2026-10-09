@@ -191,6 +191,32 @@ Design: `docs/designs/BATCH-K.md`; work coverage and prerequisites: work-index.
 - [ ] Deterministic exports for QuickBooks Online, Xero, generic journal and cash-movements formats, daily-summary or detail, blocked until accounts are mapped.
 - [ ] Every item in "Rules that apply to every batch".
 
+## Batch K-CASH — cash envelopes, planned costs and bank reconciliation — owner-requested design
+
+Design: [BATCH-K-CASH](designs/BATCH-K-CASH.md); [research](research/2026-10-08-startup-banking-quickbooks.md).
+Documentation review precedes affected implementation. Proposed after K-8 before M; launch unchanged.
+K section 9 amendments must be drift-checked before affected source/export/opening/forecast units.
+
+- [ ] Duplicate-safe CSV preview/import, exact matching and zero-difference statement proof preserve immutable
+  evidence/outstanding items/private access and owner reopening; no balancing plugs.
+- [ ] Typed cash events/journal source revision/opening composition preserve balance, concurrency and liabilities.
+- [ ] Confirmed-bank-cash-only envelopes protect deposits/credits/tax/RDF/card debt with shortage/as-of labels;
+  stale/unknown blocks new funding but never recording real expenses.
+- [ ] Assign/move/spend/reverse use atomic revision/idempotency; virtual allocations never transfer bank money.
+- [ ] Recurring/annual/one-time costs and monthly/save-by-date/maintain targets carry forward, settle partially,
+  reverse and avoid target/schedule double counting.
+- [ ] Existing K forecast separates no-new-income coverage from expected collections; source dedupe and unknown
+  costs explicit; unpaid invoices/pending Stripe funds cannot fund envelopes.
+- [ ] Budget tabs/context cards integrate expense/purchasing/inventory/tax/COM/Today/METRICS; role-shaped access.
+- [ ] Original/revised immutable monthly plans, spending vs funding variance, revenue/expense/profit trends,
+  cash movement, drilldown/export ties, partial-period comparisons and fact-based month-end review; unknown
+  history/attribution stays visible; no capital/deposit/tax/owner money misclassified as profit.
+- [ ] QBO actual-tenant detail-import/matching/reconciliation proof, prepared vs imported status and overlapping/
+  uncertain export quarantine; download never claims import.
+- [ ] IN-54/55 recorded before account/budget activation; no application/spending/live payment authorization.
+- [ ] Named real-Postgres/security/race/upgrade/restore/phone/dark/keyboard/axe tests pass.
+- [ ] Every item in Rules that apply to every batch.
+
 ## Batch M — Shop sales and appliance endings
 
 Design: `docs/designs/BATCH-M.md`; work coverage and prerequisites: work-index.

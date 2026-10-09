@@ -630,7 +630,8 @@
         "docs/designs/BATCH-K.md",
         "prisma/schema.prisma",
         "src/domains/billing/ledger.ts",
-        "src/domains/tax/filing-packet.ts"
+        "src/domains/tax/filing-packet.ts",
+        "docs/designs/BATCH-K-CASH.md"
       ],
       "tests": [
         "tests/books-migration-integration.test.ts"
@@ -655,7 +656,8 @@
         "docs/designs/BATCH-K.md",
         "prisma/schema.prisma",
         "src/domains/billing/ledger.ts",
-        "src/domains/tax/filing-packet.ts"
+        "src/domains/tax/filing-packet.ts",
+        "docs/designs/BATCH-K-CASH.md"
       ],
       "tests": [
         "tests/books-posting-rules.test.ts"
@@ -680,7 +682,8 @@
         "docs/designs/BATCH-K.md",
         "prisma/schema.prisma",
         "src/domains/billing/ledger.ts",
-        "src/domains/tax/filing-packet.ts"
+        "src/domains/tax/filing-packet.ts",
+        "docs/designs/BATCH-K-CASH.md"
       ],
       "tests": [
         "tests/books-poster-integration.test.ts"
@@ -705,7 +708,8 @@
         "docs/designs/BATCH-K.md",
         "prisma/schema.prisma",
         "src/domains/billing/ledger.ts",
-        "src/domains/tax/filing-packet.ts"
+        "src/domains/tax/filing-packet.ts",
+        "docs/designs/BATCH-K-CASH.md"
       ],
       "tests": [
         "tests/books-setup-integration.test.ts",
@@ -731,7 +735,8 @@
         "docs/designs/BATCH-K.md",
         "prisma/schema.prisma",
         "src/domains/billing/ledger.ts",
-        "src/domains/tax/filing-packet.ts"
+        "src/domains/tax/filing-packet.ts",
+        "docs/designs/BATCH-K-CASH.md"
       ],
       "tests": [
         "tests/books-stripe-sync-integration.test.ts"
@@ -756,7 +761,8 @@
         "docs/designs/BATCH-K.md",
         "prisma/schema.prisma",
         "src/domains/billing/ledger.ts",
-        "src/domains/tax/filing-packet.ts"
+        "src/domains/tax/filing-packet.ts",
+        "docs/designs/BATCH-K-CASH.md"
       ],
       "tests": [
         "tests/books-expenses-integration.test.ts"
@@ -781,7 +787,8 @@
         "docs/designs/BATCH-K.md",
         "prisma/schema.prisma",
         "src/domains/billing/ledger.ts",
-        "src/domains/tax/filing-packet.ts"
+        "src/domains/tax/filing-packet.ts",
+        "docs/designs/BATCH-K-CASH.md"
       ],
       "tests": [
         "tests/books-recurring.test.ts",
@@ -807,7 +814,8 @@
         "docs/designs/BATCH-K.md",
         "prisma/schema.prisma",
         "src/domains/billing/ledger.ts",
-        "src/domains/tax/filing-packet.ts"
+        "src/domains/tax/filing-packet.ts",
+        "docs/designs/BATCH-K-CASH.md"
       ],
       "tests": [
         "tests/books-exports.test.ts",
@@ -834,7 +842,8 @@
         "docs/designs/BATCH-K.md",
         "prisma/schema.prisma",
         "src/domains/billing/ledger.ts",
-        "src/domains/tax/filing-packet.ts"
+        "src/domains/tax/filing-packet.ts",
+        "docs/designs/BATCH-K-CASH.md"
       ],
       "tests": [
         "tests/books-depreciation.test.ts",
@@ -860,7 +869,8 @@
         "docs/designs/BATCH-K.md",
         "prisma/schema.prisma",
         "src/domains/billing/ledger.ts",
-        "src/domains/tax/filing-packet.ts"
+        "src/domains/tax/filing-packet.ts",
+        "docs/designs/BATCH-K-CASH.md"
       ],
       "tests": [
         "tests/books-reports-integration.test.ts",
@@ -886,7 +896,8 @@
         "docs/designs/BATCH-K.md",
         "prisma/schema.prisma",
         "src/domains/billing/ledger.ts",
-        "src/domains/tax/filing-packet.ts"
+        "src/domains/tax/filing-packet.ts",
+        "docs/designs/BATCH-K-CASH.md"
       ],
       "tests": [
         "tests/books-reports.test.ts",
@@ -896,11 +907,252 @@
       "plannedCard": "docs/pr-cards/K-8.md"
     },
     {
+      "id": "K-CASH-1",
+      "title": "Cash evidence schema, typed events and posting revision",
+      "batch": "K-CASH",
+      "dependencies": [
+        "K-8"
+      ],
+      "status": "PROPOSED \u2014 documentation review required",
+      "migration": "batch_k_cash_evidence",
+      "budget": 480,
+      "units": [
+        "K-CASH-1"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-K-CASH.md",
+        "docs/designs/BATCH-K.md",
+        "docs/research/2026-10-08-startup-banking-quickbooks.md",
+        "prisma/schema.prisma",
+        "src/domains/reports/definitions.ts"
+      ],
+      "tests": [
+        "tests/cash-schema-integration.test.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/K-CASH-1.md"
+    },
+    {
+      "id": "K-CASH-2",
+      "title": "CSV imports and typed cash-event posting",
+      "batch": "K-CASH",
+      "dependencies": [
+        "K-CASH-1"
+      ],
+      "status": "PROPOSED \u2014 documentation review required",
+      "migration": "none",
+      "budget": 480,
+      "units": [
+        "K-CASH-2"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-K-CASH.md",
+        "docs/designs/BATCH-K.md",
+        "docs/research/2026-10-08-startup-banking-quickbooks.md",
+        "prisma/schema.prisma",
+        "src/domains/reports/definitions.ts"
+      ],
+      "tests": [
+        "tests/bank-import.test.ts",
+        "tests/bank-import-integration.test.ts",
+        "tests/books-cash-events-integration.test.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/K-CASH-2.md"
+    },
+    {
+      "id": "K-CASH-3",
+      "title": "Bank matches, reconciliation and cash readiness",
+      "batch": "K-CASH",
+      "dependencies": [
+        "K-CASH-2"
+      ],
+      "status": "PROPOSED \u2014 documentation review required",
+      "migration": "none",
+      "budget": 480,
+      "units": [
+        "K-CASH-3"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-K-CASH.md",
+        "docs/designs/BATCH-K.md",
+        "docs/research/2026-10-08-startup-banking-quickbooks.md",
+        "prisma/schema.prisma",
+        "src/domains/reports/definitions.ts"
+      ],
+      "tests": [
+        "tests/bank-reconciliation-integration.test.ts",
+        "e2e/bank-checks.spec.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/K-CASH-3.md"
+    },
+    {
+      "id": "K-CASH-4A",
+      "title": "Envelope, target and planned-cost schema",
+      "batch": "K-CASH",
+      "dependencies": [
+        "K-CASH-3"
+      ],
+      "status": "PROPOSED \u2014 documentation review required",
+      "migration": "batch_k_cash_budget",
+      "budget": 480,
+      "units": [
+        "K-CASH-4A"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-K-CASH.md",
+        "docs/designs/BATCH-K.md",
+        "docs/research/2026-10-08-startup-banking-quickbooks.md",
+        "prisma/schema.prisma",
+        "src/domains/reports/definitions.ts"
+      ],
+      "tests": [
+        "tests/budget-schema-integration.test.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/K-CASH-4A.md"
+    },
+    {
+      "id": "K-CASH-4B",
+      "title": "Protected reserves and atomic envelope movements",
+      "batch": "K-CASH",
+      "dependencies": [
+        "K-CASH-4A"
+      ],
+      "status": "PROPOSED \u2014 documentation review required",
+      "migration": "none",
+      "budget": 480,
+      "units": [
+        "K-CASH-4B"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-K-CASH.md",
+        "docs/designs/BATCH-K.md",
+        "docs/research/2026-10-08-startup-banking-quickbooks.md",
+        "prisma/schema.prisma",
+        "src/domains/reports/definitions.ts"
+      ],
+      "tests": [
+        "tests/budget-money-integration.test.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/K-CASH-4B.md"
+    },
+    {
+      "id": "K-CASH-5A",
+      "title": "Recurring plans, targets, settlements and forecast dedupe",
+      "batch": "K-CASH",
+      "dependencies": [
+        "K-CASH-4B"
+      ],
+      "status": "PROPOSED \u2014 documentation review required",
+      "migration": "none",
+      "budget": 480,
+      "units": [
+        "K-CASH-5A"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-K-CASH.md",
+        "docs/designs/BATCH-K.md",
+        "docs/research/2026-10-08-startup-banking-quickbooks.md",
+        "prisma/schema.prisma",
+        "src/domains/reports/definitions.ts"
+      ],
+      "tests": [
+        "tests/budget-planning.test.ts",
+        "tests/budget-planning-integration.test.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/K-CASH-5A.md"
+    },
+    {
+      "id": "K-CASH-5B",
+      "title": "Budget workspace and contextual source integration",
+      "batch": "K-CASH",
+      "dependencies": [
+        "K-CASH-5A"
+      ],
+      "status": "PROPOSED \u2014 documentation review required",
+      "migration": "none",
+      "budget": 480,
+      "units": [
+        "K-CASH-5B"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-K-CASH.md",
+        "docs/designs/BATCH-K.md",
+        "docs/research/2026-10-08-startup-banking-quickbooks.md",
+        "prisma/schema.prisma",
+        "src/domains/reports/definitions.ts"
+      ],
+      "tests": [
+        "tests/budget-context-access.test.ts",
+        "e2e/budget.spec.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/K-CASH-5B.md"
+    },
+    {
+      "id": "K-CASH-6",
+      "title": "QBO detail export, import proof and owner handoff",
+      "batch": "K-CASH",
+      "dependencies": [
+        "K-CASH-5B"
+      ],
+      "status": "PROPOSED \u2014 documentation review required",
+      "migration": "batch_k_cash_accounting_delivery",
+      "budget": 480,
+      "units": [
+        "K-CASH-6"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-K-CASH.md",
+        "docs/designs/BATCH-K.md",
+        "docs/research/2026-10-08-startup-banking-quickbooks.md",
+        "prisma/schema.prisma",
+        "src/domains/reports/definitions.ts"
+      ],
+      "tests": [
+        "tests/books-export-delivery-integration.test.ts",
+        "e2e/books-export.spec.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/K-CASH-6.md"
+    },
+    {
+      "id": "K-CASH-7",
+      "title": "Published plans, variance reports, business trends and month-end review",
+      "batch": "K-CASH",
+      "dependencies": [
+        "K-CASH-6"
+      ],
+      "status": "PROPOSED \u2014 documentation review required",
+      "migration": "batch_k_cash_report_snapshots",
+      "budget": 480,
+      "units": [
+        "K-CASH-7"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-K-CASH.md",
+        "docs/designs/BATCH-K.md",
+        "src/domains/reports/definitions.ts",
+        "docs/research/2026-10-08-startup-banking-quickbooks.md"
+      ],
+      "tests": [
+        "tests/budget-reports-integration.test.ts",
+        "tests/business-trends.test.ts",
+        "e2e/money-reports.spec.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/K-CASH-7.md"
+    },
+    {
       "id": "M-1A",
       "title": "Shop and resale stock schema",
       "batch": "M",
       "dependencies": [
-        "K-8"
+        "K-CASH-7"
       ],
       "status": "APPROVED",
       "migration": "batch_m_shop_stock",

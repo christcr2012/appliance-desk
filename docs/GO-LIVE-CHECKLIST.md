@@ -124,3 +124,12 @@ Design `docs/designs/BATCH-COM.md`; setup `docs/runbooks/COMMUNICATIONS-TWILIO.m
 - [ ] IN-53: budget/destination/feature/alert rules accepted; Today/S and independent alert path proven.
 - [ ] Monthly provider usage vs estimate vs verified invoice distinct; stale/unknown/unallocated costs visible; no K posting until statement/payment verified.
 - [ ] Controlled production proof only consenting owner phones after explicit live approval; activate workflows separately; no automatic public number replacement.
+
+## Post-launch K-CASH activation — not a rental-launch gate
+
+- [ ] IN-54: selected bank/QBO actual journal import/feed or CSV/matching/zero-difference statement verified.
+- [ ] IN-55: opening composition/liabilities/card debt/legal reserve treatment/actual costs and targets confirmed.
+- [ ] Source/money/privacy/restore/UI proofs pass; latest bank evidence verified; virtual envelopes, forecast-only
+  income and stale/unknown limitations understood; no automatic payments.
+- [ ] Real period imported/matched without duplicate posting; accounting delivery confirmation saved.
+- [ ] Paid/API/bank-transfer/live Stripe changes retain separate explicit approval.
