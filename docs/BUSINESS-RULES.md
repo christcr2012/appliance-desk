@@ -1484,3 +1484,6 @@ action to connect their jurisdiction to a use-tax filing account. When an
 account is connected, previously unassigned DUE rows are attached only to an
 OPEN matching return; existing filed evidence is not rewritten. All new
 settings, locations and use-tax assignments retain role and transaction guards.
+
+### Communication intent safeguards (COM-L4A, inactive)
+Preparing an SMS is not sending it. The owner-only communications policy is narrower than the separate default-off SMS activation switch. A verified account/number, resolved contact identity, matching written consent for the exact sender and purpose, absence of STOP suppression and a valid current policy must all be present before a private intent can be recorded. Message content is encrypted with a server-held key and its version and delivery attempt are frozen. Retrying the same operation reuses its original ledger record; a changed replay is refused. Even a prepared message cannot be sent until the later provider-dispatch implementation rechecks the gates. No live SMS is activated by this work.
