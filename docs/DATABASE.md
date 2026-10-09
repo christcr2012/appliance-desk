@@ -515,3 +515,10 @@ and is intentionally not present here.
 ## COM-L1a: independent SMS master switch
 
 The additive `20261012120000_com_l1a_sms_activation` migration introduces `BusinessSettings.customerSmsEnabled Boolean @default(false)`. SMS may transmit only from a positively identified production Vercel deployment and when this OWNER-controlled switch is explicitly true; it never inherits `customerEmailEnabled`. Verified Twilio STOP and final durable SMS claims share one canonical-address advisory transaction lock, while the network call occurs after commit. An UNKNOWN SMS is never automatically retried. This stage does not enable outbound SMS or create paid provider resources.
+
+
+## COM-L2 — telecom foundation (2026-10-09)
+
+The provider-independent communications foundation is additive and initially **inactive**. `TelecomAccount` records the provider/environment/account configuration; `BusinessPhoneNumber` tracks provisioned numbers; `ContactPoint` and `ContactBinding` associate an SMS address with its owner or lead without inferring consent; `MessageAttempt` records independent send-attempt evidence. Existing `ConsentRecord`, `MessageDelivery` and `ProviderEvent` records retain their identities and history, with nullable links for later workflows. Processed legacy provider events are marked `LEGACY_HANDLED` rather than assumed successful.
+
+These five new tables are included in backups. During restore, `MessageDelivery.currentAttemptId` is temporarily omitted and restored after message attempts are inserted, avoiding the legitimate circular foreign-key dependency. A populated, disposable PostgreSQL backup/restore test verifies the link survives. This schema does not authorize any Twilio calls, SMS sending, provider spending or customer messaging; live activation remains gated.
