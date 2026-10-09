@@ -23,6 +23,7 @@ import { PackageTable } from "./package-table";
 import { listPackagesForSettings } from "@/domains/packages";
 import { StaffAccountsSection } from "./staff-accounts-section";
 import { CustomerEmailSwitch } from "./customer-email-switch";
+import { SmsTemplatePreview } from "./sms-template-preview";
 import { isNonProductionDeployment } from "@/lib/deployment-safety";
 import { TermsPolicyForm } from "./terms-policy-form";
 import { AutoRenewSwitch } from "./auto-renew-switch";
@@ -280,6 +281,7 @@ export default async function DeskSettingsPage({
   } else if (section === "notifications" || section === "integrations") {
     const status = providerStatus();
     content = (
+      <>
       <Card
         title={
           section === "notifications"
@@ -315,7 +317,8 @@ export default async function DeskSettingsPage({
           </ButtonLink>
         </div>
       </Card>
-    );
+      {section === "notifications" && <SmsTemplatePreview />}
+    </>);
   } else {
     content = (
       <Card

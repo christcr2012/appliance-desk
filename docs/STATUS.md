@@ -1,8 +1,19 @@
 # STATUS — current work, blockers and next action
 
-Updated October 9, 2026 (W-16A #360, W-16B #362, W-21A #363 sets and repair credits; W-0C #359; COM-L5B in Sol lane). Batch T and Batch S are engineering-complete. No live payments, customer messages, fee charging or tax filing are activated.
+Updated October 9, 2026 (W-16A #360, W-16B #362, W-21A #364 sets and repair credits; W-0C #359; COM-L5B in Sol lane). Batch T and Batch S are engineering-complete. No live payments, customer messages, fee charging or tax filing are activated.
 
 ## Next
+
+**2026-10-09 — COM-L6A template preview and reminder safety cutover:**
+Approved SMS templates now validate variables, render immutable encrypted text
+and count GSM-7/UCS-2 segments correctly at preparation and final dispatch.
+Owner Settings → Notifications previews template samples, conservative Unicode
+lengths and explicitly unknown costs. The old day-of reminder cron can no longer
+send via the legacy path bypassing COM-L5B consent. It counts held-for-review
+jobs without marking them texted. Automated sending still needs the COM-L6B
+authorized recipient/job workflow and separate owner activation.
+**Next: COM-L6B**, authorized inbox and user read cursors. No live sending.
+Card: docs/pr-cards/COM-L6A.md.
 
 **2026-10-09 — COM-L5B complete (merged by the COM-L5B PR after exact-head CI):**
 Signed STOP/START/HELP events now produce private, replay-safe scoped consent evidence even
@@ -15,7 +26,7 @@ Card: `docs/pr-cards/COM-L5B.md`. **Next: COM-L6A**, validated templates, segmen
 and migration of existing reminders. Public lead disclosure text/form choices remain
 explicit follow-up work, not implied by COM-L5B.
 
-**2026-10-09 — W-21A merged (#363), Claude's lane:** a machine taken for repair with no replacement (a swap with no
+**2026-10-09 — W-21A merged (#364), Claude's lane:** a machine taken for repair with no replacement (a swap with no
 new machine delivered, or a pickup of some machines while others stay) now starts an out-of-service period; when a
 machine is back the customer is credited exactly the days without it on the next bill (any line, set or single).
 To do "Return or replace…" (urgent after 3 days, owner setting), a screen with the three ways forward, and a portal

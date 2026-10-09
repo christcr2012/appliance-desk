@@ -1535,3 +1535,11 @@ settings, locations and use-tax assignments retain role and transaction guards.
 
 ### Communication intent safeguards (COM-L4A, inactive)
 Preparing an SMS is not sending it. The owner-only communications policy is narrower than the separate default-off SMS activation switch. A verified account/number, resolved contact identity, matching written consent for the exact sender and purpose, absence of STOP suppression and a valid current policy must all be present before a private intent can be recorded. Message content is encrypted with a server-held key and its version and delivery attempt are frozen. Retrying the same operation reuses its original ledger record; a changed replay is refused. Even a prepared message cannot be sent until the later provider-dispatch implementation rechecks the gates. No live SMS is activated by this work.
+
+
+**COM-L6A customer SMS safety (2026-10-09):** The legacy job-day SMS cron no
+longer sends directly. Jobs needing a text are held for review until the
+COM-L6B authenticated workflow can verify job, sender, contact and scoped
+consent. No unsent job is falsely marked texted. Approved templates render
+only bounded allowlisted values; encoding-aware segment ceilings are checked
+at preparation and final dispatch. Unverified carrier costs remain unknown.

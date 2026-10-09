@@ -1,3 +1,4 @@
+import { smsPreview } from "./sms-template";
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
 import { lockCanonicalSmsAddress } from "./sms-address-lock";
@@ -119,6 +120,16 @@ async function claimPreparedCommunication(
       return { kind: "BLOCKED", deliveryId } as const;
     }
     const text = decryptCommunicationContent(delivery.renderedBody);
+    // Actual frozen content, not a preview or raw JS character count,
+    // determines the last-moment segment and cost ceiling.
+    if (!text.trim() || text.length > 1600 ||
+      smsPreview(text).segments > eligible.policy.maxSegments) {
+      await tx.messageAttempt.update({ where: { id: delivery.currentAttempt.id },
+        data: { state: "NOT_SENT", finishedAt: now, errorCode: "SEGMENT_LIMIT" } });
+      await applyDeliveryObservationInTx(tx, { deliveryId, state: "NOT_SENT",
+        observedAt: now, lastError: "SEGMENT_LIMIT" });
+      return { kind: "BLOCKED", deliveryId } as const;
+    }
     await tx.messageAttempt.update({ where: { id: delivery.currentAttempt.id },
       data: { state: "DISPATCHING", startedAt: now } });
     return {
