@@ -8,6 +8,20 @@ complete:** S-1A #330, S-1B #331, S-1C #332, S-2 #334 (plus the test-fixture dri
 
 **2026-10-09 — Batch W approved (IN-57…IN-60).** Next implementation: **W-0A** then **W-0B** (`docs/pr-cards/W-0A.md`, `W-0B.md`; no prerequisite, no migration) — they fix purchase use tax that could never be calculated and a dead Today link. Then COM-L resumes at COM-L2; W-1…W-8 come after COM-L15 and before V. Design: `docs/designs/BATCH-W.md`.
 
+**Recovered unfinished work (2026-10-09, read before starting anything):** found uncommitted in the Vercel Sandbox
+`appliance-desk-s1c-oct8` and committed there (not on GitHub; the sandbox clone has no push credentials):
+- `/vercel/appliance-desk-com-l2`, branch `ai/gpt6/com-l2-foundation`, commit `02e715a` — **COM-L2 started**: schema
+  (+217 lines), migration `20261012130000_com_l2_telecom_foundation`, backup manifest, and
+  `tests/communications-foundation-integration.test.ts`. Unverified. When COM-L2 comes up, run drift checklist A on it
+  against current `main` (rename the migration folder if a later one exists) and finish it instead of starting over.
+- `/vercel/appliance-desk`, branch `recovery/t7d-leftovers-2026-10-09`, commit `691a02f` — edits to the tax overview
+  (`workspace-overview.ts`, `sales-tax/page.tsx`, its test, T-7D card, contract log) left after #328 merged. Compare with
+  `main`; keep only what main lacks, as part of W-3 (taxes in one place) — or discard if superseded.
+  The main sandbox checkout is on that recovery branch: `git checkout main && git pull` before new work.
+- **Carried test fix:** `tests/system-issue-sweep-integration.test.ts` › "health sweep creates no duplicate …" compares
+  global table counts while other test files run in parallel, so it can fail by chance (#337 CI). Make it race-free
+  (assert the sweep's own writes, not global counts) in the next PR that touches Batch S code, or in W-0B.
+
 **Order after W-0:** COM-L2 … COM-L15 → W-1 … W-8 → V → F-part-2. Keep owner/legal/CPA and live payment
 gates. [MASTER-ROADMAP](MASTER-ROADMAP.md) is the single handoff; [PLAN](PLAN.md) owns acceptance; implementing sessions
 start at [SESSION-START](SESSION-START.md).
