@@ -13,7 +13,10 @@ export async function scanAccessibilityRoute(
 ) {
   await page.setViewportSize({ width: viewports[0] ?? 360, height: 900 });
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await page.goto(route.fixture, { waitUntil: "networkidle" });
+  // Next.js server components and background requests can keep networkidle
+  // pending indefinitely even after the page has rendered. Wait for the
+  // actual load event, then inspect the visible DOM/axe state below.
+  await page.goto(route.fixture, { waitUntil: "load" });
   await expect(page.locator("body")).toBeVisible();
 
   for (const theme of THEMES) {
