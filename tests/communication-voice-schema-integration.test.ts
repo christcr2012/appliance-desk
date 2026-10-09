@@ -13,7 +13,8 @@ describe.skipIf(!isolated)("COM-L7 private call/media constraints (disposable Po
       unrelated = "voice-l7-other", customer = "voice-l7-customer";
     const account = "voice-l7-account", number = "voice-l7-number";
     const cp = "voice-l7-contact", thread = "voice-l7-thread";
-    const now = new Date("2026-10-11T15:00:00Z");
+    const deadline = new Date(Date.now() + 2 * 86400000);
+    const now = new Date(deadline.getTime() + 86400000);
     await prisma.user.createMany({data:[
       {id:actor,role:"OWNER",email:actor+"@example.test"},
       {id:staff,role:"STAFF",email:staff+"@example.test"},
@@ -43,12 +44,12 @@ describe.skipIf(!isolated)("COM-L7 private call/media constraints (disposable Po
       await prisma.communicationMedia.create({data:{
         id:id+"-media",callSessionId:id,kind:"VOICEMAIL",providerResourceId:id,
         privateStorageKey:"private/calls/"+id,contentHash:"a".repeat(64),
-        state:"AVAILABLE",retentionUntil:new Date("2026-10-10T15:00:00Z")
+        state:"AVAILABLE",retentionUntil:deadline
       }});
       await prisma.communicationMedia.create({data:{
         id:id+"-hold",callSessionId:id,kind:"RECORDING",providerResourceId:id+"-hold",
         privateStorageKey:"private/calls/"+id+"-hold",contentHash:"b".repeat(64),
-        state:"AVAILABLE",retentionUntil:new Date("2026-10-10T15:00:00Z"),legalHold:true
+        state:"AVAILABLE",retentionUntil:deadline,legalHold:true
       }});
       const visible = await getPrivateCallMetadata(staff,id);
       expect((await getPrivateCallMetadata(actor,id)).id).toBe(id);
