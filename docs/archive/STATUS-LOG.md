@@ -71,3 +71,16 @@ call Twilio even when credentials are accidentally present. Focused
 real-Postgres messaging, SMS and deployment regressions (54 tests, initial
 local validation) passed. Live SMS remains OFF; no provider configuration
 or customer messaging was enabled. Exact-head CI and preview required.
+
+## COM-L1b (merged #336) — delivery callback integrity
+
+Follows merged #335. A shared row-locked delivery-observation reducer
+preserves strong provider evidence across sender finalization, verified
+Resend/Twilio callbacks and UNKNOWN reconciliation. Verified Twilio status
+receipts received before a matching provider SID remain pending and
+can be replayed safely within the existing billing-reconciliation pass.
+No new provider send or scheduler, and no live activation. Local
+real-PostgreSQL tests exercise early receipt and two-worker replay,
+concurrent delivered/sent callbacks, late sender finalization, and
+invalid-status handling. Exact-head CI and migrations/backup compatibility
+remain mandatory before merge.

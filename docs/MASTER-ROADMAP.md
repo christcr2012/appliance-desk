@@ -5,9 +5,9 @@ Audited baseline: main `b2a06c2` (#310), October 8. [STATUS](STATUS.md) holds cu
 ## What is next
 
 **2026-10-09 (Chris approved Batch W):** next are **W-0A** and **W-0B** (purchase use tax that actually works; no dead
-Today links) — cards exist and need no prerequisite — then COM-L resumes at COM-L1B, then W-1…W-8 before V.
+Today links) — cards exist and need no prerequisite — then COM-L resumes at COM-L2, then W-1…W-8 before V.
 
-Batch T is engineering-complete (T-7D #328); Batch S is complete (S-1A #330 … S-2 #334); COM-L1A merged as #335.
+Batch T is engineering-complete (T-7D #328); Batch S is complete (S-1A #330 … S-2 #334); COM-L1A (#335) and COM-L1B (#336) are merged.
 No live tax filing, charging, external AI access or message sending is
 authorized by this sequence. Check [STATUS](STATUS.md) for the exact
 current PR/head.

@@ -4,8 +4,10 @@ import {
   processVerifiedResendEvent,
   processVerifiedTwilioStatusEvent,
   processVerifiedTwilioStop,
+  replayUnmatchedTwilioStatusEvents,
 } from "@/domains/messaging/events";
 import { prisma } from "@/lib/prisma";
+import { applyDeliveryObservationInTx } from "@/domains/messaging/delivery-state";
 
 const target = new URL(process.env.DATABASE_URL ?? "postgresql://localhost/unset");
 const enabled =
@@ -43,6 +45,98 @@ describe.skipIf(!enabled)("provider message events (real Postgres)", () => {
     await prisma.consentRecord.deleteMany({ where: { customerId, kind: "sms_opt_out" } });
     await prisma.customer.deleteMany({ where: { id: customerId } });
     await prisma.user.deleteMany({ where: { id: userId } });
+  });
+
+  it("retains an early verified Twilio receipt until the sender saves its SID", async () => {
+    const sid = `SM${tag.slice(0,28)}a1`;
+    const eventId = `early-${tag}`;
+    const early = await processVerifiedTwilioStatusEvent({
+      eventId, messageSid: sid, status: "delivered",
+    });
+    expect(early).toEqual({ duplicate: false, matched: false });
+    const before = await prisma.providerEvent.findUniqueOrThrow({
+      where: { provider_eventId: { provider: "twilio", eventId } },
+    });
+    expect(before.processedAt).toBeNull();
+    expect(before.summary).toMatchObject({ matchState: "unmatched" });
+    const delivery = await prisma.messageDelivery.create({
+      data: {
+        idempotencyKey: `event-${tag}-early`, channel: "SMS",
+        purpose: "TRANSACTIONAL", templateKey: "test",
+        recipientType: "Customer", recipientId: customerId,
+        recipientAddress: phone, state: "UNKNOWN", providerMessageId: sid,
+      },
+    });
+    const [first, second] = await Promise.all([
+      replayUnmatchedTwilioStatusEvents(50),
+      replayUnmatchedTwilioStatusEvents(50),
+    ]);
+    expect(first.matched + second.matched).toBe(1);
+    expect((await prisma.messageDelivery.findUniqueOrThrow({ where: { id: delivery.id } })).state)
+      .toBe("DELIVERED");
+    expect((await prisma.providerEvent.findUniqueOrThrow({
+      where: { provider_eventId: { provider: "twilio", eventId } },
+    })).processedAt).not.toBeNull();
+    expect((await replayUnmatchedTwilioStatusEvents(50)).matched).toBe(0);
+  });
+
+  it("late sender acceptance cannot downgrade delivered callback evidence", async () => {
+    const sid = `SM${tag.slice(0,28)}b2`;
+    const delivery = await prisma.messageDelivery.create({
+      data: {
+        idempotencyKey: `event-${tag}-late`, channel: "SMS",
+        purpose: "TRANSACTIONAL", templateKey: "test",
+        recipientType: "Customer", recipientId: customerId,
+        recipientAddress: phone, state: "PENDING", providerMessageId: sid,
+      },
+    });
+    await processVerifiedTwilioStatusEvent({
+      eventId: `delivered-before-sender-${tag}`, messageSid: sid, status: "delivered",
+    });
+    const updated = await prisma.$transaction(tx => applyDeliveryObservationInTx(tx, {
+      deliveryId: delivery.id, state: "ACCEPTED", observedAt: new Date(),
+    }));
+    expect(updated.state).toBe("DELIVERED");
+    expect(updated.deliveredAt).not.toBeNull();
+  });
+
+  it("concurrent accepted and delivered callbacks preserve the strongest evidence", async () => {
+    const sid = `SM${tag.slice(0,28)}d4`;
+    const delivery = await prisma.messageDelivery.create({
+      data: {
+        idempotencyKey: `event-${tag}-concurrent`, channel: "SMS",
+        purpose: "TRANSACTIONAL", templateKey: "test",
+        recipientType: "Customer", recipientId: customerId,
+        recipientAddress: phone, state: "PENDING", providerMessageId: sid,
+      },
+    });
+    const events = await Promise.all([
+      processVerifiedTwilioStatusEvent({
+        eventId: `concurrent-accepted-${tag}`, messageSid: sid, status: "sent",
+      }),
+      processVerifiedTwilioStatusEvent({
+        eventId: `concurrent-delivered-${tag}`, messageSid: sid, status: "delivered",
+      }),
+    ]);
+    expect(events.every(result => result.matched)).toBe(true);
+    expect((await prisma.messageDelivery.findUniqueOrThrow({ where: { id: delivery.id } })).state)
+      .toBe("DELIVERED");
+    const replayed = await processVerifiedTwilioStatusEvent({
+      eventId: `concurrent-delivered-${tag}`, messageSid: sid, status: "delivered",
+    });
+    expect(replayed.duplicate).toBe(true);
+  });
+
+  it("invalid Twilio status is explicitly ignored rather than pending forever", async () => {
+    const eventId = `invalid-status-${tag}`;
+    const result = await processVerifiedTwilioStatusEvent({
+      eventId, messageSid: `SM${tag.slice(0,28)}c3`, status: "not_a_status",
+    });
+    expect(result.matched).toBe(false);
+    const stored = await prisma.providerEvent.findUniqueOrThrow({
+      where: { provider_eventId: { provider: "twilio", eventId } },
+    });
+    expect(stored.processedAt).not.toBeNull();
   });
 
   it("does not downgrade DELIVERED when a late sent event arrives", async () => {
