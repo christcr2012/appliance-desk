@@ -365,6 +365,11 @@ repair. To do shows **Return or replace …** (urgent after 3 days — change th
 When a replacement swap is delivered, or you record that the same machine went back (or close it), the customer gets a
 credit on the next bill for every day without it — for example, a dryer from a $60 set out for 6 days is $6.00.
 
+If the machine was part of a set and the customer doesn't want it back, choose **The customer is done with it** on the
+same screen. The machine that stays goes to its normal single price (for example the washer at $35 instead of the $60
+set) from the day after the pickup, and the next bill gets a credit for the part of the month already charged at the
+set price. The screen shows both numbers before you save.
+
 ## Billing, statements, and late fees
 
 Rent is charged and collected automatically through Stripe, agreement

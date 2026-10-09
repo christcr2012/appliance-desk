@@ -3390,7 +3390,7 @@
       "dependencies": [
         "W-16B"
       ],
-      "status": "IN_PROGRESS \u2014 W-21A merged (#365); W-21B next",
+      "status": "MERGED",
       "migration": "out_of_service_periods",
       "budget": 500,
       "units": [
@@ -3401,11 +3401,12 @@
         "src/domains/billing/pickup-billing.ts"
       ],
       "tests": [
-        "tests/out-of-service-integration.test.ts"
+        "tests/out-of-service-integration.test.ts",
+        "tests/set-machine-done-integration.test.ts"
       ],
       "readiness": "READY_AFTER_PREREQUISITE",
       "plannedCard": "docs/pr-cards/W-21.md",
-      "card": "docs/pr-cards/W-21A.md"
+      "card": "docs/pr-cards/W-21B.md"
     },
     {
       "id": "W-19",

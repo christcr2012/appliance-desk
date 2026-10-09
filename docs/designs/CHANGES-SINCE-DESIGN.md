@@ -497,3 +497,11 @@ before sending can resume. No migration or live activation.
   "OUT_OF_SERVICE"`, pushed via `PUSH_CREDIT` handoffs (`runHandoffsByIds` export), labelled by the invoice mirror.
 - `src/domains/billing/out-of-service.ts`: `openOutOfServiceInTx`, `closeOutOfServiceInTx`, `outOfServiceCreditPlan`,
   `resolveOutOfService`. To do category `OUT_OF_SERVICE`. W-21B adds the "done" decision on the same screen.
+
+### W-21B set machine done — 2026-10-09 (#366)
+- Migration `20261013120000_set_machine_done`: `RentalLineAmendment.pendingDeliveryId` optional, `outOfServicePeriodId`
+  added, CHECK exactly one source. Unassign reason prefix "Taken off: customer done with it" is superseded for share maths.
+- `src/domains/billing/set-machine-done.ts` (`planSetMachineDone`, `markSetMachineDone`, `singlePriceForRemaining`,
+  `singlePriceStart`); credits `SET_SINGLE_PRICE`; Stripe `subscription-line-reprice-<amendmentId>` operations
+  (`claimLineRepriceInTx`/`runLineReprice`/`retryLineReprice` in `subscription-line.ts`, reconciled in
+  `reconciliation-base.ts`). W-19/W-20 (portal "next bill") should read these credits and amendments.
