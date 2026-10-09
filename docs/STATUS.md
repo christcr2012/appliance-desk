@@ -1,12 +1,23 @@
 # STATUS — current work, blockers and next action
 
-Updated October 9, 2026 (COM-L2 PR #346 merged as 12bcd837; latest deployment-cost/release controls #347–#351 merged). Batch T and Batch S are engineering-complete. COM-L1A/B and COM-L2 are merged. No live payments, customer messages, fee charging or tax filing are activated.
+Updated October 9, 2026 (COM-L4B #354 merged as 80ac467; COM-L5A #358 open on new main). Batch T and Batch S are engineering-complete. No live payments, customer messages, fee charging or tax filing are activated.
 
 ## Next
 
-**2026-10-09 — COM-L5A implemented locally, focused preflight green:** verified inbound SMS, encrypted/idempotent inbox evidence, fail-closed identity resolution and shared-number privacy. Publish as a stacked PR against COM-L4B, then require exact-head CI before any merge. COM-L4B #354 still lacks a final-head GitHub CI run; owner may need to launch the repository's CI workflow manually. **STOP BEFORE W-0C / W-OC**; do not start either spelling unless explicitly authorized.
+**2026-10-09 — COM-L5A PR #358 OPEN; rebased by merge onto merged COM-L4B #354:** signed verified inbound SMS, encrypted/idempotent inbox evidence, fail-closed identity resolution and shared-number privacy. The original #358 head passed focused local tests and GitHub CI; the synchronized exact head requires fresh CI and performance evidence, followed by merge to main. Next COM-L5B consent projection. **STOP BEFORE W-0C / W-OC**; do not start either spelling unless explicitly authorized.
 
-**2026-10-09 — COM-L4B PR #354 OPEN, final-head CI not yet generated (COM-L4A #353 merged):** default-off, account-scoped Twilio provider adapter; free Basic Lookup US verification, signed callback correlation, locked single-attempt dispatch, late STOP/policy/actor rechecks and fail-safe UNKNOWN recovery. **Next: COM-L5A verified inbound SMS and deterministic identity resolution**, then L5B consent projection. Existing reminders connect later in COM-L6A; no live sending, phone activation or provider spending authorized.
+**2026-10-09 — COM-L4B PR #354 MERGED (80ac467):** exact-head required CI passed and performance baseline passed after one retry. Account-scoped default-off Twilio dispatch, last-minute consent/STOP checks, durable single-attempt claim, and fail-safe UNKNOWN recovery remain off in production. No sending, provider spending or phone activation authorized.
+
+**Owner override (2026-10-09): Do not implement W-0C or W-OC until specifically authorized.** Existing W Amendment B plan stays approved but execution is paused at that card.
+
+**2026-10-09 — Batch W Amendment B (connected business) APPROVED (IN-69; IN-70 → D-WB8 set/out-of-service rules).** First: **W-0C**,
+a confirmed defect — a failed automatic card charge never reaches To do (invoice stays OPEN, or is DELINQUENT with no
+due date the Today rule needs). Live payments are off, so no customer is affected. **W-0C is the next card after the
+PR currently in flight** (design `docs/designs/BATCH-W-AMENDMENT-B.md` 6.1). The rest (purchases with serials, tax
+proof and audit pack, washer + dryer sets as packages, early-return/out-of-service credits, connected pages, portal
+flows, dollars-only and ⓘ) follows in the order in that file's section 8.
+
+**2026-10-09 — COM-L4A merged (#353), following COM-L3 #352:** strict owner-controlled default-off SMS policy, evidence-based consent, canonical STOP suppression, private encrypted and idempotently prepared message intents. **Next: COM-L4B**, claimed delivery and last-minute sender/consent/readiness verification, then L5 inbound consent/reconciliation. No live sending, phone activation, billing or provider spending.
 
 **2026-10-09 — Batch W Amendment A (tax filing on autopilot) added:** W-9 filing autopilot, W-10 use-tax "File now" + filled DR 0252, W-11 live GIS rates (waits on IN-61, may run early once done), W-12 XML return file (waits on IN-62, IN-44). Nothing ever submits or pays on Chris's behalf (D-WA2, IN-63). **D-WA6:** W-2 now also gives every seller-tax answer one dated next step (`nextPurchaseTaxStep`); W-13 receipt reading waits on IN-64; out-of-state seller tax waits on the CPA (IN-65).
 

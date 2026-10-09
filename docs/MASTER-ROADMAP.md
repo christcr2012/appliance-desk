@@ -16,7 +16,7 @@ current PR/head.
 
 | Stage | Engineering order | Owner gate |
 |---|---|---|
-| Finish launch product | T → S → **W-0A/W-0B** → COM-L → **W-1…W-12** → V → F-part-2 | CPA/legal tax answers; COM sender/retention/activation; V rendered visual acceptance |
+| Finish launch product | T → S → **W-0A/W-0B** → **W-0C** → COM-L → **W-1…W-20** (Amendment B order) → V → F-part-2 | CPA/legal tax answers; COM sender/retention/activation; V rendered visual acceptance |
 | Launch | GO-LIVE-CHECKLIST after final evidence | Chris authorizes live operation; engineering evidence is not activation |
 | After launch | K → K-CASH (documentation review pending) → M → O → COM-N | K earlier only if Chris schedules; M IN-47 after launch; affected CPA/telecom decisions |
 | Proposed later | BP after K/M/O, and relevant COM-N | Explicit runtime design acceptance; IN-48/49/50 for affected offers/programs |
@@ -67,8 +67,9 @@ remain in `pr-cards/` as the record of what was built; W-0A/W-0B fix defects fou
 |---|---|---|---|
 | W-0A (#342) | Purchase use tax can be calculated, recalculated and filed | [card](pr-cards/W-0A.md) | — |
 | W-0B (#343) | No dead Today links; delivery-fee records page | [card](pr-cards/W-0B.md) | — |
+| **W-0C** | Failed automatic charges and partly paid invoices reach To do, linked to the invoice (confirmed defect; **next after the PR in flight**) | JIT — `W-0C.md` | — |
 | W-1 | To do list: due date, amount, one button, snooze | JIT — `W-1.md` | COM-L15 |
-| W-2 | Intake and purchase orders say what is owed, to whom, by when; every seller-tax answer gets one dated next step (D-WA6) | JIT — `W-2.md` | W-1 |
+| W-2 | Intake and purchase orders say what is owed, to whom, by when; every seller-tax answer gets one dated next step (D-WA6); built on W-14's purchase flow | JIT — `W-2.md` | W-14 |
 | W-3 | Taxes in one place, in plain words | JIT — `W-3.md` | W-2 |
 | W-4 | Rental turning points create draft visits and To do items | JIT — `W-4.md` | W-3 |
 | W-5 | Failed, held and deposit payments on To do with buttons | JIT — `W-5.md` | W-4 |
@@ -80,12 +81,21 @@ remain in `pr-cards/` as the record of what was built; W-0A/W-0B fix defects fou
 | W-11 | Live Colorado tax rates for every address (GIS API) — may run early once IN-61 is done | JIT — `W-11.md` | IN-61 |
 | W-12 | Sales tax return as an XML upload file | JIT — `W-12.md` | W-10, IN-62, IN-44 |
 | W-13 | Receipt photo reading pre-fills price and seller tax (optional) | JIT — `W-13.md` | W-2, IN-64 |
+| W-18 | Plain-language kit: dollars-only money display/input, ⓘ explanations from one glossary, CI check (Amendment B) | JIT — `W-18.md` | W-1, IN-69 |
+| W-14 | Purchases: one receipt, many appliances each with model + serial, tax split by price | JIT — `W-14.md` | W-18 |
+| W-15 | Tax proof per appliance + audit pack; parts purchases join the records | JIT — `W-15.md` | W-2 |
+| W-16A | Rental packages (sets) schema, set price with shown saving, split old "set" appliances | JIT — `W-16A.md` | W-10 |
+| W-16B | Packages in quotes, agreements, leads and public pricing | JIT — `W-16B.md` | W-16A |
+| W-21 | Machines leaving early: single price + partial-period credit; taken for repair without replacement → out-of-service credit (any line) | JIT — `W-21.md` | W-16B |
+| W-19 | Remaining flow gaps (lead→quote, quote→draft, unsigned follow-up, failed signing payment, instant repair To do, pickup requests, pickup after any ending) | JIT — `W-19.md` | W-21 |
+| W-17 | Related panel + History on every record; search by serial/model/seller; cleaning step | JIT — `W-17.md` | W-19 |
+| W-20 | Portal follows the flows: next steps, status timelines, next bill, Pay now | JIT — `W-20.md` | W-17 |
 
 ### V
 
 | Unit | Scope | Execution card | Prerequisite |
 |---|---|---|---|
-| V-C1 | Typed content registry and historical compatibility | JIT — `V-C1.md` | W-10 |
+| V-C1 | Typed content registry and historical compatibility | JIT — `V-C1.md` | W-20 |
 | V-C2 | Photo library with private drafts and explicit publication | JIT — `V-C2.md` | V-C1 |
 | V-C3 | Every public content binding and scheduled promotions | JIT — `V-C3.md` | V-C2 |
 | V-C4 | Clear owner editing, preview, publish and restore | JIT — `V-C4.md` | V-C3 |

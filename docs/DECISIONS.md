@@ -772,3 +772,27 @@ merges costs one build; (3) sandbox sessions stop after 30 minutes and heavy che
 Chris (after seeing the bill: the $20 included credit used up and $64.37 on-demand this cycle, almost all builds):
 "every batch if that's not going to be expensive". Per-batch is cheaper than daily, so `release.yml` runs when a
 batch finishes (DRIFT-PROTOCOL C step 5), weekly as a safety net, and on demand. Switch to daily at launch.
+
+## 2026-10-09 — Connected business (Batch W Amendment B, draft for IN-69)
+
+Chris asked for the whole system to flow ("anything interconnected in reality should be interconnected in the system"),
+for group purchases with each appliance's model and serial and audit-ready tax proof, for washer + dryer sets to be two
+separate machines grouped for pricing, and for dollars-only money and ⓘ explanations everywhere. A read-only audit
+found the gaps (no purchase record, serials dropped in group intake, "set" as an appliance type, ten flow dead ends,
+three cents inputs, no help component) and a confirmed defect: failed automatic charges never reach To do (W-0C,
+not gated). Designed: Purchase records, tax proof + audit pack, RentalPackage, connected Related/History pages, flow
+rows D-WB4, portal flows, a plain-language kit, plus V and F-part-2 amendments. Restated: Colorado's GIS service only
+looks up rates; it cannot file; the owner submits.
+
+## 2026-10-09 — Amendment B approved; sets and out-of-service credits (IN-69, IN-70)
+
+Chris approved the connected-business plan. Set rule: a machine returned early leaves the other at the single-machine
+price (from the day after pickup, partial period credited) unless it is an exchange; a machine taken away without a
+replacement is credited per day on the next bill until replaced, on any rental line (D-WB8, W-21). Credits reuse the
+late-delivery per-day setting; the old "partial-return pricing" setting is dropped (Chris decided).
+
+## 2026-10-09 — Record retention starts at 7 years, owner-configurable (IN-71)
+
+Chris: 7 years after the appliance leaves the fleet, fully configurable, is fine for development and launch; IN-71
+stays on the list of questions for the CPA. Not a launch blocker: no record can reach 7 years until 7 years after
+launch, so a longer CPA answer only changes the setting.

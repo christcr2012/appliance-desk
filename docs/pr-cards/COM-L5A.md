@@ -1,7 +1,7 @@
 # COM-L5A — verified inbound SMS and deterministic contact identity
 
-Status: IMPLEMENTED, LOCAL PREFLIGHT GREEN; awaiting publication and exact-head CI. Dependent on COM-L4B #354 (OPEN, no exact-head CI yet).
-Baseline inspected: #354 branch edd9de5 (2026-10-09), main 29ebd32 before merge.
+Status: IMPLEMENTED; PR #358 OPEN; original focused local preflight and GitHub CI green; synchronized head awaiting fresh exact-head CI and performance evidence. Dependency COM-L4B #354 MERGED (80ac467).
+Baseline initially inspected: #354 branch edd9de5 (2026-10-09), main 29ebd32. Synchronized with main merge #354 at 80ac467; the earlier baseline is preserved for historical traceability.
 Design: BATCH-COM §4.2, §5 signed-webhook contract; MASTER-ROADMAP COM-L5A.
 Scope: incoming SMS only — verified receipt, idempotent encrypted storage, guarded contact resolution.
 Not scope: automated replies, marketing enrollment, STOP/START/HELP projection (L5B), MMS downloads, voice, provider activation, live spend.

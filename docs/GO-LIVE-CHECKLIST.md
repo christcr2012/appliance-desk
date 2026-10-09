@@ -46,6 +46,7 @@ Previews and test copies never send email, even with the key and the switch on (
 | [ ] | Privacy policy, terms of use, accessibility statement published | Website pages (Owner approves) | Drafts | |
 | [ ] | Month-to-month notice wording approved (IN-21) | Owner + attorney; mechanism is already built in B2 #207 | Starting draft, live email OFF | Approval recorded before any live notice email is enabled |
 | [ ] | Is the early-ending fee taxable (IN-25) | CPA | Not taxed | |
+| [ ] | How long to keep purchase receipts and tax records (IN-71) — **not needed before launch**; ask at the next CPA visit | CPA, then Desk → Settings (Owner) | 7 years after the appliance leaves the fleet (owner setting) | Setting shows the CPA's answer |
 | [ ] | Pickup/return billing rule walkthrough: stop at pickup, waive company-caused delay (IN-24) | Built in Batch B2 #208 | Built, not yet live-proven | Record "our delay" on a late test pickup; the late charge and matching waiver net correctly |
 
 ## 5. Website and company information
