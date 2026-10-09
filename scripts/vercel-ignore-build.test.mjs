@@ -27,3 +27,9 @@ test('uncertain cases build', () => {
 test('transfer branches never build', () => {
   assert.equal(decide({ branch: 'transfer/ai-x-123', previousSha: '' }).build, false);
 });
+
+test('main stops building once it is no longer the production branch', () => {
+  assert.equal(decide({ branch: 'main', previousSha: prev, changed: ['src/x.ts'], environment: 'preview' }).build, false);
+  assert.equal(decide({ branch: 'main', previousSha: prev, changed: ['src/x.ts'], environment: 'production' }).build, true);
+  assert.equal(decide({ branch: 'live', previousSha: prev, changed: ['src/x.ts'], environment: 'production' }).build, true);
+});
