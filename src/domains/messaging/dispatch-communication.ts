@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
 import { lockCanonicalSmsAddress } from "./sms-address-lock";
-import { evaluateSmsEligibility } from "./communications-policy";
+import { communicationsPolicySchema, evaluateSmsEligibility } from "./communications-policy";
 import { decryptCommunicationContent } from "./communications-content";
 import { applyDeliveryObservationInTx } from "./delivery-state";
 import { makeTwilioSmsProvider } from "@/lib/communications/providers/twilio-sms";
@@ -155,13 +155,21 @@ export async function dispatchCommunication(
     const row = await prisma.messageDelivery.findUnique({
       where: { id: deliveryId },
       select: { recipientAddress: true, telecomAccount: {
-        select: { environment: true, externalAccountId: true },
+        select: { id: true, environment: true, externalAccountId: true },
       } },
     });
     const settings = await prisma.businessSettings.findUnique({
-      where: { id: "singleton" }, select: { customerSmsEnabled: true },
+      where: { id: "singleton" },
+      select: { customerSmsEnabled: true, communicationsPolicy: true, communicationsPolicyVersion: true },
     });
-    if (settings?.customerSmsEnabled === true && row?.telecomAccount?.environment === "PRODUCTION") {
+    const policy = communicationsPolicySchema.safeParse(settings?.communicationsPolicy);
+    // Avoid even the FREE metadata lookup until the owner has enabled both
+    // independent switches and supplied an approved HTTPS callback origin.
+    if (settings?.customerSmsEnabled === true && policy.success &&
+        policy.data.manualSmsEnabled && policy.data.productionWebhookOrigin &&
+        policy.data.approvedPolicyVersion === settings.communicationsPolicyVersion &&
+        policy.data.primaryAccountId === row?.telecomAccount?.id &&
+        row?.telecomAccount?.environment === "PRODUCTION") {
       observedSid = row.telecomAccount.externalAccountId;
       liveProvider = makeTwilioSmsProvider(observedSid);
       if (liveProvider?.verifyUsDestination &&
