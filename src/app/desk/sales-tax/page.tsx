@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { requireRole } from "@/lib/session";
-import { getTaxWorkspaceOverview, type TaxAttentionKind } from "@/domains/tax/workspace-overview";
+import {
+  getTaxWorkspaceOverview, includeTodayTaxAttention, type TaxAttentionKind,
+} from "@/domains/tax/workspace-overview";
+import { getExceptionOverview } from "@/domains/exceptions";
 
 const label: Record<TaxAttentionKind, string> = {
   OVERDUE: "Past due", AMENDMENT: "Amendment", DUE: "Due soon",
@@ -8,7 +11,10 @@ const label: Record<TaxAttentionKind, string> = {
 };
 export default async function SalesTaxRootPage() {
   const actor = await requireRole("OWNER", "ADMIN");
-  const overview = await getTaxWorkspaceOverview(actor.user.id);
+  const [projection, inbox] = await Promise.all([
+    getTaxWorkspaceOverview(actor.user.id), getExceptionOverview(),
+  ]);
+  const overview = includeTodayTaxAttention(projection, inbox.items);
   return <main className="space-y-8">
     <section className="space-y-2">
       <h2 className="text-xl font-semibold">Tax overview</h2>
@@ -43,6 +49,7 @@ export default async function SalesTaxRootPage() {
       <h3 className="text-lg font-semibold">Tax attention</h3>
       <p className="text-sm text-muted-foreground">
         Ordered by overdue, amendments, due, not-ready, setup and information.
+        This includes tax work surfaced on Today, not just filing dates and setup.
         These notices do not post tax charges or collect money.
       </p>
       <ul className="divide-y divide-border rounded-lg border border-border">
@@ -57,6 +64,10 @@ export default async function SalesTaxRootPage() {
           No current tax attention items. Continue to verify official filing obligations.
         </li>}
       </ul>
+      <p className="text-sm text-muted-foreground">
+        This is a bounded summary. <Link href="/desk/today" className="underline">See the complete Today inbox</Link>
+        {" "}for additional tax, refund, invoice and rate-review work.
+      </p>
     </section>
     <section className="space-y-3">
       <h3 className="text-lg font-semibold">Upcoming deadlines</h3>

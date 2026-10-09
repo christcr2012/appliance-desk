@@ -1,3 +1,28 @@
+### PR #328 code-review completion (2026-10-08)
+
+Four reviewer findings were addressed without changing production tax,
+filing, billing or owner/CPA activation gates:
+
+1. The earliest OPEN-period query excludes periods before each active
+   account's current firstPeriodStart in PostgreSQL **before** applying
+   the bounded take. Regression creates 26 obsolete periods ahead of two
+   valid ones and checks both remain visible.
+2. The Overview reuses already-authorized Today inbox tax categories,
+   including license/exemption/official-rate and source alerts, RDF
+   refunds, purchase-use-tax, invoice/Stripe tax and acquisition review.
+   A bounded summary links to the complete Today inbox; it never claims
+   a truncated list contains all live cases.
+3. Taxability shows Recorded only after all default charge cells are
+   CPA-confirmed and all currently verified areas satisfy applicable
+   jurisdiction-specific requirements, with no undecided override
+   bypass. Home-rule areas do not inherit state-collected decisions.
+4. Filing-account setup requires an active SALES_RETURN with official
+   account number, portal URL, decided basis and first period. Calendar
+   status checks all active accounts, not the first page only.
+
+Added isolated PostgreSQL and pure rule regressions; local typecheck,
+lint, migration check and browser CI remain exact-head merge gates.
+
 # T-7D — Tax overview, attention routing and acceptance closeout
 
 Status: **APPROVED** · Baseline inspected: `b2a06c2` (2026-10-08, #310).

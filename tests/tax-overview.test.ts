@@ -2,7 +2,8 @@ import { randomUUID } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { businessDateFromKey } from "@/lib/business-date";
-import { getTaxWorkspaceOverview, sortTaxAttention, type TaxAttentionDTO } from "@/domains/tax/workspace-overview";
+import { TAX_CHARGE_CATEGORIES } from "@/domains/tax/categories";
+import { getTaxWorkspaceOverview, sortTaxAttention, includeTodayTaxAttention, hasCompleteTaxabilityMatrix, type TaxAttentionDTO } from "@/domains/tax/workspace-overview";
 const connection = new URL(process.env.DATABASE_URL ?? "postgresql://localhost/unset");
 const enabled = process.env.CI === "true" && connection.pathname === "/appliance_desk_test"
   && ["localhost", "127.0.0.1"].includes(connection.hostname);
@@ -44,6 +45,25 @@ async function withPeriods(run: (ids: { ownerId: string; staffId: string;
     await prisma.user.delete({ where: { id: staff.id } });
   }
 }
+describe("T-7D decision-completeness projection", () => {
+  it("requires every charge and refuses unresolved local overrides", () => {
+    const confirmedOn = date("2026-10-01");
+    const defaults = TAX_CHARGE_CATEGORIES.map(category => ({
+      jurisdictionId: null, category, taxability: "TAXABLE", cpaConfirmedOn: confirmedOn,
+    }));
+    const stateArea = [{ jurisdictionId: "county", jurisdiction: { administration: "STATE_COLLECTED" } }];
+    expect(hasCompleteTaxabilityMatrix(defaults, stateArea)).toBe(true);
+    expect(hasCompleteTaxabilityMatrix(defaults.slice(1), stateArea)).toBe(false);
+    expect(hasCompleteTaxabilityMatrix([
+      ...defaults, { jurisdictionId: "county", category: "RENTAL",
+        taxability: "UNDECIDED", cpaConfirmedOn: null },
+    ], stateArea)).toBe(false);
+    expect(hasCompleteTaxabilityMatrix(defaults, [{
+      jurisdictionId: "home-rule", jurisdiction: { administration: "HOME_RULE" },
+    }])).toBe(false);
+  });
+});
+
 describe.skipIf(!enabled)("T-7D tax workspace overview (isolated PostgreSQL)", () => {
   it("filing setup checklist is a read-only attention projection, never a billing activation gate", async () =>
     withPeriods(async f => {
@@ -66,6 +86,40 @@ describe.skipIf(!enabled)("T-7D tax workspace overview (isolated PostgreSQL)", (
       expect(item.detail.length).toBeGreaterThan(0);
     }
   }));
+  it("filters more than 25 obsolete periods before limiting valid return dates", async () =>
+    withPeriods(async f => {
+      const { filingAccountId } = await prisma.taxFilingPeriod.findUniqueOrThrow({
+        where: { id: f.first }, select: { filingAccountId: true },
+      });
+      const obsolete = Array.from({ length: 26 }, (_, i) => ({
+        filingAccountId, periodStart: new Date(Date.UTC(2000, 0, i + 1)),
+        periodEnd: new Date(Date.UTC(2000, 1, i + 1)), dueOn: new Date(Date.UTC(2000, 2, i + 1)),
+      }));
+      await prisma.taxFilingPeriod.createMany({ data: obsolete });
+      try {
+        const projection = await getTaxWorkspaceOverview(f.ownerId, date("2026-04-05"));
+        expect(projection.nextDue.map(p => p.id)).toEqual([f.first, f.second]);
+        expect(projection.attention.some(item => item.id === "period:" + f.first)).toBe(true);
+      } finally {
+        await prisma.taxFilingPeriod.deleteMany({
+          where: { filingAccountId, periodStart: { lt: date("2026-01-01") } },
+        });
+      }
+    }));
+  it("includes license, exemption, refund, rate, billing and purchase tax from Today", async () => {
+    const categories = ["SALES_TAX", "TAX_LICENSE_RENEWAL", "TAX_AMENDMENT_DUE",
+      "TAX_FILING_NOT_READY", "ACQUISITION_TAX_REVIEW",
+      "PURCHASE_USE_TAX_DUE", "RETAIL_DELIVERY_FEE", "TAX_RETURN_DUE"] as const;
+    const base = { setup: [], nextReturn: null, nextDue: [], attention: [] };
+    const projected = includeTodayTaxAttention(base, categories.map((category, index) => ({
+      category, severity: "medium" as const, title: category,
+      detail: "Action still pending", href: "/desk/today?tax=" + index,
+      since: date("2026-04-05"),
+    })));
+    expect(projected.attention).toHaveLength(categories.length);
+    expect(new Set(projected.attention.map(item => item.href)).size).toBe(categories.length);
+    expect(projected.attention.every(item => item.detail === "Action still pending")).toBe(true);
+  });
   it("next due is deterministic and priority sort remains stable on date ties", async () =>
     withPeriods(async f => {
       const a = await getTaxWorkspaceOverview(f.ownerId, date("2026-04-05"));

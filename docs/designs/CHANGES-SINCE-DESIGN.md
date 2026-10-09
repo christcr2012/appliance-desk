@@ -1,3 +1,13 @@
+### T-7D tax overview review corrections
+
+T-7D now filters obsolete returns within SQL before LIMIT, checks full
+CPA-confirmed charge/jurisdiction coverage and a usable active sales-tax
+filing account before showing a Recorded setup state. The Overview also
+reuses Today's actual finance-tax exception items rather than
+independently omitting license renewal, exemptions, refunds, pending
+rate and Stripe/invoice tax evidence; the bounded summary links to Today.
+No legal/owner payment or production tax activation was performed.
+
 ### T-7D — Sales tax overview and final engineering acceptance
 
 The approved tax workspace finishes as one private Overview backed by a

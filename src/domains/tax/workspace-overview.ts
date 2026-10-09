@@ -1,7 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import { businessDayBounds } from "@/lib/business-date";
 import { assertActiveTeamActor } from "@/lib/team-actor";
+import type { ExceptionItem } from "@/domains/exceptions/rules";
 import { loadFilingPacketInTx } from "@/domains/tax/filing-packet";
+import { TAX_CHARGE_CATEGORIES } from "@/domains/tax/categories";
 
 export type TaxSetupStepDTO = {
   key: string; title: string; complete: boolean; detail: string; href: string;
@@ -32,6 +34,27 @@ export function sortTaxAttention(rows: TaxAttentionDTO[]): TaxAttentionDTO[] {
     a.id.localeCompare(b.id));
 }
 
+export function hasCompleteTaxabilityMatrix(
+  taxRules: ReadonlyArray<{ jurisdictionId: string | null; category: string;
+    taxability: string; cpaConfirmedOn: Date | null }>,
+  liveAreas: ReadonlyArray<{ jurisdictionId: string; jurisdiction: { administration: string } }>,
+): boolean {
+  const ruleFor = (jurisdictionId: string | null, category: string) =>
+    taxRules.find(rule => rule.jurisdictionId === jurisdictionId && rule.category === category);
+  const confirmed = (rule: (typeof taxRules)[number] | undefined) =>
+    Boolean(rule && rule.taxability !== "UNDECIDED" && rule.cpaConfirmedOn !== null);
+  // A specific undecided override blocks fallback even where a state
+  // collected default exists; home-rule areas always require own decisions.
+  return liveAreas.length > 0 && liveAreas.length <= 200 &&
+    TAX_CHARGE_CATEGORIES.every(category => confirmed(ruleFor(null, category))) &&
+    liveAreas.every(area => TAX_CHARGE_CATEGORIES.every(category => {
+      const specific = ruleFor(area.jurisdictionId, category);
+      return specific ? confirmed(specific) :
+        area.jurisdiction.administration === "STATE_COLLECTED" &&
+          confirmed(ruleFor(null, category));
+    }));
+}
+
 /** Private read model: dates and attention only. No tax entries are posted here. */
 export async function getTaxWorkspaceOverview(
   actorId: string, now: Date = new Date(),
@@ -41,18 +64,32 @@ export async function getTaxWorkspaceOverview(
   const today = businessDayBounds(now).start;
   return prisma.$transaction(async tx => {
     await assertActiveTeamActor(tx, actorId, ["OWNER", "ADMIN"]);
-    const [accounts, periods, amendments, sourceChanges, unknown, settings, confirmedRules, addressPending] =
+    // Apply the account start-date filter IN the query, before the top-N limit.
+    // An owner may move firstPeriodStart after obsolete OPEN rows exist.
+    const configuredStarts = await tx.taxFilingAccount.findMany({
+      where: { active: true, firstPeriodStart: { not: null } },
+      select: { id: true, firstPeriodStart: true },
+    });
+    const eligiblePeriods = configuredStarts.map(account => ({
+      filingAccountId: account.id,
+      periodStart: { gte: account.firstPeriodStart! },
+    }));
+    const [accounts, periods, amendments, sourceChanges, unknown, settings, taxRules,
+      liveAreas, activeAccountCount, addressPending] =
       await Promise.all([
         tx.taxFilingAccount.findMany({
           where: { active: true },
           select: {
             id: true, name: true, kind: true, firstPeriodStart: true,
-            portalUrl: true, dueDayOfFollowingMonth: true,
+            accountNumber: true, basis: true, portalUrl: true,
+            dueDayOfFollowingMonth: true,
           },
-          orderBy: [{ name: "asc" }, { id: "asc" }], take: TAX_OVERVIEW_LIMIT,
+          orderBy: [{ name: "asc" }, { id: "asc" }], take: 200,
         }),
         tx.taxFilingPeriod.findMany({
-          where: { status: "OPEN", filingAccount: { active: true } },
+          where: { status: "OPEN", filingAccount: { active: true },
+            ...(eligiblePeriods.length ? { OR: eligiblePeriods } : { id: { in: [] } }),
+          },
           include: { filingAccount: { select: { name: true, kind: true, firstPeriodStart: true } } },
           orderBy: [{ dueOn: "asc" }, { id: "asc" }], take: TAX_OVERVIEW_LIMIT,
         }),
@@ -73,16 +110,33 @@ export async function getTaxWorkspaceOverview(
         tx.appliance.count({ where: { acquisitionTaxStatus: "UNKNOWN" } }),
         tx.businessSettings.findUnique({ where: { id: "singleton" },
           select: { rdfCpaConfirmedOn: true, shortTermLeaseElection: true } }),
-        tx.taxabilityRule.count({ where: { cpaConfirmedOn: { not: null }, taxability: { not: "UNDECIDED" } } }),
+        tx.taxabilityRule.findMany({
+          select: { jurisdictionId: true, category: true,
+            taxability: true, cpaConfirmedOn: true },
+        }),
+        tx.addressTaxJurisdiction.findMany({
+          where: { location: { isCurrent: true, status: "VERIFIED",
+            serviceAddressId: { not: null } } },
+          select: { jurisdictionId: true,
+            jurisdiction: { select: { administration: true } } },
+          take: 201,
+        }),
+        tx.taxFilingAccount.count({ where: { active: true } }),
         tx.addressTaxLocation.count({ where: {
           isCurrent: true, serviceAddressId: { not: null },
           status: { in: ["FAILED", "NEEDS_REVIEW"] },
         } }),
       ]);
+    const taxabilityComplete = hasCompleteTaxabilityMatrix(taxRules, liveAreas);
+    const accountComplete = accounts.some(account =>
+      account.kind === "SALES_RETURN" && account.accountNumber &&
+      account.portalUrl && account.firstPeriodStart && account.basis !== "UNDECIDED");
+    const allStartsRecorded = activeAccountCount > 0 &&
+      configuredStarts.length === activeAccountCount;
     const setup: TaxSetupStepDTO[] = [
       { key: "lease", title: "Short-term rental tax treatment",
         complete: Boolean(settings && settings.shortTermLeaseElection !== "UNDECIDED"),
-        detail: settings?.shortTermLeaseElection === "UNDECIDED"
+        detail: !settings || settings.shortTermLeaseElection === "UNDECIDED"
           ? "Choose the short-term rental tax treatment before billing."
           : "Owner election recorded. Individual address/rate decisions are still mandatory at billing.",
         href: "/desk/sales-tax/setup" },
@@ -92,16 +146,16 @@ export async function getTaxWorkspaceOverview(
           ? `${addressPending} addresses need review. Confirm the tax areas for this service address before billing.`
           : "No currently failed/pending address lookups; every new rental address still needs confirmation.",
         href: "/desk/sales-tax/areas" },
-      { key: "accounts", title: "Filing accounts", complete: accounts.length > 0,
-        detail: accounts.length ? "At least one active return account exists." : "Add an account and confirm its official filing information.",
+      { key: "accounts", title: "Filing accounts", complete: Boolean(accountComplete),
+        detail: accountComplete ? "Configured sales-tax account recorded; verify each additional SUTS area." :
+          "Enter the official sales-tax account number, portal, reporting basis and first period in Setup.",
         href: "/desk/sales-tax/setup" },
-      { key: "periods", title: "Filing calendar", complete: accounts.length > 0 &&
-        accounts.every(a => a.firstPeriodStart !== null),
+      { key: "periods", title: "Filing calendar", complete: allStartsRecorded,
         detail: "Set a first filing date for every active account before relying on reminders.",
         href: "/desk/sales-tax/setup" },
-      { key: "taxability", title: "CPA-reviewed taxability", complete: confirmedRules > 0,
-        detail: confirmedRules ? "Some CPA decisions are recorded. Review every applicable charge and jurisdiction." :
-          "No CPA-confirmed rules yet. Do not assume unknown taxability is exempt.",
+      { key: "taxability", title: "CPA-reviewed taxability", complete: taxabilityComplete,
+        detail: taxabilityComplete ? "The recorded default and current verified-area taxability matrix is confirmed." :
+          "Every applicable charge and current verified area's taxability must be CPA-confirmed; a single decided cell is not enough.",
         href: "/desk/sales-tax/taxability" },
       { key: "delivery", title: "Retail delivery fee decision", complete: Boolean(settings?.rdfCpaConfirmedOn),
         detail: "Confirm the payer, threshold and legal handling with the CPA.",
@@ -163,3 +217,41 @@ export async function getTaxWorkspaceOverview(
   });
 }
 
+
+
+const TAX_TODAY_CATEGORIES = new Set([
+  "SALES_TAX", "TAX_RETURN_DUE", "TAX_LICENSE_RENEWAL",
+  "TAX_AMENDMENT_DUE", "TAX_FILING_NOT_READY",
+  "ACQUISITION_TAX_REVIEW", "PURCHASE_USE_TAX_DUE", "RETAIL_DELIVERY_FEE",
+]);
+
+/** Reuse the exact owner/admin Today evidence and deep links instead of a
+ * second incomplete tax alert projection. Distinct Today items remain visible
+ * even when a different tax workspace notice points to the same screen. */
+export function includeTodayTaxAttention(
+  overview: TaxWorkspaceOverview,
+  todayItems: ExceptionItem[],
+): TaxWorkspaceOverview {
+  const additional: TaxAttentionDTO[] = todayItems
+    .filter(item => TAX_TODAY_CATEGORIES.has(item.category))
+    .map((item, index) => ({
+      kind: item.category === "TAX_AMENDMENT_DUE" ? "AMENDMENT" :
+        item.category === "TAX_FILING_NOT_READY" ? "NOT_READY" :
+        item.category === "TAX_RETURN_DUE" ? "DUE" : "INFO",
+      id: "today:" + index + ":" + item.category,
+      sortAt: item.since,
+      title: item.title,
+      detail: item.detail,
+      href: item.href,
+    }));
+  const known = new Set(overview.attention.map(x => x.href + "\u0000" + x.title));
+  const combined = [...overview.attention];
+  for (const item of additional) {
+    const key = item.href + "\u0000" + item.title;
+    if (!known.has(key)) {
+      combined.push(item);
+      known.add(key);
+    }
+  }
+  return { ...overview, attention: sortTaxAttention(combined).slice(0, TAX_OVERVIEW_LIMIT) };
+}
