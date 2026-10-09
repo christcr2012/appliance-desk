@@ -5,8 +5,8 @@ Audited baseline: main `b2a06c2` (#310), October 8. [STATUS](STATUS.md) holds cu
 ## What is next
 
 Batch T engineering was completed by T-7C #327 and T-7D #328. Older
-draft handoff #326 is closed as superseded. **S-1A** is the next approved
-implementation, followed in order by **S-1B, S-1C, S-2**, then COM-L/V/F2.
+draft handoff #326 is closed as superseded. **S-1A** merged in #330; **S-1B** is the next approved
+implementation, followed in order by **S-1C, S-2**, then COM-L/V/F2.
 No live tax filing, charging, external AI access or message sending is
 authorized by this sequence. Check [STATUS](STATUS.md) for the exact
 current PR/head.

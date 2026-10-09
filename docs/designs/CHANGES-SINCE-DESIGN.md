@@ -359,3 +359,16 @@ the final #317 merge, not the earlier #310 baseline.
 ### 2026-10-08 — T-6C2 original-sale identity prerequisite
 
 The existing `RentalLineAmendment` is a removal/price-adjustment record, **not** evidence of an accepted new retail sale. T-6C2 records original deliveries once as `agreement:<id>`; it deliberately does not mint `addition:<id>` identities from arbitrary delivery jobs or those removal amendments. Before any later feature makes chargeable additions, the accepted-addition transaction must provide a durable amendment identity and prove its own payment/authorization lineage; T-6C3 must not infer additions from free SWAPs. Prepaid sale date evidence is `Receipt.receivedOn`, **not** the webhook record `Payment.createdAt`. No customer fee charging is active.
+
+
+### S-1B persisted source-evidence clarification (2026-10-08)
+Verified against S-1A #330 and later Batch T merge #328/#329: the
+address lookup's deliberate preserve-on-unavailable branch did not
+persist the provider-health result. S-1B records an immutable,
+customer-free `tax.lookup_source_health` audit outcome/day per actual
+Colorado GIS attempt, counts distinct business dates rather than
+in-memory attempts, and clears only on an observed source response.
+Two later RDF reconcile rules are now explicitly registered for
+automation health. The existing authenticated billing-reconcile cron
+runs the bounded diagnostic sweep; no additional cron, database
+migration, provider action, billing mutation or external AI access.

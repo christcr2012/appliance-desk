@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { runAutomation } from "@/domains/automation/runs";
+import { sweepSystemIssues } from "@/domains/system-issues/sources";
 import { automationCounts } from "@/domains/automation/counts";
 import { finishPendingProviderOperations } from "@/domains/billing/reconciliation";
 import { runPendingHandoffs } from "@/domains/jobs/completion";
@@ -50,5 +51,11 @@ export async function GET(request: Request): Promise<NextResponse> {
     work: async () => ({ counts: automationCounts(await processReadyRdfCharges(30)) }),
   });
 
-  return NextResponse.json({ providerOps, handoffs, invoiceArtifacts, messageDeliveries, retailDeliveryFees, retailDeliveryFeeCharges });
+  // Purely diagnostic, private and bounded. Never retries providers or files tax.
+  // Run this after business obligations so diagnostics cannot delay reconciliation.
+  const systemIssues = await runAutomation({
+    ruleKey: "system-issues-sweep",
+    work: async () => ({ counts: automationCounts(await sweepSystemIssues(new Date(), 100)) }),
+  });
+  return NextResponse.json({ systemIssues, providerOps, handoffs, invoiceArtifacts, messageDeliveries, retailDeliveryFees, retailDeliveryFeeCharges });
 }

@@ -439,6 +439,26 @@ async function locateTarget(
     };
   }
 
+  // Store only a global provider-health outcome and date — never the
+  // customer's address, name, request or provider response. This durable
+  // evidence distinguishes three affected days from three same-day retries.
+  try {
+    await prisma.auditLog.create({
+      data: {
+        action: "tax.lookup_source_health",
+        entityType: "TaxLookupSource",
+        entityId: "colorado-gis",
+        newValue: {
+          businessDate: businessDateKey(now),
+          outcome: lookup.status === "UNAVAILABLE" ? "UNAVAILABLE" : "AVAILABLE",
+        },
+      },
+    });
+  } catch {
+    // An unavailable diagnostic ledger must not interrupt a tax lookup.
+    console.error("[tax-lookup] SOURCE_HEALTH_AUDIT_UNAVAILABLE");
+  }
+
   if (
     opts.preserveExistingOnUnavailable &&
     existing &&
