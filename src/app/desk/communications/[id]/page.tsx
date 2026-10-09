@@ -2,7 +2,7 @@ import Link from "next/link";
 import { requireRole } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { getSmsInboxThread } from "@/domains/messaging/inbox";
-import { Card, PageHeader } from "@/components/ui";
+import { Button, Card, PageHeader } from "@/components/ui";
 import { markThreadReadAction, changeThreadStatusAction, assignThreadAction } from "./actions";
 
 export const metadata = { title: "SMS conversation" };
@@ -37,7 +37,7 @@ export default async function SmsConversation({
               {(["OPEN","WAITING","CLOSED"] as const).map(s=><option value={s} key={s}>{s}</option>)}
             </select>
           </label>
-          <button type="submit" className="min-h-11 rounded bg-primary px-4 text-white">Save status</button>
+          <Button type="submit">Save status</Button>
         </form>
         {isOwnerAdmin && (
           <form action={assignThreadAction} className="mt-3 flex flex-wrap items-center gap-3">
@@ -49,7 +49,7 @@ export default async function SmsConversation({
                 {staff.map(s=><option key={s.id} value={s.id}>{s.name || s.email}</option>)}
               </select>
             </label>
-            <button type="submit" className="min-h-11 rounded bg-primary px-4 text-white">Save assignee</button>
+            <Button type="submit">Save assignee</Button>
           </form>
         )}
       </Card>
@@ -69,7 +69,7 @@ export default async function SmsConversation({
           <form action={markThreadReadAction} className="mt-4">
             <input type="hidden" name="threadId" value={id} />
             <input type="hidden" name="messageId" value={thread.messages[thread.messages.length-1].id} />
-            <button type="submit" className="min-h-11 rounded bg-primary px-4 text-white">Mark reviewed through latest shown message</button>
+            <Button type="submit">Mark reviewed through latest shown message</Button>
           </form>
         )}
       </Card>

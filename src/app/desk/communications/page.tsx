@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { requireRole } from "@/lib/session";
 import { listSmsInbox } from "@/domains/messaging/inbox";
-import { Card, PageHeader } from "@/components/ui";
+import { Button, Card, PageHeader } from "@/components/ui";
 
 export const metadata = { title: "Communications inbox" };
 type Search = { status?: string; resolution?: string; assignment?: string; cursor?: string };
@@ -46,7 +46,7 @@ export default async function CommunicationsInbox({
               {assignments.map(v=><option key={v} value={v}>{v}</option>)}
             </select>
           </label>
-          <button type="submit" className="min-h-11 rounded bg-primary px-4 text-white">Filter</button>
+          <Button type="submit">Filter</Button>
         </form>
       </Card>
       <Card title="SMS threads" description="Open a thread to review its private messages and move it through the workflow.">
