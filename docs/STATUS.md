@@ -1,10 +1,12 @@
 # STATUS — current work, blockers and next action
 
-Updated October 9, 2026 (COM-L2 PR #346 merged as 12bcd837; latest deployment-cost/release controls #347–#351 merged). Batch T and Batch S are engineering-complete. COM-L1A/B and COM-L2 are merged. No live payments, customer messages, fee charging or tax filing are activated.
+Updated October 9, 2026 (COM-L4B #354 merged as 80ac467; COM-L5A #358 open on new main). Batch T and Batch S are engineering-complete. No live payments, customer messages, fee charging or tax filing are activated.
 
 ## Next
 
-**2026-10-09 — COM-L4B PR #354 OPEN, final-head CI not yet generated (COM-L4A #353 merged):** default-off, account-scoped Twilio provider adapter; free Basic Lookup US verification, signed callback correlation, locked single-attempt dispatch, late STOP/policy/actor rechecks and fail-safe UNKNOWN recovery. **Next: COM-L5A verified inbound SMS and deterministic identity resolution**, then L5B consent projection. Existing reminders connect later in COM-L6A; no live sending, phone activation or provider spending authorized.
+**2026-10-09 — COM-L5A PR #358 OPEN; rebased by merge onto merged COM-L4B #354:** signed verified inbound SMS, encrypted/idempotent inbox evidence, fail-closed identity resolution and shared-number privacy. The original #358 head passed focused local tests and GitHub CI; the synchronized exact head requires fresh CI and performance evidence, followed by merge to main. Next COM-L5B consent projection. **STOP BEFORE W-0C / W-OC**; do not start either spelling unless explicitly authorized.
+
+**2026-10-09 — COM-L4B PR #354 MERGED (80ac467):** exact-head required CI passed and performance baseline passed after one retry. Account-scoped default-off Twilio dispatch, last-minute consent/STOP checks, durable single-attempt claim, and fail-safe UNKNOWN recovery remain off in production. No sending, provider spending or phone activation authorized.
 
 **Owner override (2026-10-09): Do not implement W-0C or W-OC until specifically authorized.** Existing W Amendment B plan stays approved but execution is paused at that card.
 
