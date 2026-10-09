@@ -197,6 +197,16 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
   },
   { path: "/desk/suppliers/new", role: "OWNER", fixture: "/desk/suppliers/new" },
   { path: "/desk/suppliers", role: "OWNER", fixture: "/desk/suppliers" },
+  { path: "/desk/sales-tax", role: "OWNER", fixture: "/desk/sales-tax" },
+  { path: "/desk/sales-tax/setup", role: "OWNER", fixture: "/desk/sales-tax/setup" },
+  { path: "/desk/sales-tax/taxability", role: "OWNER", fixture: "/desk/sales-tax/taxability" },
+  {
+    path: "/desk/sales-tax/setup/accounts/[id]",
+    role: "OWNER",
+    fixture: "One tax filing account created in the isolated test database",
+    manualOnlyReason:
+      "An account editor needs a real private filing account id; static page inventory cannot assume an account exists.",
+  },
   { path: "/desk/tax/use-tax-settings", role: "OWNER", fixture: "/desk/tax/use-tax-settings" },
   { path: "/desk/tax/use-tax-worksheets", role: "OWNER", fixture: "/desk/tax/use-tax-worksheets" },
   {

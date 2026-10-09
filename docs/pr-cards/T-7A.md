@@ -14,6 +14,38 @@ Read AGENTS, STATUS and this card first. Find the named heading/function with `r
 4. `src/domains/tax/exemptions.ts` — existing commands
 5. `src/domains/settings/index.ts` — locked settings saves
 
+### Actual T-7A drift and execution checkpoint (2026-10-08)
+
+- Started from merged T-6C4 (#321), `6f31f72013f0a1dcc1597160af32d329b27fa53e`, rather than the original planning SHA. The RDF filing, credit and conditional-billing blockers are preserved.
+- Existing finance access uses `requireRole("OWNER", "ADMIN")`, while each mutation needs `requireRole("OWNER")` **and** `assertActiveTeamActor` inside its transaction. STAFF receives no tax workspace routes or navigation.
+- `BusinessSettings.updatedAt` and `TaxFilingAccount.updatedAt` support optimistic concurrency; preserve signed/finalized periods when editing an account. Existing `TaxabilityRule` and immutable `TaxRateVersion` models are reused.
+- New six-section shell presents enabled Setup and What's taxed first. Remaining planned views (Overview, Returns, Areas, Exemptions) are labeled not yet released until T-7B/C/D; no dead links represented as working controls.
+- No new database migration or production billing/filing activation. Browser spec `e2e/sales-tax-setup.spec.ts` assigned to `browser-a`. Test-only ADMIN browser credentials are optional/conditional; domain-level owner-only admin denial is covered by real PostgreSQL tests.
+
+### PR #322 code review and CI corrections (2026-10-08)
+
+Three substantive P1 findings were addressed before merge:
+1. Editing/clearing the private business tax location invalidates old
+   current area verification and creates a NEEDS_REVIEW record; old
+   jurisdictions are not reused to assess future purchase use tax.
+2. The editable taxability matrix now includes nullable-jurisdiction
+   "All state-collected areas" defaults, with transactional owner lock.
+3. SUTS account editing exposes license renewal date, screen wording,
+   deduction mapping, Excel/XML answer, setup confirmation, jurisdiction
+   account assignment, filing code/order/service fee and city use-tax
+   mapping. Historical filed packets stay frozen; edits affecting a filing
+   account with FILED periods are rejected until reviewed.
+
+Added three real isolated PostgreSQL regression tests covering all cases.
+The initial CI route inventory/nav-count failures were fixed; browser
+review identified a shared Save button color-contrast issue, corrected
+with theme-semantic high-contrast tokens. Updated mobile menu count.
+The reviewed complete scope is larger than the initial 800-line planning
+bound: the extra SUTS setup fields were necessary to resolve valid P1
+business correctness issues in this PR instead of deferring behind a
+partially working settings page. Follow-on T-7B remains limited to areas,
+sources and exemptions navigation.
+
 ## Drift check — every implementation, not only batch start
 
 Follow `docs/implementation-contracts/DRIFT-PROTOCOL.md`. Compare the latest main/predecessor against this baseline and each named contract. Capture actual head, relevant changed files, schema/signature/guard/test differences, and the disposition in the PR and `docs/designs/CHANGES-SINCE-DESIGN.md`. A prior card's merge is a new baseline, never evidence this card still matches.

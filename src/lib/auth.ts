@@ -5,6 +5,14 @@ import { prisma } from "./prisma";
 import { sendEmail } from "./email";
 import { sendPasswordEmail } from "./password-email";
 
+function isDisposableCiAuthFixture(): boolean {
+  try {
+    const url = new URL(process.env.DATABASE_URL ?? "");
+    return process.env.CI === "true" && url.hostname === "localhost" &&
+      url.pathname === "/appliance_desk_test";
+  } catch { return false; }
+}
+
 // Central auth configuration. Roles are OWNER / ADMIN / CUSTOMER — see
 // docs/BUSINESS-RULES.md for what each role can do. Every owner/admin
 // route and every customer-ownership check is enforced on the SERVER
@@ -101,7 +109,11 @@ export const auth = betterAuth({
     },
   },
   rateLimit: {
-    enabled: true,
+    // Better Auth additionally applies a stricter sign-in-route limiter.
+    // Four sequential CI-only accounts share one loopback IP, exhausting it
+    // even with the global max raised. Disable limits ONLY when CI explicitly
+    // uses the disposable localhost/appliance_desk_test database.
+    enabled: !isDisposableCiAuthFixture(),
     window: 60,
     max: 10,
   },

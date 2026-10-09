@@ -1,3 +1,26 @@
+### T-7A PR #322 review corrections
+
+Saving a business tax address now invalidates prior current tax-area
+evidence; re-verification is mandatory before purchase use-tax assessment.
+Nullable "All state-collected areas" taxability defaults are editable by
+OWNER. The account editor now covers §11.13 SUTS license expiry, account
+area assignment/code/order/service fees, use-tax account routing,
+deduction/screen wording, export capabilities, and review confirmation.
+Filed-return area reassignment is guarded. The UI color-contrast and
+mobile-menu inventory were corrected after first CI.
+
+### T-7A implementation checkpoint (2026-10-08)
+
+The new private `/desk/sales-tax` shell begins the six-tab finance navigation;
+Setup and What's taxed are accessible now, and future routes remain
+non-clickable until their cards ship. Owner-only transaction-scoped commands
+whitelist business tax settings, filing accounts, confirmed taxability and
+append-only rate history, enforce optimistic update timestamps, and audit
+mutations. ADMIN has read-only pages; STAFF is denied access.
+Existing BusinessSettings, TaxFilingAccount, TaxabilityRule, TaxRateVersion
+and RDF rate tables are reused; there is no migration and no live activation.
+The local PostgreSQL suite and browser-a phone/light/dark checks guard setup.
+
 # What changed in the code after Batches C–F were designed
 
 Batches C–F were designed on 2026-10-02, before Batch B was built. Batch B changed

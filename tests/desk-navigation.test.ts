@@ -2,8 +2,8 @@ import { expect, it } from "vitest";
 import { activeDeskHref, deskNavigation } from "@/lib/desk-navigation";
 
 it.each([
-  ["OWNER", 25],
-  ["ADMIN", 24],
+  ["OWNER", 26],
+  ["ADMIN", 25],
 ] as const)(
   "keeps %s role-appropriate destinations discoverable with count %i",
   (role, expectedCount) => {
@@ -18,6 +18,9 @@ it.each([
     expect(links).toContainEqual({
       href: "/desk/automations",
       label: "Automations",
+    });
+    expect(links).toContainEqual({
+      href: "/desk/sales-tax", label: "Sales tax",
     });
     if (role === "OWNER") {
       expect(links).toContainEqual({
