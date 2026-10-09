@@ -751,3 +751,24 @@ previews, 23 production, 2 transfer branches), most for docs/tests/CI-only pushe
 tests every PR head for free. Decided: Vercel's ignore step (`scripts/vercel-ignore-build.mjs`) now skips any branch,
 PRs included, when nothing the site is built from changed; `transfer/**` never deploys; the ruleset's required
 "Preview" deployment is removed (IN-67) so a skipped preview can't block a merge; `ci` remains the merge gate.
+
+## 2026-10-09 — Vercel: new branches compare with main
+
+Live check of the cost fix: docs-only PR #348 still built, because a new branch has no earlier Vercel deployment and
+"uncertain" builds. The ignore step now fetches only the tip of `main` (shallow, public) for a new branch and compares
+the trees; any site file that differs — including `main` changes the branch lacks — still builds; fetch or git
+errors still build.
+
+## 2026-10-09 — Keep Vercel near $20/month
+
+Chris: keep the bill under $20/month, or as close as possible. Beyond skipping non-site builds: (1) `ai/**`,
+`transfer/**`, `recovery/**` branches get no Vercel previews (CI builds and tests them free; `preview/<topic>` branches
+opt in); (2) the live site is released once a day from a green `main` via `live` (`release.yml`, IN-68), so a day of
+merges costs one build; (3) sandbox sessions stop after 30 minutes and heavy checks run in GitHub Actions
+(workflow_dispatch). Expected: about one production build per day plus short sandbox sessions.
+
+## 2026-10-09 — Release per batch, not daily
+
+Chris (after seeing the bill: the $20 included credit used up and $64.37 on-demand this cycle, almost all builds):
+"every batch if that's not going to be expensive". Per-batch is cheaper than daily, so `release.yml` runs when a
+batch finishes (DRIFT-PROTOCOL C step 5), weekly as a safety net, and on demand. Switch to daily at launch.

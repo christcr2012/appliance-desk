@@ -1,0 +1,60 @@
+# Release to the live site per batch (Chris, 2026-10-09: "keep my cost under $20 per month … every batch if that's
+# not going to be expensive"). Vercel bills every build. Instead of rebuilding the live site after every merge,
+# Vercel's production branch is `live`, and this workflow moves `live` up to `main` — only when `main`'s `ci` check
+# passed. The implementing agent runs it when a batch's last PR merges (DRIFT-PROTOCOL checklist C); a weekly run is the
+# safety net; anyone can run it any time: Actions → "release to live site" → Run workflow. Vercel then builds once (and
+# skips even that when no site file changed: scripts/vercel-ignore-build.mjs). After launch, switch the schedule to
+# daily so fixes reach customers by the next morning.
+#
+# Safety: no secrets, only the built-in token; it pushes only `live`, only fast-forward (never rewrites history), and
+# only to a `main` commit whose `ci` check succeeded. Runs no project code.
+name: release to live site
+
+on:
+  schedule:
+    - cron: "7 9 * * 1" # weekly safety net: Mondays 03:07 America/Denver (summer), 02:07 (winter)
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  checks: read
+
+concurrency:
+  group: release-live
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: move live up to a green main
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Release main to live when ci passed
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          head=$(git rev-parse HEAD)
+          ci=$(gh api "repos/${GITHUB_REPOSITORY}/commits/${head}/check-runs?check_name=ci" --jq '[.check_runs[] | select(.app.slug == "github-actions")][0].conclusion // "missing"')
+          if [ "$ci" != "success" ]; then
+            echo "::warning::main ${head} has ci=${ci}; not releasing. The live site stays as it is."
+            exit 0
+          fi
+          if git ls-remote --exit-code origin refs/heads/live >/dev/null; then
+            git fetch --quiet origin refs/heads/live:refs/remotes/origin/live
+            if [ "$(git rev-parse origin/live)" = "$head" ]; then
+              echo "live is already at ${head}; nothing to release."
+              exit 0
+            fi
+            if ! git merge-base --is-ancestor origin/live "$head"; then
+              echo "::error::live is not an ancestor of main; refusing to rewrite it. Ask the agent to investigate."
+              exit 1
+            fi
+          fi
+          git push origin "${head}:refs/heads/live"
+          echo "### Released ${head} to live" >> "$GITHUB_STEP_SUMMARY"

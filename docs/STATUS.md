@@ -53,9 +53,13 @@ History and prior acceptance: [retired working snapshot](archive/reset-2026-10-0
 
 ## Environment (update when it changes)
 
+- **Cost target ~$20/month (2026-10-09):** no previews for `ai/**` branches; release to `live` per batch, weekly safety net (workflow
+  `release.yml`; IN-68 switches Vercel's production branch to `live`); sandbox sessions stop after 30 minutes; heavy
+  checks run in free GitHub Actions. The sandbox push key **does** carry over to new sessions (verified: session started
+  15:49 UTC after the old one expired had both injection rules).
+
 - **Vercel build costs (2026-10-09):** builds now skip when only docs/tests/CI files changed, on PRs too, and
-  transfer branches never build. Needs IN-67 (remove the ruleset's required "Preview" deployment) so skipped previews
-  can't block merges.
+  transfer branches never build. IN-67 done: the ruleset no longer requires a "Preview" deployment (only `ci`), so skipped previews never block merges.
 
 - **Sandbox GitHub push:** Installed 2026-10-09 by the owner through network header injection, never stored in the repository or sandbox environment; expires 2027-10-09 (one year). Dry-run verified; regular git push now works using HTTP/1.1. Use the fallback runbook if needed.
   **Check (2026-10-09, Claude):** the key was attached to the running session only — the sandbox's saved settings had no

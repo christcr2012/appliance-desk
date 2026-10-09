@@ -592,10 +592,19 @@ that does not delay the deployment. The build machine is Vercel's standard 4-cor
   `vercel.json` → `ignoreCommand` runs `scripts/vercel-ignore-build.mjs` on every branch, pull requests included: it
   skips when every file changed since the branch's last successful deployment (`VERCEL_GIT_PREVIOUS_SHA`) is docs,
   Markdown, tests, browser specs, CI/workflow files or test configs; anything else builds, and so does any uncertain
-  case (no earlier deployment, missing base commit, empty diff, git error). `transfer/**` branches never deploy
+  case (no comparison possible, missing base commit, empty diff, git error). A new branch has no earlier deployment, so
+  it is compared with the current tip of `main` (shallow fetch, tree diff). `transfer/**` branches never deploy
   (`git.deploymentEnabled`). GitHub Actions builds and tests every PR head for free, so the `ci` check — not a Vercel
   Preview — is the merge gate; the repository ruleset must therefore **not** require a "Preview" deployment
   (OWNER-INPUTS IN-67).
+- **Monthly cost target: about $20 (Chris, 2026-10-09).** Three more limits keep Vercel near the Pro plan price:
+  (1) no previews for `ai/**`, `transfer/**` or `recovery/**` branches (`git.deploymentEnabled`) — CI builds and tests
+  them free; a branch named `preview/<topic>` still gets a preview when Chris needs to see a screen before merge;
+  (2) **release per batch**: Vercel's production branch is `live`, which `.github/workflows/release.yml` fast-forwards
+  to a `main` commit with a green `ci` when a batch finishes (the agent runs it), weekly as a safety net (Mon 03:07
+  Denver), or on demand (Run workflow) — switch to daily at launch; `main` itself no longer builds
+  (IN-68); (3) the sandbox's sessions stop after 30 minutes (`timeout`), and heavy checks run in GitHub Actions — push
+  the branch and run "CI" on it (workflow_dispatch) — rather than in the paid sandbox.
 - **TypeScript runs inside `next build` as well as in CI.** Kept on purpose: Vercel can finish a deployment before CI,
   and the 8 s check stops a broken build from ever being promoted.
 - **Known build-log messages:** "Update available 7.10.0 -> 8.0.0-rc" is Prisma advertising a pre-release (ignore
