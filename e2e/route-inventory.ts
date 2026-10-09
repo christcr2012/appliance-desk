@@ -198,6 +198,7 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
   { path: "/desk/suppliers/new", role: "OWNER", fixture: "/desk/suppliers/new" },
   { path: "/desk/suppliers", role: "OWNER", fixture: "/desk/suppliers" },
   { path: "/desk/sales-tax/areas", role: "OWNER", fixture: "/desk/sales-tax/areas" },
+  { path: "/desk/sales-tax/delivery-fees", role: "OWNER", fixture: "/desk/sales-tax/delivery-fees" },
   { path: "/desk/sales-tax/exemptions", role: "OWNER", fixture: "/desk/sales-tax/exemptions" },
   { path: "/desk/sales-tax/returns", role: "OWNER", fixture: "/desk/sales-tax/returns" },
   {

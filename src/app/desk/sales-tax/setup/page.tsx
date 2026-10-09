@@ -108,7 +108,7 @@ export default async function TaxSetupPage() {
         </fieldset>
       </TaxActionForm>
     </section>
-    <section className="space-y-3">
+    <section id="fee-rates" className="space-y-3">
       <h2 className="font-semibold">Recorded fee rates</h2>
       <ul className="space-y-1 text-sm">{rates.map(rate => <li key={rate.id}>{rate.effectiveOn.toISOString().slice(0,10)} — ${(rate.amountCents/100).toFixed(2)}</li>)}</ul>
       {owner && <TaxActionForm action={addRdfRateAction} title="Add a July 1 statutory fee rate" submitLabel="Record rate">
