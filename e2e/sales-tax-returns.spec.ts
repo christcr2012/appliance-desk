@@ -74,7 +74,10 @@ test.describe("guided sales tax filing", () => {
     await fixture(async ({ periodId }) => {
       await page.goto("/desk/sales-tax/returns/" + periodId + "/amend");
       await expect(page.getByText("SALES:TEST")).toBeVisible();
-      await expect(page.getByRole("button", { name: "Record amendment filed" })).toBeVisible();
+      // This fixture is a zero/credit amendment. Recording a positive-tax
+      // payment here would be an invalid action, so only outside resolution
+      // can appear.
+      await expect(page.getByRole("button", { name: "Record amendment filed" })).toHaveCount(0);
       await expect(page.getByRole("button", { name: "Mark handled outside" })).toBeVisible();
     });
   });
