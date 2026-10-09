@@ -59,6 +59,10 @@ History and prior acceptance: [retired working snapshot](archive/reset-2026-10-0
 
 ## Environment (update when it changes)
 
+- **Sandbox push key:** installed 2026-10-09 by Chris (fine-grained, this repository only, kept in the sandbox's network
+  settings, not inside it); **expires about 2026-10-09 + 1 year** — renew before then (GitHub emails a warning). A refused
+  push (401/403) means it expired: tell Chris; meanwhile publish with `docs/runbooks/SANDBOX-PUBLISH.md`.
+
 - **Local database testing:** Vercel Sandbox, project `appliance-desk`. Persistent sandbox in use:
   **`appliance-desk-s1c-oct8`** (most recently active, 2026-10-09; main checkout `/vercel/appliance-desk`, per-card
   worktrees beside it, PostgreSQL 18). Older persistent `appliance-desk-batch-t1` may have an expired snapshot. Resume,

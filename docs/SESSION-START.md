@@ -7,13 +7,14 @@ form for card work (Chris, 2026-10-09, after sessions kept stopping during start
 ## 1. Find your place (2 minutes)
 
 Local database testing uses the project's **Vercel Sandbox** (PLAYBOOK 4b has the exact steps; reuse the sandbox named
-in STATUS, never create one per card). Code reaches GitHub only as git commits: from a checkout
-that can push, or from the sandbox with `docs/runbooks/SANDBOX-PUBLISH.md` (pack → upload small parts → the workflow
+in STATUS, never create one per card). Code reaches GitHub only as git commits: `git push` from
+the sandbox (its push key is installed — STATUS "Environment"), or `docs/runbooks/SANDBOX-PUBLISH.md` if the key fails (pack → upload small parts → the workflow
 pushes). Never copy source files through tool output.
 
 
-1. `git fetch origin && git status -sb && git log --oneline -5` — and once per checkout `npm run hooks:install` (every
-   push then runs the quick gate automatically: secrets, typecheck, lint).
+1. `git fetch origin && git status -sb && git log --oneline -5` — and once per checkout or sandbox worktree `npm run setup`
+   (pre-push quick gate, HTTP/1.1 for GitHub, merge-based syncing). Checks remember what already passed on the same
+   code, so re-running after an interruption only redoes what is left.
 2. `sed -n '1,40p' docs/STATUS.md` → the **Next** section names the card.
 3. Is there a **resume note**? `ls docs/pr-cards/*.progress.md 2>/dev/null` — if your card has one, read it and continue
    from its "Next step". Do not restart work that it lists as done.

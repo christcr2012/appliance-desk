@@ -19,7 +19,10 @@ export default defineConfig({
     ? [["list"], ["github"], ["html", { open: "never" }], ["json", { outputFile: "playwright-results.json" }]]
     : [["list"]],
   webServer: {
-    command: "npm run start",
+    // Browser tests need a production build and a disposable database. A direct `playwright test` without them
+    // stops here with the one command that prepares both (Sol, 2026-10-09).
+    command:
+      'test -f .next/BUILD_ID || { echo "Browser tests need the production build and a test database. Run: npm run test:browser -- e2e/<file>.spec.ts" >&2; exit 1; }; exec npm run start',
     url: "http://localhost:3000",
     reuseExistingServer: !process.env.CI,
     timeout: 60_000,
