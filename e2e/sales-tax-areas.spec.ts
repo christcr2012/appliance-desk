@@ -61,10 +61,14 @@ test.describe("sales tax areas and exemption navigation", () => {
       await expect(row.getByText("Lookup failed")).toBeVisible();
       await row.locator('select[name="jurisdictionIds"]').selectOption(jurisdiction.id);
       await row.getByRole("button", { name: "Confirm address areas" }).click();
-      await expect(row.getByText(/Address tax areas verified/)).toBeVisible();
+      // Successful verification removes the row from the REVIEW filter;
+      // assert persisted state and its appearance in the verified list,
+      // rather than looking for a transient success label on a removed row.
       await expect.poll(async () => (await prisma.addressTaxLocation.findFirst({
         where: { serviceAddressId: address.id, isCurrent: true },
       }))?.status).toBe("VERIFIED");
+      await page.goto("/desk/sales-tax/areas?status=VERIFIED");
+      await expect(page.getByRole("listitem").filter({ hasText: address.line1 })).toBeVisible();
     } finally {
       await prisma.addressTaxLocation.deleteMany({ where: { serviceAddressId: address.id } });
       await prisma.serviceAddress.delete({ where: { id: address.id } });
