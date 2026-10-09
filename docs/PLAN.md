@@ -130,6 +130,7 @@ Design: `docs/designs/BATCH-V.md`; work coverage and prerequisites: work-index.
 - [ ] Hero address check uses only the owner's service area, is rate-limited, and stores nothing.
 - [ ] Contrast unit test for every token pair; axe clean light/dark; complete focus rings on clipped elements; no horizontal scroll at 360px; reduced motion honoured.
 - [ ] Desk Today day-timeline and severity words; Actual/Estimate tags from the METRICS registry; no behaviour change.
+- [ ] (Amendment B, after IN-69) The plain-language kit on every screen; the new W screens styled; intake, visits, pickups and inspections usable at 360 px.
 - [ ] Every item in "Rules that apply to every batch".
 
 ### Website content control acceptance — V-C1…V-C5
@@ -157,7 +158,7 @@ Design: `docs/designs/BATCH-F.md`; work coverage and prerequisites: work-index.
 
 ### Acceptance checklist
 
-- [ ] All ten integrated scenarios pass with linked evidence.
+- [ ] All ten integrated scenarios pass with linked evidence, plus Amendment B scenarios 13–17 and the connection check (approved IN-69).
 - [ ] Capacity numbers recorded for large account / fleet / invoice / job /
       report fixtures.
 - [ ] Isolated database restore and private media recovery proven.
@@ -201,6 +202,13 @@ before V (Amendment A, filing autopilot, adds W-9…W-12; W-11 may run early onc
 - [ ] W-11 (after IN-61): new and existing addresses get Colorado's rates automatically from the GIS API; unmatched addresses and a broken key become To do items; billing never uses an unconfirmed rate.
 - [ ] W-12 (after IN-62 and IN-44): the sales tax return page offers an XML file that passes Colorado's schema in a test; not offered while a deduction line is undecided.
 - [ ] Nothing in the app submits a return, stores a tax-site or bank login, or starts a tax payment (D-WA2).
+- [ ] W-0C: a failed automatic charge (existing or new invoice, with or without a due date) and a partly paid invoice appear on To do the same day, linked to the invoice (Amendment B 6.1).
+- [ ] Amendment B (approved IN-69): no "cents" anywhere a person reads or types money; every setting, tax number and derived number has an ⓘ explanation from one glossary (W-18).
+- [ ] W-14: one purchase records seller, date, receipt and many appliances, each with its own model and serial; seller tax split by price sums to the receipt to the cent.
+- [ ] W-15: every appliance shows its tax proof; an audit pack for any date range lists every serial with seller tax or use tax reported (return + confirmation) and its receipt.
+- [ ] W-16A/B: appliance types are single machines only; rental packages (e.g. Washer + Dryer Set) with set price and shown saving; package lines take one machine per part; early return of one part → single-machine price from the day after pickup with an exact partial-period credit; swaps change nothing; old "set" appliances are split with history kept.
+- [ ] W-21: a machine taken for repair without a replacement (any line, set or single) earns a credit on the next bill for exactly the days without it, never more than billed; the portal and bill explain it in dollars.
+- [ ] W-17/W-19/W-20: every record page has Related and History; every ★ flow row in Amendment B D-WB4 creates exactly one To do with a working button; the portal shows next steps, status timelines and Pay now on overdue invoices.
 - [ ] Every item in "Rules that apply to every batch".
 
 ---

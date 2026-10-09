@@ -2763,7 +2763,7 @@
       "title": "Typed website content registry and historical compatibility",
       "batch": "V",
       "dependencies": [
-        "W-10"
+        "W-20"
       ],
       "status": "APPROVED",
       "migration": "website_revision_content_version",
@@ -2957,6 +2957,26 @@
       "card": "docs/pr-cards/W-0B.md"
     },
     {
+      "id": "W-0C",
+      "title": "Failed automatic charges and partly paid invoices reach To do, linked to the invoice",
+      "batch": "W",
+      "dependencies": [],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 250,
+      "units": [
+        "W-0C"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-W-AMENDMENT-B.md",
+        "src/domains/billing/webhooks-base.ts",
+        "src/domains/exceptions/index.ts"
+      ],
+      "tests": [],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/W-0C.md"
+    },
+    {
       "id": "W-1",
       "title": "To do list: due date, amount, one button, snooze",
       "batch": "W",
@@ -2983,7 +3003,7 @@
       "title": "Intake and purchase orders say what is owed, to whom, by when",
       "batch": "W",
       "dependencies": [
-        "W-1"
+        "W-14"
       ],
       "status": "APPROVED",
       "migration": "none",
@@ -3235,6 +3255,199 @@
       "tests": [],
       "readiness": "WRITE_CARD_AT_START",
       "plannedCard": "docs/pr-cards/W-13.md"
+    },
+    {
+      "id": "W-18",
+      "title": "Plain-language kit: dollars-only money, InfoTip glossary, CI check",
+      "batch": "W",
+      "dependencies": [
+        "W-1"
+      ],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 450,
+      "units": [
+        "W-18"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-W-AMENDMENT-B.md",
+        "src/domains/pricing/money.ts",
+        "src/components/ui/form-controls.tsx"
+      ],
+      "tests": [],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/W-18.md"
+    },
+    {
+      "id": "W-14",
+      "title": "Purchases: one receipt, many appliances with model and serial, tax split by price",
+      "batch": "W",
+      "dependencies": [
+        "W-18"
+      ],
+      "status": "APPROVED",
+      "migration": "purchase_records",
+      "budget": 500,
+      "units": [
+        "W-14"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-W-AMENDMENT-B.md",
+        "src/domains/inventory/index.ts",
+        "src/app/desk/inventory/new-appliance-form.tsx"
+      ],
+      "tests": [],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/W-14.md"
+    },
+    {
+      "id": "W-15",
+      "title": "Tax proof per appliance and audit pack; parts purchases join the records",
+      "batch": "W",
+      "dependencies": [
+        "W-2"
+      ],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 450,
+      "units": [
+        "W-15"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-W-AMENDMENT-B.md",
+        "src/domains/tax/acquisition.ts"
+      ],
+      "tests": [],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/W-15.md"
+    },
+    {
+      "id": "W-16A",
+      "title": "Rental packages: schema, set price with shown saving, split old set appliances",
+      "batch": "W",
+      "dependencies": [
+        "W-10"
+      ],
+      "status": "APPROVED",
+      "migration": "rental_packages",
+      "budget": 500,
+      "units": [
+        "W-16A"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-W-AMENDMENT-B.md",
+        "src/domains/billing/pickup-billing.ts",
+        "prisma/seed.ts"
+      ],
+      "tests": [],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/W-16A.md"
+    },
+    {
+      "id": "W-16B",
+      "title": "Packages in quotes, agreements, leads and public pricing",
+      "batch": "W",
+      "dependencies": [
+        "W-16A"
+      ],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 500,
+      "units": [
+        "W-16B"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-W-AMENDMENT-B.md",
+        "src/domains/pricing/prepay-discount.ts"
+      ],
+      "tests": [],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/W-16B.md"
+    },
+    {
+      "id": "W-21",
+      "title": "Machines leaving early: single-price repricing, taken for repair without replacement, out-of-service credits",
+      "batch": "W",
+      "dependencies": [
+        "W-16B"
+      ],
+      "status": "APPROVED",
+      "migration": "out_of_service_periods",
+      "budget": 500,
+      "units": [
+        "W-21"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-W-AMENDMENT-B.md",
+        "src/domains/billing/pickup-billing.ts"
+      ],
+      "tests": [],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/W-21.md"
+    },
+    {
+      "id": "W-19",
+      "title": "Remaining flow gaps: quote, signature, repair, pickup request, pickup after ending",
+      "batch": "W",
+      "dependencies": [
+        "W-21"
+      ],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 500,
+      "units": [
+        "W-19"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-W-AMENDMENT-B.md",
+        "src/domains/agreements/progress.ts"
+      ],
+      "tests": [],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/W-19.md"
+    },
+    {
+      "id": "W-17",
+      "title": "Related panel and History on every record; search by serial; cleaning step",
+      "batch": "W",
+      "dependencies": [
+        "W-19"
+      ],
+      "status": "APPROVED",
+      "migration": "appliance_cleaning_status",
+      "budget": 500,
+      "units": [
+        "W-17"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-W-AMENDMENT-B.md",
+        "src/domains/activity/index.ts",
+        "src/domains/inventory/lifecycle.ts"
+      ],
+      "tests": [],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/W-17.md"
+    },
+    {
+      "id": "W-20",
+      "title": "Portal follows the flows: next steps, status timelines, next bill, Pay now",
+      "batch": "W",
+      "dependencies": [
+        "W-17"
+      ],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 450,
+      "units": [
+        "W-20"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-W-AMENDMENT-B.md",
+        "src/app/account/billing/page.tsx"
+      ],
+      "tests": [],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/W-20.md"
     }
   ],
   "enhancements": [
