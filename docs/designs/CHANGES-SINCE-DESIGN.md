@@ -409,5 +409,5 @@ Later batches inherit (`BATCH-W-AMENDMENT-B.md` section 11): **K** reads `Purcha
 register, depreciation and expenses; the audit pack's year view feeds the year-end package. **M** retires/sells single
 machines (a "set" is two machines). **COM-L/COM-N** reuse the flow triggers S6, D1, E1, M2 for customer messages with
 existing send gates. **BP** commercial bundles build on `RentalPackage`. **O** settings history covers the new settings
-(partial-return pricing, unsigned follow-up days, record retention). Appliance types are single machines only from
+(out-of-service escalation days, unsigned follow-up days, record retention). Appliance types are single machines only from
 W-16A on; "Washer + Dryer Set" is a package.

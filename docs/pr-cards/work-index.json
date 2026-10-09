@@ -3263,7 +3263,7 @@
       "dependencies": [
         "W-1"
       ],
-      "status": "PROPOSED — owner approval required (IN-69)",
+      "status": "APPROVED",
       "migration": "none",
       "budget": 450,
       "units": [
@@ -3285,7 +3285,7 @@
       "dependencies": [
         "W-18"
       ],
-      "status": "PROPOSED — owner approval required (IN-69)",
+      "status": "APPROVED",
       "migration": "purchase_records",
       "budget": 500,
       "units": [
@@ -3307,7 +3307,7 @@
       "dependencies": [
         "W-2"
       ],
-      "status": "PROPOSED — owner approval required (IN-69)",
+      "status": "APPROVED",
       "migration": "none",
       "budget": 450,
       "units": [
@@ -3323,12 +3323,12 @@
     },
     {
       "id": "W-16A",
-      "title": "Rental packages: schema, set price, partial-return setting, split old set appliances",
+      "title": "Rental packages: schema, set price with shown saving, split old set appliances",
       "batch": "W",
       "dependencies": [
         "W-10"
       ],
-      "status": "PROPOSED — owner approval required (IN-69)",
+      "status": "APPROVED",
       "migration": "rental_packages",
       "budget": 500,
       "units": [
@@ -3350,7 +3350,7 @@
       "dependencies": [
         "W-16A"
       ],
-      "status": "PROPOSED — owner approval required (IN-69)",
+      "status": "APPROVED",
       "migration": "none",
       "budget": 500,
       "units": [
@@ -3365,13 +3365,34 @@
       "plannedCard": "docs/pr-cards/W-16B.md"
     },
     {
-      "id": "W-19",
-      "title": "Remaining flow gaps: quote, signature, repair, pickup request, pickup after ending",
+      "id": "W-21",
+      "title": "Machines leaving early: single-price repricing, taken for repair without replacement, out-of-service credits",
       "batch": "W",
       "dependencies": [
         "W-16B"
       ],
-      "status": "PROPOSED — owner approval required (IN-69)",
+      "status": "APPROVED",
+      "migration": "out_of_service_periods",
+      "budget": 500,
+      "units": [
+        "W-21"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-W-AMENDMENT-B.md",
+        "src/domains/billing/pickup-billing.ts"
+      ],
+      "tests": [],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/W-21.md"
+    },
+    {
+      "id": "W-19",
+      "title": "Remaining flow gaps: quote, signature, repair, pickup request, pickup after ending",
+      "batch": "W",
+      "dependencies": [
+        "W-21"
+      ],
+      "status": "APPROVED",
       "migration": "none",
       "budget": 500,
       "units": [
@@ -3392,7 +3413,7 @@
       "dependencies": [
         "W-19"
       ],
-      "status": "PROPOSED — owner approval required (IN-69)",
+      "status": "APPROVED",
       "migration": "appliance_cleaning_status",
       "budget": 500,
       "units": [
@@ -3414,7 +3435,7 @@
       "dependencies": [
         "W-17"
       ],
-      "status": "PROPOSED — owner approval required (IN-69)",
+      "status": "APPROVED",
       "migration": "none",
       "budget": 450,
       "units": [

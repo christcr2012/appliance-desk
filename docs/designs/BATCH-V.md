@@ -407,7 +407,7 @@ under a draft label. New legal-page copy uses the existing legal publication/
 acceptance gate and a versioned content hash; editable web legal copy must not
 mutate an already signed customer agreement's terms snapshot.
 
-## 2026-10-09 amendment — connected business (pending IN-69)
+## 2026-10-09 amendment — connected business (approved, IN-69)
 
 `BATCH-W-AMENDMENT-B.md` section 9 adds to Batch V: the plain-language kit (`<Money>`, `<MoneyInput>`, `<InfoTip>`,
 status labels) on every screen; styling for the new W screens (Record a purchase, Tax proof, Audit pack, Rental

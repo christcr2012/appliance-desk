@@ -84,9 +84,10 @@ remain in `pr-cards/` as the record of what was built; W-0A/W-0B fix defects fou
 | W-18 | Plain-language kit: dollars-only money display/input, ⓘ explanations from one glossary, CI check (Amendment B) | JIT — `W-18.md` | W-1, IN-69 |
 | W-14 | Purchases: one receipt, many appliances each with model + serial, tax split by price | JIT — `W-14.md` | W-18 |
 | W-15 | Tax proof per appliance + audit pack; parts purchases join the records | JIT — `W-15.md` | W-2 |
-| W-16A | Rental packages (sets) schema, set price, partial-return setting, split old "set" appliances | JIT — `W-16A.md` | W-10 |
+| W-16A | Rental packages (sets) schema, set price with shown saving, split old "set" appliances | JIT — `W-16A.md` | W-10 |
 | W-16B | Packages in quotes, agreements, leads and public pricing | JIT — `W-16B.md` | W-16A |
-| W-19 | Remaining flow gaps (lead→quote, quote→draft, unsigned follow-up, failed signing payment, instant repair To do, pickup requests, pickup after any ending) | JIT — `W-19.md` | W-16B |
+| W-21 | Machines leaving early: single price + partial-period credit; taken for repair without replacement → out-of-service credit (any line) | JIT — `W-21.md` | W-16B |
+| W-19 | Remaining flow gaps (lead→quote, quote→draft, unsigned follow-up, failed signing payment, instant repair To do, pickup requests, pickup after any ending) | JIT — `W-19.md` | W-21 |
 | W-17 | Related panel + History on every record; search by serial/model/seller; cleaning step | JIT — `W-17.md` | W-19 |
 | W-20 | Portal follows the flows: next steps, status timelines, next bill, Pay now | JIT — `W-20.md` | W-17 |
 
