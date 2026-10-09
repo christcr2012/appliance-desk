@@ -115,19 +115,21 @@ export async function incomingVoice(v: VerifiedVoice): Promise<string> {
         update: {},
         select: { id: true },
       }) : null;
+    const startedAt = new Date();
     const session = await tx.callSession.create({ data: {
+      startedAt,
       accountId: v.accountId, businessNumberId: number.id,
       providerRootCallId: v.callSid, direction: "INBOUND",
       contactPointId: contactPoint?.id ?? null,
       routingPolicyVersion: route.kind === "DIAL" ? v.policyVersion : 0,
       state: route.kind === "DIAL" ? "RINGING" : "ENDED",
       outcome: route.kind === "DIAL" ? null : "MISSED",
-      endedAt: route.kind === "DIAL" ? null : new Date(),
+      endedAt: route.kind === "DIAL" ? null : startedAt,
     } });
     await tx.callLeg.create({ data: {
       accountId: v.accountId, callSessionId: session.id, providerCallId: v.callSid,
       role: "INBOUND", status: route.kind === "DIAL" ? "RINGING" : "COMPLETED",
-      endedAt: route.kind === "DIAL" ? null : new Date(),
+      startedAt, endedAt: route.kind === "DIAL" ? null : startedAt,
     } });
     // Twilio may deliver a child status before its inbound request; consume
     // the durable pending receipt now rather than silently dropping it.
@@ -196,8 +198,12 @@ export async function acceptVoiceStep(v: VerifiedVoice, step: "prompt" | "decisi
       });
       const summary = priorResult?.summary as { bridged?: boolean; childSid?: string } | null;
       if (summary?.bridged === true && summary.childSid === leg.providerCallId) {
+        const connectedAt = new Date(Math.min(
+          Math.max(leg.answeredByStaffAt!.getTime(), session.startedAt.getTime()),
+          session.endedAt?.getTime() ?? Date.now(),
+        ));
         await tx.callSession.update({ where: { id: session.id },
-          data: { outcome: "ANSWERED", connectedAt: leg.answeredByStaffAt,
+          data: { outcome: "ANSWERED", connectedAt,
             version: { increment: 1 } },
         });
       }
@@ -243,13 +249,15 @@ async function applyStatus(
     } },
   });
   if (!leg) {
+    const at = new Date();
     await tx.callLeg.create({ data: {
+      startedAt: at,
       accountId: v.accountId, callSessionId: session.id,
       providerCallId: summary.callSid, providerParentCallId: summary.parentSid,
       role: summary.parentSid ? "FORWARD" : "INBOUND",
       status: state, sequenceNumber: summary.seq,
       durationSeconds: summary.seconds,
-      endedAt: terminal.has(state) ? new Date() : null,
+      endedAt: terminal.has(state) ? at : null,
     } });
   } else if (leg.callSessionId !== session.id) {
     throw new Error("Voice leg belongs to a different call.");
@@ -261,12 +269,14 @@ async function applyStatus(
     await tx.callLeg.update({ where: { id: leg.id }, data: {
       status: state, sequenceNumber: summary.seq ?? leg.sequenceNumber,
       durationSeconds: summary.seconds ?? leg.durationSeconds,
-      endedAt: terminal.has(state) ? new Date() : null,
+      endedAt: terminal.has(state)
+        ? new Date(Math.max(Date.now(), leg.startedAt.getTime())) : null,
     } });
   }
   if (!summary.parentSid && terminal.has(state) && session.state !== "ENDED") {
     await tx.callSession.update({ where: { id: session.id }, data: {
-      state: "ENDED", endedAt: new Date(),
+      state: "ENDED", endedAt: new Date(Math.max(Date.now(),
+        session.startedAt.getTime(), session.connectedAt?.getTime() ?? 0)),
       outcome: session.outcome ?? "MISSED", version: { increment: 1 },
     } });
   }
@@ -312,7 +322,7 @@ export async function dialResult(v: VerifiedVoice): Promise<string> {
     const existingLeg = await tx.callLeg.findUnique({
       where: { accountId_providerCallId: {
         accountId: v.accountId, providerCallId: childSid,
-      } }, select: { answeredByStaffAt: true, callSessionId: true },
+      } }, select: { answeredByStaffAt: true, callSessionId: true, startedAt: true },
     });
     if (existingLeg && existingLeg.callSessionId !== session.id) {
       throw new Error("Cross-call leg collision.");
@@ -320,22 +330,25 @@ export async function dialResult(v: VerifiedVoice): Promise<string> {
     const connected = bridged && dialStatus === "completed" &&
       existingLeg?.answeredByStaffAt != null;
     const response = await storeTwiML(tx, v, eventId, "dial-result",
-      connected ? hangup() : speech(DEFAULT_VOICE_UNAVAILABLE));
+      bridged ? hangup() : speech(DEFAULT_VOICE_UNAVAILABLE));
     if (!response.fresh) return response.xml;
+    const at = new Date(Math.max(Date.now(), existingLeg?.startedAt.getTime() ?? 0));
     const leg = await tx.callLeg.upsert({ where: {
       accountId_providerCallId: { accountId: v.accountId, providerCallId: childSid },
     }, create: {
       accountId: v.accountId, callSessionId: session.id, providerCallId: childSid,
       providerParentCallId: v.callSid, role: "FORWARD",
-      status: statuses[dialStatus], durationSeconds: seconds, endedAt: new Date(),
+      status: statuses[dialStatus], durationSeconds: seconds,
+      startedAt: at, endedAt: at,
     }, update: { status: statuses[dialStatus],
-      durationSeconds: seconds, endedAt: new Date() } });
+      durationSeconds: seconds, endedAt: at } });
     if (leg.callSessionId !== session.id) throw new Error("Cross-call leg collision.");
     const answered = bridged && dialStatus === "completed" &&
       leg.answeredByStaffAt !== null;
     const pending = bridged && dialStatus === "completed" && !answered;
     await tx.callSession.update({ where: { id: session.id }, data: {
-      state: "ENDED", endedAt: new Date(),
+      state: "ENDED", endedAt: new Date(Math.max(Date.now(),
+        session.startedAt.getTime(), leg.answeredByStaffAt?.getTime() ?? 0)),
       outcome: answered ? "ANSWERED" : pending ? "UNKNOWN" : "MISSED",
       connectedAt: answered ? leg.answeredByStaffAt : null,
       version: { increment: 1 },
