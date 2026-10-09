@@ -600,8 +600,9 @@ that does not delay the deployment. The build machine is Vercel's standard 4-cor
 - **Monthly cost target: about $20 (Chris, 2026-10-09).** Three more limits keep Vercel near the Pro plan price:
   (1) no previews for `ai/**`, `transfer/**` or `recovery/**` branches (`git.deploymentEnabled`) — CI builds and tests
   them free; a branch named `preview/<topic>` still gets a preview when Chris needs to see a screen before merge;
-  (2) **daily release**: Vercel's production branch is `live`, which `.github/workflows/release.yml` fast-forwards to
-  a `main` commit with a green `ci` once a day (03:07 Denver) or on demand (Run workflow); `main` itself no longer builds
+  (2) **release per batch**: Vercel's production branch is `live`, which `.github/workflows/release.yml` fast-forwards
+  to a `main` commit with a green `ci` when a batch finishes (the agent runs it), weekly as a safety net (Mon 03:07
+  Denver), or on demand (Run workflow) — switch to daily at launch; `main` itself no longer builds
   (IN-68); (3) the sandbox's sessions stop after 30 minutes (`timeout`), and heavy checks run in GitHub Actions — push
   the branch and run "CI" on it (workflow_dispatch) — rather than in the paid sandbox.
 - **TypeScript runs inside `next build` as well as in CI.** Kept on purpose: Vercel can finish a deployment before CI,

@@ -443,9 +443,9 @@ question:
 
 ## When changes reach your live site (and keeping hosting costs low)
 
-To keep the hosting bill near $20 a month, your live site updates **once a day, at about 3 a.m.**, with every change
-that passed all its checks the day before. Nothing you see on the live site changes during the day. If you need a
-change live sooner: on github.com open the project → **Actions** → **release to live site** → **Run workflow**, or ask
+To keep the hosting bill near $20 a month, your live site updates **when the agent finishes a batch of work** (and at
+least once a week, Monday at about 3 a.m.), with every change that passed all its checks. If you need a change live
+sooner: on github.com open the project → **Actions** → **release to live site** → **Run workflow**, or ask
 the agent to do it. Agents' work-in-progress no longer gets its own preview website; if you want to look at a screen
 before it is finished, ask for a preview and the agent will make one.
 

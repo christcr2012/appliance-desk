@@ -75,7 +75,10 @@ Do this when the batch's last PR merges, before starting the next batch:
 4. **Check the next batch against today's code** before its first card: run its design's "Verify before starting"
    table; classify each difference with the kinds table; amend the design (dated) or record "no drift" in STATUS. Write
    (or refresh) the next batch's first card from the result.
-5. **Queue and status:** MASTER-ROADMAP (batch complete, next batch), `work-index.json`, STATUS, and one
+5. **Release it:** run the "release to live site" workflow (Actions → Run workflow, or the GitHub tool's workflow
+   trigger on `release.yml`, ref `main`) once `ci` on `main` is green; confirm `live` moved and the production build
+   finished. This is how finished work reaches the live site (Chris, 2026-10-09: per batch, to keep Vercel near $20/month).
+6. **Queue and status:** MASTER-ROADMAP (batch complete, next batch), `work-index.json`, STATUS, and one
    `docs/DECISIONS.md` entry ("Batch X closed: …, retired …, next batch drift: …"). Then tell Chris in plain English.
 
 ## Planning while a card is being built
