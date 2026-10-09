@@ -790,3 +790,9 @@ Chris approved the connected-business plan. Set rule: a machine returned early l
 price (from the day after pickup, partial period credited) unless it is an exchange; a machine taken away without a
 replacement is credited per day on the next bill until replaced, on any rental line (D-WB8, W-21). Credits reuse the
 late-delivery per-day setting; the old "partial-return pricing" setting is dropped (Chris decided).
+
+## 2026-10-09 — Record retention starts at 7 years, owner-configurable (IN-71)
+
+Chris: 7 years after the appliance leaves the fleet, fully configurable, is fine for development and launch; IN-71
+stays on the list of questions for the CPA. Not a launch blocker: no record can reach 7 years until 7 years after
+launch, so a longer CPA answer only changes the setting.

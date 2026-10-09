@@ -129,8 +129,8 @@ plus a spreadsheet file: every appliance and part bought in the range with asset
 date, price, tax paid to the seller or use tax reported, the return and its confirmation number, and links to each
 receipt; the use-tax returns filed with their confirmations; the sales-tax returns filed. This is what an auditor asks
 for. Records are kept for at least the period the owner sets (setting, starting value **7 years** after the appliance
-is sold or scrapped — longer than Colorado's usual 3-year look-back and the IRS's usual 3–7 years; to be confirmed by
-the CPA, IN-71), and the app never deletes a receipt that a filed return relies on.
+is sold or scrapped — longer than Colorado's usual 3-year look-back and the IRS's usual 3–7 years; fully configurable; Chris approved 7 years for development and launch, and the
+CPA is still asked, IN-71), and the app never deletes a receipt that a filed return relies on.
 
 ### D-WB3 — Rental sets are packages of separate appliances
 
@@ -388,8 +388,9 @@ F-part-2 proves the whole business works as connected flows, through the real sc
 
 - **IN-69** — approve this amendment (sections 2–11).
 - **IN-70** — answered 2026-10-09: single-machine price unless it is an exchange; out-of-service days credited (D-WB8).
-- **IN-71** — how long to keep purchase and tax records (starting value 7 years after the appliance leaves the fleet;
-  ask the CPA).
+- **IN-71** — how long to keep purchase and tax records. Chris 2026-10-09: launch with 7 years after the appliance
+  leaves the fleet, fully owner-configurable; still ask the CPA (not a launch blocker — nothing reaches 7 years until
+  7 years after launch).
 
 ## 13. Stop-and-ask
 
