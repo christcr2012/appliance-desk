@@ -247,7 +247,15 @@ export async function markSetMachineDone(
     return { claim, amendmentId, handoffIds: handoffs.map((h) => h.id), outOfServiceNote: closed.note };
   });
 
-  if (outcome.claim && outcome.amendmentId) await runLineReprice(outcome.amendmentId, outcome.claim);
+  if (outcome.claim && outcome.amendmentId) {
+    // The change is saved; Stripe follows. A failure here is recorded on the provider operation and retried by billing
+    // reconciliation, so it never turns a saved decision into an error on screen.
+    try {
+      await runLineReprice(outcome.amendmentId, outcome.claim);
+    } catch (error) {
+      console.error(`[W-21B] Stripe line change for amendment ${outcome.amendmentId} will be retried by reconciliation`, error);
+    }
+  }
   const message =
     `From ${formatBusinessDate(plan.singleFrom)} the ${plan.remainingNames} ${plan.remainingNames.includes(" and ") ? "are" : "is"} ` +
     `${formatCents(plan.newPriceCents)} a month (was ${formatCents(plan.oldPriceCents)}). ` +
