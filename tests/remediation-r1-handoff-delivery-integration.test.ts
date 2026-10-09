@@ -297,8 +297,16 @@ describe.skipIf(!enabled)("Remediation R1 delivery facts and handoff leases (rea
     expect(mid.attempts).toBe(1);
     expect(mid.claimedAt).not.toBeNull();
 
-    const workerB = await runPendingHandoffs(20);
-    expect(workerB).toEqual({ done: 0, failed: 0 });
+    // The handoff sweep is global. Parallel test files can create their own
+    // eligible rows, so a global count from worker B cannot prove this row was
+    // claimed twice. Verify the lease of this exact row instead.
+    await runPendingHandoffs(20);
+    const afterOverlap = await prisma.jobBillingHandoff.findUniqueOrThrow({
+      where: { id: row.id },
+    });
+    expect(afterOverlap.status).toBe("IN_FLIGHT");
+    expect(afterOverlap.attempts).toBe(1);
+    expect(afterOverlap.claimedAt?.getTime()).toBe(mid.claimedAt?.getTime());
     expect(handoffMocks.startBilling).toHaveBeenCalledTimes(1);
 
     release();

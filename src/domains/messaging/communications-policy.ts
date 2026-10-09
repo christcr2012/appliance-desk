@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { voiceRoutingSchema } from "./voice-routing";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
@@ -16,6 +17,8 @@ export const communicationsPolicySchema = z.object({
   maxSegments: z.number().int().min(1).max(10),
   supportedCountries: z.array(z.literal("US")).min(1).max(1),
   inboundSmsEnabled: z.boolean().optional(),
+  voiceRoutingEnabled: z.boolean().optional(),
+  voiceRouting: voiceRoutingSchema.optional(),
   productionWebhookOrigin: z.string().url().refine((value) => {
     const url = new URL(value);
     return url.protocol === "https:" && !url.username && !url.password &&

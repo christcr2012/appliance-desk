@@ -1,3 +1,7 @@
+### 2026-10-09 — COM-L8 voice routing and callback handoff (#370)
+
+COM-L8 adds signed, bounded Node-only Twilio callbacks at `/api/webhooks/twilio/voice`, `/accept`, `/dial-result`, `/status` with canonical `communicationsPolicy.productionWebhookOrigin`, optional OFF-by-default `voiceRoutingEnabled` and validated Denver hours/closures + approved non-loop destination in `voiceRouting`. The schema remains L7's `CallSession`/`CallLeg`/`ProviderEvent`; events serialize on TelecomAccount, replay encrypted voice TwiML, hold early status events for reconciliation and preserve contradictory bridge evidence as UNKNOWN. IN-51 gates activation, IN-52 gates L9 voicemail. L9 must reuse signed callbacks, private media and the parent/child receipt contract; never interpret carrier answered/completed as human acceptance without press 1.
+
 ### T-7D tax overview review corrections
 
 T-7D now filters obsolete returns within SQL before LIMIT, checks full

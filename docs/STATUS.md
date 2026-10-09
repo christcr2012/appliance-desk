@@ -6,9 +6,9 @@ Updated October 9, 2026 evening (reconciled after two lanes: COM-L3…L6A #352�
 
 ### Current queue (read this first)
 
-- **Latest:** COM-L7 call legs, private media and retention implementation in PR #368; COM-L6B merged (#364).
-- **Owner pause:** After PR #368 passes exact-head CI and merges, do not start COM-L8 or any other slice until explicitly resumed.
-- **After the owner explicitly resumes, in this order:** COM-L8 … COM-L15 → W-1 → W-18 → W-14 → W-2 → W-15 → W-3 → W-4 → W-5 → W-6 → W-7 → W-8 → W-9
+- **Latest merged:** COM-L7 (#368) and COM-L6B (#364). COM-L8 (#370) is completed for exact-head CI and merge.
+- **Owner resumed 2026-10-09:** Implement COM-L8 to COM-L15 in order; pause after COM-L15 merges, before W-1.
+- **Current queue:** COM-L9 → COM-L10 → COM-L11 → COM-L12 → COM-L13A → COM-L13B → COM-L14A → COM-L14B → COM-L15 → W-1 → W-18 → W-14 → W-2 → W-15 → W-3 → W-4 → W-5 → W-6 → W-7 → W-8 → W-9
   → W-10 → W-19 → W-17 → W-20 → V → F-part-2. W-11/W-12/W-13 when their outside gates clear (IN-61, IN-62/IN-44, IN-64).
   Authority: `designs/BATCH-W-AMENDMENT-B.md` section 8 and `pr-cards/work-index.json`.
 - **Already done out of order (do not redo):** W-16A/B (sets are rental packages of separate machines; "Rent as"; old
@@ -22,6 +22,9 @@ Updated October 9, 2026 evening (reconciled after two lanes: COM-L3…L6A #352�
   confirm or change), IN-71 (record retention, CPA), IN-61, IN-62, IN-63, IN-64, IN-65, IN-44.
 
 ### Recent merges (newest first)
+
+**2026-10-09 — COM-L8 merged (#370, pending exact-head GitHub CI before merge):** Twilio voice endpoints are signed against the approved HTTPS origin, account and owned number. Calls use owner-approved Denver business hours and an approved phone destination only after voice policy activation (still OFF); a private press-1 step and durable parent/child callback ledger prevent carrier voicemail or duplicate events from being recorded as staff answering. Call decline, conflicts and missing staff answer are kept as missed/unknown evidence. No ordinary call recording, voicemail, live sending, spending or provider settings change. Tested using disposable PostgreSQL and the COM-L8 regression suite. Next COM-L9: gated voicemail/private media and missed-call inbox.
+
 
 **2026-10-09 — test isolation (#367):** tests that write records existing once for the whole database run one at a time;
 the health sweep counts only issues it actually recorded; CI uses the ECR Public copy of the Postgres image. No test was
