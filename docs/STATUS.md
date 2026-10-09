@@ -6,11 +6,11 @@ complete:** S-1A #330, S-1B #331, S-1C #332, S-2 #334 (plus the test-fixture dri
 
 ## Next
 
-**2026-10-09 — W-0A #342 and W-0B #343 merged:** purchase use tax can be recovered after owner tax confirmation; pending retail-delivery-fee records have a working, accessible page. **Next: COM-L2** additive telecom foundation, then COM-L3 onward. Batch W follow-up cards W-1…W-12 remain after COM-L15, subject to CPA/owner gates. No live filing, payment or telecom activation.
+**2026-10-09 — W-0A #342 and W-0B #343 merged:** purchase use tax can be recovered after owner tax confirmation; pending retail-delivery-fee records have a working, accessible page. **COM-L2 is under PR #346 CI/review; next COM-L3** after its merge. Batch W follow-up cards W-1…W-12 remain after COM-L15, subject to CPA/owner gates. No live filing, payment or telecom activation.
 
 **2026-10-09 — Batch W Amendment A (tax filing on autopilot) added:** W-9 filing autopilot, W-10 use-tax "File now" + filled DR 0252, W-11 live GIS rates (waits on IN-61, may run early once done), W-12 XML return file (waits on IN-62, IN-44). Nothing ever submits or pays on Chris's behalf (D-WA2, IN-63). **D-WA6:** W-2 now also gives every seller-tax answer one dated next step (`nextPurchaseTaxStep`); W-13 receipt reading waits on IN-64; out-of-state seller tax waits on the CPA (IN-65).
 
-**COM-L2 implementation (2026-10-09):** recovered branch `ai/gpt6/com-l2-foundation` was synchronized through main `ba9794d`; additive telecom schema, migration and five new backup tables are locally verified with disposable PostgreSQL, schema health, positive restore of populated telecom records and the nullable current-attempt cycle restored in two passes. PR publication and exact-head CI/review are next. Provider accounts remain unconfigured and SMS disabled.
+**COM-L2 implementation (2026-10-09):** recovered branch `ai/gpt6/com-l2-foundation` was synchronized through main `ba9794d`; additive telecom schema, migration and five new backup tables are locally verified with disposable PostgreSQL, schema health, positive restore of populated telecom records and the nullable current-attempt cycle restored in two passes. PR #346 is open as a draft; exact-head CI/review/merge gates are next. Provider accounts remain unconfigured and SMS disabled.
 
 **Recovered unfinished work (2026-10-09, read before starting anything):** found uncommitted in the Vercel Sandbox
 `appliance-desk-s1c-oct8` and committed there (not on GitHub; the sandbox clone originally lacked push credentials; this is resolved as of 2026-10-09):

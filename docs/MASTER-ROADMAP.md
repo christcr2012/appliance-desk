@@ -59,7 +59,7 @@ remain in `pr-cards/` as the record of what was built; W-0A/W-0B fix defects fou
 | COM-L15 | Launch communications proof and truthful owner setup handoff | JIT — `COM-L15.md` | COM-L14B |
 | COM-L1A | COM-L1A | [card](pr-cards/COM-L1A-SMS-SEND-SAFETY.md) | S-2 |
 | COM-L1B | COM-L1B | [card](pr-cards/COM-L1B-CALLBACK-INTEGRITY.md) | COM-L1A |
-| COM-L2 | COM-L2 | [card](pr-cards/COM-L2-FOUNDATION.md) | COM-L1B |
+| COM-L2 (#346) | COM-L2 | [card](pr-cards/COM-L2-FOUNDATION.md) | COM-L1B |
 
 ### W — workflows that tell the owner what to do (`designs/BATCH-W.md`, approved 2026-10-09)
 

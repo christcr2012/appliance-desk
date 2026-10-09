@@ -2728,7 +2728,7 @@
         "COM-L1B"
       ],
       "card": "docs/pr-cards/COM-L2-FOUNDATION.md",
-      "status": "APPROVED",
+      "status": "MERGED",
       "readiness": "READY_AFTER_PREREQUISITE",
       "migration": "see card",
       "budget": 500,

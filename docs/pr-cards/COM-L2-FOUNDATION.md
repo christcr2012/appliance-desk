@@ -1,6 +1,6 @@
 # COM-L2 — Telecom foundation schema
 
-Status: **IMPLEMENTED — PR REVIEW PENDING** (2026-10-09); no live activation.
+Status: **MERGED (#346)** after exact-head CI/review gates and merge; no live activation.
 
 **Batch COM approved 2026-10-08; L2 becomes implementation-eligible only after final reviewed L1a/L1b and its refreshed schema drift check.**
 Base: final L1b branch or current main with L1a/L1b merged.

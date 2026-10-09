@@ -385,3 +385,9 @@ previously unlinked DUE rows only to OPEN matching periods, not FILED ones.
 There was no migration, legal rate inference, customer message or payment.
 The nonexistent `/desk/sales-tax/setup/accounts` route in the original card
 was corrected to the real `/desk/sales-tax/setup#accounts` section.
+
+
+### COM-L2 telecom foundation — 2026-10-09
+
+- Additive migration `20261012130000_com_l2_telecom_foundation` preserves legacy email/provider events; processed legacy callbacks are marked LEGACY_HANDLED, not inferred APPLIED.
+- Restore ordering treats nullable `MessageDelivery.currentAttemptId` as a second-pass relationship. `MessageAttempt` remains dependent on `MessageDelivery`; both foreign keys stay enforced. Populated real-PostgreSQL backup/restore verifies the lineage. No runtime sending, activation, or consent inference.
