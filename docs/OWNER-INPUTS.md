@@ -71,6 +71,8 @@ Only ask for the inputs needed by the next release. Do not ask all at once.
 | IN-54 | Before K-CASH account activation | Owner selects bank/edition and personally completes formation/EIN/KYC; verify primary feed or CSV, journal import and zero-difference reconciliation in actual QBO tenant. Bluevine Standard/QBO Free candidate, Axos Basic alternative. No application, paid tier or transfer authorized. | Account-specific verified setup, not synthetic engineering | Build with fixtures; verification UNKNOWN |
 | IN-55 | Before K-CASH budget activation | Owner/bookkeeper confirms opening assets/liabilities/equity, bank/Stripe/card debt, all tax/deposit obligations. CPA confirms physical reserve/interest treatment and income-tax target; owner enters actual costs/dates/goals. No invented percentages/fees. | Truthful cash activation and affected policy | Implement provisional controls; unknown amounts remain unknown |
 
+| IN-56 | Before K-6 book-disposition rules and M-2C first retired-appliance sale | CPA/bookkeeper confirms pending-disposition asset/held-for-sale valuation, federal/Colorado income-tax classification, original tax basis including capitalizable acquisition taxes and improvements, depreciation **allowed or allowable**, Section 179/bonus treatment, §1245/§1231 gain or recapture, expensed-asset handling and historical unknowns. | Source-backed tax gain estimate and single nonduplicate book disposal; **no resale-price cap** | Expose unknown state and review prompt; do not fabricate tax due or stop lawful sales. [Design](designs/RETIRED-APPLIANCE-RESALE-TAX-2026-10-08.md) |
+
 ## Confirmed facts — do not ask again
 
 - **Items missing from the first delivery and the Stripe subscription (Chris, 2026-10-03):** an item delivered late, or

@@ -153,13 +153,7 @@ in a lump, when they happen:
 - **Scrap-yard checks** are a lump **"Scrap money received"** entry (date, amount, scrap yard, photo of the check or
   ticket, optional note) on `/desk/inventory/retired` — one entry per check, not split by appliance. It posts to a new
   income account **`SCRAP_INCOME` "Scrap sales"** in Batch K.
-- **Your own profit numbers (Batch K) — one trigger only (review fix):** Batch K already writes off an appliance's
-  remaining book value **on the day it is retired** (`APPLIANCE_RETIRED`, D-K9) — it stops earning rent that day.
-  Batch M posts **nothing** when a plan is chosen, changed, marked done or reopened, so reopening never needs a reversal
-  and nothing can be posted twice. Money that comes later is income when it comes: a sold appliance's price →
-  `RETIRED_APPLIANCE_SALES` (its book value is already zero); scrap money → `SCRAP_INCOME`; dump fees → an expense.
-  Your CPA does the tax-return version; if the CPA wants scrap proceeds per appliance (IN-46), the scrap entry can gain
-  an optional "which appliances" list later — not built now.
+- **Your own profit numbers (Batch K) — one disposition path (revised 2026-10-08):** K-6 stops rental depreciation and transfers the net book carrying value of SELL/DECIDE_LATER units into a pending-disposition asset; marking RETIRED is **not** an automatic complete disposal loss. Choosing or changing a plan never produces sale income or federal depreciation recapture. Upon actual sale M-2C posts the invoice and triggers one K-6-approved balanced asset disposal/gain-loss posting, without re-expensing original cost. Gross proceeds are a separately displayed sales metric, while book gain/loss is **proceeds minus remaining book carrying amount and seller costs**. Scrap proceeds → `SCRAP_INCOME`; dump fees → ordinary expense; both remain lump records as originally approved. Section 1245 federal recapture is a **CPA-backed tax-basis estimate**, not 60-month book depreciation and not a maximum resale-price rule. See [retired appliance sale/tax-basis design](RETIRED-APPLIANCE-RESALE-TAX-2026-10-08.md). CPA guidance on scrap allocations (IN-46) remains pending.
 
 **Where to see it.** `/desk/inventory/retired` (a tab on Inventory): every retired appliance with its plan and whether
 it is done, filters "Decide later / Sell / Parts / Scrap / Throw away / Done", bulk "Mark done" for a truckload, and the
@@ -266,5 +260,4 @@ postings: no plan postings, used-appliance sale income, item sale income, scrap 
 - **S-M1** The CPA says scrap sales or used-appliance sales are taxed differently from D-M3/D-M4's defaults in a way the
   matrix cannot express (for example a special rate).
 - **S-M2** Card payment of local invoices needs changes to the signing checkout or webhook contracts (M-3).
-- **S-M3** Batch K as merged does not write off an appliance on its retirement date (`APPLIANCE_RETIRED`), or has no
-  place for the new income accounts — amend K's design first; never add a second disposal entry in M.
+- **S-M3** K-6 does not support retired pending-disposition asset value and a **single actual-sale/final-disposal book gain-loss entry** or required ledger accounts, as stipulated by the [2026-10-08 addendum](RETIRED-APPLIANCE-RESALE-TAX-2026-10-08.md). Amend K/card before implementing M; never revert to unconditional remaining-value disposal loss on initial retirement or double-charge asset cost. If CPA tax basis is unknown, label tax estimate unverified but do not invent a legal price ceiling.

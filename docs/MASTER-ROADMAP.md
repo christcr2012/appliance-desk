@@ -110,7 +110,7 @@ Audited baseline: main `b2a06c2` (#310), October 8. [STATUS](STATUS.md) holds cu
 | K-4A | Expense lifecycle and private receipt uploads | JIT — `K-4A.md` | K-3 |
 | K-4B | Expense phone workflow and recurring drafts | JIT — `K-4B.md` | K-4A |
 | K-5 | Immutable accounting export batches | JIT — `K-5.md` | K-4B |
-| K-6 | Depreciation and retirement value evidence | JIT — `K-6.md` | K-5 |
+| K-6 | Book depreciation, pending-retirement book assets and CPA tax-basis evidence ([design](designs/RETIRED-APPLIANCE-RESALE-TAX-2026-10-08.md)) | JIT — `K-6.md` | K-5 |
 | K-7 | Profit, balance and appliance payback | JIT — `K-7.md` | K-6 |
 | K-8 | Forecast, customer health and year-end package | JIT — `K-8.md` | K-7 |
 
@@ -142,7 +142,7 @@ JIT cards reflect actual merged K contracts; preserve the existing two-lane work
 | M-1D | Sales and items-for-sale screens | JIT — `M-1D.md` | M-1C |
 | M-2A | Retired plans, salvage and lump scrap ledger | JIT — `M-2A.md` | M-1D |
 | M-2B | Retired workflow and scrap receipts | JIT — `M-2B.md` | M-2A |
-| M-2C | Used-appliance sale integration | JIT — `M-2C.md` | M-2B |
+| M-2C | Used-appliance sale, owner-set price, recapture warning/CPA evidence, single balanced asset disposition ([design](designs/RETIRED-APPLIANCE-RESALE-TAX-2026-10-08.md)) | JIT — `M-2C.md` | M-2B |
 | M-3 | Hosted card payment for local invoices | JIT — `M-3.md` | M-2C |
 
 ### O
