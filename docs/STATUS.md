@@ -1,16 +1,14 @@
 # STATUS — current work, blockers and next action
 
-Updated October 9, 2026 (main `ba9794d` after W-0A #342, W-0B #343, browser setup #345). **Batch T is engineering-complete** (through T-7D #328). **Batch S is
-complete:** S-1A #330, S-1B #331, S-1C #332, S-2 #334 (plus the test-fixture drift fix #333). **COM-L1A** (#335) and
-**COM-L1B** (#336) are merged. No live payments, customer messages, fee charging or tax filing are activated.
+Updated October 9, 2026 (COM-L2 PR #346 merged as 12bcd837; latest deployment-cost/release controls #347–#351 merged). Batch T and Batch S are engineering-complete. COM-L1A/B and COM-L2 are merged. No live payments, customer messages, fee charging or tax filing are activated.
 
 ## Next
 
-**2026-10-09 — W-0A #342 and W-0B #343 merged:** purchase use tax can be recovered after owner tax confirmation; pending retail-delivery-fee records have a working, accessible page. **COM-L2 is under PR #346 CI/review; next COM-L3** after its merge. Batch W follow-up cards W-1…W-12 remain after COM-L15, subject to CPA/owner gates. No live filing, payment or telecom activation.
+**2026-10-09 — COM-L3 merged (#352) after exact-head gates:** five additive communication tables, immutable template versions, cross-account/read-cursor safeguards and populated restore coverage. **Next: COM-L4A**, eligibility policy and immutable communication intent, then COM-L4B claimed dispatch. W-1…W-12 remain after COM-L15. No live provider activation or payments.
 
 **2026-10-09 — Batch W Amendment A (tax filing on autopilot) added:** W-9 filing autopilot, W-10 use-tax "File now" + filled DR 0252, W-11 live GIS rates (waits on IN-61, may run early once done), W-12 XML return file (waits on IN-62, IN-44). Nothing ever submits or pays on Chris's behalf (D-WA2, IN-63). **D-WA6:** W-2 now also gives every seller-tax answer one dated next step (`nextPurchaseTaxStep`); W-13 receipt reading waits on IN-64; out-of-state seller tax waits on the CPA (IN-65).
 
-**COM-L2 implementation (2026-10-09):** recovered branch `ai/gpt6/com-l2-foundation` was synchronized through main `ba9794d`; additive telecom schema, migration and five new backup tables are locally verified with disposable PostgreSQL, schema health, positive restore of populated telecom records and the nullable current-attempt cycle restored in two passes. PR #346 is open as a draft; exact-head CI/review/merge gates are next. Provider accounts remain unconfigured and SMS disabled.
+**COM-L2 merged (#346, 2026-10-09):** the additive telecom account, number, contact-point/binding and send-attempt schema passed exact-head CI and disposable PostgreSQL backup/restore validation. COM-L3 extends its account and delivery lineage. SMS and provider spending remain off.
 
 **Recovered unfinished work (2026-10-09, read before starting anything):** found uncommitted in the Vercel Sandbox
 `appliance-desk-s1c-oct8` and committed there (not on GitHub; the sandbox clone originally lacked push credentials; this is resolved as of 2026-10-09):
