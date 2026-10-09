@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { isRateLimited } from "@/lib/rate-limit";
 
 function key(label: string): string {
@@ -34,10 +34,18 @@ describe("isRateLimited", () => {
   it("allows a request again once the rolling window elapses", async () => {
     const subject = key("expiry");
     const opts = { max: 1, windowMs: 50 };
-    await expect(isRateLimited(subject, opts)).resolves.toBe(false);
-    await expect(isRateLimited(subject, opts)).resolves.toBe(true);
-    await new Promise((resolve) => setTimeout(resolve, 70));
-    await expect(isRateLimited(subject, opts)).resolves.toBe(false);
+    // Database round trips can exceed 50ms on a busy CI runner. Control the
+    // observed time explicitly, not the runner's scheduling or wall clock.
+    const start = Date.now();
+    const clock = vi.spyOn(Date, "now").mockReturnValue(start);
+    try {
+      await expect(isRateLimited(subject, opts)).resolves.toBe(false);
+      await expect(isRateLimited(subject, opts)).resolves.toBe(true);
+      clock.mockReturnValue(start + opts.windowMs + 1);
+      await expect(isRateLimited(subject, opts)).resolves.toBe(false);
+    } finally {
+      clock.mockRestore();
+    }
   });
 
   it("serializes concurrent requests across the database boundary", async () => {
