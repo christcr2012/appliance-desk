@@ -1701,7 +1701,7 @@
       "dependencies": [
         "COM-L6A"
       ],
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "none",
       "budget": 500,
       "units": [
@@ -1715,10 +1715,10 @@
       ],
       "tests": [
         "tests/communication-inbox-scope.test.ts",
-        "e2e/communications-inbox.spec.ts"
+        "tests/communications-inbound-integration.test.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
-      "plannedCard": "docs/pr-cards/COM-L6B.md"
+      "readiness": "READY_AFTER_PREREQUISITE",
+      "card": "docs/pr-cards/COM-L6B.md"
     },
     {
       "id": "COM-L7",

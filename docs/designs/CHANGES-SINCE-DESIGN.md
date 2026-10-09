@@ -487,3 +487,14 @@ Notifications. Existing day-of cron no longer invokes the legacy direct SMS
 adapter; it returns held-for-review without a false sent timestamp.
 COM-L6B must implement authenticated operator intent and job/thread approval
 before sending can resume. No migration or live activation.
+
+
+### 2026-10-09 — COM-L6B private SMS inbox and independent read cursors
+Existing COM-L3 thread/message/read-marker schema is now used for
+an actual authenticated owner/staff screen with bounded keyset
+pagination, status/assignment filters, and server-decrypted private
+message details. STAFF is limited to specifically assigned threads,
+OWNER/ADMIN can assign, and mutations revalidate active team roles
+in the write transaction. Read cursors never move backward or accept
+cross-thread message IDs. Thread actions have optimistic version and
+privacy-safe audit evidence. No schema, live provider or send activation.

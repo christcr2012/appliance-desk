@@ -669,3 +669,17 @@ do not send messages. The old automated day-of reminder sender is safely
 held until COM-L6B supports authenticated owner review, verified customer
 contact, specific job context and sender-scoped consent. No job is marked
 texted until a real message is successfully accepted by a provider.
+
+
+### Communications inbox (COM-L6B)
+Open Owner Desk → Communications to review signed-provider SMS inbox
+threads. Filter by status, verified/ambiguous/unresolved identity and
+assignment. Open a thread to read only that private conversation, mark
+reviewed through the last displayed message, assign a staff member or
+move the case to WAITING/CLOSED. Staff see only their assigned threads;
+another employee's read action does not clear your unread marker.
+Changing a workflow status never confirms a provider send or legal notice.
+The reply/send button is intentionally absent: provider activation and
+verified sender, contact identity, purpose-specific consent and job
+context must be approved separately. Ambiguous numbers have no automatic
+link to customer records.
