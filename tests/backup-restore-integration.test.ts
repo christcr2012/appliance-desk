@@ -15,9 +15,13 @@ import { prisma } from "@/lib/prisma";
 import { businessDateFromKey } from "@/lib/business-date";
 
 const run = promisify(execFile);
-const restoreUrl = "postgresql://test:test@localhost:5432/appliance_desk_restore";
 const databaseUrl = process.env.DATABASE_URL;
 const parsed = databaseUrl ? new URL(databaseUrl) : null;
+// CI exposes Postgres on 5432; Vercel Sandbox uses a randomly chosen loopback port.
+// Reuse the disposable source connection credentials and port, never a fixed host/port.
+const restoreTarget = new URL(databaseUrl ?? "postgresql://test@localhost:5432/appliance_desk_test");
+restoreTarget.pathname = "/appliance_desk_restore";
+const restoreUrl = restoreTarget.toString();
 const enabled =
   process.env.CI === "true" &&
   parsed !== null &&

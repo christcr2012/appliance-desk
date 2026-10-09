@@ -21,6 +21,22 @@ export function parse(args) {
   return result;
 }
 
+// Known CI consumers of shared contracts. Add to this narrow map when a
+// regression reveals a missed dependency; preserve GitHub's complete CI suite.
+export function adjacentRegressions(changed) {
+  const paths = [
+    [/^src\/(?:domains\/system-issues\/|app\/desk\/(?:today|automations)\/)/,
+      ['tests/today-role-access.test.ts', 'tests/desk-navigation.test.ts']],
+    [/^src\/(?:lib\/desk-navigation|components\/desk\/.*navigation)/,
+      ['tests/desk-navigation.test.ts']],
+    [/^src\/domains\/backup\//, ['tests/backup-restore-integration.test.ts']],
+    [/^prisma\/schema\.prisma$/, ['tests/schema-health.test.ts']],
+    [/^src\/app\/.*(?:page|layout)\.[jt]sx?$/, ['tests/accessibility-route-inventory.test.ts']],
+  ];
+  return [...new Set(paths.flatMap(([re, specs]) =>
+    changed.some(file => re.test(file)) ? specs : []))];
+}
+
 export function commands(options, changed) {
   const application = changed.some(p => !p.startsWith('docs/') && !p.endsWith('.md'));
   const behavior = changed.some(p => /^(src|prisma|tests|e2e)\//.test(p));
@@ -31,11 +47,13 @@ export function commands(options, changed) {
     throw new Error('Screen/spec changed: select affected --browser specs before publishing. If local setup is blocked, record the exact blocker and use required CI; do not claim local browser proof.');
   const list = options.inside ? [] : [ ['node', 'scripts/check-secrets.mjs'], ['node', 'scripts/check-migrations.mjs'], ['node', 'scripts/e2e-shard.mjs', '--check'], ['node', '--test', 'scripts/preflight.test.mjs'] ];
   if (!options.inside && application) list.push(['npm', 'run', 'typecheck'], ['npm', 'run', 'lint']);
-  if (!options.inside && (options.db.length || options.browser.length)) {
-    const selections = [...options.unit.map(p => ['--unit', p]), ...options.db.map(p => ['--db', p]), ...options.browser.map(p => ['--browser', p])].flat();
+  const adjacent = options.inside ? [] : adjacentRegressions(changed)
+    .filter(file => !options.unit.includes(file) && !options.db.includes(file) && existsSync(file));
+  if (!options.inside && (options.db.length || options.browser.length || adjacent.length)) {
+    const selections = [...options.unit.map(p => ['--unit', p]), ...[...options.db, ...adjacent].map(p => ['--db', p]), ...options.browser.map(p => ['--browser', p])].flat();
     list.push(['bash', 'scripts/local-postgres-test.sh', '--checks', ...selections]);
   } else {
-    const units = [...new Set([...options.unit, ...options.db])];
+    const units = [...new Set([...options.unit, ...options.db, ...adjacent])];
     if (units.length) {
       list.push(['npx', '--no-install', 'vitest', 'run', ...units, '--reporter=default', '--reporter=json', '--outputFile.json=vitest-results.json']);
       list.push(['node', 'scripts/check-no-skipped-tests.mjs', 'vitest-results.json']);

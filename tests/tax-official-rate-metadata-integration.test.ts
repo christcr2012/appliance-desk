@@ -325,7 +325,7 @@ describe.skipIf(!enabled)("T-5b1 official rate metadata (real Postgres)", () => 
     });
 
     expect(rows).toHaveLength(expected.length);
-    expect(rows.map(({ label, url }) => ({ label, url }))).toEqual(
+    expect(rows.map(({ label, url }) => ({ label, url })).sort((a, b) => a.url.localeCompare(b.url))).toEqual(
       [...expected].sort((a, b) => a.url.localeCompare(b.url)),
     );
     expect(

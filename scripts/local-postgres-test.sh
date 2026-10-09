@@ -51,18 +51,20 @@ PORT=$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1", 0)); p
 "$BIN/pg_ctl" -D "$PGDATA" -o "-h 127.0.0.1 -p $PORT -k $WORKDIR/socket" -l "$WORKDIR/server.log" -w start > "$WORKDIR/start.log"
 started=1
 
-export DATABASE_URL="postgresql://test@localhost:${PORT}/appliance_desk_test"
+export DATABASE_URL="postgresql://test:test@localhost:${PORT}/appliance_desk_test"
 export DIRECT_URL="$DATABASE_URL"
 export CI=true
+# Only this launcher, after creating its own loopback cluster, permits a dynamic test port.
+export APPLIANCE_DESK_DISPOSABLE_PG=true
 # Use CI's disposable test-only account fixtures, never inherited production logins.
 export OWNER_EMAIL=ci-owner@example.test
-export OWNER_PASSWORD='FixtureOnlyNotARealCredential123!'
+export OWNER_PASSWORD='Ci-Test-Owner-Password-Not-Real-1!'
 export TEST_CUSTOMER_EMAIL=ci-customer@example.test
-export TEST_CUSTOMER_PASSWORD='FixtureOnlyNotARealCredential123!'
+export TEST_CUSTOMER_PASSWORD='Ci-Test-Customer-Password-Not-Real-1!'
 export TEST_STAFF_EMAIL=ci-staff@example.test
-export TEST_STAFF_PASSWORD='FixtureOnlyNotARealCredential123!'
+export TEST_STAFF_PASSWORD='Ci-Test-Staff-Password-Not-Real-1!'
 export TEST_ADMIN_EMAIL=ci-admin@example.test
-export TEST_ADMIN_PASSWORD='FixtureOnlyNotARealCredential123!'
+export TEST_ADMIN_PASSWORD='Ci-Test-Admin-Password-Not-Real-1!'
 export BETTER_AUTH_SECRET=ci-test-secret-not-for-production-use-only
 export BETTER_AUTH_URL=http://localhost:3000
 export NEXT_PUBLIC_APP_URL=http://localhost:3000
@@ -71,6 +73,7 @@ unset VERCEL VERCEL_ENV STRIPE_SECRET_KEY STRIPE_WEBHOOK_SECRET RESEND_API_KEY
 unset TWILIO_ACCOUNT_SID TWILIO_AUTH_TOKEN TWILIO_PHONE_NUMBER
 unset BLOB_READ_WRITE_TOKEN PRIVATE_BLOB_READ_WRITE_TOKEN RDF_CUSTOMER_CHARGING_ENABLED
 psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p "$PORT" -U test -d postgres -c 'CREATE DATABASE appliance_desk_test OWNER test;' > /dev/null
+psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p "$PORT" -U test -d postgres -c 'CREATE DATABASE appliance_desk_restore OWNER test;' > /dev/null
 
 echo "Running against NEW localhost-only PostgreSQL on port $PORT (disposable appliance_desk_test)."
 npm run db:migrate:deploy

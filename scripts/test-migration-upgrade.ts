@@ -19,6 +19,7 @@ import {
 async function main() {
   const target = migrationUpgradeTarget({
     CI: process.env.CI,
+    APPLIANCE_DESK_DISPOSABLE_PG: process.env.APPLIANCE_DESK_DISPOSABLE_PG,
     VERCEL: process.env.VERCEL,
     VERCEL_ENV: process.env.VERCEL_ENV,
     DIRECT_URL: process.env.DIRECT_URL,
