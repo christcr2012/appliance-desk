@@ -149,7 +149,9 @@ Local PostgreSQL results are earlier evidence, **not** a substitute for CI's Pos
 can't be used, record the exact failing step and let CI supply the proof — never claim unrun tests passed.
 
 **Browser.** `--browser` builds once and runs the spec with saved CI logins. If Chromium or Google Fonts are blocked, set
-`LOCAL_TEST_CHROMIUM` (existing Chromium path) and `LOCAL_TEST_FONT` (an existing `.woff2`). Never `playwright install`.
+`LOCAL_TEST_CHROMIUM` (existing Chromium path) and `LOCAL_TEST_FONT` (an existing `.woff2`). **Vercel Sandbox:** Chromium
+and its libraries are installed in the saved sandbox (2026-10-09); if a check says "No matching installed Chromium", run
+`npm run sandbox:browser` once. Claude Code cloud containers ship their own browser: never `playwright install` there.
 
 **Prisma 403 (`binaries.prisma.sh` blocked).** Network policy, not a bug: use the approved local placeholder-engine
 workaround only when needed; never commit generated clients or engines.

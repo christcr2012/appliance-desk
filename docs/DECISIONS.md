@@ -736,3 +736,10 @@ stops with that instruction; (3) `npm run setup` sets HTTP/1.1, merge-based sync
 (DRIFT-PROTOCOL); (5) `scripts/check-route-inventory.mjs` in the quick gate prints the exact line for a new page.
 CI stays the full exact-head gate (deliberately repeated; it is free and is the only merge evidence). The sandbox push
 key Chris created has a 1-year expiry (renewal noted in STATUS).
+
+## 2026-10-09 — Chromium in the Vercel Sandbox
+
+W-0B's local browser step was blocked: the sandbox (Ubuntu 26.04) had no browser. Installed Playwright's Chromium and its
+system libraries into the persistent sandbox and verified a launch; `npm run sandbox:browser` repeats it if a future
+session lacks them. "Never `playwright install`" stays the rule for Claude Code cloud containers, which ship a browser.
+Also found: the sandbox push key was on the running session only, not the saved sandbox settings (STATUS Environment).
