@@ -2743,3 +2743,47 @@ model AssetNumberCounter {
   nextSequence Int
   updatedAt    DateTime @updatedAt
 }
+
+// Batch S — internal operational problems only; never store customer data here.
+enum SystemIssueStatus {
+  OPEN
+  ACKNOWLEDGED
+  RESOLVED
+}
+
+enum SystemIssueSeverity {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+model SystemIssue {
+  id             String              @id @default(cuid())
+  fingerprint    String              @unique
+  kind           String
+  severity       SystemIssueSeverity
+  status         SystemIssueStatus   @default(OPEN)
+  version        Int                 @default(1)
+  summary        String
+  detail         String
+  occurrences    Int                 @default(1)
+  firstSeenAt    DateTime            @default(now())
+  lastSeenAt     DateTime            @default(now())
+  resolvedAt     DateTime?
+  resolvedReason String?
+  notes          SystemIssueNote[]
+
+  @@index([status, severity, lastSeenAt])
+}
+
+model SystemIssueNote {
+  id           String      @id @default(cuid())
+  issueId      String
+  issue        SystemIssue @relation(fields: [issueId], references: [id])
+  authorUserId String?
+  authorKeyId  String?
+  body         String
+  createdAt    DateTime    @default(now())
+
+  @@index([issueId, createdAt])
+}

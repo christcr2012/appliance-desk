@@ -491,3 +491,17 @@ TaxFilingAccount, TaxFilingPeriod, TaxFilingAmendment, TaxabilityRule,
 OfficialSourceWatch, BusinessSettings and acquisition status records under
 active team role checks. Setup indicator values do not modify ledger,
 invoice, filing, payment or government authority evidence.
+
+
+### System health issue records (S-1A)
+`SystemIssue` is the private, deduplicated ledger of problems **with the system**
+(not business exceptions or customer requests). Its `fingerprint` is unique;
+`occurrences` increments on repeated evidence, and `version` advances with
+record/reopen/resolve changes for later optimistic-concurrency owner actions.
+`kind` is constrained to the approved event types. The issue summary and
+technical detail are server-rendered from typed, allowlisted identifiers, not
+raw exception text or provider responses. `SystemIssueNote` is private,
+limited to 2 KB and at most one human/agent author identity. A free-text
+note is never considered safe for an external agent export. Both models are
+included in private backup/restore; API key material belongs to later S-2
+and is intentionally not present here.

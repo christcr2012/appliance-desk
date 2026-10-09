@@ -4,7 +4,12 @@ Audited baseline: main `b2a06c2` (#310), October 8. [STATUS](STATUS.md) holds cu
 
 ## What is next
 
-**Next after this T-6C1 PR merges: T-6C2** — delivery-fee records with stable sale identity. Acquisition work T-6D1…3 (#313–#315) is merged; this PR completes the RDF schema/decision foundation. T then finishes per-appliance tax, acquisition UI/frequency, delivery fees and the Sales tax workspace. Build current tax cards in dependency order; refresh each against actual predecessor code. No customer billing/filing is activated by this plan.
+Batch T engineering was completed by T-7C #327 and T-7D #328. Older
+draft handoff #326 is closed as superseded. **S-1A** is the next approved
+implementation, followed in order by **S-1B, S-1C, S-2**, then COM-L/V/F2.
+No live tax filing, charging, external AI access or message sending is
+authorized by this sequence. Check [STATUS](STATUS.md) for the exact
+current PR/head.
 
 ## Approved sequence and owner gates
 
