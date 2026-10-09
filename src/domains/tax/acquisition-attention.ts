@@ -57,7 +57,9 @@ export async function listAcquisitionTaxAttention(
       RATES_UNREVIEWED: "are waiting for area rates to be reviewed",
     };
     for (const explanation of explanations) {
-      const key = explanation.reason ?? "ANSWER_LATER";
+      // No reason = no longer pending (answered or removed since the list above was read).
+      if (!explanation.reason) continue;
+      const key = explanation.reason;
       const current = reasons.get(key);
       reasons.set(key, { count: (current?.count ?? 0) + 1,
         href: explanation.fixHref ?? "/desk/inventory?taxStatus=UNKNOWN",

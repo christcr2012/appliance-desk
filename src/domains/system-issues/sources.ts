@@ -225,13 +225,13 @@ export async function sweepSystemIssues(
   // Fixed upper bound prevents a broken external source from monopolizing a cron.
   for (let pageNo = 0; pageNo < 10; pageNo++) {
     const page = await collectSystemIssueInputs(now, { limit, cursor });
+    // Count only what was actually written: a source row can disappear between reading and recording (for example an
+    // official page deactivated meanwhile), and the run's report must not claim an issue it did not record.
     for (const issue of page.issues) {
-      await recordSystemIssue(issue);
-      opened += 1;
+      if (await recordSystemIssue(issue)) opened += 1;
     }
     for (const fingerprint of page.clearFingerprints) {
-      await resolveSystemIssue(fingerprint, "SOURCE_SUCCEEDED");
-      resolved += 1;
+      if (await resolveSystemIssue(fingerprint, "SOURCE_SUCCEEDED")) resolved += 1;
     }
     if (!page.nextCursor) break;
     cursor = page.nextCursor;

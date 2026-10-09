@@ -823,11 +823,23 @@ prepay discount. Chosen (smallest surprise for the customer, never a price rise)
 agreement's term discount for that many machines, using the current discount setting (the agreement stored only the set
 amount), and the new price is capped at the line's price today. Chris can change this; it is one function
 (`singlePriceForRemaining`).
+
+## 2026-10-09 — Known test interference fixed at the root (Chris: "can you also fix the tests known issues?")
+
+Full local runs failed by chance in tax tests (filing reminders, tax overview, tax migration, purchase tax) and the
+health-sweep test, each passing alone. Causes: (1) 25 real-database tests wrote records that exist once for the whole
+database — the business-settings row or Colorado filing accounts, which reminders, the overview and the sweep read across
+all rows — without being in the run-one-at-a-time project, so they saw each other's data; (2) the health sweep counted an
+issue as recorded even when the write was skipped (its source row disappeared meanwhile). Fix: those tests joined
+`SHARED_SETTINGS_TESTS`, `tests/shared-state-tests-listed.test.ts` keeps new ones from being missed, and
+`sweepSystemIssues` counts only issues actually written (also makes the automation run report accurate). No test was
+skipped, weakened or retried.
+
 ## 2026-10-09 — Plans reconciled after two lanes; remaining order restated
 
 Chris: "update all documentation and plans to account for all the changes … possibly out of order. Then give me a prompt to
 start Sol working through the updated plans in the new order." The sets and repair-credit work (W-16A/B, W-21A/B) is done
-ahead of its original place; COM-L reached L6A with L6B in flight. Remaining order (Amendment B section 8): COM-L6B …
+ahead of its original place; COM-L reached L6B (#364) with L7 in flight. Remaining order (Amendment B section 8): COM-L7 …
 COM-L15 → W-1 → W-18 → W-14 → W-2 → W-15 → W-3 … W-10 → W-19 → W-17 → W-20 → V → F-part-2. One implementer resumes the
 single chain; the second lane is closed unless Chris opens it again. IN-72 records the one default chosen in W-21B.
 Test isolation (#367) also fixed a real robustness bug found by CI: To do crashed when an appliance was removed between

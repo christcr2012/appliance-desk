@@ -10,13 +10,14 @@ export type PendingPurchaseTaxExplanation = {
 export async function explainPendingPurchaseTax(
   tx: Prisma.TransactionClient, applianceId: string,
 ): Promise<PendingPurchaseTaxExplanation> {
-  const a = await tx.appliance.findUniqueOrThrow({
+  const a = await tx.appliance.findUnique({
     where: { id: applianceId },
     select: { acquisitionTaxStatus: true, acquisitionTaxChoice: true,
       purchaseDate: true, acquisitionCostCents: true },
   });
   const href = "/desk/inventory/" + applianceId;
-  if (a.acquisitionTaxStatus !== "UNKNOWN")
+  // Gone since the caller listed it (removed meanwhile): nothing is pending, and To do must not crash over it.
+  if (!a || a.acquisitionTaxStatus !== "UNKNOWN")
     return { reason: null, fixHref: null, fixLabel: null };
   if (!a.acquisitionTaxChoice || a.acquisitionTaxChoice === "LATER")
     return { reason: "ANSWER_LATER", fixHref: href, fixLabel: "Answer purchase tax" };
