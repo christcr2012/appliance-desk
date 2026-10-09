@@ -4,6 +4,7 @@ import { existsSync, mkdtempSync, writeFileSync, readFileSync, rmSync } from 'no
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { run, verifyBrowserReport } from './preflight.mjs';
+import { BUILD_PATHSPEC, buildIsCurrent, codeFingerprint, markBuild } from './check-cache.mjs';
 
 const scratch = mkdtempSync(join(tmpdir(), 'appliance-browser-'));
 try {
@@ -29,9 +30,17 @@ try {
     const mock = join(scratch, 'font-mock.cjs');
     writeFileSync(mock, `module.exports = new Proxy({}, { get: () => ${JSON.stringify(css)} });\n`);
     process.env.NEXT_FONT_GOOGLE_MOCKED_RESPONSES = mock;
-    run(['npx', '--no-install', 'next', 'build', '--webpack']);
-    console.log('Local webpack/stand-in-font proof only; CI real-font production build remains required.');
-  } else run(['npm', 'run', 'build']);
+  }
+  // Reuse the production build when nothing that affects it changed (tests, specs and docs don't); --fresh rebuilds.
+  const buildKey = `${codeFingerprint(BUILD_PATHSPEC)}:${process.env.LOCAL_TEST_FONT ? 'stand-in-font' : 'real-font'}`;
+  if (!process.env.APPLIANCE_DESK_FRESH && buildIsCurrent(buildKey)) {
+    console.log('✓ reusing the production build: no source change since it was built');
+  } else {
+    if (process.env.LOCAL_TEST_FONT) run(['npx', '--no-install', 'next', 'build', '--webpack']);
+    else run(['npm', 'run', 'build']);
+    markBuild(buildKey);
+  }
+  if (process.env.LOCAL_TEST_FONT) console.log('Local webpack/stand-in-font proof only; CI real-font production build remains required.');
   const patterns = files.map(f => `/${f.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`);
   rmSync('playwright-results.json', { force: true });
   run(['npx', '--no-install', 'playwright', 'test', ...patterns]);

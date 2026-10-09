@@ -57,7 +57,8 @@ History and prior acceptance: [retired working snapshot](archive/reset-2026-10-0
 
 ## Environment (update when it changes)
 
-- **GitHub push key:** Installed 2026-10-09 through sandbox and running-session network header injection; expires 2027-10-09 (one year, owner supplied). Normal sandbox `git push --dry-run` to `ai/sandbox-push-check` passed with repository pre-push checks. Publish work with normal sandbox `git push`, then open the PR; never push directly to main.
+- **Sandbox GitHub push:** Installed 2026-10-09 by the owner through network header injection, never stored in the repository or sandbox environment; expires 2027-10-09 (one year). Dry-run verified; regular git push now works using HTTP/1.1. Use the fallback runbook if needed.
+
 
 - **Local database testing:** Vercel Sandbox, project `appliance-desk`. Persistent sandbox in use:
   **`appliance-desk-s1c-oct8`** (most recently active, 2026-10-09; main checkout `/vercel/appliance-desk`, per-card
