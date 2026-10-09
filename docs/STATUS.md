@@ -1,6 +1,6 @@
 # STATUS — current work, blockers and next action
 
-Updated October 9, 2026 (W-16A #360 and W-16B #362 rental packages; W-0C #359; COM-L5B in Sol lane). Batch T and Batch S are engineering-complete. No live payments, customer messages, fee charging or tax filing are activated.
+Updated October 9, 2026 (W-16A #360, W-16B #362, W-21A #365 sets and repair credits; W-0C #359; COM-L5B in Sol lane). Batch T and Batch S are engineering-complete. No live payments, customer messages, fee charging or tax filing are activated.
 
 ## Next
 
@@ -25,6 +25,12 @@ customer messaging remain off. Tested on isolated disposable PostgreSQL, no migr
 Card: `docs/pr-cards/COM-L5B.md`. **Next: COM-L6A**, validated templates, segment preview,
 and migration of existing reminders. Public lead disclosure text/form choices remain
 explicit follow-up work, not implied by COM-L5B.
+
+**2026-10-09 — W-21A merged (#365), Claude's lane:** a machine taken for repair with no replacement (a swap with no
+new machine delivered, or a pickup of some machines while others stay) now starts an out-of-service period; when a
+machine is back the customer is credited exactly the days without it on the next bill (any line, set or single).
+To do "Return or replace…" (urgent after 3 days, owner setting), a screen with the three ways forward, and a portal
+note. **Next on this lane: W-21B** (a machine of a set that is done: single price for the rest + partial-period credit).
 
 **2026-10-09 — W-16A (#360) and W-16B (#362) merged, built by Claude beside Sol's chain (Chris: "you take W-16A/B and
 W-21"):** a washer and dryer set is a **rental package** of separate machines. Sets are managed in Settings → Products

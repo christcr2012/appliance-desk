@@ -97,7 +97,7 @@ const EMPTY: PickupBillingOutcome = {
   notes: [],
 };
 
-async function loadSettings(tx: Prisma.TransactionClient): Promise<PickupBillingSettings> {
+export async function loadSettings(tx: Prisma.TransactionClient): Promise<PickupBillingSettings> {
   const row = await tx.businessSettings.findUnique({
     where: { id: "singleton" },
     select: {
@@ -105,6 +105,7 @@ async function loadSettings(tx: Prisma.TransactionClient): Promise<PickupBilling
       lateReturnFixedDailyCents: true,
       lateDeliveryProrationBasis: true,
       pickupDayNotBilled: true,
+      outOfServiceEscalationDays: true,
     },
   });
   return pickupBillingSettingsFrom(row ?? {});
@@ -801,7 +802,7 @@ export async function pushLateDeliveryCreditToStripe(creditId: string): Promise<
         amount: -latest.amountCents,
         currency: "usd",
         description: latest.reason,
-        metadata: { creditId, sourceType: LATE_DELIVERY_CREDIT_SOURCE, sourceId: latest.sourceId ?? "" },
+        metadata: { creditId, sourceType: latest.sourceType ?? LATE_DELIVERY_CREDIT_SOURCE, sourceId: latest.sourceId ?? "" },
       },
       { idempotencyKey: claim.idempotencyKey },
     ),

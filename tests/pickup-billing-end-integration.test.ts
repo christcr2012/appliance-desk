@@ -134,6 +134,7 @@ describe.skipIf(!enabled)("pickup billing end: late returns, waiver and closing 
     await prisma.auditLog.deleteMany({
       where: { OR: [{ userId: { in: [ownerId, staffId] } }, { entityId: { in: [...invoices, ...agreementIds, ...jobIds, ...applianceIds] } }] },
     });
+    await prisma.outOfServicePeriod.deleteMany({ where: { applianceId: { in: applianceIds } } });
     await prisma.applianceAssignment.deleteMany({ where: { applianceId: { in: applianceIds } } });
     await prisma.jobAppliance.deleteMany({ where: { jobId: { in: jobIds } } });
     await prisma.job.deleteMany({ where: { id: { in: jobIds } } });

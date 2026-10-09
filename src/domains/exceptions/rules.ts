@@ -51,7 +51,8 @@ export type ExceptionCategory =
   | "RETURNED_EARLY"
   | "SUBSCRIPTION_UPDATE_PENDING"
   | "CUSTODY_UNKNOWN"
-  | "OLD_SET_APPLIANCE";
+  | "OLD_SET_APPLIANCE"
+  | "OUT_OF_SERVICE";
 
 export type ExceptionSeverity = "high" | "medium";
 
@@ -828,5 +829,29 @@ export function oldSetApplianceException(item: {
       "A set is now two separate machines, each with its own model and serial number. The guided screen keeps this record's history on the first machine and adds the other; any rental it is on stays exactly as signed.",
     href: `/desk/inventory/${item.id}/split`,
     since: item.createdAt,
+  };
+}
+
+/**
+ * A machine taken for repair with no replacement yet (W-21A, D-WB8 case 3). The customer keeps paying the normal price
+ * and is credited the days without it once a machine is back, so the sooner it is replaced the smaller the credit.
+ * Urgent after the owner's escalation days (setting, starting value 3).
+ */
+export function outOfServiceException(item: {
+  applianceId: string;
+  assetNumber: string;
+  typeName: string;
+  customerName: string;
+  startedOn: Date;
+  daysOut: number;
+  escalationDays: number;
+}): ExceptionItem {
+  return {
+    category: "OUT_OF_SERVICE",
+    severity: item.daysOut >= item.escalationDays ? "high" : "medium",
+    title: `Return or replace ${item.customerName}'s ${item.typeName.toLowerCase()} (out for repair ${item.daysOut} ${item.daysOut === 1 ? "day" : "days"})`,
+    detail: `${item.assetNumber} was taken for repair with no replacement. The customer is credited each day without it once a machine is back: schedule a replacement swap, record the same machine delivered back, or close it.`,
+    href: `/desk/inventory/${item.applianceId}/out-of-service`,
+    since: item.startedOn,
   };
 }

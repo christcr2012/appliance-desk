@@ -26,6 +26,7 @@ export type PickupBillingFormValues = {
   lateReturnFixedDailyDollars: string;
   lateDeliveryProrationBasis: string;
   pickupDayNotBilled: boolean;
+  outOfServiceEscalationDays: string;
 };
 
 function text(raw: unknown): string {
@@ -70,9 +71,19 @@ export function pickupBillingUpdate(
         "Fixed daily late rate: enter an amount above $0, or choose “the item's monthly price ÷ 30” instead.",
     };
   }
+  // Optional so an older form that does not send it keeps the saved value.
+  let escalation: number | undefined;
+  if (raw.outOfServiceEscalationDays !== undefined) {
+    const days = Number(text(raw.outOfServiceEscalationDays));
+    if (!Number.isInteger(days) || days < 1 || days > 60) {
+      return { success: false, message: "Days out for repair before it is urgent: enter a whole number from 1 to 60." };
+    }
+    escalation = days;
+  }
   return {
     success: true,
     update: {
+      ...(escalation !== undefined ? { outOfServiceEscalationDays: escalation } : {}),
       lateReturnRateMode: raw.lateReturnRateMode,
       lateReturnFixedDailyCents: fixedCents,
       lateDeliveryProrationBasis: raw.lateDeliveryProrationBasis,
@@ -89,6 +100,7 @@ export function pickupBillingDefaults(settings: PickupBillingSettings): PickupBi
       settings.lateReturnFixedDailyCents === 0 ? "" : (settings.lateReturnFixedDailyCents / 100).toFixed(2),
     lateDeliveryProrationBasis: settings.lateDeliveryProrationBasis,
     pickupDayNotBilled: settings.pickupDayNotBilled,
+    outOfServiceEscalationDays: String(settings.outOfServiceEscalationDays),
   };
 }
 

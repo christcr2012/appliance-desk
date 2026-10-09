@@ -231,7 +231,8 @@ export async function mirrorStripeInvoiceLines(
     const unshown = await db.customerCredit.findMany({
       where: {
         customerId,
-        sourceType: LATE_DELIVERY_CREDIT_SOURCE,
+        // Credits a visit created and sent to Stripe: late delivery, and machines out for repair (W-21A).
+        sourceType: { in: [LATE_DELIVERY_CREDIT_SOURCE, "OUT_OF_SERVICE"] },
         appliedViaStripeAt: { not: null },
         shownOnInvoiceId: null,
       },
