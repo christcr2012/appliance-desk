@@ -272,6 +272,7 @@ async function restore(file: string, target: string): Promise<void> {
     }
 
     const receiptLinks: Array<{ id: string; receiptPhotoId: string }> = [];
+    const currentAttemptLinks: Array<{ id: string; attemptId: string }> = [];
     for (const table of order) {
       const rows = payload.tables[table] ?? [];
       if (rows.length === 0) continue;
@@ -286,6 +287,14 @@ async function restore(file: string, target: string): Promise<void> {
           }
         }
       }
+      if (table === "messageDelivery") {
+        for (const row of data) {
+          if (typeof row.currentAttemptId === "string") {
+            currentAttemptLinks.push({ id: String(row.id), attemptId: row.currentAttemptId });
+            row.currentAttemptId = null;
+          }
+        }
+      }
       const result = await delegate.createMany({ data });
       if (result.count !== rows.length) {
         throw new Error(`Restore count mismatch for "${table}": expected ${rows.length}, wrote ${result.count}.`);
@@ -297,6 +306,15 @@ async function restore(file: string, target: string): Promise<void> {
       await prisma.appliance.update({
         where: { id: link.id },
         data: { acquisitionReceiptPhotoId: link.receiptPhotoId },
+      });
+    }
+
+    // COM-L2: restore MessageDelivery -> MessageAttempt only after both sides
+    // exist. MessageAttempt -> MessageDelivery remains a strict immediate FK.
+    for (const link of currentAttemptLinks) {
+      await prisma.messageDelivery.update({
+        where: { id: link.id },
+        data: { currentAttemptId: link.attemptId },
       });
     }
 

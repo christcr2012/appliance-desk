@@ -49,7 +49,9 @@ export function relationDependencies(schema: string): RelationDependency[] {
         names.has(field.type) &&
         field.attributes.includes("@relation") &&
         /fields\s*:/.test(field.attributes)
+        // Both edges are nullable and restored in a second pass after their targets exist.
         && !field.attributes.includes('@relation("AcquisitionReceipt"')
+        && !field.attributes.includes('@relation("CurrentMessageAttempt"')
       ) {
         dependencies.push({ model: block.name, dependsOn: field.type });
       }

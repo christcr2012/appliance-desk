@@ -34,6 +34,17 @@ describe.skipIf(!enabled)("backup restore drill (real Postgres)", () => {
   const tag = randomUUID();
   const rdfFixture = { user: "restore-rdf-user-" + tag, customer: "restore-rdf-customer-" + tag,
     invoice: "restore-rdf-invoice-" + tag, rate: "restore-rdf-rate-" + tag, record: "restore-rdf-record-" + tag };
+  const telecom = {
+    account: "restore-com-account-" + tag,
+    number: "restore-com-number-" + tag,
+    point: "restore-com-point-" + tag,
+    binding: "restore-com-binding-" + tag,
+    delivery: "restore-com-delivery-" + tag,
+    attempt: "restore-com-attempt-" + tag,
+    consent: "restore-com-consent-" + tag,
+  };
+  const numberAddress = "+13035550189";
+
 
 
   beforeAll(async () => {
@@ -49,9 +60,51 @@ describe.skipIf(!enabled)("backup restore drill (real Postgres)", () => {
       deliveredOn: businessDateFromKey("2026-07-01")!, saleOn: businessDateFromKey("2026-06-30")!,
       status: "READY", amountCents: 31, collectedFromCustomer: false } });
 
+    // COM-L2 recovery proof: nonempty new lineage survives a full backup/restore.
+    await prisma.telecomAccount.create({ data: {
+      id: telecom.account, provider: "twilio", environment: "TEST",
+      externalAccountId: telecom.account, label: "Restore fixture, never active",
+    } });
+    await prisma.businessPhoneNumber.create({ data: {
+      id: telecom.number, accountId: telecom.account, address: numberAddress,
+      providerNumberId: telecom.number, isPrimary: true,
+    } });
+    await prisma.contactPoint.create({ data: {
+      id: telecom.point, environment: "TEST", channel: "SMS", address: numberAddress,
+    } });
+    await prisma.contactBinding.create({ data: {
+      id: telecom.binding, contactPointId: telecom.point, customerId: rdfFixture.customer,
+      source: "STAFF",
+    } });
+    await prisma.consentRecord.create({ data: {
+      id: telecom.consent, contactPointId: telecom.point, customerId: rdfFixture.customer,
+      kind: "COM_TEST_EVIDENCE", purpose: "SMS_TRANSACTIONAL", action: "REVOKE",
+      source: "STAFF_EVIDENCE", occurredAt: businessDateFromKey("2026-09-01")!,
+    } });
+    await prisma.messageDelivery.create({ data: {
+      id: telecom.delivery, idempotencyKey: telecom.delivery,
+      channel: "SMS", purpose: "TRANSACTIONAL", recipientType: "Customer",
+      recipientId: rdfFixture.customer, recipientAddress: numberAddress, templateKey: "restore-only",
+    } });
+    await prisma.messageAttempt.create({ data: {
+      id: telecom.attempt, deliveryId: telecom.delivery, accountId: telecom.account,
+      attemptNumber: 1, operationKey: telecom.attempt, requestHash: "restore-test-hash",
+      state: "NOT_SENT",
+    } });
+    await prisma.messageDelivery.update({ where: { id: telecom.delivery },
+      data: { currentAttemptId: telecom.attempt } });
   });
 
   afterAll(async () => {
+    await prisma.messageDelivery.updateMany({ where: { id: telecom.delivery },
+      data: { currentAttemptId: null } });
+    await prisma.messageAttempt.deleteMany({ where: { id: telecom.attempt } });
+    await prisma.messageDelivery.deleteMany({ where: { id: telecom.delivery } });
+    await prisma.consentRecord.deleteMany({ where: { id: telecom.consent } });
+    await prisma.contactBinding.deleteMany({ where: { id: telecom.binding } });
+    await prisma.contactPoint.deleteMany({ where: { id: telecom.point } });
+    await prisma.businessPhoneNumber.deleteMany({ where: { id: telecom.number } });
+    await prisma.telecomAccount.deleteMany({ where: { id: telecom.account } });
     await prisma.retailDeliveryFeeRecord.deleteMany({ where: { id: rdfFixture.record } });
     await prisma.retailDeliveryFeeRate.deleteMany({ where: { id: rdfFixture.rate } });
     await prisma.invoice.deleteMany({ where: { id: rdfFixture.invoice } });
@@ -88,6 +141,18 @@ describe.skipIf(!enabled)("backup restore drill (real Postgres)", () => {
       saleOn: businessDateFromKey("2026-06-30"), deliveredOn: businessDateFromKey("2026-07-01"),
       collectedFromCustomer: false,
     });
+    expect(await target.telecomAccount.findUniqueOrThrow({ where: { id: telecom.account } }))
+      .toMatchObject({ provider: "twilio", environment: "TEST", status: "UNCONFIGURED" });
+    expect(await target.businessPhoneNumber.findUniqueOrThrow({ where: { id: telecom.number } }))
+      .toMatchObject({ accountId: telecom.account, address: numberAddress, isPrimary: true });
+    expect(await target.contactBinding.findUniqueOrThrow({ where: { id: telecom.binding } }))
+      .toMatchObject({ contactPointId: telecom.point, customerId: rdfFixture.customer, source: "STAFF" });
+    expect(await target.messageAttempt.findUniqueOrThrow({ where: { id: telecom.attempt } }))
+      .toMatchObject({ deliveryId: telecom.delivery, accountId: telecom.account, state: "NOT_SENT", attemptNumber: 1 });
+    expect(await target.messageDelivery.findUniqueOrThrow({ where: { id: telecom.delivery } }))
+      .toMatchObject({ currentAttemptId: telecom.attempt, channel: "SMS" });
+    expect(await target.consentRecord.findUniqueOrThrow({ where: { id: telecom.consent } }))
+      .toMatchObject({ contactPointId: telecom.point, action: "REVOKE", purpose: "SMS_TRANSACTIONAL" });
     expect(await target.account.count()).toBe(0);
     expect(await target.session.count()).toBe(0);
     expect(await target.verification.count()).toBe(0);
