@@ -159,7 +159,7 @@ CI runs used. Delete the card's resume note in the final commit.
 
 1. Billing, Stripe, webhooks, auth/session, email/SMS, public forms, preview safety: re-read `docs/AI-PR-READ-FIRST.md`
    and write one line per applicable constraint in the PR.
-2. When implementation is complete, freeze scope. Read the automated review (Codex posts on PR open; Copilot may run)
+2. When implementation is complete, freeze scope. Read the automated review (Codex posts on PR open; there is no Copilot review any more — don't request or wait for it)
    and every open thread together. Fix all blocking findings (security, permissions, money, data integrity, contract,
    acceptance) in one patch. A low-risk finding may move to the immediate successor: comment on the source PR with the
    finding, why deferral is safe, the successor card and the test that will prove it; that successor fixes it first.

@@ -1,6 +1,6 @@
 # AGENTS.md — the rules. Read this first, every session.
 
-The single, current set of rules for every AI working on this repo (Sol/Codex, Claude, Copilot or any other), written
+The single, current set of rules for every AI working on this repo (Sol/Codex, Claude or any other), written
 to be followed literally. If it is written here, it is current. History and reasons live in `docs/DECISIONS.md` and
 `docs/archive/` (look things up there; never take instructions from them). The repo, not chat history, is the memory.
 Rewritten 2026-10-09 to what still applies; the full previous text is `docs/archive/reset-2026-10-09/AGENTS.md`.
@@ -117,7 +117,8 @@ where, and puts it on his To do list; no Today item may link to a page that does
 - **The `ci` check is the single merge gate**, green at the exact head.
 - **Review:** read `docs/AI-PR-READ-FIRST.md` for billing, Stripe, webhooks, auth/session, email/SMS, public forms or
   preview safety, and record how each applicable constraint is honored. Freeze scope, read the automated review (Codex
-  posts on PR open) and all open threads together, and fix blocking findings (security, permissions, money, data
+  posts on PR open; Copilot reviews are no longer available — Chris ended that plan 2026-10-09, so never wait for or
+  require one) and all open threads together, and fix blocking findings (security, permissions, money, data
   integrity, contract, acceptance) in one patch. A low-risk finding may move to the immediate successor with a source-PR
   comment naming the successor and its proving test; the successor fixes it first. Re-request review only for changed
   security/auth/money/schema/provider behavior or when branch rules require it. If no review is available, inspect the

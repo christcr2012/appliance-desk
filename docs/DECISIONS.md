@@ -671,3 +671,9 @@ rewrites rely on git history instead of copies. (3) PLAYBOOK 4b gives exact Verc
 sandbox named in STATUS (resume, never one per card), worktree per card under `/vercel/`, run via `run_session_command`,
 stop when done. STATUS gains an Environment section.
 
+## 2026-10-09 — No more Copilot reviews
+
+Chris cancelled the GitHub plan that provided Copilot code review. Copilot is removed from the review steps (AGENTS,
+PLAYBOOK): never request, wait for or require it. Codex remains the automated reviewer; when Codex is out of quota the
+existing waiver applies (inspect the diff yourself, write "automated review unavailable — waived").
+
