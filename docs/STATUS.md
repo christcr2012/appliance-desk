@@ -4,7 +4,7 @@ Updated October 9, 2026 (COM-L2 PR #346 merged as 12bcd837; latest deployment-co
 
 ## Next
 
-**2026-10-09 — COM-L3 merged (#352). COM-L4A:** guarded consent eligibility, owner-only versioned policy, encrypted immutable SMS-intent preparation and idempotent attempts implemented locally; exact-head PR review/CI remains. **Next after COM-L4A: COM-L4B** dispatch claim and provider readiness/recheck. No live sending, phone activation, billing or provider spending.
+**2026-10-09 — COM-L4A merged (#353), following COM-L3 #352:** strict owner-controlled default-off SMS policy, evidence-based consent, canonical STOP suppression, private encrypted and idempotently prepared message intents. **Next: COM-L4B**, claimed delivery and last-minute sender/consent/readiness verification, then L5 inbound consent/reconciliation. No live sending, phone activation, billing or provider spending.
 
 **2026-10-09 — Batch W Amendment A (tax filing on autopilot) added:** W-9 filing autopilot, W-10 use-tax "File now" + filled DR 0252, W-11 live GIS rates (waits on IN-61, may run early once done), W-12 XML return file (waits on IN-62, IN-44). Nothing ever submits or pays on Chris's behalf (D-WA2, IN-63). **D-WA6:** W-2 now also gives every seller-tax answer one dated next step (`nextPurchaseTaxStep`); W-13 receipt reading waits on IN-64; out-of-state seller tax waits on the CPA (IN-65).
 

@@ -1,6 +1,6 @@
 # COM-L4A — consent eligibility and immutable communication intent
 
-Status: IMPLEMENTING. Baseline main `958031f`, predecessor COM-L3 #352 merged.
+Status: MERGED (#353), once exact-head CI/review and GitHub merge gates pass. Baseline main `958031f`, predecessor COM-L3 #352 merged.
 Design: BATCH-COM §2.4, §3 and §4.3; roadmap COM-L4A.
 Risk: authorization/consent and message preparation, without provider activation. No migration.
 
