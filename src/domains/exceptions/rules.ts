@@ -23,6 +23,7 @@ import {
 // ---------------------------------------------------------------------------
 
 export type ExceptionCategory =
+  | "SYSTEM_ISSUE"
   | "BILLING_BLOCKED"
   | "SALES_TAX"
   | "TAX_RETURN_DUE"

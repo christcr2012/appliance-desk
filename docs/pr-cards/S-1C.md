@@ -54,3 +54,27 @@ Include BATCH-S’s 2026-10-08 actionable recovery amendment: allowlisted role-s
 route + manual instruction per kind, source as-of and explicit UNKNOWN/stale label.
 No action resends an uncertain provider operation. Tests cover role shaping,
 missing source, stale timestamp, partial-page scan and unsafe retry absence.
+
+## October 8–9 implementation drift and handoff
+- The actual merged predecessor is S-1B #331 (`15b7eaf`), not the
+  original `b2a06c2` baseline. No schema changes are needed in S-1C.
+  Existing issue/version, typed summaries and recovery source links remain.
+- The health screen stays at `/desk/automations`, preserving the task
+  pause/resume controls and anchors. The navigation label is now **System health**.
+  ADMIN reads are allowed; OWNER-only notes and resolutions recheck active
+  ownership inside their PostgreSQL transaction and lock the issue row.
+  Every accepted change increments the issue version; stale submissions
+  fail without inserting a note or mutating status.
+- Human notes and reasons are private, capped, redacted and checked
+  against stored person names. They must never be exported through S-2's
+  external agent API. Recovery links are server allowlisted, with OWNER
+  requirements masked to an ADMIN and UNKNOWN provider outcomes explicitly
+  warning against blind retries.
+- Today shows only HIGH OPEN or ACKNOWLEDGED issues to OWNER/ADMIN, with
+  structured PII-free summary; STAFF sees no system issues. Server queries
+  cap result size and expose pagination. The browser spec belongs to
+  `browser-a` in `e2e/shards.json`.
+- Real throwaway PostgreSQL integration cases verify ADMIN read-only,
+  owner CAS, planted-name rejection with no stored row, and recurring
+  source reopening. Browser proof covers owner actions, staff direct
+  URL isolation, and the existing 360/1440 light/dark axe helper.
