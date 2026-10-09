@@ -587,18 +587,29 @@ export function pastDueInvoiceException(invoice: {
   id: string;
   customerId: string;
   customerName: string;
-  dueDate: Date;
+  status?: string;
+  dueDate: Date | null;
+  attentionAt?: Date;
   amountDueCents: number;
   amountPaidCents: number;
 }): ExceptionItem {
-  const owedCents = invoice.amountDueCents - invoice.amountPaidCents;
+  const owedCents = Math.max(0, invoice.amountDueCents - invoice.amountPaidCents);
+  const status = invoice.status ?? "OPEN";
+  const reason = status === "DELINQUENT"
+    ? "Payment didn't go through"
+    : status === "PARTIALLY_PAID"
+      ? "Partially paid"
+      : "Past due";
+  const dateDetail = invoice.dueDate
+    ? `, due ${invoice.dueDate.toLocaleDateString("en-US")}`
+    : "";
   return {
     category: "PAST_DUE_INVOICE",
     severity: "high",
-    title: `${invoice.customerName} has a past-due invoice`,
-    detail: `$${(owedCents / 100).toFixed(2)} owed, due ${invoice.dueDate.toLocaleDateString("en-US")}.`,
-    href: `/desk/customers/${invoice.customerId}`,
-    since: invoice.dueDate,
+    title: `${invoice.customerName}: ${reason.toLowerCase()}`,
+    detail: `$${(owedCents / 100).toFixed(2)} still owed${dateDetail}.`,
+    href: `/desk/billing/customer/${invoice.customerId}/invoice/${invoice.id}`,
+    since: invoice.dueDate ?? invoice.attentionAt ?? new Date(),
   };
 }
 

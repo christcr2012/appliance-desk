@@ -817,6 +817,19 @@ does not count as delivery and starts no recurring billing.
   in the meantime either way, this only affects ACH deposit
   confirmation until he updates it.
 
+### Failed automatic charges and late-fee clock (W-0C, 2026-10-09)
+
+A failed automatic Stripe charge makes an existing unpaid invoice **DELINQUENT** and puts it
+on the owner's **To do**, even when Stripe supplies no due date. A partially paid invoice
+also requires attention; an OPEN invoice requires attention only after its due date.
+Each item opens its invoice and shows the remaining balance. A PAID or VOID invoice never
+reopens from an out-of-order failed event.
+
+**No late-fee rule change:** the existing due-date requirement still governs late fees.
+Automatic-charge invoices have no new late-fee clock from their first failed attempt.
+Beginning a clock at the first failed attempt is a future **owner decision**, not
+authorized by W-0C.
+
 ### Consolidated statements, manual payments, and automated late fees (2026-09-28, Task #72)
 
 Built in response to "formal B2B invoicing for property managers" —

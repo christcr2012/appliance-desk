@@ -424,3 +424,15 @@ W-16A on; "Washer + Dryer Set" is a package.
 - `resolveInboundContact` uses only active verified bindings. Unknown => UNRESOLVED, shared => AMBIGUOUS, reassigned or previously ambiguous threads require explicit review instead of automatic takeover of prior history. Phone match never grants portal authentication or links jobs/property/agreements/invoices.
 - New optional `communicationsPolicy.inboundSmsEnabled` is default-off and does not alter separate SMS owner activation. COM-L5B owns STOP/START/HELP consent projection and bounded inbound exchange reply scope.
 - Preflight verified 34 affected and 14 focused unit/DB tests. This is stacked atop unmerged #354 until its missing final-head CI is satisfied.
+
+### 2026-10-09 — W-0C: failed automatic charges enter To do (no migration)
+
+Existing `invoice.payment_failed` webhooks now mark the mirrored invoice DELINQUENT
+unless PAID/VOID and record a failed attempt within the idempotent event transaction.
+To do's invoice attention filter includes DELINQUENT with no due date, PARTIALLY_PAID,
+and overdue OPEN; its invoice-link destination is
+`/desk/billing/customer/[id]/invoice/[invoiceId]`.
+`pastDueInvoiceException` accepts nullable `dueDate` and optional `status` /
+`attentionAt`; sorting uses latest failed attempt when there is no due date.
+Later W workflow/screen work inherits these rules. No schema, late-fee clock, provider
+activation or customer-messaging changes.
