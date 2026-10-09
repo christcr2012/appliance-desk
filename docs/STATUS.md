@@ -64,3 +64,7 @@ Local database testing uses Vercel Sandbox PostgreSQL. The shared launcher was
 verified in the existing sandbox with six tax-overview integration tests passing
 and zero skips; its disposable database was cleaned up. Missing PostgreSQL in a
 scratch checkout is not evidence that the project sandbox is unavailable.
+The final CI run exposed a purchasing browser-test race: its supplier-save URL
+assertion also matched the `/new` form. Require the saved detail URL and named
+supplier heading before navigating away; preserve all persistence/accessibility
+assertions and normal timeouts.

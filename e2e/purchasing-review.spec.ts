@@ -11,9 +11,11 @@ test.beforeEach(() => {
 test("owner can name, keyboard edit and persist purchase-order lines on a phone", async ({ page }, info) => {
   await page.setViewportSize({ width: 360, height: 800 });
   await page.goto("/desk/suppliers/new");
-  await page.getByLabel("Supplier name").fill(`CI review supplier ${Date.now()}`);
+  const supplierName = `CI review supplier ${Date.now()}`;
+  await page.getByLabel("Supplier name").fill(supplierName);
   await page.getByRole("button", { name: "Add supplier", exact: true }).click();
-  await expect(page).toHaveURL(/\/desk\/suppliers\/[^/]+$/);
+  await expect(page).toHaveURL(/\/desk\/suppliers\/(?!new$)[^/]+$/);
+  await expect(page.getByRole("heading", { name: supplierName, exact: true })).toBeVisible();
   await page.goto("/desk/purchase-orders/new");
   await page.getByLabel("Description", { exact: true }).fill("Door seal review fixture");
   await page.getByLabel("Quantity", { exact: true }).fill("2");
