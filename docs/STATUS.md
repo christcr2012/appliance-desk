@@ -4,7 +4,7 @@ Updated October 8, 2026. Acquisition work T-6D1…3 (#313–#315) is merged; #31
 
 ## Next
 
-T-6C4 (#321), T-7A (#322) and T-7B (#323) have merged; **T-7C** guided filing is in PR review; **T-7D** tax overview/acceptance follows. Keep owner/legal/CPA and live payment gates. Refresh each card against its actual merged prerequisite. [MASTER-ROADMAP](MASTER-ROADMAP.md) remains the single handoff; [PLAN](PLAN.md) owns acceptance. No extra handoff document is needed.
+T-6C4 (#321), T-7A (#322) and T-7B (#323) have merged; **T-7C** guided filing is in PR #327 review; **T-7D** overview and acceptance closeout are being implemented. Keep owner/legal/CPA and live payment gates. Refresh each card against its actual merged prerequisite. [MASTER-ROADMAP](MASTER-ROADMAP.md) remains the single handoff; [PLAN](PLAN.md) owns acceptance. No extra handoff document is needed.
 
 ## Built
 

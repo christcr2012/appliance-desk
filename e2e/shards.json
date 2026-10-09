@@ -17,6 +17,7 @@
       "two-factor.spec.ts"
     ],
     "browser-c": [
+      "sales-tax.spec.ts",
       "crm-workspace.spec.ts",
       "appliance-price-save-feedback.spec.ts",
       "purchasing-review.spec.ts",

@@ -483,3 +483,11 @@ The additive `20261010120000_batch_t_filing_workspace` migration retains existin
 ### Invoice issue-date evidence for Colorado tax filings (T-6b1)
 
 `Invoice.issuedAt` stores an issue date independently of record creation. Stripe invoices record the provider's actual `status_transitions.finalized_at`, never webhook-receipt time, and missing provider evidence remains null. The additive `20261010130000_batch_t_invoice_issued_at` migration backfills non-draft/non-void local invoices from their creation time only; historical Stripe invoice dates must be verified and populated from provider records before accrual returns can be prepared. This is a filing-evidence integrity rule, not a change to customer charges or tax calculation.
+
+### Batch T-7D database note
+
+The Sales tax Overview adds **no tables or migrations**. It reads existing
+TaxFilingAccount, TaxFilingPeriod, TaxFilingAmendment, TaxabilityRule,
+OfficialSourceWatch, BusinessSettings and acquisition status records under
+active team role checks. Setup indicator values do not modify ledger,
+invoice, filing, payment or government authority evidence.

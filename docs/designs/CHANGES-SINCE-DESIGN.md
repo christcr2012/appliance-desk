@@ -1,3 +1,25 @@
+### T-7D — Sales tax overview and final engineering acceptance
+
+The approved tax workspace finishes as one private Overview backed by a
+bounded role-checked tax read projection. The six tabs lead to implemented
+owner/admin tax work, while Today routes directly to real resolution pages;
+neither a setup indicator nor a reminder is a billing/payments switch.
+Local PostgreSQL tests cover non-activation, route resolution and stable
+priority; browser-c includes phone/dark/axe and Today routing. No schema or
+provider activation. Outstanding owner/CPA/GIS production questions are
+explicitly tracked in OWNER-INPUTS and GO-LIVE-CHECKLIST rather than
+represented as completed tests.
+
+### T-7D — tax overview and action routing
+
+The private OWNER/ADMIN tax overview now lists recorded global setup and
+per-address verification separately from billing authority, ordered overdue,
+amendment, due, blocked, setup and informational attention, nearest open return,
+and current deadlines. Today's filing and license attention links go directly
+to the shipped return and setup routes rather than looping to Today. UNKNOWN
+appliance acquisition tax stays a visible review condition, not a disguised
+paid use-tax answer. No finance posting, provider or legal activation occurs.
+
 ### T-7C PR #327 code review closeout
 
 T-7C now treats credit/zero-tax amendments as handled-outside only (domain + UI), displays named full corrected filing totals and safe copy controls, and requires confirmation of irreversible owner filing/payment actions. Checklist keys are derived from step content rather than positional indices. Optional private filing uploads undergo a real Vercel Blob HEAD existence check outside the database lock before transaction-bound period ownership and Photo evidence claim; invalid or missing evidence prevents immutable finalization. The staff calendar denial test no longer follows a redirect to a 200 login response. Production filing/payment switches remain untouched.

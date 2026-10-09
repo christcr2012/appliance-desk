@@ -205,7 +205,7 @@ export function taxAddressChangedException(address: {
     severity: "high",
     title: `Tax areas changed for ${address.customerName}`,
     detail: `${address.addressLabel} now resolves to different tax jurisdictions. Review and confirm the address before relying on the new tax areas.`,
-    href: `/desk/customers/${address.customerId}?tab=properties`,
+    href: "/desk/sales-tax/areas?status=REVIEW",
     since: address.since,
   };
 }
@@ -220,7 +220,7 @@ export function taxRateReviewReminderException(input: {
     title: `Check Colorado tax-rate changes for ${input.nextEffectiveDateLabel}`,
     detail:
       "Review Colorado's local rate-change list and enter any new rates that affect the areas you serve.",
-    href: "/desk/settings",
+    href: "/desk/sales-tax/taxability",
     since: input.since,
   };
 }
@@ -249,7 +249,7 @@ export function taxSourceChangedException(input: {
     detail:
       input.excerpt?.trim() ||
       "The official page changed. Review the source; Appliance Desk did not interpret the change as a tax rule or rate change.",
-    href: "/desk/today",
+    href: "/desk/sales-tax/areas#sources",
     sourceHref: httpsSourceHref(input.url),
     sourceLabel: "Open official source",
     action: {
@@ -295,7 +295,7 @@ export function officialRateScheduledException(input: {
     )} → ${milliPercentLabel(input.newRateMilliPercent)} effective ${businessDateKey(
       input.effectiveFrom,
     )} · Colorado official lookup`,
-    href: "/desk/today",
+    href: "/desk/sales-tax/areas#rates",
     ...(input.undoAllowed
       ? {
           action: {
@@ -329,7 +329,7 @@ export function officialRateReviewException(input: {
     )}. Review needed because ${input.reasons
       .map(officialRateReasonLabel)
       .join("; ")}.`,
-    href: "/desk/today",
+    href: "/desk/sales-tax/areas#rates",
     action: {
       type: "APPLY_OFFICIAL_RATE",
       id: input.observationId,
@@ -350,7 +350,7 @@ export function taxSourceUnreachableException(input: {
     title: `We couldn't check ${input.label} — the page may have moved`,
     detail:
       "The automatic check has failed at least three times. Verify the official page before relying on this source.",
-    href: "/desk/today",
+    href: "/desk/sales-tax/areas#sources",
     sourceHref: httpsSourceHref(input.url),
     sourceLabel: "Open official source",
     since: input.since,
@@ -709,6 +709,7 @@ export function applianceMaintenanceDueException(appliance: {
 /** Filing attention is computed from OPEN periods, never stored or dismissed. */
 export function taxReturnDueException(input: {
   accountName: string;
+  periodId?: string;
   periodEnd: Date;
   dueOn: Date;
   legalDueOn: Date;
@@ -734,7 +735,7 @@ export function taxReturnDueException(input: {
     detail: `${input.zeroReturn ? "A zero return may still be required. " : ""}` +
       `Filing period ended ${businessDateKey(input.periodEnd)}. Legal deadline: ${businessDateKey(input.legalDueOn)}.` +
       (input.readOnly ? " Only the Owner can change filing details." : " Open the filing workspace to review the return."),
-    href: "/desk/today",
+    href: input.periodId ? `/desk/sales-tax/returns/${input.periodId}` : "/desk/sales-tax/returns",
     since: input.periodEnd,
   };
 }
@@ -752,13 +753,13 @@ export function taxLicenseRenewalException(input: {
     title: `Tax license ${daysLeft < 0 ? "expired" : "renewal"} — ${input.accountName}`,
     detail: `License expiration: ${businessDateKey(input.expiresOn)}.` +
       (input.readOnly ? " Ask an Owner to update the license." : " Check and renew the license."),
-    href: "/desk/today",
+    href: "/desk/sales-tax/setup",
     since: input.expiresOn,
   };
 }
 
 export function taxAmendmentDueException(input: {
-  id: string; accountName: string; detectedAt: Date; additionalTaxCents: number;
+  id: string; periodId?: string; accountName: string; detectedAt: Date; additionalTaxCents: number;
 }): ExceptionItem {
   return {
     category: "TAX_AMENDMENT_DUE",
@@ -768,11 +769,12 @@ export function taxAmendmentDueException(input: {
       ? "A correction shows additional tax owed. Review the amendment before filing."
       : "Review the correction or credit and record how it was handled.",
     since: input.detectedAt,
-    href: "/desk/today",
+    href: input.periodId ? `/desk/sales-tax/returns/${input.periodId}/amend` : "/desk/sales-tax/returns",
   };
 }
 export function taxFilingNotReadyException(input: {
   accountName: string;
+  periodId?: string;
   dueOn: Date;
   periodEnd: Date;
   problems: string[];
@@ -784,7 +786,7 @@ export function taxFilingNotReadyException(input: {
     title: "Tax return needs setup before filing — " + input.accountName,
     detail: "Resolve filing blockers: " + input.problems.slice(0, 3).join("; "),
     since: input.periodEnd,
-    href: "/desk/today",
+    href: input.periodId ? `/desk/sales-tax/returns/${input.periodId}` : "/desk/sales-tax/returns",
   };
 }
 export function sortExceptions(items: ExceptionItem[]): ExceptionItem[] {

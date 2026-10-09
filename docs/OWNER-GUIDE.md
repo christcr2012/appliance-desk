@@ -598,3 +598,15 @@ Owner/admin Customer and Lead records include a **Messages** panel. It shows the
 
 For provider trouble, follow `docs/runbooks/PROVIDER-OUTAGE.md`. In particular, never resend an unknown-outcome message just because the provider dashboard is temporarily unavailable.
 
+### Money → Sales tax — overview (T-7D)
+
+Start on Overview to review missing setup decisions, the next return and
+due dates. Use Returns for the guided worksheet, copy values and recorded
+official confirmation; Areas to review failed/unknown lookup evidence;
+Exemptions for customer certificates; What's taxed for CPA taxability
+decisions; and Setup for filing accounts, license data and policies.
+Administrators may review; only the owner records filing/payment and edits
+tax policy. Appliance Desk does not file government returns or send tax
+payments. Confirm all legal/CPA settings and real production evidence
+separately before activating billing.
+

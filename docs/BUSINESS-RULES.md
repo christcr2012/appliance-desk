@@ -1461,3 +1461,12 @@ Billing/job reminder claims are taken before sending. Definite `FAILED` or `NOT_
 change current prices, discounts, fees, deposit rules, tax elections, signatures or renewal behavior. In particular,
 the consultant's $60 six-month example is a proposed final-price offer, not an instruction to overwrite the current
 term-discount policy. Update the applicable rules here only in the implementation PR that changes their behavior.
+
+### Sales tax workspace guidance (T-7D)
+
+A green setup checklist is not proof that Colorado tax returns have been
+filed, paid, reconciled or approved by a CPA. The Overview prioritizes
+overdue returns, amendment decisions, returns due, blocked work, setup
+gaps and informational attention; every action opens an existing page.
+No use-tax acquisition marked UNKNOWN becomes automatically exempt.
+Business/legal gates and owner inputs remain authoritative.
