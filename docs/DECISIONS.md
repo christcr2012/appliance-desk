@@ -714,3 +714,12 @@ Step 5, SESSION-START): write code only in a checkout that can push; push the br
 the sandbox; a rescue recipe (format-patch out of the sandbox); one failing file at a time, then the full check once;
 docs-only moves on `main` need only a merge (keep both sides of STATUS conflicts); implementation PRs edit only the
 docs checklist B names.
+
+## 2026-10-09 — Sandbox publishing without a key: packed, fingerprinted transfers
+
+Chris: "Solve GitHub publishing and file truncation as one infrastructure problem." Sol works in ChatGPT chat mode
+with the Vercel Sandbox (which cannot push) and a GitHub chat tool (large files get cut off). Decided: move git commits,
+not files — `scripts/sandbox-transfer.mjs pack` makes one git bundle, base64 in 40,000-character parts with sha256
+fingerprints; the model uploads the parts to a `transfer/<id>` branch; `.github/workflows/sandbox-publish.yml` verifies,
+rebuilds, pushes fast-forward to the `ai/*` target with the built-in token, dispatches CI and deletes the transfer
+branch. No GitHub key needed. Chris made it permanent ("I would like this tool to be permanent"); a narrow sandbox push key installed through Sol remains an optional extra. Runbook: `docs/runbooks/SANDBOX-PUBLISH.md`.

@@ -1,0 +1,85 @@
+# Publishes commits made in the Vercel Sandbox to an ai/* branch, without any GitHub key in the sandbox and
+# without large tool responses (Chris, 2026-10-09). The implementing model packs its commits in the sandbox
+# (`node scripts/sandbox-transfer.mjs pack ai/<branch>`), uploads the small parts to a `transfer/<id>` branch
+# with its GitHub tool (parts first, manifest.json last), and this workflow checks every part's fingerprint,
+# rebuilds the commits and pushes them to the target branch. Procedure: docs/runbooks/SANDBOX-PUBLISH.md.
+#
+# Safety: runs only for branches people with write access push; uses no repository secrets, only the
+# built-in token; pushes only to ai/* branches and only fast-forward (no force; main is also protected by
+# the repository ruleset); runs no project code except the small unpack script; never prints environment
+# values. This is the only workflow allowed write access (contents: push the branch; actions: start CI,
+# because pushes made with the built-in token do not start workflows by themselves).
+name: sandbox publish
+
+on:
+  push:
+    branches: ["transfer/**"]
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: sandbox-publish-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: publish sandbox transfer
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          package-manager-cache: false
+
+      - name: Check the uploaded parts and rebuild the commits
+        id: unpack
+        run: |
+          set -euo pipefail
+          node --test scripts/sandbox-transfer.test.mjs
+          node scripts/sandbox-transfer.mjs unpack .transfer "$RUNNER_TEMP/transfer.bundle" | tee "$RUNNER_TEMP/unpack.txt"
+          grep -E '^(ready|target|head|base)=' "$RUNNER_TEMP/unpack.txt" >> "$GITHUB_OUTPUT"
+
+      - name: Push to the target branch (fast-forward only)
+        if: steps.unpack.outputs.ready == 'true'
+        env:
+          TARGET: ${{ steps.unpack.outputs.target }}
+          HEAD_SHA: ${{ steps.unpack.outputs.head }}
+          BASE_SHA: ${{ steps.unpack.outputs.base }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git ls-remote --exit-code origin "refs/heads/$TARGET" >/dev/null; then
+            git fetch --quiet origin "refs/heads/$TARGET:refs/remotes/origin/target"
+            current=$(git rev-parse refs/remotes/origin/target)
+            if [ "$current" != "$BASE_SHA" ]; then
+              echo "::error::$TARGET moved since the sandbox packed (now $current, packed on $BASE_SHA). In the sandbox: git fetch origin $TARGET && git merge FETCH_HEAD, then pack again."
+              exit 1
+            fi
+          fi
+          git bundle verify "$RUNNER_TEMP/transfer.bundle"
+          git fetch --quiet "$RUNNER_TEMP/transfer.bundle" "HEAD:refs/transfer/head"
+          test "$(git rev-parse refs/transfer/head)" = "$HEAD_SHA"
+          git push origin "refs/transfer/head:refs/heads/$TARGET"
+          {
+            echo "### Published $TARGET"
+            echo "Head: \`$HEAD_SHA\`. CI has been started for it; open the PR if there isn't one yet."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Start CI for the published commit
+        if: steps.unpack.outputs.ready == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET: ${{ steps.unpack.outputs.target }}
+        run: gh workflow run ci.yml --ref "$TARGET" -f base=main
+
+      - name: Delete the transfer branch
+        if: steps.unpack.outputs.ready == 'true'
+        run: git push origin --delete "$GITHUB_REF_NAME"
