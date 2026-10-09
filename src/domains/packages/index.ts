@@ -8,7 +8,7 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
 import { slugify } from "@/domains/settings";
-import { validatePackageInput, type PackageInput } from "./pricing";
+import { packageContents, validatePackageInput, type PackageInput } from "./pricing";
 
 export class PackageInputError extends Error {}
 
@@ -164,4 +164,19 @@ export async function setPackageActive(userId: string, packageId: string, isActi
     });
     return updated;
   });
+}
+
+/** Active sets whose machines are all active types — the choices for a rental or quote line (W-16B). */
+export async function listPackagesForLines() {
+  const packages = await prisma.rentalPackage.findMany({
+    where: { isActive: true, components: { some: {}, every: { applianceType: { isActive: true } } } },
+    include: componentInclude,
+    orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+  });
+  return packages.map((p) => ({
+    id: p.id,
+    name: p.name,
+    monthlyPriceCents: p.monthlyPriceCents,
+    contents: packageContents(p.components.map((c) => ({ quantity: c.quantity, name: c.applianceType.name }))),
+  }));
 }

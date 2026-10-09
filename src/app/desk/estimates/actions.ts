@@ -146,6 +146,7 @@ const newLineItemSchema = z.object({
   quantity: z.coerce.number().int().min(1).max(500),
   monthlyPriceDollars: z.coerce.number().min(0).max(100000).optional(),
   oneTimeFeeDollars: z.coerce.number().min(0).max(100000).optional(),
+  packageId: z.string().trim().max(100).optional().or(z.literal("")),
 });
 
 export async function addEstimateLineItemAction(
@@ -170,6 +171,7 @@ export async function addEstimateLineItemAction(
       quantity: data.quantity,
       monthlyPriceCents: data.monthlyPriceDollars ? dollarsToCents(data.monthlyPriceDollars) : 0,
       oneTimeFeeCents: data.oneTimeFeeDollars ? dollarsToCents(data.oneTimeFeeDollars) : 0,
+      packageId: data.packageId || null,
     });
   } catch (error) {
     return {

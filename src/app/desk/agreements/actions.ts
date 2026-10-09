@@ -104,6 +104,7 @@ const newLineSchema = z.object({
   applianceIds: z
     .array(z.string().trim().min(1))
     .min(1, "Choose at least one appliance."),
+  packageId: z.string().trim().max(100).optional().nullable(),
 });
 
 export async function addRentalLineAction(
@@ -134,6 +135,7 @@ export async function addRentalLineAction(
       label: data.label,
       listPriceCents: dollarsToCents(data.listPriceDollars),
       applianceIds: data.applianceIds,
+      packageId: data.packageId || null,
     });
   } catch (error) {
     return {

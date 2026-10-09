@@ -7,6 +7,7 @@ import { estimateStatusLabel } from "@/lib/status-labels";
 import { EstimateLineItemsPanel } from "./line-items-panel";
 import { SendEstimateButton } from "./send-estimate-button";
 import { ConvertEstimatePanel } from "./convert-estimate-panel";
+import { listPackagesForLines } from "@/domains/packages";
 
 export const metadata = { title: "Estimate" };
 
@@ -19,7 +20,7 @@ export default async function EstimateDetailPage({
 }) {
   await requireRole("OWNER", "ADMIN");
   const { id } = await params;
-  const estimate = await getEstimateDetail(id);
+  const [estimate, packages] = await Promise.all([getEstimateDetail(id), listPackagesForLines()]);
 
   if (!estimate) {
     notFound();
@@ -128,6 +129,7 @@ export default async function EstimateDetailPage({
 
       <EstimateLineItemsPanel
         estimateId={estimate.id}
+        packages={packages}
         lineItems={estimate.lineItems.map((l) => ({
           id: l.id,
           description: l.description,

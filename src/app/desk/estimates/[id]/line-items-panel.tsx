@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { formatCents } from "@/domains/pricing/money";
 import { addEstimateLineItemAction, removeEstimateLineItemAction } from "../actions";
+import { PackageLineChooser, type PackageLineOption } from "@/components/desk/package-line-chooser";
 
 type LineItem = {
   id: string;
@@ -18,11 +19,13 @@ export function EstimateLineItemsPanel({
   lineItems,
   serviceAddresses,
   editable,
+  packages = [],
 }: {
   estimateId: string;
   lineItems: LineItem[];
   serviceAddresses: { id: string; label: string }[];
   editable: boolean;
+  packages?: PackageLineOption[];
 }) {
   return (
     <div className="mt-6">
@@ -57,7 +60,7 @@ export function EstimateLineItemsPanel({
 
       {editable && (
         <div className="mt-4">
-          <AddLineItemForm estimateId={estimateId} serviceAddresses={serviceAddresses} />
+          <AddLineItemForm estimateId={estimateId} serviceAddresses={serviceAddresses} packages={packages} />
         </div>
       )}
     </div>
@@ -85,9 +88,11 @@ function RemoveLineButton({ estimateId, lineItemId }: { estimateId: string; line
 function AddLineItemForm({
   estimateId,
   serviceAddresses,
+  packages,
 }: {
   estimateId: string;
   serviceAddresses: { id: string; label: string }[];
+  packages: PackageLineOption[];
 }) {
   const [isPending, startTransition] = useTransition();
   const [description, setDescription] = useState("");
@@ -95,6 +100,7 @@ function AddLineItemForm({
   const [serviceAddressId, setServiceAddressId] = useState("");
   const [monthlyPriceDollars, setMonthlyPriceDollars] = useState("");
   const [oneTimeFeeDollars, setOneTimeFeeDollars] = useState("");
+  const [packageId, setPackageId] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   function handleSubmit(e: React.FormEvent) {
@@ -107,6 +113,7 @@ function AddLineItemForm({
         serviceAddressId,
         monthlyPriceDollars,
         oneTimeFeeDollars,
+        packageId,
       });
       if (result.status === "error") {
         setError(result.message);
@@ -116,6 +123,7 @@ function AddLineItemForm({
       setQuantity("1");
       setMonthlyPriceDollars("");
       setOneTimeFeeDollars("");
+      setPackageId("");
     });
   }
 
@@ -124,6 +132,20 @@ function AddLineItemForm({
       onSubmit={handleSubmit}
       className="space-y-3 rounded-lg border border-dashed border-line-strong p-4"
     >
+      <PackageLineChooser
+        id="li-package"
+        forQuote
+        packages={packages}
+        value={packageId}
+        disabled={isPending}
+        onChoose={(choice) => {
+          setPackageId(choice?.packageId ?? "");
+          if (choice) {
+            setDescription(choice.label);
+            setMonthlyPriceDollars(choice.priceDollars);
+          }
+        }}
+      />
       <div className="grid grid-cols-[1fr_auto] gap-3">
         <div>
           <label htmlFor="li-description" className="block text-xs font-medium text-ink-soft">

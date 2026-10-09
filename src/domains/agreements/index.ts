@@ -27,6 +27,7 @@ import {
   completeProviderOperation,
   runProviderCall,
 } from "@/domains/billing/provider-ops";
+import { packagePartsProblem } from "@/domains/packages/pricing";
 import {
   calculatePrepayDiscountCentsPerMonth,
   isFreeMonthEarned,
@@ -308,6 +309,8 @@ export type NewRentalLineInput = {
   label: string;
   listPriceCents: number;
   applianceIds: string[];
+  /** Set when the line rents a package (W-16B): the chosen machines must be exactly one per part of the set. */
+  packageId?: string | null;
 };
 
 export async function addRentalLine(
@@ -324,6 +327,24 @@ export async function addRentalLine(
     const agreement = await lockRentalAgreementInTx(tx, agreementId);
     if (agreement.status !== "DRAFT") {
       throw new Error("Can only add appliances to a draft agreement.");
+    }
+
+    if (input.packageId) {
+      const pkg = await tx.rentalPackage.findUnique({
+        where: { id: input.packageId },
+        include: { components: { include: { applianceType: { select: { name: true } } } } },
+      });
+      if (!pkg || !pkg.isActive) throw new Error("That set is no longer offered. Choose another set or single machines.");
+      const chosen = await tx.appliance.findMany({
+        where: { id: { in: input.applianceIds } },
+        select: { applianceTypeId: true, applianceType: { select: { name: true } } },
+      });
+      const problem = packagePartsProblem(
+        pkg.name,
+        pkg.components.map((c) => ({ applianceTypeId: c.applianceTypeId, name: c.applianceType.name, quantity: c.quantity })),
+        chosen.map((a) => ({ applianceTypeId: a.applianceTypeId, name: a.applianceType.name })),
+      );
+      if (problem || chosen.length !== input.applianceIds.length) throw new Error(problem ?? "One of those appliances no longer exists.");
     }
 
     const prepayDiscountCentsPerMonth = calculatePrepayDiscountCentsPerMonth(
@@ -343,6 +364,7 @@ export async function addRentalLine(
         listPriceCents: input.listPriceCents,
         prepayDiscountCentsPerMonth,
         monthlyPriceCents,
+        packageId: input.packageId || null,
       },
     });
 
@@ -375,6 +397,7 @@ export async function addRentalLine(
         newValue: {
           label: input.label,
           applianceIds: input.applianceIds,
+          packageId: input.packageId || null,
           listPriceCents: input.listPriceCents,
           prepayDiscountCentsPerMonth,
           monthlyPriceCents,

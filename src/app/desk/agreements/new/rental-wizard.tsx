@@ -10,6 +10,7 @@ import {
   sendForSignatureAction,
 } from "../actions";
 import { createCustomerAction } from "../../customers/actions";
+import { PackageLineChooser, type PackageLineOption } from "@/components/desk/package-line-chooser";
 
 // ---------------------------------------------------------------------------
 // Guided rental builder wizard (2026-09-28) — walks Chris through setting
@@ -85,6 +86,7 @@ type SavedDraft = {
 export function RentalWizard({
   customers,
   availableAppliances: initialAvailableAppliances,
+  packages = [],
   initialCustomerId,
   initialServiceAddressId,
   initialDraft,
@@ -92,6 +94,7 @@ export function RentalWizard({
 }: {
   customers: CustomerOption[];
   availableAppliances: ApplianceOption[];
+  packages?: PackageLineOption[];
   initialCustomerId?: string;
   initialServiceAddressId?: string;
   initialDraft?: SavedDraft;
@@ -303,6 +306,7 @@ export function RentalWizard({
   );
   const [label, setLabel] = useState("");
   const [listPriceDollars, setListPriceDollars] = useState("");
+  const [packageId, setPackageId] = useState("");
   const [selectedApplianceIds, setSelectedApplianceIds] = useState<string[]>(
     [],
   );
@@ -324,6 +328,7 @@ export function RentalWizard({
           label,
           listPriceDollars,
           applianceIds: selectedApplianceIds,
+          packageId: packageId || null,
         });
       } catch {
         setError(
@@ -348,6 +353,7 @@ export function RentalWizard({
       );
       setLabel("");
       setListPriceDollars("");
+      setPackageId("");
       setSelectedApplianceIds([]);
     });
   }
@@ -910,6 +916,19 @@ export function RentalWizard({
             onSubmit={handleAddLine}
             className="space-y-3 border-t border-line pt-4"
           >
+            <PackageLineChooser
+              id="wizardLinePackage"
+              packages={packages}
+              value={packageId}
+              disabled={isPending}
+              onChoose={(choice) => {
+                setPackageId(choice?.packageId ?? "");
+                if (choice) {
+                  setLabel(choice.label);
+                  setListPriceDollars(choice.priceDollars);
+                }
+              }}
+            />
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label
