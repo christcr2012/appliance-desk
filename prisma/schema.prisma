@@ -72,6 +72,7 @@ model User {
   attributedCommunicationLinks CommunicationLink[] @relation("CommunicationLinkActor")
   approvedCommunicationTemplates CommunicationTemplateRevision[] @relation("CommunicationTemplateApprover")
   createdCommunicationTemplates CommunicationTemplateRevision[] @relation("CommunicationTemplateCreator")
+  actedCallSessions CallSession[] @relation("CallSessionActor")
 }
 
 model Session {
@@ -3054,6 +3055,8 @@ model TelecomAccount {
   events ProviderEvent[]
   communicationThreads CommunicationThread[]
   communicationMessages CommunicationMessage[]
+  callSessions CallSession[]
+  callLegs CallLeg[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   @@unique([provider, environment, externalAccountId])
@@ -3067,6 +3070,7 @@ model BusinessPhoneNumber {
   messagingServiceId String?
   capabilities Json @default("{}")
   communicationThreads CommunicationThread[]
+  callSessions CallSession[]
   registrationStatus TelecomRegistrationStatus @default(UNKNOWN)
   isPrimary Boolean @default(false)
   verifiedAt DateTime?
@@ -3088,6 +3092,7 @@ model ContactPoint {
   bindings ContactBinding[]
   consents ConsentRecord[]
   communicationThreads CommunicationThread[]
+  callSessions CallSession[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   @@unique([environment,channel,address])
@@ -3185,6 +3190,7 @@ model CommunicationThread {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   messages CommunicationMessage[]
+  callSessions CallSession[]
   readMarkers CommunicationReadMarker[]
   @@unique([accountId,businessNumberId,externalContactPointId])
   @@unique([accountId,id])
@@ -3265,4 +3271,122 @@ model CommunicationTemplateRevision {
   createdBy User? @relation("CommunicationTemplateCreator",fields:[createdByUserId],references:[id],onDelete:Restrict)
   deliveries MessageDelivery[]
   @@unique([key,revision])
+}
+
+
+// COM-L7 voice/media: schema only, all provider ingress, calls and recording OFF.
+// No provider URLs or public blob access are stored.
+enum CallDirection {
+  INBOUND
+  OUTBOUND
+}
+enum CallSessionState {
+  NEW
+  RINGING
+  CONNECTED
+  ENDED
+  FAILED
+}
+enum CallOutcome {
+  ANSWERED
+  MISSED
+  VOICEMAIL
+  DECLINED
+  UNKNOWN
+}
+enum CallLegRole {
+  INBOUND
+  FORWARD
+  STAFF
+  CUSTOMER
+}
+enum CallLegStatus {
+  QUEUED
+  RINGING
+  IN_PROGRESS
+  COMPLETED
+  BUSY
+  NO_ANSWER
+  CANCELED
+  FAILED
+}
+enum CommunicationMediaKind {
+  VOICEMAIL
+  RECORDING
+  TRANSCRIPT
+}
+enum CommunicationMediaState {
+  PENDING
+  AVAILABLE
+  FAILED
+  DELETED
+}
+
+model CallSession {
+  id String @id @default(cuid())
+  accountId String
+  account TelecomAccount @relation(fields:[accountId],references:[id],onDelete:Restrict)
+  businessNumberId String
+  businessNumber BusinessPhoneNumber @relation(fields:[accountId,businessNumberId],references:[accountId,id],onDelete:Restrict)
+  contactPointId String?
+  contactPoint ContactPoint? @relation(fields:[contactPointId],references:[id],onDelete:Restrict)
+  threadId String?
+  thread CommunicationThread? @relation(fields:[accountId,threadId],references:[accountId,id],onDelete:Restrict)
+  direction CallDirection
+  providerRootCallId String
+  actorUserId String?
+  actorUser User? @relation("CallSessionActor",fields:[actorUserId],references:[id],onDelete:Restrict)
+  routingPolicyVersion Int @default(0)
+  state CallSessionState @default(NEW)
+  outcome CallOutcome?
+  startedAt DateTime @default(now())
+  connectedAt DateTime?
+  endedAt DateTime?
+  disposition String?
+  dispositionNoteEncrypted String?
+  version Int @default(1)
+  legs CallLeg[]
+  media CommunicationMedia[]
+  @@unique([accountId,providerRootCallId])
+  @@unique([accountId,id])
+  @@index([threadId,startedAt,id])
+  @@index([outcome,startedAt])
+}
+
+model CallLeg {
+  id String @id @default(cuid())
+  callSessionId String
+  accountId String
+  account TelecomAccount @relation(fields:[accountId],references:[id],onDelete:Restrict)
+  session CallSession @relation(fields:[accountId,callSessionId],references:[accountId,id],onDelete:Restrict)
+  providerCallId String
+  providerParentCallId String?
+  role CallLegRole
+  status CallLegStatus @default(QUEUED)
+  sequenceNumber Int?
+  durationSeconds Int?
+  answeredByStaffAt DateTime?
+  startedAt DateTime @default(now())
+  endedAt DateTime?
+  @@unique([accountId,providerCallId])
+  @@index([callSessionId])
+}
+
+model CommunicationMedia {
+  id String @id @default(cuid())
+  callSessionId String
+  session CallSession @relation(fields:[callSessionId],references:[id],onDelete:Restrict)
+  kind CommunicationMediaKind
+  providerResourceId String
+  privateStorageKey String?
+  contentHash String?
+  durationSeconds Int?
+  state CommunicationMediaState @default(PENDING)
+  accessPolicyVersion Int @default(1)
+  retentionUntil DateTime?
+  legalHold Boolean @default(false)
+  deletedAt DateTime?
+  createdAt DateTime @default(now())
+  @@unique([callSessionId,kind,providerResourceId])
+  @@index([state,createdAt])
 }

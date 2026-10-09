@@ -545,3 +545,18 @@ These five new tables are included in backups. During restore, `MessageDelivery.
 
 
 COM-L3 (threads, messages and template history): CommunicationThread groups a specified telecom account, business number and contact point without inferring customer/lead identity. CommunicationMessage stores encrypted inbound evidence or a pointer to the same-account outbound SMS MessageDelivery; provider identity stays account-scoped. CommunicationReadMarker stores a per-user cursor that can only point to a message in its own thread. CommunicationLink retains a source/actor and restricts business entity kinds to the approved set; domain authorization checks are deferred to the later contextual workflow. CommunicationTemplateRevision stores immutable text/policy by key+revision, allows one current version, and keeps a permanent key channel/purpose; a delivery template pointer is nullable for history and frozen after setting. Cross-account/thread/environment guards and backup dependency order are enforced in the migration. Nothing sends messages or activates a telecom provider.
+
+
+### COM-L7 voice metadata (additive, off by default)
+CallSession maps a verified telecom account and business number to one
+provider-root call, optional contact/thread, call outcome and routing
+policy version. CallLeg stores independently keyed provider legs,
+duration and answered/forwarding state. CommunicationMedia links a
+provider recording ID to a private storage key, content hash, review
+deadline and legal hold; a recording is not AVAILABLE just because a
+provider webhook arrived. Database constraints reject public URLs in
+privateStorageKey, impossible event times, negative durations, invalid
+media lifecycle, and deletion under a legal hold. Retention review
+never deletes media without independently approved provider, local
+storage and recovery-copy cleanup. Schema tables are in the backup
+manifest and no public media route exists. See COM-L7 card.

@@ -6,8 +6,9 @@ Updated October 9, 2026 evening (reconciled after two lanes: COM-L3…L6A #352�
 
 ### Current queue (read this first)
 
-- **In flight:** COM-L7 — call legs, private media and retention schema (Sol). COM-L6B merged (#364).
-- **Then, in this order:** COM-L8 … COM-L15 → W-1 → W-18 → W-14 → W-2 → W-15 → W-3 → W-4 → W-5 → W-6 → W-7 → W-8 → W-9
+- **Latest:** COM-L7 call legs, private media and retention implementation in PR #368; COM-L6B merged (#364).
+- **Owner pause:** After PR #368 passes exact-head CI and merges, do not start COM-L8 or any other slice until explicitly resumed.
+- **After the owner explicitly resumes, in this order:** COM-L8 … COM-L15 → W-1 → W-18 → W-14 → W-2 → W-15 → W-3 → W-4 → W-5 → W-6 → W-7 → W-8 → W-9
   → W-10 → W-19 → W-17 → W-20 → V → F-part-2. W-11/W-12/W-13 when their outside gates clear (IN-61, IN-62/IN-44, IN-64).
   Authority: `designs/BATCH-W-AMENDMENT-B.md` section 8 and `pr-cards/work-index.json`.
 - **Already done out of order (do not redo):** W-16A/B (sets are rental packages of separate machines; "Rent as"; old

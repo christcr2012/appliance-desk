@@ -1562,3 +1562,11 @@ check the expected thread version and emit an audit record without message
 content. An unresolved phone number does not authorize access to any
 candidate customer's accounts. Reply sending and automated reminder
 activation are still disabled.
+
+
+**COM-L7 privacy and voice readiness:** Calls and voice routing remain off.
+A voicemail provider resource is never assumed privately stored until
+media evidence has a private storage key and content hash. No public
+recording link is retained. Legal hold forbids purge; retention deadlines
+create owner review work, not automatic deletion. Only assigned staff or
+owner/admin may inspect voice metadata; no key/audio is returned.

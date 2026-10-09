@@ -696,3 +696,14 @@ The reply/send button is intentionally absent: provider activation and
 verified sender, contact identity, purpose-specific consent and job
 context must be approved separately. Ambiguous numbers have no automatic
 link to customer records.
+
+
+### Future calling and voicemail (COM-L7)
+A private database foundation now exists for business calls, forwarding
+legs, and voicemail metadata, but **calls, recordings and transcription
+are not enabled**. No call button or media download is available from
+this slice. Storage paths and provider recording IDs are never shown to
+customers. Owner/admin can later review retention deadlines and holds
+when the approved voice workflow is implemented. Media removal requires
+the provider copy, private stored copy and backup copies to be handled
+and confirmed; an expired date alone does not delete anything.

@@ -525,3 +525,14 @@ privacy-safe audit evidence. No schema, live provider or send activation.
   `OutOfServicePeriod` rows and `OUT_OF_SERVICE`/`SET_SINGLE_PRICE` credits; W-17's Related panel links an appliance's
   repair periods and a line's amendments.
 - Test isolation (#367): see ARCHITECTURE "CI layout and speed" and PLAYBOOK 4c.
+### 2026-10-09 — COM-L7 private voice data, schema-only boundary
+New CallSession/CallLeg/CommunicationMedia tables exactly anchor call
+lineage to the COM-L2 account/number and optional COM-L3 thread. Raw
+provider call IDs are unique per account; media has private key, hash,
+legal hold and retention date. SQL checks and hold trigger deny URL-like
+storage pointers, inconsistent lifecycle and deleting held recordings.
+An authenticated server metadata helper excludes recording bytes,
+provider IDs and storage keys, with staff assignment authorization.
+Expired media yields only a review list; provider deletion and recovery
+cleanup remain future owner-approved work. Backups include new tables.
+No voice ingress, callback, purchase or call activation.
