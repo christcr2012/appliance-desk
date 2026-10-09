@@ -1,5 +1,6 @@
 "use server";
 import { revalidatePath } from "next/cache";
+import { confirmBusinessTaxAddress, locateBusinessTaxAddress } from "@/domains/tax/locations";
 import { requireRole } from "@/lib/session";
 import { saveTaxSettings, saveTaxFilingAccount, saveTaxabilityCell, addRdfRate, addManualTaxRateVersion, type TaxSettingsInput, type FilingAccountInput } from "@/domains/tax/setup";
 import { RdfHandling, ShortTermLeaseElection, TaxFilingAccountKind, TaxFilingFrequency, TaxReportingBasis, TaxChargeCategory, Taxability } from "@prisma/client";
@@ -135,8 +136,42 @@ export async function addManualRateAction(
       rateMilliPercent: integer(v(form, "rateMilliPercent")),
       sourceNote: v(form, "sourceNote"),
     });
+    const { recalculatePendingPurchaseTax } = await import("@/domains/tax/purchase-tax-catch-up");
+    await recalculatePendingPurchaseTax(new Date(), 200);
     revalidatePath("/desk/sales-tax/taxability");
     return { error: "", success: "A new rate version was recorded; past rates remain unchanged." };
   } catch (error) { return err(error); }
 }
 
+
+export async function lookUpBusinessTaxAreasAction(
+  _state: TaxActionState, _form: FormData,
+): Promise<TaxActionState> {
+  try {
+    await requireRole("OWNER", "ADMIN");
+    const result = await locateBusinessTaxAddress({ force: true });
+    revalidatePath("/desk/sales-tax/setup");
+    return { error: "", success: result.status === "VERIFIED"
+      ? "Tax areas found. Review and confirm the listed areas."
+      : "Review the lookup results and confirm the tax areas manually." };
+  } catch (error) { return err(error); }
+}
+
+export async function confirmBusinessTaxAreasAction(
+  _state: TaxActionState, form: FormData,
+): Promise<TaxActionState> {
+  try {
+    const actor = await requireRole("OWNER", "ADMIN");
+    const jurisdictionIds = form.getAll("jurisdictionIds").filter(
+      (v): v is string => typeof v === "string" && v.length > 0,
+    );
+    if (jurisdictionIds.length < 1 || jurisdictionIds.length > 25 ||
+        jurisdictionIds.some(id => id.length > 128) ||
+        new Set(jurisdictionIds).size !== jurisdictionIds.length)
+      throw new Error("Choose one to 25 distinct business tax areas.");
+    await confirmBusinessTaxAddress(actor.user.id, { jurisdictionIds });
+    revalidatePath("/desk/sales-tax/setup");
+    revalidatePath("/desk/sales-tax");
+    return { error: "", success: "Business tax areas confirmed; waiting purchases rechecked." };
+  } catch (error) { return err(error); }
+}

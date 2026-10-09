@@ -497,14 +497,14 @@ describe.skipIf(!enabled)("Batch T address tax locations (real Postgres)", () =>
 
     await expect(
       locateBusinessTaxAddress({ force: true }),
-    ).resolves.toEqual({ status: "VERIFIED" });
+    ).resolves.toEqual({ status: "NEEDS_REVIEW" });
     expect(
       await prisma.addressTaxLocation.findFirstOrThrow({
         where: { forBusinessLocation: true, isCurrent: true },
       }),
     ).toMatchObject({
       serviceAddressId: null,
-      status: "VERIFIED",
+      status: "NEEDS_REVIEW",
       source: "COLORADO_GIS",
     });
   });

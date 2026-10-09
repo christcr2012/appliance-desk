@@ -91,7 +91,8 @@ export async function recordApplianceAcquisitionTaxInTx(
 
   const equivalentChoice =
     (input.choice === "LATER" && appliance.acquisitionTaxStatus === "UNKNOWN") ||
-    (appliance.acquisitionTaxStatus === "UNKNOWN" && appliance.acquisitionTaxChoice === input.choice &&
+    (appliance.acquisitionTaxStatus === "UNKNOWN" && input.choice !== "SELLER_CHARGED" &&
+      input.choice !== "NONE_CHARGED" && appliance.acquisitionTaxChoice === input.choice &&
       appliance.acquisitionTaxPaidCents === input.vendorTaxCents) ||
     (input.choice === "LESSOR_PERMISSION" && appliance.acquisitionTaxStatus === "BOUGHT_TAX_FREE_FOR_LEASE") ||
     (input.choice === "SELLER_CHARGED" &&

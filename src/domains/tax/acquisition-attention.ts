@@ -66,6 +66,23 @@ export async function listAcquisitionTaxAttention(
       since: now,
     });
   }
+  const unlinked = await prisma.purchaseUseTax.findMany({
+    where: { status: "DUE", filingPeriodId: null,
+      jurisdiction: { useTaxFilingAccountId: null } },
+    select: { createdAt: true, jurisdiction: { select: { name: true } } },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }], take: 100,
+  });
+  if (unlinked.length) {
+    const names = [...new Set(unlinked.map(row => row.jurisdiction.name))];
+    const areas = names.slice(0, 4).join(", ") + (names.length > 4 ? " and more" : "");
+    result.push({
+      category: "PURCHASE_USE_TAX_DUE", severity: "high",
+      title: "Use tax owed with nowhere to file it — " + areas,
+      detail: "Link " + areas + " to a use-tax filing account so this tax lands on a return with a due date.",
+      href: "/desk/sales-tax/setup#accounts",
+      since: unlinked[0]!.createdAt,
+    });
+  }
   const rdfPending = await prisma.retailDeliveryFeeRecord.groupBy({
     by: ["status"],
     where: { status: { in: ["PENDING_DECISION", "PENDING_RATE"] } },

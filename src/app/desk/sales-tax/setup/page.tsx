@@ -2,13 +2,13 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
 import { TaxActionForm } from "./forms";
-import { addRdfRateAction, saveTaxAccountAction, saveTaxSettingsAction } from "./actions";
+import { addRdfRateAction, saveTaxAccountAction, saveTaxSettingsAction, lookUpBusinessTaxAreasAction, confirmBusinessTaxAreasAction } from "./actions";
 const css = "w-full rounded border border-input bg-background p-2 text-sm";
 const field = "grid gap-1 text-sm font-medium";
 export default async function TaxSetupPage() {
   const session = await requireRole("OWNER", "ADMIN");
   const owner = session.user.role === "OWNER";
-  const [settings, accounts, rates, sources] = await Promise.all([
+  const [settings, accounts, rates, sources, businessLocation, knownAreas] = await Promise.all([
     prisma.businessSettings.findUniqueOrThrow({where:{id:"singleton"},select:{
       updatedAt:true,shortTermLeaseElection:true,shortTermLeaseElectionNote:true,
       rdfHandling:true,rdfThresholdCents:true,rdfCpaConfirmedOn:true,
@@ -18,6 +18,15 @@ export default async function TaxSetupPage() {
       select:{id:true,name:true,kind:true,basis:true,frequency:true,active:true,accountNumber:true,firstPeriodStart:true}}),
     prisma.retailDeliveryFeeRate.findMany({orderBy:{effectiveOn:"desc"},take:10}),
     prisma.officialSourceWatch.findMany({orderBy:{createdAt:"asc"},take:30}),
+    prisma.addressTaxLocation.findFirst({
+      where: { forBusinessLocation: true, isCurrent: true },
+      include: { jurisdictions: { include: { jurisdiction: true } } },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    }),
+    prisma.taxJurisdiction.findMany({
+      select: { id: true, name: true, level: true, reviewStatus: true },
+      orderBy: [{ level: "asc" }, { name: "asc" }], take: 200,
+    }),
   ]);
   const address = settings.businessTaxAddress && typeof settings.businessTaxAddress==="object" &&
     !Array.isArray(settings.businessTaxAddress) ? settings.businessTaxAddress as Record<string,unknown> : {};
@@ -70,6 +79,35 @@ export default async function TaxSetupPage() {
       <p>Lease treatment: {settings.shortTermLeaseElection}</p><p>RDF handling: {settings.rdfHandling}</p>
       <p>CPA confirmation: {settings.rdfCpaConfirmedOn?.toISOString().slice(0,10) ?? "Pending"}</p>
     </section>}
+    <section id="business-tax-address" className="rounded border border-border p-4 space-y-3">
+      <h2 className="font-semibold">Your business address (for tax on things you buy)</h2>
+      <p className="text-sm">Saved privately: {[address.line1, address.city, address.state, address.zip]
+        .filter(v => typeof v === "string" && v.trim()).join(", ") || "No address entered yet"}</p>
+      <p role="status" className="text-sm font-medium">
+        {businessLocation?.status === "VERIFIED"
+          ? "Confirmed: " + businessLocation.jurisdictions.map(row => row.jurisdiction.name).join(", ")
+          : "Not confirmed yet"}
+      </p>
+      {businessLocation?.status !== "VERIFIED" &&
+        <p className="text-sm text-muted-foreground">Look up and confirm again after changing the address. Purchase tax waits until the location is confirmed.</p>}
+      {businessLocation?.reviewNote && <p className="text-sm">{businessLocation.reviewNote}</p>}
+      <p className="text-sm text-muted-foreground">Use the saved private business address above. Verify the areas before confirming; a lookup is not legal approval.</p>
+      <TaxActionForm action={lookUpBusinessTaxAreasAction} title="Find the area's jurisdictions" submitLabel="Look up tax areas">
+        <p className="text-sm">Look up areas for this business location using the configured source.</p>
+      </TaxActionForm>
+      <TaxActionForm action={confirmBusinessTaxAreasAction} title="Confirm these tax areas" submitLabel="Confirm these tax areas">
+        <fieldset className="grid gap-2">
+          <legend className="text-sm">Choose the jurisdictions applying to your business address.</legend>
+          {knownAreas.map(area => <label key={area.id} className="flex gap-2 text-sm items-start">
+            <input type="checkbox" name="jurisdictionIds" value={area.id}
+              defaultChecked={businessLocation?.jurisdictions.some(j => j.jurisdictionId === area.id) ?? false}/>
+            <span>{area.name} ({area.level.toLowerCase().replaceAll("_", " ")})
+              {area.reviewStatus !== "REVIEWED" ? " — rate review still needed" : ""}</span>
+          </label>)}
+          {!knownAreas.length && <p className="text-sm">No areas on record yet. Use the lookup above first.</p>}
+        </fieldset>
+      </TaxActionForm>
+    </section>
     <section className="space-y-3">
       <h2 className="font-semibold">Recorded fee rates</h2>
       <ul className="space-y-1 text-sm">{rates.map(rate => <li key={rate.id}>{rate.effectiveOn.toISOString().slice(0,10)} — ${(rate.amountCents/100).toFixed(2)}</li>)}</ul>

@@ -92,6 +92,8 @@ export async function saveTaxSettings(
           businessAddressChanged: priorAddress !== JSON.stringify(changed.businessTaxAddress) } },
     });
   });
+  const { recalculatePendingPurchaseTax } = await import("./purchase-tax-catch-up");
+  await recalculatePendingPurchaseTax(new Date(), 200);
 }
 
 export type FilingAccountInput = {
@@ -263,6 +265,14 @@ export async function saveTaxFilingAccount(
           });
         }
       }
+    }
+    if (data.kind === "USE_TAX_RETURN" && input.areaAssignments !== undefined) {
+      const { assignDueUseTaxRowsToPeriod } = await import("./use-tax");
+      const periods = await tx.taxFilingPeriod.findMany({
+        where: { filingAccountId: id, status: "OPEN" },
+        select: { id: true }, orderBy: [{ periodStart: "asc" }, { id: "asc" }],
+      });
+      for (const period of periods) await assignDueUseTaxRowsToPeriod(tx, period.id);
     }
     await tx.auditLog.create({
       data: { userId: actorId, action: "tax.setup.filing_account_saved",

@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { businessDateFromKey } from "@/lib/business-date";
 import { createApplianceUnits } from "@/domains/inventory";
 import { recordApplianceAcquisitionTax } from "@/domains/tax/acquisition";
+import { recalculatePendingPurchaseTax } from "@/domains/tax/purchase-tax-catch-up";
 import { loadFilingPacket } from "@/domains/tax/filing-packet";
 import { detectTaxFilingAmendments, markPeriodFiled } from "@/domains/tax/filing";
 
@@ -142,7 +143,7 @@ describe.skipIf(!enabled)("T-6D1 appliance purchase-tax evidence on real Postgre
     })).toBe(0);
   });
 
-  it("replays pending-context evidence without changing its revision or audit history", async () => {
+  it("retries pending-context evidence when saved again", async () => {
     const [unit] = await add(1, {
       applianceTypeId: typeId, quantity: 1, acquisitionCostCents: 1000,
       purchaseTax: { choice: "NONE_CHARGED", vendorTaxCents: 0 },
@@ -152,14 +153,49 @@ describe.skipIf(!enabled)("T-6D1 appliance purchase-tax evidence on real Postgre
       where: { entityType: "Appliance", entityId: unit.id, action: "appliance.acquisition_tax.record" },
     });
     const replay = await recordApplianceAcquisitionTax(userId, {
-      applianceId: unit.id, expectedRecordedAt: null, choice: "NONE_CHARGED", vendorTaxCents: 0,
+      applianceId: unit.id, expectedRecordedAt: first.acquisitionTaxRecordedAt,
+      choice: "NONE_CHARGED", vendorTaxCents: 0,
     });
     expect(replay.status).toBe("UNKNOWN");
     const after = await prisma.appliance.findUniqueOrThrow({ where: { id: unit.id } });
-    expect(after.acquisitionTaxRecordedAt).toEqual(first.acquisitionTaxRecordedAt);
+    expect(after.acquisitionTaxRecordedAt!.getTime()).toBeGreaterThan(first.acquisitionTaxRecordedAt!.getTime());
     expect(await prisma.auditLog.count({
       where: { entityType: "Appliance", entityId: unit.id, action: "appliance.acquisition_tax.record" },
-    })).toBe(before);
+    })).toBe(before + 1);
+  });
+
+  it("re-saving the same no-tax answer after missing context is supplied calculates due use tax", async () => {
+    const [unit] = await add(1, {
+      applianceTypeId: typeId, quantity: 1, acquisitionCostCents: 10000,
+      purchaseTax: { choice: "NONE_CHARGED", vendorTaxCents: 0 },
+    });
+    const before = await prisma.appliance.findUniqueOrThrow({ where: { id: unit.id } });
+    expect(before.acquisitionTaxStatus).toBe("UNKNOWN");
+    await prisma.appliance.update({ where: { id: unit.id },
+      data: { purchaseDate: day("2026-09-18") } });
+    const result = await recordApplianceAcquisitionTax(userId, {
+      applianceId: unit.id, expectedRecordedAt: before.acquisitionTaxRecordedAt,
+      choice: "NONE_CHARGED", vendorTaxCents: 0,
+    });
+    expect(result.status).toBe("USE_TAX_DUE");
+    expect((await prisma.purchaseUseTax.findFirstOrThrow({
+      where: { sourceType: "APPLIANCE", sourceId: unit.id },
+    })).useTaxDueCents).toBe(500);
+  });
+
+  it("catch-up calculates a waiting purchase once, and a second run changes nothing", async () => {
+    const [unit] = await add(1, {
+      applianceTypeId: typeId, quantity: 1, acquisitionCostCents: 10000,
+      purchaseTax: { choice: "NONE_CHARGED", vendorTaxCents: 0 },
+    });
+    await prisma.appliance.update({ where: { id: unit.id },
+      data: { purchaseDate: day("2026-09-18") } });
+    const first = await recalculatePendingPurchaseTax(new Date(), 200);
+    expect(first.calculated).toBeGreaterThanOrEqual(1);
+    expect((await prisma.appliance.findUniqueOrThrow({ where: { id: unit.id } }))
+      .acquisitionTaxStatus).toBe("USE_TAX_DUE");
+    const second = await recalculatePendingPurchaseTax(new Date(), 200);
+    expect(second.calculated).toBe(0);
   });
 
   it("rejects receipt evidence belonging to another appliance without an audit write", async () => {
