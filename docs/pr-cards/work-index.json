@@ -2937,7 +2937,7 @@
       "title": "No dead Today links; delivery-fee records page",
       "batch": "W",
       "dependencies": [],
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "none",
       "budget": 250,
       "units": [

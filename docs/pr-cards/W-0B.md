@@ -1,6 +1,6 @@
 # W-0B — No Today item leads nowhere; delivery-fee records get a page to resolve them
 
-Status: **APPROVED** · Baseline inspected: W-0A PR #342 (2026-10-09; verify merge SHA at next checklist A).
+Status: **MERGED (#343)** [planned PR state; merge gated on CI, review and preview] · Baseline inspected: W-0A PR #342 (2026-10-09; verify merge SHA at next checklist A).
 Batch: W (`docs/designs/BATCH-W.md` §1, D-W1 last sentence, PR table W-0b) · Prerequisites: none (independent of W-0A;
 either may merge first).
 Base: latest `main`. Migration: **none**. Sizing estimate: ~250 production lines, ≤8 files, risk area: screens.

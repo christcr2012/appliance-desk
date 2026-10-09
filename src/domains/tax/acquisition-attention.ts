@@ -125,7 +125,7 @@ export async function listAcquisitionTaxAttention(
         row.status === "PENDING_DECISION"
           ? "Check the Colorado delivery fee decision and verified location."
           : "Check the first rent charge date and the fee rate for that date.",
-      href: "/desk/tax",
+      href: "/desk/sales-tax/delivery-fees",
       since: row._min.createdAt ?? now,
     });
   }
