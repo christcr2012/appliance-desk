@@ -5,6 +5,7 @@ import path from "node:path";
 const SHARED_SETTINGS_TESTS = [
   "tests/agreements-term-integration.test.ts",
   "tests/settings-integration.test.ts",
+  "tests/sms-activation-integration.test.ts",
   "tests/settings-terms-policy-integration.test.ts",
   "tests/recommended-terms-integration.test.ts",
   "tests/customer-email-switch-integration.test.ts",

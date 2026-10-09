@@ -2282,6 +2282,8 @@ model BusinessSettings {
   // Master switch for every message sent to customers. Off until the owner turns it on; previews
   // and test copies never send even when on. Owner only.
   customerEmailEnabled Boolean @default(false)
+  // Independent hard gate: SMS never inherits customer-email activation.
+  customerSmsEnabled Boolean @default(false)
   // Batch G schema foundation; G-2 wires enforcement/UI. Stored as roles so
   // owner policy can later include STAFF while CUSTOMER remains prohibited.
   twoFactorRequiredRoles Json @default("[\"OWNER\",\"ADMIN\"]")

@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const messagesCreate = vi.fn();
+const activation = vi.hoisted(() => ({ enabled: vi.fn(async () => true) }));
+vi.mock("@/domains/messaging/sms-activation", () => ({
+  isLegacySmsDispatchEnabled: () => activation.enabled(),
+}));
 vi.mock("twilio", () => ({
   default: vi.fn(() => ({ messages: { create: (...args: unknown[]) => messagesCreate(...args) } })),
 }));
@@ -11,9 +15,35 @@ describe("sendSms", () => {
   beforeEach(() => {
     messagesCreate.mockReset().mockResolvedValue({ sid: "SM123" });
     process.env = { ...ORIGINAL_ENV };
+    process.env.VERCEL = "1";
+    process.env.VERCEL_ENV = "production";
+    activation.enabled.mockReset().mockResolvedValue(true);
+    delete process.env.NEXT_PUBLIC_APP_URL;
+  });
+
+  it("unmarked local runtime refuses SMS even with copied production credentials", async () => {
     delete process.env.VERCEL;
     delete process.env.VERCEL_ENV;
-    delete process.env.NEXT_PUBLIC_APP_URL;
+    process.env.TWILIO_ACCOUNT_SID = "ACxxx";
+    process.env.TWILIO_AUTH_TOKEN = "tokenxxx";
+    process.env.TWILIO_PHONE_NUMBER = "+13035550199";
+    const { sendSms } = await import("@/lib/sms");
+    expect(await sendSms({ to: "+13035550100", body: "hello" })).toEqual({
+      sent: false, outcome: "NOT_ATTEMPTED",
+    });
+    expect(messagesCreate).not.toHaveBeenCalled();
+  });
+
+  it("production requires the independent SMS activation gate", async () => {
+    activation.enabled.mockResolvedValue(false);
+    process.env.TWILIO_ACCOUNT_SID = "ACxxx";
+    process.env.TWILIO_AUTH_TOKEN = "tokenxxx";
+    process.env.TWILIO_PHONE_NUMBER = "+13035550199";
+    const { sendSms } = await import("@/lib/sms");
+    expect(await sendSms({ to: "+13035550100", body: "hello" })).toEqual({
+      sent: false, outcome: "NOT_ATTEMPTED",
+    });
+    expect(messagesCreate).not.toHaveBeenCalled();
   });
 
   it("returns NOT_ATTEMPTED when Twilio is not fully configured", async () => {

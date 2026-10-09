@@ -1,3 +1,4 @@
+import { lockCanonicalSmsAddress } from "./sms-address-lock";
 import type { MessageState, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { recordLeadMessageContactInTx } from "@/domains/leads/contact";
@@ -267,6 +268,7 @@ export async function processVerifiedTwilioStop(
   const address = normalizeMessageAddress("SMS", input.from);
   const aliases = smsAddressAliases(input.from);
   return prisma.$transaction(async (tx) => {
+    await lockCanonicalSmsAddress(tx, address);
     const inserted = await recordProviderEvent(tx, {
       provider: "twilio",
       eventId: input.eventId,
