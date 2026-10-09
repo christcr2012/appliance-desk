@@ -24,6 +24,7 @@ import {
   reconcileUnknownDeliveries,
 } from "@/domains/messaging/deliver";
 import { prisma } from "@/lib/prisma";
+import { processVerifiedTwilioStop } from "@/domains/messaging/events";
 
 const target = new URL(
   process.env.DATABASE_URL ?? "postgresql://localhost/unset",
@@ -81,6 +82,9 @@ describe.skipIf(!enabled)("message delivery ledger (real Postgres)", () => {
     process.env.VERCEL_ENV = originalVercelEnv;
     await prisma.messageDelivery.deleteMany({
       where: { idempotencyKey: { startsWith: prefix } },
+    });
+    await prisma.providerEvent.deleteMany({
+      where: { eventId: { startsWith: `com-l1a-${tag}` } },
     });
     if (addresses.length) {
       await prisma.marketingSuppression.deleteMany({
@@ -172,6 +176,60 @@ describe.skipIf(!enabled)("message delivery ledger (real Postgres)", () => {
       where: { id: result.deliveryId },
     });
     expect(row.lastError).toBe("provider rejected message");
+  });
+
+  it("unknown SMS submits once and duplicate never replays an uncertain send", async () => {
+    const phone = "+1303" + randomUUID().replace(/\D/g, "").padEnd(7,"5").slice(0,7);
+    addresses.push(phone);
+    mocks.sms.mockResolvedValue({ sent:false, outcome:"UNKNOWN" });
+    const request = { ...input("sms-unknown", phone), channel: "SMS" as const };
+    const first = await deliverMessage(request);
+    const second = await deliverMessage(request);
+    expect(first.state).toBe("UNKNOWN");
+    expect(second.state).toBe("UNKNOWN");
+    expect(mocks.sms).toHaveBeenCalledTimes(1);
+    const row = await prisma.messageDelivery.findUniqueOrThrow({ where: { id: first.deliveryId } });
+    expect(row.attempts).toBe(1);
+    expect(row.lastError).toMatch(/no automatic SMS retry/);
+  });
+
+  it("verified STOP blocks both transactional and marketing SMS including canonical aliases", async () => {
+    const phone = "+1303" + randomUUID().replace(/\D/g, "").padEnd(7,"5").slice(0,7);
+    addresses.push(phone);
+    await processVerifiedTwilioStop({
+      eventId: `com-l1a-${tag}-stop`, from: phone, keyword: "STOP",
+    });
+    for (const purpose of ["TRANSACTIONAL", "MARKETING"] as const) {
+      const outcome = await deliverMessage({
+        ...input("sms-stop-"+purpose, phone.slice(2)),
+        channel: "SMS", purpose,
+      });
+      expect(outcome.state).toBe("SUPPRESSED");
+    }
+    expect(mocks.sms).not.toHaveBeenCalled();
+  });
+
+  it("a claimed SMS already in flight may finish; STOP blocks every later send", async () => {
+    const phone = "+1303" + randomUUID().replace(/\D/g, "").padEnd(7,"5").slice(0,7);
+    addresses.push(phone);
+    let started!: () => void;
+    let release!: () => void;
+    const called = new Promise<void>(resolve => { started = resolve; });
+    const permit = new Promise<void>(resolve => { release = resolve; });
+    mocks.sms.mockImplementation(async () => {
+      started();
+      await permit;
+      return { sent:true, outcome:"SENT", providerMessageId:"SM"+tag.slice(0,16) };
+    });
+    const outgoing = deliverMessage({ ...input("sms-wins",phone), channel: "SMS" as const });
+    await called;
+    await processVerifiedTwilioStop({
+      eventId: `com-l1a-${tag}-later-stop`, from: phone, keyword: "STOP",
+    });
+    release();
+    expect((await outgoing).state).toBe("ACCEPTED");
+    expect((await deliverMessage({...input("sms-after-stop", phone),channel:"SMS"})).state).toBe("SUPPRESSED");
+    expect(mocks.sms).toHaveBeenCalledTimes(1);
   });
 
   it("retries an unknown outcome exactly once, then never blindly retries the UNKNOWN row", async () => {

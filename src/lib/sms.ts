@@ -1,5 +1,5 @@
 import twilio from "twilio";
-import { isNonProductionDeployment } from "./deployment-safety";
+import { isLegacySmsDispatchEnabled } from "@/domains/messaging/sms-activation";
 
 export type SmsOutcome = "SENT" | "NOT_ATTEMPTED" | "REJECTED" | "UNKNOWN";
 export type SmsResult = {
@@ -20,7 +20,8 @@ export async function sendSms(input: {
   body: string;
   idempotencyKey?: string;
 }): Promise<SmsResult> {
-  if (isNonProductionDeployment()) {
+  if (process.env.VERCEL !== "1" || process.env.VERCEL_ENV !== "production" ||
+      !await isLegacySmsDispatchEnabled()) {
     return { sent: false, outcome: "NOT_ATTEMPTED" };
   }
 
@@ -58,7 +59,7 @@ export type SmsProviderState = "ACCEPTED" | "DELIVERED" | "FAILED" | "UNKNOWN";
 
 /** Small-volume reconciliation fallback for UNKNOWN MessageDelivery rows. */
 export async function getSmsProviderState(messageSid: string): Promise<SmsProviderState> {
-  if (isNonProductionDeployment()) return "UNKNOWN";
+  if (process.env.VERCEL !== "1" || process.env.VERCEL_ENV !== "production") return "UNKNOWN";
   const accountSid = process.env.TWILIO_ACCOUNT_SID;
   const authToken = process.env.TWILIO_AUTH_TOKEN;
   if (!accountSid || !authToken) return "UNKNOWN";

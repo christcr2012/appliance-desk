@@ -7,6 +7,9 @@ const mocks = vi.hoisted(() => ({
 }));
 vi.mock("resend", () => ({ Resend: class { emails = { send: mocks.email }; } }));
 vi.mock("twilio", () => ({ default: () => ({ messages: { create: mocks.sms } }) }));
+vi.mock("@/domains/messaging/sms-activation", () => ({
+  isLegacySmsDispatchEnabled: async () => true,
+}));
 vi.mock("stripe", () => ({ default: class {
   constructor(key: string) { mocks.stripe(key); }
   webhooks = { constructEvent: mocks.event };

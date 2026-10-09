@@ -1,8 +1,9 @@
 import { Resend } from "resend";
-import type { MessageDelivery, MessageState } from "@prisma/client";
+import type { MessageDelivery, MessageState, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { isNonProductionDeployment } from "@/lib/deployment-safety";
 import { sendEmail } from "@/lib/email";
+import { lockCanonicalSmsAddress } from "./sms-address-lock";
 import { sendCustomerEmail } from "@/lib/customer-email";
 import { getSmsProviderState, sendSms } from "@/lib/sms";
 import { recordLeadMessageContactInTx } from "@/domains/leads/contact";
@@ -51,36 +52,39 @@ function asResult(
   };
 }
 
-async function claimDelivery(input: DeliverMessageInput): Promise<DeliveryClaim> {
+async function claimDelivery(
+  tx: Prisma.TransactionClient,
+  input: DeliverMessageInput,
+): Promise<DeliveryClaim> {
   const recipientAddress = normalizeMessageAddress(
     input.channel,
     input.recipient.address,
   );
-  try {
-    const row = await prisma.messageDelivery.create({
-      data: {
-        idempotencyKey: input.idempotencyKey,
-        channel: input.channel,
-        purpose: input.purpose,
-        templateKey: input.templateKey,
-        recipientType: input.recipient.type,
-        recipientId: input.recipient.id,
-        recipientAddress,
-        subjectType: input.subject?.type,
-        subjectId: input.subject?.id,
-      },
-    });
-    return { row, ownsSend: true };
-  } catch (cause) {
-    const existing = await prisma.messageDelivery.findUnique({
-      where: { idempotencyKey: input.idempotencyKey },
-    });
-    if (!existing) throw cause;
-    if (existing.state !== "FAILED" && existing.state !== "NOT_SENT") {
-      return { row: existing, ownsSend: false };
-    }
+  // INSERT ... ON CONFLICT DO NOTHING keeps the transaction usable when an
+  // idempotent caller races or repeats a key (a failed CREATE would poison PG tx).
+  const inserted = await tx.messageDelivery.createMany({
+    data: [{
+      idempotencyKey: input.idempotencyKey,
+      channel: input.channel,
+      purpose: input.purpose,
+      templateKey: input.templateKey,
+      recipientType: input.recipient.type,
+      recipientId: input.recipient.id,
+      recipientAddress,
+      subjectType: input.subject?.type,
+      subjectId: input.subject?.id,
+    }],
+    skipDuplicates: true,
+  });
+  const existing = await tx.messageDelivery.findUniqueOrThrow({
+    where: { idempotencyKey: input.idempotencyKey },
+  });
+  if (inserted.count === 1) return { row: existing, ownsSend: true };
+  if (existing.state !== "FAILED" && existing.state !== "NOT_SENT") {
+    return { row: existing, ownsSend: false };
+  }
 
-    const reclaimed = await prisma.messageDelivery.updateMany({
+  const reclaimed = await tx.messageDelivery.updateMany({
       where: {
         id: existing.id,
         state: { in: ["FAILED", "NOT_SENT"] },
@@ -94,11 +98,10 @@ async function claimDelivery(input: DeliverMessageInput): Promise<DeliveryClaim>
         deliveredAt: null,
       },
     });
-    const row = await prisma.messageDelivery.findUniqueOrThrow({
+  const row = await tx.messageDelivery.findUniqueOrThrow({
       where: { id: existing.id },
     });
-    return { row, ownsSend: reclaimed.count === 1 };
-  }
+  return { row, ownsSend: reclaimed.count === 1 };
 }
 
 async function finish(
@@ -183,6 +186,8 @@ export async function deliverMessage(
 
   const nonProduction = isNonProductionDeployment();
   const blockedMarketing = input.purpose === "MARKETING" && suppression;
+  const blockedSmsStop =
+    input.channel === "SMS" && suppression?.reason === "stop";
   const blockedBounce =
     input.channel === "EMAIL" &&
     input.purpose === "TRANSACTIONAL" &&
@@ -192,12 +197,35 @@ export async function deliverMessage(
   // throws, a new delivery has not been created and a retryable FAILED /
   // NOT_SENT row has not been reclaimed.
   const rendered =
-    nonProduction || blockedMarketing || blockedBounce ? null : input.render();
+    nonProduction || blockedMarketing || blockedBounce || blockedSmsStop ? null : input.render();
 
-  const claim = await claimDelivery(input);
+  // SMS and STOP serialize under the same canonical phone-address lock.
+  // The transaction commits the durable send claim before any provider call;
+  // the Twilio network call never happens inside a database transaction.
+  const { claim, stopNow } = input.channel === "SMS"
+    ? await prisma.$transaction(async (tx) => {
+        const address = await lockCanonicalSmsAddress(tx, input.recipient.address);
+        const now = await tx.marketingSuppression.findUnique({
+          where: { channel_address: { channel: "SMS", address } },
+          select: { reason: true },
+        });
+        return {
+          claim: await claimDelivery(tx, input),
+          stopNow: now?.reason === "stop",
+        };
+      })
+    : {
+        claim: await prisma.$transaction(tx => claimDelivery(tx, input)),
+        stopNow: false,
+      };
   if (!claim.ownsSend) return asResult(claim.row);
   const delivery = claim.row;
 
+  if (blockedSmsStop || stopNow) {
+    return asResult(await finish(delivery.id, "SUPPRESSED", {
+      lastError: "suppressed: stop",
+    }));
+  }
   if (blockedMarketing) {
     return asResult(
       await finish(delivery.id, "SUPPRESSED", {
@@ -253,7 +281,7 @@ export async function deliverMessage(
 
   let provider = await attempt();
   let state = mapOutcome(provider);
-  if (state === "UNKNOWN") {
+  if (state === "UNKNOWN" && input.channel === "EMAIL") {
     await prisma.messageDelivery.update({
       where: { id: delivery.id },
       data: { attempts: { increment: 1 } },
@@ -268,7 +296,9 @@ export async function deliverMessage(
       : state === "NOT_SENT"
         ? "sending disabled or not configured"
         : state === "UNKNOWN"
-          ? "provider outcome unknown after one retry"
+          ? input.channel === "SMS"
+            ? "provider outcome unknown; held for reconciliation, no automatic SMS retry"
+            : "provider outcome unknown after one retry"
           : undefined;
   const acceptedAt = state === "ACCEPTED" ? new Date() : undefined;
   const completed = await finish(delivery.id, state, {

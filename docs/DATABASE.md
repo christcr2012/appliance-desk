@@ -510,3 +510,8 @@ and is intentionally not present here.
 ## Batch S-2 — revocable private AI check-up credentials
 
 `OpsAgentKey` stores only the SHA-256 digest of a 32-byte random bearer token, an OWNER-supplied label, creation and last-use times, and a revocation timestamp. The bearer is returned only once from the owner action. The `SystemIssueNote.authorKeyId` reference is nullable and identifies structured agent notes, distinct from owner-authored notes. `OpsAgentKey` is excluded from database backup/privacy exports; the system-issue-note backup snapshot clears `authorKeyId` so a restored archive never references missing private credentials. Migration `20261012110000_batch_s_ops_keys` is additive, retaining all preexisting notes. This creates **no unattended agent**, external credentials or live provider activation.
+
+
+## COM-L1a: independent SMS master switch
+
+The additive `20261012120000_com_l1a_sms_activation` migration introduces `BusinessSettings.customerSmsEnabled Boolean @default(false)`. SMS may transmit only from a positively identified production Vercel deployment and when this OWNER-controlled switch is explicitly true; it never inherits `customerEmailEnabled`. Verified Twilio STOP and final durable SMS claims share one canonical-address advisory transaction lock, while the network call occurs after commit. An UNKNOWN SMS is never automatically retried. This stage does not enable outbound SMS or create paid provider resources.

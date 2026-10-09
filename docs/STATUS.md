@@ -84,3 +84,15 @@ and lint pass locally. New owner/admin keyboard/axe browser spec is registered
 in browser-c; exact-head GitHub CI and preview are mandatory; local browser
 binary unavailable. No payments, provider sends, external scheduled routine,
 production database writes or spending enabled. Owner IN-45 remains deferred.
+
+
+## COM-L1a pending merge — SMS safety
+
+After Batch S-2 (PR #334) and before later COM features, COM-L1a adds
+independent OFF-by-default SMS master activation, verified-STOP/dispatch
+serialization, and one-shot UNKNOWN send semantics. Existing email retry
+behavior remains unchanged; non-production/unmarked environments cannot
+call Twilio even when credentials are accidentally present. Focused
+real-Postgres messaging, SMS and deployment regressions (54 tests, initial
+local validation) passed. Live SMS remains OFF; no provider configuration
+or customer messaging was enabled. Exact-head CI and preview required.
