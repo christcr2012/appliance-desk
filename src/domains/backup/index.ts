@@ -64,7 +64,12 @@ export async function buildDatabaseBackupSnapshot(): Promise<{
         const delegate = delegates[table];
         if (!delegate?.findMany) throw new Error(`Backup delegate "${table}" is unavailable.`);
         const rows = await delegate.findMany();
-        tables[table] = rows;
+        // OpsAgentKey credentials are deliberately excluded from backups.
+        // Keep human/agent diagnostic notes, but clear their optional key FK
+        // so restores never reference a credential absent from the archive.
+        tables[table] = table === "systemIssueNote"
+          ? rows.map(row => ({ ...(row as Record<string, unknown>), authorKeyId: null }))
+          : rows;
         tableCounts[table] = rows.length;
         if (backupReadHookForTests && index < BACKUP_TABLES.length - 1) {
           await backupReadHookForTests({ table, index });

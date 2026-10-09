@@ -24,7 +24,8 @@
       "purchasing-review.spec.ts",
       "accessibility-routes-desk-a.spec.ts",
       "desk-workspace.spec.ts",
-      "staff-security.spec.ts"
+      "staff-security.spec.ts",
+      "system-health-keys.spec.ts"
     ],
     "browser-d": [
       "accessibility.spec.ts",

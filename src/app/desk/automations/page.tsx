@@ -2,6 +2,8 @@ import { getAutomationHealth } from "@/domains/automation/health";
 import { requireRole } from "@/lib/session";
 import { listSystemIssues } from "@/domains/system-issues/queries";
 import { SystemIssuesSection } from "./system-issues-section";
+import { listOpsAgentKeys } from "@/domains/system-issues/ops-auth";
+import { OpsKeyPanel } from "./ops-key-panel";
 import {
   formatBusinessDate,
   formatBusinessTime,
@@ -42,6 +44,7 @@ export default async function AutomationsPage({ searchParams }: { searchParams?:
   const cursor = (await searchParams)?.issuesCursor;
   const [health, issueList] = await Promise.all([getAutomationHealth(), listSystemIssues(session.user.id, { limit: 25, cursor })]);
   const canPause = session.user.role === "OWNER";
+  const keys = canPause ? await listOpsAgentKeys(session.user.id) : [];
 
   return (
     <div className="max-w-5xl">
@@ -51,6 +54,11 @@ export default async function AutomationsPage({ searchParams }: { searchParams?:
       />
 
       <SystemIssuesSection issues={issueList.rows} nextCursor={issueList.nextCursor} canManage={canPause} />
+      {canPause ? <OpsKeyPanel keys={keys.map(key => ({
+        id: key.id, label: key.label, createdAt: timestamp(key.createdAt),
+        lastUsedAt: key.lastUsedAt ? timestamp(key.lastUsedAt) : null,
+        revokedAt: key.revokedAt ? timestamp(key.revokedAt) : null,
+      }))} /> : <p className="text-sm text-ink-soft">AI check-up keys are managed by the owner.</p>}
       <div className="space-y-4">
         {health.map((item) => (
           <Card

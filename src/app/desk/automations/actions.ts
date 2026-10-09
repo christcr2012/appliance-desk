@@ -35,3 +35,25 @@ export async function markSystemIssueResolvedAction(formData: FormData): Promise
   revalidatePath("/desk/automations");
   revalidatePath("/desk/today");
 }
+
+import { createOpsAgentKey, revokeOpsAgentKey } from "@/domains/system-issues/ops-auth";
+
+export async function createOpsAgentKeyAction(
+  _previous: { key: string | null; error: string | null },
+  formData: FormData,
+): Promise<{ key: string | null; error: string | null }> {
+  const session = await requireRole("OWNER");
+  try {
+    const result = await createOpsAgentKey(session.user.id, String(formData.get("label") ?? ""));
+    revalidatePath("/desk/automations");
+    return { key: result.key, error: null };
+  } catch {
+    return { key: null, error: "Unable to create a key. Check the label and try again." };
+  }
+}
+
+export async function revokeOpsAgentKeyAction(formData: FormData): Promise<void> {
+  const session = await requireRole("OWNER");
+  await revokeOpsAgentKey(session.user.id, String(formData.get("keyId") ?? ""));
+  revalidatePath("/desk/automations");
+}

@@ -2782,8 +2782,25 @@ model SystemIssueNote {
   issue        SystemIssue @relation(fields: [issueId], references: [id])
   authorUserId String?
   authorKeyId  String?
+  authorKey    OpsAgentKey? @relation(fields: [authorKeyId], references: [id])
   body         String
   createdAt    DateTime    @default(now())
 
   @@index([issueId, createdAt])
+}
+
+
+// Batch S-2: revocable owner-issued AI check-up credentials.
+// Only hashes are persisted and they must never enter recovery exports.
+model OpsAgentKey {
+  id              String   @id @default(cuid())
+  label           String
+  keyHash         String   @unique
+  createdByUserId String
+  createdAt       DateTime @default(now())
+  lastUsedAt      DateTime?
+  revokedAt       DateTime?
+  notes           SystemIssueNote[]
+
+  @@index([createdByUserId, revokedAt])
 }
