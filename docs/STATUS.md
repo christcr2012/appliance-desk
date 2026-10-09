@@ -58,7 +58,11 @@ History and prior acceptance: [retired working snapshot](archive/reset-2026-10-0
 ## Environment (update when it changes)
 
 - **Sandbox GitHub push:** Installed 2026-10-09 by the owner through network header injection, never stored in the repository or sandbox environment; expires 2027-10-09 (one year). Dry-run verified; regular git push now works using HTTP/1.1. Use the fallback runbook if needed.
-
+  **Check (2026-10-09, Claude):** the key was attached to the running session only — the sandbox's saved settings had no
+  injection rule, so it disappears when that session ends. Whoever holds the key applies the same `networkPolicy` with
+  `update_sandbox` (saved settings) so every future session keeps it.
+- **Sandbox browser:** Chromium and its system libraries installed in `appliance-desk-s1c-oct8` on 2026-10-09 (a real
+  launch verified). If a later session reports "No matching installed Chromium": `npm run sandbox:browser` once.
 
 - **Local database testing:** Vercel Sandbox, project `appliance-desk`. Persistent sandbox in use:
   **`appliance-desk-s1c-oct8`** (most recently active, 2026-10-09; main checkout `/vercel/appliance-desk`, per-card
