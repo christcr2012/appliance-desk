@@ -488,7 +488,7 @@ adapter; it returns held-for-review without a false sent timestamp.
 COM-L6B must implement authenticated operator intent and job/thread approval
 before sending can resume. No migration or live activation.
 
-### W-21A out-of-service periods — 2026-10-09 (#364)
+### W-21A out-of-service periods — 2026-10-09 (#365)
 - Migration `20261013110000_out_of_service_periods`: `OutOfServicePeriod` (one open per machine) and
   `BusinessSettings.outOfServiceEscalationDays` (default 3). The period stores `creditId` (design said
   `creditedOnInvoiceId`; the bill line is the existing Stripe-balance credit mirror).
