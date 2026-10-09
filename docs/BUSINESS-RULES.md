@@ -1154,8 +1154,16 @@ with these exceptions Chris set on 2026-10-09 (D-WB8):
    never more than billed. The pickup day counts as a day without it; the day a machine
    arrives counts as a day with it. Paid-in-full rentals: owner decides. To do shows
    "Return or replace", urgent after the owner's setting (starting value 3 days).
-5. **A machine of a set that is done (W-21B):** the rest is charged at single prices
-   from the day after, with a partial-period credit — built in W-21B.
+5. **A machine of a set the customer is done with (W-21B).** From the repair screen the
+   owner records it: the machines that stay are charged their normal single prices (each
+   type's current price less this agreement's prepaid-term discount for that many
+   machines, never more than the line costs today). Single prices start the day after
+   the pickup when it was given back for good that day; when decided later, the days in
+   between are out-of-service days (rule 4) and single prices start on the decision day.
+   The already-billed rest of the month is credited on the next bill
+   (`Credit – single price for the washer from … – N days`), and the Stripe monthly item
+   changes from the next period. A swap on the same visit changes nothing. Paid-in-full:
+   repriced, any credit is the owner's decision.
 
 ## Cross-cutting desk tools (2026-09-28)
 
