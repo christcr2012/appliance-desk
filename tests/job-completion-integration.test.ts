@@ -103,6 +103,7 @@ describe.skipIf(!enabled)("completeJob", () => {
         ],
       },
     });
+    await prisma.outOfServicePeriod.deleteMany({ where: { applianceId: { in: applianceIds } } });
     await prisma.applianceAssignment.deleteMany({ where: { applianceId: { in: applianceIds } } });
     await prisma.jobAppliance.deleteMany({ where: { jobId: { in: jobIds } } });
     await prisma.job.deleteMany({ where: { id: { in: jobIds } } });
@@ -284,7 +285,7 @@ describe.skipIf(!enabled)("completeJob", () => {
     expect(await prisma.applianceCustodyEpisode.count({ where: { applianceId: a } })).toBe(0);
   });
 
-  it("a swap takes a result per unit; returning the old unit without the new one being delivered is refused", async () => {
+  it("a swap takes a result per unit (taking the old one without the new is the W-21A repair path, tested in out-of-service-integration)", async () => {
     const original = await unit("RENTED");
     const replacement = await unit("RESERVED", false);
     const j = await job("SWAP", [original, replacement]);
@@ -292,7 +293,6 @@ describe.skipIf(!enabled)("completeJob", () => {
     const scope = await getJobCompletionScope({ id: j.id, type: "SWAP", status: "IN_PROGRESS", agreementId });
     expect(scope.find((r) => r.applianceId === replacement)).toMatchObject({ role: "REPLACEMENT", defaultResult: "DELIVERED", allowed: ["DELIVERED", "NOT_DELIVERED"] });
     expect(scope.find((r) => r.applianceId === original)).toMatchObject({ role: "PRIMARY", defaultResult: "RETURNED" });
-    await expect(finish(j.id, [[original, "RETURNED"], [replacement, "NOT_DELIVERED"]])).rejects.toThrow(/Don't take the old unit/);
     await expect(finish(j.id, [[original, "DELIVERED"], [replacement, "DELIVERED"]])).rejects.toThrow(/doesn't fit/);
     const ok = await finish(j.id, [[original, "NOT_RETURNED"], [replacement, "DELIVERED"]]);
     expect(ok.outcome).toBe("PARTIAL");

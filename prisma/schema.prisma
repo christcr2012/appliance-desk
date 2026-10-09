@@ -508,6 +508,7 @@ model Appliance {
   features Json @default("[]")
 
   assignments ApplianceAssignment[]
+  outOfServicePeriods OutOfServicePeriod[] @relation("OutOfServiceAppliance")
   photos      Photo[]
   jobs        JobAppliance[]
   pendingDeliveries PendingDelivery[] @relation("PendingDeliveryAppliance")
@@ -779,6 +780,7 @@ enum RentalAgreementStatus {
 
 model RentalAgreement {
   rdfRecords RetailDeliveryFeeRecord[] @relation("RdfAgreement")
+  outOfServicePeriods OutOfServicePeriod[]
   id         String                 @id @default(cuid())
   customerId String
   customer   Customer               @relation(fields: [customerId], references: [id])
@@ -973,6 +975,7 @@ model RentalLine {
 
   assignments ApplianceAssignment[]
   amendments  RentalLineAmendment[]
+  outOfServicePeriods OutOfServicePeriod[]
 
   // Set when this line rents a package (W-16B builds package lines); null for a line of single machines.
   packageId String?
@@ -985,13 +988,17 @@ model RentalLine {
 }
 
 // A permanent price reduction on a rental line because one of its items was never delivered and was taken off
+// (or, since W-21B, because the customer is done with one machine of a set and the rest move to single prices)
 // the agreement (Batch C section 8). Never changed or deleted (database rule). The signed price stays here as
 // previousMonthlyPriceCents. effectiveFrom is the first day of the next billing period.
 model RentalLineAmendment {
   id                        String     @id @default(cuid())
   rentalLineId              String
   rentalLine                RentalLine @relation(fields: [rentalLineId], references: [id])
-  pendingDeliveryId         String     @unique
+  // Exactly one source: an item never delivered and taken off (Batch C), or a machine of a set the customer is done with
+  // (W-21B, D-WB8 case 1 — the out-of-service period it came from).
+  pendingDeliveryId         String?    @unique
+  outOfServicePeriodId      String?    @unique
   previousMonthlyPriceCents Int
   newMonthlyPriceCents      Int
   effectiveFrom             DateTime
@@ -1000,6 +1007,38 @@ model RentalLineAmendment {
   createdAt                 DateTime   @default(now())
 
   @@index([rentalLineId])
+}
+
+// A machine taken off a customer's rental for repair with no replacement yet (Batch W Amendment B, D-WB8 case 3,
+// W-21A). Opens when a pickup or a swap-without-replacement takes the machine while the rental continues; closes when a
+// replacement (or the same machine, repaired) is delivered, or the owner closes it. On closing, the customer is credited
+// the machine's share of the line price for each day without it (pickup day counts as without; the delivery day counts
+// as with), never more than was billed — a CustomerCredit with sourceType OUT_OF_SERVICE that reaches the next bill.
+model OutOfServicePeriod {
+  id                     String    @id @default(cuid())
+  agreementId            String
+  agreement              RentalAgreement @relation(fields: [agreementId], references: [id])
+  rentalLineId           String
+  rentalLine             RentalLine @relation(fields: [rentalLineId], references: [id])
+  applianceId            String
+  appliance              Appliance @relation("OutOfServiceAppliance", fields: [applianceId], references: [id])
+  /** Colorado-midnight date the machine was taken. */
+  startedOn              DateTime
+  startJobId             String
+  /** Colorado-midnight date a machine was back (or the owner's chosen closing date); null while open. */
+  endedOn                DateTime?
+  endJobId               String?
+  /** REPLACED | SAME_MACHINE_BACK | CLOSED_BY_OWNER */
+  endReason              String?
+  replacementApplianceId String?
+  creditId               String?   @unique
+  closedByUserId         String?
+  createdAt              DateTime  @default(now())
+  closedAt               DateTime?
+
+  @@unique([startJobId, applianceId])
+  @@index([agreementId, endedOn])
+  @@index([applianceId, endedOn])
 }
 
 model ApplianceAssignment {
@@ -2405,6 +2444,8 @@ model BusinessSettings {
   // ON (default): the pickup/return day itself is never charged; the last charged
   // day is the day before. OFF: the pickup day is charged like any other day.
   pickupDayNotBilled        Boolean @default(true)
+  // W-21A: days a machine may be out for repair without a replacement before its To do item turns urgent.
+  outOfServiceEscalationDays Int    @default(3)
 
   updatedAt DateTime @updatedAt
 

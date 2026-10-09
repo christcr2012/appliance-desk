@@ -66,7 +66,19 @@ describe("form defaults", () => {
       lateReturnFixedDailyDollars: "",
       lateDeliveryProrationBasis: "MONTHLY_DIV_30",
       pickupDayNotBilled: true,
+      outOfServiceEscalationDays: "3",
     });
+  });
+
+  it("checks the out-for-repair urgency days (W-21A) and leaves them alone when an older form omits them", () => {
+    const base = { ...RECOMMENDED_PICKUP_BILLING_FORM };
+    expect(pickupBillingUpdate({ ...base, outOfServiceEscalationDays: "5" })).toMatchObject({ success: true, update: { outOfServiceEscalationDays: 5 } });
+    expect(pickupBillingUpdate({ ...base, outOfServiceEscalationDays: "0" })).toMatchObject({ success: false });
+    expect(pickupBillingUpdate({ ...base, outOfServiceEscalationDays: "2.5" })).toMatchObject({ success: false });
+    const { outOfServiceEscalationDays: _omit, ...older } = base;
+    void _omit;
+    const result = pickupBillingUpdate(older);
+    expect(result.success && "outOfServiceEscalationDays" in result.update).toBe(false);
   });
 
   it("shows a saved fixed rate in dollars", () => {

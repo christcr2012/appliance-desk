@@ -89,6 +89,14 @@ remain frozen and corrections are reviewed via the filing-amendment detector.
   together but is always **two** separately tracked `Appliance` rows —
   never one fake combined appliance — so swapping a broken dryer never
   loses the washer's own history.
+- **OutOfServicePeriod** (W-21A, 2026-10-09) — a machine taken off a rental for repair with no replacement yet:
+  agreement, line, appliance, `startedOn` (pickup date), `startJobId`, then `endedOn`/`endReason`
+  (REPLACED | SAME_MACHINE_BACK | CLOSED_BY_OWNER), `endJobId`, `replacementApplianceId`, `creditId` (the
+  `CustomerCredit` with sourceType `OUT_OF_SERVICE`). One open period per machine (partial unique index).
+  `BusinessSettings.outOfServiceEscalationDays` (1–60, default 3). Migration `20261013110000_out_of_service_periods`.
+  W-21B (`20261013120000_set_machine_done`): `RentalLineAmendment.pendingDeliveryId` is now optional and
+  `outOfServicePeriodId` was added — exactly one of the two is set (a never-delivered item, or a set machine the customer
+  is done with).
 - **AssetNumberCounter** (Batch C, 2026-10-03) — the next asset-number
   sequence per prefix (`WASH`, `DRY`, ...). Only moves forward, so a number is
   never handed out twice, even after a unit is deleted or renamed. Created

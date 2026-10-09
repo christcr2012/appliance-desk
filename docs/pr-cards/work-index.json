@@ -3390,7 +3390,7 @@
       "dependencies": [
         "W-16B"
       ],
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "out_of_service_periods",
       "budget": 500,
       "units": [
@@ -3400,9 +3400,13 @@
         "docs/designs/BATCH-W-AMENDMENT-B.md",
         "src/domains/billing/pickup-billing.ts"
       ],
-      "tests": [],
-      "readiness": "WRITE_CARD_AT_START",
-      "plannedCard": "docs/pr-cards/W-21.md"
+      "tests": [
+        "tests/out-of-service-integration.test.ts",
+        "tests/set-machine-done-integration.test.ts"
+      ],
+      "readiness": "READY_AFTER_PREREQUISITE",
+      "plannedCard": "docs/pr-cards/W-21.md",
+      "card": "docs/pr-cards/W-21B.md"
     },
     {
       "id": "W-19",

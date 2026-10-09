@@ -23,6 +23,7 @@ import { createTaskInTx } from "@/domains/tasks";
 import { lockMaintenanceRequestInTx, requestAfterVisitEndedInTx } from "@/domains/maintenance/visit-sync";
 import { JobVersionError } from "./scheduling";
 import { recordRentalDeliveryFeeInTx } from "@/domains/tax/rdf-records";
+import { closeOutOfServiceForSwapInTx, openOutOfServiceInTx } from "@/domains/billing/out-of-service";
 
 // ---------------------------------------------------------------------------
 // Completing a job (Batch C, slice P2-B). Every appliance in the job's scope gets exactly one result.
@@ -232,13 +233,8 @@ export async function completeJob(userId: string, input: CompleteJobInput): Prom
         throw new JobCompletionConflictError("That result doesn't fit this kind of visit.");
       }
     }
-    if (before.type === "SWAP") {
-      const returned = scope.some((s) => s.role === "PRIMARY" && resultOf.get(s.applianceId)!.result === "RETURNED");
-      const notDeliveredNew = scope.some((s) => s.role === "REPLACEMENT" && resultOf.get(s.applianceId)!.result === "NOT_DELIVERED");
-      if (returned && notDeliveredNew) {
-        throw new JobCompletionConflictError("Don't take the old unit unless the new one is delivered.");
-      }
-    }
+    // A swap may take the old machine without delivering the new one (W-21A, D-WB8 case 3): it is "taken for repair —
+    // no replacement yet", and the customer is credited the days without it once a machine is back.
     const isDelivery = before.type === "DELIVERY" || before.type === "INSTALLATION";
     const notDeliveredIds = scopeIds.filter((id) => resultOf.get(id)!.result === "NOT_DELIVERED");
     if (isDelivery && notDeliveredIds.length > 0 && !before.agreementId) {
@@ -355,6 +351,9 @@ export async function completeJob(userId: string, input: CompleteJobInput): Prom
       });
     }
 
+    // --- machines out for repair with no replacement yet (W-21A) -------------------------------------
+    const outOfService = { creditIds: [] as string[], notes: [] as string[] };
+
     // --- swap: both units, both custody records and the assignment move together ----------------
     let swapBothNegative = false;
     if (before.type === "SWAP") {
@@ -419,6 +418,13 @@ export async function completeJob(userId: string, input: CompleteJobInput): Prom
           startedOn: serviceDate,
           startJobId: before.id,
         });
+        if (originalId) {
+          const repaired = await closeOutOfServiceForSwapInTx(tx, { userId, jobId: before.id, originalId, replacementId, serviceDate });
+          if (repaired) {
+            outOfService.notes.push(repaired.note);
+            if (repaired.creditId) outOfService.creditIds.push(repaired.creditId);
+          }
+        }
         await tx.applianceAssignment.update({
           where: { id: originalAssignment.id },
           data: { unassignedAt: completedAt, unassignReason: `Swapped for ${replacement.assetNumber}` },
@@ -438,6 +444,28 @@ export async function completeJob(userId: string, input: CompleteJobInput): Prom
           }
         }
         await tx.jobAppliance.updateMany({ where: { jobId: before.id, applianceId: replacementId }, data: { reservationActive: false } });
+      } else if (replacementId && originalId && originalResult === "RETURNED" && replacementResult === "NOT_DELIVERED") {
+        // Taken for repair with no replacement yet: the machine leaves the customer, the rental goes on.
+        const original = applianceById.get(originalId)!;
+        if (await getOpenCustody(tx, originalId)) {
+          await closeCustodyEpisodeInTx(tx, { applianceId: originalId, endedOn: serviceDate, endJobId: before.id, endReason: "Taken for repair" });
+        }
+        const toInspection = await tx.appliance.updateMany({ where: { id: originalId, status: { in: ["RENTED", "AWAITING_PICKUP", "MAINTENANCE"] } }, data: { status: "AWAITING_INSPECTION" } });
+        if (toInspection.count === 1) {
+          await tx.auditLog.create({
+            data: { userId, action: "appliance.unit.status", entityType: "Appliance", entityId: originalId, oldValue: { status: original.status }, newValue: { status: "AWAITING_INSPECTION", reason: "Taken for repair, no replacement yet", jobId: before.id } },
+          });
+        }
+        if (reservationOwned) {
+          const released = await tx.appliance.updateMany({ where: { id: replacementId, status: "RESERVED" }, data: { status: "AVAILABLE" } });
+          if (released.count === 1) {
+            await tx.auditLog.create({
+              data: { userId, action: "appliance.unit.status", entityType: "Appliance", entityId: replacementId, oldValue: { status: "RESERVED" }, newValue: { status: "AVAILABLE", reason: "Replacement not delivered", jobId: before.id } },
+            });
+          }
+          await tx.jobAppliance.updateMany({ where: { jobId: before.id, applianceId: replacementId }, data: { reservationActive: false } });
+        }
+        outOfService.notes.push(...(await openOutOfServiceInTx(tx, { userId, jobId: before.id, applianceIds: [originalId], serviceDate, alwaysOpen: true })));
       } else if (!replacementId && originalId && originalResult === "RETURNED" && (await getOpenCustody(tx, originalId))) {
         await closeCustodyEpisodeInTx(tx, { applianceId: originalId, endedOn: serviceDate, endJobId: before.id, endReason: "Swapped out" });
       } else if (replacementId && swapBothNegative && reservationOwned) {
@@ -454,6 +482,20 @@ export async function completeJob(userId: string, input: CompleteJobInput): Prom
     // --- billing that completion already did (same transaction) ----------------------------------
     const billing: PickupBillingOutcome[] = [];
     const returnedIds = scopeIds.filter((id) => resultOf.get(id)!.result === "RETURNED");
+    if (before.agreementId && before.type === "REMOVAL" && returnedIds.length > 0) {
+      // Some machines picked up while others stay with the customer: those are out of service until one is back.
+      outOfService.notes.push(...(await openOutOfServiceInTx(tx, { userId, jobId: before.id, applianceIds: returnedIds, serviceDate, alwaysOpen: false })));
+    }
+    if (outOfService.creditIds.length > 0 || outOfService.notes.length > 0) {
+      billing.push({
+        lateReturnInvoiceId: null,
+        lateReturnCents: 0,
+        creditIds: outOfService.creditIds,
+        creditCents: 0,
+        pendingDeliveryIds: [],
+        notes: outOfService.notes,
+      });
+    }
     if (before.agreementId && before.type === "REMOVAL") {
       billing.push(await recordLateReturnOnRemoval(tx, { userId, jobId: before.id, agreementId: before.agreementId, applianceIds: returnedIds, pickupDate: serviceDate }));
     }
@@ -865,6 +907,11 @@ async function runHandoffs(scope: { ids?: string[]; limit?: number }): Promise<{
     }
   }
   return { done, failed };
+}
+
+/** Run specific handoffs right after the transaction that created them commits (owner actions outside a job). */
+export async function runHandoffsByIds(ids: string[]): Promise<{ done: number; failed: number }> {
+  return ids.length ? runHandoffs({ ids }) : { done: 0, failed: 0 };
 }
 
 /** Nightly sweep: finish handoffs that are still pending, failed, or abandoned in flight. */

@@ -199,6 +199,30 @@ export function PickupBillingForm({ defaultValues }: { defaultValues: PickupBill
         />
       </fieldset>
 
+      <fieldset className="space-y-4">
+        <legend className="text-base font-semibold text-ink">4. A machine taken for repair with no replacement</legend>
+        <p className="text-sm text-ink-soft">
+          When a visit takes a machine away and nothing replaces it, the customer keeps paying the normal price and gets a
+          credit on the next bill for each day without it (worked out like a late delivery, above). To do shows “Return or
+          replace” until a machine is back.
+        </p>
+        <div className="max-w-xs">
+          <Field
+            id="out-of-service-escalation-days"
+            label="Days before “Return or replace” becomes urgent"
+            type="number"
+            min={1}
+            max={60}
+            step={1}
+            value={values.outOfServiceEscalationDays}
+            help="Recommended: 3 days. Owners and admins can change it. The credit grows each day, so a short wait keeps it small."
+            onChange={(event) =>
+              setValues((current) => ({ ...current, outOfServiceEscalationDays: event.target.value }))
+            }
+          />
+        </div>
+      </fieldset>
+
       <div className="flex flex-wrap items-center gap-4">
         <Button type="submit" disabled={saving}>
           {saving ? "Saving…" : "Save this section"}

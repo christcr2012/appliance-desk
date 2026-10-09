@@ -36,6 +36,8 @@ export type PickupBillingSettings = {
   lateReturnFixedDailyCents: number;
   lateDeliveryProrationBasis: LateDeliveryProrationBasis;
   pickupDayNotBilled: boolean;
+  /** W-21A: days a machine may be out for repair with no replacement before its To do item turns urgent. */
+  outOfServiceEscalationDays: number;
 };
 
 /** The recommended starting values, as shown by "Restore recommended values" on the settings screen. */
@@ -44,6 +46,7 @@ export const RECOMMENDED_PICKUP_BILLING: PickupBillingSettings = {
   lateReturnFixedDailyCents: 0,
   lateDeliveryProrationBasis: "MONTHLY_DIV_30",
   pickupDayNotBilled: true,
+  outOfServiceEscalationDays: 3,
 };
 
 export function isLateReturnRateMode(value: unknown): value is LateReturnRateMode {
@@ -60,6 +63,7 @@ export function pickupBillingSettingsFrom(row: {
   lateReturnFixedDailyCents?: number | null;
   lateDeliveryProrationBasis?: string | null;
   pickupDayNotBilled?: boolean | null;
+  outOfServiceEscalationDays?: number | null;
 }): PickupBillingSettings {
   return {
     lateReturnRateMode: isLateReturnRateMode(row.lateReturnRateMode)
@@ -76,6 +80,10 @@ export function pickupBillingSettingsFrom(row: {
       typeof row.pickupDayNotBilled === "boolean"
         ? row.pickupDayNotBilled
         : RECOMMENDED_PICKUP_BILLING.pickupDayNotBilled,
+    outOfServiceEscalationDays:
+      Number.isInteger(row.outOfServiceEscalationDays) && (row.outOfServiceEscalationDays as number) >= 1 && (row.outOfServiceEscalationDays as number) <= 60
+        ? (row.outOfServiceEscalationDays as number)
+        : RECOMMENDED_PICKUP_BILLING.outOfServiceEscalationDays,
   };
 }
 

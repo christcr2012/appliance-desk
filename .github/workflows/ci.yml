@@ -208,7 +208,9 @@ jobs:
 
     services:
       postgres:
-        image: postgres:17
+        # The same Docker Official postgres:17 image, from its Amazon ECR Public copy: anonymous Docker Hub pulls hit a
+        # rate limit on shared runners (2026-10-09, every job of #366 failed before any test ran).
+        image: public.ecr.aws/docker/library/postgres:17
         env:
           POSTGRES_USER: test
           POSTGRES_PASSWORD: test
@@ -287,7 +289,9 @@ jobs:
 
     services:
       postgres:
-        image: postgres:17
+        # The same Docker Official postgres:17 image, from its Amazon ECR Public copy: anonymous Docker Hub pulls hit a
+        # rate limit on shared runners (2026-10-09, every job of #366 failed before any test ran).
+        image: public.ecr.aws/docker/library/postgres:17
         env:
           POSTGRES_USER: test
           POSTGRES_PASSWORD: test

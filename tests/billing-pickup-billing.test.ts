@@ -357,6 +357,7 @@ describe("settings", () => {
       lateReturnFixedDailyCents: 250,
       lateDeliveryProrationBasis: "ACTUAL_DAYS_IN_MONTH",
       pickupDayNotBilled: false,
+      outOfServiceEscalationDays: 3,
     });
   });
 });

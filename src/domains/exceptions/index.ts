@@ -1,4 +1,4 @@
-import { businessDateKey, businessDayBounds } from "@/lib/business-date";
+import { businessDateKey, businessDayBounds, businessDaysBetween } from "@/lib/business-date";
 import { TAX_ADDRESS_CHANGE_REVIEW_NOTE } from "@/domains/tax/address-recheck";
 import { listOfficialRateAttention } from "@/domains/tax/official-rate-auto-apply";
 import { listTaxFilingAttention, listRdfRefundAttention } from "@/domains/tax/filing-attention";
@@ -43,6 +43,7 @@ import {
   staleReservationException,
   uninspectedReturnException,
   oldSetApplianceException,
+  outOfServiceException,
   unreviewedMaintenanceRequestException,
   type ExceptionCategory,
   type ExceptionItem,
@@ -290,6 +291,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     custodyGaps,
     pendingLineReductions,
     oldSetAppliances,
+    outOfServicePeriods,
   ] = await Promise.all([
     canViewFinance
       ? capped(
@@ -599,7 +601,29 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
           () => prisma.appliance.count({ where: oldSetWhere }),
         )
       : empty<never>(),
+    // Operations + money: machines out for repair with no replacement yet (W-21A). Owner/admin decide.
+    canViewFinance
+      ? capped(
+          (take) => prisma.outOfServicePeriod.findMany({
+            where: { endedOn: null },
+            select: {
+              id: true,
+              startedOn: true,
+              applianceId: true,
+              appliance: { select: { assetNumber: true, applianceType: { select: { name: true } } } },
+              agreement: { select: customerSelect },
+            },
+            orderBy: [{ startedOn: "asc" }, { id: "asc" }],
+            take,
+          }),
+          () => prisma.outOfServicePeriod.count({ where: { endedOn: null } }),
+        )
+      : empty<never>(),
   ]);
+  const outOfServiceEscalationDays = outOfServicePeriods.rows.length
+    ? ((await prisma.businessSettings.findUnique({ where: { id: "singleton" }, select: { outOfServiceEscalationDays: true } }))
+        ?.outOfServiceEscalationDays ?? 3)
+    : 3;
   const oldSetContents = oldSetAppliances.rows.length
     ? packageContents(
         (
@@ -921,6 +945,17 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
         problem: r.problem,
       }),
     ),
+    ...outOfServicePeriods.rows.map((p) =>
+      outOfServiceException({
+        applianceId: p.applianceId,
+        assetNumber: p.appliance.assetNumber,
+        typeName: p.appliance.applianceType.name,
+        customerName: customerDisplayName(p.agreement.customer),
+        startedOn: p.startedOn,
+        daysOut: Math.max(0, businessDaysBetween(p.startedOn, now)) + 1,
+        escalationDays: outOfServiceEscalationDays,
+      }),
+    ),
     ...oldSetAppliances.rows.map((a) =>
       oldSetApplianceException({ id: a.id, assetNumber: a.assetNumber, contents: oldSetContents, createdAt: a.createdAt }),
     ),
@@ -1044,6 +1079,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
       ["CUSTODY_UNKNOWN", custodyGaps],
       ["SUBSCRIPTION_UPDATE_PENDING", pendingLineReductions],
       ["OLD_SET_APPLIANCE", oldSetAppliances],
+      ["OUT_OF_SERVICE", outOfServicePeriods],
     ] as Array<[ExceptionCategory, Capped<unknown>]>
   )
     .filter(([, c]) => c.total > c.rows.length)

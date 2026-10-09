@@ -806,3 +806,20 @@ old "Washer + Dryer Set" type has to land in the same PR that puts the package o
 would drop the set from the public site between merges — so W-16A takes website + quote form + leads, and W-16B takes the
 split-an-old-set-appliance To do and guided screen along with agreement and estimate package lines. New appliance types
 stay owner-added data (Chris asked; confirmed: no types in code), and any type can be part of a set.
+
+## 2026-10-09 — W-21 split into W-21A (repair, any line) and W-21B (a set machine that is done)
+
+D-WB8 case 3 (taken for repair, no replacement) and case 1 (a machine of a set that is done) touch different code:
+case 3 is visit completion plus customer credits; case 1 also changes a signed line's price and the Stripe subscription
+item. They ship as two PRs so each money change is reviewed on its own. Implementation choices in W-21A: staff record
+"taken without a replacement" on the visit (a swap whose new machine is not delivered, or a partial pickup); the owner
+resolves it (replacement swap, same machine back, or close) — the credit is worked out only then, exactly as a late
+delivery is, so it can never be more than was billed. The pickup day counts as without, the day a machine is back as with.
+
+## 2026-10-09 — W-21B: prepaid-term discount after a set becomes single machines
+
+D-WB8 says the machine that stays is charged "its normal single-machine price" but not what happens to a 6- or 12-month
+prepay discount. Chosen (smallest surprise for the customer, never a price rise): the remaining machines keep this
+agreement's term discount for that many machines, using the current discount setting (the agreement stored only the set
+amount), and the new price is capped at the line's price today. Chris can change this; it is one function
+(`singlePriceForRemaining`).

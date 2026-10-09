@@ -498,3 +498,20 @@ OWNER/ADMIN can assign, and mutations revalidate active team roles
 in the write transaction. Read cursors never move backward or accept
 cross-thread message IDs. Thread actions have optimistic version and
 privacy-safe audit evidence. No schema, live provider or send activation.
+### W-21A out-of-service periods — 2026-10-09 (#365)
+- Migration `20261013110000_out_of_service_periods`: `OutOfServicePeriod` (one open per machine) and
+  `BusinessSettings.outOfServiceEscalationDays` (default 3). The period stores `creditId` (design said
+  `creditedOnInvoiceId`; the bill line is the existing Stripe-balance credit mirror).
+- Job completion: a SWAP may now record old RETURNED + new NOT_DELIVERED ("taken for repair"); partial REMOVALs on an
+  active rental open periods. `stageSwap` accepts an original with an open period. Credits: `CustomerCredit.sourceType
+  "OUT_OF_SERVICE"`, pushed via `PUSH_CREDIT` handoffs (`runHandoffsByIds` export), labelled by the invoice mirror.
+- `src/domains/billing/out-of-service.ts`: `openOutOfServiceInTx`, `closeOutOfServiceInTx`, `outOfServiceCreditPlan`,
+  `resolveOutOfService`. To do category `OUT_OF_SERVICE`. W-21B adds the "done" decision on the same screen.
+
+### W-21B set machine done — 2026-10-09 (#366)
+- Migration `20261013120000_set_machine_done`: `RentalLineAmendment.pendingDeliveryId` optional, `outOfServicePeriodId`
+  added, CHECK exactly one source. Unassign reason prefix "Taken off: customer done with it" is superseded for share maths.
+- `src/domains/billing/set-machine-done.ts` (`planSetMachineDone`, `markSetMachineDone`, `singlePriceForRemaining`,
+  `singlePriceStart`); credits `SET_SINGLE_PRICE`; Stripe `subscription-line-reprice-<amendmentId>` operations
+  (`claimLineRepriceInTx`/`runLineReprice`/`retryLineReprice` in `subscription-line.ts`, reconciled in
+  `reconciliation-base.ts`). W-19/W-20 (portal "next bill") should read these credits and amendments.

@@ -18,7 +18,7 @@ import {
   recomputeForAgreementInTx,
   recomputeSubscriptionEndInTx,
 } from "./subscription-end";
-import { parseLineReduceKey, retryLineReduction } from "./subscription-line";
+import { parseLineReduceKey, parseLineRepriceKey, retryLineReduction, retryLineReprice } from "./subscription-line";
 import { retrySubscriptionTaxUpdate } from "@/domains/tax/rate-changes";
 
 export type DriftRow = {
@@ -270,6 +270,8 @@ function parseSubscriptionEndKey(key: string): string | null {
 async function reconcileSubscriptionUpdate(operation: RecoverableOperation): Promise<boolean> {
   const lineReducePendingId = parseLineReduceKey(operation.idempotencyKey);
   if (lineReducePendingId) return retryLineReduction(operation, lineReducePendingId);
+  const lineRepriceAmendmentId = parseLineRepriceKey(operation.idempotencyKey);
+  if (lineRepriceAmendmentId) return retryLineReprice(operation, lineRepriceAmendmentId);
 
   const subscriptionId = parseSubscriptionEndKey(operation.idempotencyKey);
   if (subscriptionId) {

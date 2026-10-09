@@ -97,7 +97,7 @@ const EMPTY: PickupBillingOutcome = {
   notes: [],
 };
 
-async function loadSettings(tx: Prisma.TransactionClient): Promise<PickupBillingSettings> {
+export async function loadSettings(tx: Prisma.TransactionClient): Promise<PickupBillingSettings> {
   const row = await tx.businessSettings.findUnique({
     where: { id: "singleton" },
     select: {
@@ -105,6 +105,7 @@ async function loadSettings(tx: Prisma.TransactionClient): Promise<PickupBilling
       lateReturnFixedDailyCents: true,
       lateDeliveryProrationBasis: true,
       pickupDayNotBilled: true,
+      outOfServiceEscalationDays: true,
     },
   });
   return pickupBillingSettingsFrom(row ?? {});
@@ -120,7 +121,8 @@ export type Item = {
   lineMonthlyPriceCents: number;
 };
 
-const SUPERSEDED_UNASSIGN_PREFIXES = [NEVER_DELIVERED_UNASSIGN_REASON, "Swapped out for repair", "Swapped for", "Replaced by"];
+// "Taken off: customer done with it" (W-21B): the line was repriced to the remaining machines, so it is not a share of it.
+const SUPERSEDED_UNASSIGN_PREFIXES = [NEVER_DELIVERED_UNASSIGN_REASON, "Swapped out for repair", "Swapped for", "Replaced by", "Taken off: customer done with it"];
 
 /** True when an ended assignment was replaced one-for-one (or never delivered), so it is not a priced item of its own. */
 export function isSupersededAssignment(reason: string | null): boolean {
@@ -801,7 +803,7 @@ export async function pushLateDeliveryCreditToStripe(creditId: string): Promise<
         amount: -latest.amountCents,
         currency: "usd",
         description: latest.reason,
-        metadata: { creditId, sourceType: LATE_DELIVERY_CREDIT_SOURCE, sourceId: latest.sourceId ?? "" },
+        metadata: { creditId, sourceType: latest.sourceType ?? LATE_DELIVERY_CREDIT_SOURCE, sourceId: latest.sourceId ?? "" },
       },
       { idempotencyKey: claim.idempotencyKey },
     ),
