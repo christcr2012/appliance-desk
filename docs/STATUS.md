@@ -1,6 +1,6 @@
 # STATUS — current work, blockers and next action
 
-Updated October 9, 2026 (main `aea29ba3`). **Batch T is engineering-complete** (through T-7D #328). **Batch S is
+Updated October 9, 2026 (rebased W-0A against main `bc63686`). **Batch T is engineering-complete** (through T-7D #328). **Batch S is
 complete:** S-1A #330, S-1B #331, S-1C #332, S-2 #334 (plus the test-fixture drift fix #333). **COM-L1A** (#335) and
 **COM-L1B** (#336) are merged. No live payments, customer messages, fee charging or tax filing are activated.
 
@@ -10,12 +10,10 @@ complete:** S-1A #330, S-1B #331, S-1C #332, S-2 #334 (plus the test-fixture dri
 
 **2026-10-09 — Batch W Amendment A (tax filing on autopilot) added:** W-9 filing autopilot, W-10 use-tax "File now" + filled DR 0252, W-11 live GIS rates (waits on IN-61, may run early once done), W-12 XML return file (waits on IN-62, IN-44). Nothing ever submits or pays on Chris's behalf (D-WA2, IN-63). **D-WA6:** W-2 now also gives every seller-tax answer one dated next step (`nextPurchaseTaxStep`); W-13 receipt reading waits on IN-64; out-of-state seller tax waits on the CPA (IN-65).
 
-**W-0A in progress (Sol, 2026-10-09):** implementation and database tests done, not yet on GitHub. If that code exists
-only in the Vercel Sandbox, publish it with `docs/runbooks/SANDBOX-PUBLISH.md` (pack → upload parts → workflow pushes), then `git merge origin/main` (main moved
-only in docs: #337–#339) and publish.
+**W-0A implementation (2026-10-09):** rebased onto current main `bc63686` (including planning PRs #338–#340 and publishing PR #341). Purchase use tax workflows and local regressions implemented; full preflight/browser and exact-head CI remain gated before merge. Sandbox GitHub push access now works; publish the validated W-0A branch through normal git push and open a PR. **W-0B follows W-0A**. No real filing or payment is activated.
 
 **Recovered unfinished work (2026-10-09, read before starting anything):** found uncommitted in the Vercel Sandbox
-`appliance-desk-s1c-oct8` and committed there (not on GitHub; the sandbox clone has no push credentials):
+`appliance-desk-s1c-oct8` and committed there (not on GitHub; the sandbox clone originally lacked push credentials; this is resolved as of 2026-10-09):
 - `/vercel/appliance-desk-com-l2`, branch `ai/gpt6/com-l2-foundation`, commit `02e715a` — **COM-L2 started**: schema
   (+217 lines), migration `20261012130000_com_l2_telecom_foundation`, backup manifest, and
   `tests/communications-foundation-integration.test.ts`. Unverified. When COM-L2 comes up, run drift checklist A on it
@@ -58,6 +56,8 @@ A/B/C/R/B2/D/E/E2, F-part-1, G, T (engineering) and S are merged; COM-L1A and CO
 History and prior acceptance: [retired working snapshot](archive/reset-2026-10-08/README.md). Do not use its old unchecked boxes as the current queue.
 
 ## Environment (update when it changes)
+
+- **GitHub push key:** Installed 2026-10-09 through sandbox and running-session network header injection; expires 2027-10-09 (one year, owner supplied). Normal sandbox `git push --dry-run` to `ai/sandbox-push-check` passed with repository pre-push checks. Publish work with normal sandbox `git push`, then open the PR; never push directly to main.
 
 - **Local database testing:** Vercel Sandbox, project `appliance-desk`. Persistent sandbox in use:
   **`appliance-desk-s1c-oct8`** (most recently active, 2026-10-09; main checkout `/vercel/appliance-desk`, per-card

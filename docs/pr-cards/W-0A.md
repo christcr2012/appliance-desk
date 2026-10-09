@@ -1,6 +1,6 @@
 # W-0A — Purchase use tax can actually be calculated, recalculated and filed
 
-Status: **MERGED (#338)** · Baseline inspected: `aea29ba3` (2026-10-09, #335).
+Status: **IMPLEMENTED LOCALLY — PR PENDING** · Baseline inspected: `aea29ba3` (2026-10-09, #335).
 Batch: W (`docs/designs/BATCH-W.md` §1 "Broken today", D-W2, D-W3 row 1, PR table W-0a) · Prerequisites: none (fixes
 merged T code; runs ahead of COM-L by Chris's approval, IN-48).
 Base: latest `main`. Migration: **none**. Sizing estimate: ~380 production lines, ≤12 files, risk area: money (tax).
@@ -94,7 +94,7 @@ changes here), or more than 800 production lines. Done when every named case pas
 business address → see waiting appliances calculated, exact-head CI/preview/review gates pass, and STATUS/
 CHANGES-SINCE-DESIGN record the new functions. Successor W-0B inherits nothing from this card.
 
-## Drift and handoff (2026-10-09, PR #338)
+## Drift and handoff (2026-10-09, rebased onto main bc63686; PR pending)
 
 - Checked `main` at `1722f2c` against inspected baseline `aea29ba3`; no tax-domain/schema changes.
 - Predecessor #337 approved W scope and installed quick gate; no code findings carried to W-0A.
