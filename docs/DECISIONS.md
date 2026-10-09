@@ -815,3 +815,11 @@ item. They ship as two PRs so each money change is reviewed on its own. Implemen
 "taken without a replacement" on the visit (a swap whose new machine is not delivered, or a partial pickup); the owner
 resolves it (replacement swap, same machine back, or close) — the credit is worked out only then, exactly as a late
 delivery is, so it can never be more than was billed. The pickup day counts as without, the day a machine is back as with.
+
+## 2026-10-09 — W-21B: prepaid-term discount after a set becomes single machines
+
+D-WB8 says the machine that stays is charged "its normal single-machine price" but not what happens to a 6- or 12-month
+prepay discount. Chosen (smallest surprise for the customer, never a price rise): the remaining machines keep this
+agreement's term discount for that many machines, using the current discount setting (the agreement stored only the set
+amount), and the new price is capped at the line's price today. Chris can change this; it is one function
+(`singlePriceForRemaining`).

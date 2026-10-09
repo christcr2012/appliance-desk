@@ -850,7 +850,7 @@ export function outOfServiceException(item: {
     category: "OUT_OF_SERVICE",
     severity: item.daysOut >= item.escalationDays ? "high" : "medium",
     title: `Return or replace ${item.customerName}'s ${item.typeName.toLowerCase()} (out for repair ${item.daysOut} ${item.daysOut === 1 ? "day" : "days"})`,
-    detail: `${item.assetNumber} was taken for repair with no replacement. The customer is credited each day without it once a machine is back: schedule a replacement swap, record the same machine delivered back, or close it.`,
+    detail: `${item.assetNumber} was taken for repair with no replacement. The customer is credited each day without it once a machine is back: schedule a replacement swap, record the same machine delivered back, mark a set machine the customer is done with (single price for the rest), or close it.`,
     href: `/desk/inventory/${item.applianceId}/out-of-service`,
     since: item.startedOn,
   };
