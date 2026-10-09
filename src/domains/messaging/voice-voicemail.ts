@@ -185,7 +185,7 @@ export async function fetchTwilioVoicemail(accountSid: string, recordingSid: str
 async function putVoicemailBytes(key: string, bytes: Buffer): Promise<void> {
   const store = getPrivatePhotoStore();
   if (!store) throw new Error("Approved private media storage is not available.");
-  await put(key, new Uint8Array(bytes), {
+  await put(key, bytes, {
     token: store.token, access: "private", contentType: "audio/mpeg",
     addRandomSuffix: false, allowOverwrite: false,
     abortSignal: AbortSignal.timeout(MEDIA_TIMEOUT_MS),
