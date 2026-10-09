@@ -406,3 +406,11 @@ Missing draft produces a clear preview error; do not silently show live content
 under a draft label. New legal-page copy uses the existing legal publication/
 acceptance gate and a versioned content hash; editable web legal copy must not
 mutate an already signed customer agreement's terms snapshot.
+
+## 2026-10-09 amendment — connected business (pending IN-69)
+
+`BATCH-W-AMENDMENT-B.md` section 9 adds to Batch V: the plain-language kit (`<Money>`, `<MoneyInput>`, `<InfoTip>`,
+status labels) on every screen; styling for the new W screens (Record a purchase, Tax proof, Audit pack, Rental
+packages, Related/History, portal timelines and Pay now); phone-first acceptance for intake, visits, pickups and
+inspections; and V-4 grows from polish to consistent Related/History/To do components. V still changes no routes,
+permissions, money or statuses — those come from W.

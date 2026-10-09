@@ -4,6 +4,13 @@ Updated October 9, 2026 (COM-L2 PR #346 merged as 12bcd837; latest deployment-co
 
 ## Next
 
+**2026-10-09 — Batch W Amendment B (connected business) drafted, waiting on IN-69.** One part does not wait: **W-0C**,
+a confirmed defect — a failed automatic card charge never reaches To do (invoice stays OPEN, or is DELINQUENT with no
+due date the Today rule needs). Live payments are off, so no customer is affected. **W-0C is the next card after the
+PR currently in flight** (design `docs/designs/BATCH-W-AMENDMENT-B.md` 6.1). The rest (purchases with serials, tax
+proof and audit pack, washer + dryer sets as packages, connected pages, portal flows, dollars-only and ⓘ) starts after
+IN-69, in the order in that file's section 8.
+
 **2026-10-09 — COM-L4A merged (#353), following COM-L3 #352:** strict owner-controlled default-off SMS policy, evidence-based consent, canonical STOP suppression, private encrypted and idempotently prepared message intents. **Next: COM-L4B**, claimed delivery and last-minute sender/consent/readiness verification, then L5 inbound consent/reconciliation. No live sending, phone activation, billing or provider spending.
 
 **2026-10-09 — Batch W Amendment A (tax filing on autopilot) added:** W-9 filing autopilot, W-10 use-tax "File now" + filled DR 0252, W-11 live GIS rates (waits on IN-61, may run early once done), W-12 XML return file (waits on IN-62, IN-44). Nothing ever submits or pays on Chris's behalf (D-WA2, IN-63). **D-WA6:** W-2 now also gives every seller-tax answer one dated next step (`nextPurchaseTaxStep`); W-13 receipt reading waits on IN-64; out-of-state seller tax waits on the CPA (IN-65).

@@ -402,3 +402,12 @@ was corrected to the real `/desk/sales-tax/setup#accounts` section.
 - `src/domains/messaging/communications-policy.ts` defines strict schemaVersion 1 policy. The existing `customerSmsEnabled` master switch remains a distinct default-off prerequisite, independent of JSON; owner edits use an expected-version row lock and redacted audit evidence.
 - `requestCommunication(actorUserId,input)` prepares SMS intent/MessageDelivery/MessageAttempt/CommunicationMessage/audit in one transaction with a canonical STOP lock and idempotency-key lock. Frozen body is AES-256-GCM ciphertext (server-only `COMMUNICATION_CONTENT_KEY`); request/content hashes are keyed digests, not plaintext in logs. A missing key, account verification, consent evidence or approved sender fails closed. No sending or provider API occurs here; L4B must recheck all gates and never automatically replay UNKNOWN attempts.
 - For safety, COM-L4A rejects exchange-only and provider-keyword consent as general-purpose grant evidence: COM-L5 must implement exact inbound-exchange bounds, STOP/START projection and approved disclosures before such permissions become eligible. Production country verification likewise remains blocked until L4B supplies independently validated evidence. Existing legacy STOP suppression remains authoritative for all ordinary SMS.
+
+### Batch W Amendment B — connected business (2026-10-09, pending IN-69)
+
+Later batches inherit (`BATCH-W-AMENDMENT-B.md` section 11): **K** reads `Purchase` and allocated costs for the asset
+register, depreciation and expenses; the audit pack's year view feeds the year-end package. **M** retires/sells single
+machines (a "set" is two machines). **COM-L/COM-N** reuse the flow triggers S6, D1, E1, M2 for customer messages with
+existing send gates. **BP** commercial bundles build on `RentalPackage`. **O** settings history covers the new settings
+(partial-return pricing, unsigned follow-up days, record retention). Appliance types are single machines only from
+W-16A on; "Washer + Dryer Set" is a package.
