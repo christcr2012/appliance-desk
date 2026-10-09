@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireRole } from "@/lib/session";
 import { getOpenOutOfService, previewOutOfServiceCredit } from "@/domains/billing/out-of-service";
+import { planSetMachineDone } from "@/domains/billing/set-machine-done";
 import { businessDateKey, formatBusinessDate } from "@/lib/business-date";
 import { formatCents } from "@/domains/pricing/money";
 import { Card, PageHeader } from "@/components/ui";
@@ -17,6 +18,7 @@ export default async function OutOfServicePage({ params }: { params: Promise<{ i
   const customer = period.agreement.customer.user.name ?? period.agreement.customer.user.email;
   const type = period.appliance.applianceType.name.toLowerCase();
   const preview = await previewOutOfServiceCredit(period.id, new Date());
+  const done = await planSetMachineDone(period.appliance.id, period.startedOn);
   return (
     <div className="max-w-3xl">
       <PageHeader
@@ -43,7 +45,18 @@ export default async function OutOfServicePage({ params }: { params: Promise<{ i
           </li>
           <li>Or record below that the same machine was delivered back, or close this without a replacement.</li>
         </ul>
-        <ResolveForms applianceId={period.appliance.id} startedOnKey={businessDateKey(period.startedOn)} todayKey={businessDateKey(new Date())} />
+        <ResolveForms
+          applianceId={period.appliance.id}
+          startedOnKey={businessDateKey(period.startedOn)}
+          todayKey={businessDateKey(new Date())}
+          setDone={
+            done.eligible
+              ? {
+                  summary: `If the customer gave it back for good on ${formatBusinessDate(period.startedOn)}: from ${formatBusinessDate(done.singleFrom)} the ${done.remainingNames} ${done.remainingNames.includes(" and ") ? "are" : "is"} ${formatCents(done.newPriceCents)} a month instead of ${formatCents(done.oldPriceCents)}${done.creditCents > 0 ? `, and the next bill gets a credit of ${formatCents(done.creditCents)}` : ""}. A later date first credits the days in between as out of service.`,
+                }
+              : null
+          }
+        />
       </Card>
       <p className="mt-4 text-sm">
         <Link href={`/desk/agreements/${period.agreement.id}`} className="underline hover:text-primary">
