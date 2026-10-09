@@ -51,6 +51,7 @@ const SHARED_SETTINGS_TESTS = [
   "tests/tax-setup-actions-integration.test.ts",
   "tests/tax-setup-review-integration.test.ts",
   "tests/two-factor-enforcement-integration.test.ts",
+  "tests/voice-webhooks-integration.test.ts",
   "tests/use-tax-frequency-transition-integration.test.ts",
   "tests/use-tax-unlinked-account-integration.test.ts",
 ];
