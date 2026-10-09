@@ -202,7 +202,7 @@ before V (Amendment A, filing autopilot, adds W-9…W-12; W-11 may run early onc
 - [ ] W-11 (after IN-61): new and existing addresses get Colorado's rates automatically from the GIS API; unmatched addresses and a broken key become To do items; billing never uses an unconfirmed rate.
 - [ ] W-12 (after IN-62 and IN-44): the sales tax return page offers an XML file that passes Colorado's schema in a test; not offered while a deduction line is undecided.
 - [ ] Nothing in the app submits a return, stores a tax-site or bank login, or starts a tax payment (D-WA2).
-- [ ] W-0C: a failed automatic charge (existing or new invoice, with or without a due date) and a partly paid invoice appear on To do the same day, linked to the invoice (Amendment B 6.1).
+- [x] W-0C (#359; `docs/pr-cards/W-0C.md`): a failed automatic charge (existing or new invoice, with or without a due date) and a partly paid invoice appear on To do the same day, linked to the invoice (Amendment B 6.1).
 - [ ] Amendment B (approved IN-69): no "cents" anywhere a person reads or types money; every setting, tax number and derived number has an ⓘ explanation from one glossary (W-18).
 - [ ] W-14: one purchase records seller, date, receipt and many appliances, each with its own model and serial; seller tax split by price sums to the receipt to the cent.
 - [ ] W-15: every appliance shows its tax proof; an audit pack for any date range lists every serial with seller tax or use tax reported (return + confirmation) and its receipt.

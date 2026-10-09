@@ -815,3 +815,11 @@ item. They ship as two PRs so each money change is reviewed on its own. Implemen
 "taken without a replacement" on the visit (a swap whose new machine is not delivered, or a partial pickup); the owner
 resolves it (replacement swap, same machine back, or close) — the credit is worked out only then, exactly as a late
 delivery is, so it can never be more than was billed. The pickup day counts as without, the day a machine is back as with.
+
+## 2026-10-09 — Plans reconciled after two lanes; remaining order restated
+
+Chris: "update all documentation and plans to account for all the changes … possibly out of order. Then give me a prompt to
+start Sol working through the updated plans in the new order." The sets and repair-credit work (W-16A/B, W-21A/B) is done
+ahead of its original place; COM-L reached L6A with L6B in flight. Remaining order (Amendment B section 8): COM-L6B …
+COM-L15 → W-1 → W-18 → W-14 → W-2 → W-15 → W-3 … W-10 → W-19 → W-17 → W-20 → V → F-part-2. One implementer resumes the
+single chain; the second lane is closed unless Chris opens it again. IN-72 records the one default chosen in W-21B.

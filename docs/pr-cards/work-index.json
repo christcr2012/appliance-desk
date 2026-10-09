@@ -1542,7 +1542,7 @@
       "dependencies": [
         "COM-L2"
       ],
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "com_threads_templates",
       "budget": 440,
       "units": [
@@ -1557,8 +1557,9 @@
       "tests": [
         "tests/communication-schema-integration.test.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
-      "plannedCard": "docs/pr-cards/COM-L3.md"
+      "readiness": "MERGED",
+      "plannedCard": "docs/pr-cards/COM-L3.md",
+      "card": "docs/pr-cards/COM-L3.md"
     },
     {
       "id": "COM-L4A",
@@ -1567,7 +1568,7 @@
       "dependencies": [
         "COM-L3"
       ],
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "none",
       "budget": 500,
       "units": [
@@ -1582,8 +1583,9 @@
       "tests": [
         "tests/communication-intent-integration.test.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
-      "plannedCard": "docs/pr-cards/COM-L4A.md"
+      "readiness": "MERGED",
+      "plannedCard": "docs/pr-cards/COM-L4A.md",
+      "card": "docs/pr-cards/COM-L4A.md"
     },
     {
       "id": "COM-L4B",
@@ -1592,7 +1594,7 @@
       "dependencies": [
         "COM-L4A"
       ],
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "none",
       "budget": 500,
       "units": [
@@ -1607,8 +1609,9 @@
       "tests": [
         "tests/communication-dispatch-integration.test.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
-      "plannedCard": "docs/pr-cards/COM-L4B.md"
+      "readiness": "MERGED",
+      "plannedCard": "docs/pr-cards/COM-L4B.md",
+      "card": "docs/pr-cards/COM-L4B.md"
     },
     {
       "id": "COM-L5A",
@@ -1617,7 +1620,7 @@
       "dependencies": [
         "COM-L4B"
       ],
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "none",
       "budget": 500,
       "units": [
@@ -1632,8 +1635,9 @@
       "tests": [
         "tests/communication-inbound-integration.test.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
-      "plannedCard": "docs/pr-cards/COM-L5A.md"
+      "readiness": "MERGED",
+      "plannedCard": "docs/pr-cards/COM-L5A.md",
+      "card": "docs/pr-cards/COM-L5A.md"
     },
     {
       "id": "COM-L5B",
@@ -1701,7 +1705,7 @@
       "dependencies": [
         "COM-L6A"
       ],
-      "status": "APPROVED",
+      "status": "IN_PROGRESS \u2014 PR #364 open",
       "migration": "none",
       "budget": 500,
       "units": [
@@ -2695,7 +2699,7 @@
         "S-2"
       ],
       "card": "docs/pr-cards/COM-L1A-SMS-SEND-SAFETY.md",
-      "status": "APPROVED",
+      "status": "MERGED",
       "readiness": "READY_AFTER_PREREQUISITE",
       "migration": "see card",
       "budget": 500,
@@ -2715,7 +2719,7 @@
         "COM-L1A"
       ],
       "card": "docs/pr-cards/COM-L1B-CALLBACK-INTEGRITY.md",
-      "status": "APPROVED",
+      "status": "MERGED",
       "readiness": "READY_AFTER_PREREQUISITE",
       "migration": "see card",
       "budget": 500,
@@ -3412,6 +3416,7 @@
       "title": "Remaining flow gaps: quote, signature, repair, pickup request, pickup after ending",
       "batch": "W",
       "dependencies": [
+        "W-10",
         "W-21"
       ],
       "status": "APPROVED",
