@@ -42,6 +42,7 @@ export const BACKUP_MODEL_POLICY = {
   EarlyReturnResolution: "earlyReturnResolution",
   RentalLine: "rentalLine",
   ApplianceAssignment: "applianceAssignment",
+  OutOfServicePeriod: "outOfServicePeriod",
   PricingRule: "pricingRule",
   SignatureRecord: "signatureRecord",
   Deposit: "deposit",
