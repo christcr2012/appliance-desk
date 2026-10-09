@@ -13,6 +13,31 @@ Read AGENTS, STATUS and this card first. Find the named heading/function with `r
 3. `src/domains/tax/official-source-watch.ts` — acknowledgeOfficialSourceChange
 4. `src/domains/tax/exemptions.ts` — existing exemption command and evidence guards
 
+### Verified implementation baseline and card-specific drift (2026-10-08)
+
+- Stacked against current reviewed T-7A top commit `ff9734369a94010555ebdf0b4e42e870dc9be24a`, rather than original b2a06c2. This is a temporary dependency branch until T-7A (#322) merges.
+- Already available commands `manuallyApplyObservedRate`, `undoAutoAppliedRateVersion` and `acknowledgeOfficialSourceChange` retain their owner/actor/date/rate/provider guards; T-7B adds in-page safe owner action wrappers, not a second rate mutation path.
+- Area query projects only current customer service-address locations; unverified or unsupported official lookup remains NEEDS_REVIEW. Exemption query reuses `CustomerTaxExemption`, exposes existence of private evidence without its photo ID, and routes directly to the existing customer exemption panel, now with a stable anchor.
+- Stable `(createdAt, id)` keyset pagination with bounded limits 1–100, owner/admin read permissions, staff denied. Source failures are visible in the UI and no remote fetch from user-supplied URLs is added.
+- `e2e/sales-tax-areas.spec.ts` goes to `browser-a` after the T-7A setup spec, with an isolated PostgreSQL-only failing provider-source fixture and mobile/light/dark checks.
+- No migration, tax configuration bypass, payment activation or public SUTS credential collection.
+
+### PR #323 source/address review fixes (2026-10-08)
+
+- The official watch action submits the complete hash:changedAtMillis optimistic
+  token; its official HTTPS URL and the durable recorded change excerpt appear
+  before the acknowledge button. Unknown/failed source status stays visible.
+- Current FAILED address lookups are included in the Needs review filter, not
+  silently discarded. The Areas screen now supplies a real multi-select
+  address-verification form and calls the existing lock/audit-authorized
+  confirmAddressLocation domain command, guarded to reviewed jurisdictions.
+  OWNER and ADMIN may confirm addresses, but not financial rates.
+- Exemption links deep-link to ?tab=billing#tax-exemptions rather than the
+  default customer Overview tab.
+- Added isolated DB regression for FAILED visibility and an authenticated,
+  isolated browser acceptance case for actual failed-to-verified recovery.
+  No billing or production provider activation is authorized.
+
 ## Drift check — every implementation, not only batch start
 
 Follow `docs/implementation-contracts/DRIFT-PROTOCOL.md`. Compare the latest main/predecessor against this baseline and each named contract. Capture actual head, relevant changed files, schema/signature/guard/test differences, and the disposition in the PR and `docs/designs/CHANGES-SINCE-DESIGN.md`. A prior card's merge is a new baseline, never evidence this card still matches.

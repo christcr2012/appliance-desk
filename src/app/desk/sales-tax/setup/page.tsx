@@ -107,7 +107,7 @@ export default async function TaxSetupPage() {
     </section>
     <section id="sources" className="space-y-2">
       <h2 className="font-semibold">Official sources</h2>
-      <p className="text-sm text-muted-foreground">A source check does not automatically confirm a tax decision. Rate review and undo will appear under Areas.</p>
+      <p className="text-sm text-muted-foreground">A source check does not automatically confirm a tax decision. Open Areas for official rate review, undo and source acknowledgements.</p>
       <ul className="space-y-2 text-sm">{sources.map(source => <li key={source.id} className="rounded border border-border p-3">
         <b>{source.label}</b> — {source.active ? "Watching":"Inactive"}, last checked {source.lastCheckedAt?.toISOString().slice(0,10) ?? "never"}
         {source.lastError && <p role="status" className="text-destructive">Source failure: {source.lastError}</p>}

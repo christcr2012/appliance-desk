@@ -4,8 +4,8 @@ export const metadata = { title: "Sales tax", robots: { index: false, follow: fa
 const sections = [
   { title: "Overview", href: "/desk/sales-tax", ready: false },
   { title: "Returns", href: "/desk/sales-tax/returns", ready: false },
-  { title: "Areas", href: "/desk/sales-tax/areas", ready: false },
-  { title: "Exemptions", href: "/desk/sales-tax/exemptions", ready: false },
+  { title: "Areas", href: "/desk/sales-tax/areas", ready: true },
+  { title: "Exemptions", href: "/desk/sales-tax/exemptions", ready: true },
   { title: "What's taxed", href: "/desk/sales-tax/taxability", ready: true },
   { title: "Setup", href: "/desk/sales-tax/setup", ready: true },
 ];
