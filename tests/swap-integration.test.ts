@@ -84,6 +84,7 @@ describe.skipIf(!enabled)("swaps", () => {
   afterAll(async () => {
     await prisma.staffTask.deleteMany({ where: { jobId: { in: jobIds } } });
     await prisma.jobBillingHandoff.deleteMany({ where: { jobId: { in: jobIds } } });
+    await prisma.outOfServicePeriod.deleteMany({ where: { applianceId: { in: applianceIds } } });
     await prisma.applianceCustodyEpisode.deleteMany({ where: { applianceId: { in: applianceIds } } });
     await prisma.auditLog.deleteMany({
       where: { OR: [{ userId: ownerId }, { entityType: "Appliance", entityId: { in: applianceIds } }, { entityType: "Job", entityId: { in: jobIds } }, { entityType: "RentalAgreement", entityId: { in: agreementIds } }] },
@@ -191,13 +192,17 @@ describe.skipIf(!enabled)("swaps", () => {
     expect(tasks[0].note).toMatch(/Collect .*SW/);
   });
 
-  it("swap-complete-old-returned-new-not-delivered-refused: nothing changes", async () => {
+  it("swap-complete-old-taken-new-not-delivered: taken for repair, rental goes on, repair period opens (W-21A)", async () => {
     const a = await agreement();
     const { original, replacement, jobId } = await staged(a);
-    await expect(finish(jobId, [[original, "RETURNED"], [replacement, "NOT_DELIVERED"]])).rejects.toThrow(/Don't take the old unit/);
-    expect(await status(replacement)).toBe("RESERVED");
-    expect(await status(original)).toBe("RENTED");
-    expect((await prisma.job.findUniqueOrThrow({ where: { id: jobId } })).status).toBe("IN_PROGRESS");
+    const result = await finish(jobId, [[original, "RETURNED"], [replacement, "NOT_DELIVERED"]]);
+    expect(result.outcome).toBe("PARTIAL");
+    expect(await status(replacement)).toBe("AVAILABLE");
+    expect(await status(original)).toBe("AWAITING_INSPECTION");
+    expect(await openCustody(original)).toBe(0);
+    expect((await openAssignment(original))?.rentalLineId).toBe(a.lineId);
+    expect(await prisma.outOfServicePeriod.findFirst({ where: { applianceId: original, endedOn: null } })).toMatchObject({ startJobId: jobId, agreementId: a.id });
+    await prisma.outOfServicePeriod.deleteMany({ where: { applianceId: original } });
   });
 
   it("swap-follows-assignment-after-renewal: a swap completes against the original's current agreement", async () => {

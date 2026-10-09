@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => ({
   taxExemption: vi.fn(),
   taxAddressLocation: vi.fn(),
   officialSourceWatch: vi.fn(),
+  outOfService: vi.fn(),
   systemIssues: vi.fn(),
   systemIssueCount: vi.fn(),
   officialRateAttention: vi.fn(async () => []),
@@ -59,6 +60,7 @@ vi.mock("@/lib/prisma", () => ({
       count: vi.fn().mockResolvedValue(0),
     },
     systemIssue: { findMany: mocks.systemIssues, count: mocks.systemIssueCount },
+    outOfServicePeriod: { findMany: mocks.outOfService, count: vi.fn().mockResolvedValue(0) },
     officialSourceWatch: {
       findMany: mocks.officialSourceWatch,
       count: vi.fn().mockResolvedValue(0),
@@ -91,6 +93,7 @@ beforeEach(() => {
     mocks.systemIssues,
     mocks.officialRateAttention,
     mocks.rdfRefundAttention,
+    mocks.outOfService,
   ]) {
     fn.mockResolvedValue([]);
   }
@@ -182,10 +185,10 @@ describe("Today server-side visibility", () => {
   it("R17: every category read is capped at 50 and ordered oldest-first with an id tie-breaker", async () => {
     mocks.requireRole.mockResolvedValue({ user: { role: "OWNER" } });
     await getExceptions();
-    const calls = [mocks.agreement, mocks.invoice, mocks.job, mocks.request, mocks.appliance, mocks.notice, mocks.pendingDelivery, mocks.providerOp, mocks.taxExemption, mocks.taxAddressLocation, mocks.officialSourceWatch].flatMap(
+    const calls = [mocks.agreement, mocks.invoice, mocks.job, mocks.request, mocks.appliance, mocks.notice, mocks.pendingDelivery, mocks.providerOp, mocks.taxExemption, mocks.taxAddressLocation, mocks.officialSourceWatch, mocks.outOfService].flatMap(
       (fn) => fn.mock.calls.map(([query]) => query),
     );
-    expect(calls.length).toBe(22); // includes bounded Sales tax draft-invoice, exemption-expiry, address-change, two official-source reads and the W-16B old-set read
+    expect(calls.length).toBe(23); // includes bounded Sales tax draft-invoice, exemption-expiry, address-change, two official-source reads, the W-16B old-set read and the W-21A out-of-service read
     for (const query of calls) {
       expect(query.take).toBe(50);
       expect(query.orderBy.at(-1)).toEqual({ id: "asc" });
