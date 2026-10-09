@@ -109,8 +109,8 @@ where, and puts it on his To do list; no Today item may link to a page that does
 - **Before pushing:** `npm run hooks:install` once per checkout; the pre-push hook then runs `npm run check:quick`
   (secrets, migrations, shard check, typecheck, lint) on every push. Add the card's
   `npm run preflight -- --db/--browser` checks (PLAYBOOK 4b), which also run every test importing changed code. Local database testing uses throwaway
-  PostgreSQL in the project's **Vercel Sandbox** (reuse the persistent sandbox named in STATUS; PLAYBOOK 4b; it only runs
-  tests — write code in a checkout that can push, push the branch, fetch it there) via
+  PostgreSQL in the project's **Vercel Sandbox** (reuse the persistent sandbox named in STATUS; PLAYBOOK 4b; code reaches GitHub
+  only as git commits — from the sandbox via `docs/runbooks/SANDBOX-PUBLISH.md`) via
   `scripts/local-postgres-test.sh` — never Neon or production. Never `--no-verify`.
 - **One push per CI cycle.** A push cancels running CI. After a red run, read all failures, reproduce locally, fix them
   all, push once. Same failure twice → reproduce locally; third red run → evidence-based diagnosis before any push.
@@ -181,7 +181,8 @@ shards; docs-only changes skip the heavy jobs but never the secret scan).
   value leaks, remove it and tell Chris so it gets rotated. Don't extend `.gitleaksignore` or the allowlist without saying
   why in the PR.
 - `.github/workflows/ci.yml` keeps `permissions: contents: read`, uses no repository secrets, never `pull_request_target`,
-  never echoes environment values.
+  never echoes environment values. The only workflow with write access is `sandbox-publish.yml` (pushes `ai/*` branches
+  fast-forward from verified sandbox transfers, starts CI; no secrets) — keep it that narrow.
 - Prefer unit tests (`tests/`) over browser tests (`e2e/`); use browser tests for axe, real login/session, security
   headers and one click-through per major flow. Every new `e2e/*.spec.ts` goes in a group in `e2e/shards.json`. Never
   log in per test — reuse `e2e/global-setup.ts` sessions. New one-off checks go in the `static` job.

@@ -7,8 +7,9 @@ form for card work (Chris, 2026-10-09, after sessions kept stopping during start
 ## 1. Find your place (2 minutes)
 
 Local database testing uses the project's **Vercel Sandbox** (PLAYBOOK 4b has the exact steps; reuse the sandbox named
-in STATUS, never create one per card). **Write code only in your own checkout; the sandbox only runs tests** (it can't
-push). Push your branch (no PR yet = no CI) and fetch it in the sandbox.
+in STATUS, never create one per card). Code reaches GitHub only as git commits: from a checkout
+that can push, or from the sandbox with `docs/runbooks/SANDBOX-PUBLISH.md` (pack → upload small parts → the workflow
+pushes). Never copy source files through tool output.
 
 
 1. `git fetch origin && git status -sb && git log --oneline -5` — and once per checkout `npm run hooks:install` (every

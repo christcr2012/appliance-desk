@@ -119,6 +119,9 @@ jobs:
       - name: Project secret and private-identifier scan
         run: node scripts/check-secrets.mjs
 
+      - name: Sandbox transfer checker tests (used by sandbox-publish.yml)
+        run: node --test scripts/sandbox-transfer.test.mjs
+
       - name: Docs describe the merged state (app changes update STATUS and their card)
         # Owner rule 2026-10-09: a PR updates the docs as if it were already merged, so main is accurate
         # the moment it lands. Escape hatch: "Docs-update: not needed — <reason>" in the PR description

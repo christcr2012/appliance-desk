@@ -87,20 +87,14 @@ throwaway database — this finds the stale fakes, registries and consumers you 
 any domain change so this runs; `--unit` alone skips it (many importing tests need a database). `--plan` shows the
 commands without running them (a plan is not proof). Use `--base <ref>` when stacked.
 
-**The sandbox runs tests; it never holds the only copy of your code** (2026-10-09: W-0A's finished code got stuck in the
-sandbox, whose clone cannot push to GitHub). Write and commit code in your own checkout, the one that can push. To test it:
-1. `git push -u origin <branch>` — **pushing a branch with no PR open runs no CI** (`ci.yml` runs only on pull requests
-   and `main`), so this costs nothing and is the normal way to get code into the sandbox. The pre-push hook still runs.
-2. In the sandbox worktree: `git fetch origin <branch> && git reset --hard origin/<branch>` (the repo is public, so
-   fetching needs no credentials), then run the checks below.
-3. Fix in your checkout, push the branch again, fetch again. Open the PR only when the checks pass.
-**Rescue — code already stranded in the sandbox:** in the sandbox worktree, commit it, then
-`git format-patch origin/main --stdout > /tmp/rescue.patch && sha256sum /tmp/rescue.patch && split -b 40000 -d
-/tmp/rescue.patch /tmp/rescue.part.` — then read **each** `/tmp/rescue.part.NN` with `read_session_file` (small pieces
-are not cut off; a whole file can be), save them in order in your checkout, `cat rescue.part.* > rescue.patch`, check
-the `sha256sum` matches, `git am rescue.patch` (on a branch from the same base), run 4a, push. Never copy source files
-one by one through tool output. Never give the sandbox GitHub
-credentials.
+**Getting code to GitHub.** Code reaches GitHub only as git commits. If you have a normal git checkout that can push,
+commit and push there (pushing a branch with no PR open runs no CI — `ci.yml` runs only on pull requests and `main`) and
+fetch the branch in the sandbox to test it (`git fetch origin <branch> && git reset --hard origin/<branch>`; the repo is
+public). **If you work in the sandbox and reach GitHub only through a chat tool, publish with
+`docs/runbooks/SANDBOX-PUBLISH.md`**: `node scripts/sandbox-transfer.mjs pack ai/<branch>` in the sandbox, upload the
+small parts (manifest last) to a `transfer/<id>` branch, and the "sandbox publish" workflow checks, rebuilds and pushes
+them. Never copy source files one by one through tool output (they get cut off), and never put a GitHub key in the
+sandbox.
 
 **Local PostgreSQL = Vercel Sandbox (owner standard).** All local database and database-backed browser testing runs in
 the project's Vercel Sandbox, never Neon, production or another database service. Exact steps (Vercel MCP tools; the
