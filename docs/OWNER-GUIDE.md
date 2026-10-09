@@ -357,6 +357,14 @@ fill in (you can still change the price for a special deal), and for a rental yo
 two you have. If an older record shows a whole set as one appliance, To do shows **Split … into separate machines**;
 the guided screen keeps that record's history on the washer and adds the dryer to the same rental.
 
+## A machine taken for repair with no replacement
+
+If a visit takes a machine away and you have no replacement yet, mark the swap's new machine as **not delivered** (or
+pick up just that machine). The customer keeps paying the normal price and their portal says the machine is out for
+repair. To do shows **Return or replace …** (urgent after 3 days — change that in Settings → Pickups and deliveries).
+When a replacement swap is delivered, or you record that the same machine went back (or close it), the customer gets a
+credit on the next bill for every day without it — for example, a dryer from a $60 set out for 6 days is $6.00.
+
 ## Billing, statements, and late fees
 
 Rent is charged and collected automatically through Stripe, agreement

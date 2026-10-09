@@ -107,6 +107,13 @@ export default async function AccountHomePage({
                     )}
                     /month
                   </p>
+                  {agreement.outOfServicePeriods.map((away) => (
+                    <p key={away.id} className="mt-2 text-sm text-ink">
+                      Your {away.appliance.applianceType.name.toLowerCase()} has been out for repair since{" "}
+                      {formatBusinessDate(away.startedOn)}. When it is back, your next bill gets a credit for every day
+                      without it.
+                    </p>
+                  ))}
                 </li>
               ))}
             </ul>

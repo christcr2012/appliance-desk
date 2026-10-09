@@ -476,3 +476,13 @@ activated. COM-L6A inherits the consent rules and owns the richer messaging UI.
   `src/domains/packages/split.ts` (existing row keeps history; new machines join the same rental line and custody stay;
   cost/seller tax split evenly). `OLD_SET_TYPE_SLUG` lives in `pricing.ts`.
 - W-21 inherits: a line's machines are its active assignments; a set line is recognisable by `packageId`.
+
+### W-21A out-of-service periods — 2026-10-09 (#363)
+- Migration `20261013110000_out_of_service_periods`: `OutOfServicePeriod` (one open per machine) and
+  `BusinessSettings.outOfServiceEscalationDays` (default 3). The period stores `creditId` (design said
+  `creditedOnInvoiceId`; the bill line is the existing Stripe-balance credit mirror).
+- Job completion: a SWAP may now record old RETURNED + new NOT_DELIVERED ("taken for repair"); partial REMOVALs on an
+  active rental open periods. `stageSwap` accepts an original with an open period. Credits: `CustomerCredit.sourceType
+  "OUT_OF_SERVICE"`, pushed via `PUSH_CREDIT` handoffs (`runHandoffsByIds` export), labelled by the invoice mirror.
+- `src/domains/billing/out-of-service.ts`: `openOutOfServiceInTx`, `closeOutOfServiceInTx`, `outOfServiceCreditPlan`,
+  `resolveOutOfService`. To do category `OUT_OF_SERVICE`. W-21B adds the "done" decision on the same screen.
