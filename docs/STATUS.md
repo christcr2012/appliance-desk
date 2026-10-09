@@ -57,7 +57,7 @@ History and prior acceptance: [retired working snapshot](archive/reset-2026-10-0
 
 ## Environment (update when it changes)
 
-- **Cost target ~$20/month (2026-10-09):** no previews for `ai/**` branches; daily release to `live` (workflow
+- **Cost target ~$20/month (2026-10-09):** no previews for `ai/**` branches; release to `live` per batch, weekly safety net (workflow
   `release.yml`; IN-68 switches Vercel's production branch to `live`); sandbox sessions stop after 30 minutes; heavy
   checks run in free GitHub Actions. The sandbox push key **does** carry over to new sessions (verified: session started
   15:49 UTC after the old one expired had both injection rules).

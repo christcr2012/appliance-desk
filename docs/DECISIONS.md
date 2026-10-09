@@ -766,3 +766,9 @@ Chris: keep the bill under $20/month, or as close as possible. Beyond skipping n
 opt in); (2) the live site is released once a day from a green `main` via `live` (`release.yml`, IN-68), so a day of
 merges costs one build; (3) sandbox sessions stop after 30 minutes and heavy checks run in GitHub Actions
 (workflow_dispatch). Expected: about one production build per day plus short sandbox sessions.
+
+## 2026-10-09 — Release per batch, not daily
+
+Chris (after seeing the bill: the $20 included credit used up and $64.37 on-demand this cycle, almost all builds):
+"every batch if that's not going to be expensive". Per-batch is cheaper than daily, so `release.yml` runs when a
+batch finishes (DRIFT-PROTOCOL C step 5), weekly as a safety net, and on demand. Switch to daily at launch.

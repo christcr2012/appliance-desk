@@ -189,7 +189,8 @@ shards; docs-only changes skip the heavy jobs but never the secret scan).
   once a day); neither uses secrets — keep them that narrow.
 - **Cost (target ~$20/month, Chris 2026-10-09):** Vercel bills builds and sandbox time; GitHub Actions is free. Run
   heavy checks (full suites, browser tests) by pushing the branch and running "CI" on it, not in the sandbox; stop
-  sandbox sessions when done; merged work reaches the live site with the next daily release (ARCHITECTURE).
+  sandbox sessions when done; merged work reaches the live site when its batch is released — run the "release to live site" workflow after a
+  batch's last PR merges (weekly safety net; ARCHITECTURE).
 - Prefer unit tests (`tests/`) over browser tests (`e2e/`); use browser tests for axe, real login/session, security
   headers and one click-through per major flow. Every new `e2e/*.spec.ts` goes in a group in `e2e/shards.json`. Never
   log in per test — reuse `e2e/global-setup.ts` sessions. New one-off checks go in the `static` job.
