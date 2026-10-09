@@ -1,6 +1,6 @@
 # COM-L3 — Communications schema: threads, messages, links and templates
 
-Status: IMPLEMENTING. Prerequisite: COM-L2 PR #346 merged as 12bcd837; baseline inspected main 12bcd837 (2026-10-09). Approved scope: docs/designs/BATCH-COM.md §2.1 and docs/MASTER-ROADMAP.md COM-L3. Risk area: one additive schema migration. No runtime sends, provider activation, UI, spending or live changes.
+Status: MERGED (#352), after exact-head CI and review gates. Prerequisite: COM-L2 PR #346 merged as 12bcd837; baseline inspected main 12bcd837 (2026-10-09). Approved scope: docs/designs/BATCH-COM.md §2.1 and docs/MASTER-ROADMAP.md COM-L3. Risk area: one additive schema migration. No runtime sends, provider activation, UI, spending or live changes.
 
 ## Checklist A — contract drift before coding
 | Assumption | Actual on main | Disposition |
@@ -26,3 +26,10 @@ Status: IMPLEMENTING. Prerequisite: COM-L2 PR #346 merged as 12bcd837; baseline 
 
 ## Reconciliation B (before publishing)
 Document schema in docs/DATABASE.md; mark PR merged and advance Next in docs/STATUS.md inside this same PR. Later COM-L4A must inherit these exact schema relations, no new provider permissions or send switches.
+
+
+## Implementation and acceptance evidence (2026-10-09)
+- PR #352 implements five additive models, MessageDelivery.templateRevisionId, CONVERSATIONAL message purpose, composite FKs, SQL CHECKs, scoped inbound/outbound guards and immutable template revisions. No legacy data reclassified, no provider activation.
+- On disposable PostgreSQL, 5/5 communications schema tests pass. The populated restore drill proves preservation of all five new tables and the existing circular delivery/attempt link. Each repeat restore uses its own newly created local target; production backup restore safety remains unchanged.
+- Local quick/type/lint gates passed (one unrelated existing unused import warning); preflight passed 64 related + 18 selected tests. Exact PR-head CI and GitHub review/merge status are the final authority.
+- Downstream COM-L4A inherits account, thread, provider and template invariants in CHANGES-SINCE-DESIGN. No change to consent, live runtime gates or business pricing.

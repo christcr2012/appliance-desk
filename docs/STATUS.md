@@ -4,7 +4,7 @@ Updated October 9, 2026 (COM-L2 PR #346 merged as 12bcd837; latest deployment-co
 
 ## Next
 
-**2026-10-09 — COM-L3 (threads, per-user read markers, messages, links and immutable template versions) implementation:** follows merged COM-L2 #346. Target: one additive isolated-PostgreSQL-tested schema PR. Next COM-L4A for eligibility and immutable communication intent; COM-L4B only after L4A. W-1…W-12 remain after COM-L15. No live provider activation or payments.
+**2026-10-09 — COM-L3 merged (#352) after exact-head gates:** five additive communication tables, immutable template versions, cross-account/read-cursor safeguards and populated restore coverage. **Next: COM-L4A**, eligibility policy and immutable communication intent, then COM-L4B claimed dispatch. W-1…W-12 remain after COM-L15. No live provider activation or payments.
 
 **2026-10-09 — Batch W Amendment A (tax filing on autopilot) added:** W-9 filing autopilot, W-10 use-tax "File now" + filled DR 0252, W-11 live GIS rates (waits on IN-61, may run early once done), W-12 XML return file (waits on IN-62, IN-44). Nothing ever submits or pays on Chris's behalf (D-WA2, IN-63). **D-WA6:** W-2 now also gives every seller-tax answer one dated next step (`nextPurchaseTaxStep`); W-13 receipt reading waits on IN-64; out-of-state seller tax waits on the CPA (IN-65).
 
