@@ -135,7 +135,7 @@ reason in the PR.
 | **W-0a** | Business tax address: confirm it from Setup and from the D-W2 card; recalculation when an appliance's tax answer is re-saved after setup changes; nightly catch-up for appliances stuck "unknown" because setup was incomplete; use tax with no linked account becomes a setup To do (never silently unfiled) | money |
 | **W-0b** | Fix the broken `/desk/tax` link; a screen to resolve delivery-fee records awaiting a decision or rate; route test for every Today `href` | money/screens |
 | W-1 | To do model (D-W1): due date, amount, button, snooze; every existing rule gets them; sort by due date | screens |
-| W-2 | Intake "what happens next" (D-W2); plain intake question with no default ("Did the seller charge sales tax?" Yes / No / I'll check the receipt later → dated To do in 3 days); purchase-order tax question (D-W3 row 2) | money |
+| W-2 | Intake "what happens next" (D-W2) using `nextPurchaseTaxStep` (D-WA6, every answer → one dated next step); plain intake question with no default ("Did the seller charge sales tax?" Yes / No / I'll check the receipt later → dated To do in 3 days); purchase-order tax question (D-W3 row 2) | money |
 | W-3 | Taxes in one place (D-W4): menu, tabs, use tax moved in, return page headline + SUTS link, dollars not cents | screens |
 | W-4 | Rental turning points (D-W3): signed → draft delivery + To do; ending in 30 days; ending decided → draft pickup; untimed visits | operations |
 | W-5 | Money turning points: failed payment, held payment, deposit decision on To do with buttons | money |
@@ -220,6 +220,35 @@ the app records the confirmation like any return. Until then (or if the answer i
 checklist that exists today. Deduction lines stay "not decided" until IN-44 is answered, and the file is not offered for
 a period with an undecided line.
 
+**D-WA6 — Every purchase answer leads to exactly one next step (Chris, 2026-10-09: "realize when I did or did not pay
+sales and use tax to the seller, and choose the next remaining step … know and follow filing deadlines").** The
+answer model already exists (`AcquisitionTaxStatus`, choices `SELLER_CHARGED` / `NONE_CHARGED` / `LESSOR_PERMISSION` /
+`LATER` in `src/domains/tax/acquisition.ts`; partial tax already becomes use tax on the difference, BATCH-T D-F5). What
+W-2 adds is one shared function, `nextPurchaseTaxStep(appliance, now)`, used by the intake card, the appliance page, the
+purchase-order receiving screen and To do, so all of them always say the same thing:
+
+| What the receipt shows (Chris's answer) | What the app concludes | Next step it creates (dated) |
+|---|---|---|
+| Colorado tax charged, at least the full rate where the appliance is kept | Nothing more is owed | none — "Done: keep the receipt" (receipt photo asked for, not required) |
+| Colorado tax charged, but less than the full rate | Use tax on the difference: $X state, $Y Greeley, … | lines added to the right returns; card says "Included in your <return> due <date>"; W-9 makes the filing To do |
+| No tax charged (private seller, online, auction) | Use tax on the full price | same as the row above |
+| Bought tax-free because it is for rent (`LESSOR_PERMISSION`) | No use tax; customers' rent on it must be taxed | none — the appliance page says "Rent on this appliance is taxed" (billing already does it) |
+| Another state's tax charged (out-of-state seller) | **Not decided in code** — credit rules need the CPA (IN-65) | To do "Ask your CPA: tax paid to <state>" until IN-65 is answered and becomes a setting |
+| "I'll check the receipt later" (`LATER`) | Unknown | To do "Check <appliance>'s receipt: did the seller charge tax?" in 3 days; it turns **high** and says "answer by <date> so your <return> is right" once the return covering that purchase is within 7 days of closing |
+| Answer changed after that return was filed | The filed return is now wrong | the existing amendment detector (`detectTaxFilingAmendments`) creates "Correct your <period> return" with the difference |
+
+No schema change: when Chris answers "Yes" the screen asks "Was it Colorado tax?"; "No, another state's" is saved as
+`LATER` with the seller note "Tax paid to <state>: $X" and creates the CPA To do above. Rules: the step names the return, the amount and the legal due date from the existing filing calendar
+(`filing-calendar.ts`, holidays included, the $300 yearly/monthly switch included) — never a hard-coded date. A
+purchase with no linked filing account is a setup To do (W-0A). Money in, money out and dates are shown in dollars and
+Denver time.
+
+**D-WA7 — Optional receipt reading (IN-64).** If Chris says yes, attaching a receipt photo pre-fills "seller charged
+$X tax" and the price, marked "read from the receipt — check it", and Chris confirms before anything is saved. It
+needs an AI service that can read images (receipts would be sent to it; a small cost per receipt). Not built unless
+IN-64 is answered yes; the card then names the provider, cost cap and privacy note. The plain question always remains
+the way to answer.
+
 ### 6.3 PRs (each writes its card at start; order after W-8, except W-11 which may run as soon as IN-61 is done)
 
 | PR | Builds | Gate | Risk |
@@ -228,6 +257,7 @@ a period with an undecided line.
 | **W-10** | Use tax "File now" panel (D-WA3) with the runbook's screen map and copy buttons; filled official DR 0252 PDF for the current year (`pdf-lib`, form in `src/domains/tax/forms/`) | none | compliance |
 | **W-11** | Live GIS rate lookup (D-WA4) | IN-61 | money |
 | **W-12** | Sales tax XML return file (D-WA5) | IN-62, IN-44 | compliance |
+| **W-13** | Receipt reading pre-fill (D-WA7) | IN-64 | privacy/cost |
 
 ### 6.4 Stop-and-ask (in addition to section 5)
 

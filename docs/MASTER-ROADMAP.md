@@ -68,7 +68,7 @@ remain in `pr-cards/` as the record of what was built; W-0A/W-0B fix defects fou
 | W-0A | Purchase use tax can be calculated, recalculated and filed | [card](pr-cards/W-0A.md) | — |
 | W-0B | No dead Today links; delivery-fee records page | [card](pr-cards/W-0B.md) | — |
 | W-1 | To do list: due date, amount, one button, snooze | JIT — `W-1.md` | COM-L15 |
-| W-2 | Intake and purchase orders say what is owed, to whom, by when | JIT — `W-2.md` | W-1 |
+| W-2 | Intake and purchase orders say what is owed, to whom, by when; every seller-tax answer gets one dated next step (D-WA6) | JIT — `W-2.md` | W-1 |
 | W-3 | Taxes in one place, in plain words | JIT — `W-3.md` | W-2 |
 | W-4 | Rental turning points create draft visits and To do items | JIT — `W-4.md` | W-3 |
 | W-5 | Failed, held and deposit payments on To do with buttons | JIT — `W-5.md` | W-4 |
@@ -79,6 +79,7 @@ remain in `pr-cards/` as the record of what was built; W-0A/W-0B fix defects fou
 | W-10 | Use tax "File now" panel for Revenue Online + filled official DR 0252 to print | JIT — `W-10.md` | W-9 |
 | W-11 | Live Colorado tax rates for every address (GIS API) — may run early once IN-61 is done | JIT — `W-11.md` | IN-61 |
 | W-12 | Sales tax return as an XML upload file | JIT — `W-12.md` | W-10, IN-62, IN-44 |
+| W-13 | Receipt photo reading pre-fills price and seller tax (optional) | JIT — `W-13.md` | W-2, IN-64 |
 
 ### V
 
