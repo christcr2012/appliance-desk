@@ -83,7 +83,7 @@ export default async function PendingDeliveryFeesPage() {
   ];
 
   return (
-    <main className="space-y-6">
+    <div className="space-y-6">
       <header className="space-y-2">
         <h2 className="text-2xl font-semibold">Retail delivery fees waiting on you</h2>
         <p className="text-sm text-muted-foreground">
@@ -118,6 +118,6 @@ export default async function PendingDeliveryFeesPage() {
         </p>
       </TaxActionForm>
       <Link href="/desk/sales-tax" className="inline-block text-sm underline">Back to sales tax overview</Link>
-    </main>
+    </div>
   );
 }
