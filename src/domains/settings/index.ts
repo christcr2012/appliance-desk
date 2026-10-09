@@ -60,6 +60,7 @@ const DEFAULT_SETTINGS = {
   earlyReturnFee: "AGREED_TERMS_FEE",
   earlyReturnHandling: "ASK_ME",
   pickupDayNotBilled: true,
+  outOfServiceEscalationDays: 3,
   defaultJobDurationMinutes: 120,
   staffMayWorkUnassignedJobs: true,
   updatedAt: new Date(0),
@@ -149,6 +150,7 @@ export type BusinessSettingsUpdate = Partial<{
   lateReturnFixedDailyCents: number;
   lateDeliveryProrationBasis: string;
   pickupDayNotBilled: boolean;
+  outOfServiceEscalationDays: number;
   // When equipment comes back early (B2-19).
   earlyReturnBilling: string;
   earlyReturnUnusedDays: string;

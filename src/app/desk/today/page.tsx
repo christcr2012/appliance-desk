@@ -93,6 +93,7 @@ const CATEGORIES: Record<ExceptionCategory, string> = {
   UNREVIEWED_MAINTENANCE_REQUEST: "Needs review",
   UNINSPECTED_RETURN: "Needs inspection",
   OLD_SET_APPLIANCE: "Old set record to split",
+  OUT_OF_SERVICE: "Out for repair, no replacement",
   MISSING_REPAIR_COST: "Repair cost missing",
   AGREEMENT_TERM_EXPIRED: "Term ended",
   APPLIANCE_MAINTENANCE_DUE: "Maintenance due",
