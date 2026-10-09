@@ -1,14 +1,16 @@
 # STATUS — current work, blockers and next action
 
-Updated October 8, 2026. Acquisition work T-6D1…3 (#313–#315) is merged; #315 includes the reviewed ADMIN read-only worksheet correction. T-6C1 (#317) merged as main 7acc04a. T-6C2 (#319) is merged on main `1432585`. T-6C3 (#320) has merged into main. T-6C4 adds RDF filing, credits and conditional billing readiness without enabling live money operations. No customer charging, live payments or fee collection have been activated. No live payments, customer messages or fee charging are activated.
+Updated October 9, 2026 (main `aea29ba3`). **Batch T is engineering-complete** (through T-7D #328). **Batch S is
+complete:** S-1A #330, S-1B #331, S-1C #332, S-2 #334 (plus the test-fixture drift fix #333). **COM-L1A** merged as
+#335. No live payments, customer messages, fee charging or tax filing are activated.
 
 ## Next
 
 **2026-10-09 — Batch W approved (IN-57…IN-60).** Next implementation: **W-0A** then **W-0B** (`docs/pr-cards/W-0A.md`, `W-0B.md`; no prerequisite, no migration) — they fix purchase use tax that could never be calculated and a dead Today link. Then COM-L resumes at COM-L1B; W-1…W-8 come after COM-L15 and before V. Design: `docs/designs/BATCH-W.md`.
 
-**Current engineering:** Batch T closed with T-7C #327 and T-7D #328 merged. Old draft handoff #326 was closed as superseded rather than merged. S-1A (system issue schema, typed writers, privacy screening) was merged in #330 as `19aa141` after green CI and preview. S-1B (bounded source sweep and run lifecycle) merged in #331 as `15b7eaf` with all exact-head CI and Vercel checks green. **S-1C** merged in #332; the focused local/CI drift fix #333 merged as `a9419a6`. **S-2** (private agent key/structured read-only API and manual runbook) is in implementation verification; COM-L is next. The S-1C card records its tests and privacy/role contract. No AI access or external provider activation is authorized.
-
-T-6C4 (#321), T-7A (#322) and T-7B (#323) have merged; **T-7C** guided filing and **T-7D** overview/acceptance closeout have merged in #327 and #328. **S-2** is the active implementation card. Keep owner/legal/CPA and live payment gates. Refresh each card against its actual merged prerequisite. [MASTER-ROADMAP](MASTER-ROADMAP.md) remains the single handoff; [PLAN](PLAN.md) owns acceptance. No extra handoff document is needed.
+**Order after W-0:** COM-L1B → COM-L2 … COM-L15 → W-1 … W-8 → V → F-part-2. Keep owner/legal/CPA and live payment
+gates. [MASTER-ROADMAP](MASTER-ROADMAP.md) is the single handoff; [PLAN](PLAN.md) owns acceptance; implementing sessions
+start at [SESSION-START](SESSION-START.md).
 
 ## Built
 
