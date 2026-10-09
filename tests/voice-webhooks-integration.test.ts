@@ -22,6 +22,8 @@ const root = "CA" + "1".repeat(32);
 const child = "CA" + "2".repeat(32);
 const secondRoot = "CA" + "3".repeat(32);
 const secondChild = "CA" + "4".repeat(32);
+const thirdRoot = "CA" + "5".repeat(32);
+const thirdChild = "CA" + "6".repeat(32);
 const routePolicy = {
   timezone: "America/Denver", forwardTo: destination,
   destinationVerifiedAt: "2026-01-01T00:00:00Z",
@@ -115,6 +117,8 @@ describe.skipIf(!isolated)("COM-L8 signed voice/leg callbacks on throwaway Postg
       { ...base(root), From: caller, To: number }, false))).status).toBe(403);
     expect((await inbound(signedRequest("/api/webhooks/twilio/voice",
       { ...base(root), AccountSid: "AC" + "f".repeat(32), From: caller, To: number }))).status).toBe(403);
+    expect((await inbound(signedRequest("/api/webhooks/twilio/voice",
+      { ...base(root), From: caller, To: "+13035551999" }))).status).toBe(403);
     expect(await prisma.callSession.count({ where: { accountId } })).toBe(0);
   });
 
@@ -188,7 +192,26 @@ describe.skipIf(!isolated)("COM-L8 signed voice/leg callbacks on throwaway Postg
         accountId, providerRootCallId: secondRoot,
       } },
     });
-    expect(session.outcome).toBe("MISSED");
+    expect(session.outcome).toBe("UNKNOWN"); // Contradictory terminal statuses need reconciliation.
     expect(session.connectedAt).toBeNull();
+  });
+  it("records a declined forward as missed, with no human answer", async () => {
+    const call = { ...base(thirdRoot), From: caller, To: number };
+    expect((await inbound(signedRequest("/api/webhooks/twilio/voice", call))).status).toBe(200);
+    const decision = await accept(signedRequest(
+      "/api/webhooks/twilio/voice/accept?step=decision",
+      { ...base(thirdChild), ParentCallSid: thirdRoot, Digits: "2" },
+    ));
+    expect(await decision.text()).toContain("<Hangup");
+    expect((await dialResult(signedRequest("/api/webhooks/twilio/voice/dial-result",
+      { ...base(thirdRoot), DialCallSid: thirdChild, DialCallStatus: "busy",
+        DialBridged: "false" }))).status).toBe(200);
+    const session = await prisma.callSession.findUniqueOrThrow({
+      where: { accountId_providerRootCallId: { accountId,
+        providerRootCallId: thirdRoot } },
+      include: { legs: true },
+    });
+    expect(session.outcome).toBe("MISSED");
+    expect(session.legs.find((leg) => leg.role === "FORWARD")?.answeredByStaffAt).toBeNull();
   });
 });
