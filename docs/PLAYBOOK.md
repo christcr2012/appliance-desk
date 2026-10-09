@@ -95,8 +95,11 @@ sandbox, whose clone cannot push to GitHub). Write and commit code in your own c
    fetching needs no credentials), then run the checks below.
 3. Fix in your checkout, push the branch again, fetch again. Open the PR only when the checks pass.
 **Rescue — code already stranded in the sandbox:** in the sandbox worktree, commit it, then
-`git format-patch origin/main --stdout > /tmp/rescue.patch`; read the file out with `read_session_file`, save it in your
-checkout, `git am /tmp/rescue.patch` (on a branch from the same base), run 4a, push. Never give the sandbox GitHub
+`git format-patch origin/main --stdout > /tmp/rescue.patch && sha256sum /tmp/rescue.patch && split -b 40000 -d
+/tmp/rescue.patch /tmp/rescue.part.` — then read **each** `/tmp/rescue.part.NN` with `read_session_file` (small pieces
+are not cut off; a whole file can be), save them in order in your checkout, `cat rescue.part.* > rescue.patch`, check
+the `sha256sum` matches, `git am rescue.patch` (on a branch from the same base), run 4a, push. Never copy source files
+one by one through tool output. Never give the sandbox GitHub
 credentials.
 
 **Local PostgreSQL = Vercel Sandbox (owner standard).** All local database and database-backed browser testing runs in
