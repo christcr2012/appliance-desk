@@ -343,6 +343,17 @@ Also in **Settings** — add or retire an appliance type (e.g. a new
 category beyond washers/dryers) yourself, with its own photo and
 pricing, without needing a developer.
 
+## Sets (washer + dryer and any others you make)
+
+A set is two or more machines rented together for one lower monthly price. It is not an appliance: each washer and
+dryer is still its own machine in your inventory, so you can also rent them separately to different customers.
+**Settings → Products and pricing → Sets and packages** lists your sets. For each one you choose which machines it
+contains (any appliance type you have, including ones you add later), the set price, and whether it shows on the
+website. The screen works out the saving for you ("Renting these separately would be $70 a month; the set is $60 — the
+customer saves $10 a month"). The website and the quote form show sets first, then single machines. Retiring a set
+hides it; signed agreements keep their prices. Your old "Washer + Dryer Set" appliance type was turned into the
+"Washer + Dryer Set" set automatically, at the same price.
+
 ## Billing, statements, and late fees
 
 Rent is charged and collected automatically through Stripe, agreement

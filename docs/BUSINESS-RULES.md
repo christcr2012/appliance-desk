@@ -12,7 +12,12 @@ Update this file in the same PR that changes a rule.
 - Current defaults (all editable by Chris in `/desk/settings`, built in
   Phase 2):
   - Individual appliance: **$35/month**
-  - Washer + dryer set: **$60/month**
+  - Washer + dryer set: **$60/month** — a **rental package** (W-16A, D-WB3), not
+    an appliance type: an owner-defined list of separate machine types with its own
+    set price. The saving shown everywhere is computed from the machines' current
+    single prices (`src/domains/packages/pricing.ts`), never typed in. A set is
+    offered on the website only while it is active, published and every machine type
+    in it is active. Any type (including new ones) can be part of a set.
   - Delivery fee, installation fee, and removal/pickup fee are three
     separate, independently configurable one-time fees (Chris may
     charge for any combination of them), each shown as its own line

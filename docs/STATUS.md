@@ -1,8 +1,15 @@
 # STATUS — current work, blockers and next action
 
-Updated October 9, 2026 (COM-L2 PR #346 merged as 12bcd837; latest deployment-cost/release controls #347–#351 merged). Batch T and Batch S are engineering-complete. COM-L1A/B and COM-L2 are merged. No live payments, customer messages, fee charging or tax filing are activated.
+Updated October 9, 2026 (W-16A rental packages #358; COM-L2 PR #346 merged as 12bcd837; latest deployment-cost/release controls #347–#351 merged). Batch T and Batch S are engineering-complete. COM-L1A/B and COM-L2 are merged. No live payments, customer messages, fee charging or tax filing are activated.
 
 ## Next
+
+**2026-10-09 — W-16A merged (#358), built by Claude beside Sol's chain (Chris: "you take W-16A/B and W-21"):** a washer
+and dryer set is now a **rental package** of two separate machines, not an appliance type. Settings → Products and
+pricing → Sets and packages (any types, including new ones; saving worked out automatically); the website and quote form
+show sets first; quote requests for a set are stored per machine and shown as the set. The old "Washer + Dryer Set" type
+became the package and was retired. **Next on this lane: W-16B** (package lines on agreements with one machine per part,
+estimates, split old set appliances), then **W-21** (early returns and out-of-service credits). Sol's lane is unchanged.
 
 **2026-10-09 — Batch W Amendment B (connected business) APPROVED (IN-69; IN-70 → D-WB8 set/out-of-service rules).** First: **W-0C**,
 a confirmed defect — a failed automatic card charge never reaches To do (invoice stays OPEN, or is DELINQUENT with no

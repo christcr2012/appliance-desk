@@ -71,6 +71,18 @@ remain frozen and corrections are reviewed via the filing-amendment detector.
 - **ApplianceType** — a category Chris rents (Washer, Dryer,
   Refrigerator, ...) and its *current* published price. Adding a new
   category is a data change, never a code change.
+- **RentalPackage** / **RentalPackageComponent** (W-16A, 2026-10-09) — a set
+  the owner defines ("Washer + Dryer Set" = 1 Washer + 1 Dryer) with its own
+  monthly set price, website flag, order and photo. A set is never an
+  appliance type and never one appliance: every machine stays its own
+  `Appliance`. Components are (type, quantity 1–10), unique per type; any
+  type works, including ones added later. Nullable `packageId` on
+  `RentalLine` (package lines arrive in W-16B), `EstimateLineItem` (W-16B) and
+  `LeadApplianceRequest` (a requested set is one row per machine type, all with
+  the set's `packageId`). Packages are retired, never deleted (FKs restrict).
+  Migration `20261013100000_rental_packages` turned the old "Washer + Dryer Set"
+  appliance type into the package (price, flag, order, photo kept), pointed its
+  quote requests at it and retired the type; signed agreements were untouched.
 - **Appliance** — one physical machine: asset number, serial number,
   condition, current status (available/reserved/rented/maintenance/
   retired), and where it currently is. A washer/dryer "set" is priced

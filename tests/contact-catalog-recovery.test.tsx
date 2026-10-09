@@ -11,7 +11,7 @@ const m = vi.hoisted(() => ({
   create: vi.fn(),
   limited: vi.fn(),
 }));
-vi.mock("@/domains/pricing", () => ({ getPublishedApplianceTypes: m.catalog }));
+vi.mock("@/domains/pricing", () => ({ getPublishedCatalog: m.catalog }));
 vi.mock("@/domains/leads", () => ({ createLead: m.create }));
 vi.mock("@/lib/rate-limit", () => ({ isRateLimited: m.limited }));
 vi.mock("next/headers", () => ({ headers: async () => new Headers() }));
@@ -51,7 +51,7 @@ it("saves a general enquiry when no types are published, preserving consent", as
   expect(m.create).toHaveBeenCalledTimes(1);
 });
 it("still requires appliance selection when catalog options exist and rejects stale/private IDs", async () => {
-  m.catalog.mockResolvedValue([{ id: "published" }]);
+  m.catalog.mockResolvedValue([{ kind: "type", id: "published" }, { kind: "package", id: "set" }]);
   expect(await submitLead(input)).toMatchObject({ status: "error" });
   expect(
     await submitLead({ ...input, applianceTypeIds: ["private"] }),
@@ -60,6 +60,14 @@ it("still requires appliance selection when catalog options exist and rejects st
   expect(
     await submitLead({ ...input, applianceTypeIds: ["published"] }),
   ).toEqual({ status: "success" });
+});
+it("accepts a published set on its own and rejects a set id used as a machine or an unpublished set", async () => {
+  m.catalog.mockResolvedValue([{ kind: "type", id: "published" }, { kind: "package", id: "set" }]);
+  expect(await submitLead({ ...input, packageIds: ["hidden"] })).toMatchObject({ status: "error" });
+  expect(await submitLead({ ...input, applianceTypeIds: ["set"] })).toMatchObject({ status: "error" });
+  expect(m.create).not.toHaveBeenCalled();
+  expect(await submitLead({ ...input, packageIds: ["set"] })).toEqual({ status: "success" });
+  expect(m.create).toHaveBeenCalledWith(expect.objectContaining({ applianceTypeIds: [], packageIds: ["set"] }));
 });
 it("preserves honeypot and rate-limit protections before catalog reads", async () => {
   expect(await submitLead({ ...input, website: "spam" })).toEqual({
@@ -79,6 +87,7 @@ it("reports catalog failures without claiming a saved enquiry", async () => {
 it("client and server catalog schemas agree on empty selection", () => {
   expect(leadFormSchemaForCatalog(false).safeParse(input).success).toBe(true);
   expect(leadFormSchemaForCatalog(true).safeParse(input).success).toBe(false);
+  expect(leadFormSchemaForCatalog(true).safeParse({ ...input, packageIds: ["set"] }).success).toBe(true);
 });
 // The rendered client uses its real resolver and the real mocked-DB action.
 import { ContactForm } from "@/app/(public)/contact/contact-form";
