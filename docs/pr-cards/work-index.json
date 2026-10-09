@@ -1642,7 +1642,7 @@
       "dependencies": [
         "COM-L5A"
       ],
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "none",
       "budget": 430,
       "units": [
@@ -1656,10 +1656,16 @@
       ],
       "tests": [
         "tests/communication-consent-integration.test.ts",
-        "e2e/sms-consent.spec.ts"
+        "tests/communications-inbound-route.test.ts",
+        "tests/communications-inbound-integration.test.ts",
+        "tests/messaging-events-integration.test.ts",
+        "tests/sms-preference.test.ts",
+        "tests/communications-policy.test.ts",
+        "tests/messaging-deliver-integration.test.ts",
+        "tests/communications-intent-integration.test.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
-      "plannedCard": "docs/pr-cards/COM-L5B.md"
+      "readiness": "READY_AFTER_PREREQUISITE",
+      "card": "docs/pr-cards/COM-L5B.md"
     },
     {
       "id": "COM-L6A",

@@ -1280,6 +1280,16 @@ below), and a same-day "your visit is today" text for scheduled jobs
 job). Sending itself no-ops safely until `TWILIO_PHONE_NUMBER` is set
 in Vercel — see `docs/DECISIONS.md`.
 
+**COM-L5B (2026-10-09) consent safety, still OFF:** A verified STOP is
+address-wide even if a number is shared; the app never picks one customer
+arbitrarily. START or HELP do not enroll anyone in marketing or create broad
+transactional consent. Only a signed, provider-confirmed START may clear the
+provider-originated STOP, while purpose-specific revocations remain in the audit
+record. The portal checkbox records the exact versioned transactional disclosure,
+phone and owner-approved sender (or no sender when unconfigured). Changing phone
+numbers revokes the old contact's grant; it cannot transfer permission. No
+sending, spending, customer messages or external activation in this work.
+
 **An accounting export** (idea #14) — **done (2026-09-28, Task #73)**.
 `/desk/reports` has an "Export transactions (CSV)" download
 (`/desk/reports/export`) — every succeeded payment, invoice refund, and

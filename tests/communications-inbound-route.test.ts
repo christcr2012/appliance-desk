@@ -1,8 +1,8 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import twilio from "twilio";
 
-const { config, receiver, ingest, stop } = vi.hoisted(() => ({
-  config: vi.fn(), receiver: vi.fn(), ingest: vi.fn(), stop: vi.fn(),
+const { config, receiver, ingest, stop, project } = vi.hoisted(() => ({
+  config: vi.fn(), receiver: vi.fn(), ingest: vi.fn(), stop: vi.fn(), project: vi.fn(),
 }));
 vi.mock("@/lib/prisma", () => ({
   prisma: {
@@ -12,6 +12,15 @@ vi.mock("@/lib/prisma", () => ({
 }));
 vi.mock("@/domains/messaging/inbound-sms", () => ({ ingestVerifiedSms: ingest }));
 vi.mock("@/domains/messaging/events", () => ({ processVerifiedTwilioStop: stop }));
+vi.mock("@/domains/messaging/consent-commands", () => ({
+  projectVerifiedSmsKeyword: project,
+  classifyProviderKeyword: (body: string, type: string | null) => {
+    if (type) return ["STOP", "START", "HELP"].includes(type) ? type : null;
+    const keyword = body.trim().toUpperCase();
+    if (["STOP", "STOPALL", "UNSUBSCRIBE", "CANCEL", "END", "QUIT"].includes(keyword)) return "STOP";
+    return ["START", "UNSTOP", "HELP"].includes(keyword) ? (keyword === "UNSTOP" ? "START" : keyword) : null;
+  },
+}));
 
 import { POST } from "@/app/api/webhooks/twilio/sms/route";
 
@@ -78,6 +87,7 @@ beforeEach(() => {
   receiver.mockResolvedValue({ id: "number" });
   ingest.mockResolvedValue({ duplicate: false, threadId: "thread", messageId: "message" });
   stop.mockResolvedValue({ duplicate: false, customerId: null });
+  project.mockResolvedValue({ keyword: "STOP", duplicate: false });
 });
 afterAll(() => {
   for (const [name, value] of Object.entries(saved)) {
@@ -131,6 +141,27 @@ describe("COM-L5A signed inbound webhook safety", () => {
     });
     expect(ingest).not.toHaveBeenCalled();
   });
+  it.each(["START", "HELP"])("records signed provider %s while inbound is off, without sending", async (action) => {
+    config.mockResolvedValue({ customerSmsEnabled: false, communicationsPolicy: policy(false) });
+    const response = await POST(request(form({ Body: action, OptOutType: action })));
+    expect(response.status).toBe(200);
+    expect(project).toHaveBeenCalledWith(expect.objectContaining({
+      accountSid: sid, businessNumberId: "number", messageSid,
+      optOutType: action, text: action,
+    }));
+    expect(stop).not.toHaveBeenCalled();
+    expect(ingest).not.toHaveBeenCalled();
+    expect(await response.text()).toContain("<Response></Response>");
+  });
+
+  it("never writes consent evidence from a bad signature", async () => {
+    const response = await POST(request(form({ Body: "START", OptOutType: "START" }), {
+      signAs: origin + "/wrong",
+    }));
+    expect(response.status).toBe(403);
+    expect(project).not.toHaveBeenCalled();
+  });
+
   it("does not issue a success acknowledgement when durable ingestion fails", async () => {
     ingest.mockRejectedValueOnce(new Error("database unavailable"));
     const response = await POST(request(form()));

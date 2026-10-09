@@ -1,8 +1,19 @@
 # STATUS — current work, blockers and next action
 
-Updated October 9, 2026 (COM-L4B #354 and COM-L5A #358 merged; W-0C on c712834). Batch T and Batch S are engineering-complete. No live payments, customer messages, fee charging or tax filing are activated.
+Updated October 9, 2026 (W-0C #359 merged at 61dc180; COM-L5B follows). Batch T and Batch S are engineering-complete. No live payments, customer messages, fee charging or tax filing are activated.
 
 ## Next
+
+**2026-10-09 — COM-L5B complete (merged by the COM-L5B PR after exact-head CI):**
+Signed STOP/START/HELP events now produce private, replay-safe scoped consent evidence even
+while the inbound inbox is disabled. STOP blocks ordinary SMS to an address (including
+unresolved/shared numbers); START is only provider re-enable evidence, never marketing
+or broad transactional consent. Portal opt-in writes a versioned exact transactional
+disclosure and sender/phone scope; an old phone is revoked when changed. Marketing and
+customer messaging remain off. Tested on isolated disposable PostgreSQL, no migration.
+Card: `docs/pr-cards/COM-L5B.md`. **Next: COM-L6A**, validated templates, segment preview,
+and migration of existing reminders. Public lead disclosure text/form choices remain
+explicit follow-up work, not implied by COM-L5B.
 
 **2026-10-09 — W-0C MERGED (#359), exact-head CI required before merge:**
 After latest `main` c712834 (which includes #356, #357 and the completed in-flight #358),
@@ -11,16 +22,11 @@ or VOID invoices, and an idempotently claimed event records its failed attempt. 
 DELINQUENT (with or without due date), PARTIALLY_PAID and overdue OPEN; its button goes
 straight to the invoice with the unpaid dollars. No late-fee change; no live payments,
 customer SMS/email, provider spending, or tax filing activated. Card: `docs/pr-cards/W-0C.md`.
-**Next:** continue the approved execution order; COM-L5B (consent projection)
-remains the next unfinished communications slice.
-
 **Batch W Amendment B approved (IN-69), set/repair credits D-WB8 / W-21; IN-71**
 settled for launch at seven-year owner-configurable record retention, with CPA review still
 outstanding. W-0C resolves the original payment failure defect and does not implement W-21.
 
 **2026-10-09 — COM-L4B PR #354 MERGED (80ac467):** exact-head required CI passed and performance baseline passed after one retry. Account-scoped default-off Twilio dispatch, last-minute consent/STOP checks, durable single-attempt claim, and fail-safe UNKNOWN recovery remain off in production. No sending, provider spending or phone activation authorized.
-
-**Owner override (2026-10-09): Do not implement W-0C or W-OC until specifically authorized.** Existing W Amendment B plan stays approved but execution is paused at that card.
 
 **2026-10-09 — COM-L4A merged (#353), following COM-L3 #352:** strict owner-controlled default-off SMS policy, evidence-based consent, canonical STOP suppression, private encrypted and idempotently prepared message intents. **Next: COM-L4B**, claimed delivery and last-minute sender/consent/readiness verification, then L5 inbound consent/reconciliation. No live sending, phone activation, billing or provider spending.
 

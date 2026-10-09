@@ -478,6 +478,13 @@ caught up. See `docs/ROADMAP.md` for the always-current, fuller list.)
 - **Taking a real payment.** Stripe billing itself is fully built and
   running today — just in test mode (see "Billing, statements, and late
   fees" above). No real money moves until you decide to switch it on.
+- **Text preferences and STOP/START/HELP.** In Account → Settings, customers
+  can independently agree to rental-related transactional texts. The form now
+  shows the exact terms, a privacy-policy link and a terms link; it does not
+  enroll them in marketing. The owner must still enable an approved sender,
+  obtain proper phone verification, and meet separate safety gates before any
+  texts can be sent. STOP blocks a number, START is not marketing consent, and
+  changing phone numbers does not carry permission over.
 - **Texting (SMS) notifications.** Fully built and ready, dormant until
   your business's required texting registration with Twilio (A2P 10DLC)
   is complete — a carrier requirement, not something in the app to fix.
