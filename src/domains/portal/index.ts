@@ -1,3 +1,5 @@
+import { lockCanonicalSmsAddress } from "@/domains/messaging/sms-address-lock";
+import { recordPortalSmsChoice } from "@/domains/messaging/portal-consent";
 import { prisma } from "@/lib/prisma";
 import { deliverMessage } from "@/domains/messaging/deliver";
 import { normalizeSmsAddress } from "@/domains/messaging/suppression";
@@ -268,21 +270,43 @@ export async function updateSmsPreference(
   userId: string,
   input: { optedIn: boolean; phone: string | null },
 ): Promise<{ phone: string | null; smsOptInAt: Date | null }> {
-  const customer = await prisma.customer.findUniqueOrThrow({ where: { userId } });
+  const customer = await prisma.customer.findUniqueOrThrow({
+    where: { userId }, select: { id: true, phone: true },
+  });
   const rawPhone = input.phone?.trim() || customer.phone;
   if (input.optedIn && !rawPhone) {
     throw new Error("Add a phone number before turning on text notifications.");
   }
+  const phone = input.optedIn && rawPhone
+    ? normalizeSmsAddress(rawPhone)
+    : rawPhone?.trim() || null;
 
-  // Twilio and STOP callbacks use E.164. Canonicalize at the moment consent
-  // becomes active so future outbound messages, provider events and suppression
-  // rows all refer to the same address. Opting out never requires a valid number.
-  const phone = input.optedIn && rawPhone ? normalizeSmsAddress(rawPhone) : rawPhone?.trim() || null;
-
+  // Provider STOP takes the address lock before touching Customer. Preserve
+  // that same ordering to avoid a STOP-versus-portal deadlock, and reject a
+  // concurrent changed phone rather than giving an old number a stale grant.
   const updated = await prisma.$transaction(async (tx) => {
+    const locks = new Set<string>();
+    for (const value of [customer.phone, phone]) {
+      if (!value) continue;
+      try { locks.add(normalizeSmsAddress(value)); }
+      catch { /* invalid historic numbers have no canonical consent record */ }
+    }
+    for (const address of [...locks].sort()) await lockCanonicalSmsAddress(tx, address);
+    await tx.$queryRaw`SELECT "id" FROM "Customer" WHERE "id" = ${customer.id} FOR UPDATE`;
+    const current = await tx.customer.findUniqueOrThrow({
+      where: { id: customer.id }, select: { phone: true },
+    });
+    if (current.phone !== customer.phone) {
+      throw new Error("Your phone number changed. Refresh this page and try again.");
+    }
+    const at = new Date();
+    await recordPortalSmsChoice(tx, {
+      customerId: customer.id, priorPhone: current.phone, nextPhone: phone,
+      optedIn: input.optedIn, at,
+    });
     const row = await tx.customer.update({
       where: { id: customer.id },
-      data: { phone, smsOptInAt: input.optedIn ? new Date() : null },
+      data: { phone, smsOptInAt: input.optedIn ? at : null },
     });
     await tx.consentRecord.create({
       data: {
