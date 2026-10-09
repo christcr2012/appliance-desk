@@ -1,6 +1,6 @@
 # W-0A — Purchase use tax can actually be calculated, recalculated and filed
 
-Status: **APPROVED** · Baseline inspected: `aea29ba3` (2026-10-09, #335).
+Status: **MERGED (#342)** [planned PR state; merge only after exact-head CI/review/preview] · Baseline inspected: `aea29ba3` (2026-10-09, #335).
 Batch: W (`docs/designs/BATCH-W.md` §1 "Broken today", D-W2, D-W3 row 1, PR table W-0a) · Prerequisites: none (fixes
 merged T code; runs ahead of COM-L by Chris's approval, IN-48).
 Base: latest `main`. Migration: **none**. Sizing estimate: ~380 production lines, ≤12 files, risk area: money (tax).
@@ -93,3 +93,17 @@ Stop for: a needed schema change (this card has none), a change to how much tax 
 changes here), or more than 800 production lines. Done when every named case passes, an owner can go Setup → confirm
 business address → see waiting appliances calculated, exact-head CI/preview/review gates pass, and STATUS/
 CHANGES-SINCE-DESIGN record the new functions. Successor W-0B inherits nothing from this card.
+
+## Drift and handoff (2026-10-09, PR #342; synchronized main 540799c)
+
+- Checked `main` at `1722f2c` against inspected baseline `aea29ba3`; no tax-domain/schema changes.
+- Predecessor #337 approved W scope and installed quick gate; no code findings carried to W-0A.
+- Mechanical route correction: `/desk/sales-tax/setup/accounts` has no index page.
+  Filing-account instructions link to the existing `/desk/sales-tax/setup#accounts` section instead.
+- Business GIS lookups are advisory; only owner/admin manual confirmation marks a business address VERIFIED.
+- No schema or provider change; next W-0B owns pending RDF resolution page and dead-link coverage.
+- Verification: tests/business-tax-address-confirm-integration.test.ts,
+  tests/purchase-tax-recalculate-integration.test.ts,
+  tests/use-tax-unlinked-account-integration.test.ts,
+  tests/purchase-tax-explain.test.ts, tests/appliance-acquisition-tax-integration.test.ts,
+  tests/tax-locations-integration.test.ts; exact-head CI and preview required for merge.

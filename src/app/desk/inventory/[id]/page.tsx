@@ -19,6 +19,7 @@ import { privatePhotoReadPath } from "@/lib/photo-storage";
 import { getOpenCustody } from "@/domains/inventory/custody";
 import { getCustomers } from "@/domains/customers";
 import { prisma } from "@/lib/prisma";
+import { explainPendingPurchaseTax } from "@/domains/tax/purchase-tax-explain";
 import { formatBusinessDate } from "@/lib/business-date";
 import { CustodyPanel } from "./custody-panel";
 
@@ -54,6 +55,9 @@ export default async function ApplianceDetailPage({
       : Promise.resolve(null),
     needsCustodyRecord ? getCustomers() : Promise.resolve([]),
   ]);
+  const pendingTax = appliance.acquisitionTaxStatus === "UNKNOWN"
+    ? await prisma.$transaction(tx => explainPendingPurchaseTax(tx, id))
+    : null;
   const custodyAddress = openCustody?.serviceAddressId
     ? await prisma.serviceAddress.findUnique({ where: { id: openCustody.serviceAddressId }, select: { line1: true, city: true } })
     : null;
@@ -121,6 +125,7 @@ export default async function ApplianceDetailPage({
             acquisitionReceiptPhotoId: appliance.acquisitionReceiptPhotoId,
             acquisitionTaxRecordedAt: appliance.acquisitionTaxRecordedAt?.toISOString() ?? null,
             hasPurchaseContext: appliance.purchaseDate !== null && appliance.acquisitionCostCents !== null,
+            pendingTax,
             photos: appliance.photos.map((photo, index) => ({
               id: photo.id,
               description: photo.altText || `Appliance photo ${index + 1}`,

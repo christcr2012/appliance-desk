@@ -1,21 +1,19 @@
 # STATUS — current work, blockers and next action
 
-Updated October 9, 2026 (main `aea29ba3`). **Batch T is engineering-complete** (through T-7D #328). **Batch S is
+Updated October 9, 2026 (W-0A PR #342 synchronized with main `540799c`, including workflow PR #344). **Batch T is engineering-complete** (through T-7D #328). **Batch S is
 complete:** S-1A #330, S-1B #331, S-1C #332, S-2 #334 (plus the test-fixture drift fix #333). **COM-L1A** (#335) and
 **COM-L1B** (#336) are merged. No live payments, customer messages, fee charging or tax filing are activated.
 
 ## Next
 
-**2026-10-09 — Batch W approved (IN-57…IN-60).** Next implementation: **W-0A** then **W-0B** (`docs/pr-cards/W-0A.md`, `W-0B.md`; no prerequisite, no migration) — they fix purchase use tax that could never be calculated and a dead Today link. Then COM-L resumes at COM-L2; W-1…W-12 come after COM-L15 and before V. Design: `docs/designs/BATCH-W.md`.
+**2026-10-09 — Batch W approved (IN-57…IN-60).** Next implementation: **W-0B** (W-0A PR #342 complete pending final merge gate) (`docs/pr-cards/W-0A.md`, `W-0B.md`; no prerequisite, no migration) — they fix purchase use tax that could never be calculated and a dead Today link. Then COM-L resumes at COM-L2; W-1…W-12 come after COM-L15 and before V. Design: `docs/designs/BATCH-W.md`.
 
 **2026-10-09 — Batch W Amendment A (tax filing on autopilot) added:** W-9 filing autopilot, W-10 use-tax "File now" + filled DR 0252, W-11 live GIS rates (waits on IN-61, may run early once done), W-12 XML return file (waits on IN-62, IN-44). Nothing ever submits or pays on Chris's behalf (D-WA2, IN-63). **D-WA6:** W-2 now also gives every seller-tax answer one dated next step (`nextPurchaseTaxStep`); W-13 receipt reading waits on IN-64; out-of-state seller tax waits on the CPA (IN-65).
 
-**W-0A in progress (Sol, 2026-10-09):** implementation and database tests done, not yet on GitHub. If that code exists
-only in the Vercel Sandbox, publish it with `docs/runbooks/SANDBOX-PUBLISH.md` (pack → upload parts → workflow pushes), then `git merge origin/main` (main moved
-only in docs: #337–#339) and publish.
+**W-0A PR #342 handoff (2026-10-09):** Purchase use-tax confirmation, catch-up and exceptions complete in the PR, incorporating main through workflow PR #344. Exact-head CI/preview must pass on the synchronized commit before merge. **W-0B PR #343** is stacked on W-0A; retarget it to main only after #342 merges. One-command cached checks from #344 are the local validation path. No real filing or payment is activated.
 
 **Recovered unfinished work (2026-10-09, read before starting anything):** found uncommitted in the Vercel Sandbox
-`appliance-desk-s1c-oct8` and committed there (not on GitHub; the sandbox clone has no push credentials):
+`appliance-desk-s1c-oct8` and committed there (not on GitHub; the sandbox clone originally lacked push credentials; this is resolved as of 2026-10-09):
 - `/vercel/appliance-desk-com-l2`, branch `ai/gpt6/com-l2-foundation`, commit `02e715a` — **COM-L2 started**: schema
   (+217 lines), migration `20261012130000_com_l2_telecom_foundation`, backup manifest, and
   `tests/communications-foundation-integration.test.ts`. Unverified. When COM-L2 comes up, run drift checklist A on it
@@ -59,9 +57,8 @@ History and prior acceptance: [retired working snapshot](archive/reset-2026-10-0
 
 ## Environment (update when it changes)
 
-- **Sandbox push key:** installed 2026-10-09 by Chris (fine-grained, this repository only, kept in the sandbox's network
-  settings, not inside it); **expires about 2026-10-09 + 1 year** — renew before then (GitHub emails a warning). A refused
-  push (401/403) means it expired: tell Chris; meanwhile publish with `docs/runbooks/SANDBOX-PUBLISH.md`.
+- **Sandbox GitHub push:** Installed 2026-10-09 by the owner through network header injection, never stored in the repository or sandbox environment; expires 2027-10-09 (one year). Dry-run verified; regular git push now works using HTTP/1.1. Use the fallback runbook if needed.
+
 
 - **Local database testing:** Vercel Sandbox, project `appliance-desk`. Persistent sandbox in use:
   **`appliance-desk-s1c-oct8`** (most recently active, 2026-10-09; main checkout `/vercel/appliance-desk`, per-card

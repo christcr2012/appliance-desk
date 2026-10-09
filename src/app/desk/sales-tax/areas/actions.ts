@@ -26,6 +26,8 @@ export async function reviewOfficialRate(
     await manuallyApplyObservedRate({
       observationId: get(form, "observationId"), actorUserId: user.user.id,
     });
+    const { recalculatePendingPurchaseTax } = await import("@/domains/tax/purchase-tax-catch-up");
+    await recalculatePendingPurchaseTax(new Date(), 200);
     revalidatePath("/desk/sales-tax/areas");
     return { success: "The recorded observation was reviewed and applied.", error: "" };
   } catch (e) { return fail(e); }
